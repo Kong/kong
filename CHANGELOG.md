@@ -69,6 +69,14 @@
 
 ## Unreleased
 
+### Breaking Changes
+
+#### Plugins
+
+- **Serverless Functions**: `kong.cache` now points to a cache instance that is dedicated to the
+  Serverless Functions plugins: it does not provide access to the global kong cache. Access to
+  certain fields in kong.configuration has also been restricted.
+
 ### Additions
 
 #### Core
@@ -92,6 +100,10 @@
   [#10389](https://github.com/Kong/kong/pull/10389)
 - Support for configurable Node IDs
   [#10385](https://github.com/Kong/kong/pull/10385)
+- Request and response buffering options are now enabled for incoming HTTP 2.0 requests too.
+  Thanks [@PidgeyBE](https://github.com/PidgeyBE) for contributing this change.
+  [#10595](https://github.com/Kong/kong/pull/10595)
+  [#10204](https://github.com/Kong/kong/pull/10204)
 
 #### Admin API
 

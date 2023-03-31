@@ -58,6 +58,38 @@ local mock_fn_ten = [[
   ngx.var.args = nil
 ]]
 
+-- cache is accessible
+local mock_fn_eleven = [[
+  local ok, err = kong.cache:get("foo", nil, function() return "val" end)
+  if err then
+    ngx.exit(500)
+  end
+  local v = kong.cache:get("foo")
+  ngx.status = 200
+  ngx.say(v)
+  ngx.exit(ngx.status)
+]]
+
+-- cache does not allow access to gateway information
+local mock_fn_twelve = [[
+  ngx.status = 200
+  ngx.say(tostring(kong.cache.cluster_events))
+  ngx.exit(ngx.status)
+]]
+
+-- configuration is accessible
+local mock_fn_thirteen = [[
+  ngx.status = 200
+  ngx.say(kong.configuration.plugins[1])
+  ngx.exit(ngx.status)
+]]
+
+-- configuration restricts access to properties
+local mock_fn_fourteen = [[
+  ngx.status = 200
+  ngx.say(kong.configuration.pg_password)
+  ngx.exit(ngx.status)
+]]
 
 
 describe("Plugin: serverless-functions", function()
@@ -138,6 +170,26 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
           hosts   = { "ten." .. plugin_name .. ".com" },
         }
 
+        local route11 = bp.routes:insert {
+          service = { id = service.id },
+          hosts   = { "eleven." .. plugin_name .. ".com" },
+        }
+
+        local route12 = bp.routes:insert {
+          service = { id = service.id },
+          hosts   = { "twelve." .. plugin_name .. ".com" },
+        }
+
+        local route13 = bp.routes:insert {
+          service = { id = service.id },
+          hosts   = { "thirteen." .. plugin_name .. ".com" },
+        }
+
+        local route14 = bp.routes:insert {
+          service = { id = service.id },
+          hosts   = { "fourteen." .. plugin_name .. ".com" },
+        }
+
         bp.plugins:insert {
           name    = plugin_name,
           route   = { id = route1.id },
@@ -190,6 +242,30 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
           name    = plugin_name,
           route   = { id = route10.id },
           config  = get_conf { mock_fn_ten },
+        }
+
+        bp.plugins:insert {
+          name    = plugin_name,
+          route   = { id = route11.id },
+          config  = get_conf { mock_fn_eleven },
+        }
+
+        bp.plugins:insert {
+          name    = plugin_name,
+          route   = { id = route12.id },
+          config  = get_conf { mock_fn_twelve },
+        }
+
+        bp.plugins:insert {
+          name    = plugin_name,
+          route   = { id = route13.id },
+          config  = get_conf { mock_fn_thirteen },
+        }
+
+        bp.plugins:insert {
+          name    = plugin_name,
+          route   = { id = route14.id },
+          config  = get_conf { mock_fn_fourteen },
         }
 
         assert(helpers.start_kong({
@@ -361,6 +437,60 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
           end
 
           assert.equal(10, count)
+        end)
+      end)
+
+      describe("sandbox access", function()
+        it("can access cache", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/status/200",
+            headers = {
+              ["Host"] = "eleven." .. plugin_name .. ".com",
+            },
+          })
+          local body = assert.res_status(200, res)
+          assert.is_not_nil(body)
+          assert.equal("val", body)
+        end)
+
+        it("cannot access gateway information through the cache", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/status/200",
+            headers = {
+              ["Host"] = "twelve." .. plugin_name .. ".com",
+            },
+          })
+          local body = assert.res_status(200, res)
+          assert.is_not_nil(body)
+          assert.equal("nil", body)
+        end)
+
+        it("can access kong.configuration fields", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/status/200",
+            headers = {
+              ["Host"] = "thirteen." .. plugin_name .. ".com",
+            },
+          })
+          local body = assert.res_status(200, res)
+          assert.is_not_nil(body)
+          assert.equal("bundled", body)
+        end)
+
+        it("redacts sensitive configuration fields", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/status/200",
+            headers = {
+              ["Host"] = "fourteen." .. plugin_name .. ".com",
+            },
+          })
+          local body = assert.res_status(200, res)
+          assert.is_not_nil(body)
+          assert.match("%*+", body)
         end)
       end)
 
