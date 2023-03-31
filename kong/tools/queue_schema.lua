@@ -10,7 +10,7 @@ return Schema.define {
       -- If two plugin instances use the same queue name, they will
       -- share one queue and their queue related configuration must match.
     } },
-    { batch_max_size = {
+    { max_batch_size = {
       type = "number",
       default = 1,
       -- description = "maximum number of entries that can be processed at a time"
@@ -19,7 +19,7 @@ return Schema.define {
       type = "number",
       default = 1,
       -- description = "maximum number of (fractional) seconds to elapse after the first entry was queued before the queue starts calling the handler",
-      -- This parameter has no effect if `batch_max_size` is 1, as queued entries will be sent
+      -- This parameter has no effect if `max_batch_size` is 1, as queued entries will be sent
       -- immediately in that case.
     } },
     { max_entries = {

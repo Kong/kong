@@ -173,7 +173,7 @@ describe("declarative config: process_auto_fields", function()
                 method = "POST",
                 timeout = 10000,
                 queue = {
-                  batch_max_size = 1,
+                  max_batch_size = 1,
                   max_entries = 10000,
                   max_delay = 1,
                   max_retry_delay = 60,
@@ -229,7 +229,7 @@ describe("declarative config: process_auto_fields", function()
                 method = "POST",
                 timeout = 10000,
                 queue = {
-                  batch_max_size = 1,
+                  max_batch_size = 1,
                   max_entries = 10000,
                   max_delay = 1,
                   max_retry_delay = 60,
@@ -345,7 +345,7 @@ describe("declarative config: process_auto_fields", function()
                       method = "POST",
                       timeout = 10000,
                       queue = {
-                        batch_max_size = 1,
+                        max_batch_size = 1,
                         max_entries = 10000,
                         max_delay = 1,
                         max_retry_delay = 60,
@@ -664,7 +664,7 @@ describe("declarative config: process_auto_fields", function()
                           method = "POST",
                           timeout = 10000,
                           queue = {
-                            batch_max_size = 1,
+                            max_batch_size = 1,
                             max_entries = 10000,
                             max_delay = 1,
                             max_retry_delay = 60,

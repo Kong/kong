@@ -54,7 +54,7 @@ for _, strategy in helpers.each_strategy() do
         config   = {
           http_endpoint = "http://konghq.com:80",
           queue = {
-            batch_max_size = 10,
+            max_batch_size = 10,
             max_delay = 10,
           },
         }

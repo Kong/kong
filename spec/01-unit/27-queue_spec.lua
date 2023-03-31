@@ -85,7 +85,7 @@ describe("plugin queue", function()
       Queue.enqueue(
         queue_conf({
           name = "handler-configuration-change",
-          batch_max_size = 10,
+          max_batch_size = 10,
           max_delay = 0.1
         }),
         function (c, entries)
@@ -110,11 +110,11 @@ describe("plugin queue", function()
     assert.equals(2, number_of_entries_received)
   end)
 
-  it("does not batch messages when `batch_max_size` is 1", function()
+  it("does not batch messages when `max_batch_size` is 1", function()
     local process_count = 0
     local function enqueue(entry)
       Queue.enqueue(
-        queue_conf({ name = "no-batch", batch_max_size = 1 }),
+        queue_conf({ name = "no-batch", max_batch_size = 1 }),
         function()
           process_count = process_count + 1
           return true
@@ -129,14 +129,14 @@ describe("plugin queue", function()
     assert.equals(2, process_count)
   end)
 
-  it("batches messages when `batch_max_size` is 2", function()
+  it("batches messages when `max_batch_size` is 2", function()
     local process_count = 0
     local first_entry, last_entry
     local function enqueue(entry)
       Queue.enqueue(
         queue_conf({
           name = "batch",
-          batch_max_size = 2,
+          max_batch_size = 2,
           max_delay = 0.1,
         }),
         function(_, batch)
@@ -166,7 +166,7 @@ describe("plugin queue", function()
     Queue.enqueue(
       queue_conf({
         name = "retry",
-        batch_max_size = 1,
+        max_batch_size = 1,
         max_delay = 0.1,
       }),
       function(_, batch)
@@ -186,7 +186,7 @@ describe("plugin queue", function()
     Queue.enqueue(
       queue_conf({
         name = "retry-give-up",
-        batch_max_size = 1,
+        max_batch_size = 1,
         max_retry_time = 1,
         max_delay = 0.1,
       }),
@@ -207,7 +207,7 @@ describe("plugin queue", function()
       Queue.enqueue(
         queue_conf({
           name = "capacity-exceeded",
-          batch_max_size = 2,
+          max_batch_size = 2,
           max_entries = 2,
           max_delay = 0.1,
         }),
@@ -240,7 +240,7 @@ describe("plugin queue", function()
       Queue.enqueue(
         queue_conf({
           name = "string-capacity-exceeded",
-          batch_max_size = 1,
+          max_batch_size = 1,
           max_bytes = 6,
           max_retry_time = 1,
         }),
@@ -274,7 +274,7 @@ describe("plugin queue", function()
       Queue.enqueue(
         queue_conf({
           name = "string-capacity-warnings",
-          batch_max_size = 1,
+          max_batch_size = 1,
           max_bytes = 1,
         }),
         function ()
@@ -330,7 +330,7 @@ describe("plugin queue", function()
       Queue.enqueue(
         queue_conf({
           name = "speedy-sending",
-          batch_max_size = 10,
+          max_batch_size = 10,
           max_delay = 0.1,
         }),
         function(conf, entries)
@@ -357,8 +357,8 @@ describe("plugin queue", function()
     }
     local converted_parameters = Queue.get_params(legacy_parameters)
     assert.match_re(log_messages, 'deprecated `retry_count` parameter in plugin .* ignored')
-    assert.equals(legacy_parameters.queue_size, converted_parameters.batch_max_size)
-    assert.match_re(log_messages, 'deprecated `queue_size` parameter in plugin .* converted to `queue.batch_max_size`')
+    assert.equals(legacy_parameters.queue_size, converted_parameters.max_batch_size)
+    assert.match_re(log_messages, 'deprecated `queue_size` parameter in plugin .* converted to `queue.max_batch_size`')
     assert.equals(legacy_parameters.flush_timeout, converted_parameters.max_delay)
     assert.match_re(log_messages, 'deprecated `flush_timeout` parameter in plugin .* converted to `queue.max_delay`')
   end)
@@ -369,8 +369,8 @@ describe("plugin queue", function()
       batch_flush_delay = 345,
     }
     local converted_parameters = Queue.get_params(legacy_parameters)
-    assert.equals(legacy_parameters.batch_span_count, converted_parameters.batch_max_size)
-    assert.match_re(log_messages, 'deprecated `batch_span_count` parameter in plugin .* converted to `queue.batch_max_size`')
+    assert.equals(legacy_parameters.batch_span_count, converted_parameters.max_batch_size)
+    assert.match_re(log_messages, 'deprecated `batch_span_count` parameter in plugin .* converted to `queue.max_batch_size`')
     assert.equals(legacy_parameters.batch_flush_delay, converted_parameters.max_delay)
     assert.match_re(log_messages, 'deprecated `batch_flush_delay` parameter in plugin .* converted to `queue.max_delay`')
   end)
@@ -382,12 +382,12 @@ describe("plugin queue", function()
       batch_span_count = 200,
       batch_flush_delay = 3,
       queue = {
-        batch_max_size = 123,
+        max_batch_size = 123,
         max_delay = 234,
       }
     }
     local converted_parameters = Queue.get_params(legacy_parameters)
-    assert.equals(123, converted_parameters.batch_max_size)
+    assert.equals(123, converted_parameters.max_batch_size)
     assert.equals(234, converted_parameters.max_delay)
   end)
 end)

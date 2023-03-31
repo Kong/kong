@@ -23,7 +23,7 @@ local sandbox_opts = { env = { kong = kong, ngx = ngx } }
 -- Each invocation of the function returns the next bit of JSON, i.e. the opening
 -- bracket, the entries, delimiting commas and the closing bracket.
 local function make_json_array_payload_function(conf, entries)
-  if conf.queue.batch_max_size == 1 then
+  if conf.queue.max_batch_size == 1 then
     return #entries[1], entries[1]
   end
 
@@ -88,10 +88,10 @@ end
 -- @return error message if there was an error
 local function send_entries(conf, entries)
   local content_length, payload
-  if conf.queue.batch_max_size == 1 then
+  if conf.queue.max_batch_size == 1 then
     assert(
       #entries == 1,
-      "internal error, received more than one entry in queue handler even though batch_max_size is 1"
+      "internal error, received more than one entry in queue handler even though max_batch_size is 1"
     )
     content_length = #entries[1]
     payload = entries[1]

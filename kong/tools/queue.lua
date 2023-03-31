@@ -5,7 +5,7 @@
 -- (i.e. send them to an upstream server).
 --
 -- The maximum size of each batch of entries that is passed to the `handler`
--- function can be configured using the `batch_max_size` parameter.
+-- function can be configured using the `max_batch_size` parameter.
 --
 -- The handler function can either return true if the entries
 -- were successfully processed, or false and an error message to indicate that
@@ -25,7 +25,7 @@
 --   local queue_conf =          -- configuration for the queue itself (defaults shown unless noted)
 --     {
 --       name = "example",       -- name of the queue (required)
---       batch_max_size = 10,    -- maximum number of entries in one batch (default 1)
+--       max_batch_size = 10,    -- maximum number of entries in one batch (default 1)
 --       max_delay = 1,          -- maximum number of seconds after first entry before a batch is sent
 --       max_entries = 10,          -- maximum number of entries on the queue (default 10000)
 --       max_bytes = 100,  -- maximum number of bytes on the queue (default nil)
@@ -40,7 +40,7 @@
 --
 -- * If the two `enqueue()` invocations are done within `max_delay` seconds, they will be passed to the
 --   handler function together in one batch.  The maximum number of entries in one batch is defined
---   by the `batch_max_size` parameter.
+--   by the `max_batch_size` parameter.
 -- * The `max_entries` parameter defines how many entries can be waiting on the queue for transmission.  If
 --   it is exceeded, the oldest entries on the queue will be discarded when new entries are queued.  Error
 --   messages describing how many entries were lost will be logged.
@@ -94,7 +94,7 @@ end
 -------------------------------------------------------------------------------
 -- Initialize a queue with background retryable processing
 -- @param process function, invoked to process every payload generated
--- @param opts table, requires `name`, optionally includes `retry_count`, `max_delay` and `batch_max_size`
+-- @param opts table, requires `name`, optionally includes `retry_count`, `max_delay` and `max_batch_size`
 -- @return table: a Queue object.
 local function get_or_create_queue(queue_conf, handler, handler_conf)
 
@@ -205,8 +205,8 @@ function Queue:process_once()
   local entry_count = 1
 
   -- We've got our first entry from the queue.  Collect more entries until max_delay expires or we've collected
-  -- batch_max_size entries to send
-  while entry_count < self.batch_max_size and (now() - data_started) < self.max_delay and not ngx.worker.exiting() do
+  -- max_batch_size entries to send
+  while entry_count < self.max_batch_size and (now() - data_started) < self.max_delay and not ngx.worker.exiting() do
     ok, err = self.semaphore:wait(((data_started + self.max_delay) - now()) / 1000)
     if not ok and err == "timeout" then
       break
@@ -271,9 +271,9 @@ function Queue.get_params(config)
   end
   if config.queue_size and config.queue_size ~= 1 and config.queue_size ~= ngx.null then
     kong.log.warn(string.format(
-      "deprecated `queue_size` parameter in plugin %s converted to `queue.batch_max_size`",
+      "deprecated `queue_size` parameter in plugin %s converted to `queue.max_batch_size`",
       kong.plugin.get_id()))
-    queue_config.batch_max_size = config.queue_size
+    queue_config.max_batch_size = config.queue_size
   end
   if config.flush_timeout and config.flush_timeout ~= 2 and config.flush_timeout ~= ngx.null then
     kong.log.warn(string.format(
@@ -284,9 +284,9 @@ function Queue.get_params(config)
   -- Queue related opentelemetry plugin parameters
   if config.batch_span_count and config.batch_span_count ~= 200 and config.batch_span_count ~= ngx.null then
     kong.log.warn(string.format(
-      "deprecated `batch_span_count` parameter in plugin %s converted to `queue.batch_max_size`",
+      "deprecated `batch_span_count` parameter in plugin %s converted to `queue.max_batch_size`",
       kong.plugin.get_id()))
-    queue_config.batch_max_size = config.batch_span_count
+    queue_config.max_batch_size = config.batch_span_count
   end
   if config.batch_flush_delay and config.batch_flush_delay ~= 3 and config.batch_flush_delay ~= ngx.null then
     kong.log.warn(string.format(

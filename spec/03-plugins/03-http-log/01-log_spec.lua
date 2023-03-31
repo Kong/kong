@@ -154,7 +154,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "http-log",
         config   = {
           queue = {
-            batch_max_size = 5,
+            max_batch_size = 5,
             max_delay = 0.1,
           },
           http_endpoint = "http://" .. helpers.mock_upstream_host
@@ -705,7 +705,7 @@ for _, strategy in helpers.each_strategy() do
           name     = "http-log",
           config   = {
             queue = {
-              batch_max_size = 5,
+              max_batch_size = 5,
               max_delay = 0.1,
             },
             http_endpoint = "http://" .. helpers.mock_upstream_host
@@ -725,7 +725,7 @@ for _, strategy in helpers.each_strategy() do
           name     = "http-log",
           config   = {
             queue = {
-              batch_max_size = 5,
+              max_batch_size = 5,
               max_delay = 0.1,
             },
             http_endpoint = "http://" .. helpers.mock_upstream_host

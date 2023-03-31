@@ -205,7 +205,7 @@ return {
                             { after = "4.0", })
               end
               if entity.queue_size and entity.queue_size ~= 1 then
-                deprecation("statsd: queue_size is deprecated, please use queue.batch_max_size instead",
+                deprecation("statsd: queue_size is deprecated, please use queue.max_batch_size instead",
                             { after = "4.0", })
               end
               if entity.flush_timeout and entity.flush_timeout ~= 2 then
