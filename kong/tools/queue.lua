@@ -379,13 +379,11 @@ function Queue.enqueue(queue_conf, handler, handler_conf, value)
   return enqueue(queue, value)
 end
 
--- For testing, the drain() function is provided to allow a test to wait for the
+-- For testing, the _count() function is provided to allow a test to wait for the
 -- queue to have been completely processed.
-function Queue._drain(name)
+function Queue._count(name)
   local queue = assert(queues[name])
-  while queue:count() > 0 do
-    ngx.sleep(0.1)
-  end
+  return queue:count()
 end
 
 
