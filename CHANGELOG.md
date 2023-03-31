@@ -69,6 +69,14 @@
 
 ## Unreleased
 
+### Breaking Changes
+
+#### Plugins
+
+- **Serverless Functions**: `kong.cache` now points to a cache instance that is dedicated to the
+  Serverless Functions plugins: it does not provide access to the global kong cache. Access to
+  certain fields in kong.configuration has also been restricted.
+
 ### Additions
 
 #### Core
