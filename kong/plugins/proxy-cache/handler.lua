@@ -313,7 +313,7 @@ function ProxyCacheHandler:access(conf)
     return
   end
 
-  -- disbale caching for HTTP/2 requests
+  -- disabled caching for grpc requests
   if is_grpc_request() then
     return
   end
