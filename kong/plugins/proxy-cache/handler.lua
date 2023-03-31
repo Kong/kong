@@ -17,6 +17,7 @@ local floor            = math.floor
 local lower            = string.lower
 local concat           = table.concat
 local time             = ngx.time
+local find             = string.find
 local resp_get_headers = ngx.resp and ngx.resp.get_headers
 local ngx_re_gmatch    = ngx.re.gmatch
 local ngx_re_sub       = ngx.re.gsub
@@ -29,6 +30,7 @@ local tab_new = require("table.new")
 
 
 local STRATEGY_PATH = "kong.plugins.proxy-cache.strategies"
+local CONTENT_TYPE_GRPC = "application/grpc"
 local CACHE_VERSION = 1
 local EMPTY = {}
 
