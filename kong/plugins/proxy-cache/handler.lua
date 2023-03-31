@@ -305,6 +305,11 @@ function ProxyCacheHandler:access(conf)
     return
   end
 
+  -- disbale caching for HTTP/2 requests
+  if ngx.req.http_version() == 2 then
+    return
+  end
+
   kong.response.set_header("X-Cache-Key", cache_key)
 
   -- try to fetch the cached object from the computed cache key
