@@ -160,11 +160,11 @@ dependencies: bin/grpcurl
 		echo $$rock already installed, skipping ; \
 	  else \
 		echo $$rock not found, installing via luarocks... ; \
-		luarocks install $$rock OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR) YAML_DIR=$(YAML_DIR) || exit 1; \
+		luarocks install $$rock OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR) YAML_DIR=$(YAML_DIR) CURL_INCDIR=$(CURL_INCDIR) || exit 1; \
 	  fi \
 	done;
 
 install-legacy:
-	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR) YAML_DIR=$(YAML_DIR)
+	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR) YAML_DIR=$(YAML_DIR) CURL_INCDIR=$(CURL_INCDIR)
 
 dev-legacy: remove install-legacy dependencies
