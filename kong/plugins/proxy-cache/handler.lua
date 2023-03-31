@@ -56,6 +56,12 @@ local function overwritable_header(header)
      and not ngx_re_match(n_header, "ratelimit-remaining")
 end
 
+local function is_grpc_request()
+  local req_ctype = ngx.var.content_type
+  return req_ctype
+    and find(req_ctype, CONTENT_TYPE_GRPC, 1, true) == 1
+    and ngx.req.http_version() == 2
+end
 
 local function parse_directive_header(h)
   if not h then
@@ -306,7 +312,7 @@ function ProxyCacheHandler:access(conf)
   end
 
   -- disbale caching for HTTP/2 requests
-  if ngx.req.http_version() == 2 then
+  if is_grpc_request() then
     return
   end
 
