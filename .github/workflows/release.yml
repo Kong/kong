@@ -179,7 +179,6 @@ jobs:
                 curl \
                 file \
                 libyaml-dev \
-                libcurl4-openssl-dev \
                 m4 \
                 perl \
                 pkg-config \
@@ -197,7 +196,6 @@ jobs:
         yum groupinstall -y 'Development Tools'
         dnf config-manager --set-enabled powertools || true # enable devel packages on rockylinux:8
         yum install -y libyaml-devel
-        yum install -y curl-devel
 
     - name: Setup Amazon Linux
       if: startsWith(matrix.label, 'amazonlinux')
