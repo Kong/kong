@@ -1,7 +1,7 @@
 OS := $(shell uname | awk '{print tolower($$0)}')
 MACHINE := $(shell uname -m)
 
-DEV_ROCKS = "busted 2.1.2" "busted-htest 1.0.0" "luacheck 1.1.0" "lua-llthreads2 0.1.6" "http 0.4" "ldoc 1.4.6" "Lua-cURL 0.3.13"
+DEV_ROCKS = "busted 2.1.2" "busted-htest 1.0.0" "luacheck 1.1.0" "lua-llthreads2 0.1.6" "http 0.4" "ldoc 1.4.6"
 WIN_SCRIPTS = "bin/busted" "bin/kong" "bin/kong-health"
 BUSTED_ARGS ?= -v
 TEST_CMD ?= bin/busted $(BUSTED_ARGS)
@@ -12,12 +12,10 @@ ifeq ($(OS), darwin)
 OPENSSL_DIR ?= $(shell brew --prefix)/opt/openssl
 GRPCURL_OS ?= osx
 YAML_DIR ?= $(shell brew --prefix)/opt/libyaml
-CURL_INCDIR ?= $(shell brew --prefix)/opt/curl/include
 else
 OPENSSL_DIR ?= /usr
 GRPCURL_OS ?= $(OS)
 YAML_DIR ?= /usr
-CURL_INCDIR ?= /usr/include/x86_64-linux-gnu/
 endif
 
 ifeq ($(MACHINE), aarch64)
@@ -79,7 +77,7 @@ install-dev-rocks: build-venv
 	  else \
 		echo $$rock not found, installing via luarocks... ; \
 		LIBRARY_PREFIX=$$(pwd)/bazel-bin/build/$(BUILD_NAME)/kong ; \
-		luarocks install $$rock OPENSSL_DIR=$$LIBRARY_PREFIX CRYPTO_DIR=$$LIBRARY_PREFIX YAML_DIR=$(YAML_DIR) CURL_INCDIR=$(CURL_INCDIR) || exit 1; \
+		luarocks install $$rock OPENSSL_DIR=$$LIBRARY_PREFIX CRYPTO_DIR=$$LIBRARY_PREFIX YAML_DIR=$(YAML_DIR) || exit 1; \
 	  fi \
 	done;
 
