@@ -16,8 +16,7 @@ return {
           -- service and route are mutually exclusive
           CONSTRAINT "wasm_filter_chains_scope_ck"
             CHECK ((route_id IS NULL     AND service_id IS NOT NULL)
-                OR (route_id IS NOT NULL AND service_id IS NULL)
-                OR (route_id IS NULL     AND service_id IS NULL))
+                OR (route_id IS NOT NULL AND service_id IS NULL))
         );
 
         DO $$
