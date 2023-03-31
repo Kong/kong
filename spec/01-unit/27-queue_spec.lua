@@ -14,9 +14,9 @@ local function queue_conf(conf)
 end
 
 
-local function wait_until_queue_empty(name)
+local function wait_until_queue_done(name)
   helpers.wait_until(function()
-    return Queue._count(name) == 0
+    return not Queue._exists(name)
   end, 10)
 end
 
@@ -66,7 +66,7 @@ describe("plugin queue", function()
       configuration_sent,
       "ENTRY"
     )
-    wait_until_queue_empty("handler-configuration")
+    wait_until_queue_done("handler-configuration")
     helpers.wait_until(
       function ()
         return handler_invoked == 1
@@ -100,7 +100,7 @@ describe("plugin queue", function()
     end
     enqueue(first_configuration_sent, "ENTRY1")
     enqueue(second_configuration_sent, "ENTRY2")
-    wait_until_queue_empty("handler-configuration-change")
+    wait_until_queue_done("handler-configuration-change")
     helpers.wait_until(
       function ()
         return handler_invoked == 1
@@ -125,7 +125,7 @@ describe("plugin queue", function()
     end
     enqueue("One")
     enqueue("Two")
-    wait_until_queue_empty("no-batch")
+    wait_until_queue_done("no-batch")
     assert.equals(2, process_count)
   end)
 
@@ -154,7 +154,7 @@ describe("plugin queue", function()
     enqueue("Three")
     enqueue("Four")
     enqueue("Five")
-    wait_until_queue_empty("batch")
+    wait_until_queue_done("batch")
     assert.equals(3, process_count)
     assert.equals("One", first_entry)
     assert.equals("Five", last_entry)
@@ -177,7 +177,7 @@ describe("plugin queue", function()
       nil,
       "Hello"
     )
-    wait_until_queue_empty("retry")
+    wait_until_queue_done("retry")
     assert.equal(2, process_count)
     assert.equal("Hello", entry)
   end)
@@ -196,7 +196,7 @@ describe("plugin queue", function()
       nil,
       "Hello"
     )
-    wait_until_queue_empty("retry-give-up")
+    wait_until_queue_done("retry-give-up")
     assert.match_re(log_messages, 'WARN .* handler could not process entries: FAIL FAIL FAIL')
     assert.match_re(log_messages, 'ERR .*1 queue entries were lost')
   end)
@@ -224,12 +224,12 @@ describe("plugin queue", function()
     enqueue("Three")
     enqueue("Four")
     enqueue("Five")
-    wait_until_queue_empty("capacity-exceeded")
+    wait_until_queue_done("capacity-exceeded")
     assert.equal("Four", processed[1])
     assert.equal("Five", processed[2])
     assert.match_re(log_messages, "ERR .*queue full")
     enqueue("Six")
-    wait_until_queue_empty("capacity-exceeded")
+    wait_until_queue_done("capacity-exceeded")
     assert.equal("Six", processed[1])
     assert.match_re(log_messages, "INFO .*queue resumed processing")
   end)
@@ -256,16 +256,16 @@ describe("plugin queue", function()
     enqueue("22")
     enqueue("333")
     enqueue("4444")
-    wait_until_queue_empty("string-capacity-exceeded")
+    wait_until_queue_done("string-capacity-exceeded")
     assert.equal("4444", processed[1])
     assert.match_re(log_messages, "ERR .*byte capacity exceeded, 3 queue entries were dropped")
 
     enqueue("55555")
-    wait_until_queue_empty("string-capacity-exceeded")
+    wait_until_queue_done("string-capacity-exceeded")
     assert.equal("55555", processed[1])
 
     enqueue("666666")
-    wait_until_queue_empty("string-capacity-exceeded")
+    wait_until_queue_done("string-capacity-exceeded")
     assert.equal("666666", processed[1])
   end)
 

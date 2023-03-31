@@ -379,11 +379,11 @@ function Queue.enqueue(queue_conf, handler, handler_conf, value)
   return enqueue(queue, value)
 end
 
--- For testing, the _count() function is provided to allow a test to wait for the
+-- For testing, the _exists() function is provided to allow a test to wait for the
 -- queue to have been completely processed.
-function Queue._count(name)
-  local queue = assert(queues[name])
-  return queue:count()
+function Queue._exists(name)
+  local queue = queues[name]
+  return queue and queue:count() > 0
 end
 
 
