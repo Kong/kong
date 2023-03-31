@@ -104,6 +104,7 @@ local kong_error_handlers = require "kong.error_handlers"
 local plugin_servers = require "kong.runloop.plugin_servers"
 local lmdb_txn = require "resty.lmdb.transaction"
 local instrumentation = require "kong.tracing.instrumentation"
+local process = require "ngx.process"
 local tablepool = require "tablepool"
 local table_new = require "table.new"
 local get_ctx_table = require("resty.core.ctx").get_ctx_table
@@ -761,6 +762,14 @@ function Kong.init()
   db:close()
 
   require("resty.kong.var").patch_metatable()
+
+  if config.privileged_agent and is_data_plane(config) then
+    -- TODO: figure out if there is better value than 2048
+    local ok, err = process.enable_privileged_agent(2048)
+    if not ok then
+      error(err)
+    end
+  end
 end
 
 
@@ -860,6 +869,13 @@ function Kong.init_worker()
 
   kong.db:set_events_handler(worker_events)
 
+  if process.type() == "privileged agent" then
+    if kong.clustering then
+      kong.clustering:init_worker()
+    end
+    return
+  end
+
   kong.vault.init_worker()
 
   -- XXX EE [[
@@ -951,7 +967,7 @@ end
 
 
 function Kong.exit_worker()
-  if not is_control_plane(kong.configuration) then
+  if process.type() ~= "privileged agent" and not is_control_plane(kong.configuration) then
     plugin_servers.stop()
   end
 end

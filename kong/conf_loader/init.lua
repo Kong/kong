@@ -440,6 +440,7 @@ local CONF_PARSERS = {
   dns_not_found_ttl = { typ = "number" },
   dns_error_ttl = { typ = "number" },
   dns_no_sync = { typ = "boolean" },
+  privileged_agent = { typ = "boolean" },
   worker_consistency = { enum = { "strict", "eventual" },
     -- deprecating values for enums
     deprecated = {
