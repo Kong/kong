@@ -69,6 +69,17 @@ return {
           { http_response_header_for_traceid = { type = "string", default = nil }},
           { phase_duration_flavor = { type = "string", required = true, default = "annotations",
                                       one_of = { "annotations", "tags" } } },
+          { ignore_routes = { type = "array", elements = {
+            type = "record",
+            fields = {
+              { path = { type = "string" } },
+              { method = { type = "string", one_of = { "GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS" } } },
+              },
+              entity_checks = {
+              { at_least_one_of = { "path", "method" } },
+              },
+            },
+          }, },                                                                  
         },
     }, },
   },
