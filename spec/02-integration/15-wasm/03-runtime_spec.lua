@@ -2,7 +2,6 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local wasm_fixtures = require "spec.fixtures.wasm"
 
-local DATABASE = "postgres"
 local ERROR_OR_CRIT = "\\[(error|crit)\\]"
 local HEADER = "X-Proxy-Wasm"
 
@@ -22,10 +21,12 @@ local function response_transformer(value, disabled)
   }
 end
 
+for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
 
-describe("#wasm filter execution", function()
+
+describe("#wasm filter execution (#" .. strategy .. ")", function()
   lazy_setup(function()
-    local bp, db = helpers.get_db_utils(DATABASE, {
+    local bp, db = helpers.get_db_utils("postgres", {
       "routes",
       "services",
       "wasm_filter_chains",
@@ -55,7 +56,7 @@ describe("#wasm filter execution", function()
     end
 
     local function create_filter_chain(entity)
-      return assert(db.wasm_filter_chains:insert(entity))
+      return assert(bp.wasm_filter_chains:insert(entity))
     end
 
 
@@ -201,16 +202,23 @@ describe("#wasm filter execution", function()
     wasm_fixtures.build()
 
     assert(helpers.start_kong({
-      database = DATABASE,
+      database = strategy,
+      declarative_config = strategy == "off"
+                       and helpers.make_yaml_file()
+                        or nil,
+
       nginx_conf = "spec/fixtures/custom_nginx.template",
+
       wasm = true,
       wasm_filters_path = wasm_fixtures.TARGET_PATH,
     }))
   end)
 
+
   lazy_teardown(function()
     helpers.stop_kong(nil, true)
   end)
+
 
   local client
   before_each(function()
@@ -218,9 +226,11 @@ describe("#wasm filter execution", function()
     client = helpers.proxy_client()
   end)
 
+
   after_each(function()
     if client then client:close() end
   end)
+
 
   local function assert_filter(host, expect_header)
     local res = client:get("/", {
@@ -243,6 +253,7 @@ describe("#wasm filter execution", function()
     assert.same(expect_header, header)
   end
 
+
   local function assert_no_filter(host)
     local res = client:get("/", {
       headers = { host = host },
@@ -251,6 +262,7 @@ describe("#wasm filter execution", function()
     assert.response(res).has.status(200)
     assert.response(res).has.no.header(HEADER)
   end
+
 
   describe("single filter chain", function()
     it("attached to a service", function()
@@ -290,3 +302,6 @@ describe("#wasm filter execution", function()
     end)
   end)
 end)
+
+
+end -- each strategy

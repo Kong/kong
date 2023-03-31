@@ -1,10 +1,8 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local wasm_fixtures = require "spec.fixtures.wasm"
-local admin = require "spec.fixtures.admin_api"
 local nkeys = require "table.nkeys"
 
-local DATABASE = "postgres"
 local HEADER = "X-Proxy-Wasm"
 local TIMEOUT = 20
 local STEP = 0.1
@@ -23,14 +21,94 @@ local function make_config(src)
   }
 end
 
+
+local function update_yaml_config()
+  local fname = helpers.make_yaml_file()
+  local yaml = assert(helpers.file.read(fname))
+
+  local client = helpers.admin_client()
+
+  local res = client:post("/config", {
+    headers = { ["Content-Type"] = "text/yaml" },
+    body = yaml,
+  })
+
+  assert.response(res).has.status(201)
+
+  client:close()
+end
+
+
+local function declarative_api_functions(db)
+  local dao = db.wasm_filter_chains
+
+  local insert = function(entity)
+    local res = assert(dao:insert(entity))
+    update_yaml_config()
+    return res
+  end
+
+  local update = function(id, updates)
+    if type(id) == "string" then
+      id = { id = id }
+    end
+    local res = assert(dao:update(id, updates))
+    update_yaml_config()
+    return res
+  end
+
+  local delete = function(id)
+    if type(id) == "string" then
+      id = { id = id }
+    end
+    local res = assert(dao:delete(id))
+    update_yaml_config()
+    return res
+  end
+
+  return insert, update, delete
+end
+
+
+local function db_api_functions()
+  local api = require("spec.fixtures.admin_api").wasm_filter_chains
+
+  local insert = function(entity)
+    return assert(api:insert(entity))
+  end
+
+  local update = function(id, updates)
+    return assert(api:update(id, updates))
+  end
+
+  local delete = function(id)
+    local _, err = api:remove(id)
+    assert(not err, err)
+  end
+
+  return insert, update, delete
+end
+
+
+local function make_api(strategy, db)
+  if strategy == "off" then
+    return declarative_api_functions(db)
+  end
+
+  return db_api_functions()
+end
+
+
 -- we must use more than one worker to ensure adequate test coverage
 local WORKER_COUNT = 4
 local WORKER_ID_HEADER = "X-Worker-Id"
 
+for _, strategy in ipairs({ "postgres", "off"}) do
 
-describe("#wasm filter chain cache", function()
+describe("#wasm filter chain cache (#" .. strategy .. ")", function()
   local db
-  local api = admin.wasm_filter_chains
+
+  local insert, update, delete
 
   local hosts = {
     filter     = "filter.test",
@@ -43,9 +121,10 @@ describe("#wasm filter chain cache", function()
 
 
   local function assert_no_filter(host, suffix)
-    local condition = fmt("response header %q is absent", HEADER)
+    local msg = fmt("response header %q should be absent for all workers",
+                    HEADER)
     if suffix then
-      condition = condition .. " " .. suffix
+      msg = msg .. " " .. suffix
     end
 
     local workers_seen = {}
@@ -59,23 +138,23 @@ describe("#wasm filter chain cache", function()
       assert.response(res).has.status(200)
       client:close()
 
-      assert.response(res).has.no_header(HEADER)
+      assert.response(res).has.no_header(HEADER, msg)
 
       -- ensure that we've received the correct response from each
       -- worker at least once
       local worker_id = assert.response(res).has.header(WORKER_ID_HEADER)
       workers_seen[worker_id] = true
-      assert.same(WORKER_COUNT, nkeys(workers_seen))
+      assert.same(WORKER_COUNT, nkeys(workers_seen), msg)
     end, TIMEOUT, STEP)
   end
 
 
   local function assert_filters(host, exp, suffix)
-    local condition = fmt("response header %q is equal to %q",
-                          HEADER, table.concat(exp, ","))
+    local msg = fmt("response header %q should be equal to %q for all workers",
+                    HEADER, table.concat(exp, ","))
 
     if suffix then
-      condition = condition .. " " .. suffix
+      msg = msg .. " " .. suffix
     end
 
     local workers_seen = {}
@@ -90,7 +169,7 @@ describe("#wasm filter chain cache", function()
       assert.response(res).has.status(200)
       client:close()
 
-      local header = assert.response(res).has.header(HEADER)
+      local header = assert.response(res).has.header(HEADER, msg)
 
       if type(header) == "string" then
         header = { header }
@@ -100,24 +179,27 @@ describe("#wasm filter chain cache", function()
         exp = { exp }
       end
 
-      assert.same(exp, header, condition)
+      assert.same(exp, header, msg)
 
       -- ensure that we've received the correct response from each
       -- worker at least once
       local worker_id = assert.response(res).has.header(WORKER_ID_HEADER)
       workers_seen[worker_id] = true
-      assert.same(WORKER_COUNT, nkeys(workers_seen))
-
+      assert.same(WORKER_COUNT, nkeys(workers_seen), msg)
     end, TIMEOUT, STEP)
   end
 
 
   lazy_setup(function()
     local bp
-    bp, db = helpers.get_db_utils(DATABASE, {
+    bp, db = helpers.get_db_utils("postgres", {
       "services",
       "routes",
       "wasm_filter_chains",
+    })
+
+    db.wasm_filter_chains:load_filters({
+      { name = "response_transformer", },
     })
 
     services.filter = bp.services:insert({ name = hosts.filter })
@@ -158,8 +240,16 @@ describe("#wasm filter chain cache", function()
       }
     }))
 
+
+    insert, update, delete = make_api(strategy, db)
+
+
     assert(helpers.start_kong({
-      database = DATABASE,
+      database = strategy,
+      declarative_config = strategy == "off"
+                       and helpers.make_yaml_file()
+                        or nil,
+
       nginx_conf = "spec/fixtures/custom_nginx.template",
       wasm = true,
       wasm_filters_path = wasm_fixtures.TARGET_PATH,
@@ -192,7 +282,7 @@ describe("#wasm filter chain cache", function()
   it("is invalidated on filter creation and removal", function()
     assert_no_filter(hosts.filter, "(initial test)")
 
-    local service_chain = api:insert({
+    local service_chain = insert({
       service = services.filter,
       filters = {
         { name = "response_transformer",
@@ -204,7 +294,7 @@ describe("#wasm filter chain cache", function()
     assert_filters(hosts.filter, { "service" },
                    "after adding a service filter chain")
 
-    local route_chain = api:insert({
+    local route_chain = insert({
       route = routes.filter,
       filters = {
         { name = "response_transformer",
@@ -216,11 +306,11 @@ describe("#wasm filter chain cache", function()
     assert_filters(hosts.filter, { "service", "route" },
                    "after adding a route filter chain")
 
-    api:remove({ id = route_chain.id })
+    delete({ id = route_chain.id })
     assert_filters(hosts.filter, { "service" },
                    "after removing the route filter chain")
 
-    api:remove({ id = service_chain.id })
+    delete({ id = service_chain.id })
 
     assert_no_filter(hosts.filter,
                      "after removing all relevant filter chains")
@@ -229,7 +319,7 @@ describe("#wasm filter chain cache", function()
   it("is invalidated on update when a filter chain is enabled/disabled", function()
     assert_no_filter(hosts.filter, "(initial test)")
 
-    local service_chain = api:insert({
+    local service_chain = insert({
       enabled = false,
       service = services.filter,
       filters = {
@@ -239,7 +329,7 @@ describe("#wasm filter chain cache", function()
       }
     })
 
-    local route_chain = api:insert({
+    local route_chain = insert({
       enabled = false,
       route = routes.filter,
       filters = {
@@ -252,31 +342,31 @@ describe("#wasm filter chain cache", function()
     -- sanity
     assert_no_filter(hosts.filter, "after adding disabled filter chains")
 
-    assert(api:update(service_chain.id, { enabled = true }))
+    assert(update(service_chain.id, { enabled = true }))
 
     assert_filters(hosts.filter, { "service" },
                    "after enabling the service filter chain")
 
 
-    assert(api:update(route_chain.id, { enabled = true }))
+    assert(update(route_chain.id, { enabled = true }))
 
     assert_filters(hosts.filter, { "service", "route" },
                    "after enabling the route filter chain")
 
 
-    assert(api:update(route_chain.id, { enabled = false }))
+    assert(update(route_chain.id, { enabled = false }))
 
     assert_filters(hosts.filter, { "service" },
                    "after disabling the route filter chain")
 
 
-    assert(api:update(service_chain.id, { enabled = false }))
+    assert(update(service_chain.id, { enabled = false }))
 
     assert_no_filter(hosts.filter, "after disabling all filter chains")
   end)
 
   it("is invalidated on update when filters are added/removed", function()
-    local service_chain = api:insert({
+    local service_chain = insert({
       service = services.filter,
       filters = {
         { name = "response_transformer",
@@ -288,7 +378,7 @@ describe("#wasm filter chain cache", function()
     assert_filters(hosts.filter, { "service" },
                    "after enabling a service filter chain")
 
-    assert(api:update(service_chain.id, {
+    assert(update(service_chain.id, {
       filters = {
         { name = "response_transformer",
           config = make_config("service")
@@ -303,7 +393,7 @@ describe("#wasm filter chain cache", function()
     assert_filters(hosts.filter, { "service", "new" },
                    "after adding a filter to the service filter chain")
 
-    assert(api:update(service_chain.id, {
+    assert(update(service_chain.id, {
       filters = {
         { name = "response_transformer",
           config = make_config("new")
@@ -316,7 +406,7 @@ describe("#wasm filter chain cache", function()
   end)
 
   it("is invalidated when filters are enabled/disabled", function()
-    local service_chain = api:insert({
+    local service_chain = insert({
       service = services.filter,
       filters = {
         { name = "response_transformer",
@@ -335,26 +425,26 @@ describe("#wasm filter chain cache", function()
                    "after enabling a service filter chain")
 
     service_chain.filters[1].enabled = false
-    assert(api:update(service_chain.id, service_chain))
+    assert(update(service_chain.id, service_chain))
 
     assert_filters(hosts.filter, { "other" },
                    "after disabling a filter in the chain")
 
     service_chain.filters[1].enabled = true
     service_chain.filters[2].enabled = false
-    assert(api:update(service_chain.id, service_chain))
+    assert(update(service_chain.id, service_chain))
     assert_filters(hosts.filter, { "service" },
                    "after changing the enabled filters in the chain")
 
     service_chain.filters[1].enabled = false
     service_chain.filters[2].enabled = false
-    assert(api:update(service_chain.id, service_chain))
+    assert(update(service_chain.id, service_chain))
 
     assert_no_filter(hosts.filter, "after disabling all filters in the chain")
   end)
 
   it("is invalidated when filters are re-ordered", function()
-    local service_chain = api:insert({
+    local service_chain = insert({
       service = services.filter,
       filters = {
         { name = "response_transformer",
@@ -375,20 +465,20 @@ describe("#wasm filter chain cache", function()
     })
 
     assert_filters(hosts.filter, { "first", "middle", "last" },
-                   "after enabling a service filter chain", true)
+                   "after enabling a service filter chain")
 
     service_chain.filters[1], service_chain.filters[3]
       = service_chain.filters[3], service_chain.filters[1]
 
-    assert(api:update(service_chain.id, service_chain))
+    assert(update(service_chain.id, service_chain))
 
     assert_filters(hosts.filter, { "last", "middle", "first" },
-                   "after re-ordering the filter chain items", true)
+                   "after re-ordering the filter chain items")
   end)
 
 
   it("is invalidated when filter configuration is changed", function()
-    local service_chain = api:insert({
+    local service_chain = insert({
       service = services.filter,
       filters = {
         { name = "response_transformer",
@@ -402,9 +492,12 @@ describe("#wasm filter chain cache", function()
                    "after enabling a service filter chain")
 
     service_chain.filters[1].config = make_config("after")
-    assert(api:update(service_chain.id, service_chain))
+    assert(update(service_chain.id, service_chain))
 
     assert_filters(hosts.filter, { "after" },
                    "after enabling a service filter chain")
   end)
 end)
+
+
+end -- each strategy
