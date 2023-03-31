@@ -22,7 +22,7 @@ local sandbox_opts = { env = { kong = kong, ngx = ngx } }
 -- This saves us from rendering all entries into one large JSON string.
 -- Each invocation of the function returns the next bit of JSON, i.e. the opening
 -- bracket, the entries, delimiting commas and the closing bracket.
-local function prepare_payload(conf, entries)
+local function make_json_array_payload_function(conf, entries)
   if conf.queue.batch_max_size == 1 then
     return #entries[1], entries[1]
   end
@@ -87,7 +87,17 @@ end
 -- @return true if everything was sent correctly, falsy if error
 -- @return error message if there was an error
 local function send_entries(conf, entries)
-  local content_length, payload = prepare_payload(conf, entries)
+  local content_length, payload
+  if conf.queue.batch_max_size == 1 then
+    assert(
+      #entries == 1,
+      "internal error, received more than one entry in queue handler even though batch_max_size is 1"
+    )
+    content_length = #entries[1]
+    payload = entries[1]
+  else
+    content_length, payload = make_json_array_payload_function(conf, entries)
+  end
 
   local method = conf.method
   local timeout = conf.timeout
@@ -151,6 +161,24 @@ local HttpLogHandler = {
 }
 
 
+-- Create a queue name from the same legacy parameters that were used in the
+-- previous queue implementation.  This ensures that http-log instances that
+-- have the same upstream parameters are sharing a queue.  It deliberately uses
+-- the legacy parameters to determine the queue name, even though they may be
+-- nil in newer configurations.
+local function make_legacy_queue_name(conf)
+  return fmt("%s:%s:%s:%s:%s:%s",
+    conf.http_endpoint,
+    conf.method,
+    conf.content_type,
+    conf.timeout,
+    conf.keepalive,
+    conf.retry_count,
+    conf.queue_size,
+    conf.flush_timeout)
+end
+
+
 function HttpLogHandler:log(conf)
   if conf.custom_fields_by_lua then
     local set_serialize_value = kong.log.set_serialize_value
@@ -159,8 +187,14 @@ function HttpLogHandler:log(conf)
     end
   end
 
+  local explicit_name = conf.queue.name
+  local queue_conf = Queue.get_params(conf)
+  if not explicit_name then
+    queue_conf.name = make_legacy_queue_name(conf)
+  end
+
   Queue.enqueue(
-    Queue.get_params(conf),
+    queue_conf,
     send_entries,
     conf,
     cjson.encode(kong.log.serialize())
