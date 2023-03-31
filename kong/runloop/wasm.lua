@@ -333,19 +333,18 @@ local function rebuild_state(db, version, old_state)
       local filters = build_filter_list(chain.service, chain.route)
       local c_plan, err = init_c_plan(filters)
 
-      if c_plan then
-        ref = {
-          hash = hash,
-          type = chain.type,
-          c_plan = c_plan,
-        }
-
-      elseif err then
+      if err then
         return nil, "failed to initialize filter chain: " .. tostring(err)
 
-      else
-        log(DEBUG, "filter chain has no enabled filters and will be removed")
+      elseif not c_plan then
+        log(DEBUG, "filter chain has no enabled filters")
       end
+
+      ref = {
+        hash = hash,
+        type = chain.type,
+        c_plan = c_plan,
+      }
     end
 
     store_chain_ref(state, ref, chain.type, service_id, route_id)
