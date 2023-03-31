@@ -1,6 +1,7 @@
 local declarative_config = require "kong.db.schema.others.declarative_config"
 local workspaces = require "kong.workspaces"
 local lmdb = require("resty.lmdb")
+local txn = require("resty.lmdb.transaction")
 local marshaller = require("kong.db.declarative.marshaller")
 local yield = require("kong.tools.utils").yield
 local unique_field_key = require("kong.db.declarative").unique_field_key
@@ -160,41 +161,51 @@ local function page_for_key(self, key, size, offset, options)
   local schema = self.schema
   local schema_name = schema.name
 
-  local item
-  for i = offset, offset + size - 1 do
-    item = list[i]
-    if not item then
-      offset = nil
-      break
-    end
-
+  if schema_name == "tags" then
     -- Tags are stored in the cache entries "tags||@list" and "tags:<tagname>|@list"
     -- The contents of both of these entries is an array of strings
     -- Each of these strings has the form "<tag>|<entity_name>|<entity_id>"
     -- For example "admin|services|<a service uuid>"
     -- This loop transforms each individual string into tables.
-    if schema_name == "tags" then
+    for i = offset, offset + size - 1 do
+      local item = list[i]
+      if not item then
+        offset = nil
+        break
+      end
       local tag_name, entity_name, uuid = match(item, "^([^|]+)|([^|]+)|(.+)$")
       if not tag_name then
         return nil, "Could not parse tag from cache: " .. tostring(item)
       end
+      ret[i - offset + 1] = { tag = tag_name, entity_name = entity_name, entity_id = uuid }
+    end
 
-      item = { tag = tag_name, entity_name = entity_name, entity_id = uuid }
-
+  else
     -- The rest of entities' lists (i.e. "services|<ws_id>|@list") only contain ids, so in order to
     -- get the entities we must do an additional cache access per entry
-    else
-      item, err = unmarshall(lmdb_get(item))
-      if err then
-        return nil, err
+    local count = 0
+    local t = txn.begin(size)
+    for i = offset, offset + size - 1 do
+      if not list[i] then
+        offset = nil
+        break
       end
+
+      t:get(list[i])
+      count = count + 1
     end
 
-    if not item then
-      return nil, "stale data detected while paginating"
+    local ok, err = t:commit()
+    if not ok then
+      return nil, err
     end
 
-    ret[i - offset + 1] = schema:process_auto_fields(item, "select", true, PROCESS_AUTO_FIELDS_OPTS)
+    for i = 1, count do
+      if not t[i] or not t[i].result then
+        return nil, "stale data detected while paginating"
+      end
+      ret[i] = schema:process_auto_fields(unmarshall(t[i].result), "select", true, PROCESS_AUTO_FIELDS_OPTS)
+    end
   end
 
   if offset then
