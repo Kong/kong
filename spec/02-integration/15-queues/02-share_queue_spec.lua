@@ -2,9 +2,6 @@ local cjson      = require "cjson"
 local helpers    = require "spec.helpers"
 
 
-local HTTP_SERVER_PORT = helpers.get_available_port()
-
-
 for _, strategy in helpers.each_strategy() do
   describe("queue sharing [#" .. strategy .. "]", function()
     local proxy_client
