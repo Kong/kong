@@ -529,6 +529,21 @@ jobs:
         sleep 3
         docker logs kong
 
+    - name: Smoke Tests - Version Test
+      run: |
+        workflow_version="$(
+          echo '${{ steps.metadata.outputs.kong-version }}' \
+            | sed -e 's@\.@\\\.@g'
+        )"
+
+        # confirm workflow's version and built container version match with
+        # dots escaped, and end-line delimited
+        if ! docker exec kong kong version | grep -E "${workflow_version}$"; then
+          echo "Built container's 'kong version' didn't match workflow's."
+          echo "Ensure that versions in the meta.lua files are as expected."
+          exit 1
+        fi
+
     - name: Smoke Tests - Base Tests
       env:
         VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
