@@ -76,6 +76,7 @@
 - **Serverless Functions**: `kong.cache` now points to a cache instance that is dedicated to the
   Serverless Functions plugins: it does not provide access to the global kong cache. Access to
   certain fields in kong.configuration has also been restricted.
+  [#10417](https://github.com/Kong/kong/pull/10417)
 
 ### Additions
 
