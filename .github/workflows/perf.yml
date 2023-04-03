@@ -171,7 +171,7 @@ jobs:
         echo "suites=$suites" >> $GITHUB_OUTPUT
         echo "tags=$tags" >> $GITHUB_OUTPUT
 
-    - uses: xt0rted/pull-request-comment-branch@653a7d5ca8bd91d3c5cb83286063314d0b063b8e # v1.4.1
+    - uses: xt0rted/pull-request-comment-branch@d97294d304604fa98a2600a6e2f916a84b596dc7 # v1.4.1
       id: comment-branch
       if: github.event_name == 'issue_comment' && github.event.action == 'created'
 
