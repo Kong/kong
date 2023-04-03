@@ -189,6 +189,16 @@ function Queue:delete_frontmost_entry()
   end
 end
 
+
+-- Drop the oldest entry, adjusting the semaphore value in the process.  This is
+-- called when the queue runs out of space and needs to make space.
+function Queue:drop_oldest_entry()
+  assert(self.semaphore:count())
+  self.semaphore:wait(0)
+  self:delete_frontmost_entry()
+end
+
+
 -- Process one batch of entries from the queue.  Returns truthy if entries were processed, falsy if there was an
 -- error or no items were on the queue to be processed.
 function Queue:process_once()
@@ -326,7 +336,7 @@ local function enqueue(self, entry)
       self.queue_full = true
       self:log_err("queue full, dropping old entries until processing is successful again")
     end
-    self:delete_frontmost_entry()
+    self:drop_oldest_entry()
   end
 
   if self.max_bytes then
@@ -343,7 +353,7 @@ local function enqueue(self, entry)
 
       local dropped = 0
       while self:count() > 0 and (self.bytes_queued + #entry) > self.max_bytes do
-        self:delete_frontmost_entry()
+        self:drop_oldest_entry()
         dropped = dropped + 1
       end
       if dropped > 0 then
