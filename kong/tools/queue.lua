@@ -132,7 +132,7 @@ local function get_or_create_queue(queue_conf, handler, handler_conf)
 
   queue = setmetatable(queue, Queue_mt)
 
-  kong.timer:named_at(name, 0, function(_, q)
+  kong.timer:named_at("queue " .. name, 0, function(_, q)
     while q:count() > 0 do
       q:log_debug("processing queue")
       q:process_once()
