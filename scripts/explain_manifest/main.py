@@ -217,7 +217,7 @@ class NginxInfo(ElfFileInfo):
         with open(path, "rb") as f:
             elffile = ELFFile(f)
             self.has_dwarf_info = elffile.has_dwarf_info()
-            self.ngx_http_request_dwarf_dies = []
+            self.has_ngx_http_request_t_DW = False
             dwarf_info = elffile.get_dwarf_info()
             for cu in dwarf_info.iter_CUs():
                 dies = [die for die in cu.iter_DIEs()]
@@ -225,8 +225,8 @@ class NginxInfo(ElfFileInfo):
                 if "ngx_http_request" in dies[0].attributes['DW_AT_name'].value.decode('utf-8'):
                     for die in dies:
                         value = die.attributes.get('DW_AT_name') and die.attributes.get('DW_AT_name').value.decode('utf-8')
-                        if value and value.startswith("ngx_"):
-                            self.ngx_http_request_dwarf_dies.append(value)
+                        if value and value == "ngx_http_request_t":
+                            self.has_ngx_http_request_t_DW = True
 
     def explain(self, opts):
         pline = super().explain(opts)
@@ -235,7 +235,7 @@ class NginxInfo(ElfFileInfo):
         lines.append(("Modules", self.modules))
         lines.append(("OpenSSL", self.linked_openssl))
         lines.append(("DWARF", self.has_dwarf_info))
-        lines.append(("DWARF - ngx_http_request related DWARF DIEs", self.ngx_http_request_dwarf_dies))
+        lines.append(("DWARF - ngx_http_request_t related DWARF DIEs", self.has_ngx_http_request_t_DW))
 
         return pline + lines
 
