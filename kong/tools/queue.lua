@@ -324,7 +324,7 @@ local function enqueue(self, entry)
 
   if self:count() >= self.max_entries * Queue.CAPACITY_WARNING_THRESHOLD then
     if not self.warned then
-      self:log_warn('queue at %%% capacity', Queue.CAPACITY_WARNING_THRESHOLD * 100)
+      self:log_warn('queue at %s%% capacity', Queue.CAPACITY_WARNING_THRESHOLD * 100)
       self.warned = true
     end
   else
