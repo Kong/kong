@@ -144,4 +144,6 @@
   - lua-resty-events
   - lua-resty-lmdb
   OpenSSL   : OpenSSL 1.1.1t  7 Feb 2023
+  DWARF     : True
+  DWARF - ngx_http_request_t related DWARF DIEs: True
 
