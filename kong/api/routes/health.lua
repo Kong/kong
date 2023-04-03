@@ -12,6 +12,11 @@ local data_plane_role = kong.configuration.role == "data_plane"
 
 
 return {
+  ["/status/ready"] = {
+    GET = function(self, dao, heleprs)
+      return kong.response.exit(200, "status ok")
+    end
+  },
   ["/status"] = {
     GET = function(self, dao, helpers)
       local query = self.req.params_get
