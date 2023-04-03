@@ -336,7 +336,7 @@ describe("plugin queue", function()
           max_batch_size = 10,
           max_delay = 0.1,
         }),
-        function(conf, entries)
+        function(_, entries)
           last = entries[#entries]
           return true
         end,
