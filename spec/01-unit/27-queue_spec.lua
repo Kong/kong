@@ -28,6 +28,9 @@ describe("plugin queue", function()
   lazy_setup(function()
     kong.timer = timerng.new()
     kong.timer:start()
+    -- make sure our workspace is nil to begin with to prevent leakage from
+    -- other tests
+    ngx.ctx.workspace = nil
   end)
 
   lazy_teardown(function()
