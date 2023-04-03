@@ -342,7 +342,7 @@ Fix #678
 Or:
 
 ```
-tests(proxy) add a new test case for URI encoding
+tests(proxy): add a new test case for URI encoding
 
 When proxying upstream, the URI sent by Kong should be the one
 received from the client, even if it was percent-encoded.
