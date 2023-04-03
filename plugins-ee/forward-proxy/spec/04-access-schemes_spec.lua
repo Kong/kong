@@ -266,6 +266,15 @@ for _, strategy in strategies() do
         local body = assert.res_status(408, res)
         assert.equals("408", body)
       end)
+
+      it("X-KONG-Upstream-Latency", function()
+        local delay = 3
+        local res = proxy_client:get("/http-with-https-config/delay/" .. delay, params)
+
+        assert.res_status(200, res)
+        assert.not_nil(res.headers["X-KONG-Upstream-Latency"])
+        assert.truthy((tonumber(res.headers["X-KONG-Upstream-Latency"]) - delay*1000) < delay*100)
+      end)
     end)
   end)
 end

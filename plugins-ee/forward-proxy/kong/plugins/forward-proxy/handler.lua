@@ -16,7 +16,7 @@ local log                 = ngx.log
 local ngx_req_get_headers = ngx.req.get_headers
 local ngx_req_set_header  = ngx.req.set_header
 local ngx_req_get_method  = ngx.req.get_method
-local ngx_req_read_body    = ngx.req.read_body
+local ngx_req_read_body   = ngx.req.read_body
 local ngx_req_get_body    = ngx.req.get_body_data
 local ngx_now             = ngx.now
 local ngx_print           = ngx.print
@@ -301,6 +301,11 @@ function ForwardProxyHandler:access(conf)
     log(ERR, _prefix_log, "failed to send proxy request: ", err)
     return kong.response.exit(500)
   end
+
+  -- When forward-proxy is not enabled, KONG_WAITING_TIME is calculated in header_filter phase
+  -- When forward-proxy is enabled, the request for upstreams is sent in access phase,
+  -- the ctx.KONG_WAITING_TIME should be calculated here followed by httpc:connect()
+  ctx.KONG_WAITING_TIME = get_now() - ctx.KONG_ACCESS_ENDED_AT
 
   local callback = function()
     ngx.header["Via"] = server_header
