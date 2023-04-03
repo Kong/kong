@@ -669,15 +669,15 @@ local str = "hello " .. "world"
 ```
 
 If a string is too long, **do** break it into multiple lines,
-and concat them with the concatenation operator:
+and join them with the concatenation operator:
 
 ```lua
 -- bad
-local str = "It is a very long long long string, should be broken into multiple lines"
+local str = "It is a very very very long string, that should be broken into multiple lines."
 
 -- good
-local str = "It is a very long long long string, " ..
-            "should be broken into multiple lines"
+local str = "It is a very very very long string, " ..
+            "that should be broken into multiple lines."
 ```
 
 [Back to code style TOC](#table-of-contents---code-style)
