@@ -76,6 +76,7 @@
 - **Serverless Functions**: `kong.cache` now points to a cache instance that is dedicated to the
   Serverless Functions plugins: it does not provide access to the global kong cache. Access to
   certain fields in kong.configuration has also been restricted.
+  [#10417](https://github.com/Kong/kong/pull/10417)
 
 ### Additions
 
@@ -152,6 +153,7 @@
 - Fix an issue where balancer passive healthcheck would use wrong status code when kong changes status code
   from upstream in `header_filter` phase.
   [#10325](https://github.com/Kong/kong/pull/10325)
+  [#10592](https://github.com/Kong/kong/pull/10592)
 - Fix an issue where schema validations failing in a nested record did not propagate the error correctly.
   [#10449](https://github.com/Kong/kong/pull/10449)
 - Fixed an issue where dangling Unix sockets would prevent Kong from restarting in
