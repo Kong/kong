@@ -340,6 +340,8 @@
   - lua-resty-openssl-aux-module
   - lua-resty-openssl-aux-module/stream
   OpenSSL   : OpenSSL 1.1.1t  7 Feb 2023
+  DWARF     : True
+  DWARF - ngx_http_request_t related DWARF DIEs: True
 
 - Path      : /usr/local/share/lua/5.1/kong/portal
   Type      : directory
