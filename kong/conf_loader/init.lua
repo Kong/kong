@@ -551,18 +551,6 @@ local CONF_PARSERS = {
     typ = "string",
     directives = { "nginx_wasm_compiler" },
   },
-  wasm_resolver = {
-    typ = "string",
-    directives = {
-      "nginx_wasm_resolver",
-    },
-  },
-  wasm_resolver_timeout = {
-    typ = "string",
-    directives = {
-      "nginx_wasm_resolver_timeout",
-    },
-  },
   wasm_shm_kv = {
     typ = "string",
     directives = {
@@ -587,58 +575,16 @@ local CONF_PARSERS = {
       "nginx_wasm_socket_buffer_size",
     },
   },
-  wasm_socket_connect_timeout = {
-    typ = "string",
-    directives = {
-      "nginx_wasm_socket_connect_timeout",
-    },
-  },
   wasm_socket_large_buffers = {
     typ = "string",
     directives = {
       "nginx_wasm_socket_large_buffers",
     },
   },
-  wasm_socket_read_timeout = {
-    typ = "string",
-    directives = {
-      "nginx_wasm_socket_read_timeout",
-    },
-  },
-  wasm_socket_send_timeout = {
-    typ = "string",
-    directives = {
-      "nginx_wasm_socket_send_timeout",
-    },
-  },
   wasm_tls_no_verify_warn = {
     typ = "ngx_boolean",
     directives = {
       "nginx_wasm_tls_no_verify_warn",
-    },
-  },
-  wasm_tls_trusted_certificate = {
-    typ = "string",
-    directives = {
-      "nginx_wasm_tls_trusted_certificate",
-    },
-  },
-  wasm_tls_verify_cert = {
-    typ = "ngx_boolean",
-    directives = {
-      "nginx_wasm_tls_verify_cert",
-    },
-  },
-  wasm_tls_verify_host = {
-    typ = "ngx_boolean",
-    directives = {
-      "nginx_wasm_tls_verify_host",
-    },
-  },
-  proxy_wasm_lua_resolver = {
-    typ = "ngx_boolean",
-    directives = {
-      "nginx_http_proxy_wasm_lua_resolver",
     },
   },
   proxy_wasm_request_headers_in_access = {
@@ -2168,6 +2114,56 @@ local function load(path, custom_conf, opts)
   if conf.wasm then
     local wasm_filters = get_wasm_filters(conf.wasm_filters_path)
     conf.wasm_modules_parsed = setmetatable(wasm_filters, _nop_tostring_mt)
+
+    -- infer wasm vm parameters from previously set directives
+    local wasm_directives = conf["nginx_wasm_directives"]
+    if conf.lua_ssl_trusted_certificate then
+      if #conf.lua_ssl_trusted_certificate > 1 then
+        insert(wasm_directives, {
+          name  = "tls_trusted_certificate",
+          value = conf.lua_ssl_trusted_certificate,
+        })
+      elseif #conf.lua_ssl_trusted_certificate == 1 then
+        insert(wasm_directives, {
+          name  = "tls_trusted_certificate",
+          value = conf.lua_ssl_trusted_certificate[1],
+        })
+      end
+    end
+    if conf.lua_ssl_verify_depth and conf.lua_ssl_verify_depth > 0 then
+      insert(wasm_directives, {
+        name  = "tls_verify_cert",
+        value = "on",
+      })
+      insert(wasm_directives, {
+        name  = "tls_verify_host",
+        value = "on",
+      })
+    end
+
+    for _, directive in ipairs(conf["nginx_http_directives"]) do
+      if directive.name == "proxy_connect_timeout" then
+        insert(wasm_directives, {
+          name  = "socket_connect_timeout",
+          value = directive.value,
+        })
+      elseif directive.name == "proxy_read_timeout" then
+        insert(wasm_directives, {
+          name  = "socket_read_timeout",
+          value = directive.value,
+        })
+      elseif directive.name == "proxy_send_timeout" then
+        insert(wasm_directives, {
+          name  = "socket_send_timeout",
+          value = directive.value,
+        })
+      elseif directive.name == "large_client_header_buffers" then
+        insert(wasm_directives, {
+          name  = "wasm_socket_large_buffers",
+          value = directive.value,
+        })
+      end
+    end
   end
 
   return setmetatable(conf, nil) -- remove Map mt

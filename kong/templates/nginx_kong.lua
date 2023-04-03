@@ -34,6 +34,11 @@ ssl_ciphers ${{SSL_CIPHERS}};
 $(el.name) $(el.value);
 > end
 
+> if wasm_modules_parsed and #wasm_modules_parsed > 0 then
+# wasm directives
+proxy_wasm_lua_resolver on;
+
+> end
 init_by_lua_block {
     Kong = require 'kong'
     Kong.init()
