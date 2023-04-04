@@ -1,4 +1,4 @@
-local redis_storage = require("resty.acme.storage.redis")
+local client = require("kong.plugins.acme.client")
 local reserved_words = require "kong.plugins.acme.reserved_words"
 
 local helpers = require "spec.helpers"
@@ -6,17 +6,23 @@ local helpers = require "spec.helpers"
 describe("Plugin: acme (storage.redis)", function()
   it("should successfully connect to the Redis SSL port", function()
     local config = {
-      host = helpers.redis_host,
-      port = helpers.redis_ssl_port,
-      database = 0,
-      auth = nil,
-      ssl = true,
-      ssl_verify = false,
-      ssl_server_name = nil,
+      storage = "redis",
+      storage_config = {
+        host = helpers.redis_host,
+        port = helpers.redis_ssl_port,
+        database = 0,
+        auth = nil,
+        ssl = true,
+        ssl_verify = false,
+        ssl_server_name = nil,
+      },
     }
-    local storage, err = redis_storage.new(config)
+
+    local c, err = client.new(config)
     assert.is_nil(err)
-    assert.not_nil(storage)
+    assert.not_nil(c)
+    local storage = c.storage
+
     local err = storage:set("foo", "bar", 10)
     assert.is_nil(err)
     local value, err = storage:get("foo")
@@ -26,14 +32,19 @@ describe("Plugin: acme (storage.redis)", function()
 
   describe("redis namespace", function()
     local config = {
-      host = helpers.redis_host,
-      port = helpers.redis_port,
-      database = 0,
-      namespace = "test",
+      storage = "redis",
+      storage_config = {
+        host = helpers.redis_host,
+        port = helpers.redis_port,
+        database = 0,
+        namespace = "test",
+      },
     }
-    local storage, err = redis_storage.new(config)
+
+    local c, err = client.new(config)
     assert.is_nil(err)
-    assert.not_nil(storage)
+    assert.not_nil(c)
+    local storage = c.storage
 
     it("redis namespace set", function()
       local err = storage:set("key1", "1", 10)
@@ -108,31 +119,45 @@ describe("Plugin: acme (storage.redis)", function()
 
     it("redis namespace isolation", function()
       local config0 = {
-        host = helpers.redis_host,
-        port = helpers.redis_port,
-        database = 0,
+        storage = "redis",
+        storage_config = {
+          host = helpers.redis_host,
+          port = helpers.redis_port,
+          database = 0,
+        },
       }
       local config1 = {
-        host = helpers.redis_host,
-        port = helpers.redis_port,
-        database = 0,
-        namespace = "namespace1",
+        storage = "redis",
+        storage_config = {
+          host = helpers.redis_host,
+          port = helpers.redis_port,
+          database = 0,
+          namespace = "namespace1",
+        },
       }
       local config2 = {
-        host = helpers.redis_host,
-        port = helpers.redis_port,
-        database = 0,
-        namespace = "namespace2",
+        storage = "redis",
+        storage_config = {
+          host = helpers.redis_host,
+          port = helpers.redis_port,
+          database = 0,
+          namespace = "namespace2",
+        },
       }
-      local storage0, err = redis_storage.new(config0)
+
+      local c0, err = client.new(config0)
       assert.is_nil(err)
-      assert.not_nil(storage0)
-      local storage1, err = redis_storage.new(config1)
+      assert.not_nil(c0)
+      local c1, err = client.new(config1)
       assert.is_nil(err)
-      assert.not_nil(storage1)
-      local storage2, err = redis_storage.new(config2)
+      assert.not_nil(c1)
+      local c2, err = client.new(config2)
       assert.is_nil(err)
-      assert.not_nil(storage2)
+      assert.not_nil(c2)
+      local storage0 = c0.storage
+      local storage1 = c1.storage
+      local storage2 = c2.storage
+
       local err = storage0:set("isolation", "0", 10)
       assert.is_nil(err)
       local value, err = storage0:get("isolation")
