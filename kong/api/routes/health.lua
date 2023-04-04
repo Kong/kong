@@ -16,6 +16,8 @@ local kong_shm          = ngx.shared.kong
 local DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY = constants.DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY
 local DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY = constants.DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY
 
+local declarative = require "kong.db.declarative"
+
 local function is_ready()
   local data_plane_role = kong.configuration.role == "data_plane"
   local ok, err = kong.db:connect()
@@ -25,15 +27,17 @@ local function is_ready()
   end
 
   if dbless then
-    local router_rebuilds = kong_shm:get(DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY) or 0
-    local plugins_iterator_rebuilds = kong_shm:get(DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY) or 0
+    local router_rebuilds = 
+                      kong_shm:get(DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY) or 0
+    local plugins_iterator_rebuilds = 
+                      kong_shm:get(DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY) or 0
     local num_worker = get_worker_count()
 
-    if router_rebuilds <= num_worker or plugins_iterator_rebuilds <= num_worker then
+    if router_rebuilds <= num_worker 
+        or plugins_iterator_rebuilds <= num_worker then
       return false
     end
 
-    local declarative = require "kong.db.declarative"
     local current_hash = declarative.get_current_hash()
 
     if not current_hash or current_hash == "00000000000000000000000000000000" then
