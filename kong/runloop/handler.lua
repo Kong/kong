@@ -495,13 +495,17 @@ local function _set_router_version(v)
 end
 
 
-local function new_plugins_iterator(version) 
-  local plugin_iterator, err = PluginsIterator.new(version);
-  if not plugin_iterator then
-    return nil, err
-  end
+local new_plugins_iterator
+do
+  local PluginsIterator_new = PluginsIterator.new;
+  new_plugins_iterator = function(version) 
+    local plugin_iterator, err = PluginsIterator_new(version);
+    if not plugin_iterator then
+      return nil, err
+    end
 
-  try_incr_counter(DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY)
+    try_incr_counter(DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY)
+  end
 end
 
 
