@@ -9,7 +9,7 @@ local knode  = (kong and kong.node) and kong.node or
 
 local dbless = kong.configuration.database == "off"
 local data_plane_role = kong.configuration.role == "data_plane"
-local get_current_hash = declarative.get_current_hash;
+local get_current_hash = declarative.get_current_hash
 
 local is_ready
 do
@@ -17,7 +17,7 @@ do
 
   local worker_count      = ngx.worker.count()
   local kong_shm          = ngx.shared.kong
-  local is_traditional    = not (dbless and data_plane_role)
+  local is_traditional    = not dbless
 
   local DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY =
                                 constants.DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY

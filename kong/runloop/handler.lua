@@ -213,7 +213,7 @@ end
 
 local function try_incr_counter(key)
   -- key must be DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY or DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY
-  local newval, err = kong_shm:incr(key, 1, 0)
+  local _, err = kong_shm:incr(key, 1, 0)
   if err then
     log(ERR, "could not record Lua VM allocated memory: ", err)
   end
