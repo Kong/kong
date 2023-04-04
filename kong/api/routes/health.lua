@@ -28,7 +28,7 @@ do
 
   is_ready = function()
 
-    local ok, _ = kong.db:connect()
+    local ok = kong.db:connect()
     if not ok then
       return false
     end
