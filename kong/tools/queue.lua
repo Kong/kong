@@ -30,7 +30,7 @@
 --       max_entries = 10,          -- maximum number of entries on the queue (default 10000)
 --       max_bytes = 100,  -- maximum number of bytes on the queue (default nil)
 --       max_retry_time = 60,    -- maximum number of seconds before a failed batch is dropped
---       max_retry_delay = 60,   -- maximum delay between send attempts
+--       max_retry_delay = 60,   -- maximum delay between send attempts, caps exponential retry
 --     }
 --
 --   Queue.enqueue(queue_conf, handler, handler_conf, "Some value")
