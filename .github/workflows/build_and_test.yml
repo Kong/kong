@@ -21,6 +21,8 @@ on:  # yamllint disable-line rule:truthy
 env:
   LIBRARY_PREFIX: /usr/local/kong
   PULP_USERNAME: admin
+  # if this is a push event, or it is pull request but not from a fork, and not from dependabot (dependabot does not use forks), then this PR will have access to secrets
+  HAS_ACCESS_TO_SECRETS: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && !contains(github.actor, 'dependabot')) }}
 
 # cancel previous runs if new commits are pushed to the PR, but run for each commit on master
 concurrency:
@@ -302,7 +304,7 @@ jobs:
           cat /tmp/memusage.txt
 
     - uses: datadog/junit-upload-github-action@768dae7c808e17eed51ece17871e21f27fd5a000
-      if: always()  # upload test results even if the job fails
+      if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }} # upload test results even if the job fails
       with:
         api-key: ${{ secrets.DATADOG_API_KEY }}
         service: kong-ee-github-actions-ci
@@ -428,7 +430,7 @@ jobs:
           .ci/run_tests_github.sh
 
     - uses: datadog/junit-upload-github-action@768dae7c808e17eed51ece17871e21f27fd5a000
-      if: always() # upload test results even if the job fails
+      if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }} # upload test results even if the job fails
       with:
         api-key: ${{ secrets.DATADOG_API_KEY }}
         service: kong-ee-github-actions-ci
@@ -510,7 +512,7 @@ jobs:
           .ci/run_tests_github.sh
 
     - uses: datadog/junit-upload-github-action@768dae7c808e17eed51ece17871e21f27fd5a000
-      if: always() # upload test results even if the job fails
+      if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }} # upload test results even if the job fails
       with:
         api-key: ${{ secrets.DATADOG_API_KEY }}
         service: kong-ee-github-actions-ci
@@ -634,7 +636,7 @@ jobs:
           .ci/run_tests_github.sh
 
     - uses: datadog/junit-upload-github-action@768dae7c808e17eed51ece17871e21f27fd5a000
-      if: always() # upload test results even if the job fails
+      if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }} # upload test results even if the job fails
       with:
         api-key: ${{ secrets.DATADOG_API_KEY }}
         service: kong-ee-github-actions-ci
@@ -826,7 +828,7 @@ jobs:
           .ci/run_tests_github.sh
 
     - uses: datadog/junit-upload-github-action@768dae7c808e17eed51ece17871e21f27fd5a000
-      if: always() # upload test results even if the job fails
+      if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }} # upload test results even if the job fails
       with:
         api-key: ${{ secrets.DATADOG_API_KEY }}
         service: kong-ee-github-actions-ci
