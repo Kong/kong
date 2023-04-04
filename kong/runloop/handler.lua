@@ -52,6 +52,13 @@ local is_stream_module = subsystem == "stream"
 local DEFAULT_MATCH_LRUCACHE_SIZE = Router.DEFAULT_MATCH_LRUCACHE_SIZE
 
 
+local kong_shm          = ngx.shared.kong
+local DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY = 
+                                constants.DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY
+local DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY = 
+                                constants.DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY
+
+
 local ROUTER_CACHE_SIZE = DEFAULT_MATCH_LRUCACHE_SIZE
 local ROUTER_CACHE = lrucache.new(ROUTER_CACHE_SIZE)
 local ROUTER_CACHE_NEG = lrucache.new(ROUTER_CACHE_SIZE)
@@ -201,6 +208,22 @@ local function csv(s)
   end
 
   return csv_iterator, s, 1
+end
+
+local function post_build_plugins_iterator()
+  local count = kong_shm:get(DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY) or 0
+  local ok, err = kong_shm:safe_set(DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY, count + 1)
+  if not ok then
+    log(ERR, "could not record Lua VM allocated memory: ", err)
+  end
+end
+
+local function post_build_routers()
+  local count = kong_shm:get(DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY) or 0
+  local ok, err = kong_shm:safe_set(DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY, count + 1)
+  if not ok then
+    log(ERR, "could not record Lua VM allocated memory: ", err)
+  end
 end
 
 
@@ -408,6 +431,7 @@ local function build_router(version)
   end
 
   ROUTER = router
+  post_build_routers();
 
   if version then
     ROUTER_VERSION = version
@@ -487,6 +511,7 @@ local function build_plugins_iterator(version)
     return nil, err
   end
   PLUGINS_ITERATOR = plugins_iterator
+  post_build_plugins_iterator()
   return true
 end
 
@@ -540,6 +565,7 @@ local function _set_update_plugins_iterator(f)
   update_plugins_iterator = f
 end
 
+-- TODO: how can we reset counters if kong is reconfigured
 
 local reconfigure_handler
 do
