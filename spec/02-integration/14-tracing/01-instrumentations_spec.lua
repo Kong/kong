@@ -102,7 +102,7 @@ for _, strategy in helpers.each_strategy() do
           expected_span_num = 4
         end
         assert.is_same(expected_span_num, #spans, res)
-        assert.is_same("kong.internal.database.query", spans[2].name)
+        assert.is_same("kong.database.query", spans[2].name)
       end)
     end)
 
@@ -131,7 +131,7 @@ for _, strategy in helpers.each_strategy() do
         -- Making sure it's alright
         local spans = cjson.decode(res)
         assert.is_same(2, #spans, res)
-        assert.is_same("kong.internal.router", spans[2].name)
+        assert.is_same("kong.router", spans[2].name)
       end)
     end)
 
@@ -189,7 +189,7 @@ for _, strategy in helpers.each_strategy() do
         -- Making sure it's alright
         local spans = cjson.decode(res)
         assert.is_same(2, #spans, res)
-        assert.is_same("kong.internal.balancer", spans[2].name)
+        assert.is_same("kong.balancer", spans[2].name)
       end)
     end)
 
@@ -218,7 +218,7 @@ for _, strategy in helpers.each_strategy() do
         -- Making sure it's alright
         local spans = cjson.decode(res)
         assert.is_same(2, #spans, res)
-        assert.is_same("kong.internal.rewrite.plugin." .. tcp_trace_plugin_name, spans[2].name)
+        assert.is_same("kong.rewrite.plugin." .. tcp_trace_plugin_name, spans[2].name)
       end)
     end)
 
@@ -247,7 +247,7 @@ for _, strategy in helpers.each_strategy() do
         -- Making sure it's alright
         local spans = cjson.decode(res)
         assert.is_same(2, #spans, res)
-        assert.is_same("kong.internal.header_filter.plugin." .. tcp_trace_plugin_name, spans[2].name)
+        assert.is_same("kong.header_filter.plugin." .. tcp_trace_plugin_name, spans[2].name)
       end)
     end)
 
@@ -281,7 +281,7 @@ for _, strategy in helpers.each_strategy() do
 
         local found
         for _, span in ipairs(spans) do
-          if span.name == "kong.internal.dns" then
+          if span.name == "kong.dns" then
             found = true
           end
         end
