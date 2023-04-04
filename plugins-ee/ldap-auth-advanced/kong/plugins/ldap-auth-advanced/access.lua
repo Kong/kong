@@ -163,6 +163,7 @@ local function ldap_authenticate(given_username, given_password, conf)
         end
 
         local raw_groups = result[conf.group_member_attribute]
+        local groups_required = conf.groups_required
         if raw_groups and #raw_groups then
           kong.log.debug("found groups")
 
@@ -177,7 +178,7 @@ local function ldap_authenticate(given_username, given_password, conf)
                    "group must include group_base_dn with group_name_attribute")
           end
 
-          if conf.groups_required then
+          if groups_required and next(groups_required) then
             local ok = check_group_membership(conf, groups)
             if not ok then
               return kong.response.exit(401, {
@@ -189,7 +190,7 @@ local function ldap_authenticate(given_username, given_password, conf)
           kong.log.debug("did not find groups for ldap search result")
           clear_header(constants.HEADERS.AUTHENTICATED_GROUPS)
 
-          if conf.groups_required then
+          if groups_required and next(groups_required) then
             return kong.response.exit(401, {
               message = "User not in authorized LDAP Group"
             })

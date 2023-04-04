@@ -120,6 +120,17 @@ local ldap_base_config9= {
   groups_required        = { "test-group-2 test-group-3", "test-group-4", "test-group-1" },
 }
 
+local ldap_base_config10 = {
+  ldap_host              = "ad-server",
+  ldap_password          = "pass:w2rd1111A$",
+  attribute              = "cn",
+  base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
+  bind_dn                = "cn=Ophelia,cn=Users,dc=ldap,dc=mashape,dc=com",
+  consumer_optional      = true,
+  hide_credentials       = true,
+  groups_required        = { "test-group-3" },
+}
+
 local openldap_config= {
   ldap_host              = "openldap",
   ldap_port              = "389",
@@ -504,7 +515,7 @@ local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or h
 
 for _, strategy in strategies() do
   describe("Plugin: ldap-auth-advanced (groups) [#" .. strategy .. "]", function()
-    local proxy_client, admin_client, bp, plugin
+    local proxy_client, admin_client, bp, plugin, plugin_with_group
 
     local db_strategy = strategy ~= "off" and strategy or nil
 
@@ -545,6 +556,11 @@ for _, strategy in strategies() do
 
       local route9 = bp.routes:insert {
         hosts = { "ldap9.com" }
+      }
+
+      local route10 = bp.routes:insert {
+        hosts = { "ldap10.com" },
+        paths = { "/route_groups_required" }
       }
 
       plugin = bp.plugins:insert {
@@ -596,15 +612,21 @@ for _, strategy in strategies() do
       }
 
       bp.plugins:insert {
-        route = { id = route9.id },
+        route    = { id = route9.id },
         name     = "ldap-auth-advanced",
         config   = ldap_base_config9,
+      }
+
+      plugin_with_group = bp.plugins:insert {
+        route    = { id = route10.id },
+        name     = "ldap-auth-advanced",
+        config   = ldap_base_config10
       }
     end)
 
     before_each(function()
       assert(helpers.start_kong({
-        plugins = "ldap-auth-advanced",
+        plugins    = "ldap-auth-advanced",
         database   = db_strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
@@ -911,6 +933,44 @@ for _, strategy in strategies() do
         assert.res_status(200, res)
         local value = assert.request(res).has.header("x-authenticated-groups")
         assert.are.equal("test-group-1", value)
+      end)
+
+      it("should not fail to get data from the LDAP when plugin settings group_required changed from has value to empty or nil", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/route_groups_required",
+          body    = {},
+          headers = {
+            host          = "ldap10.com",
+            authorization = "ldap " .. ngx.encode_base64("MacBeth:pass:w2rd1111A$"),
+          }
+        })
+        assert.response(res).has.status(200)
+
+        local res = assert(admin_client:send {
+          method  = "PATCH",
+          path    = "/plugins/" .. plugin_with_group.id,
+          body    = {
+            config = { groups_required = {} }
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.same({}, json.config.groups_required)
+        
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/route_groups_required",
+          body    = {},
+          headers = {
+            host          = "ldap10.com",
+            authorization = "ldap " .. ngx.encode_base64("MacBeth:pass:w2rd1111A$"),
+          }
+        })
+        assert.response(res).has.status(200)
       end)
     end)
   end)
