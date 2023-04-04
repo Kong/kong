@@ -1,5 +1,6 @@
 local utils = require "kong.tools.utils"
 local declarative = require "kong.db.declarative"
+local constants = require "kong.constants"
 
 local tonumber = tonumber
 local kong = kong
@@ -9,57 +10,64 @@ local knode  = (kong and kong.node) and kong.node or
 
 local dbless = kong.configuration.database == "off"
 local data_plane_role = kong.configuration.role == "data_plane"
+local get_current_hash = declarative.get_current_hash;
 
-local get_worker_count  = ngx.worker.count
-local constants         = require "kong.constants"
-local kong_shm          = ngx.shared.kong
-local DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY = constants.DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY
-local DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY = constants.DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY
+local is_ready
+do
+  
+  local worker_count      = ngx.worker.count()
+  local kong_shm          = ngx.shared.kong
+  local is_traditional    = not (dbless and data_plane_role)
 
-local declarative = require "kong.db.declarative"
+  local DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY =
+                                constants.DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY
+  local DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY =
+                                constants.DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY
+  local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
-local INIT_HASH = "00000000000000000000000000000000"
-local get_cur_hash = declarative.get_current_hash;
 
-local function is_ready()
-  local ok, err = kong.db:connect()
 
-  if not ok then
-    return false
-  end
+  is_ready = function()
 
-  -- FIXME: should we use this condition?
-  if dbless and data_plane_role then
+    local ok, err = kong.db:connect()
+    if not ok then
+      return false
+    end
+
+    if is_traditional then
+      kong.db:close() -- ignore errors
+      return true
+    end
+
     local router_rebuilds = 
                       kong_shm:get(DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY) or 0
     local plugins_iterator_rebuilds = 
                       kong_shm:get(DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY) or 0
-    local num_worker = get_worker_count()
 
-    if router_rebuilds <= num_worker 
-        or plugins_iterator_rebuilds <= num_worker then
+    if router_rebuilds < worker_count 
+        or plugins_iterator_rebuilds <= worker_count then
       return false
     end
 
-    local current_hash = get_cur_hash()
+    local current_hash = get_current_hash()
 
-    if not current_hash or current_hash == INIT_HASH then
+    if not current_hash or current_hash == DECLARATIVE_EMPTY_CONFIG_HASH then
       return false
     end
+
+    kong.db:close() -- ignore errors
+    return true
   end
-
-  kong.db:close() -- ignore errors
-  return true
 end
 
 return {
   ["/status/ready"] = {
     GET = function(self, dao, helpers)
-      if is_ready() then
-        return kong.response.exit(200, "OK")
-      else
-        return kong.response.exit(503, "")
+      local status_code = 200
+      if not is_ready() then
+        status_code = 503
       end
+      return kong.response.exit(status_code, "")
     end
   },
   ["/status"] = {
@@ -100,7 +108,7 @@ return {
       -- if the gateway gets unexpectedly restarted and its configuration
       -- has been reset to empty).
       if dbless or data_plane_role then
-        status_response.configuration_hash = declarative.get_current_hash()
+        status_response.configuration_hash = get_current_hash()
       end
 
       -- TODO: no way to bypass connection pool

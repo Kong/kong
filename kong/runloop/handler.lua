@@ -210,22 +210,14 @@ local function csv(s)
   return csv_iterator, s, 1
 end
 
-local function post_build_plugins_iterator()
-  local count = kong_shm:get(DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY) or 0
-  local ok, err = kong_shm:safe_set(DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY, count + 1)
-  if not ok then
+
+local function try_incr_counter(key)
+  -- key must be DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY or DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY
+  local newval, err = kong_shm:incr(key, 1, 0)
+  if err then
     log(ERR, "could not record Lua VM allocated memory: ", err)
   end
 end
-
-local function post_build_routers()
-  local count = kong_shm:get(DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY) or 0
-  local ok, err = kong_shm:safe_set(DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY, count + 1)
-  if not ok then
-    log(ERR, "could not record Lua VM allocated memory: ", err)
-  end
-end
-
 
 -- @param name "router" or "plugins_iterator"
 -- @param callback A function that will update the router or plugins_iterator
@@ -420,6 +412,8 @@ local function new_router(version)
     return nil, "could not create router: " .. err
   end
 
+  try_incr_counter(DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY)
+
   return new_router
 end
 
@@ -431,7 +425,6 @@ local function build_router(version)
   end
 
   ROUTER = router
-  post_build_routers();
 
   if version then
     ROUTER_VERSION = version
@@ -502,7 +495,14 @@ local function _set_router_version(v)
 end
 
 
-local new_plugins_iterator = PluginsIterator.new
+local function new_plugins_iterator(version) 
+  local plugin_iterator, err = PluginsIterator.new(version);
+  if not plugin_iterator then
+    return nil, err
+  end
+
+  try_incr_counter(DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY)
+end
 
 
 local function build_plugins_iterator(version)
@@ -511,7 +511,6 @@ local function build_plugins_iterator(version)
     return nil, err
   end
   PLUGINS_ITERATOR = plugins_iterator
-  post_build_plugins_iterator()
   return true
 end
 
