@@ -18,15 +18,18 @@ local DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY = constants.DECLARATIVE_ROUTERS_REBU
 
 local declarative = require "kong.db.declarative"
 
+local INIT_HASH = "00000000000000000000000000000000"
+local get_cur_hash = declarative.get_current_hash;
+
 local function is_ready()
-  local data_plane_role = kong.configuration.role == "data_plane"
   local ok, err = kong.db:connect()
 
   if not ok then
     return false
   end
 
-  if dbless then
+  -- FIXME: should we use this condition?
+  if dbless and data_plane_role then
     local router_rebuilds = 
                       kong_shm:get(DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY) or 0
     local plugins_iterator_rebuilds = 
@@ -38,9 +41,9 @@ local function is_ready()
       return false
     end
 
-    local current_hash = declarative.get_current_hash()
+    local current_hash = get_cur_hash()
 
-    if not current_hash or current_hash == "00000000000000000000000000000000" then
+    if not current_hash or current_hash == INIT_HASH then
       return false
     end
   end
