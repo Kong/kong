@@ -26,7 +26,7 @@ local function is_ready()
 
   if dbless then
     local router_rebuilds = kong_shm:get(DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY) or 0
-    local plugins_iterator_rebuilds = kong_shm:get(DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY) or 0
+    local plugins_iterator_rebuilds = kong_shm:get(DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY) or 0
     local num_worker = get_worker_count()
 
     if router_rebuilds <= num_worker or plugins_iterator_rebuilds <= num_worker then
