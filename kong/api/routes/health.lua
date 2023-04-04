@@ -26,7 +26,6 @@ do
   local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
 
-
   is_ready = function()
 
     local ok, err = kong.db:connect()
