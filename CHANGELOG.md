@@ -128,7 +128,7 @@
 
 - **http-log, statsd, opentelemetry, datadog**: The queueing system
   has been reworked, causing some plugin parameters to not
-  function as expected anymorechem and new parameters to be added.  The
+  function as expected anymore. If you use queues on these plugin, new parameters must be configured.  Additionally, the
   module `kong.tools.batch_queue` has been renamed to `kong.tools.batch`
   in the process.
   [#10172](https://github.com/Kong/kong/pull/10172)
