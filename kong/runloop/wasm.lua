@@ -29,6 +29,11 @@ local function get_version()
 end
 
 
+---@alias kong.wasm.filter_chain_type
+---| 0 # service
+---| 1 # route
+---| 2 # combined
+
 local TYPE_SERVICE  = 0
 local TYPE_ROUTE    = 1
 local TYPE_COMBINED = 2
@@ -85,19 +90,32 @@ end
 
 ---@class kong.runloop.wasm.filter_chain_reference
 ---
----@field hash   string
----@field c_plan ffi.cdata*|nil
----@field type   "service"|"route"|"combined"
+---@field hash          string
+---@field c_plan        ffi.cdata*|nil
+---@field type          kong.wasm.filter_chain_type
+---
+---@field service_chain kong.db.schema.entities.wasm_filter_chain|nil
+---@field service_id    string|nil
+---
+---@field route_chain   kong.db.schema.entities.wasm_filter_chain|nil
+---@field route_id      string|nil
 
 
 ---@class kong.runloop.wasm.state
 local STATE = {
+  -- mapping of service IDs to service filter chains
+  --
   ---@type table<string, kong.runloop.wasm.filter_chain_reference>
   by_service = {},
 
+  -- mapping of route IDs to route filter chains
+  --
   ---@type table<string, kong.runloop.wasm.filter_chain_reference>
   by_route = {},
 
+  -- two level mapping: the top level is indexed by service ID, and the
+  -- secondary level is indexed by route ID
+  --
   ---@type table<string, table<string, kong.runloop.wasm.filter_chain_reference>>
   combined = {},
 
@@ -165,17 +183,27 @@ end
 --
 ---@param state       kong.runloop.wasm.state
 ---@param ref         kong.runloop.wasm.filter_chain_reference
----@param typ         integer
----@param service_id? string
----@param route_id?   string
-local function store_chain_ref(state, ref, typ, service_id, route_id)
-  if typ == TYPE_SERVICE and service_id then
+local function store_chain_ref(state, ref)
+  local typ = ref.type
+  local service_id = ref.service_id
+  local route_id = ref.route_id
+
+  if typ == TYPE_SERVICE then
+    assert(type(service_id) == "string",
+           "got a service filter chain without a service ID")
+
     state.by_service[service_id] = ref
 
-  elseif typ == TYPE_ROUTE and route_id then
+  elseif typ == TYPE_ROUTE then
+    assert(type(route_id) == "string",
+           "got a route filter chain without a route ID")
+
     state.by_route[route_id] = ref
 
-  elseif typ == TYPE_COMBINED and service_id and route_id then
+  elseif typ == TYPE_COMBINED then
+    assert(type(service_id) == "string" and type(route_id) == "string",
+           "got a combined filter chain without a service ID or route ID")
+
     local routes = state.combined[service_id]
 
     if not routes then
@@ -238,7 +266,10 @@ end
 ---@return kong.runloop.wasm.state? new_state
 ---@return string?                  err
 local function rebuild_state(db, version, old_state)
+  ---@type kong.db.schema.entities.wasm_filter_chain[]
   local route_chains = {}
+
+  ---@type table<string, kong.db.schema.entities.wasm_filter_chain>
   local service_chains_by_id = {}
 
   ---@type kong.runloop.wasm.state
@@ -249,7 +280,9 @@ local function rebuild_state(db, version, old_state)
     version = version,
   }
 
-  local all_chains = {}
+  ---@type kong.runloop.wasm.filter_chain_reference[]
+  local all_chain_refs = {}
+
   local page_size = db.wasm_filter_chains.max_page_size
 
   for chain, err in db.wasm_filter_chains:each(page_size) do
@@ -263,12 +296,14 @@ local function rebuild_state(db, version, old_state)
 
       local chain_type = service_id and TYPE_SERVICE or TYPE_ROUTE
 
-      insert(all_chains, {
-        type       = chain_type,
-        service    = (chain_type == TYPE_SERVICE and chain) or nil,
-        route      = (chain_type == TYPE_ROUTE and chain) or nil,
-        service_id = service_id,
-        route_id   = route_id,
+      insert(all_chain_refs, {
+        type           = chain_type,
+
+        service_chain  = (chain_type == TYPE_SERVICE and chain) or nil,
+        service_id     = service_id,
+
+        route_chain    = (chain_type == TYPE_ROUTE and chain) or nil,
+        route_id       = route_id,
       })
 
       if chain_type == TYPE_SERVICE then
@@ -302,35 +337,40 @@ local function rebuild_state(db, version, old_state)
     local schain = service_id and service_chains_by_id[service_id]
 
     if schain then
-      insert(all_chains, {
-        type       = TYPE_COMBINED,
-        service    = schain,
-        route      = rchain,
-        service_id = service_id,
-        route_id   = route.id,
+      insert(all_chain_refs, {
+        type           = TYPE_COMBINED,
+
+        service_chain  = schain,
+        service_id     = service_id,
+
+        route_chain    = rchain,
+        route_id       = route.id,
       })
     end
   end
 
-  for _, chain in ipairs(all_chains) do
-    local service_id = chain.service_id
-    local route_id = chain.route_id
+  for _, chain_ref in ipairs(all_chain_refs) do
+    local service_id = chain_ref.service_id
+    local route_id = chain_ref.route_id
 
-    local hash = hash_chain(chain.service, chain.route)
-    local ref = get_chain_ref(old_state, chain.type, service_id, route_id)
+    local new_chain_hash = hash_chain(chain_ref.service_chain, chain_ref.route_chain)
+    local old_ref = get_chain_ref(old_state, chain_ref.type, service_id, route_id)
+    local new_ref
 
-    if ref then
-      if ref.hash == hash then
+    if old_ref then
+      if old_ref.hash == new_chain_hash then
         log(DEBUG, "reusing existing filter chain reference")
+        new_ref = old_ref
 
       else
         log(DEBUG, "filter chain has changed and will be rebuilt")
-        ref = nil
       end
     end
 
-    if not ref then
-      local filters = build_filter_list(chain.service, chain.route)
+    if not new_ref then
+      new_ref = chain_ref
+
+      local filters = build_filter_list(chain_ref.service_chain, chain_ref.route_chain)
       local c_plan, err = init_c_plan(filters)
 
       if err then
@@ -340,14 +380,11 @@ local function rebuild_state(db, version, old_state)
         log(DEBUG, "filter chain has no enabled filters")
       end
 
-      ref = {
-        hash = hash,
-        type = chain.type,
-        c_plan = c_plan,
-      }
+      new_ref.hash = new_chain_hash
+      new_ref.c_plan = c_plan
     end
 
-    store_chain_ref(state, ref, chain.type, service_id, route_id)
+    store_chain_ref(state, new_ref)
   end
 
   return state
