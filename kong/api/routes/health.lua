@@ -1,6 +1,5 @@
 local utils = require "kong.tools.utils"
 local declarative = require "kong.db.declarative"
-local constants = require "kong.constants"
 
 local tonumber = tonumber
 local kong = kong
@@ -14,6 +13,7 @@ local get_current_hash = declarative.get_current_hash;
 
 local is_ready
 do
+  local constants         = require "kong.constants"
   
   local worker_count      = ngx.worker.count()
   local kong_shm          = ngx.shared.kong
