@@ -684,7 +684,7 @@ return {
             If a Kong instance is running in traditional mode, it returns 
             `200 OK` if the database is reachable.
 
-            If a Kong instance is running in DB-less mode or as a data plan,
+            If a Kong instance is running in DB-less mode or as a data plane,
             it returns `200 OK` if every worker is ready with valid router and 
             plugins.
 
