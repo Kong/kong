@@ -183,7 +183,7 @@ jobs:
 
     - name: Setup Bazel
       if: steps.cache-deps.outputs.cache-hit != 'true'
-      uses: bazelbuild/setup-bazelisk@95c9bf48d0c570bb3e28e57108f3450cd67c1a44 # v2.0.0
+      uses: bazelbuild/setup-bazelisk@987a6fb73f6be98289d7e48654b519e9f3b8d0cb # v2.0.0
 
     - name: Install Deb Build Dependencies
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true'
@@ -200,12 +200,12 @@ jobs:
                 unzip \
                 zlib1g-dev
 
-    - name: Install Ubuntu Cross Build Dependencies (arm64)
+    - name: Install Deb Cross Build Dependencies (arm64)
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true' && endsWith(matrix.label, 'arm64')
       run: |
         sudo apt-get install crossbuild-essential-arm64 -y
 
-    - name: Install Rpm Dependencies
+    - name: Install Rpm Build Dependencies
       if: matrix.package == 'rpm' && steps.cache-deps.outputs.cache-hit != 'true'
       run: |
         yum groupinstall -y 'Development Tools'
@@ -217,15 +217,7 @@ jobs:
       # the version of the actions is same as the cmake version to be installed
       uses: lukka/get-cmake@1a178d42f9f4f47310373da4f5ef02297ed5a6e8 # v3.25
 
-    - name: Setup Amazon Linux
-      if: startsWith(matrix.label, 'amazonlinux')
-      run: |
-        VERBOSE=1 build/bootstrap.sh
-
-        . /etc/profile.d/path-tools.sh
-        echo "/opt/tools/bin" >> $GITHUB_PATH
-
-    - name: Build Kong dependencies
+    - name: Build Kong
       if: steps.cache-deps.outputs.cache-hit != 'true'
       env:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
@@ -335,7 +327,7 @@ jobs:
 
     - name: Login to Docker Hub
       if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN }}
-      uses: docker/login-action@ec9cdf07d570632daeb912f5b2099cb9ec1d01e6 # v2.1.0
+      uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c # v2.1.0
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
@@ -603,6 +595,7 @@ jobs:
         if [[ '${{ matrix.label }}' == *'arm64' ]]; then
           arch='arm64'
         fi
+
         echo "arch=$arch"
         echo "arch=$arch" >> $GITHUB_OUTPUT
 
