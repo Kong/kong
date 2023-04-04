@@ -142,6 +142,8 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Install Kong dev
+      env:
+        GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: make dev LIBRARY_PREFIX=/usr/local/kong
 
     - name: Generate hybrid cert
@@ -252,6 +254,8 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Install Kong dev
+      env:
+        GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: make dev LIBRARY_PREFIX=/usr/local/kong
 
     - name: Check test-helpers doc generation
@@ -372,6 +376,8 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Install Kong dev
+      env:
+        GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: make dev LIBRARY_PREFIX=/usr/local/kong
 
     - name: Add gRPC test host names
@@ -456,6 +462,8 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Install Kong dev
+      env:
+        GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: make dev LIBRARY_PREFIX=/usr/local/kong
 
     - name: Add gRPC test host names
@@ -564,6 +572,8 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Install Kong dev
+      env:
+        GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: make dev LIBRARY_PREFIX=/usr/local/kong
 
     - name: Add gRPC test host names
@@ -639,6 +649,8 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Install Kong dev
+      env:
+        GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: make dev LIBRARY_PREFIX=/usr/local/kong
 
     - name: Install Test::Nginx
