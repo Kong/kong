@@ -22,6 +22,9 @@ configure_make(
         "@kong//:x86_64-linux-musl-cross": [
             "--host=x86_64-linux-musl",
         ],
+        "@kong//:arm64-apple-darwin": [
+            "--build=aarch64-apple-darwin20.0.0",
+        ],
         "//conditions:default": [
             # use less specific CPU to avoid introdcing ADCX instruction
             "--build=$(uname -m)-linux-gnu",
