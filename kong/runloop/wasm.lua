@@ -83,6 +83,9 @@ do
   ---@param route?   kong.db.schema.entities.wasm_filter_chain
   ---@return string
   function hash_chain(service, route)
+    assert(service ~= nil or route ~= nil,
+           "hash_chain() called with neither service nor route")
+
     return sha256(hash_chain_entity(service) .. hash_chain_entity(route))
   end
 end
@@ -90,9 +93,10 @@ end
 
 ---@class kong.runloop.wasm.filter_chain_reference
 ---
+---@field type          kong.wasm.filter_chain_type
+---@field label         string
 ---@field hash          string
 ---@field c_plan        ffi.cdata*|nil
----@field type          kong.wasm.filter_chain_type
 ---
 ---@field service_chain kong.db.schema.entities.wasm_filter_chain|nil
 ---@field service_id    string|nil
@@ -154,7 +158,7 @@ end
 -- the state table.
 --
 ---@param state       kong.runloop.wasm.state
----@param typ         integer
+---@param typ         kong.wasm.filter_chain_type
 ---@param service_id? string
 ---@param route_id?   string
 ---
@@ -194,19 +198,19 @@ local function store_chain_ref(state, ref)
 
   if typ == TYPE_SERVICE then
     assert(type(service_id) == "string",
-           "got a service filter chain without a service ID")
+           ref.label .. " chain has no service ID")
 
     state.by_service[service_id] = ref
 
   elseif typ == TYPE_ROUTE then
     assert(type(route_id) == "string",
-           "got a route filter chain without a route ID")
+           ref.label .. " chain has no route ID")
 
     state.by_route[route_id] = ref
 
   elseif typ == TYPE_COMBINED then
     assert(type(service_id) == "string" and type(route_id) == "string",
-           "got a combined filter chain without a service ID or route ID")
+           ref.label .. " chain is missing a service ID or route ID")
 
     local routes = state.combined[service_id]
 
@@ -220,6 +224,31 @@ local function store_chain_ref(state, ref)
   else
     -- unreachable
     error("unknown filter chain type: " .. tostring(typ), 2)
+  end
+end
+
+
+---
+-- Create a log-friendly string label for a filter chain reference.
+--
+---@param service_id? string
+---@param route_id?   string
+---@return string label
+local function label_for(service_id, route_id)
+  if service_id and route_id then
+    return "combined " ..
+           "service(" .. service_id .. "), " ..
+           "route(" .. route_id .. ")"
+
+  elseif service_id then
+    return "service(" .. service_id .. ")"
+
+  elseif route_id then
+    return "route(" .. route_id .. ")"
+
+  else
+    -- unreachable
+    error("can't compute a label for a filter chain with no route/service", 2)
   end
 end
 
@@ -338,7 +367,8 @@ local function rebuild_state(db, version, old_state)
                                  select_route, routes, rchain.route)
 
     if err then
-      return nil, "failed to load route for filter chain: " .. tostring(err)
+      return nil, "failed to load route for filter chain " ..
+                  rchain.id .. ": " .. tostring(err)
     end
 
     local service_id = route and route.service and route.service.id
@@ -367,25 +397,28 @@ local function rebuild_state(db, version, old_state)
 
     if old_ref then
       if old_ref.hash == new_chain_hash then
-        log(DEBUG, "reusing existing filter chain reference")
         new_ref = old_ref
+        log(DEBUG, old_ref.label, ": reusing existing filter chain reference")
 
       else
-        log(DEBUG, "filter chain has changed and will be rebuilt")
+        log(DEBUG, old_ref.label, ": filter chain has changed and will be rebuilt")
       end
     end
 
+
     if not new_ref then
       new_ref = chain_ref
+      new_ref.label = label_for(service_id, route_id)
 
       local filters = build_filter_list(chain_ref.service_chain, chain_ref.route_chain)
       local c_plan, err = init_c_plan(filters)
 
       if err then
-        return nil, "failed to initialize filter chain: " .. tostring(err)
+        return nil, "failed to initialize " .. new_ref.label ..
+                    " filter chain: " .. tostring(err)
 
       elseif not c_plan then
-        log(DEBUG, "filter chain has no enabled filters")
+        log(DEBUG, new_ref.label, " filter chain has no enabled filters")
       end
 
       new_ref.hash = new_chain_hash
@@ -526,13 +559,13 @@ function _M.attach(ctx)
   end
 
   if not chain.c_plan then
-    log(DEBUG, "no enabled filters in chain")
+    -- all filters in this chain are disabled
     return
   end
 
   local ok, err = proxy_wasm.attach(chain.c_plan)
   if not ok then
-    log(ERR, "failed attaching filter chain to request: ", err)
+    log(ERR, "failed attaching ", chain.label, " filter chain to request: ", err)
     error(err)
   end
 end
