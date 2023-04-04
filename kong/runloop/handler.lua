@@ -499,7 +499,7 @@ local new_plugins_iterator
 do
   local PluginsIterator_new = PluginsIterator.new
   new_plugins_iterator = function(version) 
-    local plugin_iterator, err = PluginsIterator_new(version);
+    local plugin_iterator, err = PluginsIterator_new(version)
     if not plugin_iterator then
       return nil, err
     end
