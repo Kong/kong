@@ -98,7 +98,7 @@ jobs:
     steps:
     - name: Cache Git
       id: cache-git
-      if: matrix.label == 'centos-7' || matrix.label == 'rhel-7' || matrix.label == 'ubuntu-18.04'
+      if: matrix.label == 'centos-7' || matrix.label == 'rhel-7' || matrix.image == 'ubuntu:18.04'
       uses: actions/cache@v3
       with:
         path: /usr/local/git
@@ -106,7 +106,7 @@ jobs:
 
     # el-7 doesn't have git 2.18+, so we need to install it manually
     - name: Install newer Git
-      if: (matrix.label == 'centos-7' || matrix.label == 'rhel-7' || matrix.label == 'ubuntu-18.04') && steps.cache-git.outputs.cache-hit != 'true'
+      if: (matrix.label == 'centos-7' || matrix.label == 'rhel-7' || matrix.image == 'ubuntu:18.04') && steps.cache-git.outputs.cache-hit != 'true'
       run: |
         if which apt 2>/dev/null; then
           apt update
@@ -120,9 +120,14 @@ jobs:
         tar xf git-2.30.0.tar.gz
         cd git-2.30.0
         make configure
-        ./configure --prefix=/usr/local
+        ./configure --prefix=/usr/local/git
         make -j$(nproc)
         make install
+    
+    - name: Add Git to PATH
+      if: matrix.label == 'centos-7' || matrix.label == 'rhel-7' || matrix.image == 'ubuntu:18.04'
+      run: |
+        echo "/usr/local/git/bin" >> $GITHUB_PATH
 
     - name: Centos dependencies
       if: matrix.label == 'centos-7' || matrix.label == 'rhel-7'
