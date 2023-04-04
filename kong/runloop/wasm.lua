@@ -171,6 +171,10 @@ local function get_chain_ref(state, typ, service_id, route_id)
   elseif typ == TYPE_COMBINED and service_id and route_id then
     local routes = state.combined[service_id]
     ref = routes and routes[route_id]
+
+  else
+    -- unreachable
+    error("unknown filter chain type: " .. tostring(typ), 2)
   end
 
   return ref
@@ -212,6 +216,10 @@ local function store_chain_ref(state, ref)
     end
 
     routes[route_id] = ref
+
+  else
+    -- unreachable
+    error("unknown filter chain type: " .. tostring(typ), 2)
   end
 end
 
