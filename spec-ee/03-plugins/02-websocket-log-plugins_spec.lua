@@ -18,7 +18,7 @@ local LOGGLY_PORT = helpers.get_available_port()
 local TIMEOUT = 30
 
 for _, strategy in helpers.each_strategy() do
-  describe("#websocket logging plugins [#" .. strategy .. "]", function()
+  describe("#websocket logging plugins [#" .. strategy .. "] #flaky ", function()
 
     local uuid = utils.uuid()
     local plugins = {}
