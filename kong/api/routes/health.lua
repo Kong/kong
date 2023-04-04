@@ -62,8 +62,7 @@ end
 return {
   ["/status/ready"] = {
     GET = function(self, dao, helpers)
-      local status_code = is_ready() and 200 or 503
-      return kong.response.exit(status_code, "")
+      return kong.response.exit(is_ready() and 200 or 503)
     end
   },
   ["/status"] = {
