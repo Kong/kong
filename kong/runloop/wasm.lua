@@ -73,8 +73,8 @@ do
   end
 
   ---
-  -- Generate a hash key for a filter chain from a route
-  -- and service filter chain [entity] combo.
+  -- Generate a hash key for a filter chain from a service
+  -- and route filter chain [entity] combo.
   --
   -- The result of this is used to invalidate cached filter chain
   -- plans.
@@ -360,6 +360,8 @@ local function rebuild_state(db, version, old_state)
   local cache = kong.core_cache
 
 
+  -- locate matching route/service chain entities to build combined
+  -- filter chain references
   for _, rchain in ipairs(route_chains) do
     local cache_key = routes:cache_key(rchain.route.id)
 
@@ -492,7 +494,7 @@ end
 ---@param route?    { id: string }
 ---@param service?  { id: string }
 ---@return kong.runloop.wasm.filter_chain_reference?
-local function get_request_filters(route, service)
+local function get_filter_chain_for_request(route, service)
   local service_id = service and service.id
   local route_id = route and route.id
   local state = STATE
@@ -552,9 +554,10 @@ function _M.attach(ctx)
     return
   end
 
-  local chain = get_request_filters(ctx.route, ctx.service)
+  local chain = get_filter_chain_for_request(ctx.route, ctx.service)
 
   if not chain then
+    -- no matching chain for this route/service
     return
   end
 
