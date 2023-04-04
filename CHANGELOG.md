@@ -250,9 +250,11 @@
 
 #### Admin API
 
-- In dbless mode, `/config` API endpoint can now flatten all schema validation
-  errors to a single array via the optional `flatten_errors` query parameter.
+- In dbless mode, `/config` API endpoint can now flatten entity-related schema
+  validation errors to a single array via the optional `flatten_errors` query
+  parameter. Non-entity errors remain unchanged in this mode.
   [#10161](https://github.com/Kong/kong/pull/10161)
+  [#10256](https://github.com/Kong/kong/pull/10256)
 
 #### Balancer
 
