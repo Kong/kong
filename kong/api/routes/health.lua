@@ -55,7 +55,6 @@ do
       return false
     end
 
-    kong.db:close() -- ignore errors
     return true
   end
 end
