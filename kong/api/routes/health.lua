@@ -14,7 +14,7 @@ local get_current_hash = declarative.get_current_hash;
 local is_ready
 do
   local constants         = require "kong.constants"
-  
+
   local worker_count      = ngx.worker.count()
   local kong_shm          = ngx.shared.kong
   local is_traditional    = not (dbless and data_plane_role)
@@ -45,7 +45,7 @@ do
                       kong_shm:get(DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY) or 0
 
     if router_rebuilds < worker_count 
-        or plugins_iterator_rebuilds <= worker_count then
+        or plugins_iterator_rebuilds < worker_count then
       return false
     end
 
