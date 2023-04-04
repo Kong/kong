@@ -137,7 +137,7 @@ jobs:
         make install
     
     - name: Add Git to PATH
-      if: matrix.label == 'centos-7' || matrix.label == 'rhel-7' || matrix.image == 'ubuntu:18.04')
+      if: matrix.label == 'centos-7' || matrix.label == 'rhel-7' || matrix.image == 'ubuntu:18.04'
       run: |
         echo "/usr/local/git/bin" >> $GITHUB_PATH
 
