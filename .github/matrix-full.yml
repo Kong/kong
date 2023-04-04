@@ -32,7 +32,8 @@ build-packages:
 
 # Debian
 - label: debian-10
-  os: ubuntu-18.04
+  os: ubuntu-22.04
+  image: ubuntu:18.04
   package: deb
   check-manifest-file: ubuntu-18.04-amd64.txt
 - label: debian-11
