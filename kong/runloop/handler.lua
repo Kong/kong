@@ -505,6 +505,7 @@ do
     end
 
     try_incr_counter(DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY)
+    return plugin_iterator
   end
 end
 
