@@ -24,6 +24,7 @@ env:
   # if this is a push event, or it is pull request but not from a fork, and not from dependabot (dependabot does not use forks), then this PR will have access to secrets
   HAS_ACCESS_TO_SECRETS: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && !contains(github.actor, 'dependabot')) }}
   TEST_RESULTS_XML_OUTPUT: test-results
+  RELATIVE_BUILD_ROOT: bazel-bin/build
   BUILD_ROOT: ${{ github.workspace }}/bazel-bin/build
 
 # cancel previous runs if new commits are pushed to the PR, but run for each commit on master
@@ -105,7 +106,8 @@ jobs:
         name: build
         path: |
           artifacts
-          ${{ env.BUILD_ROOT }}
+          ${{ env.RELATIVE_BUILD_ROOT }}
+          !${{ env.RELATIVE_BUILD_ROOT }}/kong-dev/**/*
 
   cp-dp-compatibility-test:
     name: CP/DP compatibility
@@ -126,15 +128,6 @@ jobs:
         options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
 
     steps:
-    - name: Download artifacts
-      uses: actions/download-artifact@v3
-      with:
-        name: build
-        path: .
-
-    - name: Extract the artifact contents
-      run: sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
-
     - name: Install packages
       run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev jq httpie
 
@@ -143,6 +136,15 @@ jobs:
       with:
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: build
+        path: .
+
+    - name: Extract the artifact contents
+      run: sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
 
     - name: Install Kong dev
       env:
@@ -241,15 +243,6 @@ jobs:
         options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
 
     steps:
-    - name: Download artifacts
-      uses: actions/download-artifact@v3
-      with:
-        name: build
-        path: .
-
-    - name: Extract the artifact contents
-      run: sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
-
     - name: Install packages
       run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev
 
@@ -258,6 +251,15 @@ jobs:
       with:
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: build
+        path: .
+
+    - name: Extract the artifact contents
+      run: sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
 
     - name: Install Kong dev
       env:
@@ -367,15 +369,6 @@ jobs:
           - 9411:9411
 
     steps:
-    - name: Download artifacts
-      uses: actions/download-artifact@v3
-      with:
-        name: build
-        path: .
-
-    - name: Extract the artifact contents
-      run: sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
-
     - name: Install packages
       run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev
 
@@ -384,6 +377,15 @@ jobs:
       with:
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: build
+        path: .
+
+    - name: Extract the artifact contents
+      run: sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
 
     - name: Install Kong dev
       env:
@@ -456,15 +458,6 @@ jobs:
           - 15003:9001
 
     steps:
-    - name: Download artifacts
-      uses: actions/download-artifact@v3
-      with:
-        name: build
-        path: .
-
-    - name: Extract the artifact contents
-      run: sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
-
     - name: Install packages
       run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev
 
@@ -473,6 +466,15 @@ jobs:
       with:
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: build
+        path: .
+
+    - name: Extract the artifact contents
+      run: sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
 
     - name: Install Kong dev
       env:
@@ -569,15 +571,6 @@ jobs:
           - 9411:9411
 
     steps:
-    - name: Download artifacts
-      uses: actions/download-artifact@v3
-      with:
-        name: build
-        path: .
-
-    - name: Extract the artifact contents
-      run: sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
-
     - name: Install packages
       run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev
 
@@ -586,6 +579,15 @@ jobs:
       with:
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: build
+        path: .
+
+    - name: Extract the artifact contents
+      run: sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
 
     - name: Install Kong dev
       env:
@@ -649,15 +651,6 @@ jobs:
     needs: build
 
     steps:
-    - name: Download artifacts
-      uses: actions/download-artifact@v3
-      with:
-        name: build
-        path: .
-
-    - name: Extract the artifact contents
-      run: sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
-
     - name: Install packages
       run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev
 
@@ -666,6 +659,15 @@ jobs:
       with:
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: build
+        path: .
+
+    - name: Extract the artifact contents
+      run: sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
 
     - name: Install Kong dev
       env:
