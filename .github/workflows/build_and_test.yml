@@ -140,6 +140,9 @@ jobs:
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
+      with:
+        submodules: recursive
+        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
     - name: Install Kong dev
       env:
@@ -252,6 +255,9 @@ jobs:
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
+      with:
+        submodules: recursive
+        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
     - name: Install Kong dev
       env:
@@ -374,6 +380,9 @@ jobs:
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
+      with:
+        submodules: recursive
+        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
     - name: Install Kong dev
       env:
@@ -460,6 +469,9 @@ jobs:
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
+      with:
+        submodules: recursive
+        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
     - name: Install Kong dev
       env:
@@ -570,6 +582,9 @@ jobs:
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
+      with:
+        submodules: recursive
+        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
     - name: Install Kong dev
       env:
@@ -647,6 +662,9 @@ jobs:
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
+      with:
+        submodules: recursive
+        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
     - name: Install Kong dev
       env:
@@ -767,6 +785,9 @@ jobs:
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
+      with:
+        submodules: recursive
+        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
     - name: Checkout kong-pongo
       uses: actions/checkout@v3
