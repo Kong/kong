@@ -512,6 +512,7 @@ local function get_next_and_collect(ctx, i)
   if combos then
     cfg = load_configuration_through_combos(ctx, combos, plugin)
     if cfg then
+      cfg = kong.vault.update(cfg)
       local handler = plugin.handler
       local collected = ctx.plugins
       local collecting_phase
