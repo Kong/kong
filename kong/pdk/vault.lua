@@ -135,6 +135,29 @@ local function new(self)
   end
 
 
+  local function adjust_ttl(ttl, config)
+    if type(ttl) ~= "number" then
+      return config and config.ttl or 0
+    end
+
+    if ttl <= 0 then
+      return 0
+    end
+
+    local max_ttl = config and config.max_ttl
+    if max_ttl and max_ttl > 0 and ttl > max_ttl then
+      return max_ttl
+    end
+
+    local min_ttl = config and config.min_ttl
+    if min_ttl and ttl < min_ttl then
+      return min_ttl
+    end
+
+    return ttl
+  end
+
+
   local function retrieve_value(strategy, config, hash, reference, resource, name,
                                 version, key, cache, rotation, cache_only)
     local cache_key
@@ -155,6 +178,7 @@ local function new(self)
       if not value then
         value, err, ttl = strategy.get(config, resource, version)
         if value then
+          ttl = adjust_ttl(ttl, config)
           rotation[cache_key] = value
           if cache then
             -- Warmup cache just in case the value is needed elsewhere.
@@ -169,11 +193,17 @@ local function new(self)
     elseif cache then
       value, err = cache:get(cache_key, nil, function()
         value, err, ttl = strategy.get(config, resource, version)
+        if value then
+          ttl = adjust_ttl(ttl, config)
+        end
         return value, err, ttl
       end)
 
     else
       value, err, ttl = strategy.get(config, resource, version)
+      if value then
+        ttl = adjust_ttl(ttl, config)
+      end
     end
 
     return validate_value(value, err, ttl, name, resource, key, reference)
