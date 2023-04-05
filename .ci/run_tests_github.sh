@@ -234,60 +234,58 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
     if [[ "$TEST_SPLIT" == first ]]; then
         make test-forward-proxy || echo "* forward-proxy" >> .failed
         make test-application-registration || echo "* application-registration" >> .failed
-        make test-graphql-proxy-cache-advanced || echo "* graphql-proxy-cache-advanced" >> .failed
-        make test-graphql-rate-limiting-advanced || echo "* graphql-rate-limiting-advanced" >> .failed
-        make test-jq || echo "* jq" >> .failed
+        make test-canary || echo "* canary" >> .failed
+        make test-jwe-decrypt || echo "* jwe-decrypt" >> .failed
+        make test-websocket-size-limit || echo "* websocket-size-limit" >> .failed
 
     elif [[ "$TEST_SPLIT" == second ]]; then
-        make test-oauth2-introspection || echo "* oauth2-introspectio" >> .failed
+        make test-mocking || echo "* mocking" >> .failed
         make test-proxy-cache-advanced || echo "* proxy-cache-advanced" >> .failed
+        make test-upstream-timeout || echo "* upstream-timeout" >> .failed
+        make test-app-dynamics || echo "* app-dynamics" >> .failed
 
     elif [[ "$TEST_SPLIT" == third ]]; then
-        make test-mocking || echo "* mocking" >> .failed
-        make test-tls-handshake-modifier || echo "* tls-handshake-modifier" >> .failed
-        make test-upstream-timeout || echo "* upstream-timeout" >> .failed
-
-    elif [[ "$TEST_SPLIT" == fourth ]]; then
+        make test-jwt-signer || echo "* jwt-signer" >> .failed
         make test-kafka-upstream || echo "* kafka-upstream" >> .failed
         make test-kafka-log || echo "* kafka-log" >> .failed
-        make test-route-by-header || echo "* route-by-header" >> .failed
         make test-statsd-advanced || echo "* statsd-advanced" >> .failed
+        make test-graphql-proxy-cache-advanced || echo "* graphql-proxy-cache-advanced" >> .failed
         make test-websocket-validator || echo "* websocket-validator" >> .failed
-        make test-jwt-signer || echo "* jwt-signer" >> .failed
-        make test-vault-auth || echo "* vault-auth" >> .failed
+
+    elif [[ "$TEST_SPLIT" == fourth ]]; then
+        make test-openid-connect || echo "* openid-connect" >> .failed
+        make test-jq || echo "* jq" >> .failed
+        make test-tls-metadata-headers || echo "* tls-metadata-headers" >> .failed
 
     elif [[ "$TEST_SPLIT" == fifth ]]; then
-        make test-openid-connect || echo "* openid-connect" >> .failed
-        make test-route-transformer-advanced || echo "* route-transformer-advanced" >> .failed
-        make test-exit-transformer || echo "* exit-transformer" >> .failed
-        make test-request-transformer-advanced || echo "* request-transformer-advanced" >> .failed
-        make test-tls-metadata-headers || echo "* tls-metadata-headers" >> .failed
-        make test-konnect-application-auth || echo "* konnect-application-auth" >> .failed
+        make test-mtls-auth || echo "* mtls-auth" >> .failed
+        make test-request-validator || echo "* test-request-validator" >> .failed
+        make test-tls-handshake-modifier || echo "* tls-handshake-modifier" >> .failed
+        make test-route-by-header || echo "* route-by-header" >> .failed
 
     elif [[ "$TEST_SPLIT" == sixth ]]; then
-        make test-ldap-auth-advanced || echo "* ldap-auth-advanced" >> .failed
-        make test-degraphql || echo "* degraphql" >> .failed
-        make test-canary || echo "* canary" >> .failed
+        make test-key-auth-enc || echo "* key-auth-enc" >> .failed
+        make test-request-transformer-advanced || echo "* request-transformer-advanced" >> .failed
+        make test-saml || echo "* saml" >> .failed
+        make test-graphql-rate-limiting-advanced || echo "* graphql-rate-limiting-advanced" >> .failed
 
     elif [[ "$TEST_SPLIT" == seventh ]]; then
-        make test-saml || echo "* saml" >> .failed
-        make test-request-validator || echo "* test-request-validator" >> .failed
-        make test-mtls-auth || echo "* mtls-auth" >> .failed
-        make test-oas-validation || echo "* oas-validation" >> .failed
-        make test-app-dynamics || echo "* app-dynamics" >> .failed
+        make test-rate-limiting-advanced || echo "* rate-limiting-advanced" >> .failed
+        make test-exit-transformer || echo "* exit-transformer" >> .failed
+        make test-route-transformer-advanced || echo "* route-transformer-advanced" >> .failed
+        make test-vault-auth || echo "* vault-auth" >> .failed
 
     elif [[ "$TEST_SPLIT" == eighth ]]; then
         make test-response-transformer-advanced || echo "* response-transformer-advanced" >> .failed
-        make test-opa || echo "* opa" >> .failed
+        make test-oas-validation || echo "* oas-validation" >> .failed
         make test-datadog-tracing || echo "* datadog-tracing" >> .failed
-        make test-jwe-decrypt || echo "* jwe-decrypt" >> .failed
+        make test-opa || echo "* opa" >> .failed
+        make test-konnect-application-auth || echo "* konnect-application-auth" >> .failed
+        make test-oauth2-introspection || echo "* oauth2-introspectio" >> .failed
+        make test-degraphql || echo "* degraphql" >> .failed
 
     elif [[ "$TEST_SPLIT" == ninth ]]; then
-        # TODO: uncomment the RLA test after all flakiness has gone
-        # Related ticket: https://konghq.atlassian.net/browse/FTI-4929
-        # make test-rate-limiting-advanced || echo "* rate-limiting-advanced" >> .failed
-        make test-key-auth-enc || echo "* key-auth-enc" >> .failed
-        make test-websocket-size-limit || echo "* websocket-size-limit" >> .failed
+        make test-ldap-auth-advanced || echo "* ldap-auth-advanced" >> .failed
     fi
 
     if [ -f .failed ]; then
