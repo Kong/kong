@@ -121,20 +121,12 @@ setmetatable(noop_span, {
   __newindex = NOOP,
 })
 
-local function new_span(tracer, name, options)
-  if type(tracer) ~= "table" then
-    error("invalid tracer", 2)
-  end
-
-  if type(name) ~= "string" or #name == 0 then
-    error("invalid span name", 2)
-  end
-
-  if options ~= nil and type(options) ~= "table" then
-    error("invalid options type", 2)
-  end
-
+local function validate_span_options(options)
   if options ~= nil then
+    if type(options) ~= "table" then
+      error("invalid options type", 2)
+    end
+
     if options.start_time_ns ~= nil and type(options.start_time_ns) ~= "number" then
       error("invalid start time", 2)
     end
@@ -151,53 +143,57 @@ local function new_span(tracer, name, options)
       error("invalid attributes", 2)
     end
   end
+end
 
+local function create_span(tracer, options)
+  validate_span_options(options)
   options = options or {}
 
-  -- get parent span from ctx
-  -- the ctx could either be stored in ngx.ctx or kong.ctx
-  local parent_span = options.parent or tracer.active_span()
+  local span = tablepool_fetch(POOL_SPAN, 0, 12)
 
-  local trace_id = parent_span and parent_span.trace_id
+  span.parent = options.parent or tracer and tracer.active_span()
+
+  local trace_id = span.parent and span.parent.trace_id
       or options.trace_id
       or generate_trace_id()
-
-  local sampled = parent_span and parent_span.should_sample
+  local sampled = span.parent and span.parent.should_sample
       or options.should_sample
-      or tracer.sampler(trace_id)
+      or tracer and tracer.sampler(trace_id)
 
   if not sampled then
     return noop_span
   end
 
-  -- avoid reallocate
-  -- we will release the span table at the end of log phase
-  local span = tablepool_fetch(POOL_SPAN, 0, 12)
-  -- cache tracer ref, to get hooks / span processer
-  -- tracer ref will not be cleared when the span table released
-  span.tracer = tracer
-
-  span.name = name
-  span.trace_id = trace_id
-  span.span_id = generate_span_id()
-  span.parent_id = parent_span and parent_span.span_id
+  span.parent_id = span.parent and span.parent.span_id
       or options.parent_id
-
-  -- specify span start time manually
-  span.start_time_ns = options.start_time_ns or ffi_time_unix_nano()
+  span.tracer = span.tracer or tracer
+  span.span_id = generate_span_id()
+  span.trace_id = trace_id
   span.kind = options.span_kind or SPAN_KIND.INTERNAL
-  span.attributes = options.attributes
-
   -- indicates whether the span should be reported
-  span.should_sample = parent_span and parent_span.should_sample
+  span.should_sample = span.parent and span.parent.should_sample
       or options.should_sample
       or sampled
 
-  -- parent ref, some cases need access to parent span
-  span.parent = parent_span
-
-  -- inherit metatable
   setmetatable(span, span_mt)
+  return span
+end
+
+local function link_span(tracer, span, name, options)
+  if tracer and type(tracer) ~= "table" then
+    error("invalid tracer", 2)
+  end
+  validate_span_options(options)
+
+  options = options or {}
+
+  -- cache tracer ref, to get hooks / span processer
+  -- tracer ref will not be cleared when the span table released
+  span.tracer = span.tracer or tracer
+  -- specify span start time
+  span.start_time_ns = options.start_time_ns or ffi_time_unix_nano()
+  span.attributes = options.attributes
+  span.name = name
 
   -- insert the span to ctx
   local ctx = ngx.ctx
@@ -211,6 +207,21 @@ local function new_span(tracer, name, options)
   local len = spans[0] + 1
   spans[len] = span
   spans[0] = len
+
+  return span
+end
+
+local function new_span(tracer, name, options)
+  if type(tracer) ~= "table" then
+    error("invalid tracer", 2)
+  end
+
+  if type(name) ~= "string" or #name == 0 then
+    error("invalid span name", 2)
+  end
+
+  local span = create_span(tracer, options)
+  link_span(tracer, span, name, options)
 
   return span
 end
@@ -370,6 +381,8 @@ local tracer_memo = setmetatable({}, { __mode = "k" })
 local noop_tracer = {}
 noop_tracer.name = "noop"
 noop_tracer.start_span = function() return noop_span end
+noop_tracer.create_span = function() return noop_span end
+noop_tracer.link_span = NOOP
 noop_tracer.active_span = NOOP
 noop_tracer.set_active_span = NOOP
 noop_tracer.process_span = NOOP
@@ -440,6 +453,14 @@ local function new_tracer(name, options)
     end
 
     return new_span(self, ...)
+  end
+
+  function self.create_span(...)
+    return create_span(...)
+  end
+
+  function self.link_span(...)
+    return link_span(...)
   end
 
   --- Batch process spans
