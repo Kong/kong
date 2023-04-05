@@ -565,6 +565,36 @@ local function new(self)
   end
 
 
+  local function update(options)
+    if type(options) ~= "table" then
+      return options
+    end
+
+    -- TODO: should we skip updating options, if it was done recently?
+
+    -- TODO: should we have flag for disabling/enabling recursion?
+    for k, v in pairs(options) do
+      if k ~= "$refs" and type(v) == "table" then
+        options[k] = update(v)
+      end
+    end
+
+    local refs = options["$refs"]
+    if type(refs) ~= "table" or isempty(refs) then
+      return options
+    end
+
+    for field_name, reference in pairs(refs) do
+      local value = get(reference, nil, true) -- TODO: ignoring errors?
+      if value ~= nil then
+        options[field_name] = value
+      end
+    end
+
+    return options
+  end
+
+
   local function try(callback, options)
     -- store current values early on to avoid race conditions
     local previous
@@ -853,6 +883,47 @@ local function new(self)
   -- local value, err = kong.vault.get("{vault://env/cert/key}")
   function _VAULT.get(reference)
     return get(reference)
+  end
+
+
+  ---
+  -- Helper function for secret rotation based on TTLs. Currently experimental.
+  --
+  -- @function kong.vault.update
+  -- @tparam   table  options  options containing secrets and references (this function modifies the input options)
+  -- @treturn  table           options with updated secret values
+  --
+  -- @usage
+  -- local options = kong.vault.update({
+  --   cert = "-----BEGIN CERTIFICATE-----...",
+  --   key = "-----BEGIN RSA PRIVATE KEY-----...",
+  --   cert_alt = "-----BEGIN CERTIFICATE-----...",
+  --   key_alt = "-----BEGIN EC PRIVATE KEY-----...",
+  --   ["$refs"] = {
+  --     cert = "{vault://aws/cert}",
+  --     key = "{vault://aws/key}",
+  --     cert_alt = "{vault://aws/cert-alt}",
+  --     key_alt = "{vault://aws/key-alt}",
+  --   }
+  -- })
+  --
+  -- -- or
+  --
+  -- local options = {
+  --   cert = "-----BEGIN CERTIFICATE-----...",
+  --   key = "-----BEGIN RSA PRIVATE KEY-----...",
+  --   cert_alt = "-----BEGIN CERTIFICATE-----...",
+  --   key_alt = "-----BEGIN EC PRIVATE KEY-----...",
+  --   ["$refs"] = {
+  --     cert = "{vault://aws/cert}",
+  --     key = "{vault://aws/key}",
+  --     cert_alt = "{vault://aws/cert-alt}",
+  --     key_alt = "{vault://aws/key-alt}",
+  --   }
+  -- }
+  -- kong.vault.update(options)
+  function _VAULT.update(options)
+    return update(options)
   end
 
 
