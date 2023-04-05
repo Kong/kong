@@ -55,8 +55,13 @@ describe(fmt("#%s WebSocket (%s) %s plugin handlers", strategy, scheme, mode), f
 
   local function assert_handler_executed(handler)
     local fname = fmt("%s/%s.%s.%s", DIR, handler, mode, ID)
-    helpers.wait_for_file("file", fname, 5)
-    assert.equals("OK", helpers.file.read(fname))
+    assert
+      .with_timeout(10)
+      .eventually(function()
+        local content = assert(helpers.file.read(fname))
+        assert.same("OK", content)
+      end)
+      .has_no_error("waiting for " .. fname .. " contents to equal 'OK'")
   end
 
   local function assert_not_handler_executed(handler)
