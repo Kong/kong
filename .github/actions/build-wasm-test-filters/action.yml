@@ -1,0 +1,63 @@
+name: Build WASM Test Filters
+
+description: >
+  Installs the rust toolchain and builds the WASM filters that are used
+  in our integration tests
+
+inputs:
+  fixture-path:
+    description: >
+      Path to the filter lib directory (where the Cargo.toml file is located)
+    type: string
+    required: true
+
+
+runs:
+  using: composite
+  steps:
+    - name: Restore Cache
+      uses: actions/cache@v3
+      id: toolchain-cache
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          ${{ inputs.fixture-path }}/target
+        key: v2::${{ runner.os }}-cargo-proxy-wasm-filters
+
+    - name: Install Rust Toolchain
+      if: ${{ steps.toolchain-cache.cache-hit != 'true' }}
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+        components: cargo
+        target: wasm32-wasi
+
+    - name: cargo build
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        # building in release mode yields smaller library sizes, so it's
+        # better for our cacheability
+        args: >
+          --manifest-path "${{ inputs.fixture-path }}/Cargo.toml"
+          --workspace
+          --lib
+          --target wasm32-wasi
+          --release
+
+    - name: debug
+      shell: bash
+      run: find "${{ inputs.fixture-path }}" -ls
+
+    - name: Create a symlink to the target directory
+      shell: bash
+      run: |
+        ln -sfv \
+          --no-target-directory \
+          "${{ inputs.fixture-path }}"/target/wasm32-wasi/release \
+          "${{ inputs.fixture-path }}"/build

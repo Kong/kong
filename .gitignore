@@ -34,4 +34,5 @@ bazel-*
 
 # wasm
 *.wasm
-target/
+spec/fixtures/proxy_wasm_filters/build
+spec/fixtures/proxy_wasm_filters/target
