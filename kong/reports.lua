@@ -57,7 +57,7 @@ local REQUEST_ROUTE_CACHE_HITS_KEY_NEG = REQUEST_COUNT_KEY .. ":" .. ROUTE_CACHE
 
 local _buffer = {}
 local _ping_infos = {}
-local _enabled = kong and kong.configuration and kong.configuration.anonymous_reports or false
+local _enabled = false
 local _unique_str = utils.random_string()
 local _buffer_immutable_idx
 local _ssl_session
@@ -430,6 +430,7 @@ end
 return {
   -- plugin handler
   init_worker = function()
+    _enabled = kong and kong.configuration and kong.configuration.anonymous_reports or false
     if not _enabled then
       return
     end

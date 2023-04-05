@@ -8,7 +8,7 @@ describe("reports", function()
   -- This test case may be run first, it aims to verify behavior of send()
   -- when the kong.configuration.anonymous_reports is unsetted
   it("send when kong.configuration.anonymous_reports = false", function ()
-    assert.False(reports.send())
+    assert.falsy(reports.send())
   end)
 
   describe("send()", function()
