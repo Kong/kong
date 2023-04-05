@@ -142,15 +142,22 @@ local function new(self)
   end
 
 
-  local function retrieve_value(strategy, config, hash, reference, resource,
-                                name, version, key, cache, rotation)
+  local function retrieve_value(strategy, config, hash, reference, resource, name,
+                                version, key, cache, rotation, cache_only)
     local cache_key
     if cache or rotation then
       cache_key = build_cache_key(name, resource, version, hash)
     end
 
     local value, err, ttl
-    if rotation then
+    if cache_only then
+      if not cache then
+        return nil, fmt("unable to load value (%s) from vault cache (%s): no cache [%s]", resource, name, reference)
+      end
+
+      value, err = cache:get(cache_key, config)
+
+    elseif rotation then
       value = rotation[cache_key]
       if not value then
         value, err, ttl = strategy.get(config, resource, version)
@@ -266,7 +273,7 @@ local function new(self)
   end
 
 
-  local function process_secret(reference, opts, rotation)
+  local function process_secret(reference, opts, rotation, cache_only)
     local name = opts.name
     if not VAULT_NAMES[name] then
       return nil, fmt("vault not found (%s) [%s]", name, reference)
@@ -367,11 +374,11 @@ local function new(self)
 
     return retrieve_value(strategy, config, hash, reference, opts.resource, name,
                           opts.version, opts.key, self and self.core_cache,
-                          rotation)
+                          rotation, cache_only)
   end
 
 
-  local function config_secret(reference, opts, rotation)
+  local function config_secret(reference, opts, rotation, cache_only)
     local prefix = opts.name
     local vaults = self.db.vaults
     local cache = self.core_cache
@@ -416,7 +423,7 @@ local function new(self)
     local config, hash = get_config(vault.config, opts.config, schema, prefix)
 
     return retrieve_value(strategy, config, hash, reference, opts.resource, prefix,
-                          opts.version, opts.key, cache, rotation)
+                          opts.version, opts.key, cache, rotation, cache_only)
   end
 
 
@@ -497,7 +504,7 @@ local function new(self)
   end
 
 
-  local function get(reference, rotation)
+  local function get(reference, rotation, cache_only)
     local opts, err = parse_reference(reference)
     if err then
       return nil, err
@@ -513,14 +520,16 @@ local function new(self)
 
     local ttl
     if self and self.db and VAULT_NAMES[opts.name] == nil then
-      value, err, ttl = config_secret(reference, opts, rotation)
+      value, err, ttl = config_secret(reference, opts, rotation, cache_only)
     else
-      value, err, ttl = process_secret(reference, opts, rotation)
+      value, err, ttl = process_secret(reference, opts, rotation, cache_only)
     end
 
     if not value then
       if stale_value then
-        self.log.warn(err, " (returning a stale value)")
+        if not cache_only then
+          self.log.warn(err, " (returning a stale value)")
+        end
         return stale_value
       end
 
