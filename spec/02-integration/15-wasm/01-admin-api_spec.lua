@@ -1,6 +1,5 @@
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
-local wasm_fixtures = require "spec.fixtures.wasm"
 
 -- no cassandra support
 for _, strategy in helpers.each_strategy({ "postgres" }) do
@@ -17,13 +16,10 @@ describe("WASMX admin API [#" .. strategy .. "]", function()
       "wasm_filter_chains",
     })
 
-    wasm_fixtures.build()
-
     assert(helpers.start_kong({
       database = strategy,
       nginx_conf = "spec/fixtures/custom_nginx.template",
       wasm = true,
-      wasm_filters_path = wasm_fixtures.TARGET_PATH,
     }))
 
 

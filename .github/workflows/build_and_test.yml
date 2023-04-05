@@ -74,6 +74,11 @@ jobs:
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
 
+    - name: Build WASM Test Filters
+      uses: ./.github/actions/build-wasm-test-filters
+      with:
+        fixture-path: ./spec/fixtures/proxy_wasm_filters
+
     - name: Build Dev Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |

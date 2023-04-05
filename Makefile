@@ -28,7 +28,7 @@ endif
 	setup-ci setup-kong-build-tools \
 	lint test test-integration test-plugins test-all \
 	pdk-phase-check functional-tests \
-	fix-windows release
+	fix-windows release wasm-test-filters
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 KONG_SOURCE_LOCATION ?= $(ROOT_DIR)
@@ -158,7 +158,7 @@ install:
 remove:
 	-@luarocks remove kong
 
-dependencies: bin/grpcurl
+dependencies: bin/grpcurl wasm-test-filters
 	@for rock in $(DEV_ROCKS) ; do \
 	  if luarocks list --porcelain $$rock | grep -q "installed" ; then \
 	    echo $$rock already installed, skipping ; \
@@ -172,6 +172,9 @@ bin/grpcurl:
 	@curl -s -S -L \
 		https://github.com/fullstorydev/grpcurl/releases/download/v$(GRPCURL_VERSION)/grpcurl_$(GRPCURL_VERSION)_$(GRPCURL_OS)_$(GRPCURL_MACHINE).tar.gz | tar xz -C bin;
 	@rm bin/LICENSE
+
+wasm-test-filters:
+	./scripts/build-wasm-test-filters.sh
 
 dev: remove install dependencies
 

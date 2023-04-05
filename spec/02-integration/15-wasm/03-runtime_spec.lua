@@ -1,6 +1,5 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local wasm_fixtures = require "spec.fixtures.wasm"
 
 local DATABASE = "postgres"
 local ERROR_OR_CRIT = "\\[(error|crit)\\]"
@@ -135,13 +134,10 @@ describe("#wasm filter execution", function()
       })
     end
 
-    wasm_fixtures.build()
-
     assert(helpers.start_kong({
       database = DATABASE,
       nginx_conf = "spec/fixtures/custom_nginx.template",
       wasm = true,
-      wasm_filters_path = wasm_fixtures.TARGET_PATH,
     }))
 
   end)
