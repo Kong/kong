@@ -183,7 +183,7 @@ local function new(self)
           if cache then
             -- Warmup cache just in case the value is needed elsewhere.
             -- TODO: do we need to clear cache first?
-            cache:get(cache_key, nil, function()
+            cache:get(cache_key, config, function()
               return value, err, ttl
             end)
           end
@@ -191,7 +191,7 @@ local function new(self)
       end
 
     elseif cache then
-      value, err = cache:get(cache_key, nil, function()
+      value, err = cache:get(cache_key, config, function()
         value, err, ttl = strategy.get(config, resource, version)
         if value then
           ttl = adjust_ttl(ttl, config)
