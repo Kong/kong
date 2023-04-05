@@ -598,6 +598,9 @@ describe("Admin API #" .. strategy, function()
           })
           assert.same(200, status)
 
+          -- Give time for weight modification to kick in
+          ngx.sleep(0.3)
+
           local status, body = client_send({
             method = "GET",
             path = "/upstreams/" .. upstream.name .. "/health",
