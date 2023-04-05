@@ -6,7 +6,8 @@ local atc = require("kong.router.atc")
 local tb_new = require("table.new")
 local tb_clear = require("table.clear")
 local tb_nkeys = require("table.nkeys")
-
+local tablex = require("pl.tablex")
+local utils = require("kong.tools.utils")
 
 local escape_str      = atc.escape_str
 local is_empty_field  = atc.is_empty_field
@@ -21,7 +22,6 @@ local tb_concat = table.concat
 local tb_insert = table.insert
 local tb_sort = table.sort
 local byte = string.byte
-local max = math.max
 local bor, band, lshift = bit.bor, bit.band, bit.lshift
 
 
@@ -74,7 +74,7 @@ local function get_expression(route)
     tb_insert(out, gen)
   end
 
-  local gen = gen_for_field("tls.sni", OP_EQUAL, snis, function(op, p)
+  gen = gen_for_field("tls.sni", OP_EQUAL, snis, function(_, p)
     if #p > 1 and byte(p, -1) == DOT then
       -- last dot in FQDNs must not be used for routing
       return p:sub(1, -2)
@@ -128,7 +128,7 @@ local function get_expression(route)
     end)
   end
 
-  local gen = gen_for_field("http.path", function(path)
+  gen = gen_for_field("http.path", function(path)
     return is_regex_magic(path) and OP_REGEX or OP_PREFIX
   end, paths, function(op, p)
     if op == OP_REGEX then
@@ -249,27 +249,34 @@ local function get_priority(route)
     end
   end
 
-  local max_uri_length = 0
+  local uri_length = 0
   local regex_url = false
 
   if not is_empty_field(paths) then
     match_weight = match_weight + 1
 
-    for _, p in ipairs(paths) do
-      if is_regex_magic(p) then
-        regex_url = true
-
+    for index, p in ipairs(paths) do
+      if index == 1 then
+        if is_regex_magic(p) then
+          regex_url = true
+        else
+          uri_length = #p
+        end
       else
-        -- plain URI or URI prefix
-        max_uri_length = max(max_uri_length, #p)
+        if regex_url then
+          assert(is_regex_magic(p), "cannot mix regex and non-regex routes in get_priority")
+        else
+          assert(#p == uri_length, "cannot mix different length prefixes in get_priority")
+        end
       end
     end
   end
 
-  local match_weight   = lshift_uint64(match_weight, 61)
-  local headers_count  = lshift_uint64(headers_count, 52)
+  match_weight   = lshift_uint64(match_weight, 61)
+  headers_count  = lshift_uint64(headers_count, 52)
+
   local regex_priority = lshift_uint64(regex_url and route.regex_priority or 0, 19)
-  local max_length     = band(max_uri_length, 0x7FFFF)
+  local max_length     = band(uri_length, 0x7FFFF)
 
   local priority = bor(match_weight,
                        plain_host_only and PLAIN_HOST_ONLY_BIT or 0,
@@ -295,8 +302,58 @@ local function get_exp_and_priority(route)
 end
 
 
-function _M.new(routes, cache, cache_neg, old_router)
-  return atc.new(routes, cache, cache_neg, old_router, get_exp_and_priority)
+-- group array-like table t by the function f, returning a table mapping from
+-- the result of invoking f on one of the elements to the actual elements.
+local function group_by(t, f)
+  local result = {}
+  for _, value in ipairs(t) do
+    local key = f(value)
+    if result[key] then
+      result[key][#result[key] + 1] = value
+    else
+      result[key] = {value}
+    end
+  end
+  return result
+end
+
+-- split routes into multiple routes, one for each prefix length and one for all
+-- regular expressions
+local function split_route_by_path_into(rs, split_rs)
+  if is_empty_field(rs.route.paths) or #rs.route.paths == 1 then
+    split_rs[#split_rs + 1] = rs
+    return
+  end
+
+  assert(rs.route.paths)
+  local grouped_paths = group_by(
+    rs.route.paths,
+    function(path)
+      return is_regex_magic(path) or #path
+    end
+  )
+  for _, paths in pairs(grouped_paths) do
+    local cloned_route = tablex.deepcopy(rs)
+    cloned_route.route.original_route = rs.route
+    cloned_route.route.paths = paths
+    cloned_route.route.id = utils.uuid()
+    split_rs[#split_rs + 1] = cloned_route
+  end
+end
+
+
+function _M.new(rs, cache, cache_neg, old_router)
+  -- rs argument is a table with [route] and [service], hence rs
+  if type(rs) ~= "table" then
+    return error("expected arg #1 routes to be a table")
+  end
+
+  local split_rs = {}
+  for _, route in ipairs(rs) do
+    split_route_by_path_into(route, split_rs)
+  end
+
+  return atc.new(split_rs, cache, cache_neg, old_router, get_exp_and_priority)
 end
 
 

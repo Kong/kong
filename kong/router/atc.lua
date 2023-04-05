@@ -373,7 +373,6 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
                    src_ip, src_port,
                    dst_ip, dst_port,
                    sni, req_headers)
-
   check_select_params(req_method, req_uri, req_host, req_scheme,
                       src_ip, src_port,
                       dst_ip, dst_port,
@@ -443,6 +442,9 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 
   local service = self.services[uuid]
   local matched_route = self.routes[uuid]
+  if matched_route.original_route then
+    matched_route = matched_route.original_route
+  end
 
   local service_protocol, _,  --service_type
         service_host, service_port,

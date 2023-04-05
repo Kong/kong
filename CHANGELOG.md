@@ -10,6 +10,18 @@
 
 ### Breaking Changes
 
+#### Core
+
+- The `traditional_compat` router mode has been made more compatible with the
+  behavior of `traditional` mode by splitting routes with multiple paths into
+  multiple atc routes with separate priorities.  Since the introduction of the new
+  router in Kong Gateway 3.0, `traditional_compat` mode assigned only one priority
+  to each route, even if different prefix path lengths and regular expressions
+  were mixed in a route. This was not how multiple paths were handled in the
+  `traditional` router and the behavior has now been changed so that a separate
+  priority value is assigned to each path in a route.
+  [#10615](https://github.com/Kong/kong/pull/10615)
+
 #### Plugins
 
 - **Serverless Functions**: `kong.cache` now points to a cache instance that is dedicated to the
@@ -57,6 +69,7 @@
   [#10288](https://github.com/Kong/kong/pull/10288)
 - Added new span attribute `http.client_ip` to capture the client IP when behind a proxy.
   [#10723](https://github.com/Kong/kong/pull/10723)
+  [#10204](https://github.com/Kong/kong/pull/10204)
 
 #### Admin API
 
