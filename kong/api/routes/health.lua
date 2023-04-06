@@ -39,9 +39,9 @@ do
     end
 
     local router_rebuilds = 
-                      kong_shm:get(DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY) or 0
+                      tonumber(kong_shm:get(DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY)) or 0
     local plugins_iterator_rebuilds = 
-                      kong_shm:get(DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY) or 0
+                      tonumber(kong_shm:get(DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY)) or 0
 
     if router_rebuilds < worker_count 
         or plugins_iterator_rebuilds < worker_count then
