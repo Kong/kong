@@ -134,6 +134,13 @@ jobs:
       run: |
         yum install -y which zlib-devel
 
+    - name: Debian dependencies
+      if: matrix.image == 'ubuntu:18.04'
+      run: |
+        apt update
+        # dependencies for git
+        apt install -y wget libz-dev libssl-dev libcurl4-gnutls-dev libexpat1-dev
+
     - name: Early Amazon Linux Setup
       if: startsWith(matrix.label, 'amazonlinux')
       run: |
