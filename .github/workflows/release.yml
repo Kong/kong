@@ -527,44 +527,19 @@ jobs:
       run: build/tests/03-http2-admin-api.sh
 
   api-tests:
-    name: Trigger API Tests
+    name: API E2E Tests
     needs: [metadata, build-images, smoke-tests]
-    runs-on: ubuntu-22.04
     if: |
       ! ( github.event_name == 'pull_request' &&
           github.event.action == 'synchronize' )
-    steps:
-    - name: Issue "per-commit-test" Event
-      env:
-        DOCKER_IMAGE_TAG: ${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}
-        GITHUB_TOKEN: ${{ secrets.KONG_API_TESTS_BOT_TOKEN }}
-      run: |
-        set -euo pipefail
-
-        payload="$(
-          jq -n -c --arg tag "$DOCKER_IMAGE_TAG" '
-            {
-              "event_type": "per-commit-test",
-              "client_payload":{
-                "docker_image": $tag,
-                "commit": "${{ github.sha }}",
-                "href": "${{ github.event.pull_request._links.html.href }}"
-              }
-            }
-          '
-        )"
-
-        curl \
-          --fail \
-          -X POST \
-          -H "Accept: application/vnd.github+json" \
-          -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-          https://api.github.com/repos/kong/kong-api-tests/dispatches \
-          -d "$payload"
+    uses: ./.github/workflows/gateway-api-tests.yml
+    with:
+      control_plane_image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}
+    secrets: inherit
 
   release-packages:
     name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
-    needs: [metadata, build-packages, build-images, smoke-tests]
+    needs: [metadata, build-packages, build-images, smoke-tests, api-tests]
     runs-on: ubuntu-22.04
     if: github.repository_owner == 'Kong' && fromJSON(needs.metadata.outputs.matrix)['release-packages'] != ''
     timeout-minutes: 5 # PULP takes a while to publish
@@ -620,7 +595,7 @@ jobs:
 
   release-images:
     name: Release Images - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
-    needs: [metadata, build-images, smoke-tests]
+    needs: [metadata, build-images, smoke-tests, api-tests]
     runs-on: ubuntu-22.04
     if: github.repository_owner == 'Kong' && fromJSON(needs.metadata.outputs.matrix)['release-images'] != ''
 

@@ -21,10 +21,6 @@ on:
 
   workflow_dispatch:
     inputs:
-      control_plane_image:
-        description: 'Docker Image for Control Plane'
-        required: true
-        default: 'kong/kong-gateway-internal:nightly-ubuntu'
       enable_verbose_response_logging:
         description: 'Enable response logging for debugging'
         required: false
@@ -37,17 +33,17 @@ on:
         description: 'Run only a single test by spec name, only smoke tests or all tests'
         required: false
         default: 'all'
+      control_plane_image:
+        description: 'Docker Image for Tests'
+        required: true
+        default: 'kong/kong-gateway-internal:nightly-ubuntu'
       gateway_version:
-          description: 'Kong Version'
-          required: false
-          default: '3.3.0.0'
+        description: 'Kong Version'
+        required: false
+        default: '3.3.0.0'
 
   workflow_call:
     inputs:
-      control_plane_image:
-        description: 'Docker Image for Control Plane'
-        required: true
-        type: string
       enable_verbose_response_logging:
         description: 'Enable response logging for debugging'
         required: false
@@ -60,10 +56,14 @@ on:
         description: 'Run only a single test by spec name, only smoke tests or all tests'
         required: false
         type: string
+      control_plane_image:
+        description: 'Docker Image for Tests'
+        required: true
+        type: string
       gateway_version:
-          description: 'Kong Version'
-          required: false
-          type: 'string'
+        description: 'Kong Version'
+        required: false
+        type: 'string'
 
 defaults:
   run:
@@ -173,22 +173,12 @@ jobs:
           gw_mode: ${{ matrix.gateway_mode }}
           job_status: ${{ job.status }}
           test_title: 'regular'
-          slack_url: ${{ job.status == 'success' && secrets.TEST_API_SLACK_WEBHOOK_URL || secrets.TEST_API_SLACK_TEAM_URL }}
+          slack_url: ${{ secrets.TEST_API_SLACK_WEBHOOK_URL }}
 
       - name: Upload Test Results
         uses: actions/upload-artifact@v3
         continue-on-error: true
         if: always()
         with:
-          name: gateway_test_results
+          name: gateway_test_results_${{ matrix.gateway_mode }}
           path: spec-ee/kong-api-tests/results/
-
-      - name: Publish Test Report
-        uses: dorny/test-reporter@v1
-        continue-on-error: true
-        if: always()
-        with:
-          name: Gateway Test Report ${{ matrix.gateway_mode }}
-          path: spec-ee/kong-api-tests/results/test-results-*.xml
-          reporter: java-junit
-          fail-on-error: 'false'
