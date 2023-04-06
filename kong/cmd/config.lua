@@ -122,7 +122,6 @@ local function execute(args)
       if conf.anonymous_reports then
         local kong_reports = require "kong.reports"
         kong_reports.configure_ping(conf)
-        kong_reports.toggle(true)
 
         local report = {
           decl_fmt_version = meta._format_version,

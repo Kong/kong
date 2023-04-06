@@ -1,36 +1,62 @@
 local meta = require "kong.meta"
 local helpers = require "spec.helpers"
-local reports = require "kong.reports"
 local cjson = require "cjson"
 
 
 describe("reports", function()
-  -- This test case may be run first, it aims to verify behavior of send()
-  -- when the kong.configuration.anonymous_reports is unsetted
-  it("send when kong.configuration.anonymous_reports = false", function ()
-    assert.falsy(reports.send())
+  local reports, bytes, err
+  local port = 8189
+  local opts = { tls = true }
+  before_each(function()
+    package.loaded["kong.reports"] = nil
+    reports = require "kong.reports"
   end)
 
-  describe("send()", function()
+  it("don't send report when anonymous_reports = false", function ()
+    bytes, err = reports.send()
+    assert.is_nil(bytes)
+    assert.equal(err, "disabled")
+  end)
+
+  describe("when anonymous_reports = true, ", function ()
     lazy_setup(function()
-      reports.toggle(true)
+      _G.kong = _G.kong or {}
+      _G.kong.configuration = _G.kong.configuration or {}
+      if not _G.kong.configuration.anonymous_reports then
+        _G.kong.configuration = { anonymous_reports = true }
+      end
     end)
 
     lazy_teardown(function()
-      package.loaded["kong.reports"] = nil
+      _G.kong.configuration.anonymous_reports = nil
+    end)
+
+    it("send reports", function()
+      bytes, err = reports.send()
+      assert.is_nil(bytes)
+      assert.equal(err, "disabled")
+    end)
+  end)
+
+  describe("toggle", function()
+    before_each(function()
+      reports.toggle(true)
     end)
 
     it("sends report over TCP[TLS]", function()
-      local thread = helpers.tcp_server(8189, {tls=true})
+      local thread = helpers.tcp_server(port, opts)
 
-      reports.send("stub", {
+      bytes, err = reports.send("stub", {
         hello = "world",
         foo = "bar",
         baz = function() return "bat" end,
         foobar = function() return { foo = "bar" } end,
         bazbat = { baz = "bat" },
         nilval = function() return nil end,
-      }, "127.0.0.1", 8189)
+      }, "127.0.0.1", port)
+
+      assert.truthy(bytes>0)
+      assert.is_nil(err)
 
       local ok, res = thread:join()
       assert.True(ok)
@@ -52,11 +78,13 @@ describe("reports", function()
     it("doesn't send if not enabled", function()
       reports.toggle(false)
 
-      local thread = helpers.tcp_server(8189, { requests = 1, timeout = 0.1 })
+      local thread = helpers.tcp_server(port, { requests = 1, timeout = 0.1 })
 
-      reports.send({
+      bytes, err = reports.send({
         foo = "bar"
-      }, "127.0.0.1", 8189)
+      }, "127.0.0.1", port)
+      assert.is_nil(bytes)
+      assert.equal(err, "disabled")
 
       local ok, res = thread:join()
       assert.True(ok)
@@ -66,12 +94,14 @@ describe("reports", function()
     it("accepts custom immutable items", function()
       reports.toggle(true)
 
-      local thread = helpers.tcp_server(8189, {tls=true})
+      local thread = helpers.tcp_server(port, opts)
 
       reports.add_immutable_value("imm1", "fooval")
       reports.add_immutable_value("imm2", "barval")
 
-      reports.send("stub", {k1 = "bazval"}, "127.0.0.1", 8189)
+      bytes, err = reports.send("stub", {k1 = "bazval"}, "127.0.0.1", port)
+      assert.truthy(bytes > 0)
+      assert.is_nil(err)
 
       local ok, res = thread:join()
       assert.True(ok)
@@ -85,8 +115,6 @@ describe("reports", function()
     local conf_loader = require "kong.conf_loader"
 
     before_each(function()
-      package.loaded["kong.reports"] = nil
-      reports = require "kong.reports"
       reports.toggle(true)
       reports._create_counter()
     end)
@@ -98,8 +126,8 @@ describe("reports", function()
         }))
         reports.configure_ping(conf)
 
-        local thread = helpers.tcp_server(8189, {tls=true})
-        reports.send_ping("127.0.0.1", 8189)
+        local thread = helpers.tcp_server(port, opts)
+        reports.send_ping("127.0.0.1", port)
 
         local _, res = assert(thread:join())
         assert._matches("cluster_id=123e4567-e89b-12d3-a456-426655440000", res, nil, true)
@@ -113,8 +141,8 @@ describe("reports", function()
         }))
         reports.configure_ping(conf)
 
-        local thread = helpers.tcp_server(8189, {tls=true})
-        reports.send_ping("127.0.0.1", 8189)
+        local thread = helpers.tcp_server(port, opts)
+        reports.send_ping("127.0.0.1", port)
 
         local _, res = assert(thread:join())
         assert._matches("database=postgres", res, nil, true)
@@ -126,8 +154,8 @@ describe("reports", function()
         }))
         reports.configure_ping(conf)
 
-        local thread = helpers.tcp_server(8189, {tls=true})
-        reports.send_ping("127.0.0.1", 8189)
+        local thread = helpers.tcp_server(port, opts)
+        reports.send_ping("127.0.0.1", port)
 
         local _, res = assert(thread:join())
         assert.matches("database=cassandra", res, nil, true)
@@ -139,8 +167,8 @@ describe("reports", function()
         }))
         reports.configure_ping(conf)
 
-        local thread = helpers.tcp_server(8189, {tls=true})
-        reports.send_ping("127.0.0.1", 8189)
+        local thread = helpers.tcp_server(port, opts)
+        reports.send_ping("127.0.0.1", port)
 
         local _, res = assert(thread:join())
         assert.matches("database=off", res, nil, true)
@@ -152,8 +180,8 @@ describe("reports", function()
         local conf = assert(conf_loader(nil))
         reports.configure_ping(conf)
 
-        local thread = helpers.tcp_server(8189, {tls=true})
-        reports.send_ping("127.0.0.1", 8189)
+        local thread = helpers.tcp_server(port, opts)
+        reports.send_ping("127.0.0.1", port)
 
         local _, res = assert(thread:join())
         assert._matches("role=traditional", res, nil, true)
@@ -167,8 +195,8 @@ describe("reports", function()
         }))
         reports.configure_ping(conf)
 
-        local thread = helpers.tcp_server(8189, {tls=true})
-        reports.send_ping("127.0.0.1", 8189)
+        local thread = helpers.tcp_server(port, opts)
+        reports.send_ping("127.0.0.1", port)
 
         local _, res = assert(thread:join())
         assert.matches("role=control_plane", res, nil, true)
@@ -183,8 +211,8 @@ describe("reports", function()
         }))
         reports.configure_ping(conf)
 
-        local thread = helpers.tcp_server(8189, {tls=true})
-        reports.send_ping("127.0.0.1", 8189)
+        local thread = helpers.tcp_server(port, opts)
+        reports.send_ping("127.0.0.1", port)
 
         local _, res = assert(thread:join())
         assert.matches("role=data_plane", res, nil, true)
@@ -196,8 +224,8 @@ describe("reports", function()
         local conf = assert(conf_loader(nil))
         reports.configure_ping(conf)
 
-        local thread = helpers.tcp_server(8189, {tls=true})
-        reports.send_ping("127.0.0.1", 8189)
+        local thread = helpers.tcp_server(port, opts)
+        reports.send_ping("127.0.0.1", port)
 
         local _, res = assert(thread:join())
         assert._matches("kic=false", res, nil, true)
@@ -209,8 +237,8 @@ describe("reports", function()
         }))
         reports.configure_ping(conf)
 
-        local thread = helpers.tcp_server(8189, {tls=true})
-        reports.send_ping("127.0.0.1", 8189)
+        local thread = helpers.tcp_server(port, opts)
+        reports.send_ping("127.0.0.1", port)
 
         local _, res = assert(thread:join())
         assert.matches("kic=true", res, nil, true)
@@ -224,8 +252,8 @@ describe("reports", function()
         }))
         reports.configure_ping(conf)
 
-        local thread = helpers.tcp_server(8189, {tls=true})
-        reports.send_ping("127.0.0.1", 8189)
+        local thread = helpers.tcp_server(port, opts)
+        reports.send_ping("127.0.0.1", port)
 
         local _, res = assert(thread:join())
         assert.matches("_admin=0", res, nil, true)
@@ -237,8 +265,8 @@ describe("reports", function()
         }))
         reports.configure_ping(conf)
 
-        local thread = helpers.tcp_server(8189, {tls=true})
-        reports.send_ping("127.0.0.1", 8189)
+        local thread = helpers.tcp_server(port, opts)
+        reports.send_ping("127.0.0.1", port)
 
         local _, res = assert(thread:join())
         assert.matches("_admin=1", res, nil, true)
@@ -252,8 +280,8 @@ describe("reports", function()
         }))
         reports.configure_ping(conf)
 
-        local thread = helpers.tcp_server(8189, {tls=true})
-        reports.send_ping("127.0.0.1", 8189)
+        local thread = helpers.tcp_server(port, opts)
+        reports.send_ping("127.0.0.1", port)
 
         local _, res = assert(thread:join())
         assert.matches("_proxy=0", res, nil, true)
@@ -265,8 +293,8 @@ describe("reports", function()
         }))
         reports.configure_ping(conf)
 
-        local thread = helpers.tcp_server(8189, {tls=true})
-        reports.send_ping("127.0.0.1", 8189)
+        local thread = helpers.tcp_server(port, opts)
+        reports.send_ping("127.0.0.1", port)
 
         local _, res = assert(thread:join())
         assert.matches("_proxy=1", res, nil, true)
@@ -280,8 +308,8 @@ describe("reports", function()
         }))
         reports.configure_ping(conf)
 
-        local thread = helpers.tcp_server(8189, {tls=true})
-        reports.send_ping("127.0.0.1", 8189)
+        local thread = helpers.tcp_server(port, opts)
+        reports.send_ping("127.0.0.1", port)
 
         local _, res = assert(thread:join())
         assert.matches("_stream=0", res, nil, true)
@@ -293,8 +321,8 @@ describe("reports", function()
         }))
         reports.configure_ping(conf)
 
-        local thread = helpers.tcp_server(8189, {tls=true})
-        reports.send_ping("127.0.0.1", 8189)
+        local thread = helpers.tcp_server(port, opts)
+        reports.send_ping("127.0.0.1", port)
 
         local _, res = assert(thread:join())
         assert.matches("_stream=1", res, nil, true)
@@ -305,8 +333,8 @@ describe("reports", function()
         local conf = assert(conf_loader())
         reports.configure_ping(conf)
 
-        local thread = helpers.tcp_server(8189, {tls=true})
-        reports.send_ping("127.0.0.1", 8189)
+        local thread = helpers.tcp_server(port, opts)
+        reports.send_ping("127.0.0.1", port)
 
         local _, res = assert(thread:join())
         assert.matches("database=" .. helpers.test_conf.database, res, nil, true)
@@ -326,8 +354,6 @@ describe("reports", function()
     end)
 
     before_each(function()
-      package.loaded["kong.reports"] = nil
-      reports = require "kong.reports"
       reports.toggle(true)
       reports._create_counter()
     end)
