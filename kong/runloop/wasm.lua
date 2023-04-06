@@ -571,6 +571,12 @@ function _M.attach(ctx)
     log(ERR, "failed attaching ", chain.label, " filter chain to request: ", err)
     error(err)
   end
+
+  local ok, err = proxy_wasm.start()
+  if not ok then
+    log(ERR, "failed to execute ", chain.label, " filter chain for request: ", err)
+    error(err)
+  end
 end
 
 
