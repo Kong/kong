@@ -267,7 +267,7 @@ describe("Plugin: acme (storage.redis)", function()
       local function prepare_redis_data()
         local redis = require "resty.redis"
         local red = redis:new()
-        red:set_timeouts(1000, 1000, 1000) -- 1 sec
+        red:set_timeouts(3000, 3000, 3000) -- 3 sec
 
         assert(red:connect(helpers.redis_host, helpers.redis_port))
         assert(red:set(dummy_id .. "#http-01", "default"))
