@@ -224,7 +224,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         cyan "--------------------------------------"
         echo
 
-        echo scripts/enterprise_plugin.sh test $plugin || echo "* $plugin" >> .failed
+        scripts/enterprise_plugin.sh test $plugin || echo "* $plugin" >> .failed
     done
 
     if [ -f .failed ]; then
