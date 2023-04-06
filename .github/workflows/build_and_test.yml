@@ -144,7 +144,10 @@ jobs:
         path: .
 
     - name: Extract the artifact contents
-      run: sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
+      run: |
+        sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
+        sudo mkdir -p ${{ env.BUILD_ROOT }}/kong-dev
+        sudo tar -C ${{ env.BUILD_ROOT }}/kong-dev -xzvf artifacts/build.tar.gz
 
     - name: Install Kong dev
       env:
@@ -259,7 +262,10 @@ jobs:
         path: .
 
     - name: Extract the artifact contents
-      run: sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
+      run: |
+        sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
+        sudo mkdir -p ${{ env.BUILD_ROOT }}/kong-dev
+        sudo tar -C ${{ env.BUILD_ROOT }}/kong-dev -xzvf artifacts/build.tar.gz
 
     - name: Install Kong dev
       env:
@@ -385,7 +391,10 @@ jobs:
         path: .
 
     - name: Extract the artifact contents
-      run: sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
+      run: |
+        sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
+        sudo mkdir -p ${{ env.BUILD_ROOT }}/kong-dev
+        sudo tar -C ${{ env.BUILD_ROOT }}/kong-dev -xzvf artifacts/build.tar.gz
 
     - name: Install Kong dev
       env:
@@ -474,7 +483,10 @@ jobs:
         path: .
 
     - name: Extract the artifact contents
-      run: sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
+      run: |
+        sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
+        sudo mkdir -p ${{ env.BUILD_ROOT }}/kong-dev
+        sudo tar -C ${{ env.BUILD_ROOT }}/kong-dev -xzvf artifacts/build.tar.gz
 
     - name: Install Kong dev
       env:
@@ -587,7 +599,10 @@ jobs:
         path: .
 
     - name: Extract the artifact contents
-      run: sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
+      run: |
+        sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
+        sudo mkdir -p ${{ env.BUILD_ROOT }}/kong-dev
+        sudo tar -C ${{ env.BUILD_ROOT }}/kong-dev -xzvf artifacts/build.tar.gz
 
     - name: Install Kong dev
       env:
@@ -667,7 +682,10 @@ jobs:
         path: .
 
     - name: Extract the artifact contents
-      run: sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
+      run: |
+        sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
+        sudo mkdir -p ${{ env.BUILD_ROOT }}/kong-dev
+        sudo tar -C ${{ env.BUILD_ROOT }}/kong-dev -xzvf artifacts/build.tar.gz
 
     - name: Install Kong dev
       env:
