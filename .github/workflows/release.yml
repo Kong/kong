@@ -126,7 +126,7 @@ jobs:
         else
           yum update -y
           yum groupinstall -y 'Development Tools'
-          yum install -y curl-devel expat-devel gettext-devel openssl-devel zlib-devel perl-CPAN perl-devel
+          yum install -y wget zlib-devel openssl-devel curl-devel expat-devel gettext-devel perl-CPAN perl-devel
         fi
         wget https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.30.0.tar.gz
         tar xf git-2.30.0.tar.gz
