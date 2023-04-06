@@ -160,6 +160,13 @@ jobs:
       run: |
         echo "/usr/local/git/bin" >> $GITHUB_PATH
 
+    - name: Debian dependencies
+      if: matrix.image == 'ubuntu:18.04'
+      run: |
+        apt update
+        # dependencies for git
+        apt install -y wget libz-dev libssl-dev libcurl4-gnutls-dev libexpat1-dev
+
     - name: Checkout Kong source code
       uses: actions/checkout@v3
       with:
