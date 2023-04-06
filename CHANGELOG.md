@@ -225,6 +225,8 @@
   [#10528](https://github.com/Kong/kong/pull/10528)
 - Bumped lua-resty-acme from 0.10.1 to 0.11.0
   [#10562](https://github.com/Kong/kong/pull/10562)
+- Bumped lua-resty-events from 0.1.3 to 0.1.4
+  [#10634](https://github.com/Kong/kong/pull/10634)
 
 ## 3.2.0
 
