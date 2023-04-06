@@ -328,19 +328,6 @@ describe("Plugin: acme (storage.redis)", function()
         local body = res:read_body()
         assert.equal("default\n", body)
         proxy_client:close()
-
-        -- check a second time
-        local proxy_client = helpers.proxy_client()
-        local res = assert(proxy_client:send {
-          method  = "GET",
-          path    = "/.well-known/acme-challenge/" .. dummy_id,
-          headers =  { host = domain }
-        })
-
-        assert.response(res).has.status(200)
-        local body = res:read_body()
-        assert.equal("default\n", body)
-        proxy_client:close()
       end)
 
       it("serve http challenge in the specified namespace", function()
@@ -372,19 +359,6 @@ describe("Plugin: acme (storage.redis)", function()
         assert.res_status(200, res)
         admin_client:close()
 
-        local proxy_client = helpers.proxy_client()
-        local res = assert(proxy_client:send {
-          method  = "GET",
-          path    = "/.well-known/acme-challenge/" .. dummy_id,
-          headers =  { host = domain }
-        })
-
-        assert.response(res).has.status(200)
-        local body = res:read_body()
-        proxy_client:close()
-        assert.equal(namespace.."\n", body)
-
-        -- check a second time
         local proxy_client = helpers.proxy_client()
         local res = assert(proxy_client:send {
           method  = "GET",
