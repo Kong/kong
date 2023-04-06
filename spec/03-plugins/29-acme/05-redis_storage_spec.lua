@@ -272,6 +272,7 @@ describe("Plugin: acme (storage.redis)", function()
         assert(red:connect(helpers.redis_host, helpers.redis_port))
         assert(red:set(dummy_id .. "#http-01", "default"))
         assert(red:set(namespace .. dummy_id .. "#http-01", namespace))
+        assert(red:close())
       end
 
       lazy_setup(function()
