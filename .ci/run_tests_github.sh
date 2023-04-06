@@ -196,18 +196,18 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
     rm -f .failed
 
     declare -A plugins_to_test=(
-        ["first"]="forward-proxy application-registration graphql-proxy-cache-advanced graphql-rate-limiting-advanced jq"
-        ["second"]="oauth2-introspection proxy-cache-advanced"
-        ["third"]="mocking tls-handshake-modifier"
-        ["fourth"]="kafka-upstream kafka-log route-by-header statsd-advanced websocket-validator jwt-signer vault-auth"
-        ["fifth"]="openid-connect route-transformer-advanced exit-transformer request-transformer-advanced tls-metadata-headers konnect-application-auth"
-        ["sixth"]="ldap-auth-advanced degraphql canary"
-        ["seventh"]="saml request-validator mtls-auth oas-validation app-dynamics"
-        ["eighth"]="response-transformer-advanced opa datadog-tracing jwe-decrypt"
+        ["first"]="forward-proxy application-registration canary jwe-decrypt websocket-size-limit"
+        ["second"]="mocking proxy-cache-advanced upstream-timeout app-dynamics"
+        ["third"]="jwt-signer kafka-upstream kafka-log statsd-advanced graphql-proxy-cache-advanced websocket-validator"
+        ["fourth"]="openid-connect jq tls-metadata-headers"
+        ["fifth"]="mtls-auth request-validator tls-handshake-modifier route-by-header"
+        ["sixth"]="key-auth-enc request-transformer-advanced saml graphql-rate-limiting-advanced"
+        ["seventh"]="rate-limiting-advanced exit-transformer route-transformer-advanced vault-auth"
+        ["eighth"]="response-transformer-advanced oas-validation datadog-tracing opa konnect-application-auth oauth2-introspection degraphql"
         # TODO: removed the rate-limiting-advanced test after all flakiness has gone
         # Related ticket: https://konghq.atlassian.net/browse/FTI-4929
         # make test-rate-limiting-advanced || echo "* rate-limiting-advanced" >> .failed
-        ["ninth"]="key-auth-enc websocket-size-limit"
+        ["ninth"]="ldap-auth-advanced"
     )
 
     plugins=${plugins_to_test["$TEST_SPLIT"]}
