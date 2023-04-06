@@ -108,9 +108,15 @@ jobs:
       options: --privileged
 
     steps:
+    - name: Early Rpm Setup
+      if: matrix.package == 'rpm'
+      run: |
+        # tar/gzip is needed to restore git cache (if available)
+        yum install -y tar gzip which file zlib-devel
+
     - name: Cache Git
       id: cache-git
-      if: matrix.label == 'centos-7' || matrix.label == 'rhel-7' || matrix.image == 'ubuntu:18.04'
+      if: matrix.package == 'rpm' || matrix.image == 'ubuntu:18.04'
       uses: actions/cache@v3
       with:
         path: /usr/local/git
@@ -118,7 +124,7 @@ jobs:
 
     # el-7 doesn't have git 2.18+, so we need to install it manually
     - name: Install newer Git
-      if: (matrix.label == 'centos-7' || matrix.label == 'rhel-7' || matrix.image == 'ubuntu:18.04') && steps.cache-git.outputs.cache-hit != 'true'
+      if: (matrix.package == 'rpm' || matrix.image == 'ubuntu:18.04') && steps.cache-git.outputs.cache-hit != 'true'
       run: |
         if which apt 2>/dev/null; then
           apt update
@@ -137,14 +143,9 @@ jobs:
         make install
     
     - name: Add Git to PATH
-      if: matrix.label == 'centos-7' || matrix.label == 'rhel-7' || matrix.image == 'ubuntu:18.04'
+      if: matrix.package == 'rpm' || matrix.image == 'ubuntu:18.04'
       run: |
         echo "/usr/local/git/bin" >> $GITHUB_PATH
-
-    - name: Centos dependencies
-      if: matrix.label == 'centos-7' || matrix.label == 'rhel-7'
-      run: |
-        yum install -y which zlib-devel
 
     - name: Debian dependencies
       if: matrix.image == 'ubuntu:18.04'
@@ -152,13 +153,6 @@ jobs:
         apt update
         # dependencies for git
         apt install -y wget libz-dev libssl-dev libcurl4-gnutls-dev libexpat1-dev
-
-    - name: Early Amazon Linux Setup
-      if: startsWith(matrix.label, 'amazonlinux')
-      run: |
-        # tar/gzip is needed to restore git cache (if available)
-        yum check-updates -y || true
-        yum install -y tar gzip which file git zlib-devel
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
