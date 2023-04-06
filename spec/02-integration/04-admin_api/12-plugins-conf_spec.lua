@@ -51,7 +51,7 @@ describe("Plugins conf property" , function()
           assert(bundled_plugins_list[plugin] ~= nil,
                  "Found installed plugin not in bundled list: " ..
                  "'" .. plugin .. "'" ..
-                 ", please add it to the bundled list or NON_BUDLED_PLUGINS accordingly."
+                 ", please add it to the bundled list"
                  )
         end
       end
