@@ -13,6 +13,7 @@ do
   end
 end
 
+-- SAM tool can only run on x86_64/arm64 platform so bypass when aarch64
 if sam.get_os_architecture() ~= "aarch64" then
   for _, strategy in helpers.each_strategy() do
     sam_describe("Plugin: AWS Lambda with SAM local lambda service [#" .. strategy .. "]", function()
