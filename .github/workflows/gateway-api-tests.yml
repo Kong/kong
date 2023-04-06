@@ -1,10 +1,5 @@
 name: gateway-api-tests
 
-# run workflow only for the latest pr commit and cancel others
-concurrency:
-  group: ${{ github.workflow_name }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 on:
   repository_dispatch:
     types: [per-commit-test]
@@ -75,7 +70,7 @@ env:
 jobs:
   gateway_api_tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
     env:
       GW_IMAGE: ${{ inputs.control_plane_image || 'kong/kong-gateway-internal:nightly-ubuntu' }}
       GW_DP_IMAGE: ${{ inputs.control_plane_image || 'kong/kong-gateway-internal:nightly-ubuntu' }}
@@ -164,7 +159,7 @@ jobs:
           echo "git_commit_sha=$(docker inspect $GW_IMAGE | jq -r '.[].Config.Labels["org.opencontainers.image.revision"]')" >> $GITHUB_OUTPUT
 
       - name: Send test results to Slack
-        if: ${{ env.SEND_SLACK_RESULTS == 'true' && always() && github.ref == 'refs/heads/main' }}
+        if: ${{ env.SEND_SLACK_RESULTS == 'true' && always() && github.ref == 'refs/heads/master' }}
         continue-on-error: true
         uses: ./.github/actions/gw-slack-results/
         with:

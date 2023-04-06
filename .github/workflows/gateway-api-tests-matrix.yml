@@ -199,7 +199,7 @@ jobs:
           echo "image_name=$(echo ${{ matrix.gateway_image }} | cut -d '-' -f 4)" >> $GITHUB_OUTPUT
 
       - name: Send test results to Slack
-        if: ${{ env.SEND_SLACK_RESULTS == 'true' && always() && github.ref == 'refs/heads/main' }}
+        if: ${{ env.SEND_SLACK_RESULTS == 'true' && always() && github.ref == 'refs/heads/master' }}
         continue-on-error: true
         uses: ./.github/actions/gw-slack-results/
         with:
@@ -318,7 +318,7 @@ jobs:
           echo "git_commit_sha=$(docker inspect $GW_IMAGE | jq -r '.[].Config.Labels["org.opencontainers.image.revision"]')" >> $GITHUB_OUTPUT
 
       - name: Send test results to Slack
-        if: ${{ env.SEND_SLACK_RESULTS == 'true' && always() && github.ref == 'refs/heads/main' }}
+        if: ${{ env.SEND_SLACK_RESULTS == 'true' && always() && github.ref == 'refs/heads/master' }}
         continue-on-error: true
         uses: ./.github/actions/gw-slack-results/
         with:
@@ -390,7 +390,7 @@ jobs:
         run: npm run test-spec --spec=package-test
 
       - name: Send test results to Slack
-        if: ${{ env.SEND_SLACK_RESULTS == 'true' && always() && github.ref == 'refs/heads/main' }}
+        if: ${{ env.SEND_SLACK_RESULTS == 'true' && always() && github.ref == 'refs/heads/master' }}
         continue-on-error: true
         uses: ./.github/actions/gw-slack-results/
         with:
