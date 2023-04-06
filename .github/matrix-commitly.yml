@@ -1,74 +1,9 @@
 # please see matrix-full.yml for meaning of each field
 build-packages:
-# As a general rule, binaries built on one Linux distro will only
-# work on other Linux distros that are the same age or newer.
-# Therefore, if we want to make binaries that run on most Linux distros,
-# we have to use an old enough distro.
-
-# label: used to distinguish artifacts for later use
-# os: docker image if not ubuntu/debian, otherwise ignored
-# package: package type
-# bazel_args: if set, turn on cross-compilation; make sure its value is a bazel platform
-# check-manifest-file: the manifest file path relative to scripts/explain_manifest to check
-
-# Ubuntu
-- label: ubuntu-18.04
-  os: ubuntu-22.04
-  image: ubuntu:18.04
-  package: deb
-  check-manifest-file: ubuntu-18.04-amd64.txt
-- label: ubuntu-20.04
-  os: ubuntu-20.04
-  package: deb
-  check-manifest-file: ubuntu-20.04-amd64.txt
 - label: ubuntu-22.04
   os: ubuntu-22.04
   package: deb
   check-manifest-file: ubuntu-22.04-amd64.txt
-- label: ubuntu-22.04-arm64
-  os: ubuntu-22.04
-  package: deb
-  bazel_args: --platforms=//:ubuntu-22.04-arm64
-  check-manifest-file: ubuntu-22.04-arm64.txt
-
-# Debian
-- label: debian-10
-  os: ubuntu-22.04
-  image: ubuntu:18.04
-  package: deb
-  check-manifest-file: ubuntu-18.04-amd64.txt
-- label: debian-11
-  os: ubuntu-20.04
-  package: deb
-  check-manifest-file: ubuntu-20.04-amd64.txt
-
-# CentOS
-- label: centos-7
-  os: ubuntu-22.04
-  image: centos:7
-  package: rpm
-  check-manifest-file: el7-amd64.txt
-
-# RHEL
-- label: rhel-7
-  os: ubuntu-22.04
-  image: centos:7
-  package: rpm
-  check-manifest-file: el7-amd64.txt
-
-# Alpine
-- label: alpine
-  os: ubuntu-22.04
-  package: apk
-  bazel_args: --platforms=//:alpine-x86_64
-  check-manifest-file: alpine-amd64.txt
-
-# Amazon Linux
-- label: amazonlinux-2
-  os: ubuntu-22.04
-  image: amazonlinux:2
-  package: rpm
-  check-manifest-file: amazonlinux-2-amd64.txt
 
 build-images:
 - label: ubuntu
