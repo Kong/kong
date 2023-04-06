@@ -41,18 +41,17 @@ local compatible_checkers = {
 
             config_entity["updated_at"] = nil
 
-            updated_entities[name] = true
             has_update = true
-          end
-        end
-      end
 
-      if has_update then
-        for name, _ in pairs(updated_entities) do
-          log_warn_message("contains configuration '" .. name .. ".updated_at'",
-                           "be removed",
-                           dp_version,
-                           log_suffix)
+            if not updated_entities[name] then
+              log_warn_message("contains configuration '" .. name .. ".updated_at'",
+                               "be removed",
+                               dp_version,
+                               log_suffix)
+
+              updated_entities[name] = true
+            end
+          end
         end
       end
 
