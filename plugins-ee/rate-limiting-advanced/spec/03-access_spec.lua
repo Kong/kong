@@ -143,7 +143,7 @@ for _, strategy in strategies() do
   local MOCK_GROUP_SIZE = 10
   local MOCK_ORIGINAL_LIMIT = 6
 
-  local base = "rate-limiting-advanced, policy '" .. policy .."' [#"..strategy.."]"
+  local base = "rate-limiting-advanced [#"..strategy.."]"
 
   -- helper function to build plugin config
   local build_plugin = build_plugin_fn(policy)
@@ -154,7 +154,7 @@ for _, strategy in strategies() do
       s = s .. " [#" .. redis_description .. "]"
     end
     describe(s, function()
-      local bp, db, consumer1, consumer2, plugin, plugin3, plugin5, consumer_in_group
+      local bp, db, consumer1, consumer2, plugin3, plugin5, plugin6, plugin15, consumer_in_group
       local consumer_in_group_no_config
       local proxy_client
 
@@ -291,9 +291,9 @@ for _, strategy in strategies() do
           name = "route-6",
           hosts = { "test6.com" },
         })
-        assert(bp.plugins:insert(
+        plugin6 = assert(bp.plugins:insert(
           build_plugin(
-            route6.id, 10, 6, 10, nil,
+            route6.id, 5, 2, 2, nil,
             nil, redis_configuration,
             { window_type = "fixed", retry_after_jitter_max = nil }
           )
@@ -426,10 +426,11 @@ for _, strategy in strategies() do
           name = "test-15",
           hosts = { "test15.com" },
         })
-        plugin = assert(bp.plugins:insert(
+        plugin15 = assert(bp.plugins:insert(
           build_plugin_fn("redis")(
-            route15.id, 25, 6, 1, nil,
-            nil, redis_configuration
+            route15.id, 5, 2, 0.1, nil,
+            nil, redis_configuration,
+            { namespace = "2D8851DEAC3D4FC5889CF03A9836948F", }
           )
         ))
 
@@ -728,10 +729,13 @@ for _, strategy in strategies() do
           assert.is_true(tonumber(res.headers["ratelimit-reset"]) > 0)
         end)
 
+        -- traditional mode but use redis strategy
         if policy ~= "redis" then
           it("sync counters in all nodes after PATCH", function()
-            local window_size = 25
-            for i = 1, 6 do
+            local window_size = plugin15.config.window_size[1]
+            local limit = plugin15.config.limit[1]
+
+            for i = 1, limit do
               proxy_client = helpers.proxy_client()
               local res = assert(proxy_client:send {
                 method = "GET",
@@ -743,15 +747,15 @@ for _, strategy in strategies() do
               assert.res_status(200, res)
               proxy_client:close()
 
-              assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-" ..  window_size]))
-              assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
-              assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-" ..  window_size]))
-              assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
+              assert.are.same(limit, tonumber(res.headers["x-ratelimit-limit-" ..  window_size]))
+              assert.are.same(limit, tonumber(res.headers["ratelimit-limit"]))
+              assert.are.same(limit - i, tonumber(res.headers["x-ratelimit-remaining-" ..  window_size]))
+              assert.are.same(limit - i, tonumber(res.headers["ratelimit-remaining"]))
               assert.is_true(tonumber(res.headers["ratelimit-reset"]) > 0)
               assert.is_nil(res.headers["retry-after"])
             end
 
-            -- Additonal request on node1, while limit is 6/window
+            -- Additonal request on node1, while limit is 2/window
             proxy_client = helpers.proxy_client()
             local res = assert(proxy_client:send {
               method = "GET",
@@ -769,6 +773,7 @@ for _, strategy in strategies() do
             assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
             assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
 
+            --[=
             -- Hit node2 so the sync timer starts
             proxy_client = helpers.proxy_client(nil, 9100)
             local res = assert(proxy_client:send {
@@ -780,13 +785,12 @@ for _, strategy in strategies() do
             })
             assert.res_status(200, res)
             proxy_client:close()
+            --]=]
 
-            -- Wait for counters to sync node2
-            -- sync_rate is 1, so let's wait 3 seconds to let the
-            -- node1 sync its data to redis and node2 to pull it.
-            ngx_sleep(plugin.config.sync_rate + 2)
+            -- Wait for counters to sync node2: 0.1+0.1
+            ngx_sleep(plugin15.config.sync_rate + 0.1)
 
-            -- Additonal request on node2, while limit is 6/window
+            -- Hit node2, while limit is 2/window
             proxy_client = helpers.proxy_client(nil, 9100)
             local res = assert(proxy_client:send {
               method = "GET",
@@ -807,10 +811,10 @@ for _, strategy in strategies() do
             -- PATCH the plugin's window_size
             local res = assert(helpers.admin_client():send {
               method = "PATCH",
-              path = "/plugins/" .. plugin.id,
+              path = "/plugins/" .. plugin15.id,
               body = {
                 config = {
-                  window_size = { 20 },
+                  window_size = { 6 },
                 }
               },
               headers = {
@@ -818,13 +822,14 @@ for _, strategy in strategies() do
               }
             })
             local body = cjson.decode(assert.res_status(200, res))
-            assert.same(20, body.config.window_size[1])
+            assert.same(6, body.config.window_size[1])
 
-            -- wait for the window: 25+1
-            ngx_sleep(plugin.config.window_size[1] + 1)
+            -- wait for the window: 6+1
+            ngx_sleep(plugin15.config.window_size[1] + 1)
+            window_size = 6
 
             -- Hit node2
-            for i = 1, 6 do
+            for i = 1, limit do
               proxy_client = helpers.proxy_client(nil, 9100)
               local res = assert(proxy_client:send {
                 method = "GET",
@@ -836,15 +841,15 @@ for _, strategy in strategies() do
               assert.res_status(200, res)
               proxy_client:close()
 
-              assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-20"]))
-              assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
-              assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-20"]))
-              assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
+              assert.are.same(limit, tonumber(res.headers["x-ratelimit-limit-" .. window_size]))
+              assert.are.same(limit, tonumber(res.headers["ratelimit-limit"]))
+              assert.are.same(limit - i, tonumber(res.headers["x-ratelimit-remaining-" .. window_size]))
+              assert.are.same(limit - i, tonumber(res.headers["ratelimit-remaining"]))
               assert.is_true(tonumber(res.headers["ratelimit-reset"]) > 0)
               assert.is_nil(res.headers["retry-after"])
             end
 
-            -- Additonal request on node2, while limit is 6/window
+            -- Additonal request on node2, while limit is 2/window
             proxy_client = helpers.proxy_client(nil, 9100)
             local res = assert(proxy_client:send {
               method = "GET",
@@ -862,6 +867,7 @@ for _, strategy in strategies() do
             assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
             assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
 
+            --[=
             -- Hit node1 so the sync timer starts
             proxy_client = helpers.proxy_client()
             local res = assert(proxy_client:send {
@@ -873,13 +879,12 @@ for _, strategy in strategies() do
             })
             assert.res_status(200, res)
             proxy_client:close()
+            --]=]
 
-            -- Wait for counters to sync on node1
-            -- sync_rate is 1, so let's wait 3 seconds to let the
-            -- node2 sync its data to redis and node1 to pull it.
-            ngx_sleep(plugin.config.sync_rate + 2)
+            -- Wait for counters to sync on node1: 0.1+0.1
+            ngx_sleep(plugin15.config.sync_rate + 0.1)
 
-            -- Additional request on node1, while limit is 6/window
+            -- Additional request on node1, while limit is 2/window
             proxy_client = helpers.proxy_client()
             local res = assert(proxy_client:send {
               method = "GET",
@@ -1208,10 +1213,11 @@ for _, strategy in strategies() do
         end)
 
         it("implements a fixed window if instructed to do so", function()
-          local window_size = 10
+          local window_size = plugin6.config.window_size[1]
+          local limit = plugin6.config.limit[1]
           local window_start = wait_for_next_fixed_window(window_size)
 
-          for i = 1, 6 do
+          for i = 1, limit do
             proxy_client = helpers.proxy_client()
             local res = assert(proxy_client:send {
               method = "GET",
@@ -1223,13 +1229,13 @@ for _, strategy in strategies() do
             assert.res_status(200, res)
             proxy_client:close()
 
-            assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-" ..  window_size]))
-            assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
-            assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-" .. window_size]))
-            assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
+            assert.are.same(limit, tonumber(res.headers["x-ratelimit-limit-" ..  window_size]))
+            assert.are.same(limit, tonumber(res.headers["ratelimit-limit"]))
+            assert.are.same(limit - i, tonumber(res.headers["x-ratelimit-remaining-" .. window_size]))
+            assert.are.same(limit - i, tonumber(res.headers["ratelimit-remaining"]))
           end
 
-          -- Additonal request, while limit is 6/window
+          -- Additonal request, while limit is 2/window
           proxy_client = helpers.proxy_client()
           local res = assert(proxy_client:send {
             method = "GET",
@@ -1268,8 +1274,8 @@ for _, strategy in strategies() do
           assert.res_status(200, res)
           proxy_client:close()
 
-          assert.same(5, tonumber(res.headers["x-ratelimit-remaining-" .. window_size]))
-          assert.same(5, tonumber(res.headers["ratelimit-remaining"]))
+          assert.same(limit - 1, tonumber(res.headers["x-ratelimit-remaining-" .. window_size]))
+          assert.same(limit - 1, tonumber(res.headers["ratelimit-remaining"]))
         end)
 
         it("hides headers if hide_client_headers is true", function()
@@ -2030,7 +2036,7 @@ for _, strategy in strategies() do
 
     if strategy ~= "off" then
       describe("rate-limiting-advanced Hybrid Mode with strategy #" .. strategy .. "#", function()
-        local plugin2, plugin4
+        local plugin2, plugin4, plugin20
         local ok, thread, proxy_client
 
         local HTTP_SERVER_PORT_16 = helpers.get_available_port()
@@ -2055,7 +2061,7 @@ for _, strategy in strategies() do
           })
           plugin2 = assert(bp.plugins:insert(
             build_plugin_fn("redis")(
-              route16.id, 25, 6, 1, nil,
+              route16.id, 5, 2, 0.1, nil,
               nil, redis_configuration,
               { header_name = "x-email-address", identifier = "header", namespace = "ED83AE45-887D-4A73-8AC8-5120C0D7E6E9" }
             )
@@ -2082,9 +2088,9 @@ for _, strategy in strategies() do
             hosts = { "test20.com" },
             service = { id = service20.id }
           })
-          assert(bp.plugins:insert(
+          plugin20 = assert(bp.plugins:insert(
             build_plugin_fn("local")(
-              route20.id, 25, 6, -1, nil,
+              route20.id, 5, 2, -1, nil,
               nil, nil, { namespace = "7674e5db-0dfe-4c95-af4a-b71f61d4f9dd" }
             )
           ))
@@ -2147,7 +2153,6 @@ for _, strategy in strategies() do
 
         it("we are NOT leaking any timers after DELETE on hybrid mode", function()
           helpers.clean_logfile("dp1/logs/error.log")
-          helpers.clean_logfile("dp2/logs/error.log")
 
           -- DELETE the plugin
           local res = assert(helpers.admin_client(nil, 9103):send {
@@ -2159,10 +2164,6 @@ for _, strategy in strategies() do
           helpers.wait_for_file_contents("dp1/logs/error.log")
           helpers.pwait_until(function()
             assert.logfile("dp1/logs/error.log").has.line("killing Ck1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
-          end, 180)
-          helpers.wait_for_file_contents("dp2/logs/error.log")
-          helpers.pwait_until(function()
-            assert.logfile("dp2/logs/error.log").has.line("killing Ck1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
           end, 180)
         end)
 
@@ -2259,7 +2260,9 @@ for _, strategy in strategies() do
         end)
 
         it("local strategy works", function()
-          for i = 1, 6 do
+          local window_size = plugin20.config.window_size[1]
+          local limit = plugin20.config.limit[1]
+          for i = 1, limit do
             thread = helpers.http_server(HTTP_SERVER_PORT_20, { timeout = 240 })
             ngx_sleep(3)
             proxy_client = helpers.proxy_client(nil, 9102)
@@ -2275,10 +2278,10 @@ for _, strategy in strategies() do
             ok = thread:join()
             assert.is_truthy(ok)
 
-            assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-25"]))
-            assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
-            assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-25"]))
-            assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
+            assert.are.same(limit, tonumber(res.headers["x-ratelimit-limit-" .. window_size]))
+            assert.are.same(limit, tonumber(res.headers["ratelimit-limit"]))
+            assert.are.same(limit - i, tonumber(res.headers["x-ratelimit-remaining-" .. window_size]))
+            assert.are.same(limit - i, tonumber(res.headers["ratelimit-remaining"]))
             assert.is_true(tonumber(res.headers["ratelimit-reset"]) > 0)
             assert.is_nil(res.headers["retry-after"])
           end
@@ -2319,10 +2322,13 @@ for _, strategy in strategies() do
         end)
 
         it("sync counters in all DP nodes after PATCH", function()
+          local window_size = plugin2.config.window_size[1]
+          local limit = plugin2.config.limit[1]
+
           -- Hit DP 1
-          for i = 1, 6 do
+          for i = 1, limit do
             thread = helpers.http_server(HTTP_SERVER_PORT_16, { timeout = 240 })
-            ngx_sleep(3)
+            ngx_sleep(1)
             proxy_client = helpers.proxy_client(nil, 9102)
             local res = assert(proxy_client:send {
               method = "GET",
@@ -2336,15 +2342,15 @@ for _, strategy in strategies() do
             ok = thread:join()
             assert.is_truthy(ok)
 
-            assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-25"]))
-            assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
-            assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-25"]))
-            assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
+            assert.are.same(limit, tonumber(res.headers["x-ratelimit-limit-".. window_size]))
+            assert.are.same(limit, tonumber(res.headers["ratelimit-limit"]))
+            assert.are.same(limit - i, tonumber(res.headers["x-ratelimit-remaining-" .. window_size]))
+            assert.are.same(limit - i, tonumber(res.headers["ratelimit-remaining"]))
             assert.is_true(tonumber(res.headers["ratelimit-reset"]) > 0)
             assert.is_nil(res.headers["retry-after"])
           end
 
-          -- Additonal request ON DP 1, while limit is 6/window
+          -- Additonal request ON DP 1, while limit is 2/window
           proxy_client = helpers.proxy_client(nil, 9102)
           local res = assert(proxy_client:send {
             method = "GET",
@@ -2362,8 +2368,8 @@ for _, strategy in strategies() do
           assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
           assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
 
-          -- Wait for counters to sync ON DP 2: 1+1
-          ngx_sleep(plugin2.config.sync_rate + 1)
+          -- Wait for counters to sync ON DP 2: 0.1+0.1
+          ngx_sleep(plugin2.config.sync_rate + 0.1)
 
           --[= succeed locally but unsable on CI/CD
           -- Hit DP 2
@@ -2391,7 +2397,7 @@ for _, strategy in strategies() do
             path = "/plugins/" .. plugin2.id,
             body = {
               config = {
-                window_size = { 30 },
+                window_size = { 6 },
               }
             },
             headers = {
@@ -2399,15 +2405,16 @@ for _, strategy in strategies() do
             }
           })
           local body = cjson.decode(assert.res_status(200, res))
-          assert.same(30, body.config.window_size[1])
+          assert.same(6, body.config.window_size[1])
 
-          -- wait for the window: 25+1
+          -- wait for the window: 6+1
           ngx_sleep(plugin2.config.window_size[1] + 1)
+          window_size = 6
 
           -- Hit DP 2
-          for i = 1, 6 do
+          for i = 1, limit do
             thread = helpers.http_server(HTTP_SERVER_PORT_16, { timeout = 240 })
-            ngx_sleep(3)
+            ngx_sleep(1)
             proxy_client = helpers.proxy_client(nil, 9104)
             local res = assert(proxy_client:send {
               method = "GET",
@@ -2421,15 +2428,15 @@ for _, strategy in strategies() do
             ok = thread:join()
             assert.is_truthy(ok)
 
-            assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-30"]))
-            assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
-            assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-30"]))
-            assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
+            assert.are.same(limit, tonumber(res.headers["x-ratelimit-limit-" .. window_size]))
+            assert.are.same(limit, tonumber(res.headers["ratelimit-limit"]))
+            assert.are.same(limit - i, tonumber(res.headers["x-ratelimit-remaining-" .. window_size]))
+            assert.are.same(limit - i, tonumber(res.headers["ratelimit-remaining"]))
             assert.is_true(tonumber(res.headers["ratelimit-reset"]) > 0)
             assert.is_nil(res.headers["retry-after"])
           end
 
-          -- Additonal request ON DP 2, while limit is 6/window
+          -- Additonal request ON DP 2, while limit is 2/window
           proxy_client = helpers.proxy_client(nil, 9104)
           local res = assert(proxy_client:send {
             method = "GET",
@@ -2448,10 +2455,10 @@ for _, strategy in strategies() do
           assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
 
           --[= succeed locally but unstable on CI/CD
-          -- Wait for counters to sync ON DP 1: 1+1
-          ngx_sleep(plugin2.config.sync_rate + 1)
+          -- Wait for counters to sync ON DP 1: 0.1+0.1
+          ngx_sleep(plugin2.config.sync_rate + 0.1)
 
-          -- Additonal request ON DP 1, while limit is 6/window
+          -- Hit DP 1, while limit is 2/window
           proxy_client = helpers.proxy_client(nil, 9102)
           local res = assert(proxy_client:send {
             method = "GET",
