@@ -23,11 +23,20 @@ deactivate () {
     unset KONG_VENV
     unset _OLD_KONG_VENV_PATH _OLD_KONG_VENV_PS1
     unset ROCKS_CONFIG ROCKS_ROOT LUAROCKS_CONFIG LUA_PATH LUA_CPATH KONG_PREFIX LIBRARY_PREFIX OPENSSL_DIR
+
+    type -t stop_services >/dev/null && stop_services
+
     unset -f deactivate
+    unset -f start_services
+}
+
+start_services () {
+    source $workspace_path/scripts/dependency_services/up.sh
+    # stop_services is defined by the script above
 }
 
 # actually set env vars
-. $KONG_VENV/venv/lib/venv-commons
+. ${KONG_VENV}-venv/lib/venv-commons
 
 # set shell prompt
 if [ -z "${KONG_VENV_DISABLE_PROMPT-}" ] ; then

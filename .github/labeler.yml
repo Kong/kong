@@ -121,10 +121,6 @@ plugins/loggly:
 plugins/oauth2:
 - kong/plugins/oauth2/**/*
 
-plugins/serverless-functions:
-- kong/plugins/post-function/**/*
-- kong/plugins/pre-function/**/*
-
 plugins/prometheus:
 - kong/plugins/prometheus/**/*
 
@@ -151,6 +147,10 @@ plugins/response-transformer:
 
 plugins/session:
 - kong/plugins/session/**/*
+
+plugins/serverless-functions:
+- kong/plugins/post-function/**/*
+- kong/plugins/pre-function/**/*
 
 plugins/statsd:
 - kong/plugins/statsd/**/*

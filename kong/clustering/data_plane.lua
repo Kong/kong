@@ -124,12 +124,24 @@ function _M:communicate(premature)
     return
   end
 
+  local labels do
+    if kong.configuration.cluster_dp_labels then
+      labels = {}
+      for _, lab in ipairs(kong.configuration.cluster_dp_labels) do
+        local del = lab:find(":", 1, true)
+        labels[lab:sub(1, del - 1)] = lab:sub(del + 1)
+      end
+    end
+  end
+
   -- connection established
-  -- first, send out the plugin list to CP so it can make decision on whether
-  -- sync will be allowed later
+  -- first, send out the plugin list and DP labels to CP
+  -- The CP will make the decision on whether sync will be allowed
+  -- based no the received information
   local _
   _, err = c:send_binary(cjson_encode({ type = "basic_info",
-                                        plugins = self.plugins_list, }))
+                                        plugins = self.plugins_list,
+                                        labels = labels, }))
   if err then
     ngx_log(ngx_ERR, _log_prefix, "unable to send basic information to control plane: ", uri,
                      " err: ", err, " (retrying after ", reconnection_delay, " seconds)", log_suffix)

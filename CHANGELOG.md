@@ -69,6 +69,15 @@
 
 ## Unreleased
 
+### Breaking Changes
+
+#### Plugins
+
+- **Serverless Functions**: `kong.cache` now points to a cache instance that is dedicated to the
+  Serverless Functions plugins: it does not provide access to the global kong cache. Access to
+  certain fields in kong.configuration has also been restricted.
+  [#10417](https://github.com/Kong/kong/pull/10417)
+
 ### Additions
 
 #### Core
@@ -80,6 +89,22 @@
   [#10400](https://github.com/Kong/kong/pull/10400)
 - Allow configuring custom error templates
   [#10374](https://github.com/Kong/kong/pull/10374)
+- The maximum number of request headers, response headers, uri args, and post args that are
+  parsed by default can now be configured with a new configuration parameters:
+  `lua_max_req_headers`, `lua_max_resp_headers`, `lua_max_uri_args` and `lua_max_post_args`
+  [#10443](https://github.com/Kong/kong/pull/10443)
+- Allow configuring Labels for data planes to provide metadata information.
+  Labels are only compatible with hybrid mode deployments with Kong Konnect (SaaS)
+  [#10471](https://github.com/Kong/kong/pull/10471)
+- Add Postgres triggers on the core entites and entities in bundled plugins to delete the
+  expired rows in an efficient and timely manner.
+  [#10389](https://github.com/Kong/kong/pull/10389)
+- Support for configurable Node IDs
+  [#10385](https://github.com/Kong/kong/pull/10385)
+- Request and response buffering options are now enabled for incoming HTTP 2.0 requests too.
+  Thanks [@PidgeyBE](https://github.com/PidgeyBE) for contributing this change.
+  [#10595](https://github.com/Kong/kong/pull/10595)
+  [#10204](https://github.com/Kong/kong/pull/10204)
 
 #### Admin API
 
@@ -95,6 +120,21 @@
   [#9746](https://github.com/Kong/kong/pull/9746)
 - **Proxy-Cache**: add `ignore_uri_case` to configuring cache-key uri to be handled as lowercase
   [#10453](https://github.com/Kong/kong/pull/10453)
+- **HTTP-Log**: add `application/json; charset=utf-8` option for the `Content-Type` header
+  in the http-log plugin, for log collectors that require that character set declaration.
+  [#10533](https://github.com/Kong/kong/pull/10533)
+- **DataDog**: supports value of `host` to be referenceable.
+  [#10484](https://github.com/Kong/kong/pull/10484)
+- **Zipkin&Opentelemetry**: convert traceid in http response headers to hex format
+  [#10534](https://github.com/Kong/kong/pull/10534)
+- **ACME**: acme plugin now supports configuring `namespace` for redis storage
+  which is default to empty string for backward compatibility.
+  [#10562](https://github.com/Kong/kong/pull/10562)
+
+#### PDK
+
+- PDK now supports getting plugins' ID with `kong.plugin.get_id`.
+  [#9903](https://github.com/Kong/kong/pull/9903)
 
 ### Fixes
 
@@ -113,11 +153,15 @@
 - Fix an issue where balancer passive healthcheck would use wrong status code when kong changes status code
   from upstream in `header_filter` phase.
   [#10325](https://github.com/Kong/kong/pull/10325)
+  [#10592](https://github.com/Kong/kong/pull/10592)
 - Fix an issue where schema validations failing in a nested record did not propagate the error correctly.
   [#10449](https://github.com/Kong/kong/pull/10449)
 - Fixed an issue where dangling Unix sockets would prevent Kong from restarting in
   Docker containers if it was not cleanly stopped.
   [#10468](https://github.com/Kong/kong/pull/10468)
+- Fix an issue where sorting function for traditional router sources/destinations lead to "invalid order
+  function for sorting" error.
+  [#10514](https://github.com/Kong/kong/pull/10514)
 
 #### Admin API
 
@@ -125,8 +169,18 @@
   [#10475](https://github.com/Kong/kong/pull/10475)
 
 #### Plugins
+- **Request-Transformer**: fix an issue where requests would intermittently
+  be proxied with incorrect query parameters.
+  [10539](https://github.com/Kong/kong/pull/10539)
+- **Request Transformer**: honor value of untrusted_lua configuration parameter
+  [#10327](https://github.com/Kong/kong/pull/10327)
 - **OAuth2**: OAuth2 token was being cached to nil while access to the wrong service first.
-  [#10522](https://github.com/Kong/kong/pull/10522)
+  [#10522](https://github.com/Kong/kong/pull/10522)  
+
+#### PDK
+
+- Fixed an issue for tracing PDK where sample rate does not work.
+  [#10485](https://github.com/Kong/kong/pull/10485)
 
 ### Changed
 
@@ -136,6 +190,11 @@
   [#10405](https://github.com/Kong/kong/pull/10405)
 - Postgres TTL cleanup timer now runs a batch delete loop on each ttl enabled table with a number of 50.000 rows per batch.
   [#10407](https://github.com/Kong/kong/pull/10407)
+- Postgres TTL cleanup timer now runs every 5 minutes instead of every 60 seconds.
+  [#10389](https://github.com/Kong/kong/pull/10389)
+- Postgres TTL cleanup timer now deletes expired rows based on database server-side timestamp to avoid potential
+  problems caused by the difference of clock time between Kong and database server.
+  [#10389](https://github.com/Kong/kong/pull/10389)
 
 #### PDK
 
@@ -162,6 +221,14 @@
 - Bumped lua-resty-openssl from 0.8.17 to 0.8.20
   [#10463](https://github.com/Kong/kong/pull/10463)
   [#10476](https://github.com/Kong/kong/pull/10476)
+- Bumped lua-resty-http from 0.17.0.beta.1 to 0.17.1
+  [#10547](https://github.com/Kong/kong/pull/10547)
+- Bumped LuaSec from 1.2.0 to 1.3.1
+  [#10528](https://github.com/Kong/kong/pull/10528)
+- Bumped lua-resty-acme from 0.10.1 to 0.11.0
+  [#10562](https://github.com/Kong/kong/pull/10562)
+- Bumped lua-resty-events from 0.1.3 to 0.1.4
+  [#10634](https://github.com/Kong/kong/pull/10634)
 
 ## 3.2.0
 
@@ -235,9 +302,11 @@
 
 #### Admin API
 
-- In dbless mode, `/config` API endpoint can now flatten all schema validation
-  errors to a single array via the optional `flatten_errors` query parameter.
+- In dbless mode, `/config` API endpoint can now flatten entity-related schema
+  validation errors to a single array via the optional `flatten_errors` query
+  parameter. Non-entity errors remain unchanged in this mode.
   [#10161](https://github.com/Kong/kong/pull/10161)
+  [#10256](https://github.com/Kong/kong/pull/10256)
 
 #### PDK
 

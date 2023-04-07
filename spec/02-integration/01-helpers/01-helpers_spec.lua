@@ -1,5 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
+local spy = require "luassert.spy"
 
 
 for _, strategy in helpers.each_strategy() do
@@ -101,16 +102,14 @@ for _, strategy in helpers.each_strategy() do
           assert(helpers.restart_kong(env))
 
           -- ensure we can make at least one successful request after restarting
-          helpers.wait_until(function()
-            -- helpers.proxy_client() will throw an error if connect() fails,
-            -- so we need to wrap the whole thing in pcall
-            return pcall(function()
+          assert.eventually(function()
               local httpc = helpers.proxy_client(1000, 15555)
               local res = httpc:get("/")
-              assert(res.status == 200)
+              res:read_body()
               httpc:close()
+              assert.res_status(200, res)
             end)
-          end)
+            .has_no_error("Kong responds to proxy requests after restart")
         end
 
         before_each(function()
@@ -589,6 +588,276 @@ for _, strategy in helpers.each_strategy() do
 
     end)
 
+    describe("eventually()", function()
+      local function returns(v)
+        return function()
+          return v
+        end
+      end
+
+      local function raises(e)
+        return function()
+          error(e)
+        end
+      end
+
+      local function noop() end
+
+      local function after_n(n, callback, before)
+        local i = 0
+        before = before or noop
+
+        return function()
+          i = i + 1
+
+          if i > n then
+            return callback()
+          end
+
+          return before()
+        end
+      end
+
+      -- returns a value on the nth time the function is called
+      -- otherwise, returns pre_n
+      local function return_after_n(n, value, pre_n)
+        return after_n(n, returns(value), returns(pre_n))
+      end
+
+      --- raise an error until the function is called n times
+      local function raise_for_n(n)
+        return after_n(n, noop, raises("not yet"))
+      end
+
+      --- raise an error until the function is called n times
+      local function raise_after(n)
+        return after_n(n, raises("done"), noop)
+      end
+
+      local function new_timer()
+        local start
+        local timer = {}
+        timer.start = function()
+          ngx.update_time()
+          start = ngx.now()
+          return timer
+        end
+
+        timer.elapsed = function()
+          ngx.update_time()
+          return ngx.now() - start
+        end
+
+        return timer
+      end
+
+      it("calls a function until a condition is met", function()
+        assert.has_no_error(function()
+          assert.eventually(return_after_n(10, true))
+          .is_truthy()
+        end)
+      end)
+
+      it("returns on the first success", function()
+        local fn = spy.new(returns(true))
+
+        assert.has_no_error(function()
+          assert.eventually(fn)
+          .is_truthy()
+        end)
+
+        assert.spy(fn).was.called(1)
+
+
+        fn = spy.new(return_after_n(5, true, nil))
+
+        assert.has_no_error(function()
+          assert.eventually(fn)
+          .is_truthy()
+        end)
+
+        assert.spy(fn).was.called(6)
+      end)
+
+      it("gives up after a timeout", function()
+        local timer = new_timer().start()
+
+        local timeout = 0.5
+        local sleep = timeout / 10
+
+        assert.has_error(function()
+          assert.eventually(function()
+            ngx.sleep(sleep)
+          end)
+          .with_timeout(timeout)
+          .is_truthy()
+        end)
+
+        assert.near(timeout, timer.elapsed(), 0.1)
+      end)
+
+      describe("max_tries", function()
+        it("can limit the number of tries until giving up", function()
+          local n = 10
+          local fn = spy.new(return_after_n(n, true))
+
+          assert.has_error(function()
+            assert.eventually(fn)
+              .with_max_tries(n)
+              .is_truthy()
+          end)
+
+          assert.spy(fn).was.called(n)
+        end)
+      end)
+
+      describe("ignore_exceptions", function()
+        it("causes raised errors to be treated as a normal failure", function()
+          local maybe_raise = raise_for_n(2)
+          local eventually_succeed = return_after_n(3, true)
+
+          local fn = spy.new(function()
+            maybe_raise()
+            return eventually_succeed()
+          end)
+
+          assert.has_no_error(function()
+            assert.eventually(fn)
+              .ignore_exceptions(true)
+              .is_truthy()
+          end)
+
+          assert.spy(fn).was.called(6)
+        end)
+
+        it("is turned off by default", function()
+          local maybe_raise = raise_for_n(5)
+          local eventually_succeed = return_after_n(3, true)
+
+          local fn = spy.new(function()
+            maybe_raise()
+            return eventually_succeed()
+          end)
+
+          assert.has_error(function()
+            assert.eventually(fn)
+              .is_truthy()
+          end)
+
+          assert.spy(fn).was.called(1)
+        end)
+      end)
+
+      describe("conditions", function()
+        it("is_truthy() requires a truthy return value", function()
+          assert.has_no_error(function()
+            assert.eventually(returns("yup"))
+            .is_truthy()
+          end)
+
+          -- it's common knowledge that null is truthy, but let's
+          -- test it anyways
+          assert.has_no_error(function()
+            assert.eventually(returns(ngx.null))
+            .is_truthy()
+          end)
+
+          assert.has_error(function()
+            assert.eventually(returns(false))
+            .with_timeout(0.001)
+            .is_truthy()
+          end)
+
+          assert.has_error(function()
+            assert.eventually(returns(nil))
+            .with_timeout(0.001)
+            .is_truthy()
+          end)
+        end)
+
+        it("is_falsy() requires a falsy return value", function()
+          assert.has_no_error(function()
+            assert.eventually(returns(nil))
+            .is_falsy()
+          end)
+
+          assert.has_no_error(function()
+            assert.eventually(returns(false))
+            .is_falsy()
+          end)
+
+          assert.has_error(function()
+            assert.eventually(returns(true))
+            .with_timeout(0.001)
+            .is_falsy()
+          end)
+
+          assert.has_error(function()
+            assert.eventually(returns("yup"))
+            .with_timeout(0.001)
+            .is_falsy()
+          end)
+
+          -- it's common knowledge that null is truthy, but let's
+          -- test it anyways
+          assert.has_error(function()
+            assert.eventually(returns(ngx.null))
+            .with_timeout(0.001)
+            .is_falsy()
+          end)
+        end)
+
+        it("has_no_error() requires the function not to raise an error()", function()
+          assert.has_no_error(function()
+            assert.eventually(returns(true))
+            .has_no_error()
+          end)
+
+          assert.has_no_error(function()
+            -- note: raise_until() does not return any value in the success case
+            assert.eventually(raise_for_n(5))
+            .has_no_error()
+          end)
+
+          assert.has_error(function()
+            assert.eventually(error)
+            .with_timeout(0.001)
+            .has_no_error()
+          end)
+
+          assert.has_error(function()
+            assert.eventually(error)
+            .with_timeout(0.001)
+            .has_no_error()
+          end)
+        end)
+
+        it("has_error() requires the function to raise an error()", function()
+          assert.has_no_error(function()
+            assert.eventually(error)
+            .has_error()
+          end)
+
+          assert.has_no_error(function()
+            assert.eventually(raise_after(5))
+            .has_error()
+          end)
+
+          assert.has_error(function()
+            assert.eventually(returns(true))
+            .with_timeout(0.001)
+            .has_error()
+          end)
+
+          assert.has_error(function()
+            assert.eventually(returns(false))
+            .with_timeout(0.001)
+            .has_error()
+          end)
+        end)
+      end)
+    end)
+
   end)
 end
 
@@ -602,7 +871,7 @@ describe("helpers: utilities", function()
   end)
 
   describe("wait_until()", function()
-    it("does not errors out if thing happens", function()
+    it("does not raise an error when the function returns truth-y", function()
       assert.has_no_error(function()
         local i = 0
         helpers.wait_until(function()
@@ -611,19 +880,48 @@ describe("helpers: utilities", function()
         end, 3)
       end)
     end)
-    it("errors out after delay", function()
+
+    it("raises an error if the function does not return truth-y within the timeout", function()
       assert.error_matches(function()
         helpers.wait_until(function()
           return false, "thing still not done"
         end, 1)
-      end, "timeout: thing still not done")
+      end, "timed out")
     end)
-    it("reports errors in test function", function()
-      assert.error_matches(function()
+
+    it("fails when test function raises an error()", function()
+      local e = assert.has_error(function()
         helpers.wait_until(function()
-          assert.equal("foo", "bar")
+          error("oops")
         end, 1)
-      end, "Expected objects to be equal.", nil, true)
+      end)
+      assert.is_string(e)
+      assert.matches("oops", e)
+    end)
+
+    it("fails when test function raised an assertion error", function()
+      assert.has_error(function()
+        helpers.wait_until(function()
+          assert.is_true(false)
+        end, 1)
+      end)
+    end)
+  end)
+
+  describe("pwait_until()", function()
+    it("succeeds when a function does not raise an error()", function()
+      assert.has_no_error(function()
+        local i = 0
+        helpers.pwait_until(function()
+          i = i + 1
+
+          if i < 5 then
+            error("i is less than 5")
+          end
+
+          assert.is_true(i > 6)
+        end, 1)
+      end)
     end)
   end)
 
@@ -669,11 +967,14 @@ describe("helpers: utilities", function()
       assert.truthy(ok, "timer raised an error: " .. tostring(res))
       assert.equals("test", res)
 
+      -- allow for some jitter
+      timeout = timeout * 1.25
+
       assert.truthy(duration <= timeout,
                     "expected to finish in <" .. tostring(timeout) .. "s" ..
                     " but took " .. tostring(duration) ..  "s")
 
-      assert.truthy(duration > delay,
+      assert.truthy(duration >= delay,
                     "expected to finish in >=" .. tostring(delay) .. "s" ..
                     " but took " .. tostring(duration) ..  "s")
     end)

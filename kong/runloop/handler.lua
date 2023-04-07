@@ -1280,18 +1280,16 @@ return {
           return exec("@grpc")
         end
 
-        if protocol_version == 1.1 then
-          if route.request_buffering == false then
-            if route.response_buffering == false then
-              return exec("@unbuffered")
-            end
-
-            return exec("@unbuffered_request")
-          end
-
+        if route.request_buffering == false then
           if route.response_buffering == false then
-            return exec("@unbuffered_response")
+            return exec("@unbuffered")
           end
+
+          return exec("@unbuffered_request")
+        end
+
+        if route.response_buffering == false then
+          return exec("@unbuffered_response")
         end
       end
     end,
@@ -1514,7 +1512,7 @@ return {
         -- https://nginx.org/en/docs/http/ngx_http_upstream_module.html#variables
         -- because of the way of Nginx do the upstream_status variable, it may be
         -- a string or a number, so we need to parse it to get the status
-        local status = tonumber(sub(var.upstream_status or "", -3)) or ngx.status
+        local status = tonumber(ctx.buffered_status) or tonumber(sub(var.upstream_status or "", -3)) or ngx.status
         if status == 504 then
           balancer_data.balancer.report_timeout(balancer_data.balancer_handle)
         else

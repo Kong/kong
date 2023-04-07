@@ -139,7 +139,7 @@
   - libc.so.6
   Rpath     : /usr/local/kong/lib
   Version Requirement:
-  - libc.so.6 (GLIBC_2.2.5)
+  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5)
   - libcrypto.so.1.1 (OPENSSL_1_1_0)
   - libssl.so.1.1 (OPENSSL_1_1_0, OPENSSL_1_1_1)
 
@@ -217,4 +217,6 @@
   - lua-resty-events
   - lua-resty-lmdb
   OpenSSL   : OpenSSL 1.1.1t  7 Feb 2023
+  DWARF     : True
+  DWARF - ngx_http_request_t related DWARF DIEs: True
 

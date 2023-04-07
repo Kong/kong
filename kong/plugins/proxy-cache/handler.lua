@@ -406,6 +406,7 @@ function ProxyCacheHandler:header_filter(conf)
 
   -- if this is a cacheable request, gather the headers and mark it so
   if cacheable_response(conf, cc) then
+    -- TODO: should this use the kong.conf configured limit?
     proxy_cache.res_headers = resp_get_headers(0, true)
     proxy_cache.res_ttl = conf.cache_control and resource_ttl(cc) or conf.cache_ttl
 

@@ -21,16 +21,15 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
+env:
+  BUILD_ROOT: ${{ github.workspace }}/bazel-bin/build
+
 jobs:
   build:
     name: Build dependencies
     runs-on: ubuntu-22.04
 
     steps:
-    - name: Set environment variables
-      run: |
-          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
-
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
@@ -39,8 +38,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: |
-          ${{ env.INSTALL_ROOT }}
-          ${{ env.INSTALL_ROOT }}-venv.sh
+          ${{ env.BUILD_ROOT }}
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Install packages
@@ -50,9 +48,10 @@ jobs:
     - name: Build Kong
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
-        bazel build //build:kong --verbose_failures
-        export PATH="$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$PATH"
-        chmod +rw -R $INSTALL_ROOT
+        make build-kong
+        BUILD_PREFIX=$BUILD_ROOT/kong-dev
+        export PATH="$BUILD_PREFIX/bin:$BUILD_PREFIX/openresty/nginx/sbin:$BUILD_PREFIX/openresty/bin:$PATH"
+        chmod +rw -R $BUILD_PREFIX
         nginx -V
         ldd $(which nginx)
         luarocks
@@ -64,17 +63,6 @@ jobs:
         name: bazel-outputs
         path: |
           bazel-out/_tmp/actions
-
-    - name: Checkout go-pluginserver
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-      uses: actions/checkout@v3
-      with:
-        repository: Kong/go-pluginserver
-        path: go-pluginserver
-
-    - name: Add to Path
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
 
     - name: Build Dev Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
@@ -98,10 +86,6 @@ jobs:
         options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
 
     steps:
-    - name: Set environment variables
-      run: |
-        echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
-
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
@@ -110,23 +94,22 @@ jobs:
       uses: actions/cache@v3
       with:
         path: |
-          ${{ env.INSTALL_ROOT }}
-          ${{ env.INSTALL_ROOT }}-venv.sh
+          ${{ env.BUILD_ROOT }}
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Check test-helpers doc generation
       run: |
-          source ${{ env.INSTALL_ROOT }}-venv.sh
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           pushd ./spec && ldoc .
 
     - name: Check autodoc generation
       run: |
-          source ${{ env.INSTALL_ROOT }}-venv.sh
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           scripts/autodoc
 
     - name: Check Admin API definition generation
       run: |
-          source ${{ env.INSTALL_ROOT }}-venv.sh
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           scripts/gen-admin-api-def.sh
 
     - name: Lint Lua code
@@ -135,19 +118,22 @@ jobs:
 
     - name: Validate rockspec file
       run: |
-          source ${{ env.INSTALL_ROOT }}-venv.sh
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           scripts/validate-rockspec
 
     - name: Check spec file misspelling
       run: |
           scripts/check_spec_files_spelling.sh
 
+    - name: Check labeler configuration
+      run: scripts/check-labeler.pl .github/labeler.yml
+
     - name: Unit tests
       env:
         KONG_TEST_PG_DATABASE: kong
         KONG_TEST_PG_USER: kong
       run: |
-          source ${{ env.INSTALL_ROOT }}-venv.sh
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           bin/busted -v -o htest spec/01-unit
 
   integration-tests-postgres:
@@ -192,10 +178,6 @@ jobs:
           - 9411:9411
 
     steps:
-    - name: Set environment variables
-      run: |
-          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
-
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
@@ -204,8 +186,8 @@ jobs:
       uses: actions/cache@v3
       with:
         path: |
-          ${{ env.INSTALL_ROOT }}
-          ${{ env.INSTALL_ROOT }}-venv.sh
+          ${{ env.BUILD_ROOT }}
+
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Add gRPC test host names
@@ -248,7 +230,7 @@ jobs:
         TEST_SPLIT: ${{ matrix.split }}
       run: |
           make dev # required to install other dependencies like bin/grpcurl
-          source ${{ env.INSTALL_ROOT }}-venv.sh
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           .ci/run_tests.sh
 
   integration-tests-dbless:
@@ -264,10 +246,6 @@ jobs:
           - 15003:9001
 
     steps:
-    - name: Set environment variables
-      run: |
-          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
-
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
@@ -276,8 +254,8 @@ jobs:
       uses: actions/cache@v3
       with:
         path: |
-          ${{ env.INSTALL_ROOT }}
-          ${{ env.INSTALL_ROOT }}-venv.sh
+          ${{ env.BUILD_ROOT }}
+
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Add gRPC test host names
@@ -310,7 +288,7 @@ jobs:
         TEST_SUITE: dbless
       run: |
           make dev # required to install other dependencies like bin/grpcurl
-          source ${{ env.INSTALL_ROOT }}-venv.sh
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           .ci/run_tests.sh
 
   integration-tests-cassandra:
@@ -355,10 +333,6 @@ jobs:
           - 9411:9411
 
     steps:
-    - name: Set environment variables
-      run: |
-          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
-
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
@@ -367,8 +341,8 @@ jobs:
       uses: actions/cache@v3
       with:
         path: |
-          ${{ env.INSTALL_ROOT }}
-          ${{ env.INSTALL_ROOT }}-venv.sh
+          ${{ env.BUILD_ROOT }}
+
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Add gRPC test host names
@@ -409,7 +383,7 @@ jobs:
         TEST_SPLIT: ${{ matrix.split }}
       run: |
           make dev # required to install other dependencies like bin/grpcurl
-          source ${{ env.INSTALL_ROOT }}-venv.sh
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           .ci/run_tests.sh
 
   pdk-tests:
@@ -418,10 +392,6 @@ jobs:
     needs: build
 
     steps:
-    - name: Set environment variables
-      run: |
-          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
-
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
@@ -430,8 +400,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: |
-          ${{ env.INSTALL_ROOT }}
-          ${{ env.INSTALL_ROOT }}-venv.sh
+          ${{ env.BUILD_ROOT }}
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Install Test::Nginx
@@ -449,7 +418,7 @@ jobs:
       env:
         TEST_SUITE: pdk
       run: |
-          source ${{ env.INSTALL_ROOT }}-venv.sh
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
 
           eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
           .ci/run_tests.sh

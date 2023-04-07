@@ -401,9 +401,9 @@ local function new(self)
       return nil, err
     end
 
-    local value
+    local value, stale_value
     if not rotation then
-      value = LRU:get(reference)
+      value, stale_value = LRU:get(reference)
       if value then
         return value
       end
@@ -416,6 +416,11 @@ local function new(self)
     end
 
     if not value then
+      if stale_value then
+        self.log.warn(err, " (returning a stale value)")
+        return stale_value
+      end
+
       return nil, err
     end
 

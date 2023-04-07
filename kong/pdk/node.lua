@@ -258,19 +258,35 @@ local function new(self)
   end
 
 
+  -- the PDK can be even when there is no configuration (for docs/tests)
+  -- so execute below block only when running under correct context
   local prefix = self and self.configuration and self.configuration.prefix
-  if prefix and self.configuration.role == "data_plane" then
-    local id, err = private_node.load_node_id(prefix)
-    if id then
-      node_id = id
-      ngx.log(ngx.DEBUG, "restored node_id from the filesystem: ", node_id)
-
-    else
-      id = _NODE.get_id()
-      if err then
-        ngx.log(ngx.WARN, "failed to restore node_id from the filesystem: ",
-                err, ", so a new one was generated: ", id)
+  if prefix  then
+    -- precedence order:
+    -- 1. user provided node id
+    local configuration_node_id = self and self.configuration and self.configuration.node_id
+    if configuration_node_id then
+      node_id = configuration_node_id
+    end
+    -- 2. node id (if any) on file-system
+    if not node_id then
+      if prefix and self.configuration.role == "data_plane" then
+        local id, err = private_node.load_node_id(prefix)
+        if id then
+          node_id = id
+          ngx.log(ngx.DEBUG, "restored node_id from the filesystem: ", node_id)
+        else
+          ngx.log(ngx.WARN, "failed to restore node_id from the filesystem: ",
+                  err, ", a new node_id will be generated")
+        end
       end
+    end
+    -- 3. generate a new id
+    if not node_id then
+      node_id = _NODE.get_id()
+    end
+    if node_id then
+      ngx.log(ngx.INFO, "kong node-id: " .. node_id)
     end
   end
 

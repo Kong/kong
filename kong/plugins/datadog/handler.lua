@@ -48,11 +48,6 @@ local function compose_tags(service_name, status, consumer_id, tags, conf)
 end
 
 
-local function get_queue_id(conf)
-  return conf.__key__
-end
-
-
 local function log(conf, messages)
   local logger, err = statsd_logger:new(conf)
   if err then
@@ -118,7 +113,7 @@ function DatadogHandler:log(conf)
     return
   end
 
-  local queue_id = get_queue_id(conf)
+  local queue_id = kong.plugin.get_id()
   local q = queues[queue_id]
   if not q then
     local batch_max_size = conf.queue_size or 1

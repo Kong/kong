@@ -1,4 +1,5 @@
--- test helper methods
+--- test helper methods for DNS and load-balancers
+-- @module spec.helpers.dns
 
 local _M = {}
 
@@ -14,8 +15,9 @@ end
 local gettime = _M.gettime
 
 
--- iterator over different balancer types
--- @return algorithm_name, balancer_module
+--- Iterator over different balancer types.
+-- returns; consistent-hash, round-robin, least-conn
+-- @return `algorithm_name`, `balancer_module`
 function _M.balancer_types()
   local b_types = {
     -- algorithm             name
@@ -33,13 +35,24 @@ function _M.balancer_types()
 end
 
 
--- expires a record now
+--- Expires a record now.
+-- @param record a DNS record previously created
 function _M.dnsExpire(record)
   record.expire = gettime() - 1
 end
 
 
--- creates an SRV record in the cache
+--- Creates an SRV record in the cache.
+-- @tparam dnsclient client the dns client in which cache it is to be stored
+-- @tparam table records a single entry, or a list of entries for the hostname
+-- @tparam[opt=4] number staleTtl the staleTtl to use for the record TTL (see Kong config reference for description)
+-- @usage
+-- local host = "konghq.com"  -- must be the same for all entries obviously...
+-- local rec = dnsSRV(dnsCLient, {
+--   -- defaults: weight = 10, priority = 20, ttl = 600
+--   { name = host, target = "20.20.20.20", port = 80, weight = 10, priority = 20, ttl = 600 }, 
+--   { name = host, target = "50.50.50.50", port = 80, weight = 10, priority = 20, ttl = 600 },
+-- })
 function _M.dnsSRV(client, records, staleTtl)
   local dnscache = client.getcache()
   -- if single table, then insert into a new list
@@ -73,7 +86,17 @@ function _M.dnsSRV(client, records, staleTtl)
 end
 
 
--- creates an A record in the cache
+--- Creates an A record in the cache.
+-- @tparam dnsclient client the dns client in which cache it is to be stored
+-- @tparam table records a single entry, or a list of entries for the hostname
+-- @tparam[opt=4] number staleTtl the staleTtl to use for the record TTL (see Kong config reference for description)
+-- @usage
+-- local host = "konghq.com"  -- must be the same for all entries obviously...
+-- local rec = dnsSRV(dnsCLient, {
+--   -- defaults: ttl = 600
+--   { name = host, address = "20.20.20.20", ttl = 600 },
+--   { name = host, address = "50.50.50.50", ttl = 600 },
+-- })
 function _M.dnsA(client, records, staleTtl)
   local dnscache = client.getcache()
   -- if single table, then insert into a new list
@@ -104,7 +127,16 @@ function _M.dnsA(client, records, staleTtl)
 end
 
 
--- creates an AAAA record in the cache
+--- Creates an AAAA record in the cache.
+-- @tparam dnsclient client the dns client in which cache it is to be stored
+-- @tparam table records a single entry, or a list of entries for the hostname
+-- @tparam[opt=4] number staleTtl the staleTtl to use for the record TTL (see Kong config reference for description)
+-- @usage
+-- local host = "konghq.com"  -- must be the same for all entries obviously...
+-- local rec = dnsSRV(dnsCLient, {
+--   -- defaults: ttl = 600
+--   { name = host, address = "::1", ttl = 600 },
+-- })
 function _M.dnsAAAA(client, records, staleTtl)
   local dnscache = client.getcache()
   -- if single table, then insert into a new list

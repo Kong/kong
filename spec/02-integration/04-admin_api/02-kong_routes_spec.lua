@@ -570,3 +570,30 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
   end)
 end)
 end
+describe("Admin API - node ID is set correctly", function()
+  local client
+  local input_node_id = "592e1c2b-6678-45aa-80f9-78cfb29f5e31"
+  lazy_setup(function()
+    helpers.get_db_utils(nil, {}) -- runs migrations
+    assert(helpers.start_kong {
+      node_id = input_node_id
+    })
+    client = helpers.admin_client(10000)
+  end)
+
+  lazy_teardown(function()
+    if client then client:close() end
+    helpers.stop_kong()
+  end)
+
+  it("returns node-id set in configuration", function()
+    local res1 = assert(client:send {
+      method = "GET",
+      path = "/"
+    })
+
+    local body = assert.res_status(200, res1)
+    local json = cjson.decode(body)
+    assert.equal(input_node_id, json.node_id)
+  end)
+end)

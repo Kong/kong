@@ -20,6 +20,7 @@ error_template_html = NONE
 error_template_json = NONE
 error_template_xml = NONE
 error_template_plain = NONE
+node_id = NONE
 
 proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 http2 ssl reuseport backlog=16384
 stream_listen = off
@@ -36,6 +37,7 @@ cluster_data_plane_purge_delay = 1209600
 cluster_ocsp = off
 cluster_max_payload = 4194304
 cluster_use_proxy = off
+cluster_dp_labels = NONE
 
 lmdb_environment_path = dbless.lmdb
 lmdb_map_size = 128m
@@ -114,6 +116,7 @@ pg_semaphore_timeout = 60000
 pg_keepalive_timeout = NONE
 pg_pool_size = NONE
 pg_backlog = NONE
+_debug_pg_ttl_cleanup_interval = 300
 
 pg_ro_host = NONE
 pg_ro_port = NONE
@@ -179,6 +182,11 @@ lua_ssl_verify_depth = 1
 lua_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
 lua_package_path = ./?.lua;./?/init.lua;
 lua_package_cpath = NONE
+
+lua_max_req_headers = 100
+lua_max_resp_headers = 100
+lua_max_uri_args = 100
+lua_max_post_args = 100
 
 role = traditional
 kic = off

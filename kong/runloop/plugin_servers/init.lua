@@ -189,7 +189,7 @@ end
 --- instance.  Biggest complexity here is due to the remote (and thus non-atomic
 --- and fallible) operation of starting the instance at the server.
 function get_instance_id(plugin_name, conf)
-  local key = type(conf) == "table" and conf.__key__ or plugin_name
+  local key = type(conf) == "table" and kong.plugin.get_id() or plugin_name
   local instance_info = running_instances[key]
 
   while instance_info and not instance_info.id do
@@ -258,7 +258,7 @@ end
 
 --- reset_instance: removes an instance from the table.
 function reset_instance(plugin_name, conf)
-  local key = type(conf) == "table" and conf.__key__ or plugin_name
+  local key = type(conf) == "table" and kong.plugin.get_id() or plugin_name
   running_instances[key] = nil
 end
 
@@ -307,8 +307,8 @@ local function build_phases(plugin)
           serialize_data = kong.log.serialize(),
           ngx_ctx = clone(ngx.ctx),
           ctx_shared = kong.ctx.shared,
-          request_headers = req_get_headers(100),
-          response_headers = resp_get_headers(100),
+          request_headers = req_get_headers(),
+          response_headers = resp_get_headers(),
           response_status = ngx.status,
           req_start_time = req_start_time(),
         })
