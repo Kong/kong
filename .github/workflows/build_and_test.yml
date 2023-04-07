@@ -40,12 +40,12 @@ jobs:
         set -eo pipefail
         unset GITHUB_TOKEN
 
-        test -n "${{ secrets.PAT }}" || {
+        test -n "${{ secrets.GHA_KONG_BOT_READ_TOKEN }}" || {
           echo access token not found
           exit 1
         }
 
-        echo '${{ secrets.PAT }}' | gh auth login --with-token
+        echo '${{ secrets.GHA_KONG_BOT_READ_TOKEN }}' | gh auth login --with-token
 
         gh auth setup-git
 
