@@ -34,6 +34,29 @@ jobs:
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
+    - name: Setup Git
+      run: |
+        set -x
+        set -eo pipefail
+        unset GITHUB_TOKEN
+
+        TOKEN=${{ secrets.PAT }}
+        if [[ -z ${TOKEN:-} ]]
+          echo access token not found
+          exit 1
+        fi
+
+        echo '${{ secrets.PAT }}' | gh auth login --with-token
+
+        gh auth setup-git
+
+        git config --global user.email "noreply@konghq.com"
+        git config --global user.name "team-gateway-bot"
+
+        ssh -vvv -o StrictHostKeyChecking=accept-new -T git@github.com || true
+        git clone git@github.com:Kong/ngx_wasm_module.git
+
+
     - name: Lookup build cache
       id: cache-deps
       uses: actions/cache@v3
