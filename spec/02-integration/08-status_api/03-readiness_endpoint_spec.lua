@@ -4,6 +4,7 @@ local helpers = require "spec.helpers"
 for _, strategy in helpers.all_strategies() do
 describe("Status API - with strategy #" .. strategy, function()
   local client
+  local admin_client
 
   lazy_setup(function()
     helpers.get_db_utils(nil, {}) -- runs migrations
@@ -12,6 +13,8 @@ describe("Status API - with strategy #" .. strategy, function()
       plugins = "admin-api-method",
     })
     client = helpers.http_client("127.0.0.1", 9500, 20000)
+
+    admin_client = helpers.admin_client()
   end)
 
   lazy_teardown(function()
@@ -44,7 +47,7 @@ describe("Status API - with strategy #" .. strategy, function()
         })
         assert.res_status(503, res)
 
-        local res = assert(client:send {
+        local res = assert(admin_client:send {
           method = "POST",
           path = "/config",
           body = {
