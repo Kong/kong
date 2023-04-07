@@ -675,7 +675,7 @@ return {
           title = [[Check node readiness]],
           endpoint = [[<div class="endpoint get">/status/ready</div>]],
           description = [[
-            A simple way is to inspect the readiness of configuration.
+            A simple way to inspect the readiness of the configuration.
 
             An instance is considered *ready* if it can handle requests, with a 
             high likelihood of delivering the expected response, once it has
