@@ -20,14 +20,20 @@ describe("Status API - with strategy #" .. strategy, function()
   end)
  
   describe("status readiness endpoint", function()
-    it("can return a status code", function()
+    it("should returns 503 when no config, returns 200 in db mode", function()
       local res = assert(client:send {
         method = "GET",
         path = "/status/ready"
       })
+      
       ngx.sleep(10)
-      local body = assert.res_status(200, res)
-      assert.same(body, '')
+      
+      if strategy == "off" then
+        assert.res_status(503, res)
+      else
+        assert.res_status(200, res)
+      end
+
     end)
   end)
 
