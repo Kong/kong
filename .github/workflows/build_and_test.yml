@@ -41,7 +41,7 @@ jobs:
         unset GITHUB_TOKEN
 
         TOKEN=${{ secrets.PAT }}
-        if [[ -z ${TOKEN:-} ]]
+        if [[ -z ${TOKEN:-} ]]; then
           echo access token not found
           exit 1
         fi
