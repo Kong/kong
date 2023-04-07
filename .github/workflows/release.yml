@@ -140,7 +140,7 @@ jobs:
       run: |
         apt update
         # dependencies for git
-        apt install -y wget libz-dev libssl-dev libcurl4-gnutls-dev libexpat1-dev
+        apt install -y wget libz-dev libssl-dev libcurl4-gnutls-dev libexpat1-dev sudo
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
