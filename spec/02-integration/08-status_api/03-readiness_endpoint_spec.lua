@@ -26,6 +26,7 @@ describe("Status API - with strategy #" .. strategy, function()
         method = "GET",
         path = "/status/ready"
       })
+      ngx.sleep(10)
       local body = assert.res_status(200, res)
       assert.same(body, '')
     end)
