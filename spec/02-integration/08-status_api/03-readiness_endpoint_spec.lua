@@ -25,7 +25,7 @@ describe("Status API - with strategy #" .. strategy, function()
         method = "GET",
         path = "/status/ready"
       })
-      
+
       ngx.sleep(10)
       
       if strategy == "off" then
@@ -35,6 +35,39 @@ describe("Status API - with strategy #" .. strategy, function()
       end
 
     end)
+
+    if strategy ~= "off" then
+      it("should returns 503 when no config, and returns 200 after a valid config is uploaded", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status/ready"
+        })
+        assert.res_status(503, res)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = [[
+              _format_version: "1.1"
+              services:
+              - name: test
+                url: http://mockbin.org
+            ]]
+          },
+          headers = {
+            ["Content-Type"] = "multipart/form-data"
+          }
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status/ready"
+        })
+        assert.res_status(200, res)
+      end)
+    end
   end)
 
 end)
