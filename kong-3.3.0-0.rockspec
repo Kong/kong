@@ -306,6 +306,7 @@ build = {
     ["kong.plugins.oauth2.migrations.004_200_to_210"] = "kong/plugins/oauth2/migrations/004_200_to_210.lua",
     ["kong.plugins.oauth2.migrations.005_210_to_211"] = "kong/plugins/oauth2/migrations/005_210_to_211.lua",
     ["kong.plugins.oauth2.migrations.006_320_to_330"] = "kong/plugins/oauth2/migrations/006_320_to_330.lua",
+    ["kong.plugins.oauth2.migrations.007_320_to_330"] = "kong/plugins/oauth2/migrations/007_320_to_330.lua",
     ["kong.plugins.oauth2.handler"] = "kong/plugins/oauth2/handler.lua",
     ["kong.plugins.oauth2.secret"] = "kong/plugins/oauth2/secret.lua",
     ["kong.plugins.oauth2.access"] = "kong/plugins/oauth2/access.lua",
