@@ -430,11 +430,13 @@ do
   end
 end
 
-
 return {
+  init = function(kong_conf)
+    _enabled = kong_conf.anonymous_reports or false
+    configure_ping(kong_conf)
+  end,
   -- plugin handler
   init_worker = function()
-    _enabled = kong and kong.configuration and kong.configuration.anonymous_reports or false
     if not _enabled then
       return
     end
