@@ -47,7 +47,7 @@ jobs:
 
         git config --global user.email "noreply@konghq.com"
         git config --global user.name "team-gateway-bot"
-        git config --global url."https://github.com/".insteadOf "git@github.com:"
+        git config --global url."https://team-gateway-bot:DUMMY@github.com/".insteadOf "git@github.com:"
 
         git clone git@github.com:Kong/ngx_wasm_module.git
 
