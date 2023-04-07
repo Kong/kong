@@ -20,8 +20,8 @@ def wasmx_repositories():
     maybe(
         new_git_repository,
         name = "ngx_wasm_module",
+        remote = KONG_VAR.get("NGX_WASM_MODULE_REMOTE", "git@github.com:Kong/ngx_wasm_module.git"),
         branch = ngx_wasm_module_branch,
-        remote = "git@github.com:Kong/ngx_wasm_module.git",
         build_file_content = """
 filegroup(
     name = "all_srcs",
