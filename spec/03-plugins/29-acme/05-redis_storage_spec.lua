@@ -217,7 +217,6 @@ describe("Plugin: acme (storage.redis)", function()
                 redis = {
                   host = helpers.redis_host,
                   port = helpers.redis_port,
-                  auth = "null",
                   namespace = "namespace1:",
                 },
               },
@@ -244,7 +243,6 @@ describe("Plugin: acme (storage.redis)", function()
                   redis = {
                     host = helpers.redis_host,
                     port = helpers.redis_port,
-                    auth = "null",
                     namespace = v,
                   },
                 },
@@ -257,4 +255,123 @@ describe("Plugin: acme (storage.redis)", function()
       end)
     end)
   end)
+
+  for _, strategy in helpers.each_strategy() do
+    describe("Plugin: acme (handler.access) [#" .. strategy .. "]", function()
+      local bp
+      local domain = "mydomain.com"
+      local dummy_id = "ZR02iVO6PFywzFLj6igWHd6fnK2R07C-97dkQKC7vJo"
+      local namespace = "namespace1"
+      local plugin
+
+      local function prepare_redis_data()
+        local redis = require "resty.redis"
+        local red = redis:new()
+        red:set_timeouts(3000, 3000, 3000) -- 3 sec
+
+        assert(red:connect(helpers.redis_host, helpers.redis_port))
+        assert(red:set(dummy_id .. "#http-01", "default"))
+        assert(red:set(namespace .. dummy_id .. "#http-01", namespace))
+        assert(red:close())
+      end
+
+      lazy_setup(function()
+        bp = helpers.get_db_utils(strategy, {
+          "services",
+          "routes",
+          "plugins",
+        }, { "acme", })
+
+        assert(bp.routes:insert {
+          paths = { "/" },
+        })
+
+        plugin = assert(bp.plugins:insert {
+          name = "acme",
+          config = {
+            account_email = "test@test.com",
+            api_uri = "https://api.acme.org",
+            domains = { domain },
+            storage = "redis",
+            storage_config = {
+              redis = {
+                host = helpers.redis_host,
+                port = helpers.redis_port,
+                -- namespace: "", default to empty
+              },
+            },
+          },
+        })
+
+        assert(helpers.start_kong({
+          plugins = "acme",
+          database = strategy,
+        }))
+
+        prepare_redis_data()
+
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+      end)
+
+      it("serve http challenge in the default namespace", function()
+        local proxy_client = helpers.proxy_client()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/.well-known/acme-challenge/" .. dummy_id,
+          headers =  { host = domain }
+        })
+
+        assert.response(res).has.status(200)
+        local body = res:read_body()
+        assert.equal("default\n", body)
+        proxy_client:close()
+      end)
+
+      it("serve http challenge in the specified namespace", function()
+        local admin_client = helpers.admin_client()
+
+        local res = assert(admin_client:send {
+          method = "PATCH",
+          path   = "/plugins/" .. plugin.id,
+          body   = {
+            name = "acme",
+            config = {
+              account_email = "test@test.com",
+              api_uri = "https://api.acme.org",
+              domains = { domain },
+              storage = "redis",
+              storage_config = {
+                redis = {
+                  host = helpers.redis_host,
+                  port = helpers.redis_port,
+                  namespace = namespace,    -- change namespace
+                },
+              },
+            },
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(200, res)
+        admin_client:close()
+
+        local proxy_client = helpers.proxy_client()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/.well-known/acme-challenge/" .. dummy_id,
+          headers =  { host = domain }
+        })
+
+        assert.response(res).has.status(200)
+        local body = res:read_body()
+        proxy_client:close()
+        assert.equal(namespace.."\n", body)
+      end)
+    end)
+  end
+
 end)
