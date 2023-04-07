@@ -35,26 +35,19 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Setup Git
+      env:
+        GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: |
         set -x
         set -eo pipefail
-        unset GITHUB_TOKEN
-
-        test -n "${{ secrets.GHA_KONG_BOT_READ_TOKEN }}" || {
-          echo access token not found
-          exit 1
-        }
-
-        echo '${{ secrets.GHA_KONG_BOT_READ_TOKEN }}' | gh auth login --with-token
 
         gh auth setup-git
 
         git config --global user.email "noreply@konghq.com"
         git config --global user.name "team-gateway-bot"
+        git config --global url."https://github".insteadOf git://github
 
-        ssh -vvv -o StrictHostKeyChecking=accept-new -T git@github.com || true
         git clone git@github.com:Kong/ngx_wasm_module.git
-
 
     - name: Lookup build cache
       id: cache-deps
