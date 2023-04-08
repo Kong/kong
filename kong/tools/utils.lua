@@ -39,7 +39,6 @@ local lower         = string.lower
 local fmt           = string.format
 local find          = string.find
 local gsub          = string.gsub
-local match         = string.match
 local join          = pl_stringx.join
 local split         = pl_stringx.split
 local re_find       = ngx.re.find
@@ -47,6 +46,7 @@ local re_match      = ngx.re.match
 local inflate_gzip  = zlib.inflateGzip
 local deflate_gzip  = zlib.deflateGzip
 local stringio_open = pl_stringio.open
+local match         = string.match
 
 ffi.cdef[[
 typedef unsigned char u_char;

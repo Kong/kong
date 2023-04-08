@@ -946,9 +946,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs over UDP with default metrics with influxdb tag_style", function()
-        ---[[ EE
-        local metrics_count = 14 - 6
-        --]] EE
+        --[-[ EE increase by 2
+        local metrics_count = 2 + DEFAULT_METRICS_COUNT - 6
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",

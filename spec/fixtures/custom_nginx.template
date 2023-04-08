@@ -820,8 +820,14 @@ server {
     server {
         server_name mock_upstream;
 
+> if role ~= "data_plane" then
         listen 15555;
         listen 15556 ssl;
+
+> else
+        listen 16665;
+        listen 16666 ssl;
+> end -- role ~= "data_plane"
 
 > for i = 1, #ssl_cert do
         ssl_certificate     $(ssl_cert[i]);
@@ -917,7 +923,7 @@ server {
             }
             content_by_lua_block {
                 local mu = require "spec.fixtures.mock_upstream"
-                return mu.send_default_json_response({}, ngx.req.get_uri_args())
+                return mu.send_default_json_response({}, ngx.req.get_uri_args(0))
             }
         }
 
@@ -1074,7 +1080,6 @@ server {
             }
         }
     }
-> end -- role ~= "data_plane"
 
     include '*.http_mock';
 

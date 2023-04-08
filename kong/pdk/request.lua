@@ -27,9 +27,28 @@ local find = string.find
 local lower = string.lower
 local type = type
 local error = error
+local pairs = pairs
 local tonumber = tonumber
+local setmetatable = setmetatable
+
+
 local check_phase = phase_checker.check
 local check_not_phase = phase_checker.check_not
+
+
+local read_body = req.read_body
+local start_time = req.start_time
+local get_method = req.get_method
+local get_headers = req.get_headers
+local get_uri_args = req.get_uri_args
+local http_version = req.http_version
+local get_post_args = req.get_post_args
+local get_body_data = req.get_body_data
+local get_body_file = req.get_body_file
+local decode_args = ngx.decode_args
+
+
+local is_http_subsystem = ngx and ngx.config.subsystem == "http"
 
 
 local PHASES = phase_checker.phases
@@ -44,13 +63,10 @@ local function new(self)
   local HOST_PORTS             = self.configuration.host_ports or {}
 
   local MIN_HEADERS            = 1
-  local MAX_HEADERS_DEFAULT    = 100
   local MAX_HEADERS            = 1000
   local MIN_QUERY_ARGS         = 1
-  local MAX_QUERY_ARGS_DEFAULT = 100
   local MAX_QUERY_ARGS         = 1000
   local MIN_POST_ARGS          = 1
-  local MAX_POST_ARGS_DEFAULT  = 100
   local MAX_POST_ARGS          = 1000
 
   local MIN_PORT               = 1
@@ -67,6 +83,28 @@ local function new(self)
   local X_FORWARDED_PORT       = "X-Forwarded-Port"
   local X_FORWARDED_PATH       = "X-Forwarded-Path"
   local X_FORWARDED_PREFIX     = "X-Forwarded-Prefix"
+
+  local is_trusted_ip do
+    local is_trusted = self.ip.is_trusted
+    local get_ip = self.client.get_ip
+    is_trusted_ip = function()
+      return is_trusted(get_ip())
+    end
+  end
+
+  local replace_dashes do
+    -- 1.000.000 iterations with input of "my-header":
+    -- string.gsub:        81ms
+    -- ngx.re.gsub:        74ms
+    -- loop/string.buffer: 28ms
+    -- str_replace_char:   14ms
+    if is_http_subsystem then
+      local str_replace_char = require("resty.core.utils").str_replace_char
+      replace_dashes = function(str)
+        return str_replace_char(str, "-", "_")
+      end
+    end
+  end
 
 
   ---
@@ -119,7 +157,7 @@ local function new(self)
   function _REQUEST.get_port()
     check_not_phase(PHASES.init_worker)
 
-    return tonumber(var.server_port)
+    return tonumber(var.server_port, 10)
   end
 
 
@@ -146,7 +184,7 @@ local function new(self)
   function _REQUEST.get_forwarded_scheme()
     check_phase(PHASES.request)
 
-    if self.ip.is_trusted(self.client.get_ip()) then
+    if is_trusted_ip() then
       local scheme = _REQUEST.get_header(X_FORWARDED_PROTO)
       if scheme then
         return lower(scheme)
@@ -181,7 +219,7 @@ local function new(self)
   function _REQUEST.get_forwarded_host()
     check_phase(PHASES.request)
 
-    if self.ip.is_trusted(self.client.get_ip()) then
+    if is_trusted_ip() then
       local host = _REQUEST.get_header(X_FORWARDED_HOST)
       if host then
         local s = find(host, "@", 1, true)
@@ -228,8 +266,8 @@ local function new(self)
   function _REQUEST.get_forwarded_port()
     check_phase(PHASES.request)
 
-    if self.ip.is_trusted(self.client.get_ip()) then
-      local port = tonumber(_REQUEST.get_header(X_FORWARDED_PORT))
+    if is_trusted_ip() then
+      local port = tonumber(_REQUEST.get_header(X_FORWARDED_PORT), 10)
       if port and port >= MIN_PORT and port <= MAX_PORT then
         return port
       end
@@ -243,8 +281,7 @@ local function new(self)
 
         s = find(host, ":", 1, true)
         if s then
-          port = tonumber(sub(host, s + 1))
-
+          port = tonumber(sub(host, s + 1), 10)
           if port and port >= MIN_PORT and port <= MAX_PORT then
             return port
           end
@@ -284,7 +321,7 @@ local function new(self)
   function _REQUEST.get_forwarded_path()
     check_phase(PHASES.request)
 
-    if self.ip.is_trusted(self.client.get_ip()) then
+    if is_trusted_ip() then
       local path = _REQUEST.get_header(X_FORWARDED_PATH)
       if path then
         return path
@@ -327,7 +364,7 @@ local function new(self)
     check_phase(PHASES.request)
 
     local prefix
-    if self.ip.is_trusted(self.client.get_ip()) then
+    if is_trusted_ip() then
       prefix = _REQUEST.get_header(X_FORWARDED_PREFIX)
       if prefix then
         return prefix
@@ -351,7 +388,7 @@ local function new(self)
   function _REQUEST.get_http_version()
     check_phase(PHASES.request)
 
-    return req.http_version()
+    return http_version()
   end
 
 
@@ -375,7 +412,7 @@ local function new(self)
       end
     end
 
-    return req.get_method()
+    return get_method()
   end
 
 
@@ -513,9 +550,10 @@ local function new(self)
   -- arguments, and `?foo=&bar=` translates to two string arguments containing
   -- empty strings.
   --
-  -- By default, this function returns up to **100** arguments. The optional
-  -- `max_args` argument can be specified to customize this limit, but must be
-  -- greater than **1** and not greater than **1000**.
+  -- By default, this function returns up to **100** arguments (or what has been
+  -- configured using `lua_max_uri_args`). The optional `max_args` argument can be
+  -- specified to customize this limit, but must be greater than **1** and not
+  -- greater than **1000**.
   --
   -- @function kong.request.get_query
   -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
@@ -537,10 +575,7 @@ local function new(self)
   function _REQUEST.get_query(max_args)
     check_phase(PHASES.request)
 
-    if max_args == nil then
-      max_args = MAX_QUERY_ARGS_DEFAULT
-
-    else
+    if max_args ~= nil then
       if type(max_args) ~= "number" then
         error("max_args must be a number", 2)
       end
@@ -554,7 +589,8 @@ local function new(self)
       end
     end
 
-    if ngx.ctx.KONG_UNEXPECTED and _REQUEST.get_http_version() < 2 then
+    local ctx = ngx.ctx
+    if ctx.KONG_UNEXPECTED and _REQUEST.get_http_version() < 2 then
       local req_line = var.request
       local qidx = find(req_line, "?", 1, true)
       if not qidx then
@@ -567,10 +603,15 @@ local function new(self)
         return {}
       end
 
-      return ngx.decode_args(sub(req_line, qidx + 1, eidx - 1), max_args)
+      return decode_args(sub(req_line, qidx + 1, eidx - 1), max_args)
     end
 
-    return req.get_uri_args(max_args)
+    local uri_args, err = get_uri_args(max_args, ctx.uri_args)
+    if uri_args then
+      ctx.uri_args = uri_args
+    end
+
+    return uri_args, err
   end
 
 
@@ -608,10 +649,7 @@ local function new(self)
       error("header name must be a string", 2)
     end
 
-    -- Do not localize ngx.re.gsub! It will crash because ngx.re is monkey patched.
-    local header_value = var["http_" .. ngx.re.gsub(name, "-", "_", "jo")]
-
-    return header_value
+    return var["http_" .. replace_dashes(name)]
   end
 
 
@@ -623,9 +661,10 @@ local function new(self)
   -- written as underscores (`_`); that is, the header `X-Custom-Header` can
   -- also be retrieved as `x_custom_header`.
   --
-  -- By default, this function returns up to **100** headers. The optional
-  -- `max_headers` argument can be specified to customize this limit, but must
-  -- be greater than **1** and not greater than **1000**.
+  -- By default, this function returns up to **100** headers (or what has been
+  -- configured using `lua_max_req_headers`). The optional `max_headers` argument
+  -- can be specified to customize this limit, but must be greater than **1** and
+  -- not greater than **1000**.
   --
   -- @function kong.request.get_headers
   -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
@@ -649,20 +688,18 @@ local function new(self)
     check_phase(PHASES.request)
 
     if max_headers == nil then
-      return req.get_headers(MAX_HEADERS_DEFAULT)
+      return get_headers()
     end
 
     if type(max_headers) ~= "number" then
       error("max_headers must be a number", 2)
-
     elseif max_headers < MIN_HEADERS then
       error("max_headers must be >= " .. MIN_HEADERS, 2)
-
     elseif max_headers > MAX_HEADERS then
       error("max_headers must be <= " .. MAX_HEADERS, 2)
     end
 
-    return req.get_headers(max_headers)
+    return get_headers(max_headers)
   end
 
 
@@ -692,11 +729,11 @@ local function new(self)
   function _REQUEST.get_raw_body()
     check_phase(before_content)
 
-    req.read_body()
+    read_body()
 
-    local body = req.get_body_data()
+    local body = get_body_data()
     if not body then
-      if req.get_body_file() then
+      if get_body_file() then
         return nil, "request body did not fit into client body buffer, consider raising 'client_body_buffer_size'"
 
       else
@@ -741,7 +778,8 @@ local function new(self)
   --   body could not be parsed.
   --
   -- The optional argument `max_args` can be used to set a limit on the number
-  -- of form arguments parsed for `application/x-www-form-urlencoded` payloads.
+  -- of form arguments parsed for `application/x-www-form-urlencoded` payloads,
+  -- which is by default **100** (or what has been configured using `lua_max_post_args`).
   --
   -- The third return value is string containing the mimetype used to parsed
   -- the body (as per the `mimetype` argument), allowing the caller to identify
@@ -790,8 +828,18 @@ local function new(self)
 
       -- TODO: should we also compare content_length to client_body_buffer_size here?
 
-      req.read_body()
-      local pargs, err = req.get_post_args(max_args or MAX_POST_ARGS_DEFAULT)
+      read_body()
+
+      local pargs, err
+
+      -- For some APIs, especially those using Lua C API (perhaps FFI too),
+      -- there is a difference in passing nil and not passing anything.
+      if max_args ~= nil then
+        pargs, err = get_post_args(max_args)
+      else
+        pargs, err = get_post_args()
+      end
+
       if not pargs then
         return nil, err, CONTENT_TYPE_POST
       end
@@ -845,7 +893,7 @@ local function new(self)
   function _REQUEST.get_start_time()
     check_phase(PHASES.request)
 
-    return ngx.ctx.KONG_PROCESSING_START or (req.start_time() * 1000)
+    return ngx.ctx.KONG_PROCESSING_START or (start_time() * 1000)
   end
 
   local EMPTY = {}

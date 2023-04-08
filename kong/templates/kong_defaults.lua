@@ -30,6 +30,7 @@ error_template_json = NONE
 error_template_xml = NONE
 error_template_plain = NONE
 node_id = NONE
+<<<<<<< HEAD
 
 enforce_rbac = off
 rbac_auth_header = Kong-Admin-Token
@@ -115,6 +116,8 @@ audit_log_ignore_paths =
 audit_log_ignore_tables =
 audit_log_signing_key =
 audit_log_payload_exclude = token, secret, password
+=======
+>>>>>>> ce/master
 
 proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 http2 ssl reuseport backlog=16384
 stream_listen = off
@@ -240,7 +243,11 @@ pg_semaphore_timeout = 60000
 pg_keepalive_timeout = NONE
 pg_pool_size = NONE
 pg_backlog = NONE
+<<<<<<< HEAD
 _debug_pg_ttl_cleanup_interval = 60
+=======
+_debug_pg_ttl_cleanup_interval = 300
+>>>>>>> ce/master
 
 pg_ro_host = NONE
 pg_ro_port = NONE
@@ -310,6 +317,7 @@ lua_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
 lua_package_path = ./?.lua;./?/init.lua;
 lua_package_cpath = NONE
 
+<<<<<<< HEAD
 feature_conf_path = NONE
 
 smtp_admin_emails = NONE
@@ -342,6 +350,12 @@ keyring_recovery_public_key =
 event_hooks_enabled = true
 
 fips = off
+=======
+lua_max_req_headers = 100
+lua_max_resp_headers = 100
+lua_max_uri_args = 100
+lua_max_post_args = 100
+>>>>>>> ce/master
 
 role = traditional
 kic = off
@@ -376,9 +390,12 @@ opentelemetry_tracing = off
 tracing_instrumentations = off
 opentelemetry_tracing_sampling_rate = 1.0
 tracing_sampling_rate = 1.0
+<<<<<<< HEAD
 
 cluster_fallback_config_import = off
 cluster_fallback_config_storage =
 cluster_fallback_config_export = off
 cluster_fallback_config_export_delay = 60
+=======
+>>>>>>> ce/master
 ]]

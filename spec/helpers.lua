@@ -29,6 +29,8 @@ local MOCK_UPSTREAM_PORT = 15555
 local MOCK_UPSTREAM_SSL_PORT = 15556
 local MOCK_UPSTREAM_STREAM_PORT = 15557
 local MOCK_UPSTREAM_STREAM_SSL_PORT = 15558
+local MOCK_UPSTREAM_DP_PORT = 16665
+local MOCK_UPSTREAM_DP_SSL_PORT = 16666
 local GRPCBIN_HOST = os.getenv("KONG_SPEC_TEST_GRPCBIN_HOST") or "localhost"
 local GRPCBIN_PORT = tonumber(os.getenv("KONG_SPEC_TEST_GRPCBIN_PORT")) or 9000
 local GRPCBIN_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_GRPCBIN_SSL_PORT")) or 9001
@@ -3817,6 +3819,14 @@ end
 -- @field mock_upstream_ssl_host
 -- @field mock_upstream_ssl_port
 -- @field mock_upstream_ssl_url Base url constructed from the components
+-- @field mock_upstream_dp_protocol
+-- @field mock_upstream_dp_host
+-- @field mock_upstream_dp_port
+-- @field mock_upstream_dp_url Base url constructed from the components
+-- @field mock_upstream_dp_ssl_protocol
+-- @field mock_upstream_dp_ssl_host
+-- @field mock_upstream_dp_ssl_port
+-- @field mock_upstream_dp_ssl_url Base url constructed from the components
 -- @field mock_upstream_stream_port
 -- @field mock_upstream_stream_ssl_port
 -- @field mock_grpc_upstream_proto_path
@@ -3871,6 +3881,20 @@ end
   mock_upstream_ssl_url      = MOCK_UPSTREAM_SSL_PROTOCOL .. "://" ..
                                MOCK_UPSTREAM_HOST .. ':' ..
                                MOCK_UPSTREAM_SSL_PORT,
+
+  mock_upstream_dp_protocol  = MOCK_UPSTREAM_PROTOCOL,
+  mock_upstream_dp_host      = MOCK_UPSTREAM_HOST,
+  mock_upstream_dp_port      = MOCK_UPSTREAM_DP_PORT,
+  mock_upstream_dp_url       = MOCK_UPSTREAM_PROTOCOL .. "://" ..
+                               MOCK_UPSTREAM_HOST .. ':' ..
+                               MOCK_UPSTREAM_DP_PORT,
+
+  mock_upstream_dp_ssl_protocol = MOCK_UPSTREAM_SSL_PROTOCOL,
+  mock_upstream_dp_ssl_host     = MOCK_UPSTREAM_HOST,
+  mock_upstream_dp_ssl_port     = MOCK_UPSTREAM_DP_SSL_PORT,
+  mock_upstream_dp_ssl_url      = MOCK_UPSTREAM_SSL_PROTOCOL .. "://" ..
+                                  MOCK_UPSTREAM_HOST .. ':' ..
+                                  MOCK_UPSTREAM_DP_SSL_PORT,
 
   mock_upstream_stream_port     = MOCK_UPSTREAM_STREAM_PORT,
   mock_upstream_stream_ssl_port = MOCK_UPSTREAM_STREAM_SSL_PORT,

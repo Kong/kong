@@ -20,6 +20,7 @@ local split = ngx_re.split
 local subsystem = ngx.config.subsystem
 local fmt = string.format
 local rand_bytes = utils.get_rand_bytes
+local to_hex = require "resty.string".to_hex
 
 local ZipkinLogHandler = {
   VERSION = kong_meta.core_version,
@@ -228,7 +229,8 @@ if subsystem == "http" then
     end
 
     if conf.http_response_header_for_traceid then
-      kong.response.add_header(conf.http_response_header_for_traceid, proxy_span.trace_id)
+      local trace_id = to_hex(proxy_span.trace_id)
+      kong.response.add_header(conf.http_response_header_for_traceid, trace_id)
     end
   end
 

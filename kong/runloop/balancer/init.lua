@@ -55,7 +55,6 @@ local get_query_arg
 do
   local sort = table.sort
   local get_uri_args = ngx.req.get_uri_args
-  local limit = 100
 
   -- OpenResty allows us to reuse the table that it populates with the request
   -- query args. The table is cleared by `ngx.req.get_uri_args` on each use, so
@@ -63,15 +62,22 @@ do
   --
   -- @see https://github.com/openresty/lua-resty-core/pull/288
   -- @see https://github.com/openresty/lua-resty-core/blob/3c3d0786d6e26282e76f39f4fe5577d316a47a09/lib/resty/core/request.lua#L196-L208
-  local cache = require("table.new")(0, limit)
-
+  local cache
+  local limit
 
   function get_query_arg(name)
+    if not limit then
+      limit = kong and kong.configuration and kong.configuration.lua_max_uri_args or 100
+      cache = require("table.new")(0, limit)
+    end
+
     local query, err = get_uri_args(limit, cache)
 
     if err == "truncated" then
       log(WARN, "could not fetch all query string args for request, ",
-                "hash value may be empty/incomplete")
+                "hash value may be empty/incomplete, please consider ",
+                 "increasing the value of 'lua_max_uri_args' ",
+                 "(currently at ",  limit, ")")
 
     elseif not query then
       log(ERR, "failed fetching query string args: ", err or "unknown error")

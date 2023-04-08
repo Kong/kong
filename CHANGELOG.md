@@ -76,6 +76,7 @@
 - **Serverless Functions**: `kong.cache` now points to a cache instance that is dedicated to the
   Serverless Functions plugins: it does not provide access to the global kong cache. Access to
   certain fields in kong.configuration has also been restricted.
+  [#10417](https://github.com/Kong/kong/pull/10417)
 
 ### Additions
 
@@ -83,22 +84,57 @@
 
 - Make runloop and init error response content types compliant with Accept header value
   [#10366](https://github.com/Kong/kong/pull/10366)
+- Add a new field `updated_at` for core entities ca_certificates, certificates, consumers,
+  targets, upstreams, plugins, workspaces, clustering_data_planes and snis.
+  [#10400](https://github.com/Kong/kong/pull/10400)
 - Allow configuring custom error templates
   [#10374](https://github.com/Kong/kong/pull/10374)
-- Support for configurable Node IDs
-  [#10385](https://github.com/Kong/kong/pull/10385)
+- The maximum number of request headers, response headers, uri args, and post args that are
+  parsed by default can now be configured with a new configuration parameters:
+  `lua_max_req_headers`, `lua_max_resp_headers`, `lua_max_uri_args` and `lua_max_post_args`
+  [#10443](https://github.com/Kong/kong/pull/10443)
 - Allow configuring Labels for data planes to provide metadata information.
   Labels are only compatible with hybrid mode deployments with Kong Konnect (SaaS)
   [#10471](https://github.com/Kong/kong/pull/10471)
+- Add Postgres triggers on the core entites and entities in bundled plugins to delete the
+  expired rows in an efficient and timely manner.
+  [#10389](https://github.com/Kong/kong/pull/10389)
+- Support for configurable Node IDs
+  [#10385](https://github.com/Kong/kong/pull/10385)
+- Request and response buffering options are now enabled for incoming HTTP 2.0 requests too.
+  Thanks [@PidgeyBE](https://github.com/PidgeyBE) for contributing this change.
+  [#10595](https://github.com/Kong/kong/pull/10595)
+  [#10204](https://github.com/Kong/kong/pull/10204)
+
+#### Admin API
+
+- The `/upstreams/<upstream>/health?balancer_health=1` endpoint always shows the balancer health,
+  through a new attribute balancer_health, which always returns HEALTHY or UNHEALTHY (reporting
+  the true state of the balancer), even if the overall upstream health status is HEALTHCHECKS_OFF.
+  This is useful for debugging.
+  [#5885](https://github.com/Kong/kong/pull/5885)
 
 #### Plugins
 
-- **OIDC**: openid-connect now returns error_description and error_code as part of the WWW-Authenticate header when access tokens are expired.
-  [#4604](https://github.com/Kong/kong-ee/pull/4604)
 - **ACME**: acme plugin now supports configuring an `account_key` in `keys` and `key_sets`
   [#9746](https://github.com/Kong/kong/pull/9746)
+- **Proxy-Cache**: add `ignore_uri_case` to configuring cache-key uri to be handled as lowercase
+  [#10453](https://github.com/Kong/kong/pull/10453)
+- **HTTP-Log**: add `application/json; charset=utf-8` option for the `Content-Type` header
+  in the http-log plugin, for log collectors that require that character set declaration.
+  [#10533](https://github.com/Kong/kong/pull/10533)
 - **DataDog**: supports value of `host` to be referenceable.
   [#10484](https://github.com/Kong/kong/pull/10484)
+- **Zipkin&Opentelemetry**: convert traceid in http response headers to hex format
+  [#10534](https://github.com/Kong/kong/pull/10534)
+- **ACME**: acme plugin now supports configuring `namespace` for redis storage
+  which is default to empty string for backward compatibility.
+  [#10562](https://github.com/Kong/kong/pull/10562)
+
+#### PDK
+
+- PDK now supports getting plugins' ID with `kong.plugin.get_id`.
+  [#9903](https://github.com/Kong/kong/pull/9903)
 
 ### Fixes
 
@@ -117,11 +153,20 @@
 - Fix an issue where balancer passive healthcheck would use wrong status code when kong changes status code
   from upstream in `header_filter` phase.
   [#10325](https://github.com/Kong/kong/pull/10325)
-- Fix an issue where schema validations failing in a nested record did not propagate the error correctly
+  [#10592](https://github.com/Kong/kong/pull/10592)
+- Fix an issue where schema validations failing in a nested record did not propagate the error correctly.
   [#10449](https://github.com/Kong/kong/pull/10449)
 - Fixed an issue where dangling Unix sockets would prevent Kong from restarting in
   Docker containers if it was not cleanly stopped.
   [#10468](https://github.com/Kong/kong/pull/10468)
+- Fix an issue where sorting function for traditional router sources/destinations lead to "invalid order
+  function for sorting" error.
+  [#10514](https://github.com/Kong/kong/pull/10514)
+
+#### Admin API
+
+- Fix an issue where empty value of URI argument `custom_id` crashes `/consumer`.
+  [#10475](https://github.com/Kong/kong/pull/10475)
 
 #### Plugins
 - **Request-Transformer**: fix an issue where requests would intermittently
@@ -143,6 +188,11 @@
   [#10405](https://github.com/Kong/kong/pull/10405)
 - Postgres TTL cleanup timer now runs a batch delete loop on each ttl enabled table with a number of 50.000 rows per batch.
   [#10407](https://github.com/Kong/kong/pull/10407)
+- Postgres TTL cleanup timer now runs every 5 minutes instead of every 60 seconds.
+  [#10389](https://github.com/Kong/kong/pull/10389)
+- Postgres TTL cleanup timer now deletes expired rows based on database server-side timestamp to avoid potential
+  problems caused by the difference of clock time between Kong and database server.
+  [#10389](https://github.com/Kong/kong/pull/10389)
 
 #### PDK
 
@@ -153,11 +203,10 @@
 
 - **Request-Termination**: If the echo option was used, it would not return the uri-captures.
   [#10390](https://github.com/Kong/kong/pull/10390)
-
-#### Plugins
-
-- **Datadog Tracing**: Fix an issue where omitted setting of `config.endpoint` causes trace submitting timer to crash.
-  [#4696](https://github.com/Kong/kong-ee/pull/4696)
+- **OpenTelemetry**: add `http_response_header_for_traceid` field in OpenTelemetry plugin.
+  The plugin will set the corresponding header in the response
+  if the field is specified with a string value.
+  [#10379](https://github.com/Kong/kong/pull/10379)
 
 ### Dependencies
 
@@ -165,15 +214,19 @@
   [#10338](https://github.com/Kong/kong/pull/10338)
 - Bumped lua-protobuf from 0.3.3 to 0.4.2
   [#10137](https://github.com/Kong/kong/pull/10413)
-- Bumped lua-resty-openssl from 0.8.17 to 0.8.18
+- Bumped lua-resty-timer-ng from 0.2.3 to 0.2.4
+  [#10419](https://github.com/Kong/kong/pull/10419)
+- Bumped lua-resty-openssl from 0.8.17 to 0.8.20
   [#10463](https://github.com/Kong/kong/pull/10463)
-- Bumped lua-resty-openssl from 0.8.20 to 0.8.21
-  [#4805](https://github.com/Kong/kong-ee/pull/4805)
   [#10476](https://github.com/Kong/kong/pull/10476)
 - Bumped lua-resty-http from 0.17.0.beta.1 to 0.17.1
   [#10547](https://github.com/Kong/kong/pull/10547)
 - Bumped LuaSec from 1.2.0 to 1.3.1
   [#10528](https://github.com/Kong/kong/pull/10528)
+- Bumped lua-resty-acme from 0.10.1 to 0.11.0
+  [#10562](https://github.com/Kong/kong/pull/10562)
+- Bumped lua-resty-events from 0.1.3 to 0.1.4
+  [#10634](https://github.com/Kong/kong/pull/10634)
 
 ## 3.2.0
 
@@ -205,9 +258,6 @@
   Expression router instead of the traditional router to ensure created routes
   are actually compatible.
   [#9987](https://github.com/Kong/kong/pull/9987)
-
-#### Plugins
-
 - Nginx charset directive can now be configured with Nginx directive injections
   [#10111](https://github.com/Kong/kong/pull/10111)
 - Services upstream TLS config is extended to stream subsystem.
@@ -256,17 +306,6 @@
   [#10161](https://github.com/Kong/kong/pull/10161)
   [#10256](https://github.com/Kong/kong/pull/10256)
 
-#### Balancer
-
-- Add a new load-balancing `algorithm` option `latency` to the `Upstream` entity.
-  This algorithm will choose a target based on the response latency of each target
-  from prior requests.
-  [#9787](https://github.com/Kong/kong/pull/9787)
-- **OIDC**: Fix a bug where it was not possible to specify an anonymous consumer by name.
-  [#4377](https://github.com/Kong/kong-ee/pull/4377)
-- **Session**: now uses lua-resty-session v4.0.0
-  [#10199](https://github.com/Kong/kong/pull/10199)
-
 #### PDK
 
 - Support for `upstream_status` field in log serializer.
@@ -278,10 +317,6 @@
 
 - Add back Postgres `FLOOR` function when calculating `ttl`, so the returned `ttl` is always a whole integer.
   [#9960](https://github.com/Kong/kong/pull/9960)
-- Expose postgres connection pool configuration
-  [#9603](https://github.com/Kong/kong/pull/9603)
-- **Template**: Do not add default charset to the `Content-Type` response header when upstream response doesn't contain it.
-  [#9905](https://github.com/Kong/kong/pull/9905)
 - Fix an issue where after a valid declarative configuration is loaded,
   the configuration hash is incorrectly set to the value: `00000000000000000000000000000000`.
   [#9911](https://github.com/Kong/kong/pull/9911)
@@ -291,10 +326,6 @@
   [#10247](https://github.com/Kong/kong/pull/10247)
 - Fix an issue where 'X-Kong-Upstream-Status' cannot be emitted when response is buffered.
   [#10056](https://github.com/Kong/kong/pull/10056)
-- Update the batch queues module so that queues no longer grow without bounds if
-  their consumers fail to process the entries.  Instead, old batches are now dropped
-  and an error is logged.
-  [#10247](https://github.com/Kong/kong/pull/10247)
 
 #### Plugins
 
@@ -317,13 +348,6 @@
     [#10332](https://github.com/Kong/kong/pull/10332)
 - **OAuth2**: `refresh_token_ttl` is now limited between `0` and `100000000` by schema validator. Previously numbers that are too large causes requests to fail.
   [#10068](https://github.com/Kong/kong/pull/10068)
-- **OIDC**: Fix a bug where it was not possible to specify an anonymous consumer by name.
-  [#4377](https://github.com/Kong/kong-ee/pull/4377)
-
-#### PDK
-
-- **Tracing**: Now Kong truncate 128-bit trace IDs to 64-bit when propagating tracing headers for Datadog.
-  [#4572](https://github.com/Kong/kong-ee/pull/4572)
 
 ### Changed
 
@@ -346,9 +370,6 @@
   and disable the wRPC protocol.
   [#9921](https://github.com/Kong/kong/pull/9921)
 
-- **Rate Limiting Advanced**: Adds support for username+password authentication mechanism when connecting to a redis cluster.
-  [#4333](https://github.com/Kong/kong-ee/pull/4333)
-
 ### Dependencies
 
 - Bumped luarocks from 3.9.1 to 3.9.2
@@ -370,6 +391,7 @@
   [#10266](https://github.com/Kong/kong/pull/10266)
 - Bumped lua-resty-timer-ng from 0.2.0 to 0.2.3
   [#10265](https://github.com/Kong/kong/pull/10265)
+
 
 ## 3.1.0
 
@@ -426,16 +448,6 @@
   cookies are not persistend across browser restarts. Thanks [@tschaume](https://github.com/tschaume)
   for this contribution!
   [#8187](https://github.com/Kong/kong/pull/8187)
-- **Forward Proxy**: `x_headers` field added. This field indicates how the plugin handles the headers
-  `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`, and `X-Forwarded-Port`.
-
-  The field should be set to one of the below and is default to "append":
-  - "append": append information of this hop to those headers;
-  - "transparent": leave those headers unchanged, as if we were not a proxy;
-  - "delete": remove all those headers, as if we were the originating client.
-
-  Note that all options respect the trusted IP setting, and will ignore last hop headers if they are not from clients with trusted IPs.
-  [#3582](https://github.com/Kong/kong-ee/pull/3582)
 - **Response-rate-limiting**: add support for Redis SSL, through configuration properties
   `redis_ssl` (can be set to `true` or `false`), `ssl_verify`, and `ssl_server_name`.
   [#8595](https://github.com/Kong/kong/pull/8595)
@@ -470,28 +482,6 @@
   the Distinguished Name (DN) list hints of the accepted CA certificates.
   [#9768](https://github.com/Kong/kong/pull/9768)
 
-#### Plugins
-
-- **Zipkin**: add `response_header_for_traceid` field in Zipkin plugin.
-  The plugin will set the corresponding header in the response
-  if the field is specified with a string value.
-  [#9173](https://github.com/Kong/kong/pull/9173)
-- **AWS Lambda**: add `requestContext` field into `awsgateway_compatible` input data
-  [#9380](https://github.com/Kong/kong/pull/9380)
-- **Forward Proxy**: `x_headers` field added. This field indicates how the plugin handles the headers
-  `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`, and `X-Forwarded-Port`.
-
-  The field should be set to one of the below and is default to "append":
-  - "append": append information of this hop to those headers;
-  - "transparent": leave those headers unchanged, as if we were not a proxy;
-  - "delete": remove all those headers, as if we were the originating client.
-
-  Note that all options respect the trusted IP setting, and will ignore last hop headers if they are not from clients with trusted IPs.
-  [#3582](https://github.com/Kong/kong-ee/pull/3582)
-- **Rate-limiting-advanced**: The HTTP status code and response body can now be customized. Cherry-picked from
-  [kong/kong#8930](https://github.com/Kong/kong/pull/8930)
-  [FT-3495](https://konghq.atlassian.net/browse/FT-3495)
-
 ### Fixes
 
 #### Core
@@ -524,9 +514,6 @@
   when the first data-plane connection is established with a control-plane
   worker.
   [#9616](https://github.com/Kong/kong/pull/9616)
-- Data planes can now fetch fallback configuration when starting if the control plane
-  is not avaliable.
-  [#3954](https://github.com/Kong/kong-ee/pull/3954)
 
 #### CLI
 
@@ -539,10 +526,6 @@
   and return `400` error if request parameters reach the limitation to
   avoid being truncated.
   [#9510](https://github.com/Kong/kong/pull/9510)
-- RBAC token hash value is not updated when modifying the user. Making
-  the user unable to authenticate if the token was ever updated after
-  creation.
-  [#3935](https://github.com/Kong/kong-ee/pull/3935)
 - Paging size parameter is now propogated to next page if specified
   in current request.
   [#9503](https://github.com/Kong/kong/pull/9503)

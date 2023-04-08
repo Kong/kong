@@ -32,6 +32,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
+env:
+  BUILD_ROOT: ${{ github.workspace }}/bazel-bin/build
+
 jobs:
   build:
     name: Build dependencies
@@ -229,10 +232,6 @@ jobs:
     name: Static Code Analysis, Doc and Unit tests
     runs-on: [self-hosted, Hetzner]
     needs: build
-
-    env:
-      KONG_TEST_PG_DATABASE: kong
-      KONG_TEST_PG_USER: kong
 
     services:
       postgres:
@@ -441,6 +440,7 @@ jobs:
         TEST_SUITE: ${{ matrix.suite }}
         TEST_SPLIT: ${{ matrix.split }}
       run: |
+          make dev # required to install other dependencies like bin/grpcurl
           source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           mkdir $TEST_RESULTS_XML_OUTPUT
           export XML_OUTPUT=$(realpath $TEST_RESULTS_XML_OUTPUT)
@@ -523,6 +523,7 @@ jobs:
         KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
         TEST_SUITE: dbless
       run: |
+          make dev # required to install other dependencies like bin/grpcurl
           source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           mkdir $TEST_RESULTS_XML_OUTPUT
           export XML_OUTPUT=$(realpath $TEST_RESULTS_XML_OUTPUT)
@@ -647,6 +648,7 @@ jobs:
         TEST_SUITE: ${{ matrix.suite }}
         TEST_SPLIT: ${{ matrix.split }}
       run: |
+          make dev # required to install other dependencies like bin/grpcurl
           source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           mkdir $TEST_RESULTS_XML_OUTPUT
           export XML_OUTPUT=$(realpath $TEST_RESULTS_XML_OUTPUT)

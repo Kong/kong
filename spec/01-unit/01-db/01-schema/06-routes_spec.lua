@@ -12,6 +12,21 @@ local Entity       = require "kong.db.schema.entity"
 
 local Routes
 
+local function setup_global_env()
+  _G.kong = _G.kong or {}
+  _G.kong.log = _G.kong.log or {
+    debug = function(msg)
+      ngx.log(ngx.DEBUG, msg)
+    end,
+    error = function(msg)
+      ngx.log(ngx.ERR, msg)
+    end,
+    warn = function (msg)
+      ngx.log(ngx.WARN, msg)
+    end
+  }
+end
+
 local function reload_flavor(flavor)
   _G.kong = {
     configuration = {
@@ -43,6 +58,7 @@ describe("routes schema (flavor = traditional/traditional_compatible)", function
                            .. ("%x"):rep(12) .. "$"
 
   reload_flavor("traditional")
+  setup_global_env()
 
   it("validates a valid route", function()
     local route = {
@@ -1275,6 +1291,7 @@ describe("routes schema (flavor = expressions)", function()
   local another_uuid = "64a8670b-900f-44e7-a900-6ec7ef5aa4d3"
 
   reload_flavor("expressions")
+  setup_global_env()
 
   it("validates a valid route", function()
     local route = {
@@ -1330,6 +1347,7 @@ describe("routes schema (flavor = traditional_compatible)", function()
   local another_uuid = "64a8670b-900f-44e7-a900-6ec7ef5aa4d3"
 
   reload_flavor("traditional_compatible")
+  setup_global_env()
 
   it("validates a valid route", function()
     local route = {

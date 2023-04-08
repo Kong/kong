@@ -35,6 +35,7 @@ local extract_major_minor = version.extract_major_minor
 local _log_prefix = "[clustering] "
 
 local REMOVED_FIELDS = require("kong.clustering.compat.removed_fields")
+local COMPATIBILITY_CHECKERS = require("kong.clustering.compat.checkers")
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local KONG_VERSION = meta.version
 
@@ -472,116 +473,11 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix,
     has_update = true
   end
 
-  if dp_version_num < 3002000000 --[[ 3.2.0.0 ]] then
-    local config_plugins = config_table["plugins"]
-    if config_plugins then
-      for _, plugin in ipairs(config_plugins) do
-        if plugin["instance_name"] ~= nil then
-          ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
-            " contains configuration 'plugin.instance_name'",
-            " which is incompatible with dataplane version " .. dp_version .. " and will",
-            " be removed.", log_suffix)
-          plugin["instance_name"] = nil
-          has_update = true
-        end
-      end
-
-      for i = #config_plugins, 1, -1 do
-        local plugin = config_plugins[i]
-        if plugin.name == "opentelemetry" and (plugin.service ~= null or plugin.route ~= null) then
-          ngx_log(ngx_WARN, _log_prefix, "the plugin '", plugin.name,
-            "' is not supported to be configured with routes/serivces on old dataplanes and will be removed.")
-          table_remove(config_plugins, i)
-          has_update = true
-        end
-      end
-    end
-
-    local config_services = config_table["services"]
-    if config_services then
-      for _, t in ipairs(config_services) do
-        if t["protocol"] == "tls" then
-          if t["client_certificate"] or t["tls_verify"]
-              or t["tls_verify_depth"] or t["ca_certificates"] then
-            ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
-                      " tls protocol service contains configuration 'service.client_certificate'",
-                      " or 'service.tls_verify' or 'service.tls_verify_depth' or 'service.ca_certificates'",
-                      " which is incompatible with dataplane version " .. dp_version .. " and will",
-                      " be removed.", log_suffix)
-            t["client_certificate"] = nil
-            t["tls_verify"] = nil
-            t["tls_verify_depth"] = nil
-            t["ca_certificates"] = nil
-            has_update = true
-          end
-        end
-      end
-    end
-
-    local config_upstreams = config_table["upstreams"]
-    if config_upstreams then
-      for _, t in ipairs(config_upstreams) do
-        if t["algorithm"] == "latency" then
-          ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
-                  " configuration 'upstream.algorithm' contains option 'latency'",
-                  " that is incompatible with data plane version " .. dp_version .. ". ",
-                  "Fall back to 'round-robin'.", log_suffix)
-          t["algorithm"] = "round-robin"
-          has_update = true
-        end
-      end
-    end
-
-    local config_services = config_table["services"]
-    if config_services then
-      for _, t in ipairs(config_services) do
-        if t["protocol"] == "tls" then
-          if t["client_certificate"] or t["tls_verify"]
-              or t["tls_verify_depth"] or t["ca_certificates"] then
-            ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
-                      " tls protocol service contains configuration 'service.client_certificate'",
-                      " or 'service.tls_verify' or 'service.tls_verify_depth' or 'service.ca_certificates'",
-                      " which is incompatible with dataplane version " .. dp_version .. " and will",
-                      " be removed.", log_suffix)
-            t["client_certificate"] = nil
-            t["tls_verify"] = nil
-            t["tls_verify_depth"] = nil
-            t["ca_certificates"] = nil
-            has_update = true
-          end
-        end
-      end
-    end
-
-    local config_upstreams = config_table["upstreams"]
-    if config_upstreams then
-      for _, t in ipairs(config_upstreams) do
-        if t["algorithm"] == "latency" then
-          ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
-                  " configuration 'upstream.algorithm' contain 'latency' option",
-                  " which is incompatible with dataplane version " .. dp_version .. " and will",
-                  " be fall back to 'round-robin'.", log_suffix)
-          t["algorithm"] = "round-robin"
-          has_update = true
-        end
-      end
-    end
-  end
-
-
-  if dp_version_num < 3001000000 --[[ 3.1.0.0 ]] then
-    local config_upstream = config_table["upstreams"]
-    if config_upstream then
-      for _, t in ipairs(config_upstream) do
-        if t["use_srv_name"] ~= nil then
-          ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
-                  " contains configuration 'upstream.use_srv_name'",
-                  " which is incompatible with dataplane version " .. dp_version .. " and will",
-                  " be removed.", log_suffix)
-          t["use_srv_name"] = nil
-          has_update = true
-        end
-      end
+  for _, checker in ipairs(COMPATIBILITY_CHECKERS) do
+    local ver = checker[1]
+    local fn  = checker[2]
+    if dp_version_num < ver and fn(config_table, dp_version, log_suffix) then
+      has_update = true
     end
   end
 

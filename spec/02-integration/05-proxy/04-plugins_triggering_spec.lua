@@ -416,7 +416,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       before_each(function()
-        os.execute("echo -n '' > " .. FILE_LOG_PATH)
+        helpers.clean_logfile(FILE_LOG_PATH)
         os.execute("chmod 0777 " .. FILE_LOG_PATH)
       end)
 
@@ -756,7 +756,7 @@ for _, strategy in helpers.each_strategy() do
 
       before_each(function()
         proxy_client = helpers.proxy_client()
-        os.execute("echo -n '' > " .. FILE_LOG_PATH)
+        helpers.clean_logfile(FILE_LOG_PATH)
         os.execute("chmod 0777 " .. FILE_LOG_PATH)
       end)
 

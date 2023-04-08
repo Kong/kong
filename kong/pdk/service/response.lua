@@ -142,6 +142,7 @@ local function new(pdk, major_version)
   local MIN_HEADERS            = 1
   local MAX_HEADERS_DEFAULT    = 100
   local MAX_HEADERS            = 1000
+  local MAX_HEADERS_CONFIGURED
 
 
   ---
@@ -207,10 +208,13 @@ local function new(pdk, major_version)
 
     if max_headers == nil then
       if buffered_headers then
-        return attach_buffered_headers_mt(buffered_headers, MAX_HEADERS_DEFAULT)
+        if not MAX_HEADERS_CONFIGURED then
+          MAX_HEADERS_CONFIGURED = pdk and pdk.configuration and pdk.configuration.lua_max_resp_headers
+        end
+        return attach_buffered_headers_mt(buffered_headers, MAX_HEADERS_CONFIGURED or MAX_HEADERS_DEFAULT)
       end
 
-      return attach_resp_headers_mt(ngx.resp.get_headers(MAX_HEADERS_DEFAULT))
+      return attach_resp_headers_mt(ngx.resp.get_headers())
     end
 
     if type(max_headers) ~= "number" then
@@ -304,7 +308,7 @@ local function new(pdk, major_version)
   -- @tparam[opt] string mimetype The MIME type of the response (if known).
   -- @tparam[opt] number max_args Sets a limit on the maximum number of (what?)
   -- that can be parsed.
-  -- @treturn string The raw buffered body
+  -- @treturn string The decoded buffered body
   -- @usage
   -- -- Plugin needs to call kong.service.request.enable_buffering() on `rewrite`
   -- -- or `access` phase prior calling this function.

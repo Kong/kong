@@ -4,7 +4,7 @@ rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git+https://github.com/Kong/kong.git",
-  tag = "3.2.1"
+  tag = "3.3.0"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -50,12 +50,12 @@ dependencies = {
   "lua-resty-template == 1.9",
   "lua-resty-passwdqc == 1.1",
   "lua-resty-ipmatcher == 0.6.1",
-  "lua-resty-acme == 0.10.1",
-  "lua-resty-session == 4.0.3",
   "lua-resty-websocket-proxy == 0.0.1",
   "lua-resty-ljsonschema == 1.1.3",
   "lua-resty-gcp == 0.0.11-1",
   "lua-resty-aws == 1.1.2",
+  "lua-resty-acme == 0.11.0",
+  "lua-resty-session == 4.0.3",
   "lua-resty-timer-ng == 0.2.4",
   "lpeg == 1.0.2",
 }
@@ -93,6 +93,7 @@ build = {
     ["kong.clustering.compat"] = "kong/clustering/compat/init.lua",
     ["kong.clustering.compat.version"] = "kong/clustering/compat/version.lua",
     ["kong.clustering.compat.removed_fields"] = "kong/clustering/compat/removed_fields.lua",
+    ["kong.clustering.compat.checkers"] = "kong/clustering/compat/checkers.lua",
     ["kong.clustering.config_helper"] = "kong/clustering/config_helper.lua",
     ["kong.clustering.tls"] = "kong/clustering/tls.lua",
     ["kong.clustering.telemetry"] = "kong/clustering/telemetry.lua",
@@ -502,6 +503,7 @@ build = {
     ["kong.db.migrations.core.016_280_to_300"] = "kong/db/migrations/core/016_280_to_300.lua",
     ["kong.db.migrations.core.017_300_to_310"] = "kong/db/migrations/core/017_300_to_310.lua",
     ["kong.db.migrations.core.018_310_to_320"] = "kong/db/migrations/core/018_310_to_320.lua",
+    ["kong.db.migrations.core.019_320_to_330"] = "kong/db/migrations/core/019_320_to_330.lua",
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
     ["kong.db.migrations.operations.210_to_211"] = "kong/db/migrations/operations/210_to_211.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",
@@ -541,6 +543,7 @@ build = {
     ["kong.keyring.strategies.vault"] = "kong/keyring/strategies/vault.lua",
 
     ["kong.pdk.tracing"] = "kong/pdk/tracing.lua",
+    ["kong.pdk.plugin"] = "kong/pdk/plugin.lua",
 
     ["kong.plugins.basic-auth.migrations"] = "kong/plugins/basic-auth/migrations/init.lua",
     ["kong.plugins.basic-auth.migrations.000_base_basic_auth"] = "kong/plugins/basic-auth/migrations/000_base_basic_auth.lua",
@@ -561,6 +564,7 @@ build = {
     ["kong.plugins.key-auth.migrations.003_200_to_210"] = "kong/plugins/key-auth/migrations/003_200_to_210.lua",
     ["kong.plugins.key-auth.migrations.enterprise"] = "kong/plugins/key-auth/migrations/enterprise/init.lua",
     ["kong.plugins.key-auth.migrations.enterprise.001_1500_to_2100"] = "kong/plugins/key-auth/migrations/enterprise/001_1500_to_2100.lua",
+    ["kong.plugins.key-auth.migrations.004_320_to_330"] = "kong/plugins/key-auth/migrations/004_320_to_330.lua",
     ["kong.plugins.key-auth.handler"] = "kong/plugins/key-auth/handler.lua",
     ["kong.plugins.key-auth.schema"] = "kong/plugins/key-auth/schema.lua",
     ["kong.plugins.key-auth.daos"] = "kong/plugins/key-auth/daos.lua",
@@ -573,6 +577,7 @@ build = {
     ["kong.plugins.oauth2.migrations.enterprise"] = "kong/plugins/oauth2/migrations/enterprise/init.lua",
     ["kong.plugins.oauth2.migrations.enterprise.001_1500_to_2100"] = "kong/plugins/oauth2/migrations/enterprise/001_1500_to_2100.lua",
     ["kong.plugins.oauth2.migrations.enterprise.002_2200_to_2211"] = "kong/plugins/oauth2/migrations/enterprise/002_2200_to_2211.lua",
+    ["kong.plugins.oauth2.migrations.006_320_to_330"] = "kong/plugins/oauth2/migrations/006_320_to_330.lua",
     ["kong.plugins.oauth2.handler"] = "kong/plugins/oauth2/handler.lua",
     ["kong.plugins.oauth2.secret"] = "kong/plugins/oauth2/secret.lua",
     ["kong.plugins.oauth2.access"] = "kong/plugins/oauth2/access.lua",
@@ -598,6 +603,7 @@ build = {
     ["kong.plugins.rate-limiting.migrations.000_base_rate_limiting"] = "kong/plugins/rate-limiting/migrations/000_base_rate_limiting.lua",
     ["kong.plugins.rate-limiting.migrations.003_10_to_112"] = "kong/plugins/rate-limiting/migrations/003_10_to_112.lua",
     ["kong.plugins.rate-limiting.migrations.004_200_to_210"] = "kong/plugins/rate-limiting/migrations/004_200_to_210.lua",
+    ["kong.plugins.rate-limiting.migrations.005_320_to_330"] = "kong/plugins/rate-limiting/migrations/005_320_to_330.lua",
     ["kong.plugins.rate-limiting.expiration"] = "kong/plugins/rate-limiting/expiration.lua",
     ["kong.plugins.rate-limiting.handler"] = "kong/plugins/rate-limiting/handler.lua",
     ["kong.plugins.rate-limiting.schema"] = "kong/plugins/rate-limiting/schema.lua",
@@ -721,9 +727,11 @@ build = {
     ["kong.plugins.acme.handler"] = "kong/plugins/acme/handler.lua",
     ["kong.plugins.acme.migrations.000_base_acme"] = "kong/plugins/acme/migrations/000_base_acme.lua",
     ["kong.plugins.acme.migrations.001_280_to_300"] = "kong/plugins/acme/migrations/001_280_to_300.lua",
+    ["kong.plugins.acme.migrations.002_320_to_330"] = "kong/plugins/acme/migrations/002_320_to_330.lua",
     ["kong.plugins.acme.migrations"] = "kong/plugins/acme/migrations/init.lua",
     ["kong.plugins.acme.schema"] = "kong/plugins/acme/schema.lua",
     ["kong.plugins.acme.storage.kong"] = "kong/plugins/acme/storage/kong.lua",
+    ["kong.plugins.acme.reserved_words"] = "kong/plugins/acme/reserved_words.lua",
 
     ["kong.plugins.prometheus.api"] = "kong/plugins/prometheus/api.lua",
     ["kong.plugins.prometheus.status_api"] = "kong/plugins/prometheus/status_api.lua",
@@ -744,6 +752,7 @@ build = {
     ["kong.plugins.session.storage.kong"] = "kong/plugins/session/storage/kong.lua",
     ["kong.plugins.session.migrations.000_base_session"] = "kong/plugins/session/migrations/000_base_session.lua",
     ["kong.plugins.session.migrations.001_add_ttl_index"] = "kong/plugins/session/migrations/001_add_ttl_index.lua",
+    ["kong.plugins.session.migrations.002_320_to_330"] = "kong/plugins/session/migrations/002_320_to_330.lua",
     ["kong.plugins.session.migrations"] = "kong/plugins/session/migrations/init.lua",
 
     ["kong.plugins.proxy-cache.handler"]              = "kong/plugins/proxy-cache/handler.lua",

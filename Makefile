@@ -1,6 +1,7 @@
 OS := $(shell uname | awk '{print tolower($$0)}')
 MACHINE := $(shell uname -m)
 
+# EE uses "busted-hjtest" while EE uses "busted-htest"
 DEV_ROCKS = "busted 2.1.2" "busted-hjtest 0.0.4" "luacheck 1.1.0" "lua-llthreads2 0.1.6" "http 0.4" "ldoc 1.4.6"
 WIN_SCRIPTS = "bin/busted" "bin/kong" "bin/kong-health"
 BUSTED_ARGS ?= -v
@@ -136,23 +137,23 @@ trigger-api-tests:
 test: dev
 	@$(VENV) $(TEST_CMD) spec/01-unit
 
-test-ee: dev
-	@$(VENV) $(TEST_CMD) spec-ee/01-unit
-
 test-integration: dev
 	@$(VENV) $(TEST_CMD) spec/02-integration
+
+test-plugins: dev
+	@$(VENV) $(TEST_CMD) spec/03-plugins
+
+test-all: dev
+	@$(VENV) $(TEST_CMD) spec/
+
+test-ee: dev
+	@$(VENV) $(TEST_CMD) spec-ee/01-unit
 
 test-integration-ee: dev
 	@$(VENV) $(TEST_CMD) spec-ee/02-integration
 
-test-plugins-spec: dev
-	@$(VENV) $(TEST_CMD) spec/03-plugins
-
-test-plugins-spec-ee: dev
+test-plugins-ee: dev
 	@$(VENV) $(TEST_CMD) spec-ee/03-plugins
-
-test-all: dev
-	@$(VENV) $(TEST_CMD) spec/
 
 test-all-ee: dev
 	@$(VENV) $(TEST_CMD) spec-ee/

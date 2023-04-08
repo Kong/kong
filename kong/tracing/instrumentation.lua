@@ -69,6 +69,12 @@ function _M.router()
 end
 
 
+-- Create a span without adding it to the KONG_SPANS list
+function _M.create_span(...)
+  return tracer.create_span(...)
+end
+
+
 --- Record OpenResty Balancer results.
 -- The span includes the Lua-Land resolve DNS time
 -- and the connection/response time between Nginx and upstream server.
@@ -82,35 +88,47 @@ function _M.balancer(ctx)
   local balancer_tries = balancer_data.tries
   local try_count = balancer_data.try_count
   local upstream_connect_time = split(var.upstream_connect_time, ", ", "jo")
+
   for i = 1, try_count do
     local try = balancer_tries[i]
-    span = tracer.start_span("balancer try #" .. i, {
+    local span_name = "balancer try #" .. i
+    local span_options = {
       span_kind = 3, -- client
       start_time_ns = try.balancer_start * 1e6,
       attributes = {
         ["net.peer.ip"] = try.ip,
         ["net.peer.port"] = try.port,
       }
-    })
+    }
 
-    if try.state then
-      span:set_attribute("http.status_code", try.code)
-      span:set_status(2)
-    end
+    -- one of the unsuccessful tries
+    if i < try_count or try.state ~= nil or not ctx.last_try_balancer_span then
+      span = tracer.start_span(span_name, span_options)
 
-    -- last try
-    if i == try_count and try.state == nil then
-      local upstream_finish_time = ctx.KONG_BODY_FILTER_ENDED_AT and ctx.KONG_BODY_FILTER_ENDED_AT * 1e6
-      span:finish(upstream_finish_time)
+      if try.state then
+        span:set_attribute("http.status_code", try.code)
+        span:set_status(2)
+      end
 
-    else
-      -- retrying
       if try.balancer_latency ~= nil then
         local try_upstream_connect_time = (tonumber(upstream_connect_time[i], 10) or 0) * 1000
         span:finish((try.balancer_start + try.balancer_latency + try_upstream_connect_time) * 1e6)
       else
         span:finish()
       end
+
+    else
+      -- last try: load the last span (already created/propagated)
+      span = ctx.last_try_balancer_span
+      tracer:link_span(span, span_name, span_options)
+
+      if try.state then
+        span:set_attribute("http.status_code", try.code)
+        span:set_status(2)
+      end
+
+      local upstream_finish_time = ctx.KONG_BODY_FILTER_ENDED_AT and ctx.KONG_BODY_FILTER_ENDED_AT * 1e6
+      span:finish(upstream_finish_time)
     end
   end
 end
