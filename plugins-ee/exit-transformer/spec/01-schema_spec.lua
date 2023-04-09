@@ -11,9 +11,29 @@ local plugin_schema = require "kong.plugins.exit-transformer.schema"
 local v = require("spec.helpers").validate_plugin_config_schema
 
 describe("exit-transformer schema", function()
+  local previous_kong
 
   lazy_setup(function()
-    _G.kong = { configuration = { } }
+    previous_kong = _G.kong
+
+    _G.kong = {
+      configuration = { },
+      log = {
+        debug = function(msg)
+          ngx.log(ngx.DEBUG, msg)
+        end,
+        error = function(msg)
+          ngx.log(ngx.ERR, msg)
+        end,
+        warn = function (msg)
+          ngx.log(ngx.WARN, msg)
+        end
+      },
+    }
+  end)
+
+  teardown(function()
+    _G.kong = previous_kong
   end)
 
   describe("untrusted_lua = 'off'", function()

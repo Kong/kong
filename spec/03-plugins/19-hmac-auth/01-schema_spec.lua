@@ -47,6 +47,17 @@ describe("Plugin: hmac-auth (schema)", function()
     _G.kong = {
       configuration = {
         fips = true
+      },
+      log = {
+        debug = function(msg)
+          ngx.log(ngx.DEBUG, msg)
+        end,
+        error = function(msg)
+          ngx.log(ngx.ERR, msg)
+        end,
+        warn = function (msg)
+          ngx.log(ngx.WARN, msg)
+        end
       }
     }
 
