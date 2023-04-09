@@ -140,7 +140,7 @@ test: dev
 test-integration: dev
 	@$(VENV) $(TEST_CMD) spec/02-integration
 
-test-plugins: dev
+test-plugins-spec: dev
 	@$(VENV) $(TEST_CMD) spec/03-plugins
 
 test-all: dev
@@ -152,7 +152,7 @@ test-ee: dev
 test-integration-ee: dev
 	@$(VENV) $(TEST_CMD) spec-ee/02-integration
 
-test-plugins-ee: dev
+test-plugins-spec-ee: dev
 	@$(VENV) $(TEST_CMD) spec-ee/03-plugins
 
 test-all-ee: dev
