@@ -174,7 +174,7 @@
   [10539](https://github.com/Kong/kong/pull/10539)
 - **Request Transformer**: honor value of untrusted_lua configuration parameter
   [#10327](https://github.com/Kong/kong/pull/10327)
-- **OAuth2**: OAuth2 token was being cached to nil while access to the wrong service first.
+- **OAuth2**: fix an issue that OAuth2 token was being cached to nil while access to the wrong service first.
   [#10522](https://github.com/Kong/kong/pull/10522)  
 
 #### PDK
