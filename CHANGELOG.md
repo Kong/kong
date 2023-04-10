@@ -114,6 +114,11 @@
   This is useful for debugging.
   [#5885](https://github.com/Kong/kong/pull/5885)
 
+#### Status API
+
+- Add `GET /status/ready` endpoint to check if Kong is ready to serve requests.
+  [#10610](https://github.com/Kong/kong/pull/10610)
+
 #### Plugins
 
 - **ACME**: acme plugin now supports configuring an `account_key` in `keys` and `key_sets`
