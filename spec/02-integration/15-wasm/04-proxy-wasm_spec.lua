@@ -41,7 +41,6 @@ describe("proxy-wasm filters (#wasm)", function()
     })
 
     assert(db.wasm_filter_chains:insert {
-      name = "single-filter",
       route = r_single,
       filters = {
         { name = "tests" },
@@ -49,13 +48,14 @@ describe("proxy-wasm filters (#wasm)", function()
     })
 
     assert(db.wasm_filter_chains:insert {
-      name = "double-filter", -- oh my god
       route = r_double,
       filters = {
         { name = "tests" },
         { name = "tests" },
       },
     })
+
+    wasm_fixtures.build()
 
     assert(helpers.start_kong({
       database = DATABASE,
