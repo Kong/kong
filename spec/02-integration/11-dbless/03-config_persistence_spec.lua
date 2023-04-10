@@ -13,6 +13,25 @@ local SERVICE_YML = [[
     - /%d
 ]]
 
+local verify_lmdb_kong_version
+do
+  local TEST_CONF = helpers.test_conf
+  local KONG_VERSION = require("kong.meta").version
+  local LMDB_KONG_VERSION_KEY = require("kong.constants").LMDB_KONG_VERSION_KEY
+
+  verify_lmdb_kong_version = function()
+    local cmd = string.format(
+      [[resty --main-conf "lmdb_environment_path %s/%s;" spec/fixtures/dump_lmdb_key.lua %q]],
+      TEST_CONF.prefix, TEST_CONF.lmdb_environment_path, LMDB_KONG_VERSION_KEY)
+
+    local handle = io.popen(cmd)
+    local result = handle:read("*a")
+    handle:close()
+
+    assert.equals(KONG_VERSION, result)
+  end
+end
+
 describe("dbless persistence #off", function()
   local admin_client, proxy_client
 
@@ -59,6 +78,8 @@ describe("dbless persistence #off", function()
     assert.res_status(401, res)
 
     assert.logfile().has.line("found persisted lmdb config")
+
+    verify_lmdb_kong_version()
   end)
 end)
 
