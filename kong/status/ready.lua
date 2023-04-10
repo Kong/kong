@@ -17,7 +17,7 @@ local DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY =
                                 constants.DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
-function is_ready()
+local function is_ready()
 
   local ok = kong.db:connect()
   if not ok then
