@@ -2,6 +2,8 @@ local helpers = require "spec.helpers"
 
 local fmt = string.format
 
+local KONG_VERSION = require("kong.meta").version
+
 local SERVICE_YML = [[
 - name: my-service-%d
   url: https://example%d.dev
@@ -17,7 +19,6 @@ local verify_lmdb_kong_version
 local set_lmdb_kong_version
 do
   local TEST_CONF = helpers.test_conf
-  local KONG_VERSION = require("kong.meta").version
   local LMDB_KONG_VERSION_KEY = require("kong.constants").LMDB_KONG_VERSION_KEY
 
   verify_lmdb_kong_version = function()
@@ -62,6 +63,8 @@ describe("dbless persistence #off", function()
 
     admin_client = assert(helpers.admin_client())
     proxy_client = assert(helpers.proxy_client())
+
+    assert.logfile().has.line("current Kong v" .. KONG_VERSION .. " mismatches cache v1.0")
   end)
 
   lazy_teardown(function()
