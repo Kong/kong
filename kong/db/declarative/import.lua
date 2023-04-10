@@ -135,7 +135,9 @@ local function get_current_hash()
   end
 
   if v ~= KONG_VERSION then
-    ngx.log(ngx.WARN, "current Kong v", KONG_VERSION, " mismatches cache v", v)
+    ngx.log(ngx.WARN,
+            "current Kong v", KONG_VERSION,
+            " mismatches cache v", v or " unknown")
     return nil
   end
 
