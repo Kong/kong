@@ -14,6 +14,7 @@ local SERVICE_YML = [[
 ]]
 
 local verify_lmdb_kong_version
+local set_lmdb_kong_version
 do
   local TEST_CONF = helpers.test_conf
   local KONG_VERSION = require("kong.meta").version
@@ -30,12 +31,31 @@ do
 
     assert.equals(KONG_VERSION, result)
   end
+
+  set_lmdb_kong_version = function(value)
+    local cmd = string.format(
+      [[resty --main-conf "lmdb_environment_path %s/%s;" -e '
+          local lmdb = require("resty.lmdb")
+          ngx.print(lmdb.set(%q, %q))
+        ']],
+      TEST_CONF.prefix, TEST_CONF.lmdb_environment_path,
+      LMDB_KONG_VERSION_KEY, value)
+
+    local handle = io.popen(cmd)
+    local result = handle:read("*a")
+    handle:close()
+
+    assert.equals("true", result)
+  end
 end
 
 describe("dbless persistence #off", function()
   local admin_client, proxy_client
 
   lazy_setup(function()
+    -- set a old verion into lmdb
+    set_lmdb_kong_version("1.0")
+
     assert(helpers.start_kong({
       database   = "off",
     }))
