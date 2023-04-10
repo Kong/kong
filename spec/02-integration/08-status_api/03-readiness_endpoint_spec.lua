@@ -19,7 +19,9 @@ describe("Status API - with strategy #" .. strategy, function()
   end)
 
   lazy_teardown(function()
-    if client then client:close() end
+    if client then
+      client:close()
+    end
     helpers.stop_kong()
   end)
  
@@ -27,14 +29,10 @@ describe("Status API - with strategy #" .. strategy, function()
     it("should return 503 when no config, return 200 in db mode", function()
       local res = assert(client:send {
         method = "GET",
-        path = "/status/ready"
+        path = "/status/ready",
       })
 
-      if strategy == "off" then
-        assert.res_status(503, res)
-      else
-        assert.res_status(200, res)
-      end
+      assert.res_status(strategy == "off" and 503 or 200, res)
 
     end)
 
@@ -42,7 +40,7 @@ describe("Status API - with strategy #" .. strategy, function()
       it("should return 503 when no config, and return 200 after a valid config is uploaded", function()
         local res = assert(client:send {
           method = "GET",
-          path = "/status/ready"
+          path = "/status/ready",
         })
 
         assert.res_status(503, res)
@@ -60,14 +58,16 @@ describe("Status API - with strategy #" .. strategy, function()
           },
           headers = {
             ["Content-Type"] = "multipart/form-data"
-          }
+          },
         })
+
         assert.res_status(201, res)
 
         local res = assert(client:send {
           method = "GET",
-          path = "/status/ready"
+          path = "/status/ready",
         })
+
         assert.res_status(200, res)
       end)
     end
@@ -75,7 +75,7 @@ describe("Status API - with strategy #" .. strategy, function()
     it("should return 200 after loading an invalid config following a previously uploaded valid config.", function()
       local res = assert(client:send {
         method = "GET",
-        path = "/status/ready"
+        path = "/status/ready",
       })
 
       assert.res_status(200, res)
@@ -90,14 +90,16 @@ describe("Status API - with strategy #" .. strategy, function()
         },
         headers = {
           ["Content-Type"] = "multipart/form-data"
-        }
+        },
       })
+      
       assert.res_status(400, res)
 
       local res = assert(client:send {
         method = "GET",
-        path = "/status/ready"
+        path = "/status/ready",
       })
+
       assert.res_status(200, res)
     end)
   end)
