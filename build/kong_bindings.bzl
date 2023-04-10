@@ -42,7 +42,11 @@ def _load_vars(ctx):
     kong_version = ctx.execute(["bash", "scripts/grep-kong-version.sh"], working_directory = workspace_path).stdout
     content += '"KONG_VERSION": "%s",' % kong_version.strip()
 
-    nproc = ctx.execute(["nproc"]).stdout.strip()
+    if ctx.os.name == "mac os x":
+        nproc = ctx.execute(["sysctl", "-n", "hw.ncpu"]).stdout.strip()
+    else:  # assume linux
+        nproc = ctx.execute(["nproc"]).stdout.strip()
+
     content += '"%s": "%s",' % ("NPROC", nproc)
 
     macos_target = ""
