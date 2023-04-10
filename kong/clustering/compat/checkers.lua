@@ -31,11 +31,17 @@ end
 local compatible_checkers = {
   { 3003000000, --[[ 3.3.0.0 ]]
     function(config_table, dp_version, log_suffix)
-      -- remove updated_at field for core entities ca_certificates, certificates, consumers,
-      -- targets, upstreams, plugins, workspaces, clustering_data_planes and snis
+      -- remove updated_at field for the following core entities
+      -- excludes entities are not exported: clustering_data_planes, document_objects, files,
+      -- group_rbac_roles, groups, legacy_files, login_attempts, rbac_role_endpoints,
+      -- rbac_role_entities, rbac_roles, rbac_users
       local entity_names = {
         "ca_certificates", "certificates", "consumers", "targets", "upstreams",
-        "plugins", "workspaces", "clustering_data_planes", "snis",
+        "plugins", "workspaces", "snis",
+        -- XXX EE
+        'consumer_group_consumers', 'consumer_group_plugins',
+        'consumer_groups', 'credentials', 'event_hooks', 'keyring_meta', 'parameters',
+        -- XXX EE
         }
 
       local has_update
