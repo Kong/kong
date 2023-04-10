@@ -8,34 +8,50 @@ The build system is tested on Linux (x86_64 and arm64) and macOS (Intel chip and
 
 ## Prerequisites
 
+The following examples should be performed under the Kong source codebase.
+
 The build system requires the following tools to be installed:
 
 - [Bazel/Bazelisk](https://bazel.build/install/bazelisk), Bazelisk is recommended to ensure the correct version of Bazel is used.
-    - Use `make check-bazel` to install Bazelisk into `bin/bazel`, then use `export PATH=bin:$PATH` to add it into your `PATH`.
-- [Build dependencies](https://github.com/Kong/kong/blob/master/DEVELOPER.md#build-and-install-from-source)
 
+  We can install Bazelisk by running the following command:
+
+  ```bash
+    // install Bazelisk into $PWD/bin/bazel
+    make check-bazel
+    // add Bazelisk into your $PATH
+    export PATH=bin:$PATH
+    // check bazel version
+    bazel version
+  ```
+
+- [Build dependencies](https://github.com/Kong/kong/blob/master/DEVELOPER.md#build-and-install-from-source)
 
 ## Building
 
-To build Kong and all its dependencies, run the following command:
+### Build Kong and its dependencies
+
+The commands related to building Kong are already supported in the [Makefile](../Makefile), so we can use them directly:
 
 ```bash
-bazel build //build:kong --verbose_failures
+make build-kong
 ```
 
-The build output is in `bazel-bin/build/kong-dev`.
+During the first run, it will take some time to perform a complete build, which includes downloading dependent files and compiling.
 
-To use the build as a virtual development environment, run:
-  
+Once the build is complete, you will see four `bazel-*` folders in the current directory. Refer to the [workspace layout diagram](https://bazel.build/remote/output-directories?hl=en#layout-diagram) for their respective definitions.
+
+### Build a virtual development environment
+
 ```bash
-bazel build //build:venv --verbose_failures
+make build-venv
 . ./bazel-bin/build/kong-dev-venv.sh
 ```
 
 Some other targets one might find useful for debugging are:
 
-- `@openresty//:openresty`: builds openresty
-- `@luarocks//:luarocks_make`: builds luarocks for Kong dependencies
+- `bazel build @openresty//:openresty`: builds openresty
+- `bazel build @luarocks//:luarocks_make`: builds luarocks for Kong dependencies
 
 ### Build Options
 
@@ -48,7 +64,6 @@ building a building an binary package.
 - **--action_env=INSTALL_DESTDIR=** set the directory when the build is intended to be installed. Bazel won't
 actually install files into this directory, but this will make sure certain hard coded paths and RPATH is
 correctly set when building a package. Default to `bazel-bin/build/<BUILD_NAME>`.
-
 
 ### Official build
 
@@ -78,7 +93,6 @@ For example, to build the deb package:
 
 ```bash
 bazel build --verbose_failures --config release :kong_deb
-
 ```
 
 Run `bazel clean` to clean the bazel build cache.
