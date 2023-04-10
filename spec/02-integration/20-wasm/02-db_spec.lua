@@ -84,6 +84,41 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
       end)
     end)
 
+    describe(".name", function()
+      it("is optional", function()
+        local chain = assert(dao:insert({
+          name = nil,
+          service = make_service(),
+          filters = { { name = "test" } },
+        }))
+
+        assert.is_nil(chain.name)
+      end)
+
+      it("must be unique", function()
+        local name = "my-unique-filter"
+
+        assert(dao:insert({
+          name = name,
+          service = make_service(),
+          filters = { { name = "test" } },
+        }))
+
+        local other, err, err_t = dao:insert({
+          name = name,
+          service = make_service(),
+          filters = { { name = "test" } },
+        })
+
+        assert.is_string(err)
+        assert.is_table(err_t)
+        assert.is_nil(other)
+
+        assert.equals("unique constraint violation", err_t.name)
+        assert.same({ name = name }, err_t.fields)
+      end)
+    end)
+
     describe(".enabled", function()
       it("defaults to 'true'", function()
         local chain = assert(dao:insert({

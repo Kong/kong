@@ -3,6 +3,7 @@ return {
     up = [[
       CREATE TABLE IF NOT EXISTS "wasm_filter_chains" (
         "id"          UUID                       PRIMARY KEY,
+        "name"        TEXT                       UNIQUE,
         "enabled"     BOOLEAN                    DEFAULT TRUE,
         "route_id"    UUID                       REFERENCES "routes"     ("id") ON DELETE CASCADE,
         "service_id"  UUID                       REFERENCES "services"   ("id") ON DELETE CASCADE,
@@ -18,6 +19,12 @@ return {
           CHECK ((route_id IS NULL     AND service_id IS NOT NULL)
               OR (route_id IS NOT NULL AND service_id IS NULL))
       );
+
+      DO $$
+      BEGIN
+        CREATE UNIQUE INDEX IF NOT EXISTS "wasm_filter_chains_name_idx"
+          ON "wasm_filter_chains" ("name");
+      END$$;
 
       DO $$
       BEGIN
