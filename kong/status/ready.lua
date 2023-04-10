@@ -3,7 +3,6 @@ local declarative = require "kong.db.declarative"
 local tonumber = tonumber
 local kong = kong
 
-local dbless = kong.configuration.database == "off"
 local get_current_hash = declarative.get_current_hash
 
 local is_ready
@@ -12,7 +11,7 @@ do
 
   local worker_count      = ngx.worker.count()
   local kong_shm          = ngx.shared.kong
-  local is_traditional    = not dbless
+  local is_traditional    = kong.configuration.database ~= "off"
 
   local DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY =
                                 constants.DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY
@@ -29,7 +28,6 @@ do
     end
 
     if is_traditional then
-
       kong.db:close() -- ignore ERRs
       return true
     end

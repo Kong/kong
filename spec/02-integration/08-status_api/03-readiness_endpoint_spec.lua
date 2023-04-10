@@ -52,7 +52,7 @@ describe("Status API - with strategy #" .. strategy, function()
           path = "/config",
           body = {
             config = [[
-              _format_version: "1.1"
+              _format_version: "3.0"
               services:
               - name: test
                 url: http://mockbin.org
