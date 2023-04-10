@@ -9,7 +9,6 @@ local knode  = (kong and kong.node) and kong.node or
 
 local dbless = kong.configuration.database == "off"
 local data_plane_role = kong.configuration.role == "data_plane"
-local get_current_hash = declarative.get_current_hash
 
 return {
   ["/status"] = {
@@ -50,7 +49,7 @@ return {
       -- if the gateway gets unexpectedly restarted and its configuration
       -- has been reset to empty).
       if dbless or data_plane_role then
-        status_response.configuration_hash = get_current_hash()
+        status_response.configuration_hash = declarative.get_current_hash
       end
 
       -- TODO: no way to bypass connection pool
