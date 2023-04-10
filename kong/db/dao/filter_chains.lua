@@ -1,4 +1,4 @@
-local wasm_filter_chains = {}
+local filter_chains = {}
 
 local insert = table.insert
 local fmt = string.format
@@ -43,7 +43,7 @@ local function check_enabled_filters(self, chain)
 end
 
 
-function wasm_filter_chains:load_filters(wasm_filters)
+function filter_chains:load_filters(wasm_filters)
   local filters = {}
   local filters_by_name = {}
 
@@ -75,7 +75,7 @@ function wasm_filter_chains:load_filters(wasm_filters)
 end
 
 
-function wasm_filter_chains:insert(entity, options)
+function filter_chains:insert(entity, options)
   local ok, err, err_t = check_enabled_filters(self, entity)
   if not ok then
     return nil, err, err_t
@@ -85,7 +85,7 @@ function wasm_filter_chains:insert(entity, options)
 end
 
 
-function wasm_filter_chains:update(primary_key, entity, options)
+function filter_chains:update(primary_key, entity, options)
   local ok, err, err_t = check_enabled_filters(self, entity)
   if not ok then
     return nil, err, err_t
@@ -95,7 +95,7 @@ function wasm_filter_chains:update(primary_key, entity, options)
 end
 
 
-function wasm_filter_chains:upsert(primary_key, entity, options)
+function filter_chains:upsert(primary_key, entity, options)
   local ok, err, err_t = check_enabled_filters(self, entity)
   if not ok then
     return nil, err, err_t
@@ -105,4 +105,4 @@ function wasm_filter_chains:upsert(primary_key, entity, options)
 end
 
 
-return wasm_filter_chains
+return filter_chains

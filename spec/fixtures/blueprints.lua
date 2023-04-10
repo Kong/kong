@@ -405,7 +405,7 @@ function _M.new(db)
     return {}
   end)
 
-  res.wasm_filter_chains = new_blueprint(db.wasm_filter_chains, function()
+  res.filter_chains = new_blueprint(db.filter_chains, function()
     return {}
   end)
 

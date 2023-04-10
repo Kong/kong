@@ -39,7 +39,7 @@ end
 
 
 local function declarative_api_functions(db)
-  local dao = db.wasm_filter_chains
+  local dao = db.filter_chains
 
   local insert = function(entity)
     local res = assert(dao:insert(entity))
@@ -70,7 +70,7 @@ end
 
 
 local function db_api_functions()
-  local api = require("spec.fixtures.admin_api").wasm_filter_chains
+  local api = require("spec.fixtures.admin_api").filter_chains
 
   local insert = function(entity)
     return assert(api:insert(entity))
@@ -200,10 +200,10 @@ describe("#wasm filter chain cache " .. mode_suffix, function()
     bp, db = helpers.get_db_utils("postgres", {
       "services",
       "routes",
-      "wasm_filter_chains",
+      "filter_chains",
     })
 
-    db.wasm_filter_chains:load_filters({
+    db.filter_chains:load_filters({
       { name = "response_transformer", },
     })
 
@@ -275,7 +275,7 @@ describe("#wasm filter chain cache " .. mode_suffix, function()
 
   before_each(function()
     helpers.clean_logfile()
-    db.wasm_filter_chains:truncate()
+    db.filter_chains:truncate()
 
     -- sanity
     assert_no_filter(hosts.no_filter, "(test setup)")

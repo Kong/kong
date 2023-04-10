@@ -16,10 +16,10 @@ describe("proxy-wasm filters (#wasm)", function()
     local bp, db = helpers.get_db_utils(DATABASE, {
       "routes",
       "services",
-      "wasm_filter_chains",
+      "filter_chains",
     })
 
-    db.wasm_filter_chains:load_filters({ { name = "tests" } })
+    db.filter_chains:load_filters({ { name = "tests" } })
 
     local mock_service = assert(bp.services:insert {
       host = helpers.mock_upstream_host,
@@ -38,14 +38,14 @@ describe("proxy-wasm filters (#wasm)", function()
       service = mock_service,
     })
 
-    assert(db.wasm_filter_chains:insert {
+    assert(db.filter_chains:insert {
       route = r_single,
       filters = {
         { name = "tests" },
       },
     })
 
-    assert(db.wasm_filter_chains:insert {
+    assert(db.filter_chains:insert {
       route = r_double,
       filters = {
         { name = "tests" },

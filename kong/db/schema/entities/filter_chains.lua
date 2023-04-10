@@ -1,6 +1,6 @@
 local typedefs = require "kong.db.schema.typedefs"
 
----@class kong.db.schema.entities.wasm_filter_chain : table
+---@class kong.db.schema.entities.filter_chain : table
 ---
 ---@field id         string
 ---@field name       string|nil
@@ -31,13 +31,13 @@ local filter = {
 
 
 return {
-  name = "wasm_filter_chains",
+  name = "filter_chains",
   primary_key = { "id" },
   endpoint_key = "name",
-  admin_api_name = "wasm/filter-chains",
+  admin_api_name = "filter-chains",
   generate_admin_api = true,
   workspaceable = true,
-  dao = "kong.db.dao.wasm_filter_chains",
+  dao = "kong.db.dao.filter_chains",
   cache_key = { "route", "service" },
 
   fields = {
