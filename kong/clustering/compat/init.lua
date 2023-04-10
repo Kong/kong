@@ -27,7 +27,6 @@ local ngx_log = ngx.log
 local ngx_INFO = ngx.INFO
 local ngx_NOTICE = ngx.NOTICE
 local ngx_WARN = ngx.WARN
-local null = ngx.null
 
 local version_num = version.string_to_number
 local extract_major_minor = version.extract_major_minor

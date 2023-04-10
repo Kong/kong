@@ -6,17 +6,22 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local ipairs = ipairs
+local table_remove = table.remove
+
+
+local null = ngx.null
+local ngx_log = ngx.log
+local ngx_WARN = ngx.WARN
+
+
+local _log_prefix = "[clustering] "
 
 
 local log_warn_message
 do
-  local ngx_log = ngx.log
-  local ngx_WARN = ngx.WARN
   local fmt = string.format
 
   local KONG_VERSION = require("kong.meta").version
-
-  local _log_prefix = "[clustering] "
 
   log_warn_message = function(hint, action, dp_version, log_suffix)
     local msg = fmt("Kong Gateway v%s %s " ..
@@ -64,6 +69,31 @@ local compatible_checkers = {
               updated_entities[name] = true
             end
           end
+        end
+      end
+
+      return has_update
+    end
+  },
+
+  -- XXX EE
+  { 3002000000, --[[ 3.2.0.0 ]]
+    function(config_table, dp_version, log_suffix)
+      local config_plugins = config_table["plugins"]
+      if not config_plugins then
+        return nil
+      end
+
+      local has_update
+      for i = #config_plugins, 1, -1 do
+        local plugin = config_plugins[i]
+        if plugin.name == "opentelemetry" and (plugin.service ~= null or plugin.route ~= null) then
+          ngx_log(ngx_WARN, _log_prefix, "the plugin '", plugin.name,
+                  "' is not supported to be configured with routes/serivces" ..
+                  " on old dataplanes and will be removed.")
+
+          table_remove(config_plugins, i)
+          has_update = true
         end
       end
 
