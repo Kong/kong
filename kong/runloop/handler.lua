@@ -569,8 +569,6 @@ local function _set_update_plugins_iterator(f)
   update_plugins_iterator = f
 end
 
--- TODO: how can we reset counters if kong is reconfigured
-
 local reconfigure_handler
 do
   local now = ngx.now
