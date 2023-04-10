@@ -61,10 +61,10 @@ describe("dbless persistence #off", function()
       database   = "off",
     }))
 
+    assert.logfile().has.line("current Kong v" .. KONG_VERSION .. " mismatches cache v1.0")
+
     admin_client = assert(helpers.admin_client())
     proxy_client = assert(helpers.proxy_client())
-
-    assert.logfile().has.line("current Kong v" .. KONG_VERSION .. " mismatches cache v1.0")
   end)
 
   lazy_teardown(function()
@@ -129,6 +129,9 @@ describe("dbless persistence with a declarative config #off", function()
         database   = "off",
         declarative_config = yaml_file,
     }))
+
+    assert.logfile().has.line("current Kong v" .. KONG_VERSION .. " mismatches cache v unknown")
+
     admin_client = assert(helpers.admin_client())
     proxy_client = assert(helpers.proxy_client())
 
