@@ -11,6 +11,7 @@ describe("Status API - with strategy #" .. strategy, function()
     assert(helpers.start_kong {
       status_listen = "127.0.0.1:9500",
       plugins = "admin-api-method",
+      database = strategy,
     })
     client = helpers.http_client("127.0.0.1", 9500, 20000)
 
@@ -23,14 +24,12 @@ describe("Status API - with strategy #" .. strategy, function()
   end)
  
   describe("status readiness endpoint", function()
-    it("should returns 503 when no config, returns 200 in db mode", function()
+    it("should return 503 when no config, return 200 in db mode", function()
       local res = assert(client:send {
         method = "GET",
         path = "/status/ready"
       })
 
-      ngx.sleep(10)
-      
       if strategy == "off" then
         assert.res_status(503, res)
       else
@@ -39,12 +38,13 @@ describe("Status API - with strategy #" .. strategy, function()
 
     end)
 
-    if strategy ~= "off" then
-      it("should returns 503 when no config, and returns 200 after a valid config is uploaded", function()
+    if strategy == "off" then
+      it("should return 503 when no config, and return 200 after a valid config is uploaded", function()
         local res = assert(client:send {
           method = "GET",
           path = "/status/ready"
         })
+
         assert.res_status(503, res)
 
         local res = assert(admin_client:send {
@@ -71,6 +71,35 @@ describe("Status API - with strategy #" .. strategy, function()
         assert.res_status(200, res)
       end)
     end
+
+    it("should return 200 after loading an invalid config following a previously uploaded valid config.", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/status/ready"
+      })
+
+      assert.res_status(200, res)
+
+      local res = assert(admin_client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          config = [[
+            _format"\!@#$
+          ]]
+        },
+        headers = {
+          ["Content-Type"] = "multipart/form-data"
+        }
+      })
+      assert.res_status(400, res)
+
+      local res = assert(client:send {
+        method = "GET",
+        path = "/status/ready"
+      })
+      assert.res_status(200, res)
+    end)
   end)
 
 end)

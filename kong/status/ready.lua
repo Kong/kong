@@ -29,15 +29,16 @@ do
     end
 
     if is_traditional then
-      kong.db:close() -- ignore errors
+
+      kong.db:close() -- ignore ERRs
       return true
     end
     
 
     local router_rebuilds = 
-                      tonumber(kong_shm:get(DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY)) or 0
+            tonumber(kong_shm:get(DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY)) or 0
     local plugins_iterator_rebuilds = 
-                      tonumber(kong_shm:get(DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY)) or 0
+            tonumber(kong_shm:get(DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY)) or 0
 
     if router_rebuilds < worker_count 
         or plugins_iterator_rebuilds < worker_count then
@@ -57,7 +58,11 @@ end
 return {
   ["/status/ready"] = {
     GET = function(self, dao, helpers)
-    return kong.response.exit(is_ready() and 200 or 503)
+      if is_ready() then
+        return kong.response.exit(200, 'ready')
+      else
+        return kong.response.exit(503, 'not ready')
+      end
     end
   },
 }
