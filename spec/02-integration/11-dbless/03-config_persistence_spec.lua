@@ -127,6 +127,8 @@ describe("dbless persistence with a declarative config #off", function()
     assert.res_status(401, res)
 
     proxy_client:close()
+
+    verify_lmdb_kong_version()
   end)
 
   after_each(function()
