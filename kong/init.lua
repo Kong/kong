@@ -1046,8 +1046,7 @@ function Kong.access()
     return kong.response.error(503, "no Service found with those values")
   end
 
-  wasm.attach_filter_chains(ctx)
-
+  runloop.wasm_attach(ctx)
   runloop.access.after(ctx)
 
   ctx.KONG_ACCESS_ENDED_AT = get_updated_now_ms()
