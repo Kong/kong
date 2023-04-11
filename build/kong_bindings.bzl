@@ -66,7 +66,19 @@ def _load_vars(ctx):
     ctx.file("BUILD.bazel", "")
     ctx.file("variables.bzl", "KONG_VAR = {\n" + content + "\n}")
 
+def _check_sanity(ctx):
+    if ctx.os.name == "mac os x":
+        xcode_prefix = ctx.execute(["xcode-select", "-p"]).stdout.strip()
+        if "CommandLineTools" in xcode_prefix:
+            fail("Command Line Tools is not supported, please install Xcode from App Store.\n" +
+                 "If you recently installed Xcode, please run `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer` to switch to Xcode,\n" +
+                 "then do a `bazel clean --expunge` and try again.\n" +
+                 "The following command is useful to check if Xcode is picked up by Bazel:\n" +
+                 "eval `find /private/var/tmp/_bazel_*/|grep xcode-locator|head -n1`")
+
 def _load_bindings_impl(ctx):
+    _check_sanity(ctx)
+
     _load_vars(ctx)
 
 load_bindings = repository_rule(

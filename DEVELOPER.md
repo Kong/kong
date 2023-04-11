@@ -129,8 +129,8 @@ dnf install \
 macOS
 
 ```shell
-# Install XCode instead of Command Line Tools is recommended
-xcode-select --install
+# Install Xcode from App Store (Command Line Tools is not supported)
+
 # Install HomeBrew
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 # Build dependencies
