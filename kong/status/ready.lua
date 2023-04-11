@@ -49,7 +49,7 @@ local function is_ready()
   end
 
   if plugins_iterator_rebuilds < worker_count then
-    return false, "plugins iterator rebuilds not complete"
+    return false, "plugins iterator rebuilds are not complete"
   end
 
   local current_hash = get_current_hash()
