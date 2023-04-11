@@ -25,14 +25,15 @@ local SUCCESS   = "success"
 local MAX_TRIES = "max tries"
 
 
---- spec.helpers.wait.ctx.condition
--- "truthy", "falsy", "error", "no_error"
-
-
---- helper functions that check the result of pcall() and report if the
+---
+-- @table spec.helpers.wait.ctx.condition
+-- helper functions that check the result of pcall() and report if the
 -- wait ctx condition has been met
 --
--- @type table<spec.helpers.wait.ctx.condition, fun(boolean, any):boolean>
+-- @field "truthy"
+-- @field "falsy"
+-- @field "error"
+-- @field "no_error"
 local COND = {
   truthy = function(pok, ok_or_err)
     return (pok and ok_or_err and true) or false
