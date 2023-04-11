@@ -16,7 +16,11 @@ function _M:access(conf)
   local tracer = kong.tracing.new("trace-propagator")
   local root_span = tracer.start_span("root")
 
-  local header_type, trace_id, span_id, parent_id = propagation_parse(headers)
+  local header_type, trace_id, span_id, parent_id, should_sample = propagation_parse(headers)
+
+  if should_sample == false then
+    tracer:set_should_sample(should_sample)
+  end
 
   if trace_id then
     root_span.trace_id = trace_id
