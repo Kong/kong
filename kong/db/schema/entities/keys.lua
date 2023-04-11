@@ -25,6 +25,7 @@ return {
     {
       set = {
         type      = "foreign",
+        description = "The id (an UUID) of the key-set with which to associate the key.",
         required  = false,
         reference = "key_sets",
         on_delete = "cascade",
@@ -33,6 +34,7 @@ return {
     {
       name = {
         type     = "string",
+        description = "The name to associate with the given keys.",
         required = false,
         unique   = true,
       },
@@ -40,6 +42,7 @@ return {
     {
       kid = {
         type     = "string",
+        description = "A unique identifier for a key.",
         required = true,
         unique   = false,
       },
@@ -48,6 +51,7 @@ return {
       jwk = {
         -- type string but validate against typedefs.jwk
         type = "string",
+        description = "A JSON Web Key represented as a string.",
         referenceable = true,
         encrypted = true
       }

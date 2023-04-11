@@ -14,6 +14,7 @@ return {
 
   fields = {
     { id         = typedefs.uuid, },
+    { description = "A certificate object represents a public certificate."},
     { created_at = typedefs.auto_timestamp_s },
     { cert       = typedefs.certificate { required = true,  referenceable = true }, },
     { key        = typedefs.key         { required = true,  referenceable = true, encrypted = true }, },

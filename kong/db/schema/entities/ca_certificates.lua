@@ -8,6 +8,7 @@ return {
 
   fields = {
     { id = typedefs.uuid, },
+    { description = "A CA certificate object represents a trusted CA." },
     { created_at = typedefs.auto_timestamp_s },
     { cert = typedefs.certificate { required = true }, },
     { cert_digest = { type = "string", unique = true }, },
