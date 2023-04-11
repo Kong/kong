@@ -21,15 +21,13 @@ return {
     { config = {
         type = "record",
         fields = {
-          { response_code = {
-            type = "array",
+          { response_code = { description = "Upstream response status code considered cacheable.", type = "array",
             default = { 200, 301, 404 },
             elements = { type = "integer", between = {100, 900} },
             len_min = 1,
             required = true,
           }},
-          { request_method = {
-            type = "array",
+          { request_method = { description = "Downstream request methods considered cacheable.", type = "array",
             default = { "GET", "HEAD" },
             elements = {
               type = "string",
@@ -37,24 +35,20 @@ return {
             },
             required = true
           }},
-          { content_type = {
-            type = "array",
+          { content_type = { description = "Upstream response content types considered cacheable. The plugin performs an **exact match** against each specified value.", type = "array",
             default = { "text/plain","application/json" },
             elements = { type = "string" },
             required = true,
           }},
-          { cache_ttl = {
-            type = "integer",
+          { cache_ttl = { description = "TTL, in seconds, of cache entities.", type = "integer",
             default = 300,
             gt = 0,
           }},
-          { strategy = {
-            type = "string",
+          { strategy = { description = "The backing data store in which to hold cache entities.", type = "string",
             one_of = strategies.STRATEGY_TYPES,
             required = true,
           }},
-          { cache_control = {
-            type = "boolean",
+          { cache_control = { description = "When enabled, respect the Cache-Control behaviors defined in RFC7234.", type = "boolean",
             default = false,
             required = true,
           }},
@@ -63,25 +57,21 @@ return {
             default = false,
             required = false,
           }},
-          { storage_ttl = {
-            type = "integer",
+          { storage_ttl = { description = "Number of seconds to keep resources in the storage backend. This value is independent of `cache_ttl` or resource TTLs defined by Cache-Control behaviors.", type = "integer",
           }},
           { memory = {
             type = "record",
             fields = {
-              { dictionary_name = {
-                type = "string",
+              { dictionary_name = { description = "The name of the shared dictionary in which to hold cache entities when the memory strategy is selected. Note that this dictionary currently must be defined manually in the Kong Nginx template.", type = "string",
                 required = true,
                 default = "kong_db_cache",
               }},
             },
           }},
-          { vary_query_params = {
-            type = "array",
+          { vary_query_params = { description = "Relevant query parameters considered for the cache key. If undefined, all params are taken into consideration.", type = "array",
             elements = { type = "string" },
           }},
-          { vary_headers = {
-            type = "array",
+          { vary_headers = { description = "Relevant headers considered for the cache key. If undefined, none of the headers are taken into consideration.", type = "array",
             elements = { type = "string" },
           }},
         },

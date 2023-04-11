@@ -28,40 +28,40 @@ local CONSUMER_IDENTIFIERS = {
 
 local DEFAULT_METRICS = {
   {
-    name        = "request_count",
-    stat_type   = "counter",
-    sample_rate = 1,
-    tags        = {"app:kong" },
+    name                = "request_count",
+    stat_type           = "counter",
+    sample_rate         = 1,
+    tags                = { "app:kong" },
     consumer_identifier = "custom_id"
   },
   {
-    name      = "latency",
-    stat_type = "timer",
-    tags      = {"app:kong"},
+    name                = "latency",
+    stat_type           = "timer",
+    tags                = { "app:kong" },
     consumer_identifier = "custom_id"
   },
   {
-    name      = "request_size",
-    stat_type = "timer",
-    tags      = {"app:kong"},
+    name                = "request_size",
+    stat_type           = "timer",
+    tags                = { "app:kong" },
     consumer_identifier = "custom_id"
   },
   {
-    name      = "response_size",
-    stat_type = "timer",
-    tags      = {"app:kong"},
+    name                = "response_size",
+    stat_type           = "timer",
+    tags                = { "app:kong" },
     consumer_identifier = "custom_id"
   },
   {
-    name      = "upstream_latency",
-    stat_type = "timer",
-    tags      = {"app:kong"},
+    name                = "upstream_latency",
+    stat_type           = "timer",
+    tags                = { "app:kong" },
     consumer_identifier = "custom_id"
   },
   {
-    name      = "kong_latency",
-    stat_type = "timer",
-    tags      = {"app:kong"},
+    name                = "kong_latency",
+    stat_type           = "timer",
+    tags                = { "app:kong" },
     consumer_identifier = "custom_id"
   },
 }
@@ -71,44 +71,74 @@ return {
   name = "datadog",
   fields = {
     { protocols = typedefs.protocols },
-    { config = {
+    {
+      config = {
         type = "record",
         fields = {
           { host = typedefs.host({ referenceable = true, default = "localhost" }), },
           { port = typedefs.port({ default = 8125 }), },
-          { prefix = { type = "string", default = "kong" }, },
-          { service_name_tag = { type = "string", default = "name" }, },
-          { status_tag = { type = "string", default = "status" }, },
-          { consumer_tag = { type = "string", default = "consumer" }, },
-          { retry_count = { type = "integer" }, },
-          { queue_size = { type = "integer" }, },
-          { flush_timeout = { type = "number" }, },
+          { prefix = { description = "String to be attached as a prefix to a metric's name.", type = "string",
+            default = "kong" }, },
+          {
+              service_name_tag = { description = "String to be attached as the name of the service.", type = "string",
+              default = "name" }, },
+          {
+              status_tag = { description = "String to be attached as the tag of the HTTP status.", type = "string",
+              default = "status" }, },
+          {
+              consumer_tag = { description = "String to be attached as tag of the consumer.", type = "string",
+              default = "consumer" }, },
+          {
+              retry_count = { description = "Number of times to retry when sending data to the upstream server.",
+              type = "integer" }, },
+          {
+              queue_size = {
+              description = "Maximum number of log entries to be sent on each message to the upstream server.",
+              type = "integer" }, },
+          {
+              flush_timeout = {
+              description =
+              "Optional time in seconds. If `queue_size` > 1, this is the max idle time before sending a log with less than `queue_size` records.",
+              type = "number" }, },
           { queue = typedefs.queue },
-          { metrics = {
-              type     = "array",
+          {
+            metrics = {
+              description =
+              "List of metrics to be logged.",
+              type = "array",
               required = true,
               default  = DEFAULT_METRICS,
               elements = {
                 type = "record",
                 fields = {
-                  { name = { type = "string", required = true, one_of = STAT_NAMES }, },
-                  { stat_type = { type = "string", required = true, one_of = STAT_TYPES }, },
-                  { tags = { type = "array", elements = { type = "string", match = "^.*[^:]$" }, }, },
-                  { sample_rate = { type = "number", between = { 0, 1 }, }, },
-                  { consumer_identifier = { type = "string", one_of = CONSUMER_IDENTIFIERS }, },
+                  { name = { description = "Datadog metric’s name", type = "string", required = true,
+                    one_of = STAT_NAMES }, },
+                  {
+                      stat_type = { description = "Determines what sort of event the metric represents", type = "string",
+                      required = true, one_of = STAT_TYPES }, },
+                  { tags = { description = "List of tags", type = "array",
+                    elements = { type = "string", match = "^.*[^:]$" }, }, },
+                  { sample_rate = { description = "Sampling rate", type = "number", between = { 0, 1 }, }, },
+                  { consumer_identifier = { description = "Authenticated user detail", type = "string",
+                    one_of = CONSUMER_IDENTIFIERS }, },
                 },
                 entity_checks = {
-                  { conditional = {
-                    if_field = "stat_type",
-                    if_match = { one_of = { "counter", "gauge" }, },
-                    then_field = "sample_rate",
-                    then_match = { required = true },
-                  }, }, }, }, },
+                  {
+                    conditional = {
+                      if_field = "stat_type",
+                      if_match = { one_of = { "counter", "gauge" }, },
+                      then_field = "sample_rate",
+                      then_match = { required = true },
+                    },
+                  }, },
+              },
+            },
           },
         },
 
         entity_checks = {
-          { custom_entity_check = {
+          {
+            custom_entity_check = {
               field_sources = { "retry_count", "queue_size", "flush_timeout" },
               fn = function(entity)
                 if (entity.retry_count or ngx.null) ~= ngx.null and entity.retry_count ~= 10 then
@@ -125,7 +155,8 @@ return {
                 end
                 return true
               end
-          } },
+            }
+          },
         },
       },
     },
