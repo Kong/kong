@@ -59,7 +59,8 @@ jobs:
       with:
         path: |
           artifacts
-          ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+          ${{ env.RELATIVE_BUILD_ROOT }}
+          !${{ env.RELATIVE_BUILD_ROOT }}/kong-dev/**/*
         key: ci-build-${{ hashFiles('.requirements', 'kong-*.rockspec', 'plugins-ee/**/*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Set .requirements into environment variables

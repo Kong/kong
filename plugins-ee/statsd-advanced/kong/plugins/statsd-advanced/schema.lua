@@ -153,7 +153,7 @@ for _, metric in ipairs(DEFAULT_METRICS) do
 end
 
 return {
-  name = "statsd",
+  name = "statsd-advanced",
   fields = {
     { protocols = typedefs.protocols },
     { config = {
