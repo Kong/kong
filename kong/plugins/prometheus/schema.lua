@@ -16,11 +16,11 @@ return {
     { config = {
         type = "record",
         fields = {
-          { per_consumer = { type = "boolean", default = false }, },
-          { status_code_metrics = { type = "boolean", default = false }, },
-          { latency_metrics = { type = "boolean", default = false }, },
-          { bandwidth_metrics = { type = "boolean", default = false }, },
-          { upstream_health_metrics = { type = "boolean", default = false }, },
+          { per_consumer = { description = "A boolean value that determines if per-consumer metrics should be collected. If enabled, the `kong_http_requests_total` and `kong_bandwidth_bytes` metrics fill in the consumer label when available.", type = "boolean", default = false }, },
+          { status_code_metrics = { description = "A boolean value that determines if status code metrics should be collected. If enabled, `http_requests_total`, `stream_sessions_total` metrics will be exported.", type = "boolean", default = false }, },
+          { latency_metrics = { description = "A boolean value that determines if status code metrics should be collected. If enabled, `kong_latency_ms`, `upstream_latency_ms` and `request_latency_ms` metrics will be exported.", type = "boolean", default = false }, },
+          { bandwidth_metrics = { description = "A boolean value that determines if status code metrics should be collected. If enabled, `bandwidth_bytes` and `stream_sessions_total` metrics will be exported.", type = "boolean", default = false }, },
+          { upstream_health_metrics = { description = "A boolean value that determines if status code metrics should be collected. If enabled, `upstream_target_health` metric will be exported.", type = "boolean", default = false }, },
         },
         custom_validator = validate_shared_dict,
     }, },

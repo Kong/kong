@@ -50,8 +50,7 @@ local colon_string_record = {
   type = "record",
   fields = {
     { json = colon_string_array },
-    { json_types = {
-      type = "array",
+    { json_types = { description = "List of JSON type names. Specify the types of the JSON values returned when appending\nJSON properties. Each string element can be one of: boolean, number, or string.", type = "array",
       default = {},
       required = true,
       elements = {

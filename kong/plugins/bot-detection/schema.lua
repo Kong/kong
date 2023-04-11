@@ -8,13 +8,11 @@ return {
     { config = {
         type = "record",
         fields = {
-          { allow = {
-              type = "array",
+          { allow = { description = "An array of regular expressions that should be allowed. The regular expressions will be checked against the `User-Agent` header.", type = "array",
               elements = { type = "string", is_regex = true },
               default = {},
           }, },
-          { deny = {
-              type = "array",
+          { deny = { description = "An array of regular expressions that should be denied. The regular expressions will be checked against the `User-Agent` header.", type = "array",
               elements = { type = "string", is_regex = true },
               default = {},
           }, },
