@@ -25,7 +25,7 @@ on:
         required: false
         default: 'true'
       target_test:
-        description: 'Run only a single test by spec name, only smoke tests or all tests'
+        description: 'Run only a single test by spec name, smoke, non-smoke or all tests'
         required: false
         default: 'all'
       control_plane_image:
@@ -80,6 +80,7 @@ jobs:
       VERBOSE_RESPONSE_LOGS: ${{ inputs.enable_verbose_response_logging || 'true'}}
       KONG_VERSION: ${{ github.event.inputs.gateway_version || '3.3.0.0' }}
       KONG_CONTAINER_NAME: ${{ inputs.target_test == 'smoke' && 'kong-cp' }}
+      RUN_SPEC: ${{ inputs.target_test || 'all' }}
     strategy:
       fail-fast: false
       matrix:
@@ -113,6 +114,11 @@ jobs:
           username: ${{ secrets.GHA_DOCKERHUB_PULL_USER }}
           password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
 
+      - name: Check for FIPS image
+        run: |
+          if ${{ contains(env.GW_IMAGE, 'fips') }}; then FIPS_MODE=on; else FIPS_MODE=off; fi;
+          echo "FIPS_MODE=$FIPS_MODE" >> $GITHUB_ENV
+
       - name: Start Gateway
         run: cd gateway-docker-compose-generator && make set_pg_permissions && make generate && make start
         env:
@@ -135,13 +141,13 @@ jobs:
       - name: Execute Gateway API Tests
         id: execute_tests
         continue-on-error: true
-        env:
-          RUN_SPEC: ${{ inputs.target_test || 'all' }}
         run: |
           if [[ $RUN_SPEC == 'all' ]]; then 
             npm run test-gateway;
           elif [[ $RUN_SPEC == 'smoke' ]]; then
             npm run test-smoke;
+          elif [[ $RUN_SPEC == 'non-smoke' ]]; then
+            npm run test-non-smoke;
           else
             npm run test-spec --spec=$RUN_SPEC;
           fi
@@ -175,5 +181,5 @@ jobs:
         continue-on-error: true
         if: always()
         with:
-          name: gateway_test_results_${{ matrix.gateway_mode }}
+          name: gateway_api_${{ env.RUN_SPEC }}_test_results_${{ matrix.gateway_mode }}
           path: spec-ee/kong-api-tests/results/

@@ -533,20 +533,42 @@ jobs:
         VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
       run: build/tests/03-http2-admin-api.sh
 
-  api-tests:
-    name: API E2E Tests
-    needs: [metadata, build-images, smoke-tests]
+  smoke-api-tests:
+    name: Smoke API Tests - ${{ matrix.label }}
+    needs: [metadata, build-images]
     if: |
       ! ( github.event_name == 'pull_request' &&
           github.event.action == 'synchronize' )
+    strategy:
+      fail-fast: false
+      matrix:
+        include: "${{ fromJSON(needs.metadata.outputs.matrix)['smoke-tests'] }}"
     uses: ./.github/workflows/gateway-api-tests.yml
     with:
-      control_plane_image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}
+      control_plane_image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}
+      gateway_version: ${{ needs.metadata.outputs.kong-version }}
+      target_test: smoke
+    secrets: inherit
+
+  e2e-api-tests:
+    name: E2E API Tests - ${{ matrix.label }}
+    needs: [metadata, build-images, smoke-tests, smoke-api-tests]
+    if: |
+      ! ( github.event_name == 'pull_request' &&
+          github.event.action == 'synchronize' )
+    strategy:
+      fail-fast: false
+      matrix:
+        include: "${{ fromJSON(needs.metadata.outputs.matrix)['smoke-tests'] }}"
+    uses: ./.github/workflows/gateway-api-tests.yml
+    with:
+      control_plane_image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}
+      target_test: non-smoke
     secrets: inherit
 
   release-packages:
     name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
-    needs: [metadata, build-packages, build-images, smoke-tests, api-tests]
+    needs: [metadata, build-packages, build-images, smoke-tests, smoke-api-tests, e2e-api-tests]
     runs-on: ubuntu-22.04
     if: github.repository_owner == 'Kong' && fromJSON(needs.metadata.outputs.matrix)['release-packages'] != ''
     timeout-minutes: 5 # PULP takes a while to publish
@@ -602,7 +624,7 @@ jobs:
 
   release-images:
     name: Release Images - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
-    needs: [metadata, build-images, smoke-tests, api-tests]
+    needs: [metadata, build-images, smoke-tests, smoke-api-tests, e2e-api-tests]
     runs-on: ubuntu-22.04
     if: github.repository_owner == 'Kong' && fromJSON(needs.metadata.outputs.matrix)['release-images'] != ''
 
