@@ -3244,6 +3244,30 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         assert.are.equal(7, data.expires_in)
         assert.falsy(data.refresh_token)
       end)
+      it("returns success while accessing the correct service after accessing the wrong service first", function()
+        local token = provision_token()
+
+        -- hit the wrong service first, should return 401
+        local res = assert(proxy_ssl_client:send {
+          method  = "GET",
+          path    = "/request?access_token=" .. token.access_token,
+          headers = {
+            ["Host"] = "oauth2_3.com"
+          }
+        })
+        assert.res_status(401, res)
+
+        -- hit the right service later, should return 200
+        local res = assert(proxy_ssl_client:send {
+          method  = "GET",
+          path    = "/request?access_token=" .. token.access_token,
+          headers = {
+            ["Host"] = "oauth2.com"
+          }
+        })
+        assert.res_status(200, res)
+      end)
+
       describe("Global Credentials", function()
         it("does not access two different APIs that are not sharing global credentials", function()
           local token = provision_token("oauth2_8.com")
