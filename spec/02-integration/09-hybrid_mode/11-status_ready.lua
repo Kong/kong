@@ -1,6 +1,5 @@
 -- 09-hybrid_mode/11-status_ready.lua
 local helpers = require "spec.helpers"
-local cjson = require "cjson.safe"
 
 local dp_status_port = helpers.get_available_port()
 local cp_status_port = helpers.get_available_port()
