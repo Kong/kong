@@ -5,11 +5,10 @@ local severity = {
   default = "info",
   required = true,
   one_of = { "debug", "info", "notice", "warning",
-             "err", "crit", "alert", "emerg" },
+             "err", "crit", "alert", "emerg" }
 }
 
-local facility = {
-  type = "string",
+local facility = { description = "The facility is used by the operating system to decide how to handle each log message. This\noptional argument defines what must be the facility set by the plugin when logging. Available\noptions: `auth`, `authpriv`, `cron`, `daemon`, `ftp`, `kern`, `lpr`, `mail`, `news`, `syslog`,\n`user`, `uucp`, `local0`, `local1`, `local2`, `local3`, `local4`, `local5`, `local6`, `local7`.", type = "string",
   default = "user",
   required = true,
   one_of = { "auth", "authpriv", "cron", "daemon",

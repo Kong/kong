@@ -35,8 +35,7 @@ return {
       type = "record",
       fields = {
         { endpoint = typedefs.url { required = true } }, -- OTLP/HTTP
-        { headers = {
-          type = "map",
+        { headers = { description = "The custom headers to be added in the HTTP request sent to the OTLP server.\nThis setting is useful for adding the authentication headers (token)\nfor the APM backend.", type = "map",
           keys = typedefs.header_name,
           values = {
             type = "string",
@@ -44,11 +43,12 @@ return {
           },
         } },
         { resource_attributes = resource_attributes },
-        { batch_span_count = { type = "integer", required = true, default = 200 } },
-        { batch_flush_delay = { type = "integer", required = true, default = 3 } },
+        { batch_span_count = { description = "The number of spans to be sent in a single batch.", type = "integer", required = true, default = 200 } },
+        { batch_flush_delay = { description = "The delay, in seconds, between two consecutive batches.", type = "integer", required = true, default = 3 } },
         { connect_timeout = typedefs.timeout { default = 1000 } },
         { send_timeout = typedefs.timeout { default = 5000 } },
         { read_timeout = typedefs.timeout { default = 5000 } },
+        { http_response_header_for_traceid = { type = "string", default = nil }},
       },
     }, },
   },

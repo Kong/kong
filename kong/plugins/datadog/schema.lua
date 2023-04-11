@@ -75,25 +75,25 @@ return {
         fields = {
           { host = typedefs.host({ default = "localhost" }), },
           { port = typedefs.port({ default = 8125 }), },
-          { prefix = { type = "string", default = "kong" }, },
-          { service_name_tag = { type = "string", default = "name" }, },
-          { status_tag = { type = "string", default = "status" }, },
-          { consumer_tag = { type = "string", default = "consumer" }, },
-          { retry_count = { type = "integer", required = true, default = 10 }, },
-          { queue_size = { type = "integer", required = true, default = 1 }, },
-          { flush_timeout = { type = "number", required = true, default = 2 }, },
-          { metrics = {
-              type     = "array",
+          { prefix =  { description = "String to be attached as a prefix to a metric's name.", type = "string", default = "kong" }, },
+          { service_name_tag =  { description = "String to be attached as the name of the service.", type = "string", default = "name"}, },
+          { status_tag =  { description = "String to be attached as the tag of the HTTP status.", type = "string", default = "status" }, },
+          { consumer_tag =  { description = "String to be attached as tag of the consumer.", type = "string", default = "consumer" }, },
+          { retry_count =  { description = "Number of times to retry when sending data to the upstream server.", type = "integer", required = true, default = 10 }, },
+          { queue_size =  { description = "Maximum number of log entries to be sent on each message to the upstream server.", type = "integer", required = true, default = 1 }, },
+          { flush_timeout =  { description = "Optional time in seconds. If `queue_size` > 1, this is the max idle time before sending a log with less than `queue_size` records.", type = "number", required = true, default = 2 }, },
+          { metrics =  {
+              description = "List of metrics to be logged. Available values are described at [Metrics](#metrics).\nBy default, the plugin logs all available metrics. If you specify an array of metrics,\nonly the listed metrics are logged.", type = "array",
               required = true,
               default  = DEFAULT_METRICS,
               elements = {
                 type = "record",
                 fields = {
-                  { name = { type = "string", required = true, one_of = STAT_NAMES }, },
-                  { stat_type = { type = "string", required = true, one_of = STAT_TYPES }, },
-                  { tags = { type = "array", elements = { type = "string", match = "^.*[^:]$" }, }, },
-                  { sample_rate = { type = "number", between = { 0, 1 }, }, },
-                  { consumer_identifier = { type = "string", one_of = CONSUMER_IDENTIFIERS }, },
+                  { name = { description = "Datadog metric’s name", type = "string", required = true, one_of = STAT_NAMES }, },
+                  { stat_type = { description = "Determines what sort of event the metric represents", type = "string", required = true, one_of = STAT_TYPES }, },
+                  { tags = { description = "List of tags", type = "array", elements = { type = "string", match = "^.*[^:]$" }, }, },
+                  { sample_rate = { description = "Sampling rate", type = "number", between = { 0, 1 }, }, },
+                  { consumer_identifier = { description = "Authenticated user detail", type = "string", one_of = CONSUMER_IDENTIFIERS }, },
                 },
                 entity_checks = {
                   { conditional = {
@@ -107,4 +107,3 @@ return {
     },
   },
 }
-
