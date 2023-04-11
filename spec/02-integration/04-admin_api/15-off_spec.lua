@@ -744,6 +744,7 @@ describe("Admin API #off", function()
           workspaces = {
             { id = "<uuid>", -- see above
               created_at = 12345, -- see above
+              updated_at = config.workspaces[1].updated_at,
               name = "default",
               comment = {},
               config = {
