@@ -21,4 +21,19 @@ describe("bundled plugins schema validation", function()
     end
   end)
 
+  it("ensure every bundles plugin name does not duplicate", function()
+    local CE_PLUGINS_MAP = require("kong.constants").CE_PLUGINS_MAP
+    local EE_BUNDLED_PLUGINS = require("distribution.distributions_constants").plugins
+    local is_duplicate = false
+    for _, plugin_name in pairs(EE_BUNDLED_PLUGINS) do
+      local schema = require("plugins-ee." .. plugin_name .. ".kong.plugins." .. plugin_name .. ".schema")
+      if CE_PLUGINS_MAP[schema.name] then
+        is_duplicate = true
+        break
+      end
+    end
+    
+    assert.is_false(is_duplicate, "None of CE's plugin name same as any plugins in EE")
+  end)
+
 end)
