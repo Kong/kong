@@ -45,7 +45,7 @@ local function is_ready()
       tonumber(kong_shm:get(DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY)) or 0
 
   if router_rebuilds < worker_count then
-    return false, "router rebuilds not complete"
+    return false, "router rebuilds are not complete"
   end
 
   if plugins_iterator_rebuilds < worker_count then
