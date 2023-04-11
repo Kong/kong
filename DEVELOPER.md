@@ -131,16 +131,13 @@ dnf install \
 macOS
 
 ```shell
-# Install XCode instead of Command Line Tools is recommended
-xcode-select --install
+# Install Xcode from App Store (Command Line Tools is not supported)
+
 # Install HomeBrew
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 # Build dependencies
-brew install libyaml cmake
+brew install libyaml
 ```
-
-`cmake` 3 is needed to build some targets, some distributions ship version 2 only. An updated cmake
-can be downloaded [here](https://cmake.org/download/).
 
 Finally, we start the build process:
 
