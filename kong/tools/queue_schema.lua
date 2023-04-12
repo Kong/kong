@@ -9,13 +9,15 @@ return Schema.define {
       -- description = "name of the queue, unique across one workspace.",
       -- If two plugin instances use the same queue name, they will
       -- share one queue and their queue related configuration must match.
+      -- If no name is provided in the configuration, each plugin instance
+      -- will use a separate queue.
     } },
     { max_batch_size = {
       type = "number",
       default = 1,
       -- description = "maximum number of entries that can be processed at a time"
     } },
-    { max_delay = {
+    { max_coalescing_delay = {
       type = "number",
       default = 1,
       -- description = "maximum number of (fractional) seconds to elapse after the first entry was queued before the queue starts calling the handler",
@@ -36,6 +38,14 @@ return Schema.define {
       type = "number",
       default = 60,
       -- description = "time in seconds before the queue gives up calling a failed handler for a batch",
+      -- If this parameter is set to -1, no retries will be made for a failed batch
+    } },
+    {
+      initial_retry_delay = {
+        type = "number",
+        default = 0.01,
+        -- description = "time in seconds before the initial retry is made for a failing batch."
+        -- For each subsequent retry, the previous retry time is doubled up to `max_retry_time`
     } },
     { max_retry_delay = {
       type = "number",

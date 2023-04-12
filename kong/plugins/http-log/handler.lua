@@ -125,9 +125,9 @@ local function send_entries(conf, entries)
     end
   end
 
-  local upstream_url = fmt("%s://%s:%d%s", parsed_url.scheme, host, port, parsed_url.path)
+  local log_server_url = fmt("%s://%s:%d%s", parsed_url.scheme, host, port, parsed_url.path)
 
-  local res, err = httpc:request_uri(upstream_url, {
+  local res, err = httpc:request_uri(log_server_url, {
     method = method,
     headers = headers,
     body = payload,
@@ -141,7 +141,7 @@ local function send_entries(conf, entries)
   -- always read response body, even if we discard it without using it on success
   local response_body = res.body
 
-  kong.log.debug(fmt("http-log sent data to upstream, %s:%s HTTP status %d",
+  kong.log.debug(fmt("http-log sent data log server, %s:%s HTTP status %d",
     host, port, res.status))
 
   if res.status < 400 then
@@ -163,9 +163,9 @@ local HttpLogHandler = {
 
 -- Create a queue name from the same legacy parameters that were used in the
 -- previous queue implementation.  This ensures that http-log instances that
--- have the same upstream parameters are sharing a queue.  It deliberately uses
--- the legacy parameters to determine the queue name, even though they may be
--- nil in newer configurations.
+-- have the same log server parameters are sharing a queue.  It deliberately
+-- uses the legacy parameters to determine the queue name, even though they may
+-- be nil in newer configurations.
 local function make_legacy_queue_name(conf)
   return fmt("%s:%s:%s:%s:%s:%s",
     conf.http_endpoint,
@@ -191,6 +191,7 @@ function HttpLogHandler:log(conf)
   local queue_conf = Queue.get_params(conf)
   if not explicit_name then
     queue_conf.name = make_legacy_queue_name(conf)
+    kong.log.debug("Queue name automatically configured based on configuration parameters to: ", queue_conf.name)
   end
 
   local ok, err = Queue.enqueue(

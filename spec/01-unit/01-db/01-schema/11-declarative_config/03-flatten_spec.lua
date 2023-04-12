@@ -297,7 +297,7 @@ describe("declarative config: flatten", function()
                 queue = {
                   max_batch_size = 1,
                   max_entries = 10000,
-                  max_delay = 1,
+                  max_coalescing_delay = 1,
                   max_retry_delay = 60,
                   max_retry_time = 60,
                   name = null,
@@ -403,7 +403,7 @@ describe("declarative config: flatten", function()
                 queue = {
                   max_batch_size = 1,
                   max_entries = 10000,
-                  max_delay = 1,
+                  max_coalescing_delay = 1,
                   max_retry_delay = 60,
                   max_retry_time = 60,
                   name = null,
@@ -603,7 +603,7 @@ describe("declarative config: flatten", function()
                   queue = {
                     max_batch_size = 1,
                     max_entries = 10000,
-                    max_delay = 1,
+                    max_coalescing_delay = 1,
                     max_retry_delay = 60,
                     max_retry_time = 60,
                     name = null,
@@ -1118,7 +1118,7 @@ describe("declarative config: flatten", function()
                   queue = {
                     max_batch_size = 1,
                     max_entries = 10000,
-                    max_delay = 1,
+                    max_coalescing_delay = 1,
                     max_retry_delay = 60,
                     max_retry_time = 60,
                     name = null,

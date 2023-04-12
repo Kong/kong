@@ -32,7 +32,7 @@ for _, strategy in helpers.each_strategy() do
         config   = {
           http_endpoint = "http://127.0.0.1:" .. HTTP_SERVER_PORT,
           queue = {
-            max_delay = 0.01,
+            max_coalescing_delay = 0.01,
           },
         }
       }
@@ -55,7 +55,7 @@ for _, strategy in helpers.each_strategy() do
           http_endpoint = "http://konghq.com:80",
           queue = {
             max_batch_size = 10,
-            max_delay = 10,
+            max_coalescing_delay = 10,
           },
         }
       }

@@ -34,7 +34,7 @@ for _, strategy in helpers.each_strategy() do
             .. "/post_log/http",
           queue = {
             name = "http-shared-queue",
-            max_delay = 1000,
+            max_coalescing_delay = 1000,
             max_batch_size = 2,
           },
         }
@@ -61,7 +61,7 @@ for _, strategy in helpers.each_strategy() do
             .. "/post_log/http",
           queue = {
             name = "http-shared-queue",
-            max_delay = 1000,
+            max_coalescing_delay = 1000,
             max_batch_size = 2,
           },
         }
@@ -89,7 +89,7 @@ for _, strategy in helpers.each_strategy() do
             .. "/post_log/http_unshared",
           queue = {
             name = "http-non-shared-queue",
-            max_delay = 0.01,
+            max_coalescing_delay = 0.01,
             max_batch_size = 2,
           },
         }

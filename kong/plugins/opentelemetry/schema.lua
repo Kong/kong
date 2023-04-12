@@ -62,7 +62,7 @@ return {
                           { after = "4.0", })
             end
             if entity.batch_flush_delay and entity.batch_flush_delay ~= 3 then
-              deprecation("opentelemetry: batch_flush_delay is deprecated, please use queue.max_delay instead",
+              deprecation("opentelemetry: batch_flush_delay is deprecated, please use queue.max_coalescing_delay instead",
                           { after = "4.0", })
             end
             return true

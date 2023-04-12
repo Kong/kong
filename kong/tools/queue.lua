@@ -26,7 +26,7 @@
 --     {
 --       name = "example",       -- name of the queue (required)
 --       max_batch_size = 10,    -- maximum number of entries in one batch (default 1)
---       max_delay = 1,          -- maximum number of seconds after first entry before a batch is sent
+--       max_coalescing_delay = 1,          -- maximum number of seconds after first entry before a batch is sent
 --       max_entries = 10,          -- maximum number of entries on the queue (default 10000)
 --       max_bytes = 100,  -- maximum number of bytes on the queue (default nil)
 --       max_retry_time = 60,    -- maximum number of seconds before a failed batch is dropped
@@ -38,7 +38,7 @@
 --
 -- Given the example above,
 --
--- * If the two `enqueue()` invocations are done within `max_delay` seconds, they will be passed to the
+-- * If the two `enqueue()` invocations are done within `max_coalescing_delay` seconds, they will be passed to the
 --   handler function together in one batch.  The maximum number of entries in one batch is defined
 --   by the `max_batch_size` parameter.
 -- * The `max_entries` parameter defines how many entries can be waiting on the queue for transmission.  If
@@ -94,7 +94,7 @@ end
 -------------------------------------------------------------------------------
 -- Initialize a queue with background retryable processing
 -- @param process function, invoked to process every payload generated
--- @param opts table, requires `name`, optionally includes `retry_count`, `max_delay` and `max_batch_size`
+-- @param opts table, requires `name`, optionally includes `retry_count`, `max_coalescing_delay` and `max_batch_size`
 -- @return table: a Queue object.
 local function get_or_create_queue(queue_conf, handler, handler_conf)
 
@@ -214,10 +214,10 @@ function Queue:process_once()
 
   local entry_count = 1
 
-  -- We've got our first entry from the queue.  Collect more entries until max_delay expires or we've collected
+  -- We've got our first entry from the queue.  Collect more entries until max_coalescing_delay expires or we've collected
   -- max_batch_size entries to send
-  while entry_count < self.max_batch_size and (now() - data_started) < self.max_delay and not ngx.worker.exiting() do
-    ok, err = self.semaphore:wait(((data_started + self.max_delay) - now()) / 1000)
+  while entry_count < self.max_batch_size and (now() - data_started) < self.max_coalescing_delay and not ngx.worker.exiting() do
+    ok, err = self.semaphore:wait(((data_started + self.max_coalescing_delay) - now()) / 1000)
     if not ok and err == "timeout" then
       break
     elseif ok then
@@ -250,12 +250,12 @@ function Queue:process_once()
     end
 
     self:log_warn("handler could not process entries: %s", tostring(err))
+
+    -- Delay before retrying.  The delay time is calculated by multiplying the configured initial_retry_delay with
+    -- 2 to the power of the number of retries, creating an exponential increase over the course of each retry.
+    -- The maximum time between retries is capped by the max_retry_delay configuration parameter.
+    ngx.sleep(math.min(self.max_retry_delay, 2^retry_count * self.initial_retry_delay))
     retry_count = retry_count + 1
-    -- Before trying to send the same batch again, wait for a little while.  The wait time is calculated by taking
-    -- the square of the retry count multiplied by 10 milliseconds, creating an exponential increase of the wait
-    -- time (i.e. 10, 20, 40, 80 ... milliseconds).  The maximum time between retries is capped by the configuration
-    -- parameter max_retry_delay
-    ngx.sleep(math.min(self.max_retry_delay, (retry_count * retry_count) * 0.01))
   end
 
   -- Guard against queue shrinkage during handler invocation by using math.min below.
@@ -287,9 +287,9 @@ function Queue.get_params(config)
   end
   if config.flush_timeout and config.flush_timeout ~= 2 and config.flush_timeout ~= ngx.null then
     kong.log.warn(string.format(
-      "deprecated `flush_timeout` parameter in plugin %s converted to `queue.max_delay`",
+      "deprecated `flush_timeout` parameter in plugin %s converted to `queue.max_coalescing_delay`",
       kong.plugin.get_id()))
-    queue_config.max_delay = config.flush_timeout
+    queue_config.max_coalescing_delay = config.flush_timeout
   end
   -- Queue related opentelemetry plugin parameters
   if config.batch_span_count and config.batch_span_count ~= 200 and config.batch_span_count ~= ngx.null then
@@ -300,9 +300,9 @@ function Queue.get_params(config)
   end
   if config.batch_flush_delay and config.batch_flush_delay ~= 3 and config.batch_flush_delay ~= ngx.null then
     kong.log.warn(string.format(
-      "deprecated `batch_flush_delay` parameter in plugin %s converted to `queue.max_delay`",
+      "deprecated `batch_flush_delay` parameter in plugin %s converted to `queue.max_coalescing_delay`",
       kong.plugin.get_id()))
-    queue_config.max_delay = config.batch_flush_delay
+    queue_config.max_coalescing_delay = config.batch_flush_delay
   end
 
   if not queue_config.name then

@@ -33,7 +33,7 @@ for _, strategy in helpers.each_strategy() do
             .. helpers.mock_upstream_port
             .. "/post_log/http",
           queue = {
-            max_delay = 1000,
+            max_coalescing_delay = 1000,
             max_batch_size = 2,
           },
         }
@@ -59,7 +59,7 @@ for _, strategy in helpers.each_strategy() do
             .. helpers.mock_upstream_port
             .. "/post_log/http",
           queue = {
-            max_delay = 1000,
+            max_coalescing_delay = 1000,
             max_batch_size = 2,
           },
         }
@@ -86,7 +86,7 @@ for _, strategy in helpers.each_strategy() do
             .. helpers.mock_upstream_port
             .. "/post_log/http_unshared",
           queue = {
-            max_delay = 0.01,
+            max_coalescing_delay = 0.01,
             max_batch_size = 2,
           },
         }

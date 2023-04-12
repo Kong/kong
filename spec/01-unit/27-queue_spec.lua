@@ -89,7 +89,7 @@ describe("plugin queue", function()
         queue_conf({
           name = "handler-configuration-change",
           max_batch_size = 10,
-          max_delay = 0.1
+          max_coalescing_delay = 0.1
         }),
         function (c, entries)
           handler_invoked = handler_invoked + 1
@@ -140,7 +140,7 @@ describe("plugin queue", function()
         queue_conf({
           name = "batch",
           max_batch_size = 2,
-          max_delay = 0.1,
+          max_coalescing_delay = 0.1,
         }),
         function(_, batch)
           first_entry = first_entry or batch[1]
@@ -170,7 +170,7 @@ describe("plugin queue", function()
       queue_conf({
         name = "retry",
         max_batch_size = 1,
-        max_delay = 0.1,
+        max_coalescing_delay = 0.1,
       }),
       function(_, batch)
         entry = batch[1]
@@ -191,7 +191,7 @@ describe("plugin queue", function()
         name = "retry-give-up",
         max_batch_size = 1,
         max_retry_time = 1,
-        max_delay = 0.1,
+        max_coalescing_delay = 0.1,
       }),
       function()
         return false, "FAIL FAIL FAIL"
@@ -212,7 +212,7 @@ describe("plugin queue", function()
           name = "capacity-exceeded",
           max_batch_size = 2,
           max_entries = 2,
-          max_delay = 0.1,
+          max_coalescing_delay = 0.1,
         }),
         function(_, batch)
           processed = batch
@@ -334,7 +334,7 @@ describe("plugin queue", function()
         queue_conf({
           name = "speedy-sending",
           max_batch_size = 10,
-          max_delay = 0.1,
+          max_coalescing_delay = 0.1,
         }),
         function(_, entries)
           last = entries[#entries]
@@ -362,8 +362,8 @@ describe("plugin queue", function()
     assert.match_re(log_messages, 'deprecated `retry_count` parameter in plugin .* ignored')
     assert.equals(legacy_parameters.queue_size, converted_parameters.max_batch_size)
     assert.match_re(log_messages, 'deprecated `queue_size` parameter in plugin .* converted to `queue.max_batch_size`')
-    assert.equals(legacy_parameters.flush_timeout, converted_parameters.max_delay)
-    assert.match_re(log_messages, 'deprecated `flush_timeout` parameter in plugin .* converted to `queue.max_delay`')
+    assert.equals(legacy_parameters.flush_timeout, converted_parameters.max_coalescing_delay)
+    assert.match_re(log_messages, 'deprecated `flush_timeout` parameter in plugin .* converted to `queue.max_coalescing_delay`')
   end)
 
   it("converts opentelemetry plugin legacy queue parameters", function()
@@ -374,8 +374,8 @@ describe("plugin queue", function()
     local converted_parameters = Queue.get_params(legacy_parameters)
     assert.equals(legacy_parameters.batch_span_count, converted_parameters.max_batch_size)
     assert.match_re(log_messages, 'deprecated `batch_span_count` parameter in plugin .* converted to `queue.max_batch_size`')
-    assert.equals(legacy_parameters.batch_flush_delay, converted_parameters.max_delay)
-    assert.match_re(log_messages, 'deprecated `batch_flush_delay` parameter in plugin .* converted to `queue.max_delay`')
+    assert.equals(legacy_parameters.batch_flush_delay, converted_parameters.max_coalescing_delay)
+    assert.match_re(log_messages, 'deprecated `batch_flush_delay` parameter in plugin .* converted to `queue.max_coalescing_delay`')
   end)
 
   it("defaulted legacy parameters are ignored when converting", function()
@@ -386,11 +386,11 @@ describe("plugin queue", function()
       batch_flush_delay = 3,
       queue = {
         max_batch_size = 123,
-        max_delay = 234,
+        max_coalescing_delay = 234,
       }
     }
     local converted_parameters = Queue.get_params(legacy_parameters)
     assert.equals(123, converted_parameters.max_batch_size)
-    assert.equals(234, converted_parameters.max_delay)
+    assert.equals(234, converted_parameters.max_coalescing_delay)
   end)
 end)
