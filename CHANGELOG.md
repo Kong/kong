@@ -115,7 +115,7 @@
 - **Request Transformer**: honor value of untrusted_lua configuration parameter
   [#10327](https://github.com/Kong/kong/pull/10327)
 - **OAuth2**: fix an issue that OAuth2 token was being cached to nil while access to the wrong service first.
-  [#10522](https://github.com/Kong/kong/pull/10522)  
+  [#10522](https://github.com/Kong/kong/pull/10522)
 
 #### PDK
 
@@ -127,10 +127,11 @@
 #### Plugins
 
 - **http-log, statsd, opentelemetry, datadog**: The queueing system
-  has been reworked, causing some plugin parameters to not
-  function as expected anymore. If you use queues on these plugin, new parameters must be configured.  Additionally, the
-  module `kong.tools.batch_queue` has been renamed to `kong.tools.batch`
-  in the process.
+  has been reworked, causing some plugin parameters to not function as expected
+  anymore. If you use queues on these plugin, new parameters must be configured.
+  The module `kong.tools.batch_queue` has been renamed to `kong.tools.batch` in
+  the process and the API was changed.  If your custom plugin uses queues, it must
+  be updated to use the new API.
   [#10172](https://github.com/Kong/kong/pull/10172)
 
 ### Changed
