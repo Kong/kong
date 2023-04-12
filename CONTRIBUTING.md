@@ -586,19 +586,22 @@ if some module-level variables or functions are used by only one function,
 
 ```lua
 -- bad
-local MAX_LEN = 100   -- only be used by one function
+local function multiply(a, b)   -- only used by function 'square' below
+  return a*b
+end
 
-local function validate()
-
+local function square(a)
+  return multiply(a, a)
 end
 
 -- good
-local validate
-do
-  local MAX_LEN = 100
+local square do
+  local function multiply(a, b)   -- only used by function 'square' below
+    return a*b
+  end
 
-  validate = function()
-
+  function square(a)
+    return multiply(a, a)
   end
 end
 ```
