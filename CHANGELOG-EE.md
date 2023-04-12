@@ -34,6 +34,10 @@
 
 ### Fixes
 
+* Forward-proxy
+  * Evaluates `ctx.WAITING_TIME` in forward-proxy instead of doing that in subsequent phase. This fix a bug of getting wrong `latencies.proxy` in the logging plugins.
+    [FTI-1904](https://konghq.atlassian.net/browse/FTI-1904)
+
 # TEMPLATE
 
 ## Enterprise
