@@ -39,3 +39,6 @@ bazel-*
 # pongo shell history
 .ash_history
 .bash_history
+
+worktree/
+bin/bazel
