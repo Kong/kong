@@ -37,7 +37,7 @@ endif
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 KONG_SOURCE_LOCATION ?= $(ROOT_DIR)
-GRPCURL_VERSION ?= 1.8.5
+GRPCURL_VERSION ?= 1.8.7
 BAZLISK_VERSION ?= 1.16.0
 BAZEL := $(shell command -v bazel 2> /dev/null)
 VENV = /dev/null # backward compatibility when no venv is built
@@ -105,9 +105,11 @@ install: dev
 	@$(VENV) luarocks make
 
 clean: check-bazel
+	rm -f bin/bazel bin/grpcurl
 	$(BAZEL) clean
 
 expunge: check-bazel
+	rm -f bin/bazel bin/grpcurl
 	$(BAZEL) clean --expunge
 
 lint: dev
