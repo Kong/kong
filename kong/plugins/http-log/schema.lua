@@ -50,15 +50,15 @@ return {
             field_sources = { "retry_count", "queue_size", "flush_timeout" },
             fn = function(entity)
               if entity.retry_count and entity.retry_count ~= 10 then
-                deprecation("http-log: retry_count is deprecated, please use queue.max_retry_time instead",
+                deprecation("http-log: config.retry_count no longer works, please use config.queue.max_retry_time instead",
                             { after = "4.0", })
               end
               if entity.queue_size and entity.queue_size ~= 1 then
-                deprecation("http-log: queue_size is deprecated, please use queue.max_batch_size instead",
+                deprecation("http-log: config.queue_size no longer works, please use config.queue.max_batch_size instead",
                             { after = "4.0", })
               end
               if entity.flush_timeout and entity.flush_timeout ~= 2 then
-                deprecation("http-log: flush_timeout is deprecated, please use queue.max_delay instead",
+                deprecation("http-log: config.flush_timeout no longer works, please use config.queue.max_delay instead",
                             { after = "4.0", })
               end
               return true

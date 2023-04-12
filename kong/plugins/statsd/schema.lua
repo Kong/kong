@@ -201,15 +201,15 @@ return {
             field_sources = { "retry_count", "queue_size", "flush_timeout" },
             fn = function(entity)
               if entity.retry_count and entity.retry_count ~= 10 then
-                deprecation("statsd: retry_count is deprecated, please use queue.max_retry_time instead",
+                deprecation("statsd: config.retry_count no longer works, please use config.queue.max_retry_time instead",
                             { after = "4.0", })
               end
               if entity.queue_size and entity.queue_size ~= 1 then
-                deprecation("statsd: queue_size is deprecated, please use queue.max_batch_size instead",
+                deprecation("statsd: config.queue_size no longer works, please use config.queue.max_batch_size instead",
                             { after = "4.0", })
               end
               if entity.flush_timeout and entity.flush_timeout ~= 2 then
-                deprecation("statsd: flush_timeout is deprecated, please use queue.max_delay instead",
+                deprecation("statsd: config.flush_timeout no longer works, please use config.queue.max_delay instead",
                             { after = "4.0", })
               end
               return true
