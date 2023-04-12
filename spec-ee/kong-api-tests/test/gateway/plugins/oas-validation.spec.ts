@@ -192,7 +192,7 @@ describe('Gateway Plugins: oas-validation', function () {
     );
   });
 
-  it.skip('should POST new item with all required fields', async function () {
+  it('should POST new item with all required fields', async function () {
     const resp = await axios({
       url: `${proxyUrl}${path}/${resourcePet}`,
       method: 'post',
@@ -207,7 +207,7 @@ describe('Gateway Plugins: oas-validation', function () {
     petId = resp.data.id;
   });
 
-  it.skip('should GET item with item ID', async function () {
+  it('should GET item with item ID', async function () {
     const resp = await axios({
       method: 'get',
       url: `${proxyUrl}${path}/${resourcePet}/${petId}`,
@@ -221,7 +221,7 @@ describe('Gateway Plugins: oas-validation', function () {
     expect(resp.data.status, 'Should have correct status').to.eq('available');
   });
 
-  it.skip('should update item using PUT with required fields', async function () {
+  it('should update item using PUT with required fields', async function () {
     const resp = await axios({
       url: `${proxyUrl}${path}/${resourcePet}`,
       method: 'put',
@@ -246,7 +246,7 @@ describe('Gateway Plugins: oas-validation', function () {
     petId = resp.data.id;
   });
 
-  it.skip('should retrieve updated item using GET with item ID', async function () {
+  it('should retrieve updated item using GET with item ID', async function () {
     const resp = await axios({
       method: 'get',
       url: `${proxyUrl}${path}/${resourcePet}/${petId}`,
@@ -260,7 +260,7 @@ describe('Gateway Plugins: oas-validation', function () {
     expect(resp.data.status, 'Should have correct status').to.eq('sold');
   });
 
-  it.skip('should PATCH oas-validation plugin to skip request validation and enforce response validation', async function () {
+  it('should PATCH oas-validation plugin to skip request validation and enforce response validation', async function () {
     const resp = await axios({
       method: 'patch',
       url: `${url}/${pluginId}`,
@@ -292,7 +292,7 @@ describe('Gateway Plugins: oas-validation', function () {
     await wait(isHybrid ? hybridWaitTime : waitTime);
   });
 
-  it.skip('should enforce response validation when parameter enabled', async function () {
+  it('should enforce response validation when parameter enabled', async function () {
     const resp = await postNegative(
       `${proxyUrl}${path}/${resourcePet}`,
       missingNamePayload
@@ -308,7 +308,7 @@ describe('Gateway Plugins: oas-validation', function () {
     );
   });
 
-  it.skip('should PATCH oas-validation plugin to skip validation', async function () {
+  it('should PATCH oas-validation plugin to skip validation', async function () {
     const resp = await axios({
       method: 'patch',
       url: `${url}/${pluginId}`,
@@ -340,7 +340,7 @@ describe('Gateway Plugins: oas-validation', function () {
     await wait(isHybrid ? hybridWaitTime : waitTime);
   });
 
-  it.skip('should POST new item without required name field when validation is skipped', async function () {
+  it('should POST new item without required name field when validation is skipped', async function () {
     const resp = await postNegative(
       `${proxyUrl}${path}/${resourcePet}`,
       missingNamePayload
@@ -353,7 +353,7 @@ describe('Gateway Plugins: oas-validation', function () {
     );
   });
 
-  it.skip('should POST new item without required photoURLS field when validation is skipped', async function () {
+  it('should POST new item without required photoURLS field when validation is skipped', async function () {
     const resp = await postNegative(
       `${proxyUrl}${path}/${resourcePet}`,
       missingPhotoUrlsPayload
@@ -366,7 +366,7 @@ describe('Gateway Plugins: oas-validation', function () {
     );
   });
 
-  it.skip('should delete the oas-validation plugin', async function () {
+  it('should delete the oas-validation plugin', async function () {
     const resp = await axios({
       method: 'delete',
       url: `${url}/${pluginId}`,

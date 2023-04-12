@@ -97,7 +97,7 @@ describe('Gateway Plugins: OpenTelemetry', function () {
     pluginId = resp.data.id;
     expect(resp.status, 'Status should be 201').to.equal(201);
 
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+    await wait(hybridWaitTime);
   });
 
   it('should send proxy request traces to jaeger', async function () {
@@ -182,7 +182,7 @@ describe('Gateway Plugins: OpenTelemetry', function () {
       'Should see updated instance id'
     ).to.equal('kongtest');
 
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+    // await wait(isHybrid ? hybridWaitTime : waitTime);
   });
 
   // skipping due to https://konghq.atlassian.net/browse/KAG-304
