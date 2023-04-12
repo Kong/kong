@@ -380,7 +380,7 @@ describe("headers [#" .. strategy .. "]", function()
       end
     end)
 
-    describe("(with default configration values)", function()
+    describe("(with default configuration values)", function()
 
       lazy_setup(start())
       lazy_teardown(stop)
@@ -943,7 +943,7 @@ describe("headers [#" .. strategy .. "]", function()
     end)
 
     describe("Server", function()
-      describe("(with default configration values)", function()
+      describe("(with default configuration values)", function()
         lazy_setup(start())
         lazy_teardown(stop)
 
@@ -995,7 +995,7 @@ describe("headers [#" .. strategy .. "]", function()
     end)
 
     describe("X-Kong-Admin-Latency", function()
-      describe("(with default configration values)", function()
+      describe("(with default configuration values)", function()
         lazy_setup(start())
         lazy_teardown(stop)
 

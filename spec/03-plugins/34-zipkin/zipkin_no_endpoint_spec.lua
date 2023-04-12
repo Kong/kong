@@ -46,7 +46,7 @@ describe("http integration tests with zipkin server (no http_endpoint) [#"
         static_tags = {
           { name = "static", value = "ok" },
         },
-        header_type = "w3c", -- will allways add w3c "traceparent" header
+        header_type = "w3c", -- will always add w3c "traceparent" header
       }
     })
 

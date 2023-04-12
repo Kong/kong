@@ -131,7 +131,7 @@ describe("Status API #" .. strategy, function()
           for _, t in ipairs(json.data) do
             data_targets[t.id] = t.target
           end
-          
+
           assert.same(apis_targets, data_targets)
         end
       end)
@@ -171,7 +171,7 @@ describe("Status API #" .. strategy, function()
 
           assert.equal(n, #res.data)
 
-            
+
           local apis_targets = {}
           for _, t in ipairs(targets) do
             apis_targets[t.id] = t.target
@@ -181,7 +181,7 @@ describe("Status API #" .. strategy, function()
           for _, t in ipairs(res.data) do
             data_targets[t.id] = t.target
           end
-          
+
           assert.same(apis_targets, data_targets)
 
           for i = 1, n do
@@ -270,7 +270,7 @@ describe("Status API #" .. strategy, function()
           pages[i] = json
         end
       end)
-      it("ingores filters", function()
+      it("ignores filters", function()
         local res = assert(client:send {
           method = "GET",
           path = "/upstreams/" .. upstream.name .. "/targets/all",
@@ -310,7 +310,7 @@ describe("Status API #" .. strategy, function()
   end)
 
   describe("/upstreams/{upstream}/targets/{target}/(un)healthy", function()
-  
+
     describe("POST", function()
 
       it("is not exposed", function()

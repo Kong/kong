@@ -315,7 +315,7 @@ the [spec/upgrade_helpers.lua](spec/upgrade_helpers.lua) module.
 Migration tests use functions from this module to define test cases
 and associate them with phases of the upgrade testing process.
 Consequently, they are named `setup`, `old_after_up`, `new_after_up`
-and `new_after_finish`.  Additonally, the function `all_phases` can be
+and `new_after_finish`.  Additionally, the function `all_phases` can be
 used to run a certain test in the three phases `old_after_up`,
 `new_after_up` and `new_after_finish`.  These functions replace the
 use of busted's `it` function and accept a descriptive string and a

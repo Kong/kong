@@ -17,14 +17,10 @@ The build system requires the following tools to be installed:
 
 ## Building
 
-`GITHUB_TOKEN` is required to pull `kong-admin` and `kong-portal` repos; if you have [gh](https://cli.github.com/)
-installed and have logged in, then `GITHUB_TOKEN` is not needed (`gh` binary itself is not required to build kong-ee).
-
 To build Kong and all its dependencies, run the following command:
 
 ```bash
-git submodule update --init
-GITHUB_TOKEN=token bazel build //build:kong --verbose_failures
+bazel build //build:kong --verbose_failures
 ```
 
 The build output is in `bazel-bin/build/kong-dev`.
@@ -40,15 +36,12 @@ Some other targets one might find useful for debugging are:
 
 - `@openresty//:openresty`: builds openresty
 - `@luarocks//:luarocks_make`: builds luarocks for Kong dependencies
-- `//build/ee:luarocks_install_ee_plugins`: installs EE plugins and their dependencies
 
 ### Build Options
 
 Following build options can be used to set specific features:
 
-- **--//:debug=true** turn on debug opitons for OpenResty and LuaJIT, default to true.
-- **--//:licensing=true** enable the licensing module, default to true.
-- **--//:fips=false** enable FIPS mode, default to false.
+- **--//:debug=true** turn on debug options for OpenResty and LuaJIT, default to true.
 - **--action_env=BUILD_NAME=** set the `build_name`, multiple build can exist at same time to allow you
 switch between different Kong versions or branches. Default to `kong-dev`; don't set this when you are
 building a building an binary package.
@@ -63,7 +56,6 @@ correctly set when building a package. Default to `bazel-bin/build/<BUILD_NAME>`
 
 ```
 build:release --//:debug=false
-build:release --//:licensing=true
 build:release --action_env=BUILD_NAME=kong-dev
 build:release --action_env=INSTALL_DESTDIR=/usr/local
 ```
@@ -71,7 +63,7 @@ build:release --action_env=INSTALL_DESTDIR=/usr/local
 To build an official release, use:
 
 ```bash
-GITHUB_TOKEN=token bazel build --config release //build:kong --verbose_failures
+bazel build --config release //build:kong --verbose_failures
 ```
 
 Supported build targets for binary packages:
@@ -107,7 +99,7 @@ Cross compiling is currently only tested on Ubuntu 22.04 x86_64 with following t
     - Requires user to manually install `crossbuild-essential-arm64`.
 - **//:alpine-x86_64** Alpine Linux x86_64; bazel manages the build toolchain.
 
-Make sure platforms are selected both in building Kong and packaing kong:
+Make sure platforms are selected both in building Kong and packaging kong:
 
 ```bash
 bazel build --config release //build:kong --platforms=//:ubuntu-2204-arm64

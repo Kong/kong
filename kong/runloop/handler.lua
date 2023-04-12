@@ -957,10 +957,9 @@ return {
         HOST_PORTS = kong.configuration.host_ports
       end
 
-      reports.configure_ping(kong.configuration)
+      reports.init(kong.configuration)
       reports.add_ping_value("database_version", kong.db.infos.db_ver)
-      reports.toggle(true)
-      reports.init_worker()
+      reports.init_worker(kong.configuration)
 
       update_lua_mem(true)
 
