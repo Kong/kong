@@ -1,13 +1,22 @@
 local isempty = require "table.isempty"
-
+local mime_type = require "kong.tools.mime_type"
+local ngx_re = require "ngx.re"
+local pl_stringx = require "pl.stringx"
 
 local kong = kong
 local type = type
-local find = string.find
-local lower = string.lower
 local match = string.match
 local noop = function() end
+local ipairs = ipairs
+local parse_mime_type = mime_type.parse_mime_type
+local mime_type_includes = mime_type.includes
+local split = ngx_re.split
+local strip = pl_stringx.strip
 
+local JSON_MEDIA_TYPES = {
+  { type = "application", subtype = "json" },
+  { type = "application", subtype = "*+json" },
+}
 
 local _M = {}
 
@@ -36,7 +45,25 @@ end
 
 
 local function is_json_body(content_type)
-  return content_type and find(lower(content_type), "application/json", nil, true)
+  if not content_type then
+    return false
+  end
+  local content_types = split(content_type, ",")
+  for _, content_type in ipairs(content_types) do
+    local t, subtype = parse_mime_type(strip(content_type))
+    if not t or not subtype then
+      goto continue
+    end
+    local media_type = { type = t, subtype = subtype }
+    for _, this_type in ipairs(JSON_MEDIA_TYPES) do
+      if mime_type_includes(this_type, media_type) then
+        return true
+      end
+    end
+    ::continue::
+  end
+
+  return false
 end
 
 

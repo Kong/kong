@@ -1,4 +1,5 @@
 local parse_mime_type = require "kong.tools.mime_type".parse_mime_type
+local includes = require "kong.tools.mime_type".includes
 
 describe("kong.tools.mime_type", function()
   describe("parse_mime_type()", function()
@@ -74,6 +75,87 @@ describe("kong.tools.mime_type", function()
         local type, subtype, params = parse_mime_type(case.mime_type)
         local result = { type = type, subtype = subtype, params = params }
         assert.same(case.result, result, "case: " .. i .. " failed" )
+      end
+    end)
+  end)
+
+  describe("includes()", function()
+    it("sanity", function()
+      local media_types = {
+        all = { type = "*", subtype = "*" },
+        text_plain = { type = "text", subtype = "plain" },
+        text_all = { type = "text", subtype = "*" },
+        application_soap_xml = { type = "application", subtype = "soap+xml" },
+        application_wildcard_xml = { type = "application", subtype = "*+xml" },
+        suffix_xml = { type = "application", subtype = "x.y+z+xml" },
+        application_json = { type = "application", subtype = "json" },
+      }
+
+      local cases = {
+        {
+          this = media_types.text_plain,
+          other = media_types.text_plain,
+          result = true,
+        },
+        {
+          this = media_types.text_all,
+          other = media_types.text_plain,
+          result = true,
+        },
+        {
+          this = media_types.text_plain,
+          other = media_types.text_all,
+          result = false,
+        },
+        {
+          this = media_types.all,
+          other = media_types.text_plain,
+          result = true,
+        },
+        {
+          this = media_types.text_plain,
+          other = media_types.all,
+          result = false,
+        },
+        {
+          this = media_types.application_soap_xml,
+          other = media_types.application_soap_xml,
+          result = true,
+        },
+        {
+          this = media_types.application_wildcard_xml,
+          other = media_types.application_wildcard_xml,
+          result = true,
+        },
+        {
+          this = media_types.application_wildcard_xml,
+          other = media_types.suffix_xml,
+          result = true,
+        },
+        {
+          this = media_types.application_wildcard_xml,
+          other = media_types.application_soap_xml,
+          result = true,
+        },
+        {
+          this = media_types.application_soap_xml,
+          other = media_types.application_wildcard_xml,
+          result = false,
+        },
+        {
+          this = media_types.suffix_xml,
+          other = media_types.application_wildcard_xml,
+          result = false,
+        },
+        {
+          this = media_types.application_wildcard_xml,
+          other = media_types.application_json,
+          result = false,
+        },
+      }
+
+      for i, case in ipairs(cases) do
+        assert.is_true(includes(case.this, case.other) == case.result, "case: " .. i .. " failed" )
       end
     end)
   end)
