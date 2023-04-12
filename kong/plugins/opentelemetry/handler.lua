@@ -38,10 +38,6 @@ local DEFAULT_HEADERS = {
   [CONTENT_TYPE_HEADER_NAME] = DEFAULT_CONTENT_TYPE_HEADER
 }
 
--- worker-level spans queue
-local QUEUES = {} -- one queue per unique plugin config
-
-
 local function get_headers(conf_headers)
   if not conf_headers or conf_headers == null then
     return DEFAULT_HEADERS
