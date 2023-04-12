@@ -2036,7 +2036,7 @@ for _, strategy in strategies() do
 
     if strategy ~= "off" then
       describe("rate-limiting-advanced Hybrid Mode with strategy #" .. strategy .. "#", function()
-        local plugin2, plugin4, plugin20
+        local plugin2, plugin4, plugin20, plugin21
         local ok, thread, proxy_client
 
         local HTTP_SERVER_PORT_16 = helpers.get_available_port()
@@ -2092,6 +2092,17 @@ for _, strategy in strategies() do
             build_plugin_fn("local")(
               route20.id, 5, 2, -1, nil,
               nil, nil, { namespace = "7674e5db-0dfe-4c95-af4a-b71f61d4f9dd" }
+            )
+          ))
+
+          local route21 = assert(bp.routes:insert {
+            name = "test-21",
+            hosts = { "test21.com" },
+          })
+          plugin21 = assert(bp.plugins:insert(
+            build_plugin_fn("local")(
+              route21.id, 5, 2, -1, nil,
+              nil, nil, { namespace = "9a34c29b-1d3b-38e5-2ef0-a82a19d71682" }
             )
           ))
 
@@ -2172,6 +2183,7 @@ for _, strategy in strategies() do
 
           helpers.clean_logfile("dp1/logs/error.log")
           helpers.clean_logfile("dp2/logs/error.log")
+          helpers.clean_logfile("cp/logs/error.log")
 
           -- POST a service in the CP
           local res = assert(helpers.admin_client(nil, 9103):post("/services", {
@@ -2257,6 +2269,33 @@ for _, strategy in strategies() do
           helpers.pwait_until(function()
             assert.logfile("dp2/logs/error.log").has.line("start sync Dk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
           end, 60)
+          -- won't create namespace or start sync on CP after plugin create
+          helpers.wait_for_file_contents("cp/logs/error.log")
+          assert.logfile("cp/logs/error.log").has.no.line("attempting to add namespace Dk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
+          assert.logfile("cp/logs/error.log").has.no.line("start sync Dk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
+        end)
+
+        it("won't reset namespace or start sync on cp after plugin update", function()
+          helpers.clean_logfile("cp/logs/error.log")
+
+          -- PATCH the plugin
+          local res = assert(helpers.admin_client(nil, 9103):send {
+            method = "PATCH",
+            path = "/plugins/" .. plugin21.id,
+            body = {
+              config = {
+                limit = { 3 }
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          assert.res_status(200, res)
+
+          helpers.wait_for_file_contents("cp/logs/error.log")
+          assert.logfile("cp/logs/error.log").has.no.line("clear and reset 9a34c29b-1d3b-38e5-2ef0-a82a19d71682", true, 20)
+          assert.logfile("cp/logs/error.log").has.no.line("start sync 9a34c29b-1d3b-38e5-2ef0-a82a19d71682", true, 20)
         end)
 
         it("local strategy works", function()
