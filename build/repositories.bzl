@@ -23,19 +23,20 @@ filegroup(
 )
 """
 
-def kong_manager_repositories():
-    """Defines the kong manager repository"""
+def github_cli_repositories():
+    """Defines the github cli repositories"""
 
     gh_matrix = [
-        ["linux", "amd64", "6b3e56ee3253795d9c48e019cfd7b8dfc03b28073a411d1f527f5021764f63cb"],
-        ["linux", "arm64", "fc341a2672d9444ed963530cf4ab28a9590ae07b644ce0de52372b3477535b01"],
-        ["macOS", "amd64", "3187174428dfb73b712f50b550e6a148f3f0ad4b2dbdf352519b159652ed9f50"],
+        ["linux", "amd64", "a3e2987e49ede4e90e0192f64c5e1480d6a1ee3196d51a4fcfbe0ccd0a627747"],
+        ["linux", "arm64", "75e9049bd5cea8084095b381bf21103bf8b609f989caeee20a47023b2fa1cbe9"],
+        ["macOS", "amd64", "de452c922f166f89f4c23908782c6fc5d3219bb118fdc4cccea7eed907733196"],
+        ["macOS", "arm64", "5a3754c34da645b61d58d38315206607182395d1ce3cca3114068d61441303bd"],
     ]
     for name, arch, sha in gh_matrix:
         http_archive(
             name = "gh_%s_%s" % (name, arch),
-            url = "https://github.com/cli/cli/releases/download/v2.21.2/gh_2.21.2_%s_%s.tar.gz" % (name, arch),
-            strip_prefix = "gh_2.21.2_%s_%s" % (name, arch),
+            url = "https://github.com/cli/cli/releases/download/v2.27.0/gh_2.27.0_%s_%s.tar.gz" % (name, arch),
+            strip_prefix = "gh_2.27.0_%s_%s" % (name, arch),
             sha256 = sha,
             build_file_content = _SRCS_BUILD_FILE_CONTENT,
         )
@@ -79,11 +80,6 @@ def _github_release_impl(ctx):
         os_name = "macOS"
     elif os_name != "linux":
         fail("Unsupported OS %s" % os_name)
-
-    if os_name == "macOS" and os_arch == "arm64":
-        # no binary release of mac m1, need to install from homebrew
-        # we will just rely on rosseta 2
-        os_arch = "amd64"
 
     gh_bin = "%s" % ctx.path(Label("@gh_%s_%s//:bin/gh" % (os_name, os_arch)))
     ret = ctx.execute([gh_bin, "release", "download", ctx.attr.tag, "-p", ctx.attr.pattern, "-R", ctx.attr.repo])
@@ -134,7 +130,7 @@ def build_repositories():
     luarocks_repositories()
 
     kong_resty_websocket_repositories()
-    kong_manager_repositories()
+    github_cli_repositories()
 
     protoc_repositories()
 
