@@ -38,6 +38,10 @@
   * Evaluates `ctx.WAITING_TIME` in forward-proxy instead of doing that in subsequent phase. This fix a bug of getting wrong `latencies.proxy` in the logging plugins.
     [FTI-1904](https://konghq.atlassian.net/browse/FTI-1904)
 
+* Declarative Configuration
+  * Fix a bug where an HTTP 500 error was thrown while loading a declarative configuration file exported by decK containing consumer groups.
+    [FTI-4808](https://konghq.atlassian.net/browse/FTI-4808)
+
 # TEMPLATE
 
 ## Enterprise
