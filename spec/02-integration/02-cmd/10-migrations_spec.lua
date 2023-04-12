@@ -241,8 +241,8 @@ for _, strategy in helpers.each_strategy() do
         code, stdout, stderr = run_kong("migrations up", {
           plugins = "with-migrations",
         })
-        assert.match("5 migrations processed", stdout .. "\n" .. stderr, 1, true)
-        assert.match("4 executed", stdout .. "\n" .. stderr, 1, true)
+        assert.match("4 migrations processed", stdout .. "\n" .. stderr, 1, true)
+        assert.match("3 executed", stdout .. "\n" .. stderr, 1, true)
         assert.match("1 pending", stdout .. "\n" .. stderr, 1, true)
         assert.same(0, code)
 
@@ -312,7 +312,7 @@ for _, strategy in helpers.each_strategy() do
           pending = pending + (type(row.pending) == "table" and #row.pending or 0)
         end
         --assert.same({}, rows)
-        assert.same(nr_migrations + 5, executed)
+        assert.same(nr_migrations + 4, executed)
         assert.same(0, pending)
       end)
 
