@@ -279,7 +279,9 @@ function NewRLHandler:init_worker()
         kong.log.err("failed broadcasting rl ", operation, " to cluster: ", err)
       end
 
-      worker_events.post("rl", operation, { config = config, old_config = old_config})
+      if kong.configuration.role ~= "control_plane" then
+        worker_events.post("rl", operation, { config = config, old_config = old_config})
+      end
     end
   end, "crud", "plugins")
 

@@ -129,12 +129,12 @@ dnf install \
 macOS
 
 ```shell
-# Install XCode instead of Command Line Tools is recommended
-xcode-select --install
+# Install Xcode from App Store (Command Line Tools is not supported)
+
 # Install HomeBrew
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 # Build dependencies
-brew install libyaml
+brew install libyaml python3
 ```
 
 Finally, we start the build process:
@@ -401,7 +401,7 @@ Now try `ssh dev` on your host, you should be able to get into the guest directl
 
 ## Dev on VSCode Container / GitHub Codespaces
 
-The `devcontainer.json` file in Kong's project tells VS Code 
+The `devcontainer.json` file in Kong's project tells VS Code
 how to access (or create) a development container with a well-defined tool and runtime stack.
 
 - See [How to create a GitHub codespace](https://docs.github.com/en/codespaces/developing-in-codespaces/creating-a-codespace#creating-a-codespace).

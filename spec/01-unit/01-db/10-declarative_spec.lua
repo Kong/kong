@@ -77,4 +77,44 @@ keyauth_credentials:
     end)
   end)
 
+  it("FTI-4808 - declarative configuration containing consumer groups should work", function ()
+    local dc = declarative.new_config(conf_loader())
+    local entities, err = dc:parse_string([[
+_format_version: "3.0"
+_transform: true
+consumer_groups:
+- id: 8f40dff7-8e08-4aae-9333-d88a3327bd01
+  name: gold
+  plugins:
+  - config:
+      limit:
+      - 50
+      retry_after_jitter_max: 0
+      window_size:
+      - 60
+      window_type: sliding
+    id: 2e8c482b-7ec6-449e-9828-9c3848698a7d
+    name: rate-limiting-advanced
+consumers:
+- groups:
+  - id: 8f40dff7-8e08-4aae-9333-d88a3327bd01
+    name: gold
+  id: c6cf3ff6-df61-438d-9cae-66de91d9d8f1
+  keyauth_credentials:
+  - id: fed23a5f-4974-4bb5-88b5-15de2432313d
+    key: gold
+  username: gold-user      
+]])
+
+    assert.equal(nil, err)
+
+    local consumer_group_consumer_count = 0
+    for _, consumer_group_consumer in pairs(entities.consumer_group_consumers) do
+      assert.equals(consumer_group_consumer.consumer.id, "c6cf3ff6-df61-438d-9cae-66de91d9d8f1")
+      assert.equals(consumer_group_consumer.consumer_group.id, "8f40dff7-8e08-4aae-9333-d88a3327bd01")
+      consumer_group_consumer_count = consumer_group_consumer_count + 1
+    end
+    assert.equal(1, consumer_group_consumer_count)
+  end)
+
 end)

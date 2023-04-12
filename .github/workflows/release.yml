@@ -220,11 +220,6 @@ jobs:
         dnf config-manager --set-enabled powertools || true # enable devel packages on rockylinux:8
         yum install -y libyaml-devel zlib-devel
 
-    - name: Setup CMake
-      if: (matrix.package == 'rpm' || matrix.image == 'ubuntu:18.04') && steps.cache-deps.outputs.cache-hit != 'true'
-      # the version of the actions is same as the cmake version to be installed
-      uses: lukka/get-cmake@1a178d42f9f4f47310373da4f5ef02297ed5a6e8 # v3.25
-
     - name: Build Kong
       if: steps.cache-deps.outputs.cache-hit != 'true'
       env:

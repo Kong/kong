@@ -212,10 +212,12 @@ CONFIGURE_OPTIONS = [
 filegroup(
     name = "all_srcs",
     srcs = glob(
-        include = ["**"],
+        include = [
+            "configure",
+            "bundle/**",
+        ],
         exclude = [
             "bundle/LuaJIT*/**",
-            "build/**",
         ],
     ),
 )

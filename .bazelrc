@@ -21,7 +21,7 @@ build --worker_verbose
 
 # build --incompatible_strict_action_env
 
-# Enable --platforms API based cpu,compiler,crosstool_top selection
+# Enable --platforms API based cpu,compiler,crosstool_top selection; remove this in 7.0.0 as it's enabled by default
 build --incompatible_enable_cc_toolchain_resolution
 
 # Pass PATH, CC, CXX variables from the environment.
