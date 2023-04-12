@@ -449,7 +449,7 @@ for _, strategy in helpers.each_strategy() do
 
             ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the list
 
-            -- Additonal request, while limit is ITERATIONS/second
+            -- Additional request, while limit is ITERATIONS/second
             local res = proxy_client():get("/response-headers?x-kong-limit=video=1, test=" .. ITERATIONS, {
               headers = { Host = "test-service1.com" },
             })

@@ -276,7 +276,7 @@ describe("cache_warmup", function()
 
     assert.truthy(cache_warmup.execute({"my_entity", "services"}))
 
-    -- waiting async DNS cacheing
+    -- waiting async DNS caching
     helpers.wait_until(function ()
       local runs = _G.timerng:stats().sys.runs
       return runs_old < runs
