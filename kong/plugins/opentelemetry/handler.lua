@@ -106,7 +106,7 @@ function OpenTelemetryHandler:access(conf)
 
   local header_type, trace_id, span_id, parent_id, should_sample, _ = propagation_parse(headers, conf.header_type)
   if should_sample == false then
-    root_span.should_sample = should_sample
+    tracer:set_should_sample(should_sample)
   end
 
   -- overwrite trace id
@@ -138,8 +138,12 @@ function OpenTelemetryHandler:access(conf)
     })
     ngx_ctx.last_try_balancer_span = new_span
   end
+
+  -- new_span can be noop (e.g. when should_sample == false) which should not
+  -- be sampled nor propagated. In that case, propagate the root_span instead.
+  local propagated = new_span.is_recording ~= false and new_span or root_span
   -- propagate the last-try balancer span
-  propagation_set(conf.header_type, header_type, new_span, "w3c")
+  propagation_set(conf.header_type, header_type, propagated, "w3c")
 end
 
 

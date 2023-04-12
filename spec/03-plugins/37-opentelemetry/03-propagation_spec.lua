@@ -133,6 +133,21 @@ describe("propagation tests #" .. strategy, function()
       local json = cjson.decode(body)
       assert.matches(trace_id .. "%-%x+%-1", json.headers.b3)
     end)
+
+    it("with disabled sampling", function()
+      local trace_id = gen_trace_id()
+      local span_id = gen_span_id()
+
+      local r = proxy_client:get("/", {
+        headers = {
+          b3 = fmt("%s-%s-0", trace_id, span_id),
+          host = "http-route",
+        },
+      })
+      local body = assert.response(r).has.status(200)
+      local json = cjson.decode(body)
+      assert.matches(trace_id .. "%-%x+%-0", json.headers.b3)
+    end)
   end)
 
   it("propagates w3c tracing headers", function()
