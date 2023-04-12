@@ -53,6 +53,10 @@ describe("Log Serializer", function()
       phases = {},
     }
 
+    package.loaded["kong.pdk.client"] = nil
+    local pdk_client = require "kong.pdk.client"
+    kong.client = pdk_client.new(kong)
+
     package.loaded["kong.pdk.table"] = nil
     local pdk_table = require "kong.pdk.table"
     kong.table = pdk_table.new(kong)
