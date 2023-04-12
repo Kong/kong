@@ -201,7 +201,7 @@ for _, strategy in helpers.all_strategies() do
           local d_res = client:delete("/key-sets/"..json.data[1].id)
           assert.res_status(204, d_res)
 
-          -- assert keys assinged to the key-set were deleted (by cascade)
+          -- assert keys assigned to the key-set were deleted (by cascade)
           local _res = client:get("/keys")
           local _body = assert.res_status(200, _res)
           local _json = cjson.decode(_body)

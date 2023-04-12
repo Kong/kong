@@ -425,7 +425,7 @@ describe("[least-connections]", function()
     end)
 
 
-    it("retries, after all adresses failed, restarts with previously failed ones", function()
+    it("retries, after all addresses failed, restarts with previously failed ones", function()
       dnsSRV({
         { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
         { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },

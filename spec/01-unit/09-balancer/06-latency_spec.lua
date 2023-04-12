@@ -273,7 +273,7 @@ describe("[latency]", function()
 
       local counts = {}
       local handles = {}
-      
+
       local handle_local
       local ctx_local = {}
       for _, target in pairs(b.targets) do
@@ -504,7 +504,7 @@ describe("[latency]", function()
             b:afterBalance(ctx_local, handle_local)
         end
       end
-  
+
       local ip, _, _, handle = b:getPeer()
       counts[ip] = (counts[ip] or 0) + 1
       t_insert(handles, handle)  -- don't let them get GC'ed
@@ -591,7 +591,7 @@ describe("[latency]", function()
     end)
 
 
-    it("retries, after all adresses failed, retry end", function()
+    it("retries, after all addresses failed, retry end", function()
       dnsSRV({
         { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
         { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },

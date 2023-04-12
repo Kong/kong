@@ -1213,7 +1213,7 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
             { name = "srvrecord.tst", target = "1.1.1.1", port = 9000, weight = 20 },
             { name = "srvrecord.tst", target = "2.2.2.2", port = 9001, weight = 20 },
           })
-          targets.resolve_targets(b.targets)  -- touch all adresses to force dns renewal
+          targets.resolve_targets(b.targets)  -- touch all addresses to force dns renewal
           add_target(b, "srvrecord.tst", 8001, 99) -- add again to update nodeWeight
 
           assert.same({
@@ -1397,7 +1397,7 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
             { name = "srvrecord.tst", target = "1.1.1.1", port = 9000, weight = 20 },
             { name = "srvrecord.tst", target = "2.2.2.2", port = 9001, weight = 20 },
           })
-          targets.resolve_targets(b.targets)  -- touch all adresses to force dns renewal
+          targets.resolve_targets(b.targets)  -- touch all addresses to force dns renewal
           add_target(b, "srvrecord.tst", 8001, 99) -- add again to update nodeWeight
 
           assert.same({

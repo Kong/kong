@@ -188,7 +188,7 @@ for _, strategy in helpers.each_strategy() do
       -- due to the different sql in postgres stragey
       -- we need to test these two methods seperately
       -- note this is different from test "update row in tags table with"
-      -- as this test actually creats new records
+      -- as this test actually creates new records
       local scenarios = {
         { "upsert", { id = require("kong.tools.utils").uuid() }, { "service-upsert-1" } },
         { "upsert_by_name", "service-upsert-2", { "service-upsert-2" } },
