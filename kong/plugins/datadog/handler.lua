@@ -110,12 +110,15 @@ function DatadogHandler:log(conf)
     return
   end
 
-  Queue.enqueue(
+  local ok, err = Queue.enqueue(
     Queue.get_params(conf),
     send_entries_to_datadog,
     conf,
     kong.log.serialize()
   )
+  if not ok then
+    kong.log.err("failed to enqueue log entry to Datadog: ", err)
+  end
 end
 
 

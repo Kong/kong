@@ -454,12 +454,15 @@ function _M.execute(conf)
   local message = kong.log.serialize({ngx = ngx, kong = kong, })
   message.cache_metrics = ngx.ctx.cache_metrics
 
-  Queue.enqueue(
+  local ok, err = Queue.enqueue(
     Queue.get_params(conf),
     send_entries_to_upstream_server,
     conf,
     message
   )
+  if not ok then
+    kong.log.err("Failed to enqueue log entry to StatsD server: ", err)
+  end
 end
 
 -- only for test

@@ -161,12 +161,15 @@ function OpenTelemetryHandler:log(conf)
       span.trace_id = trace_id
     end
 
-    Queue.enqueue(
+    local ok, err = Queue.enqueue(
       Queue.get_params(conf),
       http_export,
       conf,
       encode_span(span)
     )
+    if not ok then
+      kong.log.err("Failed to enqueue span to log server: ", err)
+    end
   end)
 end
 

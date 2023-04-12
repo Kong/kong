@@ -193,12 +193,15 @@ function HttpLogHandler:log(conf)
     queue_conf.name = make_legacy_queue_name(conf)
   end
 
-  Queue.enqueue(
+  local ok, err = Queue.enqueue(
     queue_conf,
     send_entries,
     conf,
     cjson.encode(kong.log.serialize())
   )
+  if not ok then
+    kong.log.err("Failed to enqueue log entry to log server: ", err)
+  end
 end
 
 return HttpLogHandler
