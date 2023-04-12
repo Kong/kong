@@ -144,7 +144,7 @@ local function send_entries(conf, entries)
   kong.log.debug(fmt("http-log sent data log server, %s:%s HTTP status %d",
     host, port, res.status))
 
-  if res.status < 400 then
+  if res.status < 300 then
     return true
 
   else

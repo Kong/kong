@@ -133,6 +133,11 @@
   the process and the API was changed.  If your custom plugin uses queues, it must
   be updated to use the new API.
   [#10172](https://github.com/Kong/kong/pull/10172)
+- **http-log**: If the log server responds with a 3xx HTTP status code, the
+  plugin will consider it to be an error and retry according to the retry
+  configuration.  Previously, 3xx status codes would be interpreted as success,
+  causing the log entries to be dropped.
+  [#10172](https://github.com/Kong/kong/pull/10172)
 
 ### Changed
 
