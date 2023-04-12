@@ -30,13 +30,13 @@ function get_current_version() {
     then
         echo $version_from_rockspec-ubuntu
     else
-        echo ubuntu
+        echo latest-ubuntu
     fi
 }
 
-export OLD_KONG_VERSION=2.8.0
-export OLD_KONG_IMAGE=kong:$OLD_KONG_VERSION-ubuntu
-export NEW_KONG_IMAGE=kong:$(get_current_version kong)
+export OLD_KONG_VERSION=2.8.2.3
+export OLD_KONG_IMAGE=kong/kong-gateway:2.8-ubuntu
+export NEW_KONG_IMAGE=kong/kong-gateway:$(get_current_version kong)
 
 function usage() {
     cat 1>&2 <<EOF
@@ -86,7 +86,7 @@ NEW_CONTAINER=$ENV_PREFIX-kong_new-1
 
 function prepare_container() {
     docker exec $1 apt-get update
-    docker exec $1 apt-get install -y build-essential curl m4
+    docker exec $1 apt-get install -y build-essential curl m4 unzip git
     docker exec $1 bash -c "ln -sf /usr/local/kong/include/* /usr/include"
     docker exec $1 bash -c "ln -sf /usr/local/kong/lib/* /usr/lib"
 }
@@ -100,7 +100,7 @@ function build_containers() {
     prepare_container $NEW_CONTAINER
     docker exec -w /kong $OLD_CONTAINER make dev CRYPTO_DIR=/usr/local/kong
     # Kong version >= 3.3 moved non Bazel-built dev setup to make dev-legacy
-    docker exec -w /kong $NEW_CONTAINER make dev-legacy CRYPTO_DIR=/usr/local/kong
+    docker exec -w /kong $NEW_CONTAINER make dev CRYPTO_DIR=/usr/local/kong
 }
 
 function initialize_test_list() {

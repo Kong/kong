@@ -12,7 +12,7 @@ on:
         required: false
         default: 'true'
       target_test:
-        description: 'Run only a single test by spec name, only smoke tests or all tests'
+        description: 'Run only a single test by spec name, smoke, non-smoke or all tests'
         required: false
         default: 'all'
       target_matrix:
@@ -39,7 +39,7 @@ on:
         required: true
         type: string
       target_test:
-        description: 'Run only a single test by spec name, only smoke tests or all tests'
+        description: 'Run only a single test by spec name, smoke, non-smoke or all tests'
         required: false
         type: string
       target_matrix:
@@ -178,6 +178,8 @@ jobs:
             npm run test-gateway;
           elif [[ $RUN_SPEC == 'smoke' ]]; then
             npm run test-smoke;
+          elif [[ $RUN_SPEC == 'non-smoke' ]]; then
+            npm run test-non-smoke;
           else
             npm run test-spec --spec=$RUN_SPEC;
           fi
@@ -301,6 +303,8 @@ jobs:
             npm run test-gateway;
           elif [[ $RUN_SPEC == 'smoke' ]]; then
             npm run test-smoke;
+          elif [[ $RUN_SPEC == 'non-smoke' ]]; then
+            npm run test-non-smoke;
           else
             npm run test-spec --spec=$RUN_SPEC;
           fi

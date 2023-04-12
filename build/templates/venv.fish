@@ -16,7 +16,6 @@ set -xg KONG_VENV "$workspace_path/bazel-bin/build/$build_name"
 # set PATH
 if test -n "$_OLD_KONG_VENV_PATH"
     # restore old PATH first, if this script is called multiple times
-    echo "restored old path $_OLD_KONG_VENV_PATH"
     set -gx PATH $_OLD_KONG_VENV_PATH
 else
     set _OLD_KONG_VENV_PATH $PATH

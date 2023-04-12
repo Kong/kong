@@ -12,9 +12,9 @@ def passwdqc_repositories():
     maybe(
         http_archive,
         name = "passwdqc",
-        url = "https://www.openwall.com/passwdqc/passwdqc-" + version + ".tar.gz",
-        sha256 = "d1fedeaf759e8a0f32d28b5811ef11b5a5365154849190f4b7fab670a70ffb14",
-        strip_prefix = "passwdqc-" + version,
+        url = "https://github.com/openwall/passwdqc/archive/refs/tags/PASSWDQC_" + version + ".tar.gz",
+        sha256 = "f07bdc16708652f54170f7d2bff03f4f53456b0db52893866bfef9a0e16deeed",
+        strip_prefix = "passwdqc-PASSWDQC_" + version,
         build_file = "//build/ee/passwdqc:BUILD.passwdqc.bazel",
         patches = ["//build/ee/passwdqc:passwdqc-cross.patch"],
     )

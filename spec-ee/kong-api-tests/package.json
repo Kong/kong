@@ -9,7 +9,8 @@
     "test-spec": "mocha \"test/gateway/**/${npm_config_spec}.spec.ts\"",
     "test-gateway": "mocha \"test/gateway/**/*.spec.ts\" --ignore \"test/gateway/packages/*.spec.ts\"",
     "test-multiple": "mocha ${npm_config_spec}",
-    "test-smoke": "mocha -g @smoke --recursive"
+    "test-smoke": "mocha -g @smoke --recursive",
+    "test-non-smoke": "mocha --invert -g @smoke --recursive --ignore \"test/gateway/packages/*.spec.ts\""
   },
   "dependencies": {
     "axios": "^0.27.2",
@@ -37,9 +38,9 @@
     "@types/mocha": "^10.0.1",
     "@types/node": "^18.15.10",
     "@types/uuid": "^9.0.1",
-    "@typescript-eslint/eslint-plugin": "^5.57.0",
-    "@typescript-eslint/parser": "^5.57.0",
-    "eslint": "^8.36.0",
+    "@typescript-eslint/eslint-plugin": "^5.58.0",
+    "@typescript-eslint/parser": "^5.58.0",
+    "eslint": "^8.38.0",
     "eslint-config-prettier": "^8.7.0",
     "eslint-plugin-prettier": "^4.2.1",
     "prettier": "^2.8.7",

@@ -18,7 +18,7 @@ local LOGGLY_PORT = helpers.get_available_port()
 local TIMEOUT = 30
 
 for _, strategy in helpers.each_strategy() do
-  describe("#websocket logging plugins [#" .. strategy .. "] #flaky ", function()
+  describe("#websocket logging plugins [#" .. strategy .. "]", function()
 
     local uuid = utils.uuid()
     local plugins = {}
@@ -153,17 +153,7 @@ for _, strategy in helpers.each_strategy() do
         --
         -- This is done to ensure that no startup-related errors (like an expired
         -- license message) are caught when we check for errors later on.
-
-        helpers.wait_until(function()
-          local admin = helpers.admin_client()
-          local res = admin:send({
-            method = "GET",
-            path = "/",
-          })
-          admin:close()
-          return res and res.status == 200
-        end)
-
+        helpers.wait_for_all_config_update()
         helpers.clean_logfile()
 
         -- On some systems os.tmpname() also creates the file. Ensure the file
