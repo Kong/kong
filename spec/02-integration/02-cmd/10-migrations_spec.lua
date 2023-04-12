@@ -260,7 +260,7 @@ for _, strategy in helpers.each_strategy() do
           pending = pending + (type(row.pending) == "table" and #row.pending or 0)
         end
 
-        assert.same(nr_migrations + 3, executed)
+        assert.same(nr_migrations + 4, executed)
         assert.same(1, pending)
       end)
 
@@ -288,7 +288,7 @@ for _, strategy in helpers.each_strategy() do
         local code = run_kong("migrations up", {
           plugins = "with-migrations",
         })
-        assert.same(0, code)
+        assert.same(1, code)
 
         local stdout, stderr
         code, stdout, stderr = run_kong("migrations finish", {
