@@ -212,7 +212,7 @@ describe("propagation tests #" .. strategy, function()
     local body = assert.response(r).has.status(200)
     local json = cjson.decode(body)
     -- Trace ID is left padded with 0 for assert
-    assert.matches( ('0'):rep(32-#trace_id) .. trace_id .. ":%x+:" .. span_id .. ":01", json.headers["uber-trace-id"])
+    assert.matches( ('0'):rep(32-#trace_id) .. trace_id .. ":%x+:%x+:01", json.headers["uber-trace-id"])
   end)
 
   it("propagates ot headers", function()
