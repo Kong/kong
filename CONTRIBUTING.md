@@ -580,32 +580,6 @@ local max_len = 100
 local MAX_LEN = 100
 ```
 
-Minimize the scope of the variables or functions,
-if some module-level variables or functions are used by only one function,
-**do** put them into a `do ... end` block.
-
-```lua
--- bad
-local function multiply(a, b)   -- only used by function 'square' below
-  return a*b
-end
-
-local function square(a)
-  return multiply(a, a)
-end
-
--- good
-local square do
-  local function multiply(a, b)   -- only used by function 'square' below
-    return a*b
-  end
-
-  function square(a)
-    return multiply(a, a)
-  end
-end
-```
-
 [Back to code style TOC](#table-of-contents---code-style)
 
 ### Tables
