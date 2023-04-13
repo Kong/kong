@@ -156,9 +156,17 @@ local function create_span(tracer, options)
   local trace_id = span.parent and span.parent.trace_id
       or options.trace_id
       or generate_trace_id()
-  local sampled = span.parent and span.parent.should_sample
-      or options.should_sample
-      or tracer and tracer.sampler(trace_id)
+
+  local sampled
+  if span.parent and span.parent.should_sample ~= nil then
+    sampled = span.parent.should_sample
+
+  elseif options.should_sample ~= nil then
+    sampled = options.should_sample
+
+  else
+    sampled = tracer and tracer.sampler(trace_id)
+  end
 
   if not sampled then
     return noop_span
@@ -170,16 +178,17 @@ local function create_span(tracer, options)
   span.span_id = generate_span_id()
   span.trace_id = trace_id
   span.kind = options.span_kind or SPAN_KIND.INTERNAL
-  -- indicates whether the span should be reported
-  span.should_sample = span.parent and span.parent.should_sample
-      or options.should_sample
-      or sampled
+  span.should_sample = true
 
   setmetatable(span, span_mt)
   return span
 end
 
 local function link_span(tracer, span, name, options)
+  if not span.should_sample then
+    kong.log.debug("skipping non-sampled span")
+    return
+  end
   if tracer and type(tracer) ~= "table" then
     error("invalid tracer", 2)
   end
@@ -386,6 +395,7 @@ noop_tracer.link_span = NOOP
 noop_tracer.active_span = NOOP
 noop_tracer.set_active_span = NOOP
 noop_tracer.process_span = NOOP
+noop_tracer.set_should_sample = NOOP
 
 --- New Tracer
 local function new_tracer(name, options)
@@ -482,8 +492,25 @@ local function new_tracer(name, options)
     end
 
     for _, span in ipairs(ctx.KONG_SPANS) do
-      if span.tracer.name == self.name then
+      if span.tracer and span.tracer.name == self.name then
         processor(span, ...)
+      end
+    end
+  end
+
+  --- Update the value of should_sample for all spans
+  --
+  -- @function span:set_should_sample
+  -- @tparam bool should_sample value for the sample parameter
+  function self:set_should_sample(should_sample)
+    local ctx = ngx.ctx
+    if not ctx.KONG_SPANS then
+      return
+    end
+
+    for _, span in ipairs(ctx.KONG_SPANS) do
+      if span.is_recording ~= false then
+        span.should_sample = should_sample
       end
     end
   end

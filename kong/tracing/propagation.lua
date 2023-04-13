@@ -442,6 +442,11 @@ end
 
 
 local function set(conf_header_type, found_header_type, proxy_span, conf_default_header_type)
+  if proxy_span.is_recording == false then
+    kong.log.debug("skipping propagation of noop span")
+    return
+  end
+
   local set_header = kong.service.request.set_header
 
   -- If conf_header_type is set to `preserve`, found_header_type is used over default_header_type;
