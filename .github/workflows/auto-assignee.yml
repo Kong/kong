@@ -1,0 +1,12 @@
+name: Add assignee to PRs
+on:
+  pull_request:
+    types: [ opened, reopened ]
+permissions:
+  pull-requests: write
+jobs:
+  assign-author:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: toshimaru/auto-author-assign@2daaeb2988aef24bf37e636fe733f365c046aba0
+
