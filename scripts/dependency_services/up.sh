@@ -1,5 +1,5 @@
 #!/bin/bash
-set -x
+# set -x
 
 if [ "${BASH_SOURCE-}" = "$0" ]; then
     echo "You must source this script: \$ source $0" >&2
@@ -39,39 +39,26 @@ _kong_added_envs=""
 env_prefixes="KONG_ KONG_TEST_ KONG_SPEC_TEST_"
 
 if [ -n "$ZSH_VERSION" ]; then
-    for svc in "${(k)ports[@]}"; do
-        for port_def in ${ports[$svc]}; do
-            env_name=$(echo $port_def |cut -d: -f1)
-            private_port=$(echo $port_def |cut -d: -f2 | cut -d" " -f1)
-            exposed_port=$(docker-compose -f "$docker_compose_file" -p "$docker_compose_project" port $svc $private_port | cut -d: -f2)
-            if [ -z $exposed_port ]; then
-                echo "Port $env_name for service $svc unknown"
-                continue
-            fi
-            for prefix in $( echo "$env_prefixes" ); do
-                echo $prefix
-                _kong_added_envs="$_kong_added_envs ${prefix}${env_name}"
-                eval "export ${prefix}${env_name}=$exposed_port"
-            done
-        done
-    done
+    ports_array=${(k)ports[@]}
 else
-    for svc in "${!ports[@]}"; do
-        for port_def in ${ports[$svc]}; do
-            env_name=$(echo $port_def |cut -d: -f1)
-            private_port=$(echo $port_def |cut -d: -f2)
-            exposed_port=$(docker-compose -f "$docker_compose_file" -p "$docker_compose_project" port $svc $private_port | cut -d: -f2)
-            if [ -z $exposed_port ]; then
-                echo "Port $env_name for service $svc unknown"
-                continue
-            fi
-            for prefix in $env_prefixes; do
-                _kong_added_envs="$_kong_added_envs ${prefix}${env_name}"
-                eval "export ${prefix}${env_name}=$exposed_port"
-            done
+    ports_array=${!ports[@]}
+fi
+
+for svc in $( echo "$ports_array" ); do
+    for port_def in ${ports[$svc]}; do
+        env_name=$(echo $port_def |cut -d: -f1)
+        private_port=$(echo $port_def |cut -d: -f2 | cut -d" " -f1)
+        exposed_port=$(docker-compose -f "$docker_compose_file" -p "$docker_compose_project" port $svc $private_port | cut -d: -f2)
+        if [ -z $exposed_port ]; then
+            echo "Port $env_name for service $svc unknown"
+            continue
+        fi
+        for prefix in $( echo "$env_prefixes" ); do
+            _kong_added_envs="$_kong_added_envs ${prefix}${env_name}"
+            eval "export ${prefix}${env_name}=$exposed_port"
         done
     done
-fi
+done
 
 export _kong_added_envs
 
