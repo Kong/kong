@@ -193,7 +193,7 @@ end
 -- Drop the oldest entry, adjusting the semaphore value in the process.  This is
 -- called when the queue runs out of space and needs to make space.
 function Queue:drop_oldest_entry()
-  assert(self.semaphore:count())
+  assert(self.semaphore:count() > 0)
   self.semaphore:wait(0)
   self:delete_frontmost_entry()
 end
