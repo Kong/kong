@@ -19,7 +19,6 @@ local propagation_parse = propagation.parse
 local propagation_set = propagation.set
 local null = ngx.null
 local encode_traces = otlp.encode_traces
-local translate_span_trace_id = otlp.translate_span
 local encode_span = otlp.transform_span
 local to_hex = require "resty.string".to_hex
 
@@ -125,7 +124,7 @@ function OpenTelemetryHandler:access()
     root_span.parent_id = parent_id
   end
 
-  propagation_set("preserve", header_type, translate_span_trace_id(root_span), "w3c")
+  propagation_set("preserve", header_type, root_span, "w3c")
 end
 
 

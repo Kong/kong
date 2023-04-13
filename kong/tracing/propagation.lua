@@ -1,11 +1,13 @@
 local to_hex = require "resty.string".to_hex
 local table_merge = require "kong.tools.utils".table_merge
+local otlp = require "kong.plugins.opentelemetry.otlp"
 local unescape_uri = ngx.unescape_uri
 local char = string.char
 local match = string.match
 local gsub = string.gsub
 local fmt = string.format
 local concat = table.concat
+local to_ot_trace_id = otlp.to_ot_trace_id
 
 
 local baggage_mt = {
@@ -20,6 +22,7 @@ local W3C_TRACECONTEXT_PATTERN = "^(%x+)%-(%x+)%-(%x+)%-(%x+)$"
 local JAEGER_TRACECONTEXT_PATTERN = "^(%x+):(%x+):(%x+):(%x+)$"
 local JAEGER_BAGGAGE_PATTERN = "^uberctx%-(.*)$"
 local OT_BAGGAGE_PATTERN = "^ot%-baggage%-(.*)$"
+local W3C_TRACEID_LEN = 16
 
 local function hex_to_char(c)
   return char(tonumber(c, 16))
@@ -37,6 +40,18 @@ end
 local function left_pad_zero(str, count)
   return ('0'):rep(count-#str) .. str
 end
+
+
+local function to_w3c_trace_id(trace_id)
+  if #trace_id < W3C_TRACEID_LEN then
+    return ('\0'):rep(W3C_TRACEID_LEN - #trace_id) .. trace_id
+  elseif #trace_id > W3C_TRACEID_LEN then
+    return trace_id:sub(-W3C_TRACEID_LEN)
+  end
+
+  return trace_id
+end
+
 
 local function parse_baggage_headers(headers, header_pattern)
   -- account for both ot and uber baggage headers
@@ -464,10 +479,11 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
   end
 
   if conf_header_type == "w3c" or found_header_type == "w3c" then
+    -- OTEL uses w3c trace context format so to_ot_trace_id works here
     set_header("traceparent", fmt("00-%s-%s-%s",
-        to_hex(proxy_span.trace_id),
+        to_hex(to_w3c_trace_id(proxy_span.trace_id)),
         to_hex(proxy_span.span_id),
-      proxy_span.should_sample and "01" or "00"))
+        proxy_span.should_sample and "01" or "00"))
   end
 
   if conf_header_type == "jaeger" or found_header_type == "jaeger" then
@@ -479,7 +495,7 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
   end
 
   if conf_header_type == "ot" or found_header_type == "ot" then
-    set_header("ot-tracer-traceid", to_hex(proxy_span.trace_id))
+    set_header("ot-tracer-traceid", to_hex(to_ot_trace_id(proxy_span.trace_id)))
     set_header("ot-tracer-spanid", to_hex(proxy_span.span_id))
     set_header("ot-tracer-sampled", proxy_span.should_sample and "1" or "0")
 
