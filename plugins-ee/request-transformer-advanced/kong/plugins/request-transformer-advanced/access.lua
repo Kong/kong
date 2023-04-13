@@ -9,8 +9,8 @@ local multipart = require "multipart"
 local cjson = require("cjson.safe").new()
 local pl_template = require "pl.template"
 local pl_tablex = require "pl.tablex"
-local ngx_re = require("ngx.re")
 local sandbox = require "kong.tools.sandbox"
+local json_navigator = require "kong.enterprise_edition.transformations.plugins.json_navigator"
 local sub = string.sub
 local gsub = string.gsub
 
@@ -38,6 +38,7 @@ local rawset = rawset
 local pl_copy_table = pl_tablex.deepcopy
 local lua_enabled = sandbox.configuration.enabled
 local sandbox_enabled = sandbox.configuration.sandbox_enabled
+local navigate_and_apply = json_navigator.navigate_and_apply
 
 local _M = {}
 local template_cache = setmetatable( {}, { __mode = "k" })
@@ -294,71 +295,22 @@ local function cast_value(value, value_type)
   end
 end
 
-local function navigate_and_apply(conf, json, path, f)
-  local head, index, tail
 
-  if conf.dots_in_keys == nil or conf.dots_in_keys then
-    head = path
-  else
-    -- Split into a table with three values, e.g. Results[*].info.name becomes {"Results", "[*]", "info.name"}
-    local res = ngx_re.split(path, "(\\[[\\d|\\*]*\\])?\\.", nil, nil, 2)
-
-    if res then
-      head = res[1]
-      if res[2] and res[3] then
-        -- Extract index, e.g. "2" from "[2]"
-        index = string.sub(res[2], 2, -2)
-        tail = res[3]
-      else
-        tail = res[2]
-      end
-    end
-  end
-
+local function init_json_path(json, paths)
   if type(json) == "table" then
-    local idx
-    if index == '*' then
-      -- Loop through array
-      local array = json
-      if head ~= '' then
-        array = json[head]
+    for _, path in ipairs(paths or EMPTY) do
+      if json[path] == nil then
+        json[path] = {}
       end
-
-      for k, v in ipairs(array) do
-        idx = k
-        if type(v) == "table" then
-          navigate_and_apply(conf, v, tail, function(x, y)
-            f(x, y, idx)
-          end)
-        end
-      end
-
-    elseif index and index ~= '' then
-      -- Access specific array element by index
-      index = tonumber(index)
-      local element = json[index]
-      if head ~= '' and json[head] and type(json[head]) == "table" then
-        element = json[head][index]
-      end
-      navigate_and_apply(conf, element, tail, f)
-
-    elseif tail and tail ~= '' then
-      -- only if head does not exist
-      if not json[head] then
-        json[head] = {}
-      end
-      -- Navigate into nested JSON
-      navigate_and_apply(conf, json[head], tail, f)
-
-    elseif head and head ~= '' then
-      -- Apply passed-in function
-      f(json, head)
-
+      json = json[path]
     end
   end
+
+  return json
 end
 
 local function transform_json_body(conf, body, content_length, template_env)
+  local opts = { dots_in_keys = conf.dots_in_keys }
   local removed, renamed, replaced, added, appended, filtered = false, false, false, false, false, false
   local json_body = parse_json(body)
 
@@ -368,7 +320,7 @@ local function transform_json_body(conf, body, content_length, template_env)
 
   if content_length > 0 and #conf.remove.body > 0 then
     for _, name, value in iter(conf.remove.body, template_env) do
-      navigate_and_apply(conf, json_body, name, function (o, p) o[p] = nil end)
+      navigate_and_apply(json_body, name, function (o, p) o[p] = nil end, opts)
       removed = true
     end
   end
@@ -376,13 +328,18 @@ local function transform_json_body(conf, body, content_length, template_env)
   if content_length > 0 and #conf.rename.body > 0 then
     for _, old_name, new_name in iter(conf.rename.body, template_env) do
       local v_array = {}
-      navigate_and_apply(conf, json_body, old_name, function (o, p)
+      navigate_and_apply(json_body, old_name, function (o, p)
         local v = o[p]
         table.insert(v_array, v)
         o[p] = nil
-      end)
-      navigate_and_apply(conf, json_body, new_name, function (x, y, k)
-        x[y] = v_array[k and k or 1] end)
+      end, opts)
+      navigate_and_apply(json_body, new_name, function (o, p, ctx)
+        local idx = 1
+        if #v_array > 1 then
+          idx = ctx.index or 1
+        end
+        o[p] = v_array[idx]
+      end, opts)
       renamed = true
     end
 
@@ -403,7 +360,9 @@ local function transform_json_body(conf, body, content_length, template_env)
       end
 
       if value ~= nil then
-        navigate_and_apply(conf, json_body, name, function (o, p) if o[p] then o[p] = value end end)
+        navigate_and_apply(json_body, name, function (o, p)
+          if o[p] then o[p] = value end
+        end, opts)
         replaced = true
       end
     end
@@ -427,7 +386,13 @@ local function transform_json_body(conf, body, content_length, template_env)
       end
 
       if value ~= nil then
-        navigate_and_apply(conf, json_body, name, function (o, p) if not o[p] then o[p] = value end end)
+        local opts = {
+          dots_in_keys = conf.dots_in_keys,
+          create_inexistent_parent = true,
+        }
+        navigate_and_apply(json_body, name, function (o, p)
+          if not o[p] then o[p] = value end
+        end, opts)
         added = true
       end
     end
@@ -448,7 +413,9 @@ local function transform_json_body(conf, body, content_length, template_env)
       end
 
       if value ~= nil then
-        navigate_and_apply(conf, json_body, name, function (o, p) o[p] = append_value(o[p], value) end)
+        navigate_and_apply(json_body, name, function (o, p)
+          o[p] = append_value(o[p], value)
+        end, opts)
         appended = true
       end
     end
@@ -457,8 +424,11 @@ local function transform_json_body(conf, body, content_length, template_env)
   if conf.allow.body and #conf.allow.body then
     local allowed_parameter = {}
     for _, name in iter(conf.allow.body, template_env) do
-      allowed_parameter[name] = json_body[name]
-      filtered = true
+      navigate_and_apply(json_body, name, function (o, p, ctx)
+        local parent = init_json_path(allowed_parameter, ctx.paths)
+        parent[p] = o[p]
+        filtered = true
+      end, opts)
     end
 
     if filtered then

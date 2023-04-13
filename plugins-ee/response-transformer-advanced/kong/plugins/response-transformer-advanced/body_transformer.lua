@@ -6,21 +6,20 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local transform_utils = require "kong.plugins.response-transformer-advanced.transform_utils"
-
+local json_navigator = require "kong.enterprise_edition.transformations.plugins.json_navigator"
 local sandbox = require "kong.tools.sandbox"
 
 local cjson = require("cjson.safe").new()
-local ngx_re = require("ngx.re")
 local tablex = require("pl.tablex")
 
 local skip_transform = transform_utils.skip_transform
+local navigate_and_apply = json_navigator.navigate_and_apply
 local insert = table.insert
 local find = string.find
 local sub = string.sub
 local gsub = string.gsub
 local match = string.match
 local lower = string.lower
-local deepcopy = tablex.deepcopy
 
 local next = next
 local pcall = pcall
@@ -145,80 +144,9 @@ function _M.replace_body(conf, resp_body, resp_code)
   return resp_body
 end
 
--- Navigate json to the value(s) pointed to by path and apply function f to it.
-local function navigate_and_apply(conf, json, path, f, paths)
-  paths = paths or {}
-  local head, index, tail
-
-  if conf.dots_in_keys then
-    head = path
-  else
-    -- Split into a table with three values, e.g. Results[*].info.name becomes {"Results", "[*]", "info.name"}
-    local res = ngx_re.split(path, "(\\[[\\d|\\*]*\\])?\\.", nil, nil, 2)
-
-    if res then
-      head = res[1]
-      if res[2] and res[3] then
-        -- Extract index, e.g. "2" from "[2]"
-        index = string.sub(res[2], 2, -2)
-        tail = res[3]
-      else
-        tail = res[2]
-      end
-    end
-  end
-
-  if type(json) == "table" then
-    if index == '*' then
-      -- Loop through array
-      local array = json
-      if head ~= '' then
-        array = json[head]
-      end
-
-      if type(array) ~= "table" then
-        return
-      end
-
-      for k, v in ipairs(array) do
-        if type(v) == "table" then
-          local paths = deepcopy(paths)
-          insert(paths, k)
-          navigate_and_apply(conf, v, tail, f, paths)
-        end
-      end
-
-    elseif index and index ~= '' then
-      -- Access specific array element by index
-      index = tonumber(index)
-      local element = json[index]
-      local paths = deepcopy(paths)
-
-      if head ~= '' and json[head] and type(json[head]) == "table" then
-        insert(paths, head)
-        element = json[head][index]
-      end
-
-      insert(paths, index)
-      navigate_and_apply(conf, element, tail, f, paths)
-
-    elseif tail and tail ~= '' then
-      -- Navigate into nested JSON
-      local paths = deepcopy(paths)
-      insert(paths, head)
-      --table.insert(paths, tail)
-      navigate_and_apply(conf, json[head], tail, f, paths)
-
-    elseif head and head ~= '' then
-      -- Apply passed-in function
-      f(json, head, paths)
-
-    end
-  end
-end
-
 
 local function arbitrary_transform(conf, data, fn)
+  local opts = { dots_in_keys = conf.dots_in_keys }
   if next(conf.transform.json) == nil then
     return fn(data)
   end
@@ -229,7 +157,7 @@ local function arbitrary_transform(conf, data, fn)
        return fn(data, key, value)
      end
 
-     navigate_and_apply(conf, data, path, wrap_fn)
+     navigate_and_apply(data, path, wrap_fn, opts)
   end
 
   return data
@@ -249,6 +177,7 @@ local function init_json_path(json, paths)
 end
 
 function _M.transform_json_body(conf, buffered_data, resp_code)
+  local opts = { dots_in_keys = conf.dots_in_keys }
   local json_body, err = read_json_body(buffered_data)
   if not json_body then
     kong.log.debug("failed to decode the json body: ", err)
@@ -258,7 +187,7 @@ function _M.transform_json_body(conf, buffered_data, resp_code)
   -- remove key:value to body
   if conf.remove and not skip_transform(resp_code, conf.remove.if_status) then
     for _, name in iter(conf.remove.json) do
-      navigate_and_apply(conf, json_body, name, function (o, p) o[p] = nil end)
+      navigate_and_apply(json_body, name, function (o, p) o[p] = nil end, opts)
     end
   end
 
@@ -278,7 +207,9 @@ function _M.transform_json_body(conf, buffered_data, resp_code)
       end
 
       if v ~= nil then
-        navigate_and_apply(conf, json_body, name, function (o, p) if o[p] then o[p] = v end end)
+        navigate_and_apply(json_body, name, function (o, p)
+          if o[p] then o[p] = v end
+        end, opts)
       end
     end
   end
@@ -299,7 +230,13 @@ function _M.transform_json_body(conf, buffered_data, resp_code)
       end
 
       if v ~= nil then
-        navigate_and_apply(conf, json_body, name, function (o, p) if not o[p] then o[p] = v end end)
+        local opts = {
+          dots_in_keys = conf.dots_in_keys,
+          create_inexistent_parent = true,
+        }
+        navigate_and_apply(json_body, name, function (o, p)
+          if not o[p] then o[p] = v end
+        end, opts)
       end
     end
   end
@@ -320,7 +257,8 @@ function _M.transform_json_body(conf, buffered_data, resp_code)
       end
 
       if v ~= nil then
-        navigate_and_apply(conf, json_body, name, function (o, p) o[p] = append_value(o[p], v) end)
+        navigate_and_apply(json_body, name, function (o, p) o[p] = append_value(o[p], v)
+        end, opts)
       end
     end
   end
@@ -330,11 +268,11 @@ function _M.transform_json_body(conf, buffered_data, resp_code)
     local filtered_json_body = {}
     local filtered = false
     for _, name in iter(conf.allow.json) do
-      navigate_and_apply(conf, json_body, name, function (o, p, paths)
-        local parent = init_json_path(filtered_json_body, paths)
+      navigate_and_apply(json_body, name, function (o, p, ctx)
+        local parent = init_json_path(filtered_json_body, ctx.paths)
         parent[p] = o[p]
         filtered = true
-      end, {})
+      end, opts)
     end
 
     if filtered then

@@ -112,7 +112,7 @@ for _, strategy in helpers.each_strategy() do
 
     local function execute(config, expected)
       local res = assert(admin_client:send {
-        method  = "PATCH",
+        method  = "PUT",
         path    = "/plugins/" .. plugin.id,
         body    = {
           name  = "request-transformer-advanced",
@@ -317,6 +317,40 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
+      describe("allow", function()
+        it("allow.body does not contain nested syntax", function()
+          local config = {
+            dots_in_keys = false,
+            allow = {
+              body = { "kong" },
+            },
+            rename = {body = {},},
+            remove = {body = {},},
+            replace = {body = {},},
+            add = {body = {},},
+          }
+          local expected = { kong = data.kong }
+
+          execute(config, expected)
+        end)
+
+        it("allow.body contains nested syntax", function()
+          local config = {
+            dots_in_keys = false,
+            allow = {
+              body = { "default.route" },
+            },
+            rename = {body = {},},
+            remove = {body = {},},
+            replace = {body = {},},
+            add = {body = {},},
+          }
+
+          local expected = { default = { route = data.default.route } }
+          execute(config, expected)
+        end)
+      end)
+
     end)
 
     describe("with index", function()
@@ -511,6 +545,57 @@ for _, strategy in helpers.each_strategy() do
           for _, plugin in ipairs(expected['default']['plugins']) do
             plugin['name'] = {plugin['name'], "add"}
           end
+
+          execute(config, expected)
+        end)
+      end)
+
+      describe("allow", function()
+        it("allow.body contains nested syntax with index *", function()
+          local config = {
+            dots_in_keys = false,
+            allow = {
+              body = { "default.plugins[*].name" },
+            },
+            rename = {body = {},},
+            remove = {body = {},},
+            replace = {body = {},},
+            add = {body = {},},
+          }
+
+          local expected = {
+            default = {
+              plugins = {
+                { name = "acl" },
+                { name = "transformer" },
+                { name = "authenticator" },
+              },
+            }
+          }
+
+          execute(config, expected)
+        end)
+
+        it("allow.body contains nested syntax with index i", function()
+          local config = {
+            dots_in_keys = false,
+            allow = {
+              body = { "default.plugins[2].name" },
+            },
+            rename = {body = {},},
+            remove = {body = {},},
+            replace = {body = {},},
+            add = {body = {},},
+          }
+
+          local expected = {
+            default = {
+              plugins = {
+                ngx.null,
+                { name = "transformer" },
+              },
+            }
+          }
 
           execute(config, expected)
         end)
