@@ -16,7 +16,7 @@ local SERVICE_YML = [[
 describe("dbless persistence #off", function()
   lazy_setup(function()
     assert(helpers.start_kong({
-      database   = "off",
+      database = "off",
     }))
   end)
 
@@ -42,7 +42,7 @@ describe("dbless persistence #off", function()
     admin_client:close()
 
     assert(helpers.restart_kong({
-        database   = "off",
+        database = "off",
     }))
 
     local proxy_client = assert(helpers.proxy_client())
@@ -77,7 +77,7 @@ describe("dbless persistence with a declarative config #off", function()
 
   before_each(function()
     assert(helpers.start_kong({
-        database   = "off",
+        database = "off",
         declarative_config = yaml_file,
     }))
     local admin_client = assert(helpers.admin_client())
@@ -121,7 +121,7 @@ describe("dbless persistence with a declarative config #off", function()
 
   it("doesn't load the persisted lmdb config if a declarative config is set on restart", function()
     assert(helpers.restart_kong({
-        database   = "off",
+        database = "off",
         declarative_config = yaml_file,
     }))
     local proxy_client = assert(helpers.proxy_client())
@@ -135,7 +135,7 @@ describe("dbless persistence with a declarative config #off", function()
 
   it("doesn't load the persisted lmdb config if a declarative config is set on reload", function()
     assert(helpers.reload_kong("off", "reload --prefix " .. helpers.test_conf.prefix, {
-      database   = "off",
+      database = "off",
       declarative_config = yaml_file,
     }))
     local res
