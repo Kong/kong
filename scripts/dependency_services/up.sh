@@ -1,4 +1,6 @@
 #!/bin/bash
+set -x
+
 if [ "${BASH_SOURCE-}" = "$0" ]; then
     echo "You must source this script: \$ source $0" >&2
     exit 33
@@ -46,7 +48,8 @@ if [ -n "$ZSH_VERSION" ]; then
                 echo "Port $env_name for service $svc unknown"
                 continue
             fi
-            for prefix in $env_prefixes; do
+            for prefix in $( echo "$env_prefixes" ); do
+                echo $prefix
                 _kong_added_envs="$_kong_added_envs ${prefix}${env_name}"
                 eval "export ${prefix}${env_name}=$exposed_port"
             done
