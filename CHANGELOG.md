@@ -186,6 +186,8 @@
   [#10562](https://github.com/Kong/kong/pull/10562)
 - Bumped lua-resty-events from 0.1.3 to 0.1.4
   [#10634](https://github.com/Kong/kong/pull/10634)
+- Bumped lua-resty-timer-ng from 0.2.4 to 0.2.5
+  [10664](https://github.com/Kong/kong/pull/10664)
 
 ## 3.2.0
 
