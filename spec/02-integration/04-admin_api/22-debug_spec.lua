@@ -24,7 +24,6 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
 
     assert(helpers.start_kong {
       database = strategy,
-      db_update_propagation = strategy == "cassandra" and 1 or 0,
       trusted_ips = "127.0.0.1",
       nginx_http_proxy_ssl_verify = "on",
       nginx_http_proxy_ssl_trusted_certificate = "../spec/fixtures/kong_spec.crt",
@@ -32,7 +31,6 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
     assert(helpers.start_kong{
       database = strategy,
       prefix = "node2",
-      db_update_propagation = strategy == "cassandra" and 1 or 0,
       admin_listen = "127.0.0.1:9110",
       admin_gui_listen = "off",
       proxy_listen = "off",

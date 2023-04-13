@@ -39,8 +39,6 @@ code, other repos are also under active development:
 - [Kong on Heroku](https://github.com/heroku/heroku-kong): Deploy Kong on
   Heroku in one click.
 - [Kong on IBM Cloud](https://github.com/andrew40404/installing-kong-IBM-cloud) - How to deploy Kong on IBM Cloud
-- [Kong and Instaclustr](https://www.instaclustr.com/solutions/managed-cassandra-for-kong/): Let
-  Instaclustr manage your Cassandra cluster.
 - [Master Builds](https://hub.docker.com/r/kong/kong): Docker images for each commit in the `master` branch.
 
 You can find every supported distribution on the [official installation page](https://konghq.com/install/#kong-community).
@@ -219,7 +217,7 @@ make dev
 Kong relies on three test suites using the [busted] testing library:
 
 * Unit tests
-* Integration tests, which require Postgres and Cassandra to be up and running
+* Integration tests, which require Postgres to be up and running
 * Plugins tests, which require Postgres to be running
 
 The first can simply be run after installing busted and running:
@@ -229,12 +227,9 @@ make test
 ```
 
 However, the integration and plugins tests will spawn a Kong instance and
-perform their tests against it. Because these test suites perform their tests
-against the Kong instance, you may need to edit the `spec/kong_tests.conf`
-configuration file to make your test instance point to your Postgres/Cassandra
-servers, depending on your needs.
+perform their tests against it.
 
-You can run the integration tests (assuming **both** Postgres and Cassandra are
+You can run the integration tests (assuming Postgres is
 running and configured according to `spec/kong_tests.conf`) with:
 
 ```
@@ -295,7 +290,7 @@ as follows:
    [Gojira](https://github.com/Kong/gojira), consisting of one node
    containing the previous version of Kong Gateway ("OLD"), one node
    containing the current version of Kong Gateway ("NEW") and a shared
-   database server (PostgreSQL or Cassandra).
+   database server (PostgreSQL).
  * NEW: The database is initialized using `kong migrations bootstrap`.
  * OLD: The `setup` phase of all applicable migration tests is run.
  * NEW: `kong migrations up` is run to run the `up` part of all
@@ -350,7 +345,7 @@ If you have a Linux development environment (either virtual or bare metal), the 
 1. Development dependencies and runtime libraries, including:
    1. Prerequisite packages.  Mostly compilers, tools, and libraries required to compile everything else.
    2. OpenResty system, including Nginx, LuaJIT, PCRE, etc.
-2. Databases. Kong uses Postgres, Cassandra, and Redis.  We have a handy setup with docker-compose to keep each on its container.
+2. Databases. Kong uses Postgres and Redis.  We have a handy setup with docker-compose to keep each on its container.
 3. Kong itself.
 
 ### Virtual Machine (Optional)

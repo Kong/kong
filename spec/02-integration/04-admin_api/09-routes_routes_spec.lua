@@ -1188,16 +1188,10 @@ for _, strategy in helpers.each_strategy() do
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
 
-            if strategy == "cassandra" then
-              assert.equals(ngx.null, json.paths)
-              assert.equals(ngx.null, json.methods)
-
-            else
-              assert.matches('"methods":%[%]', body)
-              assert.matches('"paths":%[%]', body)
-              assert.same({}, json.paths)
-              assert.same({}, json.methods)
-            end
+            assert.matches('"methods":%[%]', body)
+            assert.matches('"paths":%[%]', body)
+            assert.same({}, json.paths)
+            assert.same({}, json.methods)
 
             assert.same({ "my-updated.tld" }, json.hosts)
             assert.equal(route.id, json.id)
@@ -1795,45 +1789,6 @@ for _, strategy in helpers.each_strategy() do
               end
             end)
 
-            -- Cassandra doesn't fail on this because its insert is an upsert
-            pending("returns 409 on id conflict (same plugin id)", function(content_type)
-              return function()
-                local route = bp.routes:insert({ paths = { "/my-route" } })
-                -- insert initial plugin
-                local res = assert(client:send {
-                  method = "POST",
-                  path = "/routes/"..route.id.."/plugins",
-                  body = {
-                    name = "basic-auth",
-                  },
-                  headers = {["Content-Type"] = content_type}
-                })
-                local body = assert.res_status(201, res)
-                local plugin = cjson.decode(body)
-                ngx.sleep(1)
-                -- do it again, to provoke the error
-                local conflict_res = assert(client:send {
-                  method = "POST",
-                  path = "/routes/" .. route.id .. "/plugins",
-                  body = {
-                    name = "key-auth",
-                    id = plugin.id,
-                  },
-                  headers = { ["Content-Type"] = content_type }
-                })
-                local conflict_body = assert.res_status(409, conflict_res)
-                local json = cjson.decode(conflict_body)
-                assert.same({
-                  code = Errors.codes.PRIMARY_KEY_VIOLATION,
-                  fields = {
-                    id = plugin.id,
-                  },
-                  message = [[primary key violation on key '{id="]] ..
-                            plugin.id .. [["}']],
-                  name = "primary key violation",
-                }, json)
-              end
-            end)
           end)
         end)
 

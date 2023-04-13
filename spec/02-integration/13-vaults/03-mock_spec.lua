@@ -33,9 +33,6 @@ end
 
 
 local function wait_until_no_common_workers(workers, expected_total, strategy)
-  if strategy == "cassandra" then
-    ngx.sleep(0.5)
-  end
   helpers.wait_until(function()
     local pok, admin_client = pcall(helpers.admin_client)
     if not pok then

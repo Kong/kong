@@ -45,9 +45,4 @@ return {
     up = ws_migration_up(operations.postgres.up),
     teardown = ws_migration_teardown(operations.postgres.teardown),
   },
-
-  cassandra = {
-    up = ws_migration_up(operations.cassandra.up),
-    teardown = ws_migration_teardown(operations.cassandra.teardown),
-  },
 }

@@ -303,12 +303,8 @@ for _, strategy in helpers.each_strategy() do
         end
       end
 
-      local func = pending
-      if strategy == "cassandra" then
-        func = describe
-      end
-
-      func("limits maximum queries in single request", function()
+      -- TODO(hbagdi): remove this?
+      pending("limits maximum queries in single request", function()
         local match = require("luassert.match")
         -- Might be flaky because it depends on how cassandra partition/order row
         it("and exits early if PAGING_MAX_QUERY_ROUNDS exceeded", function()

@@ -11,7 +11,7 @@ function red() {
 export BUSTED_ARGS="--no-k -o htest -v --exclude-tags=flaky,ipv6"
 
 if [ "$KONG_TEST_DATABASE" == "postgres" ]; then
-    export TEST_CMD="bin/busted $BUSTED_ARGS,cassandra,off"
+    export TEST_CMD="bin/busted $BUSTED_ARGS,off"
 
     psql -v ON_ERROR_STOP=1 -h localhost --username "$KONG_TEST_PG_USER" <<-EOSQL
         CREATE user ${KONG_TEST_PG_USER}_ro;
@@ -21,13 +21,8 @@ if [ "$KONG_TEST_DATABASE" == "postgres" ]; then
         ALTER DEFAULT PRIVILEGES FOR ROLE $KONG_TEST_PG_USER IN SCHEMA public GRANT SELECT ON TABLES TO ${KONG_TEST_PG_USER}_ro;
 EOSQL
 
-elif [ "$KONG_TEST_DATABASE" == "cassandra" ]; then
-    export KONG_TEST_CASSANDRA_KEYSPACE=kong_tests
-    export KONG_TEST_DB_UPDATE_PROPAGATION=1
-    export TEST_CMD="bin/busted $BUSTED_ARGS,postgres,off"
-
 else
-    export TEST_CMD="bin/busted $BUSTED_ARGS,postgres,cassandra,db"
+    export TEST_CMD="bin/busted $BUSTED_ARGS,postgres,db"
 fi
 
 if [ "$TEST_SUITE" == "integration" ]; then

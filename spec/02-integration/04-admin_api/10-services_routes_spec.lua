@@ -626,37 +626,6 @@ for _, strategy in helpers.each_strategy() do
               end
             end)
 
-            -- Cassandra doesn't fail on this because its insert is an upsert
-            pending("returns 409 on id conflict (same plugin id)", function(content_type)
-              return function()
-                local service = bp.services:insert()
-                -- insert initial plugin
-                local res = assert(client:send {
-                  method = "POST",
-                  path = "/services/" .. service.id .. "/plugins",
-                  body = {
-                    name = "basic-auth",
-                  },
-                  headers = { ["Content-Type"] = content_type }
-                })
-                local body = assert.res_status(201, res)
-                local plugin = cjson.decode(body)
-
-                -- do it again, to provoke the error
-                local conflict_res = assert(client:send {
-                  method = "POST",
-                  path = "/services/" .. service.id .. "/plugins",
-                  body = {
-                    name = "key-auth",
-                    id = plugin.id,
-                  },
-                  headers = { ["Content-Type"] = content_type }
-                })
-                local conflict_body = assert.res_status(409, conflict_res)
-                local json = cjson.decode(conflict_body)
-                assert.same({ id = "already exists with value '" .. plugin.id .. "'"}, json)
-              end
-            end)
           end)
         end)
 

@@ -148,19 +148,6 @@ describe("reports", function()
         assert._matches("database=postgres", res, nil, true)
       end)
 
-      it("cassandra", function()
-        local conf = assert(conf_loader(nil, {
-          database = "cassandra",
-        }))
-        reports.configure_ping(conf)
-
-        local thread = helpers.tcp_server(port, opts)
-        reports.send_ping("127.0.0.1", port)
-
-        local _, res = assert(thread:join())
-        assert.matches("database=cassandra", res, nil, true)
-      end)
-
       it("off", function()
         local conf = assert(conf_loader(nil, {
           database = "off",

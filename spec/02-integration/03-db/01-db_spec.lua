@@ -5,7 +5,6 @@ local utils   = require "kong.tools.utils"
 
 for _, strategy in helpers.each_strategy() do
   local postgres_only = strategy == "postgres" and it or pending
-  local cassandra_only = strategy == "cassandra" and it or pending
 
 
   describe("kong.db.init [#" .. strategy .. "]", function()
@@ -42,14 +41,6 @@ for _, strategy in helpers.each_strategy() do
             db_schema = helpers.test_conf.pg_schema or "",
             db_ver  = "unknown",
             db_readonly = false,
-          }, infos)
-
-        elseif strategy == "cassandra" then
-          assert.same({
-            strategy = "Cassandra",
-            db_desc = "keyspace",
-            db_name = helpers.test_conf.cassandra_keyspace,
-            db_ver  = "unknown",
           }, infos)
 
         else
@@ -109,18 +100,6 @@ for _, strategy in helpers.each_strategy() do
 
       end)
 
-      cassandra_only("errors when provided Cassandra contact points do not resolve DNS", function()
-        local conf = utils.deep_copy(helpers.test_conf)
-
-        conf.cassandra_contact_points = { "unknown", "unknown2" }
-
-        local db, err = DB.new(conf, strategy)
-        assert.is_nil(db)
-        assert.equal(helpers.unindent([[
-          could not resolve any of the provided Cassandra contact points
-          (cassandra_contact_points = 'unknown, unknown2')
-        ]], true, true), err)
-      end)
     end)
   end)
 
@@ -148,14 +127,6 @@ for _, strategy in helpers.each_strategy() do
           db_schema = helpers.test_conf.pg_schema or "public",
           db_ver  = infos.db_ver,
           db_readonly = false,
-        }, infos)
-
-      elseif strategy == "cassandra" then
-        assert.same({
-          strategy = "Cassandra",
-          db_desc = "keyspace",
-          db_name = helpers.test_conf.cassandra_keyspace,
-          db_ver  = infos.db_ver,
         }, infos)
 
       else
@@ -249,22 +220,6 @@ for _, strategy in helpers.each_strategy() do
       assert(db:close())
     end)
 
-    cassandra_only("provided Cassandra contact points resolve DNS", function()
-      local conf = utils.deep_copy(helpers.test_conf)
-
-      conf.cassandra_contact_points = { "localhost" }
-
-      local db, err = DB.new(conf, strategy)
-      assert.is_nil(err)
-      assert.is_table(db)
-
-      assert(db:init_connector())
-
-      local conn, err = db:connect()
-      assert.is_nil(err)
-      assert.is_table(conn)
-    end)
-
     it("returns opened connection when using cosockets", function()
       -- bin/busted runs with ngx.IS_CLI = true, which forces luasocket to
       -- be used in the DB connector (for custom CAs to work)
@@ -286,10 +241,6 @@ for _, strategy in helpers.each_strategy() do
       if strategy == "postgres" then
         assert.equal("nginx", db.connector:get_stored_connection().sock_type)
         assert.is_false(db.connector:get_stored_connection().config.ssl)
-
-      elseif strategy == "cassandra" then
-        --TODO: cassandra forces luasocket on timer
-        assert.is_false(db.connector:get_stored_connection().ssl)
       end
 
 
@@ -312,10 +263,6 @@ for _, strategy in helpers.each_strategy() do
       if strategy == "postgres" then
         assert.equal("luasocket", db.connector:get_stored_connection().sock_type)
         assert.is_false(db.connector:get_stored_connection().config.ssl)
-
-      elseif strategy == "cassandra" then
-        --TODO: cassandra forces luasocket on timer
-        assert.is_false(db.connector:get_stored_connection().ssl)
       end
 
       db:close()
@@ -327,7 +274,6 @@ for _, strategy in helpers.each_strategy() do
       local conf = utils.deep_copy(helpers.test_conf)
 
       conf.pg_ssl = true
-      conf.cassandra_ssl = true
 
       local db, err = DB.new(conf, strategy)
       assert.is_nil(err)
@@ -342,10 +288,6 @@ for _, strategy in helpers.each_strategy() do
       if strategy == "postgres" then
         assert.equal("nginx", db.connector:get_stored_connection().sock_type)
         assert.is_true(db.connector:get_stored_connection().config.ssl)
-
-      elseif strategy == "cassandra" then
-        --TODO: cassandra forces luasocket on timer
-        assert.is_true(db.connector:get_stored_connection().ssl)
       end
 
       db:close()
@@ -357,7 +299,6 @@ for _, strategy in helpers.each_strategy() do
       local conf = utils.deep_copy(helpers.test_conf)
 
       conf.pg_ssl = true
-      conf.cassandra_ssl = true
 
       local db, err = DB.new(conf, strategy)
       assert.is_nil(err)
@@ -372,10 +313,6 @@ for _, strategy in helpers.each_strategy() do
       if strategy == "postgres" then
         assert.equal("luasocket", db.connector:get_stored_connection().sock_type)
         assert.is_true(db.connector:get_stored_connection().config.ssl)
-
-      elseif strategy == "cassandra" then
-        --TODO: cassandra forces luasocket on timer
-        assert.is_true(db.connector:get_stored_connection().ssl)
       end
 
       db:close()
@@ -404,8 +341,6 @@ for _, strategy in helpers.each_strategy() do
 
       if strategy == "postgres" then
         assert.is_false(db.connector:get_stored_connection("read").config.ssl)
-      elseif strategy == "cassandra" then
-        assert.is_false(db.connector:get_stored_connection("read").ssl)
       end
 
       db:close()
@@ -432,18 +367,14 @@ for _, strategy in helpers.each_strategy() do
 
       assert.equal("luasocket", db.connector:get_stored_connection("write").sock_type)
 
-      if strategy == "portgres" then
+      if strategy == "postgres" then
         assert.is_false(db.connector:get_stored_connection("write").config.ssl)
-      elseif strategy == "cassandra" then
-        assert.is_false(db.connector:get_stored_connection("write").ssl)
       end
 
       assert.equal("luasocket", db.connector:get_stored_connection().sock_type)
 
-      if strategy == "portgres" then
+      if strategy == "postgres" then
         assert.is_false(db.connector:get_stored_connection("write").config.ssl)
-      elseif strategy == "cassandra" then
-        assert.is_false(db.connector:get_stored_connection("write").ssl)
       end
 
       db:close()
@@ -473,10 +404,6 @@ for _, strategy in helpers.each_strategy() do
       if strategy == "postgres" then
         assert.equal("nginx", db.connector:get_stored_connection().sock_type)
         assert.is_false(db.connector:get_stored_connection().config.ssl)
-
-      elseif strategy == "cassandra" then
-        --TODO: cassandra forces luasocket on timer
-        assert.is_false(db.connector:get_stored_connection().ssl)
       end
 
       assert.is_true(db:setkeepalive())
@@ -500,10 +427,6 @@ for _, strategy in helpers.each_strategy() do
       if strategy == "postgres" then
         assert.equal("luasocket", db.connector:get_stored_connection().sock_type)
         assert.is_false(db.connector:get_stored_connection().config.ssl)
-
-      elseif strategy == "cassandra" then
-        --TODO: cassandra forces luasocket on timer
-        assert.is_false(db.connector:get_stored_connection().ssl)
       end
 
 
@@ -518,7 +441,6 @@ for _, strategy in helpers.each_strategy() do
       local conf = utils.deep_copy(helpers.test_conf)
 
       conf.pg_ssl = true
-      conf.cassandra_ssl = true
 
       local db, err = DB.new(conf, strategy)
       assert.is_nil(err)
@@ -533,10 +455,6 @@ for _, strategy in helpers.each_strategy() do
       if strategy == "postgres" then
         assert.equal("nginx", db.connector:get_stored_connection().sock_type)
         assert.is_true(db.connector:get_stored_connection().config.ssl)
-
-      elseif strategy == "cassandra" then
-        --TODO: cassandra forces luasocket on timer
-        assert.is_true(db.connector:get_stored_connection().ssl)
       end
 
       assert.is_true(db:setkeepalive())
@@ -550,7 +468,6 @@ for _, strategy in helpers.each_strategy() do
       local conf = utils.deep_copy(helpers.test_conf)
 
       conf.pg_ssl = true
-      conf.cassandra_ssl = true
 
       local db, err = DB.new(conf, strategy)
       assert.is_nil(err)
@@ -565,10 +482,6 @@ for _, strategy in helpers.each_strategy() do
       if strategy == "postgres" then
         assert.equal("luasocket", db.connector:get_stored_connection().sock_type)
         assert.is_true(db.connector:get_stored_connection().config.ssl)
-
-      elseif strategy == "cassandra" then
-        --TODO: cassandra forces luasocket on timer
-        assert.is_true(db.connector:get_stored_connection().ssl)
       end
 
 
@@ -629,10 +542,6 @@ for _, strategy in helpers.each_strategy() do
       if strategy == "postgres" then
         assert.is_false(db.connector:get_stored_connection("read").config.ssl)
         assert.is_false(db.connector:get_stored_connection("write").config.ssl)
-
-      elseif strategy == "cassandra" then
-        assert.is_false(db.connector:get_stored_connection("read").ssl)
-        assert.is_false(db.connector:get_stored_connection("write").ssl)
       end
 
       assert.is_true(db:setkeepalive())
@@ -669,8 +578,6 @@ for _, strategy in helpers.each_strategy() do
 
       if strategy == "postgres" then
         assert.is_false(db.connector:get_stored_connection("write").config.ssl)
-      elseif strategy == "cassandra" then
-        assert.is_false(db.connector:get_stored_connection("write").ssl)
       end
 
       assert.is_true(db:setkeepalive())
@@ -704,10 +611,6 @@ for _, strategy in helpers.each_strategy() do
       if strategy == "postgres" then
         assert.equal("nginx", db.connector:get_stored_connection().sock_type)
         assert.is_false(db.connector:get_stored_connection().config.ssl)
-
-      elseif strategy == "cassandra" then
-        --TODO: cassandra forces luasocket on timer
-        assert.is_false(db.connector:get_stored_connection().ssl)
       end
 
 
@@ -730,10 +633,6 @@ for _, strategy in helpers.each_strategy() do
       if strategy == "postgres" then
         assert.equal("luasocket", db.connector:get_stored_connection().sock_type)
         assert.is_false(db.connector:get_stored_connection().config.ssl)
-
-      elseif strategy == "cassandra" then
-        --TODO: cassandra forces luasocket on timer
-        assert.is_false(db.connector:get_stored_connection().ssl)
       end
 
 
@@ -746,7 +645,6 @@ for _, strategy in helpers.each_strategy() do
       local conf = utils.deep_copy(helpers.test_conf)
 
       conf.pg_ssl = true
-      conf.cassandra_ssl = true
 
       local db, err = DB.new(conf, strategy)
       assert.is_nil(err)
@@ -761,10 +659,6 @@ for _, strategy in helpers.each_strategy() do
       if strategy == "postgres" then
         assert.equal("nginx", db.connector:get_stored_connection().sock_type)
         assert.is_true(db.connector:get_stored_connection().config.ssl)
-
-      elseif strategy == "cassandra" then
-        --TODO: cassandra forces luasocket on timer
-        assert.is_true(db.connector:get_stored_connection().ssl)
       end
 
       assert.is_true(db:close())
@@ -776,7 +670,6 @@ for _, strategy in helpers.each_strategy() do
       local conf = utils.deep_copy(helpers.test_conf)
 
       conf.pg_ssl = true
-      conf.cassandra_ssl = true
 
       local db, err = DB.new(conf, strategy)
       assert.is_nil(err)
@@ -791,10 +684,6 @@ for _, strategy in helpers.each_strategy() do
       if strategy == "postgres" then
         assert.equal("luasocket", db.connector:get_stored_connection().sock_type)
         assert.is_true(db.connector:get_stored_connection().config.ssl)
-
-      elseif strategy == "cassandra" then
-        --TODO: cassandra forces luasocket on timer
-        assert.is_true(db.connector:get_stored_connection().ssl)
       end
 
       assert.is_true(db:close())
@@ -852,10 +741,6 @@ for _, strategy in helpers.each_strategy() do
       if strategy == "postgres" then
         assert.is_false(db.connector:get_stored_connection("read").config.ssl)
         assert.is_false(db.connector:get_stored_connection("write").config.ssl)
-
-      elseif strategy == "cassandra" then
-        assert.is_false(db.connector:get_stored_connection("read").ssl)
-        assert.is_false(db.connector:get_stored_connection("write").ssl)
       end
 
       assert.is_true(db:close())
@@ -891,8 +776,6 @@ for _, strategy in helpers.each_strategy() do
 
       if strategy == "postgres" then
         assert.is_false(db.connector:get_stored_connection("write").config.ssl)
-      elseif strategy == "cassandra" then
-        assert.is_false(db.connector:get_stored_connection("write").ssl)
       end
 
       assert.is_true(db:close())

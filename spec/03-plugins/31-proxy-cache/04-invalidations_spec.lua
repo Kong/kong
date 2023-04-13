@@ -52,7 +52,6 @@ describe("proxy-cache invalidations via: " .. strategy, function()
       },
     })
 
-    local db_update_propagation = strategy == "cassandra" and 3 or 0
 
     assert(helpers.start_kong {
       log_level             = "debug",
@@ -65,7 +64,6 @@ describe("proxy-cache invalidations via: " .. strategy, function()
       admin_ssl             = false,
       admin_gui_ssl         = false,
       db_update_frequency   = POLL_INTERVAL,
-      db_update_propagation = db_update_propagation,
       plugins               = "proxy-cache",
       nginx_conf            = "spec/fixtures/custom_nginx.template",
     })
@@ -81,7 +79,6 @@ describe("proxy-cache invalidations via: " .. strategy, function()
       admin_ssl             = false,
       admin_gui_ssl         = false,
       db_update_frequency   = POLL_INTERVAL,
-      db_update_propagation = db_update_propagation,
       plugins               = "proxy-cache",
     })
 

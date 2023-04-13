@@ -19,7 +19,6 @@ fi
 # [service_name_in_docker_compose]="env_var_name_1:port_1_in_docker_compose env_var_name_2:port_2_in_docker_compose"
 declare -A ports=(
     ["postgres"]="PG_PORT:5432"
-    ["cassandra"]="CASSANDRA_PORT:9042"
     ["redis"]="REDIS_PORT:6379 REDIS_SSL_PORT:6380"
     ["grpcbin"]="GRPCBIN_PORT:9000 GRPCBIN_SSL_PORT:9001"
     ["zipkin"]="ZIPKIN_PORT:9411"
