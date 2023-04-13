@@ -1,6 +1,7 @@
 --- A library of ready-to-use type synonyms to use in schema definitions.
 -- @module kong.db.schema.typedefs
 local utils = require "kong.tools.utils"
+local queue_schema = require "kong.tools.queue_schema"
 local openssl_pkey = require "resty.openssl.pkey"
 local openssl_x509 = require "resty.openssl.x509"
 local Schema = require "kong.db.schema"
@@ -804,6 +805,8 @@ typedefs.jwk = Schema.define {
   },
   custom_validator = validate_jwk
 }
+
+typedefs.queue = queue_schema
 
 local function validate_lua_expression(expression)
   local sandbox = require "kong.tools.sandbox"

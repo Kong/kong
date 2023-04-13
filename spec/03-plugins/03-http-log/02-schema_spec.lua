@@ -1,6 +1,9 @@
 local PLUGIN_NAME = "http-log"
 
 
+local Queue = require "kong.tools.queue"
+
+
 -- helper function to validate data against a schema
 local validate do
   local validate_entity = require("spec.helpers").validate_plugin_config_schema
@@ -13,7 +16,26 @@ end
 
 
 describe(PLUGIN_NAME .. ": (schema)", function()
+  local old_log
+  local log_messages
 
+  before_each(function()
+    old_log = kong.log
+    log_messages = ""
+    local function log(level, message) -- luacheck: ignore
+      log_messages = log_messages .. level .. " " .. message .. "\n"
+    end
+    kong.log = {
+      debug = function(message) return log('DEBUG', message) end,
+      info = function(message) return log('INFO', message) end,
+      warn = function(message) return log('WARN', message) end,
+      err = function(message) return log('ERR', message) end,
+    }
+  end)
+
+  after_each(function()
+    kong.log = old_log -- luacheck: ignore
+  end)
 
   it("accepts minimal config with defaults", function()
     local ok, err = validate({
@@ -127,4 +149,19 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     assert.is_falsy(ok)
   end)
 
+  it("converts legacy queue parameters", function()
+    local entity = validate({
+      http_endpoint = "http://hi:there@myservice.com/path",
+      retry_count = 23,
+      queue_size = 46,
+      flush_timeout = 92,
+    })
+    assert.is_truthy(entity)
+    local conf = Queue.get_params(entity.config)
+    assert.match_re(log_messages, "deprecated `retry_count`")
+    assert.match_re(log_messages, "deprecated `queue_size`")
+    assert.match_re(log_messages, "deprecated `flush_timeout`")
+    assert.is_same(46, conf.max_batch_size)
+    assert.is_same(92, conf.max_coalescing_delay)
+  end)
 end)

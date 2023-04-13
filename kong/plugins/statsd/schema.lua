@@ -1,5 +1,6 @@
 local typedefs = require "kong.db.schema.typedefs"
 local constants = require "kong.plugins.statsd.constants"
+local deprecation = require("kong.deprecation")
 
 
 local METRIC_NAMES = {
@@ -189,10 +190,31 @@ return {
           { consumer_identifier_default = { type = "string", required = true, default = "custom_id", one_of = CONSUMER_IDENTIFIERS }, },
           { service_identifier_default = { type = "string", required = true, default = "service_name_or_host", one_of = SERVICE_IDENTIFIERS }, },
           { workspace_identifier_default = { type = "string", required = true, default = "workspace_id", one_of = WORKSPACE_IDENTIFIERS }, },
-          { retry_count = { type = "integer", required = true, default = 10 }, },
-          { queue_size = { type = "integer", required = true, default = 1 }, },
-          { flush_timeout = { type = "number", required = true, default = 2 }, },
+          { retry_count = { type = "integer" }, },
+          { queue_size = { type = "integer" }, },
+          { flush_timeout = { type = "number" }, },
           { tag_style = { type = "string", required = false, one_of = TAG_TYPE }, },
+          { queue = typedefs.queue },
+        },
+        entity_checks = {
+          { custom_entity_check = {
+            field_sources = { "retry_count", "queue_size", "flush_timeout" },
+            fn = function(entity)
+              if entity.retry_count and entity.retry_count ~= 10 then
+                deprecation("statsd: config.retry_count no longer works, please use config.queue.max_retry_time instead",
+                            { after = "4.0", })
+              end
+              if entity.queue_size and entity.queue_size ~= 1 then
+                deprecation("statsd: config.queue_size no longer works, please use config.queue.max_batch_size instead",
+                            { after = "4.0", })
+              end
+              if entity.flush_timeout and entity.flush_timeout ~= 2 then
+                deprecation("statsd: config.flush_timeout no longer works, please use config.queue.max_coalescing_delay instead",
+                            { after = "4.0", })
+              end
+              return true
+            end
+          } },
         },
       },
     },

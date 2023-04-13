@@ -1,4 +1,5 @@
 local typedefs = require "kong.db.schema.typedefs"
+local deprecation = require("kong.deprecation")
 
 local STAT_NAMES = {
   "kong_latency",
@@ -79,9 +80,10 @@ return {
           { service_name_tag = { type = "string", default = "name" }, },
           { status_tag = { type = "string", default = "status" }, },
           { consumer_tag = { type = "string", default = "consumer" }, },
-          { retry_count = { type = "integer", required = true, default = 10 }, },
-          { queue_size = { type = "integer", required = true, default = 1 }, },
-          { flush_timeout = { type = "number", required = true, default = 2 }, },
+          { retry_count = { type = "integer" }, },
+          { queue_size = { type = "integer" }, },
+          { flush_timeout = { type = "number" }, },
+          { queue = typedefs.queue },
           { metrics = {
               type     = "array",
               required = true,
@@ -101,10 +103,31 @@ return {
                     if_match = { one_of = { "counter", "gauge" }, },
                     then_field = "sample_rate",
                     then_match = { required = true },
-          }, }, }, }, }, },
+                  }, }, }, }, },
+          },
+        },
+
+        entity_checks = {
+          { custom_entity_check = {
+              field_sources = { "retry_count", "queue_size", "flush_timeout" },
+              fn = function(entity)
+                if entity.retry_count and entity.retry_count ~= 10 then
+                  deprecation("datadog: config.retry_count no longer works, please use config.queue.max_retry_time instead",
+                    { after = "4.0", })
+                end
+                if entity.queue_size and entity.queue_size ~= 1 then
+                  deprecation("datadog: config.queue_size no longer works, please use config.queue.max_batch_size instead",
+                    { after = "4.0", })
+                end
+                if entity.flush_timeout and entity.flush_timeout ~= 2 then
+                  deprecation("datadog: config.flush_timeout no longer works, please use config.queue.max_coalescing_delay instead",
+                    { after = "4.0", })
+                end
+                return true
+              end
+          } },
         },
       },
     },
   },
 }
-
