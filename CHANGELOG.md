@@ -122,6 +122,8 @@
   [#10327](https://github.com/Kong/kong/pull/10327)
 - **OAuth2**: fix an issue that OAuth2 token was being cached to nil while access to the wrong service first.
   [#10522](https://github.com/Kong/kong/pull/10522)
+- **OpenTelemetry**: fix an issue that reconfigure of OpenTelemetry does not take effect.
+  [#10172](https://github.com/Kong/kong/pull/10172)
 
 #### PDK
 
