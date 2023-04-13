@@ -78,6 +78,21 @@ local function index_handler(self)
   return kong.response.exit(200, view)
 end
 
+local function root_path_handler(self)
+  local ws_id = ngx.ctx.workspace or kong.default_workspace
+  local workspace = workspaces.select_workspace_by_id_with_cache(ws_id)
+  local portal_gui_use_subdomains = workspace_config.retrieve(
+    "portal_gui_use_subdomains",
+    workspace
+  )
+
+  if portal_gui_use_subdomains then
+    return index_handler(self)
+  end
+
+  return { redirect_to = "/" .. workspace.name }
+end
+
 app.handle_404 = function(self)
   return kong.response.exit(404, constants.PORTAL_RENDERER.FALLBACK_404)
 end
@@ -127,7 +142,7 @@ app:match("/:workspace_name/sitemap.xml", sitemap_handler)
 
 app:match("/:workspace_name(/*)", index_handler)
 app:match("/:workspace_name/", index_handler)
-app:match("/", index_handler)
+app:match("/", root_path_handler)
 
 
 return app

@@ -8,6 +8,8 @@
 local ee_helpers = require "spec-ee.helpers"
 local helpers    = require "spec.helpers"
 
+local parse_url = require("socket.url").parse
+
 local escape_uri = ngx.escape_uri
 
 local PORTAL_SESSION_CONF = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }"
@@ -279,9 +281,8 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/",
         })
-        assert.equals(res.status, 200)
-        assert.not_nil(string.match(res.body, 'wow much website'))
-        assert.not_nil(string.match(res.body, 'workspace is default'))
+        assert.equals(res.status, 302)
+        assert.equals(parse_url(res.headers.Location).path, '/default')
 
 
         local res = gui_client_request({

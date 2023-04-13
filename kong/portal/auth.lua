@@ -125,7 +125,10 @@ end
 local function check_oidc_session()
   local workspace = workspaces.get_workspace()
   local conf = workspace_config.retrieve(
-                                      ws_constants.PORTAL_AUTH_CONF, workspace)
+    ws_constants.PORTAL_AUTH_CONF,
+    workspace,
+    { decode_json = true }
+  )
   conf = utils.deep_copy(conf or {})
   local cookie_name = get_conf_arg(conf, "session_cookie_name", "session")
 
@@ -214,6 +217,33 @@ function _M.add_required_session_conf(session_conf, workspace)
   return session_conf
 end
 
+function _M.modify_auth_conf_cookie(session_conf, workspace)
+  local portal_gui_use_subdomains = workspace_config.retrieve(
+    "portal_gui_use_subdomains",
+    workspace
+  )
+
+  -- when using subdomains, cookie name is safe to duplicate across workspaces
+  -- because cookie will never conflict under different subdomains
+  -- when using path separated workspaces, we need to set the cookie path
+  -- to the workspace root path to avoid the session conflicting with other workspaces
+  if not portal_gui_use_subdomains then
+    local session_cookie_path = session_conf.session_cookie_path or ""
+    if session_cookie_path:sub(-1) == "/" then
+      session_cookie_path = session_cookie_path:sub(1, -2)
+    end
+
+    session_conf.session_cookie_path = session_cookie_path .. "/" .. workspace.name
+
+    local authorization_cookie_path = session_conf.authorization_cookie_path or ""
+    if authorization_cookie_path:sub(-1) == "/" then
+      authorization_cookie_path = authorization_cookie_path:sub(1, -2)
+    end
+
+    session_conf.authorization_cookie_path = authorization_cookie_path .. "/" .. workspace.name
+  end
+end
+
 -- modified from kong/plugins/basic-auth/access.lua retrieve_credentials
 function _M.get_basic_auth_username()
   local username
@@ -289,6 +319,8 @@ function _M.login(self, db, helpers)
     -- This will allow execution beyond invoke_plugin instead of a redirection
     -- We need to check developer status after login
     auth_conf.login_action = "upstream"
+
+    _M.modify_auth_conf_cookie(auth_conf, workspace)
   end
 
   local plugin_auth_response, err = invoke_plugin({
@@ -377,7 +409,12 @@ function _M.authenticate_api_session(self, db, helpers)
   if self.plugin.name == "openid-connect" then
     -- if openid-connect, use the plugin to verify auth
     local auth_conf = workspace_config.retrieve(
-                                      ws_constants.PORTAL_AUTH_CONF, workspace)
+      ws_constants.PORTAL_AUTH_CONF,
+      workspace,
+      { decode_json = true }
+    )
+    _M.modify_auth_conf_cookie(auth_conf, workspace)
+
     ok, err = invoke_plugin({
       name = self.plugin.name,
       config = auth_conf,
@@ -480,6 +517,8 @@ function _M.authenticate_gui_session(self, db, helpers)
       table.insert(auth_conf.downstream_headers_names, "portal-registration-email")
       auth_conf.consumer_optional = true
     end
+
+    _M.modify_auth_conf_cookie(auth_conf, workspace)
 
     ok, err = invoke_plugin({
       name = self.plugin.name,
