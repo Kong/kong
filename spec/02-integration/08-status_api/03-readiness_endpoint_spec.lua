@@ -12,6 +12,7 @@ describe("Status API - with strategy #" .. strategy, function()
       status_listen = "127.0.0.1:9500",
       plugins = "admin-api-method",
       database = strategy,
+      nginx_worker_processes = 8,
     })
     client = helpers.http_client("127.0.0.1", 9500, 20000)
 
