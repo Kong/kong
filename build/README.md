@@ -42,6 +42,8 @@ Some other targets one might find useful for debugging are:
 Following build options can be used to set specific features:
 
 - **--//:debug=true** turn on debug options for OpenResty and LuaJIT, default to true.
+- **--//:licensing=true** enable the licensing module, default to true.
+- **--//:fips=false** enable FIPS mode, default to false.
 - **--action_env=BUILD_NAME=** set the `build_name`, multiple build can exist at same time to allow you
 switch between different Kong versions or branches. Default to `kong-dev`; don't set this when you are
 building a building an binary package.
