@@ -4,12 +4,19 @@ build-packages:
   os: ubuntu-22.04
   package: deb
   check-manifest-file: ubuntu-22.04-amd64.txt
+- label: ubuntu-22.04-arm64
+  os: ubuntu-22.04
+  package: deb
+  bazel_args: --platforms=//:ubuntu-22.04-arm64
+  check-manifest-file: ubuntu-22.04-arm64.txt
 
 build-images:
 - label: ubuntu
   base-image: ubuntu:22.04
   package: deb
   artifact-from: ubuntu-22.04
+  artifact-from-alt: ubuntu-22.04-arm64
+  docker_platforms: linux/amd64, linux/arm64
 
 smoke-tests:
 - label: ubuntu
