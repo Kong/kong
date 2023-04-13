@@ -11,7 +11,6 @@ local uuid = require "resty.jit-uuid"
 
 
 local default_ws_id = uuid.generate_v4()
-local ws_id
 
 
 local function render(template, keys)

@@ -1,7 +1,6 @@
 local timestamp = require "kong.tools.timestamp"
 
 
-local kong = kong
 local concat = table.concat
 local floor = math.floor
 local fmt = string.format

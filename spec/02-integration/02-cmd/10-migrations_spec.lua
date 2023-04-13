@@ -337,23 +337,23 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(1, code)
         assert.equal("", stderr)
 
-        code, _, stderr = run_kong("migrations bootstrap", {
+        code, _, _ = run_kong("migrations bootstrap", {
           plugins = "bundled"
         }, true)
         assert.equal(0, code)
 
-        code, stdout, stderr = run_kong("migrations up", {
+        code, stdout, _ = run_kong("migrations up", {
           plugins = "bundled"
         }, true)
         assert.equal(0, code)
         assert.equal("Database is already up-to-date", utils.strip(stdout))
 
-        code, stdout, stderr = run_kong("migrations up -f", {
+        code, stdout, _ = run_kong("migrations up -f", {
           plugins = "bundled"
         }, true)
         assert.equal(0, code)
 
-        local code2, stdout2, stderr2 = run_kong("migrations up -f", {
+        local code2, stdout2, _ = run_kong("migrations up -f", {
           plugins = "bundled"
         }, true)
         assert.equal(0, code)
@@ -370,12 +370,12 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(1, code)
         assert.equal("", stderr)
 
-        code, _, stderr = run_kong("migrations bootstrap", {
+        code, _, _ = run_kong("migrations bootstrap", {
           plugins = "bundled"
         }, true)
         assert.equal(0, code)
 
-        code, stdout, stderr = run_kong("migrations up", {
+        code, stdout, _ = run_kong("migrations up", {
           plugins = "bundled"
         }, true)
 
@@ -389,12 +389,12 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("No pending migrations to finish", utils.strip(stdout))
         assert.equal("", stderr)
 
-        code, stdout, stderr = run_kong("migrations finish -f", {
+        code, stdout, _ = run_kong("migrations finish -f", {
           plugins = "bundled"
         }, true)
         assert.equal(0, code)
 
-        local code2, stdout2, stderr2 = run_kong("migrations finish -f", {
+        local code2, stdout2, _ = run_kong("migrations finish -f", {
           plugins = "bundled"
         }, true)
         assert.equal(0, code)
