@@ -438,7 +438,6 @@ jobs:
         TEST_SUITE: ${{ matrix.suite }}
         TEST_SPLIT: ${{ matrix.split }}
       run: |
-          make dev # required to install other dependencies like bin/grpcurl
           source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           mkdir $TEST_RESULTS_XML_OUTPUT
           export XML_OUTPUT=$(realpath $TEST_RESULTS_XML_OUTPUT)
@@ -521,7 +520,6 @@ jobs:
         KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
         TEST_SUITE: dbless
       run: |
-          make dev # required to install other dependencies like bin/grpcurl
           source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           mkdir $TEST_RESULTS_XML_OUTPUT
           export XML_OUTPUT=$(realpath $TEST_RESULTS_XML_OUTPUT)
@@ -646,7 +644,6 @@ jobs:
         TEST_SUITE: ${{ matrix.suite }}
         TEST_SPLIT: ${{ matrix.split }}
       run: |
-          make dev # required to install other dependencies like bin/grpcurl
           source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           mkdir $TEST_RESULTS_XML_OUTPUT
           export XML_OUTPUT=$(realpath $TEST_RESULTS_XML_OUTPUT)
