@@ -26,9 +26,9 @@ ffi.cdef([[
 
 local nginx_bin_name = "nginx"
 local nginx_search_paths = {
+  "",
   "/usr/local/openresty/nginx/sbin",
   "/opt/openresty/nginx/sbin",
-  ""
 }
 
 
