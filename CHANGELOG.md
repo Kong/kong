@@ -71,6 +71,10 @@
   [#10562](https://github.com/Kong/kong/pull/10562)
 - **OpenTelemetry**: spans are now correctly correlated in downstream Datadog traces.
   [10531](https://github.com/Kong/kong/pull/10531)
+- **OpenTelemetry**: add `header_type` field in OpenTelemetry plugin.
+  Previously, the `header_type` was hardcoded to `preserve`, now it can be set to one of the
+  following values: `preserve`, `ignore`, `b3`, `b3-single`, `w3c`, `jaeger`, `ot`.
+  [#10620](https://github.com/Kong/kong/pull/10620)
 
 #### PDK
 
