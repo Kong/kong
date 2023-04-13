@@ -30,12 +30,12 @@ describe("reports", function()
       _G.kong = _G.kong or {}
       _G.kong.configuration = _G.kong.configuration or {}
       if not _G.kong.configuration.anonymous_reports then
-        _G.kong.configuration = { anonymous_reports = true }
+        rawset(_G.kong.configuration, "anonymous_reports", true)
       end
     end)
 
     lazy_teardown(function()
-      _G.kong.configuration.anonymous_reports = nil
+      rawset(_G.kong.configuration, "anonymous_reports", nil)
     end)
 
     it("send reports", function()
