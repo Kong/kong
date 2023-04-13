@@ -295,6 +295,7 @@ describe("declarative config: flatten", function()
                 headers = null,
                 custom_fields_by_lua = null,
                 queue = {
+                  initial_retry_delay = 0.01,
                   max_batch_size = 1,
                   max_entries = 10000,
                   max_coalescing_delay = 1,
@@ -401,6 +402,7 @@ describe("declarative config: flatten", function()
                 headers = null,
                 custom_fields_by_lua = null,
                 queue = {
+                  initial_retry_delay = 0.01,
                   max_batch_size = 1,
                   max_entries = 10000,
                   max_coalescing_delay = 1,
@@ -601,6 +603,7 @@ describe("declarative config: flatten", function()
                   headers = null,
                   custom_fields_by_lua = null,
                   queue = {
+                    initial_retry_delay = 0.01,
                     max_batch_size = 1,
                     max_entries = 10000,
                     max_coalescing_delay = 1,
@@ -1116,6 +1119,7 @@ describe("declarative config: flatten", function()
                   headers = null,
                   custom_fields_by_lua = null,
                   queue = {
+                    initial_retry_delay = 0.01,
                     max_batch_size = 1,
                     max_entries = 10000,
                     max_coalescing_delay = 1,
