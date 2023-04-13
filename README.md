@@ -1,6 +1,7 @@
 [![][kong-logo]][kong-url]
 
-[![Build Status][badge-action-image]][badge-action-url]
+[![Build & Test](https://github.com/Kong/kong-ee/actions/workflows/build_and_test.yml/badge.svg)](https://github.com/Kong/kong-ee/actions/workflows/build_and_test.yml)
+[![Package & Release](https://github.com/Kong/kong-ee/actions/workflows/release.yml/badge.svg)](https://github.com/Kong/kong-ee/actions/workflows/release.yml)
 [![License](https://img.shields.io/badge/License-Proprietary-blue.svg)](https://konghq.com/enterprisesoftwarelicense/)
 [![Twitter](https://img.shields.io/twitter/follow/thekonginc.svg?style=social&label=Follow)](https://twitter.com/intent/follow?screen_name=thekonginc)
 
