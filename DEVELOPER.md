@@ -134,7 +134,7 @@ macOS
 # Install HomeBrew
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 # Build dependencies
-brew install libyaml python3
+brew install libyaml
 ```
 
 Finally, we start the build process:

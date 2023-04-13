@@ -15,14 +15,11 @@ load("//build:kong_bindings.bzl", "load_bindings")
 
 load_bindings(name = "kong_bindings")
 
-# TODO: pin rules_foreign_cc back to tag once the following commit is released
-foreign_cc_commit_sha = "1023d7ed6b343955f9ffb26437d07bdd97448a02"
-
 http_archive(
     name = "rules_foreign_cc",
-    sha256 = "a209c91eaa4178b74cbb420527b58a9846f76d234eb45c093c6d873d5b57e79d",
-    strip_prefix = "rules_foreign_cc-" + foreign_cc_commit_sha,
-    url = "https://github.com/bazelbuild/rules_foreign_cc/archive/" + foreign_cc_commit_sha + ".zip",
+    sha256 = "2a4d07cd64b0719b39a7c12218a3e507672b82a97b98c6a89d38565894cf7c51",
+    strip_prefix = "rules_foreign_cc-0.9.0",
+    url = "https://github.com/bazelbuild/rules_foreign_cc/archive/refs/tags/0.9.0.tar.gz",
 )
 
 load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_dependencies")
