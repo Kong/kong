@@ -8,6 +8,7 @@ describe("Status API #" .. strategy, function()
   lazy_setup(function()
     helpers.get_db_utils(strategy, {
       "plugins",
+      "routes",
       "services",
     })
     assert(helpers.start_kong {
