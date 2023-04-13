@@ -1,4 +1,3 @@
-
 -- This software is copyright Kong Inc. and its licensors.
 -- Use of the software is subject to the agreement between your organization
 -- and Kong Inc. If there is no such agreement, use is governed by and
