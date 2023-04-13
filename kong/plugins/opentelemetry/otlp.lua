@@ -10,9 +10,7 @@ local insert = table.insert
 local tablepool_fetch = tablepool.fetch
 local tablepool_release = tablepool.release
 local deep_copy = utils.deep_copy
-local table_merge = kong.table.merge
-local shallow_copy = utils.shallow_copy
-local getmetatable = getmetatable
+local table_merge = utils.table_merge
 local setmetatable = setmetatable
 
 local TRACE_ID_LEN = 16
@@ -77,34 +75,17 @@ local function transform_events(events)
   return pb_events
 end
 
--- translate the span to otlp format
--- currently it only adjust the trace id to 16 bytes
--- we don't do it in place because the span is shared
--- and we need to preserve the original information as much as possible
-local function translate_span_trace_id(span)
-  local trace_id = span.trace_id
+-- translate the trace_id to otlp format
+local function to_ot_trace_id(trace_id)
   local len = #trace_id
-  local new_id = trace_id
-
-  if len == TRACE_ID_LEN then
-    return span
-  end
-
-  -- make sure the trace id is of 16 bytes
   if len > TRACE_ID_LEN then
-    new_id = trace_id:sub(-TRACE_ID_LEN)
+    return trace_id:sub(-TRACE_ID_LEN)
 
   elseif len < TRACE_ID_LEN then
-    new_id = NULL:rep(TRACE_ID_LEN - len) .. trace_id
+    return NULL:rep(TRACE_ID_LEN - len) .. trace_id
   end
 
-  local translated = shallow_copy(span)
-  setmetatable(translated, getmetatable(span))
-
-  translated.trace_id = new_id
-  span = translated
-
-  return span
+  return trace_id
 end
 
 -- this function is to prepare span to be encoded and sent via grpc
@@ -112,10 +93,8 @@ end
 local function transform_span(span)
   assert(type(span) == "table")
 
-  span = translate_span_trace_id(span)
-
   local pb_span = {
-    trace_id = span.trace_id,
+    trace_id = to_ot_trace_id(span.trace_id),
     span_id = span.span_id,
     -- trace_state = "",
     parent_span_id = span.parent_id or "",
@@ -200,7 +179,7 @@ do
 end
 
 return {
-  translate_span = translate_span_trace_id,
+  to_ot_trace_id = to_ot_trace_id,
   transform_span = transform_span,
   encode_traces = encode_traces,
 }

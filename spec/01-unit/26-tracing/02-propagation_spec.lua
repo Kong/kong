@@ -18,6 +18,16 @@ local function left_pad_zero(str, count)
   return ('0'):rep(count-#str) .. str
 end
 
+local function to_id_len(id, len)
+  if #id < len then
+    return string.rep('0', len - #id) .. id
+  elseif #id > len then
+    return string.sub(id, -len)
+  end
+
+  return id
+end
+
 local parse = propagation.parse
 local set = propagation.set
 local from_hex = propagation.from_hex
@@ -624,6 +634,9 @@ describe("propagation.set", function()
     local span_id = ids[2]
     local parent_id = ids[3]
 
+    local w3c_trace_id = to_id_len(trace_id, 32)
+    local ot_trace_id = to_id_len(trace_id, 32)
+
     local proxy_span = {
       trace_id = from_hex(trace_id),
       span_id = from_hex(span_id),
@@ -644,7 +657,7 @@ describe("propagation.set", function()
     }
 
     local w3c_headers = {
-      traceparent = fmt("00-%s-%s-01", trace_id, span_id)
+      traceparent = fmt("00-%s-%s-01", w3c_trace_id, span_id)
     }
 
     local jaeger_headers = {
@@ -652,7 +665,7 @@ describe("propagation.set", function()
     }
 
     local ot_headers = {
-      ["ot-tracer-traceid"] = trace_id,
+      ["ot-tracer-traceid"] = ot_trace_id,
       ["ot-tracer-spanid"] = span_id,
       ["ot-tracer-sampled"] = "1"
     }

@@ -911,10 +911,9 @@ return {
       end
 
       if kong.configuration.anonymous_reports then
-        reports.configure_ping(kong.configuration)
+        reports.init(kong.configuration)
         reports.add_ping_value("database_version", kong.db.infos.db_ver)
-        reports.toggle(true)
-        reports.init_worker()
+        reports.init_worker(kong.configuration)
       end
 
       update_lua_mem(true)
@@ -1512,7 +1511,7 @@ return {
         -- https://nginx.org/en/docs/http/ngx_http_upstream_module.html#variables
         -- because of the way of Nginx do the upstream_status variable, it may be
         -- a string or a number, so we need to parse it to get the status
-        local status = tonumber(sub(var.upstream_status or "", -3)) or ngx.status
+        local status = tonumber(ctx.buffered_status) or tonumber(sub(var.upstream_status or "", -3)) or ngx.status
         if status == 504 then
           balancer_data.balancer.report_timeout(balancer_data.balancer_handle)
         else

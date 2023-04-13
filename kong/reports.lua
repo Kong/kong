@@ -114,7 +114,7 @@ end
 
 local function send_report(signal_type, t, host, port)
   if not _enabled then
-    return
+    return nil, "disabled"
   elseif type(signal_type) ~= "string" then
     return error("signal_type (arg #1) must be a string", 2)
   end
@@ -148,21 +148,26 @@ local function send_report(signal_type, t, host, port)
   -- errors are not logged to avoid false positives for users
   -- who run Kong in an air-gapped environments
 
-  local ok = sock:connect(host, port)
+  local ok, err
+  ok, err = sock:connect(host, port)
   if not ok then
-    return
+    return nil, err
   end
 
-  local hs_ok, err = sock:sslhandshake(_ssl_session, nil, _ssl_verify)
-  if not hs_ok then
+  ok, err = sock:sslhandshake(_ssl_session, nil, _ssl_verify)
+  if not ok then
     log(DEBUG, "failed to complete SSL handshake for reports: ", err)
-    return
+    return nil, "failed to complete SSL handshake for reports: " .. err
   end
 
-  _ssl_session = hs_ok
+  _ssl_session = ok
 
-  sock:send(concat(_buffer, ";", 1, mutable_idx) .. "\n")
-  sock:setkeepalive()
+  -- send return nil plus err msg on failure
+  local bytes, err = sock:send(concat(_buffer, ";", 1, mutable_idx) .. "\n")
+  if bytes then
+    sock:setkeepalive()
+  end
+  return bytes, err
 end
 
 
@@ -425,8 +430,11 @@ do
   end
 end
 
-
 return {
+  init = function(kong_conf)
+    _enabled = kong_conf.anonymous_reports or false
+    configure_ping(kong_conf)
+  end,
   -- plugin handler
   init_worker = function()
     if not _enabled then

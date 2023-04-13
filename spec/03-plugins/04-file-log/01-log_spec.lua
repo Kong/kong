@@ -1,12 +1,101 @@
 local cjson         = require "cjson"
 local utils         = require "kong.tools.utils"
 local helpers       = require "spec.helpers"
-local pl_path       = require "pl.path"
 local pl_file       = require "pl.file"
 local pl_stringx    = require "pl.stringx"
+local fmt           = string.format
 
 
 local FILE_LOG_PATH = os.tmpname()
+
+
+local function substr(needle, haystack)
+  return string.find(haystack, needle, 1, true) ~= nil
+end
+
+
+local function check_log(contains, not_contains)
+  if type(contains) ~= "table" then
+    contains = { contains }
+  end
+
+  if type(not_contains) ~= "table" then
+    not_contains = { not_contains }
+  end
+
+  if #contains == 0 and #not_contains == 0 then
+    error("log file assertion without any contains/not_contains check", 2)
+  end
+
+
+  local fh = assert(io.open(FILE_LOG_PATH, "r"))
+
+  local should_find = {}
+  local should_not_find = {}
+
+  for line in fh:lines() do
+    for i, s in ipairs(contains) do
+      should_find[i] = should_find[i] or substr(s, line)
+    end
+
+    for i, s in ipairs(not_contains) do
+      should_not_find[i] = should_not_find[i] or substr(s, line)
+    end
+  end
+
+  local errors = {}
+
+  for i, s in ipairs(contains) do
+    if not should_find[i] then
+      table.insert(errors, fmt("expected to find '%s' in the log file", s))
+    end
+  end
+
+  for i, s in ipairs(not_contains) do
+    if should_not_find[i] then
+      table.insert(errors, fmt("expected not to find '%s' in the log file", s))
+    end
+  end
+
+  if #errors > 0 then
+    return false, table.concat(errors, ",\n")
+  end
+
+  return true
+end
+
+
+local function wait_for_log_content(contains, not_contains, msg)
+  assert
+    .with_timeout(10)
+    .ignore_exceptions(true)
+    .eventually(function() return check_log(contains, not_contains) end)
+    .is_truthy(msg or "log file contains expected content")
+end
+
+
+local function wait_for_json_log_entry()
+  local json
+
+  assert
+    .with_timeout(10)
+    .ignore_exceptions(true)
+    .eventually(function()
+      local data = assert(pl_file.read(FILE_LOG_PATH))
+
+      data = pl_stringx.strip(data)
+      assert(#data > 0, "log file is empty")
+
+      data = data:match("%b{}")
+      assert(data, "log file does not contain JSON")
+
+      json = cjson.decode(data)
+    end)
+    .has_no_error("log file contains a valid JSON entry")
+
+  return json
+end
+
 
 
 for _, strategy in helpers.each_strategy() do
@@ -130,12 +219,7 @@ for _, strategy in helpers.each_strategy() do
       }))
       assert.res_status(200, res)
 
-      helpers.wait_until(function()
-        return pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0
-      end, 10)
-
-      local log = pl_file.read(FILE_LOG_PATH)
-      local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
+      local log_message = wait_for_json_log_entry()
       assert.same("127.0.0.1", log_message.client_ip)
       assert.same(uuid, log_message.request.headers["file-log-uuid"])
       assert.is_number(log_message.request.size)
@@ -157,12 +241,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(200, res)
 
-        helpers.wait_until(function()
-          return pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, 10)
-
-        local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
+        local log_message = wait_for_json_log_entry()
         assert.same("127.0.0.1", log_message.client_ip)
         assert.same(uuid, log_message.request.headers["file-log-uuid"])
         assert.is_number(log_message.request.size)
@@ -184,12 +263,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(200, res)
 
-        helpers.wait_until(function()
-          return pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, 10)
-
-        local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
+        local log_message = wait_for_json_log_entry()
         assert.same("127.0.0.1", log_message.client_ip)
         assert.same(uuid, log_message.request.headers["file-log-uuid"])
         assert.is_number(log_message.request.size)
@@ -215,12 +289,7 @@ for _, strategy in helpers.each_strategy() do
       assert.truthy(ok)
       assert.truthy(resp)
 
-      helpers.wait_until(function()
-        return pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0
-      end, 10)
-
-      local log = pl_file.read(FILE_LOG_PATH)
-      local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
+      local log_message = wait_for_json_log_entry()
       assert.same("127.0.0.1", log_message.client_ip)
       assert.same(uuid, log_message.request.headers["file-log-uuid"])
     end)
@@ -242,12 +311,7 @@ for _, strategy in helpers.each_strategy() do
       assert.truthy(ok)
       assert.truthy(resp)
 
-      helpers.wait_until(function()
-        return pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0
-      end, 10)
-
-      local log = pl_file.read(FILE_LOG_PATH)
-      local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
+      local log_message = wait_for_json_log_entry()
       assert.same("127.0.0.1", log_message.client_ip)
       assert.same(uuid, log_message.request.headers["file-log-uuid"])
     end)
@@ -266,16 +330,14 @@ for _, strategy in helpers.each_strategy() do
       }))
       assert.res_status(200, res)
 
-      helpers.wait_until(function()
-        return pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0
-      end, 10)
+      wait_for_log_content(uuid1, nil, "log file contains 1st request ID")
 
       -- remove the file to see whether it gets recreated
       os.remove(FILE_LOG_PATH)
 
       -- Making the next request
       local uuid2 = utils.uuid()
-      local res = assert(proxy_client:send({
+      res = assert(proxy_client:send({
         method = "GET",
         path = "/status/200",
         headers = {
@@ -286,7 +348,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       local uuid3 = utils.uuid()
-      local res = assert(proxy_client:send({
+      res = assert(proxy_client:send({
         method = "GET",
         path = "/status/200",
         headers = {
@@ -296,15 +358,11 @@ for _, strategy in helpers.each_strategy() do
       }))
       assert.res_status(200, res)
 
-      helpers.wait_until(function()
-        return pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0
-      end, 10)
-
-      local file_log, err = pl_file.read(FILE_LOG_PATH)
-      assert.is_nil(err)
-      assert(not file_log:find(uuid1, nil, true), "did not expected 1st request in logfile")
-      assert(file_log:find(uuid2, nil, true), "expected 2nd request in logfile")
-      assert(file_log:find(uuid3, nil, true), "expected 3rd request in logfile")
+      wait_for_log_content(
+        { uuid2, uuid3 },
+        { uuid1 },
+        "log file contains 2nd and 3rd request IDs but not the 1st"
+      )
     end)
   end)
 end

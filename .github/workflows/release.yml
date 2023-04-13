@@ -108,9 +108,15 @@ jobs:
       options: --privileged
 
     steps:
+    - name: Early Rpm Setup
+      if: matrix.package == 'rpm'
+      run: |
+        # tar/gzip is needed to restore git cache (if available)
+        yum install -y tar gzip which file zlib-devel
+
     - name: Cache Git
       id: cache-git
-      if: matrix.label == 'centos-7' || matrix.label == 'rhel-7' || matrix.label == 'ubuntu-18.04'
+      if: matrix.package == 'rpm' || matrix.image == 'ubuntu:18.04'
       uses: actions/cache@v3
       with:
         path: /usr/local/git
@@ -118,7 +124,7 @@ jobs:
 
     # el-7 doesn't have git 2.18+, so we need to install it manually
     - name: Install newer Git
-      if: (matrix.label == 'centos-7' || matrix.label == 'rhel-7' || matrix.label == 'ubuntu-18.04') && steps.cache-git.outputs.cache-hit != 'true'
+      if: (matrix.package == 'rpm' || matrix.image == 'ubuntu:18.04') && steps.cache-git.outputs.cache-hit != 'true'
       run: |
         if which apt 2>/dev/null; then
           apt update
@@ -126,27 +132,27 @@ jobs:
         else
           yum update -y
           yum groupinstall -y 'Development Tools'
-          yum install -y curl-devel expat-devel gettext-devel openssl-devel zlib-devel perl-CPAN perl-devel
+          yum install -y wget zlib-devel openssl-devel curl-devel expat-devel gettext-devel perl-CPAN perl-devel
         fi
         wget https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.30.0.tar.gz
         tar xf git-2.30.0.tar.gz
         cd git-2.30.0
         make configure
-        ./configure --prefix=/usr/local
+        ./configure --prefix=/usr/local/git
         make -j$(nproc)
         make install
-
-    - name: Centos dependencies
-      if: matrix.label == 'centos-7' || matrix.label == 'rhel-7'
+    
+    - name: Add Git to PATH
+      if: matrix.package == 'rpm' || matrix.image == 'ubuntu:18.04'
       run: |
-        yum install -y which zlib-devel
+        echo "/usr/local/git/bin" >> $GITHUB_PATH
 
-    - name: Early Amazon Linux Setup
-      if: startsWith(matrix.label, 'amazonlinux')
+    - name: Debian dependencies
+      if: matrix.image == 'ubuntu:18.04'
       run: |
-        # tar/gzip is needed to restore git cache (if available)
-        yum check-updates -y || true
-        yum install -y tar gzip which file git zlib-devel
+        apt update
+        # dependencies for git
+        apt install -y wget libz-dev libssl-dev libcurl4-gnutls-dev libexpat1-dev sudo
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -197,28 +203,9 @@ jobs:
         dnf config-manager --set-enabled powertools || true # enable devel packages on rockylinux:8
         yum install -y libyaml-devel
 
-    - name: Setup Amazon Linux
-      if: startsWith(matrix.label, 'amazonlinux')
-      run: |
-        VERBOSE=1 build/bootstrap.sh
-
-        . /etc/profile.d/path-tools.sh
-        echo "/opt/tools/bin" >> $GITHUB_PATH
-
     - name: Build Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
-        export PATH="/root/.cargo/bin:$PATH" # temporary hack to make atc_router makefile happy
-
-        # add bootstrap.sh installed tools to PATH
-        export PATH="/opt/tools/bin:${PATH}"
-        echo "/opt/tools/bin" >> $GITHUB_PATH
-
-        for tool in git bazel; do
-          echo "${tool}: ($(which "$tool" || true)) $($tool --version)"
-        done
-
-        echo $PATH
         bazel build --config release //build:kong --verbose_failures ${{ matrix.bazel_args }}
 
     - name: Package Kong - ${{ matrix.package }}
@@ -528,6 +515,21 @@ jobs:
           sh -c "kong migrations bootstrap && kong start"
         sleep 3
         docker logs kong
+
+    - name: Smoke Tests - Version Test
+      run: |
+        workflow_version="$(
+          echo '${{ steps.metadata.outputs.kong-version }}' \
+            | sed -e 's@\.@\\\.@g'
+        )"
+
+        # confirm workflow's version and built container version match with
+        # dots escaped, and end-line delimited
+        if ! docker exec kong kong version | grep -E "${workflow_version}$"; then
+          echo "Built container's 'kong version' didn't match workflow's."
+          echo "Ensure that versions in the meta.lua files are as expected."
+          exit 1
+        fi
 
     - name: Smoke Tests - Base Tests
       env:
