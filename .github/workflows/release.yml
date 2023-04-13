@@ -233,11 +233,7 @@ jobs:
         bazel build --config release :kong_${{ matrix.package }} --verbose_failures ${{ matrix.bazel_args }}
 
     - name: Package Kong - rpm
-      if: |
-        (
-          matrix.package == 'rpm' &&
-          ! startsWith(matrix.label, 'amazonlinux')
-        ) && steps.cache-deps.outputs.cache-hit != 'true'
+      if: matrix.package == 'rpm' && steps.cache-deps.outputs.cache-hit != 'true'
       env:
         RELEASE_SIGNING_GPG_KEY: ${{ secrets.RELEASE_SIGNING_GPG_KEY }}
         NFPM_RPM_PASSPHRASE: ${{ secrets.RELEASE_SIGNING_GPG_KEY_PASSPHRASE }}
@@ -361,21 +357,6 @@ jobs:
         if [[ -z "$platforms" ]]; then
           platforms="linux/amd64"
         fi
-
-        echo "platforms=$platforms"
-        echo "platforms=$platforms" >> $GITHUB_OUTPUT
-
-    - name: Set rpm platform
-      id: docker_rpm_platform_arg
-      if: matrix.package == 'rpm'
-      run: |
-        rpm_platform="${{ matrix.rpm_platform }}"
-        if [[ -z "$rpm_platform" ]]; then
-          rpm_platform="el8"
-        fi
-
-        echo "rpm_platform=$rpm_platform"
-        echo "rpm_platform=$rpm_platform" >> $GITHUB_OUTPUT
 
         if [[ "${{ matrix.package }}" == 'rpm' ]]; then
           rpm_platform="${{ matrix.rpm_platform }}"
