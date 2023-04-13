@@ -1,7 +1,6 @@
 #!/bin/bash
 
 KONG_ENV_FILE=.env
-KONG_ENV_FISH_FILE=.env.fish
 KONG_ENV_DOWN_FILE=.env.down
 
 > $KONG_ENV_FILE
@@ -46,7 +45,6 @@ for svc in "${!ports[@]}"; do
         for prefix in $env_prefixes; do
             _kong_added_envs="$_kong_added_envs ${prefix}${env_name}"
             eval "echo ${prefix}${env_name}=$exposed_port >> $KONG_ENV_FILE"
-            eval "echo ${prefix}${env_name} $exposed_port >> $KONG_ENV_FISH_FILE"
             eval "echo ${prefix}${env_name} >> $KONG_ENV_DOWN_FILE"
         done
     done
