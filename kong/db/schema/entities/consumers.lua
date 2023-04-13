@@ -18,6 +18,7 @@ return {
   fields = {
     { id             = typedefs.uuid, },
     { created_at     = typedefs.auto_timestamp_s },
+    { updated_at     = typedefs.auto_timestamp_s },
     { username       = { type = "string",  unique = true, indexed = true }, },
     { username_lower = { type = "string",  prefix_ws = true, db_export = false }, },
     { custom_id      = { type = "string",  unique = true, indexed = true }, },

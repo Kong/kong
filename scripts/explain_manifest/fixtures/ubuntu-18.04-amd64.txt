@@ -266,7 +266,7 @@
   - libc.so.6
   Runpath   : /usr/local/kong/lib
   Version Requirement:
-  - libc.so.6 (GLIBC_2.2.5, GLIBC_2.4)
+  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.4)
   - libcrypto.so.1.1 (OPENSSL_1_1_0)
   - libssl.so.1.1 (OPENSSL_1_1_0, OPENSSL_1_1_1)
 

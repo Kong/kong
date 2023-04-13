@@ -174,6 +174,71 @@ for _, strategy in helpers.each_strategy() do
           service = service,
         })
 
+        assert(bp.routes:insert {
+          protocols = { "tcp" },
+          service   = service,
+          destinations = {
+            { ip = "0.0.0.0", port = 19004 },
+            { ip = "0.0.0.0", port = 19005 },
+            { ip = "0.0.0.0", port = 19006 },
+            { ip = "0.0.0.0", port = 19007 },
+            { ip = "0.0.0.0" },
+            { port = 19004 },
+          }
+        })
+
+        assert(bp.routes:insert {
+          protocols = { "tcp" },
+          service   = service,
+          destinations = {
+            { ip = "0.0.0.0", port = 19004 },
+            { ip = "0.0.0.0", port = 19005 },
+            { ip = "0.0.0.0", port = 19006 },
+            { ip = "0.0.0.0", port = 19007 },
+            { ip = "0.0.0.0" },
+            { port = 19004 },
+          }
+        })
+
+        assert(bp.routes:insert {
+          protocols = { "tcp" },
+          service   = service,
+          destinations = {
+            { ip = "0.0.0.0", port = 19004 },
+            { ip = "0.0.0.0", port = 19005 },
+            { ip = "0.0.0.0", port = 19006 },
+            { ip = "0.0.0.0", port = 19007 },
+            { ip = "0.0.0.0" },
+            { port = 19004 },
+          }
+        })
+
+        assert(bp.routes:insert {
+          protocols = { "tcp" },
+          service   = service,
+          destinations = {
+            { ip = "0.0.0.0", port = 19004 },
+            { ip = "0.0.0.0", port = 19005 },
+            { ip = "0.0.0.0", port = 19006 },
+            { ip = "0.0.0.0", port = 19007 },
+            { ip = "0.0.0.0" },
+            { port = 19004 },
+          }
+        })
+
+        assert(bp.routes:insert {
+          protocols = { "tcp" },
+          service   = service,
+          destinations = {
+            { ip = "0.0.0.0", port = 19004 },
+            { ip = "0.0.0.0", port = 19005 },
+            { ip = "0.0.0.0", port = 19006 },
+            { ip = "0.0.0.0", port = 19007 },
+            { ip = "0.0.0.0" },
+            { port = 19004 },
+          }
+        })
+
         assert(helpers.start_kong({
           database      = strategy,
           stream_listen = helpers.get_proxy_ip(false) .. ":19000, " ..
@@ -220,6 +285,10 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("connection reset by peer", err)
         end
         assert(tcp_client:close())
+      end)
+
+      it("destinations has more than 3 items", function()
+        assert.logfile().has.no.line("invalid order function for sorting", true)
       end)
     end)
   end

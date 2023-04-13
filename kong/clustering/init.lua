@@ -142,10 +142,12 @@ function _M:init_worker()
     config_sync_backup.init_worker(self.conf, "importer")
   end
 
+  --[= XXX EE
   local role = self.conf.role
   if role == "control_plane" then
     self:init_cp_worker(plugins_list)
   end
+  --]=]
 
   if role == "data_plane" then
     self:init_dp_worker(plugins_list)

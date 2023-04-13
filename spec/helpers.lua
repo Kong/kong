@@ -2116,7 +2116,7 @@ local function wait_for_all_config_update(opts)
     if stream_enabled then
       pwait_until(function ()
         local proxy = proxy_client(proxy_client_timeout, stream_port, stream_ip)
-
+  
         res = proxy:get("/always_200")
         local ok, err = pcall(assert, res.status == 200)
         proxy:close()

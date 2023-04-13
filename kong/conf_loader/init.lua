@@ -509,6 +509,11 @@ local CONF_PARSERS = {
   },
   worker_state_update_frequency = { typ = "number" },
 
+  lua_max_req_headers = { typ = "number" },
+  lua_max_resp_headers = { typ = "number" },
+  lua_max_uri_args = { typ = "number" },
+  lua_max_post_args = { typ = "number" },
+
   ssl_protocols = {
     typ = "string",
     directives = {
@@ -1407,6 +1412,30 @@ local function check_and_parse(conf, opts)
 
   if conf.node_id and not utils.is_valid_uuid(conf.node_id) then
     errors[#errors + 1] = "node_id must be a valid UUID"
+  end
+
+  if conf.lua_max_req_headers < 1 or conf.lua_max_req_headers > 1000
+  or conf.lua_max_req_headers ~= floor(conf.lua_max_req_headers)
+  then
+    errors[#errors + 1] = "lua_max_req_headers must be an integer between 1 and 1000"
+  end
+
+  if conf.lua_max_resp_headers < 1 or conf.lua_max_resp_headers > 1000
+  or conf.lua_max_resp_headers ~= floor(conf.lua_max_resp_headers)
+  then
+    errors[#errors + 1] = "lua_max_resp_headers must be an integer between 1 and 1000"
+  end
+
+  if conf.lua_max_uri_args < 1 or conf.lua_max_uri_args > 1000
+  or conf.lua_max_uri_args ~= floor(conf.lua_max_uri_args)
+  then
+    errors[#errors + 1] = "lua_max_uri_args must be an integer between 1 and 1000"
+  end
+
+  if conf.lua_max_post_args < 1 or conf.lua_max_post_args > 1000
+  or conf.lua_max_post_args ~= floor(conf.lua_max_post_args)
+  then
+    errors[#errors + 1] = "lua_max_post_args must be an integer between 1 and 1000"
   end
 
   return #errors == 0, errors[1], errors

@@ -283,8 +283,8 @@ release-packages:
 release-images:
 - label: ubuntu
 - label: ubuntu-fips
+- label: amazonlinux-2
+- label: amazonlinux-2022
 - label: debian
 - label: rhel
 - label: alpine
-- label: amazonlinux-2
-- label: amazonlinux-2022

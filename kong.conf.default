@@ -239,7 +239,7 @@
 
 
 #proxy_server =                  # Proxy server defined as a URL. Kong will only use this
-                                 # option if any component is explictly configured
+                                 # option if any component is explicitly configured
                                  # to use proxy.
 
 
@@ -412,6 +412,23 @@
 
 #cluster_telemetry_server_name = # The SNI (Server Name Indication extension)
                                  # to use for Vitals telemetry data.
+
+#cluster_dp_labels =             # Comma separated list of Labels for the data plane.
+                                 # Labels are key-value pairs that provide additional
+                                 # context information for each DP.
+                                 # Each label must be configured as a string in the
+                                 # format `key:value`.
+                                 #
+                                 # Labels are only compatible with hybrid mode
+                                 # deployments with Kong Konnect (SaaS),
+                                 # this configuration doesn't work with
+                                 # self-hosted deployments.
+                                 #
+                                 # Keys and values follow the AIP standards:
+                                 # https://kong-aip.netlify.app/aip/129/
+                                 #
+                                 # Example:
+                                 # `deployment:mycloud,region:us-east-1`
 
 #cluster_dp_labels =             # Comma separated list of Labels for the data plane.
                                  # Labels are key-value pairs that provide additional
@@ -812,7 +829,7 @@
                                  #
                                  # See https://wiki.mozilla.org/Security/Server_Side_TLS
                                  # for detailed descriptions of each cipher
-                                 # suite. `fips` cipher suites are as decribed in
+                                 # suite. `fips` cipher suites are as described in
                                  # https://wiki.openssl.org/index.php/FIPS_mode_and_TLS.
 
 #ssl_ciphers =                   # Defines a custom list of TLS ciphers to be
@@ -1802,6 +1819,44 @@
                                  #   `traditional_compatible` did not work as expected.
                                  #   This flavor of router will be removed in the next
                                  #   major release of Kong.
+
+#lua_max_req_headers = 100       # Maximum number of request headers to parse by default.
+                                 #
+                                 # This argument can be set to an integer between 1 and 1000.
+                                 #
+                                 # When proxying the Kong sends all the request headers
+                                 # and this setting does not have any effect. It is used
+                                 # to limit Kong and its plugins from reading too many
+                                 # request headers.
+
+#lua_max_resp_headers = 100      # Maximum number of response headers to parse by default.
+                                 #
+                                 # This argument can be set to an integer between 1 and 1000.
+                                 #
+                                 # When proxying, Kong returns all the response headers
+                                 # and this setting does not have any effect. It is used
+                                 # to limit Kong and its plugins from reading too many
+                                 # response headers.
+
+#lua_max_uri_args = 100          # Maximum number of request uri arguments to parse by
+                                 # default.
+                                 #
+                                 # This argument can be set to an integer between 1 and 1000.
+                                 #
+                                 # When proxying, Kong sends all the request query
+                                 # arguments and this setting does not have any effect.
+                                 # It is used to limit Kong and its plugins from reading
+                                 # too many query arguments.
+
+#lua_max_post_args = 100         # Maximum number of request post arguments to parse by
+                                 # default.
+                                 #
+                                 # This argument can be set to an integer between 1 and 1000.
+                                 #
+                                 # When proxying, Kong sends all the request post
+                                 # arguments and this setting does not have any effect.
+                                 # It is used to limit Kong and its plugins from reading
+                                 # too many post arguments.
 
 #------------------------------------------------------------------------------
 # MISCELLANEOUS

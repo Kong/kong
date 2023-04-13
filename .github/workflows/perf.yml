@@ -10,8 +10,12 @@ on:
 
 env:
   terraform_version: '1.2.4'
-  DOWNLOAD_ROOT: $HOME/download-root
-  LIBRARY_PREFIX: /usr/local/kong
+  HAS_ACCESS_TO_GITHUB_TOKEN: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') }}
+  BUILD_ROOT: ${{ github.workspace }}/bazel-bin/build
+
+  # only for pr
+  GHA_CACHE: ${{ github.event_name == 'pull_request' }}
+
   PULP_USERNAME: admin
 
 
@@ -19,9 +23,8 @@ env:
 concurrency:
   group: perf-ee
 
-
 jobs:
-  build:
+  build-packages:
     name: Build dependencies
     runs-on: ubuntu-22.04
     if: |
@@ -55,13 +58,13 @@ jobs:
         restore-keys: |
           ci-download-
 
-    - name: Cache OpenResty
+    - name: Lookup build cache
       id: cache-deps
       uses: actions/cache@v3
       with:
         path: |
-          /tmp/build
-        key: ci-build-${{ hashFiles('.requirements', 'kong-*.rockspec', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
+          ${{ env.BUILD_ROOT }}
+        key: perf-${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Set .requirements into environment variables
       run: |
@@ -69,7 +72,7 @@ jobs:
         sed -i 's/c\.release = true/c\.release = false/g' distribution/distributions_constants.lua
         grep -v '^#' .requirements >> $GITHUB_ENV
 
-    - name: Install Build Dependencies
+    - name: Install packages
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
         curl -sSL https://github.com/rootless-containers/rootlesskit/releases/download/v1.0.1/rootlesskit-$(uname -m).tar.gz | sudo tar Cxzv /bin
@@ -78,12 +81,16 @@ jobs:
         sudo apt-get update
         sudo apt-get install libyaml-dev -y
 
-    - name: Build Kong dependencies
+    - name: Build Kong
       if: steps.cache-deps.outputs.cache-hit != 'true'
-      env:
-        GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: |
-        bazel build --config release //build/ee:openresty-bundle --verbose_failures
+        make build-kong
+        BUILD_PREFIX=$BUILD_ROOT/kong-dev
+        export PATH="$BUILD_PREFIX/bin:$BUILD_PREFIX/openresty/nginx/sbin:$BUILD_PREFIX/openresty/bin:$PATH"
+        chmod +rw -R $BUILD_PREFIX
+        nginx -V
+        ldd $(which nginx)
+        luarocks
 
     - name: Bazel Outputs
       uses: actions/upload-artifact@v3
@@ -91,8 +98,7 @@ jobs:
       with:
         name: bazel-outputs
         path: |
-          bazel-bin/
-          bazel-out/
+          bazel-out/_tmp/actions
 
     - run: |
         sudo chown -R $USER:$USER /tmp/build/usr/local/kong/gui
@@ -108,11 +114,22 @@ jobs:
         name: build
         path: /tmp/build.tar.gz
 
+    - name: Build Dev Kong dependencies
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      run: |
+        make install-dev-rocks
+
+  # the above should be same as build_and_test.yml expect that perf.yml is used in cache_key
 
   perf:
     name: RPS, latency and flamegraphs
     runs-on: ubuntu-22.04
-    needs: build
+    needs: build-packages
+
+    permissions:
+      # required to send comment of graphs and results in the PR
+      pull-requests: write
+
     if: |
       github.event_name == 'schedule' ||
       (github.event_name == 'pull_request' && startsWith(github.event.pull_request.title, 'perf(')) ||
@@ -151,7 +168,7 @@ jobs:
     - name: Install packages
       run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev inkscape -y
 
-    - name: Checkout Kong source code
+    - name: Checkout Kong EE source code
       uses: actions/checkout@v3
       with:
         # Fetch all history for all tags and branches
@@ -162,7 +179,16 @@ jobs:
         # fetch the CE repo, so we can compare it against EE later if needed
         git remote add ce https://github.com/kong/kong.git
 
-    - name: Install Dependencies
+    - name: Load Cached Packages
+      id: cache-deps
+      if: env.GHA_CACHE == 'true'
+      uses: actions/cache@v3
+      with:
+        path: |
+          ${{ env.BUILD_ROOT }}
+        key: perf-${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+
+    - name: Install performance test Dependencies
       run: |
         # don't use sudo to pass in env vars; or use `sudo -E`
         make dev
@@ -201,7 +227,7 @@ jobs:
         echo "suites=$suites" >> $GITHUB_OUTPUT
         echo "tags=$tags" >> $GITHUB_OUTPUT
 
-    - uses: xt0rted/pull-request-comment-branch@653a7d5ca8bd91d3c5cb83286063314d0b063b8e # v1.4.1
+    - uses: xt0rted/pull-request-comment-branch@d97294d304604fa98a2600a6e2f916a84b596dc7 # v1.4.1
       id: comment-branch
       if: github.event_name == 'issue_comment' && github.event.action == 'created'
 
@@ -273,7 +299,8 @@ jobs:
         sudo iptables -t nat -I OUTPUT -p tcp --dport 5432  -d ${PERF_TEST_BYO_KONG_IP} -j DNAT --to 127.0.0.1:15432
         sudo iptables -t nat -I OUTPUT -p tcp --dport 39001 -d ${PERF_TEST_BYO_KONG_IP} -j DNAT --to 127.0.0.1:39001
 
-        eval `luarocks path`
+        make dev # required to install other dependencies like bin/grpcurl
+        source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
         for suite in ${{ steps.choose_perf.outputs.suites }}; do
           # Run each test individually, ngx.pipe doesn't like to be imported twice
           # maybe bin/busted --no-auto-insulate
@@ -298,7 +325,8 @@ jobs:
         export PERF_TEST_BYO_SSH_KEY_PATH=$(pwd)/ssh_key
         echo "${{ secrets.PERF_TEST_BYO_SSH_KEY }}" > ${PERF_TEST_BYO_SSH_KEY_PATH}
 
-        eval `luarocks path`
+        make dev # required to install other dependencies like bin/grpcurl
+        source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
         bin/busted -o gtest spec/04-perf/99-teardown/
 
         rm -f ${PERF_TEST_BYO_SSH_KEY_PATH}

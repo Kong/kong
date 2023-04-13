@@ -58,6 +58,7 @@ for _, strategy in helpers.each_strategy() do
           assert.is_number(plugin.created_at)
           plugin.id = nil
           plugin.created_at = nil
+          plugin.updated_at = nil
 
           assert.same({
             config = {
@@ -132,6 +133,7 @@ for _, strategy in helpers.each_strategy() do
           assert.is_number(plugin.created_at)
           plugin.id = nil
           plugin.created_at = nil
+          plugin.updated_at = nil
 
           assert.same({
             config = {

@@ -26,7 +26,7 @@ http {
 
     _G.log_record = function(ngx_req)
       local cjson = require("cjson")
-      local args, err = ngx_req.get_uri_args()
+      local args, err = ngx_req.get_uri_args(0)
       local key = args['key'] or "default"
       local log_locks = _G.log_locks
 
@@ -43,7 +43,7 @@ http {
           time = ngx.now(),
           -- path = "/log",
           method = ngx_req.get_method(),
-          headers = ngx_req.get_headers(),
+          headers = ngx_req.get_headers(0),
         }
 
         logs = cjson.decode(logs)
@@ -118,7 +118,7 @@ http {
 
     location = /healthy {
       access_by_lua_block {
-        local host = ngx.req.get_headers()["host"] or "localhost"
+        local host = ngx.req.get_headers(0)["host"] or "localhost"
         local host_no_port = ngx.re.match(host, [=[([a-z0-9\-._~%!$&'()*+,;=]+@)?([a-z0-9\-._~%]+|\[[a-z0-9\-._~%!$&'()*+,;=:]+\])(:?[0-9]+)*]=])
         if host_no_port == nil then
           return ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
@@ -141,7 +141,7 @@ http {
 
     location = /unhealthy {
       access_by_lua_block {
-        local host = ngx.req.get_headers()["host"] or "localhost"
+        local host = ngx.req.get_headers(0)["host"] or "localhost"
         local host_no_port = ngx.re.match(host, [=[([a-z0-9\-._~%!$&'()*+,;=]+@)?([a-z0-9\-._~%]+|\[[a-z0-9\-._~%!$&'()*+,;=:]+\])(:?[0-9]+)*]=])
         if host_no_port == nil then
           return ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
@@ -187,8 +187,8 @@ http {
       access_by_lua_block {
         _G.log_record(ngx.req)
         local i = require 'inspect'
-        ngx.log(ngx.ERR, "INSPECT status (headers): ", i(ngx.req.get_headers()))
-        local host = ngx.req.get_headers()["host"] or "localhost"
+        ngx.log(ngx.ERR, "INSPECT status (headers): ", i(ngx.req.get_headers(0)))
+        local host = ngx.req.get_headers(0)["host"] or "localhost"
         local host_no_port = ngx.re.match(host, [=[([a-z0-9\-._~%!$&'()*+,;=]+@)?([a-z0-9\-._~%]+|\[[a-z0-9\-._~%!$&'()*+,;=:]+\])(:?[0-9]+)*]=])
         if host_no_port == nil then
           return ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
@@ -220,7 +220,7 @@ http {
           _G.log_record(ngx.req)
           local cjson = require("cjson")
           local server_values = ngx.shared.server_values
-          local host = ngx.req.get_headers()["host"] or "localhost"
+          local host = ngx.req.get_headers(0)["host"] or "localhost"
           local host_no_port = ngx.re.match(host, [=[([a-z0-9\-._~%!$&'()*+,;=]+@)?([a-z0-9\-._~%]+|\[[a-z0-9\-._~%!$&'()*+,;=:]+\])(:?[0-9]+)*]=])
           if host_no_port == nil then
             return ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)

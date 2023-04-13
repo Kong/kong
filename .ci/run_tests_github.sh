@@ -204,9 +204,6 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         ["sixth"]="key-auth-enc request-transformer-advanced saml graphql-rate-limiting-advanced"
         ["seventh"]="rate-limiting-advanced exit-transformer route-transformer-advanced vault-auth"
         ["eighth"]="response-transformer-advanced oas-validation datadog-tracing opa konnect-application-auth oauth2-introspection degraphql"
-        # TODO: removed the rate-limiting-advanced test after all flakiness has gone
-        # Related ticket: https://konghq.atlassian.net/browse/FTI-4929
-        # make test-rate-limiting-advanced || echo "* rate-limiting-advanced" >> .failed
         ["ninth"]="ldap-auth-advanced"
     )
 

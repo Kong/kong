@@ -288,6 +288,7 @@ describe("declarative config: flatten", function()
               tags = null,
               ws_id = null,
               created_at = 1234567890,
+              updated_at = 1234567890,
               consumer = null,
               service = null,
               route = null,
@@ -313,6 +314,7 @@ describe("declarative config: flatten", function()
               tags = null,
               ws_id = null,
               created_at = 1234567890,
+              updated_at = 1234567890,
               consumer = null,
               service = null,
               route = null,
@@ -385,6 +387,7 @@ describe("declarative config: flatten", function()
               tags = null,
               ws_id = null,
               created_at = 1234567890,
+              updated_at = 1234567890,
               custom_id = null,
               id = "UUID",
               username = "my-consumer",
@@ -411,6 +414,7 @@ describe("declarative config: flatten", function()
                 id = "UUID"
               },
               created_at = 1234567890,
+              updated_at = 1234567890,
               enabled = true,
               id = "UUID",
               name = "http-log",
@@ -435,6 +439,7 @@ describe("declarative config: flatten", function()
               },
               consumer = null,
               created_at = 1234567890,
+              updated_at = 1234567890,
               enabled = true,
               id = "UUID",
               name = "key-auth",
@@ -577,6 +582,7 @@ describe("declarative config: flatten", function()
                 },
                 consumer = null,
                 created_at = 1234567890,
+                updated_at = 1234567890,
                 enabled = true,
                 id = "UUID",
                 name = "basic-auth",
@@ -603,6 +609,7 @@ describe("declarative config: flatten", function()
                 },
                 consumer = null,
                 created_at = 1234567890,
+                updated_at = 1234567890,
                 enabled = true,
                 id = "UUID",
                 name = "http-log",
@@ -626,6 +633,7 @@ describe("declarative config: flatten", function()
                 },
                 consumer = null,
                 created_at = 1234567890,
+                updated_at = 1234567890,
                 enabled = true,
                 id = "UUID",
                 name = "key-auth",
@@ -649,6 +657,7 @@ describe("declarative config: flatten", function()
                 },
                 consumer = null,
                 created_at = 1234567890,
+                updated_at = 1234567890,
                 enabled = true,
                 id = "UUID",
                 name = "tcp-log",
@@ -1097,6 +1106,7 @@ describe("declarative config: flatten", function()
                 },
                 consumer = null,
                 created_at = 1234567890,
+                updated_at = 1234567890,
                 enabled = true,
                 id = "UUID",
                 name = "basic-auth",
@@ -1123,6 +1133,7 @@ describe("declarative config: flatten", function()
                 },
                 consumer = null,
                 created_at = 1234567890,
+                updated_at = 1234567890,
                 enabled = true,
                 id = "UUID",
                 name = "http-log",
@@ -1146,6 +1157,7 @@ describe("declarative config: flatten", function()
                 },
                 consumer = null,
                 created_at = 1234567890,
+                updated_at = 1234567890,
                 enabled = true,
                 id = "UUID",
                 name = "key-auth",
@@ -1169,6 +1181,7 @@ describe("declarative config: flatten", function()
                 },
                 consumer = null,
                 created_at = 1234567890,
+                updated_at = 1234567890,
                 enabled = true,
                 id = "UUID",
                 name = "tcp-log",
@@ -1296,6 +1309,7 @@ describe("declarative config: flatten", function()
           targets = {
             {
               created_at = 1234567890,
+              updated_at = 1234567890,
               id = "UUID",
               tags = null,
               target = '127.0.0.1:6661',
@@ -1305,6 +1319,7 @@ describe("declarative config: flatten", function()
             },
             {
               created_at = 1234567890,
+              updated_at = 1234567890,
               id = "UUID",
               tags = null,
               target = '127.0.0.1:6661',
@@ -1352,6 +1367,7 @@ describe("declarative config: flatten", function()
               username_lower = null,
               custom_id = null,
               created_at = 1234567890,
+              updated_at = 1234567890,
               tags = null,
               type = 0, -- XXX EE
               ws_id = null,
@@ -1378,6 +1394,7 @@ describe("declarative config: flatten", function()
               username_lower = null,
               custom_id = null,
               created_at = 1234567890,
+              updated_at = 1234567890,
               tags = null,
               type = 0, -- XXX EE
               ws_id = null,
@@ -1419,6 +1436,7 @@ describe("declarative config: flatten", function()
               username_lower = null,
               custom_id = null,
               created_at = 1234567890,
+              updated_at = 1234567890,
               tags = null,
               type = 0, -- XXX EE
               ws_id = null,
@@ -1489,6 +1507,7 @@ describe("declarative config: flatten", function()
               username_lower = null,
               custom_id = null,
               created_at = 1234567890,
+              updated_at = 1234567890,
               tags = null,
               type = 0, -- XXX EE
               ws_id = null,
@@ -1559,6 +1578,7 @@ describe("declarative config: flatten", function()
               username_lower = null,
               custom_id = null,
               created_at = 1234567890,
+              updated_at = 1234567890,
               tags = null,
               type = 0, -- XXX EE
               ws_id = null,
@@ -1629,6 +1649,7 @@ describe("declarative config: flatten", function()
               username_lower = null,
               custom_id = null,
               created_at = 1234567890,
+              updated_at = 1234567890,
               tags = null,
               type = 0, -- XXX EE
               ws_id = null,
@@ -1793,6 +1814,7 @@ describe("declarative config: flatten", function()
           assert.same({
             consumers = { {
                 created_at = 1234567890,
+                updated_at = 1234567890,
                 custom_id = null,
                 id = "UUID",
                 tags = null,
@@ -1837,6 +1859,7 @@ describe("declarative config: flatten", function()
           assert.same(helpers.deep_sort{
             targets = { {
                 created_at = 1234567890,
+                updated_at = 1234567890,
                 id = "UUID",
                 tags = null,
                 target = "127.0.0.1:6661",
@@ -1847,6 +1870,7 @@ describe("declarative config: flatten", function()
                 ws_id = null,
               }, {
                 created_at = 1234567890,
+                updated_at = 1234567890,
                 id = "UUID",
                 tags = null,
                 target = "127.0.0.1:6661",
@@ -1860,6 +1884,7 @@ describe("declarative config: flatten", function()
                 algorithm = "round-robin",
                 client_certificate = null,
                 created_at = 1234567890,
+                updated_at = 1234567890,
                 hash_fallback = "none",
                 hash_fallback_header = null,
                 hash_on = "none",
@@ -1918,6 +1943,7 @@ describe("declarative config: flatten", function()
                 algorithm = "round-robin",
                 client_certificate = null,
                 created_at = 1234567890,
+                updated_at = 1234567890,
                 hash_fallback = "none",
                 hash_fallback_header = null,
                 hash_on = "none",
@@ -1992,6 +2018,7 @@ describe("declarative config: flatten", function()
           assert.same({
             consumers = { {
                 created_at = 1234567890,
+                updated_at = 1234567890,
                 custom_id = null,
                 id = "UUID",
                 tags = null,
@@ -2021,6 +2048,7 @@ describe("declarative config: flatten", function()
           assert.same({
             consumers = { {
                 created_at = 1234567890,
+                updated_at = 1234567890,
                 custom_id = null,
                 id = "UUID",
                 tags = null,

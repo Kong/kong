@@ -10,6 +10,20 @@ local Schema = require "kong.db.schema"
 local certificates = require "kong.db.schema.entities.certificates"
 local upstreams = require "kong.db.schema.entities.upstreams"
 
+local function setup_global_env()
+  _G.kong = _G.kong or {}
+  _G.kong.log = _G.kong.log or {
+    debug = function(msg)
+      ngx.log(ngx.DEBUG, msg)
+    end,
+    error = function(msg)
+      ngx.log(ngx.ERR, msg)
+    end,
+    warn = function (msg)
+      ngx.log(ngx.WARN, msg)
+    end
+  }
+end
 
 assert(Schema.new(certificates))
 local Upstreams = Schema.new(upstreams)
@@ -25,7 +39,7 @@ describe("load upstreams", function()
                            .. ("%x"):rep(4) .. "%-" .. ("%x"):rep(4) .. "%-"
                            .. ("%x"):rep(12) .. "$"
 
-
+  setup_global_env()
   it("validates a valid load upstream", function()
     local u = {
       id              = a_valid_uuid,
@@ -62,43 +76,43 @@ describe("load upstreams", function()
     assert.truthy(errs["hash_on_cookie"])
   end)
 
-  it("invalid healthckecks.active.timeout produces error", function()
+  it("invalid healthchecks.active.timeout produces error", function()
     local ok, errs = validate({ healthchecks = { active = { timeout = -1 } } } )
     assert.falsy(ok)
     assert.truthy(errs.healthchecks.active.timeout)
   end)
 
-  it("invalid healthckecks.active.concurrency produces error", function()
+  it("invalid healthchecks.active.concurrency produces error", function()
     local ok, errs = validate({ healthchecks = { active = { concurrency = -1 } } } )
     assert.falsy(ok)
     assert.truthy(errs.healthchecks.active.concurrency)
   end)
 
-  it("invalid healthckecks.active.headers produces error", function()
+  it("invalid healthchecks.active.headers produces error", function()
     local ok, errs = validate({ healthchecks = { active = { headers = { 114514 } } } } )
     assert.falsy(ok)
     assert.truthy(errs.healthchecks.active.headers)
   end)
 
-  it("invalid healthckecks.active.http_path produces error", function()
+  it("invalid healthchecks.active.http_path produces error", function()
     local ok, errs = validate({ healthchecks = { active = { http_path = "potato" } } } )
     assert.falsy(ok)
     assert.truthy(errs.healthchecks.active.http_path)
   end)
 
-  it("invalid healthckecks.active.healthy.interval produces error", function()
+  it("invalid healthchecks.active.healthy.interval produces error", function()
     local ok, errs = validate({ healthchecks = { active = { healthy = { interval = -1 } } } } )
     assert.falsy(ok)
     assert.truthy(errs.healthchecks.active.healthy.interval)
   end)
 
-  it("invalid healthckecks.active.healthy.successes produces error", function()
+  it("invalid healthchecks.active.healthy.successes produces error", function()
     local ok, errs = validate({ healthchecks = { active = { healthy = { successes = -1 } } } } )
     assert.falsy(ok)
     assert.truthy(errs.healthchecks.active.healthy.successes)
   end)
 
-  it("invalid healthckecks.active.healthy.http_statuses produces error", function()
+  it("invalid healthchecks.active.healthy.http_statuses produces error", function()
     local ok, errs = validate({ healthchecks = { active = { healthy = { http_statuses = "potato" } } } } )
     assert.falsy(ok)
     assert.truthy(errs.healthchecks.active.healthy.http_statuses)
@@ -232,7 +246,6 @@ describe("load upstreams", function()
     assert.not_nil(errs.hash_fallback_uri_capture)
   end)
 
-
   it("produces set use_srv_name flag", function()
     local u = {
       name = "www.example.com",
@@ -245,7 +258,6 @@ describe("load upstreams", function()
     assert.same(u.name, "www.example.com")
     assert.same(u.use_srv_name, true)
   end)
-
 
   it("produces defaults", function()
     local u = {

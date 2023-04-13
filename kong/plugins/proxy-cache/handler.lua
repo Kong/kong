@@ -294,6 +294,12 @@ function ProxyCacheHandler:access(conf)
   local consumer = kong.client.get_consumer()
   local route = kong.router.get_route()
   local uri = ngx_re_sub(ngx.var.request, "\\?.*", "", "oj")
+
+  -- if we want the cache-key uri only to be lowercase
+  if conf.ignore_uri_case then
+    uri = lower(uri)
+  end
+
   local cache_key, err = cache_key.build_cache_key(consumer and consumer.id,
                                                    route    and route.id,
                                                    kong.request.get_method(),
@@ -407,6 +413,7 @@ function ProxyCacheHandler:header_filter(conf)
 
   -- if this is a cacheable request, gather the headers and mark it so
   if cacheable_response(conf, cc) then
+    -- TODO: should this use the kong.conf configured limit?
     proxy_cache.res_headers = resp_get_headers(0, true)
     proxy_cache.res_ttl = conf.cache_control and resource_ttl(cc) or conf.cache_ttl
 

@@ -13,6 +13,21 @@ local utils = require "kong.tools.utils"
 Schema.new(certificates)
 local Snis = assert(Schema.new(snis))
 
+local function setup_global_env()
+  _G.kong = _G.kong or {}
+  _G.kong.log = _G.kong.log or {
+    debug = function(msg)
+      ngx.log(ngx.DEBUG, msg)
+    end,
+    error = function(msg)
+      ngx.log(ngx.ERR, msg)
+    end,
+    warn = function (msg)
+      ngx.log(ngx.WARN, msg)
+    end
+  }
+end
+
 local function validate(b)
   return Snis:validate(Snis:process_auto_fields(b, "insert"))
 end
@@ -20,6 +35,8 @@ end
 
 describe("snis", function()
   local certificate = { id = utils.uuid() }
+
+  setup_global_env()
 
   describe("name", function()
     it("accepts a hostname", function()

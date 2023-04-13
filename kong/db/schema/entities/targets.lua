@@ -33,6 +33,7 @@ return {
   fields = {
     { id = typedefs.uuid },
     { created_at = typedefs.auto_timestamp_ms },
+    { updated_at = typedefs.auto_timestamp_ms },
     { upstream   = { type = "foreign", reference = "upstreams", required = true, on_delete = "cascade" }, },
     { target     = { type = "string", required = true, custom_validator = validate_target, }, },
     { weight     = { type = "integer", default = 100, between = { 0, 65535 }, }, },

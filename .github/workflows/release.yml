@@ -154,7 +154,7 @@ jobs:
         ./configure --prefix=/usr/local/git
         make -j$(nproc)
         make install
-    
+
     - name: Add Git to PATH
       if: matrix.package == 'rpm' || matrix.image == 'ubuntu:18.04'
       run: |
@@ -181,7 +181,8 @@ jobs:
       if: env.GHA_CACHE == 'true'
       uses: actions/cache@v3
       with:
-        path: bazel-bin/pkg
+        path: |
+          bazel-bin/pkg
         key: ${{ matrix.label }}-build-${{ hashFiles('.requirements', 'plugins-ee/**/*.lua', 'kong/**/*.lua', 'distribution/*.sh', 'distribution/*.lua', '**/*.rockspec', '**/*.bzl', '**/*.bazel') }}
 
     - name: Set .requirements into environment variables
@@ -260,7 +261,8 @@ jobs:
       if: failure()
       run: |
         cat bazel-out/_tmp/actions/stderr-*
-        sudo dmesg
+        sudo dmesg || true
+        tail -n500 bazel-out/**/*/CMake.log || true
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
@@ -332,7 +334,7 @@ jobs:
         path: bazel-bin/pkg
 
     - name: Login to Docker Hub
-      if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN }}
+      if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' }}
       uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c # v2.1.0
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
@@ -357,13 +359,10 @@ jobs:
     - name: Set Docker build args
       id: docker_build_args
       run: |
-        docker_platforms="${{ matrix.docker_platforms }}"
-        if [[ -z "$docker_platforms" ]]; then
-          docker_platforms="linux/amd64"
+        platforms="${{ matrix.docker_platforms }}"
+        if [[ -z "$platforms" ]]; then
+          platforms="linux/amd64"
         fi
-
-        echo "docker_platforms=$docker_platforms"
-        echo "docker_platforms=$docker_platforms" >> $GITHUB_OUTPUT
 
         if [[ "${{ matrix.package }}" == 'rpm' ]]; then
           rpm_platform="${{ matrix.rpm_platform }}"
@@ -417,7 +416,7 @@ jobs:
 
     - name: Login to Docker Hub
       if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN }}
-      uses: docker/login-action@ec9cdf07d570632daeb912f5b2099cb9ec1d01e6 # v2.1.0
+      uses: docker/login-action@219c305e1ce92a755f3aa4ba17387c95df31e987 # v2.1.0
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
@@ -436,6 +435,7 @@ jobs:
         )"
         echo "manifest_list_exists=$manifest_list_exists"
         echo "manifest_list_exists=$manifest_list_exists" >> $GITHUB_OUTPUT
+
         amd64_sha="$(regctl image digest "${IMAGE}" --platform linux/amd64 || echo '')"
         arm64_sha="$(regctl image digest "${IMAGE}" --platform linux/arm64 || echo '')"
         echo "amd64_sha=$amd64_sha"
@@ -491,7 +491,7 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Login to Docker Hub
-      uses: docker/login-action@ec9cdf07d570632daeb912f5b2099cb9ec1d01e6 # v2.1.0
+      uses: docker/login-action@219c305e1ce92a755f3aa4ba17387c95df31e987 # v2.1.0
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
@@ -620,16 +620,16 @@ jobs:
     - name: Upload Packages to PULP
       env:
         ARCHITECTURE: ${{ steps.pkg-arch.outputs.arch }}
-        ARTIFACT_TYPE: ${{ matrix.artifact-type }}
+        OFFICIAL_RELEASE: ${{ github.event.inputs.official }}
+        PULP_HOST: https://api.download.konghq.com
+        PULP_USERNAME: admin
+        # PULP_PASSWORD: ${{ secrets.PULP_DEV_PASSWORD }}
+        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
         ARTIFACT_VERSION: ${{ matrix.artifact-version }}
+        ARTIFACT_TYPE: ${{ matrix.artifact-type }}
         ARTIFACT: ${{ matrix.artifact }}
         KONG_RELEASE_LABEL: ${{ needs.metadata.outputs.release-label }}
-        OFFICIAL_RELEASE: ${{ github.event.inputs.official }}
         PACKAGE_TYPE: ${{ matrix.package }}
-        PULP_HOST: https://api.download.konghq.com
-        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
-        # PULP_PASSWORD: ${{ secrets.PULP_DEV_PASSWORD }}
-        PULP_USERNAME: admin
         VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
       run: |
         if [[ ${{ matrix.label }} == *-fips ]]; then
@@ -653,7 +653,7 @@ jobs:
 
     steps:
     - name: Login to Docker Hub
-      uses: docker/login-action@ec9cdf07d570632daeb912f5b2099cb9ec1d01e6 # v2.1.0
+      uses: docker/login-action@219c305e1ce92a755f3aa4ba17387c95df31e987 # v2.1.0
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}

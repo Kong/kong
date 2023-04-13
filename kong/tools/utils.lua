@@ -39,7 +39,6 @@ local lower         = string.lower
 local fmt           = string.format
 local find          = string.find
 local gsub          = string.gsub
-local match         = string.match
 local join          = pl_stringx.join
 local split         = pl_stringx.split
 local re_find       = ngx.re.find
@@ -47,6 +46,7 @@ local re_match      = ngx.re.match
 local inflate_gzip  = zlib.inflateGzip
 local deflate_gzip  = zlib.deflateGzip
 local stringio_open = pl_stringio.open
+local match         = string.match
 
 ffi.cdef[[
 typedef unsigned char u_char;
@@ -695,7 +695,7 @@ end
 -- Will not throw an error if the module was not found, but will throw an error if the
 -- loading failed for another reason (eg: syntax error).
 -- @param module_name Path of the module to load (ex: kong.plugins.keyauth.api).
--- @return success A boolean indicating wether the module was found.
+-- @return success A boolean indicating whether the module was found.
 -- @return module The retrieved module, or the error in case of a failure
 function _M.load_module_if_exists(module_name)
   local status, res = xpcall(function()

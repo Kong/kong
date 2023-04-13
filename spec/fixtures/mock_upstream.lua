@@ -130,7 +130,7 @@ end
 
 local function filter_access_by_basic_auth(expected_username,
                                            expected_password)
-   local headers = ngx.req.get_headers()
+   local headers = ngx.req.get_headers(0)
 
    local username, password =
    find_http_credentials(headers["proxy-authorization"])
@@ -207,7 +207,7 @@ local function get_post_data(content_type)
     if content_type:find("application/x-www-form-urlencoded", nil, true) then
 
       kind        = "form"
-      params, err = ngx.req.get_post_args()
+      params, err = ngx.req.get_post_args(0)
 
     elseif content_type:find("multipart/form-data", nil, true) then
       kind        = "multipart-form"
@@ -239,7 +239,7 @@ local function get_default_json_response()
     post_data = get_post_data(headers["Content-Type"]),
     url       = ("%s://%s:%s%s"):format(vars.scheme, vars.host,
                                         vars.server_port, vars.request_uri),
-    uri_args  = ngx.req.get_uri_args(),
+    uri_args  = ngx.req.get_uri_args(0),
     vars      = vars,
   }
 end
@@ -328,8 +328,8 @@ local function store_log(logname)
     entries = { entries }
   end
 
-  local log_req_headers = ngx.req.get_headers()
   local log_req_params = ngx.req.get_uri_args()
+  local log_req_headers = ngx.req.get_headers(0)
 
   for i = 1, #entries do
     local store = {

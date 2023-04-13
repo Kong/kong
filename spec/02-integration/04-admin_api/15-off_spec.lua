@@ -733,6 +733,7 @@ describe("Admin API #off", function()
           consumers = {
             { id = "d885e256-1abe-5e24-80b6-8f68fe59ea8e",
               created_at = 1566863706,
+              updated_at = config.consumers[1].updated_at,
               username = "bobo",
               type = 0,
               custom_id = lyaml.null,
@@ -743,6 +744,7 @@ describe("Admin API #off", function()
           workspaces = {
             { id = "<uuid>", -- see above
               created_at = 12345, -- see above
+              updated_at = config.workspaces[1].updated_at,
               name = "default",
               comment = {},
               config = {

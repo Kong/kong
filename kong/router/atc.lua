@@ -39,7 +39,6 @@ local ngx_log       = ngx.log
 local get_phase     = ngx.get_phase
 local get_method    = ngx.req.get_method
 local get_headers   = ngx.req.get_headers
-local ngx_WARN      = ngx.WARN
 local ngx_ERR       = ngx.ERR
 
 
@@ -52,7 +51,6 @@ local get_upstream_uri_v0  = utils.get_upstream_uri_v0
 local route_match_stat     = utils.route_match_stat
 
 
-local MAX_REQ_HEADERS  = 100
 local DEFAULT_MATCH_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
 
 
@@ -529,10 +527,13 @@ function _M:exec(ctx)
   local headers, headers_key
   if self.match_headers then
     local err
-    headers, err = get_headers(MAX_REQ_HEADERS)
+    headers, err = get_headers()
     if err == "truncated" then
-      ngx_log(ngx_WARN, "retrieved ", MAX_REQ_HEADERS, " headers for evaluation ",
-                        "(max) but request had more; other headers will be ignored")
+      local lua_max_req_headers = kong and kong.configuration and kong.configuration.lua_max_req_headers or 100
+      ngx_log(ngx_ERR, "router: not all request headers were read in order to determine the route as ",
+                       "the request contains more than ", lua_max_req_headers, " headers, route selection ",
+                       "may be inaccurate, consider increasing the 'lua_max_req_headers' configuration value ",
+                       "(currently at ", lua_max_req_headers, ")")
     end
 
     headers["host"] = nil

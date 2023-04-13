@@ -4,7 +4,7 @@ rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git+https://github.com/Kong/kong.git",
-  tag = "3.2.1"
+  tag = "3.3.0"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -50,12 +50,12 @@ dependencies = {
   "lua-resty-template == 1.9",
   "lua-resty-passwdqc == 1.1",
   "lua-resty-ipmatcher == 0.6.1",
-  "lua-resty-acme == 0.10.1",
-  "lua-resty-session == 4.0.3",
   "lua-resty-websocket-proxy == 0.0.1",
   "lua-resty-ljsonschema == 1.1.3",
   "lua-resty-gcp == 0.0.11-1",
   "lua-resty-aws == 1.1.2",
+  "lua-resty-acme == 0.11.0",
+  "lua-resty-session == 4.0.3",
   "lua-resty-timer-ng == 0.2.4",
   "lpeg == 1.0.2",
 }
@@ -93,6 +93,7 @@ build = {
     ["kong.clustering.compat"] = "kong/clustering/compat/init.lua",
     ["kong.clustering.compat.version"] = "kong/clustering/compat/version.lua",
     ["kong.clustering.compat.removed_fields"] = "kong/clustering/compat/removed_fields.lua",
+    ["kong.clustering.compat.checkers"] = "kong/clustering/compat/checkers.lua",
     ["kong.clustering.config_helper"] = "kong/clustering/config_helper.lua",
     ["kong.clustering.tls"] = "kong/clustering/tls.lua",
     ["kong.clustering.telemetry"] = "kong/clustering/telemetry.lua",
@@ -542,6 +543,7 @@ build = {
     ["kong.keyring.strategies.vault"] = "kong/keyring/strategies/vault.lua",
 
     ["kong.pdk.tracing"] = "kong/pdk/tracing.lua",
+    ["kong.pdk.plugin"] = "kong/pdk/plugin.lua",
 
     ["kong.plugins.basic-auth.migrations"] = "kong/plugins/basic-auth/migrations/init.lua",
     ["kong.plugins.basic-auth.migrations.000_base_basic_auth"] = "kong/plugins/basic-auth/migrations/000_base_basic_auth.lua",
@@ -729,6 +731,7 @@ build = {
     ["kong.plugins.acme.migrations"] = "kong/plugins/acme/migrations/init.lua",
     ["kong.plugins.acme.schema"] = "kong/plugins/acme/schema.lua",
     ["kong.plugins.acme.storage.kong"] = "kong/plugins/acme/storage/kong.lua",
+    ["kong.plugins.acme.reserved_words"] = "kong/plugins/acme/reserved_words.lua",
 
     ["kong.plugins.prometheus.api"] = "kong/plugins/prometheus/api.lua",
     ["kong.plugins.prometheus.status_api"] = "kong/plugins/prometheus/status_api.lua",

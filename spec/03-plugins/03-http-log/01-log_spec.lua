@@ -45,6 +45,52 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      local service1_2 = bp.services:insert{
+        protocol = "http",
+        host     = helpers.mock_upstream_host,
+        port     = helpers.mock_upstream_port,
+      }
+
+      local route1_2 = bp.routes:insert {
+        hosts   = { "content_type_application_json_http_logging.test" },
+        service = service1_2
+      }
+
+      bp.plugins:insert {
+        route = { id = route1_2.id },
+        name     = "http-log",
+        config   = {
+          http_endpoint = "http://" .. helpers.mock_upstream_host
+                                    .. ":"
+                                    .. helpers.mock_upstream_port
+                                    .. "/post_log/http2",
+          content_type = "application/json"
+        }
+      }
+
+      local service1_3 = bp.services:insert{
+        protocol = "http",
+        host     = helpers.mock_upstream_host,
+        port     = helpers.mock_upstream_port,
+      }
+
+      local route1_3 = bp.routes:insert {
+        hosts   = { "content_type_application_json_charset_utf_8_http_logging.test" },
+        service = service1_3
+      }
+
+      bp.plugins:insert {
+        route = { id = route1_3.id },
+        name     = "http-log",
+        config   = {
+          http_endpoint = "http://" .. helpers.mock_upstream_host
+                                    .. ":"
+                                    .. helpers.mock_upstream_port
+                                    .. "/post_log/http3",
+          content_type = "application/json; charset=utf-8"
+        }
+      }
+
       local service2 = bp.services:insert{
         protocol = "http",
         host     = helpers.mock_upstream_host,
@@ -248,11 +294,11 @@ for _, strategy in helpers.each_strategy() do
           }
         }
       }
-      
+
       local ws = bp.workspaces:insert{
         name = "ws1"
       }
-      
+
       local service12 = bp.services:insert_ws({
         protocol = "http",
         host     = helpers.mock_upstream_host,
@@ -265,7 +311,7 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "http_logging.workspace.name" },
         service = service12
       }, ws)
-      
+
       bp.plugins:insert_ws ({
         route = { id = route12.id },
         name     = "http-log",
@@ -276,7 +322,7 @@ for _, strategy in helpers.each_strategy() do
             .. "/post_log/http_name"
         }
       }, ws)
-      
+
       helpers.setenv(vault_env_name, vault_env_value)
 
       assert(helpers.start_kong({
@@ -334,7 +380,7 @@ for _, strategy in helpers.each_strategy() do
         end
       end, 10)
     end)
-    
+
     it("includes workspace_name 'ws1' in payload",function ()
       local res = assert(proxy_client:send({
         path = "/wname_test",
@@ -343,7 +389,7 @@ for _, strategy in helpers.each_strategy() do
         }
       }))
       assert.res_status(200, res)
-      
+
       helpers.wait_until(function()
         local client = assert(helpers.http_client(helpers.mock_upstream_host,
                                                   helpers.mock_upstream_port))
@@ -360,6 +406,68 @@ for _, strategy in helpers.each_strategy() do
         if #body.entries == 1 then
           assert.same("127.0.0.1", body.entries[1].client_ip)
           assert.same("ws1", body.entries[1].workspace_name)
+          return true
+        end
+      end, 10)
+    end)
+
+    it("logs to HTTP with content-type 'application/json'", function()
+      local res = assert(proxy_client:send({
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["Host"] = "content_type_application_json_http_logging.test"
+        }
+      }))
+      assert.res_status(200, res)
+
+      helpers.wait_until(function()
+        local client = assert(helpers.http_client(helpers.mock_upstream_host,
+                                                  helpers.mock_upstream_port))
+        local res = assert(client:send {
+          method  = "GET",
+          path    = "/read_log/http2",
+          headers = {
+            Accept = "application/json"
+          }
+        })
+        local raw = assert.res_status(200, res)
+        local body = cjson.decode(raw)
+
+        if #body.entries == 1 then
+          assert.same("127.0.0.1", body.entries[1].client_ip)
+          assert.same(body.entries[1].log_req_headers['content-type'] or "", "application/json")
+          return true
+        end
+      end, 10)
+    end)
+
+    it("logs to HTTP with content-type 'application/json; charset=utf-8'", function()
+      local res = assert(proxy_client:send({
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["Host"] = "content_type_application_json_charset_utf_8_http_logging.test"
+        }
+      }))
+      assert.res_status(200, res)
+
+      helpers.wait_until(function()
+        local client = assert(helpers.http_client(helpers.mock_upstream_host,
+                                                  helpers.mock_upstream_port))
+        local res = assert(client:send {
+          method  = "GET",
+          path    = "/read_log/http3",
+          headers = {
+            Accept = "application/json"
+          }
+        })
+        local raw = assert.res_status(200, res)
+        local body = cjson.decode(raw)
+
+        if #body.entries == 1 then
+          assert.same("127.0.0.1", body.entries[1].client_ip)
+          assert.same(body.entries[1].log_req_headers['content-type'] or "", "application/json; charset=utf-8")
           return true
         end
       end, 10)

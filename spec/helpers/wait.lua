@@ -17,29 +17,23 @@ local E_ARG_COUNT = "assertion.internal.argtolittle"
 local E_ARG_TYPE = "assertion.internal.badargtype"
 
 
----@alias spec.helpers.wait.ctx.result
----| "timeout"
----| "error"
----| "success"
----| "max tries"
-
+--- spec.helpers.wait.ctx.result
+-- "timeout", "error", "success", "max tries"
 local TIMEOUT   = "timeout"
 local ERROR     = "error"
 local SUCCESS   = "success"
 local MAX_TRIES = "max tries"
 
 
----@alias spec.helpers.wait.ctx.condition
----| "truthy"
----| "falsy"
----| "error"
----| "no_error"
-
-
---- helper functions that check the result of pcall() and report if the
---- wait ctx condition has been met
 ---
----@type table<spec.helpers.wait.ctx.condition, fun(boolean, any):boolean>
+-- @table spec.helpers.wait.ctx.condition
+-- helper functions that check the result of pcall() and report if the
+-- wait ctx condition has been met
+--
+-- @field "truthy"
+-- @field "falsy"
+-- @field "error"
+-- @field "no_error"
 local COND = {
   truthy = function(pok, ok_or_err)
     return (pok and ok_or_err and true) or false
@@ -59,8 +53,9 @@ local COND = {
 }
 
 
----@param ... any
----@return any
+---
+-- @param ... any
+-- @return any
 local function first_non_nil(...)
   local n = select("#", ...)
   for i = 1, n do
@@ -72,12 +67,13 @@ local function first_non_nil(...)
 end
 
 
----@param exp_type string
----@param field string|integer
----@param value any
----@param caller? string
----@param level? integer
----@return any
+---
+-- @param exp_type string
+-- @param field string|integer
+-- @param value any
+-- @param caller? string
+-- @param level? integer
+-- @return any
 local function check_type(exp_type, field, value, caller, level)
   caller = caller or "wait_until"
   level = (level or 1) + 1
@@ -112,24 +108,25 @@ local DEFAULTS = {
 }
 
 
----@class spec.helpers.wait.ctx
 ---
----@field condition           "truthy"|"falsy"|"error"|"no_error"
----@field condition_met       boolean
----@field debug?              boolean
----@field elapsed             number
----@field last_raised_error   any
----@field error_raised        boolean
----@field fn                  function
----@field ignore_exceptions   boolean
----@field last_returned_error any
----@field last_returned_value any
----@field last_error          any
----@field message?            string
----@field result              spec.helpers.wait.ctx.result
----@field step                number
----@field timeout             number
----@field tries               number
+-- @table spec.helpers.wait.ctx
+--
+-- @field condition           "truthy"|"falsy"|"error"|"no_error"
+-- @field condition_met       boolean
+-- @field debug?              boolean
+-- @field elapsed             number
+-- @field last_raised_error   any
+-- @field error_raised        boolean
+-- @field fn                  function
+-- @field ignore_exceptions   boolean
+-- @field last_returned_error any
+-- @field last_returned_value any
+-- @field last_error          any
+-- @field message?            string
+-- @field result              spec.helpers.wait.ctx.result
+-- @field step                number
+-- @field timeout             number
+-- @field tries               number
 local wait_ctx = {
   condition           = nil,
   condition_met       = false,
@@ -266,8 +263,9 @@ function wait_ctx:validate(key, value, caller, level)
 end
 
 
----@param state table
----@return spec.helpers.wait.ctx
+---
+-- @param state table
+-- @return spec.helpers.wait.ctx
 local function get_or_create_ctx(state)
   local ctx = rawget(state, "wait_ctx")
 
@@ -280,20 +278,22 @@ local function get_or_create_ctx(state)
 end
 
 
----@param ctx spec.helpers.wait.ctx
----@param key string
----@param ... any
+---
+-- @param ctx spec.helpers.wait.ctx
+-- @param key string
+-- @param ... any
 local function param(ctx, key, ...)
   local value = first_non_nil(first_non_nil(...), DEFAULTS[key])
   ctx[key] = ctx:validate(key, value, "wait_until", 3)
 end
 
 
----@param  state     table
----@param  arguments table
----@param  level     integer
----@return boolean   ok
----@return table     return_values
+---
+-- @param  state     table
+-- @param  arguments table
+-- @param  level     integer
+-- @return boolean   ok
+-- @return table     return_values
 local function wait_until(state, arguments, level)
   assert(arguments.n > 0,
          say(E_ARG_COUNT, { "wait_until", 1, arguments.n }),
@@ -409,7 +409,8 @@ luassert:register("modifier", "ignore_exceptions",
                   wait_until_modifier("ignore_exceptions"))
 
 
----@param ctx spec.helpers.wait.ctx
+---
+-- @param ctx spec.helpers.wait.ctx
 local function ctx_builder(ctx)
   local self = setmetatable({}, {
     __index = function(_, key)

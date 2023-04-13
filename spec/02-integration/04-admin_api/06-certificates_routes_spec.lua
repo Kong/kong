@@ -81,7 +81,12 @@ describe("Admin API: #" .. strategy, function()
   local function get_certificates()
     local res  = client:get("/certificates")
     local body = assert.res_status(200, res)
-    return cjson.decode(body)
+    local json = cjson.decode(body)
+    for _, cert in ipairs(json.data) do
+      cert.updated_at = nil
+    end
+
+    return json
   end
 
   local bp, db
@@ -474,6 +479,7 @@ describe("Admin API: #" .. strategy, function()
       it("upserts if found", function()
         local certificate = add_certificate()
 
+        ngx.sleep(1)
         local res = client:put("/certificates/" .. certificate.id, {
           body = { cert = ssl_fixtures.cert_alt, key = ssl_fixtures.key_alt },
           headers = { ["Content-Type"] = "application/json" },
@@ -486,6 +492,7 @@ describe("Admin API: #" .. strategy, function()
         assert.equal(cjson.null, json.cert_alt)
         assert.equal(cjson.null, json.key_alt)
         assert.same({}, json.snis)
+        assert.truthy(certificate.updated_at < json.updated_at)
 
         json.snis = nil
 
@@ -747,6 +754,9 @@ describe("Admin API: #" .. strategy, function()
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
 
+          certificate.updated_at = nil
+          json.updated_at = nil
+
           assert.same(certificate, json)
         end
       end)
@@ -762,7 +772,8 @@ describe("Admin API: #" .. strategy, function()
 
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-
+          json.updated_at = nil
+          certificate.updated_at = nil
           assert.same(certificate, json)
         end
       end)
@@ -845,7 +856,8 @@ describe("Admin API: #" .. strategy, function()
 
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-
+          json.updated_at = nil
+          certificate.updated_at = nil
           assert.same(certificate, json)
         end
       end)
@@ -861,7 +873,8 @@ describe("Admin API: #" .. strategy, function()
 
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-
+          json.updated_at = nil
+          certificate.updated_at = nil
           assert.same(certificate, json)
         end
       end)
@@ -978,6 +991,8 @@ describe("Admin API: #" .. strategy, function()
 
         -- make sure we did not add any certificate or sni
         local json = get_certificates()
+        json.updated_at = nil
+        json_before.updated_at = nil
         assert.same(json_before, json)
       end)
 
@@ -1025,6 +1040,8 @@ describe("Admin API: #" .. strategy, function()
 
         -- make sure we did not add any certificate or sni
         local json = get_certificates()
+        json_before.updated_at = nil
+        json.update_at = nil
         assert.same(json_before, json)
       end)
 
@@ -1353,6 +1370,7 @@ describe("Admin API: #" .. strategy, function()
         })
         local n2 = get_name()
 
+        ngx.sleep(1)
         local res = client:put("/snis/" .. sni.id, {
           body = {
             name = n2,
@@ -1367,6 +1385,7 @@ describe("Admin API: #" .. strategy, function()
 
         local in_db = assert(db.snis:select({ id = sni.id }, { nulls = true }))
         assert.same(json, in_db)
+        assert.truthy(sni.updated_at < json.updated_at)
       end)
 
       it("handles invalid input", function()

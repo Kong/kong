@@ -598,7 +598,7 @@ describe("[latency]", function()
     end)
 
 
-    it("retries, after all adresses failed, retry end", function()
+    it("retries, after all addresses failed, retry end", function()
       dnsSRV({
         { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
         { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },

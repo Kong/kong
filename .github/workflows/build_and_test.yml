@@ -231,10 +231,6 @@ jobs:
     runs-on: [self-hosted, Hetzner]
     needs: build
 
-    env:
-      KONG_TEST_PG_DATABASE: kong
-      KONG_TEST_PG_USER: kong
-
     services:
       postgres:
         image: postgres:13

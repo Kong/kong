@@ -78,7 +78,6 @@ local function new(self, major_version)
   local _RESPONSE = {}
 
   local MIN_HEADERS          = 1
-  local MAX_HEADERS_DEFAULT  = 100
   local MAX_HEADERS          = 1000
 
   local MIN_STATUS_CODE      = 100
@@ -132,66 +131,66 @@ local function new(self, major_version)
     [16] = "Unauthenticated",
   }
 
-local get_http_error_message
-do
-  local HTTP_ERROR_MESSAGES = {
-    [400] = "Bad request",
-    [401] = "Unauthorized",
-    [402] = "Payment required",
-    [403] = "Forbidden",
-    [404] = "Not found",
-    [405] = "Method not allowed",
-    [406] = "Not acceptable",
-    [407] = "Proxy authentication required",
-    [408] = "Request timeout",
-    [409] = "Conflict",
-    [410] = "Gone",
-    [411] = "Length required",
-    [412] = "Precondition failed",
-    [413] = "Payload too large",
-    [414] = "URI too long",
-    [415] = "Unsupported media type",
-    [416] = "Range not satisfiable",
-    [417] = "Expectation failed",
-    [418] = "I'm a teapot",
-    [421] = "Misdirected request",
-    [422] = "Unprocessable entity",
-    [423] = "Locked",
-    [424] = "Failed dependency",
-    [425] = "Too early",
-    [426] = "Upgrade required",
-    [428] = "Precondition required",
-    [429] = "Too many requests",
-    [431] = "Request header fields too large",
-    [451] = "Unavailable for legal reasons",
-    [494] = "Request header or cookie too large",
-    [500] = "An unexpected error occurred",
-    [501] = "Not implemented",
-    [502] = "An invalid response was received from the upstream server",
-    [503] = "The upstream server is currently unavailable",
-    [504] = "The upstream server is timing out",
-    [505] = "HTTP version not supported",
-    [506] = "Variant also negotiates",
-    [507] = "Insufficient storage",
-    [508] = "Loop detected",
-    [510] = "Not extended",
-    [511] = "Network authentication required",
-  }
+  local get_http_error_message
+  do
+    local HTTP_ERROR_MESSAGES = {
+      [400] = "Bad request",
+      [401] = "Unauthorized",
+      [402] = "Payment required",
+      [403] = "Forbidden",
+      [404] = "Not found",
+      [405] = "Method not allowed",
+      [406] = "Not acceptable",
+      [407] = "Proxy authentication required",
+      [408] = "Request timeout",
+      [409] = "Conflict",
+      [410] = "Gone",
+      [411] = "Length required",
+      [412] = "Precondition failed",
+      [413] = "Payload too large",
+      [414] = "URI too long",
+      [415] = "Unsupported media type",
+      [416] = "Range not satisfiable",
+      [417] = "Expectation failed",
+      [418] = "I'm a teapot",
+      [421] = "Misdirected request",
+      [422] = "Unprocessable entity",
+      [423] = "Locked",
+      [424] = "Failed dependency",
+      [425] = "Too early",
+      [426] = "Upgrade required",
+      [428] = "Precondition required",
+      [429] = "Too many requests",
+      [431] = "Request header fields too large",
+      [451] = "Unavailable for legal reasons",
+      [494] = "Request header or cookie too large",
+      [500] = "An unexpected error occurred",
+      [501] = "Not implemented",
+      [502] = "An invalid response was received from the upstream server",
+      [503] = "The upstream server is currently unavailable",
+      [504] = "The upstream server is timing out",
+      [505] = "HTTP version not supported",
+      [506] = "Variant also negotiates",
+      [507] = "Insufficient storage",
+      [508] = "Loop detected",
+      [510] = "Not extended",
+      [511] = "Network authentication required",
+    }
 
 
-  function get_http_error_message(status)
-    local msg = HTTP_ERROR_MESSAGES[status]
+    function get_http_error_message(status)
+      local msg = HTTP_ERROR_MESSAGES[status]
 
-    if msg then
+      if msg then
+        return msg
+      end
+
+      msg = fmt("The upstream server responded with %d", status)
+      HTTP_ERROR_MESSAGES[status] = msg
+
       return msg
     end
-
-    msg = fmt("The upstream server responded with %d", status)
-    HTTP_ERROR_MESSAGES[status] = msg
-
-    return msg
   end
-end
 
 
   ---
@@ -283,9 +282,10 @@ end
   -- headers as the client would see them upon reception, including headers
   -- added by Kong itself.
   --
-  -- By default, this function returns up to **100** headers. The optional
-  -- `max_headers` argument can be specified to customize this limit, but must
-  -- be greater than **1** and equal to or less than **1000**.
+  -- By default, this function returns up to **100** headers (or what has been
+  -- configured using `lua_max_resp_headers`). The optional `max_headers` argument
+  -- can be specified to customize this limit, but must be greater than **1** and
+  -- equal to or less than **1000**.
   --
   -- @function kong.response.get_headers
   -- @phases header_filter, response, body_filter, log, admin_api
@@ -310,7 +310,7 @@ end
     check_phase(header_body_log)
 
     if max_headers == nil then
-      return ngx.resp.get_headers(MAX_HEADERS_DEFAULT)
+      return ngx.resp.get_headers()
     end
 
     if type(max_headers) ~= "number" then

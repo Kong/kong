@@ -419,8 +419,12 @@ describe("Admin API #" .. strategy, function()
       end)
 
       describe("with healthchecks on", function()
+        local checked
         before_each(function()
-          local status = client_send({
+          if checked == nil then
+            ngx.sleep(1)
+          end
+          local status, body = client_send({
             method = "PATCH",
             path = "/upstreams/" .. upstream.name,
             headers = {
@@ -443,6 +447,11 @@ describe("Admin API #" .. strategy, function()
             }
           )
           assert.same(200, status)
+          if checked == nil then
+            local json = assert(cjson.decode(body))
+            assert.truthy(upstream.updated_at < json.updated_at)
+            checked = true
+          end
         end)
 
         it("returns DNS_ERROR if DNS cannot be resolved", function()
@@ -524,6 +533,91 @@ describe("Admin API #" .. strategy, function()
           end, 15)
 
         end)
+
+        local function check_health_addresses(addresses, health)
+          for i=1, #addresses do
+            assert.same(health, addresses[i].health)
+          end
+        end
+
+        it("returns HEALTHCHECKS_OFF for target with weight 0", function ()
+          local status, _ = client_send({
+            method = "POST",
+            path = "/upstreams/" .. upstream.name .. "/targets",
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+            body = {
+              target = "custom_localhost:2221",
+              weight = 0,
+            }
+          })
+          assert.same(201, status)
+
+          -- Give time for weight modification to kick in
+          ngx.sleep(0.3)
+
+          local status, body = client_send({
+            method = "GET",
+            path = "/upstreams/" .. upstream.name .. "/health",
+          })
+          assert.same(200, status)
+          local res = assert(cjson.decode(body))
+          assert.equal(1, #res.data)
+          check_health_addresses(res.data[1].data.addresses, "HEALTHCHECKS_OFF")
+        end)
+
+        it("return HEALTHY if weight of target turns from zero to non-zero", function ()
+          local status, _ = client_send({
+            method = "POST",
+            path = "/upstreams/" .. upstream.name .. "/targets",
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+            body = {
+              target = "custom_localhost:2221",
+              weight = 0,
+            }
+          })
+          assert.same(201, status)
+
+          -- Give time for weight modification to kick in
+          ngx.sleep(0.3)
+
+          local status, body = client_send({
+            method = "GET",
+            path = "/upstreams/" .. upstream.name .. "/health",
+          })
+          assert.same(200, status)
+          local res = assert(cjson.decode(body))
+          assert.equal(1, #res.data)
+          check_health_addresses(res.data[1].data.addresses, "HEALTHCHECKS_OFF")
+
+          local status = client_send({
+            method = "PATCH",
+            path = "/upstreams/" .. upstream.name .. "/targets/custom_localhost:2221",
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+            body = {
+              -- target = "custom_localhost:2221",
+              weight = 10,
+            },
+          })
+          assert.same(200, status)
+
+          -- Give time for weight modification to kick in
+          ngx.sleep(0.3)
+
+          local status, body = client_send({
+            method = "GET",
+            path = "/upstreams/" .. upstream.name .. "/health",
+          })
+          assert.same(200, status)
+          local res = assert(cjson.decode(body))
+          assert.equal(1, #res.data)
+          check_health_addresses(res.data[1].data.addresses, "HEALTHY")
+        end)
       end)
     end)
   end)
@@ -599,7 +693,7 @@ describe("Admin API #" .. strategy, function()
           pages[i] = json
         end
       end)
-      it("ingores filters", function()
+      it("ignores filters", function()
         local res = assert(client:send {
           method = "GET",
           path = "/upstreams/" .. upstream.name .. "/targets/all",
@@ -829,6 +923,8 @@ describe("Admin API #" .. strategy, function()
         assert.response(res).has.status(200)
         local json = assert.response(res).has.jsonbody()
         json.tags = nil
+        json.updated_at = nil
+        target.updated_at = nil
         assert.same(target, json)
       end)
     end)
@@ -855,6 +951,7 @@ describe("Admin API #" .. strategy, function()
       end)
 
       it("is allowed and works", function()
+        ngx.sleep(1)
         local res = client:patch("/upstreams/" .. upstream.name .. "/targets/" .. target.target, {
           body = {
             weight = 659,
@@ -866,6 +963,7 @@ describe("Admin API #" .. strategy, function()
         assert.is_string(json.id)
         assert.are.equal(target.target, json.target)
         assert.are.equal(659, json.weight)
+        assert.truthy(target.updated_at < json.updated_at)
 
         local res = assert(client:send {
           method = "GET",
@@ -914,6 +1012,8 @@ describe("Admin API #" .. strategy, function()
         assert.response(res).has.status(200)
         local json = assert.response(res).has.jsonbody()
         json.tags = nil
+        json.updated_at = nil
+        target.updated_at = nil
         assert.same(target, json)
       end)
 

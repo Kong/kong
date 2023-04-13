@@ -5,6 +5,9 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+--- Module with performance test tools
+-- @module spec.helpers.perf
+
 local pl_tablex = require("pl.tablex")
 
 local logger = require("spec.helpers.perf.logger")
@@ -48,10 +51,11 @@ local function check_driver_sanity(mod)
 end
 
 local known_drivers = { "docker", "terraform" }
---- Unset an environment variable
+
+--- Set the driver to use.
 -- @function use_driver
--- @param name string name of the driver to use
--- @param opts[optional] table config parameters passed to the driver
+-- @tparam string name name of the driver to use
+-- @tparam[opt] table opts config parameters passed to the driver
 -- @return nothing. Throws an error if any.
 local function use_driver(name, opts)
   name = name or "docker"
@@ -77,7 +81,7 @@ end
 
 --- Set driver operation retry count
 -- @function set_retry_count
--- @param try number the retry time for each driver operation
+-- @tparam number try the number of retries for each driver operation
 -- @return nothing.
 local function set_retry_count(try)
   if type(try) ~= "number" then
@@ -86,10 +90,9 @@ local function set_retry_count(try)
   RETRY_COUNT = try
 end
 
---- Setup a default perf test instance that's ready to use on
---- most common cases including Github Actions
+--- Setup a default perf test instance.
+-- Creates an instance that's ready to use on most common cases including Github Actions
 -- @function use_defaults
--- @param try number the retry time for each driver operation
 -- @return nothing.
 local function use_defaults()
   logger.set_log_level(ngx.DEBUG)
@@ -207,21 +210,19 @@ local _M = {
   get_kong_version = git.get_kong_version,
 }
 
---- Start the worker (nginx) with given conf with multiple ports
--- @function start_worker
--- @param conf string the Nginx nginx snippet under server{} context
--- @param port_count[optional] number number of ports the upstream listens to; default to 1
--- @return upstream_uri string or table if port_count is more than 1
+--- Start the worker (nginx) with given conf with multiple ports.
+-- @tparam string conf the Nginx snippet under server{} context
+-- @tparam[opt=1] number port_count number of ports the upstream listens to
+-- @return upstream_uri string or table if `port_count` is more than 1
 function _M.start_worker(conf, port_count)
   port_count = port_count or 1
   local ret = invoke_driver("start_worker", conf, port_count)
   return port_count == 1 and ret[1] or ret
 end
 
---- Start Kong with given version and conf
--- @function start_kong
--- @param kong_confs table Kong configuration as a lua table
--- @param driver_confs table driver configuration as a lua table
+--- Start Kong with given version and conf.
+-- @tparam[opt] table kong_confs Kong configuration as a lua table
+-- @tparam[opt] table driver_confs driver configuration as a lua table
 -- @return nothing. Throws an error if any.
 function _M.start_kong(kong_confs, driver_confs)
   kong_confs = kong_confs or {}
@@ -235,33 +236,30 @@ function _M.start_kong(kong_confs, driver_confs)
   return invoke_driver("start_kong", kong_confs, driver_confs or {})
 end
 
---- Stop Kong
--- @function stop_kong
+--- Stop Kong.
+-- @param ... args passed to the driver "stop_kong" command
 -- @return nothing. Throws an error if any.
 function _M.stop_kong(...)
   return invoke_driver("stop_kong", ...)
 end
 
---- Setup environment; it's not necessary if `setup_kong` is called
--- @function setup
+--- Setup environment.
+-- This is not necessary if `setup_kong` is called
 -- @return nothing. Throws an error if any.
 function _M.setup()
   return invoke_driver("setup")
 end
 
---- Installs Kong, setup env vars and return the configured helpers utility
--- @function setup
--- @param version string Kong version
+--- Installs Kong. Setup env vars and return the configured helpers utility
+-- @tparam string version Kong version
 -- @return table the `helpers` utility as if it's require("spec.helpers")
-function _M.setup_kong(version, kong_confs)
+function _M.setup_kong(version)
   LAST_KONG_VERSION = version
   return invoke_driver("setup_kong", version)
 end
 
---- Cleanup all the stuff
--- @function teardown
--- @param full[optional] boolean teardown all stuff, including those will
--- make next test spin up faster
+--- Cleanup the test.
+-- @tparam[opt=false] boolean full teardown all stuff, including those will make next test spin up faster
 -- @return nothing. Throws an error if any.
 function _M.teardown(full)
   LAST_KONG_VERSION = nil
@@ -271,15 +269,15 @@ end
 local load_thread
 local load_should_stop
 
---- Start to send load to Kong
--- @function start_load
--- @param opts.path[optional] string request path, default to /
--- @param opts.uri[optional] string base URI except path, default to http://kong-ip:kong-port/
--- @param opts.connections[optional] number connection count, default to 1000
--- @param opts.threads[optional] number request thread count, default to 5
--- @param opts.duration[optional] number perf test duration in seconds, default to 10
--- @param opts.script[optional] string content of wrk script, default to nil
--- @param opts.kong_name[optional] string specify the kong name to send load to; will automatically pick one if not specified
+--- Start to send load to Kong.
+-- @tparam table opts options table
+-- @tparam[opt="/"] string opts.path request path
+-- @tparam[opt="http://kong-ip:kong-port/"] string opts.uri base URI except path
+-- @tparam[opt=1000] number opts.connections connection count
+-- @tparam[opt=5] number opts.threads request thread count
+-- @tparam[opt=10] number opts.duration perf test duration in seconds
+-- @tparam[opt] string opts.script content of wrk script
+-- @tparam[opt] string opts.kong_name specify the kong name to send load to; will automatically pick one if not specified
 -- @return nothing. Throws an error if any.
 function _M.start_load(opts)
   if load_thread then
@@ -323,11 +321,10 @@ end
 local stapxx_thread
 local stapxx_should_stop
 
---- Start to send load to Kong
--- @function start_stapxx
--- @param sample_name string stapxx sample name
--- @param arg string extra arguments passed to stapxx script
--- @param driver_confs table driver configuration as a lua table
+--- Start to send load to Kong.
+-- @tparam string sample_name stapxx sample name
+-- @tparam string arg extra arguments passed to stapxx script
+-- @tparam table driver_confs driver configuration as a lua table
 -- @return nothing. Throws an error if any.
 function _M.start_stapxx(sample_name, arg, driver_confs)
   if stapxx_thread then
@@ -352,10 +349,9 @@ function _M.start_stapxx(sample_name, arg, driver_confs)
   return true
 end
 
---- Wait the load test to finish and get result
--- @function wait_result
--- @return string the test report text
-function _M.wait_result(opts)
+--- Wait for the load test to finish.
+-- @treturn string the test report text
+function _M.wait_result()
   if not load_thread then
     error("load haven't been started or already collected, " ..
           "start it using start_load() first", 2)
@@ -435,10 +431,10 @@ local function parse_wrk_result(r)
   return rps, count, lat_avg, lat_max, p90, p99
 end
 
---- Compute average of RPS and latency from multiple wrk output
--- @results table the table holds raw wrk outputs
--- @suite string xaxis sutie name
--- @return string. The human readable result of average RPS and latency
+--- Compute average of RPS and latency from multiple wrk output.
+-- @tparam table results the table holds raw wrk outputs
+-- @tparam string suite xaxis suite name
+-- @treturn string The human readable result of average RPS and latency
 function _M.combine_results(results, suite)
   local count = #results
   if count == 0 then
@@ -485,16 +481,16 @@ Latency Avg: %3.2fms    Max: %3.2fms
   ]]):format(rps, latency_avg, latency_max, table.concat(latencies_p90, ", "), table.concat(latencies_p99, ", "))
 end
 
---- Wait until the systemtap probe is loaded
--- @function wait_stap_probe
+--- Wait until the systemtap probe is loaded.
+-- @tparam[opt=20] number timeout in seconds
 function _M.wait_stap_probe(timeout)
   return invoke_driver("wait_stap_probe", timeout or 20)
 end
 
---- Generate the flamegraph and return SVG
--- @function generate_flamegraph
--- @param title the title for flamegraph
--- @param opts the command line options string(not table) for flamegraph.pl
+--- Generate the flamegraph and return SVG.
+-- @tparam string filename the target filename to store the generated SVG.
+-- @tparam[opt] string title the title for flamegraph
+-- @tparam[opt] string opts the command line options string (not a table) for `flamegraph.pl`
 -- @return Nothing. Throws an error if any.
 function _M.generate_flamegraph(filename, title, opts)
   if not filename then
@@ -530,17 +526,16 @@ function _M.generate_flamegraph(filename, title, opts)
   my_logger.debug("flamegraph written to ", filename)
 end
 
---- Enable or disable charts generation
--- @function enable_charts
--- @param enabled enable or not
+--- Enable or disable charts generation.
+-- @tparam[opt=false] boolean enabled enable or not
 -- @return Nothing. Throws an error if any.
 function _M.enable_charts(enabled)
   return enabled and charts.on() or charts.off()
 end
 
 
---- Save Kong error log locally
--- @function save_error_log
+--- Save Kong error log locally.
+-- @tparam string filename filename where to save the log
 -- @return Nothing. Throws an error if any.
 function _M.save_error_log(filename)
   if not filename then
@@ -552,37 +547,32 @@ function _M.save_error_log(filename)
   my_logger.debug("Kong error log written to ", filename)
 end
 
---- Get the Admin URI accessible from worker
--- @function save_error_log
--- @param kong_name[optional] string specify the kong name; will automatically pick one if not specified
+--- Get the Admin URI accessible from worker.
+-- @tparam[opt] string kong_name specify the kong name; will automatically pick one if not specified
 -- @return Nothing. Throws an error if any.
 function _M.get_admin_uri(kong_name)
   return invoke_driver("get_admin_uri", kong_name)
 end
 
---- Save a .sql file of the database
--- @function save_pgdump
--- @param path string the .sql file path
+--- Save a .sql file of the database.
+-- @tparam string path the .sql file path to save to
 -- @return Nothing. Throws an error if any.
 function _M.save_pgdump(path)
   return invoke_driver("save_pgdump", path)
 end
 
---- Load a .sql file into the database
--- @function load_pgdump
--- @param path string the .sql file path
--- @param dont_patch_service bool set to true to skip update all services
--- to upstream started by this framework
+--- Load a .sql file into the database.
+-- @tparam string path the .sql file path
+-- @tparam[opt=false] boolean dont_patch_service set to true to skip update all services to upstream started by this framework
 -- @return Nothing. Throws an error if any.
 function _M.load_pgdump(path, dont_patch_service)
   return invoke_driver("load_pgdump", path, dont_patch_service)
 end
 
--- Execute command on remote instance
--- @function remote_execute
--- @param node_type string the node to exeute the command on, can be "kong", "db" or "worker"
--- @param cmds table the cmds in an array
--- @param continue_on_error bool if true, will continue on error
+--- Execute command on remote instance.
+-- @tparam string node_type the node to exeute the command on, can be; "kong", "db", or "worker"
+-- @tparam array cmds array of commands to execute
+-- @tparam boolean continue_on_error if true, will continue on error
 function _M.remote_execute(node_type, cmds, continue_on_error)
   return invoke_driver("remote_execute", node_type, cmds, continue_on_error)
 end
