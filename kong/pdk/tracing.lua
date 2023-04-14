@@ -203,6 +203,7 @@ local function link_span(tracer, span, name, options)
   span.start_time_ns = options.start_time_ns or ffi_time_unix_nano()
   span.attributes = options.attributes
   span.name = name
+  span.linked = true
 
   -- insert the span to ctx
   local ctx = ngx.ctx

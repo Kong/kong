@@ -91,7 +91,6 @@ local function http_export(conf, spans)
 end
 
 function OpenTelemetryHandler:access(conf)
-  local ngx_ctx = ngx.ctx
   local headers = ngx_get_headers()
   local root_span = ngx.ctx.KONG_SPANS and ngx.ctx.KONG_SPANS[1]
   local tracer = kong.tracing.new("otel")
@@ -124,26 +123,14 @@ function OpenTelemetryHandler:access(conf)
     root_span.parent_id = parent_id
   end
 
-  -- Balancer span propagation
-  -- Here we propagate the span that identifies the "last" balancer try
+  -- propagate the span that identifies the "last" balancer try
   -- This has to happen "in advance". The span will be activated (linked)
   -- after the OpenResty balancer results are available
-  local new_span = ngx_ctx.last_try_balancer_span
-  -- if the span was not already created by another tracing plugin instance
-  if new_span == nil then
-    -- create the last-try balancer span
-    new_span = tracer.create_span(nil, {
-      span_kind = 3, -- client
-      parent = root_span,
-    })
-    ngx_ctx.last_try_balancer_span = new_span
-  end
-
-  -- new_span can be noop (e.g. when should_sample == false) which should not
-  -- be sampled nor propagated. In that case, propagate the root_span instead.
-  local propagated = new_span.is_recording ~= false and new_span or root_span
-  -- propagate the last-try balancer span
-  propagation_set(conf.header_type, header_type, propagated, "w3c")
+  local balancer_span = tracer.create_span(nil, {
+    span_kind = 3,
+    parent = root_span,
+  })
+  propagation_set(conf.header_type, header_type, balancer_span, "w3c", true)
 end
 
 
