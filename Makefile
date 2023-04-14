@@ -37,7 +37,7 @@ endif
 .PHONY: install dev \
 	lint test test-integration test-plugins test-all \
 	pdk-phase-check functional-tests \
-	fix-windows release
+	fix-windows release wasm-test-filters
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 KONG_SOURCE_LOCATION ?= $(ROOT_DIR)
@@ -74,6 +74,9 @@ check-bazel: bin/bazel
 ifndef BAZEL
 	$(eval BAZEL := bin/bazel)
 endif
+
+wasm-test-filters:
+	./scripts/build-wasm-test-filters.sh
 
 build-kong: check-bazel
 	$(BAZEL) build //build:kong --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME)
@@ -174,7 +177,7 @@ remove:
 	$(warning 'remove' target is deprecated, please use `make dev` instead)
 	-@luarocks remove kong
 
-dependencies: bin/grpcurl bin/h2client
+dependencies: bin/grpcurl bin/h2client wasm-test-filters
 	$(warning 'dependencies' target is deprecated, this is now not needed when using `make dev`, but are kept for installation that are not built by Bazel)
 
 	for rock in $(DEV_ROCKS) ; do \

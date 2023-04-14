@@ -52,6 +52,11 @@ jobs:
           bazel-out/_tmp/actions
         retention-days: 3
 
+    - name: Build WASM Test Filters
+      uses: ./.github/actions/build-wasm-test-filters
+      with:
+        fixture-path: ./spec/fixtures/proxy_wasm_filters
+
     - name: Build Dev Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
