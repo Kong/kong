@@ -90,5 +90,20 @@ function Vaults:load_vault_schemas(vault_set)
   return true
 end
 
+function Vaults:update(pk, entity, options)
+  local current = self.super.select(self, pk, options)
+  if current then
+    
+    if entity.name and entity.name ~= current.name then
+      local err_t = self.errors:schema_violation(
+        { name = "vault's name can't be changed." }
+      )
+      return nil, tostring(err_t), err_t
+    end
+  end
+
+  return self.super.update(self, pk, entity, options)
+  
+end
 
 return Vaults

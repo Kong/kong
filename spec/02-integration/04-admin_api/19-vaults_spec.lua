@@ -230,6 +230,31 @@ for _, strategy in helpers.each_strategy() do
               })
               assert.res_status(404, res)
             end)
+
+            it("vault name can't be changed", function()
+              local uuid = utils.uuid()
+              local res = client:put("/vaults/" .. uuid, {
+                headers = HEADERS,
+                body = {
+                  name = "env",
+                  prefix = "put-env-01",
+                  config = { prefix = "_ssl" }
+                },
+              })
+              assert.res_status(200, res)
+              res = client:patch("/vaults/" .. uuid, {
+                headers = HEADERS,
+                body = {
+                  name = "gcp",
+                  config = { project_id = "prj001" }
+                },
+              })
+
+              local body = assert.res_status(400, res)
+              local json = cjson.decode(body)
+              assert.equal("schema violation (name: vault's name can't be changed.)", json.message)
+            end)
+
           end)
         end)
 

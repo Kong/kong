@@ -44,6 +44,7 @@
 * Declarative Configuration
   * Fix a bug where an HTTP 500 error was thrown while loading a declarative configuration file exported by decK containing consumer groups.
     [FTI-4808](https://konghq.atlassian.net/browse/FTI-4808)
+* Fixed an issue changing the vault name throws an error. [KAG-1070](https://konghq.atlassian.net/browse/KAG-1070)
 
 # TEMPLATE
 
