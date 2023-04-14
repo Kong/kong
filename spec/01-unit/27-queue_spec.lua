@@ -163,6 +163,35 @@ describe("plugin queue", function()
     assert.equals("Five", last_entry)
   end)
 
+  it("observes the `max_coalescing_delay` parameter", function()
+    local process_count = 0
+    local first_entry, last_entry
+    local function enqueue(entry)
+      Queue.enqueue(
+        queue_conf({
+          name = "batch",
+          max_batch_size = 2,
+          max_coalescing_delay = 3,
+        }),
+        function(_, batch)
+          first_entry = first_entry or batch[1]
+          last_entry = batch[#batch]
+          process_count = process_count + 1
+          return true
+        end,
+        nil,
+        entry
+      )
+    end
+    enqueue("One")
+    ngx.sleep(1)
+    enqueue("Two")
+    wait_until_queue_done("batch")
+    assert.equals(1, process_count)
+    assert.equals("One", first_entry)
+    assert.equals("Two", last_entry)
+  end)
+
   it("retries sending messages", function()
     local process_count = 0
     local entry

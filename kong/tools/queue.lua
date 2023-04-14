@@ -217,7 +217,7 @@ function Queue:process_once()
   -- We've got our first entry from the queue.  Collect more entries until max_coalescing_delay expires or we've collected
   -- max_batch_size entries to send
   while entry_count < self.max_batch_size and (now() - data_started) < self.max_coalescing_delay and not ngx.worker.exiting() do
-    ok, err = self.semaphore:wait(((data_started + self.max_coalescing_delay) - now()) / 1000)
+    ok, err = self.semaphore:wait((data_started + self.max_coalescing_delay) - now())
     if not ok and err == "timeout" then
       break
     elseif ok then
