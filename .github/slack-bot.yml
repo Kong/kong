@@ -29,7 +29,7 @@ jobs:
           script: |
             const fs = require('fs');
             const payload = {
-              "text": "${{ github.event.issue.user.login }}, your pull request failed to backport, please check ${{ github.event.issue.pull_request.url}}",
+              "text": "${{ github.event.issue.user.login }}, your pull request failed to backport, please check ${{ github.event.issue.pull_request.html_url}}",
               "channel": "#team-gateway",
               "username": "Backport Alert Bot",
               "icon_emoji": ":alert:"
