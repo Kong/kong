@@ -7,39 +7,37 @@ on:
 jobs:
   check_comment:
     runs-on: ubuntu-latest
-    outputs:
-      found_problem: ${{ steps.check_comment.outputs.found_problem }}
+    if: github.event.issue.pull_request != null && contains(github.event.comment.body, 'To backport manually, run these commands in your terminal')
     steps:
-      - name: Check PR Comment
-        id: check_comment
-        uses: actions/github-script@v4
-        with:
-          script: |
-            const payload = context.payload;
-            if (payload.issue.pull_request.url && payload && payload.comment && payload.comment.body 
-                && payload.comment.user && payload.comment.user.login === 'team-gateway-bot' 
-                && payload.comment.body.includes('To backport manually, run these commands in your terminal')) {
-              console.log('::set-output name=found_problem::true');
-            }
       - name: Generate Slack Payload
-        if: ${{ steps.check_comment.outputs.found_problem == 'true' }}
         id: generate_payload
         uses: actions/github-script@v4
         with:
           script: |
             const fs = require('fs');
+            const slack_mapping = JSON.parse(process.env.SLACK_MAPPING);
+            const pr_author = "${{ github.event.issue.user.login }}"
+            const pr_author_slack_id = slack_mapping[pr_author];
+            const pr_url = "${{ github.event.issue.pull_request.html_url}}";
+
+            const text = `Backport failed in PR: ${pr_url}. `
+              + (pr_author_slack_id ? `<@${pr_author_slack_id}>` : pr_author)
+              + ` please check the backport manually.`;
+
             const payload = {
-              "text": "${{ github.event.issue.user.login }}, your pull request failed to backport, please check ${{ github.event.issue.pull_request.html_url}}",
-              "channel": "#team-gateway",
-              "username": "Backport Alert Bot",
-              "icon_emoji": ":alert:"
+              text,
+              channel: process.env.SLACK_CHANNEL,
+              username: "backport-alert-bot",
+              icon_emoji: ":alert:",
             };
-            fs.writeFileSync('${{ runner.temp }}/payload-slack-content.json', JSON.stringify(payload));
+            fs.writeFileSync(`${{ runner.temp }}/payload-slack-content.json`, JSON.stringify(payload));
+        env:
+          SLACK_CHANNEL: gateway-notifications
+          SLACK_MAPPING: "${{ vars.SLACK_MAPPING }}"
+
       - name: Send Slack Message
-        if: ${{ steps.check_comment.outputs.found_problem == 'true' }}
         uses: slackapi/slack-github-action@v1.23.0
         with:
           payload-file-path: "${{ runner.temp }}/payload-slack-content.json"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-
