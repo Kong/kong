@@ -32,7 +32,10 @@ for _, strategy in helpers.each_strategy() do
         config   = {
           http_endpoint = "http://127.0.0.1:" .. HTTP_SERVER_PORT,
           queue = {
-            max_coalescing_delay = 0.01,
+            max_batch_size = 1000,
+            -- Using extra long max_coalescing_delay to ensure that we stop
+            -- coalescing when a shutdown is initiated.
+            max_coalescing_delay = 1000,
           },
         }
       }

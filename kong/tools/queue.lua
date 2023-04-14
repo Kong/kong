@@ -64,6 +64,7 @@ end
 
 local Queue = {
   CAPACITY_WARNING_THRESHOLD = 0.8, -- Threshold to warn that the queue max_entries limit is reached
+  COALESCE_POLL_TIME = 0.5,         -- Time in seconds to poll for worker shutdown when coalescing entries
 }
 
 
@@ -216,15 +217,14 @@ function Queue:process_once()
 
   -- We've got our first entry from the queue.  Collect more entries until max_coalescing_delay expires or we've collected
   -- max_batch_size entries to send
-  while entry_count < self.max_batch_size and (now() - data_started) < self.max_coalescing_delay and not ngx.worker.exiting() do
-    ok, err = self.semaphore:wait((data_started + self.max_coalescing_delay) - now())
-    if not ok and err == "timeout" then
+  while entry_count < self.max_batch_size and self.max_coalescing_delay > (now() - data_started) and not ngx.worker.exiting() do
+    local wait_time = math.min(self.max_coalescing_delay - (now() - data_started), Queue.COALESCE_POLL_TIME)
+    ok, err = self.semaphore:wait(wait_time)
+    if not ok and err ~= "timeout" then
+      self:log_err("could not wait for semaphore: %s", err)
       break
     elseif ok then
       entry_count = entry_count + 1
-    else
-      self:log_err("could not wait for semaphore: %s", err)
-      break
     end
   end
 
