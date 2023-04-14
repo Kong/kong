@@ -1,0 +1,25 @@
+name: Backport PR manager approval checker
+on:
+  pull_request:
+    types: [opened, edited, synchronize, labeled, unlabeled]
+    branches:
+      - 'next/**'
+    paths:
+      - 'kong/**'
+      - 'plugins-ee/**'
+      - '**.rockspec'
+      - '.requirements'
+      - '!plugins-ee/**/spec'
+
+jobs:
+  check-manager-approvals:
+    name: Did manager approve this backport?
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: check manager approval
+      if: ${{ !contains(github.event.*.labels.*.name, 'manager approved') }}
+      run: >
+        echo "Please obtain approval from your manager/tech lead for approvals to merge this PR.";
+        echo "Policy reference: https://konghq.atlassian.net/l/cp/tSXT393W";
+        exit 1
