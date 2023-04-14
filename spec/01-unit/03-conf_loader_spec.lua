@@ -1697,7 +1697,7 @@ describe("Configuration loader", function()
       assert.is_nil(conf)
     end)
 
-    it("wasm VM confs", function()
+    it("#wasm VM confs", function()
       local cert_rel_path = "spec/fixtures/kong_spec.crt"
       local cert_full_path = lfs.currentdir() .. "/" .. cert_rel_path
       local conf, err = conf_loader(nil, {
@@ -1706,13 +1706,11 @@ describe("Configuration loader", function()
         wasm_compiler = "auto",
         wasm_shm_kv = "kong_shared_kv 4k",
         wasm_shm_queue = "kong_shared_queue 1024k",
-        wasm_socket_buffer_reuse = "on",
-        wasm_socket_buffer_size = "8k",
-        wasm_socket_large_buffers = "8 32k",
         wasm_tls_no_verify_warn = "on",
-        proxy_wasm_request_headers_in_access = "on",
         lua_ssl_verify_depth = "1",
         lua_ssl_trusted_certificate = cert_rel_path, 
+        nginx_http_large_client_header_buffers = "8 32k",
+        nginx_http_proxy_buffer_size = "128k",
         nginx_http_proxy_connect_timeout = "15s",
         nginx_http_proxy_read_timeout = "20s",
         nginx_http_proxy_send_timeout = "25s",
@@ -1721,12 +1719,10 @@ describe("Configuration loader", function()
       assert.same("auto", conf.wasm_compiler)
       assert.same("kong_shared_kv 4k", conf.wasm_shm_kv)
       assert.same("kong_shared_queue 1024k", conf.wasm_shm_queue)
-      assert.same("on", conf.wasm_socket_buffer_reuse)
-      assert.same("8k", conf.wasm_socket_buffer_size)
       assert.same("on", conf.wasm_tls_no_verify_warn)
-      assert.same("on", conf.proxy_wasm_request_headers_in_access)
-      assert.True(search_directive(conf.nginx_wasm_directives, "socket_connect_timeout", "15s"))
       assert.True(search_directive(conf.nginx_wasm_directives, "socket_large_buffers", "8 32k"))
+      assert.True(search_directive(conf.nginx_wasm_directives, "socket_buffer_size", "128k"))
+      assert.True(search_directive(conf.nginx_wasm_directives, "socket_connect_timeout", "15s"))
       assert.True(search_directive(conf.nginx_wasm_directives, "socket_read_timeout", "20s"))
       assert.True(search_directive(conf.nginx_wasm_directives, "socket_send_timeout", "25s"))
       assert.True(search_directive(conf.nginx_wasm_directives, "tls_trusted_certificate", cert_full_path))
@@ -1734,30 +1730,22 @@ describe("Configuration loader", function()
       assert.True(search_directive(conf.nginx_wasm_directives, "tls_verify_host", "on"))
     end)
     
-    it("wasm VM injected confs", function()
+    it("#wasm VM injected confs", function()
       local conf, err = conf_loader(nil, {
         wasm = "on",
         wasm_filters_path = "spec/fixtures/proxy_wasm_filters/target/wasm32-wasi/debug/",
         nginx_wasm_compiler = "auto",
         nginx_wasm_shm_kv = "kong_shared_kv 4k",
         nginx_wasm_shm_queue = "kong_shared_queue 1024k",
-        nginx_wasm_socket_buffer_reuse = "on",
-        nginx_wasm_socket_buffer_size = "8k",
-        nginx_wasm_socket_large_buffers = "8 32k",
         nginx_wasm_tls_no_verify_warn = "on",
-        nginx_http_proxy_wasm_request_headers_in_access = "on",
       })
       assert.is_nil(err)
       assert.True(search_directive(conf.nginx_wasm_directives, "compiler", "auto"))
       assert.True(search_directive(conf.nginx_wasm_directives, "shm_kv", "kong_shared_kv 4k"))
       assert.True(search_directive(conf.nginx_wasm_directives, "shm_queue", "kong_shared_queue 1024k"))
-      assert.True(search_directive(conf.nginx_wasm_directives, "socket_buffer_reuse", "on"))
-      assert.True(search_directive(conf.nginx_wasm_directives, "socket_buffer_size", "8k"))
-      assert.True(search_directive(conf.nginx_wasm_directives, "socket_large_buffers", "8 32k"))
       assert.True(search_directive(conf.nginx_wasm_directives, "tls_no_verify_warn", "on"))
       assert.True(search_directive(conf.nginx_wasm_directives, "tls_verify_cert", "on"))
       assert.True(search_directive(conf.nginx_wasm_directives, "tls_verify_host", "on"))
-      assert.True(search_directive(conf.nginx_http_directives, "proxy_wasm_request_headers_in_access", "on"))
     end)
 
   end)

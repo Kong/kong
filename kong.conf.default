@@ -1851,27 +1851,13 @@
                                   # that Kong must load on startup.
 
 #wasm_shm_kv =                    # Define a shared key/value memory zone accessible
-                                  # through all Contexts and by all nginx worker
-                                  # processes.
+                                  # by all nginx worker processes.
 
-#wasm_shm_queue =                 # Define a shared queue memory zone accessible
-                                  # through all nginx contexts and by all nginx
+#wasm_shm_queue =                 # Define a shared queue accessible by all nginx
                                   # worker processes.
 
 #wasm_tls_no_verify_warn =        # Toggle the TLS verification warning log for
                                   # Wasm sockets. 
-
-#wasm_socket_buffer_reuse =       # Toggle Wasm sockets buffer reuse.
-
-#wasm_socket_buffer_size =        # Set a buffer `size` for reading response payloads
-                                  # with Wasm sockets.
-
-#proxy_wasm_request_headers_in_access =   # Toggles the "on_request_headers in
-                                          # access phase" WasmX feature. When
-                                          # enabled, this flag will cause the
-                                          # `on_request_headers` phase to be
-                                          # executed in the `access` phase instead
-                                          # of the `rewrite` phase of Nginx.
 
 #wasm_compiler =                  # Select the compiler used by the Wasm runtime.
 

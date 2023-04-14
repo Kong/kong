@@ -34,7 +34,7 @@ ssl_ciphers ${{SSL_CIPHERS}};
 $(el.name) $(el.value);
 > end
 
-> if wasm_modules_parsed and #wasm_modules_parsed > 0 then
+> if wasm and wasm_modules_parsed and #wasm_modules_parsed > 0 then
 # wasm directives
 proxy_wasm_lua_resolver on;
 

@@ -563,34 +563,10 @@ local CONF_PARSERS = {
       "nginx_wasm_shm_queue",
     },
   },
-  wasm_socket_buffer_reuse = { 
-    typ = "ngx_boolean",
-    directives = {
-      "nginx_wasm_socket_buffer_reuse",
-    },
-  },
-  wasm_socket_buffer_size = {
-    typ = "string",
-    directives = {
-      "nginx_wasm_socket_buffer_size",
-    },
-  },
-  wasm_socket_large_buffers = {
-    typ = "string",
-    directives = {
-      "nginx_wasm_socket_large_buffers",
-    },
-  },
   wasm_tls_no_verify_warn = {
     typ = "ngx_boolean",
     directives = {
       "nginx_wasm_tls_no_verify_warn",
-    },
-  },
-  proxy_wasm_request_headers_in_access = {
-    typ = "ngx_boolean",
-    directives = {
-      "nginx_http_proxy_wasm_request_headers_in_access",
     },
   },
 
@@ -2157,9 +2133,14 @@ local function load(path, custom_conf, opts)
           name  = "socket_send_timeout",
           value = directive.value,
         })
+      elseif directive.name == "proxy_buffer_size" then
+        insert(wasm_directives, {
+          name  = "socket_buffer_size",
+          value = directive.value,
+        })
       elseif directive.name == "large_client_header_buffers" then
         insert(wasm_directives, {
-          name  = "wasm_socket_large_buffers",
+          name  = "socket_large_buffers",
           value = directive.value,
         })
       end

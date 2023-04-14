@@ -195,8 +195,5 @@ wasm_dynamic_module = NONE
 wasm_compiler = NONE
 wasm_shm_kv = NONE
 wasm_shm_queue = NONE
-wasm_socket_buffer_reuse = NONE 
-wasm_socket_buffer_size = NONE
 wasm_tls_no_verify_warn = NONE
-proxy_wasm_request_headers_in_access = NONE
 ]]
