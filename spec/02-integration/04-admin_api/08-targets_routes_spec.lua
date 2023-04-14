@@ -947,6 +947,7 @@ describe("Admin API #" .. strategy, function()
         local res
         assert
           .with_timeout(10)
+          .ignore_exceptions(true)
           .eventually(function()
             res = admin_client:patch("/upstreams/" .. upstream.name .. "/targets/" .. target.target, {
               body = {
@@ -954,9 +955,9 @@ describe("Admin API #" .. strategy, function()
               },
               headers = { ["Content-Type"] = "application/json" }
             })
-            return res and res.status == 200
+            assert.response(res).has.status(200)
           end)
-          .is_truthy()
+          .has_no_error()
         local json = assert.response(res).has.jsonbody()
         assert.is_string(json.id)
         assert.are.equal(target.target, json.target)
