@@ -13,7 +13,7 @@ local mime_type_includes = mime_type.includes
 local split = ngx_re.split
 local strip = pl_stringx.strip
 
-local JSON_MEDIA_TYPES = {
+local SUPPORTED_MEDIA_TYPES = {
   { type = "application", subtype = "json" },
   { type = "application", subtype = "*+json" },
 }
@@ -55,7 +55,7 @@ local function is_json_body(content_type)
       goto continue
     end
     local media_type = { type = t, subtype = subtype }
-    for _, this_type in ipairs(JSON_MEDIA_TYPES) do
+    for _, this_type in ipairs(SUPPORTED_MEDIA_TYPES) do
       if mime_type_includes(this_type, media_type) then
         return true
       end
