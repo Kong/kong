@@ -1646,10 +1646,19 @@ describe("Configuration loader", function()
   end)
 
   describe("#wasm properties", function()
+    local temp_dir, cleanup
+
+    lazy_setup(function()
+      temp_dir, cleanup = helpers.make_temp_dir()
+      assert(helpers.file.write(temp_dir .. "/empty-filter.wasm", "hello!"))
+    end)
+
+    lazy_teardown(function() cleanup() end)
+
     it("wasm disabled", function()
       local conf, err = conf_loader(nil, {
         wasm = "off",
-        wasm_filters_path = "spec/fixtures/wasm/unit-test",
+        wasm_filters_path = temp_dir,
       })
       assert.is_nil(err)
       assert.is_nil(conf.wasm_modules_parsed)
@@ -1657,7 +1666,7 @@ describe("Configuration loader", function()
 
     it("wasm default disabled", function()
       local conf, err = conf_loader(nil, {
-        wasm_filters_path = "spec/fixtures/wasm/unit-test",
+        wasm_filters_path = temp_dir,
       })
       assert.is_nil(err)
       assert.is_nil(conf.wasm_modules_parsed)
@@ -1666,16 +1675,16 @@ describe("Configuration loader", function()
     it("wasm_filters_path", function()
       local conf, err = conf_loader(nil, {
         wasm = "on",
-        wasm_filters_path = "spec/fixtures/wasm/unit-test",
+        wasm_filters_path = temp_dir,
       })
       assert.is_nil(err)
       assert.same({
           {
               name = "empty-filter",
-              path = "spec/fixtures/wasm/unit-test/empty-filter.wasm",
+              path = temp_dir .. "/empty-filter.wasm",
           }
       }, conf.wasm_modules_parsed)
-      assert.same("spec/fixtures/wasm/unit-test", conf.wasm_filters_path)
+      assert.same(temp_dir, conf.wasm_filters_path)
     end)
 
     it("invalid wasm_filters_path", function()
