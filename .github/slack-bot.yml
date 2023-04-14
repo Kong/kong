@@ -1,4 +1,4 @@
-name: Find and forward failed backport alert to Slack
+name: Forward failed backport alert to Slack
 
 on:
   issue_comment:
@@ -14,23 +14,17 @@ jobs:
         uses: actions/github-script@v4
         with:
           script: |
-            const fs = require('fs');
             const slack_mapping = JSON.parse(process.env.SLACK_MAPPING);
-            const pr_author = "${{ github.event.issue.user.login }}"
-            const pr_author_slack_id = slack_mapping[pr_author];
             const pr_url = "${{ github.event.issue.pull_request.html_url}}";
-
-            const text = `Backport failed in PR: ${pr_url}. `
-              + (pr_author_slack_id ? `<@${pr_author_slack_id}>` : pr_author)
-              + ` please check the backport manually.`;
-
+            const pr_author_github_id = "${{ github.event.issue.user.login }}"
+            const pr_author_slack_id = slack_mapping[pr_author_github_id];
+            const author = (pr_author_slack_id ? `<@${pr_author_slack_id}>` : pr_author_github_id);
             const payload = {
-              text,
+              text: `Backport failed in PR: ${pr_url}. ${author} check it.`,
               channel: process.env.SLACK_CHANNEL,
-              username: "backport-alert-bot",
               icon_emoji: ":alert:",
             };
-            fs.writeFileSync(`${{ runner.temp }}/payload-slack-content.json`, JSON.stringify(payload));
+            console.log(`::set-output name=payload::${JSON.stringify(payload)}`);
         env:
           SLACK_CHANNEL: gateway-notifications
           SLACK_MAPPING: "${{ vars.SLACK_MAPPING }}"
@@ -38,6 +32,6 @@ jobs:
       - name: Send Slack Message
         uses: slackapi/slack-github-action@v1.23.0
         with:
-          payload-file-path: "${{ runner.temp }}/payload-slack-content.json"
+          payload: ${{ steps.generate_payload.outputs.payload }}
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
