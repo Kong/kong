@@ -107,6 +107,11 @@
 - Fix an issue where empty value of URI argument `custom_id` crashes `/consumer`.
   [#10475](https://github.com/Kong/kong/pull/10475)
 
+#### Admin API
+
+- Fixed an issue where management of licenses via `/licenses` would fail if current license is not valid.
+  [#4886](https://github.com/Kong/kong-ee/pull/4886)
+
 #### Plugins
 - **Request-Transformer**: fix an issue where requests would intermittently
   be proxied with incorrect query parameters.

@@ -1,0 +1,16 @@
+{
+  "license": {
+    "payload": {
+      "admin_seats": "5",
+      "customer": "automation",
+      "dataplanes": "100",
+      "license_creation_date": "2022-03-10",
+      "license_expiration_date": "2022-04-20",
+      "license_key": "ASDASDASDASDASDASDASDASDASD_a1VASASD",
+      "product_subscription": "Konnect Enterprise",
+      "support_plan": "None"
+    },
+    "signature": "9b4a2bcc3046a8c8078971001be0df01a3f9b875c78376fdcb58962b46dfd251e322d5de8c02b670beb3fde1da03a35606f109f8496a6e03294650ba20dc6bee",
+    "version": "1"
+  }
+}

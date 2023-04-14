@@ -55,7 +55,9 @@ c.featureset = {
   },
   full_expired = {
     conf = {},
-    write_admin_api = false,
+    write_admin_api = {
+      ["/licenses"] = { ["*"] = true },
+    },
     allow_admin_api = {
       ["/licenses"] = { ["*"] = true },
     }
