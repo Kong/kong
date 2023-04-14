@@ -35,7 +35,7 @@ describe("dbless persistence #off", function()
     local res = admin_client:post("/config",{
       body = { config = config },
       headers = {
-        ["Content-Type"] = "application/json"
+        ["Content-Type"] = "application/json",
       }
     })
     assert.res_status(201, res)
@@ -91,10 +91,10 @@ describe("dbless persistence with a declarative config #off", function()
     local i = 500
     buffer[#buffer + 1] = fmt(SERVICE_YML, i, i, i, i)
     local config = table.concat(buffer, "\n")
-    local res = admin_client:post("/config",{
+    local res = admin_client:post("/config", {
       body = { config = config },
       headers = {
-        ["Content-Type"] = "application/json"
+        ["Content-Type"] = "application/json",
       }
     })
     assert.res_status(201, res)
