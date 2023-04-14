@@ -1,5 +1,4 @@
-local parse_mime_type = require "kong.tools.mime_type".parse_mime_type
-local includes = require "kong.tools.mime_type".includes
+local mime_type = require "kong.tools.mime_type"
 
 describe("kong.tools.mime_type", function()
   describe("parse_mime_type()", function()
@@ -72,7 +71,7 @@ describe("kong.tools.mime_type", function()
         }
       }
       for i, case in ipairs(cases) do
-        local type, subtype, params = parse_mime_type(case.mime_type)
+        local type, subtype, params = mime_type.parse_mime_type(case.mime_type)
         local result = { type = type, subtype = subtype, params = params }
         assert.same(case.result, result, "case: " .. i .. " failed" )
       end
@@ -155,8 +154,13 @@ describe("kong.tools.mime_type", function()
       }
 
       for i, case in ipairs(cases) do
-        assert.is_true(includes(case.this, case.other) == case.result, "case: " .. i .. " failed" )
+        assert.is_true(mime_type.includes(case.this, case.other) == case.result, "case: " .. i .. " failed" )
       end
+    end)
+
+    it("throws an error for invalid arguments", function()
+      assert.has_error(function() mime_type.includes(nil, {})  end, "this must be a table")
+      assert.has_error(function() mime_type.includes({}, nil)  end, "other must be a table")
     end)
   end)
 

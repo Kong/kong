@@ -5,6 +5,8 @@ local ipairs = ipairs
 local lower = string.lower
 local sub = string.sub
 local find = string.find
+local type = type
+local error = error
 
 local WILDCARD = "*"
 
@@ -97,8 +99,11 @@ end
 -- @tparam table other Other mime-type
 -- @treturn boolean Returns `true` if this mime-type includes other, `false` otherwise
 local function includes(this, other)
-  if not other then
-    return false
+  if type(this) ~= "table" then
+    error("this must be a table", 2)
+  end
+  if type(other) ~= "table" then
+    error("other must be a table", 2)
   end
 
   local this_type = this.type
