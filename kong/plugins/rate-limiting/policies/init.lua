@@ -179,7 +179,8 @@ return {
   },
   ["redis"] = {
     increment = function(conf, limits, identifier, current_timestamp, value)
-      -- usage function alread increment the value of redis key to avoid race condition in concurrent calls
+            -- the usage function already incremented the value of redis key to avoid race condition in concurrent calls
+
       -- because of that we don't need to increment here
       return true
     end,
@@ -194,7 +195,6 @@ return {
       local periods = timestamp.get_timestamps(current_timestamp)
       local cache_key = get_local_key(conf, identifier, period, periods[period])
 
-      local current_metric, err = red:get(cache_key)
       -- the usage of redis command incr insted of get is to avoid race condition in concurrent calls
       local current_metric, err = red:eval([[
         local cache_key, expiration = KEYS[1], ARGV[1]
