@@ -1,6 +1,5 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local wasm_fixtures = require "spec.fixtures.wasm"
 local nkeys = require "table.nkeys"
 
 local HEADER = "X-Proxy-Wasm"
@@ -232,8 +231,6 @@ describe("#wasm filter chain cache " .. mode_suffix, function()
       paths = { "/" },
     })
 
-    wasm_fixtures.build()
-
     assert(bp.plugins:insert({
       name = "pre-function",
       config = {
@@ -258,7 +255,6 @@ describe("#wasm filter chain cache " .. mode_suffix, function()
 
       nginx_conf = "spec/fixtures/custom_nginx.template",
       wasm = true,
-      wasm_filters_path = wasm_fixtures.TARGET_PATH,
 
       nginx_main_worker_processes = WORKER_COUNT,
 

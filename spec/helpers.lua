@@ -3775,6 +3775,41 @@ local function generate_keys(fmt)
 end
 
 
+local make_temp_dir
+do
+  local seeded = false
+
+  function make_temp_dir()
+    if not seeded then
+      ngx.update_time()
+      math.randomseed(ngx.worker.pid() + ngx.now())
+      seeded = true
+    end
+
+    local tmp
+    local ok, err
+
+    local tries = 1000
+    for _ = 1, tries do
+      local name = "/tmp/.kong-test" .. math.random()
+
+      ok, err = pl_path.mkdir(name)
+
+      if ok then
+        tmp = name
+        break
+      end
+    end
+
+    assert(tmp ~= nil, "failed to create temporary directory " ..
+                       "after " .. tostring(tries) .. " tries, " ..
+                       "last error: " .. tostring(err))
+
+    return tmp, function() pl_dir.rmtree(tmp) end
+  end
+end
+
+
 ----------------
 -- Variables/constants
 -- @section exported-fields
@@ -4007,4 +4042,6 @@ end
     return table_clone(PLUGINS_LIST)
   end,
   get_available_port = get_available_port,
+
+  make_temp_dir = make_temp_dir,
 }
