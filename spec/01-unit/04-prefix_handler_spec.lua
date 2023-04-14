@@ -757,16 +757,27 @@ describe("NGINX conf compiler", function()
     end)
 
     describe("#wasm subsystem", function()
+      local temp_dir, cleanup
+      local filter
+
+      lazy_setup(function()
+        temp_dir, cleanup = helpers.make_temp_dir()
+        filter = temp_dir .. "/empty-filter.wasm"
+        assert(helpers.file.write(filter, "testme"))
+      end)
+
+      lazy_teardown(function() cleanup() end)
+
       it("injects the wasm{} subsystem", function()
         local conf = assert(conf_loader(nil, {
           wasm = "on",
-          wasm_filters_path = "spec/fixtures/wasm/unit-test/",
+          wasm_filters_path = temp_dir,
         }))
-        assert.equal(conf.wasm_filters_path, "spec/fixtures/wasm/unit-test/")
+        assert.equal(conf.wasm_filters_path, temp_dir)
 
         local nginx_conf = prefix_handler.compile_nginx_conf(conf)
         assert.matches("wasm {", nginx_conf)
-        assert.matches("module empty%-filter spec/fixtures/wasm/unit%-test/empty%-filter.wasm;", nginx_conf)
+        assert.matches("module empty-filter " .. filter .. ";", nginx_conf, nil, true)
       end)
     end)
   end)

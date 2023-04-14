@@ -49,6 +49,11 @@ jobs:
         path: |
           bazel-out/_tmp/actions
 
+    - name: Build WASM Test Filters
+      uses: ./.github/actions/build-wasm-test-filters
+      with:
+        fixture-path: ./spec/fixtures/proxy_wasm_filters
+
     - name: Build Dev Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
