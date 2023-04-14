@@ -1,6 +1,5 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local wasm_fixtures = require "spec.fixtures.wasm"
 
 local ERROR_OR_CRIT = "\\[(error|crit)\\]"
 local HEADER = "X-Proxy-Wasm"
@@ -355,8 +354,6 @@ describe("#wasm filter execution (#" .. strategy .. ")", function()
     end
 
 
-    wasm_fixtures.build()
-
     assert(helpers.start_kong({
       database = strategy,
       declarative_config = strategy == "off"
@@ -366,7 +363,6 @@ describe("#wasm filter execution (#" .. strategy .. ")", function()
       nginx_conf = "spec/fixtures/custom_nginx.template",
 
       wasm = true,
-      wasm_filters_path = wasm_fixtures.TARGET_PATH,
     }))
   end)
 
