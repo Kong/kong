@@ -78,6 +78,8 @@
 
 - Bumped lua-resty-session from 4.0.2 to 4.0.3
   [#10338](https://github.com/Kong/kong/pull/10338)
+- Bumped lua-resty-timer-ng from 0.2.3 to 0.2.5
+  [#10673](https://github.com/Kong/kong/pull/10673)
 
 ### Fixes
 
