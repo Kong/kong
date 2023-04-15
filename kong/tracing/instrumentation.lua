@@ -87,7 +87,7 @@ function _M.balancer(ctx)
     local span_name = "balancer try #" .. i
     local span_options = {
       span_kind = 3, -- client
-      start_time_ns = try.balancer_start * 1e6,
+      start_time_ns = try.balancer_start_ns,
       attributes = {
         ["net.peer.ip"] = try.ip,
         ["net.peer.port"] = try.port,
@@ -103,9 +103,9 @@ function _M.balancer(ctx)
         span:set_status(2)
       end
 
-      if try.balancer_latency ~= nil then
+      if try.balancer_latency_ns ~= nil then
         local try_upstream_connect_time = (tonumber(upstream_connect_time[i], 10) or 0) * 1000
-        span:finish((try.balancer_start + try.balancer_latency + try_upstream_connect_time) * 1e6)
+        span:finish(try.balancer_start_ns + try.balancer_latency_ns + try_upstream_connect_time * 1e6)
       else
         span:finish()
       end
