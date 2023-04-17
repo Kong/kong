@@ -18,13 +18,13 @@ docker_compose_file=${cwd}/docker-compose-test-services.yml
 docker_compose_project=kong
 
 
-bash "$cwd/start.sh"
+bash "$cwd/common.sh"
 if [ $? -ne 0 ]; then
-    echo "Something goes wrong, please check start.sh output"
+    echo "Something goes wrong, please check common.sh output"
     return
 fi
 
-export $(cat $KONG_ENV_FILE | xargs -d '\n')
+source $KONG_ENV_FILE
 
 stop_services () {
     unset $(cat $KONG_ENV_DOWN_FILE | xargs -d '\n')
