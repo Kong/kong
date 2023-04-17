@@ -6,6 +6,7 @@ on:
     - 'kong/db/migrations/**'
     - 'spec/05-migration/**'
     - 'kong/enterprise_edition/db/migrations/**'
+    - '.github/workflows/upgrade-tests.yml'
   push:
     paths-ignore:
     # ignore markdown files (CHANGELOG.md, README.md, etc.)
@@ -25,17 +26,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Install Docker
-        run: |
-          sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list
-          sudo apt-get -y update
-          sudo apt-get -y install ca-certificates curl gnupg lsb-release
-          sudo mkdir -p /etc/apt/keyrings
-          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-          sudo apt-get update
-          sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
-
       - name: Install prerequisites
         run: |
           sudo apt-get -y install jq
