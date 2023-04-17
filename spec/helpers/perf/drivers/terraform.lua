@@ -608,7 +608,7 @@ local function check_systemtap_sanity(self)
   if err then
     _, err = execute_batch(self, self.kong_ip, {
       "sudo DEBIAN_FRONTEND=\"noninteractive\" apt-get install g++ libelf-dev libdw-dev libssl-dev libsqlite3-dev libnss3-dev pkg-config python3 make -y --force-yes",
-      "wget https://sourceware.org/systemtap/ftp/releases/systemtap-4.6.tar.gz -O systemtap.tar.gz",
+      "wget https://sourceware.org/ftp/systemtap/releases/systemtap-4.6.tar.gz -O systemtap.tar.gz",
       "tar xf systemtap.tar.gz",
       "cd systemtap-*/ && " .. 
         "./configure --enable-sqlite --enable-bpf --enable-nls --enable-nss --enable-avahi && " ..
