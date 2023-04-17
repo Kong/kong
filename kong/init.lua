@@ -1280,6 +1280,8 @@ do
 
     if not ctx.KONG_UPSTREAM_DNS_TIME and ctx.KONG_UPSTREAM_DNS_END and ctx.KONG_UPSTREAM_DNS_START then
       ctx.KONG_UPSTREAM_DNS_TIME = ctx.KONG_UPSTREAM_DNS_END - ctx.KONG_UPSTREAM_DNS_START
+    else
+      ctx.KONG_UPSTREAM_DNS_TIME = 0
     end
 
     kong.response.set_status(status)
