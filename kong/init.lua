@@ -844,6 +844,8 @@ function Kong.init_worker()
 
   kong.db:set_events_handler(worker_events)
 
+  kong.vault.init_worker()
+
   -- XXX EE [[
   keyring.init_worker(kong.configuration)
   -- ]]

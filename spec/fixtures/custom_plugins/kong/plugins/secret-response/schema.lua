@@ -5,16 +5,15 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+
 return {
-  name = "env",
+  name = "secret-response",
   fields = {
-    {
-      config = {
+    { config = {
         type = "record",
         fields = {
-          { prefix = { type = "string", match = [[^[%a_-][%a%d_-]*$]] } },
         },
-      },
-    },
+      }
+    }
   },
 }

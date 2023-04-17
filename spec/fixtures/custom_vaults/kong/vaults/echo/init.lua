@@ -5,16 +5,21 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+
+local encode = require "cjson".encode
+
+
+local function get(conf, resource, version)
+  return encode({
+    prefix = conf.prefix,
+    suffix = conf.suffix,
+    resource = resource,
+    version = version,
+  })
+end
+
+
 return {
-  name = "env",
-  fields = {
-    {
-      config = {
-        type = "record",
-        fields = {
-          { prefix = { type = "string", match = [[^[%a_-][%a%d_-]*$]] } },
-        },
-      },
-    },
-  },
+  VERSION = "1.0.0",
+  get = get,
 }

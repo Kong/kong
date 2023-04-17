@@ -707,6 +707,7 @@ do
 
       kong.core_cache:purge()
       kong.cache:purge()
+      kong.vault.flush()
 
       if router then
         ROUTER = router
