@@ -11,28 +11,28 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'failure' }}
     steps:
-      - name: Generate Slack Payload
-        id: generate_payload
-        uses: actions/github-script@v4
-        with:
-          script: |
-            const slack_mapping = JSON.parse(process.env.SLACK_MAPPING);
-            const repo_name = "${{ github.event.workflow_run.repository.full_name }}";
-            const run_id = ${{ github.event.workflow_run.id }};
-            const run_url = `https://github.com/${repo_name}/actions/runs/${run_id}`;
-            const pr_author_github_id = "${{ github.event.workflow_run.actor.login }}"
-            const pr_author_slack_id = slack_mapping[pr_author_github_id];
-            const author = (pr_author_slack_id ? `<@${pr_author_slack_id}>` : pr_author_github_id);
-            const workflow_name = "${{ github.event.workflow_run.name }}"
-            const payload = {
-              text: `Workflow “${workflow_name}” failed in repo: “${repo_name}”. Run URL: ${run_url}. ${author}, please check it.`,
-              channel: process.env.SLACK_CHANNEL,
-              icon_emoji: ":alert:",
-            };
-            console.log(`::set-output name=payload::${JSON.stringify(payload)}`);
-        env:
-          SLACK_CHANNEL: gateway-notifications
-          SLACK_MAPPING: "${{ vars.SLACK_MAPPING }}"
+    - name: Generate Slack Payload
+      id: generate_payload
+      uses: actions/github-script@v4
+      with:
+        script: |
+          const manager_ids = ["dndx"];
+          const slack_mapping = JSON.parse(process.env.SLACK_MAPPING);
+          const repo_name = "${{ github.event.workflow_run.repository.full_name }}";
+          const run_id = ${{ github.event.workflow_run.id }};
+          const run_url = `https://github.com/${repo_name}/actions/runs/${run_id}`;
+          const slack_ids = github_ids.map(id => slack_mapping[id]).filter(id => id); // map GitHub IDs to Slack IDs and remove any undefined values
+          const authors = slack_ids.length ? slack_ids.map(id => `<@${id}>`).join(", ") : github_ids.join(", ");
+          const workflow_name = "${{ github.event.workflow_run.name }}"
+          const payload = {
+            text: `Workflow “${workflow_name}” failed in repo: “${repo_name}”. Run URL: ${run_url}. ${authors}, please check it.`,
+            channel: process.env.SLACK_CHANNEL,
+            icon_emoji: ":alert:",
+          };
+          console.log(`::set-output name=payload::${JSON.stringify(payload)}`);
+      env:
+        SLACK_CHANNEL: gateway-notifications
+        SLACK_MAPPING: "${{ vars.SLACK_MAPPING }}"
 
       - name: Send Slack Message
         uses: slackapi/slack-github-action@v1.23.0
