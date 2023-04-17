@@ -52,7 +52,9 @@ if [ "$TEST_SUITE" == "dbless" ]; then
     eval "$TEST_CMD" spec/02-integration/02-cmd \
                      spec/02-integration/05-proxy \
                      spec/02-integration/04-admin_api/02-kong_routes_spec.lua \
-                     spec/02-integration/04-admin_api/15-off_spec.lua
+                     spec/02-integration/04-admin_api/15-off_spec.lua \
+                     spec/02-integration/08-status_api/01-core_routes_spec.lua \
+                     spec/02-integration/11-dbless
 fi
 if [ "$TEST_SUITE" == "plugins" ]; then
     set +ex
