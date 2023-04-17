@@ -20,7 +20,7 @@ permissions: read-all
 jobs:
   analysis:
     name: Scorecards analysis
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-kong
     permissions:
       contents: read
       actions: read

@@ -21,7 +21,7 @@ jobs:
 
   autoformat:
     name: Auto-format and Check
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest-kong
 
     steps:
       - name: Check out code

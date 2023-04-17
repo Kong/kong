@@ -24,7 +24,7 @@ jobs:
             version: "3.1.x.x"
           - branch: next/2.8.x.x
             version: "2.8.x.x"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-kong
     steps:
       - name: Find date
         id: date
@@ -40,4 +40,4 @@ jobs:
           workflow: release.yml
           ref: ${{ matrix.branch }}
           inputs: '{"official":"false", "version":"${{ matrix.version }}"}'
- 
+

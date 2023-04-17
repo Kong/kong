@@ -14,7 +14,7 @@ on:
 jobs:
   check-manager-approvals:
     name: Did manager approve this backport?
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-kong
 
     steps:
     - name: check manager approval
