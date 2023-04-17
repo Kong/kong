@@ -26,6 +26,7 @@ return {
         { send_timeout = typedefs.timeout { default = 5000 } },
         { read_timeout = typedefs.timeout { default = 5000 } },
         -- TODO: sampling_rate controlled by the plugin, for now it's controlled by the `opentelemetry_tracing_sampling_rate`
+        { queue = typedefs.queue },
       },
     }, },
   },

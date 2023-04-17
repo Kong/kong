@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local BatchQueue = require "kong.tools.batch_queue"
+local Queue = require "kong.tools.queue"
 local http = require "resty.http"
 local encoder = require "kong.plugins.datadog-tracing.encoder"
 local propagation = require "kong.tracing.propagation"
@@ -44,8 +44,6 @@ local default_headers = {
   ["Content-Type"] = "application/msgpack",
 }
 
--- worker-level spans queue
-local queues = {} -- one queue per unique plugin config
 
 local function http_export_request(conf, encoded_data)
   local endpoint = conf.endpoint or default_trace_url
@@ -186,31 +184,10 @@ function DatadogHandler:log(conf)
     root_span:set_attribute("kong.consumer", ngx_ctx.authenticated_consumer.id)
   end
 
-  local queue_id = conf.__key__
-  local q = queues[queue_id]
-  if not q then
-    local process = function(entries)
-      return http_export(conf, entries)
-    end
-
-    local opts = {
-      batch_max_size = conf.batch_span_count,
-      process_delay  = conf.batch_flush_delay,
-    }
-
-    local err
-    q, err = BatchQueue.new("datadog-tracing", process, opts)
-    if not q then
-      kong.log.err("could not create queue: ", err)
-      return
-    end
-    queues[queue_id] = q
-  end
-
   local segment = new_tab(0, #ngx_ctx.KONG_SPANS)
   kong.tracing.process_span(process_span, segment, conf, kong.ctx.plugin.origin)
 
-  q:add(segment)
+  Queue.enqueue(Queue.get_params(conf), http_export, conf, segment)
 end
 
 return DatadogHandler

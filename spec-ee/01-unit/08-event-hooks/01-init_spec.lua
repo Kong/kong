@@ -366,7 +366,7 @@ describe("event-hooks", function()
       local handler, handler_cb, entity, worker_event
 
       before_each(function()
-        stub(event_hooks.queue, "add")
+        stub(event_hooks, "enqueue")
 
         worker_event = {
           data = { some = "data" },
@@ -401,7 +401,7 @@ describe("event-hooks", function()
           args = { worker_event.data, worker_event.event, worker_event.source, worker_event.pid },
         }
 
-        assert.stub(event_hooks.queue.add).was.called_with(event_hooks.queue, blob)
+        assert.stub(event_hooks.enqueue).was.called_with(blob)
       end)
 
       describe("on_change", function()
@@ -411,13 +411,13 @@ describe("event-hooks", function()
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(event_hooks.queue.add).was.called(1)
+          assert.stub(event_hooks.enqueue).was.called(1)
 
           event_hooks.callback(entity)(worker_event.data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(event_hooks.queue.add).was.called(2)
+          assert.stub(event_hooks.enqueue).was.called(2)
         end)
         it("when true, enqueues event_hooks job only if data signature has changed", function()
           entity.on_change = true
@@ -427,35 +427,35 @@ describe("event-hooks", function()
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(event_hooks.queue.add).was.called(1)
+          assert.stub(event_hooks.enqueue).was.called(1)
 
           worker_event.data = { some = "data" }
           event_hooks.callback(entity)(worker_event.data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(event_hooks.queue.add).was.called(1)
+          assert.stub(event_hooks.enqueue).was.called(1)
 
           worker_event.data = { different = "data" }
           event_hooks.callback(entity)(worker_event.data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(event_hooks.queue.add).was.called(2)
+          assert.stub(event_hooks.enqueue).was.called(2)
 
           worker_event.data = { different = "data" }
           event_hooks.callback(entity)(worker_event.data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(event_hooks.queue.add).was.called(2)
+          assert.stub(event_hooks.enqueue).was.called(2)
 
           worker_event.data = { some = "data" }
           event_hooks.callback(entity)(worker_event.data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(event_hooks.queue.add).was.called(3)
+          assert.stub(event_hooks.enqueue).was.called(3)
         end)
         it("does ignore on_change if event data is not serializable", function()
           entity.on_change = true
@@ -464,13 +464,13 @@ describe("event-hooks", function()
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(event_hooks.queue.add).was.called(1)
+          assert.stub(event_hooks.enqueue).was.called(1)
 
           event_hooks.callback(entity)(worker_event.data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(event_hooks.queue.add).was.called(2)
+          assert.stub(event_hooks.enqueue).was.called(2)
         end)
       end)
 
@@ -482,13 +482,13 @@ describe("event-hooks", function()
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(event_hooks.queue.add).was.called(1)
+          assert.stub(event_hooks.enqueue).was.called(1)
 
           event_hooks.callback(entity)(worker_event.data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(event_hooks.queue.add).was.called(1)
+          assert.stub(event_hooks.enqueue).was.called(1)
 
           -- 50 seconds pass
           kong.cache._travel(50)
@@ -496,7 +496,7 @@ describe("event-hooks", function()
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(event_hooks.queue.add).was.called(1)
+          assert.stub(event_hooks.enqueue).was.called(1)
 
           -- 20 more seconds pass (70 seconds)
           kong.cache._travel(20)
@@ -504,7 +504,7 @@ describe("event-hooks", function()
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(event_hooks.queue.add).was.called(2)
+          assert.stub(event_hooks.enqueue).was.called(2)
 
           -- now it should be snoozed for 60 more seconds (130 seconds)
           -- 30 seconds pass
@@ -513,7 +513,7 @@ describe("event-hooks", function()
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(event_hooks.queue.add).was.called(2)
+          assert.stub(event_hooks.enqueue).was.called(2)
 
           -- 31 seconds pass
           kong.cache._travel(31)
@@ -521,7 +521,7 @@ describe("event-hooks", function()
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(event_hooks.queue.add).was.called(3)
+          assert.stub(event_hooks.enqueue).was.called(3)
         end)
 
         it("does ignore snooze if event data is not serializable", function()
@@ -531,13 +531,13 @@ describe("event-hooks", function()
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(event_hooks.queue.add).was.called(1)
+          assert.stub(event_hooks.enqueue).was.called(1)
 
           event_hooks.callback(entity)(worker_event.data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(event_hooks.queue.add).was.called(2)
+          assert.stub(event_hooks.enqueue).was.called(2)
         end)
       end)
 
@@ -553,7 +553,7 @@ describe("event-hooks", function()
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(event_hooks.queue.add).was.called(1)
+          assert.stub(event_hooks.enqueue).was.called(1)
 
           -- 10 seconds
           kong.cache._travel(10)
@@ -563,14 +563,14 @@ describe("event-hooks", function()
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(event_hooks.queue.add).was.called(1)
+          assert.stub(event_hooks.enqueue).was.called(1)
 
           -- different data
           event_hooks.callback(entity)(different_data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(event_hooks.queue.add).was.called(2)
+          assert.stub(event_hooks.enqueue).was.called(2)
 
           -- 20 seconds
           kong.cache._travel(10)
@@ -580,7 +580,7 @@ describe("event-hooks", function()
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(event_hooks.queue.add).was.called(2)
+          assert.stub(event_hooks.enqueue).was.called(2)
 
           -- 61 seconds
           kong.cache._travel(41)
@@ -590,14 +590,14 @@ describe("event-hooks", function()
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(event_hooks.queue.add).was.called(3)
+          assert.stub(event_hooks.enqueue).was.called(3)
 
           -- different data
           event_hooks.callback(entity)(worker_event.data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(event_hooks.queue.add).was.called(3)
+          assert.stub(event_hooks.enqueue).was.called(3)
 
           -- 71 seconds
           kong.cache._travel(71)
@@ -606,7 +606,7 @@ describe("event-hooks", function()
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(event_hooks.queue.add).was.called(4)
+          assert.stub(event_hooks.enqueue).was.called(4)
         end)
       end)
     end)

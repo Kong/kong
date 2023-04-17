@@ -133,6 +133,16 @@ return {
     },
     opentelemetry = {
       "http_response_header_for_traceid",
+      "queue",
+    },
+    http_log = {
+      "queue",
+    },
+    statsd = {
+      "queue",
+    },
+    datadog = {
+      "queue",
     },
   },
 }

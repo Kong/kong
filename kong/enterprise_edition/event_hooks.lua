@@ -9,7 +9,7 @@ local cjson = require "cjson.safe"
 local tx = require "pl/tablex"
 local to_hex = require "resty.string".to_hex
 
-local BatchQueue = require "kong.tools.batch_queue"
+local Queue = require "kong.tools.queue"
 local sandbox = require "kong.tools.sandbox"
 local request = require "kong.enterprise_edition.utils".request
 local normalize_table = require "kong.enterprise_edition.utils".normalize_table
@@ -61,7 +61,7 @@ _M.crud = function(data)
 
   -- ping if available
   if _M.has_ping(data.entity) then
-    _M.queue:add({
+    _M.enqueue({
       callback = _M.ping,
       args = { data.entity, data.operation },
     })
@@ -199,13 +199,16 @@ local process_callback = function(batch)
   return cok_or_perr, cres, cerr
 end
 
-local queue_opts = {
-  batch_max_size = 1,
-  process_delay = 0,
-  max_queued_batches = 10000,
-}
+_M.enqueue = function(entry)
+  local queue_opts = {
+    name = "event-hooks",
+    batch_max_size = 1,
+    process_delay = 0,
+    max_queued_batches = 10000,
+  }
 
-local queue = BatchQueue.new("event-hooks", process_callback, queue_opts)
+  Queue.enqueue(queue_opts, process_callback, nil, entry)
+end
 
 _M.callback = function(entity)
   local callback = _M.handlers[entity.handler](entity, entity.config).callback
@@ -265,7 +268,7 @@ _M.callback = function(entity)
       args = { data, event, source, pid },
     }
 
-    return queue:add(blob)
+    return _M.enqueue(blob)
   end
 
   return wrap
@@ -570,7 +573,6 @@ _M.handlers = {
 -- accessors to ease unit testing
 _M.events = events
 _M.references = references
-_M.queue = queue
 _M.process_callback = process_callback
 
 return _M

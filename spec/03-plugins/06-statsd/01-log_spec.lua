@@ -2324,7 +2324,7 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
-    -- the purpose of this test case is to test the batch queue
+    -- the purpose of this test case is to test the queue
     -- finishing processing its batch in one time (no retries)
     it("won't send the same metric multiple times", function()
       ---[[ EE
