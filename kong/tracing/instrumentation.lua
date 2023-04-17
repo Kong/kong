@@ -227,7 +227,7 @@ function _M.request(ctx)
     http_flavor = string.format("%.1f", http_flavor)
   end
 
-  local active_span = tracer.start_span("kong.request", {
+  local active_span = tracer.start_span("kong", {
     span_kind = 2, -- server
     start_time_ns = start_time,
     attributes = {
