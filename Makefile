@@ -24,6 +24,12 @@ else
 GRPCURL_MACHINE ?= $(MACHINE)
 endif
 
+ifeq ($(OS), darwin)
+ifeq ($(GRPCURL_MACHINE), arm64)
+override GRPCURL_OS := linux
+endif
+endif
+
 ifeq ($(MACHINE), aarch64)
 BAZELISK_MACHINE ?= arm64
 else ifeq ($(MACHINE), x86_64)
