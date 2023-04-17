@@ -93,6 +93,14 @@ jobs:
 
         echo "matrix=$(yq -I=0 -o=json $matrix_file)" >> $GITHUB_OUTPUT
 
+        arch='amd64'
+        if [[ '${{ matrix.label }}' == *'arm64' ]]; then
+          arch='arm64'
+        fi
+
+        echo "arch=$arch"
+        echo "arch=$arch" >> $GITHUB_OUTPUT
+
         cat $GITHUB_OUTPUT
 
         echo "### :package: Building and packaging for $release_desc" >> $GITHUB_STEP_SUMMARY
@@ -607,20 +615,9 @@ jobs:
         name: ${{ matrix.artifact-from }}-packages
         path: bazel-bin/pkg
 
-    - name: Set package architecture
-      id: pkg-arch
-      run: |
-        arch='amd64'
-        if [[ '${{ matrix.label }}' == *'arm64' ]]; then
-          arch='arm64'
-        fi
-
-        echo "arch=$arch"
-        echo "arch=$arch" >> $GITHUB_OUTPUT
-
     - name: Upload Packages to PULP
       env:
-        ARCHITECTURE: ${{ steps.pkg-arch.outputs.arch }}
+        ARCHITECTURE: ${{ needs.metadata.outputs.arch }}
         OFFICIAL_RELEASE: ${{ github.event.inputs.official }}
         PULP_HOST: https://api.download.konghq.com
         PULP_USERNAME: admin
