@@ -82,7 +82,7 @@
   [#9903](https://github.com/Kong/kong/pull/9903)
 
 ### Fixes
-- **gRPC gateway**: Fix an issue where handling `null` in JSON payloa
+- **gRPC gateway**: Fix an issue where handling `null` in JSON payload
   [#10687](https://github.com/Kong/kong/pull/10687)
 
 #### Core
