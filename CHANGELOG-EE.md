@@ -46,6 +46,10 @@
     [FTI-4808](https://konghq.atlassian.net/browse/FTI-4808)
 * Fixed an issue changing the vault name throws an error. [KAG-1070](https://konghq.atlassian.net/browse/KAG-1070)
 
+* Ldap-auth-advanced
+  * The plugin now returns a 403 when a user isn't in the authorized groups and does authentication before authorization.
+    [FTI-4955](https://github.com/Kong/kong-ee/pull/5098)
+
 # TEMPLATE
 
 ## Enterprise

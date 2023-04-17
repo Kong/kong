@@ -772,9 +772,25 @@ for _, strategy in strategies() do
           }
         })
 
-        local body = assert.res_status(401, res)
+        local body = assert.res_status(403, res)
         local json = cjson.decode(body)
         assert.equal(json.message, "User not in authorized LDAP Group")
+      end)
+
+      it("should return 401 if credential is invalid and user isn't in the authorized group", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          body    = {},
+          headers = {
+            host             = "ldap2.com",
+            authorization    = "ldap " .. ngx.encode_base64("Hamlet:pass:wrong_password"),
+          }
+        })
+
+        local body = assert.res_status(401, res)
+        local json = cjson.decode(body)
+        assert.equal(json.message, "Unauthorized")
       end)
 
       it("should allow request based on user's group membership", function()
@@ -804,7 +820,7 @@ for _, strategy in strategies() do
           }
         })
 
-        local body = assert.res_status(401, res)
+        local body = assert.res_status(403, res)
         local json = cjson.decode(body)
         assert.equal(json.message, "User not in authorized LDAP Group")
       end)
@@ -820,7 +836,7 @@ for _, strategy in strategies() do
           }
         })
 
-        local body = assert.res_status(401, res)
+        local body = assert.res_status(403, res)
         local json = cjson.decode(body)
         assert.equal(json.message, "User not in authorized LDAP Group")
       end)
@@ -852,7 +868,7 @@ for _, strategy in strategies() do
           }
         })
 
-        local body = assert.res_status(401, res)
+        local body = assert.res_status(403, res)
         local json = cjson.decode(body)
         assert.equal(json.message, "User not in authorized LDAP Group")
       end)
@@ -884,7 +900,7 @@ for _, strategy in strategies() do
           }
         })
 
-        local body = assert.res_status(401, res)
+        local body = assert.res_status(403, res)
         local json = cjson.decode(body)
         assert.equal(json.message, "User not in authorized LDAP Group")
       end)
