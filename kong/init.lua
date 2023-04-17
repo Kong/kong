@@ -735,6 +735,8 @@ function Kong.init_worker()
 
   kong.db:set_events_handler(worker_events)
 
+  kong.vault.init_worker()
+
   if is_dbless(kong.configuration) then
     -- databases in LMDB need to be explicitly created, otherwise `get`
     -- operations will return error instead of `nil`. This ensures the default

@@ -167,6 +167,8 @@
   [#10774](https://github.com/Kong/kong/pull/10774)
 - Fix issue when stopping a Kong could error out if using Vault references
   [#10775](https://github.com/Kong/kong/pull/10775)
+- Fix issue where Vault configuration stayed sticky and cached even when configurations were changed.
+  [#10776](https://github.com/Kong/kong/pull/10776)
 
 
 #### Admin API
