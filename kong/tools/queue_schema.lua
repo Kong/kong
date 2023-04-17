@@ -4,14 +4,6 @@ local Schema = require "kong.db.schema"
 return Schema.define {
   type = "record",
   fields = {
-    { name = {
-      type = "string",
-      -- description = "name of the queue, unique across one workspace.",
-      -- If two plugin instances use the same queue name, they will
-      -- share one queue and their queue related configuration must match.
-      -- If no name is provided in the configuration, each plugin instance
-      -- will use a separate queue.
-    } },
     { max_batch_size = {
       type = "number",
       default = 1,

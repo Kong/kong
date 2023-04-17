@@ -2,9 +2,16 @@ local Queue = require "kong.tools.queue"
 local helpers = require "spec.helpers"
 local timerng = require "resty.timerng"
 local queue_schema = require "kong.tools.queue_schema"
+local queue_num = 1
 
 local function queue_conf(conf)
   local defaulted_conf = {}
+  if conf.name then
+    defaulted_conf.name = conf.name
+  else
+    defaulted_conf.name = "test-" .. tostring(queue_num)
+    queue_num = queue_num + 1
+  end
   for _, field in ipairs(queue_schema.fields) do
     for name, attrs in pairs(field) do
       defaulted_conf[name] = conf[name] or attrs.default

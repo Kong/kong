@@ -4,10 +4,26 @@ local helpers    = require "spec.helpers"
 
 for _, strategy in helpers.each_strategy() do
   describe("legacy queue parameters [#" .. strategy .. "]", function()
+
+    lazy_setup(function()
+      -- Create a service to make sure that our database is initialized properly.
+      local bp = helpers.get_db_utils(strategy, {
+        "services",
+      })
+
+      bp.services:insert{
+        protocol = "http",
+        host     = helpers.mock_upstream_host,
+        port     = helpers.mock_upstream_port,
+      }
+    end)
+
     local admin_client
 
     before_each(function()
+
       helpers.clean_logfile()
+
       assert(helpers.start_kong({
         database = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",

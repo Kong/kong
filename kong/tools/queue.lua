@@ -102,7 +102,7 @@ end
 -- @return table: a Queue object.
 local function get_or_create_queue(queue_conf, handler, handler_conf)
 
-  local name = queue_conf.name
+  local name = assert(queue_conf.name)
 
   local queue = queues[name]
   if queue then
