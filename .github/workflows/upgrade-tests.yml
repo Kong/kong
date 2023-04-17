@@ -22,7 +22,7 @@ concurrency:
 jobs:
   upgrade-test:
     name: Run migration tests
-    runs-on: ubuntu-latest-kong
+    runs-on: ubuntu-latest
 
     steps:
       - name: Install Docker

@@ -68,7 +68,7 @@ jobs:
   construct_docker_image_matrix:
     name: Construct Gateway docker images for docker matrix test run
     if: ${{ github.event.inputs.target_matrix  == 'all' || github.event.inputs.target_matrix  == 'docker' }}
-    runs-on: ubuntu-latest-kong
+    runs-on: ubuntu-latest
     outputs:
       image_matrix: ${{ steps.construct_docker_images.outputs.custom_matrix }}
     steps:
@@ -108,7 +108,7 @@ jobs:
     # github doesn't accept env context in if conditional, hence using .inputs
     if: ${{ github.event.inputs.target_matrix  == 'all' || github.event.inputs.target_matrix  == 'docker' }}
     needs: construct_docker_image_matrix
-    runs-on: ubuntu-latest-kong
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: spec-ee/kong-api-tests
@@ -223,7 +223,7 @@ jobs:
   gateway_tests_for_postgres:
     name: Gateway API Test Matrix for Postgres versions
     if: ${{ github.event.inputs.target_matrix  == 'all' || github.event.inputs.target_matrix  == 'postgres' }}
-    runs-on: ubuntu-latest-kong
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: spec-ee/kong-api-tests
@@ -345,7 +345,7 @@ jobs:
   gateway_tests_for_release_packages:
     name: Gateway API Test Matrix for Release Packages
     if: ${{ github.event.inputs.target_matrix  == 'all' || github.event.inputs.target_matrix  == 'package' }}
-    runs-on: ubuntu-latest-kong
+    runs-on: ubuntu-latest
     timeout-minutes: 3
     env:
       KONG_VERSION: ${{ github.event.inputs.gateway_version || '3.3.0.0' }}
