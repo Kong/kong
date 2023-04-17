@@ -27,7 +27,6 @@ local sub = string.sub
 local byte = string.byte
 local gsub = string.gsub
 local type = type
-local next = next
 local sort = table.sort
 local pcall = pcall
 local lower = string.lower
@@ -38,8 +37,9 @@ local tostring = tostring
 local tonumber = tonumber
 local decode_args = ngx.decode_args
 local unescape_uri = ngx.unescape_uri
-local parse_url = require "socket.url".parse
-local parse_path = require "socket.url".parse_path
+local parse_url = require("socket.url").parse
+local parse_path = require("socket.url").parse_path
+local encode_base64url = require("ngx.base64").encode_base64url
 local decode_json = cjson.decode
 
 
@@ -59,6 +59,7 @@ local function new(self)
   local STRATEGIES = {}
   local SCHEMAS = {}
   local CONFIGS = {}
+  local CONFIG_HASHES = {}
 
 
   local BRACE_START = byte("{")
@@ -82,9 +83,10 @@ local function new(self)
   end
 
 
-  local function build_cache_key(name, resource, version)
-    return version and fmt("reference:%s:%s:%s", name, resource, version)
-                    or fmt("reference:%s:%s", name, resource)
+  local function build_cache_key(name, resource, version, hash)
+    version = version or ""
+    hash = hash or ""
+    return "reference:" .. name .. ":" .. resource .. ":" .. version .. ":" .. hash
   end
 
 
@@ -133,11 +135,11 @@ local function new(self)
   end
 
 
-  local function retrieve_value(strategy, config, reference, resource,
+  local function retrieve_value(strategy, config, hash, reference, resource,
                                 name, version, key, cache, rotation)
     local cache_key
     if cache or rotation then
-      cache_key = build_cache_key(name, resource, version)
+      cache_key = build_cache_key(name, resource, version, hash)
     end
 
     local value, err
@@ -168,6 +170,88 @@ local function new(self)
   end
 
 
+  local function calculate_config_hash(config, schema)
+    local hash
+    for k in schema:each_field() do
+      local v = config[k]
+      if v ~= nil then
+        if not hash then
+          hash = true
+          KEY_BUFFER:reset()
+        end
+        KEY_BUFFER:putf("%s=%s;", k, v)
+      end
+    end
+
+    if hash then
+      return encode_base64url(md5_bin(KEY_BUFFER:get()))
+    end
+
+    -- nothing configured, so hash can be nil
+    return nil
+  end
+
+
+  local function calculate_config_hash_for_prefix(config, schema, prefix)
+    local hash = CONFIG_HASHES[prefix]
+    if hash then
+      return hash ~= true and hash or nil
+    end
+
+    local hash = calculate_config_hash(config, schema)
+
+    -- true is used as to store `nil` hash
+    CONFIG_HASHES[prefix] = hash or true
+
+    return hash
+  end
+
+
+  local function get_config_with_overrides(base_config, config_overrides, schema, prefix)
+    local config
+    for k, f in schema:each_field() do
+      local v = config_overrides[k]
+      v = arguments.infer_value(v, f)
+      -- TODO: should we be more visible with validation errors?
+      if v ~= nil and schema:validate_field(f, v) then
+        if not config then
+          config = clone(base_config)
+          KEY_BUFFER:reset()
+          if prefix then
+            local hash = calculate_config_hash_for_prefix(config, schema, prefix)
+            if hash then
+              KEY_BUFFER:putf("%s;", hash)
+            end
+          end
+        end
+        config[k] = v
+        KEY_BUFFER:putf("%s=%s;", k, v)
+      end
+    end
+
+    local hash
+    if config then
+      hash = encode_base64url(md5_bin(KEY_BUFFER:get()))
+    end
+
+    return config or base_config, hash
+  end
+
+
+  local function get_config(base_config, config_overrides, schema, prefix)
+    if not config_overrides or isempty(config_overrides) then
+      if not prefix then
+        return base_config
+      end
+
+      local hash = calculate_config_hash_for_prefix(base_config, schema, prefix)
+      return base_config, hash
+    end
+
+    return get_config_with_overrides(base_config, config_overrides, schema, prefix)
+  end
+
+
   local function process_secret(reference, opts, rotation)
     local name = opts.name
     if not VAULT_NAMES[name] then
@@ -188,7 +272,7 @@ local function new(self)
           return nil, fmt("could not find vault schema (%s): %s [%s]", name, strategy, reference)
         end
 
-        schema = schema.fields.config
+        schema = require("kong.db.schema").new(schema.fields.config)
 
       else
         local ok
@@ -203,7 +287,9 @@ local function new(self)
           return nil, fmt("could not find vault schema (%s): %s [%s]", name, def, reference)
         end
 
-        schema = require("kong.db.schema").new(require("kong.db.schema.entities.vaults"))
+        local Schema = require("kong.db.schema")
+
+        schema = Schema.new(require("kong.db.schema.entities.vaults"))
 
         local err
         ok, err = schema:new_subschema(name, def)
@@ -220,39 +306,52 @@ local function new(self)
           strategy.init()
         end
 
-        schema = schema.fields.config
+        schema = Schema.new(schema.fields.config)
       end
 
       STRATEGIES[name] = strategy
       SCHEMAS[name] = schema
     end
 
-    local config = CONFIGS[name]
-    if not config then
-      config = opts.config or {}
+    -- base config stays the same so we can cache it
+    local base_config = CONFIGS[name]
+    if not base_config then
+      base_config = {}
       if self and self.configuration then
         local configuration = self.configuration
-        local fields = schema.fields
         local env_name = gsub(name, "-", "_")
-        for i = 1, #fields do
-          local k, f = next(fields[i])
-          if config[k] == nil then
-            local n = lower(fmt("vault_%s_%s", env_name, k))
-            local v = configuration[n]
-            if v ~= nil then
-              config[k] = v
-            elseif f.required and f.default ~= nil then
-              config[k] = f.default
-            end
+        for k, f in schema:each_field() do
+          -- n is the entry in the kong.configuration table, for example
+          -- KONG_VAULT_ENV_PREFIX will be found in kong.configuration
+          -- with a key "vault_env_prefix". Environment variables are
+          -- thus turned to lowercase and we just treat any "-" in them
+          -- as "_". For example if your custom vault was called "my-vault"
+          -- then you would configure it with KONG_VAULT_MY_VAULT_<setting>
+          -- or in kong.conf, where it would be called
+          -- "vault_my_vault_<setting>".
+          local n = lower(fmt("vault_%s_%s", env_name, gsub(k, "-", "_")))
+          local v = configuration[n]
+          v = arguments.infer_value(v, f)
+          -- TODO: should we be more visible with validation errors?
+          -- In general it would be better to check the references
+          -- and not just a format when they are stored with admin
+          -- API, or in case of process secrets, when the kong is
+          -- started. So this is a note to remind future us.
+          -- Because current validations are less strict, it is fine
+          -- to ignore it here.
+          if v ~= nil and schema:validate_field(f, v) then
+            base_config[k] = v
+          elseif f.required and f.default ~= nil then
+            base_config[k] = f.default
           end
         end
+        CONFIGS[name] = base_config
       end
-
-      config = arguments.infer_value(config, schema)
-      CONFIGS[name] = config
     end
 
-    return retrieve_value(strategy, config, reference, opts.resource, name,
+    local config, hash = get_config(base_config, opts.config, schema)
+
+    return retrieve_value(strategy, config, hash, reference, opts.resource, name,
                           opts.version, opts.key, self and self.core_cache,
                           rotation)
   end
@@ -294,26 +393,15 @@ local function new(self)
         return nil, fmt("could not find vault sub-schema (%s) [%s]", name, reference)
       end
 
-      schema = schema.fields.config
+      schema = require("kong.db.schema").new(schema.fields.config)
 
       STRATEGIES[name] = strategy
       SCHEMAS[name] = schema
     end
 
-    local config = opts.config
-    if config then
-      config = arguments.infer_value(config, schema)
-      for k, v in pairs(vault.config) do
-        if v ~= nil and config[k] == nil then
-          config[k] = v
-        end
-      end
+    local config, hash = get_config(vault.config, opts.config, schema, prefix)
 
-    else
-      config = vault.config
-    end
-
-    return retrieve_value(strategy, config, reference, opts.resource, prefix,
+    return retrieve_value(strategy, config, hash, reference, opts.resource, prefix,
                           opts.version, opts.key, cache, rotation)
   end
 
@@ -488,7 +576,7 @@ local function new(self)
       KEY_BUFFER:putf("%s=%s;", key, val)
     end
 
-    local key = md5_bin(KEY_BUFFER:tostring())
+    local key = md5_bin(KEY_BUFFER:get())
     local updated
 
     -- is there already values with RETRY_TTL seconds ttl?
@@ -597,6 +685,61 @@ local function new(self)
   local _VAULT = {}
 
 
+  local function flush_config_cache(data)
+    local cache = self.core_cache
+    if cache then
+      local vaults = self.db.vaults
+      local old_entity = data.old_entity
+      local old_prefix
+      if old_entity then
+        old_prefix = old_entity.prefix
+        if old_prefix and old_prefix ~= ngx.null then
+          CONFIG_HASHES[old_prefix] = nil
+          cache:invalidate(vaults:cache_key(old_prefix))
+        end
+      end
+
+      local entity = data.entity
+      if entity then
+        local prefix = entity.prefix
+        if prefix and prefix ~= ngx.null and prefix ~= old_prefix then
+          CONFIG_HASHES[prefix] = nil
+          cache:invalidate(vaults:cache_key(prefix))
+        end
+      end
+    end
+
+    LRU:flush_all()
+  end
+
+
+  local initialized
+  local function init_worker()
+    if initialized then
+      return
+    end
+
+    initialized = true
+
+    if self.configuration.database ~= "off" then
+      self.worker_events.register(flush_config_cache, "crud", "vaults")
+    end
+  end
+
+
+  ---
+  -- Flushes vault config and the references LRU cache.
+  --
+  -- @function kong.vault.flush
+  --
+  -- @usage
+  -- kong.vault.flush()
+  function _VAULT.flush()
+    CONFIG_HASHES = {}
+    LRU:flush_all()
+  end
+
+
   ---
   -- Checks if the passed in reference looks like a reference.
   -- Valid references start with '{vault://' and end with '}'.
@@ -690,6 +833,11 @@ local function new(self)
   -- })
   function _VAULT.try(callback, options)
     return try(callback, options)
+  end
+
+
+  function _VAULT.init_worker()
+    init_worker()
   end
 
 

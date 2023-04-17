@@ -1,11 +1,12 @@
 return {
-  name = "env",
+  name = "echo",
   fields = {
     {
       config = {
         type = "record",
         fields = {
-          { prefix = { type = "string", match = [[^[%a_-][%a%d_-]*$]] } },
+          { prefix = { type = "string" } },
+          { suffix = { type = "string" } },
         },
       },
     },

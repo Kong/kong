@@ -126,6 +126,32 @@ for _, strategy in helpers.each_strategy() do
             assert.res_status(200, res)
           end)
 
+          it("can create a vault by prefix with config (underscore)", function()
+            local res = client:put("/vaults/put-env-prefix", {
+              headers = HEADERS,
+              body = {
+                name = "env",
+                config = {
+                  prefix = "secrets_"
+                },
+              },
+            })
+            assert.res_status(200, res)
+          end)
+
+          it("can create a vault by prefix with config (dash)", function()
+            local res = client:put("/vaults/put-env-prefix", {
+              headers = HEADERS,
+              body = {
+                name = "env",
+                config = {
+                  prefix = "secrets-"
+                },
+              },
+            })
+            assert.res_status(200, res)
+          end)
+
           describe("errors", function()
             it("handles invalid input by id", function()
               local res = client:put("/vaults/" .. utils.uuid(), {
