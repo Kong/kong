@@ -21,16 +21,17 @@
 --     return true
 --   end
 --
---   local handler_conf = {...}  -- configuration for queue handler
---   local queue_conf =          -- configuration for the queue itself (defaults shown unless noted)
+--   local handler_conf = {...}      -- configuration for queue handler
+--   local queue_conf =              -- configuration for the queue itself (defaults shown unless noted)
 --     {
---       name = "example",       -- name of the queue (required)
---       max_batch_size = 10,    -- maximum number of entries in one batch (default 1)
---       max_coalescing_delay = 1,          -- maximum number of seconds after first entry before a batch is sent
---       max_entries = 10,          -- maximum number of entries on the queue (default 10000)
---       max_bytes = 100,  -- maximum number of bytes on the queue (default nil)
---       max_retry_time = 60,    -- maximum number of seconds before a failed batch is dropped
---       max_retry_delay = 60,   -- maximum delay between send attempts, caps exponential retry
+--       name = "example",           -- name of the queue (required)
+--       max_batch_size = 10,        -- maximum number of entries in one batch (default 1)
+--       max_coalescing_delay = 1,   -- maximum number of seconds after first entry before a batch is sent
+--       max_entries = 10,           -- maximum number of entries on the queue (default 10000)
+--       max_bytes = 100,            -- maximum number of bytes on the queue (default nil)
+--       initial_retry_delay = 0.01, -- initial delay when retrying a failed batch, doubled for each subsequent retry
+--       max_retry_time = 60,        -- maximum number of seconds before a failed batch is dropped
+--       max_retry_delay = 60,       -- maximum delay between send attempts, caps exponential retry
 --     }
 --
 --   Queue.enqueue(queue_conf, handler, handler_conf, "Some value")
@@ -49,8 +50,10 @@
 --   message will be logged if an attempt is made to queue a non-string entry.
 -- * When the `handler` function does not return a true value for a batch, it is retried for up to
 --   `max_retry_time` seconds before the batch is deleted and an error is logged.  Retries are organized
---   by the queue library using an exponential back-off algorithm with the maximum time between retries
---   set to `max_retry_delay` seconds.
+--   by the queue library with the initial delay before retrying being defined by `initial_retry_delay` and
+--   the maximum time between retries defined by `max_retry_delay` seconds.  For each subsequent retry, the
+--   previous delay is doubled to yield an exponential back-off strategy - The first retry will be made quickly,
+--   and each subsequent retry will be delayed longer.
 
 local workspaces = require "kong.workspaces"
 local semaphore = require "ngx.semaphore"
