@@ -1,7 +1,12 @@
 #!/bin/bash
 
-KONG_ENV_FILE=.env
-KONG_ENV_DOWN_FILE=.env.down
+if [ "$#" -ne 2 ]; then
+    echo "Usage: $0 KONG_ENV_FILE KONG_ENV_DOWN_FILE"
+    exit 1
+fi
+
+KONG_ENV_FILE=$1
+KONG_ENV_DOWN_FILE=$2
 
 > $KONG_ENV_FILE
 > $KONG_ENV_DOWN_FILE

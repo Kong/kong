@@ -1,7 +1,7 @@
 #!/bin/bash
 
-KONG_ENV_FILE=.env
-KONG_ENV_DOWN_FILE=.env.down
+export KONG_ENV_FILE=$(mktemp) || exit 1
+export KONG_ENV_DOWN_FILE=$(mktemp) || exit 1
 
 if [ "${BASH_SOURCE-}" = "$0" ]; then
     echo "You must source this script: \$ source $0" >&2
@@ -18,7 +18,7 @@ docker_compose_file=${cwd}/docker-compose-test-services.yml
 docker_compose_project=kong
 
 
-bash "$cwd/common.sh"
+bash "$cwd/common.sh" $KONG_ENV_FILE $KONG_ENV_DOWN_FILE
 if [ $? -ne 0 ]; then
     echo "Something goes wrong, please check common.sh output"
     return
@@ -27,7 +27,12 @@ fi
 source $KONG_ENV_FILE
 
 stop_services () {
-    unset $(cat $KONG_ENV_DOWN_FILE | xargs -d '\n')
+    for i in $(cat $KONG_ENV_DOWN_FILE); do
+      unset $i
+    done
+
+    rm -rf $KONG_ENV_FILE $KONG_ENV_DOWN_FILE
+    unset KONG_ENV_FILE KONG_ENV_DOWN_FILE
 
     if test -n "$docker_compose_file" && test -n "$docker_compose_project"; then
         docker-compose -f "$docker_compose_file" -p "$docker_compose_project" down
