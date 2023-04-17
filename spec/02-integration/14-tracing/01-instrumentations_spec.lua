@@ -166,8 +166,8 @@ for _, strategy in helpers.each_strategy() do
 
         -- Making sure it's alright
         local spans = cjson.decode(res)
-        assert.is_same(4, #spans, res)
-        assert.is_same("GET /", spans[1].name)
+        assert.is_same(5, #spans, res)
+        assert.matches("HTTP GET", spans[3].name)
       end)
     end)
 
@@ -321,7 +321,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- Making sure it's alright
         local spans = cjson.decode(res)
-        local expected_span_num = 14
+        local expected_span_num = 15
         -- cassandra has different db query implementation
         if strategy == "cassandra" then
           expected_span_num = expected_span_num + 4
