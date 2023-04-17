@@ -468,6 +468,19 @@ jobs:
         asset_prefix: kong-${{ github.sha }}-${{ matrix.label }}-linux-arm64
         image: ${{env.IMAGE}}@${{ steps.image_manifest_metadata.outputs.arm64_sha }}
 
+    - name: Upload SBOM assets
+      uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: |
+          kong-${{ github.sha }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-cis-report.json
+          kong-${{ github.sha }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-cve-report.json
+          kong-${{ github.sha }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-cve-report.sarif
+          kong-${{ github.sha }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-sbom.cyclonedx.json
+          kong-${{ github.sha }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-sbom.spdx.json
+        prerelease: true
+        name: Kong Enterprise ${{ github.ref_name }}
+
   smoke-tests:
     name: Smoke Tests - ${{ matrix.label }}
     needs: [metadata, build-images]
