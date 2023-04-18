@@ -139,4 +139,42 @@ function _M:log(config)
 end
 
 
+function _M:ws_close(config)
+  local tracer = kong.tracing(tracer_name)
+  local span = tracer.active_span()
+
+  if span then
+    kong.log.debug("Exit span name: ", span.name)
+    span:finish()
+  end
+
+  kong.log.debug("Total spans: ", ngx.ctx.KONG_SPANS and #ngx.ctx.KONG_SPANS)
+
+  local spans = {}
+  for _, span in ipairs(ngx.ctx.KONG_SPANS or {}) do
+    if span.should_sample == false then
+      return
+    end
+    local s = table.clone(span)
+    s.tracer = nil
+    s.parent = nil
+    s.trace_id = to_hex(s.trace_id)
+    s.parent_id = s.parent_id and to_hex(s.parent_id)
+    s.span_id = to_hex(s.span_id)
+    insert(spans, s)
+  end
+
+  local sort_by_start_time = function(a,b)
+    return a.start_time_ns < b.start_time_ns
+  end
+  table.sort(spans, sort_by_start_time)
+
+  local data = cjson.encode(spans)
+
+  local ok, err = ngx.timer.at(0, push_data, data, config)
+  if not ok then
+    kong.log.err("failed to create timer: ", err)
+  end
+end
+
 return _M

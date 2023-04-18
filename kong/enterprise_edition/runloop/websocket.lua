@@ -802,7 +802,7 @@ return {
       after = NOOP,
     },
     ws_close = {
-      before = NOOP,
+      before = runloop.log.before,
       after = runloop.log.after,
     },
   },
