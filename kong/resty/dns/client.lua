@@ -727,14 +727,13 @@ local function individualQuery(qname, r_opts, try_list)
 
   local result
   result, err = r:query(qname, r_opts)
+  close_socks(r)
   if not result then
-    close_socks(r)
     return result, err, try_list
   end
 
   parseAnswer(qname, r_opts.qtype, result, try_list)
 
-  close_socks(r)
   return result, nil, try_list
 end
 
