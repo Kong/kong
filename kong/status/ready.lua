@@ -41,11 +41,13 @@ local function is_ready()
 
   if (is_traditional and router_rebuilds == 0)
       or router_rebuilds < worker_count then
+    kong.db:close()
     return false, "router rebuilds are not complete"
   end
 
   if (is_traditional and plugins_iterator_rebuilds == 0)
       or plugins_iterator_rebuilds < worker_count then
+    kong.db:close()
     return false, "plugins iterator rebuilds are not complete"
   end
 
@@ -57,10 +59,12 @@ local function is_ready()
   local current_hash = get_current_hash()
 
   if not current_hash then
+    kong.db:close()
     return false, "no configuration hash"
   end
 
   if current_hash == DECLARATIVE_EMPTY_CONFIG_HASH then
+    kong.db:close()
     return false, "empty configuration hash"
   end
 
