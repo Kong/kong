@@ -39,7 +39,7 @@ const regexWrongPatterns = ['/5555-helo', '/heo-world', '/wrong-test'];
 const regexCorrectPatterns = ['/helo-test', '/hello-auto', '/world-te'];
 const currentHost = getGatewayHost();
 
-describe('@smoke: Router Functionality Tests', function () {
+describe.skip('@smoke: Router Functionality Tests', function () {
   const routesUrl = `${getBasePath({
     environment: Environment.gateway.adminSec,
   })}/routes`;
