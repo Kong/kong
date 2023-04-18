@@ -64,6 +64,8 @@ describe("Status API - with strategy #" .. strategy, function()
 
         assert.res_status(201, res)
 
+        ngx.sleep(3)
+
         local res = assert(client:send {
           method = "GET",
           path = "/status/ready",
