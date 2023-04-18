@@ -7,7 +7,6 @@
 
 local kong = kong
 local producers = require "kong.enterprise_edition.kafka.plugins.producers"
-local cert_utils = require "kong.enterprise_edition.cert_utils"
 local meta = require "kong.meta"
 local cjson_encode = require("cjson").encode
 
@@ -72,43 +71,22 @@ local function build_kafka_message_from_request(conf)
     body_base64 = body_base64,
   })
 end
-
-
-local function handle_error(err)
-  kong.log.err(err)
-  return kong.response.exit(502, { message = "Bad Gateway", error = err })
-end
-
-
 function KafkaUpstreamHandler:access(conf)
   local message, err = build_kafka_message_from_request(conf)
   if not message then
-    return handle_error("could not build a Kafka message from request: " .. tostring(err))
+    return producers.handle_error({
+            status_code = 500,
+            internal_error = "could not build a Kafka message from request " .. err,
+            external_error = "could not build Kafka message"
+        })
   end
 
-  -- fetch certificate from the store
-  if conf.security.certificate_id then
-    local client_cert, client_priv_key, err = cert_utils.load_certificate(conf.security.certificate_id)
-    if not client_cert or not client_priv_key or err ~= nil then
-      kong.log.err("failed to find or load certificate: ", err)
-      return kong.response.exit(500, { message = "Could not load certificate" })
-    end
-    conf.security.client_cert = client_cert
-    conf.security.client_priv_key = client_priv_key
-  end
-
-  local producer, err = producers.get_or_create(conf)
-  if not producer then
-    return handle_error("could not create a Kafka Producer from given configuration: " .. tostring(err))
-  end
-
-  local ok, err = producer:send(conf.topic, nil, message)
+  local ok, s_err = producers.send_message(conf, message)
   if not ok then
-    return handle_error("could not send a message on topic " .. conf.topic .. ": " .. tostring(err))
+    return producers.handle_error(s_err)
   end
 
   return kong.response.exit(200, { message = "message sent" })
 end
-
 
 return KafkaUpstreamHandler

@@ -142,7 +142,7 @@ local function send_message(conf, message)
             internal_message = "could not send message to topic " .. conf.topic .. ": " .. tostring(p_err)
         }
   end
-  return true
+  return true, {}
 end
 
 return {
