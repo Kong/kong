@@ -14,7 +14,7 @@ for _, strategy in helpers.each_strategy() do
       return helpers.start_kong({
         role = "data_plane",
         database = "off",
-        prefix = "servroot2",
+        prefix = "serve_dp",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         cluster_control_plane = "127.0.0.1:9005",
@@ -32,7 +32,7 @@ for _, strategy in helpers.each_strategy() do
           cluster_cert = "spec/fixtures/kong_clustering.crt",
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
           database = strategy,
-          prefix = "servroot",
+          prefix = "serve_cp",
           cluster_listen = "127.0.0.1:9005",
           nginx_conf = "spec/fixtures/custom_nginx.template",
 
@@ -41,8 +41,8 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     lazy_teardown(function()
-        assert(helpers.stop_kong("servroot"))
-        assert(helpers.stop_kong("servroot2"))
+        assert(helpers.stop_kong("serve_cp"))
+        assert(helpers.stop_kong("serve_dp"))
     end)
 
     -- now dp should be not ready
@@ -69,7 +69,7 @@ for _, strategy in helpers.each_strategy() do
 
     -- now cp should be ready
 
-    describe("cp status ready endpoint", function()
+    describe("CP status ready endpoint", function()
 
       it("returns 200 on control plane", function()
         helpers.wait_until(function()
@@ -91,7 +91,7 @@ for _, strategy in helpers.each_strategy() do
 
     -- now dp receive config from cp, so dp should be ready
 
-    describe("cp/dp status ready endpoint", function()
+    describe("CP/DP status ready endpoint", function()
 
       it("should return 200 on data plane after configuring", function()
         helpers.wait_until(function()
@@ -109,7 +109,7 @@ for _, strategy in helpers.each_strategy() do
           end
         end, 10)
 
-        assert(helpers.stop_kong("servroot"))
+        assert(helpers.stop_kong("serve_dp"))
 
         -- DP should keep return 200 after CP is shut down.
 
@@ -148,6 +148,7 @@ for _, strategy in helpers.each_strategy() do
             return true
           end
         end, 10)
+
         assert(start_kong_dp()) -- recovery state between tests
 
       end)
