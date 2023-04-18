@@ -175,7 +175,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("release", function()
-        assert.logfile().has.line("servin '".. domain_name .. "' from mocks", true, 30)
+        assert.logfile().has.line("serving '".. domain_name .. "' from mocks", true, 30)
         local ok, stderr, stdout = helpers.execute("netstat -n | grep 53 | grep udp | wc -l")
         assert.truthy(ok, stderr)
         assert.equals(0, assert(tonumber(stdout)))

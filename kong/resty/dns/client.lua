@@ -729,7 +729,6 @@ local function individualQuery(qname, r_opts, try_list)
   result, err = r:query(qname, r_opts)
   if not result then
     close_socks(r)
-    r = nil
     return result, err, try_list
   end
 
@@ -777,7 +776,6 @@ local function executeQuery(premature, item)
   ngx.sleep(0)
   -- 3) release the resolver
   close_socks(r)
-  r = nil
 end
 
 
