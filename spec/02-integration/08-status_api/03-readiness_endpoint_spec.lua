@@ -3,7 +3,7 @@ local helpers = require "spec.helpers"
 local describe_func = pending
 for _, strategy in helpers.all_strategies() do
   if strategy ~= "off" then
-    describe_func = strategy
+    describe_func = describe
   end
 
   describe_func("Status API - with strategy #" .. strategy, function()
