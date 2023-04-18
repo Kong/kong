@@ -14,20 +14,13 @@ local SERVICE_YML = [[
 ]]
 
 describe("dbless persistence #off", function()
-  local admin_client, proxy_client
-
   lazy_setup(function()
     assert(helpers.start_kong({
-      database   = "off",
+      database = "off",
     }))
-
-    admin_client = assert(helpers.admin_client())
-    proxy_client = assert(helpers.proxy_client())
   end)
 
   lazy_teardown(function()
-    admin_client:close()
-    proxy_client:close()
     helpers.stop_kong(nil, true)
   end)
 
@@ -38,32 +31,34 @@ describe("dbless persistence #off", function()
     end
     local config = table.concat(buffer, "\n")
 
+    local admin_client = assert(helpers.admin_client())
     local res = admin_client:post("/config",{
       body = { config = config },
       headers = {
-        ["Content-Type"] = "application/json"
+        ["Content-Type"] = "application/json",
       }
     })
     assert.res_status(201, res)
+    admin_client:close()
 
     assert(helpers.restart_kong({
-        database   = "off",
+        database = "off",
     }))
 
-    proxy_client:close()
-    proxy_client = assert(helpers.proxy_client())
+    local proxy_client = assert(helpers.proxy_client())
 
     res = assert(proxy_client:get("/1", { headers = { host = "example1.dev" } }))
     assert.res_status(401, res)
     res = assert(proxy_client:get("/1000", { headers = { host = "example1.dev" } }))
     assert.res_status(401, res)
+    proxy_client:close()
 
     assert.logfile().has.line("found persisted lmdb config")
   end)
 end)
 
 describe("dbless persistence with a declarative config #off", function()
-  local admin_client, proxy_client, yaml_file
+  local yaml_file
 
   lazy_setup(function()
     yaml_file = helpers.make_yaml_file([[
@@ -82,39 +77,42 @@ describe("dbless persistence with a declarative config #off", function()
 
   before_each(function()
     assert(helpers.start_kong({
-        database   = "off",
+        database = "off",
         declarative_config = yaml_file,
     }))
-    admin_client = assert(helpers.admin_client())
-    proxy_client = assert(helpers.proxy_client())
+    local admin_client = assert(helpers.admin_client())
+    local proxy_client = assert(helpers.proxy_client())
 
     local res = assert(proxy_client:get("/test", { headers = { host = "example1.dev" } }))
     assert.res_status(401, res)
+    proxy_client:close()
 
     local buffer = {"_format_version: '1.1'", "services:"}
     local i = 500
     buffer[#buffer + 1] = fmt(SERVICE_YML, i, i, i, i)
     local config = table.concat(buffer, "\n")
-    local res = admin_client:post("/config",{
+    local res = admin_client:post("/config", {
       body = { config = config },
       headers = {
-        ["Content-Type"] = "application/json"
+        ["Content-Type"] = "application/json",
       }
     })
     assert.res_status(201, res)
-    res = assert(proxy_client:get("/500", { headers = { host = "example1.dev" } }))
-    assert.res_status(401, res)
+    admin_client:close()
 
-    proxy_client:close()
+    assert
+      .with_timeout(5)
+      .eventually(function()
+        proxy_client = assert(helpers.proxy_client())
+        res = proxy_client:get("/500", { headers = { host = "example1.dev" } })
+        res:read_body()
+        proxy_client:close()
+        return res and res.status == 401
+      end)
+      .is_truthy()
   end)
 
   after_each(function()
-    if admin_client then
-      admin_client:close()
-    end
-    if proxy_client then
-      proxy_client:close()
-    end
     helpers.stop_kong(nil, true)
   end)
   lazy_teardown(function()
@@ -123,32 +121,34 @@ describe("dbless persistence with a declarative config #off", function()
 
   it("doesn't load the persisted lmdb config if a declarative config is set on restart", function()
     assert(helpers.restart_kong({
-        database   = "off",
+        database = "off",
         declarative_config = yaml_file,
     }))
-    proxy_client = assert(helpers.proxy_client())
+    local proxy_client = assert(helpers.proxy_client())
     local res = assert(proxy_client:get("/test", { headers = { host = "example1.dev" } }))
     assert.res_status(401, res)
 
     res = assert(proxy_client:get("/500", { headers = { host = "example1.dev" } }))
     assert.res_status(404, res) -- 404, only the declarative config is loaded
+    proxy_client:close()
   end)
 
   it("doesn't load the persisted lmdb config if a declarative config is set on reload", function()
     assert(helpers.reload_kong("off", "reload --prefix " .. helpers.test_conf.prefix, {
-      database   = "off",
+      database = "off",
       declarative_config = yaml_file,
     }))
     local res
     helpers.wait_until(function()
-      proxy_client = assert(helpers.proxy_client())
+      local proxy_client = assert(helpers.proxy_client())
       res = assert(proxy_client:get("/test", { headers = { host = "example1.dev" } }))
       proxy_client:close()
       return res.status == 401
     end)
 
-    proxy_client = assert(helpers.proxy_client())
+    local proxy_client = assert(helpers.proxy_client())
     res = assert(proxy_client:get("/500", { headers = { host = "example1.dev" } }))
     assert.res_status(404, res) -- 404, only the declarative config is loaded
+    proxy_client:close()
   end)
 end)

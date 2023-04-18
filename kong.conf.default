@@ -226,7 +226,7 @@
 
 
 #proxy_server =                  # Proxy server defined as a URL. Kong will only use this
-                                 # option if any component is explictly configured
+                                 # option if any component is explicitly configured
                                  # to use proxy.
 
 
@@ -722,7 +722,7 @@
                                  #
                                  # See https://wiki.mozilla.org/Security/Server_Side_TLS
                                  # for detailed descriptions of each cipher
-                                 # suite. `fips` cipher suites are as decribed in
+                                 # suite. `fips` cipher suites are as described in
                                  # https://wiki.openssl.org/index.php/FIPS_mode_and_TLS.
 
 #ssl_ciphers =                   # Defines a custom list of TLS ciphers to be

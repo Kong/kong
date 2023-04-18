@@ -26,8 +26,10 @@ endif
 
 ifeq ($(MACHINE), aarch64)
 BAZELISK_MACHINE ?= arm64
-else
+else ifeq ($(MACHINE), x86_64)
 BAZELISK_MACHINE ?= amd64
+else
+BAZELISK_MACHINE ?= $(MACHINE)
 endif
 
 .PHONY: install dev \

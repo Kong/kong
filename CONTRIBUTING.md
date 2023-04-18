@@ -204,6 +204,8 @@ naming scheme when pushing your branch(es):
 - `refactor/foo-bar` when refactoring code without any behavior change
 - `style/foo-bar` when addressing some style issue
 - `docs/foo-bar` for updates to the README.md, this file, or similar documents
+- `chore/foo-bar` when the change does not concern the functional source
+- `perf/foo-bar` for performance improvements
 
 [Back to TOC](#table-of-contents)
 
@@ -324,7 +326,7 @@ related GitHub issues, Pull Requests, fixed bug reports, etc...
 Here are a few examples of good commit messages to take inspiration from:
 
 ```
-fix(admin) send HTTP 405 on unsupported method
+fix(admin): send HTTP 405 on unsupported method
 
 The appropriate status code when the request method is not supported
 on an endpoint it 405. We previously used to send HTTP 404, which
@@ -340,7 +342,7 @@ Fix #678
 Or:
 
 ```
-tests(proxy) add a new test case for URI encoding
+tests(proxy): add a new test case for URI encoding
 
 When proxying upstream, the URI sent by Kong should be the one
 received from the client, even if it was percent-encoded.
@@ -643,6 +645,18 @@ local str = "hello ".."world"
 local str = "hello " .. "world"
 ```
 
+If a string is too long, **do** break it into multiple lines,
+and join them with the concatenation operator:
+
+```lua
+-- bad
+local str = "It is a very very very long string, that should be broken into multiple lines."
+
+-- good
+local str = "It is a very very very long string, " ..
+            "that should be broken into multiple lines."
+```
+
 [Back to code style TOC](#table-of-contents---code-style)
 
 ### Functions
@@ -728,7 +742,7 @@ local str = string.format("SELECT * FROM users WHERE first_name = '%s'",
 
 ### Conditional expressions
 
-Avoid writing 1-liner conditions, **do** indent the child branch:
+Avoid writing 1-line conditions, **do** indent the child branch:
 
 ```lua
 -- bad

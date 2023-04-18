@@ -104,6 +104,9 @@ function _M:log(config)
 
   local spans = {}
   local process_span = function (span)
+    if span.should_sample == false then
+      return
+    end
     local s = table.clone(span)
     s.tracer = nil
     s.parent = nil

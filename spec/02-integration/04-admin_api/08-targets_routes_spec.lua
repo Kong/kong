@@ -685,7 +685,7 @@ describe("Admin API #" .. strategy, function()
           pages[i] = json
         end
       end)
-      it("ingores filters", function()
+      it("ignores filters", function()
         local res = assert(client:send {
           method = "GET",
           path = "/upstreams/" .. upstream.name .. "/targets/all",
@@ -943,19 +943,27 @@ describe("Admin API #" .. strategy, function()
       end)
 
       it("is allowed and works", function()
-        ngx.sleep(1)
-        local res = client:patch("/upstreams/" .. upstream.name .. "/targets/" .. target.target, {
-          body = {
-            weight = 659,
-          },
-          headers = { ["Content-Type"] = "application/json" }
-        })
-        assert.response(res).has.status(200)
+        local admin_client = assert(helpers.admin_client())
+        local res
+        assert
+          .with_timeout(10)
+          .ignore_exceptions(true)
+          .eventually(function()
+            res = admin_client:patch("/upstreams/" .. upstream.name .. "/targets/" .. target.target, {
+              body = {
+                weight = 659,
+              },
+              headers = { ["Content-Type"] = "application/json" }
+            })
+            assert.response(res).has.status(200)
+          end)
+          .has_no_error()
         local json = assert.response(res).has.jsonbody()
         assert.is_string(json.id)
         assert.are.equal(target.target, json.target)
         assert.are.equal(659, json.weight)
         assert.truthy(target.updated_at < json.updated_at)
+        admin_client:close()
 
         local res = assert(client:send {
           method = "GET",

@@ -403,7 +403,7 @@ describe("[round robin balancer]", function()
         })
         add_target(b, "mashape.test", 80, 10)
         check_balancer(b)
-        assert.equals(10, b.totalWeight) -- has one succesful host, so weight must equal that one
+        assert.equals(10, b.totalWeight) -- has one successful host, so weight must equal that one
       end)
       it("accepts a hostname when dns server is unavailable #slow", function()
         -- This test might show some error output similar to the lines below. This is expected and ok.

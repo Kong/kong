@@ -1,4 +1,4 @@
-local BatchQueue = require "kong.tools.batch_queue"
+local Queue = require "kong.tools.queue"
 local statsd_logger = require "kong.plugins.datadog.statsd_logger"
 local kong_meta = require "kong.meta"
 
@@ -10,9 +10,6 @@ local insert   = table.insert
 local gsub     = string.gsub
 local pairs    = pairs
 local ipairs   = ipairs
-
-
-local queues = {}
 
 
 local get_consumer_id = {
@@ -48,7 +45,7 @@ local function compose_tags(service_name, status, consumer_id, tags, conf)
 end
 
 
-local function log(conf, messages)
+local function send_entries_to_datadog(conf, messages)
   local logger, err = statsd_logger:new(conf)
   if err then
     kong.log.err("failed to create Statsd logger: ", err)
@@ -113,32 +110,15 @@ function DatadogHandler:log(conf)
     return
   end
 
-  local queue_id = kong.plugin.get_id()
-  local q = queues[queue_id]
-  if not q then
-    local batch_max_size = conf.queue_size or 1
-    local process = function (entries)
-      return log(conf, entries)
-    end
-
-    local opts = {
-      retry_count    = conf.retry_count or 10,
-      flush_timeout  = conf.flush_timeout or 2,
-      batch_max_size = batch_max_size,
-      process_delay  = 0,
-    }
-
-    local err
-    q, err = BatchQueue.new("datadog", process, opts)
-    if not q then
-      kong.log.err("could not create queue: ", err)
-      return
-    end
-    queues[queue_id] = q
+  local ok, err = Queue.enqueue(
+    Queue.get_params(conf),
+    send_entries_to_datadog,
+    conf,
+    kong.log.serialize()
+  )
+  if not ok then
+    kong.log.err("failed to enqueue log entry to Datadog: ", err)
   end
-
-  local message = kong.log.serialize()
-  q:add(message)
 end
 
 

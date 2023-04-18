@@ -1226,7 +1226,7 @@ describe("routes schema (flavor = traditional/traditional_compatible)", function
     }, errs)
   end)
 
-  it("errors if snis is not set on tls_pasthrough", function()
+  it("errors if snis is not set on tls_passthrough", function()
     local s = { id = "a4fbd24e-6a52-4937-bd78-2536713072d2" }
     local route = Routes:process_auto_fields({
       sources = {{ ip = "127.0.0.1" }},

@@ -41,7 +41,7 @@ dependencies = {
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.11.0",
   "lua-resty-session == 4.0.3",
-  "lua-resty-timer-ng == 0.2.4",
+  "lua-resty-timer-ng == 0.2.5",
   "lpeg == 1.0.2",
 }
 build = {
@@ -146,7 +146,8 @@ build = {
     ["kong.tools.utils"] = "kong/tools/utils.lua",
     ["kong.tools.timestamp"] = "kong/tools/timestamp.lua",
     ["kong.tools.stream_api"] = "kong/tools/stream_api.lua",
-    ["kong.tools.batch_queue"] = "kong/tools/batch_queue.lua",
+    ["kong.tools.queue"] = "kong/tools/queue.lua",
+    ["kong.tools.queue_schema"] = "kong/tools/queue_schema.lua",
     ["kong.tools.sandbox"] = "kong/tools/sandbox.lua",
     ["kong.tools.uri"] = "kong/tools/uri.lua",
     ["kong.tools.kong-lua-sandbox"] = "kong/tools/kong-lua-sandbox.lua",

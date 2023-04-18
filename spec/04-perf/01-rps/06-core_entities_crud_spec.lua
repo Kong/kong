@@ -185,7 +185,7 @@ end
 -- Generate wrk Lua scripts for each entity
 local gen_wrk_script = function(entity, action)
   local REQUEST_ID = "request_id"
-  local qoute = stringx.quote_string
+  local quote = stringx.quote_string
   local concat_lua_string = function(args)
     return table.concat(args, "..")
   end
@@ -195,10 +195,10 @@ local gen_wrk_script = function(entity, action)
     ]], id)
   end
   local gen_entity_path = function(entity1, entity2)
-    local args = { qoute("/" .. entity1 .. "/"), REQUEST_ID }
+    local args = { quote("/" .. entity1 .. "/"), REQUEST_ID }
 
     if entity2 then
-      table.insert(args, qoute("/" .. entity2 .. "/"))
+      table.insert(args, quote("/" .. entity2 .. "/"))
       table.insert(args, REQUEST_ID)
     end
 
@@ -239,59 +239,59 @@ local gen_wrk_script = function(entity, action)
   local request_scripts = {
     services = {
       create = gen_create_method(
-        qoute("/services"),
-        concat_lua_string({ qoute("name=perf_"), REQUEST_ID, qoute("&host=example.com&port=80&protocol=http") })
+        quote("/services"),
+        concat_lua_string({ quote("name=perf_"), REQUEST_ID, quote("&host=example.com&port=80&protocol=http") })
       ),
       get = gen_get_method(gen_entity_path("services")),
-      update = gen_update_method(gen_entity_path("services"), qoute("host=konghq.com&port=99&protocol=https")),
-      delete = mod_request_id(concat_lua_string({ qoute("delete_"), REQUEST_ID })) ..
+      update = gen_update_method(gen_entity_path("services"), quote("host=konghq.com&port=99&protocol=https")),
+      delete = mod_request_id(concat_lua_string({ quote("delete_"), REQUEST_ID })) ..
           gen_delete_method(gen_entity_path("services")),
     },
     routes = {
       create = gen_create_method(
-        concat_lua_string({ qoute("/services/"), REQUEST_ID, qoute("/routes") }),
-        concat_lua_string({ qoute("name=perf_"), REQUEST_ID })
+        concat_lua_string({ quote("/services/"), REQUEST_ID, quote("/routes") }),
+        concat_lua_string({ quote("name=perf_"), REQUEST_ID })
       ),
       get = gen_get_method(gen_entity_path("services", "routes")),
-      update = gen_update_method(gen_entity_path("services", "routes"), qoute("paths[]=/test")),
+      update = gen_update_method(gen_entity_path("services", "routes"), quote("paths[]=/test")),
       delete = gen_delete_method(gen_entity_path("services", "routes")),
     },
     consumers = {
       create = gen_create_method(
-        qoute("/consumers"),
-        concat_lua_string({ qoute("username=perf_"), REQUEST_ID })
+        quote("/consumers"),
+        concat_lua_string({ quote("username=perf_"), REQUEST_ID })
       ),
       get = gen_get_method(gen_entity_path("consumers")),
       update = gen_update_method(
         gen_entity_path("consumers"),
-        concat_lua_string({ qoute("username=test_"), REQUEST_ID })
+        concat_lua_string({ quote("username=test_"), REQUEST_ID })
       ),
       delete = gen_delete_method(gen_entity_path("consumers")),
     },
     upstreams = {
       create = gen_create_method(
-        qoute("/upstreams"),
-        concat_lua_string({ qoute("name=perf_"), REQUEST_ID })
+        quote("/upstreams"),
+        concat_lua_string({ quote("name=perf_"), REQUEST_ID })
       ),
       get = gen_get_method(gen_entity_path("upstreams")),
       update = gen_update_method(
         gen_entity_path("upstreams"),
-        concat_lua_string({ qoute("name=test_"), REQUEST_ID })
+        concat_lua_string({ quote("name=test_"), REQUEST_ID })
       ),
-      delete = mod_request_id(concat_lua_string({ qoute("delete_"), REQUEST_ID })) ..
+      delete = mod_request_id(concat_lua_string({ quote("delete_"), REQUEST_ID })) ..
           gen_delete_method(gen_entity_path("upstreams")),
     },
     targets = {
       create = gen_create_method(
-        concat_lua_string({ qoute("/upstreams/"), REQUEST_ID, qoute("/targets") }),
-        concat_lua_string({ qoute("target=perf_"), REQUEST_ID })
+        concat_lua_string({ quote("/upstreams/"), REQUEST_ID, quote("/targets") }),
+        concat_lua_string({ quote("target=perf_"), REQUEST_ID })
       ),
       get = gen_get_method(
-        concat_lua_string({ qoute("/upstreams/"), REQUEST_ID, qoute("/targets") })
+        concat_lua_string({ quote("/upstreams/"), REQUEST_ID, quote("/targets") })
       ),
       update = gen_update_method(
-        concat_lua_string({ qoute("/upstreams/"), REQUEST_ID, qoute("/targets") }),
-        concat_lua_string({ qoute("target=test_"), REQUEST_ID }),
+        concat_lua_string({ quote("/upstreams/"), REQUEST_ID, quote("/targets") }),
+        concat_lua_string({ quote("target=test_"), REQUEST_ID }),
         'PATCH'
       ),
       delete = gen_delete_method(gen_entity_path("upstreams", "targets")),
@@ -299,15 +299,15 @@ local gen_wrk_script = function(entity, action)
     -- no enabled
     plugins = {
       create = gen_create_method(
-        concat_lua_string({ qoute("/services/"), REQUEST_ID, qoute("/plugins") }),
-        qoute("name=key-auth")
+        concat_lua_string({ quote("/services/"), REQUEST_ID, quote("/plugins") }),
+        quote("name=key-auth")
       ),
       get = gen_get_method(
-        concat_lua_string({ qoute("/services/"), REQUEST_ID, qoute("/key-auth") })
+        concat_lua_string({ quote("/services/"), REQUEST_ID, quote("/key-auth") })
       ),
       update = gen_update_method(
-        concat_lua_string({ qoute("/upstreams/"), REQUEST_ID, qoute("/targets") }),
-        concat_lua_string({ qoute("target=test_"), REQUEST_ID }),
+        concat_lua_string({ quote("/upstreams/"), REQUEST_ID, quote("/targets") }),
+        concat_lua_string({ quote("target=test_"), REQUEST_ID }),
         'PATCH'
       ),
       delete = gen_delete_method(gen_entity_path("upstreams", "targets")),

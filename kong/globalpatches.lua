@@ -593,6 +593,8 @@ return function(options)
       instrumentation.set_patch_dns_query_fn(toip, function(wrap)
         toip = wrap
       end)
+      -- patch request_uri to record http_client spans
+      instrumentation.http_client()
     end
   end
 

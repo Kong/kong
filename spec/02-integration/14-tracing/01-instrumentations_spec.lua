@@ -102,7 +102,7 @@ for _, strategy in helpers.each_strategy() do
           expected_span_num = 4
         end
         assert.is_same(expected_span_num, #spans, res)
-        assert.is_same("query", spans[2].name)
+        assert.is_same("kong.database.query", spans[2].name)
       end)
     end)
 
@@ -131,7 +131,7 @@ for _, strategy in helpers.each_strategy() do
         -- Making sure it's alright
         local spans = cjson.decode(res)
         assert.is_same(2, #spans, res)
-        assert.is_same("router", spans[2].name)
+        assert.is_same("kong.router", spans[2].name)
       end)
     end)
 
@@ -159,8 +159,8 @@ for _, strategy in helpers.each_strategy() do
 
         -- Making sure it's alright
         local spans = cjson.decode(res)
-        assert.is_same(4, #spans, res)
-        assert.is_same("GET /", spans[1].name)
+        assert.is_same(5, #spans, res)
+        assert.matches("kong.internal.request", spans[3].name)
       end)
     end)
 
@@ -189,7 +189,7 @@ for _, strategy in helpers.each_strategy() do
         -- Making sure it's alright
         local spans = cjson.decode(res)
         assert.is_same(2, #spans, res)
-        assert.is_same("balancer try #1", spans[2].name)
+        assert.is_same("kong.balancer", spans[2].name)
       end)
     end)
 
@@ -218,7 +218,7 @@ for _, strategy in helpers.each_strategy() do
         -- Making sure it's alright
         local spans = cjson.decode(res)
         assert.is_same(2, #spans, res)
-        assert.is_same("rewrite phase: " .. tcp_trace_plugin_name, spans[2].name)
+        assert.is_same("kong.rewrite.plugin." .. tcp_trace_plugin_name, spans[2].name)
       end)
     end)
 
@@ -247,7 +247,7 @@ for _, strategy in helpers.each_strategy() do
         -- Making sure it's alright
         local spans = cjson.decode(res)
         assert.is_same(2, #spans, res)
-        assert.is_same("header_filter phase: " .. tcp_trace_plugin_name, spans[2].name)
+        assert.is_same("kong.header_filter.plugin." .. tcp_trace_plugin_name, spans[2].name)
       end)
     end)
 
@@ -281,7 +281,7 @@ for _, strategy in helpers.each_strategy() do
 
         local found
         for _, span in ipairs(spans) do
-          if span.name == "DNS: konghq.com" then
+          if span.name == "kong.dns" then
             found = true
           end
         end
@@ -314,7 +314,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- Making sure it's alright
         local spans = cjson.decode(res)
-        local expected_span_num = 12
+        local expected_span_num = 13
         -- cassandra has different db query implementation
         if strategy == "cassandra" then
           expected_span_num = expected_span_num + 4

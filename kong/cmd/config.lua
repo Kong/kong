@@ -121,8 +121,7 @@ local function execute(args)
       -- send anonymous report if reporting is not disabled
       if conf.anonymous_reports then
         local kong_reports = require "kong.reports"
-        kong_reports.configure_ping(conf)
-        kong_reports.toggle(true)
+        kong_reports.init(conf)
 
         local report = {
           decl_fmt_version = meta._format_version,

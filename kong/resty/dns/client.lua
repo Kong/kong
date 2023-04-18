@@ -924,7 +924,11 @@ local function lookup(qname, r_opts, dnsCacheOnly, try_list)
     end
     -- perform a sync lookup, as we have no stale data to fall back to
     try_list = try_add(try_list, qname, r_opts.qtype, "cache-miss")
+    -- while kong is exiting, we cannot use timers and hence we run all our queries without synchronization
     if noSynchronisation then
+      return individualQuery(qname, r_opts, try_list)
+    elseif ngx.worker and ngx.worker.exiting() then
+      log(DEBUG, PREFIX, "DNS query not synchronized because the worker is shutting down")
       return individualQuery(qname, r_opts, try_list)
     end
     return syncQuery(qname, r_opts, try_list)

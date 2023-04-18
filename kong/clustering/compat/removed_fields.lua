@@ -59,12 +59,24 @@ return {
   [3003000000] = {
     acme = {
       "account_key",
+      "storage_config.redis.namespace",
     },
     proxy_cache = {
       "ignore_uri_case",
     },
     opentelemetry = {
       "http_response_header_for_traceid",
+      "queue",
+      "header_type",
+    },
+    http_log = {
+      "queue",
+    },
+    statsd = {
+      "queue",
+    },
+    datadog = {
+      "queue",
     },
   },
 }

@@ -16,7 +16,11 @@ function _M:access(conf)
   local tracer = kong.tracing.new("trace-propagator")
   local root_span = tracer.start_span("root")
 
-  local header_type, trace_id, span_id, parent_id = propagation_parse(headers)
+  local header_type, trace_id, span_id, parent_id, should_sample = propagation_parse(headers)
+
+  if should_sample == false then
+    tracer:set_should_sample(should_sample)
+  end
 
   if trace_id then
     root_span.trace_id = trace_id
@@ -29,17 +33,12 @@ function _M:access(conf)
     root_span.parent_id = parent_id
   end
 
-  local new_span = ngx.ctx.last_try_balancer_span
-  if new_span == nil then
-    new_span = tracer.create_span(nil, {
-      span_kind = 3,
-      parent = root_span,
-    })
-    ngx.ctx.last_try_balancer_span = new_span
-  end
-
+  local balancer_span = tracer.create_span(nil, {
+    span_kind = 3,
+    parent = root_span,
+  })
   local type = header_type and "preserve" or "w3c"
-  propagation_set(type, header_type, new_span, "trace-propagator")
+  propagation_set(type, header_type, balancer_span, "w3c", true)
 end
 
 return _M
