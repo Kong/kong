@@ -116,6 +116,17 @@ for _, strategy in helpers.each_strategy() do
         -- default tags
         assert.same("none", root_span.meta.env)
         assert.same("mock-service", root_span.meta["kong.service_name"])
+
+        local name_res = {
+          kong = "GET http://0.0.0.0/",
+          ["kong.router"] = "kong.router",
+          ["kong.balancer"] = "balancer try #"
+        }
+        for _, s in ipairs(decoded[1]) do
+          if name_res[s.name] then
+            assert.matches(name_res[s.name], s.resource)
+          end
+        end
       end)
     end)
 

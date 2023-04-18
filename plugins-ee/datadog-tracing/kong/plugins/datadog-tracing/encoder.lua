@@ -91,6 +91,21 @@ local default_metrics = {
 
 local uint64_be_bytes_zero = uint64_be_bytes_t("")
 
+local function get_resource_name(span)
+  local attributes = span.attributes
+  if span.name == "kong.database.query" then
+    return attributes["db.statement"]
+  elseif span.name == "kong.balancer" then
+    return "balancer try #" .. attributes["try_count"]
+  elseif span.name == "kong.internal.request" or span.name == "kong" then
+    return attributes["http.method"] .. " " .. attributes["http.url"]
+  elseif span.name == "kong.dns" then
+    return "dns " .. attributes["dns.record.domain"]
+  else
+    return span.name
+  end
+end
+
 local function transform_span(span, service_name, origin)
   assert(type(span) == "table")
 
@@ -101,7 +116,7 @@ local function transform_span(span, service_name, origin)
     type = "web",
     service = service_name or "kong",
     name = span.name,
-    resource = span.name, -- TODO: use resource to decrease cardinality
+    resource = get_resource_name(span),
     trace_id = truncate_to_uint64_be_bytes(span.trace_id),
     span_id = truncate_to_uint64_be_bytes(span.span_id),
     parent_id = span.parent_id and truncate_to_uint64_be_bytes(span.parent_id) or uint64_be_bytes_zero,
