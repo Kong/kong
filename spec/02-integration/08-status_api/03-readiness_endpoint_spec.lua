@@ -127,8 +127,8 @@ describe("Status API - with strategy #off", function()
           config = [[
           _format_version: "3.0"
           services:
-          - name: test
-          url: http://mockbin.org
+            - name: test
+              url: http://mockbin.org
           ]]
         },
         headers = {
