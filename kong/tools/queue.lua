@@ -59,12 +59,6 @@ local workspaces = require "kong.workspaces"
 local semaphore = require "ngx.semaphore"
 
 
-local function now()
-  ngx.update_time()
-  return ngx.now()
-end
-
-
 local Queue = {
   CAPACITY_WARNING_THRESHOLD = 0.8, -- Threshold to warn that the queue max_entries limit is reached
   COALESCE_POLL_TIME = 0.5,         -- Time in seconds to poll for worker shutdown when coalescing entries
@@ -214,14 +208,14 @@ function Queue:process_once()
     end
     return
   end
-  local data_started = now()
+  local data_started = ngx.now()
 
   local entry_count = 1
 
   -- We've got our first entry from the queue.  Collect more entries until max_coalescing_delay expires or we've collected
   -- max_batch_size entries to send
-  while entry_count < self.max_batch_size and self.max_coalescing_delay > (now() - data_started) and not ngx.worker.exiting() do
-    local wait_time = math.min(self.max_coalescing_delay - (now() - data_started), Queue.COALESCE_POLL_TIME)
+  while entry_count < self.max_batch_size and self.max_coalescing_delay > (ngx.now() - data_started) and not ngx.worker.exiting() do
+    local wait_time = math.min(self.max_coalescing_delay - (ngx.now() - data_started), Queue.COALESCE_POLL_TIME)
     ok, err = self.semaphore:wait(wait_time)
     if not ok and err ~= "timeout" then
       self:log_err("could not wait for semaphore: %s", err)
@@ -229,9 +223,10 @@ function Queue:process_once()
     elseif ok then
       entry_count = entry_count + 1
     end
+    ngx.update_time()
   end
 
-  local start_time = now()
+  local start_time = ngx.now()
   local retry_count = 0
   while true do
     self:log_debug("passing %d entries to handler", entry_count)
@@ -245,7 +240,8 @@ function Queue:process_once()
       self:log_err("handler returned falsy value but no error information")
     end
 
-    if (now() - start_time) > self.max_retry_time then
+    ngx.update_time()
+    if (ngx.now() - start_time) > self.max_retry_time then
       self:log_err(
         "could not send entries, giving up after %d retries.  %d queue entries were lost",
         retry_count, entry_count)
