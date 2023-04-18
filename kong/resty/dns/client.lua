@@ -702,6 +702,14 @@ local function parseAnswer(qname, qtype, answers, try_list)
   return true
 end
 
+local function close_socks(resolver)
+  for _, sock in ipairs(resolver.socks or {}) do
+    sock:close()
+  end
+  if resolver.tcp_sock then
+    resolver.tcp_sock:close()
+  end
+end
 
 -- executes 1 individual query.
 -- This query will not be synchronized, every call will be 1 query.
@@ -720,6 +728,8 @@ local function individualQuery(qname, r_opts, try_list)
   local result
   result, err = r:query(qname, r_opts)
   if not result then
+    close_socks(r)
+    r = nil
     return result, err, try_list
   end
 
@@ -727,7 +737,6 @@ local function individualQuery(qname, r_opts, try_list)
 
   return result, nil, try_list
 end
-
 
 local queue = setmetatable({}, {__mode = "v"})
 -- to be called as a timer-callback, performs a query and returns the results
@@ -766,6 +775,9 @@ local function executeQuery(premature, item)
   item.semaphore:post(math_max(item.semaphore:count() * -1, 1))
   item.semaphore = nil
   ngx.sleep(0)
+  -- 3) release the resolver
+  close_socks(r)
+  r = nil
 end
 
 

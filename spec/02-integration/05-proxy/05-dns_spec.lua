@@ -145,5 +145,41 @@ for _, strategy in helpers.each_strategy() do
         assert.response(r).has.status(503)
       end)
     end)
+    describe("udp sockets", function()
+      local domain_name = "www.example.com"
+      local address = "127.0.0.10"
+
+      lazy_setup(function()
+        local bp = helpers.get_db_utils(strategy, {
+          "services",
+        })
+
+        local fixtures = {
+          dns_mock = helpers.dns_mock.new()
+        }
+        fixtures.dns_mock:A({
+          name = domain_name,
+          address = address,
+        })
+
+        bp.services:insert {
+          name     = "foo",
+          host     = domain_name,
+        }
+
+        assert(helpers.start_kong({ database = strategy }, nil, nil, fixtures))
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+      end)
+
+      it("release", function()
+        assert.logfile().has.line("servin '".. domain_name .. "' from mocks", true, 30)
+        local ok, stderr, stdout = helpers.execute("netstat -n | grep 53 | grep udp | wc -l")
+        assert.truthy(ok, stderr)
+        assert.equals(0, assert(tonumber(stdout)))
+      end)
+    end)
   end)
 end
