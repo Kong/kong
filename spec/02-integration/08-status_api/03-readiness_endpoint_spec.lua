@@ -1,7 +1,17 @@
 local helpers = require "spec.helpers"
 
 
-for _, strategy in helpers.each_strategy() do
+local function except(arr, item)
+  local result = {}
+  for i = 1, #arr do
+    if arr[i] ~= item then
+      table.insert(result, arr[i])
+    end
+  end
+  return result
+end
+
+for _, strategy in except(helpers.all_strategies(), "off") do
 describe("Status API - with strategy #" .. strategy, function()
   local client
   local admin_client
