@@ -148,6 +148,7 @@ for _, strategy in helpers.each_strategy() do
     describe("udp sockets", function()
       local domain_name = "www.example.com"
       local address = "127.0.0.10"
+      local proxy_client
 
       lazy_setup(function()
         local bp = helpers.get_db_utils(strategy, {
@@ -162,19 +163,36 @@ for _, strategy in helpers.each_strategy() do
           address = address,
         })
 
-        bp.services:insert {
+        local service = bp.services:insert {
           name     = "foo",
           host     = domain_name,
+        }
+
+        bp.routes:insert {
+          name = "foo",
+          paths = { "/foo" },
+          service = service,
         }
 
         assert(helpers.start_kong({ database = strategy }, nil, nil, fixtures))
       end)
 
       lazy_teardown(function()
+        if proxy_client then
+          proxy_client:close()
+        end
         helpers.stop_kong()
       end)
 
       it("release", function()
+        proxy_client = helpers.proxy_client()
+        proxy_client:send {
+          method = "GET",
+          path = "/foo",
+          headers = {
+            host = domain_name
+          }
+        }
         assert.logfile().has.line("serving '".. domain_name .. "' from mocks", true, 30)
         local ok, stderr, stdout = helpers.execute("netstat -n | grep 53 | grep udp | wc -l")
         assert.truthy(ok, stderr)
