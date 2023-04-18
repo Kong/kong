@@ -569,6 +569,7 @@ local function _set_update_plugins_iterator(f)
   update_plugins_iterator = f
 end
 
+
 local reconfigure_handler
 do
   local now = ngx.now
