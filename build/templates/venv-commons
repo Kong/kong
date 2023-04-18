@@ -11,7 +11,7 @@ mkdir -p "$KONG_VENV/venv/bin"
 
 echo "#!/bin/bash
 $KONG_VENV/openresty/bin/resty -I $KONG_VENV/openresty/site/lualib -I $KONG_VENV/openresty/lualib --nginx $KONG_VENV/openresty/nginx/sbin/nginx \"\$@\"
-" > "$KONG_VENV/venv/bin/resty"
+" >| "$KONG_VENV/venv/bin/resty"
 chmod +x "$KONG_VENV/venv/bin/resty"
 
 export PATH="$KONG_VENV/venv/bin:$KONG_VENV/openresty/bin:$KONG_VENV/openresty/nginx/sbin:$KONG_VENV/openresty/luajit/bin:$KONG_VENV/luarocks/bin:$KONG_VENV/bin:$workspace_path/bin:$PATH"
@@ -20,7 +20,7 @@ echo "
 rocks_trees = {
     { name = [[system]], root = [[$ROCKS_ROOT]] }
 }
-" > "$ROCKS_CONFIG"
+" >| "$ROCKS_CONFIG"
 
 export LUAROCKS_CONFIG="$ROCKS_CONFIG"
 
