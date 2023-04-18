@@ -63,13 +63,13 @@ describe("plugin queue", function()
   end)
 
   it("passes configuration to handler", function ()
-    local handler_invoked = 0
+    local handler_invoked
     local configuration_sent = { foo = "bar" }
     local configuration_received
     Queue.enqueue(
       queue_conf({ name = "handler-configuration" }),
       function (conf)
-        handler_invoked = handler_invoked + 1
+        handler_invoked = true
         configuration_received = conf
         return true
       end,
@@ -79,14 +79,16 @@ describe("plugin queue", function()
     wait_until_queue_done("handler-configuration")
     helpers.wait_until(
       function ()
-        return handler_invoked == 1
+        if handler_invoked then
+          assert.same(configuration_sent, configuration_received)
+          return true
+        end
       end,
       10)
-    assert.same(configuration_sent, configuration_received)
   end)
 
   it("configuration changes are observed for older entries", function ()
-    local handler_invoked = 0
+    local handler_invoked
     local first_configuration_sent = { foo = "bar" }
     local second_configuration_sent = { foo = "bar" }
     local configuration_received
@@ -99,7 +101,7 @@ describe("plugin queue", function()
           max_coalescing_delay = 0.1
         }),
         function (c, entries)
-          handler_invoked = handler_invoked + 1
+          handler_invoked = true
           configuration_received = c
           number_of_entries_received = #entries
           return true
@@ -113,11 +115,13 @@ describe("plugin queue", function()
     wait_until_queue_done("handler-configuration-change")
     helpers.wait_until(
       function ()
-        return handler_invoked == 1
+        if handler_invoked then
+          assert.same(configuration_received, second_configuration_sent)
+          assert.equals(2, number_of_entries_received)
+          return true
+        end
       end,
       10)
-    assert.same(configuration_received, second_configuration_sent)
-    assert.equals(2, number_of_entries_received)
   end)
 
   it("does not batch messages when `max_batch_size` is 1", function()

@@ -215,6 +215,8 @@ function Queue:process_once()
   -- We've got our first entry from the queue.  Collect more entries until max_coalescing_delay expires or we've collected
   -- max_batch_size entries to send
   while entry_count < self.max_batch_size and self.max_coalescing_delay > (ngx.now() - data_started) and not ngx.worker.exiting() do
+    -- Instead of waiting for the coalesce time to expire, we cap the semaphore wait to Queue.COALESCE_POLL_TIME
+    -- so that we can check for worker shutdown periodically.
     local wait_time = math.min(self.max_coalescing_delay - (ngx.now() - data_started), Queue.COALESCE_POLL_TIME)
     ok, err = self.semaphore:wait(wait_time)
     if not ok and err ~= "timeout" then

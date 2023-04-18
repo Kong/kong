@@ -7,11 +7,13 @@ return Schema.define {
     { max_batch_size = {
       type = "number",
       default = 1,
+      between = { 1, 1000000 },
       -- description = "maximum number of entries that can be processed at a time"
     } },
     { max_coalescing_delay = {
       type = "number",
       default = 1,
+      between = { 0, 3600 },
       -- description = "maximum number of (fractional) seconds to elapse after the first entry was queued before the queue starts calling the handler",
       -- This parameter has no effect if `max_batch_size` is 1, as queued entries will be sent
       -- immediately in that case.
@@ -19,6 +21,7 @@ return Schema.define {
     { max_entries = {
       type = "number",
       default = 10000,
+      between = { 1, 1000000 },
       -- description = "maximum number of entries that can be waiting on the queue",
     } },
     { max_bytes = {

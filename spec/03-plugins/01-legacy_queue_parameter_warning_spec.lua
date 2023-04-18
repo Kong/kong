@@ -4,10 +4,12 @@ local helpers    = require "spec.helpers"
 
 for _, strategy in helpers.each_strategy() do
   describe("legacy queue parameters [#" .. strategy .. "]", function()
+    local db
 
     lazy_setup(function()
       -- Create a service to make sure that our database is initialized properly.
-      local bp = helpers.get_db_utils(strategy, {
+      local bp
+      bp, db = helpers.get_db_utils(strategy, {
         "services",
       })
 
@@ -23,6 +25,7 @@ for _, strategy in helpers.each_strategy() do
     before_each(function()
 
       helpers.clean_logfile()
+      db:truncate()
 
       assert(helpers.start_kong({
         database = strategy,
@@ -30,13 +33,6 @@ for _, strategy in helpers.each_strategy() do
       }))
 
       admin_client = helpers.admin_client()
-
-      local res = admin_client:get("/plugins")
-      local body = assert.res_status(200, res)
-      for _, plugin in ipairs(cjson.decode(body).data) do
-        res = admin_client:delete("/plugins/" .. plugin.id)
-        assert.res_status(204, res)
-      end
     end)
 
     after_each(function()
