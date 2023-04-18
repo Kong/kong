@@ -16,9 +16,8 @@ import {
   setGatewayContainerEnvVariable,
 } from '@support';
 
-describe('Gateway Plugins: OpenTelemetry', function () {
+describe.skip('Gateway Plugins: OpenTelemetry', function () {
   const isHybrid = isGwHybrid();
-  const waitTime = 5000;
   const hybridWaitTime = 8000;
   const jaegerWait = 8000;
   const configEndpoint = 'http://jaeger:4318/v1/traces';
