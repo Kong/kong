@@ -129,8 +129,8 @@ dnf install \
 macOS
 
 ```shell
-# Install XCode instead of Command Line Tools is recommended
-xcode-select --install
+# Install Xcode from App Store (Command Line Tools is not supported)
+
 # Install HomeBrew
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 # Build dependencies
@@ -315,7 +315,7 @@ the [spec/upgrade_helpers.lua](spec/upgrade_helpers.lua) module.
 Migration tests use functions from this module to define test cases
 and associate them with phases of the upgrade testing process.
 Consequently, they are named `setup`, `old_after_up`, `new_after_up`
-and `new_after_finish`.  Additonally, the function `all_phases` can be
+and `new_after_finish`.  Additionally, the function `all_phases` can be
 used to run a certain test in the three phases `old_after_up`,
 `new_after_up` and `new_after_finish`.  These functions replace the
 use of busted's `it` function and accept a descriptive string and a
@@ -401,7 +401,7 @@ Now try `ssh dev` on your host, you should be able to get into the guest directl
 
 ## Dev on VSCode Container / GitHub Codespaces
 
-The `devcontainer.json` file in Kong's project tells VS Code 
+The `devcontainer.json` file in Kong's project tells VS Code
 how to access (or create) a development container with a well-defined tool and runtime stack.
 
 - See [How to create a GitHub codespace](https://docs.github.com/en/codespaces/developing-in-codespaces/creating-a-codespace#creating-a-codespace).

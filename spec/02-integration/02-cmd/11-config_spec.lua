@@ -104,6 +104,7 @@ describe("kong config", function()
 
     assert(helpers.kong_exec("config db_import " .. filename, {
       prefix = helpers.test_conf.prefix,
+      anonymous_reports = "on",
     }))
 
     local _, res = assert(thread:join())

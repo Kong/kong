@@ -2597,8 +2597,8 @@ describe("Admin API #off worker_consistency=eventual", function()
     local res_body = assert.res_status(200, res)
     local req1_pending_timers = assert.matches('kong_nginx_timers{state="pending"} %d+', res_body)
     local req1_running_timers = assert.matches('kong_nginx_timers{state="running"} %d+', res_body)
-    req1_pending_timers = assert(tonumber(string.match(req1_pending_timers, "%d")))
-    req1_running_timers = assert(tonumber(string.match(req1_running_timers, "%d")))
+    req1_pending_timers = assert(tonumber(string.match(req1_pending_timers, "%d+")))
+    req1_running_timers = assert(tonumber(string.match(req1_running_timers, "%d+")))
 
     -- 3. update the service
     res = assert(client:send {
@@ -2627,8 +2627,8 @@ describe("Admin API #off worker_consistency=eventual", function()
     local res_body = assert.res_status(200, res)
     local req2_pending_timers = assert.matches('kong_nginx_timers{state="pending"} %d+', res_body)
     local req2_running_timers = assert.matches('kong_nginx_timers{state="running"} %d+', res_body)
-    req2_pending_timers = assert(tonumber(string.match(req2_pending_timers, "%d")))
-    req2_running_timers = assert(tonumber(string.match(req2_running_timers, "%d")))
+    req2_pending_timers = assert(tonumber(string.match(req2_pending_timers, "%d+")))
+    req2_running_timers = assert(tonumber(string.match(req2_running_timers, "%d+")))
 
     assert.equal(req1_pending_timers, req2_pending_timers)
     assert.equal(req1_running_timers, req2_running_timers)

@@ -1310,15 +1310,16 @@ local function http_server(port, opts)
       assert(server:listen())
       local client = assert(server:accept())
 
+      local content_length
       local lines = {}
       local line, err
       repeat
         line, err = client:receive("*l")
         if err then
           break
-        else
-          table.insert(lines, line)
         end
+        table.insert(lines, line)
+        content_length = tonumber(line:lower():match("^content%-length:%s*(%d+)$")) or content_length
       until line == ""
 
       if #lines > 0 and lines[1] == "GET /delay HTTP/1.0" then
@@ -1330,7 +1331,7 @@ local function http_server(port, opts)
         error(err)
       end
 
-      local body, _ = client:receive("*a")
+      local body, _ = client:receive(content_length or "*a")
 
       client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
       client:close()
@@ -2600,6 +2601,55 @@ do
 end
 
 
+--- Assertion to check whether a string matches a regular expression
+-- @function match_re
+-- @param string the string
+-- @param regex the regular expression
+-- @return true or false
+-- @usage
+-- assert.match_re("foobar", [[bar$]])
+--
+
+local function match_re(_, args)
+  local string = args[1]
+  local regex = args[2]
+  assert(type(string) == "string",
+    "Expected the string argument to be a string")
+  assert(type(regex) == "string",
+    "Expected the regex argument to be a string")
+  local from, _, err = ngx.re.find(string, regex)
+  if err then
+    error(err)
+  end
+  if from then
+    table.insert(args, 1, string)
+    table.insert(args, 1, regex)
+    args.n = 2
+    return true
+  else
+    return false
+  end
+end
+
+say:set("assertion.match_re.negative", unindent [[
+    Expected log:
+    %s
+    To match:
+    %s
+  ]])
+say:set("assertion.match_re.positive", unindent [[
+    Expected log:
+    %s
+    To not match:
+    %s
+    But matched line:
+    %s
+  ]])
+luassert:register("assertion", "match_re", match_re,
+  "assertion.match_re.negative",
+  "assertion.match_re.positive")
+
+
 ----------------
 -- DNS-record mocking.
 -- These function allow to create mock dns records that the test Kong instance
@@ -3267,14 +3317,36 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
 end
 
 
+-- Cleanup after kong test instance, should be called if start_kong was invoked with the nowait flag
+-- @function cleanup_kong
+-- @param prefix (optional) the prefix where the test instance runs, defaults to the test configuration.
+-- @param preserve_prefix (boolean) if truthy, the prefix will not be deleted after stopping
+-- @param preserve_dc ???
+local function cleanup_kong(prefix, preserve_prefix, preserve_dc)
+
+  -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped
+  if not (preserve_prefix or os.getenv("KONG_DONT_CLEAN")) then
+    clean_prefix(prefix)
+  end
+
+  if not preserve_dc then
+    config_yml = nil
+  end
+  ngx.ctx.workspace = nil
+end
+
+
 -- Stop the Kong test instance.
 -- @function stop_kong
 -- @param prefix (optional) the prefix where the test instance runs, defaults to the test configuration.
 -- @param preserve_prefix (boolean) if truthy, the prefix will not be deleted after stopping
--- @param preserve_dc
+-- @param preserve_dc ???
+-- @param signal (optional string) signal name to send to kong, defaults to TERM
+-- @param nowait (optional) if truthy, don't wait for kong to terminate.  caller needs to wait and call cleanup_kong
 -- @return true or nil+err
-local function stop_kong(prefix, preserve_prefix, preserve_dc)
+local function stop_kong(prefix, preserve_prefix, preserve_dc, signal, nowait)
   prefix = prefix or conf.prefix
+  signal = signal or "TERM"
 
   local running_conf, err = get_running_conf(prefix)
   if not running_conf then
@@ -3286,26 +3358,21 @@ local function stop_kong(prefix, preserve_prefix, preserve_dc)
     return nil, err
   end
 
-  local ok, _, _, err = pl_utils.executeex("kill -TERM " .. pid)
+  local ok, _, _, err = pl_utils.executeex(string.format("kill -%s %d", signal, pid))
   if not ok then
     return nil, err
   end
 
+  if nowait then
+    return running_conf.nginx_pid
+  end
+
   wait_pid(running_conf.nginx_pid)
 
-  -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped
-  if not (preserve_prefix or os.getenv("KONG_DONT_CLEAN")) then
-    clean_prefix(prefix)
-  end
-
-  if not preserve_dc then
-    config_yml = nil
-  end
-  ngx.ctx.workspace = nil
+  cleanup_kong(prefix, preserve_prefix, preserve_dc)
 
   return true
 end
-
 
 --- Restart Kong. Reusing declarative config when using `database=off`.
 -- @function restart_kong
@@ -3624,6 +3691,7 @@ end
   -- launching Kong subprocesses
   start_kong = start_kong,
   stop_kong = stop_kong,
+  cleanup_kong = cleanup_kong,
   restart_kong = restart_kong,
   reload_kong = reload_kong,
   get_kong_workers = get_kong_workers,
