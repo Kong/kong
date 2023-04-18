@@ -11,7 +11,7 @@ maintainer: "Kong Inc. <support@konghq.com>"
 description: |
   Kong is a distributed gateway for APIs and Microservices, focused on high performance and reliability.
 vendor: "Kong Inc."
-license: "ASL 2.0"
+license: "Apache-2.0"
 contents:
 - src: nfpm-prefix/bin
   dst: /usr/local/bin
