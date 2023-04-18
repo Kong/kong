@@ -181,7 +181,7 @@ for _, strategy in helpers.each_strategy() do
         if proxy_client then
           proxy_client:close()
         end
-        helpers.stop_kong()
+        assert(helpers.stop_kong())
       end)
 
       it("release", function()
