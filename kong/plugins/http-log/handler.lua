@@ -176,8 +176,9 @@ local HttpLogHandler = {
 -- previous queue implementation.  This ensures that http-log instances that
 -- have the same log server parameters are sharing a queue.  It deliberately
 -- uses the legacy parameters to determine the queue name, even though they may
--- be nil in newer configurations.
-local function make_legacy_queue_name(conf)
+-- be nil in newer configurations.  Note that the modernized queue related
+-- parameters are not included in the queue name determination.
+local function make_queue_name(conf)
   return fmt("%s:%s:%s:%s:%s:%s",
     conf.http_endpoint,
     conf.method,
@@ -198,12 +199,9 @@ function HttpLogHandler:log(conf)
     end
   end
 
-  local explicit_name = conf.queue.name
   local queue_conf = Queue.get_params(conf)
-  if not explicit_name then
-    queue_conf.name = make_legacy_queue_name(conf)
-    kong.log.debug("Queue name automatically configured based on configuration parameters to: ", queue_conf.name)
-  end
+  queue_conf.name = make_queue_name(conf)
+  kong.log.debug("Queue name automatically configured based on configuration parameters to: ", queue_conf.name)
 
   local ok, err = Queue.enqueue(
     queue_conf,

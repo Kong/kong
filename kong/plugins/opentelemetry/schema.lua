@@ -64,12 +64,12 @@ return {
         { custom_entity_check = {
           field_sources = { "batch_span_count", "batch_flush_delay" },
           fn = function(entity)
-            if entity.batch_span_count and entity.batch_span_count ~= 200 then
-              deprecation("opentelemetry: batch_span_count is deprecated, please use queue.max_batch_size instead",
+            if (entity.batch_span_count or ngx.null) ~= ngx.null and entity.batch_span_count ~= 200 then
+              deprecation("opentelemetry: batch_span_count no longer works, please use config.queue.max_batch_size instead",
                           { after = "4.0", })
             end
-            if entity.batch_flush_delay and entity.batch_flush_delay ~= 3 then
-              deprecation("opentelemetry: batch_flush_delay is deprecated, please use queue.max_coalescing_delay instead",
+            if (entity.batch_flush_delay or ngx.null) ~= ngx.null and entity.batch_flush_delay ~= 3 then
+              deprecation("opentelemetry: batch_flush_delay no longer works, please use config.queue.max_coalescing_delay instead",
                           { after = "4.0", })
             end
             return true

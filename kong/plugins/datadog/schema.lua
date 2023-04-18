@@ -118,15 +118,15 @@ return {
           { custom_entity_check = {
               field_sources = { "retry_count", "queue_size", "flush_timeout" },
               fn = function(entity)
-                if entity.retry_count and entity.retry_count ~= 10 then
+                if (entity.retry_count or ngx.null) ~= ngx.null and entity.retry_count ~= 10 then
                   deprecation("datadog: config.retry_count no longer works, please use config.queue.max_retry_time instead",
                     { after = "4.0", })
                 end
-                if entity.queue_size and entity.queue_size ~= 1 then
+                if (entity.queue_size or ngx.null) ~= ngx.null and entity.queue_size ~= 1 then
                   deprecation("datadog: config.queue_size no longer works, please use config.queue.max_batch_size instead",
                     { after = "4.0", })
                 end
-                if entity.flush_timeout and entity.flush_timeout ~= 2 then
+                if (entity.flush_timeout or ngx.null) ~= ngx.null and entity.flush_timeout ~= 2 then
                   deprecation("datadog: config.flush_timeout no longer works, please use config.queue.max_coalescing_delay instead",
                     { after = "4.0", })
                 end
