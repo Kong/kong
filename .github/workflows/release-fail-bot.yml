@@ -16,7 +16,7 @@ jobs:
       uses: actions/github-script@v4
       with:
         script: |
-          const manager_ids = ["dndx"];
+          const github_ids = [];
           const slack_mapping = JSON.parse(process.env.SLACK_MAPPING);
           const repo_name = "${{ github.event.workflow_run.repository.full_name }}";
           const run_id = ${{ github.event.workflow_run.id }};
@@ -34,9 +34,9 @@ jobs:
         SLACK_CHANNEL: gateway-notifications
         SLACK_MAPPING: "${{ vars.SLACK_MAPPING }}"
 
-      - name: Send Slack Message
-        uses: slackapi/slack-github-action@v1.23.0
-        with:
-          payload: ${{ steps.generate_payload.outputs.payload }}
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+    - name: "Send Slack Message"
+      uses: slackapi/slack-github-action@v1.23.0
+      with:
+        payload: ${{ steps.generate_payload.outputs.payload }}
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
