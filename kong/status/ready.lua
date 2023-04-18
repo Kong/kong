@@ -49,8 +49,8 @@ local function is_ready()
     return false, "plugins iterator rebuilds are not complete"
   end
 
-  if is_traditional then
-    kong.db:close() -- ignore ERRs
+  if is_traditional then -- skip hash check for DB mode
+    kong.db:close()
     return true
   end
 
