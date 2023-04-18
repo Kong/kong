@@ -16,7 +16,7 @@ pg_stat_statements.max = 10000
 for database in $(echo $POSTGRES_DBS | tr ',' ' '); do
   echo "Creating database $database"
   psql -U $POSTGRES_USER <<-EOSQL
-    CREATE DATABASE $database;
+    SELECT 'CREATE DATABASE $database' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '$database')\gexec
     GRANT ALL PRIVILEGES ON DATABASE $database TO $POSTGRES_USER;
 EOSQL
 done
