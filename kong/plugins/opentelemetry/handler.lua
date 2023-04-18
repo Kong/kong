@@ -98,8 +98,7 @@ local function http_export(conf, spans)
   return ok, err
 end
 
-
-function OpenTelemetryHandler:access()
+function OpenTelemetryHandler:access(conf)
   local headers = ngx_get_headers()
   local root_span = ngx.ctx.KONG_SPANS and ngx.ctx.KONG_SPANS[1]
 
@@ -112,7 +111,7 @@ function OpenTelemetryHandler:access()
     kong.ctx.plugin.should_sample = false
   end
 
-  local header_type, trace_id, span_id, parent_id, should_sample, _ = propagation_parse(headers)
+  local header_type, trace_id, span_id, parent_id, should_sample, _ = propagation_parse(headers, conf.header_type)
   if should_sample == false then
     root_span.should_sample = should_sample
   end
@@ -132,7 +131,7 @@ function OpenTelemetryHandler:access()
     root_span.parent_id = parent_id
   end
 
-  propagation_set("preserve", header_type, root_span, "w3c")
+  propagation_set(conf.header_type, header_type, root_span, "w3c")
 end
 
 

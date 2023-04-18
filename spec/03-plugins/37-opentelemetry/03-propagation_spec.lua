@@ -31,21 +31,44 @@ describe("propagation tests #" .. strategy, function()
   lazy_setup(function()
     local bp = helpers.get_db_utils(strategy, { "services", "routes", "plugins" })
 
-    -- enable opentelemetry plugin globally pointing to mock server
+    service = bp.services:insert()
+
     bp.plugins:insert({
       name = "opentelemetry",
+      route = {id = bp.routes:insert({
+        service = service,
+        hosts = { "http-route" },
+      }).id},
       config = {
         -- fake endpoint, request to backend will sliently fail
         endpoint = "http://localhost:8080/v1/traces",
       }
     })
 
-    service = bp.services:insert()
+    bp.plugins:insert({
+      name = "opentelemetry",
+      route = {id = bp.routes:insert({
+        service = service,
+        hosts = { "http-route-ignore" },
+      }).id},
+      config = {
+        -- fake endpoint, request to backend will sliently fail
+        endpoint = "http://localhost:8080/v1/traces",
+        header_type = "ignore",
+      }
+    })
 
-    -- kong (http) mock upstream
-    bp.routes:insert({
-      service = service,
-      hosts = { "http-route" },
+    bp.plugins:insert({
+      name = "opentelemetry",
+      route = {id = bp.routes:insert({
+        service = service,
+        hosts = { "http-route-w3c" },
+      }).id},
+      config = {
+        -- fake endpoint, request to backend will sliently fail
+        endpoint = "http://localhost:8080/v1/traces",
+        header_type = "w3c",
+      }
     })
 
     helpers.start_kong({
@@ -127,6 +150,54 @@ describe("propagation tests #" .. strategy, function()
       headers = {
         traceparent = fmt("00-%s-%s-01", trace_id, parent_id),
         host = "http-route"
+      },
+    })
+    local body = assert.response(r).has.status(200)
+    local json = cjson.decode(body)
+    assert.matches("00%-" .. trace_id .. "%-%x+-01", json.headers.traceparent)
+  end)
+
+  it("defaults to w3c without propagating when header_type set to ignore and w3c headers sent", function()
+    local trace_id = gen_trace_id()
+    local parent_id = gen_span_id()
+
+    local r = proxy_client:get("/", {
+      headers = {
+        traceparent = fmt("00-%s-%s-01", trace_id, parent_id),
+        host = "http-route-ignore"
+      },
+    })
+    local body = assert.response(r).has.status(200)
+    local json = cjson.decode(body)
+    assert.is_not_nil(json.headers.traceparent)
+    -- incoming trace id is ignored
+    assert.not_matches("00%-" .. trace_id .. "%-%x+-01", json.headers.traceparent)
+  end)
+
+  it("defaults to w3c without propagating when header_type set to ignore and b3 headers sent", function()
+    local trace_id = gen_trace_id()
+    local r = proxy_client:get("/", {
+      headers = {
+        ["x-b3-sampled"] = "1",
+        ["x-b3-traceid"] = trace_id,
+        host  = "http-route-ignore",
+      },
+    })
+    local body = assert.response(r).has.status(200)
+    local json = cjson.decode(body)
+    assert.is_not_nil(json.headers.traceparent)
+    -- incoming trace id is ignored
+    assert.not_matches("00%-" .. trace_id .. "%-%x+-01", json.headers.traceparent)
+  end)
+
+  it("propagates w3c tracing headers when header_type set to w3c", function()
+    local trace_id = gen_trace_id()
+    local parent_id = gen_span_id()
+
+    local r = proxy_client:get("/", {
+      headers = {
+        traceparent = fmt("00-%s-%s-01", trace_id, parent_id),
+        host = "http-route-w3c"
       },
     })
     local body = assert.response(r).has.status(200)
