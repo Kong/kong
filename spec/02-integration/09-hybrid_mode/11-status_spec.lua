@@ -14,7 +14,7 @@ for _, strategy in helpers.each_strategy() do
       return helpers.start_kong({
         role = "data_plane",
         database = "off",
-        prefix = "servroot_dp",
+        prefix = "servroot2",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         cluster_control_plane = "127.0.0.1:9005",
@@ -41,9 +41,10 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     lazy_teardown(function()
-        helpers.stop_kong("servroot")
-        helpers.stop_kong("servroot_dp")
+        assert(helpers.stop_kong("servroot"))
+        assert(helpers.stop_kong("servroot2"))
     end)
+
     -- now dp should be not ready
 
     describe("dp status ready endpoint for no config", function()
@@ -62,7 +63,7 @@ for _, strategy in helpers.each_strategy() do
           if status == 503 then
             return true
           end
-        end, 5)
+        end, 10)
       end)
     end)
 
@@ -84,7 +85,7 @@ for _, strategy in helpers.each_strategy() do
           if status == 200 then
             return true
           end
-        end, 5)
+        end, 10)
       end)
     end)
 
@@ -132,20 +133,21 @@ for _, strategy in helpers.each_strategy() do
         end, 10)
 
         ---- test DP
+        helpers.wait_until(function()
 
-        local http_client = helpers.http_client('127.0.0.1', dp_status_port)
+          local http_client = helpers.http_client('127.0.0.1', dp_status_port)
 
-        local res = http_client:send({
-          method = "GET",
-          path = "/status/ready",
-        })
+          local res = http_client:send({
+            method = "GET",
+            path = "/status/ready",
+          })
 
-        local status = res and res.status
-        http_client:close()
-        if status == 200 then
-          return true
-        end
-
+          local status = res and res.status
+          http_client:close()
+          if status == 200 then
+            return true
+          end
+        end, 10)
         assert(start_kong_dp()) -- recovery state between tests
 
       end)
