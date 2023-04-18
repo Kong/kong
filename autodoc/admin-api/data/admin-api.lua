@@ -681,12 +681,11 @@ return {
             high likelihood of delivering the expected response, once it has
             loaded the configuration. 
 
-            If a Kong instance is running in traditional mode, it returns 
-            `200 OK` if the database is reachable.
-
             If a Kong instance is running in DB-less mode or as a data plane,
             it returns `200 OK` if each worker is ready with the valid router and 
-            plugins.
+            plugins. In the case of db mode (such as traditional mode), it is 
+            further necessary to ensure that the database is connectable before
+            returning a `200 OK` status code.
 
           ]],
           response = [[
