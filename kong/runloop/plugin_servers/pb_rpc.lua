@@ -393,13 +393,14 @@ function Rpc:handle_event(plugin_name, conf, phase)
     instance_id = instance_id,
     event_name = phase,
   }, true)
-  if not res then
-    kong.log.err(err)
-
-    if string.match(err:lower(), "no plugin instance") then
+  if not res or res == "" then
+    if string.match(err:lower(), "no plugin instance")
+      or string.match(err:lower(), "closed")  then
+      kong.log.warn(err)
       self.reset_instance(plugin_name, conf)
       return self:handle_event(plugin_name, conf, phase)
     end
+    kong.log.err(err)
   end
 end
 
