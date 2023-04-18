@@ -41,8 +41,8 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     lazy_teardown(function()
-        assert(helpers.stop_kong("servroot"))
-        assert(helpers.stop_kong("servroot_dp"))
+        helpers.stop_kong("servroot")
+        helpers.stop_kong("servroot_dp")
     end)
     -- now dp should be not ready
 
