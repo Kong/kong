@@ -301,7 +301,6 @@ describe("declarative config: flatten", function()
                   max_coalescing_delay = 1,
                   max_retry_delay = 60,
                   max_retry_time = 60,
-                  name = null,
                   max_bytes = null,
                 },
               }
@@ -408,7 +407,6 @@ describe("declarative config: flatten", function()
                   max_coalescing_delay = 1,
                   max_retry_delay = 60,
                   max_retry_time = 60,
-                  name = null,
                   max_bytes = null,
                 },
               },
@@ -609,7 +607,6 @@ describe("declarative config: flatten", function()
                     max_coalescing_delay = 1,
                     max_retry_delay = 60,
                     max_retry_time = 60,
-                    name = null,
                     max_bytes = null,
                   }
                 },
@@ -1125,7 +1122,6 @@ describe("declarative config: flatten", function()
                     max_coalescing_delay = 1,
                     max_retry_delay = 60,
                     max_retry_time = 60,
-                    name = null,
                     max_bytes = null,
                   },
                 },
