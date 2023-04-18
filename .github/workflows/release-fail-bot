@@ -27,7 +27,7 @@ jobs:
           const payload = {
             text: `Workflow “${workflow_name}” failed in repo: “${repo_name}”. Run URL: ${run_url}. ${authors}, please check it.`,
             channel: process.env.SLACK_CHANNEL,
-            icon_emoji: ":alert:",
+            icon_emoji: ":onfire:",
           };
           console.log(`::set-output name=payload::${JSON.stringify(payload)}`);
       env:
