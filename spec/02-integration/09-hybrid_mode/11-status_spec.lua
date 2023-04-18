@@ -11,7 +11,7 @@ for _, strategy in helpers.each_strategy() do
     helpers.get_db_utils(strategy, {}) -- runs migrations
 
     local function start_kong_dp()
-      helpers.start_kong({
+      return helpers.start_kong({
         role = "data_plane",
         database = "off",
         prefix = "servroot_dp",
