@@ -88,6 +88,7 @@ make(
 )
 
 CONFIGURE_OPTIONS = [
+    "--with-threads",
     "--with-pcre-jit",
     "--with-http_ssl_module",
     "--with-http_sub_module",

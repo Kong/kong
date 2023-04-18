@@ -739,6 +739,7 @@ function Prometheus:init_worker(sync_interval)
     error(err, 2)
   end
   self._counter = counter_instance
+  self.thread_pool = "prometheus"
 end
 
 -- Register a new metric.
@@ -940,6 +941,80 @@ function Prometheus:metric_data(write_fn, local_only)
 
   buffered_print(nil)
 end
+
+-- Prometheus compatible metric data as an array of strings.
+--
+-- Returns:
+--   Array of strings with all metrics in a text format compatible with
+--   Prometheus.
+function Prometheus:metric_data_thread(write_fn, local_only)
+  if not self.initialized then
+    ngx_log(ngx.ERR, "Prometheus module has not been initialized")
+    return
+  end
+  write_fn = write_fn or ngx_print
+
+  -- Force a manual sync of counter local state (mostly to make tests work).
+  self._counter:sync()
+
+
+  local seen_metrics = {}
+  local output = {}
+  local output_count = 0
+  local function buffered_print(data)
+    if data then
+      output_count = output_count + 1
+      output[output_count] = data
+    end
+
+    if output_count >= 100 or not data then
+      write_fn(output)
+      output_count = 0
+      tb_clear(output)
+    end
+  end
+
+
+  local keys
+  local ok
+  if not local_only then 
+    ok, keys = ngx.run_worker_thread(self.thread_pool, "kong.plugins.prometheus.worker_thread", 
+            "shared_metrics_data",  self.local_metrics, self.dict_name)
+    if not ok then
+      ngx.log(ngx.ERR, "failed to run worker thread: ", keys)
+      return
+    end
+  else
+    keys = {}
+    for _, key in ipairs(self.local_metrics) do
+      key = fix_histogram_bucket_labels(key)
+      keys[count+1] = key
+      count = count + 1
+    end
+  end
+
+  for key, value in pairs(keys) do
+    local short_name = short_metric_name(key)
+    if not seen_metrics[short_name] then
+      local m = self.registry[short_name]
+      if m then
+        if m.help then
+          buffered_print(st_format("# HELP %s%s %s\n",
+            self.prefix, short_name, m.help))
+        end
+        if m.typ then
+          buffered_print(st_format("# TYPE %s%s %s\n",
+            self.prefix, short_name, TYPE_LITERAL[m.typ]))
+        end
+      end
+      seen_metrics[short_name] = true
+    end
+    buffered_print(st_format("%s%s %s\n", self.prefix, key, value))
+  end
+
+  buffered_print(nil)
+end
+
 
 -- Present all metrics in a text format compatible with Prometheus.
 --
