@@ -17,7 +17,7 @@ The build system requires the following tools to be installed:
   We can install Bazelisk by running the following command:
 
   ```bash
-    // install Bazelisk into $PWD/bin/bazel
+    # install Bazelisk into $PWD/bin/bazel
     make check-bazel
     // add Bazelisk into your $PATH
     export PATH=bin:$PATH
@@ -34,7 +34,7 @@ The build system requires the following tools to be installed:
 The commands related to building Kong are already supported in the [Makefile](../Makefile), so we can use them directly:
 
 ```bash
-make build-kong
+bazel build //build:kong --verbose_failures
 ```
 
 During the first run, it will take some time to perform a complete build, which includes downloading dependent files and compiling.
@@ -46,7 +46,7 @@ To use the build as a virtual development environment, run:
 ### Build a virtual development environment
 
 ```bash
-make build-venv
+bazel build //build:venv --verbose_failures
 . ./bazel-bin/build/kong-dev-venv.sh
 ```
 
