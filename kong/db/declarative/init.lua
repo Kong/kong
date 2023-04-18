@@ -263,31 +263,6 @@ function _M:parse_table(dc_table, hash)
 
   on_the_fly_migration(dc_table)
 
-  -- This is to fix FTI-4808
-  do
-    if dc_table.consumer_groups then
-      for _, consumer_group in ipairs(dc_table.consumer_groups) do
-        if consumer_group.plugins then
-          consumer_group.consumer_group_plugins = consumer_group.plugins
-          consumer_group.plugins = nil
-        end
-      end
-    end
-
-    if dc_table.consumers then
-      for _, consumer in ipairs(dc_table.consumers) do
-        if consumer.groups then
-          local consumer_group_consumers = {}
-          for _, group in ipairs(consumer.groups) do
-            table.insert(consumer_group_consumers, { consumer_group = group.id })
-          end
-          consumer.consumer_group_consumers = consumer_group_consumers
-          consumer.groups = nil
-        end
-      end
-    end
-  end
-
   local entities, err_t, meta = self.schema:flatten(dc_table)
   if err_t then
     return nil, pretty_print_error(err_t), err_t
