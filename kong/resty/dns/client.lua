@@ -734,6 +734,7 @@ local function individualQuery(qname, r_opts, try_list)
 
   parseAnswer(qname, r_opts.qtype, result, try_list)
 
+  close_socks(r)
   return result, nil, try_list
 end
 
