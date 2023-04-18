@@ -23,7 +23,7 @@ concurrency:
 jobs:
   upgrade-test:
     name: Run migration tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-kong
 
     steps:
       - name: Install prerequisites
