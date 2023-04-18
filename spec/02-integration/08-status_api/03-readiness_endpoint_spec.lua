@@ -1,11 +1,10 @@
 local helpers = require "spec.helpers"
 
 
-for _, strategy in helpers.all_strategies() do
+for _, strategy in helpers.each_strategy() do
 describe("Status API - with strategy #" .. strategy, function()
   local client
   local admin_client
-
   lazy_setup(function()
     helpers.get_db_utils(nil, {}) -- runs migrations
     assert(helpers.start_kong {
