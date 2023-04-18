@@ -82,7 +82,7 @@
   [#9903](https://github.com/Kong/kong/pull/9903)
 
 ### Fixes
-- **gRPC gateway**: Fix an issue where handling `null` in JSON payload
+- **gRPC gateway**: `null` in the JSON payload caused an uncaught exception to be thrown during pb.encode.
   [#10687](https://github.com/Kong/kong/pull/10687)
 
 #### Core

@@ -1,7 +1,7 @@
 local cjson = require "cjson"
 local helpers = require "spec.helpers"
 
-for _, strategy in helpers.each_strategy({"postgres"}) do
+for _, strategy in helpers.each_strategy() do
 
   describe("gRPC-Gateway [#" .. strategy .. "]", function()
     local proxy_client
