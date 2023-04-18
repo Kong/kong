@@ -85,7 +85,7 @@ for _, strategy in helpers.each_strategy() do
         local spans = cjson.decode(res)
         assert.is_same(2, #spans, res)
         local balancer_span = spans[2]
-        assert.is_same("balancer try #1", balancer_span.name)
+        assert.is_same("kong.balancer", balancer_span.name)
 
         local traceparent = assert(body.headers.traceparent)
         local trace_id = balancer_span.trace_id
