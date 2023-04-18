@@ -39,12 +39,12 @@ local function is_ready()
   local plugins_iterator_rebuilds = 
       tonumber(kong_shm:get(DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY)) or 0
 
-  if (is_traditional and router_rebuilds == 0) 
+  if (is_traditional and router_rebuilds == 0)
       or router_rebuilds < worker_count then
     return false, "router rebuilds are not complete"
   end
 
-  if (is_traditional and plugins_iterator_rebuilds == 0) 
+  if (is_traditional and plugins_iterator_rebuilds == 0)
       or plugins_iterator_rebuilds < worker_count then
     return false, "plugins iterator rebuilds are not complete"
   end
