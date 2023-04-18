@@ -13,8 +13,6 @@ local kong_shm     = ngx.shared.kong
 local ngx_log        = ngx.log
 local ngx_WARN       = ngx.WARN
 
-local is_traditional = kong.configuration.database ~= "off"
-
 local DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY = 
                                 constants.DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY
 local DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY =
@@ -32,11 +30,6 @@ local function is_ready()
   local ok = kong.db:connect()
   if not ok then
     return false, "failed to connect to database"
-  end
-
-  if is_traditional then
-    kong.db:close() -- ignore ERRs
-    return true
   end
 
   local router_rebuilds = 
@@ -61,6 +54,8 @@ local function is_ready()
   if current_hash == DECLARATIVE_EMPTY_CONFIG_HASH then
     return false, "empty configuration hash"
   end
+
+  kong.db:close()
 
   return true
 end
