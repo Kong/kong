@@ -128,6 +128,73 @@ describe("Plugin: request-transformer-advanced (API) [#" .. strategy .. "]", fun
         local expected = { config = { append = { headers = { msg } } } }
         assert.same(expected, json["fields"])
       end)
+      it("rename fails with missing colons for key/value separation", function()
+        local res = assert(admin_client:send {
+          method = "POST",
+          path = "/plugins",
+          body = {
+            name = "request-transformer-advanced",
+            config = {
+              rename = {
+                body = {"just_a_key"},
+              },
+            },
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        local body = assert.response(res).has.status(400)
+        local json = cjson.decode(body)
+        local msg = "unsupported value 'just_a_key' in body field"
+        local expected = { config = { rename = { body = { msg } } } }
+        assert.same(expected, json["fields"])
+      end)
+
+      describe("fails to create plugin with unexpected body field: ", function()
+        local data_bodies = {
+          {
+            body = ngx.null,
+            expected_err_msg = { "unsupported type '" .. type(ngx.null) .. "' for body field" },
+          },
+          -- the following cases don't throw errors in 
+          -- `request-transformer-advanced.schema.custom_validator`.
+          -- Because `config.remove.body` is an `elements` type field that 
+          -- will be checked in `kong.db.schema.init.Schema:validate_field`
+          -- before the `custom_validator` is called.
+          {
+            body = { ngx.null },
+            expected_err_msg = { "required field missing" },
+          },
+          {
+            body = { 1 },
+            expected_err_msg = { "expected a string" },
+          },
+        }
+        for _, data in ipairs(data_bodies) do
+          it(type(data.body), function()
+            local res = assert(admin_client:send {
+              method = "POST",
+              path = "/plugins",
+              body = {
+                name = "request-transformer-advanced",
+                config = {
+                  remove = {
+                    body = data.body,
+                  },
+                },
+              },
+              headers = {
+                ["Content-Type"] = "application/json",
+              },
+            })
+            local res_body = assert.response(res).has.status(400)
+            local json = assert(cjson.decode(res_body))
+            local expected = { config = { remove = { body = data.expected_err_msg } } }
+            assert.same(expected, json["fields"])
+          end)
+        end
+      end)
     end)
   end)
 end)

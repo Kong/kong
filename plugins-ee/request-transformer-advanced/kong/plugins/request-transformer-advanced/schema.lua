@@ -31,6 +31,9 @@ local function check_for_value(entry)
 end
 
 local function check_for_path(path)
+  if type(path) ~= "string" or path == "" then
+    return false
+  end
   local res = ngx_re.split(path, "\\.")
   for i = 1, #res do
     -- don't allow: 1. consecutive dots; 2. elements start with '[.*]'
@@ -52,12 +55,16 @@ local function check_for_path(path)
   return true
 end
 
-local function check_for_body(record, operation)
+local function check_for_body(bodies, operation)
+  -- elements in bodies should match such pattern: `first:last` unless operation is `remove`
   local first, last
-  local bodies = record.body
+  if type(bodies) ~= "table" then
+    return false, "unsupported type '" .. type(bodies) .. "' for body field"
+  end
+
   for _, body in ipairs(bodies) do
-    if body == nil or body == "" then
-      return false, "unsupported nil or empty string as value in body field"
+    if type(body) ~= "string" or body == "" then
+      return false, "elements in body field should be non empty strings"
     end
 
     first, last = body:match("^([^:]+):*(.-)$")
@@ -66,6 +73,7 @@ local function check_for_body(record, operation)
     end
 
     if operation == "rename" then
+      -- the `last` should also be checked to ensure it's also a valid path if operation is `rename
       if not check_for_path(last) then
         return false, "unsupported value '" .. body .. "' in body field"
       end
@@ -80,7 +88,7 @@ local field_typies = {"headers", "querystring", "body"}
 
 local function check_for_operation(config, operation)
   if config.body then
-    local ok, err = check_for_body(config)
+    local ok, err = check_for_body(config.body, operation)
     if not ok then
       return ok, { body = { err } }
     end
