@@ -16,6 +16,9 @@
   Serverless Functions plugins: it does not provide access to the global kong cache. Access to
   certain fields in kong.configuration has also been restricted.
   [#10417](https://github.com/Kong/kong/pull/10417)
+- **Opentelemetry**: plugin version has been updated to match Kong's version
+  [#10646](https://github.com/Kong/kong/pull/10646)
+
 
 ### Additions
 
@@ -82,6 +85,8 @@
   [#9903](https://github.com/Kong/kong/pull/9903)
 
 ### Fixes
+- **gRPC gateway**: `null` in the JSON payload caused an uncaught exception to be thrown during pb.encode.
+  [#10687](https://github.com/Kong/kong/pull/10687)
 
 #### Core
 
@@ -179,8 +184,9 @@
   [#10338](https://github.com/Kong/kong/pull/10338)
 - Bumped lua-protobuf from 0.3.3 to 0.4.2
   [#10137](https://github.com/Kong/kong/pull/10413)
-- Bumped lua-resty-timer-ng from 0.2.3 to 0.2.4
+- Bumped lua-resty-timer-ng from 0.2.3 to 0.2.5
   [#10419](https://github.com/Kong/kong/pull/10419)
+  [#10664](https://github.com/Kong/kong/pull/10664)
 - Bumped lua-resty-openssl from 0.8.17 to 0.8.20
   [#10463](https://github.com/Kong/kong/pull/10463)
   [#10476](https://github.com/Kong/kong/pull/10476)

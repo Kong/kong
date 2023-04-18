@@ -33,17 +33,12 @@ function _M:access(conf)
     root_span.parent_id = parent_id
   end
 
-  local new_span = ngx.ctx.last_try_balancer_span
-  if new_span == nil then
-    new_span = tracer.create_span(nil, {
-      span_kind = 3,
-      parent = root_span,
-    })
-    ngx.ctx.last_try_balancer_span = new_span
-  end
-
+  local balancer_span = tracer.create_span(nil, {
+    span_kind = 3,
+    parent = root_span,
+  })
   local type = header_type and "preserve" or "w3c"
-  propagation_set(type, header_type, new_span, "trace-propagator")
+  propagation_set(type, header_type, balancer_span, "w3c", true)
 end
 
 return _M

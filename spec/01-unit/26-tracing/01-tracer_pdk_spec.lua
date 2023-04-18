@@ -176,6 +176,7 @@ describe("Tracer PDK", function()
         attributes = {
           "key1", "value1"
         },
+        linked = true,
       }
 
       span = c_tracer.start_span("meow", tpl)

@@ -59,6 +59,7 @@ return {
   [3003000000] = {
     acme = {
       "account_key",
+      "storage_config.redis.namespace",
     },
     proxy_cache = {
       "ignore_uri_case",
