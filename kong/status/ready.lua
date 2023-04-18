@@ -13,6 +13,8 @@ local kong_shm     = ngx.shared.kong
 local ngx_log        = ngx.log
 local ngx_WARN       = ngx.WARN
 
+local is_traditional = kong.configuration.database ~= "off"
+
 local DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY = 
                                 constants.DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY
 local DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY =
@@ -45,6 +47,11 @@ local function is_ready()
     return false, "plugins iterator rebuilds are not complete"
   end
 
+  if is_traditional then
+    kong.db:close() -- ignore ERRs
+    return true
+  end
+
   local current_hash = get_current_hash()
 
   if not current_hash then
@@ -56,7 +63,6 @@ local function is_ready()
   end
 
   kong.db:close()
-
   return true
 end
 
