@@ -14,6 +14,7 @@ local ngx_log        = ngx.log
 local ngx_WARN       = ngx.WARN
 
 local is_traditional = kong.configuration.database ~= "off"
+local is_control_plane = kong.configuration.role == "control_plane"
 
 local DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY = 
                                 constants.DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY
@@ -39,7 +40,7 @@ local function is_ready()
   local plugins_iterator_rebuilds = 
       tonumber(kong_shm:get(DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY)) or 0
 
-  if (is_traditional and router_rebuilds == 0)
+  if (is_traditional and not is_control_plane and router_rebuilds == 0)
       or (not is_traditional and router_rebuilds < worker_count) then
     kong.db:close()
     return false, "router rebuilds are not complete"
