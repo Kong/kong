@@ -21,6 +21,8 @@ local cjson = require("cjson.safe").new()
 
 
 local ngx = ngx
+local time = ngx.time
+local exiting = ngx.worker.exiting
 local get_phase = ngx.get_phase
 local fmt = string.format
 local sub = string.sub
@@ -44,6 +46,15 @@ local decode_json = cjson.decode
 
 
 local function new(self)
+  local ROTATION_INTERVAL = 60
+  local ROTATION_SEMAPHORE = semaphore.new(1)
+  local ROTATION_WAIT = 0
+
+
+  local REFERENCES = {}
+  local FAILED = {}
+
+
   local LRU = lrucache.new(1000)
 
 
@@ -176,16 +187,27 @@ local function new(self)
     elseif rotation then
       value = rotation[cache_key]
       if not value then
-        value, err, ttl = strategy.get(config, resource, version)
-        if value then
-          ttl = adjust_ttl(ttl, config)
-          rotation[cache_key] = value
-          if cache then
-            -- Warmup cache just in case the value is needed elsewhere.
-            -- TODO: do we need to clear cache first?
-            cache:get(cache_key, config, function()
-              return value, err, ttl
-            end)
+        if cache and rotation.probe then
+          ttl, err, value = cache:probe(cache_key)
+          if ttl and ttl < 0 then
+            ttl = nil
+            err = nil
+            value = nil
+          end
+        end
+
+        if not ttl or ttl < ROTATION_INTERVAL then
+          value, err, ttl = strategy.get(config, resource, version)
+          if value then
+            ttl = adjust_ttl(ttl, config)
+            rotation[cache_key] = value
+            if cache then
+              -- Warmup cache just in case the value is needed elsewhere.
+              cache:invalidate_local(cache_key)
+              cache:get(cache_key, config, function()
+                return value, err, ttl
+              end)
+            end
           end
         end
       end
@@ -557,6 +579,8 @@ local function new(self)
 
     if type(ttl) == "number" and ttl > 0 then
       LRU:set(reference, value, ttl)
+      REFERENCES[reference] = time() + ttl - ROTATION_INTERVAL
+
     else
       LRU:set(reference, value)
     end
@@ -759,6 +783,76 @@ local function new(self)
   end
 
 
+  local function rotate_secrets()
+    if isempty(REFERENCES) then
+      return true
+    end
+
+    local rotation = { probe = true }
+    local current_time = time()
+
+    local removals
+    local removal_count = 0
+
+    for reference, expiry in pairs(REFERENCES) do
+      if exiting() then
+        return true
+      end
+
+      if current_time > expiry then
+        local value, err = get(reference, rotation)
+        if not value then
+          local fail_count = (FAILED[reference] or 0) + 1
+          if fail_count < 5 then
+            self.log.notice("rotating reference ", reference, " failed: ", err or "unknown")
+            FAILED[reference] = fail_count
+
+          else
+            self.log.warn("rotating reference ", reference, " failed (removed from rotation): ", err or "unknown")
+            if not removals then
+              removals = { reference }
+            else
+              removals[removal_count] = reference
+            end
+          end
+        end
+      end
+    end
+
+    if removal_count > 0 then
+      for i = 1, removal_count do
+        local reference = removals[i]
+        REFERENCES[reference] = nil
+        FAILED[reference] = nil
+        LRU:delete(reference)
+      end
+    end
+
+    return true
+  end
+
+
+  local function rotate_secrets_timer(premature)
+    if premature then
+      return
+    end
+
+    local ok, err = ROTATION_SEMAPHORE:wait(ROTATION_WAIT)
+    if ok then
+      ok, err = pcall(rotate_secrets)
+
+      ROTATION_SEMAPHORE:post()
+
+      if not ok then
+        self.log.err("rotating secrets failed (", err, ")")
+      end
+
+    elseif err ~= "timeout" then
+      self.log.warn("rotating secrets failed (", err, ")")
+    end
+  end
+
+
   local _VAULT = {}
 
 
@@ -800,6 +894,11 @@ local function new(self)
 
     if self.configuration.database ~= "off" then
       self.worker_events.register(flush_config_cache, "crud", "vaults")
+    end
+
+    local _, err = self.timer:named_every("secret-rotation", ROTATION_INTERVAL, rotate_secrets_timer)
+    if err then
+      self.log.err("could not schedule timer to rotate vault secret references: ", err)
     end
   end
 
