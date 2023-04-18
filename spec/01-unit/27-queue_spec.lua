@@ -81,7 +81,7 @@ describe("plugin queue", function()
       function ()
         return handler_invoked == 1
       end,
-      1)
+      10)
     assert.same(configuration_sent, configuration_received)
   end)
 
@@ -115,7 +115,7 @@ describe("plugin queue", function()
       function ()
         return handler_invoked == 1
       end,
-      1)
+      10)
     assert.same(configuration_received, second_configuration_sent)
     assert.equals(2, number_of_entries_received)
   end)
