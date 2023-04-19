@@ -13,7 +13,7 @@ local kong_shm     = ngx.shared.kong
 local ngx_log        = ngx.log
 local ngx_WARN       = ngx.WARN
 
-local is_traditional = kong.configuration.database ~= "off"
+local dbless = kong.configuration.database == "off"
 local is_control_plane = kong.configuration.role == "control_plane"
 
 local DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY = 
@@ -29,8 +29,12 @@ Checks if Kong is ready to serve.
 @return string|nil an error message if Kong is not ready, or nil otherwise.
 --]]
 local function is_ready()
+  -- control plane has no need to serve traffic
+  if is_control_plane then
+    return true
+  end
 
-  local ok = kong.db:connect()
+  local ok = kong.db:connect() -- for dbless, always ok
   if not ok then
     return false, "failed to connect to database"
   end
@@ -40,37 +44,45 @@ local function is_ready()
   local plugins_iterator_rebuilds = 
       tonumber(kong_shm:get(DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY)) or 0
 
-  if (is_traditional and not is_control_plane and router_rebuilds == 0)
-      or (not is_traditional and router_rebuilds < worker_count) then
-    kong.db:close()
-    return false, "router rebuilds are not complete"
-  end
+  -- full check for dbless mode
+  if dbless then
+    if router_rebuilds < worker_count then
+      kong.db:close()
+      return false, "router rebuilds are not complete"
+    end
 
-  if (is_traditional and plugins_iterator_rebuilds == 0)
-      or (not is_traditional and plugins_iterator_rebuilds < worker_count) then
-    kong.db:close()
-    return false, "plugins iterator rebuilds are not complete"
-  end
+    if plugins_iterator_rebuilds < worker_count then
+      kong.db:close()
+      return false, "plugins iterator rebuilds are not complete"
+    end
 
-  if is_traditional then -- skip hash check for DB mode
+    local current_hash = get_current_hash()
+
+    if not current_hash then
+      kong.db:close()
+      return false, "no configuration hash"
+    end
+
+    if current_hash == DECLARATIVE_EMPTY_CONFIG_HASH then
+      kong.db:close()
+      return false, "empty configuration hash"
+    end
+
     kong.db:close()
     return true
+  else
+    -- data plane with db, only build once, because
+    -- build_router() will not be called for each worker because of ROUTER_CACHE
+    if router_rebuilds == 0 then
+      kong.db:close()
+      return false, "router rebuilds are not complete"
+    end
+
+    if plugins_iterator_rebuilds == 0 then
+      kong.db:close()
+      return false, "plugins iterator rebuilds are not complete"
+    end
   end
-
-  local current_hash = get_current_hash()
-
-  if not current_hash then
-    kong.db:close()
-    return false, "no configuration hash"
-  end
-
-  if current_hash == DECLARATIVE_EMPTY_CONFIG_HASH then
-    kong.db:close()
-    return false, "empty configuration hash"
-  end
-
-  kong.db:close()
-  return true
 end
 
 return {

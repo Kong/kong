@@ -65,11 +65,8 @@ for _, strategy in helpers.each_strategy() do
           end
         end, 10)
       end)
-    end)
 
     -- now cp should be ready
-
-    describe("CP status ready endpoint", function()
 
       it("returns 200 on control plane", function()
         helpers.wait_until(function()
@@ -87,11 +84,8 @@ for _, strategy in helpers.each_strategy() do
           end
         end, 10)
       end)
-    end)
 
     -- now dp receive config from cp, so dp should be ready
-
-    describe("CP/DP status ready endpoint", function()
 
       it("should return 200 on data plane after configuring", function()
         helpers.wait_until(function()
