@@ -16,6 +16,9 @@
   Serverless Functions plugins: it does not provide access to the global kong cache. Access to
   certain fields in kong.configuration has also been restricted.
   [#10417](https://github.com/Kong/kong/pull/10417)
+- **Opentelemetry**: plugin version has been updated to match Kong's version
+  [#10646](https://github.com/Kong/kong/pull/10646)
+
 
 ### Additions
 
@@ -82,6 +85,8 @@
   [#9903](https://github.com/Kong/kong/pull/9903)
 
 ### Fixes
+- **gRPC gateway**: `null` in the JSON payload caused an uncaught exception to be thrown during pb.encode.
+  [#10687](https://github.com/Kong/kong/pull/10687)
 
 #### Core
 
@@ -122,6 +127,8 @@
   [#10327](https://github.com/Kong/kong/pull/10327)
 - **OAuth2**: fix an issue that OAuth2 token was being cached to nil while access to the wrong service first.
   [#10522](https://github.com/Kong/kong/pull/10522)
+- **OpenTelemetry**: fix an issue that reconfigure of OpenTelemetry does not take effect.
+  [#10172](https://github.com/Kong/kong/pull/10172)
 
 #### PDK
 
