@@ -481,7 +481,7 @@ local function metric_data(write_fn)
 
   -- notify the function if prometheus plugin is enabled,
   -- so that it can avoid exporting unnecessary metrics if not
-  if ngx.subsystem == "http" then
+  if ngx.config.subsystem == "http" then
     prometheus:metric_data_thread(write_fn, not is_prometheus_enabled())
   else
     prometheus:metric_data(write_fn, not is_prometheus_enabled())
