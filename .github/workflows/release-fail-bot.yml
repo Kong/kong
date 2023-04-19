@@ -16,23 +16,18 @@ jobs:
       uses: actions/github-script@v4
       with:
         script: |
-          const github_ids = [];
-          const slack_mapping = JSON.parse(process.env.SLACK_MAPPING);
           const repo_name = "${{ github.event.workflow_run.repository.full_name }}";
           const run_id = ${{ github.event.workflow_run.id }};
           const run_url = `https://github.com/${repo_name}/actions/runs/${run_id}`;
-          const slack_ids = github_ids.map(id => slack_mapping[id]).filter(id => id); // map GitHub IDs to Slack IDs and remove any undefined values
-          const authors = slack_ids.length ? slack_ids.map(id => `<@${id}>`).join(", ") : github_ids.join(", ");
           const workflow_name = "${{ github.event.workflow_run.name }}"
           const payload = {
-            text: `Workflow “${workflow_name}” failed in repo: “${repo_name}”. Run URL: ${run_url}. ${authors}, please check it.`,
+            text: `Workflow “${workflow_name}” failed in repo: “${repo_name}”. Run URL: ${run_url}. Please check it.`,
             channel: process.env.SLACK_CHANNEL,
             icon_emoji: ":onfire:",
           };
           console.log(`::set-output name=payload::${JSON.stringify(payload)}`);
       env:
         SLACK_CHANNEL: gateway-notifications
-        SLACK_MAPPING: "${{ vars.SLACK_MAPPING }}"
 
     - name: "Send Slack Message"
       uses: slackapi/slack-github-action@v1.23.0
