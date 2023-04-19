@@ -464,6 +464,14 @@ practices:
   end
   ```
 
+  Non-hot paths are localization optional
+
+  ```lua
+  if err then
+    ngx.log(ngx.ERR, ...) -- this is fine as error condition is not on the hot path
+  end
+  ```
+
 - Cache the length and indices of your tables to avoid unnecessary CPU cycles
 
   ```lua
