@@ -363,6 +363,7 @@ jobs:
         if [[ -z "$platforms" ]]; then
           platforms="linux/amd64"
         fi
+        echo "platforms=$platforms" >> $GITHUB_OUTPUT
 
         if [[ "${{ matrix.package }}" == 'rpm' ]]; then
           rpm_platform="${{ matrix.rpm_platform }}"
@@ -382,7 +383,7 @@ jobs:
         pull: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
-        platforms: ${{ steps.docker_build_args.outputs.docker_platforms }}
+        platforms: ${{ steps.docker_build_args.outputs.platforms }}
         build-args: |
           KONG_BASE_IMAGE=${{ matrix.base-image }}
           KONG_ARTIFACT_PATH=bazel-bin/pkg/
