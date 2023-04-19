@@ -46,7 +46,7 @@ local function is_dbless_ready(router_rebuilds, plugins_iterator_rebuilds)
 end
 
 
-local function is_data_plane_ready(router_rebuilds, plugins_iterator_rebuilds)
+local function is_traditional_ready(router_rebuilds, plugins_iterator_rebuilds)
   -- data plane with db, only build once, because
     -- build_router() will not be called for each worker because of ROUTER_CACHE
     if router_rebuilds == 0 then
@@ -65,7 +65,6 @@ Checks if Kong is ready to serve.
 
 @return boolean indicating if Kong is ready to serve.
 @return string|nil an error message if Kong is not ready, or nil otherwise.
-
 --]]
 local function is_ready()
   -- control plane has no need to serve traffic
@@ -91,7 +90,7 @@ local function is_ready()
     ok = is_dbless_ready(router_rebuilds, plugins_iterator_rebuilds)
 
   else
-    ok = is_data_plane_ready(router_rebuilds, plugins_iterator_rebuilds)
+    ok = is_traditional_ready(router_rebuilds, plugins_iterator_rebuilds)
   end
 
   kong.db:close()
