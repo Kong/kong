@@ -12,6 +12,8 @@ error_log logs/error.log ${{LOG_LEVEL}};
 
 events {}
 
+thread_pool prometheus threads=2;
+
 http {
 > if #proxy_listeners > 0 or #admin_listeners > 0 then
     error_log logs/error.log ${{LOG_LEVEL}};
