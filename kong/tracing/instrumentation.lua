@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local pdk_tracer = require "kong.pdk.tracing".new()
+local propagation = require "kong.tracing.propagation"
 local utils = require "kong.tools.utils"
 local tablepool = require "tablepool"
 local tablex = require "pl.tablex"
@@ -89,6 +90,15 @@ function _M.balancer(ctx)
   local try_count = balancer_data.try_count
   local upstream_connect_time = split(var.upstream_connect_time, ", ", "jo")
 
+  local last_try_balancer_span
+  do
+    local propagated = propagation.get_propagated()
+    -- pre-created balancer span was not linked yet
+    if propagated and not propagated.linked then
+      last_try_balancer_span = propagated
+    end
+  end
+
   for i = 1, try_count do
     local try = balancer_tries[i]
     local span_name = "kong.balancer"
@@ -103,7 +113,7 @@ function _M.balancer(ctx)
     }
 
     -- one of the unsuccessful tries
-    if i < try_count or try.state ~= nil or not ctx.last_try_balancer_span then
+    if i < try_count or try.state ~= nil or not last_try_balancer_span then
       span = tracer.start_span(span_name, span_options)
 
       if try.state then
@@ -120,7 +130,7 @@ function _M.balancer(ctx)
 
     else
       -- last try: load the last span (already created/propagated)
-      span = ctx.last_try_balancer_span
+      span = last_try_balancer_span
       tracer:link_span(span, span_name, span_options)
 
       if try.state then

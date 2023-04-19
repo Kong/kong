@@ -7,14 +7,13 @@
 
 local to_hex = require "resty.string".to_hex
 local table_merge = require "kong.tools.utils".table_merge
-local otlp = require "kong.plugins.opentelemetry.otlp"
 local unescape_uri = ngx.unescape_uri
 local char = string.char
 local match = string.match
 local gsub = string.gsub
 local fmt = string.format
 local concat = table.concat
-local to_ot_trace_id = otlp.to_ot_trace_id
+local to_ot_trace_id
 
 -- [[ EE
 local bn = require "resty.openssl.bn"
@@ -504,11 +503,33 @@ local function parse(headers, conf_header_type)
 end
 
 
-local function set(conf_header_type, found_header_type, proxy_span, conf_default_header_type)
+local function get_propagated()
+  return ngx.ctx.propagated_span
+end
+
+
+local function set_propagated(span)
+  ngx.ctx.propagated_span = span
+end
+
+
+-- set outgoing propagation headers
+-- 
+-- @tparam string conf_header_type type of tracing header to use
+-- @tparam string found_header_type type of tracing header found in request
+-- @tparam table proxy_span span to be propagated
+-- @tparam string conf_default_header_type used when conf_header_type=ignore
+-- @tparam bool reuse if true any existing propagated_span is reused instead of proxy_span
+local function set(conf_header_type, found_header_type, proxy_span, conf_default_header_type, reuse)
+  if reuse then
+    proxy_span = get_propagated() or proxy_span
+  end
+  -- proxy_span can be noop, in which case it should not be propagated.
   if proxy_span.is_recording == false then
     kong.log.debug("skipping propagation of noop span")
     return
   end
+  set_propagated(proxy_span)
 
   local set_header = kong.service.request.set_header
 
@@ -563,6 +584,7 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
   end
 
   if conf_header_type == "ot" or found_header_type == "ot" then
+    to_ot_trace_id = to_ot_trace_id or require "kong.plugins.opentelemetry.otlp".to_ot_trace_id
     set_header("ot-tracer-traceid", to_hex(to_ot_trace_id(proxy_span.trace_id)))
     set_header("ot-tracer-spanid", to_hex(proxy_span.span_id))
     set_header("ot-tracer-sampled", proxy_span.should_sample and "1" or "0")
@@ -589,4 +611,5 @@ return {
   parse = parse,
   set = set,
   from_hex = from_hex,
+  get_propagated = get_propagated,
 }
