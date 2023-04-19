@@ -73,10 +73,8 @@ local function is_ready()
   end
 
   local ok = kong.db:connect() -- for dbless, always ok
+  kong.db:close()
   if not ok then
-
-    kong.db:close()
-    
     return false, "failed to connect to database"
   end
 
