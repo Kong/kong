@@ -448,7 +448,8 @@ practices:
   end
   ```
 
-- Cache the globals used by your hot code paths
+- Cache the globals used by your hot code paths,
+  the cached name should be the original name replaced `.` by `_`
 
   ```lua
   -- bad
@@ -457,9 +458,9 @@ practices:
   end
 
   -- good
-  local random = math.random
+  local math_random = math.random
   for i = 1, 100 do
-    t[i] = random()
+    t[i] = math_random()
   end
   ```
 
