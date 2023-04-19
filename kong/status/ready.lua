@@ -83,15 +83,16 @@ local function is_ready()
   local plugins_iterator_rebuilds = 
       tonumber(kong_shm:get(DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY)) or 0
 
+  local err
   -- full check for dbless mode
   if is_dbless then
-    ok = is_dbless_ready(router_rebuilds, plugins_iterator_rebuilds)
+    ok, err = is_dbless_ready(router_rebuilds, plugins_iterator_rebuilds)
 
   else
-    ok = is_traditional_ready(router_rebuilds, plugins_iterator_rebuilds)
+    ok, err = is_traditional_ready(router_rebuilds, plugins_iterator_rebuilds)
   end
 
-  return ok
+  return ok, err
 end
 
 return {

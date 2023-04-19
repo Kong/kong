@@ -211,8 +211,10 @@ local function csv(s)
 end
 
 
-local function try_incr_counter(key)
-  -- key must be DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY or DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY
+local function try_incr_rebuilds_counter(key)
+  assert(key == DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY or
+         key == DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY)
+
   local _, err = kong_shm:incr(key, 1, 0)
   if err then
     log(ERR, "failed to increase router/plugins rebuild counter: ", err)
@@ -412,7 +414,7 @@ local function new_router(version)
     return nil, "could not create router: " .. err
   end
 
-  try_incr_counter(DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY)
+  try_incr_rebuilds_counter(DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY)
 
   return new_router
 end
@@ -504,7 +506,7 @@ do
       return nil, err
     end
 
-    try_incr_counter(DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY)
+    try_incr_rebuilds_counter(DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY)
     return plugin_iterator
   end
 end
