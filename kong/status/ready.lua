@@ -91,8 +91,6 @@ local function is_ready()
     ok = is_traditional_ready(router_rebuilds, plugins_iterator_rebuilds)
   end
 
-  kong.db:close()
-
   return ok
 end
 
