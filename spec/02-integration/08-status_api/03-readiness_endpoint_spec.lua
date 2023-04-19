@@ -1,47 +1,48 @@
 local helpers = require "spec.helpers"
 
-local describe_func = pending
 for _, strategy in helpers.all_strategies() do
+  local describe_func = pending
   if strategy ~= "off" then
+    -- skip the "off" strategy, as dbless has its own test suite
     describe_func = describe
   end
 
   describe_func("Status API - with strategy #" .. strategy, function()
-    local client
+    local status_client
     local admin_client
     lazy_setup(function()
-      helpers.get_db_utils(nil, {}) -- runs migrations
+      helpers.get_db_utils(nil, {})
       assert(helpers.start_kong {
-        status_listen = "127.0.0.1:9500",
+        status_listen = "127.0.0.1:8100",
         plugins = "admin-api-method",
         database = strategy,
         nginx_worker_processes = 8,
       })
-      client = helpers.http_client("127.0.0.1", 9500, 20000)
+      status_client = helpers.http_client("127.0.0.1", 8100, 20000)
 
       admin_client = helpers.admin_client()
     end)
 
     lazy_teardown(function()
-      if client then
-        client:close()
+      if status_client then
+        status_client:close()
       end
-      helpers.stop_kong()
+      assert(helpers.stop_kong())
     end)
 
     describe("status readiness endpoint", function()
+
       it("should return 200 in db mode", function()
-        local res = assert(client:send {
+        local res = assert(status_client:send {
           method = "GET",
           path = "/status/ready",
         })
-
         assert.res_status(200, res)
 
       end)
 
       it("should return 200 after loading an invalid config following a previously uploaded valid config.", function()
-        local res = assert(client:send {
+        local res = assert(status_client:send {
           method = "GET",
           path = "/status/ready",
         })
@@ -65,7 +66,7 @@ for _, strategy in helpers.all_strategies() do
 
         ngx.sleep(3)
 
-        local res = assert(client:send {
+        local res = assert(status_client:send {
           method = "GET",
           path = "/status/ready",
         })
@@ -78,42 +79,33 @@ for _, strategy in helpers.all_strategies() do
 end
 
 describe("Status API - with strategy #off", function()
-  local client
+  local status_client
   local admin_client
 
   lazy_setup(function()
     helpers.get_db_utils(nil, {}) -- runs migrations
     assert(helpers.start_kong {
-      status_listen = "127.0.0.1:9500",
+      status_listen = "127.0.0.1:8100",
       plugins = "admin-api-method",
       database = "off",
       nginx_worker_processes = 8,
     })
-    client = helpers.http_client("127.0.0.1", 9500, 20000)
+    status_client = helpers.http_client("127.0.0.1", 8100, 20000)
 
     admin_client = helpers.admin_client()
   end)
 
   lazy_teardown(function()
-    if client then
-      client:close()
+    if status_client then
+      status_client:close()
     end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
   end)
 
   describe("status readiness endpoint", function()
-    it("should return 503 when no config in dbless mode", function()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/status/ready",
-      })
-
-      assert.res_status(503, res)
-
-    end)
 
     it("should return 503 when no config, and return 200 after a valid config is uploaded", function()
-      local res = assert(client:send {
+      local res = assert(status_client:send {
         method = "GET",
         path = "/status/ready",
       })
@@ -138,23 +130,28 @@ describe("Status API - with strategy #off", function()
       
       assert.res_status(201, res)
       
+      -- wait for the config to be loaded
+
       ngx.sleep(3)
       
-      local res = assert(client:send {
+      local res = assert(status_client:send {
         method = "GET",
         path = "/status/ready",
       })
-      
+
       assert.res_status(200, res)
     end)
 
     it("should return 200 after loading an invalid config following a previously uploaded valid config.", function()
-      local res = assert(client:send {
+
+      local res = assert(status_client:send {
         method = "GET",
         path = "/status/ready",
       })
 
       assert.res_status(200, res)
+
+      -- upload a invalid config
 
       local res = assert(admin_client:send {
         method = "POST",
@@ -168,12 +165,14 @@ describe("Status API - with strategy #off", function()
           ["Content-Type"] = "multipart/form-data"
         },
       })
-      
+
       assert.res_status(400, res)
 
       ngx.sleep(3)
 
-      local res = assert(client:send {
+      -- should still be 200 cause the invalid config is not loaded
+
+      local res = assert(status_client:send {
         method = "GET",
         path = "/status/ready",
       })

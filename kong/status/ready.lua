@@ -70,6 +70,7 @@ local function is_ready()
 
     kong.db:close()
     return true
+
   else
     -- data plane with db, only build once, because
     -- build_router() will not be called for each worker because of ROUTER_CACHE
@@ -82,12 +83,16 @@ local function is_ready()
       kong.db:close()
       return false, "plugins iterator rebuilds are not complete"
     end
+
+    kong.db:close()
+    return true
   end
 end
 
 return {
   ["/status/ready"] = {
     GET = function(self, dao, helpers)
+      ngx.log(ngx.ERR, "sadfswdafasdfsdaf")
       local ok, err = is_ready()
       if ok then
         return kong.response.exit(200, { message = "ready" })
