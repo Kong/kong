@@ -100,6 +100,7 @@ return {
       local ok, err = is_ready()
       if ok then
         return kong.response.exit(200, { message = "ready" })
+
       else
         ngx_log(ngx_WARN, "not ready: ", err)
         return kong.response.exit(503, { message = "not ready" })
