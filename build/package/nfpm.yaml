@@ -45,6 +45,8 @@ contents:
   type: symlink
 - src: build/package/kong-enterprise-edition.service
   dst: /lib/systemd/system/kong-enterprise-edition.service
+- src: nfpm-prefix/LICENSE
+  dst: /usr/share/doc/kong-enterprise-edition/copyright
 scripts:
   postinstall: ./build/package/postinstall.sh
 replaces:
