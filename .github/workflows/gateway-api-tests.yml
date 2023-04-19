@@ -66,6 +66,8 @@ defaults:
 
 env:
   SEND_SLACK_RESULTS: ${{ github.event.inputs.send_slack_results || 'true' }}
+  # if this is a push event, or it is pull request but not from a fork, and not from dependabot (dependabot does not use forks), then this PR will have access to secrets
+  HAS_ACCESS_TO_SECRETS: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && !contains(github.actor, 'dependabot')) }}
 
 jobs:
   gateway_api_tests:
@@ -176,10 +178,18 @@ jobs:
           test_title: 'regular'
           slack_url: ${{ secrets.TEST_API_SLACK_WEBHOOK_URL }}
 
+      - uses: datadog/junit-upload-github-action@768dae7c808e17eed51ece17871e21f27fd5a000 # v1.1.3
+        continue-on-error: true
+        if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }} # upload test results even if the job fails
+        with:
+          api-key: ${{ secrets.DATADOG_API_KEY }}
+          service: kong-ee-github-actions-ci
+          files: spec-ee/kong-api-tests/results/
+
       - name: Upload Test Results
         uses: actions/upload-artifact@v3
         continue-on-error: true
-        if: always()
+        if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }} # upload test results even if the job fails
         with:
           name: gateway_api_${{ env.RUN_SPEC }}_test_results_${{ matrix.gateway_mode }}
           path: spec-ee/kong-api-tests/results/
