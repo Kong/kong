@@ -51,16 +51,9 @@ p:loadfile("kong/model/analytics/payload.proto")
 function _M.new(config)
   assert(config, "conf can not be nil", 2)
 
-  local hybrid_dp = false
-
-  if config.role ~= "traditional" then
-    hybrid_dp = config.role ~= "control_plane"
-  end
-
   local self = {
     flush_interval = config.analytics_flush_interval or DEFAULT_ANALYTICS_FLUSH_INTERVAL,
     buffer_size_limit = config.analytics_buffer_size_limit or DEFAULT_ANALYTICS_BUFFER_SIZE_LIMIT,
-    hybrid_dp = hybrid_dp,
     requests_buffer = {},
     requests_count = 0,
     cluster_endpoint = kong.configuration.cluster_telemetry_endpoint,
@@ -96,11 +89,6 @@ end
 function _M:init_worker()
   if not kong.configuration.konnect_mode then
     log(INFO, _log_prefix, "the analytics feature is only available to Konnect users.")
-    return false
-  end
-
-  -- the code only runs on the hybrid dp for konnect only
-  if not self.hybrid_dp then
     return false
   end
 

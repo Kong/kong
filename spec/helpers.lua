@@ -338,6 +338,18 @@ end
 
 kong.vitals = get_vitals(db)
 
+local analytics
+local function get_analytics()
+  if not analytics then
+    local kong_analytics = require "kong.analytics"
+    analytics = kong_analytics.new({})
+  end
+
+  return analytics
+end
+
+kong.analytics = get_analytics()
+
 --- Iterator over DB strategies.
 -- @function each_strategy
 -- @param strategies (optional string array) explicit list of strategies to use,
