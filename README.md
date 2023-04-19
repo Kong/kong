@@ -1,11 +1,17 @@
 [![][kong-logo]][kong-url]
 
+## CI status
+
+### Master branch
+
 [![Build & Test](https://github.com/Kong/kong-ee/actions/workflows/build_and_test.yml/badge.svg)](https://github.com/Kong/kong-ee/actions/workflows/build_and_test.yml)
 [![Package & Release](https://github.com/Kong/kong-ee/actions/workflows/release.yml/badge.svg)](https://github.com/Kong/kong-ee/actions/workflows/release.yml)
-[![License](https://img.shields.io/badge/License-Proprietary-blue.svg)](https://konghq.com/enterprisesoftwarelicense/)
-[![Twitter](https://img.shields.io/twitter/follow/thekonginc.svg?style=social&label=Follow)](https://twitter.com/intent/follow?screen_name=thekonginc)
 
-:monkey: [Master Preview Environment](http://master.kong-ee.previewer.konghq.com:8002/dashboard)
+## 2.8 LTS branch
+
+[![Build & Test](https://github.com/Kong/kong-ee/actions/workflows/build_and_test.yml/badge.svg?branch=next%2F2.8.x.x)](https://github.com/Kong/kong-ee/actions/workflows/build_and_test.yml)
+[![Package & Release](https://github.com/Kong/kong-ee/actions/workflows/release.yml/badge.svg?branch=next%2F2.8.x.x)](https://github.com/Kong/kong-ee/actions/workflows/release.yml)
+
 
 Kong is a cloud-native, fast, scalable, and distributed Microservice
 Abstraction Layer *(also known as an API Gateway or API Middleware)*.
