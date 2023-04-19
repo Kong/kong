@@ -12,6 +12,8 @@ lmdb_environment_path ${{LMDB_ENVIRONMENT_PATH}};
 lmdb_map_size         ${{LMDB_MAP_SIZE}};
 > end
 
+thread_pool prometheus threads=2;
+
 events {
     # injected nginx_events_* directives
 > for _, el in ipairs(nginx_events_directives) do
