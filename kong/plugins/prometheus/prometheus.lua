@@ -980,17 +980,16 @@ function Prometheus:metric_data_thread(write_fn, local_only)
   local count = 0
   if not local_only then 
     ok, keys = ngx.run_worker_thread(self.thread_pool, "kong.plugins.prometheus.worker_thread", 
-            "shared_metrics_data",  self.local_metrics, self.dict_name)
+            "shared_metrics_data", self.local_metrics, self.dict_name)
     if not ok then
       ngx.log(ngx.ERR, "failed to run worker thread: ", keys)
       return
     end
   else
     keys = {}
-    for _, key in ipairs(self.local_metrics) do
-      key = fix_histogram_bucket_labels(key)
-      keys[count+1] = key
-      count = count + 1
+    for k, v in pairs(self.local_metrics) do
+      k = fix_histogram_bucket_labels(k)
+      keys[k] = v
     end
   end
 
