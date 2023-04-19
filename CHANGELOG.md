@@ -148,6 +148,8 @@
   [#10680](https://github.com/Kong/kong/pull/10680)
 - Tracing: fix an approximation issue that resulted in reduced precision of the balancer span start and end times.
   [#10681](https://github.com/Kong/kong/pull/10681)
+- Fix issue when stopping a Kong could error out if using Vault references
+  [#10775](https://github.com/Kong/kong/pull/10775)
 
 #### Admin API
 
