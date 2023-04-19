@@ -38,7 +38,7 @@ local function shared_metrics_data(local_keys, shared_dict)
     local is_local_metrics = true
     value = local_keys[key]
     if (not value) then
-      value, err = dict:get(key)
+      value = dict:get(key)
     end
 
     if value then

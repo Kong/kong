@@ -977,6 +977,7 @@ function Prometheus:metric_data_thread(write_fn, local_only)
 
   local keys
   local ok
+  local count = 0
   if not local_only then 
     ok, keys = ngx.run_worker_thread(self.thread_pool, "kong.plugins.prometheus.worker_thread", 
             "shared_metrics_data",  self.local_metrics, self.dict_name)
