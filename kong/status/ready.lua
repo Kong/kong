@@ -13,7 +13,7 @@ local kong_shm     = ngx.shared.kong
 local ngx_log        = ngx.log
 local ngx_WARN       = ngx.WARN
 
-local dbless = kong.configuration.database == "off"
+local is_dbless = kong.configuration.database == "off"
 local is_control_plane = kong.configuration.role == "control_plane"
 
 local DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY = 
@@ -45,7 +45,7 @@ local function is_ready()
       tonumber(kong_shm:get(DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY)) or 0
 
   -- full check for dbless mode
-  if dbless then
+  if is_dbless then
     if router_rebuilds < worker_count then
       kong.db:close()
       return false, "router rebuilds are not complete"
