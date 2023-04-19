@@ -703,7 +703,7 @@ local function parseAnswer(qname, qtype, answers, try_list)
 end
 
 local function close_socks(resolver)
-  for _, sock in ipairs(resolver.socks or {}) do
+  for _, sock in ipairs(resolver.socks or EMPTY) do
     sock:close()
   end
   if resolver.tcp_sock then
