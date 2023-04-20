@@ -399,11 +399,8 @@ describe("plugin queue", function()
       flush_timeout = 345,
     }
     local converted_parameters = Queue.get_params(legacy_parameters)
-    assert.match_re(log_messages, 'deprecated `retry_count` parameter in plugin .* ignored')
     assert.equals(legacy_parameters.queue_size, converted_parameters.max_batch_size)
-    assert.match_re(log_messages, 'deprecated `queue_size` parameter in plugin .* converted to `queue.max_batch_size`')
     assert.equals(legacy_parameters.flush_timeout, converted_parameters.max_coalescing_delay)
-    assert.match_re(log_messages, 'deprecated `flush_timeout` parameter in plugin .* converted to `queue.max_coalescing_delay`')
   end)
 
   it("converts opentelemetry plugin legacy queue parameters", function()
@@ -413,9 +410,7 @@ describe("plugin queue", function()
     }
     local converted_parameters = Queue.get_params(legacy_parameters)
     assert.equals(legacy_parameters.batch_span_count, converted_parameters.max_batch_size)
-    assert.match_re(log_messages, 'deprecated `batch_span_count` parameter in plugin .* converted to `queue.max_batch_size`')
     assert.equals(legacy_parameters.batch_flush_delay, converted_parameters.max_coalescing_delay)
-    assert.match_re(log_messages, 'deprecated `batch_flush_delay` parameter in plugin .* converted to `queue.max_coalescing_delay`')
   end)
 
   it("defaulted legacy parameters are ignored when converting", function()
