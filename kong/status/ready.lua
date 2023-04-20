@@ -54,7 +54,7 @@ local function is_traditional_ready(router_rebuilds, plugins_iterator_rebuilds)
     end
 
     if plugins_iterator_rebuilds == 0 then
-      return false, "plugins iterator rebuilds are not complete"
+      return false, "plugins iterator build not yet complete"
     end
 
     return true
