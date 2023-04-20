@@ -106,6 +106,7 @@ end
 function DatadogHandler:access(conf)
   local headers = ngx_get_headers()
   local root_span = ngx.ctx.KONG_SPANS and ngx.ctx.KONG_SPANS[1]
+  local tracer = kong.tracing.new("dd-tracing")
 
   local origin = headers["x-datadog-origin"]
   kong.ctx.plugin.origin = origin
@@ -136,7 +137,6 @@ function DatadogHandler:access(conf)
 
   else
     -- make propagation running with tracing instrumetation not enabled
-    local tracer = kong.tracing.new("dd-tracing")
     root_span = tracer.start_span("root")
 
     -- the span created only for the propagation and will be bypassed to the exporter
@@ -145,16 +145,14 @@ function DatadogHandler:access(conf)
 
   local header_type, trace_id, span_id, parent_id, should_sample, _ = propagation_parse(headers)
   if should_sample == false then
-    root_span.should_sample = should_sample
+    tracer:set_should_sample(should_sample)
   end
 
-  -- overwrite trace id
   if trace_id then
     root_span.trace_id = trace_id
     kong.ctx.plugin.trace_id = trace_id
   end
 
-  -- overwrite root span's parent_id
   if span_id then
     root_span.parent_id = span_id
 
@@ -166,7 +164,14 @@ function DatadogHandler:access(conf)
     kong.service.request.set_header("x-datadog-origin", origin)
   end
 
-  propagation_set("preserve", header_type, root_span, "datadog")
+  -- propagate the span that identifies the "last" balancer try
+  -- This has to happen "in advance". The span will be activated (linked)
+  -- after the OpenResty balancer results are available
+  local balancer_span = tracer.create_span(nil, {
+    span_kind = 3,
+    parent = root_span,
+  })
+  propagation_set("preserve", header_type, balancer_span, "datadog", true)
 end
 
 
