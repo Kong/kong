@@ -677,7 +677,7 @@ typedefs.pem = Schema.define {
 
 typedefs.jwk = Schema.define {
   type = "record",
-  definition = "Custom type for representing a JSON Web Key (JWK)."
+  definition = "Custom type for representing a JSON Web Key (JWK).",
   required = false,
   fields = {
     {

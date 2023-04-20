@@ -9,8 +9,8 @@ return {
   fields = {
     { id             = typedefs.uuid, },
     { created_at     = typedefs.auto_timestamp_s },
-    { username       = { description: "The unique username of the Consumer. You must send either this field or custom_id with the request.", type = "string",  unique = true }, },
-    { custom_id      = { description: "Field for storing an existing unique ID for the Consumer", type = "string",  unique = true }, },
+    { username       = { description = "The unique username of the Consumer. You must send either this field or custom_id with the request.", type = "string",  unique = true }, },
+    { custom_id      = { description = "Field for storing an existing unique ID for the Consumer", type = "string",  unique = true }, },
     { tags           = typedefs.tags },
   },
 
