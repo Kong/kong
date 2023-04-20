@@ -108,6 +108,7 @@ local instrumentation = require "kong.tracing.instrumentation"
 local tablepool = require "tablepool"
 local table_new = require "table.new"
 local get_ctx_table = require("resty.core.ctx").get_ctx_table
+local time_ns = require "kong.tools.utils".time_ns
 
 
 local internal_proxies = require "kong.enterprise_edition.proxies"
@@ -1151,6 +1152,7 @@ function Kong.balancer()
   ctx.KONG_PHASE = PHASES.balancer
   -- This may be called multiple times, and no yielding here!
   local now_ms = now() * 1000
+  local now_ns = time_ns()
 
   if not ctx.KONG_BALANCER_START then
     ctx.KONG_BALANCER_START = now_ms
@@ -1191,6 +1193,7 @@ function Kong.balancer()
 
   -- runloop.balancer.before(ctx)
   current_try.balancer_start = now_ms
+  current_try.balancer_start_ns = now_ns
 
   if try_count > 1 then
     -- only call balancer on retry, first one is done in `runloop.access.after`
@@ -1314,6 +1317,7 @@ function Kong.balancer()
   -- record try-latency
   local try_latency = ctx.KONG_BALANCER_ENDED_AT - current_try.balancer_start
   current_try.balancer_latency = try_latency
+  current_try.balancer_latency_ns = time_ns() - current_try.balancer_start_ns
 
   -- time spent in Kong before sending the request to upstream
   -- start_time() is kept in seconds with millisecond resolution.

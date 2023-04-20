@@ -786,6 +786,8 @@ describe("WebSockets [db #" .. strategy .. "]", function()
             port = "number",
             balancer_latency = "number",
             balancer_start = "number",
+            balancer_latency_ns = "number",
+            balancer_start_ns = "number",
             code = "number",
             state = "string",
           }, tries[i], fmt("logged balancer try #%s is invalid", i))
@@ -796,6 +798,8 @@ describe("WebSockets [db #" .. strategy .. "]", function()
           port = "number",
           balancer_latency = "number",
           balancer_start = "number",
+          balancer_latency_ns = "number",
+          balancer_start_ns = "number",
         }, tries[#tries], "final logged balancer try is invalid")
       end)
     end)
