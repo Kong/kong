@@ -320,7 +320,6 @@ for _, strategy in helpers.all_strategies() do
       assert.is_number(json.server.connections_writing)
       assert.is_number(json.server.connections_waiting)
       assert.is_number(json.server.total_requests)
-      h2_client:close()
     end)
   end)
 end
