@@ -38,7 +38,7 @@ local function is_dbless_ready(router_rebuilds, plugins_iterator_rebuilds, worke
   local current_hash = get_current_hash()
 
   if not current_hash then
-    return false, "no configuration hash"
+    return false, "no configuration available"
   end
 
   if current_hash == DECLARATIVE_EMPTY_CONFIG_HASH then
@@ -50,14 +50,14 @@ end
 
 
 local function is_traditional_ready(router_rebuilds, plugins_iterator_rebuilds)
-  -- data plane with db, only build once, because
+    -- data plane with db, only build once, because
     -- build_router() will not be called for each worker because of ROUTER_CACHE
     if router_rebuilds == 0 then
-      return false, "router rebuilds are not complete"
+      return false, "router builds not yet complete"
     end
 
     if plugins_iterator_rebuilds == 0 then
-      return false, "plugins iterator rebuilds are not complete"
+      return false, "plugins iterator build not yet complete"
     end
 
     return true
@@ -107,7 +107,7 @@ return {
 
       else
         ngx_log(ngx_WARN, "not ready: ", err)
-        return kong.response.exit(503, { message = "not ready" })
+        return kong.response.exit(503, { message = err })
       end
     end
   }
