@@ -1418,7 +1418,6 @@ local function http_server(port, opts)
       local headers = {}
       local line, err
 
-      local content_length
       repeat
         line, err = client:receive("*l")
         if err then
