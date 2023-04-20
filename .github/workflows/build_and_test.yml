@@ -426,6 +426,13 @@ jobs:
           sleep 2
           docker logs opentelemetry-collector
 
+    - name: Install AWS SAM cli tool
+      if: ${{ matrix.suite == 'plugins' }}
+      run: |
+          curl -L -s -o /tmp/aws-sam-cli.zip https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip
+          unzip -o /tmp/aws-sam-cli.zip -d /tmp/aws-sam-cli
+          sudo /tmp/aws-sam-cli/install --update
+
     - name: Tests
       env:
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
@@ -633,6 +640,13 @@ jobs:
               --config=/etc/otel-collector-config.yaml
           sleep 2
           docker logs opentelemetry-collector
+
+    - name: Install AWS SAM cli tool
+      if: ${{ matrix.suite == 'plugins' }}
+      run: |
+          curl -L -s -o /tmp/aws-sam-cli.zip https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip
+          unzip -o /tmp/aws-sam-cli.zip -d /tmp/aws-sam-cli
+          sudo /tmp/aws-sam-cli/install --update
 
     - name: Tests
       env:
