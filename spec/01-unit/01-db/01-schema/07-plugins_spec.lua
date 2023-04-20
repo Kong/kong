@@ -326,7 +326,7 @@ describe("plugins", function()
       for plugin_name, _ in pairs(constants.BUNDLED_PLUGINS) do
         local handler = require("kong.plugins." .. plugin_name .. ".handler")
         local plugin_version = handler.VERSION
-        assert.equal(kong_meta.version, plugin_version)
+        assert.equal(kong_meta.core_version, plugin_version)
       end
     end)
 

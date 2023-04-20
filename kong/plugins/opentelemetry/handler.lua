@@ -35,7 +35,7 @@ local _log_prefix = "[otel] "
 
 
 local OpenTelemetryHandler = {
-  VERSION = kong_meta.version,
+  VERSION = kong_meta.core_version,
   PRIORITY = 14,
 }
 
