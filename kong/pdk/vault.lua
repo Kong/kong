@@ -32,14 +32,12 @@ local sort = table.sort
 local pcall = pcall
 local lower = string.lower
 local pairs = pairs
-local concat = table.concat
 local md5_bin = ngx.md5_bin
 local tostring = tostring
 local tonumber = tonumber
 local decode_args = ngx.decode_args
 local unescape_uri = ngx.unescape_uri
 local parse_url = require "socket.url".parse
-local parse_path = require "socket.url".parse_path
 local decode_json = cjson.decode
 
 
@@ -363,20 +361,26 @@ local function new(self)
     end
 
     local key
-    local parts = parse_path(resource)
-    local count = #parts
-    if count == 1 then
-      resource = unescape_uri(parts[1])
+    for i = #resource, 1, -1 do
+      local b = byte(resource, i)
+      if b == SLASH then
+        break
 
-    else
-      resource = unescape_uri(concat(parts, "/", 1, count - 1))
-      if parts[count] ~= "" then
-        key = unescape_uri(parts[count])
+      elseif b == COLON then
+        key = sub(resource, i + 1)
+        resource = sub(resource, 1, i - 1)
+        break
       end
     end
 
     if resource == "" then
       return nil, fmt("reference url has invalid path [%s]", reference)
+    end
+
+    resource = unescape_uri(resource)
+
+    if key then
+      key = unescape_uri(key)
     end
 
     local config

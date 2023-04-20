@@ -6,8 +6,13 @@ local is_ref_test_map = {
   ["{vault://x/x}"] = true,
   ["{vault://x/xx}"] = true,
   ["{vault://xx/xx-x}"] = true,
+  ["{vault://xx/xx-x:key}"] = true,
   ["{vault://xxx/xx-x}"] = true,
   ["{vault://;/xx-x}"] = true,
+  ["{vault://}"] = true,
+  ["{vault://aws/arn:aws:secretsmanager:us-east-2:123456123456:secret/my/secret-ABCDEFG}"] = true,
+  ["{vault://aws/arn:aws:secretsmanager:us-east-2:123456123456:secret/my/secret-ABCDEFG:key}"] = true,
+  ["{vault://xx-x/yy-y/zz-z:}"] = true,
   ["vault:/xx-x}"] = false,
   ["{vault:/xx-x"] = false,
   ["vault:/xx-x"] = false,
@@ -58,7 +63,7 @@ describe("Vault PDK", function()
     end
   end)
 
-  it("test init", function()
+  it("test parse reference {vault://env/test}", function()
     local res, err = parse_reference("{vault://env/test}")
     assert.is_nil(err)
     assert.is_nil(res.config)
@@ -68,8 +73,8 @@ describe("Vault PDK", function()
     assert.is_nil(res.version)
   end)
 
-  it("test init nested/path", function()
-    local res, err = parse_reference("{vault://env/test-secret/test-key}")
+  it("test parse reference {vault://env/test-secret:test-key}", function()
+    local res, err = parse_reference("{vault://env/test-secret:test-key}")
     assert.is_nil(err)
     assert.is_nil(res.config)
     assert.is_equal("env", res.name)
@@ -78,7 +83,7 @@ describe("Vault PDK", function()
     assert.is_nil(res.version)
   end)
 
-  it("test init opts", function()
+  it("test parse reference {vault://env/test?opt1=val1}", function()
     local res, err = parse_reference("{vault://env/test?opt1=val1}")
     assert.is_nil(err)
     assert.is_same({ opt1 = "val1" }, res.config)
@@ -88,7 +93,7 @@ describe("Vault PDK", function()
     assert.is_nil(res.version)
   end)
 
-  it("test init multiple opts", function()
+  it("test parse reference {vault://env/test?opt1=val1&opt2=val2}", function()
     local res, err = parse_reference("{vault://env/test?opt1=val1&opt2=val2}")
     assert.is_nil(err)
     assert.is_same({ opt1 = "val1", opt2 = "val2" }, res.config)
@@ -98,7 +103,7 @@ describe("Vault PDK", function()
     assert.is_nil(res.version)
   end)
 
-  it("test init version", function()
+  it("test parse reference {vault://env/test#1}", function()
     local res, err = parse_reference("{vault://env/test#1}")
     assert.is_nil(err)
     assert.is_nil(res.config)
@@ -107,6 +112,63 @@ describe("Vault PDK", function()
     assert.is_nil(res.key)
     assert.equal(1, res.version)
   end)
+
+  it("test parse reference {vault://env/test#1}", function()
+    local res, err = parse_reference("{vault://env/test#1}")
+    assert.is_nil(err)
+    assert.is_nil(res.config)
+    assert.is_equal("env", res.name)
+    assert.is_equal("test", res.resource)
+    assert.is_nil(res.key)
+    assert.equal(1, res.version)
+  end)
+
+  it("test parse reference {vault://}", function()
+    local res, err = parse_reference("{vault://}")
+    assert.equal(err, "reference url is missing host [{vault://}]")
+    assert.is_nil(res)
+  end)
+
+  it("test parse reference {vault://xx/xx-x:key}", function()
+    local res, err = parse_reference("{vault://xx/xx-x:key}")
+    assert.is_nil(err)
+    assert.is_nil(res.config)
+    assert.is_equal("xx", res.name)
+    assert.is_equal("xx-x", res.resource)
+    assert.is_equal("key", res.key)
+    assert.is_nil(res.version)
+  end)
+
+  it("test parse reference {vault://aws/arn:aws:secretsmanager:us-east-2:123456123456:secret/my/secret-ABCDEFG}", function()
+    local res, err = parse_reference("{vault://aws/arn:aws:secretsmanager:us-east-2:123456123456:secret/my/secret-ABCDEFG}")
+    assert.is_nil(err)
+    assert.is_nil(res.config)
+    assert.is_equal("aws", res.name)
+    assert.is_equal("arn:aws:secretsmanager:us-east-2:123456123456:secret/my/secret-ABCDEFG", res.resource)
+    assert.is_nil(res.key)
+    assert.is_nil(res.version)
+  end)
+
+  it("test parse reference {vault://aws/arn:aws:secretsmanager:us-east-2:123456123456:secret/my/secret-ABCDEFG:key}", function()
+    local res, err = parse_reference("{vault://aws/arn:aws:secretsmanager:us-east-2:123456123456:secret/my/secret-ABCDEFG:key}")
+    assert.is_nil(err)
+    assert.is_nil(res.config)
+    assert.is_equal("aws", res.name)
+    assert.is_equal("arn:aws:secretsmanager:us-east-2:123456123456:secret/my/secret-ABCDEFG", res.resource)
+    assert.is_equal("key", res.key)
+    assert.is_nil(res.version)
+  end)
+
+  it("test parse reference {vault://xx-x/yy-y/zz-z:}", function()
+    local res, err = parse_reference("{vault://xx-x/yy-y/zz-z:}")
+    assert.is_nil(err)
+    assert.is_nil(res.config)
+    assert.is_equal("xx-x", res.name)
+    assert.is_equal("yy-y/zz-z", res.resource)
+    assert.is_equal("", res.key)
+    assert.is_nil(res.version)
+  end)
+
 
   it("ensure that every vault has a VERSION and a `get` field", function()
     for _, vault in ipairs(vaults) do
@@ -197,8 +259,8 @@ describe("Vault PDK", function()
         username = "john",
         password = "secret",
         ["$refs"] = {
-          username = "{vault://env/credentials/username}",
-          password = "{vault://env/credentials/password}",
+          username = "{vault://env/credentials:username}",
+          password = "{vault://env/credentials:password}",
         },
       }
 
@@ -218,8 +280,8 @@ describe("Vault PDK", function()
 
       assert.equal("jane", options.username)
       assert.equal("qwerty", options.password)
-      assert.equal("{vault://env/credentials/username}", options["$refs"].username)
-      assert.equal("{vault://env/credentials/password}", options["$refs"].password)
+      assert.equal("{vault://env/credentials:username}", options["$refs"].username)
+      assert.equal("{vault://env/credentials:password}", options["$refs"].password)
 
       -- has a cache that can be used for rate-limiting
 
@@ -228,8 +290,8 @@ describe("Vault PDK", function()
         username = "john",
         password = "secret",
         ["$refs"] = {
-          username = "{vault://env/credentials/username}",
-          password = "{vault://env/credentials/password}",
+          username = "{vault://env/credentials:username}",
+          password = "{vault://env/credentials:password}",
         },
       }
 
@@ -251,8 +313,8 @@ describe("Vault PDK", function()
 
       assert.equal("jane", options.username)
       assert.equal("qwerty", options.password)
-      assert.equal("{vault://env/credentials/username}", options["$refs"].username)
-      assert.equal("{vault://env/credentials/password}", options["$refs"].password)
+      assert.equal("{vault://env/credentials:username}", options["$refs"].username)
+      assert.equal("{vault://env/credentials:password}", options["$refs"].password)
     end)
   end)
 end)
