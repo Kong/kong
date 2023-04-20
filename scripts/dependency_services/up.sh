@@ -11,7 +11,7 @@ fi
 if [ -n "$ZSH_VERSION" ]; then
     cwd=$(realpath $(dirname $(readlink -f ${(%):-%N})))
 else
-    cwd=$(realpath $(dirname $(readlink -f $BASH_SOURCE[0])))
+    cwd=$(realpath $(dirname $(readlink -f ${BASH_SOURCE[0]})))
 fi
 
 docker_compose_file=${cwd}/docker-compose-test-services.yml
