@@ -3,6 +3,7 @@ local constants = require "kong.constants"
 
 local tonumber = tonumber
 local kong = kong
+local fmt = string.format
 
 local get_current_hash = declarative.get_current_hash
 
@@ -20,16 +21,16 @@ local DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY =
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
 
-local function is_dbless_ready(router_rebuilds, plugins_iterator_rebuilds, worker_count)
+local function is_dbless_ready(router_rebuilds, plugins_iterator_rebuilds)
   if router_rebuilds < worker_count then
-    return false, "router builds not yet complete, router ready on "
-      .. router_rebuilds .. " of " .. worker_count .. " workers"
+    return false, fmt("router builds not yet complete, router ready"
+      .. " on %d of %d workers", router_rebuilds, worker_count)
   end
 
   if plugins_iterator_rebuilds < worker_count then
-    return false, "plugins iterator builds not yet complete, plugins " 
-      .. "iterator ready on " .. plugins_iterator_rebuilds
-      .. " of " .. worker_count .. " workers"
+    return false, fmt("plugins iterator builds not yet complete, "
+      .. "plugins iterator ready on %d of %d workers",
+      plugins_iterator_rebuilds, worker_count)
   end
 
   local current_hash = get_current_hash()
@@ -86,7 +87,7 @@ local function is_ready()
   local err
   -- full check for dbless mode
   if is_dbless then
-    ok, err = is_dbless_ready(router_rebuilds, plugins_iterator_rebuilds, worker_count)
+    ok, err = is_dbless_ready(router_rebuilds, plugins_iterator_rebuilds)
 
   else
     ok, err = is_traditional_ready(router_rebuilds, plugins_iterator_rebuilds)
