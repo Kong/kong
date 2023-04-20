@@ -10,9 +10,6 @@ local get_current_hash = declarative.get_current_hash
 local worker_count = ngx.worker.count()
 local kong_shm     = ngx.shared.kong
 
-local ngx_log        = ngx.log
-local ngx_WARN       = ngx.WARN
-
 local is_dbless = kong.configuration.database == "off"
 local is_control_plane = kong.configuration.role == "control_plane"
 
@@ -89,7 +86,7 @@ local function is_ready()
   local err
   -- full check for dbless mode
   if is_dbless then
-    ok, err = is_dbless_ready(router_rebuilds, plugins_iterator_rebuilds)
+    ok, err = is_dbless_ready(router_rebuilds, plugins_iterator_rebuilds, worker_count)
 
   else
     ok, err = is_traditional_ready(router_rebuilds, plugins_iterator_rebuilds)
@@ -106,7 +103,6 @@ return {
         return kong.response.exit(200, { message = "ready" })
 
       else
-        ngx_log(ngx_WARN, "not ready: ", err)
         return kong.response.exit(503, { message = err })
       end
     end
