@@ -31,12 +31,12 @@ describe("propagation tests #" .. strategy, function()
   lazy_setup(function()
     local bp = helpers.get_db_utils(strategy, { "services", "routes", "plugins" }, { "trace-propagator" })
 
+    service = bp.services:insert()
+
     local multi_plugin_route = bp.routes:insert({
       hosts = { "multi-plugin" },
       service = service,
     })
-
-    service = bp.services:insert()
 
     bp.plugins:insert({
       name = "opentelemetry",

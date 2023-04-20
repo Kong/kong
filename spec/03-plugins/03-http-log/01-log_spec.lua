@@ -428,7 +428,7 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.res_status(200, res)
-      
+
       helpers.wait_until(function()
         local client = assert(helpers.http_client(helpers.mock_upstream_host,
                                                   helpers.mock_upstream_port))

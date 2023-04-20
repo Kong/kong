@@ -1375,6 +1375,8 @@ local function kill_tcp_server(port)
 end
 
 
+-- If it applies, please use `http_mock`, the coroutine variant of `http_server`, which is
+-- more determinative and less flaky.
 --- Starts a local HTTP server.
 -- Accepts a single connection and then closes. Sends a 200 ok, 'Connection:
 -- close' response.
@@ -1399,6 +1401,7 @@ local function http_server(port, opts)
       assert(server:listen())
       local client = assert(server:accept())
 
+      local content_length
       local lines = {}
       local headers = {}
       local line, err
@@ -1408,16 +1411,13 @@ local function http_server(port, opts)
         line, err = client:receive("*l")
         if err then
           break
-        else
-          local k, v = line:match("^([^:]+):%s*(.+)$")
-          if k then
-            headers[k] = v
-            if k:lower() == "content-length" then
-              content_length = tonumber(v)
-            end
-          end
-          table.insert(lines, line)
         end
+
+        local k, v = line:match("^([^:]+):%s*(.+)$")
+        if k and v then
+          headers[k] = v
+        end
+
         table.insert(lines, line)
         content_length = tonumber(line:lower():match("^content%-length:%s*(%d+)$")) or content_length
       until line == ""
@@ -1431,17 +1431,7 @@ local function http_server(port, opts)
         error(err)
       end
 
-      local method = lines[1]:match("^(%S+)%s+(%S+)%s+(%S+)$")
-      local method_lower = method:lower()
-
-      local body
-      if content_length then
-        body = client:receive(content_length)
-
-      elseif method_lower == "put" or method_lower == "post" then
-        body = client:receive("*a")
-      end
-
+      local body, _ = client:receive(content_length or "*a")
 
       client:send(opts.response or "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
       client:close()
@@ -1537,6 +1527,7 @@ local function handle_response(code, body, headers)
           body
 end
 
+
 local function handle_request(client, response)
   local lines = {}
   local headers = {}
@@ -1605,7 +1596,7 @@ end
 local function http_mock(port, opts)
   local socket = require "socket"
   local server = assert(socket.tcp())
-  server:settimeout(opts.timeout or 60)
+  server:settimeout(opts and opts.timeout or 60)
   assert(server:setoption('reuseaddr', true))
   assert(server:bind("*", port))
   assert(server:listen())

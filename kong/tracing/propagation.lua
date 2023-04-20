@@ -514,7 +514,7 @@ end
 
 
 -- set outgoing propagation headers
--- 
+--
 -- @tparam string conf_header_type type of tracing header to use
 -- @tparam string found_header_type type of tracing header found in request
 -- @tparam table proxy_span span to be propagated
