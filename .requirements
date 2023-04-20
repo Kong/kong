@@ -7,7 +7,8 @@ PACKAGE_CONFLICTS=kong-community-edition
 PACKAGE_PROVIDES=kong-enterprise-edition
 PACKAGE_REPLACES=kong-community-edition
 DOCKER_RELEASE_REPOSITORY=kong/kong-gateway
-KONG_LICENSE="Proprietary" # EE: do not change
+# EE do not change
+KONG_LICENSE="Proprietary"
 
 EDITION=enterprise
 
