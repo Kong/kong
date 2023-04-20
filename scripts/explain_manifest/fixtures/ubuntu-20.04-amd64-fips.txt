@@ -62,13 +62,15 @@
 
 - Path      : /usr/local/kong/lib/libjq.so.1.0.4
   Needed    :
+  - libonig.so.4
   - libm.so.6
   - libc.so.6
   - ld-linux-x86-64.so.2
+  Runpath   : /usr/local/kong/lib
   Version Requirement:
   - ld-linux-x86-64.so.2 (GLIBC_2.3)
-  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.3, GLIBC_2.3.4, GLIBC_2.4)
-  - libm.so.6 (GLIBC_2.2.5, GLIBC_2.29)
+  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.3, GLIBC_2.4)
+  - libm.so.6 (GLIBC_2.2.5, GLIBC_2.23, GLIBC_2.29)
 
 - Path      : /usr/local/kong/lib/liblicense_utils.so
   Needed    :
@@ -86,6 +88,13 @@
   Runpath   : /usr/local/kong/lib
   Version Requirement:
   - libc.so.6 (GLIBC_2.14, GLIBC_2.17, GLIBC_2.2.5, GLIBC_2.3.4, GLIBC_2.4)
+
+- Path      : /usr/local/kong/lib/libonig.so.4.0.0
+  Needed    :
+  - libc.so.6
+  Runpath   : /usr/local/kong/lib
+  Version Requirement:
+  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.3.4, GLIBC_2.4)
 
 - Path      : /usr/local/kong/lib/libpasswdqc.so.0
   Needed    :

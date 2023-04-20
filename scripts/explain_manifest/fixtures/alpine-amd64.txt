@@ -71,7 +71,9 @@
 
 - Path      : /usr/local/kong/lib/libjq.so.1.0.4
   Needed    :
+  - libonig.so.4
   - libc.so
+  Rpath     : /usr/local/kong/lib
 
 - Path      : /usr/local/kong/lib/liblicense_utils.so
   Needed    :
@@ -82,6 +84,11 @@
   - libcrypto.so.1.1 (OPENSSL_1_1_0)
 
 - Path      : /usr/local/kong/lib/libnettle.so.8.4
+  Needed    :
+  - libc.so
+  Rpath     : /usr/local/kong/lib
+
+- Path      : /usr/local/kong/lib/libonig.so.4.0.0
   Needed    :
   - libc.so
   Rpath     : /usr/local/kong/lib

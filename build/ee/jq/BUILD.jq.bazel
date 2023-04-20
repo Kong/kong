@@ -28,11 +28,11 @@ configure_make(
         "@kong//:x86_64-linux-musl-cross": [
             "--host=x86_64-linux-musl",
         ],
-        "@platforms//os:macos": [
-            "--disable-maintainer-mode",  # bison on macos is too old
-        ],
         "//conditions:default": [],
-    }),
+    }) + [
+        "--with-oniguruma=builtin",
+        "--disable-maintainer-mode",
+    ],
     env = select({
         "@platforms//os:macos": {
             # don't use rule_foreign_cc's libtool as archiver as it seems to be a bug
@@ -42,6 +42,9 @@ configure_make(
         "//conditions:default": {},
     }),
     lib_source = ":all_srcs",
+    linkopts = [
+        "-Wl,-rpath,%s/kong/lib" % KONG_VAR["INSTALL_DESTDIR"],
+    ],
     # out_lib_dir = "lib",
     out_shared_libs = select({
         "@platforms//os:macos": [

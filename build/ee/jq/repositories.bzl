@@ -12,8 +12,11 @@ def jq_repositories():
     maybe(
         http_archive,
         name = "jq",
-        url = "https://github.com/stedolan/jq/releases/download/jq-" + version + "/jq-" + version + ".tar.gz",
-        sha256 = "c4d2bfec6436341113419debf479d833692cc5cdab7eb0326b5a4d4fbe9f493c",
+        # Use our own packaged tarball to avoid `autoreconf` during build time, some old distros
+        # doesn't have proper autotools versions available.
+        # TODO: revert back to official releases once 1.6+ is released.
+        url = "https://github.com/Kong/jq/releases/download/jq-" + version + "/jq-" + version + ".tar.gz",
+        sha256 = "7f6fe8bdb88f8ce59011f99fdc7a8b8c44af8e9d1c64b868cf4c8617869181fc",
         strip_prefix = "jq-" + version,
         build_file = "//build/ee/jq:BUILD.jq.bazel",
     )
