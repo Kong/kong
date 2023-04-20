@@ -104,7 +104,7 @@ return {
 
       else
         ngx_log(ngx_WARN, "not ready: ", err)
-        return kong.response.exit(503, { message = "not ready" })
+        return kong.response.exit(503, { message = err })
       end
     end
   }
