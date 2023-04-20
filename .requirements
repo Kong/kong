@@ -7,7 +7,7 @@ PACKAGE_CONFLICTS=kong-community-edition
 PACKAGE_PROVIDES=kong-enterprise-edition
 PACKAGE_REPLACES=kong-community-edition
 DOCKER_RELEASE_REPOSITORY=kong/kong-gateway
-KONG_LICENSE="Apache-2.0"
+KONG_LICENSE="Proprietary" # EE: do not change
 
 EDITION=enterprise
 
@@ -50,7 +50,7 @@ KONG_DEP_JAEGER_VERSION=v0.7.0
 
 LYAML_VERSION=6.2.8
 
-KONG_DEP_LIBJQ_VERSION=1.5
+KONG_DEP_LIBJQ_VERSION=1.6
 
 KONG_PORTAL_VERSION=v1.3.0-1
 

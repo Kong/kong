@@ -150,6 +150,9 @@ kong_directory_genrule(
         # EE
         cp COPYRIGHT ${BUILD_DESTDIR}/COPYRIGHT
 
+        mkdir -p ${BUILD_DESTDIR}/usr/share/doc/kong-enterprise-edition/
+        cp LICENSE ${BUILD_DESTDIR}/LICENSE
+
         cp -r $(location @kong_admin//:dist_files) ${BUILD_DESTDIR}/kong/gui
         cp -r $(location @kong_portal//:dist_files) ${BUILD_DESTDIR}/kong/portal
 

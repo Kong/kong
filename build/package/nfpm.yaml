@@ -13,7 +13,7 @@ maintainer: "Kong Inc. <support@konghq.com>"
 description: |
   Kong is a distributed gateway for APIs and Microservices, focused on high performance and reliability.
 vendor: "Kong Inc."
-license: "Apache-2.0"
+license: "Proprietary" # EE: do not change
 contents:
 - src: nfpm-prefix/bin
   dst: /usr/local/bin
@@ -45,6 +45,8 @@ contents:
   type: symlink
 - src: build/package/kong-enterprise-edition.service
   dst: /lib/systemd/system/kong-enterprise-edition.service
+- src: nfpm-prefix/LICENSE
+  dst: /usr/share/doc/kong-enterprise-edition/copyright
 scripts:
   postinstall: ./build/package/postinstall.sh
 replaces:

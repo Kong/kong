@@ -116,14 +116,16 @@
 
 - Path      : /usr/local/kong/lib/libjq.so.1.0.4
   Needed    :
+  - libonig.so.4
   - libstdc++.so.6
   - libm.so.6
   - libc.so.6
   - ld-linux-aarch64.so.1
+  Rpath     : /usr/local/kong/lib
   Version Requirement:
   - ld-linux-aarch64.so.1 (GLIBC_2.17)
   - libc.so.6 (GLIBC_2.17)
-  - libm.so.6 (GLIBC_2.17)
+  - libm.so.6 (GLIBC_2.17, GLIBC_2.23)
 
 - Path      : /usr/local/kong/lib/liblicense_utils.so
   Needed    :
@@ -138,6 +140,17 @@
   - libcrypto.so.1.1 (OPENSSL_1_1_0)
 
 - Path      : /usr/local/kong/lib/libnettle.so.8.4
+  Needed    :
+  - libstdc++.so.6
+  - libm.so.6
+  - libc.so.6
+  - ld-linux-aarch64.so.1
+  Runpath   : /usr/local/kong/lib
+  Version Requirement:
+  - ld-linux-aarch64.so.1 (GLIBC_2.17)
+  - libc.so.6 (GLIBC_2.17)
+
+- Path      : /usr/local/kong/lib/libonig.so.4.0.0
   Needed    :
   - libstdc++.so.6
   - libm.so.6
