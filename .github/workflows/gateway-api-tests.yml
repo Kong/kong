@@ -71,7 +71,7 @@ env:
 
 jobs:
   gateway_api_tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-kong
     timeout-minutes: 40
     env:
       GW_IMAGE: ${{ inputs.control_plane_image || 'kong/kong-gateway-internal:nightly-ubuntu' }}

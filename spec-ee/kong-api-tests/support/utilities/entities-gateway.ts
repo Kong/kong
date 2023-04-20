@@ -30,7 +30,7 @@ export const createGatewayService = async (
 
   const requestPayload = payload || {
     name,
-    url: 'http://httpbin.org/anything',
+    url: 'http://host.docker.internal:9031/anything',
   };
 
   const resp = await axios({

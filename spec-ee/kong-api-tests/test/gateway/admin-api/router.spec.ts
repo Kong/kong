@@ -39,7 +39,7 @@ const regexWrongPatterns = ['/5555-helo', '/heo-world', '/wrong-test'];
 const regexCorrectPatterns = ['/helo-test', '/hello-auto', '/world-te'];
 const currentHost = getGatewayHost();
 
-describe.skip('@smoke: Router Functionality Tests', function () {
+describe('@smoke: Router Functionality Tests', function () {
   const routesUrl = `${getBasePath({
     environment: Environment.gateway.adminSec,
   })}/routes`;
@@ -68,7 +68,7 @@ describe.skip('@smoke: Router Functionality Tests', function () {
 
   before(async function () {
     const serviceReq = await createGatewayService(serviceName, {
-      url: 'https://httpbin.org/anything',
+      url: 'http://host.docker.internal:9031/anything',
     });
     serviceDetails = {
       id: serviceReq.id,

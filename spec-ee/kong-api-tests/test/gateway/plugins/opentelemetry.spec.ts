@@ -16,14 +16,19 @@ import {
   setGatewayContainerEnvVariable,
 } from '@support';
 
-describe.skip('Gateway Plugins: OpenTelemetry', function () {
+describe('Gateway Plugins: OpenTelemetry', function () {
+  this.timeout(50000);
+
   const isHybrid = isGwHybrid();
+  const waitTime = 5000;
   const hybridWaitTime = 8000;
-  const jaegerWait = 8000;
+  const jaegerWait = 10000;
   const configEndpoint = 'http://jaeger:4318/v1/traces';
-  const paths = ['/jaegertest1', '/jaegertest2'];
+  const paths = ['/jaegertest1', '/jaegertest2', '/jaegertest3'];
   let serviceId: string;
   let routeId: string;
+  let totalTraces: number;
+  let maxAllowedTraces: number;
 
   const host = `${getBasePath({
     environment: Environment.gateway.hostName,
@@ -44,7 +49,6 @@ describe.skip('Gateway Plugins: OpenTelemetry', function () {
     setGatewayContainerEnvVariable({
       KONG_TRACING_INSTRUMENTATIONS: 'request',
     });
-
     if (isHybrid) {
       setGatewayContainerEnvVariable(
         {
@@ -53,7 +57,6 @@ describe.skip('Gateway Plugins: OpenTelemetry', function () {
         'kong-dp1'
       );
     }
-
     await wait(2000);
     const service = await createGatewayService(randomString());
     serviceId = service.id;
@@ -101,12 +104,14 @@ describe.skip('Gateway Plugins: OpenTelemetry', function () {
 
   it('should send proxy request traces to jaeger', async function () {
     let targetDataset: any;
+    let urlObj;
     let resp = await axios(`${proxyUrl}${paths[0]}`);
     logResponse(resp);
     await wait(jaegerWait);
 
     resp = await axios(jaegerTracesEndpoint);
     logResponse(resp);
+    totalTraces = resp.data.data.length;
 
     expect(
       resp.data.data.length,
@@ -115,7 +120,10 @@ describe.skip('Gateway Plugins: OpenTelemetry', function () {
 
     let isFound = false;
     for (const data of resp.data.data) {
-      if (data.spans[0].operationName.includes(paths[0])) {
+      // find the http.url object which value is 'http://localhost/jaegertest1''
+      urlObj = data.spans[0].tags.find((obj) => obj.key === 'http.url');
+
+      if (urlObj.value.includes(paths[0])) {
         isFound = true;
         targetDataset = data;
         break;
@@ -126,8 +134,8 @@ describe.skip('Gateway Plugins: OpenTelemetry', function () {
 
     expect(
       targetDataset.spans[0].operationName,
-      'Should have correct operationName'
-    ).to.equal(`GET ${paths[0]}`);
+      'Should have operationName kong'
+    ).to.equal(`kong`);
 
     expect(
       targetDataset.processes.p1.serviceName,
@@ -145,10 +153,7 @@ describe.skip('Gateway Plugins: OpenTelemetry', function () {
 
     const opelTagUrl = `${proxyUrl.split(':8000')[0]}${paths[0]}`;
 
-    expect(
-      targetDataset.spans[0].tags.some((tag) => tag.value === opelTagUrl),
-      `Should see correct path in jaeger trace span tags`
-    ).to.be.true;
+    expect(urlObj.value, `Should see correct http.url`).to.equal(opelTagUrl);
 
     expect(
       targetDataset.spans[0].tags.some((tag) => tag.value === 200),
@@ -181,11 +186,10 @@ describe.skip('Gateway Plugins: OpenTelemetry', function () {
       'Should see updated instance id'
     ).to.equal('kongtest');
 
-    // await wait(isHybrid ? hybridWaitTime : waitTime);
+    await wait(isHybrid ? hybridWaitTime : waitTime);
   });
 
-  // skipping due to https://konghq.atlassian.net/browse/KAG-304
-  it.skip('should send updated service instance.id and version metadata to jaeger', async function () {
+  it('should send updated service instance.id and version metadata to jaeger', async function () {
     let resp = await axios(`${proxyUrl}${paths[1]}`);
     logResponse(resp);
     await wait(jaegerWait);
@@ -193,20 +197,31 @@ describe.skip('Gateway Plugins: OpenTelemetry', function () {
     resp = await axios(jaegerTracesEndpoint);
     logResponse(resp);
 
+    maxAllowedTraces = totalTraces + 1;
+
     expect(
       resp.data.data.length,
       'Should see total 2 requests traces in jaeger'
-    ).to.be.gte(2);
+    ).to.equal(maxAllowedTraces);
+
+    // setting new totalTraces number
+    totalTraces = resp.data.data.length;
 
     let isFound = false;
     for (const data of resp.data.data) {
-      if (data.spans[0].operationName.includes(paths[1])) {
+      const urlObj = data.spans[0].tags.find((obj) => obj.key === 'http.url');
+
+      if (urlObj.value.includes(paths[1])) {
         isFound = true;
+
+        expect(urlObj.value, `Should see correct http.url`).to.contain(
+          paths[1]
+        );
 
         expect(
           data.spans[0].operationName,
-          'Should have correct operationName'
-        ).to.equal(`GET ${paths[1]}`);
+          'Should have kong operationName'
+        ).to.equal(`kong`);
 
         expect(
           data.processes.p1.tags[0].value,
