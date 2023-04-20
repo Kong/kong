@@ -21,17 +21,13 @@ jobs:
           const run_url = `https://github.com/${repo_name}/actions/runs/${run_id}`;
           const workflow_name = "${{ github.event.workflow_run.name }}"
           const payload = {
-            text: `Workflow “${workflow_name}” failed in repo: “${repo_name}”. Run URL: ${run_url}. Please check it.`,
-            channel: process.env.SLACK_CHANNEL,
-            icon_emoji: ":onfire:",
+            text: `Workflow “${workflow_name}” failed in repo: “${repo_name}”. Run URL: ${run_url}. Please check it.`
           };
           console.log(`::set-output name=payload::${JSON.stringify(payload)}`);
-      env:
-        SLACK_CHANNEL: gateway-notifications
 
     - name: "Send Slack Message"
       uses: slackapi/slack-github-action@v1.23.0
       with:
         payload: ${{ steps.generate_payload.outputs.payload }}
       env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_GATEWAY_NOTIFICATIONS_WEBHOOK }}
