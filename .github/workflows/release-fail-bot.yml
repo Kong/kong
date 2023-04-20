@@ -34,4 +34,4 @@ jobs:
       with:
         payload: ${{ steps.generate_payload.outputs.payload }}
       env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_GATEWAY_NOTIFICATIONS_WEBHOOK }}
