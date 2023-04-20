@@ -23,13 +23,16 @@ local DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY =
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
 
-local function is_dbless_ready(router_rebuilds, plugins_iterator_rebuilds)
+local function is_dbless_ready(router_rebuilds, plugins_iterator_rebuilds, worker_count)
   if router_rebuilds < worker_count then
-    return false, "router rebuilds are not complete"
+    return false, "router builds not yet complete, router ready on "
+      .. router_rebuilds .. " of " .. worker_count .. " workers"
   end
 
   if plugins_iterator_rebuilds < worker_count then
-    return false, "plugins iterator rebuilds are not complete"
+    return false, "plugins iterator builds not yet complete, plugins " 
+      .. "iterator ready on " .. plugins_iterator_rebuilds
+      .. " of " .. worker_count .. " workers"
   end
 
   local current_hash = get_current_hash()
