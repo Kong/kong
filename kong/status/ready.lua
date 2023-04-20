@@ -35,7 +35,7 @@ local function is_dbless_ready(router_rebuilds, plugins_iterator_rebuilds)
   local current_hash = get_current_hash()
 
   if not current_hash then
-    return false, "no configuration hash"
+    return false, "no configuration available"
   end
 
   if current_hash == DECLARATIVE_EMPTY_CONFIG_HASH then
