@@ -22,7 +22,6 @@ jobs:
             const payload = {
               text: `Backport failed in PR: ${pr_url}. ${author} check it.`,
               channel: process.env.SLACK_CHANNEL,
-              icon_emoji: ":alert:",
             };
             console.log(`::set-output name=payload::${JSON.stringify(payload)}`);
         env:
@@ -34,4 +33,4 @@ jobs:
         with:
           payload: ${{ steps.generate_payload.outputs.payload }}
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_GATEWAY_NOTIFICATIONS_WEBHOOK }}
