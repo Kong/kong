@@ -12,6 +12,8 @@ local to_hex = require "resty.string".to_hex
 
 local fmt = string.format
 
+local TCP_PORT = 35001
+
 
 local function gen_trace_id()
   return to_hex(utils.get_rand_bytes(16))
@@ -29,7 +31,7 @@ describe("propagation tests #" .. strategy, function()
   local proxy_client
 
   lazy_setup(function()
-    local bp = helpers.get_db_utils(strategy, { "services", "routes", "plugins" }, { "datadog-tracing" })
+    local bp = helpers.get_db_utils(strategy, { "services", "routes", "plugins" }, { "datadog-tracing",  "tcp-trace-exporter"})
 
     -- enable datadog-tracing plugin globally pointing to mock server
     bp.plugins:insert({
@@ -48,10 +50,26 @@ describe("propagation tests #" .. strategy, function()
       hosts = { "http-route" },
     })
 
+    local trace_exp_route = bp.routes:insert({
+      service = service,
+      hosts = { "trace-exporter" },
+    })
+
+    bp.plugins:insert({
+      name = "tcp-trace-exporter",
+      route = trace_exp_route,
+      config = {
+        host = "127.0.0.1",
+        port = TCP_PORT,
+        custom_spans = false,
+      }
+    })
+
     helpers.start_kong({
       database = strategy,
       nginx_conf = "spec/fixtures/custom_nginx.template",
-      plugins = "bundled,datadog-tracing",
+      plugins = "bundled,datadog-tracing,tcp-trace-exporter",
+      tracing_instrumentations = "all",
     })
 
     proxy_client = helpers.proxy_client()
@@ -118,6 +136,21 @@ describe("propagation tests #" .. strategy, function()
       local json = cjson.decode(body)
       assert.matches(trace_id .. "%-%x+%-1", json.headers.b3)
     end)
+
+    it("with disabled sampling", function()
+      local trace_id = gen_trace_id()
+      local span_id = gen_span_id()
+
+      local r = proxy_client:get("/", {
+        headers = {
+          b3 = fmt("%s-%s-0", trace_id, span_id),
+          host = "http-route",
+        },
+      })
+      local body = assert.response(r).has.status(200)
+      local json = cjson.decode(body)
+      assert.matches(trace_id .. "%-%x+%-0", json.headers.b3)
+    end)
   end)
 
   it("propagates w3c tracing headers", function()
@@ -149,7 +182,7 @@ describe("propagation tests #" .. strategy, function()
     local body = assert.response(r).has.status(200)
     local json = cjson.decode(body)
     -- Trace ID is left padded with 0 for assert
-    assert.matches( ('0'):rep(32-#trace_id) .. trace_id .. ":%x+:" .. span_id .. ":01", json.headers["uber-trace-id"])
+    assert.matches( ('0'):rep(32-#trace_id) .. trace_id .. ":%x+:%x+:01", json.headers["uber-trace-id"])
   end)
 
   it("propagates ot headers", function()
@@ -167,6 +200,36 @@ describe("propagation tests #" .. strategy, function()
     local json = cjson.decode(body)
 
     assert.equals(trace_id, json.headers["ot-tracer-traceid"])
+  end)
+
+  it("propagates balancer span", function()
+    local thread = helpers.tcp_server(TCP_PORT)
+    local trace_id = gen_trace_id()
+    local parent_id = gen_span_id()
+    local r = proxy_client:get("/", {
+      headers = {
+        traceparent = fmt("00-%s-%s-01", trace_id, parent_id),
+        host = "trace-exporter"
+      },
+    })
+    local body = assert.response(r).has.status(200)
+    local json = cjson.decode(body)
+
+    local ok, res = thread:join()
+    assert.True(ok)
+    assert.is_string(res)
+
+    local spans = cjson.decode(res)
+    local balancer_span
+
+    for _, s in ipairs(spans) do
+      if s.name == "kong.balancer" then
+        balancer_span = s
+      end
+    end
+    assert.is_not_nil(balancer_span)
+    local expected_traceparent = "00-" .. trace_id .. "-" .. balancer_span.span_id .. "-01"
+    assert.equals(expected_traceparent, json.headers.traceparent)
   end)
 end)
 end

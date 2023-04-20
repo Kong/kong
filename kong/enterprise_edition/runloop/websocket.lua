@@ -16,6 +16,7 @@ local tracing = require "kong.tracing"
 local runloop = require "kong.runloop.handler"
 local new_tab = require "table.new"
 local nkeys   = require "table.nkeys"
+local time_ns = require "kong.tools.utils".time_ns
 
 
 local NOOP = function() end
@@ -120,6 +121,7 @@ local function get_peer(ctx, opts, upstream_scheme)
   tries[balancer_data.try_count] = current_try
 
   current_try.balancer_start = now_ms
+  current_try.balancer_start_ns = time_ns()
 
   if balancer_data.try_count > 1 then
     -- record failure data
@@ -197,6 +199,7 @@ local function get_peer(ctx, opts, upstream_scheme)
   -- record try-latency
   local try_latency = ctx.KONG_BALANCER_ENDED_AT - current_try.balancer_start
   current_try.balancer_latency = try_latency
+  current_try.balancer_latency_ns = time_ns() - current_try.balancer_start_ns
 
   -- time spent in Kong before sending the request to upstream
   -- start_time() is kept in seconds with millisecond resolution.
