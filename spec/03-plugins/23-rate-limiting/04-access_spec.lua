@@ -594,7 +594,7 @@ if limit_by == "ip" then
         local ok, res = helpers.proxy_client_grpc(){
           service = "hello.HelloService.SayHello",
           opts = {
-            ["-v"] = true,
+            ["-vv"] = true,
           },
         }
 
@@ -616,9 +616,14 @@ if limit_by == "ip" then
       local ok, res = helpers.proxy_client_grpc(){
         service = "hello.HelloService.SayHello",
         opts = {
-          ["-v"] = true,
+          ["-vv"] = true,
         },
       }
+      -- print("sleep")
+      -- ngx.sleep(123213213)
+
+      -- debug
+      print(res)
       assert.falsy(ok)
       assert.matches("Code: ResourceExhausted", res)
 
