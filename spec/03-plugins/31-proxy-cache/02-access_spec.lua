@@ -5,7 +5,6 @@ local function get(client, host)
   return assert(client:get("/get", {
     headers = {
       host = host,
-      ["kong-debug"] = 1,
     },
   }))
 end
@@ -100,7 +99,9 @@ do
       local route21 = assert(bp.routes:insert {
         hosts = { "route-21.com" },
       })
-
+      local route22 = assert(bp.routes:insert({
+        hosts = { "route-22.com" },
+      }))
 
       local consumer1 = assert(bp.consumers:insert {
         username = "bob",
@@ -320,6 +321,21 @@ do
         },
       })
 
+      assert(bp.plugins:insert {
+        name = "proxy-cache",
+        route = { id = route22.id },
+        config = {
+          strategy = policy,
+          content_type = { "text/plain", "application/json" },
+          [policy] = policy_config,
+          response_headers = {
+            age = false,
+            ["X-Cache-Status"] = false,
+            ["X-Cache-Key"]  = false
+          },
+        },
+      })
+
       assert(helpers.start_kong({
         plugins = "bundled",
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -380,23 +396,25 @@ do
       -- examine this cache key against another plugin's cache key for the same req
       --cache_key = cache_key1
     end)
-    it("No X-Cache* headers on the reponse without debug header in the query", function()
-      local res =  assert(client:get("/get", {
-        headers = { Host ="route-1.com", },
-      }))
-
+    it("No X-Cache* neither age headers on the response without debug header in the query", function()
+      local res = assert(get(client, "route-22.com"))
       assert.res_status(200, res)
       assert.is_nil(res.headers["X-Cache-Status"])
-      res =  assert(client:get("/get", {
-        headers = { Host ="route-1.com", },
-      }))
+      res = assert(get(client, "route-22.com"))
       assert.res_status(200, res)
       assert.is_nil(res.headers["X-Cache-Status"])
       assert.is_nil(res.headers["X-Cache-Key"])
-      res = assert(get(client, "route-1.com"))
+      assert.is_nil(res.headers["Age"])
+      res =  assert(client:get("/get", {
+        headers = {
+          Host = "route-22.com",
+          ["kong-debug"] = 1,
+        },
+      }))
       assert.same("Hit", res.headers["X-Cache-Status"])
+      assert.is_not_nil(res.headers["Age"])
+      assert.is_not_nil(res.headers["X-Cache-Key"])
     end)
-
 
     it("respects cache ttl", function()
       local res = assert(get(client, "route-6.com"))
@@ -490,7 +508,6 @@ do
       local res = assert(client:get("/cache/2", {
         headers = {
           host = "route-7.com",
-          ["kong-debug"] = 1,
         }
       }))
 
@@ -506,7 +523,6 @@ do
       res = assert(client:get("/cache/2", {
         headers = {
           host = "route-7.com",
-          ["kong-debug"] = 1,
         }
       }))
 
@@ -527,7 +543,6 @@ do
       res = assert(client:get("/cache/2", {
         headers = {
           host = "route-7.com",
-          ["kong-debug"] = 1,
         }
       }))
 
@@ -542,7 +557,6 @@ do
       res = assert(client:get("/cache/2", {
         headers = {
           host = "route-7.com",
-          ["kong-debug"] = 1,
         }
       }))
 
@@ -553,7 +567,6 @@ do
       res = assert(client:get("/cache/0", {
         headers = {
           host = "route-7.com",
-          ["kong-debug"] = 1,
         }
       }))
 
@@ -563,7 +576,6 @@ do
       res = assert(client:get("/cache/0", {
         headers = {
           host = "route-7.com",
-          ["kong-debug"] = 1,
         }
       }))
 
@@ -577,7 +589,6 @@ do
       local res = assert(client:get("/response-headers?Cache-Control=max-age%3D604800", {
         headers = {
           host = "route-7.com",
-          ["kong-debug"] = 1,
         }
       }))
 
@@ -589,7 +600,6 @@ do
       local res = assert(client:get("/response-headers?Cache-Control=s-maxage%3D604800", {
         headers = {
           host = "route-7.com",
-          ["kong-debug"] = 1,
         }
       }))
 
@@ -603,7 +613,6 @@ do
         query = "Expires=" .. httpdate,
         headers = {
           host = "route-7.com",
-          ["kong-debug"] = 1,
         }
       }))
 
@@ -618,7 +627,6 @@ do
           headers = {
             host = "route-7.com",
             ["Cache-Control"] = "min-fresh=30",
-            ["kong-debug"] = 1,
           }
         }))
 
@@ -631,7 +639,6 @@ do
           headers = {
             host = "route-7.com",
             ["Cache-Control"] = "max-age=2",
-            ["kong-debug"] = 1,
           }
         }))
 
@@ -648,7 +655,6 @@ do
           headers = {
             host = "route-7.com",
             ["Cache-Control"] = "max-age=2",
-            ["kong-debug"] = 1,
           }
         }))
 
@@ -671,7 +677,6 @@ do
           headers = {
             host = "route-7.com",
             ["Cache-Control"] = "max-age=2",
-            ["kong-debug"] = 1,
           }
         }))
 
@@ -683,7 +688,6 @@ do
         local res = assert(client:get("/cache/2", {
           headers = {
             host = "route-8.com",
-            ["kong-debug"] = 1,
           }
         }))
 
@@ -699,7 +703,6 @@ do
         res = assert(client:get("/cache/2", {
           headers = {
             host = "route-8.com",
-            ["kong-debug"] = 1,
           }
         }))
 
@@ -721,7 +724,6 @@ do
           headers = {
             host = "route-8.com",
             ["Cache-Control"] = "max-stale=1",
-            ["kong-debug"] = 1,
           }
         }))
 
@@ -734,7 +736,6 @@ do
           headers = {
             host = "route-8.com",
             ["Cache-Control"] = "only-if-cached",
-            ["kong-debug"] = 1,
           }
         }))
 
@@ -746,7 +747,6 @@ do
       local res = assert(client:get("/stream/3", {
         headers = {
           host = "route-1.com",
-          ["kong-debug"] = 1,
         }
       }))
 
@@ -763,7 +763,6 @@ do
       res = assert(client:get("/stream/3", {
         headers = {
           host = "route-1.com",
-          ["kong-debug"] = 1,
         }
       }))
 
@@ -777,7 +776,6 @@ do
         headers = {
           host = "route-13.com",
           apikey = "bob",
-          ["kong-debug"] = 1,
         }
       }))
       assert.res_status(200, res)
@@ -787,7 +785,6 @@ do
         headers = {
           host = "route-14.com",
           apikey = "bob",
-          ["kong-debug"] = 1,
         }
       }))
       assert.res_status(200, res)
@@ -801,7 +798,6 @@ do
         headers = {
           host = "route-15.com",
           apikey = "bob",
-          ["kong-debug"] = 1,
         }
       }))
       assert.res_status(200, res)
@@ -811,7 +807,6 @@ do
         headers = {
           host = "route-16.com",
           apikey = "bob",
-          ["kong-debug"] = 1,
         }
       }))
       assert.res_status(200, res)
@@ -866,7 +861,6 @@ do
       local res = assert(client:get("/get?a=b&b=c", {
         headers = {
           host = "route-1.com",
-          ["kong-debug"] = 1,
         }
       }))
 
@@ -876,7 +870,6 @@ do
       res = assert(client:get("/get?a=c", {
         headers = {
           host = "route-1.com",
-          ["kong-debug"] = 1,
         }
       }))
 
@@ -887,7 +880,6 @@ do
       res = assert(client:get("/get?b=c&a=b", {
         headers = {
           host = "route-1.com",
-          ["kong-debug"] = 1,
         }
       }))
 
@@ -897,7 +889,6 @@ do
       res = assert(client:get("/get?a&b", {
         headers = {
           host = "route-1.com",
-          ["kong-debug"] = 1,
         }
       }))
       assert.res_status(200, res)
@@ -906,7 +897,6 @@ do
       res = assert(client:get("/get?a&b", {
         headers = {
           host = "route-1.com",
-          ["kong-debug"] = 1,
         }
       }))
       assert.res_status(200, res)
@@ -917,7 +907,6 @@ do
       local res = assert(client:get("/get?foo=b&b=c", {
         headers = {
           host = "route-12.com",
-          ["kong-debug"] = 1,
         }
       }))
 
@@ -934,7 +923,6 @@ do
       res = assert(client:get("/get?b=d&foo=b", {
         headers = {
           host = "route-12.com",
-          ["kong-debug"] = 1,
         }
       }))
 
@@ -948,7 +936,6 @@ do
         headers = {
           host = "route-11.com",
           foo = "bar",
-          ["kong-debug"] = 1,
         }
       }))
       assert.res_status(200, res)
@@ -964,7 +951,6 @@ do
         headers = {
           host = "route-11.com",
           foo = "bar",
-          ["kong-debug"] = 1,
         }
       }))
       assert.res_status(200, res)
@@ -974,7 +960,6 @@ do
         headers = {
           host = "route-11.com",
           foo = "baz",
-          ["kong-debug"] = 1,
         }
       }))
       assert.res_status(200, res)
@@ -994,7 +979,6 @@ do
           headers = {
             host = "route-5.com",
             apikey = "bob",
-            ["kong-debug"] = 1,
           }
         }))
 
@@ -1005,7 +989,6 @@ do
           headers = {
             host = "route-5.com",
             apikey = "bob",
-            ["kong-debug"] = 1,
           }
         }))
 
@@ -1016,7 +999,6 @@ do
           headers = {
             host = "route-5.com",
             apikey = "alice",
-            ["kong-debug"] = 1,
           }
         }))
 
@@ -1027,7 +1009,6 @@ do
           headers = {
             host = "route-5.com",
             apikey = "alice",
-            ["kong-debug"] = 1,
           }
         }))
 
@@ -1043,7 +1024,6 @@ do
           headers = {
             host = "route-1.com",
             ["Content-Type"] = "application/json",
-            ["kong-debug"] = 1,
           },
           {
             foo = "bar",
@@ -1060,7 +1040,6 @@ do
         local res = assert(client:get("/status/418", {
           headers = {
             host = "route-1.com",
-            ["kong-debug"] = 1,
           },
         }))
 
@@ -1072,7 +1051,6 @@ do
         local res = assert(client:get("/xml", {
           headers = {
             host = "route-1.com",
-            ["kong-debug"] = 1,
           },
         }))
 
@@ -1087,7 +1065,6 @@ do
           headers = {
             host = "route-10.com",
             ["Content-Type"] = "application/json",
-            ["kong-debug"] = 1,
           },
           {
             foo = "bar",
@@ -1107,7 +1084,6 @@ do
           headers = {
             host = "route-10.com",
             ["Content-Type"] = "application/json",
-            ["kong-debug"] = 1,
           },
           {
             foo = "bar",
@@ -1122,7 +1098,6 @@ do
         local res = assert(client:get("/status/417", {
           headers = {
             host = "route-10.com",
-            ["kong-debug"] = 1,
           },
         }))
 
@@ -1132,7 +1107,6 @@ do
         res = assert(client:get("/status/417", {
           headers = {
             host = "route-10.com",
-            ["kong-debug"] = 1,
           },
         }))
 
@@ -1147,7 +1121,6 @@ do
         local res = assert(client:get("/get?show-me=proxy-latency", {
           headers = {
             host = "route-1.com",
-            ["kong-debug"] = 1,
           }
         }))
 
@@ -1158,7 +1131,6 @@ do
         res = assert(client:get("/get?show-me=proxy-latency", {
           headers = {
             host = "route-1.com",
-            ["kong-debug"] = 1,
           }
         }))
 
@@ -1171,7 +1143,6 @@ do
         local res = assert(client:get("/get?show-me=upstream-latency", {
           headers = {
             host = "route-1.com",
-            ["kong-debug"] = 1,
           }
         }))
 
@@ -1188,7 +1159,6 @@ do
         res = assert(client:get("/get?show-me=upstream-latency", {
           headers = {
             host = "route-1.com",
-            ["kong-debug"] = 1,
           }
         }))
 
@@ -1205,7 +1175,6 @@ do
           path = "/xml",
           headers = {
             host = "route-17.com",
-            ["kong-debug"] = 1,
           },
         }
 
@@ -1226,7 +1195,6 @@ do
           path = "/xml",
           headers = {
             host = "route-18.com",
-            ["kong-debug"] = 1,
           },
         })
 
@@ -1242,7 +1210,6 @@ do
           path = "/response-headers?Content-Type=application/xml;",
           headers = {
             host = "route-18.com",
-            ["kong-debug"] = 1,
           },
         })
 
@@ -1257,7 +1224,6 @@ do
           path = "/xml",
           headers = {
             host = "route-19.com",
-            ["kong-debug"] = 1,
           },
         }
 
