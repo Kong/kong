@@ -7,10 +7,11 @@ on:
       - completed
     branches:
       - master
+      - next/*
 
 jobs:
   notify_failure:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-kong
     if: ${{ github.event.workflow_run.conclusion == 'failure' }}
     steps:
     - name: Generate Slack Payload
@@ -22,8 +23,10 @@ jobs:
           const run_id = ${{ github.event.workflow_run.id }};
           const run_url = `https://github.com/${repo_name}/actions/runs/${run_id}`;
           const workflow_name = "${{ github.event.workflow_run.name }}"
+          const branch_name = "${{ github.event.workflow_run.head_branch }}"
           const payload = {
-            text: `Workflow “${workflow_name}” failed in repo: “${repo_name}”. Run URL: ${run_url}. Please check it.`
+            text: `Workflow “${workflow_name}” failed in repo: “${repo_name}”, branch: "${branch_name}". Run URL: ${run_url}. Please check it.`,
+            icon_emoji: ":onfire:",
           };
           console.log(`::set-output name=payload::${JSON.stringify(payload)}`);
 
