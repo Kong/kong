@@ -1451,7 +1451,12 @@ local function http_server(port, opts)
       elseif content_length then
         body = client:receive(content_length)
       end
+  if content_length then
+    body = client:receive(content_length)
 
+  elseif headers["Connection"] == "close" or method_lower == "put" or method_lower == "post" then
+    body = client:receive("*a")
+  end
       client:send(opts.response or "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
       client:close()
       server:close()
