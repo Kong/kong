@@ -93,9 +93,17 @@ describe("Status API - with strategy #off", function()
       database = "off",
       nginx_worker_processes = 8,
     })
-    status_client = helpers.http_client("127.0.0.1", 8100, 20000)
-
     admin_client = helpers.admin_client()
+  end)
+
+  before_each(function()
+    status_client = helpers.http_client("127.0.0.1", 8100, 20000)
+  end)
+
+  after_each(function()
+    if status_client then
+      status_client:close()
+    end
   end)
 
   lazy_teardown(function()
