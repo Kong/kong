@@ -71,7 +71,6 @@ for _, strategy in helpers.all_strategies() do
               method = "GET",
               path = "/status/ready",
             }
-            status_client:close()
             
             return res and res.status == 200
           end)
@@ -143,7 +142,6 @@ describe("Status API - with strategy #off", function()
             method = "GET",
             path = "/status/ready",
           }
-          status_client:close()
           
           return res and res.status == 200
         end)
@@ -185,7 +183,6 @@ describe("Status API - with strategy #off", function()
             method = "GET",
             path = "/status/ready",
           }
-          status_client:close()
           
           return res and res.status == 200
         end)
