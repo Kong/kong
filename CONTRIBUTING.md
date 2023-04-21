@@ -464,6 +464,12 @@ practices:
   end
   ```
 
+  For OpenResty built-in APIs we may drop `ngx.` in the localized version
+
+  ```lua
+  local req_get_post_args = ngx.req.get_post_args
+  ```
+
   Non-hot paths are localization optional
 
   ```lua
