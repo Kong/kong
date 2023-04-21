@@ -67,7 +67,6 @@ for _, strategy in helpers.all_strategies() do
         assert
           .with_timeout(5)
           .eventually(function()
-            status_client = assert(helpers.status_client())
             res = status_client:send {
               method = "GET",
               path = "/status/ready",
@@ -140,7 +139,6 @@ describe("Status API - with strategy #off", function()
       assert
         .with_timeout(5)
         .eventually(function()
-          status_client = assert(helpers.status_client())
           res = status_client:send {
             method = "GET",
             path = "/status/ready",
@@ -183,7 +181,6 @@ describe("Status API - with strategy #off", function()
       assert
         .with_timeout(5)
         .eventually(function()
-          status_client = assert(helpers.status_client())
           res = status_client:send {
             method = "GET",
             path = "/status/ready",
