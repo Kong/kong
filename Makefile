@@ -105,12 +105,12 @@ install: dev
 	@$(VENV) luarocks make
 
 clean: check-bazel
-	rm -f bin/bazel bin/grpcurl
 	$(BAZEL) clean
+	rm -f bin/bazel bin/grpcurl
 
 expunge: check-bazel
-	rm -f bin/bazel bin/grpcurl
 	$(BAZEL) clean --expunge
+	rm -f bin/bazel bin/grpcurl
 
 lint: dev
 	@$(VENV) luacheck -q .
