@@ -107,6 +107,8 @@
 - Fix an issue where sorting function for traditional router sources/destinations lead to "invalid order
   function for sorting" error.
   [#10514](https://github.com/Kong/kong/pull/10514)
+- Fix a typo of mlcache option `shm_set_tries`.
+  [#10712](https://github.com/Kong/kong/pull/10712)
 
 #### Admin API
 
