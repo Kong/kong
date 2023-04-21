@@ -64,14 +64,19 @@ for _, strategy in helpers.all_strategies() do
 
         assert.res_status(400, res)
 
-        ngx.sleep(3)
-
-        local res = assert(status_client:send {
-          method = "GET",
-          path = "/status/ready",
-        })
-
-        assert.res_status(200, res)
+        assert
+          .with_timeout(5)
+          .eventually(function()
+            status_client = assert(helpers.status_client())
+            res = status_client:send {
+              method = "GET",
+              path = "/status/ready",
+            }
+            status_client:close()
+            
+            return res and res.status == 200
+          end)
+          .is_truthy()
       end)
     end)
 
@@ -132,14 +137,19 @@ describe("Status API - with strategy #off", function()
       
       -- wait for the config to be loaded
 
-      ngx.sleep(3)
-      
-      local res = assert(status_client:send {
-        method = "GET",
-        path = "/status/ready",
-      })
-
-      assert.res_status(200, res)
+      assert
+        .with_timeout(5)
+        .eventually(function()
+          status_client = assert(helpers.status_client())
+          res = status_client:send {
+            method = "GET",
+            path = "/status/ready",
+          }
+          status_client:close()
+          
+          return res and res.status == 200
+        end)
+        .is_truthy()
     end)
 
     it("should return 200 after loading an invalid config following a previously uploaded valid config.", function()
@@ -168,16 +178,22 @@ describe("Status API - with strategy #off", function()
 
       assert.res_status(400, res)
 
-      ngx.sleep(3)
-
       -- should still be 200 cause the invalid config is not loaded
 
-      local res = assert(status_client:send {
-        method = "GET",
-        path = "/status/ready",
-      })
+      assert
+        .with_timeout(5)
+        .eventually(function()
+          status_client = assert(helpers.status_client())
+          res = status_client:send {
+            method = "GET",
+            path = "/status/ready",
+          }
+          status_client:close()
+          
+          return res and res.status == 200
+        end)
+        .is_truthy()
 
-      assert.res_status(200, res)
     end)
   end)
 
