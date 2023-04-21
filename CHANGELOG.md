@@ -55,7 +55,7 @@
 
 #### Status API
 
-- `status_listen` API now supports a `GET /status/ready` endpoint to accurately 
+- `status_listen` API now supports a `GET /status/ready` endpoint to 
   health-check Kong. This endpoint responds back with a `200` if and only if
   the configuration has been synchronized to the Kong node and necessary 
   internal data structures are ready to proxy traffic. 
