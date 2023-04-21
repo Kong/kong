@@ -3,21 +3,6 @@ local cjson  = require "cjson"
 local helpers = require "spec.helpers"
 
 
-local luacov_ok = pcall(require, "luacov")
-if luacov_ok then
-  local busted_it = it
-  -- luacheck: globals it
-  it = function(desc, fn)
-    busted_it(desc, function()
-      local luacov = require("luacov")
-      luacov.init()
-      fn()
-      luacov.save_stats()
-    end)
-  end
-end
-
-
 local SchemaKind = {
   { name = "schema", new = Schema.new, },
   { name = "subschema", new = function(definition)
