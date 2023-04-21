@@ -5,6 +5,8 @@ on:
     workflows: ["Package & Release"]
     types:
       - completed
+    branches:
+      - master
 
 jobs:
   notify_failure:
