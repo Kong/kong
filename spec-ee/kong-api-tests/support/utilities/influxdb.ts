@@ -32,22 +32,25 @@ export const createInfluxDBConnection = () => {
 /**
  * Retrieves all entries from the kong_request mesurement
  * @param {number} expectedEntryCount - total expected entry count to wait for
+ * @param {number} retries - how many times to retry
+ * @param {number} interval - interval to check again
  * @returns {Array}
  */
 export const getAllEntriesFromKongRequest = async (
-  expectedEntryCount?: number
+  expectedEntryCount?: number,
+  retries = 10,
+  interval = 2000
 ): Promise<object> => {
   let entries = await influx.query(`select * from ${SERIES.KONG_REQUEST}`);
-  const maxCount = 6;
   let actualCount = 0;
 
   // wait for expected entry count to appear in influxdb
   if (expectedEntryCount && entries.length !== expectedEntryCount) {
     while (entries.length !== expectedEntryCount) {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, interval));
       entries = await influx.query(`select * from ${SERIES.KONG_REQUEST}`);
 
-      if (maxCount === actualCount) break;
+      if (retries === actualCount) break;
       actualCount++;
     }
   }

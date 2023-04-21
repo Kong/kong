@@ -5,6 +5,9 @@ on:
     workflows: ["Package & Release"]
     types:
       - completed
+    branches:
+      - master
+      - next/*
 
 jobs:
   notify_failure:
@@ -22,7 +25,8 @@ jobs:
           const workflow_name = "${{ github.event.workflow_run.name }}"
           const branch_name = "${{ github.event.workflow_run.head_branch }}"
           const payload = {
-            text: `Workflow “${workflow_name}” failed in repo: “${repo_name}”. Run URL: ${run_url}. Please check it.`
+            text: `Workflow “${workflow_name}” failed in repo: “${repo_name}”, branch: "${branch_name}". Run URL: ${run_url}. Please check it.`,
+            icon_emoji: ":onfire:",
           };
           console.log(`::set-output name=payload::${JSON.stringify(payload)}`);
 

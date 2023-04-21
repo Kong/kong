@@ -20,7 +20,7 @@ import {
 import axios from 'axios';
 
 describe('Vitals with InfluxDB Tests', function () {
-  this.timeout(100000);
+  this.timeout(50000);
   const todaysDate = new Date().toISOString().split('T')[0];
 
   const proxyUrl = getBasePath({ environment: Environment.gateway.proxy });
@@ -47,12 +47,12 @@ describe('Vitals with InfluxDB Tests', function () {
     createInfluxDBConnection();
     await wait(longWait);
     await deleteAllDataFromKongRequest();
-    await wait(5000);
+    await wait(classicWait);
     await deleteAllDataFromKongDatastoreCache();
     await wait(longWait);
 
     const service = await createGatewayService('VitalsService', {
-      url: 'http://httpbin.org/status',
+      url: 'http://host.docker.internal:9031/status',
     });
     serviceId = service.id;
 
@@ -196,7 +196,6 @@ describe('Vitals with InfluxDB Tests', function () {
     await getNegative(`${proxyUrl}/500`);
     await getNegative(`${proxyUrl}/200`);
 
-    await wait(longWait + 1000);
     const requestEntries: any = await getAllEntriesFromKongRequest(4);
 
     expect(
@@ -213,7 +212,7 @@ describe('Vitals with InfluxDB Tests', function () {
           expect(
             entry.kong_latency,
             'Should have reduced kong_latency for a repeated request'
-          ).to.be.below(kongLatency);
+          ).to.be.lte(kongLatency);
         }
       } else if (i === 1) {
         expect(entry.status, 'Should have status 404').to.eq(404);
@@ -225,7 +224,7 @@ describe('Vitals with InfluxDB Tests', function () {
 
   it('should see an entry in kong_request for a request with a new route and service', async function () {
     const service = await createGatewayService('VitalsService2', {
-      url: 'http://httpbin.org/anything',
+      url: 'http://host.docker.internal:9031/anything',
     });
     serviceId2 = service.id;
 

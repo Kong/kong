@@ -27,7 +27,7 @@ export const setGatewayContainerEnvVariable = (
     );
   } catch (error) {
     console.log(
-      'The given gateway environment variables were successfully updated'
+      `Something went wrong during updating the container environment variable: ${error}`
     );
   }
 };
