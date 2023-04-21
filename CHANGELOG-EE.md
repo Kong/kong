@@ -19,6 +19,7 @@
 * Support the plugin `ldap-auth-advanced` setting the groups to an empty array when the groups is not empty. [FTI-4730](https://konghq.atlassian.net/browse/FTI-4730)
 * Websocket requests generate balancer spans when tracing is enabled. [KAG-1255](https://konghq.atlassian.net/browse/KAG-1255)
 * Sending analytics to Konnect SaaS from Kong DB-less mode (in addition to DP mode) is now supported [MA-1579](https://konghq.atlassian.net/browse/MA-1579)
+* Remove email field from developer registration response. [FTI-2722](https://konghq.atlassian.net/browse/FTI-2722)
 
 ## Plugins
 

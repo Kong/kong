@@ -184,8 +184,8 @@ return {
       if developer.status == enums.CONSUMERS.STATUS.PENDING then
         local portal_emails = portal_smtp_client.new()
         -- if name does not exist, we use the email for email template
-        local email, err = portal_emails:access_request(developer.email,
-                            name_or_email)
+        local _, err = portal_emails:access_request(developer.email,
+                                                    name_or_email)
         if err then
           if err.code then
             return kong.response.exit(err.code, { message = err.message })
@@ -193,8 +193,6 @@ return {
 
           return endpoints.handle_error(err)
         end
-
-        res.email = email
       end
 
       if developer.status == enums.CONSUMERS.STATUS.UNVERIFIED and
@@ -209,13 +207,11 @@ return {
 
         -- Email user with reset jwt included
         local portal_emails = portal_smtp_client.new()
-        local email, err = portal_emails:account_verification_email(developer.email,
-                                                                    jwt, name_or_email)
+        local _, err = portal_emails:account_verification_email(developer.email,
+                                                                jwt, name_or_email)
         if err then
           return endpoints.handle_error(err)
         end
-
-        res.email = email
       end
 
       return kong.response.exit(200, res)

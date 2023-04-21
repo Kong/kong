@@ -579,23 +579,7 @@ for _, strategy in helpers.each_strategy() do
               assert.equal(enums.CONSUMERS.STATUS.PENDING, developer.status)
               assert.equal("noob@konghq.com", developer.email)
               assert.equal("{\"full_name\":\"I Like Turtles\"}", developer.meta)
-
-
-              local expected_email_res = {
-                error = {
-                  count = 0,
-                  emails = {}
-                },
-                sent = {
-                  count = 1,
-                  emails = {
-                    ["admin@example.com"] = true,
-                  }
-                },
-                smtp_mock = true,
-              }
-
-              assert.same(expected_email_res, resp_body_json.email)
+              assert.is_nil(resp_body_json.email)
             end)
 
             describe("no meta fields", function()
@@ -803,23 +787,7 @@ for _, strategy in helpers.each_strategy() do
               assert.equal(enums.CONSUMERS.STATUS.PENDING, developer.status)
               assert.equal("noob@konghq.com", developer.email)
               assert.equal("{\"full_name\":\"I Like Turtles\"}", developer.meta)
-
-
-              local expected_email_res = {
-                error = {
-                  count = 0,
-                  emails = {}
-                },
-                sent = {
-                  count = 1,
-                  emails = {
-                    ["admin@example.com"] = true,
-                  }
-                },
-                smtp_mock = true,
-              }
-
-              assert.same(expected_email_res, resp_body_json.email)
+              assert.is_nil(resp_body_json.email)
             end)
           end)
         end)
