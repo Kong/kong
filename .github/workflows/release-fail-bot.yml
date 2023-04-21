@@ -11,7 +11,7 @@ on:
 
 jobs:
   notify_failure:
-    runs-on: ubuntu-latest-kong
+    runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'failure' }}
     steps:
     - name: Generate Slack Payload
