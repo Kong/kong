@@ -1445,18 +1445,13 @@ local function http_server(port, opts)
       local method = lines[1]:match("^(%S+)%s+(%S+)%s+(%S+)$")
       local method_lower = method:lower()
       local body
-      if headers["Connection"] == "close" or method_lower == "put" or method_lower == "post" then
-        body = client:receive("*a")
-
-      elseif content_length then
+      if content_length then
         body = client:receive(content_length)
-      end
-  if content_length then
-    body = client:receive(content_length)
 
-  elseif headers["Connection"] == "close" or method_lower == "put" or method_lower == "post" then
-    body = client:receive("*a")
-  end
+      elseif headers["Connection"] == "close" or method_lower == "put" or method_lower == "post" then
+        body = client:receive("*a")
+      end
+
       client:send(opts.response or "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
       client:close()
       server:close()
