@@ -37,8 +37,6 @@
   * Errors are now logged for validation failures. [FTI-2465](https://konghq.atlassian.net/browse/FTI-2465)
 * Proxy Cache Advanced:
   * Add wildcard and parameter match support for content_type [FTI-1131](https://konghq.atlassian.net/browse/FTI-1131)
-* Rate Limiting Advanced:
-  * cp should not create namespace or do sync. [FTI-4960](https://konghq.atlassian.net/browse/FTI-4960)
   * add `ignore_uri_case` to configuring cache-key uri to be handled as lowercase [#10453](https://github.com/Kong/kong/pull/10453)
 
 ### Fixes
@@ -48,6 +46,9 @@
     [FTI-1904](https://konghq.atlassian.net/browse/FTI-1904)
 
 * Fixed an issue changing the vault name throws an error. [KAG-1070](https://konghq.atlassian.net/browse/KAG-1070)
+
+* Rate Limiting Advanced:
+  * cp should not create namespace or do sync. [FTI-4960](https://konghq.atlassian.net/browse/FTI-4960)
 
 * Ldap-auth-advanced
   * The plugin now returns a 403 when a user isn't in the authorized groups and does authentication before authorization.
