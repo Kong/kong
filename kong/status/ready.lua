@@ -19,10 +19,8 @@ local kong_shm     = ngx.shared.kong
 local is_dbless = kong.configuration.database == "off"
 local is_control_plane = kong.configuration.role == "control_plane"
 
-local DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY = 
-                                constants.DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY
-local DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY =
-                                constants.DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY
+local PLUGINS_REBUILD_COUNTER_KEY = constants.PLUGINS_REBUILD_COUNTER_KEY
+local ROUTERS_REBUILD_COUNTER_KEY = constants.ROUTERS_REBUILD_COUNTER_KEY
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
 
@@ -87,9 +85,9 @@ local function is_ready()
   kong.db:close()
 
   local router_rebuilds = 
-      tonumber(kong_shm:get(DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY)) or 0
+      tonumber(kong_shm:get(ROUTERS_REBUILD_COUNTER_KEY)) or 0
   local plugins_iterator_rebuilds = 
-      tonumber(kong_shm:get(DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY)) or 0
+      tonumber(kong_shm:get(PLUGINS_REBUILD_COUNTER_KEY)) or 0
 
   local err
   -- full check for dbless mode

@@ -53,10 +53,10 @@ local DEFAULT_MATCH_LRUCACHE_SIZE = Router.DEFAULT_MATCH_LRUCACHE_SIZE
 
 
 local kong_shm          = ngx.shared.kong
-local DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY = 
-                                constants.DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY
-local DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY = 
-                                constants.DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY
+local PLUGINS_REBUILD_COUNTER_KEY = 
+                                constants.PLUGINS_REBUILD_COUNTER_KEY
+local ROUTERS_REBUILD_COUNTER_KEY = 
+                                constants.ROUTERS_REBUILD_COUNTER_KEY
 
 
 local ROUTER_CACHE_SIZE = DEFAULT_MATCH_LRUCACHE_SIZE
@@ -212,8 +212,8 @@ end
 
 
 local function try_incr_rebuilds_counter(key)
-  assert(key == DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY or
-         key == DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY)
+  assert(key == ROUTERS_REBUILD_COUNTER_KEY or
+         key == PLUGINS_REBUILD_COUNTER_KEY)
 
   local _, err = kong_shm:incr(key, 1, 0)
   if err then
@@ -414,7 +414,7 @@ local function new_router(version)
     return nil, "could not create router: " .. err
   end
 
-  try_incr_rebuilds_counter(DECLARATIVE_ROUTERS_REBUILD_COUNT_KEY)
+  try_incr_rebuilds_counter(ROUTERS_REBUILD_COUNTER_KEY)
 
   return new_router
 end
@@ -506,7 +506,7 @@ do
       return nil, err
     end
 
-    try_incr_rebuilds_counter(DECLARATIVE_PLUGINS_REBUILD_COUNT_KEY)
+    try_incr_rebuilds_counter(PLUGINS_REBUILD_COUNTER_KEY)
     return plugin_iterator
   end
 end
