@@ -10,8 +10,6 @@ for _, strategy in helpers.each_strategy() do
 
     helpers.get_db_utils(strategy, {})
 
-    -- strategy ".. strateg
-
     local function start_kong_dp()
       return helpers.start_kong({
         role = "data_plane",
