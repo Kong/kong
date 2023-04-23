@@ -116,16 +116,9 @@ for _, strategy in helpers.each_strategy() do
           end
         end, 10)
 
-        local pid_file, err = helpers.stop_kong("serve_cp", nil, nil, "QUIT", true)
-        assert(pid_file, err)
+        assert(helpers.stop_kong("serve_cp", nil, nil, "QUIT", false))
 
         -- DP should keep return 200 after CP is shut down
-
-        ---- DP wait CP shutdown
-        ngx.sleep(5)
-        helpers.wait_pid(pid_file)
-
-        ---- test DP
         helpers.wait_until(function()
 
           local http_client = helpers.http_client('127.0.0.1', dp_status_port)
