@@ -236,7 +236,7 @@ function _M.request(ctx)
       ["http.host"] = host,
       ["http.scheme"] = scheme,
       ["http.flavor"] = http_flavor,
-      ["net.peer.ip"] = client.get_ip(),
+      ["net.peer.ip"] = client.get_forwarded_ip(),
     },
   })
 
