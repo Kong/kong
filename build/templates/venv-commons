@@ -40,9 +40,7 @@ if [ -d "./plugins-ee" ] ; then
     for p in ./plugins-ee/*/; do
         p_name=$(basename "$p")
         p_target="${plugins_ee}/kong/plugins/${p_name}"
-        if ! [ -L "$p_target" ]; then
-            ln -s "$(realpath "${p}"/kong/plugins/"${p_name}")" "$p_target"
-        fi
+        ln -s "$(realpath "${p}"/kong/plugins/"${p_name}")" "$p_target"
     done
     LUA_PATH="$plugins_ee/?.lua;$plugins_ee/init/?.lua;$LUA_PATH"
 fi
