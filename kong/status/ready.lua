@@ -1,6 +1,11 @@
 local declarative = require "kong.db.declarative"
 local constants = require "kong.constants"
 
+local ngx = ngx
+local ngx_log = ngx.log
+local ngx_NOTICE = ngx.NOTICE
+local ngx_DEBUG = ngx.DEBUG
+
 local tonumber = tonumber
 local kong = kong
 local fmt = string.format
@@ -103,9 +108,11 @@ return {
     GET = function(self, dao, helpers)
       local ok, err = is_ready()
       if ok then
+        ngx_log(ngx_DEBUG, "ready for proxying")
         return kong.response.exit(200, { message = "ready" })
 
       else
+        ngx_log(ngx_NOTICE, "not ready for proxying: ", err)
         return kong.response.exit(503, { message = err })
       end
     end
