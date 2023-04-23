@@ -37,6 +37,7 @@
   * Add wildcard and parameter match support for content_type [FTI-1131](https://konghq.atlassian.net/browse/FTI-1131)
 * Rate Limiting Advanced:
   * cp should not create namespace or do sync. [FTI-4960](https://konghq.atlassian.net/browse/FTI-4960)
+  * add `ignore_uri_case` to configuring cache-key uri to be handled as lowercase [#10453](https://github.com/Kong/kong/pull/10453)
 
 ### Fixes
 
