@@ -116,27 +116,16 @@ for _, strategy in helpers.each_strategy() do
           end
         end, 10)
 
-        assert(helpers.stop_kong("serve_cp"))
+        local pid_file, err = helpers.stop_kong("serve_cp", nil, nil, "QUIT", true)
+        assert(pid_file, err)
 
         -- DP should keep return 200 after CP is shut down
 
         ---- DP wait CP shutdown
-
         ngx.sleep(5)
-
-        -- check pid file is not existing
-
-        local pid_file = "serve_cp/pids/nginx.pid"
-
-        local f = io.open(pid_file, "r")
-
-        if f ~= nil then
-          io.close(f)
-          error("pid file should not exist")
-        end
-
+        helpers.wait_pid(pid_file)
+  
         ---- test DP
-
         helpers.wait_until(function()
 
           local http_client = helpers.http_client('127.0.0.1', dp_status_port)
