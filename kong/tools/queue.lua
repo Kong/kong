@@ -68,7 +68,8 @@ local type = type
 local setmetatable = setmetatable
 local semaphore_new = semaphore.new
 local math_min = math.min
-local ngx_now = ngx.now
+local now = ngx.now
+local worker_exiting = ngx.worker.exiting
 
 
 local Queue = {
@@ -220,18 +221,18 @@ function Queue:process_once()
     end
     return
   end
-  local data_started = ngx_now()
+  local data_started = now()
 
   local entry_count = 1
 
   -- We've got our first entry from the queue.  Collect more entries until max_coalescing_delay expires or we've collected
   -- max_batch_size entries to send
   while entry_count < self.max_batch_size
-    and self.max_coalescing_delay > (ngx_now() - data_started) and not ngx.worker.exiting()
+    and self.max_coalescing_delay > (now() - data_started) and not worker_exiting()
   do
     -- Instead of waiting for the coalesce time to expire, we cap the semaphore wait to Queue.COALESCE_POLL_TIME
     -- so that we can check for worker shutdown periodically.
-    local wait_time = math_min(self.max_coalescing_delay - (ngx_now() - data_started), Queue.COALESCE_POLL_TIME)
+    local wait_time = math_min(self.max_coalescing_delay - (now() - data_started), Queue.COALESCE_POLL_TIME)
     ok, err = self.semaphore:wait(wait_time)
     if not ok and err ~= "timeout" then
       self:log_err("could not wait for semaphore: %s", err)
@@ -241,7 +242,7 @@ function Queue:process_once()
     end
   end
 
-  local start_time = ngx_now()
+  local start_time = now()
   local retry_count = 0
   while true do
     self:log_debug("passing %d entries to handler", entry_count)
@@ -255,7 +256,7 @@ function Queue:process_once()
       self:log_err("handler returned falsy value but no error information")
     end
 
-    if (ngx_now() - start_time) > self.max_retry_time then
+    if (now() - start_time) > self.max_retry_time then
       self:log_err(
         "could not send entries, giving up after %d retries.  %d queue entries were lost",
         retry_count, entry_count)
