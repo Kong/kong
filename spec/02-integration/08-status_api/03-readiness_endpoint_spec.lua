@@ -15,12 +15,12 @@ for _, strategy in helpers.all_strategies() do
 
       lazy_setup(function()
         helpers.get_db_utils(nil, {})
-        assert(helpers.start_kong {
+        assert(helpers.start_kong ({
           status_listen = "127.0.0.1:8100",
           plugins = "admin-api-method",
           database = strategy,
           nginx_worker_processes = 8,
-        })
+        }))
         admin_client = helpers.admin_client()
       end)
 
@@ -120,13 +120,10 @@ describe("Status API - with strategy #off", function()
 
     it("should return 503 when no config, and return 200 after a valid config is uploaded", function()
 
-      status_client:close()
-
       assert(helpers.restart_kong {
         database = "off",
+        status_listen = "127.0.0.1:8100",
       })
-
-      status_client = helpers.http_client("127.0.0.1", 8100, 20000)
 
       local res = assert(status_client:send {
         method = "GET",
