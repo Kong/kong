@@ -10,27 +10,28 @@ for _, strategy in helpers.all_strategies() do
   describe_func("Status API - with strategy #" .. strategy, function()
     local status_client
     local admin_client
-    lazy_setup(function()
-      helpers.get_db_utils(nil, {})
-      assert(helpers.start_kong {
-        status_listen = "127.0.0.1:8100",
-        plugins = "admin-api-method",
-        database = strategy,
-        nginx_worker_processes = 8,
-      })
-      status_client = helpers.http_client("127.0.0.1", 8100, 20000)
-
-      admin_client = helpers.admin_client()
-    end)
-
-    lazy_teardown(function()
-      if status_client then
-        status_client:close()
-      end
-      assert(helpers.stop_kong())
-    end)
 
     describe("status readiness endpoint", function()
+
+      lazy_setup(function()
+        helpers.get_db_utils(nil, {})
+        assert(helpers.start_kong {
+          status_listen = "127.0.0.1:8100",
+          plugins = "admin-api-method",
+          database = strategy,
+          nginx_worker_processes = 8,
+        })
+        status_client = helpers.http_client("127.0.0.1", 8100, 20000)
+
+        admin_client = helpers.admin_client()
+      end)
+
+      lazy_teardown(function()
+        if status_client then
+          status_client:close()
+        end
+        assert(helpers.stop_kong())
+      end)
 
       it("should return 200 in db mode", function()
         local res = assert(status_client:send {

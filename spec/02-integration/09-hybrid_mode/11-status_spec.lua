@@ -38,20 +38,18 @@ for _, strategy in helpers.each_strategy() do
       })
     end
 
-    lazy_setup(function()
-      assert(start_kong_dp())
-      assert(start_kong_cp())
-    end)
+    describe("dp should returns 503 without cp", function()
 
-    lazy_teardown(function()
-        assert(helpers.stop_kong("serve_cp"))
-        assert(helpers.stop_kong("serve_dp"))
-    end)
+      lazy_setup(function()
+        assert(start_kong_dp())
+      end)
 
-    describe("dp status ready endpoint for no config", function()
+      lazy_teardown(function()
+          assert(helpers.stop_kong("serve_dp"))
+      end)
+
       -- now dp should be not ready
-
-      it("returns 503 on data plane", function()
+      it("should return 503 on data plane", function()
         helpers.wait_until(function()
           local http_client = helpers.http_client('127.0.0.1', dp_status_port)
 
@@ -66,6 +64,19 @@ for _, strategy in helpers.each_strategy() do
             return true
           end
         end, 10)
+      end)
+    end)
+
+    describe("dp status ready endpoint for no config", function()
+
+      lazy_setup(function()
+        assert(start_kong_dp())
+        assert(start_kong_cp())
+      end)
+  
+      lazy_teardown(function()
+          assert(helpers.stop_kong("serve_cp"))
+          assert(helpers.stop_kong("serve_dp"))
       end)
 
       -- now cp should be ready
@@ -108,7 +119,7 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.stop_kong("serve_cp"))
 
         -- DP should keep return 200 after CP is shut down
-        
+
         ---- DP wait CP shutdown
 
         ngx.sleep(5)
