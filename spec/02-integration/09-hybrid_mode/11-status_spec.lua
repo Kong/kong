@@ -124,7 +124,7 @@ for _, strategy in helpers.each_strategy() do
         ---- DP wait CP shutdown
         ngx.sleep(5)
         helpers.wait_pid(pid_file)
-  
+
         ---- test DP
         helpers.wait_until(function()
 
