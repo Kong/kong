@@ -36,6 +36,7 @@ $KONG_VENV/openresty/luajit/share/luajit-2.1.0-beta3/?.lua"
 # XXX EE
 if [ -d "./plugins-ee" ] ; then
     plugins_ee="${workspace_path}/bazel-bin/build/ee/plugins-ee"
+    rm -rf "$plugins_ee/kong/plugins"
     mkdir -p "$plugins_ee/kong/plugins"
     for p in ./plugins-ee/*/; do
         p_name=$(basename "$p")
