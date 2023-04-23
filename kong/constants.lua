@@ -202,8 +202,8 @@ local constants = {
 
   DECLARATIVE_LOAD_KEY = "declarative_config:loaded",
   DECLARATIVE_HASH_KEY = "declarative_config:hash",
-  PLUGINS_REBUILD_COUNTER_KEY = "declarative_config:plugins_rebuild_counter",
-  ROUTERS_REBUILD_COUNTER_KEY = "declarative_config:routers_rebuild_counter",
+  PLUGINS_REBUILD_COUNTER_KEY = "readiness_probe_config:plugins_rebuild_counter",
+  ROUTERS_REBUILD_COUNTER_KEY = "readiness_probe_config:routers_rebuild_counter",
   DECLARATIVE_EMPTY_CONFIG_HASH = string.rep("0", 32),
 
   CLUSTER_ID_PARAM_KEY = "cluster_id",
