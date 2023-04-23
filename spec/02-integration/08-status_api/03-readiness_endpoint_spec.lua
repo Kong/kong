@@ -119,13 +119,18 @@ describe("Status API - with strategy #off", function()
   describe("status readiness endpoint", function()
 
     it("should return 503 when no config, and return 200 after a valid config is uploaded", function()
+
+      assert(helpers.restart_kong {
+        database = "off",
+      })
+
       local res = assert(status_client:send {
         method = "GET",
         path = "/status/ready",
       })
-      
+
       assert.res_status(503, res)
-      
+
       local res = assert(admin_client:send {
         method = "POST",
         path = "/config",
@@ -141,9 +146,9 @@ describe("Status API - with strategy #off", function()
           ["Content-Type"] = "multipart/form-data"
         },
       })
-      
+
       assert.res_status(201, res)
-      
+
       -- wait for the config to be loaded
 
       assert
@@ -153,13 +158,12 @@ describe("Status API - with strategy #off", function()
             method = "GET",
             path = "/status/ready",
           }
-          
+
           return res and res.status == 200
         end)
         .is_truthy()
-    end)
 
-    it("should return 200 after loading an invalid config following a previously uploaded valid config.", function()
+      -- should return 200 after loading an invalid config following a previously uploaded valid config
 
       local res = assert(status_client:send {
         method = "GET",
