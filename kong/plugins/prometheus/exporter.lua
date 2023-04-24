@@ -31,6 +31,17 @@ package.loaded['prometheus_resty_counter'] = require("resty.counter")
 local kong_subsystem = ngx.config.subsystem
 local http_subsystem = kong_subsystem == "http"
 
+-- Since in the prometheus library we create a new table for each diverged label
+-- so putting the "more dynamic" label at the end will save us some memory
+local labels_table_bandwidth = {0, 0, 0, 0}
+local labels_table_status = {0, 0, 0, 0, 0}
+local labels_table_latency = {0, 0}
+local upstream_target_addr_health_table = {
+  { value = 0, labels = { 0, 0, 0, "healthchecks_off", ngx.config.subsystem } },
+  { value = 0, labels = { 0, 0, 0, "healthy", ngx.config.subsystem } },
+  { value = 0, labels = { 0, 0, 0, "unhealthy", ngx.config.subsystem } },
+  { value = 0, labels = { 0, 0, 0, "dns_error", ngx.config.subsystem } },
+}
 
 -- should we introduce a way to know if a plugin is configured or not?
 local is_prometheus_enabled, register_events_handler do
@@ -69,6 +80,34 @@ local is_prometheus_enabled, register_events_handler do
   -- invalidate cache when a plugin is added/removed/updated
   function register_events_handler()
     local worker_events = kong.worker_events
+
+    local cb = function(upstream_id, ip, port, hostname, health)
+      local health_info, err = balancer.get_upstream_health(upstream_id)
+      if err then
+        kong.log.err("failed getting upstream health: ", err)
+      end
+
+      if health_info then
+        for target_name, target_info in pairs(health_info) do
+          if target_info ~= nil and target_info.addresses ~= nil and
+            #target_info.addresses > 0 then
+            -- healthchecks_off|healthy|unhealthy
+            for _, address in ipairs(target_info.addresses) do
+              if address.ip == ip and address.port == port then
+                local upstream_name = balancer.get_upstream_by_id(upstream_id).name
+                local address_label = concat({address.ip, ':', address.port})
+                local status = lower(address.health)
+                set_healthiness_metrics(upstream_target_addr_health_table, upstream_name, target_name, address_label, status, metrics.upstream_target_health)
+              end
+            end
+          else
+            -- dns_error
+            set_healthiness_metrics(upstream_target_addr_health_table, upstream_name, target_name, '', 'dns_error', metrics.upstream_target_health)
+          end
+        end
+      end
+    end
+    balancer.subscribe_to_healthcheck_events(cb)
 
     if kong.configuration.database == "off" then
       worker_events.register(function()
@@ -241,18 +280,6 @@ local function config_hash_to_number(hash_str)
   return tonumber("0x" .. hash_str)
 end
 
--- Since in the prometheus library we create a new table for each diverged label
--- so putting the "more dynamic" label at the end will save us some memory
-local labels_table_bandwidth = {0, 0, 0, 0}
-local labels_table_status = {0, 0, 0, 0, 0}
-local labels_table_latency = {0, 0}
-local upstream_target_addr_health_table = {
-  { value = 0, labels = { 0, 0, 0, "healthchecks_off", ngx.config.subsystem } },
-  { value = 0, labels = { 0, 0, 0, "healthy", ngx.config.subsystem } },
-  { value = 0, labels = { 0, 0, 0, "unhealthy", ngx.config.subsystem } },
-  { value = 0, labels = { 0, 0, 0, "dns_error", ngx.config.subsystem } },
-}
-
 local function set_healthiness_metrics(table, upstream, target, address, status, metrics_bucket)
   for i = 1, #table do
     table[i]['labels'][1] = upstream
@@ -365,7 +392,7 @@ end
 -- turned on upstream_health_metrics on and off again, to actually
 -- stop exporting upstream health metrics
 local should_export_upstream_health_metrics = false
-
+local current = 0
 
 local function metric_data(write_fn)
   if not prometheus or not metrics then
@@ -402,8 +429,9 @@ local function metric_data(write_fn)
   end
 
   -- only export upstream health metrics in traditional mode and data plane
-  if role ~= "control_plane" and should_export_upstream_health_metrics then
+  if role ~= "control_plane" and should_export_upstream_health_metrics and ngx.now() - current > 200 then
     -- erase all target/upstream metrics, prevent exposing old metrics
+    current = ngx.now()
     metrics.upstream_target_health:reset()
 
     -- upstream targets accessible?
