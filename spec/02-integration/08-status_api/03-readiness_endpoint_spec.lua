@@ -128,21 +128,26 @@ describe("Status API - with strategy #off", function()
 
       assert(helpers.restart_kong(start_env))
 
-      helpers.wait_until(function()
+      status_client:close()
 
-        local http_client = helpers.http_client('127.0.0.1', 8100)
+      assert
+        .with_timeout(10)
+        .eventually(function()
 
-        local res = http_client:send({
-          method = "GET",
-          path = "/status/ready",
-        })
+          status_client = helpers.http_client("127.0.0.1", 8100, 20000)
 
-        local status = res and res.status
-        http_client:close()
-        if status == 503 then
-          return true
-        end
-      end, 10)
+          res = status_client:send {
+            method = "GET",
+            path = "/status/ready",
+          }
+
+          status_client:close()
+
+          return res and res.status == 503
+        end)
+        .is_truthy()
+
+      status_client = helpers.http_client("127.0.0.1", 8100, 20000)
 
       admin_client:close()
 
