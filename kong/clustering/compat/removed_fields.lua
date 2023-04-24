@@ -129,6 +129,9 @@ return {
       "account_key",
       "storage_config.redis.namespace",
     },
+    aws_lambda = {
+      "disable_https",
+    },
     proxy_cache = {
       "ignore_uri_case",
     },
