@@ -91,24 +91,30 @@ describe("Status API - with strategy #off", function()
   local status_client
   local admin_client
 
+  local start_env = {
+    status_listen = "127.0.0.1:8100",
+    plugins = "admin-api-method",
+    database = "off",
+    nginx_worker_processes = 8,
+  }
+
   lazy_setup(function()
     helpers.get_db_utils(nil, {}) -- runs migrations
-    assert(helpers.start_kong {
-      status_listen = "127.0.0.1:8100",
-      plugins = "admin-api-method",
-      database = "off",
-      nginx_worker_processes = 8,
-    })
-    admin_client = helpers.admin_client()
+    assert(helpers.start_kong(start_env))
   end)
 
   before_each(function()
+    admin_client = helpers.admin_client()
     status_client = helpers.http_client("127.0.0.1", 8100, 20000)
   end)
 
   after_each(function()
     if status_client then
       status_client:close()
+    end
+
+    if admin_client then
+      admin_client:close()
     end
   end)
 
@@ -120,10 +126,7 @@ describe("Status API - with strategy #off", function()
 
     it("should return 503 when no config, and return 200 after a valid config is uploaded", function()
 
-      assert(helpers.restart_kong {
-        database = "off",
-        status_listen = "127.0.0.1:8100",
-      })
+      assert(helpers.restart_kong(start_env))
 
       helpers.wait_until(function()
 
