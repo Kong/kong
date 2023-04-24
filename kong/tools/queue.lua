@@ -72,10 +72,16 @@ local now = ngx.now
 local worker_exiting = ngx.worker.exiting
 
 
-local Queue = {
-  CAPACITY_WARNING_THRESHOLD = 0.8, -- Threshold to warn that the queue max_entries limit is reached
-  COALESCE_POLL_TIME = 0.5,         -- Time in seconds to poll for worker shutdown when coalescing entries
-}
+local Queue = {}
+
+
+-- Threshold to warn that the queue max_entries limit is reached
+local CAPACITY_WARNING_THRESHOLD = 0.8
+-- Time in seconds to poll for worker shutdown when coalescing entries
+local COALESCE_POLL_TIME = 1.0
+-- If remaining coalescing wait budget is less than this number of seconds,
+-- then just send the batch without waiting any further
+local COALESCE_MIN_TIME = 0.05
 
 
 local Queue_mt = {
@@ -228,11 +234,12 @@ function Queue:process_once()
   -- We've got our first entry from the queue.  Collect more entries until max_coalescing_delay expires or we've collected
   -- max_batch_size entries to send
   while entry_count < self.max_batch_size
-    and self.max_coalescing_delay > (now() - data_started) and not worker_exiting()
+    and self.max_coalescing_delay - (now() - data_started) >= COALESCE_MIN_TIME and not worker_exiting()
   do
-    -- Instead of waiting for the coalesce time to expire, we cap the semaphore wait to Queue.COALESCE_POLL_TIME
+    -- Instead of waiting for the coalesce time to expire, we cap the semaphore wait to COALESCE_POLL_TIME
     -- so that we can check for worker shutdown periodically.
-    local wait_time = math_min(self.max_coalescing_delay - (now() - data_started), Queue.COALESCE_POLL_TIME)
+    local wait_time = math_min(self.max_coalescing_delay - (now() - data_started), COALESCE_POLL_TIME)
+
     ok, err = self.semaphore:wait(wait_time)
     if not ok and err ~= "timeout" then
       self:log_err("could not wait for semaphore: %s", err)
@@ -268,7 +275,7 @@ function Queue:process_once()
     -- Delay before retrying.  The delay time is calculated by multiplying the configured initial_retry_delay with
     -- 2 to the power of the number of retries, creating an exponential increase over the course of each retry.
     -- The maximum time between retries is capped by the max_retry_delay configuration parameter.
-    ngx.sleep(math.min(self.max_retry_delay, 2^retry_count * self.initial_retry_delay))
+    ngx.sleep(math_min(self.max_retry_delay, 2 ^ retry_count * self.initial_retry_delay))
     retry_count = retry_count + 1
   end
 
@@ -323,9 +330,9 @@ local function enqueue(self, entry)
     return nil, "entry must be a non-nil Lua value"
   end
 
-  if self:count() >= self.max_entries * Queue.CAPACITY_WARNING_THRESHOLD then
+  if self:count() >= self.max_entries * CAPACITY_WARNING_THRESHOLD then
     if not self.warned then
-      self:log_warn('queue at %s%% capacity', Queue.CAPACITY_WARNING_THRESHOLD * 100)
+      self:log_warn('queue at %s%% capacity', CAPACITY_WARNING_THRESHOLD * 100)
       self.warned = true
     end
   else
