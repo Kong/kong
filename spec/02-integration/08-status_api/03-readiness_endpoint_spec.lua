@@ -125,12 +125,21 @@ describe("Status API - with strategy #off", function()
         status_listen = "127.0.0.1:8100",
       })
 
-      local res = assert(status_client:send {
-        method = "GET",
-        path = "/status/ready",
-      })
+      helpers.wait_until(function()
 
-      assert.res_status(503, res)
+        local http_client = helpers.http_client('127.0.0.1', 8100)
+
+        local res = http_client:send({
+          method = "GET",
+          path = "/status/ready",
+        })
+
+        local status = res and res.status
+        http_client:close()
+        if status == 503 then
+          return true
+        end
+      end, 10)
 
       local res = assert(admin_client:send {
         method = "POST",
