@@ -268,7 +268,7 @@ function NewRLHandler:init_worker()
     local old_config = data.old_entity and data.old_entity.config
 
     if data.entity.name == "rate-limiting-advanced" then
-      local json, err = cjson_safe.encode({ operation, config })
+      local json, err = cjson_safe.encode({ operation, { config = config, old_config = old_config} })
       if not json then
         kong.log.err("could not encode worker_events register cb data: ", err)
       end

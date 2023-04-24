@@ -51,6 +51,10 @@
   * The plugin now returns a 403 when a user isn't in the authorized groups and does authentication before authorization.
     [FTI-4955](https://github.com/Kong/kong-ee/pull/5098)
 
+* Rate Limiting Advanced:
+  * Fix a bug where the rl cluster_events broadcast the wrong data in traditional cluster mode.
+    [FTI-5014](https://konghq.atlassian.net/browse/FTI-5014)
+
 # TEMPLATE
 
 ## Enterprise
