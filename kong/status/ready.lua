@@ -51,8 +51,7 @@ end
 
 
 local function is_traditional_ready(router_rebuilds, plugins_iterator_rebuilds)
-    -- data plane with db, only build once, because
-    -- build_router() will not be called for each worker because of ROUTER_CACHE
+    -- traditional mode builds router from database once inside `init` phase
     if router_rebuilds == 0 then
       return false, "router builds not yet complete"
     end
