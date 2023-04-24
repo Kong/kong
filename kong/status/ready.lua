@@ -32,7 +32,7 @@ local function is_dbless_ready(router_rebuilds, plugins_iterator_rebuilds)
 
   if plugins_iterator_rebuilds < worker_count then
     return false, fmt("plugins iterator builds not yet complete, "
-      .. "plugins iterator ready on %d of %d workers",
+      .. "plugins iterator ready in %d of %d workers",
       plugins_iterator_rebuilds, worker_count)
   end
 
