@@ -144,6 +144,10 @@ describe("Status API - with strategy #off", function()
         end
       end, 10)
 
+      admin_client:close()
+
+      admin_client = helpers.admin_client()
+
       local res = assert(admin_client:send {
         method = "POST",
         path = "/config",
