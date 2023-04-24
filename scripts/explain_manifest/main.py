@@ -132,7 +132,7 @@ def write_manifest(title: str, results: List[FileInfo], globs: List[str], opts: 
 
     f.flush()
 
-    return f.getvalue().encode('utf-8')
+    return f.getvalue().encode("utf-8")
 
 
 if __name__ == "__main__":
@@ -173,7 +173,7 @@ if __name__ == "__main__":
     if args.output:
         if args.output == "-":
             f = sys.stdout
-            manifest = manifest.decode('utf-8')
+            manifest = manifest.decode("utf-8")
         else:
             f = open(args.output, "wb")
         f.write(manifest)
