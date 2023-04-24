@@ -683,7 +683,7 @@ return {
 
             If a Kong instance is running in DB-less mode or as a data plane,
             it returns `200 OK` if each worker is ready with the valid router and 
-            plugins. In the case of db mode (such as traditional mode), it is 
+            plugins iterator, and the database is reachable.
             further necessary to ensure that the database is connectable before
             returning a `200 OK` status code.
 
