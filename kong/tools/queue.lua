@@ -55,21 +55,25 @@
 --   previous delay is doubled to yield an exponential back-off strategy - The first retry will be made quickly,
 --   and each subsequent retry will be delayed longer.
 
-local workspaces = require "kong.workspaces"
-local semaphore = require "ngx.semaphore"
+local workspaces = require("kong.workspaces")
+local semaphore = require("ngx.semaphore")
+local table_new = require("table.new")
 
 
 local string_format = string.format
 local rawset = rawset
 local rawget = rawget
 local assert = assert
+local select = select
 local pairs = pairs
 local type = type
 local setmetatable = setmetatable
 local semaphore_new = semaphore.new
 local math_min = math.min
 local now = ngx.now
+local sleep = ngx.sleep
 local worker_exiting = ngx.worker.exiting
+local null = ngx.null
 
 
 local Queue = {}
@@ -137,7 +141,7 @@ local function get_or_create_queue(queue_conf, handler, handler_conf)
     -- `bytes_queued` holds the number of bytes on the queue.  It will be used only if max_bytes is set.
     bytes_queued = 0,
     -- `entries` holds the actual queue items.
-    entries = {},
+    entries = table_new(32, 0),
     -- Pointers into the table that holds the actual queued entries.  `front` points to the oldest, `back` points to
     -- the newest entry.
     front = 1,
@@ -275,7 +279,7 @@ function Queue:process_once()
     -- Delay before retrying.  The delay time is calculated by multiplying the configured initial_retry_delay with
     -- 2 to the power of the number of retries, creating an exponential increase over the course of each retry.
     -- The maximum time between retries is capped by the max_retry_delay configuration parameter.
-    ngx.sleep(math_min(self.max_retry_delay, 2 ^ retry_count * self.initial_retry_delay))
+    sleep(math_min(self.max_retry_delay, 2 ^ retry_count * self.initial_retry_delay))
     retry_count = retry_count + 1
   end
 
@@ -294,21 +298,21 @@ end
 -- to their new locations.  The conversion is silently done here, as we're already warning about the legacy
 -- parameters being used when validating each plugin's configuration.
 function Queue.get_params(config)
-  local queue_config = config.queue or {}
-  if (config.queue_size or ngx.null) ~= ngx.null and config.queue_size ~= 1 then
+  local queue_config = config.queue or table_new(0, 5)
+  if (config.queue_size or null) ~= null and config.queue_size ~= 1 then
     queue_config.max_batch_size = config.queue_size
   end
 
-  if (config.flush_timeout or ngx.null) ~= ngx.null and config.flush_timeout ~= 2 then
+  if (config.flush_timeout or null) ~= null and config.flush_timeout ~= 2 then
     queue_config.max_coalescing_delay = config.flush_timeout
   end
 
   -- Queue related opentelemetry plugin parameters
-  if (config.batch_span_count or ngx.null) ~= ngx.null and config.batch_span_count ~= 200 then
+  if (config.batch_span_count or null) ~= null and config.batch_span_count ~= 200 then
     queue_config.max_batch_size = config.batch_span_count
   end
 
-  if (config.batch_flush_delay or ngx.null) ~= ngx.null and config.batch_flush_delay ~= 3 then
+  if (config.batch_flush_delay or null) ~= null and config.batch_flush_delay ~= 3 then
     queue_config.max_coalescing_delay = config.batch_flush_delay
   end
 
