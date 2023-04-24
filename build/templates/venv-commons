@@ -36,10 +36,10 @@ $KONG_VENV/openresty/luajit/share/luajit-2.1.0-beta3/?.lua"
 # XXX EE
 if [ -d "./plugins-ee" ] ; then
     links_dir="${workspace_path}/bazel-bin/build/ee/plugins-ee"
-    rm -rf "$links_dir/kong/plugins"
-    mkdir -p "$links_dir/kong/plugins"
-    for plugin in ./plugins-ee/*/; do
-        ln -s "$(realpath "./plugins-ee/${plugin}/kong/plugins/${plugin}")" "${links_dir}/kong/plugins/${plugin}"
+    rm -rf "${links_dir}/kong/plugins"
+    mkdir -p "${links_dir}/kong/plugins"
+    for plugin in $(ls plugins-ee); do
+        ln -s "$(realpath "./plugins-ee/${plugin}/kong/plugins/${plugin}")" "${links_dir}/kong/plugins/${plugins}"
     done
     LUA_PATH="$links_dir/?.lua;$links_dir/init/?.lua;$LUA_PATH"
 fi
