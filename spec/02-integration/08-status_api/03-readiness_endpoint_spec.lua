@@ -172,6 +172,8 @@ describe("Status API - with strategy #off", function()
       assert.res_status(201, res)
 
       -- wait for the config to be loaded
+      status_client:close()
+      status_client = helpers.http_client("127.0.0.1", 8100, 20000)
 
       assert
         .with_timeout(5)
@@ -186,6 +188,9 @@ describe("Status API - with strategy #off", function()
         .is_truthy()
 
       -- should return 200 after loading an invalid config following a previously uploaded valid config
+
+      status_client:close()
+      status_client = helpers.http_client("127.0.0.1", 8100, 20000)
 
       local res = assert(status_client:send {
         method = "GET",
