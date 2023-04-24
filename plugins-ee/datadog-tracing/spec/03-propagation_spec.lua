@@ -202,7 +202,7 @@ describe("propagation tests #" .. strategy, function()
     assert.equals(trace_id, json.headers["ot-tracer-traceid"])
   end)
 
-  it("propagates balancer span", function()
+  it("#flaky propagates balancer span", function()
     local thread = helpers.tcp_server(TCP_PORT)
     local trace_id = gen_trace_id()
     local parent_id = gen_span_id()
