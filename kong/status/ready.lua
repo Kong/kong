@@ -27,7 +27,7 @@ local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local function is_dbless_ready(router_rebuilds, plugins_iterator_rebuilds)
   if router_rebuilds < worker_count then
     return false, fmt("router builds not yet complete, router ready"
-      .. " on %d of %d workers", router_rebuilds, worker_count)
+      .. " in %d of %d workers", router_rebuilds, worker_count)
   end
 
   if plugins_iterator_rebuilds < worker_count then
