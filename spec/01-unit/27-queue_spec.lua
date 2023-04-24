@@ -1,5 +1,6 @@
 local Queue = require "kong.tools.queue"
 local helpers = require "spec.helpers"
+local mocker = require "spec.fixtures.mocker"
 local timerng = require "resty.timerng"
 local queue_schema = require "kong.tools.queue_schema"
 local queue_num = 1
@@ -27,10 +28,7 @@ local function wait_until_queue_done(name)
   end, 10)
 end
 
-
 describe("plugin queue", function()
-  local old_log
-  local log_messages
 
   lazy_setup(function()
     kong.timer = timerng.new()
@@ -44,23 +42,49 @@ describe("plugin queue", function()
     ngx.ctx.workspace = nil
   end)
 
+  local unmock
+  local now_offset = 0
+  local log_messages
+
   before_each(function()
-    old_log = kong.log
+    local real_now = ngx.now
+    now_offset = 0
     log_messages = ""
     local function log(level, message) -- luacheck: ignore
       log_messages = log_messages .. level .. " " .. message .. "\n"
     end
-    kong.log = {
-      debug = function(message) return log('DEBUG', message) end,
-      info = function(message) return log('INFO', message) end,
-      warn = function(message) return log('WARN', message) end,
-      err = function(message) return log('ERR', message) end,
-    }
-  end)
 
-  after_each(function()
-    kong.log = old_log -- luacheck: ignore
+    mocker.setup(function(f)
+      unmock = f
+    end, {
+      kong = {
+        log = {
+          debug = function(message) return log('DEBUG', message) end,
+          info = function(message) return log('INFO', message) end,
+          warn = function(message) return log('WARN', message) end,
+          err = function(message) return log('ERR', message) end,
+        }
+      },
+      ngx = {
+        ctx = {
+          -- make sure our workspace is nil to begin with to prevent leakage from
+          -- other tests
+          workspace = nil
+        },
+        -- We want to be able to fake the time returned by ngx.now() only in the queue module and leave everything
+        -- else alone so that we can see what effects changing the system time has on queues.
+        now = function()
+          local called_from = debug.getinfo(2, "nSl")
+          if string.match(called_from.short_src, "/queue.lua$") then
+            return real_now() + now_offset
+          else
+            return real_now()
+          end
+        end
+      }
+    })
   end)
+  after_each(unmock)
 
   it("passes configuration to handler", function ()
     local handler_invoked
@@ -389,6 +413,136 @@ describe("plugin queue", function()
         return last == entry_count
       end,
       1
+    )
+  end)
+
+  it("works when time is moved forward while items are being queued", function()
+    local number_of_entries = 1000
+    local number_of_entries_processed = 0
+    now_offset = 1
+    for i = 1, number_of_entries do
+      Queue.enqueue(
+        queue_conf({
+          name = "time-forwards-adjust",
+          max_batch_size = 10,
+          max_coalescing_delay = 10,
+        }),
+        function(_, entries)
+          number_of_entries_processed = number_of_entries_processed + #entries
+          return true
+        end,
+        nil,
+        i
+      )
+      -- manipulate the current time forwards to simulate multiple time changes while entries are added to the queue
+      now_offset = now_offset + now_offset
+    end
+    helpers.wait_until(
+      function ()
+        return number_of_entries_processed == number_of_entries
+      end,
+      10
+    )
+  end)
+
+  it("works when time is moved backward while items are being queued", function()
+    -- In this test, we move the time forward while we're sending out items.  The parameters are chosen so that
+    -- time changes are likely to occur while enqueuing and while sending.
+    local number_of_entries = 100
+    local number_of_entries_processed = 0
+    now_offset = -1
+    for i = 1, number_of_entries do
+      Queue.enqueue(
+        queue_conf({
+          name = "time-backwards-adjust",
+          max_batch_size = 10,
+          max_coalescing_delay = 10,
+        }),
+        function(_, entries)
+          number_of_entries_processed = number_of_entries_processed + #entries
+          ngx.sleep(0.2)
+          return true
+        end,
+        nil,
+        i
+      )
+      ngx.sleep(0.01)
+      now_offset = now_offset + now_offset
+    end
+    helpers.wait_until(
+      function ()
+        return number_of_entries_processed == number_of_entries
+      end,
+      10
+    )
+  end)
+
+  it("works when time is moved backward while items are on the queue and not yet processed", function()
+    -- In this test, we manipulate the time backwards while we're sending out items.  The parameters are chosen so that
+    -- time changes are likely to occur while enqueuing and while sending.
+    local number_of_entries = 100
+    local last
+    local qconf = queue_conf({
+      name = "time-backwards-blocked-adjust",
+      max_batch_size = 10,
+      max_coalescing_delay = 0.1,
+    })
+    local handler = function(_, entries)
+      last = entries[#entries]
+      ngx.sleep(0.2)
+      return true
+    end
+    now_offset = -1
+    for i = 1, number_of_entries do
+      Queue.enqueue(qconf, handler, nil, i)
+      ngx.sleep(0.01)
+      now_offset = now_offset - 1000
+    end
+    helpers.wait_until(
+      function()
+        return not Queue._exists(qconf.name)
+      end,
+      10
+    )
+    Queue.enqueue(qconf, handler, nil, "last")
+    helpers.wait_until(
+      function()
+        return last == "last"
+      end,
+      10
+    )
+  end)
+
+  it("works when time is moved forward while items are on the queue and not yet processed", function()
+    local number_of_entries = 100
+    local last
+    local qconf = queue_conf({
+      name = "time-forwards-blocked-adjust",
+      max_batch_size = 10,
+      max_coalescing_delay = 0.1,
+    })
+    local handler = function(_, entries)
+      last = entries[#entries]
+      ngx.sleep(0.2)
+      return true
+    end
+    now_offset = 1
+    for i = 1, number_of_entries do
+      Queue.enqueue(qconf, handler, nil, i)
+      now_offset = now_offset + 1000
+    end
+    helpers.wait_until(
+      function()
+        return not Queue._exists(qconf.name)
+      end,
+      10
+    )
+    Queue.enqueue(qconf, handler, nil, "last")
+    helpers.wait_until(
+      function()
+        return last == "last"
+      end,
+      10
     )
   end)
 
