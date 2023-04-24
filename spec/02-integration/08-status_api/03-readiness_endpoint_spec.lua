@@ -136,7 +136,7 @@ describe("Status API - with strategy #off", function()
 
           status_client = helpers.http_client("127.0.0.1", 8100, 20000)
 
-          res = status_client:send {
+          local res = status_client:send {
             method = "GET",
             path = "/status/ready",
           }
