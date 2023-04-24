@@ -55,14 +55,37 @@
 --   previous delay is doubled to yield an exponential back-off strategy - The first retry will be made quickly,
 --   and each subsequent retry will be delayed longer.
 
-local workspaces = require "kong.workspaces"
-local semaphore = require "ngx.semaphore"
+local workspaces = require("kong.workspaces")
+local semaphore = require("ngx.semaphore")
+local table_new = require("table.new")
 
 
-local Queue = {
-  CAPACITY_WARNING_THRESHOLD = 0.8, -- Threshold to warn that the queue max_entries limit is reached
-  COALESCE_POLL_TIME = 0.5,         -- Time in seconds to poll for worker shutdown when coalescing entries
-}
+local string_format = string.format
+local rawset = rawset
+local rawget = rawget
+local assert = assert
+local select = select
+local pairs = pairs
+local type = type
+local setmetatable = setmetatable
+local semaphore_new = semaphore.new
+local math_min = math.min
+local now = ngx.now
+local sleep = ngx.sleep
+local worker_exiting = ngx.worker.exiting
+local null = ngx.null
+
+
+local Queue = {}
+
+
+-- Threshold to warn that the queue max_entries limit is reached
+local CAPACITY_WARNING_THRESHOLD = 0.8
+-- Time in seconds to poll for worker shutdown when coalescing entries
+local COALESCE_POLL_TIME = 1.0
+-- If remaining coalescing wait budget is less than this number of seconds,
+-- then just send the batch without waiting any further
+local COALESCE_MIN_TIME = 0.05
 
 
 local Queue_mt = {
@@ -71,7 +94,7 @@ local Queue_mt = {
 
 
 local function make_queue_key(name)
-  return string.format("%s.%s", workspaces.get_workspace_id(), name)
+  return string_format("%s.%s", workspaces.get_workspace_id(), name)
 end
 
 
@@ -113,12 +136,12 @@ local function get_or_create_queue(queue_conf, handler, handler_conf)
     handler_conf = handler_conf,
 
     -- semaphore to count the number of items on the queue and synchronize between enqueue and handler
-    semaphore = semaphore.new(),
+    semaphore = semaphore_new(),
 
     -- `bytes_queued` holds the number of bytes on the queue.  It will be used only if max_bytes is set.
     bytes_queued = 0,
     -- `entries` holds the actual queue items.
-    entries = {},
+    entries = table_new(32, 0),
     -- Pointers into the table that holds the actual queued entries.  `front` points to the oldest, `back` points to
     -- the newest entry.
     front = 1,
@@ -208,16 +231,19 @@ function Queue:process_once()
     end
     return
   end
-  local data_started = ngx.now()
+  local data_started = now()
 
   local entry_count = 1
 
   -- We've got our first entry from the queue.  Collect more entries until max_coalescing_delay expires or we've collected
   -- max_batch_size entries to send
-  while entry_count < self.max_batch_size and self.max_coalescing_delay > (ngx.now() - data_started) and not ngx.worker.exiting() do
-    -- Instead of waiting for the coalesce time to expire, we cap the semaphore wait to Queue.COALESCE_POLL_TIME
+  while entry_count < self.max_batch_size
+    and self.max_coalescing_delay - (now() - data_started) >= COALESCE_MIN_TIME and not worker_exiting()
+  do
+    -- Instead of waiting for the coalesce time to expire, we cap the semaphore wait to COALESCE_POLL_TIME
     -- so that we can check for worker shutdown periodically.
-    local wait_time = math.min(self.max_coalescing_delay - (ngx.now() - data_started), Queue.COALESCE_POLL_TIME)
+    local wait_time = math_min(self.max_coalescing_delay - (now() - data_started), COALESCE_POLL_TIME)
+
     ok, err = self.semaphore:wait(wait_time)
     if not ok and err ~= "timeout" then
       self:log_err("could not wait for semaphore: %s", err)
@@ -225,10 +251,9 @@ function Queue:process_once()
     elseif ok then
       entry_count = entry_count + 1
     end
-    ngx.update_time()
   end
 
-  local start_time = ngx.now()
+  local start_time = now()
   local retry_count = 0
   while true do
     self:log_debug("passing %d entries to handler", entry_count)
@@ -242,8 +267,7 @@ function Queue:process_once()
       self:log_err("handler returned falsy value but no error information")
     end
 
-    ngx.update_time()
-    if (ngx.now() - start_time) > self.max_retry_time then
+    if (now() - start_time) > self.max_retry_time then
       self:log_err(
         "could not send entries, giving up after %d retries.  %d queue entries were lost",
         retry_count, entry_count)
@@ -255,7 +279,7 @@ function Queue:process_once()
     -- Delay before retrying.  The delay time is calculated by multiplying the configured initial_retry_delay with
     -- 2 to the power of the number of retries, creating an exponential increase over the course of each retry.
     -- The maximum time between retries is capped by the max_retry_delay configuration parameter.
-    ngx.sleep(math.min(self.max_retry_delay, 2^retry_count * self.initial_retry_delay))
+    sleep(math_min(self.max_retry_delay, 2 ^ retry_count * self.initial_retry_delay))
     retry_count = retry_count + 1
   end
 
@@ -274,23 +298,28 @@ end
 -- to their new locations.  The conversion is silently done here, as we're already warning about the legacy
 -- parameters being used when validating each plugin's configuration.
 function Queue.get_params(config)
-  local queue_config = config.queue or {}
-  if (config.queue_size or ngx.null) ~= ngx.null and config.queue_size ~= 1 then
+  local queue_config = config.queue or table_new(0, 5)
+  if (config.queue_size or null) ~= null and config.queue_size ~= 1 then
     queue_config.max_batch_size = config.queue_size
   end
-  if (config.flush_timeout or ngx.null) ~= ngx.null and config.flush_timeout ~= 2 then
+
+  if (config.flush_timeout or null) ~= null and config.flush_timeout ~= 2 then
     queue_config.max_coalescing_delay = config.flush_timeout
   end
+
   -- Queue related opentelemetry plugin parameters
-  if (config.batch_span_count or ngx.null) ~= ngx.null and config.batch_span_count ~= 200 then
+  if (config.batch_span_count or null) ~= null and config.batch_span_count ~= 200 then
     queue_config.max_batch_size = config.batch_span_count
   end
-  if (config.batch_flush_delay or ngx.null) ~= ngx.null and config.batch_flush_delay ~= 3 then
+
+  if (config.batch_flush_delay or null) ~= null and config.batch_flush_delay ~= 3 then
     queue_config.max_coalescing_delay = config.batch_flush_delay
   end
+
   if not queue_config.name then
     queue_config.name = kong.plugin.get_id()
   end
+
   return queue_config
 end
 
@@ -305,9 +334,9 @@ local function enqueue(self, entry)
     return nil, "entry must be a non-nil Lua value"
   end
 
-  if self:count() >= self.max_entries * Queue.CAPACITY_WARNING_THRESHOLD then
+  if self:count() >= self.max_entries * CAPACITY_WARNING_THRESHOLD then
     if not self.warned then
-      self:log_warn('queue at %s%% capacity', Queue.CAPACITY_WARNING_THRESHOLD * 100)
+      self:log_warn('queue at %s%% capacity', CAPACITY_WARNING_THRESHOLD * 100)
       self.warned = true
     end
   else
