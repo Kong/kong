@@ -67,6 +67,11 @@ return {
             default = false,
             required = true,
           }},
+          { ignore_uri_case = {
+            type = "boolean",
+            default = false,
+            required = false,
+          }},
           { storage_ttl = {
             type = "integer",
           }},

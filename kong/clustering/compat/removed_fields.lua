@@ -135,6 +135,9 @@ return {
     proxy_cache = {
       "ignore_uri_case",
     },
+    proxy_cache_advanced = {
+      "ignore_uri_case",
+    },
     opentelemetry = {
       "http_response_header_for_traceid",
       "queue",

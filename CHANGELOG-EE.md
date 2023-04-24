@@ -19,6 +19,7 @@
 * Support the plugin `ldap-auth-advanced` setting the groups to an empty array when the groups is not empty. [FTI-4730](https://konghq.atlassian.net/browse/FTI-4730)
 * Websocket requests generate balancer spans when tracing is enabled. [KAG-1255](https://konghq.atlassian.net/browse/KAG-1255)
 * Sending analytics to Konnect SaaS from Kong DB-less mode (in addition to DP mode) is now supported [MA-1579](https://konghq.atlassian.net/browse/MA-1579)
+* Remove email field from developer registration response. [FTI-2722](https://konghq.atlassian.net/browse/FTI-2722)
 
 ## Plugins
 
@@ -32,10 +33,11 @@
 
 * Request Transformer Advanced
   * The plugin now honors the following configuration parameters: untrusted_lua, untrusted_lua_sandbox_requires, untrusted_lua_sandbox_environment that make Request Transformer Advanced behave according to what is documented in the Kong Gateway configuration reference for such properties. These apply to Advanced templates (Lua expressions). (KAG-890)[https://konghq.atlassian.net/browse/KAG-890]
+* Request Validator:
+  * Errors are now logged for validation failures. [FTI-2465](https://konghq.atlassian.net/browse/FTI-2465)
 * Proxy Cache Advanced:
   * Add wildcard and parameter match support for content_type [FTI-1131](https://konghq.atlassian.net/browse/FTI-1131)
-* Rate Limiting Advanced:
-  * cp should not create namespace or do sync. [FTI-4960](https://konghq.atlassian.net/browse/FTI-4960)
+  * add `ignore_uri_case` to configuring cache-key uri to be handled as lowercase [#10453](https://github.com/Kong/kong/pull/10453)
 
 ### Fixes
 
@@ -45,9 +47,16 @@
 
 * Fixed an issue changing the vault name throws an error. [KAG-1070](https://konghq.atlassian.net/browse/KAG-1070)
 
+* Rate Limiting Advanced:
+  * cp should not create namespace or do sync. [FTI-4960](https://konghq.atlassian.net/browse/FTI-4960)
+
 * Ldap-auth-advanced
   * The plugin now returns a 403 when a user isn't in the authorized groups and does authentication before authorization.
     [FTI-4955](https://github.com/Kong/kong-ee/pull/5098)
+
+* Rate Limiting Advanced:
+  * Fix a bug where the rl cluster_events broadcast the wrong data in traditional cluster mode.
+    [FTI-5014](https://konghq.atlassian.net/browse/FTI-5014)
 
 # TEMPLATE
 

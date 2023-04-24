@@ -150,6 +150,12 @@ for _, policy in ipairs({"memory", "redis"}) do
       local route19 = assert(bp.routes:insert({
         hosts = { "route-19.com" },
       }))
+      local route20 = assert(bp.routes:insert {
+        hosts = { "route-20.com" },
+      })
+      local route21 = assert(bp.routes:insert {
+        hosts = { "route-21.com" },
+      })
 
       local consumer1 = assert(bp.consumers:insert {
         username = "bob",
@@ -345,6 +351,30 @@ for _, policy in ipairs({"memory", "redis"}) do
         },
       })
 
+      assert(bp.plugins:insert {
+        name = "proxy-cache-advanced",
+        route = { id = route20.id },
+        config = {
+          strategy = policy,
+          response_code = {404},
+          ignore_uri_case = true,
+          content_type = { "text/plain", "application/json" },
+          [policy] = policy_config,
+        },
+      })
+
+      assert(bp.plugins:insert {
+        name = "proxy-cache-advanced",
+        route = { id = route21.id },
+        config = {
+          strategy = policy,
+          response_code = {404},
+          ignore_uri_case = false,
+          content_type = { "text/plain", "application/json" },
+          [policy] = policy_config,
+        },
+      })
+
       assert(helpers.start_kong({
         plugins = "bundled,proxy-cache-advanced",
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -440,6 +470,73 @@ for _, policy in ipairs({"memory", "redis"}) do
         assert.res_status(200, res)
         assert.same("application/xml", res.headers["Content-Type"])
         assert.same("Bypass", res.headers["X-Cache-Status"])
+      end)
+
+      it("ignore uri case in cache_key", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/ignore-case/kong",
+          headers = {
+            host = "route-20.com",
+          },
+        })
+
+        local body1 = assert.res_status(404, res)
+        assert.same("Miss", res.headers["X-Cache-Status"])
+
+        local cache_key1 = res.headers["X-Cache-Key"]
+        assert.matches("^[%w%d]+$", cache_key1)
+        assert.equals(64, #cache_key1)
+
+        wait_until_key_in_cache(cache_key1)
+
+        local res = client:send {
+          method = "GET",
+          path = "/ignore-case/KONG",
+          headers = {
+            host = "route-20.com",
+          },
+        }
+
+        local body2 = assert.res_status(404, res)
+        assert.same("Hit", res.headers["X-Cache-Status"])
+        local cache_key2 = res.headers["X-Cache-Key"]
+        assert.same(cache_key1, cache_key2)
+
+        assert.same(body1, body2)
+      end)
+
+      it("acknowledge uri case in cache_key", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/acknowledge-case/kong",
+          headers = {
+            host = "route-21.com",
+          },
+        })
+
+        assert.res_status(404, res)
+        local x_cache_status = assert.response(res).has_header("X-Cache-Status")
+        assert.same("Miss", x_cache_status)
+
+        local cache_key1 = res.headers["X-Cache-Key"]
+        assert.matches("^[%w%d]+$", cache_key1)
+        assert.equals(64, #cache_key1)
+
+        wait_until_key_in_cache(cache_key1)
+
+        res = assert(client:send {
+          method = "GET",
+          path = "/acknowledge-case/KONG",
+          headers = {
+            host = "route-21.com",
+          },
+        })
+
+        x_cache_status = assert.response(res).has_header("X-Cache-Status")
+        local cache_key2 = assert.response(res).has_header("X-Cache-Key")
+        assert.same("Miss", x_cache_status)
+        assert.not_same(cache_key1, cache_key2)
       end)
     end)
 

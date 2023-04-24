@@ -905,8 +905,13 @@ for _, strategy in strategies() do
 
           it("old namespace is cleared after namespace update", function()
             helpers.clean_logfile("node1/logs/error.log")
+            helpers.clean_logfile("node2/logs/error.log")
 
-            local res = assert(helpers.proxy_client():send {
+            -- requests on node1 and node2 to create the namespace
+            -- as we create the plugin by using `helpers.get_db_utils`
+            -- which will not trigger worker_events to create the namespace
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
               method = "GET",
               path = "/get",
               headers = {
@@ -914,6 +919,18 @@ for _, strategy in strategies() do
               }
             })
             assert.res_status(200, res)
+            proxy_client:close()
+
+            proxy_client = helpers.proxy_client(nil, 9100)
+            local res = assert(proxy_client:send {
+              method = "GET",
+              path = "/get",
+              headers = {
+                ["Host"] = "test17.com",
+              }
+            })
+            assert.res_status(200, res)
+            proxy_client:close()
 
             -- PATCH the plugin/namespace
             local res = assert(helpers.admin_client():send {
@@ -929,7 +946,22 @@ for _, strategy in strategies() do
               }
             })
             assert.res_status(200, res)
-            assert.logfile("node1/logs/error.log").has.line("clearing old namespace Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 30)
+
+            assert.logfile("node1/logs/error.log").has.no.line("[error]", true)
+            assert.logfile("node2/logs/error.log").has.no.line("[error]", true)
+
+            helpers.pwait_until(function()
+              assert.logfile("node1/logs/error.log").has.line("clearing old namespace Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 30)
+            end, 60)
+            helpers.pwait_until(function()
+              assert.logfile("node1/logs/error.log").has.line("attempting to add namespace new-ns", true, 30)
+            end, 60)
+            helpers.pwait_until(function()
+              assert.logfile("node2/logs/error.log").has.line("clearing old namespace Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 30)
+            end, 60)
+            helpers.pwait_until(function()
+              assert.logfile("node2/logs/error.log").has.line("attempting to add namespace new-ns", true, 30)
+            end, 60)
           end)
 
           it("we are NOT leaking any timers after DELETE", function()
@@ -972,12 +1004,14 @@ for _, strategy in strategies() do
             })
             assert.res_status(204, res)
 
+            assert.logfile("node1/logs/error.log").has.no.line("[error]", true)
+            assert.logfile("node2/logs/error.log").has.no.line("[error]", true)
             --[= flaky on CI/CD but succeed locally
             helpers.pwait_until(function()
               assert.logfile("node1/logs/error.log").has.line("killing 046F4FC717A147C2A446A4BEA763CF1E", true, 20)
             end, 60)
             helpers.pwait_until(function()
-              assert.logfile("node2/logs/error.log").has.no.line("killing 046F4FC717A147C2A446A4BEA763CF1E", true, 20)
+              assert.logfile("node2/logs/error.log").has.line("killing 046F4FC717A147C2A446A4BEA763CF1E", true, 20)
             end, 60)
             --]=]
           end)
@@ -1039,6 +1073,15 @@ for _, strategy in strategies() do
 
             -- Wait to check for the CREATED plugin with the datastore
             ngx_sleep(2)
+
+            assert.logfile("node1/logs/error.log").has.no.line("[error]", true)
+            assert.logfile("node2/logs/error.log").has.no.line("[error]", true)
+            helpers.pwait_until(function()
+              assert.logfile("node1/logs/error.log").has.line("attempting to add namespace Ek1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 30)
+            end, 60)
+            helpers.pwait_until(function()
+              assert.logfile("node2/logs/error.log").has.line("attempting to add namespace Ek1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 30)
+            end, 60)
 
             local res = assert(helpers.proxy_client():send {
               method = "GET",

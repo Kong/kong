@@ -19,6 +19,7 @@ local DENY_PARAM_MESSAGE = "request param doesn't conform to schema"
 
 local kong = kong
 local json_decode = cjson.decode
+local json_encode = cjson.encode
 local ngx_req_read_body = ngx.req.read_body
 local ngx_req_get_body_data = ngx.req.get_body_data
 local req_get_headers = ngx.req.get_headers
@@ -323,6 +324,16 @@ local RequestValidator = {
 }
 
 
+local function error_handler(msg, data)
+
+  local msg_table = { message = msg, data = data, }
+
+  kong.ctx.plugin.failure_message = msg_table
+
+  return kong.response.exit(400, msg_table)
+end
+
+
 function RequestValidator:access(conf)
   -- validate parameters
   clear_environment()
@@ -330,13 +341,12 @@ function RequestValidator:access(conf)
     local ok, err, data = validate_parameters(parameter["in"], parameter)
     if not ok then
       if err and conf.verbose_response then
-        return kong.response.exit(400, {
-            message = fmt("%s '%s' validation failed, [error] %s",
-                          parameter["in"], parameter.name, err),
-            data = data,
-        })
+        local message = fmt("%s '%s' validation failed, [error] %s",
+                            parameter["in"], parameter.name, err)
+        return error_handler(message, data)
+      else
+        return error_handler(DENY_PARAM_MESSAGE)
       end
-      return kong.response.exit(400, { message = DENY_PARAM_MESSAGE })
     end
   end
 
@@ -344,9 +354,10 @@ function RequestValidator:access(conf)
     local content_type = kong.request.get_header("content-type")
     if not content_type_allowed(conf, content_type) then
       if conf.verbose_response then
-        return kong.response.exit(400, { message = DENY_BODY_MESSAGE_CT })
+        return error_handler(DENY_BODY_MESSAGE_CT)
+      else
+        return error_handler(DENY_BODY_MESSAGE)
       end
-      return kong.response.exit(400, { message = DENY_BODY_MESSAGE })
     end
 
     if not string_find(content_type, "application/json") then
@@ -359,19 +370,29 @@ function RequestValidator:access(conf)
 
     local body, err = get_req_body_json()
     if not body then
-      return kong.response.exit(400, err)
+      return error_handler(err)
     end
 
     -- try to validate body against schema
     local ok, err = validator(body)
     if not ok then
       if err and conf.verbose_response then
-        return kong.response.exit(400, { message = err })
+        return error_handler(err)
+      else
+        return error_handler(DENY_BODY_MESSAGE)
       end
-      return kong.response.exit(400, { message = DENY_BODY_MESSAGE })
     end
   end
 
+end
+
+function RequestValidator:log(conf)
+  local msg_table = kong.ctx.plugin.failure_message
+
+  if msg_table then
+    local log_msg = json_encode(msg_table)
+    kong.log.debug("validation failed: ", log_msg)
+  end
 end
 
 return RequestValidator
