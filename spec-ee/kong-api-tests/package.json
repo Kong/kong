@@ -38,7 +38,7 @@
     "@types/mocha": "^10.0.1",
     "@types/node": "^18.15.10",
     "@types/uuid": "^9.0.1",
-    "@typescript-eslint/eslint-plugin": "^5.58.0",
+    "@typescript-eslint/eslint-plugin": "^5.59.0",
     "@typescript-eslint/parser": "^5.59.0",
     "eslint": "^8.38.0",
     "eslint-config-prettier": "^8.7.0",
