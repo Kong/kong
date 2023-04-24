@@ -211,16 +211,6 @@ local function csv(s)
 end
 
 
-local function try_incr_rebuilds_counter(key)
-  assert(key == ROUTERS_REBUILD_COUNTER_KEY or
-         key == PLUGINS_REBUILD_COUNTER_KEY)
-
-  local _, err = kong_shm:incr(key, 1, 0)
-  if err then
-    log(ERR, "failed to increase router/plugins rebuild counter: ", err)
-  end
-end
-
 -- @param name "router" or "plugins_iterator"
 -- @param callback A function that will update the router or plugins_iterator
 -- @param version target version
@@ -414,7 +404,10 @@ local function new_router(version)
     return nil, "could not create router: " .. err
   end
 
-  try_incr_rebuilds_counter(ROUTERS_REBUILD_COUNTER_KEY)
+  local _, err = kong_shm:incr(ROUTERS_REBUILD_COUNTER_KEY, 1, 0)
+  if err then
+    log(ERR, "failed to increase router/plugins rebuild counter: ", err)
+  end
 
   return new_router
 end
@@ -506,7 +499,11 @@ do
       return nil, err
     end
 
-    try_incr_rebuilds_counter(PLUGINS_REBUILD_COUNTER_KEY)
+    local _, err = kong_shm:incr(PLUGINS_REBUILD_COUNTER_KEY, 1, 0)
+    if err then
+      log(ERR, "failed to increase router/plugins rebuild counter: ", err)
+    end
+
     return plugin_iterator
   end
 end
