@@ -137,7 +137,21 @@ for _, strategy in helpers.each_strategy() do
 
         -- recovery state between tests
         assert(start_kong_cp())
-        ngx.sleep(5)
+
+        helpers.wait_until(function()
+          local http_client = helpers.http_client('127.0.0.1', dp_status_port)
+
+          local res = http_client:send({
+            method = "GET",
+            path = "/status/ready",
+          })
+
+          local status = res and res.status
+          http_client:close()
+          if status == 200 then
+            return true
+          end
+        end, 10)
 
       end)
     end)
