@@ -16,6 +16,9 @@
   Serverless Functions plugins: it does not provide access to the global kong cache. Access to
   certain fields in kong.configuration has also been restricted.
   [#10417](https://github.com/Kong/kong/pull/10417)
+- **Opentelemetry**: plugin version has been updated to match Kong's version
+  [#10646](https://github.com/Kong/kong/pull/10646)
+
 
 ### Additions
 
@@ -80,6 +83,8 @@
 - **ACME**: acme plugin now supports configuring `namespace` for redis storage
   which is default to empty string for backward compatibility.
   [#10562](https://github.com/Kong/kong/pull/10562)
+- **AWS Lambda**: add a new field `disable_https` to support scheme config on lambda service api endpoint
+  [#9799](https://github.com/Kong/kong/pull/9799)
 - **OpenTelemetry**: spans are now correctly correlated in downstream Datadog traces.
   [10531](https://github.com/Kong/kong/pull/10531)
 - **OpenTelemetry**: add `header_type` field in OpenTelemetry plugin.
@@ -93,6 +98,8 @@
   [#9903](https://github.com/Kong/kong/pull/9903)
 
 ### Fixes
+- **gRPC gateway**: `null` in the JSON payload caused an uncaught exception to be thrown during pb.encode.
+  [#10687](https://github.com/Kong/kong/pull/10687)
 
 #### Core
 
@@ -118,6 +125,8 @@
 - Fix an issue where sorting function for traditional router sources/destinations lead to "invalid order
   function for sorting" error.
   [#10514](https://github.com/Kong/kong/pull/10514)
+- Fix a typo of mlcache option `shm_set_tries`.
+  [#10712](https://github.com/Kong/kong/pull/10712)
 
 #### Admin API
 
@@ -133,6 +142,8 @@
   [#10327](https://github.com/Kong/kong/pull/10327)
 - **OAuth2**: fix an issue that OAuth2 token was being cached to nil while access to the wrong service first.
   [#10522](https://github.com/Kong/kong/pull/10522)
+- **OpenTelemetry**: fix an issue that reconfigure of OpenTelemetry does not take effect.
+  [#10172](https://github.com/Kong/kong/pull/10172)
 
 #### PDK
 

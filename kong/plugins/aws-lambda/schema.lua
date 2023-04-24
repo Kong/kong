@@ -58,6 +58,7 @@ return {
         } },
         { host = typedefs.host },
         { port = typedefs.port { default = 443 }, },
+        { disable_https = { type = "boolean", default = false }, },
         { unhandled_status = {
           type = "integer",
           between = { 100, 999 },

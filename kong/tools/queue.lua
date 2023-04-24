@@ -21,16 +21,17 @@
 --     return true
 --   end
 --
---   local handler_conf = {...}  -- configuration for queue handler
---   local queue_conf =          -- configuration for the queue itself (defaults shown unless noted)
+--   local handler_conf = {...}      -- configuration for queue handler
+--   local queue_conf =              -- configuration for the queue itself (defaults shown unless noted)
 --     {
---       name = "example",       -- name of the queue (required)
---       max_batch_size = 10,    -- maximum number of entries in one batch (default 1)
---       max_coalescing_delay = 1,          -- maximum number of seconds after first entry before a batch is sent
---       max_entries = 10,          -- maximum number of entries on the queue (default 10000)
---       max_bytes = 100,  -- maximum number of bytes on the queue (default nil)
---       max_retry_time = 60,    -- maximum number of seconds before a failed batch is dropped
---       max_retry_delay = 60,   -- maximum delay between send attempts, caps exponential retry
+--       name = "example",           -- name of the queue (required)
+--       max_batch_size = 10,        -- maximum number of entries in one batch (default 1)
+--       max_coalescing_delay = 1,   -- maximum number of seconds after first entry before a batch is sent
+--       max_entries = 10,           -- maximum number of entries on the queue (default 10000)
+--       max_bytes = 100,            -- maximum number of bytes on the queue (default nil)
+--       initial_retry_delay = 0.01, -- initial delay when retrying a failed batch, doubled for each subsequent retry
+--       max_retry_time = 60,        -- maximum number of seconds before a failed batch is dropped
+--       max_retry_delay = 60,       -- maximum delay between send attempts, caps exponential retry
 --     }
 --
 --   Queue.enqueue(queue_conf, handler, handler_conf, "Some value")
@@ -49,21 +50,18 @@
 --   message will be logged if an attempt is made to queue a non-string entry.
 -- * When the `handler` function does not return a true value for a batch, it is retried for up to
 --   `max_retry_time` seconds before the batch is deleted and an error is logged.  Retries are organized
---   by the queue library using an exponential back-off algorithm with the maximum time between retries
---   set to `max_retry_delay` seconds.
+--   by the queue library with the initial delay before retrying being defined by `initial_retry_delay` and
+--   the maximum time between retries defined by `max_retry_delay` seconds.  For each subsequent retry, the
+--   previous delay is doubled to yield an exponential back-off strategy - The first retry will be made quickly,
+--   and each subsequent retry will be delayed longer.
 
 local workspaces = require "kong.workspaces"
 local semaphore = require "ngx.semaphore"
 
 
-local function now()
-  ngx.update_time()
-  return ngx.now()
-end
-
-
 local Queue = {
   CAPACITY_WARNING_THRESHOLD = 0.8, -- Threshold to warn that the queue max_entries limit is reached
+  COALESCE_POLL_TIME = 0.5,         -- Time in seconds to poll for worker shutdown when coalescing entries
 }
 
 
@@ -98,7 +96,7 @@ end
 -- @return table: a Queue object.
 local function get_or_create_queue(queue_conf, handler, handler_conf)
 
-  local name = queue_conf.name
+  local name = assert(queue_conf.name)
 
   local queue = queues[name]
   if queue then
@@ -210,25 +208,27 @@ function Queue:process_once()
     end
     return
   end
-  local data_started = now()
+  local data_started = ngx.now()
 
   local entry_count = 1
 
   -- We've got our first entry from the queue.  Collect more entries until max_coalescing_delay expires or we've collected
   -- max_batch_size entries to send
-  while entry_count < self.max_batch_size and (now() - data_started) < self.max_coalescing_delay and not ngx.worker.exiting() do
-    ok, err = self.semaphore:wait(((data_started + self.max_coalescing_delay) - now()) / 1000)
-    if not ok and err == "timeout" then
+  while entry_count < self.max_batch_size and self.max_coalescing_delay > (ngx.now() - data_started) and not ngx.worker.exiting() do
+    -- Instead of waiting for the coalesce time to expire, we cap the semaphore wait to Queue.COALESCE_POLL_TIME
+    -- so that we can check for worker shutdown periodically.
+    local wait_time = math.min(self.max_coalescing_delay - (ngx.now() - data_started), Queue.COALESCE_POLL_TIME)
+    ok, err = self.semaphore:wait(wait_time)
+    if not ok and err ~= "timeout" then
+      self:log_err("could not wait for semaphore: %s", err)
       break
     elseif ok then
       entry_count = entry_count + 1
-    else
-      self:log_err("could not wait for semaphore: %s", err)
-      break
     end
+    ngx.update_time()
   end
 
-  local start_time = now()
+  local start_time = ngx.now()
   local retry_count = 0
   while true do
     self:log_debug("passing %d entries to handler", entry_count)
@@ -242,7 +242,8 @@ function Queue:process_once()
       self:log_err("handler returned falsy value but no error information")
     end
 
-    if (now() - start_time) > self.max_retry_time then
+    ngx.update_time()
+    if (ngx.now() - start_time) > self.max_retry_time then
       self:log_err(
         "could not send entries, giving up after %d retries.  %d queue entries were lost",
         retry_count, entry_count)
@@ -270,41 +271,23 @@ end
 
 
 -- This function retrieves the queue parameters from a plugin configuration, converting legacy parameters
--- to their new locations
+-- to their new locations.  The conversion is silently done here, as we're already warning about the legacy
+-- parameters being used when validating each plugin's configuration.
 function Queue.get_params(config)
   local queue_config = config.queue or {}
-  -- Common queue related legacy parameters
-  if config.retry_count and config.retry_count ~= ngx.null then
-    kong.log.warn(string.format(
-      "deprecated `retry_count` parameter in plugin %s ignored",
-      kong.plugin.get_id()))
-  end
-  if config.queue_size and config.queue_size ~= 1 and config.queue_size ~= ngx.null then
-    kong.log.warn(string.format(
-      "deprecated `queue_size` parameter in plugin %s converted to `queue.max_batch_size`",
-      kong.plugin.get_id()))
+  if (config.queue_size or ngx.null) ~= ngx.null and config.queue_size ~= 1 then
     queue_config.max_batch_size = config.queue_size
   end
-  if config.flush_timeout and config.flush_timeout ~= 2 and config.flush_timeout ~= ngx.null then
-    kong.log.warn(string.format(
-      "deprecated `flush_timeout` parameter in plugin %s converted to `queue.max_coalescing_delay`",
-      kong.plugin.get_id()))
+  if (config.flush_timeout or ngx.null) ~= ngx.null and config.flush_timeout ~= 2 then
     queue_config.max_coalescing_delay = config.flush_timeout
   end
   -- Queue related opentelemetry plugin parameters
-  if config.batch_span_count and config.batch_span_count ~= 200 and config.batch_span_count ~= ngx.null then
-    kong.log.warn(string.format(
-      "deprecated `batch_span_count` parameter in plugin %s converted to `queue.max_batch_size`",
-      kong.plugin.get_id()))
+  if (config.batch_span_count or ngx.null) ~= ngx.null and config.batch_span_count ~= 200 then
     queue_config.max_batch_size = config.batch_span_count
   end
-  if config.batch_flush_delay and config.batch_flush_delay ~= 3 and config.batch_flush_delay ~= ngx.null then
-    kong.log.warn(string.format(
-      "deprecated `batch_flush_delay` parameter in plugin %s converted to `queue.max_coalescing_delay`",
-      kong.plugin.get_id()))
+  if (config.batch_flush_delay or ngx.null) ~= ngx.null and config.batch_flush_delay ~= 3 then
     queue_config.max_coalescing_delay = config.batch_flush_delay
   end
-
   if not queue_config.name then
     queue_config.name = kong.plugin.get_id()
   end

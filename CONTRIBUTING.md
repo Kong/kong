@@ -448,7 +448,8 @@ practices:
   end
   ```
 
-- Cache the globals used by your hot code paths
+- Cache the globals used by your hot code paths,
+  the cached name should be the original name replaced `.` by `_`
 
   ```lua
   -- bad
@@ -457,9 +458,23 @@ practices:
   end
 
   -- good
-  local random = math.random
+  local math_random = math.random
   for i = 1, 100 do
-    t[i] = random()
+    t[i] = math_random()
+  end
+  ```
+
+  For OpenResty built-in APIs we may drop `ngx.` in the localized version
+
+  ```lua
+  local req_get_post_args = ngx.req.get_post_args
+  ```
+
+  Non-hot paths are localization optional
+
+  ```lua
+  if err then
+    ngx.log(ngx.ERR, ...) -- this is fine as error condition is not on the hot path
   end
   ```
 

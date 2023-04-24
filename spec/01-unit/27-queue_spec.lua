@@ -2,9 +2,16 @@ local Queue = require "kong.tools.queue"
 local helpers = require "spec.helpers"
 local timerng = require "resty.timerng"
 local queue_schema = require "kong.tools.queue_schema"
+local queue_num = 1
 
 local function queue_conf(conf)
   local defaulted_conf = {}
+  if conf.name then
+    defaulted_conf.name = conf.name
+  else
+    defaulted_conf.name = "test-" .. tostring(queue_num)
+    queue_num = queue_num + 1
+  end
   for _, field in ipairs(queue_schema.fields) do
     for name, attrs in pairs(field) do
       defaulted_conf[name] = conf[name] or attrs.default
@@ -56,13 +63,13 @@ describe("plugin queue", function()
   end)
 
   it("passes configuration to handler", function ()
-    local handler_invoked = 0
+    local handler_invoked
     local configuration_sent = { foo = "bar" }
     local configuration_received
     Queue.enqueue(
       queue_conf({ name = "handler-configuration" }),
       function (conf)
-        handler_invoked = handler_invoked + 1
+        handler_invoked = true
         configuration_received = conf
         return true
       end,
@@ -72,14 +79,16 @@ describe("plugin queue", function()
     wait_until_queue_done("handler-configuration")
     helpers.wait_until(
       function ()
-        return handler_invoked == 1
+        if handler_invoked then
+          assert.same(configuration_sent, configuration_received)
+          return true
+        end
       end,
-      1)
-    assert.same(configuration_sent, configuration_received)
+      10)
   end)
 
   it("configuration changes are observed for older entries", function ()
-    local handler_invoked = 0
+    local handler_invoked
     local first_configuration_sent = { foo = "bar" }
     local second_configuration_sent = { foo = "bar" }
     local configuration_received
@@ -92,7 +101,7 @@ describe("plugin queue", function()
           max_coalescing_delay = 0.1
         }),
         function (c, entries)
-          handler_invoked = handler_invoked + 1
+          handler_invoked = true
           configuration_received = c
           number_of_entries_received = #entries
           return true
@@ -106,11 +115,13 @@ describe("plugin queue", function()
     wait_until_queue_done("handler-configuration-change")
     helpers.wait_until(
       function ()
-        return handler_invoked == 1
+        if handler_invoked then
+          assert.same(configuration_received, second_configuration_sent)
+          assert.equals(2, number_of_entries_received)
+          return true
+        end
       end,
-      1)
-    assert.same(configuration_received, second_configuration_sent)
-    assert.equals(2, number_of_entries_received)
+      10)
   end)
 
   it("does not batch messages when `max_batch_size` is 1", function()
@@ -161,6 +172,35 @@ describe("plugin queue", function()
     assert.equals(3, process_count)
     assert.equals("One", first_entry)
     assert.equals("Five", last_entry)
+  end)
+
+  it("observes the `max_coalescing_delay` parameter", function()
+    local process_count = 0
+    local first_entry, last_entry
+    local function enqueue(entry)
+      Queue.enqueue(
+        queue_conf({
+          name = "batch",
+          max_batch_size = 2,
+          max_coalescing_delay = 3,
+        }),
+        function(_, batch)
+          first_entry = first_entry or batch[1]
+          last_entry = batch[#batch]
+          process_count = process_count + 1
+          return true
+        end,
+        nil,
+        entry
+      )
+    end
+    enqueue("One")
+    ngx.sleep(1)
+    enqueue("Two")
+    wait_until_queue_done("batch")
+    assert.equals(1, process_count)
+    assert.equals("One", first_entry)
+    assert.equals("Two", last_entry)
   end)
 
   it("retries sending messages", function()
@@ -359,11 +399,8 @@ describe("plugin queue", function()
       flush_timeout = 345,
     }
     local converted_parameters = Queue.get_params(legacy_parameters)
-    assert.match_re(log_messages, 'deprecated `retry_count` parameter in plugin .* ignored')
     assert.equals(legacy_parameters.queue_size, converted_parameters.max_batch_size)
-    assert.match_re(log_messages, 'deprecated `queue_size` parameter in plugin .* converted to `queue.max_batch_size`')
     assert.equals(legacy_parameters.flush_timeout, converted_parameters.max_coalescing_delay)
-    assert.match_re(log_messages, 'deprecated `flush_timeout` parameter in plugin .* converted to `queue.max_coalescing_delay`')
   end)
 
   it("converts opentelemetry plugin legacy queue parameters", function()
@@ -373,9 +410,7 @@ describe("plugin queue", function()
     }
     local converted_parameters = Queue.get_params(legacy_parameters)
     assert.equals(legacy_parameters.batch_span_count, converted_parameters.max_batch_size)
-    assert.match_re(log_messages, 'deprecated `batch_span_count` parameter in plugin .* converted to `queue.max_batch_size`')
     assert.equals(legacy_parameters.batch_flush_delay, converted_parameters.max_coalescing_delay)
-    assert.match_re(log_messages, 'deprecated `batch_flush_delay` parameter in plugin .* converted to `queue.max_coalescing_delay`')
   end)
 
   it("defaulted legacy parameters are ignored when converting", function()
