@@ -677,9 +677,8 @@ return {
           description = [[
             A simple way to inspect the readiness of the configuration.
 
-            An instance is considered *ready* if it can handle requests, with a 
-            high likelihood of delivering the expected response, once it has
-            loaded the configuration. 
+            An instance is considered *ready* if it has received a valid configuration and
+            is ready to handle incoming requests.
 
             If a Kong instance is running in DB-less mode or as Hybrid mode Data Plane,
             it returns `200 OK` if each worker is ready with the valid router and 
