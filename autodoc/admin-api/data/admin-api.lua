@@ -681,7 +681,7 @@ return {
             high likelihood of delivering the expected response, once it has
             loaded the configuration. 
 
-            If a Kong instance is running in DB-less mode or as a data plane,
+            If a Kong instance is running in DB-less mode or as Hybrid mode Data Plane,
             it returns `200 OK` if each worker is ready with the valid router and 
             plugins iterator, and the database is reachable.
             further necessary to ensure that the database is connectable before
