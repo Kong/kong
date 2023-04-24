@@ -50,7 +50,7 @@ local function extract_range(status_code_list, range)
     local range_result, err = match(range, constants.REGEX_SPLIT_STATUS_CODES_BY_DASH, "oj")
 
     if err then
-      kong.log.error(err)
+      kong.log.err(err)
       return
     end
     ranges[range] = { range_result[START_RANGE_IDX], range_result[END_RANGE_IDX] }

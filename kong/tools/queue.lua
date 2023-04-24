@@ -278,41 +278,23 @@ end
 
 
 -- This function retrieves the queue parameters from a plugin configuration, converting legacy parameters
--- to their new locations
+-- to their new locations.  The conversion is silently done here, as we're already warning about the legacy
+-- parameters being used when validating each plugin's configuration.
 function Queue.get_params(config)
   local queue_config = config.queue or {}
-  -- Common queue related legacy parameters
-  if config.retry_count and config.retry_count ~= ngx.null then
-    kong.log.warn(string.format(
-      "deprecated `retry_count` parameter in plugin %s ignored",
-      kong.plugin.get_id()))
-  end
-  if config.queue_size and config.queue_size ~= 1 and config.queue_size ~= ngx.null then
-    kong.log.warn(string.format(
-      "deprecated `queue_size` parameter in plugin %s converted to `queue.max_batch_size`",
-      kong.plugin.get_id()))
+  if (config.queue_size or ngx.null) ~= ngx.null and config.queue_size ~= 1 then
     queue_config.max_batch_size = config.queue_size
   end
-  if config.flush_timeout and config.flush_timeout ~= 2 and config.flush_timeout ~= ngx.null then
-    kong.log.warn(string.format(
-      "deprecated `flush_timeout` parameter in plugin %s converted to `queue.max_coalescing_delay`",
-      kong.plugin.get_id()))
+  if (config.flush_timeout or ngx.null) ~= ngx.null and config.flush_timeout ~= 2 then
     queue_config.max_coalescing_delay = config.flush_timeout
   end
   -- Queue related opentelemetry plugin parameters
-  if config.batch_span_count and config.batch_span_count ~= 200 and config.batch_span_count ~= ngx.null then
-    kong.log.warn(string.format(
-      "deprecated `batch_span_count` parameter in plugin %s converted to `queue.max_batch_size`",
-      kong.plugin.get_id()))
+  if (config.batch_span_count or ngx.null) ~= ngx.null and config.batch_span_count ~= 200 then
     queue_config.max_batch_size = config.batch_span_count
   end
-  if config.batch_flush_delay and config.batch_flush_delay ~= 3 and config.batch_flush_delay ~= ngx.null then
-    kong.log.warn(string.format(
-      "deprecated `batch_flush_delay` parameter in plugin %s converted to `queue.max_coalescing_delay`",
-      kong.plugin.get_id()))
+  if (config.batch_flush_delay or ngx.null) ~= ngx.null and config.batch_flush_delay ~= 3 then
     queue_config.max_coalescing_delay = config.batch_flush_delay
   end
-
   if not queue_config.name then
     queue_config.name = kong.plugin.get_id()
   end

@@ -10,7 +10,7 @@ local http = require "resty.http"
 local clone = require "table.clone"
 local otlp = require "kong.plugins.opentelemetry.otlp"
 local propagation = require "kong.tracing.propagation"
-local meta = require "kong.meta"
+local kong_meta = require "kong.meta"
 
 
 local ngx = ngx
@@ -35,7 +35,7 @@ local _log_prefix = "[otel] "
 
 
 local OpenTelemetryHandler = {
-  VERSION = meta.core_version,
+  VERSION = kong_meta.core_version,
   PRIORITY = 14,
 }
 

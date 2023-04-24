@@ -134,9 +134,11 @@ local function send_entries(conf, entries)
 
   local log_server_url = fmt("%s://%s:%d%s", parsed_url.scheme, host, port, parsed_url.path)
 
+  -- EE [=[
   if parsed_url.query then
     log_server_url = log_server_url .. "?" .. parsed_url.query
   end
+  --]=]
 
   local res, err = httpc:request_uri(log_server_url, {
     method = method,

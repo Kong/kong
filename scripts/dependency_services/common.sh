@@ -11,7 +11,7 @@ KONG_ENV_DOWN_FILE=$2
 > $KONG_ENV_FILE
 > $KONG_ENV_DOWN_FILE
 
-cwd=$(realpath $(dirname $(readlink -f $BASH_SOURCE[0])))
+cwd=$(realpath $(dirname $(readlink -f ${BASH_SOURCE[0]})))
 docker_compose_file=${cwd}/docker-compose-test-services.yml
 docker_compose_project=kong
 
