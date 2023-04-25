@@ -3,7 +3,7 @@ return {
     up = [[
       DO $$
       BEGIN
-        ALTER TABLE IF EXISTS ONLY "oauth2_authorization_codes" ADD "plugin_id" TEXT;
+        ALTER TABLE IF EXISTS ONLY "oauth2_authorization_codes" ADD "plugin_id" uuid;
       EXCEPTION WHEN DUPLICATE_COLUMN THEN
         -- Do nothing, accept existing state
       END$$;
