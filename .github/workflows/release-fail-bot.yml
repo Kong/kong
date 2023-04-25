@@ -30,8 +30,6 @@ jobs:
           };
           return JSON.stringify(payload);
         result-encoding: string
-      env:
-        SLACK_CHANNEL: gateway-notifications
 
     - name: Send Slack Message
       uses: slackapi/slack-github-action@v1.23.0
