@@ -73,9 +73,12 @@ local function find_key_in_sets(keysets, kid)
     end
     -- load key with kid in set.
     local cache_key = kong.db.keys:cache_key({ kid = kid, set = { id = key_set.id } })
-    local key, key_cache_err = kong.cache:get(cache_key, nil, load_keys, cache_key)
+    local key, key_cache_err, hit_level = kong.cache:get(cache_key, nil, load_keys, cache_key)
     -- return if found
     if key and not key_cache_err then
+      if hit_level ~= 3 then
+        kong.vault.update(key)
+      end
       return key, nil
     end
   end
