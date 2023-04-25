@@ -13,7 +13,7 @@ KONG_VENV=$1
 KONG_VENV_ENV_FILE=$2
 
 # clear the file
-> $KONG_VENV_ENV_FILE
+>| $KONG_VENV_ENV_FILE
 
 # use env vars to let Fish shell happy, we will unset them later
 LUAROCKS_CONFIG="$KONG_VENV/rocks_config"
