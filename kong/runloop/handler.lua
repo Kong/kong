@@ -501,7 +501,7 @@ do
 
     local _, err = kong_shm:incr(PLUGINS_REBUILD_COUNTER_KEY, 1, 0)
     if err then
-      log(ERR, "failed to increase router/plugins rebuild counter: ", err)
+      log(ERR, "failed to increase plugins rebuild counter: ", err)
     end
 
     return plugin_iterator
