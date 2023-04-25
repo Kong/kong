@@ -1,11 +1,11 @@
 diff --git a/bundle/lua-resty-dns-0.22/lib/resty/dns/resolver.lua b/bundle/lua-resty-dns-0.22/lib/resty/dns/resolver.lua
-index a67b3c1..ec4aa28 100644
+index a67b3c1..0305485 100644
 --- a/bundle/lua-resty-dns-0.22/lib/resty/dns/resolver.lua
 +++ b/bundle/lua-resty-dns-0.22/lib/resty/dns/resolver.lua
-@@ -99,6 +99,31 @@ for i = 2, 64, 2 do
+@@ -99,6 +99,26 @@ for i = 2, 64, 2 do
      arpa_tmpl[i] = DOT_CHAR
  end
- 
+
 +local function udp_socks_close(self)
 +    if self.socks == nil then
 +        return
@@ -26,52 +26,21 @@ index a67b3c1..ec4aa28 100644
 +    self.tcp_sock:close()
 +    self.tcp_sock = nil
 +end
-+
-+local actions = {
-+    ["udp"] = udp_socks_close,
-+    ["tcp"] = tcp_socks_close,
-+}
- 
+
  function _M.new(class, opts)
      if not opts then
-@@ -161,6 +186,16 @@ function _M.new(class, opts)
+@@ -161,6 +181,14 @@ function _M.new(class, opts)
                  }, mt)
  end
- 
+
 +function _M:destroy()
 +    udp_socks_close(self)
-+    self.socks = nil
 +    tcp_socks_close(self)
-+    self.tcp_sock = nil
 +    self.cur = nil
 +    self.servers = nil
 +    self.retrans = nil
 +    self.no_recurse = nil
 +end
- 
+
  local function pick_sock(self, socks)
      local cur = self.cur
-@@ -978,5 +1013,23 @@ function _M.reverse_query(self, addr)
-                       {qtype = self.TYPE_PTR})
- end
- 
-+function _M.socks_cleanup(self, sock_typs)
-+    if type(sock_typs) ~= 'table' then
-+        return nil, "sock_typs must be an array"
-+    end
-+
-+    local opts = { sock_typs[1], sock_typs[2] }
-+    for _, typ in ipairs(opts) do
-+        if type(actions[typ]) == 'function' then
-+            actions[typ](self)
-+            if typ == 'udp' then
-+                self.socks = nil
-+
-+            else
-+                self.tcp_sock = nil
-+            end
-+        end
-+    end
-+end
- 
- return _M
