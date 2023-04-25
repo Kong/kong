@@ -533,7 +533,7 @@ function targets_M.getAddressPeer(address, cacheOnly)
   local target = address.target
   if targetExpired(target) and not cacheOnly then
     queryDns(target, cacheOnly)
-    ctx.KONG_UPSTREAM_DNS_END = get_updated_now_ms()
+    ctx.KONG_UPSTREAM_DNS_END_AT = get_updated_now_ms()
     if address.target ~= target then
       return nil, balancers.errors.ERR_DNS_UPDATED
     end
