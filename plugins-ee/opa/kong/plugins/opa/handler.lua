@@ -135,7 +135,7 @@ function OpaHandler:access(plugin_conf)
   -- build input OPA
   local opa_input = build_opa_input(plugin_conf)
   if not opa_input then
-    kong.log.error("failed to build OPA input request")
+    kong.log.err("failed to build OPA input request")
     return kong.response.exit(500, err_500_msg)
   end
 
