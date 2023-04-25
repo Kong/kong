@@ -380,23 +380,25 @@ do
       paths = rproto ~= "tcp" and rpaths or nil,
     })
 
-    bp.plugins:insert({
-      name = "post-function",
-      service = { id = service_id },
-      config = {
-        header_filter = {[[
-          local value = ngx.ctx and
-                        ngx.ctx.balancer_data and
-                        ngx.ctx.balancer_data.hash_value
-          if value == "" or value == nil then
-            value = "NONE"
-          end
-
-          ngx.header["x-balancer-hash-value"] = value
-          ngx.header["x-uri"] = ngx.var.request_uri
-        ]]},
-      },
-    })
+    if sproto ~= "tcp" and rproto ~= "udp" then
+      bp.plugins:insert({
+        name = "post-function",
+        service = { id = service_id },
+        config = {
+          header_filter = {[[
+            local value = ngx.ctx and
+                          ngx.ctx.balancer_data and
+                          ngx.ctx.balancer_data.hash_value
+            if value == "" or value == nil then
+              value = "NONE"
+            end
+  
+            ngx.header["x-balancer-hash-value"] = value
+            ngx.header["x-uri"] = ngx.var.request_uri
+          ]]},
+        },
+      })
+    end
 
     return route_host, service_id, route_id
   end

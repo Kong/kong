@@ -22,36 +22,41 @@ local ngx_DEBUG = ngx.DEBUG
 
 local function has_a_common_protocol_with_route(plugin, route)
   local plugin_prot = plugin.protocols
-  local route_prot = route.protocols
+  local protocols = route.protocols
+
+  if not protocols then
+    return true
+  end
+
   -- plugin.protocols and route.protocols are both sets provided by the schema
   -- this means that they can be iterated as over an array, and queried as a hash
   for i = 1, #plugin_prot do
-    if route_prot[plugin_prot[i]] then
+    if protocols[plugin_prot[i]] then
       return true
     end
   end
 end
 
 
-local function has_common_protocol_with_service(self, plugin, service_pk)
-  local had_at_least_one_route = false
-  for route, err, err_t in self.db.routes:each_for_service(service_pk) do
-    if not route then
-      return nil, err, err_t
-    end
+local function has_a_common_protocol_with_service(plugin, service)
+  local plugin_prot = plugin.protocols
+  local protocol = service.protocol
 
-    had_at_least_one_route = true
+  if not protocol then
+    return true
+  end
 
-    if has_a_common_protocol_with_route(plugin, route) then
+  -- plugin.protocols and route.protocols are both sets provided by the schema
+  -- this means that they can be iterated as over an array, and queried as a hash
+  for i = 1, #plugin_prot do
+    if protocol == plugin_prot[i] then
       return true
     end
   end
-
-  return not had_at_least_one_route
 end
 
-
-local function check_protocols_match(self, plugin)
+-- validate protocols
+function Plugins:validate(plugin, options)
   if type(plugin.protocols) ~= "table" then
     return true
   end
@@ -67,10 +72,10 @@ local function check_protocols_match(self, plugin)
   end
 
   if type(plugin.service) == "table" then
-    if not has_common_protocol_with_service(self, plugin, plugin.service) then
+    local service = self.db.services:select(plugin.service) -- ignore error
+    if service and not has_a_common_protocol_with_service(plugin, service) then
       local err_t = self.errors:schema_violation({
-        protocols = "must match the protocols of at least one route " ..
-                    "pointing to this Plugin's service",
+        protocols = "must match the associated service's protocol",
       })
       return nil, tostring(err_t), err_t
     end
@@ -79,35 +84,14 @@ local function check_protocols_match(self, plugin)
   return true
 end
 
-function Plugins:insert(entity, options)
-  local ok, err, err_t = check_protocols_match(self, entity)
-  if not ok then
-    return nil, err, err_t
-  end
-  return self.super.insert(self, entity, options)
-end
-
+-- insert/upsert are omitted to use the default implementation
 
 function Plugins:update(primary_key, entity, options)
   local rbw_entity = self.super.select(self, primary_key, options) -- ignore errors
   if rbw_entity then
     entity = self.schema:merge_values(entity, rbw_entity)
   end
-  local ok, err, err_t = check_protocols_match(self, entity)
-  if not ok then
-    return nil, err, err_t
-  end
-
   return self.super.update(self, primary_key, entity, options)
-end
-
-
-function Plugins:upsert(primary_key, entity, options)
-  local ok, err, err_t = check_protocols_match(self, entity)
-  if not ok then
-    return nil, err, err_t
-  end
-  return self.super.upsert(self, primary_key, entity, options)
 end
 
 

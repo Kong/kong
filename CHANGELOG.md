@@ -284,7 +284,8 @@
   leads to the corruption of chunk-encoded response data.
   [#10816](https://github.com/Kong/kong/pull/10816)
   [#10824](https://github.com/Kong/kong/pull/10824)
-
+- Fix protocol detection of default values.
+  [#10736](https://github.com/Kong/kong/pull/10736)
 
 #### Admin API
 

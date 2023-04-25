@@ -471,6 +471,11 @@ local function check_insert(self, entity, options)
     entity_to_insert.cache_key = self:cache_key(entity_to_insert)
   end
 
+  local validate_ok, err, err_t = self:validate(entity_to_insert, options)
+  if not validate_ok then
+    return nil, err, err_t
+  end
+
   return entity_to_insert
 end
 
@@ -547,6 +552,11 @@ local function check_update(self, key, entity, options, name)
     entity_to_update.cache_key = self:cache_key(entity_to_update)
   end
 
+  local validate_ok, err, err_t = self:validate(entity_to_update, options)
+  if not validate_ok then
+    return nil, nil, err, err_t
+  end
+
   return entity_to_update, rbw_entity
 end
 
@@ -613,6 +623,11 @@ local function check_upsert(self, key, entity, options, name)
 
   if self.schema.cache_key and #self.schema.cache_key > 1 then
     entity_to_upsert.cache_key = self:cache_key(entity_to_upsert)
+  end
+
+  local validate_ok, err, err_t = self:validate(entity_to_upsert, options)
+  if not validate_ok then
+    return nil, nil, err, err_t
   end
 
   return entity_to_upsert, rbw_entity
@@ -1100,6 +1115,14 @@ function DAO:each(size, options)
   end
 
   return iteration.by_row(self, pager, size, options)
+end
+
+
+-- allow custom validations
+-- return true if valid, or nil/false + err(string) + err_t(table)
+-- stub implementation
+function DAO:validate(entity, options)
+  return true
 end
 
 
