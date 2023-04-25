@@ -2821,7 +2821,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         local code = provision_code("oauth2_16.com")
         local db_code, err = db.oauth2_authorization_codes:select_by_code(code)
         assert.is_nil(err)
-        db_code.plugin_id = ngx.null
+        db_code.plugin = ngx.null
         local _, _, err = db.oauth2_authorization_codes:update({ id = db_code.id }, db_code)
         assert.is_nil(err)
         local res = assert(proxy_ssl_client:send {
