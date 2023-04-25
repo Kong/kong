@@ -9,8 +9,6 @@
   - libcrypto.so.1.1
   - libc.so
   Rpath     : /usr/local/kong/lib
-  Version Requirement:
-  - libcrypto.so.1.1 (OPENSSL_1_1_0)
 
 - Path      : /usr/local/kong/lib/engines-1.1/capi.so
   Needed    :
@@ -23,8 +21,6 @@
   - libcrypto.so.1.1
   - libc.so
   Rpath     : /usr/local/kong/lib
-  Version Requirement:
-  - libcrypto.so.1.1 (OPENSSL_1_1_0)
 
 - Path      : /usr/local/kong/lib/libcrypto.so.1.1
   Needed    :
@@ -36,8 +32,6 @@
   - libcrypto.so.1.1
   - libc.so
   Rpath     : /usr/local/kong/lib
-  Version Requirement:
-  - libcrypto.so.1.1 (OPENSSL_1_1_0, OPENSSL_1_1_0d, OPENSSL_1_1_0f, OPENSSL_1_1_0i, OPENSSL_1_1_1)
 
 - Path      : /usr/local/lib/lua/5.1/lfs.so
   Needed    :
@@ -95,9 +89,6 @@
   - libcrypto.so.1.1
   - libc.so
   Rpath     : /usr/local/kong/lib
-  Version Requirement:
-  - libcrypto.so.1.1 (OPENSSL_1_1_0)
-  - libssl.so.1.1 (OPENSSL_1_1_0, OPENSSL_1_1_1)
 
 - Path      : /usr/local/lib/lua/5.1/yaml.so
   Needed    :
@@ -112,8 +103,6 @@
   Needed    :
   - libgcc_s.so.1
   - libc.so
-  Version Requirement:
-  - libgcc_s.so.1 (GCC_3.0, GCC_3.3, GCC_4.2.0)
 
 - Path      : /usr/local/openresty/lualib/librestysignal.so
   Needed    :
@@ -135,9 +124,6 @@
   - libz.so.1
   - libc.so
   Rpath     : /usr/local/openresty/luajit/lib:/usr/local/kong/lib
-  Version Requirement:
-  - libcrypto.so.1.1 (OPENSSL_1_1_0)
-  - libssl.so.1.1 (OPENSSL_1_1_0, OPENSSL_1_1_1)
   Modules   :
   - lua-kong-nginx-module
   - lua-kong-nginx-module/stream
