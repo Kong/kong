@@ -152,7 +152,7 @@ for _, strategy in helpers.each_strategy() do
     -- This test case is to check the UDP sockets are released after the DNS query
     -- is done.
     describe("udp sockets", function()
-      local domain_name = "www.example.com"
+      local domain_name = "www.example.test"
       local address = "127.0.0.10"
       local proxy_client
 
