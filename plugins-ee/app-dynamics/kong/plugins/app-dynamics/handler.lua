@@ -9,6 +9,7 @@ local kong = kong
 local get_service = kong.router.get_service
 local get_route = kong.router.get_route
 local get_header = kong.request.get_header
+local meta = require "kong.meta"
 
 local appd
 do
@@ -24,7 +25,7 @@ local ffi = require "ffi"
 
 local AppDynamicsHandler = {
   PRIORITY = 999999, -- Setting the priority for first to execute
-  VERSION = "3.0.0",
+  VERSION = meta.core_version,
 }
 
 local APPD_ENV_VARIABLE_PREFIX = "KONG_APPD_"
@@ -311,7 +312,7 @@ function AppDynamicsHandler:log()
     appd.appd_bt_add_error(bt_handle, appd.APPD_LEVEL_ERROR, "Restarting long BT to work around SDK-level expiry", 1)
     bt_handle = appd.appd_bt_begin(context.bt_name, context.singularity_header)
     if bt_handle == nil then
-      kong.log.error("Cannot restart old BT, please check the AppDynamics SDK logs")
+      kong.log.err("Cannot restart old BT, please check the AppDynamics SDK logs")
       return
     end
     appd.appd_bt_enable_snapshot(bt_handle)

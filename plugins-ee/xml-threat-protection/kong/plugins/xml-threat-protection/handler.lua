@@ -155,7 +155,7 @@ local function validate_xml(conf)
   local filename = ngx.req.get_body_file()
   local file, err = io.open(filename, "r")
   if not file then
-    kong.log.error("failed to open cached request body '",filename,"': ", err)
+    kong.log.err("failed to open cached request body '",filename,"': ", err)
     return false
   end
 
@@ -173,7 +173,7 @@ local function validate_xml(conf)
     if not data then
       if err then
         -- error reading file contents
-        kong.log.error("failed to read cached request body '",filename,"': ", err)
+        kong.log.err("failed to read cached request body '",filename,"': ", err)
         file:close()
         protect(parser.close, parser)
         return false
