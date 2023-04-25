@@ -34,6 +34,8 @@ a copy. [KAG-739](https://konghq.atlassian.net/browse/KAG-739)
 * Sending analytics to Konnect SaaS from Kong DB-less mode (in addition to DP mode) is now supported [MA-1579](https://konghq.atlassian.net/browse/MA-1579)
 * Remove email field from developer registration response. [FTI-2722](https://konghq.atlassian.net/browse/FTI-2722)
 * Fix the leak of UDP sockets in resty.dns.client. [FTI-4962](https://konghq.atlassian.net/browse/FTI-4962)
+* Fixed an issue where management of licenses via `/licenses/` would fail if current license is not valid.
+  [FTI-4927](https://konghq.atlassian.net/browse/FTI-4927)
 
 ## Plugins
 

@@ -57,6 +57,7 @@ c.featureset = {
     write_admin_api = false,
     allow_admin_api = {
       ["/licenses"] = { ["*"] = true },
+      ["/licenses/:licenses"] = { ["*"] = true },
     }
  },
   free = {
