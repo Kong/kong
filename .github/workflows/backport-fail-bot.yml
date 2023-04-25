@@ -10,7 +10,7 @@ jobs:
     if: github.event.issue.pull_request != null && contains(github.event.comment.body, 'To backport manually, run these commands in your terminal')
     steps:
       - name: Generate Slack Payload
-        id: generate_payload
+        id: generate-payload
         uses: actions/github-script@v4
         with:
           script: |
@@ -23,7 +23,8 @@ jobs:
               text: `Backport failed in PR: ${pr_url}. ${author} check it.`,
               channel: process.env.SLACK_CHANNEL,
             };
-            console.log(`::set-output name=payload::${JSON.stringify(payload)}`);
+            return JSON.stringify(payload);
+          result-encoding: string
         env:
           SLACK_CHANNEL: gateway-notifications
           SLACK_MAPPING: "${{ vars.SLACK_MAPPING }}"
@@ -31,6 +32,6 @@ jobs:
       - name: Send Slack Message
         uses: slackapi/slack-github-action@v1.23.0
         with:
-          payload: ${{ steps.generate_payload.outputs.payload }}
+          payload: ${{ steps.generate-payload.outputs.result }}
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_GATEWAY_NOTIFICATIONS_WEBHOOK }}
