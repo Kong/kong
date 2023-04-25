@@ -2816,6 +2816,30 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           error_description = "Invalid code",
         }, json)
       end)
+
+      it("should not fail when plugin_id is not present which indicates it's an old code", function()
+        local code = provision_code("oauth2_16.com")
+        local db_code, err = db.oauth2_authorization_codes:select_by_code(code)
+        assert.is_nil(err)
+        db_code.plugin_id = ngx.null
+        local _, _, err = db.oauth2_authorization_codes:update({ id = db_code.id }, db_code)
+        assert.is_nil(err)
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/oauth2/token",
+          body    = {
+            code             = code,
+            client_id        = "clientid123",
+            client_secret    = "secret123",
+            grant_type       = "authorization_code",
+          },
+          headers = {
+            ["Host"]         = "oauth2_16.com",
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(200, res)
+      end)
     end)
 
     describe("Making a request", function()
