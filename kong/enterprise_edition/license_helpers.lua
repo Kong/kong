@@ -37,6 +37,9 @@ local LICENSE_NOTIFICATION_LOCK_KEY = "events:license"
 local decode_base64 = ngx.decode_base64
 local decode_base64url = base64.decode_base64url
 
+local EMPTY = setmetatable({},
+  {__newindex = function() error("The 'EMPTY' table is read-only") end})
+
 local _M = {}
 local DEFAULT_KONG_LICENSE_PATH = "/etc/kong/license.json"
 
@@ -278,8 +281,14 @@ function _M.license_can_proceed(self)
   local method = ngx.req.get_method()
 
   local route = self.route_name
-  local allow = kong.licensing.allow_admin_api or {}
-  local deny = kong.licensing.deny_admin_api or {}
+  local allow = kong.licensing.allow_admin_api or EMPTY
+  local deny = kong.licensing.deny_admin_api or EMPTY
+
+  -- in case of endpoint end with `/`, this filter is executed twice(redirects to valid app routes).
+  -- so the named routes `default_route` shoule be exempted.
+  if route == "default_route" then
+    return
+  end
 
   if (deny[route] and (deny[route][method] or deny[route]["*"]))
     and not (allow[route] and (allow[route][method] or allow[route]["*"]))
