@@ -32,7 +32,6 @@ jobs:
         result-encoding: string
       env:
         SLACK_CHANNEL: gateway-notifications
-        SLACK_MAPPING: "${{ vars.SLACK_MAPPING }}"
 
     - name: Send Slack Message
       uses: slackapi/slack-github-action@v1.23.0
