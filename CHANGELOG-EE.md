@@ -15,6 +15,10 @@
 
 ### Features
 
+- Starting with this release, SBOM files in SPDX and CycloneDX are now generated
+for Kong Gateway's Docker images. Contact your Kong support representative to request
+a copy. [KAG-739](https://konghq.atlassian.net/browse/KAG-739)
+
 ### Fixes
 
 * The Redis strategy of Rate Limiting should return error upon Redis Cluster is down. [FTI-4898](https://konghq.atlassian.net/browse/FTI-4898)
