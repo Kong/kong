@@ -199,7 +199,7 @@ describe("Status API - with strategy #off", function()
 
       assert.res_status(200, res)
 
-      -- upload a invalid config
+      -- upload an invalid config
 
       local res = assert(admin_client:send {
         method = "POST",
