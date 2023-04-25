@@ -242,6 +242,7 @@ build = {
     ["kong.api.routes.debug"] = "kong/api/routes/debug.lua",
 
     ["kong.status"] = "kong/status/init.lua",
+    ["kong.status.ready"] = "kong/status/ready.lua",
 
     ["kong.debug"] = "kong/debug/init.lua",
 

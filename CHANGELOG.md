@@ -56,6 +56,17 @@
   This is useful for debugging.
   [#5885](https://github.com/Kong/kong/pull/5885)
 
+#### Status API
+
+- The `status_listen` server has been enhanced with the addition of the
+  `/status/ready` API for monitoring Kong's health.
+  This endpoint provides a `200` response upon receiving a `GET` request,
+  but only if a valid, non-empty configuration is loaded and Kong is
+  prepared to process user requests.
+  Load balancers frequently utilize this functionality to ascertain
+  Kong's availability to distribute incoming requests.
+  [#10610](https://github.com/Kong/kong/pull/10610)
+
 #### Plugins
 
 - **ACME**: acme plugin now supports configuring an `account_key` in `keys` and `key_sets`
