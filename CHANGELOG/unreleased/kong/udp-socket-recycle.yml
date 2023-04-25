@@ -1,0 +1,3 @@
+message: "fix a bug causing udp socket leak"
+scope: Core
+type: bugfix
