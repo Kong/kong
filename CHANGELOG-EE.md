@@ -4,6 +4,9 @@
 
 ### Breaking Changes
 
+- **App-Dynamics**: plugin version has been updated to match Kong's version
+  [#10646](https://github.com/Kong/kong-ee/pull/5038)
+
 ### Deprecations
 
 ### Dependencies

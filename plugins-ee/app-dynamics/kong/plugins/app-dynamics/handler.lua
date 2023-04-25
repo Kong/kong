@@ -9,6 +9,7 @@ local kong = kong
 local get_service = kong.router.get_service
 local get_route = kong.router.get_route
 local get_header = kong.request.get_header
+local meta = require "kong.meta"
 
 local appd
 do
@@ -24,7 +25,7 @@ local ffi = require "ffi"
 
 local AppDynamicsHandler = {
   PRIORITY = 999999, -- Setting the priority for first to execute
-  VERSION = "3.0.0",
+  VERSION = meta.core_version,
 }
 
 local APPD_ENV_VARIABLE_PREFIX = "KONG_APPD_"
