@@ -406,7 +406,7 @@ local function new_router(version)
 
   local _, err = kong_shm:incr(ROUTERS_REBUILD_COUNTER_KEY, 1, 0)
   if err then
-    log(ERR, "failed to increase router/plugins rebuild counter: ", err)
+    log(ERR, "failed to increase router rebuild counter: ", err)
   end
 
   return new_router
