@@ -312,7 +312,7 @@ function AppDynamicsHandler:log()
     appd.appd_bt_add_error(bt_handle, appd.APPD_LEVEL_ERROR, "Restarting long BT to work around SDK-level expiry", 1)
     bt_handle = appd.appd_bt_begin(context.bt_name, context.singularity_header)
     if bt_handle == nil then
-      kong.log.error("Cannot restart old BT, please check the AppDynamics SDK logs")
+      kong.log.err("Cannot restart old BT, please check the AppDynamics SDK logs")
       return
     end
     appd.appd_bt_enable_snapshot(bt_handle)
