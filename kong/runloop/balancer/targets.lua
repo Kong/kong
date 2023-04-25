@@ -10,6 +10,7 @@ local dns_client = require "kong.resty.dns.client"
 local upstreams = require "kong.runloop.balancer.upstreams"
 local balancers = require "kong.runloop.balancer.balancers"
 local dns_utils = require "kong.resty.dns.utils"
+local utils = require "kong.tools.utils"
 
 local ngx = ngx
 local null = ngx.null
@@ -22,7 +23,7 @@ local tonumber = tonumber
 local table_sort = table.sort
 local assert = assert
 local exiting = ngx.worker.exiting
-local update_time = ngx.update_time
+local get_updated_now_ms = utils.get_updated_now_ms
 
 local CRIT = ngx.CRIT
 local DEBUG = ngx.DEBUG
@@ -522,10 +523,6 @@ local function targetExpired(target)
   return not target.lastQuery or target.lastQuery.expire < ngx_now()
 end
 
-local function get_updated_now_ms()
-  update_time()
-  return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
-end
 
 function targets_M.getAddressPeer(address, cacheOnly)
   if not address.available then

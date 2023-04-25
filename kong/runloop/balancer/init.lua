@@ -27,9 +27,7 @@ local table = table
 local table_concat = table.concat
 local run_hook = hooks.run_hook
 local var = ngx.var
-local now = ngx.now
-local update_time = ngx.update_time
-
+local get_updated_now_ms = utils.get_updated_now_ms
 
 local CRIT = ngx.CRIT
 local ERR = ngx.ERR
@@ -45,10 +43,6 @@ if ngx.config.subsystem ~= "stream" then
   set_authority = require("resty.kong.grpc").set_authority
 end
 
-local function get_updated_now_ms()
-  update_time()
-  return now() * 1000 -- time is kept in seconds with millisecond resolution.
-end
 
 local get_query_arg
 do
