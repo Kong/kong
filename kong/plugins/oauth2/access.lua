@@ -645,7 +645,9 @@ local function issue_token(conf)
         end
 
         if not response_params[ERROR] and conf.global_credentials then
-          if kong.plugin.get_id() ~= auth_code.plugin_id then
+          -- verify only if plugin_id is present to avoid existing codes being fails
+          if auth_code.plugin_id and
+             (kong.plugin.get_id() ~= auth_code.plugin_id) then
             response_params = {
               [ERROR] = "invalid_request",
               error_description = "Invalid " .. CODE
