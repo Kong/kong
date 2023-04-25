@@ -19,9 +19,9 @@ The build system requires the following tools to be installed:
   ```bash
     # install Bazelisk into $PWD/bin/bazel
     make check-bazel
-    // add Bazelisk into your $PATH
+    # add Bazelisk into your $PATH
     export PATH=bin:$PATH
-    // check bazel version
+    # check bazel version
     bazel version
   ```
 
@@ -54,7 +54,7 @@ bazel build //build:venv --verbose_failures
 
 This operation primarily accomplishes the following:
 
-1. Add the Bazel build output folder containing `resty`, `luarocks` and other commands to PATH so that the commands in the build output can be used directly.
+1. Add the Bazel build output folder containing `resty`, `luarocks` and other commands to `$PATH` so that the commands in the build output can be used directly.
 2. Set and specify the runtime path for Kong.
 3. Provide Bash functions to start and stop the database and other third-party dependency services required for Kong development environment using Docker, read more: [Start Kong](../DEVELOPER#start-kong).
 
@@ -197,7 +197,7 @@ The `.log` files in `bazel-bin` contain the build logs.
 
 In some cases where the build fails or the build is interrupted, the build system may leave behind some temporary files. To clean up the build system, run the following command or simply rerun the build:
 
-```shell
+```bash
 bazel clean
 ```
 
@@ -206,7 +206,7 @@ if you recently changed `BUILD_NAME` or `INSTALL_DESTDIR`.
 
 To completely remove the entire working tree created by a Bazel instance, run:
 
-```shell
+```bash
 bazel clean --expunge
 ```
 
