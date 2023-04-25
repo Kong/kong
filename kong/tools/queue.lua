@@ -61,8 +61,6 @@ local table_new = require("table.new")
 
 
 local string_format = string.format
-local rawset = rawset
-local rawget = rawget
 local assert = assert
 local select = select
 local pairs = pairs
