@@ -8,9 +8,9 @@ fi
 export KONG_SERVICE_ENV_FILE=$(mktemp)
 
 if [ -n "$ZSH_VERSION" ]; then
-    cwd=$(realpath $(dirname $(readlink -f ${(%):-%N})))
+    cwd=$(dirname $(readlink -f ${(%):-%N}))
 else
-    cwd=$(realpath $(dirname $(readlink -f ${BASH_SOURCE[0]})))
+    cwd=$(dirname $(readlink -f ${BASH_SOURCE[0]}))
 fi
 
 bash "$cwd/common.sh" $KONG_SERVICE_ENV_FILE
