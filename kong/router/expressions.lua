@@ -19,11 +19,6 @@ local function get_exp_and_priority(route)
     return
   end
 
-  local gen = gen_for_field("net.protocol", OP_EQUAL, route.protocols)
-  if gen then
-    exp = exp .. LOGICAL_AND .. gen
-  end
-
   return exp, route.priority
 end
 
