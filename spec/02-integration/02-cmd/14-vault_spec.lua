@@ -29,7 +29,9 @@ describe("kong vault", function()
   end)
 
   it("vault get with non-existing vault", function()
-    local ok, stderr, stdout = helpers.kong_exec("vault get none/foo")
+    local ok, stderr, stdout = helpers.kong_exec("vault get none/foo", {
+      prefix = helpers.test_conf.prefix,
+    })
     assert.matches("Error: vault not found (none)", stderr, nil, true)
     assert.matches("[{vault://none/foo}]", stderr, nil, true)
     assert.is_nil(stdout)
@@ -95,40 +97,39 @@ describe("kong vault", function()
     end)
   end)
 
-  for _, strategy in helpers.each_strategy({ "postgres"}) do
+  for _, strategy in helpers.all_strategy({ "postgres", "off"}) do
     describe("[env] instantiated #" .. strategy, function()
-      local admin_client
+      local db, _, yaml_file
       lazy_setup(function()
-        helpers.get_db_utils(strategy, {
+        _, db = helpers.get_db_utils(strategy, {
           "vaults"
         })
+
+        db.vaults:insert {
+          prefix = "test-env",
+          name = "env",
+          config = {
+            prefix = "SECRETS_",
+          }
+        }
+
+        yaml_file = helpers.make_yaml_file([[
+          _format_version: "3.0"
+          vaults:
+          - config:
+              prefix: SECRETS_
+            name: env
+            prefix: test-env
+        ]])
 
         assert(helpers.start_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
+          declarative_config = yaml_file,
         }))
-
-        admin_client = helpers.admin_client()
-        local res = admin_client:put("/vaults/test-env", {
-          headers = {
-            ["Content-Type"] = "application/json"
-          },
-          body = {
-            name = "env",
-            config = {
-              prefix = "SECRETS_"
-            },
-          }
-        })
-
-        assert.res_status(200, res)
       end)
 
       lazy_teardown(function()
-        if admin_client then
-          admin_client:close()
-        end
-
         helpers.stop_kong()
       end)
 
@@ -144,6 +145,26 @@ describe("kong vault", function()
         assert.equal("", stderr)
         assert.matches("testvalue", stdout)
         assert.is_true(ok)
+      end)
+
+      it("vault get non-existing env", function()
+        local ok, stderr, stdout = helpers.kong_exec("vault get test-env/nonexist", {
+          prefix = helpers.test_conf.prefix,
+        })
+        assert.matches("Error: unable to load value (nonexist) from vault (test-env): not found", stderr, nil, true)
+        assert.matches("[{vault://test-env/nonexist}]", stderr, nil, true)
+        assert.is_nil(stdout)
+        assert.is_false(ok)
+      end)
+
+      it("vault get non-existing vault", function()
+        local ok, stderr, stdout = helpers.kong_exec("vault get nonexist/nonexist", {
+          prefix = helpers.test_conf.prefix,
+        })
+        assert.matches("Error: vault not found (nonexist)", stderr, nil, true)
+        assert.matches("[{vault://nonexist/nonexist}]", stderr, nil, true)
+        assert.is_nil(stdout)
+        assert.is_false(ok)
       end)
     end)
   end
