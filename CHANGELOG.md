@@ -310,6 +310,11 @@
   [#10774](https://github.com/Kong/kong/pull/10774)
 - **Proxy Cache**: Add option to remove the proxy cache headers from the response
   [#10445](https://github.com/Kong/kong/pull/10445)
+- **gRPC gateway**: added new field `additional_protos` to the configuration schema to support handling of google.protobuf.Any type.
+  [#8297](https://github.com/Kong/kong/pull/8297)
+- **gRPC gateway**: added new fields `use_proto_names`, `enum_as_name`, and `emit_defaults` to the 
+  configuration schema to control automatic gRPC <-> HTTP/JSON transcoding.
+  [#8297](https://github.com/Kong/kong/pull/8297)
 
 ### Additions
 
