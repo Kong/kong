@@ -145,8 +145,9 @@ local function get(args)
     local res, err = vault.get(reference)
     if err then
       if err:find("no LMDB environment defined", 1, true) then
-        -- add the lmdb-related directives into nginx.conf
-        -- so that it will initialize the lmdb nginx module.
+        -- add the lmdb-related directives of the running Kong
+        -- into the temporary nginx.conf that `resty` will create
+        -- so that it can access the correct initialized LMDB.
         -- Note we only try this after detecting this specific error
         -- in order to avoid infinite loop.
         return get_with_lmdb(conf, args)
