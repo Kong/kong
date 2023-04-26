@@ -92,6 +92,12 @@ local is_prometheus_enabled, register_events_handler do
     local worker_events = kong.worker_events
 
     local cb = function(upstream_id, ip, port, hostname, health)
+      ngx.log(ngx.ERR, "healthcheck event: ",
+              "upstream_id=", upstream_id, " ",
+              "ip=", ip, " ",
+              "port=", port, " ",
+              "hostname=", hostname, " ",
+              "health=", health)
       local health_info, err = balancer.get_upstream_health(upstream_id)
       if err then
         kong.log.err("failed getting upstream health: ", err)
