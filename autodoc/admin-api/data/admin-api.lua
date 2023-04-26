@@ -681,7 +681,7 @@ return {
             is ready to handle incoming requests.
 
             If a Kong instance is running in DB-less mode or as Hybrid mode Data Plane,
-            it returns `200 OK` if each worker is ready with the valid router and 
+            it returns `200 OK` if each worker is ready with the valid router and
             plugins iterator, and the database is reachable.
 
           ]],
@@ -2409,6 +2409,10 @@ return {
         jwk = {
           description = [[
             A JSON Web Key represented as a string.
+
+            This field is _referenceable_, which means it can be securely stored as a
+            [secret](/gateway/latest/plan-and-deploy/security/secrets-management/getting-started)
+            in a vault. References must follow a [specific format](/gateway/latest/plan-and-deploy/security/secrets-management/reference-format).
           ]],
           example = '{"alg":"RSA", "kid": "42", ...}'
         },
@@ -2420,12 +2424,20 @@ return {
         ["pem.private_key"] = {
           description = [[
             The private key in PEM format.
+
+            This field is _referenceable_, which means it can be securely stored as a
+            [secret](/gateway/latest/plan-and-deploy/security/secrets-management/getting-started)
+            in a vault. References must follow a [specific format](/gateway/latest/plan-and-deploy/security/secrets-management/reference-format).
           ]],
           example = "-----BEGIN"
         },
         ["pem.public_key"] = {
           description = [[
-            The pubkic key in PEM format.
+            The public key in PEM format.
+
+            This field is _referenceable_, which means it can be securely stored as a
+            [secret](/gateway/latest/plan-and-deploy/security/secrets-management/getting-started)
+            in a vault. References must follow a [specific format](/gateway/latest/plan-and-deploy/security/secrets-management/reference-format).
           ]],
           example = "-----BEGIN"
         },

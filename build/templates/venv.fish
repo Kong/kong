@@ -41,8 +41,9 @@ function deactivate -d 'Exit Kong\'s venv and return to the normal environment.'
         set -e _OLD_FISH_PROMPT_OVERRIDE
     end
 
-    set -e KONG_VENV
-    set -e ROCKS_CONFIG ROCKS_ROOT LUAROCKS_CONFIG LUA_PATH LUA_CPATH KONG_PREFIX LIBRARY_PREFIX OPENSSL_DIR
+    rm -f KONG_VENV_ENV_FILE
+    set -e KONG_VENV KONG_VENV_ENV_FILE
+    set -e LUAROCKS_CONFIG LUA_PATH LUA_CPATH KONG_PREFIX LIBRARY_PREFIX OPENSSL_DIR
 
     type -q stop_services && stop_services
 
@@ -55,8 +56,11 @@ function start_services -d 'Start dependency services of Kong'
     # stop_services is defined by the script above
 end
 
+
 # actually set env vars
-source $KONG_VENV-venv/lib/venv-commons
+set -xg KONG_VENV_ENV_FILE $(mktemp)
+bash $KONG_VENV-venv/lib/venv-commons $KONG_VENV $KONG_VENV_ENV_FILE
+source $KONG_VENV_ENV_FILE
 set -xg PATH "$PATH"
 
 # set shell prompt
