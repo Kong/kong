@@ -12,6 +12,7 @@
 ### Dependencies
 
 * `lua-resty-openssl` is bumped from 0.8.17 to 0.8.20
+* `kong-openid-connect` is bumped from 2.5.4 to 2.5.5
 
 ### Features
 
