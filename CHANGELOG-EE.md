@@ -18,6 +18,11 @@
 - Starting with this release, SBOM files in SPDX and CycloneDX are now generated
 for Kong Gateway's Docker images. Contact your Kong support representative to request
 a copy. [KAG-739](https://konghq.atlassian.net/browse/KAG-739)
+- Add a new `updated_at` field for the following core entities: ca_certificates, certificates, consumers, targets, upstreams, plugins, workspaces, clustering_data_planes, consumer_group_consumers, consumer_group_plugins, consumer_groups, credentials, document_objects, event_hooks, files, group_rbac_roles, groups, keyring_meta, legacy_files, login_attempts, parameters, rbac_role_endpoints, rbac_role_entities, rbac_roles, rbac_users, snis.
+  [FTI-1292](https://konghq.atlassian.net/browse/FTI-1292)
+  [FTI-1294](https://konghq.atlassian.net/browse/FTI-1294)
+  [FTI-2103](https://konghq.atlassian.net/browse/FTI-2103)
+  [#5018](https://github.com/Kong/kong-ee/pull/5018)
 
 ### Fixes
 

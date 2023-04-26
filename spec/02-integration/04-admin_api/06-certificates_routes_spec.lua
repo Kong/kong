@@ -702,6 +702,8 @@ describe("Admin API: #" .. strategy, function()
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
 
+          json.updated_at = nil
+          certificate.updated_at = nil
           assert.equal(ssl_fixtures.cert_alt, json.cert)
           assert.equal(cjson.null, json.cert_alt)
           assert.equal(cjson.null, json.key_alt)
@@ -737,6 +739,8 @@ describe("Admin API: #" .. strategy, function()
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
 
+          json.updated_at = nil
+          certificate.updated_at = nil
           assert.equal(ssl_fixtures.cert_alt, json.cert)
           assert.equal(ssl_fixtures.cert_alt_ecdsa, json.cert_alt)
         end
@@ -774,6 +778,7 @@ describe("Admin API: #" .. strategy, function()
           local json = cjson.decode(body)
           json.updated_at = nil
           certificate.updated_at = nil
+
           assert.same(certificate, json)
         end
       end)
@@ -858,6 +863,7 @@ describe("Admin API: #" .. strategy, function()
           local json = cjson.decode(body)
           json.updated_at = nil
           certificate.updated_at = nil
+
           assert.same(certificate, json)
         end
       end)
@@ -875,6 +881,7 @@ describe("Admin API: #" .. strategy, function()
           local json = cjson.decode(body)
           json.updated_at = nil
           certificate.updated_at = nil
+
           assert.same(certificate, json)
         end
       end)
@@ -919,6 +926,8 @@ describe("Admin API: #" .. strategy, function()
         -- make sure we did not add any certificate, and that the snis
         -- are correct
         local json = get_certificates()
+        json.updated_at = nil
+        json_before.updated_at = nil
         assert.equal(#json_before.data, #json.data)
         for i, data in ipairs(json.data) do
           if data.id == certificate.id then
@@ -947,6 +956,8 @@ describe("Admin API: #" .. strategy, function()
         -- make sure we did not add any certificate, and that the snis
         -- are correct
         local json = get_certificates()
+        json.updated_at = nil
+        json_before.updated_at = nil
         assert.equal(#json_before.data, #json.data)
         for i, data in ipairs(json.data) do
           if data.id == certificate.id then
@@ -991,8 +1002,21 @@ describe("Admin API: #" .. strategy, function()
 
         -- make sure we did not add any certificate or sni
         local json = get_certificates()
-        json.updated_at = nil
-        json_before.updated_at = nil
+
+        local fields = {'updated_at'}
+        local function remove_fields(fields, config)
+          for _, field in ipairs(fields) do
+            if config[field] ~= nil then
+              config[field] = nil
+            end
+          end
+        end
+        for _, item in ipairs(json.data) do
+          remove_fields(fields, item)
+        end
+        for _, item in ipairs(json_before.data) do
+          remove_fields(fields, item)
+        end
         assert.same(json_before, json)
       end)
 
@@ -1040,8 +1064,6 @@ describe("Admin API: #" .. strategy, function()
 
         -- make sure we did not add any certificate or sni
         local json = get_certificates()
-        json_before.updated_at = nil
-        json.update_at = nil
         assert.same(json_before, json)
       end)
 

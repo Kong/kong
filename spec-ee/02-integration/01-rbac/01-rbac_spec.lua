@@ -968,6 +968,7 @@ describe("(#" .. strategy .. ")", function()
           endpoint = "/bar"
         })
         local res = kong.db.rbac_role_endpoints:all_by_endpoint("/foo", "foo")
+        p1["updated_at"] = nil
         assert.same({ p1 }, res)
       end)
     end)

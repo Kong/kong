@@ -20,5 +20,6 @@ return {
     { plugin          = { type = "string", required = true }, },
     { credential_data = { type = "string", } },
     { created_at      = typedefs.auto_timestamp_s },
+    { updated_at      = typedefs.auto_timestamp_s },
   },
 }

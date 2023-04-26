@@ -11,6 +11,7 @@ local declarative = require("kong.db.declarative")
 local inflate_gzip = require("kong.tools.utils").inflate_gzip
 local cjson_decode = require("cjson.safe").decode
 local ssl_fixtures = require ("spec.fixtures.ssl")
+local event_hooks = require "kong.enterprise_edition.event_hooks"
 
 local function reset_fields()
   compat._set_removed_fields(require("kong.clustering.compat.removed_fields"))
@@ -402,6 +403,79 @@ describe("kong.clustering.compat", function()
       assert.falsy(check("1.0.0", "1.1.0"))
     end)
   end)
+
+  for _, strategy in helpers.each_strategy() do
+    describe("check compat for entities those have `updated_at` field", function()
+      local bp, db, entity_names
+
+      setup(function()
+        -- excludes entities are not exported: clustering_data_planes, document_objects, files,
+        -- group_rbac_roles, groups, legacy_files, login_attempts, rbac_role_endpoints,
+        -- rbac_role_entities, rbac_roles, rbac_users
+        entity_names = {
+          "services",
+          "routes",
+          "ca_certificates",
+          "certificates",
+          "consumers",
+          "targets",
+          "upstreams",
+          "plugins",
+          "workspaces",
+          "snis",
+          -- [[ XXX EE
+          "consumer_group_consumers",
+          "consumer_group_plugins",
+          "consumer_groups",
+          "credentials",
+          "event_hooks",
+          "keyring_meta",
+          "parameters",
+          -- EE ]]
+        }
+
+        local plugins_enabled = { "key-auth" }
+        bp, db = helpers.get_db_utils(strategy, entity_names, plugins_enabled)
+
+        for _, name in ipairs(entity_names) do
+          if name == "plugins" then
+            local plugin = {
+              name = "key-auth",
+              config = {
+                -- key_names has default value so we don't have to provide it
+                -- key_names = {}
+              }
+            }
+            bp[name]:insert(plugin)
+
+          elseif name == "event_hooks" then
+            -- before create event_hook object we need to register a useless event source
+            local events = event_hooks.list()
+            events["test-source"] = {}
+            bp[name]:insert({ source = "test-source" })
+            -- revoke the registered event source
+            events["test-source"] = nil
+          elseif name == "routes" then
+            bp[name]:insert({ hosts = { "test1.test" }, })
+          else
+            bp[name]:insert()
+          end
+        end
+      end)
+
+      teardown(function()
+        for _, entity_name in ipairs(entity_names) do
+          db[entity_name]:truncate()
+        end
+      end)
+
+      it(function()
+        local config = { config_table = declarative.export_config() }
+        local has_update = compat.update_compatible_payload(config, "3.0.0", "test_")
+        assert.truthy(has_update)
+      end)
+  end)
+  end
 
   describe("core entities compatible changes", function()
     local config, db

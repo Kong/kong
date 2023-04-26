@@ -86,6 +86,13 @@ for _, strategy in helpers.each_strategy() do
             }
           },
           {
+            updated_at = {
+              timestamp = true,
+              type = "integer",
+              auto = true
+            }
+          },
+          {
             name = {
               unique = true,
               required = true,
@@ -134,6 +141,13 @@ for _, strategy in helpers.each_strategy() do
         local expected_schema = {
           {
             created_at = {
+              timestamp = true,
+              type = "integer",
+              auto = true
+            }
+          },
+          {
+            updated_at = {
               timestamp = true,
               type = "integer",
               auto = true

@@ -26,6 +26,7 @@ return {
   fields = {
     { id = typedefs.uuid, },
     { created_at = typedefs.auto_timestamp_s },
+    { updated_at = typedefs.auto_timestamp_s },
     { name = { type = "string", required = true, unique = true } },
     { user_token = typedefs.rbac_user_token },
     { user_token_ident = { type = "string" } },

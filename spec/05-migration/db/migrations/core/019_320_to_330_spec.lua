@@ -27,3 +27,4 @@ describe("database migration", function()
       end)
     end
 end)
+

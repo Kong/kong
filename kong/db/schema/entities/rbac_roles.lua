@@ -21,6 +21,7 @@ return {
     { name           =  {type = "string", required = true, unique = true}}, -- we accept '@' so it's not a typedef.name
     { comment = {type = "string"} },
     { created_at     = typedefs.auto_timestamp_s },
+    { updated_at     = typedefs.auto_timestamp_s },
     { is_default = {type = "boolean", required = true, default = false} },
   }
 }

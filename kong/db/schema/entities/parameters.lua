@@ -16,6 +16,7 @@ return {
 
   fields = {
     { created_at     = typedefs.auto_timestamp_s },
+    { updated_at     = typedefs.auto_timestamp_s },
     { key            = { type = "string", required = true, unique = true, }, },
     { value          = { type = "string", required = true, }, },
   },

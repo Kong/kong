@@ -18,6 +18,7 @@ return {
   fields = {
     { id             = typedefs.uuid, },
     { created_at     = typedefs.auto_timestamp_s },
+    { updated_at     = typedefs.auto_timestamp_s },
     { service        = { type = "foreign", reference = "services" }, },
     { path           = { type = "string", required = true , unique = true}, },
   },
