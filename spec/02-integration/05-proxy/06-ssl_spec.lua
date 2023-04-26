@@ -14,6 +14,20 @@ local function get_cert(server_name)
 end
 
 
+local function reload_router(flavor)
+  _G.kong = {
+    configuration = {
+      router_flavor = flavor,
+    },
+  }
+  --kong.configuration.router_flavor = flavor
+
+  package.loaded["spec.helpers"] = nil
+  package.loaded["kong.db.schema.entities.routes"] = nil
+  helpers = require "spec.helpers"
+end
+
+
 local function gen_route(flavor, r)
   if flavor ~= "expressions" then
     return r
@@ -33,6 +47,8 @@ end
 for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
 for _, strategy in helpers.each_strategy() do
   describe("SSL [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
+    reload_router(flavor)
+
     local proxy_client
     local https_client
 
