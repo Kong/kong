@@ -263,6 +263,7 @@ local PREFIX_PATHS = {
   nginx_kong_gui_include_conf = {"nginx-kong-gui-include.conf"},
   nginx_kong_conf = {"nginx-kong.conf"},
   nginx_kong_stream_conf = {"nginx-kong-stream.conf"},
+  nginx_kong_lmdb_conf = {"nginx-kong-lmdb.conf"},
 
   kong_env = {".kong_env"},
   kong_process_secrets = {".kong_process_secrets"},
