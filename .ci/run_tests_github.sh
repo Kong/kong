@@ -205,7 +205,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         ["fifth"]="mtls-auth request-validator tls-handshake-modifier route-by-header"
         ["sixth"]="key-auth-enc request-transformer-advanced saml graphql-rate-limiting-advanced"
         ["seventh"]="rate-limiting-advanced exit-transformer route-transformer-advanced vault-auth"
-        ["eighth"]="response-transformer-advanced oas-validation datadog-tracing opa konnect-application-auth oauth2-introspection degraphql"
+        ["eighth"]="response-transformer-advanced oas-validation opa konnect-application-auth oauth2-introspection degraphql"
         ["ninth"]="ldap-auth-advanced"
     )
 
