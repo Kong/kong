@@ -256,7 +256,7 @@ describe("Plugin: acme (storage.redis)", function()
     end)
   end)
 
-  for _, strategy in helpers.each_strategy({"postgres", "off"}) do
+  for _, strategy in helpers.each_strategy({"postgres", "cassandra"}) do
     describe("Plugin: acme (handler.access) [#" .. strategy .. "]", function()
       local bp
       local domain = "mydomain.com"
@@ -361,19 +361,21 @@ describe("Plugin: acme (storage.redis)", function()
         assert.res_status(200, res)
         admin_client:close()
 
-        helpers.wait_for_all_config_update()
-
         local proxy_client = helpers.proxy_client()
-        local res = assert(proxy_client:send {
-          method  = "GET",
-          path    = "/.well-known/acme-challenge/" .. dummy_id,
-          headers =  { host = domain }
-        })
+        -- wait until admin API takes effect
+        helpers.wait_until(function()
+          res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/.well-known/acme-challenge/" .. dummy_id,
+            headers =  { host = domain }
+          })
+          assert.response(res).has.status(200)
+          local body = res:read_body()
+          assert.equal(namespace.."\n", body)
+          return true
+        end, 10)
 
-        assert.response(res).has.status(200)
-        local body = res:read_body()
         proxy_client:close()
-        assert.equal(namespace.."\n", body)
       end)
     end)
   end
