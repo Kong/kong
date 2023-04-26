@@ -4,6 +4,7 @@ local pl_path = require "pl.path"
 local pl_utils = require "pl.utils"
 local pl_stringx = require "pl.stringx"
 local log = require "kong.cmd.utils.log"
+local kill = require "kong.cmd.utils.kill"
 local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local compile_kong_lmdb_conf = prefix_handler.compile_kong_lmdb_conf
 
@@ -81,6 +82,11 @@ local function to_absolute_path(kong_conf, lmdb_conf)
 end
 
 local function get_with_lmdb(conf, args)
+  -- Ensure that Kong is running and LMDB is initialized
+  if not kill.is_running(conf.nginx_pid) then
+    error("Kong is not running in " .. conf.prefix)
+  end
+
   local nginx_kong_lmdb_conf, err = compile_kong_lmdb_conf(conf)
   if not nginx_kong_lmdb_conf then
     error(err)
@@ -103,7 +109,7 @@ local function get_with_lmdb(conf, args)
   local cmd = fmt("resty --main-conf '%s' %s vault get %s %s %s %s",
     converted_lmdb_conf, kong_path, args[1], args.v or args.vv or "",
     args.conf and "-c " .. args.conf or "",
-    args.prefix and "-p " .. args.prefix or "")
+    args.prefix and "-p " .. args.prefix or "-p " .. conf.prefix)
 
   local ok, code, stdout, stderr = pl_utils.executeex(cmd)
   if ok and code == 0 then
