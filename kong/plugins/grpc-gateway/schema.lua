@@ -43,7 +43,7 @@ return {
           emit_defaults = {
             type = "boolean",
             required = false,
-            default = false,
+            default = true,
           },
         },
       },

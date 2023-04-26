@@ -315,6 +315,8 @@
 - **gRPC gateway**: added new fields `use_proto_names`, `enum_as_name`, and `emit_defaults` to the 
   configuration schema to control automatic gRPC <-> HTTP/JSON transcoding.
   [#8297](https://github.com/Kong/kong/pull/8297)
+- **gRPC gateway**: added support for PUT method in HTTP requests.
+  [#8297](https://github.com/Kong/kong/pull/8297)
 
 ### Additions
 

@@ -166,6 +166,25 @@ for _, strategy in helpers.each_strategy() do
       assert.equal('12', res.headers['grpc-status'])
     end)
 
+    test("structured URI args", function()
+      local res, _ = proxy_client:get("/v1/grow/tail", {
+        query = {
+          name = "lizard",
+          hands = { count = 0, endings = "fingers" },
+          legs = { count = 4, endings = "toes" },
+          tail = { count = 0, endings = "tip" },
+        }
+      })
+      assert.equal(200, res.status)
+      local body = assert(res:read_body())
+      assert.same({
+        name = "lizard",
+        hands = { count = 0, endings = "fingers" },
+        legs = { count = 4, endings = "toes" },
+        tail = {count = 1, endings = "tip" },
+      }, cjson.decode(body))
+    end)
+
     describe("grpc <-> json transformations", function()
       local decimal_positive = 10.5
       local decimal_negative = -3.75
@@ -1295,25 +1314,6 @@ for _, strategy in helpers.each_strategy() do
       
       assert.equal(400, res.status)
       assert.equal("failed to encode payload", (res:read_body())) -- expected boolean value at .complexValue.bool_val, got: 'untrue' of type: string
-    end)
-  
-    test("structured URI args", function()
-      local res, _ = proxy_client:get("/v1/grow/tail", {
-        query = {
-          name = "lizard",
-          hands = { count = 0, endings = "fingers" },
-          legs = { count = 4, endings = "toes" },
-          tail = { count = 0, endings = "tip" },
-        }
-      })
-      assert.equal(200, res.status)
-      local body = assert(res:read_body())
-      assert.same({
-        name = "lizard",
-        hands = { endings = "fingers" }, -- count = 0 is default value, skipped from result
-        legs = { count = 4, endings = "toes" },
-        tail = {count = 1, endings = "tip" },
-      }, cjson.decode(body))
     end)
 
     test("null in json", function()
