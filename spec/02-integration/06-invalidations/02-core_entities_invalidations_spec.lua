@@ -159,7 +159,7 @@ for _, strategy in helpers.each_strategy() do
           forced_proxy_port = 8000,
         })
 
-        -- no need to wait for workers propagation (lua-resty-worker-events)
+        -- no need to wait for workers propagation (lua-resty-events)
         -- because our test instance only has 1 worker
 
         local res = assert(proxy_client_1:send {
@@ -200,7 +200,7 @@ for _, strategy in helpers.each_strategy() do
           forced_proxy_port = 8000,
         })
 
-        -- no need to wait for workers propagation (lua-resty-worker-events)
+        -- no need to wait for workers propagation (lua-resty-events)
         -- because our test instance only has 1 worker
 
         -- TEST: ensure new host value maps to our Service
@@ -258,7 +258,7 @@ for _, strategy in helpers.each_strategy() do
           forced_proxy_port = 8000,
         })
 
-        -- no need to wait for workers propagation (lua-resty-worker-events)
+        -- no need to wait for workers propagation (lua-resty-events)
         -- because our test instance only has 1 worker
 
         local res_1 = assert(proxy_client_1:send {
@@ -347,7 +347,7 @@ for _, strategy in helpers.each_strategy() do
           forced_proxy_port = 8000,
         })
 
-        -- no need to wait for workers propagation (lua-resty-worker-events)
+        -- no need to wait for workers propagation (lua-resty-events)
         -- because our test instance only has 1 worker
 
         res_1 = assert(proxy_client_1:send {
@@ -384,7 +384,7 @@ for _, strategy in helpers.each_strategy() do
           forced_proxy_port = 8000,
         })
 
-        -- no need to wait for workers propagation (lua-resty-worker-events)
+        -- no need to wait for workers propagation (lua-resty-events)
         -- because our test instance only has 1 worker
 
         local res_1 = assert(proxy_client_1:send {
@@ -462,7 +462,7 @@ for _, strategy in helpers.each_strategy() do
           forced_proxy_port = 8000,
         })
 
-        -- no need to wait for workers propagation (lua-resty-worker-events)
+        -- no need to wait for workers propagation (lua-resty-events)
         -- because our test instance only has 1 worker
 
         local cert_1 = get_cert(8443, "ssl-example.com")
@@ -499,7 +499,7 @@ for _, strategy in helpers.each_strategy() do
           forced_proxy_port = 8000,
         })
 
-        -- no need to wait for workers propagation (lua-resty-worker-events)
+        -- no need to wait for workers propagation (lua-resty-events)
         -- because our test instance only has 1 worker
 
         local cert_1a = get_cert(8443, "ssl-example.com")
@@ -539,7 +539,7 @@ for _, strategy in helpers.each_strategy() do
           forced_proxy_port = 8000,
         })
 
-        -- no need to wait for workers propagation (lua-resty-worker-events)
+        -- no need to wait for workers propagation (lua-resty-events)
         -- because our test instance only has 1 worker
 
         local cert_1 = get_cert(8443, "new-ssl-example.com")
@@ -620,7 +620,7 @@ for _, strategy in helpers.each_strategy() do
           forced_proxy_port = 8000,
         })
 
-        -- no need to wait for workers propagation (lua-resty-worker-events)
+        -- no need to wait for workers propagation (lua-resty-events)
         -- because our test instance only has 1 worker
 
         local cert_1 = get_cert(8443, "updated-sn.com")
@@ -659,7 +659,7 @@ for _, strategy in helpers.each_strategy() do
           forced_proxy_port = 8000,
         })
 
-          -- no need to wait for workers propagation (lua-resty-worker-events)
+          -- no need to wait for workers propagation (lua-resty-events)
           -- because our test instance only has 1 worker
 
           local cert = get_cert(8443, "test.wildcard.com")
@@ -705,7 +705,7 @@ for _, strategy in helpers.each_strategy() do
           forced_proxy_port = 8000,
         })
 
-          -- no need to wait for workers propagation (lua-resty-worker-events)
+          -- no need to wait for workers propagation (lua-resty-events)
           -- because our test instance only has 1 worker
 
           helpers.pwait_until(function()
@@ -811,7 +811,7 @@ for _, strategy in helpers.each_strategy() do
           forced_proxy_port = 8000,
         })
 
-          -- no need to wait for workers propagation (lua-resty-worker-events)
+          -- no need to wait for workers propagation (lua-resty-events)
           -- because our test instance only has 1 worker
 
           local cert_1 = get_cert(8443, "test.wildcard.org")
@@ -877,7 +877,7 @@ for _, strategy in helpers.each_strategy() do
           forced_proxy_port = 8000,
         })
 
-        -- no need to wait for workers propagation (lua-resty-worker-events)
+        -- no need to wait for workers propagation (lua-resty-events)
         -- because our test instance only has 1 worker
 
         -- populate cache with a miss on
@@ -932,7 +932,7 @@ for _, strategy in helpers.each_strategy() do
           forced_proxy_port = 8000,
         })
 
-        -- no need to wait for workers propagation (lua-resty-worker-events)
+        -- no need to wait for workers propagation (lua-resty-events)
         -- because our test instance only has 1 worker
 
         local res_1 = assert(proxy_client_1:send {
@@ -974,7 +974,7 @@ for _, strategy in helpers.each_strategy() do
           forced_proxy_port = 8000,
         })
 
-        -- no need to wait for workers propagation (lua-resty-worker-events)
+        -- no need to wait for workers propagation (lua-resty-events)
         -- because our test instance only has 1 worker
 
         local res_1 = assert(proxy_client_1:send {
@@ -1008,7 +1008,7 @@ for _, strategy in helpers.each_strategy() do
           forced_proxy_port = 8000,
         })
 
-        -- no need to wait for workers propagation (lua-resty-worker-events)
+        -- no need to wait for workers propagation (lua-resty-events)
         -- because our test instance only has 1 worker
 
         local res_1 = assert(proxy_client_1:send {
@@ -1080,7 +1080,7 @@ for _, strategy in helpers.each_strategy() do
           forced_proxy_port = 8000,
         })
 
-        -- no need to wait for workers propagation (lua-resty-worker-events)
+        -- no need to wait for workers propagation (lua-resty-events)
         -- because our test instance only has 1 worker
 
         local res_1 = assert(proxy_client_1:send {
@@ -1124,7 +1124,7 @@ for _, strategy in helpers.each_strategy() do
           forced_proxy_port = 8000,
         })
 
-        -- no need to wait for workers propagation (lua-resty-worker-events)
+        -- no need to wait for workers propagation (lua-resty-events)
         -- because our test instance only has 1 worker
 
         local res_1 = assert(proxy_client_1:send {
@@ -1268,7 +1268,7 @@ for _, strategy in helpers.each_strategy() do
           forced_proxy_port = 8000,
         })
 
-        -- no need to wait for workers propagation (lua-resty-worker-events)
+        -- no need to wait for workers propagation (lua-resty-events)
         -- because our test instance only has 1 worker
 
         local res_1 = assert(proxy_client_1:send {

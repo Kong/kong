@@ -270,8 +270,7 @@ function healthcheckers_M.create_healthchecker(balancer, upstream)
     ssl_cert, ssl_key = parse_global_cert_and_key()
   end
 
-  local events_module = kong.configuration.legacy_worker_events
-                        and "resty.worker.events" or "resty.events"
+  local events_module = "resty.events"
   local healthchecker, err = healthcheck.new({
     name = assert(upstream.ws_id) .. ":" .. upstream.name,
     shm_name = "kong_healthchecks",
