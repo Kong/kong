@@ -82,7 +82,8 @@ end
 
 local function get_with_lmdb(conf, args)
   -- Ensure that the LMDB exists
-  if not pl_path.exists(conf.prefix .. conf.lmdb_environment_path) then
+  local path = conf.prefix .. "/" .. conf.lmdb_environment_path
+  if not pl_path.exists(path) then
     error("LMDB does not exist in " .. conf.prefix)
   end
 
