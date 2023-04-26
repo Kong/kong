@@ -2,11 +2,8 @@ local _M = {}
 
 
 local atc = require("kong.router.atc")
-local gen_for_field = atc.gen_for_field
 
 
-local OP_EQUAL    = "=="
-local LOGICAL_AND = atc.LOGICAL_AND
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
 
