@@ -24,7 +24,6 @@ lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE_COMBINED}}';
 lua_shared_dict kong                        5m;
 lua_shared_dict kong_locks                  8m;
 lua_shared_dict kong_healthchecks           5m;
-lua_shared_dict kong_process_events         5m;
 lua_shared_dict kong_cluster_events         5m;
 lua_shared_dict kong_rate_limiting_counters 12m;
 lua_shared_dict kong_core_db_cache          ${{MEM_CACHE_SIZE}};
@@ -770,7 +769,6 @@ server {
 }
 > end -- role == "control_plane"
 
-> if not legacy_worker_events then
 server {
     charset UTF-8;
     server_name kong_worker_events;
@@ -782,5 +780,4 @@ server {
         }
     }
 }
-> end -- not legacy_worker_events
 ]]

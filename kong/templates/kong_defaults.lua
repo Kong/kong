@@ -373,8 +373,6 @@ admin_gui_login_banner_body = NONE
 
 allow_inconsistent_data_plane_plugins = off
 
-legacy_worker_events = off
-
 openresty_path =
 
 opentelemetry_tracing = off
