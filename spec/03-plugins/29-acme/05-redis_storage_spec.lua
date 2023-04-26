@@ -361,6 +361,8 @@ describe("Plugin: acme (storage.redis)", function()
         assert.res_status(200, res)
         admin_client:close()
 
+        helpers.wait_for_all_config_update()
+
         local proxy_client = helpers.proxy_client()
         local res = assert(proxy_client:send {
           method  = "GET",
