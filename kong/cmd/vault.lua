@@ -4,7 +4,6 @@ local pl_path = require "pl.path"
 local pl_utils = require "pl.utils"
 local pl_stringx = require "pl.stringx"
 local log = require "kong.cmd.utils.log"
-local kill = require "kong.cmd.utils.kill"
 local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local compile_kong_lmdb_conf = prefix_handler.compile_kong_lmdb_conf
 
@@ -82,9 +81,9 @@ local function to_absolute_path(kong_conf, lmdb_conf)
 end
 
 local function get_with_lmdb(conf, args)
-  -- Ensure that Kong is running and LMDB is initialized
-  if not kill.is_running(conf.nginx_pid) then
-    error("Kong is not running in " .. conf.prefix)
+  -- Ensure that the LMDB exists
+  if not pl_path.exists(conf.prefix .. conf.lmdb_environment_path) then
+    error("LMDB does not exist in " .. conf.prefix)
   end
 
   local nginx_kong_lmdb_conf, err = compile_kong_lmdb_conf(conf)
