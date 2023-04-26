@@ -69,6 +69,7 @@ return {
           { http_response_header_for_traceid = { type = "string", default = nil }},
           { phase_duration_flavor = { type = "string", required = true, default = "annotations",
                                       one_of = { "annotations", "tags" } } },
+          { queue = typedefs.queue },
         },
     }, },
   },

@@ -81,5 +81,8 @@ return {
     datadog = {
       "queue",
     },
+    zipkin = {
+      "queue",
+    },
   },
 }
