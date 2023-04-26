@@ -54,6 +54,57 @@ local compatible_checkers = {
         end
       end
 
+      -- Support legacy queueing parameters for plugins that used queues prior to 3.3.  `retry_count` has been
+      -- completely removed, so we always supply the default of 10 as that provides the same behavior as with a
+      -- pre 3.3 CP.  The other queueing related legacy parameters can be determined from the new queue
+      -- configuration table.
+      for _, plugin in ipairs(config_table.plugins or {}) do
+        local config = plugin.config
+        if plugin.name == 'statsd' or plugin.name == 'datadog' then
+          if type(config.retry_count) ~= "number" then
+            config.retry_count = 10
+            has_update = true
+          end
+          if type(config.queue_size) ~= "number" then
+            if config.queue and type(config.queue.max_batch_size) == "number" then
+              config.queue_size = config.queue.max_batch_size
+              has_update = true
+            else
+              config.queue_size = 1
+              has_update = true
+            end
+          end
+          if type(config.flush_timeout) ~= "number" then
+            if config.queue and type(config.queue.max_coalescing_delay) == "number" then
+              config.flush_timeout = config.queue.max_coalescing_delay
+              has_update = true
+            else
+              config.flush_timeout = 2
+              has_update = true
+            end
+          end
+        elseif plugin.name == 'opentelemetry' then
+          if type(config.batch_span_count) ~= "number" then
+            if config.queue and type(config.queue.max_batch_size) == "number" then
+              config.batch_span_count = config.queue.max_batch_size
+              has_update = true
+            else
+              config.batch_span_count = 200
+              has_update = true
+            end
+          end
+          if type(config.batch_flush_delay) ~= "number" then
+            if config.queue and type(config.queue.max_coalescing_delay) == "number" then
+              config.batch_flush_delay = config.queue.max_coalescing_delay
+              has_update = true
+            else
+              config.batch_flush_delay = 3
+              has_update = true
+            end
+          end
+        end
+      end
+
       return has_update
     end
   },

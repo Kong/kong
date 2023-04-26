@@ -354,17 +354,17 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix)
   payload = deep_copy(payload, false)
   local config_table = payload["config_table"]
 
-  local fields = get_removed_fields(dp_version_num)
-  if fields then
-    if invalidate_keys_from_config(config_table["plugins"], fields, log_suffix, dp_version_num) then
-      has_update = true
-    end
-  end
-
   for _, checker in ipairs(COMPATIBILITY_CHECKERS) do
     local ver = checker[1]
     local fn  = checker[2]
     if dp_version_num < ver and fn(config_table, dp_version, log_suffix) then
+      has_update = true
+    end
+  end
+
+  local fields = get_removed_fields(dp_version_num)
+  if fields then
+    if invalidate_keys_from_config(config_table["plugins"], fields, log_suffix, dp_version_num) then
       has_update = true
     end
   end
