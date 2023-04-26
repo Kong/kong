@@ -371,8 +371,7 @@ describe("Plugin: acme (storage.redis)", function()
           })
           assert.response(res).has.status(200)
           local body = res:read_body()
-          assert.equal(namespace.."\n", body)
-          return true
+          return namespace.."\n" == body
         end, 10)
 
         proxy_client:close()
