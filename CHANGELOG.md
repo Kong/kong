@@ -47,6 +47,9 @@
   Thanks [@PidgeyBE](https://github.com/PidgeyBE) for contributing this change.
   [#10595](https://github.com/Kong/kong/pull/10595)
   [#10204](https://github.com/Kong/kong/pull/10204)
+- Add `KONG_UPSTREAM_DNS_TIME` to `kong.ctx` so that we can record the time it takes for DNS
+  resolution when Kong proxies to upstream.
+  [#10355](https://github.com/Kong/kong/pull/10355)
 - Tracing: rename spans to simplify filtering on tracing backends.
   [#10577](https://github.com/Kong/kong/pull/10577)
 
