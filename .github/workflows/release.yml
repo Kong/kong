@@ -313,9 +313,7 @@ jobs:
           pkg=$(ls ../../bazel-bin/pkg/kong* |head -n1)
         fi
 
-        python ./main.py -f filelist.txt -p $pkg -o test.txt
-
-        diff -BbNaur fixtures/${{ matrix.check-manifest-file }} test.txt || (echo "Manifest mismatch" && exit 1)
+        python ./main.py -f filelist.txt -p $pkg -o test.txt -s ${{ matrix.check-manifest-suite }}
 
   build-images:
     name: Build Images - ${{ matrix.label }}
