@@ -157,7 +157,11 @@ describe(PLUGIN_NAME .. ": (schema)", function()
       flush_timeout = 92,
     })
     assert.is_truthy(entity)
+    entity.config.queue.name = "legacy-conversion-test"
     local conf = Queue.get_params(entity.config)
+    assert.match_re(log_messages, "the retry_count parameter no longer works")
+    assert.match_re(log_messages, "the queue_size parameter is deprecated")
+    assert.match_re(log_messages, "the flush_timeout parameter is deprecated")
     assert.is_same(46, conf.max_batch_size)
     assert.is_same(92, conf.max_coalescing_delay)
   end)

@@ -205,11 +205,11 @@ return {
                             { after = "4.0", })
               end
               if (entity.queue_size or ngx.null) ~= ngx.null and entity.queue_size ~= 1 then
-                deprecation("statsd: config.queue_size no longer works, please use config.queue.max_batch_size instead",
+                deprecation("statsd: config.queue_size is deprecated, please use config.queue.max_batch_size instead",
                             { after = "4.0", })
               end
               if (entity.flush_timeout or ngx.null) ~= ngx.null and entity.flush_timeout ~= 2 then
-                deprecation("statsd: config.flush_timeout no longer works, please use config.queue.max_coalescing_delay instead",
+                deprecation("statsd: config.flush_timeout is deprecated, please use config.queue.max_coalescing_delay instead",
                             { after = "4.0", })
               end
               return true
