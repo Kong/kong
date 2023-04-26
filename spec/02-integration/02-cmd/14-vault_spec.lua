@@ -31,7 +31,7 @@ describe("kong vault #" .. strategy, function()
     })
     -- LMDB is relied on in DBless mode, so PDK only is insufficient
     if strategy == "off" then
-      assert.matches("Error: Kong is not running in " .. helpers.test_conf.prefix,
+      assert.matches("Error: LMDB does not exist in " .. helpers.test_conf.prefix,
                      stderr, nil, true)
     else
       assert.matches("Error: vault not found (none)", stderr, nil, true)
