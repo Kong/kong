@@ -43,6 +43,16 @@ local upstream_target_addr_health_table = {
   { value = 0, labels = { 0, 0, 0, "dns_error", ngx.config.subsystem } },
 }
 
+local function set_healthiness_metrics(table, upstream, target, address, status, metrics_bucket)
+  for i = 1, #table do
+    table[i]['labels'][1] = upstream
+    table[i]['labels'][2] = target
+    table[i]['labels'][3] = address
+    table[i]['value'] = (status == table[i]['labels'][4]) and 1 or 0
+    metrics_bucket:set(table[i]['value'], table[i]['labels'])
+  end
+end
+
 -- should we introduce a way to know if a plugin is configured or not?
 local is_prometheus_enabled, register_events_handler do
   local PLUGIN_NAME = "prometheus"
@@ -88,13 +98,13 @@ local is_prometheus_enabled, register_events_handler do
       end
 
       if health_info then
+        local upstream_name = balancer.get_upstream_by_id(upstream_id).name
         for target_name, target_info in pairs(health_info) do
           if target_info ~= nil and target_info.addresses ~= nil and
             #target_info.addresses > 0 then
             -- healthchecks_off|healthy|unhealthy
             for _, address in ipairs(target_info.addresses) do
               if address.ip == ip and address.port == port then
-                local upstream_name = balancer.get_upstream_by_id(upstream_id).name
                 local address_label = concat({address.ip, ':', address.port})
                 local status = lower(address.health)
                 set_healthiness_metrics(upstream_target_addr_health_table, upstream_name, target_name, address_label, status, metrics.upstream_target_health)
@@ -278,16 +288,6 @@ end
 -- don't like int64. Good news is prometheus uses float instead of int64 as well
 local function config_hash_to_number(hash_str)
   return tonumber("0x" .. hash_str)
-end
-
-local function set_healthiness_metrics(table, upstream, target, address, status, metrics_bucket)
-  for i = 1, #table do
-    table[i]['labels'][1] = upstream
-    table[i]['labels'][2] = target
-    table[i]['labels'][3] = address
-    table[i]['value'] = (status == table[i]['labels'][4]) and 1 or 0
-    metrics_bucket:set(table[i]['value'], table[i]['labels'])
-  end
 end
 
 
