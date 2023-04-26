@@ -52,6 +52,13 @@ local is_stream_module = subsystem == "stream"
 local DEFAULT_MATCH_LRUCACHE_SIZE = Router.DEFAULT_MATCH_LRUCACHE_SIZE
 
 
+local kong_shm          = ngx.shared.kong
+local PLUGINS_REBUILD_COUNTER_KEY = 
+                                constants.PLUGINS_REBUILD_COUNTER_KEY
+local ROUTERS_REBUILD_COUNTER_KEY = 
+                                constants.ROUTERS_REBUILD_COUNTER_KEY
+
+
 local ROUTER_CACHE_SIZE = DEFAULT_MATCH_LRUCACHE_SIZE
 local ROUTER_CACHE = lrucache.new(ROUTER_CACHE_SIZE)
 local ROUTER_CACHE_NEG = lrucache.new(ROUTER_CACHE_SIZE)
@@ -397,6 +404,11 @@ local function new_router(version)
     return nil, "could not create router: " .. err
   end
 
+  local _, err = kong_shm:incr(ROUTERS_REBUILD_COUNTER_KEY, 1, 0)
+  if err then
+    log(ERR, "failed to increase router rebuild counter: ", err)
+  end
+
   return new_router
 end
 
@@ -478,7 +490,23 @@ local function _set_router_version(v)
 end
 
 
-local new_plugins_iterator = PluginsIterator.new
+local new_plugins_iterator
+do
+  local PluginsIterator_new = PluginsIterator.new
+  new_plugins_iterator = function(version) 
+    local plugin_iterator, err = PluginsIterator_new(version)
+    if not plugin_iterator then
+      return nil, err
+    end
+
+    local _, err = kong_shm:incr(PLUGINS_REBUILD_COUNTER_KEY, 1, 0)
+    if err then
+      log(ERR, "failed to increase plugins rebuild counter: ", err)
+    end
+
+    return plugin_iterator
+  end
+end
 
 
 local function build_plugins_iterator(version)

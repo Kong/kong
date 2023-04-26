@@ -669,6 +669,33 @@ return {
               means Kong does not currently have a valid configuration loaded.
           ]],
         },
+      },
+      ["/status/ready"] = {
+        GET = {
+          title = [[Check node readiness]],
+          endpoint = [[<div class="endpoint get">/status/ready</div>]],
+          description = [[
+            A simple way to inspect the readiness of the configuration.
+
+            An instance is considered *ready* if it has received a valid configuration and
+            is ready to handle incoming requests.
+
+            If a Kong instance is running in DB-less mode or as Hybrid mode Data Plane,
+            it returns `200 OK` if each worker is ready with the valid router and 
+            plugins iterator, and the database is reachable.
+
+          ]],
+          response = [[
+            ```
+            HTTP 200 OK
+            ```
+            * Means Kong is ready to serve traffic.
+            ```
+            HTTP 503 Service Unavailable
+            ```
+            * Means Kong is not ready to serve traffic.
+          ]],
+        },
       }
     },
     config = {

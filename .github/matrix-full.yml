@@ -8,66 +8,66 @@ build-packages:
 # os: docker image if not ubuntu/debian, otherwise ignored
 # package: package type
 # bazel_args: if set, turn on cross-compilation; make sure its value is a bazel platform
-# check-manifest-file: the manifest file path relative to scripts/explain_manifest to check
+# check-manifest-suite: the check manifest suite as defined in scripts/explain_manifest/config.py
 
 # Ubuntu
 - label: ubuntu-18.04
   os: ubuntu-22.04
   image: ubuntu:18.04
   package: deb
-  check-manifest-file: ubuntu-18.04-amd64.txt
+  check-manifest-suite: ubuntu-18.04-amd64
 - label: ubuntu-20.04
   os: ubuntu-20.04
   package: deb
-  check-manifest-file: ubuntu-20.04-amd64.txt
+  check-manifest-suite: ubuntu-20.04-amd64
 - label: ubuntu-22.04
   os: ubuntu-22.04
   package: deb
-  check-manifest-file: ubuntu-22.04-amd64.txt
+  check-manifest-suite: ubuntu-22.04-amd64
 - label: ubuntu-22.04-arm64
   os: ubuntu-22.04
   package: deb
   bazel_args: --platforms=//:ubuntu-22.04-arm64
-  check-manifest-file: ubuntu-22.04-arm64.txt
+  check-manifest-suite: ubuntu-22.04-arm64
 
 # Debian
 - label: debian-10
   os: ubuntu-22.04
   image: ubuntu:18.04
   package: deb
-  check-manifest-file: ubuntu-18.04-amd64.txt
+  check-manifest-suite: ubuntu-18.04-amd64
 - label: debian-11
   os: ubuntu-20.04
   package: deb
-  check-manifest-file: ubuntu-20.04-amd64.txt
+  check-manifest-suite: ubuntu-20.04-amd64
 
 # CentOS
 - label: centos-7
   os: ubuntu-22.04
   image: centos:7
   package: rpm
-  check-manifest-file: el7-amd64.txt
+  check-manifest-suite: el7-amd64
 
 # RHEL
 - label: rhel-7
   os: ubuntu-22.04
   image: centos:7
   package: rpm
-  check-manifest-file: el7-amd64.txt
+  check-manifest-suite: el7-amd64
 
 # Alpine
 - label: alpine
   os: ubuntu-22.04
   package: apk
   bazel_args: --platforms=//:alpine-x86_64
-  check-manifest-file: alpine-amd64.txt
+  check-manifest-suite: alpine-amd64
 
 # Amazon Linux
 - label: amazonlinux-2
   os: ubuntu-22.04
   image: amazonlinux:2
   package: rpm
-  check-manifest-file: amazonlinux-2-amd64.txt
+  check-manifest-suite: amazonlinux-2-amd64
 
 build-images:
 # Only build images for the latest version of each major release.

@@ -47,6 +47,8 @@
   Thanks [@PidgeyBE](https://github.com/PidgeyBE) for contributing this change.
   [#10595](https://github.com/Kong/kong/pull/10595)
   [#10204](https://github.com/Kong/kong/pull/10204)
+- Tracing: rename spans to simplify filtering on tracing backends.
+  [#10577](https://github.com/Kong/kong/pull/10577)
 
 #### Admin API
 
@@ -55,6 +57,17 @@
   the true state of the balancer), even if the overall upstream health status is HEALTHCHECKS_OFF.
   This is useful for debugging.
   [#5885](https://github.com/Kong/kong/pull/5885)
+
+#### Status API
+
+- The `status_listen` server has been enhanced with the addition of the
+  `/status/ready` API for monitoring Kong's health.
+  This endpoint provides a `200` response upon receiving a `GET` request,
+  but only if a valid, non-empty configuration is loaded and Kong is
+  prepared to process user requests.
+  Load balancers frequently utilize this functionality to ascertain
+  Kong's availability to distribute incoming requests.
+  [#10610](https://github.com/Kong/kong/pull/10610)
 
 #### Plugins
 
@@ -114,10 +127,19 @@
 - Fix an issue where sorting function for traditional router sources/destinations lead to "invalid order
   function for sorting" error.
   [#10514](https://github.com/Kong/kong/pull/10514)
+- Fix the UDP socket leak caused by frequent DNS queries.
+  [#10691](https://github.com/Kong/kong/pull/10691)
 - Fix a typo of mlcache option `shm_set_tries`.
   [#10712](https://github.com/Kong/kong/pull/10712)
 - Fix an issue where slow start up of Go plugin server causes dead lock.
   [#10561](https://github.com/Kong/kong/pull/10561)
+- Tracing: fix an issue that caused the `sampled` flag of incoming propagation
+  headers to be handled incorrectly and only affect some spans.
+  [#10655](https://github.com/Kong/kong/pull/10655)
+- Tracing: fix an issue that was preventing `http_client` spans to be created for OpenResty HTTP client requests.
+  [#10680](https://github.com/Kong/kong/pull/10680)
+- Tracing: fix an approximation issue that resulted in reduced precision of the balancer span start and end times.
+  [#10681](https://github.com/Kong/kong/pull/10681)
 
 #### Admin API
 
@@ -135,6 +157,10 @@
   [#10522](https://github.com/Kong/kong/pull/10522)
 - **OpenTelemetry**: fix an issue that reconfigure of OpenTelemetry does not take effect.
   [#10172](https://github.com/Kong/kong/pull/10172)
+- **OpenTelemetry**: fix an issue that caused spans to be propagated incorrectly
+  resulting in a wrong hierarchy being rendered on tracing backends.
+  [#10663](https://github.com/Kong/kong/pull/10663)
+
 
 #### PDK
 
