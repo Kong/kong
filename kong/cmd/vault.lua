@@ -144,9 +144,11 @@ local function get(args)
 
     local res, err = vault.get(reference)
     if err then
-      -- add the lmdb-related directives into nginx.conf
-      -- so that it will initialize the lmdb nginx module
       if err:find("no LMDB environment defined", 1, true) then
+        -- add the lmdb-related directives into nginx.conf
+        -- so that it will initialize the lmdb nginx module.
+        -- Note we only try this after detecting this specific error
+        -- in order to avoid infinite loop.
         return get_with_lmdb(conf, args)
       end
       return error(err)
