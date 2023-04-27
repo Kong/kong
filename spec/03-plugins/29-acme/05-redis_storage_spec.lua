@@ -277,8 +277,10 @@ describe("Plugin: acme (storage.redis)", function()
         red:set_timeouts(3000, 3000, 3000) -- 3 sec
 
         assert(red:connect(helpers.redis_host, helpers.redis_port))
+        assert(red:multi())
         assert(red:set(dummy_id .. "#http-01", "default"))
         assert(red:set(namespace .. dummy_id .. "#http-01", namespace))
+        assert(red:exec())
         assert(red:close())
       end
 

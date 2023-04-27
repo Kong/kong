@@ -80,7 +80,7 @@ for _, strategy in helpers.each_strategy() do
         assert(start_kong_dp())
         assert(start_kong_cp())
       end)
-  
+
       lazy_teardown(function()
           assert(helpers.stop_kong("serve_cp"))
           assert(helpers.stop_kong("serve_dp"))

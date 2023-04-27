@@ -107,8 +107,8 @@ local lmdb_txn = require "resty.lmdb.transaction"
 local instrumentation = require "kong.tracing.instrumentation"
 local tablepool = require "tablepool"
 local table_new = require "table.new"
+local utils = require "kong.tools.utils"
 local get_ctx_table = require("resty.core.ctx").get_ctx_table
-local time_ns = require "kong.tools.utils".time_ns
 
 
 local internal_proxies = require "kong.enterprise_edition.proxies"
@@ -127,7 +127,6 @@ local licensing = require "kong.enterprise_edition.licensing"
 local kong             = kong
 local ngx              = ngx
 local now              = ngx.now
-local update_time      = ngx.update_time
 local var              = ngx.var
 local arg              = ngx.arg
 local header           = ngx.header
@@ -156,6 +155,8 @@ local set_current_peer = ngx_balancer.set_current_peer
 local set_timeouts     = ngx_balancer.set_timeouts
 local set_more_tries   = ngx_balancer.set_more_tries
 local enable_keepalive = ngx_balancer.enable_keepalive
+local time_ns          = utils.time_ns
+local get_updated_now_ms = utils.get_updated_now_ms
 
 
 local DECLARATIVE_LOAD_KEY = constants.DECLARATIVE_LOAD_KEY
@@ -453,11 +454,6 @@ local function execute_cache_warmup(kong_config)
   return true
 end
 
-
-local function get_updated_now_ms()
-  update_time()
-  return now() * 1000 -- time is kept in seconds with millisecond resolution.
-end
 
 local function flush_delayed_response(ctx)
   ctx.delay_response = nil
@@ -1395,6 +1391,12 @@ do
 
     if not ctx.KONG_PROXY_LATENCY then
       ctx.KONG_PROXY_LATENCY = ctx.KONG_RESPONSE_START - ctx.KONG_PROCESSING_START
+    end
+
+    if not ctx.KONG_UPSTREAM_DNS_TIME and ctx.KONG_UPSTREAM_DNS_END_AT and ctx.KONG_UPSTREAM_DNS_START then
+      ctx.KONG_UPSTREAM_DNS_TIME = ctx.KONG_UPSTREAM_DNS_END_AT - ctx.KONG_UPSTREAM_DNS_START
+    else
+      ctx.KONG_UPSTREAM_DNS_TIME = 0
     end
 
     kong.response.set_status(status)

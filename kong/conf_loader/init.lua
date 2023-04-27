@@ -613,8 +613,6 @@ local CONF_PARSERS = {
 
   allow_inconsistent_data_plane_plugins = { typ = "boolean" },
 
-  legacy_worker_events = { typ = "boolean" },
-
   lmdb_environment_path = { typ = "string" },
   lmdb_map_size = { typ = "string" },
 

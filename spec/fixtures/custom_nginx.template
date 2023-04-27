@@ -43,7 +43,6 @@ http {
     lua_shared_dict kong                        5m;
     lua_shared_dict kong_locks                  8m;
     lua_shared_dict kong_healthchecks           5m;
-    lua_shared_dict kong_process_events         5m;
     lua_shared_dict kong_cluster_events         5m;
     lua_shared_dict kong_rate_limiting_counters 12m;
     lua_shared_dict kong_core_db_cache          ${{MEM_CACHE_SIZE}};
@@ -1078,7 +1077,6 @@ server {
 
     include '*.http_mock';
 
-> if not legacy_worker_events then
     server {
         charset UTF-8;
         server_name kong_worker_events;
@@ -1090,7 +1088,6 @@ server {
             }
         }
     }
-> end -- not legacy_worker_events
 }
 > end
 
@@ -1114,7 +1111,6 @@ stream {
     lua_shared_dict stream_kong                        5m;
     lua_shared_dict stream_kong_locks                  8m;
     lua_shared_dict stream_kong_healthchecks           5m;
-    lua_shared_dict stream_kong_process_events         5m;
     lua_shared_dict stream_kong_cluster_events         5m;
     lua_shared_dict stream_kong_rate_limiting_counters 12m;
     lua_shared_dict stream_kong_core_db_cache          ${{MEM_CACHE_SIZE}};
@@ -1335,7 +1331,6 @@ server {
         }
     }
 
-> if not legacy_worker_events then
     server {
         listen unix:${{PREFIX}}/stream_worker_events.sock;
         access_log off;
@@ -1343,7 +1338,6 @@ server {
           require("resty.events.compat").run()
         }
     }
-> end -- not legacy_worker_events
 
 > if cluster_ssl_tunnel then
     server {

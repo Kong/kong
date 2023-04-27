@@ -47,6 +47,11 @@
   Thanks [@PidgeyBE](https://github.com/PidgeyBE) for contributing this change.
   [#10595](https://github.com/Kong/kong/pull/10595)
   [#10204](https://github.com/Kong/kong/pull/10204)
+- Add `KONG_UPSTREAM_DNS_TIME` to `kong.ctx` so that we can record the time it takes for DNS
+  resolution when Kong proxies to upstream.
+  [#10355](https://github.com/Kong/kong/pull/10355)
+- Tracing: rename spans to simplify filtering on tracing backends.
+  [#10577](https://github.com/Kong/kong/pull/10577)
 
 #### Admin API
 
@@ -129,6 +134,13 @@
   [#10691](https://github.com/Kong/kong/pull/10691)
 - Fix a typo of mlcache option `shm_set_tries`.
   [#10712](https://github.com/Kong/kong/pull/10712)
+- Tracing: fix an issue that caused the `sampled` flag of incoming propagation
+  headers to be handled incorrectly and only affect some spans.
+  [#10655](https://github.com/Kong/kong/pull/10655)
+- Tracing: fix an issue that was preventing `http_client` spans to be created for OpenResty HTTP client requests.
+  [#10680](https://github.com/Kong/kong/pull/10680)
+- Tracing: fix an approximation issue that resulted in reduced precision of the balancer span start and end times.
+  [#10681](https://github.com/Kong/kong/pull/10681)
 
 #### Admin API
 
@@ -146,6 +158,10 @@
   [#10522](https://github.com/Kong/kong/pull/10522)
 - **OpenTelemetry**: fix an issue that reconfigure of OpenTelemetry does not take effect.
   [#10172](https://github.com/Kong/kong/pull/10172)
+- **OpenTelemetry**: fix an issue that caused spans to be propagated incorrectly
+  resulting in a wrong hierarchy being rendered on tracing backends.
+  [#10663](https://github.com/Kong/kong/pull/10663)
+
 
 #### PDK
 
