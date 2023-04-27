@@ -18,7 +18,10 @@
   [#10417](https://github.com/Kong/kong/pull/10417)
 - **Opentelemetry**: plugin version has been updated to match Kong's version
   [#10646](https://github.com/Kong/kong/pull/10646)
-
+- **Zipkin**: The zipkin plugin now uses queues for internal
+  buffering.  The standard queue parameter set is available to
+  control queuing behavior.
+  [#10753](https://github.com/Kong/kong/pull/10753)
 
 ### Additions
 
