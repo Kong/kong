@@ -195,8 +195,9 @@ end
 
 local function load_service()
   local p = grpc_tools.new()
-  local protoc_instance = p.protoc_instance
+  local protoc_instance = p.protoc
 
+  protoc_instance:addpath("spec/fixtures/grpc")
   protoc_instance:loadfile(proto_fname)
   local parsed = protoc_instance:parsefile(proto_fname)
 

@@ -224,7 +224,7 @@ message_to_json = function( m, m_type, path )
       else
         -- handle singular field
         jm[ name ] = field_to_json( m[ f_name ], f_type, p )
-      end 
+      end
     end
   end
 
@@ -573,7 +573,7 @@ function protojson:decode_to_json( msg_type, msg, path )
   else
     pb.option( "no_default_values" )
   end
-
+  
   if ( enum_as_name ) then
     pb.option( "enum_as_name" )
   else

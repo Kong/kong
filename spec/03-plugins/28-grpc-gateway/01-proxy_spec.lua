@@ -19,7 +19,7 @@ for _, strategy in helpers.each_strategy() do
       helpers.db:connect()
       helpers.db:close()
 
-      local bp = helpers.get_db_utils(strategy, {
+      bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",
         "plugins",
@@ -43,13 +43,31 @@ for _, strategy in helpers.each_strategy() do
         service = service1,
       })
 
+      local route2 = assert(bp.routes:insert {
+        protocols = { "http", "https" },
+        paths = { "/" },
+        hosts = {"grpc-rest-test2.com"},
+        service = service1,
+      })
+
       plugin1 = assert(bp.plugins:insert {
         route = route1,
         name = "grpc-gateway",
         config = {
           proto = "./spec/fixtures/grpc/targetservice.proto",
           use_proto_names = true,
-          emit_defaults = true,
+          emit_defaults = false,
+        },
+      })
+
+      assert(bp.plugins:insert {
+        route = route2,
+        name = "grpc-gateway",
+        config = {
+          proto = "./spec/fixtures/grpc/targetservice.proto",
+          use_proto_names = false,
+          enum_as_name=false,
+          emit_defaults = false,
         },
       })
 
@@ -197,26 +215,26 @@ for _, strategy in helpers.each_strategy() do
         return "hello " .. ( string or "" )
       end
 
-      lazy_setup(function()
-        print ("Updating grpc-gateway plugin (id = " .. plugin1.id .. ") settings: use_proto_names=false; enum_as_name=true; emit_defaults=false")
+      -- lazy_setup(function()
+      --   print ("Updating grpc-gateway plugin (id = " .. plugin1.id .. ") settings: use_proto_names=false; enum_as_name=true; emit_defaults=false")
 
-        assert(bp.plugins:update( { id = plugin1.id }, {
-          config = {
-            proto = "./spec/fixtures/grpc/targetservice.proto",
-            use_proto_names = false,
-            enum_as_name = true,
-            emit_defaults = false,
-          },
-        } ))
+      --   assert(bp.plugins:update( { id = plugin1.id }, {
+      --     config = {
+      --       proto = "./spec/fixtures/grpc/targetservice.proto",
+      --       use_proto_names = false,
+      --       enum_as_name = true,
+      --       emit_defaults = false,
+      --     },
+      --   } ))
  
-        assert(helpers.restart_kong {
-          database = strategy,
-          plugins = "bundled,grpc-gateway",
-        })
-      end)
+      --   assert(helpers.restart_kong {
+      --     database = strategy,
+      --     plugins = "bundled,grpc-gateway",
+      --   })
+      -- end)
 
       describe("scalar types", function()
-        it("completely filed request", function()
+        it("completely filled request", function()
           local request = {
             doubleVal = decimal_positive,
             doubleVals = { decimal_negative, decimal_positive },
@@ -294,7 +312,7 @@ for _, strategy in helpers.each_strategy() do
   
         it("empty request", function()
           local res, _ = proxy_client:post("/bounceScalars", {
-            headers = { ["Content-Type"] = "application/json" },
+            headers = { ["Content-Type"] = "application/json", ["Host"] = "grpc-rest-test2.com" },
             body = {},
           })
   
