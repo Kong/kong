@@ -18,7 +18,6 @@ lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE_COMBINED}}';
 lua_shared_dict stream_kong                        5m;
 lua_shared_dict stream_kong_locks                  8m;
 lua_shared_dict stream_kong_healthchecks           5m;
-lua_shared_dict stream_kong_process_events         5m;
 lua_shared_dict stream_kong_cluster_events         5m;
 lua_shared_dict stream_kong_rate_limiting_counters 12m;
 lua_shared_dict stream_kong_core_db_cache          ${{MEM_CACHE_SIZE}};
@@ -219,7 +218,6 @@ server {        # ignore (and close }, to ignore content)
 }
 > end -- #stream_listeners > 0
 
-> if not legacy_worker_events then
 server {
     listen unix:${{PREFIX}}/stream_worker_events.sock;
     error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
@@ -228,5 +226,4 @@ server {
       require("resty.events.compat").run()
     }
 }
-> end -- not legacy_worker_events
 ]]

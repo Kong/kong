@@ -32,7 +32,6 @@ dependencies = {
   "binaryheap >= 0.4",
   "luaxxhash >= 1.0",
   "lua-protobuf == 0.4.2",
-  "lua-resty-worker-events == 1.0.0",
   "lua-resty-healthcheck == 1.6.2",
   "lua-resty-mlcache == 2.6.0",
   "lua-messagepack == 0.5.2",
