@@ -42,13 +42,13 @@ describe("plugin queue", function()
   lazy_setup(function()
     kong.timer = timerng.new()
     kong.timer:start()
-    -- make sure our workspace is nil to begin with to prevent leakage from
-    -- other tests
-    ngx.ctx.workspace = nil
+    -- make sure our workspace is explicitly set so that we test behavior in the presence of workspaces
+    ngx.ctx.workspace = "queue-tests"
   end)
 
   lazy_teardown(function()
     kong.timer:destroy()
+    ngx.ctx.workspace = nil
   end)
 
   before_each(function()

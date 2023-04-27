@@ -68,8 +68,6 @@ local table_new = require("table.new")
 
 
 local string_format = string.format
-local rawset = rawset
-local rawget = rawget
 local assert = assert
 local select = select
 local pairs = pairs
@@ -105,18 +103,11 @@ local function make_queue_key(name)
 end
 
 
-local queues = setmetatable({}, {
-  __newindex = function (self, name, queue)
-    return rawset(self, make_queue_key(name), queue)
-  end,
-  __index = function (self, name)
-    return rawget(self, make_queue_key(name))
-  end
-})
+local queues = {}
 
 
 function Queue.exists(name)
-  return queues[name] and true or false
+  return queues[make_queue_key(name)] and true or false
 end
 
 -------------------------------------------------------------------------------
@@ -127,8 +118,9 @@ end
 local function get_or_create_queue(queue_conf, handler, handler_conf)
 
   local name = assert(queue_conf.name)
+  local key = make_queue_key(name)
 
-  local queue = queues[name]
+  local queue = queues[key]
   if queue then
     queue:log_debug("queue exists")
     -- We always use the latest configuration that we have seen for a queue and handler.
@@ -139,6 +131,7 @@ local function get_or_create_queue(queue_conf, handler, handler_conf)
   queue = {
     -- Queue parameters from the enqueue call
     name = name,
+    key = key,
     handler = handler,
     handler_conf = handler_conf,
 
@@ -160,16 +153,16 @@ local function get_or_create_queue(queue_conf, handler, handler_conf)
 
   queue = setmetatable(queue, Queue_mt)
 
-  kong.timer:named_at("queue " .. name, 0, function(_, q)
+  kong.timer:named_at("queue " .. key, 0, function(_, q)
     while q:count() > 0 do
       q:log_debug("processing queue")
       q:process_once()
     end
     q:log_debug("done processing queue")
-    queues[name] = nil
+    queues[key] = nil
   end, queue)
 
-  queues[name] = queue
+  queues[key] = queue
 
   queue:log_debug("queue created")
 
@@ -411,7 +404,7 @@ end
 -- For testing, the _exists() function is provided to allow a test to wait for the
 -- queue to have been completely processed.
 function Queue._exists(name)
-  local queue = queues[name]
+  local queue = queues[make_queue_key(name)]
   return queue and queue:count() > 0
 end
 
