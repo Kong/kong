@@ -47,7 +47,9 @@
   Thanks [@PidgeyBE](https://github.com/PidgeyBE) for contributing this change.
   [#10595](https://github.com/Kong/kong/pull/10595)
   [#10204](https://github.com/Kong/kong/pull/10204)
-
+  
+- Added new span attribute `http.client_ip` to capture the client IP when behind a proxy.
+  [#10723](https://github.com/Kong/kong/pull/10723)
 #### Admin API
 
 - The `/upstreams/<upstream>/health?balancer_health=1` endpoint always shows the balancer health,
