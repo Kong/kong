@@ -401,6 +401,7 @@ function Rpc:handle_event(plugin_name, conf, phase)
 
   if not res or res == "" then
     if err == "not ready" then
+      self.reset_instance(plugin_name, conf)
       return handle_not_ready(plugin_name)
     end
     if err and (str_find(err:lower(), "no plugin instance", 1, true)
