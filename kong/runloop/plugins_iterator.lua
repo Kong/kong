@@ -652,7 +652,6 @@ function PluginsIterator.new(version)
 
     local cfg = globals[name]
     if cfg then
-      globals[name] = nil
       for _, phase in ipairs(NON_COLLECTING_PHASES) do
         if plugin.handler[phase] then
           local plugins = globals[phase]

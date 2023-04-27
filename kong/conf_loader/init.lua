@@ -549,8 +549,6 @@ local CONF_PARSERS = {
   untrusted_lua_sandbox_requires = { typ = "array" },
   untrusted_lua_sandbox_environment = { typ = "array" },
 
-  legacy_worker_events = { typ = "boolean" },
-
   lmdb_environment_path = { typ = "string" },
   lmdb_map_size = { typ = "string" },
 

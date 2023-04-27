@@ -21,6 +21,10 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
       paths         = { "/" },
       service       = service_mockbin,
     })
+    assert(bp.plugins:insert {
+      name = "datadog",
+      service = service_mockbin,
+    })
 
     assert(helpers.start_kong {
       database = strategy,
@@ -143,6 +147,19 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
       "(20:unable to get local issuer certificate) " ..
       "while SSL handshaking to upstream", true, 2)
 
+      -- e2e test: we are not printing lower than alert
+      helpers.clean_logfile()
+      res = assert(helpers.proxy_client():send {
+        method  = "GET",
+        path    = "/",
+        headers = {
+          Host  = "mockbin.com",
+        },
+      })
+      assert.res_status(502, res)
+      -- from timers pre-created by timer-ng (datadog plugin)
+      assert.logfile().has.no.line("failed to send data to", true, 2)
+
       -- go back to default (debug)
       res = assert(helpers.admin_client():send {
         method = "PUT",
@@ -179,6 +196,19 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
       assert.logfile().has.line("upstream SSL certificate verify error: " ..
       "(20:unable to get local issuer certificate) " ..
       "while SSL handshaking to upstream", true, 30)
+
+      -- e2e test: we are printing higher than debug
+      helpers.clean_logfile()
+      res = assert(helpers.proxy_client():send {
+        method  = "GET",
+        path    = "/",
+        headers = {
+          Host  = "mockbin.com",
+        },
+      })
+      assert.res_status(502, res)
+      -- from timers pre-created by timer-ng (datadog plugin)
+      assert.logfile().has.line("failed to send data to", true, 30)
     end)
 
     it("changes log level for traditional mode", function()
@@ -459,7 +489,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
     it("newly spawned workers can update their log levels", function()
       local res = assert(helpers.admin_client():send {
         method = "PUT",
-        path = "/debug/node/log-level/crit",
+        path = "/debug/node/log-level/crit?timeout=10",
       })
 
       local body = assert.res_status(200, res)
@@ -468,7 +498,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
       assert(json.message == message)
 
       -- make sure we changed to crit
-      helpers.wait_until(function()
+      helpers.pwait_until(function()
         res = assert(helpers.admin_client():send {
           method = "GET",
           path = "/debug/node/log-level",
@@ -476,14 +506,14 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         body = assert.res_status(200, res)
         json = cjson.decode(body)
         message = "log level: crit"
-        return json.message == message
-      end, 30)
+        assert.same(message, json.message)
+      end, 3)
 
       local prefix = helpers.test_conf.prefix
       assert(helpers.reload_kong(strategy, "reload --prefix " .. prefix))
 
       -- Wait for new workers to spawn
-      helpers.wait_until(function()
+      helpers.pwait_until(function()
         -- make sure new workers' log level is crit
         res = assert(helpers.admin_client():send {
           method = "GET",
@@ -493,9 +523,125 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         json = cjson.decode(body)
 
         message = "log level: crit"
-        return json.message == message
-      end, 30)
+        assert.same(message, json.message)
+      end, 7)
+
+      -- wait for the expriration of the previous log level changes
+      helpers.pwait_until(function()
+        res = assert(helpers.admin_client():send {
+          method = "GET",
+          path = "/debug/node/log-level",
+        })
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        message = "log level: debug"
+        assert.same(message, json.message)
+      end, 16)
     end)
+
+    it("change log_level with timeout", function()
+      local res = assert(helpers.admin_client():send {
+        method = "PUT",
+        path = "/debug/node/log-level/alert?timeout=5",
+      })
+
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      local message = "log level changed"
+      assert(json.message == message)
+
+      -- make sure we changed to alert
+      helpers.wait_until(function()
+        res = assert(helpers.admin_client():send {
+          method = "GET",
+          path = "/debug/node/log-level",
+        })
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        message = "log level: alert"
+        return json.message == message
+      end, 3)
+
+      -- e2e test: we are not printing lower than alert
+      helpers.clean_logfile()
+      res = assert(helpers.proxy_client():send {
+        method  = "GET",
+        path    = "/",
+        headers = {
+          Host  = "mockbin.com",
+        },
+      })
+      body = assert.res_status(502, res)
+      assert.equal("An invalid response was received from the upstream server", body)
+      assert.logfile().has.no.line("upstream SSL certificate verify error: " ..
+      "(20:unable to get local issuer certificate) " ..
+      "while SSL handshaking to upstream", true, 2)
+
+      -- e2e test: we are not printing lower than alert
+      helpers.clean_logfile()
+      res = assert(helpers.proxy_client():send {
+        method  = "GET",
+        path    = "/",
+        headers = {
+          Host  = "mockbin.com",
+        },
+      })
+      assert.res_status(502, res)
+      -- from timers pre-created by timer-ng (datadog plugin)
+      assert.logfile().has.no.line("failed to send data to", true, 2)
+
+      -- wait for the dynamic log level timeout
+      helpers.wait_until(function()
+        res = assert(helpers.admin_client():send {
+          method = "GET",
+          path = "/debug/node/log-level",
+        })
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        message = "log level: debug"
+        return json.message == message
+      end, 6)
+
+      -- e2e test: we are printing higher than debug
+      helpers.clean_logfile()
+      res = assert(helpers.proxy_client():send {
+        method  = "GET",
+        path    = "/",
+        headers = {
+          Host  = "mockbin.com",
+        },
+      })
+      body = assert.res_status(502, res)
+      assert.equal("An invalid response was received from the upstream server", body)
+      assert.logfile().has.line("upstream SSL certificate verify error: " ..
+      "(20:unable to get local issuer certificate) " ..
+      "while SSL handshaking to upstream", true, 30)
+
+      -- e2e test: we are printing higher than debug
+      helpers.clean_logfile()
+      res = assert(helpers.proxy_client():send {
+        method  = "GET",
+        path    = "/",
+        headers = {
+          Host  = "mockbin.com",
+        },
+      })
+      assert.res_status(502, res)
+      -- from timers pre-created by timer-ng (datadog plugin)
+      assert.logfile().has.line("failed to send data to", true, 30)
+    end)
+
+    it("should refuse invalid timeout", function()
+      local res = assert(helpers.admin_client():send {
+        method = "PUT",
+        path = "/debug/node/log-level/notice?timeout=-1",
+      })
+
+      local body = assert.res_status(400, res)
+      local json = cjson.decode(body)
+      assert.same("timeout must be greater than or equal to 0", json.message)
   end)
+end)
+
 end)
 end

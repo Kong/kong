@@ -32,7 +32,6 @@ dependencies = {
   "binaryheap >= 0.4",
   "luaxxhash >= 1.0",
   "lua-protobuf == 0.4.2",
-  "lua-resty-worker-events == 1.0.0",
   "lua-resty-healthcheck == 1.6.2",
   "lua-resty-mlcache == 2.6.0",
   "lua-messagepack == 0.5.2",
@@ -140,6 +139,7 @@ build = {
     ["kong.api.routes.debug"] = "kong/api/routes/debug.lua",
 
     ["kong.status"] = "kong/status/init.lua",
+    ["kong.status.ready"] = "kong/status/ready.lua",
 
     ["kong.tools.dns"] = "kong/tools/dns.lua",
     ["kong.tools.grpc"] = "kong/tools/grpc.lua",

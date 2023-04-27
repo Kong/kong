@@ -79,7 +79,7 @@
         "includeVars":false,
         "keepTime":false,
         "tags":[
-           
+
         ],
         "targetBlank":true,
         "title":"Prometheus Plugin Config",
@@ -102,7 +102,7 @@
         "panels":[
            {
               "aliasColors":{
-                 
+
               },
               "bars":false,
               "dashLength":10,
@@ -111,7 +111,7 @@
               "fieldConfig":{
                  "defaults":{
                     "links":[
-                       
+
                     ],
                     "custom":{
                        "fillOpacity":10,
@@ -121,7 +121,7 @@
                     "unit":"reqps"
                  },
                  "overrides":[
-                    
+
                  ]
               },
               "fill":1,
@@ -148,14 +148,14 @@
               "lines":true,
               "linewidth":1,
               "links":[
-                 
+
               ],
               "nullPointMode":"null",
               "options":{
                  "alertThreshold":true,
                  "legend":{
                     "calcs":[
-                       
+
                     ],
                     "displayMode":"hidden",
                     "placement":"bottom"
@@ -172,7 +172,7 @@
               "points":false,
               "renderer":"flot",
               "seriesOverrides":[
-                 
+
               ],
               "spaceLength":10,
               "stack":false,
@@ -187,11 +187,11 @@
                  }
               ],
               "thresholds":[
-                 
+
               ],
               "timeFrom":null,
               "timeRegions":[
-                 
+
               ],
               "timeShift":null,
               "title":"Total requests per second (RPS)",
@@ -207,7 +207,7 @@
                  "name":null,
                  "show":true,
                  "values":[
-                    
+
                  ]
               },
               "yaxes":[
@@ -235,7 +235,7 @@
            },
            {
               "aliasColors":{
-                 
+
               },
               "bars":false,
               "dashLength":10,
@@ -244,7 +244,7 @@
               "fieldConfig":{
                  "defaults":{
                     "links":[
-                       
+
                     ],
                     "custom":{
                        "fillOpacity":10,
@@ -254,7 +254,7 @@
                     "unit":"reqps"
                  },
                  "overrides":[
-                    
+
                  ]
               },
               "fill":1,
@@ -279,14 +279,14 @@
               "lines":true,
               "linewidth":1,
               "links":[
-                 
+
               ],
               "nullPointMode":"null",
               "options":{
                  "alertThreshold":true,
                  "legend":{
                     "calcs":[
-                       
+
                     ],
                     "placement":"bottom"
                  },
@@ -302,7 +302,7 @@
               "points":false,
               "renderer":"flot",
               "seriesOverrides":[
-                 
+
               ],
               "spaceLength":10,
               "stack":false,
@@ -324,11 +324,11 @@
                  }
               ],
               "thresholds":[
-                 
+
               ],
               "timeFrom":null,
               "timeRegions":[
-                 
+
               ],
               "timeShift":null,
               "title":"RPS per route/service ($service)",
@@ -344,7 +344,7 @@
                  "name":null,
                  "show":true,
                  "values":[
-                    
+
                  ]
               },
               "yaxes":[
@@ -372,7 +372,7 @@
            },
            {
               "aliasColors":{
-                 
+
               },
               "bars":false,
               "dashLength":10,
@@ -381,7 +381,7 @@
               "fieldConfig":{
                  "defaults":{
                     "links":[
-                       
+
                     ],
                     "custom":{
                        "fillOpacity":10,
@@ -391,7 +391,7 @@
                     "unit":"reqps"
                  },
                  "overrides":[
-                    
+
                  ]
               },
               "fill":1,
@@ -416,14 +416,14 @@
               "lines":true,
               "linewidth":1,
               "links":[
-                 
+
               ],
               "nullPointMode":"null",
               "options":{
                  "alertThreshold":true,
                  "legend":{
                     "calcs":[
-                       
+
                     ],
                     "placement":"bottom"
                  },
@@ -439,7 +439,7 @@
               "points":false,
               "renderer":"flot",
               "seriesOverrides":[
-                 
+
               ],
               "spaceLength":10,
               "stack":false,
@@ -461,11 +461,11 @@
                  }
               ],
               "thresholds":[
-                 
+
               ],
               "timeFrom":null,
               "timeRegions":[
-                 
+
               ],
               "timeShift":null,
               "title":"RPS per route/service by status code",
@@ -481,7 +481,7 @@
                  "name":null,
                  "show":true,
                  "values":[
-                    
+
                  ]
               },
               "yaxes":[
@@ -524,7 +524,7 @@
         "panels":[
            {
               "aliasColors":{
-                 
+
               },
               "bars":false,
               "dashLength":10,
@@ -533,7 +533,7 @@
               "fieldConfig":{
                  "defaults":{
                     "links":[
-                       
+
                     ],
                     "custom":{
                        "fillOpacity":10,
@@ -543,7 +543,7 @@
                     "unit":"ms"
                  },
                  "overrides":[
-                    
+
                  ]
               },
               "fill":1,
@@ -568,7 +568,7 @@
               "lines":true,
               "linewidth":1,
               "links":[
-                 
+
               ],
               "nullPointMode":"null",
               "options":{
@@ -585,7 +585,7 @@
               "points":false,
               "renderer":"flot",
               "seriesOverrides":[
-                 
+
               ],
               "spaceLength":10,
               "stack":false,
@@ -614,11 +614,11 @@
                  }
               ],
               "thresholds":[
-                 
+
               ],
               "timeFrom":null,
               "timeRegions":[
-                 
+
               ],
               "timeShift":null,
               "title":"Kong Proxy Latency across all services",
@@ -634,7 +634,7 @@
                  "name":null,
                  "show":true,
                  "values":[
-                    
+
                  ]
               },
               "yaxes":[
@@ -662,7 +662,7 @@
            },
            {
               "aliasColors":{
-                 
+
               },
               "bars":false,
               "dashLength":10,
@@ -671,7 +671,7 @@
               "fieldConfig":{
                  "defaults":{
                     "links":[
-                       
+
                     ],
                     "custom":{
                        "fillOpacity":10,
@@ -681,7 +681,7 @@
                     "unit":"ms"
                  },
                  "overrides":[
-                    
+
                  ]
               },
               "fill":1,
@@ -706,7 +706,7 @@
               "lines":true,
               "linewidth":1,
               "links":[
-                 
+
               ],
               "nullPointMode":"null",
               "options":{
@@ -723,7 +723,7 @@
               "points":false,
               "renderer":"flot",
               "seriesOverrides":[
-                 
+
               ],
               "spaceLength":10,
               "stack":false,
@@ -752,11 +752,11 @@
                  }
               ],
               "thresholds":[
-                 
+
               ],
               "timeFrom":null,
               "timeRegions":[
-                 
+
               ],
               "timeShift":null,
               "title":"Kong Proxy Latency per Service",
@@ -772,7 +772,7 @@
                  "name":null,
                  "show":true,
                  "values":[
-                    
+
                  ]
               },
               "yaxes":[
@@ -800,7 +800,7 @@
            },
            {
               "aliasColors":{
-                 
+
               },
               "bars":false,
               "dashLength":10,
@@ -809,7 +809,7 @@
               "fieldConfig":{
                  "defaults":{
                     "links":[
-                       
+
                     ],
                     "custom":{
                        "fillOpacity":10,
@@ -819,7 +819,7 @@
                     "unit":"ms"
                  },
                  "overrides":[
-                    
+
                  ]
               },
               "fill":1,
@@ -844,7 +844,7 @@
               "lines":true,
               "linewidth":1,
               "links":[
-                 
+
               ],
               "nullPointMode":"null",
               "options":{
@@ -861,7 +861,7 @@
               "points":false,
               "renderer":"flot",
               "seriesOverrides":[
-                 
+
               ],
               "spaceLength":10,
               "stack":false,
@@ -890,11 +890,11 @@
                  }
               ],
               "thresholds":[
-                 
+
               ],
               "timeFrom":null,
               "timeRegions":[
-                 
+
               ],
               "timeShift":null,
               "title":"Kong Proxy Latency per Route",
@@ -910,7 +910,7 @@
                  "name":null,
                  "show":true,
                  "values":[
-                    
+
                  ]
               },
               "yaxes":[
@@ -938,7 +938,7 @@
            },
            {
               "aliasColors":{
-                 
+
               },
               "bars":false,
               "dashLength":10,
@@ -947,7 +947,7 @@
               "fieldConfig":{
                  "defaults":{
                     "links":[
-                       
+
                     ],
                     "custom":{
                        "fillOpacity":10,
@@ -957,7 +957,7 @@
                     "unit":"ms"
                  },
                  "overrides":[
-                    
+
                  ]
               },
               "fill":1,
@@ -982,7 +982,7 @@
               "lines":true,
               "linewidth":1,
               "links":[
-                 
+
               ],
               "nullPointMode":"null",
               "options":{
@@ -999,7 +999,7 @@
               "points":false,
               "renderer":"flot",
               "seriesOverrides":[
-                 
+
               ],
               "spaceLength":10,
               "stack":false,
@@ -1028,11 +1028,11 @@
                  }
               ],
               "thresholds":[
-                 
+
               ],
               "timeFrom":null,
               "timeRegions":[
-                 
+
               ],
               "timeShift":null,
               "title":"Request Time across all services",
@@ -1048,7 +1048,7 @@
                  "name":null,
                  "show":true,
                  "values":[
-                    
+
                  ]
               },
               "yaxes":[
@@ -1076,7 +1076,7 @@
            },
            {
               "aliasColors":{
-                 
+
               },
               "bars":false,
               "dashLength":10,
@@ -1085,7 +1085,7 @@
               "fieldConfig":{
                  "defaults":{
                     "links":[
-                       
+
                     ],
                     "custom":{
                        "fillOpacity":10,
@@ -1095,7 +1095,7 @@
                     "unit":"ms"
                  },
                  "overrides":[
-                    
+
                  ]
               },
               "fill":1,
@@ -1120,7 +1120,7 @@
               "lines":true,
               "linewidth":1,
               "links":[
-                 
+
               ],
               "nullPointMode":"null",
               "options":{
@@ -1137,7 +1137,7 @@
               "points":false,
               "renderer":"flot",
               "seriesOverrides":[
-                 
+
               ],
               "spaceLength":10,
               "stack":false,
@@ -1166,11 +1166,11 @@
                  }
               ],
               "thresholds":[
-                 
+
               ],
               "timeFrom":null,
               "timeRegions":[
-                 
+
               ],
               "timeShift":null,
               "title":"Request Time per service",
@@ -1186,7 +1186,7 @@
                  "name":null,
                  "show":true,
                  "values":[
-                    
+
                  ]
               },
               "yaxes":[
@@ -1214,7 +1214,7 @@
            },
            {
               "aliasColors":{
-                 
+
               },
               "bars":false,
               "dashLength":10,
@@ -1223,7 +1223,7 @@
               "fieldConfig":{
                  "defaults":{
                     "links":[
-                       
+
                     ],
                     "custom":{
                        "fillOpacity":10,
@@ -1233,7 +1233,7 @@
                     "unit":"ms"
                  },
                  "overrides":[
-                    
+
                  ]
               },
               "fill":1,
@@ -1258,7 +1258,7 @@
               "lines":true,
               "linewidth":1,
               "links":[
-                 
+
               ],
               "nullPointMode":"null",
               "options":{
@@ -1275,7 +1275,7 @@
               "points":false,
               "renderer":"flot",
               "seriesOverrides":[
-                 
+
               ],
               "spaceLength":10,
               "stack":false,
@@ -1304,11 +1304,11 @@
                  }
               ],
               "thresholds":[
-                 
+
               ],
               "timeFrom":null,
               "timeRegions":[
-                 
+
               ],
               "timeShift":null,
               "title":"Request Time per Route",
@@ -1324,7 +1324,7 @@
                  "name":null,
                  "show":true,
                  "values":[
-                    
+
                  ]
               },
               "yaxes":[
@@ -1352,7 +1352,7 @@
            },
            {
               "aliasColors":{
-                 
+
               },
               "bars":false,
               "dashLength":10,
@@ -1361,7 +1361,7 @@
               "fieldConfig":{
                  "defaults":{
                     "links":[
-                       
+
                     ],
                     "custom":{
                        "fillOpacity":10,
@@ -1371,7 +1371,7 @@
                     "unit":"ms"
                  },
                  "overrides":[
-                    
+
                  ]
               },
               "fill":1,
@@ -1397,7 +1397,7 @@
               "lines":true,
               "linewidth":1,
               "links":[
-                 
+
               ],
               "nullPointMode":"null",
               "options":{
@@ -1414,7 +1414,7 @@
               "points":false,
               "renderer":"flot",
               "seriesOverrides":[
-                 
+
               ],
               "spaceLength":10,
               "stack":false,
@@ -1444,11 +1444,11 @@
                  }
               ],
               "thresholds":[
-                 
+
               ],
               "timeFrom":null,
               "timeRegions":[
-                 
+
               ],
               "timeShift":null,
               "title":"Upstream time across all services",
@@ -1464,7 +1464,7 @@
                  "name":null,
                  "show":true,
                  "values":[
-                    
+
                  ]
               },
               "yaxes":[
@@ -1492,7 +1492,7 @@
            },
            {
               "aliasColors":{
-                 
+
               },
               "bars":false,
               "dashLength":10,
@@ -1501,7 +1501,7 @@
               "fieldConfig":{
                  "defaults":{
                     "links":[
-                       
+
                     ],
                     "custom":{
                        "fillOpacity":10,
@@ -1511,7 +1511,7 @@
                     "unit":"ms"
                  },
                  "overrides":[
-                    
+
                  ]
               },
               "fill":1,
@@ -1537,7 +1537,7 @@
               "lines":true,
               "linewidth":1,
               "links":[
-                 
+
               ],
               "nullPointMode":"null",
               "options":{
@@ -1554,7 +1554,7 @@
               "points":false,
               "renderer":"flot",
               "seriesOverrides":[
-                 
+
               ],
               "spaceLength":10,
               "stack":false,
@@ -1584,11 +1584,11 @@
                  }
               ],
               "thresholds":[
-                 
+
               ],
               "timeFrom":null,
               "timeRegions":[
-                 
+
               ],
               "timeShift":null,
               "title":"Upstream Time across per service",
@@ -1604,7 +1604,7 @@
                  "name":null,
                  "show":true,
                  "values":[
-                    
+
                  ]
               },
               "yaxes":[
@@ -1632,7 +1632,7 @@
            },
            {
               "aliasColors":{
-                 
+
               },
               "bars":false,
               "dashLength":10,
@@ -1641,7 +1641,7 @@
               "fieldConfig":{
                  "defaults":{
                     "links":[
-                       
+
                     ],
                     "custom":{
                        "fillOpacity":10,
@@ -1651,7 +1651,7 @@
                     "unit":"ms"
                  },
                  "overrides":[
-                    
+
                  ]
               },
               "fill":1,
@@ -1677,7 +1677,7 @@
               "lines":true,
               "linewidth":1,
               "links":[
-                 
+
               ],
               "nullPointMode":"null",
               "options":{
@@ -1694,7 +1694,7 @@
               "points":false,
               "renderer":"flot",
               "seriesOverrides":[
-                 
+
               ],
               "spaceLength":10,
               "stack":false,
@@ -1724,11 +1724,11 @@
                  }
               ],
               "thresholds":[
-                 
+
               ],
               "timeFrom":null,
               "timeRegions":[
-                 
+
               ],
               "timeShift":null,
               "title":"Upstream Time across per Route",
@@ -1744,7 +1744,7 @@
                  "name":null,
                  "show":true,
                  "values":[
-                    
+
                  ]
               },
               "yaxes":[
@@ -1787,7 +1787,7 @@
         "panels":[
            {
               "aliasColors":{
-                 
+
               },
               "bars":false,
               "dashLength":10,
@@ -1796,7 +1796,7 @@
               "fieldConfig":{
                  "defaults":{
                     "links":[
-                       
+
                     ],
                     "custom":{
                        "fillOpacity":10,
@@ -1806,7 +1806,7 @@
                     "unit":"Bps"
                  },
                  "overrides":[
-                    
+
                  ]
               },
               "fill":1,
@@ -1833,7 +1833,7 @@
               "lines":true,
               "linewidth":1,
               "links":[
-                 
+
               ],
               "nullPointMode":"null",
               "options":{
@@ -1856,7 +1856,7 @@
               "points":false,
               "renderer":"flot",
               "seriesOverrides":[
-                 
+
               ],
               "spaceLength":10,
               "stack":false,
@@ -1871,11 +1871,11 @@
                  }
               ],
               "thresholds":[
-                 
+
               ],
               "timeFrom":null,
               "timeRegions":[
-                 
+
               ],
               "timeShift":null,
               "title":"Total Bandwidth",
@@ -1891,7 +1891,7 @@
                  "name":null,
                  "show":true,
                  "values":[
-                    
+
                  ]
               },
               "yaxes":[
@@ -1919,7 +1919,7 @@
            },
            {
               "aliasColors":{
-                 
+
               },
               "bars":false,
               "dashLength":10,
@@ -1928,7 +1928,7 @@
               "fieldConfig":{
                  "defaults":{
                     "links":[
-                       
+
                     ],
                     "custom":{
                        "fillOpacity":10,
@@ -1938,7 +1938,7 @@
                     "unit":"Bps"
                  },
                  "overrides":[
-                    
+
                  ]
               },
               "fill":1,
@@ -1963,7 +1963,7 @@
               "lines":true,
               "linewidth":1,
               "links":[
-                 
+
               ],
               "nullPointMode":"null",
               "options":{
@@ -1980,7 +1980,7 @@
               "points":false,
               "renderer":"flot",
               "seriesOverrides":[
-                 
+
               ],
               "spaceLength":10,
               "stack":false,
@@ -2002,11 +2002,11 @@
                  }
               ],
               "thresholds":[
-                 
+
               ],
               "timeFrom":null,
               "timeRegions":[
-                 
+
               ],
               "timeShift":null,
               "title":"Egress per service/route",
@@ -2022,7 +2022,7 @@
                  "name":null,
                  "show":true,
                  "values":[
-                    
+
                  ]
               },
               "yaxes":[
@@ -2050,7 +2050,7 @@
            },
            {
               "aliasColors":{
-                 
+
               },
               "bars":false,
               "dashLength":10,
@@ -2059,7 +2059,7 @@
               "fieldConfig":{
                  "defaults":{
                     "links":[
-                       
+
                     ],
                     "custom":{
                        "fillOpacity":10,
@@ -2069,7 +2069,7 @@
                     "unit":"Bps"
                  },
                  "overrides":[
-                    
+
                  ]
               },
               "fill":1,
@@ -2094,7 +2094,7 @@
               "lines":true,
               "linewidth":1,
               "links":[
-                 
+
               ],
               "nullPointMode":"null",
               "options":{
@@ -2107,7 +2107,7 @@
               "points":false,
               "renderer":"flot",
               "seriesOverrides":[
-                 
+
               ],
               "spaceLength":10,
               "stack":false,
@@ -2122,11 +2122,11 @@
                  }
               ],
               "thresholds":[
-                 
+
               ],
               "timeFrom":null,
               "timeRegions":[
-                 
+
               ],
               "timeShift":null,
               "title":"Ingress per service/route",
@@ -2142,7 +2142,7 @@
                  "name":null,
                  "show":true,
                  "values":[
-                    
+
                  ]
               },
               "yaxes":[
@@ -2228,7 +2228,7 @@
                     "unit":"percent"
                  },
                  "overrides":[
-                    
+
                  ]
               },
               "gridPos":{
@@ -2245,7 +2245,7 @@
                     ],
                     "defaults":{
                        "mappings":[
-                          
+
                        ],
                        "thresholds":{
                           "mode":"absolute",
@@ -2263,7 +2263,7 @@
                        "unit":"percent"
                     },
                     "overrides":[
-                       
+
                     ],
                     "values":false
                  },
@@ -2278,7 +2278,7 @@
                  "showThresholdLabels":false,
                  "showThresholdMarkers":true,
                  "text":{
-                    
+
                  }
               },
               "pluginVersion":"8.4.5",
@@ -2287,7 +2287,7 @@
               "targets":[
                  {
                     "exemplar":true,
-                    "expr":"(kong_memory_lua_shared_dict_bytes{instance=~\"$instance\",shared_dict!~\"kong_process_events\"}/kong_memory_lua_shared_dict_total_bytes{instance=~\"$instance\",shared_dict!~\"kong_process_events\"})*100",
+                    "expr":"(kong_memory_lua_shared_dict_bytes{instance=~\"$instance\"}/kong_memory_lua_shared_dict_total_bytes{instance=~\"$instance\"})*100",
                     "format":"time_series",
                     "instant":false,
                     "interval":"",
@@ -2303,7 +2303,7 @@
                  "mode":"time",
                  "show":true,
                  "values":[
-                    
+
                  ]
               },
               "yaxes":[
@@ -2324,7 +2324,7 @@
            },
            {
               "aliasColors":{
-                 
+
               },
               "bars":false,
               "dashLength":10,
@@ -2341,12 +2341,12 @@
                        "spanNulls":true
                     },
                     "mappings":[
-                       
+
                     ],
                     "unit":"bytes"
                  },
                  "overrides":[
-                    
+
                  ]
               },
               "fill":1,
@@ -2373,7 +2373,7 @@
               "nullPointMode":"null",
               "options":{
                  "dataLinks":[
-                    
+
                  ],
                  "tooltip":{
                     "mode":"multi",
@@ -2388,7 +2388,7 @@
               "repeat":"instance",
               "repeatDirection":"v",
               "seriesOverrides":[
-                 
+
               ],
               "spaceLength":10,
               "stack":false,
@@ -2405,11 +2405,11 @@
                  }
               ],
               "thresholds":[
-                 
+
               ],
               "timeFrom":null,
               "timeRegions":[
-                 
+
               ],
               "timeShift":null,
               "title":"Kong worker Lua VM usage by Node ($instance)",
@@ -2423,7 +2423,7 @@
                  "mode":"time",
                  "show":true,
                  "values":[
-                    
+
                  ]
               },
               "yaxes":[
@@ -2474,10 +2474,10 @@
               "datasource":"${DS_PROMETHEUS}",
               "fieldConfig":{
                  "defaults":{
-                    
+
                  },
                  "overrides":[
-                    
+
                  ]
               },
               "gridPos":{
@@ -2487,7 +2487,7 @@
                  "y":17
               },
               "heatmap":{
-                 
+
               },
               "hideZeroBuckets":false,
               "highlightCards":true,
@@ -2518,7 +2518,7 @@
                  {
                     "id":"seriesToColumns",
                     "options":{
-                       
+
                     }
                  }
               ],
@@ -2543,7 +2543,7 @@
            },
            {
               "columns":[
-                 
+
               ],
               "datasource":"${DS_PROMETHEUS}",
               "fieldConfig":{
@@ -2556,7 +2556,7 @@
                        "filterable":false
                     },
                     "mappings":[
-                       
+
                     ],
                     "thresholds":{
                        "mode":"absolute",
@@ -2673,7 +2673,7 @@
                     "mappingType":1,
                     "pattern":"Time",
                     "thresholds":[
-                       
+
                     ],
                     "type":"hidden",
                     "unit":"short"
@@ -2692,7 +2692,7 @@
                     "mappingType":1,
                     "pattern":"state",
                     "thresholds":[
-                       
+
                     ],
                     "type":"hidden",
                     "unit":"short"
@@ -2745,7 +2745,7 @@
                     "mappingType":1,
                     "pattern":"Value",
                     "thresholds":[
-                       
+
                     ],
                     "type":"hidden",
                     "unit":"short"
@@ -2809,7 +2809,7 @@
         "panels":[
            {
               "aliasColors":{
-                 
+
               },
               "bars":false,
               "dashLength":10,
@@ -2818,7 +2818,7 @@
               "fieldConfig":{
                  "defaults":{
                     "links":[
-                       
+
                     ],
                     "custom":{
                        "fillOpacity":10,
@@ -2828,7 +2828,7 @@
                     "unit":"reqps"
                  },
                  "overrides":[
-                    
+
                  ]
               },
               "fill":1,
@@ -2853,7 +2853,7 @@
               "lines":true,
               "linewidth":1,
               "links":[
-                 
+
               ],
               "nullPointMode":"null",
               "options":{
@@ -2870,7 +2870,7 @@
               "points":false,
               "renderer":"flot",
               "seriesOverrides":[
-                 
+
               ],
               "spaceLength":10,
               "stack":false,
@@ -2885,11 +2885,11 @@
                  }
               ],
               "thresholds":[
-                 
+
               ],
               "timeFrom":null,
               "timeRegions":[
-                 
+
               ],
               "timeShift":null,
               "title":"Nginx connection state",
@@ -2905,7 +2905,7 @@
                  "name":null,
                  "show":true,
                  "values":[
-                    
+
                  ]
               },
               "yaxes":[
@@ -2943,10 +2943,10 @@
               "datasource":"${DS_PROMETHEUS}",
               "fieldConfig":{
                  "defaults":{
-                    
+
                  },
                  "overrides":[
-                    
+
                  ]
               },
               "format":"none",
@@ -2966,7 +2966,7 @@
               "id":18,
               "interval":null,
               "links":[
-                 
+
               ],
               "mappingType":1,
               "mappingTypes":[
@@ -3036,10 +3036,10 @@
               "datasource":"${DS_PROMETHEUS}",
               "fieldConfig":{
                  "defaults":{
-                    
+
                  },
                  "overrides":[
-                    
+
                  ]
               },
               "format":"none",
@@ -3059,7 +3059,7 @@
               "id":19,
               "interval":null,
               "links":[
-                 
+
               ],
               "mappingType":1,
               "mappingTypes":[
@@ -3127,10 +3127,10 @@
               "datasource":"${DS_PROMETHEUS}",
               "fieldConfig":{
                  "defaults":{
-                    
+
                  },
                  "overrides":[
-                    
+
                  ]
               },
               "format":"none",
@@ -3150,7 +3150,7 @@
               "id":20,
               "interval":null,
               "links":[
-                 
+
               ],
               "mappingType":1,
               "mappingTypes":[
@@ -3215,14 +3215,14 @@
   "schemaVersion":22,
   "style":"dark",
   "tags":[
-     
+
   ],
   "templating":{
      "list":[
         {
            "allValue":".*",
            "current":{
-              
+
            },
            "datasource":"${DS_PROMETHEUS}",
            "definition":"label_values(kong_http_requests_total,service)",
@@ -3235,7 +3235,7 @@
            "multi":true,
            "name":"service",
            "options":[
-              
+
            ],
            "query":"label_values(kong_http_requests_total,service)",
            "refresh":1,
@@ -3244,7 +3244,7 @@
            "sort":1,
            "tagValuesQuery":"",
            "tags":[
-              
+
            ],
            "tagsQuery":"",
            "type":"query",
@@ -3253,7 +3253,7 @@
         {
            "allValue":".*",
            "current":{
-              
+
            },
            "datasource":"${DS_PROMETHEUS}",
            "definition":"label_values(kong_nginx_connections_total,instance)",
@@ -3266,7 +3266,7 @@
            "multi":true,
            "name":"instance",
            "options":[
-              
+
            ],
            "query":"label_values(kong_nginx_connections_total,instance)",
            "refresh":2,
@@ -3275,7 +3275,7 @@
            "sort":1,
            "tagValuesQuery":"",
            "tags":[
-              
+
            ],
            "tagsQuery":"",
            "type":"query",
@@ -3284,7 +3284,7 @@
         {
            "allValue":".*",
            "current":{
-              
+
            },
            "datasource":"${DS_PROMETHEUS}",
            "definition":"label_values(kong_http_requests_total,route)",
@@ -3297,7 +3297,7 @@
            "multi":true,
            "name":"route",
            "options":[
-              
+
            ],
            "query":"label_values(kong_http_requests_total,route)",
            "refresh":1,
@@ -3306,7 +3306,7 @@
            "sort":1,
            "tagValuesQuery":"",
            "tags":[
-              
+
            ],
            "tagsQuery":"",
            "type":"query",
@@ -3315,7 +3315,7 @@
         {
            "allValue":null,
            "current":{
-              
+
            },
            "datasource":"${DS_PROMETHEUS}",
            "definition":"label_values(kong_upstream_target_health, upstream)",
@@ -3326,7 +3326,7 @@
            "multi":true,
            "name":"upstream",
            "options":[
-              
+
            ],
            "query":"label_values(kong_upstream_target_health, upstream)",
            "refresh":1,
@@ -3335,7 +3335,7 @@
            "sort":0,
            "tagValuesQuery":"",
            "tags":[
-              
+
            ],
            "tagsQuery":"",
            "type":"query",
@@ -3355,7 +3355,7 @@
            "multi":false,
            "name":"DS_PROMETHEUS",
            "options":[
-              
+
            ],
            "query":"prometheus",
            "refresh":1,
@@ -3399,7 +3399,7 @@
   "uid":"mY9p7dQmz",
   "variables":{
      "list":[
-        
+
      ]
   },
   "version":9
