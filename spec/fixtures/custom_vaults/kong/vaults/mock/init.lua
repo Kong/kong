@@ -20,7 +20,7 @@ local function get(conf, resource, version)
   end
 
   client:set_timeouts(20000, 20000, 20000)
-  assert(client:request_uri("http://mockbin.org/headers", {
+  assert(client:request_uri("http://127.0.0.1:9000", {
     headers = {
       Accept = "application/json",
     },
