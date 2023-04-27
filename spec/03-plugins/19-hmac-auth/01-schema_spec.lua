@@ -9,10 +9,26 @@ local schema_def = require "kong.plugins.hmac-auth.schema"
 local v = require("spec.helpers").validate_plugin_config_schema
 
 describe("Plugin: hmac-auth (schema)", function()
+  local function setup_global_env()
+    _G.kong = _G.kong or {}
+    _G.kong.log = _G.kong.log or {
+      debug = function(msg)
+        ngx.log(ngx.DEBUG, msg)
+      end,
+      error = function(msg)
+        ngx.log(ngx.ERR, msg)
+      end,
+      warn = function (msg)
+        ngx.log(ngx.WARN, msg)
+      end
+    }
+  end
+
   local previous_kong
 
   setup(function()
     previous_kong = _G.kong
+    setup_global_env()
   end)
 
   teardown(function()

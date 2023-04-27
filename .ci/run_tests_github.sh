@@ -110,7 +110,9 @@ if [ "$TEST_SUITE" == "dbless" ]; then
     eval "$TEST_CMD" spec/02-integration/02-cmd \
                      spec/02-integration/05-proxy \
                      spec/02-integration/04-admin_api/02-kong_routes_spec.lua \
-                     spec/02-integration/04-admin_api/15-off_spec.lua
+                     spec/02-integration/04-admin_api/15-off_spec.lua \
+                     spec/02-integration/08-status_api/03-readiness_endpoint_spec.lua
+
 fi
 if [ "$TEST_SUITE" == "plugins" ]; then
     set +ex
@@ -203,7 +205,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         ["fifth"]="mtls-auth request-validator tls-handshake-modifier route-by-header"
         ["sixth"]="key-auth-enc request-transformer-advanced saml graphql-rate-limiting-advanced"
         ["seventh"]="rate-limiting-advanced exit-transformer route-transformer-advanced vault-auth"
-        ["eighth"]="response-transformer-advanced oas-validation datadog-tracing opa konnect-application-auth oauth2-introspection degraphql"
+        ["eighth"]="response-transformer-advanced oas-validation opa konnect-application-auth oauth2-introspection degraphql"
         ["ninth"]="ldap-auth-advanced"
     )
 

@@ -2465,7 +2465,6 @@ function Schema.new(definition, is_subschema)
     end
   })
 
-
   return self
 end
 

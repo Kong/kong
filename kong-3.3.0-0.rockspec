@@ -242,6 +242,7 @@ build = {
     ["kong.api.routes.debug"] = "kong/api/routes/debug.lua",
 
     ["kong.status"] = "kong/status/init.lua",
+    ["kong.status.ready"] = "kong/status/ready.lua",
 
     ["kong.debug"] = "kong/debug/init.lua",
 
@@ -291,6 +292,7 @@ build = {
     ["kong.enterprise_edition.db.migrations.enterprise.014_2800_to_3000"] = "kong/enterprise_edition/db/migrations/enterprise/014_2800_to_3000.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.015_3000_to_3100"] = "kong/enterprise_edition/db/migrations/enterprise/015_3000_to_3100.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.016_3100_to_3200"] = "kong/enterprise_edition/db/migrations/enterprise/016_3100_to_3200.lua",
+    ["kong.enterprise_edition.db.migrations.enterprise.017_3200_to_3300"] = "kong/enterprise_edition/db/migrations/enterprise/017_3200_to_3300.lua",
 
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",

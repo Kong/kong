@@ -12,8 +12,18 @@
 ### Dependencies
 
 * `lua-resty-openssl` is bumped from 0.8.17 to 0.8.20
+* `kong-openid-connect` is bumped from 2.5.4 to 2.5.5
 
 ### Features
+
+- Starting with this release, SBOM files in SPDX and CycloneDX are now generated
+for Kong Gateway's Docker images. Contact your Kong support representative to request
+a copy. [KAG-739](https://konghq.atlassian.net/browse/KAG-739)
+- Add a new `updated_at` field for the following core entities: ca_certificates, certificates, consumers, targets, upstreams, plugins, workspaces, clustering_data_planes, consumer_group_consumers, consumer_group_plugins, consumer_groups, credentials, document_objects, event_hooks, files, group_rbac_roles, groups, keyring_meta, legacy_files, login_attempts, parameters, rbac_role_endpoints, rbac_role_entities, rbac_roles, rbac_users, snis.
+  [FTI-1292](https://konghq.atlassian.net/browse/FTI-1292)
+  [FTI-1294](https://konghq.atlassian.net/browse/FTI-1294)
+  [FTI-2103](https://konghq.atlassian.net/browse/FTI-2103)
+  [#5018](https://github.com/Kong/kong-ee/pull/5018)
 
 ### Fixes
 
@@ -23,6 +33,9 @@
 * Websocket requests generate balancer spans when tracing is enabled. [KAG-1255](https://konghq.atlassian.net/browse/KAG-1255)
 * Sending analytics to Konnect SaaS from Kong DB-less mode (in addition to DP mode) is now supported [MA-1579](https://konghq.atlassian.net/browse/MA-1579)
 * Remove email field from developer registration response. [FTI-2722](https://konghq.atlassian.net/browse/FTI-2722)
+* Fix the leak of UDP sockets in resty.dns.client. [FTI-4962](https://konghq.atlassian.net/browse/FTI-4962)
+* Fixed an issue where management of licenses via `/licenses/` would fail if current license is not valid.
+  [FTI-4927](https://konghq.atlassian.net/browse/FTI-4927)
 
 ## Plugins
 

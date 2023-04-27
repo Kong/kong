@@ -118,6 +118,7 @@ return {
   fields = {
     {id = typedefs.uuid},
     {created_at = typedefs.auto_timestamp_s},
+    {updated_at = typedefs.auto_timestamp_s},
     {
       path = {
         type = "string",

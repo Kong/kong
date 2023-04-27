@@ -152,8 +152,5 @@ return {
     datadog = {
       "queue",
     },
-    ["datadog-tracing"] = {
-      "queue",
-    },
   },
 }

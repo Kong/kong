@@ -3,12 +3,12 @@ build-packages:
 - label: ubuntu-22.04
   os: ubuntu-22.04-kong
   package: deb
-  check-manifest-file: ubuntu-22.04-amd64.txt
+  check-manifest-suite: ubuntu-22.04-amd64
 - label: ubuntu-22.04-arm64
   os: ubuntu-22.04-kong
   package: deb
   bazel_args: --platforms=//:ubuntu-22.04-arm64
-  check-manifest-file: ubuntu-22.04-arm64.txt
+  check-manifest-suite: ubuntu-22.04-arm64
 
 build-images:
 - label: ubuntu

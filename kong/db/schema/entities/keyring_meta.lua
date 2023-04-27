@@ -18,5 +18,6 @@ return {
     { id = { type = "string", required = true } },
     { state = { type = "string", one_of = { "active", "alive", "tombstoned" }, required = true, default = "alive" } },
     { created_at = typedefs.auto_timestamp_s },
+    { updated_at = typedefs.auto_timestamp_s },
   }
 }

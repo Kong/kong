@@ -19,6 +19,7 @@ return {
   fields = {
     { id = typedefs.uuid },
     { created_at = typedefs.auto_timestamp_s },
+    { updated_at = typedefs.auto_timestamp_s },
     { consumer_group = { type = "foreign", required = true, reference = "consumer_groups", on_delete = "cascade" }, },
     { name = { type = "string", required = true }, },
     { config = { type = "record", 

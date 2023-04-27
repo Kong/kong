@@ -179,9 +179,6 @@ plugins-ee/application-registration:
 plugins-ee/canary:
 - plugins-ee/canary/**/*
 
-plugins-ee/datadog-tracing:
-- plugins-ee/datadog-tracing/**/*
-
 plugins-ee/degraphql:
 - plugins-ee/degraphql/**/*
 

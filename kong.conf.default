@@ -1738,6 +1738,70 @@
                                  # single query.
 
 #------------------------------------------------------------------------------
+# VAULTS
+#------------------------------------------------------------------------------
+
+# A secret is any sensitive piece of information required for API gateway
+# operations. Secrets may be part of the core Kong Gateway configuration,
+# used in plugins, or part of the configuration associated with APIs serviced
+# by the gateway.
+#
+# Some of the most common types of secrets used by Kong Gateway include:
+#
+# - Data store usernames and passwords, used with PostgreSQL and Redis
+# - Private X.509 certificates
+# - API keys
+#
+# Sensitive plugin configuration fields are generally used for authentication,
+# hashing, signing, or encryption. Kong Gateway lets you store certain values
+# in a vault. Here are the vault specific configuration options.
+
+#vault_env_prefix =              # Defines the environment variable vault's
+                                 # default prefix. For example if you have
+                                 # all your secrets stored in environment
+                                 # variables prefixed with `SECRETS_`, it
+                                 # can be configured here so that it isn't
+                                 # necessary to repeat them in Vault
+                                 # references.
+
+#vault_aws_region =              # The AWS region your vault is located in.
+
+#vault_gcp_project_id =          # The project ID from your Google API Console.
+
+#vault_hcv_protocol = http       # The protocol to connect with. Accepts one of
+                                 # `http` or `https`.
+
+#vault_hcv_host = 127.0.0.1      # The hostname of your HashiCorp vault.
+
+#vault_hcv_port = 8200           # The port number of your HashiCorp vault.
+
+#vault_hcv_namespace =           # Namespace for the HashiCorp Vault. Vault
+                                 # Enterprise requires a namespace to
+                                 # successfully connect to it.
+
+#vault_hcv_mount = secret        # The mount point.
+
+#vault_hcv_kv = v1               # The secrets engine version. Accepts `v1` or
+                                 # `v2`.
+
+#vault_hcv_token =               # A token string.
+
+#vault_hcv_auth_method = token   # Defines the authentication mechanism when
+                                 # connecting to the Hashicorp Vault service.
+                                 # Accepted values are: `token`, or
+                                 # `kubernetes`.
+
+#vault_hcv_kube_role =           # Defines the HashiCorp Vault role for the
+                                 # Kubernetes service account of the running
+                                 # pod. `vault_hcv_auth_method` must be
+                                 # set to `kubernetes` for this to activate.
+
+#vault_hcv_kube_api_token_file = # Defines where the Kubernetes service account
+                                 # token should be read from the pod's
+                                 # filesystem, if using a non-standard
+                                 # container platform setup.
+
+#------------------------------------------------------------------------------
 # TUNING & BEHAVIOR
 #------------------------------------------------------------------------------
 

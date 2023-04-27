@@ -46,7 +46,6 @@ c.plugins = {
   "xml-threat-protection", -- built-in in kong-ee
   "jwe-decrypt", -- built-in in kong-ee
   "oas-validation", -- built-in in kong-ee
-  "datadog-tracing", -- built-in in kong-ee
 }
 
 c.featureset = {
@@ -58,6 +57,7 @@ c.featureset = {
     write_admin_api = false,
     allow_admin_api = {
       ["/licenses"] = { ["*"] = true },
+      ["/licenses/:licenses"] = { ["*"] = true },
     }
  },
   free = {

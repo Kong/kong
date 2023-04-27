@@ -23,6 +23,7 @@ return {
   fields = {
     { id             = typedefs.uuid, },
     { created_at     = typedefs.auto_timestamp_s },
+    { updated_at     = typedefs.auto_timestamp_s },
     { source         = { type = "string", required = true } },
     { event          = { type = "string" } },
     { on_change      = { type = "boolean" } },

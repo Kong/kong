@@ -7,6 +7,7 @@
 
 local ssl_fixtures = require "spec.fixtures.ssl"
 local utils = require "kong.tools.utils"
+local cjson = require "cjson"
 
 
 local deep_merge = utils.deep_merge
@@ -102,15 +103,20 @@ Sequence.__index = Sequence
 
 
 function Sequence:next()
+  return fmt(self.sequence_string, self:gen())
+end
+
+function Sequence:gen()
   self.count = self.count + 1
-  return fmt(self.sequence_string, self.count)
+  return self.count
 end
 
 
-local function new_sequence(sequence_string)
+local function new_sequence(sequence_string, gen)
   return setmetatable({
     count           = 0,
     sequence_string = sequence_string,
+    gen             = gen,
   }, Sequence)
 end
 
@@ -121,7 +127,34 @@ local _M = {}
 function _M.new(db)
   local res = {}
 
-  local sni_seq = new_sequence("server-name-%d")
+  -- prepare Sequences and random values
+  local sni_seq = new_sequence("sni-%s", utils.uuid)
+  local upstream_name_seq = new_sequence("upstream-%s", utils.uuid)
+  local consumer_custom_id_seq = new_sequence("consumer-id-%s")
+  local consumer_username_seq = new_sequence("consumer-username-%s", utils.uuid)
+  -- endpoint is an url path
+  local rbac_role_endpoint_seq = new_sequence("/rbac-role-endpoint-%d")
+  local group_name_seq = new_sequence("group-name-%d")
+  local developer_email_seq = new_sequence("dev-%d@example.com")
+  local file_name_seq = new_sequence("file-path-%d.txt")
+  local plugin_name_seq = new_sequence("custom-plugin-%d")
+  local consumer_group_name_seq = new_sequence("consumer-group-name-%d")
+  local named_service_name_seq = new_sequence("service-name-%d")
+  local named_service_host_seq = new_sequence("service-host-%d.test")
+  local named_route_name_seq = new_sequence("route-name-%d")
+  local named_route_host_seq = new_sequence("route-host-%d.test")
+  local workspace_name_seq = new_sequence("workspace-name-%d")
+  local rbac_user_name_seq = new_sequence("rbac-user-%d")
+  local rbac_roles_seq = new_sequence("rbac-role-%d")
+  local key_sets_seq = new_sequence("key-sets-%d")
+  local keys_seq = new_sequence("keys-%d")
+
+  local random_ip = tostring(math.random(1, 255)) .. "." ..
+    tostring(math.random(1, 255)) .. "." ..
+    tostring(math.random(1, 255)) .. "." ..
+    tostring(math.random(1, 255))
+  local random_target = random_ip .. ":" .. tostring(math.random(1, 65535))
+
   res.snis = new_blueprint(db.snis, function(overrides)
     return {
       name        = overrides.name or sni_seq:next(),
@@ -142,21 +175,14 @@ function _M.new(db)
     }
   end)
 
-  local upstream_name_seq = new_sequence("upstream-%d")
   res.upstreams = new_blueprint(db.upstreams, function(overrides)
-    local slots = overrides.slots or 100
-    local name = overrides.name or upstream_name_seq:next()
-    local host_header = overrides.host_header or nil
-
     return {
-      name      = name,
-      slots     = slots,
-      host_header = host_header,
+      name      = overrides.name or upstream_name_seq:next(),
+      slots     = overrides.slots or 100,
+      host_header = overrides.host_header,
     }
   end)
 
-  local consumer_custom_id_seq = new_sequence("consumer-id-%d")
-  local consumer_username_seq = new_sequence("consumer-username-%d")
   res.consumers = new_blueprint(db.consumers, function()
     return {
       custom_id = consumer_custom_id_seq:next(),
@@ -164,7 +190,6 @@ function _M.new(db)
     }
   end)
 
-  local developer_email_seq = new_sequence("dev-%d@example.com")
   res.developers = new_blueprint(db.developers, function()
     return {
       email = developer_email_seq:next(),
@@ -175,11 +200,13 @@ function _M.new(db)
     return {
       weight = 10,
       upstream = overrides.upstream or res.upstreams:insert(),
+      target = random_target
     }
   end)
 
-  res.plugins = new_blueprint(db.plugins, function()
-    return {}
+  res.plugins = new_blueprint(db.plugins, function(overrides)
+    -- we currently don't know which plugin is enabled
+    return overrides or {}
   end)
 
   res.routes = new_blueprint(db.routes, function(overrides)
@@ -260,24 +287,129 @@ function _M.new(db)
     return vault
   end)
 
-  res.consumer_groups = new_blueprint(db.consumer_groups, function(overrides)
-      local consumer_groups = {
-          name = "testGroup",
+  res.rbac_role_entities = new_blueprint(db.rbac_role_entities, function(overrides)
+    return {
+      role = overrides.role or res.rbac_roles:insert(),
+      entity_id = overrides.entity_id or res.routes:insert().id,
+      entity_type = overrides.entity_type or "route",
+      actions = overrides.actions or 15,
+    }
+  end)
+
+  res.rbac_role_endpoints = new_blueprint(db.rbac_role_endpoints, function (overrides)
+    return {
+      role = overrides.role or res.rbac_roles:insert(),
+      endpoint = overrides.endpoint or rbac_role_endpoint_seq:next(),
+      actions = overrides.action or 15,
+    }
+  end)
+
+  res.parameters = new_blueprint(db.parameters, function ()
+    return {
+      key = utils.uuid(),
+      value = utils.uuid(),
+    }
+  end)
+
+  res.login_attempts = new_blueprint(db.login_attempts, function (overrides)
+    return {
+      consumer = overrides.consumer or res.consumers:insert(),
+      attempts = { [random_ip] = math.random(1, 255) },
+    }
+  end)
+
+  res.legacy_files = new_blueprint(db.legacy_files, function (overrides)
+    return {
+      name = overrides.name or utils.uuid(),
+      type = overrides.type or "page",
+      contents = overrides.contents or utils.random_string(),
+    }
+  end)
+
+  res.keyring_meta = new_blueprint(db.keyring_meta, function ()
+    return {
+      id = utils.uuid()
+    }
+  end)
+
+  res.groups = new_blueprint(db.groups, function ()
+    return {
+      name = group_name_seq:next(),
+    }
+  end)
+
+  res.group_rbac_roles = new_blueprint(db.group_rbac_roles, function (overrides)
+    return {
+      group = overrides.group or res.groups:insert(),
+      rbac_role = overrides.rbac or res.rbac_roles:insert(),
+      workspace = overrides.workspace or res.workspaces:insert(),
+    }
+  end)
+
+  res.document_objects = new_blueprint(db.document_objects, function (overrides)
+    return {
+      service = overrides.service or res.services:insert(),
+      path = overrides.path or res.files:insert().path,
+    }
+  end)
+
+  res.files = new_blueprint(db.files, function ()
+    return {
+      path = file_name_seq:next(),
+      contents = utils.random_string(),
+    }
+  end)
+
+  res.event_hooks = new_blueprint(db.event_hooks, function (overrides)
+    local HANDLER = {
+      handler_name = "webhook",
+      config = {
+        url = "http://localhost/",
       }
+    }
+    local event_hook = {
+      -- source = event_hook_source_seq:next(),
+      source = overrides.source,
+      handler = overrides.handler or HANDLER.handler_name,
+      config = overrides.config or HANDLER.config,
+    }
+    return event_hook
+  end)
 
-      consumer_groups.name = overrides.name or consumer_groups.name
+  res.credentials = new_blueprint(db.credentials, function(overrides)
+    local credential = {
+      consumer = overrides.consumer or res.consumers:insert(),
+      plugin = overrides.plugin_name or plugin_name_seq:next(),
+      credential_data = cjson.encode({ [utils.random_string()] = utils.random_string() }),
+    }
+    return credential
+  end)
 
-      return consumer_groups
-    end)
-  
-    res.consumer_group_consumers = new_blueprint(db.consumer_group_consumers, function(overrides)
-      local consumer_group_consumers = {}
+  res.consumer_groups = new_blueprint(db.consumer_groups, function(overrides)
+    return {
+      name = overrides.name or consumer_group_name_seq:next()
+    }
+  end)
 
-      consumer_group_consumers.consumer = overrides.consumer or consumer_group_consumers.consumer
-      consumer_group_consumers.consumer_group = overrides.consumer_group or consumer_group_consumers.consumer_group
+  res.consumer_group_plugins = new_blueprint(db.consumer_group_plugins, function(overrides)
+    local consumer_group_plugins = {
+      consumer_group = overrides.consumer_group or res.consumer_groups:insert(),
+      name = "consumer-group-" .. utils.uuid(),
+      config = {
+        window_size = { math.random(1,100) },
+        window_type = overrides.config and overrides.config.window_type or "fixed",
+        limit = { math.random(1,100) },
+      }
+    }
+    return consumer_group_plugins
+  end)
 
-      return consumer_group_consumers
-    end)
+  res.consumer_group_consumers = new_blueprint(db.consumer_group_consumers, function(overrides)
+    return {
+      consumer = overrides.consumer or res.consumers:insert(),
+      consumer_group = overrides.consumer_group or res.consumer_groups:insert(),
+    }
+  end)
   
   res.clustering_data_planes = new_blueprint(db.clustering_data_planes, function()
     return {
@@ -287,8 +419,6 @@ function _M.new(db)
     }
   end)
 
-  local named_service_name_seq = new_sequence("service-name-%d")
-  local named_service_host_seq = new_sequence("service-host-%d.test")
   res.named_services = new_blueprint(db.services, function()
     return {
       protocol = "http",
@@ -298,8 +428,6 @@ function _M.new(db)
     }
   end)
 
-  local named_route_name_seq = new_sequence("route-name-%d")
-  local named_route_host_seq = new_sequence("route-host-%d.test")
   res.named_routes = new_blueprint(db.routes, function(overrides)
     return {
       name = named_route_name_seq:next(),
@@ -490,7 +618,6 @@ function _M.new(db)
     }
   end)
 
-  local workspace_name_seq = new_sequence("workspace-name-%d")
   res.workspaces = new_blueprint(db.workspaces, function()
     return {
       name = workspace_name_seq:next(),
@@ -504,36 +631,25 @@ function _M.new(db)
     }
   end)
 
-  local rbac_user_name_seq = new_sequence("rbac_user-%d")
-  local rbac_user_user_token_seq = new_sequence("rbac_user_token-%d")
   res.rbac_users = new_blueprint(db.rbac_users, function()
     return {
       name = rbac_user_name_seq:next(),
-      user_token = rbac_user_user_token_seq:next(),
+      user_token = utils.uuid(),
     }
   end)
 
-  local rbac_roles_seq = new_sequence("rbac_role-%d")
   res.rbac_roles = new_blueprint(db.rbac_roles, function()
     return {
       name = rbac_roles_seq:next(),
     }
   end)
 
-  local rbac_users_seq = new_sequence("rbac_user-%d")
-  res.rbac_users = new_blueprint(db.rbac_users, function()
-    return {
-      name = rbac_users_seq:next(),
-    }
-  end)
-
-  local key_sets_seq = new_sequence("key-sets-%d")
   res.key_sets = new_blueprint(db.key_sets, function()
     return {
       name = key_sets_seq:next(),
     }
   end)
-  local keys_seq = new_sequence("keys-%d")
+
   res.keys = new_blueprint(db.keys, function()
     return {
       name = keys_seq:next(),

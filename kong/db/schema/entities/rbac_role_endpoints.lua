@@ -23,5 +23,6 @@ return {
     { negative = {type = "boolean", required = true, default = false,}},
     { comment = {type = "string",} },
     { created_at     = typedefs.auto_timestamp_s },
+    { updated_at     = typedefs.auto_timestamp_s },
   },
 }

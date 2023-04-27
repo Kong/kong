@@ -20,6 +20,7 @@ return {
   fields = {
     { id             = typedefs.uuid },
     { created_at     = typedefs.auto_timestamp_s },
+    { updated_at     = typedefs.auto_timestamp_s },
     { name           = { type = "string", required = true, unique = true }},
     { comment        = { type = "string" }},
   },

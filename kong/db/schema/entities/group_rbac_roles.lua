@@ -15,6 +15,7 @@ return {
   db_export = false,
 	fields = {
 		{ created_at     = typedefs.auto_timestamp_s },
+		{ updated_at     = typedefs.auto_timestamp_s },
 		{ group = { type = "foreign", required = true, reference = "groups", on_delete = "cascade" } },
 		{ rbac_role = { type = "foreign", required = true, reference = "rbac_roles", on_delete = "cascade" } },
 		{ workspace = { type = "foreign", required = true, reference = "workspaces", on_delete = "cascade" } },
