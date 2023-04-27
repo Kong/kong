@@ -1588,6 +1588,33 @@
                                  # single query.
 
 #------------------------------------------------------------------------------
+# VAULTS
+#------------------------------------------------------------------------------
+
+# A secret is any sensitive piece of information required for API gateway
+# operations. Secrets may be part of the core Kong Gateway configuration,
+# used in plugins, or part of the configuration associated with APIs serviced
+# by the gateway.
+#
+# Some of the most common types of secrets used by Kong Gateway include:
+#
+# - Data store usernames and passwords, used with PostgreSQL and Redis
+# - Private X.509 certificates
+# - API keys
+#
+# Sensitive plugin configuration fields are generally used for authentication,
+# hashing, signing, or encryption. Kong Gateway lets you store certain values
+# in a vault. Here are the vault specific configuration options.
+
+#vault_env_prefix =              # Defines the environment variable vault's
+                                 # default prefix. For example if you have
+                                 # all your secrets stored in environment
+                                 # variables prefixed with `SECRETS_`, it
+                                 # can be configured here so that it isn't
+                                 # necessary to repeat them in Vault
+                                 # references.
+
+#------------------------------------------------------------------------------
 # TUNING & BEHAVIOR
 #------------------------------------------------------------------------------
 

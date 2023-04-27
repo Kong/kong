@@ -27,7 +27,7 @@ local table = table
 local table_concat = table.concat
 local run_hook = hooks.run_hook
 local var = ngx.var
-
+local get_updated_now_ms = utils.get_updated_now_ms
 
 local CRIT = ngx.CRIT
 local ERR = ngx.ERR
@@ -353,6 +353,10 @@ local function execute(balancer_data, ctx)
     end
   end
 
+  if not ctx then
+    ctx = ngx.ctx
+  end
+  ctx.KONG_UPSTREAM_DNS_START = get_updated_now_ms()
   local ip, port, hostname, handle
   if balancer then
     -- have to invoke the ring-balancer
@@ -375,6 +379,9 @@ local function execute(balancer_data, ctx)
     local try_list
     local hstate = run_hook("balancer:to_ip:pre", balancer_data.host)
     ip, port, try_list = toip(balancer_data.host, balancer_data.port, dns_cache_only)
+    if not dns_cache_only then
+      ctx.KONG_UPSTREAM_DNS_END_AT = get_updated_now_ms()
+    end
     run_hook("balancer:to_ip:post", hstate)
     hostname = balancer_data.host
     if not ip then

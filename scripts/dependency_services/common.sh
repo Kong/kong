@@ -1,24 +1,34 @@
 #!/bin/bash
 
-if [ "$#" -ne 2 ]; then
-    echo "Usage: $0 KONG_ENV_FILE KONG_ENV_DOWN_FILE"
+if [ "$#" -ne 1 ]; then
+    echo "Usage: $0 KONG_SERVICE_ENV_FILE"
     exit 1
 fi
 
-KONG_ENV_FILE=$1
-KONG_ENV_DOWN_FILE=$2
+if docker compose version >/dev/null 2>&1; then
+    DOCKER_COMPOSE="docker compose"
+elif [[ -z $(which docker-compose) ]]; then
+    echo "docker-compose or docker compose plugin not installed"
+    exit 1
+else
+    DOCKER_COMPOSE="docker-compose"
+fi
 
-> $KONG_ENV_FILE
-> $KONG_ENV_DOWN_FILE
+KONG_SERVICE_ENV_FILE=$1
+# clear the file
+> $KONG_SERVICE_ENV_FILE
 
-cwd=$(realpath $(dirname $(readlink -f $BASH_SOURCE[0])))
-docker_compose_file=${cwd}/docker-compose-test-services.yml
-docker_compose_project=kong
+cwd=$(realpath $(dirname $(readlink -f ${BASH_SOURCE[0]})))
 
-docker-compose -f "$docker_compose_file" -p "$docker_compose_project" up -d
+export COMPOSE_FILE=$cwd/docker-compose-test-services.yml
+export COMPOSE_PROJECT_NAME="$(basename $(realpath $cwd/../../))-$(basename ${KONG_VENV:-kong-dev})"
+echo "export COMPOSE_FILE=$COMPOSE_FILE" >> $KONG_SERVICE_ENV_FILE
+echo "export COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" >> $KONG_SERVICE_ENV_FILE
+
+$DOCKER_COMPOSE up -d
 
 if [ $? -ne 0 ]; then
-    echo "Something goes wrong, please check docker-compose output"
+    echo "Something goes wrong, please check $DOCKER_COMPOSE output"
     return
 fi
 
@@ -42,15 +52,14 @@ for svc in "${!ports[@]}"; do
     for port_def in ${ports[$svc]}; do
         env_name=$(echo $port_def |cut -d: -f1)
         private_port=$(echo $port_def |cut -d: -f2)
-        exposed_port=$(docker-compose -f "$docker_compose_file" -p "$docker_compose_project" port $svc $private_port | cut -d: -f2)
+        exposed_port=$($DOCKER_COMPOSE port $svc $private_port | cut -d: -f2)
         if [ -z $exposed_port ]; then
             echo "Port $env_name for service $svc unknown"
             continue
         fi
         for prefix in $env_prefixes; do
             _kong_added_envs="$_kong_added_envs ${prefix}${env_name}"
-            eval "echo export ${prefix}${env_name}=$exposed_port >> $KONG_ENV_FILE"
-            eval "echo ${prefix}${env_name} >> $KONG_ENV_DOWN_FILE"
+            echo "export ${prefix}${env_name}=$exposed_port" >> $KONG_SERVICE_ENV_FILE
         done
     done
 done
