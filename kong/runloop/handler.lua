@@ -12,6 +12,7 @@ local concurrency  = require "kong.concurrency"
 local lrucache     = require "resty.lrucache"
 local marshall     = require "kong.cache.marshall"
 local ktls         = require "resty.kong.tls"
+local cjson        = require "cjson"
 
 local PluginsIterator = require "kong.runloop.plugins_iterator"
 local instrumentation = require "kong.tracing.instrumentation"
@@ -48,7 +49,7 @@ local escape            = require("kong.tools.uri").escape
 local is_http_module   = subsystem == "http"
 local is_stream_module = subsystem == "stream"
 
-
+local LOG_LEVELS                  = require("kong.constants").LOG_LEVELS
 local DEFAULT_MATCH_LRUCACHE_SIZE = Router.DEFAULT_MATCH_LRUCACHE_SIZE
 
 
@@ -77,7 +78,6 @@ local COMMA = byte(",")
 local SPACE = byte(" ")
 local QUESTION_MARK = byte("?")
 local ARRAY_MT = require("cjson.safe").array_mt
-local get_sys_filter_level = require("ngx.errlog").get_sys_filter_level
 
 local HOST_PORTS = {}
 
@@ -105,6 +105,7 @@ local STREAM_TLS_PASSTHROUGH_SOCK
 
 local set_authority
 local set_log_level
+local get_log_level
 local set_upstream_cert_and_key = ktls.set_upstream_cert_and_key
 local set_upstream_ssl_verify = ktls.set_upstream_ssl_verify
 local set_upstream_ssl_verify_depth = ktls.set_upstream_ssl_verify_depth
@@ -113,6 +114,7 @@ local set_upstream_ssl_trusted_store = ktls.set_upstream_ssl_trusted_store
 if is_http_module then
   set_authority = require("resty.kong.grpc").set_authority
   set_log_level = require("resty.kong.log").set_log_level
+  get_log_level = require("resty.kong.log").get_log_level
 end
 
 
@@ -887,10 +889,11 @@ return {
       if is_http_module then
         -- if worker has outdated log level (e.g. newly spawned), updated it
         timer_at(0, function()
-          local cur_log_level = get_sys_filter_level()
-          local shm_log_level = ngx.shared.kong:get("kong:log_level")
-          if cur_log_level and shm_log_level and cur_log_level ~= shm_log_level then
-            local ok, err = pcall(set_log_level, shm_log_level)
+          local cur_log_level = get_log_level(LOG_LEVELS[kong.configuration.log_level])
+          local shm_log_level = ngx.shared.kong:get(constants.DYN_LOG_LEVEL_KEY)
+          local timeout = (tonumber(ngx.shared.kong:get(constants.DYN_LOG_LEVEL_TIMEOUT_AT_KEY)) or 0) - ngx.time()
+          if shm_log_level and cur_log_level ~= shm_log_level and timeout > 0 then
+            local ok, err = pcall(set_log_level, shm_log_level, timeout)
             if not ok then
               local worker = ngx.worker.id()
               log(ERR, "worker" , worker, " failed setting log level: ", err)
@@ -907,7 +910,7 @@ return {
             return
           end
 
-          local ok, err = kong.worker_events.post("debug", "log_level", tonumber(data))
+          local ok, err = kong.worker_events.post("debug", "log_level", cjson.decode(data))
 
           if not ok then
             kong.log.err("failed broadcasting to workers: ", err)
@@ -923,7 +926,7 @@ return {
 
           log(NOTICE, "log level worker event received for worker ", worker)
 
-          local ok, err = pcall(set_log_level, data)
+          local ok, err = pcall(set_log_level, data.log_level, data.timeout)
 
           if not ok then
             log(ERR, "worker ", worker, " failed setting log level: ", err)

@@ -52,6 +52,8 @@
   [#10355](https://github.com/Kong/kong/pull/10355)
 - Tracing: rename spans to simplify filtering on tracing backends.
   [#10577](https://github.com/Kong/kong/pull/10577)
+- Support timeout for dynamic log level
+  [#10288](https://github.com/Kong/kong/pull/10288)
 
 #### Admin API
 

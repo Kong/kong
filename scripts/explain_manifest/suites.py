@@ -28,7 +28,8 @@ def common_suites(expect, fips: bool = False):
         .functions \
         .contain("ngx_http_lua_kong_ffi_set_grpc_authority") \
         .contain("ngx_http_lua_ffi_balancer_enable_keepalive") \
-        .contain("ngx_http_lua_kong_ffi_set_log_level") \
+        .contain("ngx_http_lua_kong_ffi_set_dynamic_log_level") \
+        .contain("ngx_http_lua_kong_ffi_get_dynamic_log_level") \
         .contain("ngx_http_lua_kong_ffi_get_static_tag") \
         .contain("ngx_stream_lua_kong_ffi_get_static_tag") \
         .contain("ngx_http_lua_kong_ffi_get_full_client_certificate_chain") \
