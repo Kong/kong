@@ -216,7 +216,7 @@ end
 -- and won't affect kong instances performing tests
 local function clear_loaded_package()
   for _, p in ipairs({
-    "spec.helpers", "resty.worker.events", "kong.cluster_events",
+    "spec.helpers", "kong.cluster_events",
     "kong.global", "kong.constants",
     "kong.cache", "kong.db", "kong.plugins", "kong.pdk", "kong.enterprise_edition.pdk",
   }) do
