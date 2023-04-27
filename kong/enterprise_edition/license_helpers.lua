@@ -30,8 +30,10 @@ local split = require('kong.tools.utils').split
 local re_find = ngx.re.find
 local kong_dict = ngx.shared.kong
 local DAY = 24 * 3600
+local PLEASE_CONTACT_STR = "Please contact <support@konghq.com> to renew your license."
 local WARNING_NOTICE_DAYS = 90
 local ERROR_NOTICE_DAYS = 30
+local ERROR_NOTICE_DAYS_KONNECT = 16
 local LICENSE_NOTIFICATION_INTERVAL = DAY
 local LICENSE_NOTIFICATION_LOCK_KEY = "events:license"
 local decode_base64 = ngx.decode_base64
@@ -230,48 +232,60 @@ local function get_lock(key, exptime)
   return ok
 end
 
+-- license alert has different behavior for Konnect and Kong
+local function log_license_state_konnect(expiration_time, now)
+  if expiration_time < now + (ERROR_NOTICE_DAYS_KONNECT * DAY) then
+    ngx.log(ngx.ERR, string.format("The Kong Enterprise license will expire on %s. " ..
+                                    PLEASE_CONTACT_STR, os.date("%Y-%m-%d", expiration_time)))
+  end
+end
 
-local function log_license_state(expiration_time, now)
-  local please_contact_str = "Please contact <support@konghq.com> to renew your license."
-  local expiration_date = os.date("%Y-%m-%d", expiration_time)
-
+local function log_license_state(expiration_time, now, konnect_mode)
   if expiration_time < now then
     ngx.log(ngx.CRIT, string.format("The Kong Enterprise license expired on %s. "..
-                                    please_contact_str, expiration_date))
-  elseif expiration_time < now + (ERROR_NOTICE_DAYS * DAY) then
+                                    PLEASE_CONTACT_STR, os.date("%Y-%m-%d", expiration_time)))
+    return
+  end
+
+  if konnect_mode then
+    return log_license_state_konnect(expiration_time, now)
+  end
+
+  if expiration_time < now + (ERROR_NOTICE_DAYS * DAY) then
     ngx.log(ngx.ERR, string.format("The Kong Enterprise license will expire on %s. " ..
-                                   please_contact_str, expiration_date))
+                                    PLEASE_CONTACT_STR, os.date("%Y-%m-%d", expiration_time)))
+
   elseif expiration_time < now + (WARNING_NOTICE_DAYS * DAY) then
     ngx.log(ngx.WARN, string.format("The Kong Enterprise license will expire on %s. " ..
-                                    please_contact_str, expiration_date))
+                                    PLEASE_CONTACT_STR, os.date("%Y-%m-%d", expiration_time)))
   end
 end
 _M.log_license_state = log_license_state
 
 
-local function license_notification_handler(premature, expiration_time)
+local function license_notification_handler(premature, expiration_time, konnect_mode)
   if premature then
     return
   end
 
   timer_at(LICENSE_NOTIFICATION_INTERVAL,
            license_notification_handler,
-           expiration_time)
+           expiration_time, konnect_mode)
 
   if not get_lock(LICENSE_NOTIFICATION_LOCK_KEY,
                   LICENSE_NOTIFICATION_INTERVAL) then
     return
   end
 
-  log_license_state(expiration_time, ngx.time())
+  log_license_state(expiration_time, ngx.time(), konnect_mode)
 end
 
-local function report_expired_license()
+local function report_expired_license(konnect_mode)
   local expiration_time = license_expiration_time(kong.license)
   if expiration_time then
     timer_at(0,
       license_notification_handler,
-      expiration_time)
+      expiration_time, konnect_mode)
   end
 end
 _M.report_expired_license = report_expired_license
