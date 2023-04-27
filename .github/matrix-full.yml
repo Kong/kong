@@ -8,6 +8,7 @@ build-packages:
 #         it's a cross-compiled for ARM64 target
 # os: docker image if not ubuntu/debian, otherwise ignored
 # package: package type
+# package-distro: the distro name to use in package name, for example el7, aws2; only applicable to rpm
 # bazel_args: additional bazel build flags
 # check-manifest-suite: the check manifest suite as defined in scripts/explain_manifest/config.py
 
@@ -57,6 +58,7 @@ build-packages:
   os: ubuntu-22.04
   image: centos:7
   package: rpm
+  package-distro: el7
   check-manifest-suite: el7-amd64
 
 # RHEL
@@ -64,11 +66,13 @@ build-packages:
   os: ubuntu-22.04
   image: centos:7
   package: rpm
+  package-distro: el7
   check-manifest-suite: el7-amd64
 - label: rhel-8-fips
   os: ubuntu-22.04
   image: rockylinux:8 # note we are not using ubi8 here as some packages needs subscription
   package: rpm
+  package-distro: el8
   bazel_args: --//:fips=true
   check-manifest-suite: el8-amd64-fips
 
@@ -84,10 +88,12 @@ build-packages:
   os: ubuntu-22.04
   image: amazonlinux:2
   package: rpm
+  package-distro: aws2
   check-manifest-suite: amazonlinux-2-amd64
 - label: amazonlinux-2-arm64
   os: ubuntu-22.04-arm64
   package: rpm
+  package-distro: aws2022
   image: amazonlinux:2
   check-manifest-suite: amazonlinux-2-arm64
 
@@ -97,6 +103,7 @@ build-images:
 # label: used as compose docker image label ${github.sha}-${label}
 # base-image: docker image to use as base
 # package: package type
+# package-distro: the distro name to use in package name, for example el7, aws2; only applicable to rpm
 # artifact-from: label of build-packages to use
 # artifact-from-alt: another label of build-packages to use for downloading package (to build multi-arch image)
 # docker_platforms: comma separated list of docker buildx platforms to build for
@@ -124,6 +131,7 @@ build-images:
 - label: rhel
   base-image: registry.access.redhat.com/ubi8
   package: rpm
+  package-distro: el7
   artifact-from: rhel-7
 
 # Alpine
@@ -136,17 +144,17 @@ build-images:
 - label: amazonlinux-2
   base-image: amazonlinux:2
   package: rpm
+  package-distro: aws2
   artifact-from: amazonlinux-2
   artifact-from-alt: amazonlinux-2-arm64
   docker_platforms: linux/amd64,linux/arm64
-  rpm_platform: aws2
 - label: amazonlinux-2022
   base-image: amazonlinux:2022
   package: rpm
+  package-distro: aws2022
   artifact-from: amazonlinux-2
   artifact-from-alt: amazonlinux-2-arm64
   docker_platforms: linux/amd64,linux/arm64
-  rpm_platform: aws2022
 
 smoke-tests:
 - label: ubuntu

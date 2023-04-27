@@ -371,15 +371,6 @@ jobs:
         fi
         echo "platforms=$platforms" >> $GITHUB_OUTPUT
 
-        if [[ "${{ matrix.package }}" == 'rpm' ]]; then
-          rpm_platform="${{ matrix.rpm_platform }}"
-          if [[ -z "$rpm_platform" ]]; then
-            rpm_platform="el8"
-          fi
-          echo "rpm_platform=$rpm_platform"
-          echo "rpm_platform=$rpm_platform" >> $GITHUB_OUTPUT
-        fi
-
     - name: Build Docker Image
       uses: docker/build-push-action@v4
       with:
@@ -393,7 +384,7 @@ jobs:
         build-args: |
           KONG_BASE_IMAGE=${{ matrix.base-image }}
           KONG_ARTIFACT_PATH=bazel-bin/pkg/
-          RPM_PLATFORM=${{ steps.docker_build_args.outputs.rpm_platform }}
+          PACKAGE_DISTRO=${{ matrix.package-distro }}
           EE_PORTS=8002 8445 8003 8446 8004 8447
 
     - name: Comment on commit
