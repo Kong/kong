@@ -55,6 +55,8 @@
   [#10355](https://github.com/Kong/kong/pull/10355)
 - Tracing: rename spans to simplify filtering on tracing backends.
   [#10577](https://github.com/Kong/kong/pull/10577)
+- Support timeout for dynamic log level
+  [#10288](https://github.com/Kong/kong/pull/10288)
 
 #### Admin API
 
@@ -236,6 +238,8 @@
   [#10562](https://github.com/Kong/kong/pull/10562)
 - Bumped lua-resty-events from 0.1.3 to 0.1.4
   [#10634](https://github.com/Kong/kong/pull/10634)
+- Bumped lua-kong-nginx-module from 0.5.1 to 0.6.0
+  [#10288](https://github.com/Kong/kong/pull/10288)
 
 ## 3.2.0
 

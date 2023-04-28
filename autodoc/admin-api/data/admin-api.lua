@@ -746,6 +746,14 @@ return {
           description = [[
             Change the log level of a node.
 
+            #### Request Querystring Parameters
+
+            Attributes | Description
+            ---:| ---
+            `timeout`<br>*optional* | The timeout for dynamic log_level, after that, the log level will be reset to the
+            default `log_level` setting from Nginx configuration immediately. If it is set to `0`, the dynamic log_level
+            will expire immediately. Defaults to `60`.
+
             See http://nginx.org/en/docs/ngx_core_module.html#error_log for a
             list of accepted values.
 
@@ -783,6 +791,14 @@ return {
           endpoint = [[<div class="endpoint put indent">/debug/cluster/log-level/{log_level}</div>]],
           description = [[
             Change the log level of all nodes in a cluster.
+
+            #### Request Querystring Parameters
+
+            Attributes | Description
+            ---:| ---
+            `timeout`<br>*optional* | The timeout for dynamic log_level, after that, the log level will be reset to the
+            default `log_level` setting from Nginx configuration immediately. If it is set to `0`, the dynamic log_level
+            will expire immediately. Defaults to `60`.
 
             See http://nginx.org/en/docs/ngx_core_module.html#error_log for a
             list of accepted values.
@@ -829,6 +845,14 @@ return {
           description = [[
             Change the log level of all Control Plane nodes deployed in Hybrid
             (CP/DP) cluster.
+
+            #### Request Querystring Parameters
+
+            Attributes | Description
+            ---:| ---
+            `timeout`<br>*optional* | The timeout for dynamic log_level, after that, the log level will be reset to the
+            default `log_level` setting from Nginx configuration immediately. If it is set to `0`, the dynamic log_level
+            will expire immediately. Defaults to `60`.
 
             See http://nginx.org/en/docs/ngx_core_module.html#error_log for a
             list of accepted values.
