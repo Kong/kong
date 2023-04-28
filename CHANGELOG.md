@@ -243,7 +243,7 @@
 - Bumped lua-kong-nginx-module from 0.5.1 to 0.6.0
   [#10288](https://github.com/Kong/kong/pull/10288)
 - Bumped lua-resty-lmdb from 1.0.0 to 1.1.0
-  [#](https://github.com/Kong/kong/pull/)
+  [#10766](https://github.com/Kong/kong/pull/10766)
 
 ## 3.2.0
 
