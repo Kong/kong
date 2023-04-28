@@ -108,8 +108,6 @@
   [#9903](https://github.com/Kong/kong/pull/9903)
 
 ### Fixes
-- **gRPC gateway**: `null` in the JSON payload caused an uncaught exception to be thrown during pb.encode.
-  [#10687](https://github.com/Kong/kong/pull/10687)
 
 #### Core
 
@@ -168,6 +166,8 @@
 - **OpenTelemetry**: fix an issue that caused spans to be propagated incorrectly
   resulting in a wrong hierarchy being rendered on tracing backends.
   [#10663](https://github.com/Kong/kong/pull/10663)
+- **gRPC gateway**: `null` in the JSON payload caused an uncaught exception to be thrown during pb.encode.
+  [#10687](https://github.com/Kong/kong/pull/10687)
 
 
 #### PDK
@@ -240,6 +240,8 @@
   [#10562](https://github.com/Kong/kong/pull/10562)
 - Bumped lua-resty-events from 0.1.3 to 0.1.4
   [#10634](https://github.com/Kong/kong/pull/10634)
+- Bumped lua-kong-nginx-module from 0.5.1 to 0.6.0
+  [#10288](https://github.com/Kong/kong/pull/10288)
 
 ## 3.2.0
 
