@@ -210,7 +210,7 @@ function _M:init_worker()
     self:post_conf_change_worker_event()
   end
 
-  license_helpers.report_expired_license()
+  license_helpers.report_expired_license(kong.configuration.konnect_mode)
   self:register_events()
 end
 

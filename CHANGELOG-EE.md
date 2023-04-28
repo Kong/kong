@@ -24,6 +24,7 @@ a copy. [KAG-739](https://konghq.atlassian.net/browse/KAG-739)
   [FTI-1294](https://konghq.atlassian.net/browse/FTI-1294)
   [FTI-2103](https://konghq.atlassian.net/browse/FTI-2103)
   [#5018](https://github.com/Kong/kong-ee/pull/5018)
+- A change on license alert in Konnect mode. [KAG-922](https://konghq.atlassian.net/browse/KAG-922)
 
 ### Fixes
 
