@@ -24,7 +24,7 @@ describe('Gateway Plugins: OpenTelemetry', function () {
   const hybridWaitTime = 8000;
   const jaegerWait = 10000;
   const configEndpoint = 'http://jaeger:4318/v1/traces';
-  const paths = ['/jaegertest1', '/jaegertest2', '/jaegertest3'];
+  const paths = ['/jaegertest1', '/jaegertest2'];
   let serviceId: string;
   let routeId: string;
   let totalTraces: number;
@@ -201,7 +201,7 @@ describe('Gateway Plugins: OpenTelemetry', function () {
 
     expect(
       resp.data.data.length,
-      'Should see total 2 requests traces in jaeger'
+      'Should see correct number of request traces in jaeger'
     ).to.equal(maxAllowedTraces);
 
     // setting new totalTraces number
@@ -235,6 +235,19 @@ describe('Gateway Plugins: OpenTelemetry', function () {
     }
 
     expect(isFound, 'Should find the target trace in jaeger').to.be.true;
+  });
+
+  it('should not get 500 when traceparent -00 header is present in the request', async function () {
+    // note that traces will not be sent as the header has suffix -00
+    const resp = await axios({
+      url: `${proxyUrl}${paths[1]}`,
+      headers: {
+        traceparent: '00-fff379b78684fd43a9e2bba4676ddc90-eb1c7f5c7a2f374f-00',
+      },
+    });
+
+    logResponse(resp);
+    expect(resp.status, 'Status should be 200').to.equal(200);
   });
 
   after(async function () {
