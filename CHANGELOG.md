@@ -139,6 +139,8 @@
   [#10691](https://github.com/Kong/kong/pull/10691)
 - Fix a typo of mlcache option `shm_set_tries`.
   [#10712](https://github.com/Kong/kong/pull/10712)
+- Fix an issue where slow start up of Go plugin server causes dead lock.
+  [#10561](https://github.com/Kong/kong/pull/10561)
 - Tracing: fix an issue that caused the `sampled` flag of incoming propagation
   headers to be handled incorrectly and only affect some spans.
   [#10655](https://github.com/Kong/kong/pull/10655)

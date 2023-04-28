@@ -63,9 +63,9 @@ local DEFAULT_MATCH_LRUCACHE_SIZE = Router.DEFAULT_MATCH_LRUCACHE_SIZE
 
 
 local kong_shm          = ngx.shared.kong
-local PLUGINS_REBUILD_COUNTER_KEY = 
+local PLUGINS_REBUILD_COUNTER_KEY =
                                 constants.PLUGINS_REBUILD_COUNTER_KEY
-local ROUTERS_REBUILD_COUNTER_KEY = 
+local ROUTERS_REBUILD_COUNTER_KEY =
                                 constants.ROUTERS_REBUILD_COUNTER_KEY
 
 
@@ -414,7 +414,7 @@ local function new_router(version)
   if not new_router then
     return nil, "could not create router: " .. err
   end
-  
+
   -- XXXCORE replace with a hook
   new_router = ee.new_router(new_router)
 
@@ -541,7 +541,7 @@ end
 local new_plugins_iterator
 do
   local PluginsIterator_new = PluginsIterator.new
-  new_plugins_iterator = function(version) 
+  new_plugins_iterator = function(version)
     local plugin_iterator, err = PluginsIterator_new(version)
     if not plugin_iterator then
       return nil, err
