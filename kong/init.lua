@@ -617,6 +617,8 @@ function Kong.init()
 
   tracing.init(config)
 
+  ee.license_hooks(config)
+
   local db = assert(DB.new(config))
   tracing.connector_query_wrap(db.connector)
   instrumentation.db_query(db.connector)
