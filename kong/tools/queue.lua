@@ -60,6 +60,10 @@ local semaphore = require("ngx.semaphore")
 local table_new = require("table.new")
 
 
+-- Minimum interval to warn about usage of legacy queueing related parameters
+local MIN_WARNING_INTERVAL_SECONDS = 60
+
+
 local string_format = string.format
 local assert = assert
 local select = select
@@ -287,30 +291,65 @@ function Queue:process_once()
 end
 
 
+local legacy_params_warned = {}
+
+local function maybe_warn(name, message)
+  local key = name .. "/" .. message
+  if ngx.now() - (legacy_params_warned[key] or 0) >= MIN_WARNING_INTERVAL_SECONDS then
+    kong.log.warn(message)
+    legacy_params_warned[key] = ngx.now()
+  end
+end
+
+
 -- This function retrieves the queue parameters from a plugin configuration, converting legacy parameters
--- to their new locations.  The conversion is silently done here, as we're already warning about the legacy
--- parameters being used when validating each plugin's configuration.
+-- to their new locations.
 function Queue.get_params(config)
   local queue_config = config.queue or table_new(0, 5)
+
+  if not queue_config.name then
+    queue_config.name = kong.plugin.get_id()
+  end
+
+  -- It is planned to remove the legacy parameters in Kong Gateway 4.0, removing
+  -- the need for the checks below. ({ after = "4.0", })
+  if (config.retry_count or null) ~= null and config.retry_count ~= 10 then
+    maybe_warn(
+      queue_config.name,
+      "the retry_count parameter no longer works, please update "
+        .. "your configuration to use initial_retry_delay and max_retry_time instead")
+  end
+
   if (config.queue_size or null) ~= null and config.queue_size ~= 1 then
     queue_config.max_batch_size = config.queue_size
+    maybe_warn(
+      queue_config.name,
+      "the queue_size parameter is deprecated, please update your "
+        .. "configuration to use queue.max_batch_size instead")
   end
 
   if (config.flush_timeout or null) ~= null and config.flush_timeout ~= 2 then
     queue_config.max_coalescing_delay = config.flush_timeout
+    maybe_warn(
+      queue_config.name,
+      "the flush_timeout parameter is deprecated, please update your "
+        .. "configuration to use queue.max_coalescing_delay instead")
   end
 
-  -- Queue related opentelemetry plugin parameters
   if (config.batch_span_count or null) ~= null and config.batch_span_count ~= 200 then
     queue_config.max_batch_size = config.batch_span_count
+    maybe_warn(
+      queue_config.name,
+      "the batch_span_count parameter is deprecated, please update your "
+        .. "configuration to use queue.max_batch_size instead")
   end
 
   if (config.batch_flush_delay or null) ~= null and config.batch_flush_delay ~= 3 then
     queue_config.max_coalescing_delay = config.batch_flush_delay
-  end
-
-  if not queue_config.name then
-    queue_config.name = kong.plugin.get_id()
+    maybe_warn(
+      queue_config.name,
+      "the batch_flush_delay parameter is deprecated, please update your "
+        .. "configuration to use queue.max_coalescing_delay instead")
   end
 
   return queue_config
