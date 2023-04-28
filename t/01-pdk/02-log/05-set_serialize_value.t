@@ -35,7 +35,7 @@ mode false mode must be 'set', 'add' or 'replace'
 [error]
 
 
-=== TEST 2: kong.log.serialize() rejects invalid values, including self-referencial tables
+=== TEST 2: kong.log.serialize() rejects invalid values, including self-referential tables
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
@@ -58,8 +58,8 @@ mode false mode must be 'set', 'add' or 'replace'
 GET /t
 --- no_response_body
 --- error_log
-with_function false value must be nil, a number, string, boolean or a non-self-referencial table containing numbers, string and booleans
-self_ref false value must be nil, a number, string, boolean or a non-self-referencial table containing numbers, string and booleans
+with_function false value must be nil, a number, string, boolean or a non-self-referential table containing numbers, string and booleans
+self_ref false value must be nil, a number, string, boolean or a non-self-referential table containing numbers, string and booleans
 --- no_error_log
 [error]
 

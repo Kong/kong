@@ -553,7 +553,7 @@ client certificate subject: nil
 GET /t
 --- response_body
 Acceptable client certificate CA names
-C = US, ST = California, O = Kong Testing, CN = Kong Testing Intermidiate CA
+C = US, ST = California, O = Kong Testing, CN = Kong Testing Intermediate CA
 C = US, ST = California, O = Kong Testing, CN = Kong Testing Root CA
 
 --- error_log

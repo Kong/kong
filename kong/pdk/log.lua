@@ -657,7 +657,7 @@ do
       key, mode, new_value = item.key, item.mode, item.value
 
       if not is_valid_value(new_value, {}) then
-        error("value must be nil, a number, string, boolean or a non-self-referencial table containing numbers, string and booleans", 2)
+        error("value must be nil, a number, string, boolean or a non-self-referential table containing numbers, string and booleans", 2)
       end
 
       -- Split key by ., creating subtables when needed
@@ -802,7 +802,7 @@ do
         end
       end
 
-      -- The value of upstream_status is a string, and status codes may be 
+      -- The value of upstream_status is a string, and status codes may be
       -- seperated by comma or grouped by colon, according to
       -- the nginx doc: http://nginx.org/en/docs/http/ngx_http_upstream_module.html#upstream_status
       local upstream_status = var.upstream_status or ""
