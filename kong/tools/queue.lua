@@ -303,7 +303,7 @@ end
 
 
 -- This function retrieves the queue parameters from a plugin configuration, converting legacy parameters
--- to their new locations
+-- to their new locations.
 function Queue.get_params(config)
   local queue_config = config.queue or table_new(0, 5)
 
@@ -311,6 +311,8 @@ function Queue.get_params(config)
     queue_config.name = kong.plugin.get_id()
   end
 
+  -- It is planned to remove the legacy parameters in Kong Gateway 4.0, removing
+  -- the need for the checks below. ({ after = "4.0", })
   if (config.retry_count or null) ~= null and config.retry_count ~= 10 then
     maybe_warn(
       queue_config.name,
@@ -334,7 +336,6 @@ function Queue.get_params(config)
         .. "configuration to use queue.max_coalescing_delay instead")
   end
 
-  -- Queue related opentelemetry plugin parameters
   if (config.batch_span_count or null) ~= null and config.batch_span_count ~= 200 then
     queue_config.max_batch_size = config.batch_span_count
     maybe_warn(

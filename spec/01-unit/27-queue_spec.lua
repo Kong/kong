@@ -47,6 +47,10 @@ describe("plugin queue", function()
   local now_offset
   local log_messages
 
+  local function count_matching_log_messages(s)
+    return select(2, string.gsub(log_messages, s, ""))
+  end
+
   before_each(function()
     local real_now = ngx.now
     now_offset = 0
@@ -591,13 +595,12 @@ describe("plugin queue", function()
     for _ = 1,10 do
       Queue.get_params(legacy_parameters)
     end
-    assert.has.no.match_re(log_messages, '(?s)the retry_count parameter no longer works.*the retry_count parameter no longer works')
+    assert.equals(1, count_matching_log_messages('the retry_count parameter no longer works'))
     now_offset = 1000
     for _ = 1,10 do
       Queue.get_params(legacy_parameters)
     end
-    assert.has.match_re(log_messages, '(?s)the retry_count parameter no longer works.*the retry_count parameter no longer works')
-    assert.has.no.match_re(log_messages, '(?s)the retry_count parameter no longer works.*the retry_count parameter no longer works.*the retry_count parameter no longer works')
+    assert.equals(2, count_matching_log_messages('the retry_count parameter no longer works'))
   end)
 
   it("defaulted legacy parameters are ignored when converting", function()
