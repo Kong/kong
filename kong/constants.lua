@@ -284,6 +284,9 @@ local constants = {
     [ngx.ALERT] = "alert",
     [ngx.EMERG] = "emerg",
   },
+
+  DYN_LOG_LEVEL_KEY = "kong:dyn_log_level",
+  DYN_LOG_LEVEL_TIMEOUT_AT_KEY = "kong:dyn_log_level_timeout_at",
 }
 
 -- XXX EE: add enterprise-specific CLUSTERING_SYNC_STATUS enum values before
