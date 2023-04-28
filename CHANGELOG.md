@@ -49,7 +49,7 @@
 - Request and response buffering options are now enabled for incoming HTTP 2.0 requests too.
   Thanks [@PidgeyBE](https://github.com/PidgeyBE) for contributing this change.
   [#10595](https://github.com/Kong/kong/pull/10595)
-  [#10204](https://github.com/Kong/kong/pull/10204)
+  [#10204](https://github.com/Kong/kong/pull/10204)  
 - Add `KONG_UPSTREAM_DNS_TIME` to `kong.ctx` so that we can record the time it takes for DNS
   resolution when Kong proxies to upstream.
   [#10355](https://github.com/Kong/kong/pull/10355)
@@ -57,6 +57,8 @@
   [#10577](https://github.com/Kong/kong/pull/10577)
 - Support timeout for dynamic log level
   [#10288](https://github.com/Kong/kong/pull/10288)
+- Added new span attribute `http.client_ip` to capture the client IP when behind a proxy.
+  [#10723](https://github.com/Kong/kong/pull/10723)
 
 #### Admin API
 
