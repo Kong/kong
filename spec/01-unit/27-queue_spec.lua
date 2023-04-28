@@ -7,9 +7,11 @@
 
 local Queue = require "kong.tools.queue"
 local helpers = require "spec.helpers"
+local mocker = require "spec.fixtures.mocker"
 local timerng = require "resty.timerng"
 local queue_schema = require "kong.tools.queue_schema"
 local queue_num = 1
+
 
 local function queue_conf(conf)
   local defaulted_conf = {}
@@ -36,9 +38,6 @@ end
 
 
 describe("plugin queue", function()
-  local old_log
-  local log_messages
-
   lazy_setup(function()
     kong.timer = timerng.new()
     kong.timer:start()
@@ -51,23 +50,54 @@ describe("plugin queue", function()
     ngx.ctx.workspace = nil
   end)
 
+  local unmock
+  local now_offset
+  local log_messages
+
+  local function count_matching_log_messages(s)
+    return select(2, string.gsub(log_messages, s, ""))
+  end
+
   before_each(function()
-    old_log = kong.log
+    local real_now = ngx.now
+    now_offset = 0
     log_messages = ""
     local function log(level, message) -- luacheck: ignore
       log_messages = log_messages .. level .. " " .. message .. "\n"
     end
-    kong.log = {
-      debug = function(message) return log('DEBUG', message) end,
-      info = function(message) return log('INFO', message) end,
-      warn = function(message) return log('WARN', message) end,
-      err = function(message) return log('ERR', message) end,
-    }
+
+    mocker.setup(function(f)
+      unmock = f
+    end, {
+      kong = {
+        log = {
+          debug = function(message) return log('DEBUG', message) end,
+          info = function(message) return log('INFO', message) end,
+          warn = function(message) return log('WARN', message) end,
+          err = function(message) return log('ERR', message) end,
+        }
+      },
+      ngx = {
+        ctx = {
+          -- make sure our workspace is nil to begin with to prevent leakage from
+          -- other tests
+          workspace = nil
+        },
+        -- We want to be able to fake the time returned by ngx.now() only in the queue module and leave everything
+        -- else alone so that we can see what effects changing the system time has on queues.
+        now = function()
+          local called_from = debug.getinfo(2, "nSl")
+          if string.match(called_from.short_src, "/queue.lua$") then
+            return real_now() + now_offset
+          else
+            return real_now()
+          end
+        end
+      }
+    })
   end)
 
-  after_each(function()
-    kong.log = old_log -- luacheck: ignore
-  end)
+  after_each(unmock)
 
   it("passes configuration to handler", function ()
     local handler_invoked
@@ -404,20 +434,49 @@ describe("plugin queue", function()
       retry_count = 123,
       queue_size = 234,
       flush_timeout = 345,
+      queue = {
+        name = "common-legacy-conversion-test",
+      },
     }
     local converted_parameters = Queue.get_params(legacy_parameters)
+    assert.match_re(log_messages, 'the retry_count parameter no longer works, please update your configuration to use initial_retry_delay and max_retry_time instead')
     assert.equals(legacy_parameters.queue_size, converted_parameters.max_batch_size)
+    assert.match_re(log_messages, 'the queue_size parameter is deprecated, please update your configuration to use queue.max_batch_size instead')
     assert.equals(legacy_parameters.flush_timeout, converted_parameters.max_coalescing_delay)
+    assert.match_re(log_messages, 'the flush_timeout parameter is deprecated, please update your configuration to use queue.max_coalescing_delay instead')
   end)
 
   it("converts opentelemetry plugin legacy queue parameters", function()
     local legacy_parameters = {
       batch_span_count = 234,
       batch_flush_delay = 345,
+      queue = {
+        name = "opentelemetry-legacy-conversion-test",
+      },
     }
     local converted_parameters = Queue.get_params(legacy_parameters)
     assert.equals(legacy_parameters.batch_span_count, converted_parameters.max_batch_size)
+    assert.match_re(log_messages, 'the batch_span_count parameter is deprecated, please update your configuration to use queue.max_batch_size instead')
     assert.equals(legacy_parameters.batch_flush_delay, converted_parameters.max_coalescing_delay)
+    assert.match_re(log_messages, 'the batch_flush_delay parameter is deprecated, please update your configuration to use queue.max_coalescing_delay instead')
+  end)
+
+  it("logs deprecation messages only every so often", function()
+    local legacy_parameters = {
+      retry_count = 123,
+      queue = {
+        name = "legacy-warning-suppression",
+      },
+    }
+    for _ = 1,10 do
+      Queue.get_params(legacy_parameters)
+    end
+    assert.equals(1, count_matching_log_messages('the retry_count parameter no longer works'))
+    now_offset = 1000
+    for _ = 1,10 do
+      Queue.get_params(legacy_parameters)
+    end
+    assert.equals(2, count_matching_log_messages('the retry_count parameter no longer works'))
   end)
 
   it("defaulted legacy parameters are ignored when converting", function()
