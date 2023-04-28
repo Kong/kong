@@ -21,16 +21,15 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
+env:
+  BUILD_ROOT: ${{ github.workspace }}/bazel-bin/build
+
 jobs:
   build:
     name: Build dependencies
     runs-on: ubuntu-22.04
 
     steps:
-    - name: Set environment variables
-      run: |
-          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
-
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
@@ -38,7 +37,8 @@ jobs:
       id: cache-deps
       uses: actions/cache@v3
       with:
-        path: ${{ env.INSTALL_ROOT }}
+        path: |
+          ${{ env.BUILD_ROOT }}
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Install packages
@@ -48,9 +48,10 @@ jobs:
     - name: Build Kong
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
-        bazel build //build:kong --verbose_failures
-        export PATH="$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$PATH"
-        chmod +rw -R $INSTALL_ROOT
+        make build-kong
+        BUILD_PREFIX=$BUILD_ROOT/kong-dev
+        export PATH="$BUILD_PREFIX/bin:$BUILD_PREFIX/openresty/nginx/sbin:$BUILD_PREFIX/openresty/bin:$PATH"
+        chmod +rw -R $BUILD_PREFIX
         nginx -V
         ldd $(which nginx)
         luarocks
@@ -63,31 +64,15 @@ jobs:
         path: |
           bazel-out/_tmp/actions
 
-    - name: Checkout go-pluginserver
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-      uses: actions/checkout@v3
-      with:
-        repository: Kong/go-pluginserver
-        path: go-pluginserver
-
-    - name: Add to Path
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
-
     - name: Build Dev Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
-          eval `luarocks path`
-          make dev OPENSSL_DIR=$(pwd)/bazel-bin/build/kong-dev/kong
+        make install-dev-rocks
 
   lint-doc-and-unit-tests:
     name: Lint, Doc and Unit tests
     runs-on: ubuntu-22.04
     needs: build
-
-    env:
-      KONG_TEST_PG_DATABASE: kong
-      KONG_TEST_PG_USER: kong
 
     services:
       postgres:
@@ -101,10 +86,6 @@ jobs:
         options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
 
     steps:
-    - name: Set environment variables
-      run: |
-        echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
-
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
@@ -112,45 +93,47 @@ jobs:
       id: cache-deps
       uses: actions/cache@v3
       with:
-        path: ${{ env.INSTALL_ROOT }}
+        path: |
+          ${{ env.BUILD_ROOT }}
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
-
-    - name: Add to Path
-      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
 
     - name: Check test-helpers doc generation
       run: |
-          eval `luarocks path`
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           pushd ./spec && ldoc .
 
     - name: Check autodoc generation
       run: |
-          eval `luarocks path`
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           scripts/autodoc
 
     - name: Check Admin API definition generation
       run: |
-          eval `luarocks path`
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           scripts/gen-admin-api-def.sh
 
     - name: Lint Lua code
       run: |
-          eval `luarocks path`
           make lint
 
     - name: Validate rockspec file
       run: |
-          eval `luarocks path`
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           scripts/validate-rockspec
 
     - name: Check spec file misspelling
       run: |
           scripts/check_spec_files_spelling.sh
 
+    - name: Check labeler configuration
+      run: scripts/check-labeler.pl .github/labeler.yml
+
     - name: Unit tests
+      env:
+        KONG_TEST_PG_DATABASE: kong
+        KONG_TEST_PG_USER: kong
       run: |
-          eval `luarocks path`
-          make dev
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           bin/busted -v -o htest spec/01-unit
 
   integration-tests-postgres:
@@ -163,16 +146,6 @@ jobs:
       matrix:
         suite: [integration, plugins]
         split: [first (01-04), second (>= 05)]
-
-    env:
-      KONG_TEST_PG_DATABASE: kong
-      KONG_TEST_PG_USER: kong
-      KONG_TEST_DATABASE: postgres
-      KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
-      KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
-      KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
-      TEST_SUITE: ${{ matrix.suite }}
-      TEST_SPLIT: ${{ matrix.split }}
 
     services:
       postgres:
@@ -205,10 +178,6 @@ jobs:
           - 9411:9411
 
     steps:
-    - name: Set environment variables
-      run: |
-          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
-
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
@@ -216,11 +185,10 @@ jobs:
       id: cache-deps
       uses: actions/cache@v3
       with:
-        path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+        path: |
+          ${{ env.BUILD_ROOT }}
 
-    - name: Add to Path
-      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Add gRPC test host names
       run: |
@@ -250,25 +218,32 @@ jobs:
           sleep 2
           docker logs opentelemetry-collector
 
-    - name: Tests
+    - name: Install AWS SAM cli tool
+      if: ${{ matrix.suite == 'plugins' }}
       run: |
-          eval `luarocks path`
-          make dev
+          curl -L -s -o /tmp/aws-sam-cli.zip https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip
+          unzip -o /tmp/aws-sam-cli.zip -d /tmp/aws-sam-cli
+          sudo /tmp/aws-sam-cli/install --update
+
+    - name: Tests
+      env:
+        KONG_TEST_PG_DATABASE: kong
+        KONG_TEST_PG_USER: kong
+        KONG_TEST_DATABASE: postgres
+        KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
+        KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
+        KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
+        TEST_SUITE: ${{ matrix.suite }}
+        TEST_SPLIT: ${{ matrix.split }}
+      run: |
+          make dev # required to install other dependencies like bin/grpcurl
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           .ci/run_tests.sh
 
   integration-tests-dbless:
     name: DB-less integration tests
     runs-on: ubuntu-22.04
     needs: build
-
-    env:
-      KONG_TEST_PG_DATABASE: kong
-      KONG_TEST_PG_USER: kong
-      KONG_TEST_DATABASE: 'off'
-      KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
-      KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
-      KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
-      TEST_SUITE: dbless
 
     services:
       grpcbin:
@@ -278,10 +253,6 @@ jobs:
           - 15003:9001
 
     steps:
-    - name: Set environment variables
-      run: |
-          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
-
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
@@ -289,11 +260,10 @@ jobs:
       id: cache-deps
       uses: actions/cache@v3
       with:
-        path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+        path: |
+          ${{ env.BUILD_ROOT }}
 
-    - name: Add to Path
-      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Add gRPC test host names
       run: |
@@ -315,9 +285,17 @@ jobs:
           docker logs opentelemetry-collector
 
     - name: Tests
+      env:
+        KONG_TEST_PG_DATABASE: kong
+        KONG_TEST_PG_USER: kong
+        KONG_TEST_DATABASE: 'off'
+        KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
+        KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
+        KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
+        TEST_SUITE: dbless
       run: |
-          eval `luarocks path`
-          make dev
+          make dev # required to install other dependencies like bin/grpcurl
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           .ci/run_tests.sh
 
   integration-tests-cassandra:
@@ -331,14 +309,6 @@ jobs:
         suite: [integration, plugins]
         cassandra_version: [3]
         split: [first (01-04), second (>= 05)]
-
-    env:
-      KONG_TEST_DATABASE: cassandra
-      KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
-      KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
-      KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
-      TEST_SUITE: ${{ matrix.suite }}
-      TEST_SPLIT: ${{ matrix.split }}
 
     services:
       cassandra:
@@ -370,10 +340,6 @@ jobs:
           - 9411:9411
 
     steps:
-    - name: Set environment variables
-      run: |
-          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
-
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
@@ -381,11 +347,10 @@ jobs:
       id: cache-deps
       uses: actions/cache@v3
       with:
-        path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+        path: |
+          ${{ env.BUILD_ROOT }}
 
-    - name: Add to Path
-      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Add gRPC test host names
       run: |
@@ -415,10 +380,24 @@ jobs:
           sleep 2
           docker logs opentelemetry-collector
 
-    - name: Tests
+    - name: Install AWS SAM cli tool
+      if: ${{ matrix.suite == 'plugins' }}
       run: |
-          eval `luarocks path`
-          make dev
+          curl -L -s -o /tmp/aws-sam-cli.zip https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip
+          unzip -o /tmp/aws-sam-cli.zip -d /tmp/aws-sam-cli
+          sudo /tmp/aws-sam-cli/install --update
+
+    - name: Tests
+      env:
+        KONG_TEST_DATABASE: cassandra
+        KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
+        KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
+        KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
+        TEST_SUITE: ${{ matrix.suite }}
+        TEST_SPLIT: ${{ matrix.split }}
+      run: |
+          make dev # required to install other dependencies like bin/grpcurl
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           .ci/run_tests.sh
 
   pdk-tests:
@@ -426,14 +405,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs: build
 
-    env:
-      TEST_SUITE: pdk
-
     steps:
-    - name: Set environment variables
-      run: |
-          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
-
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
@@ -441,11 +413,9 @@ jobs:
       id: cache-deps
       uses: actions/cache@v3
       with:
-        path: ${{ env.INSTALL_ROOT }}
+        path: |
+          ${{ env.BUILD_ROOT }}
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
-
-    - name: Add to Path
-      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
 
     - name: Install Test::Nginx
       run: |
@@ -459,9 +429,10 @@ jobs:
           $CPAN_DOWNLOAD/cpanm --notest Test::Nginx
 
     - name: Tests
+      env:
+        TEST_SUITE: pdk
       run: |
-          eval `luarocks path`
-          make dev
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
 
           eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
           .ci/run_tests.sh

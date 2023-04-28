@@ -114,7 +114,7 @@ jobs:
         run: |
           cd kong
           output="$(git branch --show-current)"
-          echo "::set-output name=name::$output"
+          echo "name=$output" >> $GITHUB_OUTPUT
 
       - name: Show Docs status
         run: |

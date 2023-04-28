@@ -172,14 +172,10 @@ describe("[least-connections]", function()
 
     _G.kong = kong
 
-    kong.worker_events = require "resty.worker.events"
+    kong.worker_events = require "resty.events.compat"
     kong.worker_events.configure({
-      shm = "kong_process_events", -- defined by "lua_shared_dict"
-      timeout = 5,            -- life time of event data in shm
-      interval = 1,           -- poll interval (seconds)
-
-      wait_interval = 0.010,  -- wait before retry fetching event data
-      wait_max = 0.5,         -- max wait time before discarding event
+      listening = "unix:",
+      testing = true,
     })
 
     local function empty_each()
@@ -425,7 +421,7 @@ describe("[least-connections]", function()
     end)
 
 
-    it("retries, after all adresses failed, restarts with previously failed ones", function()
+    it("retries, after all addresses failed, restarts with previously failed ones", function()
       dnsSRV({
         { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
         { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },

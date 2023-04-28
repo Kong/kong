@@ -721,6 +721,7 @@ describe("Admin API #off", function()
           consumers = {
             { id = "d885e256-1abe-5e24-80b6-8f68fe59ea8e",
               created_at = 1566863706,
+              updated_at = config.consumers[1].updated_at,
               username = "bobo",
               custom_id = lyaml.null,
               tags = lyaml.null,
@@ -915,6 +916,7 @@ describe("Admin API #off /config [flattened errors]", function()
       nginx_conf = "spec/fixtures/custom_nginx.template",
       plugins = "bundled",
       vaults = "bundled",
+      log_level = "warn",
     }))
   end)
 
@@ -1091,7 +1093,7 @@ describe("Admin API #off /config [flattened errors]", function()
     assert.is_table(errors, "`flattened_errors` is not a table")
 
     if debug then
-      helpers.intercept(errors)
+      helpers.intercept(body)
     end
     return errors
   end
@@ -1400,7 +1402,6 @@ R6InCcH2Wh8wSeY5AuDXvu2tv9g/PW9wIJmPuKSHMA==
           url = "https://localhost:1234",
           tags = { tags.service.next, tags.invalid_service_name.next },
         },
-
 
       },
 
@@ -2143,6 +2144,135 @@ R6InCcH2Wh8wSeY5AuDXvu2tv9g/PW9wIJmPuKSHMA==
     assert.equals(false, got.entity.name)
     assert.same({ tags.service.last, { 1.5 }, }, got.entity.tags)
   end)
+
+
+  it("drains errors from the top-level fields object", function()
+    local function post(config, flatten)
+      config._format_version = config._format_version or "3.0"
+
+      local path = ("/config?flatten_errors=%s"):format(flatten or "off")
+
+      local res = client:post(path, {
+        body = config,
+        headers = {
+          ["Content-Type"] = "application/json"
+        },
+      })
+
+      assert.response(res).has.status(400)
+      return assert.response(res).has.jsonbody()
+    end
+
+    local input = {
+      _format_version = "3.0",
+      abnormal_extra_field = 123,
+      services = {
+        { name = "nope",
+          host = "localhost",
+          port = 1234,
+          protocol = "nope",
+          tags = { tags.service.next },
+          routes = {
+            { name = "valid.route",
+              protocols = { "http", "https" },
+              methods = { "GET" },
+              hosts = { "test" },
+              tags = { tags.route_service.next, tags.service.last },
+            },
+
+            { name = "nope.route",
+              protocols = { "tcp" },
+              tags = { tags.route_service.next, tags.service.last },
+            }
+          },
+        },
+
+        { name = "mis-matched",
+          host = "localhost",
+          protocol = "tcp",
+          path = "/path",
+          tags = { tags.service.next },
+
+          routes = {
+            { name = "invalid",
+              protocols = { "http", "https" },
+              hosts = { "test" },
+              methods = { "GET" },
+              tags = { tags.route_service.next, tags.service.last },
+            },
+          },
+        },
+
+        { name = "okay",
+          url = "http://localhost:1234",
+          tags = { tags.service.next },
+          routes = {
+            { name = "probably-valid",
+              protocols = { "http", "https" },
+              methods = { "GET" },
+              hosts = { "test" },
+              tags = { tags.route_service.next, tags.service.last },
+              plugins = {
+                { name = "http-log",
+                  config = { not_endpoint = "anything" },
+                  tags = { tags.route_service_plugin.next,
+                           tags.route_service.last,
+                           tags.service.last, },
+                },
+              },
+            },
+          },
+        },
+      },
+    }
+
+    local original = post(input, false)
+    assert.same({
+      abnormal_extra_field = "unknown field",
+      services = {
+        {
+          protocol = "expected one of: grpc, grpcs, http, https, tcp, tls, tls_passthrough, udp",
+          routes = {
+            ngx.null,
+            {
+              ["@entity"] = {
+                "must set one of 'sources', 'destinations', 'snis' when 'protocols' is 'tcp', 'tls' or 'udp'"
+              }
+            }
+          }
+        },
+        {
+          ["@entity"] = {
+            "failed conditional validation given value of field 'protocol'"
+          },
+          path = "value must be null"
+        },
+        {
+          routes = {
+            {
+              plugins = {
+                {
+                  config = {
+                    http_endpoint = "required field missing",
+                    not_endpoint = "unknown field"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }, original.fields)
+    assert.is_nil(original.flattened_errors)
+
+    -- XXX: top-level fields are not currently flattened because they don't
+    -- really have an `entity_type` that we can use... maybe something that
+    -- we'll address later on.
+    local flattened = post(input, true)
+    assert.same({ abnormal_extra_field = "unknown field" }, flattened.fields)
+    assert.equals(4, #flattened.flattened_errors,
+                  "unexpected number of flattened errors")
+  end)
 end)
 
 
@@ -2467,8 +2597,8 @@ describe("Admin API #off worker_consistency=eventual", function()
     local res_body = assert.res_status(200, res)
     local req1_pending_timers = assert.matches('kong_nginx_timers{state="pending"} %d+', res_body)
     local req1_running_timers = assert.matches('kong_nginx_timers{state="running"} %d+', res_body)
-    req1_pending_timers = assert(tonumber(string.match(req1_pending_timers, "%d")))
-    req1_running_timers = assert(tonumber(string.match(req1_running_timers, "%d")))
+    req1_pending_timers = assert(tonumber(string.match(req1_pending_timers, "%d+")))
+    req1_running_timers = assert(tonumber(string.match(req1_running_timers, "%d+")))
 
     -- 3. update the service
     res = assert(client:send {
@@ -2497,8 +2627,8 @@ describe("Admin API #off worker_consistency=eventual", function()
     local res_body = assert.res_status(200, res)
     local req2_pending_timers = assert.matches('kong_nginx_timers{state="pending"} %d+', res_body)
     local req2_running_timers = assert.matches('kong_nginx_timers{state="running"} %d+', res_body)
-    req2_pending_timers = assert(tonumber(string.match(req2_pending_timers, "%d")))
-    req2_running_timers = assert(tonumber(string.match(req2_running_timers, "%d")))
+    req2_pending_timers = assert(tonumber(string.match(req2_pending_timers, "%d+")))
+    req2_running_timers = assert(tonumber(string.match(req2_running_timers, "%d+")))
 
     assert.equal(req1_pending_timers, req2_pending_timers)
     assert.equal(req1_running_timers, req2_running_timers)

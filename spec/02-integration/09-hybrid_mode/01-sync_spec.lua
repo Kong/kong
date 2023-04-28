@@ -418,6 +418,10 @@ describe("CP/DP #version check #" .. strategy, function()
       ["CP and DP suffix mismatches"] = {
         dp_version = tostring(_VERSION_TABLE) .. "-enterprise-version",
       },
+      ["DP sends labels"] = {
+        dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
+        labels = { some_key = "some_value", b = "aA090).zZ", ["a-._123z"] = "Zz1.-_aA" }
+      },
     }
 
     local pl1 = pl_tablex.deepcopy(helpers.get_plugins_list())
@@ -483,6 +487,7 @@ describe("CP/DP #version check #" .. strategy, function()
           node_id = uuid,
           node_version = harness.dp_version,
           node_plugins_list = harness.plugins_list,
+          node_labels = harness.labels
         }))
 
         assert.equals("reconfigure", res.type)

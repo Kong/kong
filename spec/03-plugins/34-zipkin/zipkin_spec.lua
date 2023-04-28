@@ -5,6 +5,7 @@ local to_hex = require "resty.string".to_hex
 
 local fmt = string.format
 
+local OT_TRACE_ID_HEX_LEN = 32
 local ZIPKIN_HOST = helpers.zipkin_host
 local ZIPKIN_PORT = helpers.zipkin_port
 
@@ -18,6 +19,17 @@ local function annotations_to_hash(annotations)
     hash[a.value] = a.timestamp
   end
   return hash
+end
+
+
+local function to_id_len(id, len)
+  if #id < len then
+    return string.rep('0', len - #id) .. id
+  elseif #id > len then
+    return string.sub(id, -len)
+  end
+
+  return id
 end
 
 
@@ -398,7 +410,7 @@ for _, strategy in helpers.each_strategy() do
       -- wait for zero-delay timer
       helpers.wait_timer("zipkin", true, "any-finish")
 
-      assert.logfile().has.line("[zipkin] reporter flush failed to request: timeout", true, 2)
+      assert.logfile().has.line("zipkin request failed: timeout", true, 2)
     end)
 
     it("times out if upstream zipkin server takes too long to respond", function()
@@ -414,7 +426,7 @@ for _, strategy in helpers.each_strategy() do
       -- wait for zero-delay timer
       helpers.wait_timer("zipkin", true, "any-finish")
 
-      assert.logfile().has.line("[zipkin] reporter flush failed to request: timeout", true, 2)
+      assert.logfile().has.line("zipkin request failed: timeout", true, 2)
     end)
 
     it("connection refused if upstream zipkin server is not listening", function()
@@ -430,7 +442,7 @@ for _, strategy in helpers.each_strategy() do
       -- wait for zero-delay timer
       helpers.wait_timer("zipkin", true, "any-finish")
 
-      assert.logfile().has.line("[zipkin] reporter flush failed to request: connection refused", true, 2)
+      assert.logfile().has.line("zipkin request failed: connection refused", true, 2)
     end)
   end)
 end
@@ -488,6 +500,10 @@ for _, strategy in helpers.each_strategy() do
 
       assert.response(r).has.status(200)
       assert.response(r).has.header("X-B3-TraceId")
+      local trace_id = r.headers["X-B3-TraceId"]
+      local trace_id_regex = [[^[a-f0-9]{32}$]]
+      local m = ngx.re.match(trace_id, trace_id_regex, "jo")
+      assert.True(m ~= nil, "trace_id does not match regex: " .. trace_id_regex)
     end)
   end)
 end
@@ -1208,7 +1224,7 @@ describe("http integration tests with zipkin server [#"
 
       local body = assert.response(r).has.status(200)
       local json = cjson.decode(body)
-      assert.equals(trace_id, json.headers["ot-tracer-traceid"])
+      assert.equals(to_id_len(trace_id, OT_TRACE_ID_HEX_LEN), json.headers["ot-tracer-traceid"])
 
       local balancer_span, proxy_span, request_span =
         wait_for_spans(zipkin_client, 3, nil, trace_id)

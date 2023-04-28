@@ -360,6 +360,7 @@ local CONF_PARSERS = {
   pg_keepalive_timeout = { typ = "number" },
   pg_pool_size = { typ = "number" },
   pg_backlog = { typ = "number" },
+  _debug_pg_ttl_cleanup_interval = { typ = "number" },
 
   pg_ro_port = { typ = "number" },
   pg_ro_timeout = { typ = "number" },
@@ -450,6 +451,11 @@ local CONF_PARSERS = {
   },
   worker_state_update_frequency = { typ = "number" },
 
+  lua_max_req_headers = { typ = "number" },
+  lua_max_resp_headers = { typ = "number" },
+  lua_max_uri_args = { typ = "number" },
+  lua_max_post_args = { typ = "number" },
+
   ssl_protocols = {
     typ = "string",
     directives = {
@@ -534,6 +540,7 @@ local CONF_PARSERS = {
   cluster_ocsp = { enum = { "on", "off", "optional" } },
   cluster_max_payload = { typ = "number" },
   cluster_use_proxy = { typ = "boolean" },
+  cluster_dp_labels = { typ = "array" },
 
   kic = { typ = "boolean" },
   pluginserver_names = { typ = "array" },
@@ -541,8 +548,6 @@ local CONF_PARSERS = {
   untrusted_lua = { enum = { "on", "off", "sandbox" } },
   untrusted_lua_sandbox_requires = { typ = "array" },
   untrusted_lua_sandbox_environment = { typ = "array" },
-
-  legacy_worker_events = { typ = "boolean" },
 
   lmdb_environment_path = { typ = "string" },
   lmdb_map_size = { typ = "string" },
@@ -1119,6 +1124,10 @@ local function check_and_parse(conf, opts)
       errors[#errors + 1] = "cluster_use_proxy can not be used when role = \"control_plane\""
     end
 
+    if conf.cluster_dp_labels and #conf.cluster_dp_labels > 0 then
+      errors[#errors + 1] = "cluster_dp_labels can not be used when role = \"control_plane\""
+    end
+
   elseif conf.role == "data_plane" then
     if #conf.proxy_listen < 1 or strip(conf.proxy_listen[1]) == "off" then
       errors[#errors + 1] = "proxy_listen must be specified when role = \"data_plane\""
@@ -1142,6 +1151,18 @@ local function check_and_parse(conf, opts)
 
     if conf.cluster_use_proxy and not conf.proxy_server then
       errors[#errors + 1] = "cluster_use_proxy is turned on but no proxy_server is configured"
+    end
+
+    if conf.cluster_dp_labels then
+      local _, err = utils.validate_labels(conf.cluster_dp_labels)
+      if err then
+       errors[#errors + 1] = err
+      end
+    end
+
+  else
+    if conf.cluster_dp_labels and #conf.cluster_dp_labels > 0 then
+      errors[#errors + 1] = "cluster_dp_labels can only be used when role = \"data_plane\""
     end
   end
 
@@ -1226,6 +1247,34 @@ local function check_and_parse(conf, opts)
     if conf.tracing_sampling_rate < 0 or conf.tracing_sampling_rate > 1 then
       errors[#errors + 1] = "tracing_sampling_rate must be between 0 and 1"
     end
+  end
+
+  if conf.lua_max_req_headers < 1 or conf.lua_max_req_headers > 1000
+  or conf.lua_max_req_headers ~= floor(conf.lua_max_req_headers)
+  then
+    errors[#errors + 1] = "lua_max_req_headers must be an integer between 1 and 1000"
+  end
+
+  if conf.lua_max_resp_headers < 1 or conf.lua_max_resp_headers > 1000
+  or conf.lua_max_resp_headers ~= floor(conf.lua_max_resp_headers)
+  then
+    errors[#errors + 1] = "lua_max_resp_headers must be an integer between 1 and 1000"
+  end
+
+  if conf.lua_max_uri_args < 1 or conf.lua_max_uri_args > 1000
+  or conf.lua_max_uri_args ~= floor(conf.lua_max_uri_args)
+  then
+    errors[#errors + 1] = "lua_max_uri_args must be an integer between 1 and 1000"
+  end
+
+  if conf.lua_max_post_args < 1 or conf.lua_max_post_args > 1000
+  or conf.lua_max_post_args ~= floor(conf.lua_max_post_args)
+  then
+    errors[#errors + 1] = "lua_max_post_args must be an integer between 1 and 1000"
+  end
+
+  if conf.node_id and not utils.is_valid_uuid(conf.node_id) then
+    errors[#errors + 1] = "node_id must be a valid UUID"
   end
 
   return #errors == 0, errors[1], errors

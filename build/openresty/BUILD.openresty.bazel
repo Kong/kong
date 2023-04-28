@@ -198,8 +198,13 @@ CONFIGURE_OPTIONS = [
 filegroup(
     name = "all_srcs",
     srcs = glob(
-        include = ["**"],
-        exclude = ["*.bazel"],
+        include = [
+            "configure",
+            "bundle/**",
+        ],
+        exclude = [
+            "bundle/LuaJIT*/**",
+        ],
     ),
 )
 

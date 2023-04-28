@@ -702,7 +702,6 @@ local function parseAnswer(qname, qtype, answers, try_list)
   return true
 end
 
-
 -- executes 1 individual query.
 -- This query will not be synchronized, every call will be 1 query.
 -- @param qname the name to query for
@@ -719,6 +718,13 @@ local function individualQuery(qname, r_opts, try_list)
 
   local result
   result, err = r:query(qname, r_opts)
+  -- Manually destroy the resolver.
+  -- When resovler is initialized, some socket resources are also created inside
+  -- resolver. As the resolver is created in timer-ng, the socket resources are
+  -- not released automatically, we have to destroy the resolver manually.
+  -- resolver:destroy is patched in build phase, more information can be found in
+  -- build/openresty/patches/lua-resty-dns-0.22_01-destory_resolver.patch
+  r:destroy()
   if not result then
     return result, err, try_list
   end
@@ -727,7 +733,6 @@ local function individualQuery(qname, r_opts, try_list)
 
   return result, nil, try_list
 end
-
 
 local queue = setmetatable({}, {__mode = "v"})
 -- to be called as a timer-callback, performs a query and returns the results
@@ -766,6 +771,8 @@ local function executeQuery(premature, item)
   item.semaphore:post(math_max(item.semaphore:count() * -1, 1))
   item.semaphore = nil
   ngx.sleep(0)
+  -- 3) destroy the resolver -- ditto in individualQuery
+  r:destroy()
 end
 
 
@@ -924,7 +931,11 @@ local function lookup(qname, r_opts, dnsCacheOnly, try_list)
     end
     -- perform a sync lookup, as we have no stale data to fall back to
     try_list = try_add(try_list, qname, r_opts.qtype, "cache-miss")
+    -- while kong is exiting, we cannot use timers and hence we run all our queries without synchronization
     if noSynchronisation then
+      return individualQuery(qname, r_opts, try_list)
+    elseif ngx.worker and ngx.worker.exiting() then
+      log(DEBUG, PREFIX, "DNS query not synchronized because the worker is shutting down")
       return individualQuery(qname, r_opts, try_list)
     end
     return syncQuery(qname, r_opts, try_list)

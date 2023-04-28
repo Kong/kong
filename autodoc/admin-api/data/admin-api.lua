@@ -669,6 +669,33 @@ return {
               means Kong does not currently have a valid configuration loaded.
           ]],
         },
+      },
+      ["/status/ready"] = {
+        GET = {
+          title = [[Check node readiness]],
+          endpoint = [[<div class="endpoint get">/status/ready</div>]],
+          description = [[
+            A simple way to inspect the readiness of the configuration.
+
+            An instance is considered *ready* if it has received a valid configuration and
+            is ready to handle incoming requests.
+
+            If a Kong instance is running in DB-less mode or as Hybrid mode Data Plane,
+            it returns `200 OK` if each worker is ready with the valid router and
+            plugins iterator, and the database is reachable.
+
+          ]],
+          response = [[
+            ```
+            HTTP 200 OK
+            ```
+            * Means Kong is ready to serve traffic.
+            ```
+            HTTP 503 Service Unavailable
+            ```
+            * Means Kong is not ready to serve traffic.
+          ]],
+        },
       }
     },
     config = {
@@ -710,6 +737,14 @@ return {
           description = [[
             Change the log level of a node.
 
+            #### Request Querystring Parameters
+
+            Attributes | Description
+            ---:| ---
+            `timeout`<br>*optional* | The timeout for dynamic log_level, after that, the log level will be reset to the
+            default `log_level` setting from Nginx configuration immediately. If it is set to `0`, the dynamic log_level
+            will expire immediately. Defaults to `60`.
+
             See http://nginx.org/en/docs/ngx_core_module.html#error_log for a
             list of accepted values.
 
@@ -747,6 +782,14 @@ return {
           endpoint = [[<div class="endpoint put indent">/debug/cluster/log-level/{log_level}</div>]],
           description = [[
             Change the log level of all nodes in a cluster.
+
+            #### Request Querystring Parameters
+
+            Attributes | Description
+            ---:| ---
+            `timeout`<br>*optional* | The timeout for dynamic log_level, after that, the log level will be reset to the
+            default `log_level` setting from Nginx configuration immediately. If it is set to `0`, the dynamic log_level
+            will expire immediately. Defaults to `60`.
 
             See http://nginx.org/en/docs/ngx_core_module.html#error_log for a
             list of accepted values.
@@ -793,6 +836,14 @@ return {
           description = [[
             Change the log level of all Control Plane nodes deployed in Hybrid
             (CP/DP) cluster.
+
+            #### Request Querystring Parameters
+
+            Attributes | Description
+            ---:| ---
+            `timeout`<br>*optional* | The timeout for dynamic log_level, after that, the log level will be reset to the
+            default `log_level` setting from Nginx configuration immediately. If it is set to `0`, the dynamic log_level
+            will expire immediately. Defaults to `60`.
 
             See http://nginx.org/en/docs/ngx_core_module.html#error_log for a
             list of accepted values.
@@ -1611,6 +1662,7 @@ return {
       fields = {
         id = { skip = true },
         created_at = { skip = true },
+        updated_at = { skip = true },
         cert = {
           description = [[
             PEM-encoded public certificate chain of the SSL key pair.
@@ -1691,6 +1743,7 @@ return {
       fields = {
         id = { skip = true },
         created_at = { skip = true },
+        updated_at = { skip = true },
         cert = {
           description = [[PEM-encoded public certificate of the CA.]],
           example = "-----BEGIN CERTIFICATE-----...",
@@ -1726,6 +1779,7 @@ return {
       fields = {
         id = { skip = true },
         created_at = { skip = true },
+        updated_at = { skip = true },
         name = { description = [[The SNI name to associate with the given certificate.]] },
         certificate = {
           description = [[
@@ -1859,6 +1913,7 @@ return {
       fields = {
         id = { skip = true },
         created_at = { skip = true },
+        updated_at = { skip = true },
         ["name"] = { description = [[This is a hostname, which must be equal to the `host` of a Service.]] },
         ["slots"] = { description = [[The number of slots in the load balancer algorithm. If `algorithm` is set to `round-robin`, this setting determines the maximum number of slots. If `algorithm` is set to `consistent-hashing`, this setting determines the actual number of slots in the algorithm. Accepts an integer in the range `10`-`65536`.]] },
         ["algorithm"] = { description = [[Which load balancing algorithm to use.]] },
@@ -2177,6 +2232,7 @@ return {
       fields = {
         id = { skip = true },
         created_at = { skip = true },
+        updated_at = { skip = true },
         upstream = { skip = true },
         target = {
           description = [[
@@ -2377,6 +2433,10 @@ return {
         jwk = {
           description = [[
             A JSON Web Key represented as a string.
+
+            This field is _referenceable_, which means it can be securely stored as a
+            [secret](/gateway/latest/plan-and-deploy/security/secrets-management/getting-started)
+            in a vault. References must follow a [specific format](/gateway/latest/plan-and-deploy/security/secrets-management/reference-format).
           ]],
           example = '{"alg":"RSA", "kid": "42", ...}'
         },
@@ -2388,12 +2448,20 @@ return {
         ["pem.private_key"] = {
           description = [[
             The private key in PEM format.
+
+            This field is _referenceable_, which means it can be securely stored as a
+            [secret](/gateway/latest/plan-and-deploy/security/secrets-management/getting-started)
+            in a vault. References must follow a [specific format](/gateway/latest/plan-and-deploy/security/secrets-management/reference-format).
           ]],
           example = "-----BEGIN"
         },
         ["pem.public_key"] = {
           description = [[
-            The pubkic key in PEM format.
+            The public key in PEM format.
+
+            This field is _referenceable_, which means it can be securely stored as a
+            [secret](/gateway/latest/plan-and-deploy/security/secrets-management/getting-started)
+            in a vault. References must follow a [specific format](/gateway/latest/plan-and-deploy/security/secrets-management/reference-format).
           ]],
           example = "-----BEGIN"
         },

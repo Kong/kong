@@ -1131,7 +1131,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         describe("unsetting with ngx.null", function()
-          it("succeeds if all routing criteria explicitely given are null", function()
+          it("succeeds if all routing criteria explicitly given are null", function()
             local route = bp.routes:insert({
               hosts   = { "example.com" },
               methods = { "GET" },

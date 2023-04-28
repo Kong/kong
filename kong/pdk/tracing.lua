@@ -7,7 +7,6 @@
 
 local require = require
 local ffi = require "ffi"
-local bit = require "bit"
 local tablepool = require "tablepool"
 local new_tab = require "table.new"
 local base = require "resty.core.base"
@@ -18,13 +17,10 @@ local ngx = ngx
 local type = type
 local error = error
 local ipairs = ipairs
-local tonumber = tonumber
 local tostring = tostring
 local setmetatable = setmetatable
 local getmetatable = getmetatable
 local rand_bytes = utils.get_rand_bytes
-local lshift = bit.lshift
-local rshift = bit.rshift
 local check_phase = phase_checker.check
 local PHASES = phase_checker.phases
 local ffi_cast = ffi.cast
@@ -37,14 +33,17 @@ local ngx_ERR = ngx.ERR
 
 local NOOP = function() end
 
-local FLAG_SAMPLED = 0x01
-local FLAG_RECORDING = 0x02
-local FLAG_SAMPLED_AND_RECORDING = bit.bor(FLAG_SAMPLED, FLAG_RECORDING)
-
 local POOL_SPAN = "KONG_SPAN"
 local POOL_SPAN_STORAGE = "KONG_SPAN_STORAGE"
 local POOL_ATTRIBUTES = "KONG_SPAN_ATTRIBUTES"
 local POOL_EVENTS = "KONG_SPAN_EVENTS"
+
+-- must be power of 2
+local SAMPLING_BYTE = 8
+local SAMPLING_BITS = 8 * SAMPLING_BYTE
+local BOUND_MAX = math.pow(2, SAMPLING_BITS)
+local SAMPLING_UINT_PTR_TYPE = "uint" .. SAMPLING_BITS .. "_t*"
+local TOO_SHORT_MESSAGE = "sampling needs trace ID to be longer than " .. SAMPLING_BYTE .. " bytes to work"
 
 local SPAN_KIND = {
   UNSPECIFIED = 0,
@@ -67,38 +66,69 @@ end
 
 --- Build-in sampler
 local function always_on_sampler()
-  return FLAG_SAMPLED_AND_RECORDING
+  return true
 end
 
 local function always_off_sampler()
-  return 0
+  return false
 end
 
 -- Fractions >= 1 will always sample. Fractions < 0 are treated as zero.
 -- spec: https://github.com/c24t/opentelemetry-specification/blob/3b3d321865cf46364bdfb292c179b6444dc96bf9/specification/sdk-tracing.md#probability-sampler-algorithm
-local function get_trace_id_based_sampler(fraction)
-  if type(fraction) ~= "number" then
+local function get_trace_id_based_sampler(rate)
+  if type(rate) ~= "number" then
     error("invalid fraction", 2)
   end
 
-  if fraction >= 1 then
+  if rate >= 1 then
     return always_on_sampler
   end
 
-  if fraction <= 0 then
+  if rate <= 0 then
     return always_off_sampler
   end
 
-  local upper_bound = fraction * tonumber(lshift(ffi_cast("uint64_t", 1), 63), 10)
+  local bound = rate * BOUND_MAX
 
+  -- TODO: is this a sound method to sample?
   return function(trace_id)
-    local n = ffi_cast("uint64_t*", ffi_str(trace_id, 8))[0]
-    n = rshift(n, 1)
-    return tonumber(n, 10) < upper_bound
+    if #trace_id < SAMPLING_BYTE then
+      error(TOO_SHORT_MESSAGE, 2)
+    end
+
+    local truncated = ffi_cast(SAMPLING_UINT_PTR_TYPE, ffi_str(trace_id, SAMPLING_BYTE))[0]
+    return truncated < bound
   end
 end
 
--- @table span
+-- @class span : table
+--
+--- Trace Context. Those IDs are all represented as bytes, and the length may vary.
+-- We try best to preserve as much information as possible from the tracing context.
+-- @field trace_id bytes auto generated 16 bytes ID if not designated
+-- @field span_id bytes 
+-- @field parent_span_id bytes
+--
+--- Timing. All times are in nanoseconds.
+-- @field start_time_ns number
+-- @field end_time_ns number
+--
+--- Scopes and names. Defines what the span is about.
+-- TODO: service should be retrieved from kong service instead of from plugin instances. It should be the same for spans from a single request.
+-- service name/top level scope is defined by plugin instances.
+-- @field name string type of the span. Should be of low cardinality. Good examples are "proxy", "DNS query", "database query". Approximately operation name of DataDog.
+-- resource_name of Datadog is built from attirbutes.
+--
+--- Other fields
+-- @field should_sample boolean whether the span should be sampled
+-- @field kind number TODO: Should we remove this field? It's used by OTEL and zipkin. Maybe move this to impl_specific.
+-- @field attributes table extra information about the span. Attribute of OTEL or meta of Datadog.
+-- TODO: @field impl_specific table implementation specific fields. For example, impl_specific.datadog is used by Datadog tracer.
+-- TODO: @field events table list of events. 
+--
+--- Internal fields
+-- @field tracer table
+-- @field parent table
 local span_mt = {}
 span_mt.__index = span_mt
 
@@ -118,20 +148,12 @@ setmetatable(noop_span, {
   __newindex = NOOP,
 })
 
-local function new_span(tracer, name, options)
-  if type(tracer) ~= "table" then
-    error("invalid tracer", 2)
-  end
-
-  if type(name) ~= "string" or #name == 0 then
-    error("invalid span name", 2)
-  end
-
-  if options ~= nil and type(options) ~= "table" then
-    error("invalid options type", 2)
-  end
-
+local function validate_span_options(options)
   if options ~= nil then
+    if type(options) ~= "table" then
+      error("invalid options type", 2)
+    end
+
     if options.start_time_ns ~= nil and type(options.start_time_ns) ~= "number" then
       error("invalid start time", 2)
     end
@@ -148,53 +170,67 @@ local function new_span(tracer, name, options)
       error("invalid attributes", 2)
     end
   end
+end
 
+local function create_span(tracer, options)
+  validate_span_options(options)
   options = options or {}
 
-  -- get parent span from ctx
-  -- the ctx could either be stored in ngx.ctx or kong.ctx
-  local parent_span = options.parent or tracer.active_span()
+  local span = tablepool_fetch(POOL_SPAN, 0, 12)
 
-  local trace_id = parent_span and parent_span.trace_id
+  span.parent = options.parent or tracer and tracer.active_span()
+
+  local trace_id = span.parent and span.parent.trace_id
       or options.trace_id
       or generate_trace_id()
 
-  local sampled = parent_span and parent_span.should_sample
-      or options.should_sample
-      or tracer.sampler(trace_id) == FLAG_SAMPLED_AND_RECORDING
+  local sampled
+  if span.parent and span.parent.should_sample ~= nil then
+    sampled = span.parent.should_sample
+
+  elseif options.should_sample ~= nil then
+    sampled = options.should_sample
+
+  else
+    sampled = tracer and tracer.sampler(trace_id)
+  end
 
   if not sampled then
     return noop_span
   end
 
-  -- avoid reallocate
-  -- we will release the span table at the end of log phase
-  local span = tablepool_fetch(POOL_SPAN, 0, 12)
+  span.parent_id = span.parent and span.parent.span_id
+      or options.parent_id
+  span.tracer = span.tracer or tracer
+  span.span_id = generate_span_id()
+  span.trace_id = trace_id
+  span.kind = options.span_kind or SPAN_KIND.INTERNAL
+  span.should_sample = true
+
+  setmetatable(span, span_mt)
+  return span
+end
+
+local function link_span(tracer, span, name, options)
+  if not span.should_sample then
+    kong.log.debug("skipping non-sampled span")
+    return
+  end
+  if tracer and type(tracer) ~= "table" then
+    error("invalid tracer", 2)
+  end
+  validate_span_options(options)
+
+  options = options or {}
+
   -- cache tracer ref, to get hooks / span processer
   -- tracer ref will not be cleared when the span table released
-  span.tracer = tracer
-
-  span.name = name
-  span.trace_id = trace_id
-  span.span_id = generate_span_id()
-  span.parent_id = parent_span and parent_span.span_id
-      or options.parent_id
-
-  -- specify span start time manually
+  span.tracer = span.tracer or tracer
+  -- specify span start time
   span.start_time_ns = options.start_time_ns or ffi_time_unix_nano()
-  span.kind = options.span_kind or SPAN_KIND.INTERNAL
   span.attributes = options.attributes
-
-  -- indicates whether the span should be reported
-  span.should_sample = parent_span and parent_span.should_sample
-      or options.should_sample
-      or sampled
-
-  -- parent ref, some cases need access to parent span
-  span.parent = parent_span
-
-  -- inherit metatable
-  setmetatable(span, span_mt)
+  span.name = name
+  span.linked = true
 
   -- insert the span to ctx
   local ctx = ngx.ctx
@@ -208,6 +244,21 @@ local function new_span(tracer, name, options)
   local len = spans[0] + 1
   spans[len] = span
   spans[0] = len
+
+  return span
+end
+
+local function new_span(tracer, name, options)
+  if type(tracer) ~= "table" then
+    error("invalid tracer", 2)
+  end
+
+  if type(name) ~= "string" or #name == 0 then
+    error("invalid span name", 2)
+  end
+
+  local span = create_span(tracer, options)
+  link_span(tracer, span, name, options)
 
   return span
 end
@@ -367,9 +418,12 @@ local tracer_memo = setmetatable({}, { __mode = "k" })
 local noop_tracer = {}
 noop_tracer.name = "noop"
 noop_tracer.start_span = function() return noop_span end
+noop_tracer.create_span = function() return noop_span end
+noop_tracer.link_span = NOOP
 noop_tracer.active_span = NOOP
 noop_tracer.set_active_span = NOOP
 noop_tracer.process_span = NOOP
+noop_tracer.set_should_sample = NOOP
 
 --- New Tracer
 local function new_tracer(name, options)
@@ -396,7 +450,7 @@ local function new_tracer(name, options)
   --- Get the active span
   -- Returns the root span by default
   --
-  -- @function kong.tracing.new_span
+  -- @function kong.tracing.active_span
   -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
   -- @treturn table span
   function self.active_span()
@@ -409,7 +463,7 @@ local function new_tracer(name, options)
 
   --- Set the active span
   --
-  -- @function kong.tracing.new_span
+  -- @function kong.tracing.set_active_span
   -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
   -- @tparam table span
   function self.set_active_span(span)
@@ -426,7 +480,7 @@ local function new_tracer(name, options)
 
   --- Create a new Span
   --
-  -- @function kong.tracing.new_span
+  -- @function kong.tracing.start_span
   -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
   -- @tparam string name span name
   -- @tparam table options TODO(mayo)
@@ -437,6 +491,14 @@ local function new_tracer(name, options)
     end
 
     return new_span(self, ...)
+  end
+
+  function self.create_span(...)
+    return create_span(...)
+  end
+
+  function self.link_span(...)
+    return link_span(...)
   end
 
   --- Batch process spans
@@ -458,8 +520,25 @@ local function new_tracer(name, options)
     end
 
     for _, span in ipairs(ctx.KONG_SPANS) do
-      if span.tracer.name == self.name then
+      if span.tracer and span.tracer.name == self.name then
         processor(span, ...)
+      end
+    end
+  end
+
+  --- Update the value of should_sample for all spans
+  --
+  -- @function span:set_should_sample
+  -- @tparam bool should_sample value for the sample parameter
+  function self:set_should_sample(should_sample)
+    local ctx = ngx.ctx
+    if not ctx.KONG_SPANS then
+      return
+    end
+
+    for _, span in ipairs(ctx.KONG_SPANS) do
+      if span.is_recording ~= false then
+        span.should_sample = should_sample
       end
     end
   end

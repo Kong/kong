@@ -226,7 +226,7 @@
 
 
 #proxy_server =                  # Proxy server defined as a URL. Kong will only use this
-                                 # option if any component is explictly configured
+                                 # option if any component is explicitly configured
                                  # to use proxy.
 
 
@@ -384,6 +384,23 @@
                                  # This sets the maximum payload size allowed
                                  # to be sent across from CP to DP in Hybrid mode
                                  # Default is 4Mb - 4 * 1024 * 1024 due to historical reasons
+
+#cluster_dp_labels =             # Comma separated list of Labels for the data plane.
+                                 # Labels are key-value pairs that provide additional
+                                 # context information for each DP.
+                                 # Each label must be configured as a string in the
+                                 # format `key:value`.
+                                 #
+                                 # Labels are only compatible with hybrid mode
+                                 # deployments with Kong Konnect (SaaS),
+                                 # this configuration doesn't work with
+                                 # self-hosted deployments.
+                                 #
+                                 # Keys and values follow the AIP standards:
+                                 # https://kong-aip.netlify.app/aip/129/
+                                 #
+                                 # Example:
+                                 # `deployment:mycloud,region:us-east-1`
 
 #------------------------------------------------------------------------------
 # HYBRID MODE CONTROL PLANE
@@ -705,7 +722,7 @@
                                  #
                                  # See https://wiki.mozilla.org/Security/Server_Side_TLS
                                  # for detailed descriptions of each cipher
-                                 # suite. `fips` cipher suites are as decribed in
+                                 # suite. `fips` cipher suites are as described in
                                  # https://wiki.openssl.org/index.php/FIPS_mode_and_TLS.
 
 #ssl_ciphers =                   # Defines a custom list of TLS ciphers to be
@@ -1571,6 +1588,33 @@
                                  # single query.
 
 #------------------------------------------------------------------------------
+# VAULTS
+#------------------------------------------------------------------------------
+
+# A secret is any sensitive piece of information required for API gateway
+# operations. Secrets may be part of the core Kong Gateway configuration,
+# used in plugins, or part of the configuration associated with APIs serviced
+# by the gateway.
+#
+# Some of the most common types of secrets used by Kong Gateway include:
+#
+# - Data store usernames and passwords, used with PostgreSQL and Redis
+# - Private X.509 certificates
+# - API keys
+#
+# Sensitive plugin configuration fields are generally used for authentication,
+# hashing, signing, or encryption. Kong Gateway lets you store certain values
+# in a vault. Here are the vault specific configuration options.
+
+#vault_env_prefix =              # Defines the environment variable vault's
+                                 # default prefix. For example if you have
+                                 # all your secrets stored in environment
+                                 # variables prefixed with `SECRETS_`, it
+                                 # can be configured here so that it isn't
+                                 # necessary to repeat them in Vault
+                                 # references.
+
+#------------------------------------------------------------------------------
 # TUNING & BEHAVIOR
 #------------------------------------------------------------------------------
 
@@ -1652,6 +1696,44 @@
                                  #   `traditional_compatible` did not work as expected.
                                  #   This flavor of router will be removed in the next
                                  #   major release of Kong.
+
+#lua_max_req_headers = 100       # Maximum number of request headers to parse by default.
+                                 #
+                                 # This argument can be set to an integer between 1 and 1000.
+                                 #
+                                 # When proxying the Kong sends all the request headers
+                                 # and this setting does not have any effect. It is used
+                                 # to limit Kong and its plugins from reading too many
+                                 # request headers.
+
+#lua_max_resp_headers = 100      # Maximum number of response headers to parse by default.
+                                 #
+                                 # This argument can be set to an integer between 1 and 1000.
+                                 #
+                                 # When proxying, Kong returns all the response headers
+                                 # and this setting does not have any effect. It is used
+                                 # to limit Kong and its plugins from reading too many
+                                 # response headers.
+
+#lua_max_uri_args = 100          # Maximum number of request uri arguments to parse by
+                                 # default.
+                                 #
+                                 # This argument can be set to an integer between 1 and 1000.
+                                 #
+                                 # When proxying, Kong sends all the request query
+                                 # arguments and this setting does not have any effect.
+                                 # It is used to limit Kong and its plugins from reading
+                                 # too many query arguments.
+
+#lua_max_post_args = 100         # Maximum number of request post arguments to parse by
+                                 # default.
+                                 #
+                                 # This argument can be set to an integer between 1 and 1000.
+                                 #
+                                 # When proxying, Kong sends all the request post
+                                 # arguments and this setting does not have any effect.
+                                 # It is used to limit Kong and its plugins from reading
+                                 # too many post arguments.
 
 #------------------------------------------------------------------------------
 # MISCELLANEOUS
@@ -1845,3 +1927,7 @@
                                   # behavior and explicitly instructs Kong which
                                   # OpenResty installation to use.
 
+#node_id =                        # Node ID for the Kong node. Every Kong node
+                                  # in a Kong cluster must have a unique and
+                                  # valid UUID. When empty, node ID is
+                                  # automatically generated.

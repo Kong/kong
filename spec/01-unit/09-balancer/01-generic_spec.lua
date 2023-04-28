@@ -162,7 +162,6 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
 
       _G.kong = kong
 
-      kong.worker_events = require "resty.worker.events"
       kong.db = {}
 
       client = require "kong.resty.dns.client"
@@ -171,15 +170,6 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
       local healthcheckers = require "kong.runloop.balancer.healthcheckers"
       healthcheckers.init()
       balancers.init()
-
-      kong.worker_events.configure({
-        shm = "kong_process_events", -- defined by "lua_shared_dict"
-        timeout = 5,            -- life time of event data in shm
-        interval = 1,           -- poll interval (seconds)
-
-        wait_interval = 0.010,  -- wait before retry fetching event data
-        wait_max = 0.5,         -- max wait time before discarding event
-      })
 
       local function empty_each()
         return function() end
@@ -1213,7 +1203,7 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
             { name = "srvrecord.tst", target = "1.1.1.1", port = 9000, weight = 20 },
             { name = "srvrecord.tst", target = "2.2.2.2", port = 9001, weight = 20 },
           })
-          targets.resolve_targets(b.targets)  -- touch all adresses to force dns renewal
+          targets.resolve_targets(b.targets)  -- touch all addresses to force dns renewal
           add_target(b, "srvrecord.tst", 8001, 99) -- add again to update nodeWeight
 
           assert.same({
@@ -1397,7 +1387,7 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
             { name = "srvrecord.tst", target = "1.1.1.1", port = 9000, weight = 20 },
             { name = "srvrecord.tst", target = "2.2.2.2", port = 9001, weight = 20 },
           })
-          targets.resolve_targets(b.targets)  -- touch all adresses to force dns renewal
+          targets.resolve_targets(b.targets)  -- touch all addresses to force dns renewal
           add_target(b, "srvrecord.tst", 8001, 99) -- add again to update nodeWeight
 
           assert.same({

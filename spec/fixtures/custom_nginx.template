@@ -40,7 +40,6 @@ http {
     lua_shared_dict kong                        5m;
     lua_shared_dict kong_locks                  8m;
     lua_shared_dict kong_healthchecks           5m;
-    lua_shared_dict kong_process_events         5m;
     lua_shared_dict kong_cluster_events         5m;
     lua_shared_dict kong_rate_limiting_counters 12m;
     lua_shared_dict kong_core_db_cache          ${{MEM_CACHE_SIZE}};
@@ -455,17 +454,12 @@ http {
     }
 > end -- role == "control_plane"
 
+> if role ~= "data_plane" then
     server {
         server_name mock_upstream;
 
-> if role ~= "data_plane" then
         listen 15555;
         listen 15556 ssl;
-
-> else
-        listen 16665;
-        listen 16666 ssl;
-> end -- role ~= "data_plane"
 
 > for i = 1, #ssl_cert do
         ssl_certificate     $(ssl_cert[i]);
@@ -554,7 +548,7 @@ http {
             }
             content_by_lua_block {
                 local mu = require "spec.fixtures.mock_upstream"
-                return mu.send_default_json_response({}, ngx.req.get_uri_args())
+                return mu.send_default_json_response({}, ngx.req.get_uri_args(0))
             }
         }
 
@@ -711,10 +705,10 @@ http {
             }
         }
     }
+> end -- role ~= "data_plane"
 
     include '*.http_mock';
 
-> if not legacy_worker_events then
     server {
         charset UTF-8;
         server_name kong_worker_events;
@@ -726,7 +720,6 @@ http {
             }
         }
     }
-> end -- not legacy_worker_events
 }
 > end
 
@@ -750,7 +743,6 @@ stream {
     lua_shared_dict stream_kong                        5m;
     lua_shared_dict stream_kong_locks                  8m;
     lua_shared_dict stream_kong_healthchecks           5m;
-    lua_shared_dict stream_kong_process_events         5m;
     lua_shared_dict stream_kong_cluster_events         5m;
     lua_shared_dict stream_kong_rate_limiting_counters 12m;
     lua_shared_dict stream_kong_core_db_cache          ${{MEM_CACHE_SIZE}};
@@ -966,7 +958,6 @@ server {
         }
     }
 
-> if not legacy_worker_events then
     server {
         listen unix:${{PREFIX}}/stream_worker_events.sock;
         access_log off;
@@ -974,7 +965,6 @@ server {
           require("resty.events.compat").run()
         }
     }
-> end -- not legacy_worker_events
 
 > if cluster_ssl_tunnel then
     server {

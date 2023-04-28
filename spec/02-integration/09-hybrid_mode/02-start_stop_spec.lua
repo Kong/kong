@@ -88,6 +88,36 @@ describe("invalid config are rejected", function()
       assert.matches("Error: only in-memory storage can be used when role = \"data_plane\"\n" ..
         "Hint: set database = off in your kong.conf", err, nil, true)
     end)
+
+    it("fails to start if invalid labels are loaded", function()
+      local ok, err = helpers.start_kong({
+        role = "data_plane",
+        database = "off",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        prefix = "servroot2",
+        cluster_cert = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        cluster_dp_labels = "w@:_a"
+      })
+
+      assert.False(ok)
+      assert.matches("Error: label key validation failed: w@", err, nil, true)
+    end)
+
+    it("starts correctly if valid labels are loaded", function()
+      local ok = helpers.start_kong({
+        role = "data_plane",
+        database = "off",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        prefix = "servroot2",
+        cluster_cert = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        proxy_listen = "0.0.0.0:" .. helpers.get_available_port(),
+        cluster_dp_labels = "Aa-._zZ_key:Aa-._zZ_val"
+      })
+      assert.True(ok)
+      helpers.stop_kong("servroot2")
+    end)
   end)
 
   for _, param in ipairs({ { "control_plane", "postgres" }, { "data_plane", "off" }, }) do

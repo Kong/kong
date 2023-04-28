@@ -612,7 +612,7 @@ if limit_by == "ip" then
         helpers.wait_timer("rate-limiting", true, "any-finish")
       end
 
-      -- Additonal request, while limit is 6/minute
+      -- Additional request, while limit is 6/minute
       local ok, res = helpers.proxy_client_grpc(){
         service = "hello.HelloService.SayHello",
         opts = {

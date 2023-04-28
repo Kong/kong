@@ -6,6 +6,7 @@ local match = string.match
 local gsub = string.gsub
 local fmt = string.format
 local concat = table.concat
+local to_ot_trace_id
 
 
 local baggage_mt = {
@@ -20,6 +21,7 @@ local W3C_TRACECONTEXT_PATTERN = "^(%x+)%-(%x+)%-(%x+)%-(%x+)$"
 local JAEGER_TRACECONTEXT_PATTERN = "^(%x+):(%x+):(%x+):(%x+)$"
 local JAEGER_BAGGAGE_PATTERN = "^uberctx%-(.*)$"
 local OT_BAGGAGE_PATTERN = "^ot%-baggage%-(.*)$"
+local W3C_TRACEID_LEN = 16
 
 local function hex_to_char(c)
   return char(tonumber(c, 16))
@@ -37,6 +39,18 @@ end
 local function left_pad_zero(str, count)
   return ('0'):rep(count-#str) .. str
 end
+
+
+local function to_w3c_trace_id(trace_id)
+  if #trace_id < W3C_TRACEID_LEN then
+    return ('\0'):rep(W3C_TRACEID_LEN - #trace_id) .. trace_id
+  elseif #trace_id > W3C_TRACEID_LEN then
+    return trace_id:sub(-W3C_TRACEID_LEN)
+  end
+
+  return trace_id
+end
+
 
 local function parse_baggage_headers(headers, header_pattern)
   -- account for both ot and uber baggage headers
@@ -426,7 +440,34 @@ local function parse(headers, conf_header_type)
 end
 
 
-local function set(conf_header_type, found_header_type, proxy_span, conf_default_header_type)
+local function get_propagated()
+  return ngx.ctx.propagated_span
+end
+
+
+local function set_propagated(span)
+  ngx.ctx.propagated_span = span
+end
+
+
+-- set outgoing propagation headers
+-- 
+-- @tparam string conf_header_type type of tracing header to use
+-- @tparam string found_header_type type of tracing header found in request
+-- @tparam table proxy_span span to be propagated
+-- @tparam string conf_default_header_type used when conf_header_type=ignore
+-- @tparam bool reuse if true any existing propagated_span is reused instead of proxy_span
+local function set(conf_header_type, found_header_type, proxy_span, conf_default_header_type, reuse)
+  if reuse then
+    proxy_span = get_propagated() or proxy_span
+  end
+  -- proxy_span can be noop, in which case it should not be propagated.
+  if proxy_span.is_recording == false then
+    kong.log.debug("skipping propagation of noop span")
+    return
+  end
+  set_propagated(proxy_span)
+
   local set_header = kong.service.request.set_header
 
   -- If conf_header_type is set to `preserve`, found_header_type is used over default_header_type;
@@ -464,10 +505,11 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
   end
 
   if conf_header_type == "w3c" or found_header_type == "w3c" then
+    -- OTEL uses w3c trace context format so to_ot_trace_id works here
     set_header("traceparent", fmt("00-%s-%s-%s",
-        to_hex(proxy_span.trace_id),
+        to_hex(to_w3c_trace_id(proxy_span.trace_id)),
         to_hex(proxy_span.span_id),
-      proxy_span.should_sample and "01" or "00"))
+        proxy_span.should_sample and "01" or "00"))
   end
 
   if conf_header_type == "jaeger" or found_header_type == "jaeger" then
@@ -479,7 +521,8 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
   end
 
   if conf_header_type == "ot" or found_header_type == "ot" then
-    set_header("ot-tracer-traceid", to_hex(proxy_span.trace_id))
+    to_ot_trace_id = to_ot_trace_id or require "kong.plugins.opentelemetry.otlp".to_ot_trace_id
+    set_header("ot-tracer-traceid", to_hex(to_ot_trace_id(proxy_span.trace_id)))
     set_header("ot-tracer-spanid", to_hex(proxy_span.span_id))
     set_header("ot-tracer-sampled", proxy_span.should_sample and "1" or "0")
 
@@ -499,4 +542,5 @@ return {
   parse = parse,
   set = set,
   from_hex = from_hex,
+  get_propagated = get_propagated,
 }

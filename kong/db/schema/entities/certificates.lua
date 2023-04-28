@@ -15,6 +15,7 @@ return {
   fields = {
     { id         = typedefs.uuid, },
     { created_at = typedefs.auto_timestamp_s },
+    { updated_at = typedefs.auto_timestamp_s },
     { cert       = typedefs.certificate { required = true,  referenceable = true }, },
     { key        = typedefs.key         { required = true,  referenceable = true, encrypted = true }, },
     { cert_alt   = typedefs.certificate { required = false, referenceable = true }, },

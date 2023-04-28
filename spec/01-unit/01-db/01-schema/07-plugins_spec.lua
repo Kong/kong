@@ -8,6 +8,8 @@ local consumers_definition = require "kong.db.schema.entities.consumers"
 local plugins_definition = require "kong.db.schema.entities.plugins"
 local dao_plugins = require "kong.db.dao.plugins"
 local certificates_definition = require "kong.db.schema.entities.certificates"
+local constants = require "kong.constants"
+local kong_meta = require "kong.meta"
 
 describe("plugins", function()
   local Plugins
@@ -297,6 +299,30 @@ describe("plugins", function()
         }
       })))
     end)
+  end)
+
+  describe("bundled plugins schema validation", function()
+    it("ensure every bundled plugin schema must have protocols field", function()
+      for plugin_name, _ in pairs(constants.BUNDLED_PLUGINS) do
+        local schema = require("kong.plugins." .. plugin_name .. ".schema")
+        local has_protocols_field
+        for _, field in ipairs(schema.fields) do
+          if field.protocols then
+            has_protocols_field = true
+            break
+          end
+        end
+        assert.is_true(has_protocols_field, "bundled plugin " .. plugin_name .. " missing required field: protocols")
+      end
+    end)
+    it("ensure every bundled plugin version is same as core version", function()
+      for plugin_name, _ in pairs(constants.BUNDLED_PLUGINS) do
+        local handler = require("kong.plugins." .. plugin_name .. ".handler")
+        local plugin_version = handler.VERSION
+        assert.equal(kong_meta.version, plugin_version)
+      end
+    end)
+
   end)
 
 end)

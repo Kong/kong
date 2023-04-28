@@ -20,8 +20,6 @@ local MOCK_UPSTREAM_PORT = 15555
 local MOCK_UPSTREAM_SSL_PORT = 15556
 local MOCK_UPSTREAM_STREAM_PORT = 15557
 local MOCK_UPSTREAM_STREAM_SSL_PORT = 15558
-local MOCK_UPSTREAM_DP_PORT = 16665
-local MOCK_UPSTREAM_DP_SSL_PORT = 16666
 local GRPCBIN_HOST = os.getenv("KONG_SPEC_TEST_GRPCBIN_HOST") or "localhost"
 local GRPCBIN_PORT = tonumber(os.getenv("KONG_SPEC_TEST_GRPCBIN_PORT")) or 9000
 local GRPCBIN_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_GRPCBIN_SSL_PORT")) or 9001
@@ -1288,6 +1286,8 @@ local function kill_tcp_server(port)
 end
 
 
+-- If it applies, please use `http_mock`, the coroutine variant of `http_server`, which is
+-- more determinative and less flaky.
 --- Starts a local HTTP server.
 -- Accepts a single connection and then closes. Sends a 200 ok, 'Connection:
 -- close' response.
@@ -1312,15 +1312,16 @@ local function http_server(port, opts)
       assert(server:listen())
       local client = assert(server:accept())
 
+      local content_length
       local lines = {}
       local line, err
       repeat
         line, err = client:receive("*l")
         if err then
           break
-        else
-          table.insert(lines, line)
         end
+        table.insert(lines, line)
+        content_length = tonumber(line:lower():match("^content%-length:%s*(%d+)$")) or content_length
       until line == ""
 
       if #lines > 0 and lines[1] == "GET /delay HTTP/1.0" then
@@ -1332,7 +1333,7 @@ local function http_server(port, opts)
         error(err)
       end
 
-      local body, _ = client:receive("*a")
+      local body, _ = client:receive(content_length or "*a")
 
       client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
       client:close()
@@ -1343,6 +1344,183 @@ local function http_server(port, opts)
   }, port, opts)
 
   return thread:start()
+end
+
+
+local code_status = {
+  [200] = "OK",
+  [201] = "Created",
+  [202] = "Accepted",
+  [203] = "Non-Authoritative Information",
+  [204] = "No Content",
+  [205] = "Reset Content",
+  [206] = "Partial Content",
+  [207] = "Multi-Status",
+  [300] = "Multiple Choices",
+  [301] = "Moved Permanently",
+  [302] = "Found",
+  [303] = "See Other",
+  [304] = "Not Modified",
+  [305] = "Use Proxy",
+  [307] = "Temporary Redirect",
+  [308] = "Permanent Redirect",
+  [400] = "Bad Request",
+  [401] = "Unauthorized",
+  [402] = "Payment Required",
+  [403] = "Forbidden",
+  [404] = "Not Found",
+  [405] = "Method Not Allowed",
+  [406] = "Not Acceptable",
+  [407] = "Proxy Authentication Required",
+  [408] = "Request Timeout",
+  [409] = "Conflict",
+  [410] = "Gone",
+  [411] = "Length Required",
+  [412] = "Precondition Failed",
+  [413] = "Payload Too Large",
+  [414] = "URI Too Long",
+  [415] = "Unsupported Media Type",
+  [416] = "Range Not Satisfiable",
+  [417] = "Expectation Failed",
+  [418] = "I'm a teapot",
+  [422] = "Unprocessable Entity",
+  [423] = "Locked",
+  [424] = "Failed Dependency",
+  [426] = "Upgrade Required",
+  [428] = "Precondition Required",
+  [429] = "Too Many Requests",
+  [431] = "Request Header Fields Too Large",
+  [451] = "Unavailable For Legal Reasons",
+  [500] = "Internal Server Error",
+  [501] = "Not Implemented",
+  [502] = "Bad Gateway",
+  [503] = "Service Unavailable",
+  [504] = "Gateway Timeout",
+  [505] = "HTTP Version Not Supported",
+  [506] = "Variant Also Negotiates",
+  [507] = "Insufficient Storage",
+  [508] = "Loop Detected",
+  [510] = "Not Extended",
+  [511] = "Network Authentication Required",
+}
+
+
+local EMPTY = {}
+
+
+local function handle_response(code, body, headers)
+  if not code then
+    code = 500
+    body = ""
+    headers = EMPTY
+  end
+
+  local head_str = ""
+
+  for k, v in pairs(headers or EMPTY) do
+    head_str = head_str .. k .. ": " .. v .. "\r\n"
+  end
+
+  return code .. " " .. code_status[code] .. " HTTP/1.1" .. "\r\n" ..
+          "Content-Length: " .. #body .. "\r\n" ..
+          "Connection: close\r\n" ..
+          head_str ..
+          "\r\n" ..
+          body
+end
+
+
+local function handle_request(client, response)
+  local lines = {}
+  local headers = {}
+  local line, err
+
+  local content_length
+  repeat
+    line, err = client:receive("*l")
+    if err then
+      return nil, err
+    else
+      local k, v = line:match("^([^:]+):%s*(.+)$")
+      if k then
+        headers[k] = v
+        if k:lower() == "content-length" then
+          content_length = tonumber(v)
+        end
+      end
+      table.insert(lines, line)
+    end
+  until line == ""
+
+  local method = lines[1]:match("^(%S+)%s+(%S+)%s+(%S+)$")
+  local method_lower = method:lower()
+
+  local body
+  if content_length then
+    body = client:receive(content_length)
+
+  elseif method_lower == "put" or method_lower == "post" then
+    body = client:receive("*a")
+  end
+
+  local response_str
+  local meta = getmetatable(response)
+  if type(response) == "function" or (meta and meta.__call) then
+    response_str = response(lines, body, headers)
+
+  elseif type(response) == "table" and response.code then
+    response_str = handle_response(response.code, response.body, response.headers)
+
+  elseif type(response) == "table" and response[1] then
+    response_str = handle_response(response[1], response[2], response[3])
+
+  elseif type(response) == "string" then
+    response_str = response
+
+  elseif response == nil then
+    response_str = "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n"
+  end
+
+
+  client:send(response_str)
+  return lines, body, headers
+end
+
+
+--- Start a local HTTP server with coroutine.
+-- local mock = helpers.http_mock(1234, { timeout = 0.1 })
+-- wait for a request, and respond with the custom response
+-- the request is returned as the function's return values
+-- return nil, err if error
+-- local lines, body, headers = mock(custom_response)
+-- local lines, body, headers = mock()
+-- mock("closing", true) -- close the server
+local function http_mock(port, opts)
+  local socket = require "socket"
+  local server = assert(socket.tcp())
+  server:settimeout(opts and opts.timeout or 60)
+  assert(server:setoption('reuseaddr', true))
+  assert(server:bind("*", port))
+  assert(server:listen())
+  return coroutine.wrap(function(response, exit)
+    local lines, body, headers
+    -- start listening
+    while not exit do
+      local client, err = server:accept()
+      if err then
+        lines, body = false, err
+
+      else
+        lines, body, headers = handle_request(client, response)
+        client:close()
+      end
+
+      response, exit = coroutine.yield(lines, body, headers)
+    end
+
+    server:close()
+    return true
+  end)
 end
 
 
@@ -1430,7 +1608,7 @@ end
 
 local say = require "say"
 local luassert = require "luassert.assert"
-
+require("spec.helpers.wait")
 
 --- Waits until a specific condition is met.
 -- The check function will repeatedly be called (with a fixed interval), until
@@ -1449,44 +1627,12 @@ local luassert = require "luassert.assert"
 -- -- wait 10 seconds for a file "myfilename" to appear
 -- helpers.wait_until(function() return file_exist("myfilename") end, 10)
 local function wait_until(f, timeout, step)
-  if type(f) ~= "function" then
-    error("arg #1 must be a function", 2)
-  end
-
-  if timeout ~= nil and type(timeout) ~= "number" then
-    error("arg #2 must be a number", 2)
-  end
-
-  if step ~= nil and type(step) ~= "number" then
-    error("arg #3 must be a number", 2)
-  end
-
-  ngx.update_time()
-
-  timeout = timeout or 5
-  step = step or 0.05
-
-  local tstart = ngx.now()
-  local texp = tstart + timeout
-  local ok, res, err
-
-  repeat
-    ok, res, err = pcall(f)
-    ngx.sleep(step)
-    ngx.update_time()
-  until not ok or res or ngx.now() >= texp
-
-  if not ok then
-    -- report error from `f`, such as assert gone wrong
-    error(tostring(res), 2)
-  elseif not res and err then
-    -- report a failure for `f` to meet its condition
-    -- and eventually an error return value which could be the cause
-    error("wait_until() timeout: " .. tostring(err) .. " (after delay: " .. timeout .. "s)", 2)
-  elseif not res then
-    -- report a failure for `f` to meet its condition
-    error("wait_until() timeout (after delay " .. timeout .. "s)", 2)
-  end
+  luassert.wait_until({
+    condition = "truthy",
+    fn = f,
+    timeout = timeout,
+    step = step,
+  })
 end
 
 
@@ -1503,10 +1649,14 @@ end
 -- @return nothing. It returns when the condition is met, or throws an error
 -- when it times out.
 local function pwait_until(f, timeout, step)
-  wait_until(function()
-    return pcall(f)
-  end, timeout, step)
+  luassert.wait_until({
+    condition = "no_error",
+    fn = f,
+    timeout = timeout,
+    step = step,
+  })
 end
+
 
 --- Wait for some timers, throws an error on timeout.
 --
@@ -1861,7 +2011,7 @@ local function wait_for_all_config_update(opts)
     if stream_enabled then
       pwait_until(function ()
         local proxy = proxy_client(proxy_client_timeout, stream_port, stream_ip)
-
+  
         res = proxy:get("/always_200")
         local ok, err = pcall(assert, res.status == 200)
         proxy:close()
@@ -2630,6 +2780,55 @@ do
 end
 
 
+--- Assertion to check whether a string matches a regular expression
+-- @function match_re
+-- @param string the string
+-- @param regex the regular expression
+-- @return true or false
+-- @usage
+-- assert.match_re("foobar", [[bar$]])
+--
+
+local function match_re(_, args)
+  local string = args[1]
+  local regex = args[2]
+  assert(type(string) == "string",
+    "Expected the string argument to be a string")
+  assert(type(regex) == "string",
+    "Expected the regex argument to be a string")
+  local from, _, err = ngx.re.find(string, regex)
+  if err then
+    error(err)
+  end
+  if from then
+    table.insert(args, 1, string)
+    table.insert(args, 1, regex)
+    args.n = 2
+    return true
+  else
+    return false
+  end
+end
+
+say:set("assertion.match_re.negative", unindent [[
+    Expected log:
+    %s
+    To match:
+    %s
+  ]])
+say:set("assertion.match_re.positive", unindent [[
+    Expected log:
+    %s
+    To not match:
+    %s
+    But matched line:
+    %s
+  ]])
+luassert:register("assertion", "match_re", match_re,
+  "assertion.match_re.negative",
+  "assertion.match_re.positive")
+
+
 ----------------
 -- DNS-record mocking.
 -- These function allow to create mock dns records that the test Kong instance
@@ -3297,14 +3496,36 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
 end
 
 
+-- Cleanup after kong test instance, should be called if start_kong was invoked with the nowait flag
+-- @function cleanup_kong
+-- @param prefix (optional) the prefix where the test instance runs, defaults to the test configuration.
+-- @param preserve_prefix (boolean) if truthy, the prefix will not be deleted after stopping
+-- @param preserve_dc ???
+local function cleanup_kong(prefix, preserve_prefix, preserve_dc)
+
+  -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped
+  if not (preserve_prefix or os.getenv("KONG_DONT_CLEAN")) then
+    clean_prefix(prefix)
+  end
+
+  if not preserve_dc then
+    config_yml = nil
+  end
+  ngx.ctx.workspace = nil
+end
+
+
 -- Stop the Kong test instance.
 -- @function stop_kong
 -- @param prefix (optional) the prefix where the test instance runs, defaults to the test configuration.
 -- @param preserve_prefix (boolean) if truthy, the prefix will not be deleted after stopping
--- @param preserve_dc
+-- @param preserve_dc ???
+-- @param signal (optional string) signal name to send to kong, defaults to TERM
+-- @param nowait (optional) if truthy, don't wait for kong to terminate.  caller needs to wait and call cleanup_kong
 -- @return true or nil+err
-local function stop_kong(prefix, preserve_prefix, preserve_dc)
+local function stop_kong(prefix, preserve_prefix, preserve_dc, signal, nowait)
   prefix = prefix or conf.prefix
+  signal = signal or "TERM"
 
   local running_conf, err = get_running_conf(prefix)
   if not running_conf then
@@ -3316,26 +3537,21 @@ local function stop_kong(prefix, preserve_prefix, preserve_dc)
     return nil, err
   end
 
-  local ok, _, _, err = pl_utils.executeex("kill -TERM " .. pid)
+  local ok, _, _, err = pl_utils.executeex(string.format("kill -%s %d", signal, pid))
   if not ok then
     return nil, err
   end
 
+  if nowait then
+    return running_conf.nginx_pid
+  end
+
   wait_pid(running_conf.nginx_pid)
 
-  -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped
-  if not (preserve_prefix or os.getenv("KONG_DONT_CLEAN")) then
-    clean_prefix(prefix)
-  end
-
-  if not preserve_dc then
-    config_yml = nil
-  end
-  ngx.ctx.workspace = nil
+  cleanup_kong(prefix, preserve_prefix, preserve_dc)
 
   return true
 end
-
 
 --- Restart Kong. Reusing declarative config when using `database=off`.
 -- @function restart_kong
@@ -3455,6 +3671,7 @@ local function clustering_client(opts)
   local payload = assert(cjson.encode({ type = "basic_info",
                                         plugins = opts.node_plugins_list or
                                                   PLUGINS_LIST,
+                                        labels = opts.node_labels,
                                       }))
   assert(c:send_binary(payload))
 
@@ -3519,14 +3736,6 @@ end
 -- @field mock_upstream_ssl_host
 -- @field mock_upstream_ssl_port
 -- @field mock_upstream_ssl_url Base url constructed from the components
--- @field mock_upstream_dp_protocol
--- @field mock_upstream_dp_host
--- @field mock_upstream_dp_port
--- @field mock_upstream_dp_url Base url constructed from the components
--- @field mock_upstream_dp_ssl_protocol
--- @field mock_upstream_dp_ssl_host
--- @field mock_upstream_dp_ssl_port
--- @field mock_upstream_dp_ssl_url Base url constructed from the components
 -- @field mock_upstream_stream_port
 -- @field mock_upstream_stream_ssl_port
 -- @field mock_grpc_upstream_proto_path
@@ -3582,20 +3791,6 @@ end
                                MOCK_UPSTREAM_HOST .. ':' ..
                                MOCK_UPSTREAM_SSL_PORT,
 
-  mock_upstream_dp_protocol  = MOCK_UPSTREAM_PROTOCOL,
-  mock_upstream_dp_host      = MOCK_UPSTREAM_HOST,
-  mock_upstream_dp_port      = MOCK_UPSTREAM_DP_PORT,
-  mock_upstream_dp_url       = MOCK_UPSTREAM_PROTOCOL .. "://" ..
-                               MOCK_UPSTREAM_HOST .. ':' ..
-                               MOCK_UPSTREAM_DP_PORT,
-
-  mock_upstream_dp_ssl_protocol = MOCK_UPSTREAM_SSL_PROTOCOL,
-  mock_upstream_dp_ssl_host     = MOCK_UPSTREAM_HOST,
-  mock_upstream_dp_ssl_port     = MOCK_UPSTREAM_DP_SSL_PORT,
-  mock_upstream_dp_ssl_url      = MOCK_UPSTREAM_SSL_PROTOCOL .. "://" ..
-                                  MOCK_UPSTREAM_HOST .. ':' ..
-                                  MOCK_UPSTREAM_DP_SSL_PORT,
-
   mock_upstream_stream_port     = MOCK_UPSTREAM_STREAM_PORT,
   mock_upstream_stream_ssl_port = MOCK_UPSTREAM_STREAM_SSL_PORT,
   mock_grpc_upstream_proto_path = MOCK_GRPC_UPSTREAM_PROTO_PATH,
@@ -3641,6 +3836,7 @@ end
   udp_server = udp_server,
   kill_tcp_server = kill_tcp_server,
   http_server = http_server,
+  http_mock = http_mock,
   kill_http_server = kill_http_server,
   get_proxy_ip = get_proxy_ip,
   get_proxy_port = get_proxy_port,
@@ -3675,6 +3871,7 @@ end
   -- launching Kong subprocesses
   start_kong = start_kong,
   stop_kong = stop_kong,
+  cleanup_kong = cleanup_kong,
   restart_kong = restart_kong,
   reload_kong = reload_kong,
   get_kong_workers = get_kong_workers,

@@ -381,8 +381,13 @@ for _, strategy in helpers.each_strategy() do
         assert.is.table(health.data[1])
         assert.equals("HEALTHCHECKS_OFF", health.data[1].health)
         assert.equals("HEALTHCHECKS_OFF", health.data[1].data.addresses[1].health)
-      end, 15)
 
+        local balancer_health = bu.get_balancer_health(upstream_name)
+        assert.is.table(balancer_health)
+        assert.is.table(balancer_health.data)
+        assert.equals("HEALTHCHECKS_OFF", balancer_health.data.health)
+        assert.equals("HEALTHY", balancer_health.data.balancer_health)
+      end, 15)
     end)
 
     it("an upstream that is removed and readed keeps the health status", function()
@@ -1207,7 +1212,78 @@ for _, strategy in helpers.each_strategy() do
                   name = "pre-function",
                   service = { id = service_id },
                   config = {
-                    header_filter ={ 
+                    header_filter ={
+                      [[
+                        ngx.exit(200)
+                    ]],
+                    },
+                  }
+                })
+
+                bu.end_testcase_setup(strategy, bp)
+
+                local requests = bu.SLOTS * 2 -- go round the balancer twice
+
+                -- setup target servers:
+                -- server2 will only respond for part of the test,
+                -- then server1 will take over.
+                local server2_oks = math.floor(requests / 4)
+                local server1 = https_server.new(port1, localhost)
+                local server2 = https_server.new(port2, localhost)
+                server1:start()
+                server2:start()
+
+                -- Go hit them with our test requests
+                local client_oks1, client_fails1 = bu.client_requests(bu.SLOTS, api_host)
+                assert(bu.direct_request(localhost, port2, "/unhealthy"))
+                local client_oks2, client_fails2 = bu.client_requests(bu.SLOTS, api_host)
+
+                local client_oks = client_oks1 + client_oks2
+                local client_fails = client_fails1 + client_fails2
+
+                -- collect server results; hitcount
+                local count1 = server1:shutdown()
+                local count2 = server2:shutdown()
+
+                -- verify
+                assert.are.equal(requests - server2_oks - nfails, count1.ok)
+                assert.are.equal(server2_oks, count2.ok)
+                assert.are.equal(0, count1.fail)
+                assert.are.equal(nfails, count2.fail)
+
+                assert.are.equal(client_oks, requests)
+                assert.are.equal(0, client_fails)
+              end
+            end)
+
+            it("perform passive health checks in downstream status code was changed with subrequest", function()
+
+              for nfails = 1, 3 do
+
+                bu.begin_testcase_setup(strategy, bp)
+                -- configure healthchecks
+                local upstream_name, upstream_id = bu.add_upstream(bp, {
+                  healthchecks = bu.healthchecks_config {
+                    passive = {
+                      unhealthy = {
+                        http_failures = nfails,
+                      }
+                    }
+                  }
+                })
+                local port1 = bu.add_target(bp, upstream_id, localhost)
+                local port2 = bu.add_target(bp, upstream_id, localhost)
+                local api_host, service_id = bu.add_api(bp, upstream_name)
+                bp.plugins:insert({
+                  name = "pre-function",
+                  service = { id = service_id },
+                  config = {
+                    access = {
+                      [[
+                        kong.service.request.enable_buffering()
+                      ]],
+                    },
+                    header_filter ={
                       [[
                         ngx.exit(200)
                     ]],
@@ -1329,8 +1405,10 @@ for _, strategy in helpers.each_strategy() do
 
                 if health_threshold[i] < 100 then
                   assert.equals("HEALTHY", health.data.health)
+                  assert.equals("HEALTHY", health.data.balancer_health)
                 else
                   assert.equals("UNHEALTHY", health.data.health)
+                  assert.equals("UNHEALTHY", health.data.balancer_health)
                 end
 
                 -- 75% healthy
@@ -1348,8 +1426,10 @@ for _, strategy in helpers.each_strategy() do
 
                 if health_threshold[i] < 75 then
                   assert.equals("HEALTHY", health.data.health)
+                  assert.equals("HEALTHY", health.data.balancer_health)
                 else
                   assert.equals("UNHEALTHY", health.data.health)
+                  assert.equals("UNHEALTHY", health.data.balancer_health)
                 end
 
                 -- 50% healthy
@@ -1489,7 +1569,7 @@ for _, strategy in helpers.each_strategy() do
                   local requests = bu.SLOTS * 2 -- go round the balancer twice
                   local port1 = helpers.get_available_port()
                   local port2 = helpers.get_available_port()
-  
+
                   -- setup target servers:
                   -- server2 will only respond for part of the test,
                   -- then server1 will take over.
@@ -1498,7 +1578,7 @@ for _, strategy in helpers.each_strategy() do
                   local server2 = https_server.new(port2, "localhost", "http", true)
                   server1:start()
                   server2:start()
-  
+
                   -- configure healthchecks
                   bu.begin_testcase_setup(strategy, bp)
                   local upstream_name, upstream_id = bu.add_upstream(bp, {

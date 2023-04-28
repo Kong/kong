@@ -13,6 +13,7 @@ local split = ngx_re.split
 local subsystem = ngx.config.subsystem
 local fmt = string.format
 local rand_bytes = utils.get_rand_bytes
+local to_hex = require "resty.string".to_hex
 
 local ZipkinLogHandler = {
   VERSION = kong_meta.version,
@@ -42,13 +43,7 @@ end
 
 local function get_reporter(conf)
   if reporter_cache[conf] == nil then
-    reporter_cache[conf] = new_zipkin_reporter(conf.http_endpoint,
-                                               conf.default_service_name,
-                                               conf.local_service_name,
-                                               conf.connect_timeout,
-                                               conf.send_timeout,
-                                               conf.read_timeout,
-                                               kong.log)
+    reporter_cache[conf] = new_zipkin_reporter(conf)
   end
   return reporter_cache[conf]
 end
@@ -88,20 +83,6 @@ local function get_or_add_proxy_span(zipkin, timestamp)
   end
   return zipkin.proxy_span
 end
-
-
-local function timer_log(premature, reporter)
-  if premature then
-    return
-  end
-
-  local ok, err = reporter:flush()
-  if not ok then
-    reporter.logger.err("reporter flush ", err)
-    return
-  end
-end
-
 
 
 local initialize_request
@@ -221,7 +202,8 @@ if subsystem == "http" then
     end
 
     if conf.http_response_header_for_traceid then
-      kong.response.add_header(conf.http_response_header_for_traceid, proxy_span.trace_id)
+      local trace_id = to_hex(proxy_span.trace_id)
+      kong.response.add_header(conf.http_response_header_for_traceid, trace_id)
     end
   end
 
@@ -406,11 +388,6 @@ function ZipkinLogHandler:log(conf) -- luacheck: ignore 212
   reporter:report(proxy_span)
   request_span:finish(now_mu)
   reporter:report(request_span)
-
-  local ok, err = ngx.timer.at(0, timer_log, reporter)
-  if not ok then
-    kong.log.err("failed to create timer: ", err)
-  end
 end
 
 

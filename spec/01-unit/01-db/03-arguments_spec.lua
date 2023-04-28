@@ -291,7 +291,7 @@ describe("arguments.decode", function()
   end)
 
   pending("decodes different array representations", function()
-    -- undefined:  the result depends on wether `["a"]` or `["a[2]"]` is applied first
+    -- undefined:  the result depends on whether `["a"]` or `["a[2]"]` is applied first
     -- but there's no way to guarantee order without adding a "presort keys" step.
     -- but it's unlikely that a real-world client uses both forms in the same request,
     -- instead of making `decode()` slower, split test in two

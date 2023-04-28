@@ -40,6 +40,9 @@ else
   resp_get_headers = NOOP
 end
 
+local SLEEP_STEP = 0.1
+local WAIT_TIME = 10
+local MAX_WAIT_STEPS = WAIT_TIME / SLEEP_STEP
 
 --- keep request data a bit longer, into the log timer
 local save_for_later = {}
@@ -189,12 +192,20 @@ end
 --- instance.  Biggest complexity here is due to the remote (and thus non-atomic
 --- and fallible) operation of starting the instance at the server.
 function get_instance_id(plugin_name, conf)
-  local key = type(conf) == "table" and conf.__key__ or plugin_name
+  local key = type(conf) == "table" and kong.plugin.get_id() or plugin_name
   local instance_info = running_instances[key]
 
+  local wait_count = 0
   while instance_info and not instance_info.id do
     -- some other thread is already starting an instance
-    ngx_sleep(0)
+    -- prevent busy-waiting
+    ngx_sleep(SLEEP_STEP)
+  
+    -- to prevent a potential dead loop when someone failed to release the ID
+    wait_count = wait_count + 1
+    if wait_count > MAX_WAIT_STEPS then
+      return nil, "Could not claim instance_id for " .. plugin_name .. " (key: " .. key .. ")"
+    end
     instance_info = running_instances[key]
   end
 
@@ -258,7 +269,7 @@ end
 
 --- reset_instance: removes an instance from the table.
 function reset_instance(plugin_name, conf)
-  local key = type(conf) == "table" and conf.__key__ or plugin_name
+  local key = type(conf) == "table" and kong.plugin.get_id() or plugin_name
   running_instances[key] = nil
 end
 
@@ -307,8 +318,8 @@ local function build_phases(plugin)
           serialize_data = kong.log.serialize(),
           ngx_ctx = clone(ngx.ctx),
           ctx_shared = kong.ctx.shared,
-          request_headers = req_get_headers(100),
-          response_headers = resp_get_headers(100),
+          request_headers = req_get_headers(),
+          response_headers = resp_get_headers(),
           response_status = ngx.status,
           req_start_time = req_start_time(),
         })

@@ -170,15 +170,10 @@ describe("[latency]", function()
 
     _G.kong = kong
 
-
-    kong.worker_events = require "resty.worker.events"
+    kong.worker_events = require "resty.events.compat"
     kong.worker_events.configure({
-      shm = "kong_process_events", -- defined by "lua_shared_dict"
-      timeout = 5,            -- life time of event data in shm
-      interval = 1,           -- poll interval (seconds)
-
-      wait_interval = 0.010,  -- wait before retry fetching event data
-      wait_max = 0.5,         -- max wait time before discarding event
+      listening = "unix:",
+      testing = true,
     })
 
     local function empty_each()
@@ -273,7 +268,7 @@ describe("[latency]", function()
 
       local counts = {}
       local handles = {}
-      
+
       local handle_local
       local ctx_local = {}
       for _, target in pairs(b.targets) do
@@ -504,7 +499,7 @@ describe("[latency]", function()
             b:afterBalance(ctx_local, handle_local)
         end
       end
-  
+
       local ip, _, _, handle = b:getPeer()
       counts[ip] = (counts[ip] or 0) + 1
       t_insert(handles, handle)  -- don't let them get GC'ed
@@ -591,7 +586,7 @@ describe("[latency]", function()
     end)
 
 
-    it("retries, after all adresses failed, retry end", function()
+    it("retries, after all addresses failed, retry end", function()
       dnsSRV({
         { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
         { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },

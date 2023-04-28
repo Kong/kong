@@ -688,7 +688,7 @@ end
 -- Will not throw an error if the module was not found, but will throw an error if the
 -- loading failed for another reason (eg: syntax error).
 -- @param module_name Path of the module to load (ex: kong.plugins.keyauth.api).
--- @return success A boolean indicating wether the module was found.
+-- @return success A boolean indicating whether the module was found.
 -- @return module The retrieved module, or the error in case of a failure
 function _M.load_module_if_exists(module_name)
   local status, res = xpcall(function()
@@ -1044,6 +1044,62 @@ _M.validate_cookie_name = function(name)
   return nil, "bad cookie name '" .. name ..
               "', allowed characters are A-Z, a-z, 0-9, '_', and '-'"
 end
+
+
+local validate_labels
+do
+  local nkeys = require "table.nkeys"
+
+  local MAX_KEY_SIZE   = 63
+  local MAX_VALUE_SIZE = 63
+  local MAX_KEYS_COUNT = 10
+
+  -- validation rules based on Kong Labels AIP
+  -- https://kong-aip.netlify.app/aip/129/
+  local BASE_PTRN = "[a-z0-9]([\\w\\.:-]*[a-z0-9]|)$"
+  local KEY_PTRN  = "(?!kong)(?!konnect)(?!insomnia)(?!mesh)(?!kic)" .. BASE_PTRN
+  local VAL_PTRN  = BASE_PTRN
+
+  local function validate_entry(str, max_size, pattern)
+    if str == "" or #str > max_size then
+      return nil, fmt(
+        "%s must have between 1 and %d characters", str, max_size)
+    end
+    if not re_match(str, pattern, "ajoi") then
+      return nil, fmt("%s is invalid. Must match pattern: %s", str, pattern)
+    end
+    return true
+  end
+
+  -- Validates a label array.
+  -- Validates labels based on the kong Labels AIP
+  function validate_labels(raw_labels)
+    if nkeys(raw_labels) > MAX_KEYS_COUNT then
+      return nil, fmt(
+        "labels validation failed: count exceeded %d max elements",
+        MAX_KEYS_COUNT
+      )
+    end
+
+    for _, kv in ipairs(raw_labels) do
+      local del = kv:find(":", 1, true)
+      local k = del and kv:sub(1, del - 1) or ""
+      local v = del and kv:sub(del + 1) or ""
+
+      local ok, err = validate_entry(k, MAX_KEY_SIZE, KEY_PTRN)
+      if not ok then
+        return nil, "label key validation failed: " .. err
+      end
+      ok, err = validate_entry(v, MAX_VALUE_SIZE, VAL_PTRN)
+      if not ok then
+        return nil, "label value validation failed: " .. err
+      end
+    end
+
+    return true
+  end
+end
+_M.validate_labels = validate_labels
 
 
 ---
@@ -1640,5 +1696,16 @@ end
 _M.sha256_hex       = sha256_hex
 _M.sha256_base64    = sha256_base64
 _M.sha256_base64url = sha256_base64url
+
+local get_updated_now_ms
+do
+  local now           = ngx.now
+  local update_time   = ngx.update_time
+  function get_updated_now_ms()
+    update_time()
+    return now() * 1000 -- time is kept in seconds with millisecond resolution.
+  end
+end
+_M.get_updated_now_ms = get_updated_now_ms
 
 return _M

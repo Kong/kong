@@ -204,6 +204,8 @@ naming scheme when pushing your branch(es):
 - `refactor/foo-bar` when refactoring code without any behavior change
 - `style/foo-bar` when addressing some style issue
 - `docs/foo-bar` for updates to the README.md, this file, or similar documents
+- `chore/foo-bar` when the change does not concern the functional source
+- `perf/foo-bar` for performance improvements
 
 [Back to TOC](#table-of-contents)
 
@@ -324,7 +326,7 @@ related GitHub issues, Pull Requests, fixed bug reports, etc...
 Here are a few examples of good commit messages to take inspiration from:
 
 ```
-fix(admin) send HTTP 405 on unsupported method
+fix(admin): send HTTP 405 on unsupported method
 
 The appropriate status code when the request method is not supported
 on an endpoint it 405. We previously used to send HTTP 404, which
@@ -340,7 +342,7 @@ Fix #678
 Or:
 
 ```
-tests(proxy) add a new test case for URI encoding
+tests(proxy): add a new test case for URI encoding
 
 When proxying upstream, the URI sent by Kong should be the one
 received from the client, even if it was percent-encoded.
@@ -425,7 +427,7 @@ practices:
 - Do **not** instantiate global variables
 - Consult the [LuaJIT wiki](http://wiki.luajit.org/Home)
 - Follow the [Performance
-  Guide](http://wiki.luajit.org/Numerical-Computing-Performance-Guide)
+  Guide](https://www.freelists.org/post/luajit/Tuning-numerical-computations-for-LuaJIT-was-Re-ANN-Sci10beta1)
   recommendations
 - Do **not** use [NYI functions](http://wiki.luajit.org/NYI) on hot code paths
 - Prefer using the FFI over traditional bindings via the Lua C API
@@ -446,7 +448,8 @@ practices:
   end
   ```
 
-- Cache the globals used by your hot code paths
+- Cache the globals used by your hot code paths,
+  the cached name should be the original name replaced `.` by `_`
 
   ```lua
   -- bad
@@ -455,9 +458,23 @@ practices:
   end
 
   -- good
-  local random = math.random
+  local math_random = math.random
   for i = 1, 100 do
-    t[i] = random()
+    t[i] = math_random()
+  end
+  ```
+
+  For OpenResty built-in APIs we may drop `ngx.` in the localized version
+
+  ```lua
+  local req_get_post_args = ngx.req.get_post_args
+  ```
+
+  Non-hot paths are localization optional
+
+  ```lua
+  if err then
+    ngx.log(ngx.ERR, ...) -- this is fine as error condition is not on the hot path
   end
   ```
 
@@ -643,6 +660,18 @@ local str = "hello ".."world"
 local str = "hello " .. "world"
 ```
 
+If a string is too long, **do** break it into multiple lines,
+and join them with the concatenation operator:
+
+```lua
+-- bad
+local str = "It is a very very very long string, that should be broken into multiple lines."
+
+-- good
+local str = "It is a very very very long string, " ..
+            "that should be broken into multiple lines."
+```
+
 [Back to code style TOC](#table-of-contents---code-style)
 
 ### Functions
@@ -728,7 +757,7 @@ local str = string.format("SELECT * FROM users WHERE first_name = '%s'",
 
 ### Conditional expressions
 
-Avoid writing 1-liner conditions, **do** indent the child branch:
+Avoid writing 1-line conditions, **do** indent the child branch:
 
 ```lua
 -- bad

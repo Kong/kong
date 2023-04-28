@@ -97,7 +97,7 @@ function _M.new(opts)
   local mlcache, err = resty_mlcache.new(shm_name, shm_name, {
     shm_miss         = shm_miss_name,
     shm_locks        = "kong_locks",
-    shm_set_retries  = 3,
+    shm_set_tries    = 3,
     lru_size         = LRU_SIZE,
     ttl              = ttl,
     neg_ttl          = neg_ttl,

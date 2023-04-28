@@ -2227,4 +2227,541 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
     end)
   end)
 end)
+
+describe("Plugin: request-transformer (thread safety) [#" .. strategy .. "]", function()
+  local db_strategy = strategy ~= "off" and strategy or nil
+
+  lazy_setup(function()
+    local bp = helpers.get_db_utils(db_strategy, {
+      "routes",
+      "services",
+      "plugins",
+    }, { "request-transformer", "pre-function" })
+
+    local route = bp.routes:insert({
+      hosts = { "test_thread_safety.test" }
+    })
+
+    bp.plugins:insert {
+      route = { id = route.id },
+      name = "pre-function",
+      config = {
+        access = {
+          [[
+            local delay = kong.request.get_header("slow_body_delay")
+            local orig_read_body = ngx.req.read_body
+            ngx.ctx.orig_read_body = orig_read_body
+            ngx.req.read_body = function()
+              ngx.sleep(tonumber(delay))
+              return orig_read_body()
+            end
+          ]]
+        },
+        header_filter = {
+          [[
+            ngx.req.read_body = ngx.ctx.orig_read_body or ngx.req.read_body
+          ]]
+        },
+      }
+    }
+
+    bp.plugins:insert {
+      route = { id = route.id },
+      name = "request-transformer",
+      config = {
+        add = {
+          querystring = { "added_q:yes_q" },
+          headers = { "added_h:yes_h" },
+          body = { "added_b:yes_b" }
+        }
+      }
+    }
+
+    assert(helpers.start_kong({
+      database = db_strategy,
+      plugins = "bundled, request-transformer",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_worker_processes = 1
+    }))
+  end)
+
+  lazy_teardown(function()
+    helpers.stop_kong()
+  end)
+
+  it("sends requests with the expected values for headers, body, query", function()
+    local race_conditions = ""
+
+    local get_handler = function(header_val, body_param_val, query_param_val, delay)
+      return function()
+        local tmp_client = helpers.proxy_client()
+        local r = assert(tmp_client:send({
+          method = "POST",
+          path = "/request",
+          headers = {
+            ["Content-Type"] = "application/json",
+            host = "test_thread_safety.test",
+            slow_body_delay = delay,
+            h = header_val
+          },
+          body = {
+            k = body_param_val
+          },
+          query = {
+            q = query_param_val
+          }
+        }))
+
+        assert.response(r).has.status(200)
+        local header = assert.request(r).has.header("h")
+        local body_param = assert.request(r).has.jsonbody().params.k
+        local query_param = assert.request(r).has.queryparam("q")
+        if header_val ~= header then
+          race_conditions = race_conditions .. fmt("expected: %s, received: %s", header_val, header)
+        end
+        if body_param_val ~= body_param then
+          race_conditions = race_conditions .. fmt("expected: %s, received: %s", body_param_val, body_param)
+        end
+        if query_param ~= query_param_val then
+          race_conditions = race_conditions .. fmt("expected: %s, received: %s", query_param, query_param_val)
+        end
+        tmp_client:close()
+      end
+    end
+
+    local thread_1 = ngx.thread.spawn(get_handler("vh1", "b1", "vq1", 2))
+    local thread_2 = ngx.thread.spawn(get_handler("vh2", "b2", "vq2", 0))
+    ngx.thread.wait(thread_1)
+    ngx.thread.wait(thread_2)
+
+    assert.equals("", race_conditions)
+  end)
+end)
+
+describe("Plugin: request-transformer(access) [#" .. strategy .. "] untrusted_lua=off", function()
+  local client
+
+  lazy_setup(function()
+    local bp = helpers.get_db_utils(strategy, {
+      "routes",
+      "services",
+      "plugins",
+    })
+
+    local route1 = bp.routes:insert({
+      hosts = { "testLuaOff.test" }
+    })
+
+    local route2 = bp.routes:insert({
+      hosts = { "testLuaOff2.test" }
+    })
+
+    bp.plugins:insert {
+      route = { id = route1.id },
+      name = "request-transformer",
+      config = {
+        add = {
+          headers = {"x-added:some_value"},
+        }
+      }
+    }
+
+    bp.plugins:insert {
+      route = { id = route2.id },
+      name = "request-transformer",
+      config = {
+        add = {
+          headers = {"x-added:$(require('inspect')(string.sub(query_params.user, 1, 3)))"},
+        }
+      }
+    }
+
+    assert(helpers.start_kong({
+      database = strategy,
+      untrusted_lua = "off",
+      plugins = "bundled, request-transformer",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
+  end)
+
+  lazy_teardown(function()
+    helpers.stop_kong()
+  end)
+
+  before_each(function()
+    client = helpers.proxy_client()
+  end)
+
+  after_each(function()
+    if client then client:close() end
+  end)
+
+
+  it("correctly handles plain text value", function()
+    local r = assert(client:send {
+      method = "GET",
+      path = "/",
+      headers = {
+        host = "testLuaOff.test",
+        ["Content-Type"] = "application/x-www-form-urlencoded",
+      }
+    })
+    assert.response(r).has.status(200)
+    local value = assert.request(r).has.header("x-added")
+    assert.equals("some_value", value)
+  end)
+
+  it("does not render lua expressions", function()
+    local pattern = [[loading of untrusted Lua code disabled because 'untrusted_lua' config option is set to 'off']]
+    local start_count = count_log_lines(pattern)
+    local r = assert(client:send {
+      method = "GET",
+      path = "/",
+      query = {
+        user = "foo"
+      },
+      headers = {
+        host = "testLuaOff2.test",
+        ["Content-Type"] = "application/x-www-form-urlencoded",
+      }
+    })
+    assert.response(r).has.status(500)
+    helpers.wait_until(function()
+      local count = count_log_lines(pattern)
+      return count - start_count >= 1
+    end, 5)
+  end)
+end)
+
+describe("Plugin: request-transformer(access) [#" .. strategy .. "] untrusted_lua=on", function()
+  local client
+
+  lazy_setup(function()
+    local bp = helpers.get_db_utils(strategy, {
+      "routes",
+      "services",
+      "plugins",
+    })
+
+    local route1 = bp.routes:insert({
+      hosts = { "testLuaOff1.test" },
+    })
+
+    bp.plugins:insert {
+      route = { id = route1.id },
+      name = "request-transformer",
+      config = {
+        add = {
+          headers = {"x-added:$(require('inspect')(string.sub(query_params.user, 1, 3)))"},
+        }
+      }
+    }
+
+    assert(helpers.start_kong({
+      database = strategy,
+      untrusted_lua = "on",
+      plugins = "bundled, request-transformer",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
+  end)
+
+  lazy_teardown(function()
+    helpers.stop_kong()
+  end)
+
+  before_each(function()
+    client = helpers.proxy_client()
+  end)
+
+  after_each(function()
+    if client then client:close() end
+  end)
+
+  describe("using template", function()
+    it("renders the Lua expression without restrictions", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/",
+        query = {
+          user = "foo123"
+        },
+        headers = {
+          host = "testLuaOff1.test",
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+        }
+      })
+      assert.response(r).has.status(200)
+      local value = assert.request(r).has.header("x-added")
+      assert.equals('"foo"', value)
+    end)
+  end)
+end)
+
+describe("Plugin: request-transformer(access) [#" .. strategy .. "] untrusted_lua=sandbox", function()
+  local client
+
+  lazy_setup(function()
+    local bp = helpers.get_db_utils(strategy, {
+      "routes",
+      "services",
+      "plugins",
+    })
+
+    local route1 = bp.routes:insert({
+      hosts = { "testLuaSandbox1.test" },
+    })
+
+    local route2 = bp.routes:insert({
+      hosts = { "testLuaSandbox2.test" },
+    })
+
+    local route3 = bp.routes:insert({
+      hosts = { "testLuaSandbox3.test" },
+    })
+
+    bp.plugins:insert {
+      route = { id = route1.id },
+      name = "request-transformer",
+      config = {
+        add = {
+          headers = {"x-added:$(type(query_params.user))"},
+        }
+      }
+    }
+
+    bp.plugins:insert {
+      route = { id = route2.id },
+      name = "request-transformer",
+      config = {
+        add = {
+          headers = {"x-added:$(string.sub(query_params.user, 1, 3))"},
+        }
+      }
+    }
+
+    bp.plugins:insert {
+      route = { id = route3.id },
+      name = "request-transformer",
+      config = {
+        add = {
+          headers = {"x-added:$(require('inspect')('somestring'))"},
+        }
+      }
+    }
+
+    assert(helpers.start_kong({
+      database = strategy,
+      untrusted_lua = "sandbox",
+      plugins = "bundled, request-transformer",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
+  end)
+
+  lazy_teardown(function()
+    helpers.stop_kong()
+  end)
+
+  before_each(function()
+    client = helpers.proxy_client()
+  end)
+
+  after_each(function()
+    if client then client:close() end
+  end)
+
+  describe("using template", function()
+    it("should succeed when template accesses allowed Lua function from sandbox", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/",
+        query = {
+          user = "foo"
+        },
+        headers = {
+          host = "testLuaSandbox1.test",
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+        }
+      })
+      assert.response(r).has.status(200)
+      local value = assert.request(r).has.header("x-added")
+      assert.equals("string", value)
+    end)
+
+    it("should fail when template tries to access non allowed Lua function from sandbox", function()
+      local pattern = [[attempt to index global 'string' %(a nil value%)]]
+      local start_count = count_log_lines(pattern)
+      local r = assert(client:send {
+        method = "GET",
+        path = "/",
+        query = {
+          user = "foo"
+        },
+        headers = {
+          host = "testLuaSandbox2.test",
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+        }
+      })
+      assert.response(r).has.status(500)
+      helpers.wait_until(function()
+        local count = count_log_lines(pattern)
+        return count - start_count >= 1
+      end, 5)
+    end)
+
+    it("should fail when template tries to require non whitelisted module from sandbox", function()
+      local pattern = [[require 'inspect' not allowed within sandbox]]
+      local start_count = count_log_lines(pattern)
+
+      local r = assert(client:send {
+        method = "GET",
+        path = "/",
+        query = {
+          user = "foo"
+        },
+        headers = {
+          host = "testLuaSandbox3.test",
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+        }
+      })
+      assert.response(r).has.status(500)
+
+      helpers.wait_until(function()
+        local count = count_log_lines(pattern)
+        return count - start_count >= 1
+      end, 5)
+    end)
+  end)
+end)
+
+describe("Plugin: request-transformer(access) [#" .. strategy .. "] untrusted_lua_sandbox_requires", function()
+  local client
+
+  lazy_setup(function()
+    local bp = helpers.get_db_utils(strategy, {
+      "routes",
+      "services",
+      "plugins",
+    })
+
+    local route1 = bp.routes:insert({
+      hosts = { "testLuaRequires.test" },
+    })
+
+    bp.plugins:insert {
+      route = { id = route1.id },
+      name = "request-transformer",
+      config = {
+        add = {
+          headers = {"x-added:$(require('inspect')({query_params.user1,query_params.user2}))"},
+        }
+      }
+    }
+
+    assert(helpers.start_kong({
+      database = strategy,
+      untrusted_lua = "sandbox",
+      untrusted_lua_sandbox_requires =  "inspect",
+      plugins = "bundled, request-transformer",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
+  end)
+
+  lazy_teardown(function()
+    helpers.stop_kong()
+  end)
+
+  before_each(function()
+    client = helpers.proxy_client()
+  end)
+
+  after_each(function()
+    if client then client:close() end
+  end)
+
+  describe("using template", function()
+    it("should successfully require whitelisted module from sandbox", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/",
+        query = {
+          user1 = "foo",
+          user2 = "bar",
+        },
+        headers = {
+          host = "testLuaRequires.test",
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+        }
+      })
+      assert.response(r).has.status(200)
+      local value = assert.request(r).has.header("x-added")
+      assert.equals('{ "foo", "bar" }', value)
+    end)
+  end)
+end)
+
+describe("Plugin: request-transformer(access) [#" .. strategy .. "] untrusted_lua_sandbox_environment", function()
+  local client
+
+  lazy_setup(function()
+    local bp = helpers.get_db_utils(strategy, {
+      "routes",
+      "services",
+      "plugins",
+    })
+
+    local route1 = bp.routes:insert({
+      hosts = { "testLuaRequires.test" },
+    })
+
+    bp.plugins:insert {
+      route = { id = route1.id },
+      name = "request-transformer",
+      config = {
+        add = {
+          headers = {"x-added:$(string.format('u1:%s;u2:%s', query_params.user1,query_params.user2))"},
+        }
+      }
+    }
+
+    assert(helpers.start_kong({
+      database = strategy,
+      untrusted_lua = "sandbox",
+      untrusted_lua_sandbox_environment =  "string",
+      plugins = "bundled, request-transformer",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
+  end)
+
+  lazy_teardown(function()
+    helpers.stop_kong()
+  end)
+
+  before_each(function()
+    client = helpers.proxy_client()
+  end)
+
+  after_each(function()
+    if client then client:close() end
+  end)
+
+  describe("using template", function()
+    it("should successfully access whitelisted Lua variables from sandbox", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/",
+        query = {
+          user1 = "foo",
+          user2 = "bar",
+        },
+        headers = {
+          host = "testLuaRequires.test",
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+        }
+      })
+      assert.response(r).has.status(200)
+      local value = assert.request(r).has.header("x-added")
+      assert.equals('u1:foo;u2:bar', value)
+    end)
+  end)
+end)
 end

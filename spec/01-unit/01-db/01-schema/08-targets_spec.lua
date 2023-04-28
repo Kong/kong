@@ -4,6 +4,21 @@ local certificates = require "kong.db.schema.entities.certificates"
 local upstreams = require "kong.db.schema.entities.upstreams"
 local utils = require "kong.tools.utils"
 
+local function setup_global_env()
+  _G.kong = _G.kong or {}
+  _G.kong.log = _G.kong.log or {
+    debug = function(msg)
+      ngx.log(ngx.DEBUG, msg)
+    end,
+    error = function(msg)
+      ngx.log(ngx.ERR, msg)
+    end,
+    warn = function (msg)
+      ngx.log(ngx.WARN, msg)
+    end
+  }
+end
+
 assert(Schema.new(certificates))
 assert(Schema.new(upstreams))
 local Targets = assert(Schema.new(targets))
@@ -14,6 +29,7 @@ end
 
 
 describe("targets", function()
+  setup_global_env()
   describe("targets.target", function()
     it("validates", function()
       local upstream = { id = utils.uuid() }

@@ -14,6 +14,7 @@ local re_match = ngx.re.match
 local re_gmatch = ngx.re.gmatch
 
 local encode_json = cjson.encode
+local pcall = pcall
 
 local deco = {}
 deco.__index = deco
@@ -266,7 +267,17 @@ function deco:upstream(body)
       end
     end
   end
-  body = grpc_frame(0x0, pb.encode(self.endpoint.input_type, payload))
+
+  local pok, msg = pcall(pb.encode, self.endpoint.input_type, payload)
+  if not pok or not msg then
+    if msg then
+      ngx.log(ngx.ERR, msg)
+    end
+    -- should return error msg to client?
+    return nil, "failed to encode payload"
+  end
+
+  body = grpc_frame(0x0, msg)
   return body
 end
 

@@ -97,44 +97,44 @@ for _, strategy in helpers.each_strategy() do
         local res, err = proxy_client:get("/v1/messages/legacy/john_doe?boolean_test=true")
         assert.equal(200, res.status)
         assert.is_nil(err)
-  
+
         local body = res:read_body()
         local data = cjson.decode(body)
         assert.same({reply = "hello john_doe", boolean_test = true}, data)
       end)
-  
+
       test("false", function()
         local res, err = proxy_client:get("/v1/messages/legacy/john_doe?boolean_test=false")
-  
+
         assert.equal(200, res.status)
         assert.is_nil(err)
-  
+
         local body = res:read_body()
         local data = cjson.decode(body)
-  
+
         assert.same({reply = "hello john_doe", boolean_test = false}, data)
       end)
-  
+
       test("zero", function()
         local res, err = proxy_client:get("/v1/messages/legacy/john_doe?boolean_test=0")
-  
+
         assert.equal(200, res.status)
         assert.is_nil(err)
-  
+
         local body = res:read_body()
         local data = cjson.decode(body)
-  
+
         assert.same({reply = "hello john_doe", boolean_test = false}, data)
       end)
-  
+
       test("non-zero", function()
         local res, err = proxy_client:get("/v1/messages/legacy/john_doe?boolean_test=1")
         assert.equal(200, res.status)
         assert.is_nil(err)
-  
+
         local body = res:read_body()
         local data = cjson.decode(body)
-  
+
         assert.same({reply = "hello john_doe", boolean_test = true}, data)
       end)
     end)
@@ -192,6 +192,14 @@ for _, strategy in helpers.each_strategy() do
         legs = { count = 4, endings = "toes" },
         tail = {count = 1, endings = "tip" },
       }, cjson.decode(body))
+    end)
+
+    test("null in json", function()
+      local res, _ = proxy_client:post("/bounce", {
+        headers = { ["Content-Type"] = "application/json" },
+        body = { message = cjson.null },
+      })
+      assert.equal(400, res.status)
     end)
 
   end)

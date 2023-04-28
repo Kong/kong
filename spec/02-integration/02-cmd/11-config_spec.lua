@@ -104,6 +104,7 @@ describe("kong config", function()
 
     assert(helpers.kong_exec("config db_import " .. filename, {
       prefix = helpers.test_conf.prefix,
+      anonymous_reports = "on",
     }))
 
     local _, res = assert(thread:join())
@@ -134,6 +135,7 @@ describe("kong config", function()
     local body = assert.res_status(200, res)
     local json = cjson.decode(body)
     json.created_at = nil
+    json.updated_at = nil
     json.protocols = nil
     assert.same({
       name = "correlation-id",

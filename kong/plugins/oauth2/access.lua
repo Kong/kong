@@ -785,47 +785,32 @@ local function issue_token(conf)
 end
 
 
-local function load_token(conf, service, access_token)
-  local credentials, err =
-    kong.db.oauth2_tokens:select_by_access_token(access_token)
-
-  if err then
-    return nil, err
-  end
-
-  if not credentials then
-    return
-  end
-
-  if not conf.global_credentials then
-    if not credentials.service then
-      return kong.response.exit(401, {
-        [ERROR] = "invalid_token",
-        error_description = "The access token is global, but the current " ..
-                            "plugin is configured without 'global_credentials'",
-      })
-    end
-
-    if credentials.service.id ~= service.id then
-      credentials = nil
-    end
-  end
-
-  return credentials
+local function load_token(access_token)
+  return kong.db.oauth2_tokens:select_by_access_token(access_token)
 end
 
 
 local function retrieve_token(conf, access_token)
-  local token, err
+  local token_cache_key = kong.db.oauth2_tokens:cache_key(access_token)
+  local token, err = kong.cache:get(token_cache_key, nil, load_token, access_token)
+  if err then
+    return error(err)
+  end
+  if not token then
+    return
+  end
 
-  if access_token then
-    local token_cache_key = kong.db.oauth2_tokens:cache_key(access_token)
-    token, err = kong.cache:get(token_cache_key, nil,
-                                load_token, conf,
-                                kong.router.get_service(),
-                                access_token)
-    if err then
-      return error(err)
+  if not conf.global_credentials then
+    if not token.service then
+      return kong.response.exit(401, {
+        [ERROR] = "invalid_token",
+        error_description = "The access token is global, but the current " ..
+          "plugin is configured without 'global_credentials'",
+      })
+    end
+
+    if token.service.id ~= kong.router.get_service().id then
+      return nil
     end
   end
 

@@ -1,10 +1,23 @@
 local typedefs = require "kong.db.schema.typedefs"
+local reserved_words = require "kong.plugins.acme.reserved_words"
 
 local CERT_TYPES = { "rsa", "ecc" }
 
 local RSA_KEY_SIZES = { 2048, 3072, 4096 }
 
 local STORAGE_TYPES = { "kong", "shm", "redis", "consul", "vault" }
+
+local function validate_namespace(namespace)
+  if namespace ~= "" then
+    for _, v in pairs(reserved_words) do
+      if namespace:sub(1, #v) == v then
+        return nil, "namespace can't be prefixed with reserved word: " .. v
+      end
+    end
+  end
+
+  return true
+end
 
 local SHM_STORAGE_SCHEMA = {
   { shm_name = {
@@ -26,6 +39,8 @@ local REDIS_STORAGE_SCHEMA = {
   { ssl = { type = "boolean", required = true, default = false } },
   { ssl_verify = { type = "boolean", required = true, default = false } },
   { ssl_server_name = typedefs.sni { required = false } },
+  { namespace = { type = "string", required = true, default = "", len_min = 0,
+                  custom_validator = validate_namespace } },
 }
 
 local CONSUL_STORAGE_SCHEMA = {
