@@ -525,7 +525,7 @@ describe("kong.clustering.compat", function()
       assert.is_nil(assert(plugins[2]).instance_name)
     end)
 
-    it("plugin.queue_parameters #xxx", function()
+    it("plugin.queue_parameters", function()
       local has_update, result = compat.update_compatible_payload(config, "3.2.0", "test_")
       assert.truthy(has_update)
       result = cjson_decode(inflate_gzip(result)).config_table
