@@ -58,6 +58,8 @@ jobs:
       deploy-environment: ${{ steps.build-info.outputs.deploy-environment }}
       matrix: ${{ steps.build-info.outputs.matrix }}
       arch: ${{ steps.build-info.outputs.arch }}
+      gh-release-name: ${{ steps.build-info.outputs.gh-release-name }}
+      gh-release-tag-name: ${{ steps.build-info.outputs.gh-release-tag-name }}
 
     steps:
     - uses: actions/checkout@v3
@@ -72,17 +74,25 @@ jobs:
         fi
 
         matrix_file=".github/matrix-commitly.yml"
-        if [ "$FULL_RELEASE" == "true" ]; then
-          matrix_file=".github/matrix-full.yml"
-        fi
 
         if [ "${{ github.event.inputs.official }}" == "true" ]; then
           release_desc="$KONG_VERSION (official)"
           echo "docker-repository=$DOCKER_REPOSITORY" >> $GITHUB_OUTPUT
           echo "deploy-environment=release" >> $GITHUB_OUTPUT
+
+          # for official releases, the GH release title is "Kong Gateway <version>
+          # tag name is <version>
+          echo "gh-release-name=Kong Enterprise ${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          echo "gh-release-tag-name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
         else
           release_desc="$KONG_VERSION (pre-release)"
           echo "docker-repository=$PRERELEASE_DOCKER_REPOSITORY" >> $GITHUB_OUTPUT
+
+          # nightly releases also get a tag (single one is deleted and pushed daily
+          if [ "${{ github.event.inputs.version }}" == "nightly" ]; then
+            echo "gh-release-name=Kong Enterprise Nightly" >> $GITHUB_OUTPUT
+            echo "gh-release-tag-name=nightly" >> $GITHUB_OUTPUT
+          fi
         fi
 
         echo "release-desc=$release_desc" >> $GITHUB_OUTPUT
@@ -446,7 +456,7 @@ jobs:
       if: steps.image_manifest_metadata.outputs.amd64_sha != ''
       uses: Kong/public-shared-actions/security-actions/scan-docker-image@v1
       with:
-        asset_prefix: kong-${{ github.sha }}-${{ matrix.label }}-linux-amd64
+        asset_prefix: kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-amd64
         image: ${{env.IMAGE}}@${{ steps.image_manifest_metadata.outputs.amd64_sha }}
 
     - name: Scan ARM64 Image digest
@@ -454,21 +464,33 @@ jobs:
       id: sbom_action_arm64
       uses: Kong/public-shared-actions/security-actions/scan-docker-image@v1
       with:
-        asset_prefix: kong-${{ github.sha }}-${{ matrix.label }}-linux-arm64
+        asset_prefix: kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-arm64
         image: ${{env.IMAGE}}@${{ steps.image_manifest_metadata.outputs.arm64_sha }}
 
     - name: Upload SBOM assets
-      uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844
-      if: startsWith(github.ref, 'refs/tags/')
-      with:
-        files: |
-          kong-${{ github.sha }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-cis-report.json
-          kong-${{ github.sha }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-cve-report.json
-          kong-${{ github.sha }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-cve-report.sarif
-          kong-${{ github.sha }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-sbom.cyclonedx.json
-          kong-${{ github.sha }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-sbom.spdx.json
-        prerelease: true
-        name: Kong Enterprise ${{ github.ref_name }}
+      if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.version == 'nightly'
+      env:
+        GITHUB_TOKEN: ${{ secrets.PAT }}
+      run: |
+        # we want to be pushing the same tag and gh release for nightlies
+        if [ "${{ needs.metadata.outputs.gh-release-tag-name }}" == "nightly" ]; then
+          echo "Deleting existing nightly release ..."
+          gh release delete --repo "$GITHUB_REPOSITORY" nightly --cleanup-tag --yes || true
+        fi
+
+        echo "Uploading '${{ needs.metadata.outputs.gh-release-name }}' release assets ..."
+        gh release create "${{ needs.metadata.outputs.gh-release-tag-name }}" \
+          --repo "$GITHUB_REPOSITORY" \
+          --title "${{ needs.metadata.outputs.gh-release-name }}" \
+          --notes "${{ needs.metadata.outputs.gh-release-name }}" \
+          --target "${{ github.ref_name }}" \
+          --prerelease \
+          kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-cis-report.json \
+          kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-cve-report.json \
+          kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-cve-report.sarif \
+          kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-sbom.cyclonedx.json \
+          kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-sbom.spdx.json
+
 
   smoke-tests:
     name: Smoke Tests - ${{ matrix.label }}

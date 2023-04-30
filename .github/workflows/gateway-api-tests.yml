@@ -128,6 +128,7 @@ jobs:
           PKI: true
           INFLUXDB: true
           REDIS_MODE: standalone
+          SWAGGER: true
           GW_HOST: localhost
           HCV: true
           JAEGER: true

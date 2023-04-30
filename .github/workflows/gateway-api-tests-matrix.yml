@@ -160,6 +160,7 @@ jobs:
           PKI: true
           INFLUXDB: true
           REDIS_MODE: standalone
+          SWAGGER: true
           GW_HOST: localhost
           HCV: true
           JAEGER: true
@@ -282,6 +283,7 @@ jobs:
           PKI: true
           INFLUXDB: true
           REDIS_MODE: standalone
+          SWAGGER: true
           GW_HOST: localhost
           PG_VERSION: ${{ matrix.postgres_version }}
           PG_SSL_VERSION: ${{ matrix.pg_ssl_version }}
