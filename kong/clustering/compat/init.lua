@@ -460,6 +460,7 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix,
   payload = deep_copy(payload, false)
   local config_table = payload["config_table"]
 
+  -- XXX EE
   -- remove incompatible plugins from payload
   if kong.configuration.allow_inconsistent_data_plane_plugins
     and remove_incompatible_plugins(config_table["plugins"], cp_plugins_map, dp_plugins_map)

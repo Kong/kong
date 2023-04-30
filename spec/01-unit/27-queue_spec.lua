@@ -60,6 +60,7 @@ describe("plugin queue", function()
   before_each(function()
     local real_now = ngx.now
     now_offset = 0
+
     log_messages = ""
     local function log(level, message) -- luacheck: ignore
       log_messages = log_messages .. level .. " " .. message .. "\n"
