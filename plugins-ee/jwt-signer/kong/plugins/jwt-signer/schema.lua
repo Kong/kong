@@ -579,6 +579,24 @@ local config = {
               required = false,
             },
           },
+          {
+            add_claims = {
+              type = "map",
+              keys = { type = "string" },
+              values = { type = "string" },
+              required = false,
+              default = {},
+            },
+          },
+          {
+            set_claims = {
+              type = "map",
+              keys = { type = "string" },
+              values = { type = "string" },
+              required = false,
+              default = {},
+            },
+          },
         },
       },
     },

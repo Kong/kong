@@ -155,5 +155,9 @@ return {
     zipkin = {
       "queue",
     },
+    jwt_signer = {
+      "add_claims",
+      "set_claims",
+    }
   },
 }

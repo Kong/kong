@@ -255,6 +255,19 @@ local function instrument()
 end
 
 
+local function add_set_claims(payload, add_claims, set_claims)
+  for k, v in pairs(add_claims) do
+    if payload[k] == nil then
+      payload[k] = v
+    end
+  end
+
+  for k, v in pairs(set_claims) do
+    payload[k] = v
+  end
+end
+
+
 function JwtSignerHandler.init_worker()
   cache.init_worker()
 end
@@ -679,6 +692,8 @@ function JwtSignerHandler.access(_, conf)
           ins(logs.key_not_found)
           return unexpected(realm, "unexpected", errs.key_not_found, logs.key_not_found)
         end
+
+        add_set_claims(payload, conf.add_claims, conf.set_claims)
 
         local signed_token
         signed_token, err = jws.encode({
