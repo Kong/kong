@@ -88,6 +88,26 @@ describe("kong start/stop #" .. strategy, function()
       prefix = helpers.test_conf.prefix,
     }))
   end)
+  it("start/stop stops without error when references cannot be resolved #test", function()
+    helpers.setenv("PG_PASSWORD", "dummy")
+    local _, stderr, stdout = assert(helpers.kong_exec("start", {
+      prefix = helpers.test_conf.prefix,
+      database = helpers.test_conf.database,
+      pg_password = "{vault://env/pg_password}",
+      pg_database = helpers.test_conf.pg_database,
+      cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+      vaults = "env",
+    }))
+    assert.not_matches("failed to dereference {vault://env/pg_password}", stderr, nil, true)
+    assert.matches("Kong started", stdout, nil, true)
+    helpers.unsetenv("PG_PASSWORD")
+    local _, stderr, stdout = assert(helpers.kong_exec("stop", {
+      prefix = helpers.test_conf.prefix,
+    }))
+    assert.not_matches("failed to dereference {vault://env/pg_password}", stderr, nil, true)
+    assert.matches("Kong stopped", stdout, nil, true)
+    helpers.clean_logfile()
+  end)
   it("start/stop custom Kong conf/prefix", function()
     assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path))
     assert(helpers.kong_exec("stop --prefix " .. helpers.test_conf.prefix))
