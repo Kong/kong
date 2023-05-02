@@ -219,6 +219,7 @@ for _, strategy in helpers.each_strategy() do
         trusted_ips = "127.0.0.1",
         nginx_http_proxy_ssl_verify = "on",
         nginx_http_proxy_ssl_trusted_certificate = "../spec/fixtures/kong_spec.crt",
+        nginx_http_proxy_ssl_verify_depth = "5",
       })
 
       ngx.sleep(0.01)
@@ -553,7 +554,7 @@ for _, strategy in helpers.each_strategy() do
         snis     = { "example.com" },
         service   = service,
       }
-      
+
       bp.routes:insert {
         protocols = { "tls" },
         snis      = { "foobar.example.com." },
@@ -578,7 +579,7 @@ for _, strategy in helpers.each_strategy() do
         stream_listen = "127.0.0.1:9020 ssl"
       })
 
-    
+
     end)
 
     lazy_teardown(function()
