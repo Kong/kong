@@ -133,7 +133,7 @@
                                             # stream mode.
 
 #opentelemetry_tracing_sampling_rate = 1.0  # Deprecated: use tracing_sampling_rate instead
-#tracing_sampling_rate = 1.0                # Tracing instrumentation sampling rate.
+#tracing_sampling_rate = 0.01               # Tracing instrumentation sampling rate.
                                             # Tracer samples a fixed percentage of all spans
                                             # following the sampling rate.
                                             #
