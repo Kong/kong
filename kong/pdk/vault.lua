@@ -296,8 +296,8 @@ local function new(self)
 
       schema = schema.fields.config
 
-      STRATEGIES[prefix] = strategy
-      SCHEMAS[prefix] = schema
+      STRATEGIES[name] = strategy
+      SCHEMAS[name] = schema
     end
 
     local config = opts.config

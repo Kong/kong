@@ -32,6 +32,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
       trusted_ips = "127.0.0.1",
       nginx_http_proxy_ssl_verify = "on",
       nginx_http_proxy_ssl_trusted_certificate = "../spec/fixtures/kong_spec.crt",
+      nginx_http_proxy_ssl_verify_depth = "5",
     })
     assert(helpers.start_kong{
       database = strategy,
