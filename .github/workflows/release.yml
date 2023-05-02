@@ -74,6 +74,9 @@ jobs:
         fi
 
         matrix_file=".github/matrix-commitly.yml"
+        if [ "$FULL_RELEASE" == "true" ]; then
+          matrix_file=".github/matrix-full.yml"
+        fi
 
         if [ "${{ github.event.inputs.official }}" == "true" ]; then
           release_desc="$KONG_VERSION (official)"
