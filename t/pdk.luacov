@@ -1,0 +1,5 @@
+runreport = true
+
+modules = {
+   ["kong.pdk.*"] = ".",
+}
