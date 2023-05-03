@@ -16,8 +16,6 @@
   Serverless Functions plugins: it does not provide access to the global kong cache. Access to
   certain fields in kong.configuration has also been restricted.
   [#10417](https://github.com/Kong/kong/pull/10417)
-- **Opentelemetry**: plugin version has been updated to match Kong's version
-  [#10646](https://github.com/Kong/kong/pull/10646)
 - **Zipkin**: The zipkin plugin now uses queues for internal
   buffering.  The standard queue parameter set is available to
   control queuing behavior.
