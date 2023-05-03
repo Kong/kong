@@ -25,7 +25,6 @@ local mock_db = {}
 
 local mock_kong = {
   configuration = {
-    legacy_worker_events = true,
   },
 
   -- random UUID

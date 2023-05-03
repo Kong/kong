@@ -22,9 +22,11 @@ import {
   getNegative,
   deleteRole,
   createPlugin,
+  retryRequest,
 } from '@support';
 
 describe('Dynamic Log Level Tests', function () {
+  this.timeout(30000);
   const url = `${getBasePath({
     environment: Environment.gateway.admin,
   })}/debug`;
@@ -245,7 +247,7 @@ describe('Dynamic Log Level Tests', function () {
     );
   });
 
-  it(`should change node log-level to alert`, async function () {
+  it(`should change node log-level to alert for 10 seconds`, async function () {
     // creating datadog plugin with wrong config to simulate error logs
     await createPlugin({
       name: 'datadog',
@@ -259,7 +261,7 @@ describe('Dynamic Log Level Tests', function () {
 
     let resp = await axios({
       method: 'put',
-      url: `${url}/node/log-level/alert`,
+      url: `${url}/${logUrl}/alert?timeout=10`,
     });
     logResponse(resp);
 
@@ -279,8 +281,8 @@ describe('Dynamic Log Level Tests', function () {
     );
   });
 
-  // skipped until https://konghq.atlassian.net/browse/FT-3648 is fixed
-  it.skip('should not see error logs after log-level is set to alert', async function () {
+  it('should not see error logs after log-level is set to alert', async function () {
+    // sending request to simulate DD error in the logs
     const resp = await getNegative(`${proxyUrl}${path}`);
     logResponse(resp);
 
@@ -298,6 +300,50 @@ describe('Dynamic Log Level Tests', function () {
     });
   });
 
+  it('should see log level change back to info after 10 seconds', async function () {
+    // checking the the log level is info after 10 seconds alert
+    const req = () => axios(`${url}/node/log-level`);
+
+    const assertions = (resp) => {
+      expect(resp.status, 'Status should be 200').to.equal(200);
+      expect(resp.data.message, 'Should have correct log-level').to.equal(
+        `log level: info`
+      );
+    };
+
+    await retryRequest(req, assertions, 10000);
+  });
+
+  it('should see error logs as alert level was changed to info after 10 seconds', async function () {
+    // sending request to simulate DD error in the logs
+    const resp = await getNegative(`${proxyUrl}${path}`);
+    logResponse(resp);
+
+    await wait(isHybrid ? 7000 : 2000);
+    const logs = getGatewayContainerLogs(isHybrid ? 'kong-dp1' : 'kong-cp');
+
+    const isLogFound = findRegex('\\[error\\]', logs);
+    expect(isLogFound, 'Should see error logs').to.be.true;
+  });
+
+  it('should immediately change log-level back to info with timeout of 0 seconds', async function () {
+    let resp = await axios({
+      method: 'put',
+      url: `${url}/node/log-level/notice?timeout=0`,
+    });
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 200').to.equal(200);
+
+    resp = await axios(`${url}/node/log-level`);
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 200').to.equal(200);
+    expect(resp.data.message, 'Should have correct log-level').to.equal(
+      `log level: info`
+    );
+  });
+
   describe('Dynamic Log Level RBAC Permissions for a User', function () {
     it('should GET /node/log-level with permission', async function () {
       const resp = await axios({
@@ -308,7 +354,7 @@ describe('Dynamic Log Level Tests', function () {
 
       expect(resp.status, 'Status should be 200').to.equal(200);
       expect(resp.data.message, 'Should have correct log-level').to.equal(
-        `log level: alert`
+        `log level: info`
       );
     });
 

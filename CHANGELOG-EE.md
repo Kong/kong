@@ -24,7 +24,10 @@ a copy. [KAG-739](https://konghq.atlassian.net/browse/KAG-739)
   [FTI-1294](https://konghq.atlassian.net/browse/FTI-1294)
   [FTI-2103](https://konghq.atlassian.net/browse/FTI-2103)
   [#5018](https://github.com/Kong/kong-ee/pull/5018)
+- A change on license alert in Konnect mode. [KAG-922](https://konghq.atlassian.net/browse/KAG-922)
+* **JWT Signer**: support new configuration field `add_claims`, to add extra claims to JWT. [FTI-1993](https://konghq.atlassian.net/browse/FTI-1993)
 - A different alerting strategy of licensing expiry is made for dataplanes in Konnect mode. If there are at least 16 days left before expiration, no alerts will be issued. If within 16 days, a warning level alert will be issued everyday. If expired, a critical level alert will be issued everyday. [KAG-922](https://konghq.atlassian.net/browse/KAG-922)
+
 
 ### Fixes
 

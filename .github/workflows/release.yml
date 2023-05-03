@@ -74,25 +74,28 @@ jobs:
         fi
 
         matrix_file=".github/matrix-commitly.yml"
+        if [ "$FULL_RELEASE" == "true" ]; then
+          matrix_file=".github/matrix-full.yml"
+        fi
+
+        # for official releases, the GH release title is "Kong Gateway <version>
+        # tag name is <version>
+        echo "gh-release-name=Kong Enterprise ${{ github.ref_name }}" >> $GITHUB_OUTPUT
+        echo "gh-release-tag-name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+
+        # nightly releases also get a tag (single `nightly` tag is deleted and pushed daily)
+        if [ "${{ github.event.inputs.version }}" == "nightly" ]; then
+          echo "gh-release-name=Kong Enterprise Nightly" >> $GITHUB_OUTPUT
+          echo "gh-release-tag-name=nightly" >> $GITHUB_OUTPUT
+        fi
 
         if [ "${{ github.event.inputs.official }}" == "true" ]; then
           release_desc="$KONG_VERSION (official)"
           echo "docker-repository=$DOCKER_REPOSITORY" >> $GITHUB_OUTPUT
           echo "deploy-environment=release" >> $GITHUB_OUTPUT
-
-          # for official releases, the GH release title is "Kong Gateway <version>
-          # tag name is <version>
-          echo "gh-release-name=Kong Enterprise ${{ github.ref_name }}" >> $GITHUB_OUTPUT
-          echo "gh-release-tag-name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
         else
           release_desc="$KONG_VERSION (pre-release)"
           echo "docker-repository=$PRERELEASE_DOCKER_REPOSITORY" >> $GITHUB_OUTPUT
-
-          # nightly releases also get a tag (single one is deleted and pushed daily
-          if [ "${{ github.event.inputs.version }}" == "nightly" ]; then
-            echo "gh-release-name=Kong Enterprise Nightly" >> $GITHUB_OUTPUT
-            echo "gh-release-tag-name=nightly" >> $GITHUB_OUTPUT
-          fi
         fi
 
         echo "release-desc=$release_desc" >> $GITHUB_OUTPUT
@@ -468,7 +471,11 @@ jobs:
         image: ${{env.IMAGE}}@${{ steps.image_manifest_metadata.outputs.arm64_sha }}
 
     - name: Upload SBOM assets
-      if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.version == 'nightly'
+      # this job creates a `nightly` tag; ensure that this does not run twice
+      # (once for the scheduled job, another for the `nightly` tag push)
+      if: |
+        (startsWith(github.ref, 'refs/tags/') && github.ref_name != 'nightly') ||
+        github.event.inputs.version == 'nightly'
       env:
         GITHUB_TOKEN: ${{ secrets.PAT }}
       run: |

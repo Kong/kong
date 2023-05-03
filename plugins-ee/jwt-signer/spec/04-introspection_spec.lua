@@ -8,6 +8,8 @@
 local helpers = require "spec.helpers"
 local helpers_ee = require "spec-ee.helpers"
 local plugin_name = "jwt-signer"
+local jws = require "kong.openid-connect.jws"
+
 local fmt = string.format
 
 local introspection_fixture, introspection_url = helpers_ee.setup_oauth_introspection_fixture()
@@ -317,6 +319,85 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
       end)
   end)
 
+  describe(fmt("%s - introspection - adding claims", plugin_name), function()
+
+    lazy_setup(function()
+      bp = helpers.get_db_utils(strategy, nil, { plugin_name })
+      local route = bp.routes:insert({ paths = { "/add_claims" }, })
+      assert(bp.plugins:insert({
+        name = plugin_name,
+        route = route,
+        config = {
+          -- to just test signing
+          verify_access_token_signature = false,
+          channel_token_optional = true,
+          -- true is the default, but setting explicitly for clarity
+          enable_access_token_introspection = true,
+          access_token_introspection_endpoint = introspection_url,
+          access_token_introspection_scopes_required = { "some_scope" },
+          access_token_introspection_scopes_claim = { "scope" },
+          verify_access_token_introspection_scopes = true,
+          add_claims = {
+            foo = "bar2",
+            test = "test",
+          },
+          set_claims = {
+            bar = "qux",
+          }
+        }
+      }))
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        plugins    = plugin_name,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }, nil, nil, introspection_fixture))
+      --  = helpers.test_conf.nginx_err_logs
+      proxy_client = helpers.proxy_client()
+    end)
+
+    lazy_teardown(function()
+      if proxy_client then proxy_client:close() end
+      assert(helpers.stop_kong())
+    end)
+
+    after_each(function()
+      helpers.clean_logfile()
+    end)
+
+    it("it works",
+      function()
+        local res = assert(proxy_client:send {
+          method = "get",
+          path = "/add_claims",
+          headers = {
+            ["authorization"] = "valid_complex"
+          }
+        })
+        assert.response(res).has.status(200)
+
+        local json_table = assert.response(res).has.jsonbody()
+
+        local auth = assert(assert(json_table.headers).authorization)
+        local jwt = auth:match("^.* (.*)$")
+        local decoded = assert(jws.decode(jwt, { verify_signature = false }))
+        assert.same({
+          client_id = "some_client_id",
+          iss = "kong",
+          exp = "99999999999",
+          bar = "qux",
+          iat = "some_iat",
+          aud = "some_aud",
+          username = "some_username",
+          test = "test",
+          scope = "some_scope",
+          original_iss = "some_iss",
+          sub = "some_sub",
+          foo = "bar",
+          baz = "baaz",
+        }, decoded.payload)
+      end)
+  end)
 
   describe(fmt("%s - introspection - consumer", plugin_name), function()
     -- Sending opaque tokens require introspection. This test involves a fixture to return static
