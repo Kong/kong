@@ -19,7 +19,7 @@ describe('@smoke: Gateway Admin API: Services', function () {
 
   const servicePayload = {
     name: 'APITestService',
-    url: 'http://host.docker.internal/anything',
+    url: 'http://httpbin/anything',
   };
   const newPath = '/anythingUpdated';
   const kongContainerName = vars.KONG_CONTAINER_NAME;
@@ -33,7 +33,7 @@ describe('@smoke: Gateway Admin API: Services', function () {
     const resp = response.data;
     expect(resp.port, 'Should have port 80').equal(80);
     expect(resp.protocol, 'Should have protocol "http"').equal('http');
-    expect(resp.host, 'Should have correct host').equal('host.docker.internal');
+    expect(resp.host, 'Should have correct host').equal('httpbin');
     expect(resp.path, 'Should have correct path').equal('/anything');
     expect(resp.connect_timeout, 'Should have correct connect_timeout').equal(
       60000
@@ -98,8 +98,8 @@ describe('@smoke: Gateway Admin API: Services', function () {
     const wrongPayload = {
       name: 'my-service',
       protocol: 'http',
-      port: 80,
-      host: 'host.docker.internal',
+      port: 8000,
+      host: 'httpbin',
       path: 'anything',
     };
     const resp = await postNegative(url, wrongPayload, 'post', headers);

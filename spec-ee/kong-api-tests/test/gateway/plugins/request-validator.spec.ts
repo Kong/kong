@@ -35,7 +35,7 @@ describe('Gateway Plugins: Request Validator', function () {
 
   before(async function () {
     const service = await createGatewayService(randomString(), {
-      url: `http://host.docker.internal:9031`,
+      url: `http://httpbin:8000`,
     });
     serviceId = service.id;
     const route = await createRouteForService(serviceId, [path]);

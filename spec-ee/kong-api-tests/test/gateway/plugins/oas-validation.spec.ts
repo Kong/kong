@@ -16,7 +16,7 @@ import {
 } from '@support';
 
 describe('Gateway Plugins: oas-validation', function () {
-  const apiSpecUrl = 'http://host.docker.internal:8090/api/v3/';
+  const apiSpecUrl = 'http://swagger:8080/api/v3/';
   const resourcePet = 'pet';
   const path = '/oas-validation';
   const serviceName = randomString();

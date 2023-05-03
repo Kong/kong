@@ -68,7 +68,7 @@ describe('@smoke: Router Functionality Tests', function () {
 
   before(async function () {
     const serviceReq = await createGatewayService(serviceName, {
-      url: 'http://host.docker.internal:9031/anything',
+      url: 'http://httpbin:8000/anything',
     });
     serviceDetails = {
       id: serviceReq.id,
