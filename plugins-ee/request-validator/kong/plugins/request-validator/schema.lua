@@ -110,7 +110,7 @@ local function validate_content_type(entity)
 
   local mime_type = parts[1]
   if mime_type == nil or mime_type == ""
-    or not match(mime_type, "^[%w+.-%*]+%/[%w+.-%*]+$") then
+    or not match(mime_type, "^[^%s]+%/[^ ;]+$") then
     return false, "invalid value: " .. entity
   end
 

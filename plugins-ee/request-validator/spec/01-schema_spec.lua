@@ -101,6 +101,8 @@ describe("request-validator schema", function()
           "application/json",
           "application/xml;charset=ISO-8859-1",
           "application/json; charset=UTF-8",
+          "application/x-msgpack",
+          "application/x-msgpack; charset=UTF-8",
         },
         body_schema = '[{"name": {"type": "string"}}]'
       }, request_validator_schema)

@@ -65,6 +65,9 @@ a copy. [KAG-739](https://konghq.atlassian.net/browse/KAG-739)
 
 ### Fixes
 
+* Request Validator
+  * The validation function for the allowed_content_types parameter was too strict, making it impossible to use media types that contained a "-" character.  This issue has been fixed. [FTI-4725](https://konghq.atlassian.net/browse/FTI-4725)
+
 * Forward-proxy
   * Evaluates `ctx.WAITING_TIME` in forward-proxy instead of doing that in subsequent phase. This fix a bug of getting wrong `latencies.proxy` in the logging plugins.
     [FTI-1904](https://konghq.atlassian.net/browse/FTI-1904)
