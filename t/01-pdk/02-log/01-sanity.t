@@ -287,6 +287,7 @@ qr/\[notice\] .*? \[kong\] content_by_lua\(nginx\.conf:\d+\):5 hello from my_fun
 
 
 === TEST 13: kong.log() JIT compiles when level is below sys_level
+--- skip_eval: 3: $ENV{PDK_LUACOV} == 1
 --- log_level: warn
 --- error_log_file: /dev/null
 --- http_config eval
