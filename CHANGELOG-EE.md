@@ -28,6 +28,14 @@ a copy. [KAG-739](https://konghq.atlassian.net/browse/KAG-739)
 * **JWT Signer**: support new configuration field `add_claims`, to add extra claims to JWT. [FTI-1993](https://konghq.atlassian.net/browse/FTI-1993)
 - A different alerting strategy of licensing expiry is made for dataplanes in Konnect mode. If there are at least 16 days left before expiration, no alerts will be issued. If within 16 days, a warning level alert will be issued everyday. If expired, a critical level alert will be issued everyday. [KAG-922](https://konghq.atlassian.net/browse/KAG-922)
 
+#### Kong Manager
+
+* Now Kong Manager and Konnect shares the same UI for navbar, sidebar and all entity lists. [KAG-694](https://konghq.atlassian.net/browse/KAG-694)
+* Improved display for Routes list when Expressions router is enabled. [KAG-649](https://konghq.atlassian.net/browse/KAG-649)
+* Support CA Certificates and TLS Verify in Gateway Service Form. [KAG-853](https://konghq.atlassian.net/browse/KAG-853)
+* Added a GitHub star in free mode navbar. [KAG-746](https://konghq.atlassian.net/browse/KAG-746)
+* Upgraded Konnect CTA in free mode. [KAG-1205](https://konghq.atlassian.net/browse/KAG-1205)
+
 
 ### Fixes
 
@@ -41,6 +49,12 @@ a copy. [KAG-739](https://konghq.atlassian.net/browse/KAG-739)
 * Fixed an issue where management of licenses via `/licenses/` would fail if current license is not valid.
   [FTI-4927](https://konghq.atlassian.net/browse/FTI-4927)
 * The systemd unit is incorrectly renamed to `kong.service` in 3.2.x.x versions, it's now reverted back to `kong-enterprise-edition.service` to keep consistent with previous releases. [KAG-878](https://konghq.atlassian.net/browse/KAG-878)
+
+#### Kong Manager
+
+* Fixed an issue where the VerticalTabs’ content becomes blank on selecting a tab that is currently active. [KAG-1032](https://konghq.atlassian.net/browse/KAG-1032)
+* Fixed an issue where the `/register` route jumps to `/login` occasionally. [KAG-1282](https://konghq.atlassian.net/browse/KAG-1282)
+* Fixed an issue where the statsD plugin has custom identifier field under metric which does not exist in schema. [KAG-1138](https://konghq.atlassian.net/browse/KAG-1138)
 
 ## Plugins
 
