@@ -3,6 +3,7 @@ name: Package & Release Scheduler
 on:  # yamllint disable-line rule:truthy
   schedule:
   - cron:  '0 0 * * *'
+  workflow_dispatch:
 
 permissions:
   actions: write # required for dispatch API
@@ -32,6 +33,15 @@ jobs:
             d=$(date "+%-d") # strip leading zero
             dmod=$(($d % 3))
             echo "dmod=$dmod" >> $GITHUB_OUTPUT
+
+      # we want to be pushing the same tag and gh release for nightlies
+      - name: Upsert Nightly Tag
+        if: matrix.branch == 'master'
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
+        uses: richardsimko/update-tag@v1
+        with:
+          tag_name: nightly
 
       - name: Daily build Dispatch
         uses: benc-uk/workflow-dispatch@798e70c97009500150087d30d9f11c5444830385 # v1

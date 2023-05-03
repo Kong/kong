@@ -87,6 +87,7 @@ jobs:
         if [ "${{ github.event.inputs.version }}" == "nightly" ]; then
           echo "gh-release-name=Kong Enterprise Nightly" >> $GITHUB_OUTPUT
           echo "gh-release-tag-name=nightly" >> $GITHUB_OUTPUT
+          echo "release-label=$(date -u +'%Y%m%d')" >> $GITHUB_OUTPUT
         fi
 
         if [ "${{ github.event.inputs.official }}" == "true" ]; then
@@ -471,33 +472,25 @@ jobs:
         image: ${{env.IMAGE}}@${{ steps.image_manifest_metadata.outputs.arm64_sha }}
 
     - name: Upload SBOM assets
-      # this job creates a `nightly` tag; ensure that this does not run twice
-      # (once for the scheduled job, another for the `nightly` tag push)
+      # ensure that this does not run twice (once for the scheduled job,
+      # another for the `nightly` tag push)
       if: |
         (startsWith(github.ref, 'refs/tags/') && github.ref_name != 'nightly') ||
         github.event.inputs.version == 'nightly'
       env:
         GITHUB_TOKEN: ${{ secrets.PAT }}
-      run: |
-        # we want to be pushing the same tag and gh release for nightlies
-        if [ "${{ needs.metadata.outputs.gh-release-tag-name }}" == "nightly" ]; then
-          echo "Deleting existing nightly release ..."
-          gh release delete --repo "$GITHUB_REPOSITORY" nightly --cleanup-tag --yes || true
-        fi
-
-        echo "Uploading '${{ needs.metadata.outputs.gh-release-name }}' release assets ..."
-        gh release create "${{ needs.metadata.outputs.gh-release-tag-name }}" \
-          --repo "$GITHUB_REPOSITORY" \
-          --title "${{ needs.metadata.outputs.gh-release-name }}" \
-          --notes "${{ needs.metadata.outputs.gh-release-name }}" \
-          --target "${{ github.ref_name }}" \
-          --prerelease \
-          kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-cis-report.json \
-          kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-cve-report.json \
-          kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-cve-report.sarif \
-          kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-sbom.cyclonedx.json \
-          kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-sbom.spdx.json
-
+      uses: softprops/action-gh-release@v1
+      with:
+        name: "${{ needs.metadata.outputs.gh-release-name }}"
+        body: "${{ needs.metadata.outputs.gh-release-name }} ${{ needs.metadata.outputs.release-label }}"
+        tag_name: "${{ needs.metadata.outputs.gh-release-tag-name }}"
+        prerelease: true
+        files: |
+            kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-cis-report.json
+            kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-cve-report.json
+            kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-cve-report.sarif
+            kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-sbom.cyclonedx.json
+            kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-sbom.spdx.json
 
   smoke-tests:
     name: Smoke Tests - ${{ matrix.label }}
