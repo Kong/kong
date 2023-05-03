@@ -84,7 +84,7 @@ for _, strategy in helpers.all_strategies() do
               method = "GET",
               path = "/status/ready",
             }
-            
+
             return res and res.status == 200
           end)
           .is_truthy()
@@ -232,7 +232,7 @@ describe("Status API - with strategy #off", function()
             method = "GET",
             path = "/status/ready",
           }
-          
+
           return res and res.status == 200
         end)
         .is_truthy()

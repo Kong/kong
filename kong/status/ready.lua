@@ -87,12 +87,12 @@ local function is_ready()
   if not ok then
     return false, "failed to connect to database"
   end
-  
+
   kong.db:close()
 
-  local router_rebuilds = 
+  local router_rebuilds =
       tonumber(kong_shm:get(ROUTERS_REBUILD_COUNTER_KEY)) or 0
-  local plugins_iterator_rebuilds = 
+  local plugins_iterator_rebuilds =
       tonumber(kong_shm:get(PLUGINS_REBUILD_COUNTER_KEY)) or 0
 
   local err

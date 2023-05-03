@@ -73,7 +73,7 @@ def ee_suites(expect, fips: bool = False):
 
     expect("/etc/logrotate.d/kong-enterprise-edition", "includes Kong EE logrotate config")\
         .exists().link.equals("/etc/kong/kong.logrotate")
-    
+
     expect("/lib/systemd/system/kong-enterprise-edition.service", "includes Kong EE systemd file")\
         .exists()
 

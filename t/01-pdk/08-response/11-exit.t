@@ -173,7 +173,7 @@ headers have already been sent
             local pdk = PDK.new()
 
             pdk.response.exit(200)
-            ngx.ctx.rewite = true
+            ngx.ctx.rewrite = true
         }
 
         access_by_lua_block {

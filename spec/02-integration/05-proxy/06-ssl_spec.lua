@@ -19,8 +19,9 @@ local function get_cert(server_name)
   return stdout
 end
 
+for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
 for _, strategy in helpers.each_strategy() do
-  describe("SSL [#" .. strategy .. "]", function()
+  describe("SSL [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
     local proxy_client
     local https_client
 
@@ -212,6 +213,7 @@ for _, strategy in helpers.each_strategy() do
       -- /wildcard tests
 
       assert(helpers.start_kong {
+        router_flavor = flavor,
         database    = strategy,
         nginx_conf  = "spec/fixtures/custom_nginx.template",
         trusted_ips = "127.0.0.1",
@@ -381,6 +383,7 @@ for _, strategy in helpers.each_strategy() do
       describe("from not trusted_ip", function()
         lazy_setup(function()
           assert(helpers.restart_kong {
+            router_flavor = flavor,
             database    = strategy,
             nginx_conf  = "spec/fixtures/custom_nginx.template",
             trusted_ips = nil,
@@ -405,6 +408,7 @@ for _, strategy in helpers.each_strategy() do
       describe("from trusted_ip", function()
         lazy_setup(function()
           assert(helpers.restart_kong {
+            router_flavor = flavor,
             database    = strategy,
             nginx_conf  = "spec/fixtures/custom_nginx.template",
             trusted_ips = "127.0.0.1",
@@ -445,6 +449,7 @@ for _, strategy in helpers.each_strategy() do
         -- untrusted ip
         lazy_setup(function()
           assert(helpers.restart_kong {
+            router_flavor = flavor,
             database = strategy,
             nginx_conf  = "spec/fixtures/custom_nginx.template",
             trusted_ips = "1.2.3.4", -- explicitly trust an IP that is not us
@@ -473,6 +478,7 @@ for _, strategy in helpers.each_strategy() do
 
       before_each(function()
         assert(helpers.restart_kong {
+          router_flavor = flavor,
           database = strategy,
           nginx_conf  = "spec/fixtures/custom_nginx.template",
         })
@@ -527,7 +533,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  describe("TLS proxy [#" .. strategy .. "]", function()
+  describe("TLS proxy [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
         "routes",
@@ -568,6 +574,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       assert(helpers.start_kong {
+        router_flavor = flavor,
         database    = strategy,
         stream_listen = "127.0.0.1:9020 ssl"
       })
@@ -621,7 +628,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  describe("SSL [#" .. strategy .. "]", function()
+  describe("SSL [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -654,6 +661,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       assert(helpers.start_kong {
+        router_flavor = flavor,
         database    = strategy,
         nginx_conf  = "spec/fixtures/custom_nginx.template",
       })
@@ -672,9 +680,10 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  describe("kong.runloop.certificate invalid SNI [#" .. strategy .. "]", function()
+  describe("kong.runloop.certificate invalid SNI [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
     lazy_setup(function()
       assert(helpers.start_kong {
+        router_flavor = flavor,
         database    = strategy,
       })
     end)
@@ -736,4 +745,5 @@ for _, strategy in helpers.each_strategy() do
     end)
 
   end)
+end
 end
