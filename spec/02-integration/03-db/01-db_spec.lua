@@ -260,7 +260,6 @@ for _, strategy in helpers.each_strategy() do
       local res = assert(db.connector:query("SELECT application_name from pg_stat_activity WHERE application_name = 'kong';"))
 
       assert.is_table(res[1])
-      -- in test suite the CURRENT_SCHEMA is public
       assert.equal("kong", res[1]["application_name"])
 
       assert(db:close())
