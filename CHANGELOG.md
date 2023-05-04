@@ -223,6 +223,8 @@
   [#10514](https://github.com/Kong/kong/pull/10514)
 - Fix the UDP socket leak caused by frequent DNS queries.
   [#10691](https://github.com/Kong/kong/pull/10691)
+- Reports: fix a potential issue that would socket leak.
+  [#10783](https://github.com/Kong/kong/pull/10783)
 - Fix a typo of mlcache option `shm_set_tries`.
   [#10712](https://github.com/Kong/kong/pull/10712)
 - Fix an issue where slow start up of Go plugin server causes dead lock.
@@ -273,6 +275,8 @@
 - **gRPC gateway**: fixed an issue that empty arrays in JSON are incorrectly encoded as `"{}"`; they are
 now encoded as `"[]"` to comply with standard.
   [#10790](https://github.com/Kong/kong/pull/10790)
+- **loggly & tcp-log & udp-log**: fix a potential issue that would socket leak.
+  [#10783](https://github.com/Kong/kong/pull/10783)
 
 #### PDK
 
