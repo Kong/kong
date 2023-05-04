@@ -223,7 +223,7 @@
   [#10514](https://github.com/Kong/kong/pull/10514)
 - Fix the UDP socket leak caused by frequent DNS queries.
   [#10691](https://github.com/Kong/kong/pull/10691)
-- Reports: fix a potential issue that would socket leak.
+- Reports: fix a potential issue that could cause socket leaks.
   [#10783](https://github.com/Kong/kong/pull/10783)
 - Fix a typo of mlcache option `shm_set_tries`.
   [#10712](https://github.com/Kong/kong/pull/10712)
