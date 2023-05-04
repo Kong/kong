@@ -664,7 +664,7 @@
                          # The Status API is a read-only endpoint
                          # allowing monitoring tools to retrieve metrics,
                          # healthiness, and other non-sensitive information
-                         # of the current Kong node.
+                         # of the current Kong node. The path for the status endpoint is `/status`.
                          #
                          # The following suffix can be specified for each pair:
                          #
