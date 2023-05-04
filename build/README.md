@@ -107,17 +107,17 @@ We can learn more about Bazel query from [Bazel query](https://bazel.build/versi
 
 Following build options can be used to set specific features:
 
-- `**--//:debug=true**`
+- **`--//:debug=true`**
   - Default to true.
   - Turn on debug options and debugging symbols for OpenResty, LuaJIT and OpenSSL, which useful for debug with GDB and SystemTap.
 
-- `**--action_env=BUILD_NAME=**`
+- **`--action_env=BUILD_NAME=`**
   - Default to `kong-dev`.
   - Set the `build_name`, multiple build can exist at same time to allow you
 switch between different Kong versions or branches. Don't set this when you are
 building a building an binary package.
 
-- `**--action_env=INSTALL_DESTDIR=**`
+- **`--action_env=INSTALL_DESTDIR=`**
   - Default to `bazel-bin/build/<BUILD_NAME>`.
   - Set the directory when the build is intended to be installed. Bazel won't
 actually install files into this directory, but this will make sure certain hard coded paths and RPATH is correctly set when building a package.
