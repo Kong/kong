@@ -149,6 +149,9 @@ return {
     statsd = {
       "queue",
     },
+    ["statsd-advanced"] = {
+      "queue",
+    },
     datadog = {
       "queue",
     },
