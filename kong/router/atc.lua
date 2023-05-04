@@ -441,10 +441,7 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
   local uuid, matched_path, captures = c:get_result("http.path")
 
   local service = self.services[uuid]
-  local matched_route = self.routes[uuid]
-  if matched_route.original_route then
-    matched_route = matched_route.original_route
-  end
+  local matched_route = self.routes[uuid].original_route or self.routes[uuid]
 
   local service_protocol, _,  --service_type
         service_host, service_port,

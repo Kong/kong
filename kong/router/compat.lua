@@ -74,7 +74,7 @@ local function get_expression(route)
     tb_insert(out, gen)
   end
 
-  gen = gen_for_field("tls.sni", OP_EQUAL, snis, function(_, p)
+  local gen = gen_for_field("tls.sni", OP_EQUAL, snis, function(_, p)
     if #p > 1 and byte(p, -1) == DOT then
       -- last dot in FQDNs must not be used for routing
       return p:sub(1, -2)
@@ -259,12 +259,15 @@ local function get_priority(route)
       if index == 1 then
         if is_regex_magic(p) then
           regex_url = true
+
         else
           uri_length = #p
         end
+
       else
         if regex_url then
           assert(is_regex_magic(p), "cannot mix regex and non-regex routes in get_priority")
+
         else
           assert(#p == uri_length, "cannot mix different length prefixes in get_priority")
         end
@@ -272,8 +275,8 @@ local function get_priority(route)
     end
   end
 
-  match_weight   = lshift_uint64(match_weight, 61)
-  headers_count  = lshift_uint64(headers_count, 52)
+  local match_weight   = lshift_uint64(match_weight, 61)
+  local headers_count  = lshift_uint64(headers_count, 52)
 
   local regex_priority = lshift_uint64(regex_url and route.regex_priority or 0, 19)
   local max_length     = band(uri_length, 0x7FFFF)
@@ -309,7 +312,7 @@ local function group_by(t, f)
   for _, value in ipairs(t) do
     local key = f(value)
     if result[key] then
-      result[key][#result[key] + 1] = value
+      table.insert(result[key], value)
     else
       result[key] = {value}
     end
@@ -321,11 +324,12 @@ end
 -- regular expressions
 local function split_route_by_path_into(rs, split_rs)
   if is_empty_field(rs.route.paths) or #rs.route.paths == 1 then
-    split_rs[#split_rs + 1] = rs
+    table.insert(split_rs, rs)
     return
   end
 
-  assert(rs.route.paths)
+  assert(tablex.size(rs) == 2) -- make sure that rs contains only the two expected entries, route and service
+
   local grouped_paths = group_by(
     rs.route.paths,
     function(path)
@@ -333,11 +337,14 @@ local function split_route_by_path_into(rs, split_rs)
     end
   )
   for _, paths in pairs(grouped_paths) do
-    local cloned_route = tablex.deepcopy(rs)
+    local cloned_route = {
+      route = utils.shallow_copy(rs.route),
+      service = rs.service,
+    }
     cloned_route.route.original_route = rs.route
     cloned_route.route.paths = paths
     cloned_route.route.id = utils.uuid()
-    split_rs[#split_rs + 1] = cloned_route
+    table.insert(split_rs, cloned_route)
   end
 end
 
@@ -345,7 +352,7 @@ end
 function _M.new(rs, cache, cache_neg, old_router)
   -- rs argument is a table with [route] and [service], hence rs
   if type(rs) ~= "table" then
-    return error("expected arg #1 routes to be a table")
+    return error("expected arg #1 routes to be a table", 2)
   end
 
   local split_rs = {}
