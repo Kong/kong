@@ -249,6 +249,22 @@ for _, strategy in helpers.each_strategy() do
       assert(db:close())
     end)
 
+    postgres_only("connects with application_name = kong in postgres", function()
+      local db, err = DB.new(helpers.test_conf, strategy)
+
+      assert.is_nil(err)
+      assert.is_table(db)
+      assert(db:init_connector())
+      assert(db:connect())
+
+      local res = assert(db.connector:query("SELECT application_name from pg_stat_activity WHERE application_name = 'kong';"))
+
+      assert.is_table(res[1])
+      assert.equal("kong", res[1]["application_name"])
+
+      assert(db:close())
+    end)
+
     cassandra_only("provided Cassandra contact points resolve DNS", function()
       local conf = utils.deep_copy(helpers.test_conf)
 

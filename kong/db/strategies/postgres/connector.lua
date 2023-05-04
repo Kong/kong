@@ -941,6 +941,7 @@ local _M = {}
 
 function _M.new(kong_config)
   local config = {
+    application_name = "kong",
     host        = kong_config.pg_host,
     port        = kong_config.pg_port,
     timeout     = kong_config.pg_timeout,
@@ -997,6 +998,7 @@ function _M.new(kong_config)
     ngx.log(ngx.DEBUG, "PostgreSQL connector readonly connection enabled")
 
     local ro_override = {
+      application_name = "kong",
       host        = kong_config.pg_ro_host,
       port        = kong_config.pg_ro_port,
       timeout     = kong_config.pg_ro_timeout,
