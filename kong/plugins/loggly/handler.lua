@@ -75,7 +75,8 @@ local function send_to_loggly(conf, message, pri)
   local ok, err = sock:setpeername(host, port)
   if not ok then
     kong.log.err("failed to connect to ", host, ":", tostring(port), ": ", err)
-    goto socket_close
+    sock:close()
+    return
   end
 
   local ok, err = sock:send(udp_message)
@@ -83,7 +84,6 @@ local function send_to_loggly(conf, message, pri)
     kong.log.err("failed to send data to ", host, ":", tostring(port), ": ", err)
   end
 
-  ::socket_close::
   local ok, err = sock:close()
   if not ok then
     kong.log.err("failed to close connection from ", host, ":", tostring(port), ": ", err)

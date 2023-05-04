@@ -23,7 +23,8 @@ local function log(premature, conf, str)
   local ok, err = sock:setpeername(conf.host, conf.port)
   if not ok then
     kong.log.err("could not connect to ", conf.host, ":", conf.port, ": ", err)
-    goto socket_close
+    sock:close()
+    return
   end
 
   ok, err = sock:send(str)
@@ -34,7 +35,6 @@ local function log(premature, conf, str)
     kong.log.debug("sent: ", str)
   end
 
-  ::socket_close::
   ok, err = sock:close()
   if not ok then
     kong.log.err("could not close ", conf.host, ":", conf.port, ": ", err)
