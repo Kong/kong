@@ -11,7 +11,7 @@ jobs:
   build:
     uses: ./.github/workflows/build.yml
     with:
-      build-root-suffix: /bazel-bin/build
+      relative-build-root: bazel-bin/build
 
   unit-tests:
     name: Unit tests

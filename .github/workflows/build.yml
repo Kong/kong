@@ -2,12 +2,12 @@ name: Build
 on:
   workflow_call:
     inputs:
-      build-root-suffix:
+      relative-build-root:
         required: true
         type: string
 
 env:
-  BUILD_ROOT: ${{ github.workspace }}${{ inputs.build-root-suffix }}
+  BUILD_ROOT: ${{ github.workspace }}/${{ inputs.relative-build-root }}
 
 jobs:
   build:
