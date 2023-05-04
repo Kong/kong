@@ -2,6 +2,7 @@ name: Build & Test Coverage
 on:
   schedule:
     - cron: "15 0 * * 0"
+  workflow_dispatch:
 
 env:
   BUILD_ROOT: ${{ github.workspace }}/bazel-bin/build
@@ -9,6 +10,8 @@ env:
 jobs:
   build:
     uses: ./.github/workflows/build.yml
+    with:
+      build-root-suffix: /bazel-bin/build
 
   unit-tests:
     name: Unit tests

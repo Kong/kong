@@ -1,9 +1,13 @@
 name: Build
 on:
   workflow_call:
+    inputs:
+      build-root-suffix:
+        required: true
+        type: string
 
 env:
-  BUILD_ROOT: ${{ github.workspace }}/bazel-bin/build
+  BUILD_ROOT: ${{ github.workspace }}${{ inputs.build-root-suffix }}
 
 jobs:
   build:
