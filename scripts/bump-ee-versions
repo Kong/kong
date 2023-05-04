@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+
+# bash safe mode
+set -euo pipefail
+IFS=$'\n\t'
+
+
+function usage() {
+  echo "Bump all version numbers of Kong-ee to a new version"
+  echo ""
+  echo "Usage:"
+  echo "  scripts/bump-versions w.x.y.z"
+
+  exit 0
+}
+
+
+function bump_meta() {
+  meta="kong/enterprise_edition/meta.lua"
+  echo "bumping $meta"
+  sed -i.bak 's/major = [0-9]*/major = '$major'/' $meta
+  sed -i.bak 's/minor = [0-9]*/minor = '$minor'/' $meta
+  sed -i.bak 's/patch = [0-9]*/patch = '$patch'/' $meta
+  sed -i.bak 's/ee_patch = [0-9]*/ee_patch = '$ee_patch'/' $meta
+  # Note: Very limited suffix support here.
+  # * Not capable of "commenting out the suffix" (the "else" of this "if")
+  # * Only able to add a fix if it's commented out first (can't go from rc.1 to rc.2, because it is't commented out
+  if [ "$suffix" != "" ]
+  then
+    sed -i.bak 's/--.*suffix.*$/suffix = "'$suffix'"/' $meta
+  fi
+  git add $meta
+}
+
+
+function bump_rockspec() {
+  old_rockspec="$1"
+  if ! [[ "$old_rockspec" =~ ^(.+)-[0-9]+\.[0-9]+\.[0-9]+-0.rockspec$ ]]
+  then
+    echo -e "could not parse rockspec version from name: $old_rockspec. Expected format: some/path/foobar-x.y.z-0.rockspec"
+    exit 1
+  fi
+
+  prefix=${BASH_REMATCH[1]}
+  new_rockspec="$prefix-$major.$minor.$patch$suffix-0.rockspec"
+
+  echo "bumping  $new_rockspec"
+  git mv "$old_rockspec" "$new_rockspec"
+
+  sed -i.bak 's/^local package_version = ".*"$/local package_version = "'"$major.$minor.$patch$suffix"'"/' "$new_rockspec"
+  sed -i.bak 's/^local plugin_version = ".*"$/local plugin_version = "'"$major.$minor.$patch$suffix"'"/' "$new_rockspec"
+  sed -i.bak 's/^version = ".*"/version = "'"$major.$minor.$patch$suffix"'-0"/' "$new_rockspec"
+  sed -i.bak 's/tag = ".*"/tag = "'"$major.$minor.$patch$suffix"'"/' "$new_rockspec"
+  git add "$new_rockspec"
+}
+
+# usage
+if [ "$1" = "-h" ] || [ "$1" = "--help" ] || ! [ "$1" ]; then
+  usage
+fi
+
+# version parsing
+version="$1"
+if ! [[ "$version" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)-?((alpha|beta|rc)\.[0-9]+)?$ ]]; then
+  echo -e "first argument must be a version in w.x.y.z format with optional -(alpha|beta|rc).\d suffix"
+  exit 1
+fi
+
+major=${BASH_REMATCH[1]}
+minor=${BASH_REMATCH[2]}
+patch=${BASH_REMATCH[3]}
+ee_patch=${BASH_REMATCH[4]}
+suffix=${BASH_REMATCH[5]}
+
+echo "Bumping to $major.$minor.$patch.$ee_patch$suffix"
+
+bump_meta
+
+bump_rockspec kong-*-0.rockspec
+
+find plugins-ee | grep rockspec$ | while read -r plugin_rockspec ; do
+  bump_rockspec "$plugin_rockspec"
+done
