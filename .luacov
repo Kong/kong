@@ -1,0 +1,15 @@
+return {
+
+  runreport = true,
+
+  include = {
+    "kong$",
+    "kong%/.+$",
+  },
+
+  exclude = {
+    "bazel%-bin/build",
+    "^spec/"
+  }
+
+}
