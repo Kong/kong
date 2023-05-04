@@ -1,11 +1,572 @@
-#!/usr/bin/env resty
+#!/usr/bin/env perl
 
+# Copyright (C) Yichun Zhang (agentzh)
+# Copyright (C) Guanlan Dai
+# Copyright (C) Aapo Talvensaari (fork of resty-cli)
+
+# TODO: port this script into the nginx core for greater flexibility
+# and better performance.
+
+# for maximum startup speed
+#use strict;
+#use warnings;
+
+our $VERSION = '0.29.1';
+
+# OpenResty's build system would patch the following line to initialize
+# the $nginx_path variable to point to the path of its own nginx binary
+# directly.
+my $nginx_path;
+
+my $WNOHANG = 1;
+
+my @all_args = @ARGV;
+
+my $errlog_level = "warn";
+my ($conns_num, @inc_dirs);
+
+#warn join ";", @src_a;
+
+my $src = <<_EOC_;
 setmetatable(_G, nil)
-
 pcall(require, "luarocks.loader")
-
 package.path = (os.getenv("KONG_LUA_PATH_OVERRIDE") or "") .. "./?.lua;./?/init.lua;" .. package.path
-
 require("kong.cmd.init")(arg)
+_EOC_
 
--- vim: set ft=lua ts=2 sw=2 sts=2 et :
+if (!$nginx_path) {
+    require FindBin;
+    require Config;
+    die if !%Config::Config;
+
+    $nginx_path = "$FindBin::RealBin/../nginx/sbin/nginx";
+
+    if (!-f $nginx_path) {
+        $nginx_path = "$FindBin::RealBin/nginx";
+
+        if (!-f $nginx_path) {
+            $nginx_path = "nginx";  # find in PATH
+        }
+    }
+}
+
+#warn $nginx_path;
+
+my $lua_package_path_config = '';
+if (@inc_dirs) {
+    my $package_path = "";
+    my $package_cpath = "";
+    for my $dir (@inc_dirs) {
+        $package_path .= "$dir/?.ljbc;$dir/?.lua;$dir/?/init.ljbc;$dir/?/init.lua;";
+        $package_cpath .= "$dir/?.so;";
+    }
+
+    $lua_package_path_config = <<_EOC_;
+
+    lua_package_path "$package_path;";
+    lua_package_cpath "$package_cpath;";
+_EOC_
+}
+
+my $conns = $conns_num || 64;
+
+my @nameservers;
+
+# try to read the nameservers used by the system resolver:
+if (open my $in, "/etc/resolv.conf") {
+    while (<$in>) {
+        if (/^\s*nameserver\s+(\d+(?:\.\d+){3})(?:\s+|$)/) {
+            unshift @nameservers, $1;
+            if (@nameservers > 10) {
+                last;
+            }
+        }
+    }
+    close $in;
+}
+
+if (!@nameservers) {
+    # default to Google's open DNS servers
+    unshift @nameservers, "8.8.8.8", "8.8.4.4";
+}
+
+push @nameservers, "ipv6=off";
+
+#warn "@nameservers\n";
+
+my $prefix_dir;
+my $tmpdir = '/tmp/resty_';
+my $N = 1000;
+
+for (my $i = 0; $i < $N; $i++) {
+    my $name;
+    for (my $j = 0; $j < 10; $j++) {
+        my $code = 65 + int rand 26;
+        if (int rand 2 == 0) {
+            $code += 32;
+        }
+
+        $name .= chr $code;
+    }
+
+    my $dir = $tmpdir . $name;
+    next if -d $dir;
+
+    mkdir $dir or die "Cannot mkdir $dir: $!\n";
+    $prefix_dir = $dir;
+    last;
+}
+
+if (!defined $prefix_dir) {
+    die "failed to derive a random temp directory name after $N ",
+        "attempts\n";
+}
+
+#warn "prefix dir: $prefix_dir\n";
+
+my $child_pid;
+
+END {
+    if (defined($child_pid) && defined $prefix_dir) {
+        my $saved_status = $?;
+        system("rm -rf $prefix_dir") == 0
+            or warn "failed to remove temp directory $prefix_dir: $!";
+        $? = $saved_status;  # restore the exit code
+    }
+}
+
+my $logs_dir = "$prefix_dir/logs";
+
+mkdir $logs_dir or die "failed to mkdir $logs_dir: $!";
+
+my $conf_dir = "$prefix_dir/conf";
+
+mkdir $conf_dir or die "failed to mkdir $conf_dir: $!";
+
+my $inline_lua = '';
+my $quoted_luafile;
+if (defined $src) {
+    my $file = "$conf_dir/a.lua";
+
+    open my $out, ">$file"
+        or die "Cannot open $file for writing: $!\n";
+    print $out $src;
+    close $out;
+    my $chunk_name = "=(command line -e)";
+    $quoted_luafile = quote_as_lua_str($file);
+
+    $inline_lua = <<"_EOC_";
+                local fname = $quoted_luafile
+                local f = assert(io.open(fname, "r"))
+                local chunk = f:read("*a")
+                local inline_gen = assert(loadstring(chunk, "$chunk_name"))
+_EOC_
+}
+
+my @user_args = @ARGV;
+my $args = gen_lua_code_for_args(\@user_args, \@all_args);
+
+my $loader = <<_EOC_;
+            local gen
+            do
+                $args
+$inline_lua
+
+                gen = function()
+                  if inline_gen then inline_gen() end
+                end
+            end
+_EOC_
+
+my $env_list = '';
+for my $var (sort keys %ENV) {
+    #warn $var;
+    $env_list .= "env $var;\n";
+}
+
+my $conf_file = "$conf_dir/nginx.conf";
+
+open my $out, ">$conf_file"
+    or die "Cannot open $conf_file for writing: $!\n";
+
+print $out <<_EOC_;
+daemon off;
+master_process off;
+worker_processes 1;
+pid logs/nginx.pid;
+
+$env_list
+
+error_log stderr $errlog_level;
+#error_log stderr debug;
+
+events {
+    worker_connections $conns;
+}
+
+$main_include_directives
+_EOC_
+
+print $out <<_EOC_;
+
+stream {
+    access_log off;
+    lua_socket_log_errors off;
+    resolver @nameservers;
+    lua_regex_cache_max_entries 40960;
+$lua_package_path_config
+}
+_EOC_
+
+print $out <<_EOC_;
+
+http {
+    access_log off;
+    lua_socket_log_errors off;
+    resolver @nameservers;
+    lua_regex_cache_max_entries 40960;
+$lua_package_path_config
+    init_by_lua_block {
+        ngx.config.is_console = true
+
+        local stdout = io.stdout
+        local ngx_null = ngx.null
+        local maxn = table.maxn
+        local unpack = unpack
+        local concat = table.concat
+
+        local expand_table
+        function expand_table(src, inplace)
+            local n = maxn(src)
+            local dst = inplace and src or {}
+            for i = 1, n do
+                local arg = src[i]
+                local typ = type(arg)
+                if arg == nil then
+                    dst[i] = "nil"
+
+                elseif typ == "boolean" then
+                    if arg then
+                        dst[i] = "true"
+                    else
+                        dst[i] = "false"
+                    end
+
+                elseif arg == ngx_null then
+                    dst[i] = "null"
+
+                elseif typ == "table" then
+                    dst[i] = expand_table(arg, false)
+
+                elseif typ ~= "string" then
+                    dst[i] = tostring(arg)
+
+                else
+                    dst[i] = arg
+                end
+            end
+            return concat(dst)
+        end
+
+        local function output(...)
+            local args = {...}
+
+            return stdout:write(expand_table(args, true))
+        end
+
+        ngx.orig_print = ngx.print
+        ngx.print = output
+
+        ngx.orig_say = ngx.say
+        ngx.say = function (...)
+                local ok, err = output(...)
+                if ok then
+                    return output("\\n")
+                end
+                return ok, err
+            end
+        print = ngx.say
+
+        ngx.flush = function (...) return stdout:flush() end
+        -- we cannot close stdout here due to a bug in Lua:
+        ngx.eof = function (...) return true end
+        ngx.orig_exit = ngx.exit
+        ngx.exit = os.exit
+    }
+
+    init_worker_by_lua_block {
+        local exit = os.exit
+        local stderr = io.stderr
+        local ffi = require "ffi"
+
+        local function handle_err(err)
+            if err then
+                err = string.gsub(err, "^init_worker_by_lua:%d+: ", "")
+                stderr:write("ERROR: ", err, "\\n")
+            end
+            return exit(1)
+        end
+
+        local ok, err = pcall(function ()
+            if not ngx.config
+               or not ngx.config.ngx_lua_version
+               or ngx.config.ngx_lua_version < 10009
+            then
+                error("at least ngx_lua 0.10.9 is required")
+            end
+
+            local signal_graceful_exit =
+                require("ngx.process").signal_graceful_exit
+            if not signal_graceful_exit then
+                error("lua-resty-core library is too old; "
+                      .. "missing the signal_graceful_exit() function "
+                      .. "in ngx.process")
+            end
+
+$loader
+            -- print("calling timer.at...")
+            local ok, err = ngx.timer.at(0, function ()
+                -- io.stderr:write("timer firing")
+                local ok, err = xpcall(gen, function (err)
+                    -- level 3: we skip this function and the
+                    -- error() call itself in our stacktrace
+                    local trace = debug.traceback(err, 3)
+                    return handle_err(trace)
+                end)
+                if not ok then
+                    return handle_err(err)
+                end
+                signal_graceful_exit()
+            end)
+            if not ok then
+                return handle_err(err)
+            end
+            -- print("timer created")
+        end)
+
+        if not ok then
+            return handle_err(err)
+        end
+    }
+}
+_EOC_
+
+close $out;
+
+my @cmd = ($nginx_path, '-p', "$prefix_dir/", '-c', "conf/nginx.conf");
+
+for my $sig (qw/ INT TERM QUIT HUP USR1 USR2 WINCH PIPE /) {
+    $SIG{$sig} = \&forward_signal;
+}
+
+my $pid = fork();
+
+if (!defined $pid) {
+    die "fork() failed: $!\n";
+}
+
+if ($pid == 0) {  # child process
+    #use Data::Dumper;
+    #warn "exec ", Dumper \@cmd;
+    #warn "exec [@cmd]...";
+    exec(@cmd)
+        or die "ERROR: failed to run command \"@cmd\": $!\n";
+
+} else {
+    $child_pid = $pid;
+    waitpid($child_pid, 0);
+    my $rc = 0;
+    if ($?) {
+        $rc = ($? >> 8);
+        if ($rc == 0) {
+            $rc = $?;
+        }
+    }
+    exit $rc;
+}
+
+sub get_bracket_level {
+    my %bracket_levels;
+    my $bracket_level = 0;
+    my $max_level = 0;
+
+    # scan all args and store level of closing brackets
+    for my $arg (@_) {
+        while ($arg =~ /\](=*)\]/g) {
+            my $level = length($1);
+            if ($level > $max_level) {
+                $max_level = $level;
+            }
+            $bracket_levels{$level} = 1;
+        }
+    }
+
+    # if args contain closing bracket
+    if (%bracket_levels) {
+        # find the shortest form of the long brackets accordingly
+        for (my $i = 1; $i < $max_level; $i++) {
+            if (!exists $bracket_levels{$i}) {
+                $bracket_level = $i;
+                last;
+            }
+        }
+
+        if ($bracket_level == 0) {
+            $bracket_level = $max_level + 1;
+        }
+        return $bracket_level;
+    }
+    return 1;
+}
+
+sub quote_as_lua_str {
+    my ($str) = @_;
+    my $bracket_level = get_bracket_level($str);
+    my $left_bracket = "[" . "=" x $bracket_level . "[";
+    my $right_bracket = "]" . "=" x $bracket_level . "]";
+
+    return $left_bracket . $str . $right_bracket;
+}
+
+sub gen_lua_code_for_args {
+    my ($user_args, $all_args) = @_;
+
+    my $luasrc = "arg = {}\n";
+
+    # arg[n] (n = 0)
+    $luasrc .= "arg[0] = $quoted_luafile\n";
+
+    # arg[n] (n > 0)
+    for my $i (0 .. $#user_args) {
+        my $index = $i + 1;
+        my $quoted_arg = quote_as_lua_str($user_args[$i]);
+        $luasrc .= "arg[$index] = $quoted_arg\n";
+    }
+
+    my $left_num = $#all_args - $#user_args;
+
+=begin cmt
+
+    # arg[n] (n < 0)
+    for my $i (0 .. $left_num - 2) {
+        my $index = 0 - $left_num + $i + 1;
+        my $quoted_arg = quote_as_lua_str($all_args[$i]);
+        $luasrc .= "arg[$index] = $quoted_arg\n";
+    }
+
+=end cmt
+
+=cut
+
+    # args[n] (n = the index of resty-cli itself)
+    my $index = 0 - $left_num;
+    my $quoted_arg = quote_as_lua_str($0);
+    $luasrc .= "arg[$index] = $quoted_arg\n";
+
+    #warn $luasrc;
+    return $luasrc;
+}
+
+sub forward_signal {
+    my $signame = shift;
+
+    if ($signame eq 'HUP') {
+        $signame = 'QUIT';
+    }
+
+    if ($child_pid) {
+        #warn "killing $child_pid with $signame ...\n";
+
+        my $loaded_time_hires;
+
+        if ($signame eq 'INT' || $signame eq 'PIPE') {
+            # Note: we use eval here just because explicit use of %!
+            # would trigger auto-loading of the Errno module, which
+            # hurts script startup time.
+            eval q#
+                if (kill(QUIT => $child_pid) == 0) {
+                    if (not $!{ESRCH}) {
+                        die "failed to send QUIT signal to process ",
+                            "$child_pid: $!";
+                    }
+                }
+            #;
+            if ($@) {
+                die "failed to eval: $@";
+            }
+
+            require Time::HiRes;
+            $loaded_time_hires = 1;
+
+            Time::HiRes::sleep(0.1);
+
+            kill KILL => $child_pid;
+            exit($signame eq 'INT' ? 130 : 141);
+
+        } else {
+            # Note: we use eval here just because explicit use of %!
+            # would trigger auto-loading of the Errno module, which
+            # hurts script startup time.
+            eval q#
+                if (kill($signame => $child_pid) == 0) {
+                    if (not $!{ESRCH}) {
+                        die "failed to send $signame signal to process ",
+                            "$child_pid: $!";
+                    }
+                }
+            #;
+            if ($@) {
+                die "failed to eval: $@";
+            }
+        }
+
+        if (!$loaded_time_hires) {
+            require Time::HiRes;
+        }
+
+        my $nap = 0.001;
+        my $total_nap = 0;
+        while ($total_nap < 0.1) {
+            #warn "sleeping $nap";
+            $nap *= 1.5;
+            $total_nap += $nap;
+
+            Time::HiRes::sleep($nap);
+
+            # Note: we use eval here just because explicit use of %!
+            # would trigger auto-loading of the Errno module, which
+            # hurts script startup time.
+
+            my ($ret, $echild);
+            eval qq#
+                \$ret = waitpid \$child_pid, $WNOHANG;
+                \$echild = \$!{ECHILD};
+            #;
+            if ($@) {
+                die "failed to eval: $@";
+            }
+
+            next if $ret == 0;
+            exit 0 if $echild;
+            if ($ret < 0) {
+                die "failed to wait on child process $child_pid: $!";
+            }
+
+            my $rc = 0;
+            if ($signame eq 'INT') {
+                $rc = 130;
+
+            } elsif ($signame eq 'TERM') {
+                $rc = 143;
+            }
+
+            if ($?) {
+                $rc = ($? >> 8);
+                if ($rc == 0) {
+                    $rc = $?;
+                }
+            }
+            exit $rc;
+        }
+    }
+}
