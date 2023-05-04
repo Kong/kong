@@ -159,6 +159,7 @@ a copy. [KAG-739](https://konghq.atlassian.net/browse/KAG-739)
 * Fixed an issue where the `/register` route jumps to `/login` occasionally. [KAG-1282](https://konghq.atlassian.net/browse/KAG-1282)
 * Fixed an issue where the statsD plugin has custom identifier field under metric which does not exist in schema. [KAG-1138](https://konghq.atlassian.net/browse/KAG-1138)
 * Endpoint to list consumer groups under a consumer now reflects latest changes on consumer groups. [KAG-1378](https://konghq.atlassian.net/browse/KAG-1378)
+* Fix the cache issue of route-by-header plugin, where config change does not take effect. [FTI-5017](https://konghq.atlassian.net/browse/FTI-5017)
 
 ## Plugins
 
