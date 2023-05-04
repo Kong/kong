@@ -2,44 +2,65 @@ name: Build
 on:
   workflow_call:
     inputs:
-      build-root-suffix:
+      relative-build-root:
         required: true
         type: string
 
 env:
-  BUILD_ROOT: ${{ github.workspace }}${{ inputs.build-root-suffix }}
+  BUILD_ROOT: ${{ github.workspace }}/${{ inputs.relative-build-root }}
+  RELATIVE_BUILD_ROOT: ${{ inputs.relative-build-root }}
 
 jobs:
   build:
     name: Build dependencies
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest-kong
 
     steps:
     - name: Checkout Kong source code
       uses: actions/checkout@v3
+      with:
+        submodules: recursive
+        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
-    - name: Lookup build cache
+    - name: Swap git with https
+      run: git config --global url."https://github".insteadOf git://github
+
+    - name: Cache Build Output
       id: cache-deps
+      # Note we only use the artifact in build, which may actually contain
+      # lua source codes from a previous version. But both busted and pongo
+      # is able to override those files with them under current directory
+      # so we don't need to rebuild it everytime. So that also means
+      # the "artifacts" here can't be used as a per-commit CD artifact; only
+      # the ones from release.yml could.
       uses: actions/cache@v3
       with:
         path: |
-          ${{ env.BUILD_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+          artifacts
+          ${{ env.RELATIVE_BUILD_ROOT }}
+          !${{ env.RELATIVE_BUILD_ROOT }}/kong-dev/**/*
+        key: ci-build-${{ hashFiles('.requirements', 'kong-*.rockspec', 'plugins-ee/**/*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
-    - name: Install packages
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev
+    - name: Set .requirements into environment variables
+      run: |
+        sed -i 's/c\.release = true/c\.release = false/g' distribution/distributions_constants.lua
+        grep -v '^#' .requirements >> $GITHUB_ENV
 
-    - name: Build Kong
+    - name: Install Build Dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
-        make build-kong
-        BUILD_PREFIX=$BUILD_ROOT/kong-dev
-        export PATH="$BUILD_PREFIX/bin:$BUILD_PREFIX/openresty/nginx/sbin:$BUILD_PREFIX/openresty/bin:$PATH"
-        chmod +rw -R $BUILD_PREFIX
-        nginx -V
-        ldd $(which nginx)
-        luarocks
+        sudo apt-get update
+        sudo apt-get install libyaml-dev valgrind libprotobuf-dev -y
+
+    - name: Build Kong and package
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+      run: |
+        bazel build //build:kong --verbose_failures --action_env=INSTALL_DESTDIR=/usr/local
+        bazel build //build:venv --verbose_failures --action_env=INSTALL_DESTDIR=/usr/local
+        # debian package for Pongo
+        bazel build :kong_deb --verbose_failures --action_env=INSTALL_DESTDIR=/usr/local
 
     - name: Bazel Outputs
       uses: actions/upload-artifact@v3
@@ -49,7 +70,20 @@ jobs:
         path: |
           bazel-out/_tmp/actions
 
-    - name: Build Dev Kong dependencies
+    - name: Collect artifacts
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
-        make install-dev-rocks
+        mkdir artifacts
+        cp bazel-bin/pkg/kong.amd64.deb artifacts/
+
+        # bazel output directory without write access, we add it when creating archive
+        tar -zcvf artifacts/build.tar.gz -C bazel-bin/build/kong-dev --mode="a+rw" .
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: build
+        path: |
+          artifacts
+          ${{ env.RELATIVE_BUILD_ROOT }}
+          !${{ env.RELATIVE_BUILD_ROOT }}/kong-dev/**/*

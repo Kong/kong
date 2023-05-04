@@ -10,12 +10,13 @@ env:
 jobs:
   build:
     uses: ./.github/workflows/build.yml
+    secrets: inherit
     with:
-      build-root-suffix: /bazel-bin/build
+      relative-build-root: bazel-bin/build
 
   unit-tests:
     name: Unit tests
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest-kong
     needs: build
 
     services:
@@ -29,17 +30,41 @@ jobs:
           - 5432:5432
         options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
 
+      cassandra:
+        image: cassandra:3
+        ports:
+          - 7199:7199
+          - 7000:7000
+          - 9160:9160
+          - 9042:9042
+        options: --health-cmd "cqlsh -e 'describe cluster'" --health-interval 5s --health-timeout 5s --health-retries 8
+
     steps:
+    - name: Install packages
+      run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev
+
     - name: Checkout Kong source code
       uses: actions/checkout@v3
-
-    - name: Lookup build cache
-      id: cache-deps
-      uses: actions/cache@v3
       with:
-        path: |
-          ${{ env.BUILD_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+        submodules: recursive
+        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: build
+        path: .
+
+    - name: Extract the artifact contents
+      run: |
+        sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
+        sudo mkdir -p ${{ env.BUILD_ROOT }}/kong-dev
+        sudo tar -C ${{ env.BUILD_ROOT }}/kong-dev -xzvf artifacts/build.tar.gz
+
+    - name: Install Kong dev
+      env:
+        GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+      run: make dev LIBRARY_PREFIX=/usr/local/kong
 
     - name: Unit tests
       env:
@@ -47,7 +72,7 @@ jobs:
         KONG_TEST_PG_USER: kong
       run: |
           source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
-          bin/busted spec/01-unit --coverage
+          bin/busted spec/01-unit spec-ee/01-unit --coverage
     
     - name: Archive coverage stats file
       uses: actions/upload-artifact@v3

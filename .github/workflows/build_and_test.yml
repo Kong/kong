@@ -35,8 +35,9 @@ concurrency:
 jobs:
   build:
     uses: ./.github/workflows/build.yml
+    secrets: inherit
     with:
-      build-root-suffix: /bazel-bin/build
+      relative-build-root: bazel-bin/build
 
   cp-dp-compatibility-test:
     name: CP/DP compatibility
