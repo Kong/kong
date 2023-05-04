@@ -28,7 +28,7 @@ jobs:
   build:
     uses: ./.github/workflows/build.yml
     with:
-      build-root-suffix: /bazel-bin/build
+      relative-build-root: bazel-bin/build
 
   lint-doc-and-unit-tests:
     name: Lint, Doc and Unit tests
