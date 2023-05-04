@@ -1670,6 +1670,7 @@
                                         # The following pathnames will be tested in order,
                                         # and the first one found will be used:
                                         #
+                                        # - OPENSSL_DIR/cert.pem (Generic)
                                         # - /etc/ssl/certs/ca-certificates.crt (Debian/Ubuntu/Gentoo)
                                         # - /etc/pki/tls/certs/ca-bundle.crt (Fedora/RHEL 6)
                                         # - /etc/ssl/ca-bundle.pem (OpenSUSE)

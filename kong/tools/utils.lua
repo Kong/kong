@@ -133,7 +133,47 @@ do
     "/etc/ssl/cert.pem",                                 -- OpenBSD, Alpine
   }
 
+  local cert_dirs = {
+    "",
+    "certs",
+  }
+
+  local cert_files = {
+    "ca-certificates.crt",
+    "ca-bundle.crt",
+    "ca-bundle.pem",
+    "cacert.pem",
+    "cert.pem",
+  }
+
   function _M.get_system_trusted_certs_filepath()
+    local version = require("resty.openssl.version")
+    local openssl_dir = version.version(version.DIR)
+
+    if openssl_dir then
+      -- e.g.:
+      -- OPENSSLDIR: "/opt/homebrew/etc/openssl@1.1"
+      openssl_dir = openssl_dir:sub(14, -2)
+      for _, cert_dir in ipairs(cert_dirs) do
+        for _, cert_file in ipairs(cert_files) do
+          local ca_file = pl_path.join(openssl_dir, cert_dir, cert_file)
+          if pl_path.exists(ca_file) then
+            local lfs = require("lfs")
+            local attr = lfs.symlinkattributes(ca_file)
+            if attr and attr.target then
+              ca_file = pl_path.abspath(attr.target, openssl_dir)
+              if pl_path.exists(ca_file) then
+                return ca_file
+              end
+
+            else
+              return ca_file
+            end
+          end
+        end
+      end
+    end
+
     for _, path in ipairs(trusted_certs_paths) do
       if pl_path.exists(path) then
         return path
