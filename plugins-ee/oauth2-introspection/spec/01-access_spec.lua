@@ -906,5 +906,62 @@ for _ , strategy in strategies() do
       end)
     end)
   end)
+
+  describe("Plugin: oauth2-introspection: #regression" , function()
+    local client, admin_client
+    lazy_setup(function()
+      local db_strategy = strategy ~= "off" and strategy or nil
+      local bp = helpers.get_db_utils(db_strategy, nil, {"oauth2-introspection"})
+
+      local route = bp.routes:insert {
+        name = "route",
+        hosts = { "test.com" },
+      }
+      bp.plugins:insert {
+        name = "oauth2-introspection",
+        route = { id = route.id },
+        config = {
+          anonymous = "",
+          introspection_url = introspection_url,
+          authorization_value = "hello",
+          introspect_request = false,
+          ttl = 1
+        }
+      }
+
+      assert(helpers.start_kong({
+        database = db_strategy,
+        plugins = "bundled,oauth2-introspection",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }, nil, nil, fixtures))
+
+      client = helpers.proxy_client()
+      admin_client = helpers.admin_client()
+    end)
+
+    lazy_teardown(function()
+      if admin_client then
+        admin_client:close()
+      end
+      if client then
+        client:close()
+      end
+      assert(helpers.stop_kong())
+    end)
+
+    it("any body should not cause 500 #FTI-4974" , function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request?access_token=valid",
+        headers = {
+          ["Host"] = "test.com",
+          ["Authorization"] = "hello",
+          ["Content-Type"] = "application/json",
+        },
+        body = [["string"]]
+      })
+      assert.res_status(400, res)
+    end)
+  end)
 end
 
