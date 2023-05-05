@@ -86,8 +86,10 @@ build = {
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
     ["kong.templates.nginx_kong_gui_include"] = "kong/templates/nginx_kong_gui_include.lua",
     ["kong.templates.nginx_kong_stream"] = "kong/templates/nginx_kong_stream.lua",
-    ["kong.templates.nginx_kong_lmdb"] = "kong/templates/nginx_kong_lmdb.lua",
     ["kong.templates.kong_defaults"] = "kong/templates/kong_defaults.lua",
+    ["kong.templates.nginx_main_inject"] = "kong/templates/nginx_main_inject.lua",
+    ["kong.templates.nginx_http_inject"] = "kong/templates/nginx_http_inject.lua",
+    ["kong.templates.nginx_stream_inject"] = "kong/templates/nginx_stream_inject.lua",
     ["kong.templates.kong_yml"] = "kong/templates/kong_yml.lua",
 
     ["kong.resty.dns.client"] = "kong/resty/dns/client.lua",
@@ -120,6 +122,7 @@ build = {
     ["kong.cmd.utils.nginx_signals"] = "kong/cmd/utils/nginx_signals.lua",
     ["kong.cmd.utils.prefix_handler"] = "kong/cmd/utils/prefix_handler.lua",
     ["kong.cmd.utils.process_secrets"] = "kong/cmd/utils/process_secrets.lua",
+    ["kong.cmd.utils.inject_directives"] = "kong/cmd/utils/inject_directives.lua",
 
     ["kong.api"] = "kong/api/init.lua",
     ["kong.api.api_helpers"] = "kong/api/api_helpers.lua",

@@ -4,6 +4,7 @@ math.randomseed() -- Generate PRNG seed
 
 local pl_app = require "pl.lapp"
 local log = require "kong.cmd.utils.log"
+local inject_directives = require "kong.cmd.utils.inject_directives"
 
 local function stop_timers()
   -- shutdown lua-resty-timer-ng to allow the nginx worker to stop quickly
@@ -15,6 +16,7 @@ end
 local options = [[
  --v              verbose
  --vv             debug
+ --no-inject      not inject nginx directives
 ]]
 
 local cmds_arr = {}
@@ -32,6 +34,10 @@ local cmds = {
   config = true,
   roar = true,
   hybrid = true,
+  vault = true,
+}
+
+local inject_cmds = {
   vault = true,
 }
 
@@ -86,6 +92,14 @@ return function(args)
     log.set_lvl(log.levels.verbose)
   elseif args.vv then
     log.set_lvl(log.levels.debug)
+  end
+
+  -- inject necessary nginx directives (e.g. lmdb_*, lua_ssl_*)
+  -- into the temporary nginx.conf that `resty` will create
+  if inject_cmds[cmd_name] and not args.no_inject then
+    log.verbose("start to inject nginx directives and respawn")
+    inject_directives.respawn(cmd_name, args)
+    return
   end
 
   log.verbose("Kong: %s", _KONG._VERSION)

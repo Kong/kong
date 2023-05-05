@@ -9,10 +9,8 @@ lua_socket_pool_size   ${{LUA_SOCKET_POOL_SIZE}};
 lua_socket_log_errors  off;
 lua_max_running_timers 4096;
 lua_max_pending_timers 16384;
-lua_ssl_verify_depth   ${{LUA_SSL_VERIFY_DEPTH}};
-> if lua_ssl_trusted_certificate_combined then
-lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE_COMBINED}}';
-> end
+
+include 'nginx-http-inject.conf';
 
 lua_shared_dict kong                        5m;
 lua_shared_dict kong_locks                  8m;
