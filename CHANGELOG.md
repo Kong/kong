@@ -199,6 +199,8 @@
   [#10687](https://github.com/Kong/kong/pull/10687)
 - **Oauth2**: prevent an authorization code created by one plugin instance to be exchanged for an access token by a different plugin instance.
   [#10011](https://github.com/Kong/kong/pull/10011)
+- **gRPC gateway**: fixed an issue that empty arrays in JSON response to be encoded as `"{}"`.
+  [#10790](https://github.com/Kong/kong/pull/10790)
 
 #### PDK
 
@@ -254,8 +256,9 @@
 
 - Bumped lua-resty-session from 4.0.2 to 4.0.3
   [#10338](https://github.com/Kong/kong/pull/10338)
-- Bumped lua-protobuf from 0.3.3 to 0.4.2
+- Bumped lua-protobuf from 0.3.3 to 0.5.0
   [#10137](https://github.com/Kong/kong/pull/10413)
+  [#10790](https://github.com/Kong/kong/pull/10790)
 - Bumped lua-resty-timer-ng from 0.2.3 to 0.2.5
   [#10419](https://github.com/Kong/kong/pull/10419)
   [#10664](https://github.com/Kong/kong/pull/10664)
