@@ -357,18 +357,24 @@ local function split_route_by_path_into(route_and_service, routes_and_services_s
 end
 
 
+local function split_routes_and_services_by_path(routes_and_services)
+  local routes_and_services_split = {}
+  for _, route_and_service in ipairs(routes_and_services) do
+    split_route_by_path_into(route_and_service, routes_and_services_split)
+  end
+  return routes_and_services_split
+end
+
+
 function _M.new(routes_and_services, cache, cache_neg, old_router)
   -- route_and_service argument is a table with [route] and [service]
   if type(routes_and_services) ~= "table" then
     return error("expected arg #1 routes to be a table", 2)
   end
 
-  local routes_and_services_split = {}
-  for _, route_and_service in ipairs(routes_and_services) do
-    split_route_by_path_into(route_and_service, routes_and_services_split)
-  end
+  routes_and_services = split_routes_and_services_by_path(routes_and_services)
 
-  return atc.new(routes_and_services_split, cache, cache_neg, old_router, get_exp_and_priority)
+  return atc.new(routes_and_services, cache, cache_neg, old_router, get_exp_and_priority)
 end
 
 
