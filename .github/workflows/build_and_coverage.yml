@@ -11,7 +11,7 @@ jobs:
   build:
     uses: ./.github/workflows/build.yml
     with:
-      build-root-suffix: /bazel-bin/build
+      relative-build-root: bazel-bin/build
 
   unit-tests:
     name: Unit tests
@@ -48,7 +48,7 @@ jobs:
       run: |
           source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           bin/busted spec/01-unit --coverage
-    
+   
     - name: Archive coverage stats file
       uses: actions/upload-artifact@v3
       if: success()
@@ -57,11 +57,57 @@ jobs:
         retention-days: 1
         path: |
           luacov.stats.out
-    
+
+  pdk-tests:
+    name: PDK tests
+    runs-on: ubuntu-22.04
+    needs: build
+
+    steps:
+    - name: Checkout Kong source code
+      uses: actions/checkout@v3
+
+    - name: Lookup build cache
+      id: cache-deps
+      uses: actions/cache@v3
+      with:
+        path: |
+          ${{ env.BUILD_ROOT }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+
+    - name: Install Test::Nginx
+      run: |
+          CPAN_DOWNLOAD=./cpanm
+          mkdir -p $CPAN_DOWNLOAD
+          curl -o $CPAN_DOWNLOAD/cpanm https://cpanmin.us
+          chmod +x $CPAN_DOWNLOAD/cpanm
+
+          echo "Installing CPAN dependencies..."
+          $CPAN_DOWNLOAD/cpanm --notest --local-lib=$HOME/perl5 local::lib && eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
+          $CPAN_DOWNLOAD/cpanm --notest Test::Nginx
+
+    - name: Tests
+      env:
+        TEST_SUITE: pdk
+        PDK_LUACOV: 1
+      run: |
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+          eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
+          .ci/run_tests.sh
+
+    - name: Archive coverage stats file
+      uses: actions/upload-artifact@v3
+      if: success()
+      with:
+        name: luacov-stats-out-2
+        retention-days: 1
+        path: |
+          luacov.stats.out
+
 # TODO: run jobs with the remaining tests (with coverage enabled) and archive each artifact as luacov-stats-out-{i}
 
   aggregator:
-    needs: [unit-tests] # add dependencies for all the test jobs
+    needs: [unit-tests,pdk-tests] # add dependencies for all the test jobs
     name: Luacov stats aggregator
     runs-on: ubuntu-22.04
 
