@@ -38,7 +38,7 @@ configure_make(
     configure_options = CONFIGURE_OPTIONS,
     env = select({
         "@platforms//os:macos": {
-            "AR": "",
+            "AR": "/usr/bin/ar",
         },
         "@kong//:arm64-linux-gnu-cross": {
             "MACHINE": "aarch64",

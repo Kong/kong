@@ -19,7 +19,7 @@ build --show_progress_rate_limit=0
 build --show_timestamps
 build --worker_verbose
 
-# build --incompatible_strict_action_env
+build --incompatible_strict_action_env
 
 # Enable --platforms API based cpu,compiler,crosstool_top selection; remove this in 7.0.0 as it's enabled by default
 build --incompatible_enable_cc_toolchain_resolution

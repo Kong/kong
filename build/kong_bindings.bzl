@@ -16,8 +16,6 @@ def _load_vars(ctx):
     # Local env
     # Temporarily fix for https://github.com/bazelbuild/bazel/issues/14693#issuecomment-1079006291
     for key in [
-        "PATH",
-        # above should not be needed
         "GITHUB_TOKEN",
         "RPM_SIGNING_KEY_FILE",
         "NFPM_RPM_PASSPHRASE",
