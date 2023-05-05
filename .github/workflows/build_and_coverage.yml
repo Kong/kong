@@ -1,0 +1,84 @@
+name: Build & Test Coverage
+on:
+  schedule:
+    - cron: "15 0 * * 0"
+  workflow_dispatch:
+
+env:
+  BUILD_ROOT: ${{ github.workspace }}/bazel-bin/build
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      build-root-suffix: /bazel-bin/build
+
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-22.04
+    needs: build
+
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: kong
+          POSTGRES_DB: kong
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
+
+    steps:
+    - name: Checkout Kong source code
+      uses: actions/checkout@v3
+
+    - name: Lookup build cache
+      id: cache-deps
+      uses: actions/cache@v3
+      with:
+        path: |
+          ${{ env.BUILD_ROOT }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+
+    - name: Unit tests
+      env:
+        KONG_TEST_PG_DATABASE: kong
+        KONG_TEST_PG_USER: kong
+      run: |
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+          bin/busted spec/01-unit --coverage
+    
+    - name: Archive coverage stats file
+      uses: actions/upload-artifact@v3
+      if: success()
+      with:
+        name: luacov-stats-out-1
+        retention-days: 1
+        path: |
+          luacov.stats.out
+    
+# TODO: run jobs with the remaining tests (with coverage enabled) and archive each artifact as luacov-stats-out-{i}
+
+  aggregator:
+    needs: [unit-tests] # add dependencies for all the test jobs
+    name: Luacov stats aggregator
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout source code
+      uses: actions/checkout@v3
+
+    - name: Install requirements
+      run: |
+        sudo apt-get update && sudo apt-get install -y luarocks
+        sudo luarocks install luacov
+
+    # Download all archived coverage stats files
+    - uses: actions/download-artifact@v3
+
+    - name: Stats aggregation
+      shell: bash
+      run: |
+        lua .ci/luacov-stats-aggregator.lua "luacov-stats-out-" "luacov.stats.out"
+        awk '/Summary/,0' luacov.report.out
