@@ -150,7 +150,7 @@ jobs:
   aggregator:
     needs: [unit-tests,pdk-tests] # add dependencies for all the test jobs
     name: Luacov stats aggregator
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest-kong
 
     steps:
     - name: Checkout source code
@@ -167,5 +167,5 @@ jobs:
     - name: Stats aggregation
       shell: bash
       run: |
-        lua .ci/luacov-stats-aggregator.lua "luacov-stats-out-" "luacov.stats.out"
+        lua .ci/luacov-stats-aggregator.lua "luacov-stats-out-" "luacov.stats.out" ${{ github.workspace }}/
         awk '/Summary/,0' luacov.report.out
