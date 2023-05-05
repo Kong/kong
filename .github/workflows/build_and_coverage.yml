@@ -85,20 +85,35 @@ jobs:
 
   pdk-tests:
     name: PDK tests
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest-kong
     needs: build
 
     steps:
+    - name: Install packages
+      run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev
+
     - name: Checkout Kong source code
       uses: actions/checkout@v3
-
-    - name: Lookup build cache
-      id: cache-deps
-      uses: actions/cache@v3
       with:
-        path: |
-          ${{ env.BUILD_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+        submodules: recursive
+        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: build
+        path: .
+
+    - name: Extract the artifact contents
+      run: |
+        sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
+        sudo mkdir -p ${{ env.BUILD_ROOT }}/kong-dev
+        sudo tar -C ${{ env.BUILD_ROOT }}/kong-dev -xzvf artifacts/build.tar.gz
+
+    - name: Install Kong dev
+      env:
+        GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+      run: make dev LIBRARY_PREFIX=/usr/local/kong
 
     - name: Install Test::Nginx
       run: |
@@ -113,12 +128,13 @@ jobs:
 
     - name: Tests
       env:
+        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
         TEST_SUITE: pdk
         PDK_LUACOV: 1
       run: |
           source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
-          .ci/run_tests.sh
+          .ci/run_tests_github.sh
 
     - name: Archive coverage stats file
       uses: actions/upload-artifact@v3
