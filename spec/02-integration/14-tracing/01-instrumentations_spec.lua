@@ -39,6 +39,7 @@ for _, strategy in helpers.each_strategy() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "tcp-trace-exporter",
         tracing_instrumentations = types,
+        tracing_sampling_rate = 1,
       })
 
       proxy_client = helpers.proxy_client()
