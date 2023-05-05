@@ -456,6 +456,7 @@ build = {
     ["kong.db.schema.vault_loader"] = "kong/db/schema/vault_loader.lua",
     ["kong.db.schema.topological_sort"] = "kong/db/schema/topological_sort.lua",
     ["kong.db.schema.topsort_plugins"] = "kong/db/schema/topsort_plugins.lua",
+    ["kong.db.schema.plugin_dependency"] = "kong/db/schema/plugin_dependency.lua",
     ["kong.db.strategies"] = "kong/db/strategies/init.lua",
     ["kong.db.strategies.connector"] = "kong/db/strategies/connector.lua",
     ["kong.db.strategies.cassandra"] = "kong/db/strategies/cassandra/init.lua",
