@@ -329,45 +329,46 @@ end
 
 -- split routes into multiple routes, one for each prefix length and one for all
 -- regular expressions
-local function split_route_by_path_into(rs, split_rs)
-  if is_empty_field(rs.route.paths) or #rs.route.paths == 1 then
-    table.insert(split_rs, rs)
+local function split_route_by_path_into(route_and_service, routes_and_services_split)
+  if is_empty_field(route_and_service.route.paths) or #route_and_service.route.paths == 1 then
+    table.insert(routes_and_services_split, route_and_service)
     return
   end
 
-  assert(tablex.size(rs) == 2) -- make sure that rs contains only the two expected entries, route and service
+  -- make sure that route_and_service contains only the two expected entries, route and service
+  assert(tablex.size(route_and_service) == 2)
 
   local grouped_paths = group_by(
-    rs.route.paths,
+    route_and_service.route.paths,
     function(path)
       return is_regex_magic(path) or #path
     end
   )
   for index, paths in pairs(grouped_paths) do
     local cloned_route = {
-      route = utils.shallow_copy(rs.route),
-      service = rs.service,
+      route = utils.shallow_copy(route_and_service.route),
+      service = route_and_service.service,
     }
-    cloned_route.route.original_route = rs.route
+    cloned_route.route.original_route = route_and_service.route
     cloned_route.route.paths = paths
-    cloned_route.route.id = uuid_generator(rs.route.id .. "#" .. tostring(index))
-    table.insert(split_rs, cloned_route)
+    cloned_route.route.id = uuid_generator(route_and_service.route.id .. "#" .. tostring(index))
+    table.insert(routes_and_services_split, cloned_route)
   end
 end
 
 
-function _M.new(rs, cache, cache_neg, old_router)
-  -- rs argument is a table with [route] and [service], hence rs
-  if type(rs) ~= "table" then
+function _M.new(routes_and_services, cache, cache_neg, old_router)
+  -- route_and_service argument is a table with [route] and [service]
+  if type(routes_and_services) ~= "table" then
     return error("expected arg #1 routes to be a table", 2)
   end
 
-  local split_rs = {}
-  for _, route in ipairs(rs) do
-    split_route_by_path_into(route, split_rs)
+  local routes_and_services_split = {}
+  for _, route_and_service in ipairs(routes_and_services) do
+    split_route_by_path_into(route_and_service, routes_and_services_split)
   end
 
-  return atc.new(split_rs, cache, cache_neg, old_router, get_exp_and_priority)
+  return atc.new(routes_and_services_split, cache, cache_neg, old_router, get_exp_and_priority)
 end
 
 
