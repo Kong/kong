@@ -7,6 +7,7 @@ local tb_new = require("table.new")
 local tb_clear = require("table.clear")
 local tb_nkeys = require("table.nkeys")
 local tablex = require("pl.tablex")
+local uuid = require("resty.jit-uuid")
 local utils = require("kong.tools.utils")
 
 local escape_str      = atc.escape_str
@@ -57,6 +58,12 @@ local OP_REGEX    = "~"
 
 local LOGICAL_OR  = atc.LOGICAL_OR
 local LOGICAL_AND = atc.LOGICAL_AND
+
+
+-- When splitting routes, we need to assign new UUIDs to the split routes.  We use uuid v5 to generate them from
+-- the original route id and the path index so that incremental rebuilds see stable IDs for routes that have not
+-- changed.
+local uuid_generator = assert(uuid.factory_v5('7f145bf9-0dce-4f91-98eb-debbce4b9f6b'))
 
 
 local function get_expression(route)
@@ -336,14 +343,14 @@ local function split_route_by_path_into(rs, split_rs)
       return is_regex_magic(path) or #path
     end
   )
-  for _, paths in pairs(grouped_paths) do
+  for index, paths in pairs(grouped_paths) do
     local cloned_route = {
       route = utils.shallow_copy(rs.route),
       service = rs.service,
     }
     cloned_route.route.original_route = rs.route
     cloned_route.route.paths = paths
-    cloned_route.route.id = utils.uuid()
+    cloned_route.route.id = uuid_generator(rs.route.id .. "#" .. tostring(index))
     table.insert(split_rs, cloned_route)
   end
 end
