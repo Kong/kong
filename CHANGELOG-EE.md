@@ -73,6 +73,10 @@ a copy. [KAG-739](https://konghq.atlassian.net/browse/KAG-739)
 
 * Update the datafile library dependency to fix a bug that caused Kong not to work when installed on a read-only file system.
   [KAG-788](https://konghq.atlassian.net/browse/KAG-788) [FTI-4873](https://konghq.atlassian.net/browse/FTI-4873)
+* Update the datafile library dependency to fix a bug that caused Kong
+  not to work when started from systemd
+  [KAG-1466](https://konghq.atlassian.net/browse/KAG-1466)
+  [FTI-5047](https://konghq.atlassian.net/browse/FTI-5047)
 
 ### Features
 
