@@ -126,5 +126,5 @@ jobs:
     - name: Stats aggregation
       shell: bash
       run: |
-        lua .ci/luacov-stats-aggregator.lua "luacov-stats-out-" "luacov.stats.out"
+        lua .ci/luacov-stats-aggregator.lua "luacov-stats-out-" "luacov.stats.out" ${{ github.workspace }}/
         awk '/Summary/,0' luacov.report.out

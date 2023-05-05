@@ -1,8 +1,4 @@
 -- Aggregates stats from multiple luacov stat files.
--- If different stats files contain coverage information of common
--- source files, it assumes the provided stats refer to the same
--- version of the source files.
-
 -- Example stats for a 12 lines file `my/file.lua`
 -- that received hits on lines 3, 4, 9:
 -- 
@@ -17,15 +13,14 @@
 
 local luacov_stats = require "luacov.stats"
 local luacov_reporter = require "luacov.reporter"
-
-local all_stats = {}
+local luacov_runner = require "luacov.runner"
 
 
 -- load parameters
 local params = {...}
 local base_path = params[1] or "./luacov-stats-out-"
 local file_name = params[2] or "luacov.stats.out"
-local output = params[3] or file_name
+local path_prefix = params[3] or ""
 
 
 -- load stats - appends incremental index to base_path to load all the artifacts
@@ -42,28 +37,23 @@ repeat
 until not loaded
 
 
--- aggregate stats by file name
+-- aggregate
+luacov_runner.load_config()
 for _, stat_data in ipairs(loaded_stats) do
-  for f_name, f_data in pairs(stat_data) do
-    if all_stats[f_name] then
-      assert(
-        all_stats[f_name].max == f_data.max,
-        "number of lines in file " .. f_name .. " is inconsistent"
-      )
-      -- combine stats (add line hits)
-      for i = 1, all_stats[f_name].max do
-        if all_stats[f_name][i] or f_data[i] then
-          all_stats[f_name][i] = (all_stats[f_name][i] or 0) + (f_data[i] or 0)
-        end
-      end
-      all_stats[f_name].max_hits = math.max(all_stats[f_name].max_hits, f_data.max_hits)
-
-    else
-      all_stats[f_name] = f_data
+  -- make all paths relative to ensure file keys have the same format
+  -- and avoid having separate counters for the same file
+  local rel_stat_data = {}
+  for f_name, data in pairs(stat_data) do
+    if f_name:sub(0, #path_prefix) == path_prefix then
+      f_name = f_name:sub(#path_prefix + 1)
     end
+    rel_stat_data[f_name] = data
   end
+
+  luacov_runner.data = rel_stat_data
+  luacov_runner.save_stats()
 end
-luacov_stats.save(output, all_stats)
+
 
 -- generate report
 luacov_reporter.report()
