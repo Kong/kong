@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
-local http = require "resty.gcp.request.http.http"
+local http = require "resty.luasocket.http"
 local json = require("cjson.safe")
 local json_encode = json.encode
 local json_decode = json.decode
@@ -185,7 +185,7 @@ describe("cp outage handling storage support: #gcp", function()
           Authorization = "Bearer 2l4IQtZXbn5WBJdL6EF7uenOWRsi"
         },
         method = "POST",
-        ssl_verify = false
+        ssl_verify = true
       },
       uri = "/upload/storage/v1/b/test_bucket/o?name=test_prefix%2Ftest_version%2Fconfig.json"
     },
@@ -213,7 +213,7 @@ describe("cp outage handling storage support: #gcp", function()
           Authorization = "Bearer 2l4IQtZXbn5WBJdL6EF7uenOWRsi"
         },
         method = "GET",
-        ssl_verify = false
+        ssl_verify = true
       },
       uri = "/storage/v1/b/test_bucket/o/test_prefix%2Ftest_version%2Fconfig.json?alt=media"
     },

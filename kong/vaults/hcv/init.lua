@@ -9,7 +9,7 @@
 local meta = require "kong.meta"
 local kube = require "kong.vaults.hcv.kube"
 local cjson = require("cjson.safe").new()
-local http = require "resty.aws.request.http.http"
+local http = require "resty.luasocket.http"
 
 
 local decode_json = cjson.decode

@@ -13,9 +13,13 @@
 
 * `lua-resty-openssl` is bumped from 0.8.17 to 0.8.20
 * `kong-openid-connect` is bumped from 2.5.4 to 2.5.5
+* `lua-resty-aws` is bumped from 1.1.2 to 1.2.2
+* `lua-resty-gcp` is bumped from 0.0.11 to 0.0.12
 
 ### Features
 
+- Starting with this release, when using the secret management with an AWS/GCP backend, the backend server's certificate will be validate if it goes through HTTPS.
+- Starting with this release, when using the Data Plane resilience feature, the server-side certificate of the backend S3/GCS service will be validated if it goes through HTTPS.
 - Starting with this release, SBOM files in SPDX and CycloneDX are now generated
 for Kong Gateway's Docker images. Contact your Kong support representative to request
 a copy. [KAG-739](https://konghq.atlassian.net/browse/KAG-739)

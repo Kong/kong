@@ -55,7 +55,7 @@ local function get(conf, resource, version)
   if not GCP_ACCESS_TOKEN then
     local ok, token = pcall(access_token.new)
     if not ok or not token then
-      kong.log.err("error while creating token (invalid service account): ", token)
+      ngx.log(ngx.ERR, "error while creating token (invalid service account): ", token)
       return nil, "GCP_SERVICE_ACCOUNT invalid (invalid service account)"
     end
 
@@ -65,7 +65,7 @@ local function get(conf, resource, version)
 
     local pok, ok = pcall(GCP_ACCESS_TOKEN.refresh, GCP_ACCESS_TOKEN)
     if not pok or not ok then
-      kong.log.err("error while refreshing token: ", ok)
+      ngx.log(ngx.ERR, "error while refreshing token: ", ok)
       return nil, "GCP_SERVICE_ACCOUNT invalid (invalid service account)"
     end
   end
@@ -78,7 +78,7 @@ local function get(conf, resource, version)
   end
 
   if type(res) ~= "table" then
-    kong.log.err("error while retrieving secret from gcp secret manager: ", err or res)
+    ngx.log(ngx.ERR, "error while retrieving secret from gcp secret manager: ", err or res)
     return nil, "unable to retrieve secret from gcp secret manager (invalid response)"
   end
 
