@@ -235,7 +235,9 @@ local PREFIX_PATHS = {
   nginx_conf = {"nginx.conf"},
   nginx_kong_conf = {"nginx-kong.conf"},
   nginx_kong_stream_conf = {"nginx-kong-stream.conf"},
-  nginx_kong_lmdb_conf = {"nginx-kong-lmdb.conf"},
+  nginx_main_inject_conf = {"nginx-main-inject.conf"},
+  nginx_http_inject_conf = {"nginx-http-inject.conf"},
+  nginx_stream_inject_conf = {"nginx-stream-inject.conf"},
 
   kong_env = {".kong_env"},
   kong_process_secrets = {".kong_process_secrets"},

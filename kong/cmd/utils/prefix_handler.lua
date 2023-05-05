@@ -1,7 +1,9 @@
 local default_nginx_template = require "kong.templates.nginx"
 local kong_nginx_template = require "kong.templates.nginx_kong"
 local kong_nginx_stream_template = require "kong.templates.nginx_kong_stream"
-local kong_nginx_lmdb_template = require "kong.templates.nginx_kong_lmdb"
+local nginx_main_inject_template = require "kong.templates.nginx_main_inject"
+local nginx_http_inject_template = require "kong.templates.nginx_http_inject"
+local nginx_stream_inject_template = require "kong.templates.nginx_stream_inject"
 local system_constants = require "lua_system_constants"
 local process_secrets = require "kong.cmd.utils.process_secrets"
 local openssl_bignum = require "resty.openssl.bn"
@@ -296,10 +298,13 @@ local function compile_conf(kong_config, conf_template)
     return nil, "failed to compile nginx config template: " .. err
   end
 
-  return string.gsub(post_template, "(${%b{}})", function(w)
+  -- the second value(the count) should not be returned
+  local nginx_conf = string.gsub(post_template, "(${%b{}})", function(w)
     local name = w:sub(4, -3)
     return compile_env[name:lower()] or ""
   end)
+
+  return nginx_conf, nil
 end
 
 local function write_env_file(path, data)
@@ -388,13 +393,21 @@ local function compile_kong_stream_conf(kong_config)
   return compile_conf(kong_config, kong_nginx_stream_template)
 end
 
-local function compile_kong_lmdb_conf(kong_config)
-  return compile_conf(kong_config, kong_nginx_lmdb_template)
-end
-
 local function compile_nginx_conf(kong_config, template)
   template = template or default_nginx_template
   return compile_conf(kong_config, template)
+end
+
+local function compile_nginx_main_inject_conf(kong_config)
+  return compile_conf(kong_config, nginx_main_inject_template)
+end
+
+local function compile_nginx_http_inject_conf(kong_config)
+  return compile_conf(kong_config, nginx_http_inject_template)
+end
+
+local function compile_nginx_stream_inject_conf(kong_config)
+  return compile_conf(kong_config, nginx_stream_inject_template)
 end
 
 local function prepare_prefix(kong_config, nginx_custom_template_path, skip_write, write_process_secrets)
@@ -658,12 +671,26 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
   end
   pl_file.write(kong_config.nginx_kong_stream_conf, nginx_kong_stream_conf)
 
-  -- write Kong's lmdb NGINX conf
-  local nginx_kong_lmdb_conf, err = compile_kong_lmdb_conf(kong_config)
-  if not nginx_kong_lmdb_conf then
+  -- write NGINX MAIN inject conf
+  local nginx_main_inject_conf, err = compile_nginx_main_inject_conf(kong_config)
+  if not nginx_main_inject_conf then
     return nil, err
   end
-  pl_file.write(kong_config.nginx_kong_lmdb_conf, nginx_kong_lmdb_conf)
+  pl_file.write(kong_config.nginx_main_inject_conf, nginx_main_inject_conf)
+
+  -- write NGINX HTTP inject conf
+  local nginx_http_inject_conf, err = compile_nginx_http_inject_conf(kong_config)
+  if not nginx_http_inject_conf then
+    return nil, err
+  end
+  pl_file.write(kong_config.nginx_http_inject_conf, nginx_http_inject_conf)
+
+  -- write NGINX STREAM inject conf
+  local nginx_stream_inject_conf, err = compile_nginx_stream_inject_conf(kong_config)
+  if not nginx_stream_inject_conf then
+    return nil, err
+  end
+  pl_file.write(kong_config.nginx_stream_inject_conf, nginx_stream_inject_conf)
 
   -- testing written NGINX conf
   local ok, err = nginx_signals.check_conf(kong_config)
@@ -743,8 +770,10 @@ return {
   compile_conf = compile_conf,
   compile_kong_conf = compile_kong_conf,
   compile_kong_stream_conf = compile_kong_stream_conf,
-  compile_kong_lmdb_conf = compile_kong_lmdb_conf,
   compile_nginx_conf = compile_nginx_conf,
+  compile_nginx_main_inject_conf = compile_nginx_main_inject_conf,
+  compile_nginx_http_inject_conf = compile_nginx_http_inject_conf,
+  compile_nginx_stream_inject_conf = compile_nginx_stream_inject_conf,
   gen_default_ssl_cert = gen_default_ssl_cert,
   write_env_file = write_env_file,
 }

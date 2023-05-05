@@ -7,7 +7,7 @@ error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 $(el.name) $(el.value);
 > end
 
-include 'nginx-kong-lmdb.conf';
+include 'nginx-main-inject.conf';
 
 events {
     # injected nginx_events_* directives
