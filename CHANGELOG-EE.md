@@ -48,6 +48,8 @@ a copy. [KAG-739](https://konghq.atlassian.net/browse/KAG-739)
 * Fix the leak of UDP sockets in resty.dns.client. [FTI-4962](https://konghq.atlassian.net/browse/FTI-4962)
 * Fixed an issue where management of licenses via `/licenses/` would fail if current license is not valid.
   [FTI-4927](https://konghq.atlassian.net/browse/FTI-4927)
+* Add missing schema field `protocols` for `jwe-decrypt`, `oas-validation`, and `vault-auth`.
+  [KAG-754](https://konghq.atlassian.net/browse/KAG-754)
 * The systemd unit is incorrectly renamed to `kong.service` in 3.2.x.x versions, it's now reverted back to `kong-enterprise-edition.service` to keep consistent with previous releases. [KAG-878](https://konghq.atlassian.net/browse/KAG-878)
 
 #### Kong Manager
