@@ -321,7 +321,7 @@ local function group_by(t, f)
   for _, value in ipairs(t) do
     local key = f(value)
     if result[key] then
-      table.insert(result[key], value)
+      tb_insert(result[key], value)
     else
       result[key] = { value }
     end
@@ -335,7 +335,7 @@ local function split_route_by_path_into(route_and_service, routes_and_services_s
   local original_route = route_and_service.route
 
   if is_empty_field(original_route.paths) or #original_route.paths == 1 then
-    table.insert(routes_and_services_split, route_and_service)
+    tb_insert(routes_and_services_split, route_and_service)
     return
   end
 
@@ -358,7 +358,7 @@ local function split_route_by_path_into(route_and_service, routes_and_services_s
     cloned_route.route.paths = paths
     cloned_route.route.id = uuid_generator(original_route.id .. "#" .. tostring(index))
 
-    table.insert(routes_and_services_split, cloned_route)
+    tb_insert(routes_and_services_split, cloned_route)
   end
 end
 
