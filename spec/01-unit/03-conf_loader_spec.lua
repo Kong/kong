@@ -1535,24 +1535,22 @@ describe("Configuration loader", function()
       end)
 
       describe("lua_ssl_protocls", function()
-        it("sets both lua_ssl_protocls in http and stream subsystem to TLS 1.2-1.3 by default", function()
+        it("sets lua_ssl_protocls to TLS 1.2-1.3 by default", function()
           local conf, err = conf_loader()
           assert.is_nil(err)
           assert.is_table(conf)
 
-          assert.equal("TLSv1.1 TLSv1.2 TLSv1.3", conf.nginx_http_lua_ssl_protocols)
-          assert.equal("TLSv1.1 TLSv1.2 TLSv1.3", conf.nginx_stream_lua_ssl_protocols)
+          assert.equal("TLSv1.1 TLSv1.2 TLSv1.3", conf.lua_ssl_protocols)
         end)
 
-        it("sets both lua_ssl_protocls in http and stream subsystem to user specified value", function()
+        it("sets lua_ssl_protocls to user specified value", function()
           local conf, err = conf_loader(nil, {
             lua_ssl_protocols = "TLSv1.1"
           })
           assert.is_nil(err)
           assert.is_table(conf)
 
-          assert.equal("TLSv1.1", conf.nginx_http_lua_ssl_protocols)
-          assert.equal("TLSv1.1", conf.nginx_stream_lua_ssl_protocols)
+          assert.equal("TLSv1.1", conf.lua_ssl_protocols)
         end)
       end)
     end)
