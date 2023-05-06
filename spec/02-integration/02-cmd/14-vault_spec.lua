@@ -12,14 +12,18 @@ describe("kong vault #" .. strategy, function()
   end)
 
   it("vault help", function()
-    local ok, stderr, stdout = helpers.kong_exec("vault --help")
+    local ok, stderr, stdout = helpers.kong_exec("vault --help", {
+      prefix = helpers.test_conf.prefix,
+    })
     assert.matches("Usage: kong vault COMMAND [OPTIONS]", stderr, nil, true)
     assert.is_nil(stdout)
     assert.is_false(ok)
   end)
 
   it("vault get without params", function()
-    local ok, stderr, stdout = helpers.kong_exec("vault get")
+    local ok, stderr, stdout = helpers.kong_exec("vault get", {
+      prefix = helpers.test_conf.prefix,
+    })
     assert.matches("Error: the 'get' command needs a <reference> argument", stderr)
     assert.is_nil(stdout)
     assert.is_false(ok)
@@ -36,7 +40,9 @@ describe("kong vault #" .. strategy, function()
   end)
 
   it("vault get with non-existing key", function()
-    local ok, stderr, stdout = helpers.kong_exec("vault get env/none")
+    local ok, stderr, stdout = helpers.kong_exec("vault get env/none", {
+      prefix = helpers.test_conf.prefix,
+    })
     assert.matches("Error: unable to load value (none) from vault (env): not found [{vault://env/none}]", stderr, nil, true)
     assert.is_nil(stdout)
     assert.is_false(ok)
@@ -135,6 +141,17 @@ describe("kong vault #" .. strategy, function()
       end)
       helpers.setenv("SECRETS_TEST", "testvalue")
       ngx.sleep(3)
+
+      -- will fail without directives injected
+      local ok, stderr, stdout = helpers.kong_exec("vault get test-env/test --no-inject", {
+        prefix = helpers.test_conf.prefix,
+      })
+      assert.matches("unable to open DB for access: no LMDB environment defined", stderr, nil, true)
+      assert.matches("[{vault://test-env/nonexist}]", stderr, nil, true)
+      assert.is_nil(stdout)
+      assert.is_false(ok)
+
+      -- will succeed with directives injected
       local ok, stderr, stdout = helpers.kong_exec("vault get test-env/test", {
         prefix = helpers.test_conf.prefix,
       })
