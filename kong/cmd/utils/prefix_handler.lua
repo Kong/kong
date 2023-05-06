@@ -676,21 +676,21 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
   if not nginx_main_inject_conf then
     return nil, err
   end
-  pl_file.write(kong_config.nginx_main_inject_conf, nginx_main_inject_conf)
+  pl_file.write(kong_config.nginx_inject_conf, nginx_main_inject_conf)
 
   -- write NGINX HTTP inject conf
   local nginx_http_inject_conf, err = compile_nginx_http_inject_conf(kong_config)
   if not nginx_http_inject_conf then
     return nil, err
   end
-  pl_file.write(kong_config.nginx_http_inject_conf, nginx_http_inject_conf)
+  pl_file.write(kong_config.nginx_kong_inject_conf, nginx_http_inject_conf)
 
   -- write NGINX STREAM inject conf
   local nginx_stream_inject_conf, err = compile_nginx_stream_inject_conf(kong_config)
   if not nginx_stream_inject_conf then
     return nil, err
   end
-  pl_file.write(kong_config.nginx_stream_inject_conf, nginx_stream_inject_conf)
+  pl_file.write(kong_config.nginx_kong_stream_inject_conf, nginx_stream_inject_conf)
 
   -- testing written NGINX conf
   local ok, err = nginx_signals.check_conf(kong_config)
