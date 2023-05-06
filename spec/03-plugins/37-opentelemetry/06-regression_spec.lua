@@ -54,6 +54,7 @@ for _, strategy in helpers.each_strategy() do
           nginx_conf = "spec/fixtures/custom_nginx.template",
           plugins = "opentelemetry",
           tracing_instrumentations = "all",
+          tracing_sampling_rate = 1,
         }))
         -- we do not wait too long for the mock to receive the request
         mock1 = helpers.http_mock(mock_port1, {

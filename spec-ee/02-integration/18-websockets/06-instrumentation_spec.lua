@@ -70,6 +70,7 @@ for _, strategy in helpers.each_strategy() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "bundled,tcp-trace-exporter",
         tracing_instrumentations = types,
+        tracing_sampling_rate = 1,
       }, nil, nil, { http_mock = { ws = ws.mock_upstream() } }))
     end
 

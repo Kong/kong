@@ -379,8 +379,8 @@ openresty_path =
 
 opentelemetry_tracing = off
 tracing_instrumentations = off
-opentelemetry_tracing_sampling_rate = 1.0
-tracing_sampling_rate = 1.0
+opentelemetry_tracing_sampling_rate = 0.01
+tracing_sampling_rate = 0.01
 
 cluster_fallback_config_import = off
 cluster_fallback_config_storage =
