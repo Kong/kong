@@ -323,7 +323,7 @@ local function group_by(t, f)
     if result[key] then
       table.insert(result[key], value)
     else
-      result[key] = {value}
+      result[key] = { value }
     end
   end
   return result
