@@ -332,7 +332,9 @@ end
 -- split routes into multiple routes, one for each prefix length and one for all
 -- regular expressions
 local function split_route_by_path_into(route_and_service, routes_and_services_split)
-  if is_empty_field(route_and_service.route.paths) or #route_and_service.route.paths == 1 then
+  local original_route = route_and_service.route
+
+  if is_empty_field(original_route.paths) or #original_route.paths == 1 then
     table.insert(routes_and_services_split, route_and_service)
     return
   end
@@ -341,19 +343,21 @@ local function split_route_by_path_into(route_and_service, routes_and_services_s
   assert(tb_nkeys(route_and_service) == 2)
 
   local grouped_paths = group_by(
-    route_and_service.route.paths,
+    original_route.paths,
     function(path)
       return is_regex_magic(path) or #path
     end
   )
   for index, paths in pairs(grouped_paths) do
     local cloned_route = {
-      route = utils.shallow_copy(route_and_service.route),
+      route = utils.shallow_copy(original_route),
       service = route_and_service.service,
     }
-    cloned_route.route.original_route = route_and_service.route
+
+    cloned_route.route.original_route = original_route
     cloned_route.route.paths = paths
-    cloned_route.route.id = uuid_generator(route_and_service.route.id .. "#" .. tostring(index))
+    cloned_route.route.id = uuid_generator(original_route.id .. "#" .. tostring(index))
+
     table.insert(routes_and_services_split, cloned_route)
   end
 end
