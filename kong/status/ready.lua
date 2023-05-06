@@ -77,11 +77,6 @@ Checks if Kong is ready to serve.
 @return string|nil an error message if Kong is not ready, or nil otherwise.
 --]]
 local function is_ready()
-  -- control plane has no need to serve traffic
-  if is_control_plane then
-    return true
-  end
-
   local ok = kong.db:connect() -- for dbless, always ok
 
   if not ok then
@@ -90,7 +85,11 @@ local function is_ready()
 
   kong.db:close()
 
-  local router_rebuilds =
+  if is_control_plane then
+    return true
+  end
+
+  local router_rebuilds = 
       tonumber(kong_shm:get(ROUTERS_REBUILD_COUNTER_KEY)) or 0
   local plugins_iterator_rebuilds =
       tonumber(kong_shm:get(PLUGINS_REBUILD_COUNTER_KEY)) or 0
