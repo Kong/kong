@@ -335,6 +335,26 @@ describe("Configuration loader - enterprise", function()
       assert.is_nil(conf)
       assert.equal("portal_session_conf 'secret' must be type 'string'", err)
     end)
+
+    it("enforces ssl when pg_iam_auth is enabled", function ()
+      local conf = conf_loader(nil, {
+        pg_iam_auth = "on",
+      })
+
+      assert.equal(true, conf.pg_ssl)
+      assert.equal(true, conf.pg_ssl_required)
+    end)
+
+    it("deny mtls config when pg_iam_auth is enabled", function ()
+      local conf, err = conf_loader(nil, {
+        pg_iam_auth = "on",
+        pg_ssl_cert = "path/to/cert",
+        pg_ssl_cert_key = "path/to/key"
+      })
+
+      assert.is_nil(conf)
+      assert.equal("mTLS connection to postgres cannot be used when pg_iam_auth is enabled, so pg_ssl_cert and pg_ssl_cert_key must not be specified", err)
+    end)
   end)
 
   describe("vitals strategy", function()

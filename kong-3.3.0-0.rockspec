@@ -474,6 +474,9 @@ build = {
     ["kong.db.strategies.postgres.connector"] = "kong/db/strategies/postgres/connector.lua",
     ["kong.db.strategies.postgres.tags"] = "kong/db/strategies/postgres/tags.lua",
     ["kong.db.strategies.postgres.routes"] = "kong/db/strategies/postgres/routes.lua",
+    -- [[ XXX EE
+    ["kong.db.strategies.postgres.iam_token_handler"] = "kong/db/strategies/postgres/iam_token_handler.lua",
+    -- EE ]]
     ["kong.db.strategies.off"] = "kong/db/strategies/off/init.lua",
     ["kong.db.strategies.off.connector"] = "kong/db/strategies/off/connector.lua",
     ["kong.db.strategies.off.admins"] = "kong/db/strategies/off/admins.lua",

@@ -1306,6 +1306,16 @@
 
 #pg_user = kong                  # Postgres user.
 #pg_password =                   # Postgres user's password.
+#pg_iam_auth = off               # Determines whether the AWS IAM database
+                                 # Authentication will be used. When switch to
+                                 # `on`, the username defined in `pg_user` will
+                                 # be used as the database account, and the
+                                 # database connection will be forced to using
+                                 # TLS. `pg_password` will not be used when
+                                 # the switch is `on`. Note that the corresponding
+                                 # IAM policy must be correct, otherwise connecting
+                                 # will fail.
+
 #pg_database = kong              # The database name to connect to.
 
 #pg_schema =                     # The database schema to use. If unspecified,
@@ -1408,6 +1418,9 @@
                                  # read-only connection.
 
 #pg_ro_password = <pg_password>  # Same as `pg_password`, but for the
+                                 # read-only connection.
+
+#pg_ro_iam_auth = <pg_iam_auth>  # Same as `pg_iam_auth`, but for the
                                  # read-only connection.
 
 #pg_ro_database = <pg_database>  # Same as `pg_database`, but for the

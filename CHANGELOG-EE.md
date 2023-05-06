@@ -31,6 +31,9 @@ a copy. [KAG-739](https://konghq.atlassian.net/browse/KAG-739)
 - A change on license alert in Konnect mode. [KAG-922](https://konghq.atlassian.net/browse/KAG-922)
 * **JWT Signer**: support new configuration field `add_claims`, to add extra claims to JWT. [FTI-1993](https://konghq.atlassian.net/browse/FTI-1993)
 - A different alerting strategy of licensing expiry is made for dataplanes in Konnect mode. If there are at least 16 days left before expiration, no alerts will be issued. If within 16 days, a warning level alert will be issued everyday. If expired, a critical level alert will be issued everyday. [KAG-922](https://konghq.atlassian.net/browse/KAG-922)
+- Kong Enterprise now supports using the AWS IAM database authentication to connect to the RDS(Postgres) database.
+  [KAG-89](https://konghq.atlassian.net/browse/KAG-89)
+  [KAG-167](https://konghq.atlassian.net/browse/KAG-167)
 
 #### Kong Manager
 

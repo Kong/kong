@@ -11,8 +11,10 @@ local pgmoon       = require "pgmoon"
 local arrays       = require "pgmoon.arrays"
 local stringx      = require "pl.stringx"
 local semaphore    = require "ngx.semaphore"
-local kong_global = require "kong.global"
-local constants = require "kong.constants"
+local kong_global  = require "kong.global"
+local constants    = require "kong.constants"
+
+local iam_token_handler = require "kong.db.strategies.postgres.iam_token_handler"
 
 
 local setmetatable = setmetatable
@@ -210,6 +212,15 @@ local function reconnect(config)
 
   else
     config.socket_type = "nginx"
+  end
+
+  if config.iam_auth then
+    local password, err = iam_token_handler.get(config)
+    if not password then
+      return nil, err
+    end
+
+    config.password = password
   end
 
   local connection = pgmoon.new(config)
@@ -952,6 +963,7 @@ function _M.new(kong_config)
     timeout    = kong_config.pg_timeout,
     user       = kong_config.pg_user,
     password   = kong_config.pg_password,
+    iam_auth   = kong_config.pg_iam_auth,
     database   = kong_config.pg_database,
     schema      = kong_config.pg_schema or "",
     ssl         = kong_config.pg_ssl,
@@ -1012,6 +1024,7 @@ function _M.new(kong_config)
       timeout     = kong_config.pg_ro_timeout,
       user        = kong_config.pg_ro_user,
       password    = kong_config.pg_ro_password,
+      iam_auth    = kong_config.pg_ro_iam_auth,
       database    = kong_config.pg_ro_database,
       schema      = kong_config.pg_ro_schema,
       ssl         = kong_config.pg_ro_ssl,
@@ -1054,6 +1067,14 @@ function _M.new(kong_config)
 
     self.config_ro = config_ro
     self.sem_read = sem
+  end
+
+  -- Initialize IAM token handler in init phase
+  if self.config.iam_auth or (self.config_ro and self.config_ro.iam_auth) then
+    local _, err = iam_token_handler.init()
+    if err then
+      ngx.log(ngx.CRIT, "failed to initialize IAM token handler: ", err)
+    end
   end
 
   return setmetatable(self, _mt)

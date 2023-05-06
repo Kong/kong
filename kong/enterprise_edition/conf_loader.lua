@@ -201,6 +201,9 @@ local EE_CONF_INFERENCES = {
   fips = { typ = "boolean" },
 
   declarative_config_encryption_mode = {enum = {"off", "aes-256-gcm", "chacha20-poly1305"}},
+
+  pg_iam_auth = { typ = "boolean" },
+  pg_ro_iam_auth = { typ = "boolean" },
 }
 
 
@@ -808,6 +811,31 @@ local function validate_fips(conf, errors)
   return errors
 end
 
+local function validate_postgres_iam_auth(conf, errors)
+  if conf.pg_iam_auth then
+    conf.pg_ssl = true
+    conf.pg_ssl_required = true
+  end
+
+  if conf.pg_ssl and conf.pg_iam_auth and (conf.pg_ssl_cert or conf.pg_ssl_cert_key) then
+    errors[#errors + 1] = "mTLS connection to postgres cannot be used " ..
+                          "when pg_iam_auth is enabled, so pg_ssl_cert " ..
+                          "and pg_ssl_cert_key must not be specified"
+  end
+
+  if conf.pg_ro_iam_auth then
+    conf.pg_ro_ssl = true
+    conf.pg_ro_ssl_required = true
+  end
+
+  -- readonly mode has no cert and key override, so check main cert and key
+  if conf.pg_ro_iam_auth and conf.pg_ro_ssl and (conf.pg_ssl_cert or conf.pg_ssl_cert_key) then
+    errors[#errors + 1] = "mTLS connection to postgres cannot be used " ..
+                          "when pg_ro_iam_auth is enabled, so pg_ssl_cert " ..
+                          "and pg_ssl_cert_key must not be specified"
+  end
+end
+
 local function validate(conf, errors)
   validate_admin_gui_path(conf, errors)
   validate_admin_gui_authentication(conf, errors)
@@ -913,6 +941,8 @@ local function validate(conf, errors)
   validate_keyring(conf, errors)
 
   validate_fips(conf, errors)
+
+  validate_postgres_iam_auth(conf, errors)
 
   if conf.role ~= "data_plane" then
     if conf.route_validation_strategy == "static" and conf.database ~= "postgres" then
