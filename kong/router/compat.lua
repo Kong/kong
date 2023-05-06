@@ -262,22 +262,25 @@ local function get_priority(route)
   if not is_empty_field(paths) then
     match_weight = match_weight + 1
 
-    for index, p in ipairs(paths) do
-      if index == 1 then
-        if is_regex_magic(p) then
-          regex_url = true
+    local p = paths[1]
 
-        else
-          uri_length = #p
-        end
+    if is_regex_magic(p) then
+      regex_url = true
+
+    else
+      uri_length = #p
+    end
+
+    for i = 2, #paths do
+      p = paths[i]
+
+      if regex_url then
+        assert(is_regex_magic(p),
+               "cannot mix regex and non-regex paths in get_priority()")
 
       else
-        if regex_url then
-          assert(is_regex_magic(p), "cannot mix regex and non-regex routes in get_priority")
-
-        else
-          assert(#p == uri_length, "cannot mix different length prefixes in get_priority")
-        end
+        assert(#p == uri_length,
+               "cannot mix different length prefixes in get_priority()")
       end
     end
   end
