@@ -10,7 +10,7 @@ lua_socket_log_errors  off;
 lua_max_running_timers 4096;
 lua_max_pending_timers 16384;
 
-include 'nginx-http-inject.conf';
+include 'nginx-kong-inject.conf';
 
 lua_shared_dict kong                        5m;
 lua_shared_dict kong_locks                  8m;

@@ -11,7 +11,7 @@ lua_socket_log_errors  off;
 lua_max_running_timers 4096;
 lua_max_pending_timers 16384;
 
-include 'nginx-stream-inject.conf';
+include 'nginx-kong-stream-inject.conf';
 
 lua_shared_dict stream_kong                        5m;
 lua_shared_dict stream_kong_locks                  8m;
