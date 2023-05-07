@@ -51,6 +51,28 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      local service1_1 = bp.services:insert{
+        protocol = "http",
+        host     = helpers.mock_upstream_host,
+        port     = helpers.mock_upstream_port,
+      }
+
+      local route1_1 = bp.routes:insert {
+        hosts   = { "http_logging_tag.test" },
+        service = service1_1
+      }
+
+      bp.plugins:insert {
+        route = { id = route1_1.id },
+        name     = "http-log",
+        config   = {
+          http_endpoint = "http://" .. helpers.mock_upstream_host
+            .. ":"
+            .. helpers.mock_upstream_port
+            .. "/post_log/http_tag"
+        }
+      }
+
       local service1_2 = bp.services:insert{
         protocol = "http",
         host     = helpers.mock_upstream_host,
@@ -181,8 +203,6 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
-      helpers.clean_logfile()
-
       local grpc_service = assert(bp.services:insert {
         name = "grpc-service",
         url = helpers.grpcbin_url,
@@ -298,6 +318,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     before_each(function()
+      helpers.clean_logfile()
       proxy_client = helpers.proxy_client()
     end)
 
@@ -317,7 +338,7 @@ for _, strategy in helpers.each_strategy() do
 
       helpers.wait_until(function()
         local client = assert(helpers.http_client(helpers.mock_upstream_host,
-                                                  helpers.mock_upstream_port))
+          helpers.mock_upstream_port))
         local res = client:get("/read_log/http", {
           headers = {
             Accept = "application/json"
@@ -331,6 +352,34 @@ for _, strategy in helpers.each_strategy() do
           return true
         end
       end, 10)
+    end)
+
+    it("identifies plugin in queue handler logs", function()
+      local res = proxy_client:get("/status/200", {
+        headers = {
+          ["Host"] = "http_logging_tag.test"
+        }
+      })
+      assert.res_status(200, res)
+
+      helpers.wait_until(function()
+        local client = assert(helpers.http_client(helpers.mock_upstream_host,
+          helpers.mock_upstream_port))
+        local res = client:get("/read_log/http_tag", {
+          headers = {
+            Accept = "application/json"
+          }
+        })
+        local raw = assert.res_status(200, res)
+        local body = cjson.decode(raw)
+
+        if #body.entries == 1 then
+          assert.same("127.0.0.1", body.entries[1].client_ip)
+          return true
+        end
+      end, 10)
+
+      assert.logfile().has.line("http\\-log.*done processing queue")
     end)
 
     it("logs to HTTP with content-type 'application/json'", function()

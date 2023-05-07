@@ -455,7 +455,7 @@ function _M.execute(conf)
   message.cache_metrics = ngx.ctx.cache_metrics
 
   local ok, err = Queue.enqueue(
-    Queue.get_params(conf),
+    Queue.get_params(conf, "log_tag", "statsd plugin" .. kong.plugin.get_id()),
     send_entries_to_upstream_server,
     conf,
     message

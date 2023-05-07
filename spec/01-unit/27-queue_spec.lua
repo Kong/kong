@@ -1,4 +1,5 @@
 local Queue = require "kong.tools.queue"
+local utils = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 local mocker = require "spec.fixtures.mocker"
 local timerng = require "resty.timerng"
@@ -7,10 +8,8 @@ local queue_num = 1
 
 
 local function queue_conf(conf)
-  local defaulted_conf = {}
-  if conf.name then
-    defaulted_conf.name = conf.name
-  else
+  local defaulted_conf = utils.deep_copy(conf)
+  if not conf.name then
     defaulted_conf.name = "test-" .. tostring(queue_num)
     queue_num = queue_num + 1
   end
@@ -116,6 +115,29 @@ describe("plugin queue", function()
         end
       end,
       10)
+  end)
+
+  it("displays log_tag in log entries", function ()
+    local handler_invoked
+    local log_tag = utils.uuid()
+    Queue.enqueue(
+      queue_conf({ name = "log-tag", log_tag = log_tag }),
+      function (conf)
+        handler_invoked = true
+        return true
+      end,
+      nil,
+      "ENTRY"
+    )
+    wait_until_queue_done("handler-configuration")
+    helpers.wait_until(
+      function ()
+        if handler_invoked then
+          return true
+        end
+      end,
+      10)
+    assert.match_re(log_messages, "" .. log_tag .. ".*done processing queue")
   end)
 
   it("configuration changes are observed for older entries", function ()

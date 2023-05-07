@@ -25,6 +25,7 @@
 --   local queue_conf =              -- configuration for the queue itself (defaults shown unless noted)
 --     {
 --       name = "example",           -- name of the queue (required)
+--       log_tag = "identifyme",     -- tag string to identify plugin or application area in logs
 --       max_batch_size = 10,        -- maximum number of entries in one batch (default 1)
 --       max_coalescing_delay = 1,   -- maximum number of seconds after first entry before a batch is sent
 --       max_entries = 10,           -- maximum number of entries on the queue (default 10000)
@@ -174,7 +175,7 @@ end
 -- @param formatstring: format string, will get the queue name and ": " prepended
 -- @param ...: formatter arguments
 function Queue:log(handler, formatstring, ...)
-  local message = string.format("queue %s: %s", self.name, formatstring)
+  local message = string.format("[%s] queue %s: %s", self.log_tag or "", self.name, formatstring)
   if select('#', ...) > 0 then
     return handler(string.format(message, unpack({...})))
   else
@@ -304,7 +305,7 @@ end
 
 -- This function retrieves the queue parameters from a plugin configuration, converting legacy parameters
 -- to their new locations.
-function Queue.get_params(config)
+function Queue.get_params(config,...)
   local queue_config = config.queue or table_new(0, 5)
 
   if not queue_config.name then
@@ -350,6 +351,10 @@ function Queue.get_params(config)
       queue_config.name,
       "the batch_flush_delay parameter is deprecated, please update your "
         .. "configuration to use queue.max_coalescing_delay instead")
+  end
+
+  for i = 1, select("#",...), 2 do
+    queue_config[select(i, ...)] = select(i+1, ...)
   end
 
   return queue_config
