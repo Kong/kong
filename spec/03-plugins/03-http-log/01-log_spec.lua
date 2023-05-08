@@ -338,7 +338,7 @@ for _, strategy in helpers.each_strategy() do
 
       helpers.wait_until(function()
         local client = assert(helpers.http_client(helpers.mock_upstream_host,
-          helpers.mock_upstream_port))
+                                                  helpers.mock_upstream_port))
         local res = client:get("/read_log/http", {
           headers = {
             Accept = "application/json"
