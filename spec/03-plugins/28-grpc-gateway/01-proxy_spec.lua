@@ -203,7 +203,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("regression", function()
-      test("empty array in json #FTI-5002", function()
+      test("empty array in json #10801", function()
         local req_body = { array = {}, nullable = "ahaha" }
         local res, _ = proxy_client:post("/v1/echo", {
           headers = { ["Content-Type"] = "application/json" },
