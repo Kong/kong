@@ -15,8 +15,15 @@ return function(options)
   local meta = require "kong.meta"
 
 
-  require("cjson.safe").encode_sparse_array(nil, nil, 2^15)
+  local cjson = require("cjson.safe")
+  cjson.encode_sparse_array(nil, nil, 2^15)
+  
+  local pb = require "pb"
 
+  -- let pb decode arrays to table cjson.empty_array_mt metatable
+  -- so empty arrays are encoded as `[]` instead of `nil` or `{}` by cjson.
+  pb.option("decode_default_array")
+  pb.defaults("*array", cjson.empty_array_mt)
 
   if options.cli then
     -- disable the _G write guard alert log introduced in OpenResty 1.15.8.1
