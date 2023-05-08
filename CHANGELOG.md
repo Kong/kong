@@ -162,8 +162,12 @@
   [#10680](https://github.com/Kong/kong/pull/10680)
 - Tracing: fix an approximation issue that resulted in reduced precision of the balancer span start and end times.
   [#10681](https://github.com/Kong/kong/pull/10681)
+- Tracing: tracing_sampling_rate defaults to 0.01 (trace one of every 100 requests) instead of the previous 1
+  (trace all requests). Tracing all requests is inappropriate for most production systems
+  [#10774](https://github.com/Kong/kong/pull/10774)
 - Fix issue when stopping a Kong could error out if using Vault references
   [#10775](https://github.com/Kong/kong/pull/10775)
+
 
 #### Admin API
 
