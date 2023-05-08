@@ -1362,6 +1362,7 @@ describe("routes schema (flavor = traditional_compatible)", function()
     route = Routes:process_auto_fields(route, "insert")
     local ok, errs = Routes:validate_insert(route)
     assert.falsy(ok)
+    print(require("inspect")(errs))
     assert.truthy(errs["@entity"])
     assert.matches("Router Expression failed validation", errs["@entity"][1],
                    nil, true)
