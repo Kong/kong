@@ -69,7 +69,7 @@ lua_ssl_trusted_certificate '/kong/servroot/.ca_combined';
 
       local conf = assert(conf_loader(nil, {
         database = strategy,
-        prefix = helpers.test_conf.prefix,
+        prefix = "/kong/servroot",
       }))
       local cmd, err = construct_cmd(conf, cmd_name, args)
       assert.is_nil(err)
