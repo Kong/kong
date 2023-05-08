@@ -33,8 +33,7 @@ for _, strategy in helpers.each_strategy() do
         prefix = "serve_cp",
         cluster_listen = "127.0.0.1:9005",
         nginx_conf = "spec/fixtures/custom_nginx.template",
-
-        status_listen = "127.0.0.1:" .. cp_status_port
+        status_listen = "127.0.0.1:" .. cp_status_port,
       })
     end
 

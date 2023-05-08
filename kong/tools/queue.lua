@@ -25,6 +25,7 @@
 --   local queue_conf =              -- configuration for the queue itself (defaults shown unless noted)
 --     {
 --       name = "example",           -- name of the queue (required)
+--       log_tag = "identifyme",     -- tag string to identify plugin or application area in logs
 --       max_batch_size = 10,        -- maximum number of entries in one batch (default 1)
 --       max_coalescing_delay = 1,   -- maximum number of seconds after first entry before a batch is sent
 --       max_entries = 10,           -- maximum number of entries on the queue (default 10000)
@@ -64,7 +65,7 @@ local table_new = require("table.new")
 local MIN_WARNING_INTERVAL_SECONDS = 60
 
 
-local string_format = string.format
+
 local assert = assert
 local select = select
 local pairs = pairs
@@ -96,7 +97,7 @@ local Queue_mt = {
 
 
 local function make_queue_key(name)
-  return string_format("%s.%s", workspaces.get_workspace_id(), name)
+  return (workspaces.get_workspace_id() or "") .. "." .. name
 end
 
 
@@ -174,7 +175,7 @@ end
 -- @param formatstring: format string, will get the queue name and ": " prepended
 -- @param ...: formatter arguments
 function Queue:log(handler, formatstring, ...)
-  local message = string.format("queue %s: %s", self.name, formatstring)
+  local message = "[" .. (self.log_tag or "") .. "] queue " .. self.name .. ": " .. formatstring
   if select('#', ...) > 0 then
     return handler(string.format(message, unpack({...})))
   else
@@ -304,11 +305,18 @@ end
 
 -- This function retrieves the queue parameters from a plugin configuration, converting legacy parameters
 -- to their new locations.
-function Queue.get_params(config)
+function Queue.get_plugin_params(plugin_name, config, queue_name)
   local queue_config = config.queue or table_new(0, 5)
 
+  -- create a tag to put into log files that identifies the plugin instance
+  local log_tag = plugin_name .. " plugin " .. kong.plugin.get_id()
+  if config.plugin_instance_name then
+    log_tag = log_tag .. " (" .. config.plugin_instance_name .. ")"
+  end
+  queue_config.log_tag = log_tag
+
   if not queue_config.name then
-    queue_config.name = kong.plugin.get_id()
+    queue_config.name = queue_name or kong.plugin.get_id()
   end
 
   -- It is planned to remove the legacy parameters in Kong Gateway 4.0, removing
@@ -351,7 +359,6 @@ function Queue.get_params(config)
       "the batch_flush_delay parameter is deprecated, please update your "
         .. "configuration to use queue.max_coalescing_delay instead")
   end
-
   return queue_config
 end
 

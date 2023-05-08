@@ -78,7 +78,8 @@
   prepared to process user requests.
   Load balancers frequently utilize this functionality to ascertain
   Kong's availability to distribute incoming requests.
-  [#10610](https://github.com/Kong/kong/pull/10610)
+  [#10610](https://github.com/Kong/kong/pull/10610),
+  [#10787](https://github.com/Kong/kong/pull/10787)
 
 #### Plugins
 
