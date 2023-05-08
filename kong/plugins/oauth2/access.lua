@@ -365,7 +365,8 @@ local function authorize(conf)
             authenticated_userid = parameters[AUTHENTICATED_USERID],
             scope = scopes,
             challenge = challenge,
-            challenge_method = challenge_method
+            challenge_method = challenge_method,
+            plugin = { id  = kong.plugin.get_id() },
           }, {
             ttl = 300
           })
@@ -640,6 +641,17 @@ local function issue_token(conf)
           local err = validate_pkce_verifier(parameters, auth_code)
           if err then
             response_params = err
+          end
+        end
+
+        if not response_params[ERROR] and conf.global_credentials then
+          -- verify only if plugin is present to avoid existing codes being fails
+          if auth_code.plugin and
+             (kong.plugin.get_id() ~= auth_code.plugin.id) then
+            response_params = {
+              [ERROR] = "invalid_request",
+              error_description = "Invalid " .. CODE
+            }
           end
         end
 

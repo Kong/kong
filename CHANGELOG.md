@@ -190,7 +190,8 @@
   [#10663](https://github.com/Kong/kong/pull/10663)
 - **gRPC gateway**: `null` in the JSON payload caused an uncaught exception to be thrown during pb.encode.
   [#10687](https://github.com/Kong/kong/pull/10687)
-
+- **Oauth2**: prevent an authorization code created by one plugin instance to be exchanged for an access token by a different plugin instance.
+  [#10011](https://github.com/Kong/kong/pull/10011)
 
 #### PDK
 
