@@ -13,7 +13,6 @@ _G.kong = {
 
 local protoc = require "protoc"
 local pb = require "pb"
-pb.option("encode_default_values")
 local analytics = require "kong.analytics"
 
 local request_log = {
@@ -439,16 +438,6 @@ describe("proto buffer", function()
     local expected = {
       client_ip = "",
       started_at = 0,
-      upstream = {
-        upstream_uri = ""
-      },
-      request = {
-        header_user_agent = "",
-        header_host = "",
-        http_method = "",
-        body_size = 0,
-        uri = ""
-      },
       response = {
         http_status = 0,
         body_size = 0,
@@ -478,29 +467,7 @@ describe("proto buffer", function()
         ratelimit_enabled_month = false,
         ratelimit_enabled_year = false
       },
-      route = {
-        id = "",
-        name = ""
-      },
-      service = {
-        id = "",
-        name = "",
-        port = 0,
-        protocol = ""
-      },
-      latencies = {
-        kong_gateway_ms = 0,
-        upstream_ms = 0,
-        response_ms = 0
-      },
       tries = {},
-      consumer = {
-        id = "",
-      },
-      auth = {
-        id = "",
-        type = ""
-      }
     }
     assert.are.same(expected, decoded)
   end)
@@ -512,16 +479,6 @@ describe("proto buffer", function()
     local default = {
       client_ip = "",
       started_at = 0,
-      upstream = {
-        upstream_uri = ""
-      },
-      request = {
-        header_user_agent = "",
-        header_host = "",
-        http_method = "",
-        body_size = 0,
-        uri = ""
-      },
       response = {
         http_status = 0,
         body_size = 0,
@@ -551,29 +508,7 @@ describe("proto buffer", function()
         ratelimit_enabled_month = false,
         ratelimit_enabled_year = false
       },
-      route = {
-        id = "",
-        name = ""
-      },
-      service = {
-        id = "",
-        name = "",
-        port = 0,
-        protocol = ""
-      },
-      latencies = {
-        kong_gateway_ms = 0,
-        upstream_ms = 0,
-        response_ms = 0
-      },
       tries = {},
-      consumer = {
-        id = "",
-      },
-      auth = {
-        id = "",
-        type = ""
-      }
     }
     assert.are.same(default, decoded)
   end)
