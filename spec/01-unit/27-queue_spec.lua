@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local Queue = require "kong.tools.queue"
+local utils = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 local mocker = require "spec.fixtures.mocker"
 local timerng = require "resty.timerng"
@@ -14,10 +15,8 @@ local queue_num = 1
 
 
 local function queue_conf(conf)
-  local defaulted_conf = {}
-  if conf.name then
-    defaulted_conf.name = conf.name
-  else
+  local defaulted_conf = utils.deep_copy(conf)
+  if not conf.name then
     defaulted_conf.name = "test-" .. tostring(queue_num)
     queue_num = queue_num + 1
   end
@@ -75,7 +74,10 @@ describe("plugin queue", function()
           info = function(message) return log('INFO', message) end,
           warn = function(message) return log('WARN', message) end,
           err = function(message) return log('ERR', message) end,
-        }
+        },
+        plugin = {
+          get_id = function () return utils.uuid() end,
+        },
       },
       ngx = {
         ctx = {
@@ -122,6 +124,29 @@ describe("plugin queue", function()
         end
       end,
       10)
+  end)
+
+  it("displays log_tag in log entries", function ()
+    local handler_invoked
+    local log_tag = utils.uuid()
+    Queue.enqueue(
+      queue_conf({ name = "log-tag", log_tag = log_tag }),
+      function (conf)
+        handler_invoked = true
+        return true
+      end,
+      nil,
+      "ENTRY"
+    )
+    wait_until_queue_done("handler-configuration")
+    helpers.wait_until(
+      function ()
+        if handler_invoked then
+          return true
+        end
+      end,
+      10)
+    assert.match_re(log_messages, "" .. log_tag .. ".*done processing queue")
   end)
 
   it("configuration changes are observed for older entries", function ()
@@ -568,7 +593,7 @@ describe("plugin queue", function()
         name = "common-legacy-conversion-test",
       },
     }
-    local converted_parameters = Queue.get_params(legacy_parameters)
+    local converted_parameters = Queue.get_plugin_params("someplugin", legacy_parameters)
     assert.match_re(log_messages, 'the retry_count parameter no longer works, please update your configuration to use initial_retry_delay and max_retry_time instead')
     assert.equals(legacy_parameters.queue_size, converted_parameters.max_batch_size)
     assert.match_re(log_messages, 'the queue_size parameter is deprecated, please update your configuration to use queue.max_batch_size instead')
@@ -584,7 +609,7 @@ describe("plugin queue", function()
         name = "opentelemetry-legacy-conversion-test",
       },
     }
-    local converted_parameters = Queue.get_params(legacy_parameters)
+    local converted_parameters = Queue.get_plugin_params("someplugin", legacy_parameters)
     assert.equals(legacy_parameters.batch_span_count, converted_parameters.max_batch_size)
     assert.match_re(log_messages, 'the batch_span_count parameter is deprecated, please update your configuration to use queue.max_batch_size instead')
     assert.equals(legacy_parameters.batch_flush_delay, converted_parameters.max_coalescing_delay)
@@ -599,12 +624,12 @@ describe("plugin queue", function()
       },
     }
     for _ = 1,10 do
-      Queue.get_params(legacy_parameters)
+      Queue.get_plugin_params("someplugin", legacy_parameters)
     end
     assert.equals(1, count_matching_log_messages('the retry_count parameter no longer works'))
     now_offset = 1000
     for _ = 1,10 do
-      Queue.get_params(legacy_parameters)
+      Queue.get_plugin_params("someplugin", legacy_parameters)
     end
     assert.equals(2, count_matching_log_messages('the retry_count parameter no longer works'))
   end)
@@ -620,7 +645,7 @@ describe("plugin queue", function()
         max_coalescing_delay = 234,
       }
     }
-    local converted_parameters = Queue.get_params(legacy_parameters)
+    local converted_parameters = Queue.get_plugin_params("someplugin", legacy_parameters)
     assert.equals(123, converted_parameters.max_batch_size)
     assert.equals(234, converted_parameters.max_coalescing_delay)
   end)
