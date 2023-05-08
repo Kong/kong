@@ -583,6 +583,7 @@ build = {
     ["kong.plugins.oauth2.migrations.004_200_to_210"] = "kong/plugins/oauth2/migrations/004_200_to_210.lua",
     ["kong.plugins.oauth2.migrations.005_210_to_211"] = "kong/plugins/oauth2/migrations/005_210_to_211.lua",
     ["kong.plugins.oauth2.migrations.006_320_to_330"] = "kong/plugins/oauth2/migrations/006_320_to_330.lua",
+    ["kong.plugins.oauth2.migrations.007_320_to_330"] = "kong/plugins/oauth2/migrations/007_320_to_330.lua",
     ["kong.plugins.oauth2.migrations.enterprise"] = "kong/plugins/oauth2/migrations/enterprise/init.lua",
     ["kong.plugins.oauth2.migrations.enterprise.001_1500_to_2100"] = "kong/plugins/oauth2/migrations/enterprise/001_1500_to_2100.lua",
     ["kong.plugins.oauth2.migrations.enterprise.002_2200_to_2211"] = "kong/plugins/oauth2/migrations/enterprise/002_2200_to_2211.lua",
