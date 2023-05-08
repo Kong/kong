@@ -64,7 +64,8 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         route = { id = route1_1.id },
-        name     = "http-log",
+        name = "http-log",
+        instance_name = "my-plugin-instance-name",
         config   = {
           http_endpoint = "http://" .. helpers.mock_upstream_host
             .. ":"
@@ -354,7 +355,7 @@ for _, strategy in helpers.each_strategy() do
       end, 10)
     end)
 
-    it("identifies plugin in queue handler logs", function()
+    it("identifies plugin in queue handler logs #xxx", function()
       local res = proxy_client:get("/status/200", {
         headers = {
           ["Host"] = "http_logging_tag.test"
@@ -379,7 +380,7 @@ for _, strategy in helpers.each_strategy() do
         end
       end, 10)
 
-      assert.logfile().has.line("http\\-log.*done processing queue")
+      assert.logfile().has.line("http\\-log.*my-plugin-instance-name.*done processing queue")
     end)
 
     it("logs to HTTP with content-type 'application/json'", function()

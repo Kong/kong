@@ -310,8 +310,8 @@ function Queue.get_plugin_params(plugin_name, config, queue_name)
 
   -- create a tag to put into log files that identifies the plugin instance
   local log_tag = plugin_name .. " plugin " .. kong.plugin.get_id()
-  if config.instance_name then
-    log_tag = log_tag .. " (" .. config.instance_name .. ")"
+  if config.plugin_instance_name then
+    log_tag = log_tag .. " (" .. config.plugin_instance_name .. ")"
   end
   queue_config.log_tag = log_tag
 
