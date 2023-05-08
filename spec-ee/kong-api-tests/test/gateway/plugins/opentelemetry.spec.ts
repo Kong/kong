@@ -48,11 +48,13 @@ describe('Gateway Plugins: OpenTelemetry', function () {
     // enable kong opel tracing for requests for this test
     setGatewayContainerEnvVariable({
       KONG_TRACING_INSTRUMENTATIONS: 'request',
+      KONG_TRACING_SAMPLING_RATE: 1,
     });
     if (isHybrid) {
       setGatewayContainerEnvVariable(
         {
           KONG_TRACING_INSTRUMENTATIONS: 'request',
+          KONG_TRACING_SAMPLING_RATE: 1,
         },
         'kong-dp1'
       );
@@ -253,11 +255,13 @@ describe('Gateway Plugins: OpenTelemetry', function () {
   after(async function () {
     setGatewayContainerEnvVariable({
       KONG_TRACING_INSTRUMENTATIONS: 'off',
+      KONG_TRACING_SAMPLING_RATE: 0.01,
     });
     if (isHybrid) {
       setGatewayContainerEnvVariable(
         {
           KONG_TRACING_INSTRUMENTATIONS: 'off',
+          KONG_TRACING_SAMPLING_RATE: 0.01,
         },
         'kong-dp1'
       );
