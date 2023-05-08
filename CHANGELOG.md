@@ -107,6 +107,18 @@
 
 #### Plugins
 
+- **http-log, statsd, opentelemetry, datadog**: The queueing system
+  has been reworked, causing some plugin parameters to not function as expected
+  anymore. If you use queues on these plugin, new parameters must be configured.
+  The module `kong.tools.batch_queue` has been renamed to `kong.tools.batch` in
+  the process and the API was changed.  If your custom plugin uses queues, it must
+  be updated to use the new API.
+  [#10172](https://github.com/Kong/kong/pull/10172)
+- **http-log**: If the log server responds with a 3xx HTTP status code, the
+  plugin will consider it to be an error and retry according to the retry
+  configuration.  Previously, 3xx status codes would be interpreted as success,
+  causing the log entries to be dropped.
+  [#10172](https://github.com/Kong/kong/pull/10172)
 - **Serverless Functions**: `kong.cache` now points to a cache instance that is dedicated to the
   Serverless Functions plugins: it does not provide access to the global kong cache. Access to
   certain fields in kong.configuration has also been restricted.
@@ -298,23 +310,6 @@
 
 - Fixed an issue for tracing PDK where sample rate does not work.
   [#10485](https://github.com/Kong/kong/pull/10485)
-
-### Breaking Changes
-
-#### Plugins
-
-- **http-log, statsd, opentelemetry, datadog**: The queueing system
-  has been reworked, causing some plugin parameters to not function as expected
-  anymore. If you use queues on these plugin, new parameters must be configured.
-  The module `kong.tools.batch_queue` has been renamed to `kong.tools.batch` in
-  the process and the API was changed.  If your custom plugin uses queues, it must
-  be updated to use the new API.
-  [#10172](https://github.com/Kong/kong/pull/10172)
-- **http-log**: If the log server responds with a 3xx HTTP status code, the
-  plugin will consider it to be an error and retry according to the retry
-  configuration.  Previously, 3xx status codes would be interpreted as success,
-  causing the log entries to be dropped.
-  [#10172](https://github.com/Kong/kong/pull/10172)
 
 ### Changed
 
