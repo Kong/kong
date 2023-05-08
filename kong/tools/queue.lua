@@ -65,7 +65,7 @@ local table_new = require("table.new")
 local MIN_WARNING_INTERVAL_SECONDS = 60
 
 
-local string_format = string.format
+
 local assert = assert
 local select = select
 local pairs = pairs
@@ -97,7 +97,7 @@ local Queue_mt = {
 
 
 local function make_queue_key(name)
-  return string_format("%s.%s", workspaces.get_workspace_id(), name)
+  return (workspaces.get_workspace_id() or "") .. "." .. name
 end
 
 
@@ -175,7 +175,7 @@ end
 -- @param formatstring: format string, will get the queue name and ": " prepended
 -- @param ...: formatter arguments
 function Queue:log(handler, formatstring, ...)
-  local message = string.format("[%s] queue %s: %s", self.log_tag or "", self.name, formatstring)
+  local message = "[" .. (self.log_tag or "") .. "] queue " .. self.name .. ": " .. formatstring
   if select('#', ...) > 0 then
     return handler(string.format(message, unpack({...})))
   else
@@ -305,11 +305,18 @@ end
 
 -- This function retrieves the queue parameters from a plugin configuration, converting legacy parameters
 -- to their new locations.
-function Queue.get_params(config,...)
+function Queue.get_plugin_params(plugin_name, config, queue_name)
   local queue_config = config.queue or table_new(0, 5)
 
+  -- create a tag to put into log files that identifies the plugin instance
+  local log_tag = plugin_name .. " plugin " .. kong.plugin.get_id()
+  if config.instance_name then
+    log_tag = log_tag .. " (" .. config.instance_name .. ")"
+  end
+  queue_config.log_tag = log_tag
+
   if not queue_config.name then
-    queue_config.name = kong.plugin.get_id()
+    queue_config.name = queue_name or kong.plugin.get_id()
   end
 
   -- It is planned to remove the legacy parameters in Kong Gateway 4.0, removing
@@ -352,11 +359,6 @@ function Queue.get_params(config,...)
       "the batch_flush_delay parameter is deprecated, please update your "
         .. "configuration to use queue.max_coalescing_delay instead")
   end
-
-  for i = 1, select("#",...), 2 do
-    queue_config[select(i, ...)] = select(i+1, ...)
-  end
-
   return queue_config
 end
 

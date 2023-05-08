@@ -158,7 +158,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     })
     assert.is_truthy(entity)
     entity.config.queue.name = "legacy-conversion-test"
-    local conf = Queue.get_params(entity.config)
+    local conf = Queue.get_plugin_params("http-log", entity.config)
     assert.match_re(log_messages, "the retry_count parameter no longer works")
     assert.match_re(log_messages, "the queue_size parameter is deprecated")
     assert.match_re(log_messages, "the flush_timeout parameter is deprecated")

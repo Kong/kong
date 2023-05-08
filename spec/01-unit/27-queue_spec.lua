@@ -68,7 +68,10 @@ describe("plugin queue", function()
           info = function(message) return log('INFO', message) end,
           warn = function(message) return log('WARN', message) end,
           err = function(message) return log('ERR', message) end,
-        }
+        },
+        plugin = {
+          get_id = function () return utils.uuid() end,
+        },
       },
       ngx = {
         ctx = {
@@ -584,7 +587,7 @@ describe("plugin queue", function()
         name = "common-legacy-conversion-test",
       },
     }
-    local converted_parameters = Queue.get_params(legacy_parameters)
+    local converted_parameters = Queue.get_plugin_params("someplugin", legacy_parameters)
     assert.match_re(log_messages, 'the retry_count parameter no longer works, please update your configuration to use initial_retry_delay and max_retry_time instead')
     assert.equals(legacy_parameters.queue_size, converted_parameters.max_batch_size)
     assert.match_re(log_messages, 'the queue_size parameter is deprecated, please update your configuration to use queue.max_batch_size instead')
@@ -600,7 +603,7 @@ describe("plugin queue", function()
         name = "opentelemetry-legacy-conversion-test",
       },
     }
-    local converted_parameters = Queue.get_params(legacy_parameters)
+    local converted_parameters = Queue.get_plugin_params("someplugin", legacy_parameters)
     assert.equals(legacy_parameters.batch_span_count, converted_parameters.max_batch_size)
     assert.match_re(log_messages, 'the batch_span_count parameter is deprecated, please update your configuration to use queue.max_batch_size instead')
     assert.equals(legacy_parameters.batch_flush_delay, converted_parameters.max_coalescing_delay)
@@ -615,12 +618,12 @@ describe("plugin queue", function()
       },
     }
     for _ = 1,10 do
-      Queue.get_params(legacy_parameters)
+      Queue.get_plugin_params("someplugin", legacy_parameters)
     end
     assert.equals(1, count_matching_log_messages('the retry_count parameter no longer works'))
     now_offset = 1000
     for _ = 1,10 do
-      Queue.get_params(legacy_parameters)
+      Queue.get_plugin_params("someplugin", legacy_parameters)
     end
     assert.equals(2, count_matching_log_messages('the retry_count parameter no longer works'))
   end)
@@ -636,7 +639,7 @@ describe("plugin queue", function()
         max_coalescing_delay = 234,
       }
     }
-    local converted_parameters = Queue.get_params(legacy_parameters)
+    local converted_parameters = Queue.get_plugin_params("someplugin", legacy_parameters)
     assert.equals(123, converted_parameters.max_batch_size)
     assert.equals(234, converted_parameters.max_coalescing_delay)
   end)

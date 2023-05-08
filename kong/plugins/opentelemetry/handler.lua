@@ -163,7 +163,7 @@ function OpenTelemetryHandler:log(conf)
     end
 
     local ok, err = Queue.enqueue(
-      Queue.get_params(conf, "log_tag", "opentelemetry plugin " .. kong.plugin.get_id()),
+      Queue.get_plugin_params("opentelemetry", conf),
       http_export,
       conf,
       encode_span(span)

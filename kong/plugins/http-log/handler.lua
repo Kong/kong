@@ -188,11 +188,7 @@ function HttpLogHandler:log(conf)
     end
   end
 
-  local queue_conf = Queue.get_params(
-    conf,
-    "name", make_queue_name(conf),
-    "log_tag", "http-log plugin " .. kong.plugin.get_id()
-  )
+  local queue_conf = Queue.get_plugin_params("http-log", conf, make_queue_name(conf))
   kong.log.debug("Queue name automatically configured based on configuration parameters to: ", queue_conf.name)
 
   local ok, err = Queue.enqueue(
