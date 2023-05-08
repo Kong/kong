@@ -1356,7 +1356,7 @@ describe("routes schema (flavor = traditional_compatible)", function()
       id             = a_valid_uuid,
       name           = "my_route",
       protocols      = { "http" },
-      paths          = { "~/[abc/*/user$" },
+      paths          = { "~/([./*/user$" },
       service        = { id = another_uuid },
     }
     route = Routes:process_auto_fields(route, "insert")
@@ -1378,6 +1378,6 @@ describe("routes schema (flavor = traditional_compatible)", function()
     route = Routes:process_auto_fields(route, "insert")
     local ok, errs = Routes:validate_insert(route)
     assert.truthy(ok)
-    assert.falsy(errs["@entity"])
+    assert.is_nil(errs)
   end)
 end)
