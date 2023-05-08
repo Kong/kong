@@ -1,12 +1,15 @@
+local pl_path = require "pl.path"
 local helpers = require "spec.helpers"
 local conf_loader = require "kong.conf_loader"
 local inject_directives = require "kong.cmd.utils.inject_directives"
 local construct_cmd = inject_directives.construct_cmd
+local currentdir = pl_path.currentdir
 local fmt = string.format
 
 describe("construct_cmd", function()
   for _, strategy in helpers.all_strategies() do
     it("default prefix, database = " .. strategy, function()
+      local cwd = currentdir()
       local main_conf = [[
 ]]
       local main_conf_off = [[
@@ -23,7 +26,7 @@ lua_ssl_verify_depth   1;
 lua_ssl_trusted_certificate '/usr/local/kong/.ca_combined';
 lua_ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 ]]
-      local kong_path = "/kong/bin/kong"
+      local kong_path = cwd .. "/bin/kong"
       local cmd_name = "vault"
       local args = {
         "test-env/test",
@@ -47,23 +50,24 @@ lua_ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
     end)
 
     it("specified prefix, database = " .. strategy, function()
+      local cwd = currentdir()
       local main_conf = [[
 ]]
-      local main_conf_off = [[
-lmdb_environment_path /kong/servroot/dbless.lmdb;
+      local main_conf_off = fmt([[
+lmdb_environment_path %s/servroot/dbless.lmdb;
 lmdb_map_size         128m;
-]]
-      local http_conf = [[
+]], cwd)
+      local http_conf = fmt([[
 lua_ssl_verify_depth   1;
-lua_ssl_trusted_certificate '/kong/servroot/.ca_combined';
+lua_ssl_trusted_certificate '%s/servroot/.ca_combined';
 lua_ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
-]]
-      local stream_conf = [[
+]], cwd)
+      local stream_conf = fmt([[
 lua_ssl_verify_depth   1;
-lua_ssl_trusted_certificate '/kong/servroot/.ca_combined';
+lua_ssl_trusted_certificate '%s/servroot/.ca_combined';
 lua_ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
-]]
-      local kong_path = "/kong/bin/kong"
+]], cwd)
+      local kong_path = cwd .. "/bin/kong"
       local cmd_name = "vault"
       local args = {
         "test-env/test",
@@ -73,7 +77,7 @@ lua_ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 
       local conf = assert(conf_loader(nil, {
         database = strategy,
-        prefix = "/kong/servroot",
+        prefix = helpers.test_conf.prefix,
       }))
       local cmd, err = construct_cmd(conf, cmd_name, args)
       assert.is_nil(err)
