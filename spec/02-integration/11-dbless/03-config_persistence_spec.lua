@@ -142,7 +142,7 @@ describe("dbless persistence with a declarative config #off", function()
 
   it("doesn't load the persisted lmdb config if a declarative config is set on reload", function()
     assert(helpers.reload_kong("reload --prefix " .. helpers.test_conf.prefix, {
-      database   = "off",
+      database = "off",
       declarative_config = yaml_file,
     }))
     local res

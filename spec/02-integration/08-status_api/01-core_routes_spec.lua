@@ -175,7 +175,7 @@ services:
 end
 
 for _, strategy in helpers.each_strategy() do
-  describe("Status API DB-mode [#" .. strategy .. "#] with DB down", function()
+  describe("#db Status API DB-mode [#" .. strategy .. "#] with DB down", function()
     local custom_prefix = helpers.test_conf.prefix.."2"
 
     local status_api_port = helpers.get_available_port()
@@ -185,7 +185,7 @@ for _, strategy in helpers.each_strategy() do
     local status_client
 
     lazy_setup(function()
-      bp = helpers.get_db_utils(strategy == "off" and "postgres" or strategy, nil, {'prometheus'})
+      bp = helpers.get_db_utils(strategy, nil, {'prometheus'})
 
       local db_service = bp.services:insert{
         protocol = "tcp",
