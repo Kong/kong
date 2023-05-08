@@ -1356,16 +1356,18 @@ describe("routes schema (flavor = traditional_compatible)", function()
       id             = a_valid_uuid,
       name           = "my_route",
       protocols      = { "http" },
-      paths          = { "~/([./*/user$" },
+      paths          = { "~/[abc/*/user$" },
       service        = { id = another_uuid },
     }
     route = Routes:process_auto_fields(route, "insert")
     local ok, errs = Routes:validate_insert(route)
     assert.falsy(ok)
-    print("xxx = ".. require("inspect")(errs))
     assert.truthy(errs["paths"])
     assert.matches("invalid regex:", errs["paths"][1],
                    nil, true)
+
+    -- verified by `schema/typedefs.lua`
+    assert.falsy(errs["@entity"])
   end)
 
   it("don't fail when rust.regex update to 1.8", function()
