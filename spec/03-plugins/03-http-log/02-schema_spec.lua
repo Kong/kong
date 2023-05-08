@@ -17,7 +17,7 @@ end
 
 
 describe(PLUGIN_NAME .. ": (schema)", function()
-  local old_log
+  local unmock
   local log_messages
 
   before_each(function()
