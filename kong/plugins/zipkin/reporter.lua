@@ -108,7 +108,12 @@ function zipkin_reporter_methods:report(span)
     annotations = span.annotations,
   }
 
-  local ok, err = Queue.enqueue(Queue.get_params(self.conf), send_entries_to_zipkin, self.conf, zipkin_span)
+  local ok, err = Queue.enqueue(
+    Queue.get_plugin_params("zipkin", self.conf),
+    send_entries_to_zipkin,
+    self.conf,
+    zipkin_span
+  )
   if not ok then
     kong.log.err("failed to enqueue span: ", err)
   end
