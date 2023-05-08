@@ -16,10 +16,12 @@ lmdb_map_size         128m;
       local http_conf = [[
 lua_ssl_verify_depth   1;
 lua_ssl_trusted_certificate '/usr/local/kong/.ca_combined';
+lua_ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 ]]
       local stream_conf = [[
 lua_ssl_verify_depth   1;
 lua_ssl_trusted_certificate '/usr/local/kong/.ca_combined';
+lua_ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 ]]
       local kong_path = "/kong/bin/kong"
       local cmd_name = "vault"
@@ -54,10 +56,12 @@ lmdb_map_size         128m;
       local http_conf = [[
 lua_ssl_verify_depth   1;
 lua_ssl_trusted_certificate '/kong/servroot/.ca_combined';
+lua_ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 ]]
       local stream_conf = [[
 lua_ssl_verify_depth   1;
 lua_ssl_trusted_certificate '/kong/servroot/.ca_combined';
+lua_ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 ]]
       local kong_path = "/kong/bin/kong"
       local cmd_name = "vault"
