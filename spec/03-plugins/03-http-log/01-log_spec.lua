@@ -355,7 +355,7 @@ for _, strategy in helpers.each_strategy() do
       end, 10)
     end)
 
-    it("identifies plugin in queue handler logs #xxx", function()
+    it("identifies plugin in queue handler logs", function()
       local res = proxy_client:get("/status/200", {
         headers = {
           ["Host"] = "http_logging_tag.test"

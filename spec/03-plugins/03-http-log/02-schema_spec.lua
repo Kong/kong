@@ -2,7 +2,8 @@ local PLUGIN_NAME = "http-log"
 
 
 local Queue = require "kong.tools.queue"
-
+local utils = require "kong.tools.utils"
+local mocker = require "spec.fixtures.mocker"
 
 -- helper function to validate data against a schema
 local validate do
@@ -20,22 +21,36 @@ describe(PLUGIN_NAME .. ": (schema)", function()
   local log_messages
 
   before_each(function()
-    old_log = kong.log
     log_messages = ""
     local function log(level, message) -- luacheck: ignore
       log_messages = log_messages .. level .. " " .. message .. "\n"
     end
-    kong.log = {
-      debug = function(message) return log('DEBUG', message) end,
-      info = function(message) return log('INFO', message) end,
-      warn = function(message) return log('WARN', message) end,
-      err = function(message) return log('ERR', message) end,
-    }
+
+    mocker.setup(function(f)
+      unmock = f
+    end, {
+      kong = {
+        log = {
+          debug = function(message) return log('DEBUG', message) end,
+          info = function(message) return log('INFO', message) end,
+          warn = function(message) return log('WARN', message) end,
+          err = function(message) return log('ERR', message) end,
+        },
+        plugin = {
+          get_id = function () return utils.uuid() end,
+        },
+      },
+      ngx = {
+        ctx = {
+          -- make sure our workspace is nil to begin with to prevent leakage from
+          -- other tests
+          workspace = nil
+        },
+      }
+    })
   end)
 
-  after_each(function()
-    kong.log = old_log -- luacheck: ignore
-  end)
+  after_each(unmock)
 
   it("accepts minimal config with defaults", function()
     local ok, err = validate({
