@@ -33,7 +33,7 @@ configure_make(
         "@platforms//os:macos": {
             # don't use rule_foreign_cc's libtool as archiver as it seems to be a bug
             # see https://github.com/bazelbuild/rules_foreign_cc/issues/947
-            "AR": "",
+            "AR": "/usr/bin/ar",
         },
         "//conditions:default": {},
     }),

@@ -64,6 +64,9 @@ make(
         "@kong//:any-cross": [
             "HOST_CC=cc",
         ],
+        "@platforms//os:macos": [
+            "AR=/usr/bin/ar",
+        ],
         "//conditions:default": [
         ],
     }),
