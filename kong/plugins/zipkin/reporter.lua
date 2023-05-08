@@ -109,7 +109,7 @@ function zipkin_reporter_methods:report(span)
   }
 
   local ok, err = Queue.enqueue(
-    Queue.get_params(self.conf, "log_tag", "zipkin plugin" .. kong.plugin.get_id()),
+    Queue.get_params(self.conf, "log_tag", "zipkin plugin " .. kong.plugin.get_id()),
     send_entries_to_zipkin,
     self.conf,
     zipkin_span

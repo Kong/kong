@@ -111,7 +111,7 @@ function DatadogHandler:log(conf)
   end
 
   local ok, err = Queue.enqueue(
-    Queue.get_params(conf, "log_tag", "datadog plugin" .. kong.plugin.get_id()),
+    Queue.get_params(conf, "log_tag", "datadog plugin " .. kong.plugin.get_id()),
     send_entries_to_datadog,
     conf,
     kong.log.serialize()
