@@ -128,8 +128,10 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.response(res).has.status(200)
 
-      -- Check Output:
-      make_requests(proxy_client, "suffix")
+      assert.eventually(function()
+        -- Check Output:
+        make_requests(proxy_client, "suffix")
+      end).has_no_error("The vault configuration is not sticky")
 
       -- Patch Vault:
       local res = admin_client:patch("/vaults/secrets", {
