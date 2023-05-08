@@ -218,7 +218,7 @@ for _, strategy in helpers.each_strategy() do
       end)
   
       -- Bug found when test FTI-5002's fix. It will be fixed in another PR.
-      pending("empty message #FTI-5054", function()
+      pending("empty message #10802", function()
         local req_body = { array = {}, nullable = "" }
         local res, _ = proxy_client:post("/v1/echo", {
           headers = { ["Content-Type"] = "application/json" },
