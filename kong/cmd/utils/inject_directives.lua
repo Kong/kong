@@ -171,4 +171,7 @@ end
 
 return {
   respawn = respawn,
+
+  -- for test purpose
+  construct_cmd = construct_cmd,
 }
