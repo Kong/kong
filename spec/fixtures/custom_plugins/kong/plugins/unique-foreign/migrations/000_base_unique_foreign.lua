@@ -13,21 +13,4 @@ return {
       );
     ]],
   },
-
-  cassandra = {
-    up = [[
-      CREATE TABLE IF NOT EXISTS unique_foreigns (
-        id          uuid PRIMARY KEY,
-        name        text
-      );
-
-      CREATE TABLE IF NOT EXISTS unique_references (
-        id                 uuid   PRIMARY KEY,
-        note               text,
-        unique_foreign_id  uuid
-      );
-
-      CREATE INDEX IF NOT EXISTS ON unique_references(unique_foreign_id);
-    ]],
-  },
 }

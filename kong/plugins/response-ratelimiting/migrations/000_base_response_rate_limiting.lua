@@ -13,18 +13,4 @@ return {
       );
     ]],
   },
-
-  cassandra = {
-    up = [[
-      CREATE TABLE IF NOT EXISTS response_ratelimiting_metrics(
-        route_id    uuid,
-        service_id  uuid,
-        period_date timestamp,
-        period      text,
-        identifier  text,
-        value       counter,
-        PRIMARY KEY ((route_id, service_id, identifier, period_date, period))
-      );
-    ]],
-  },
 }

@@ -1,6 +1,6 @@
 # Testing the zipkin plugin:
 
-Run cassandra and postgres locally.
+Run postgres locally.
 
     docker run -it -p 15002:9000 -p 15003:9001 moul/grpcbin
     docker run -p 9411:9411 -it openzipkin/zipkin:2.19
