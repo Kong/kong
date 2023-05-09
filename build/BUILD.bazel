@@ -29,9 +29,11 @@ lualib_deps = [
 install_lualib_deps_cmd = "\n".join([
     """
     DEP=$(pwd)/external/%s
-    # TODO: fix atc_router makefile so that we can choose to only install lualib
-    sed -i -e '/libatc_router.so/d' ${DEP}/Makefile
-    INSTALL=/usr/bin/install make --silent -C ${DEP} LUA_LIB_DIR=${BUILD_DESTDIR}/openresty/lualib install
+    if [[ ${DEP} == "atc_router" ]]; then
+        INSTALL=/usr/bin/install make --silent -C ${DEP} LUA_LIB_DIR=${BUILD_DESTDIR}/openresty/lualib install-lualib
+    else
+        INSTALL=/usr/bin/install make --silent -C ${DEP} LUA_LIB_DIR=${BUILD_DESTDIR}/openresty/lualib install
+    fi
 """ % dep.lstrip("@").split("/")[0]
     for dep in lualib_deps
 ])
