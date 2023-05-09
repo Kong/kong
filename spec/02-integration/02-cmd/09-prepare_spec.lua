@@ -15,6 +15,15 @@ local fmt = string.format
 
 local TEST_PREFIX = "servroot_prepared_test"
 
+-- XXX EE workaround for license warning madness
+local function assert_no_stderr(logs)
+  for line in logs:gmatch("[^\r\n]+") do
+    assert.truthy(
+      line:find("Using development (e.g. not a release) license validation", nil, true),
+      "expected no stderr, found:\n" .. tostring(line)
+    )
+  end
+end
 
 describe("kong prepare", function()
   lazy_setup(function()
@@ -124,7 +133,7 @@ describe("kong prepare", function()
         local cmd = fmt("%s -p %s -c %s", nginx_bin, TEST_PREFIX, "nginx.conf")
         local ok, _, _, stderr = pl_utils.executeex(cmd)
 
-        assert.equal("", stderr)
+        assert_no_stderr(stderr)
         assert.truthy(ok)
         local admin_client = helpers.admin_client()
         local res = admin_client:get("/routes")

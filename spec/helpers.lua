@@ -2884,7 +2884,8 @@ do
         --
         -- This code attempts to filter out license warnings.
         local license_warning = "Please contact <support@konghq.com> to renew your license."
-        if from and line:find(license_warning, nil, true) then
+        local license_warning_dev = "Using development (e.g. not a release) license validation"
+        if from and (line:find(license_warning, nil, true) or line:find(license_warning_dev, nil, true)) then
           from = nil
         end
         -- ]] EE

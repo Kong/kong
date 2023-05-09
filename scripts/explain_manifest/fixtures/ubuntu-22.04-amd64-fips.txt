@@ -207,7 +207,6 @@
   - libc.so.6
   Runpath   : /usr/local/openresty/luajit/lib:/usr/local/kong/lib
   Modules   :
-  - kong-licensing/ngx_module
   - lua-kong-nginx-module
   - lua-kong-nginx-module/stream
   - lua-resty-events

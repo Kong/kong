@@ -108,7 +108,7 @@ We can learn more about Bazel query from [Bazel query](https://bazel.build/versi
 Following build options can be used to set specific features:
 
 - **`--//:licensing=true`**
-  - Default to `true`.
+  - Default to `false`.
   - Enable the licensing module.
 
 - **`--//:fips=false`**

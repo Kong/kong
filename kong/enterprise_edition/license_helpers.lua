@@ -70,6 +70,10 @@ function _M.filter_latest_license(lic_iter)
 end
 
 function _M.decode_license(str)
+  if not str or str == "" then
+    return nil
+  end
+
   local license, err = cjson.decode(str)
   if err then
     ngx.log(ngx.ERR, "[license-helpers] could not decode license JSON: " .. err)
@@ -177,6 +181,11 @@ function _M.read_license_info()
         return nil
       end
     end
+  end
+
+  -- enforce liblicense_utils ffi validation in lua land
+  if not _M.is_valid_license(license_data) then
+    return nil
   end
 
   return _M.decode_license(license_data)

@@ -262,7 +262,6 @@
   - ld-linux-aarch64.so.1
   Rpath     : /usr/local/openresty/luajit/lib:/usr/local/kong/lib
   Modules   :
-  - kong-licensing/ngx_module
   - lua-kong-nginx-module
   - lua-kong-nginx-module/stream
   - lua-resty-events

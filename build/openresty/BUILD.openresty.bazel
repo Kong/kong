@@ -146,11 +146,6 @@ CONFIGURE_OPTIONS = [
     "--add-module=$$EXT_BUILD_ROOT$$/distribution/lua-resty-openssl-aux-module",
     "--add-module=$$EXT_BUILD_ROOT$$/distribution/lua-resty-openssl-aux-module/stream",
 ] + select({
-    "@kong//:licensing_flag": [
-        "--add-module=$$EXT_BUILD_ROOT$$/distribution/kong-licensing/ngx_module",
-    ],
-    "//conditions:default": [],
-}) + select({
     "@kong//:arm64-linux-gnu-cross": [
         "--crossbuild=Linux:aarch64",
         "--with-endian=little",
