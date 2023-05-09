@@ -67,6 +67,15 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
+## Unreleased
+
+#### Core
+
+- Backported the openresty `ngx.print` chunk encoding buffer double free bug fix that
+  leads to the corruption of chunk-encoded response data.
+  [#10816](https://github.com/Kong/kong/pull/10816)
+  [#10824](https://github.com/Kong/kong/pull/10824)
+
 
 ## [3.1.2]
 
@@ -79,10 +88,6 @@
 - Fix an issue where balancer passive healthcheck would use wrong status code when kong changes status code
   from upstream in `header_filter` phase.
   [#10325](https://github.com/Kong/kong/pull/10325)
-- Backported the openresty `ngx.print` chunk encoding buffer double free bug fix that
-  leads to the corruption of chunk-encoded response data.
-  [#10816](https://github.com/Kong/kong/pull/10816)
-  [#10824](https://github.com/Kong/kong/pull/10824)
 
 #### Plugins
 
