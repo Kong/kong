@@ -3659,10 +3659,8 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
 
   truncate_tables(db, tables)
 
-  local nginx_conf = ""
-  if env.nginx_conf then
-    nginx_conf = " --nginx-conf " .. env.nginx_conf
-  end
+  env.nginx_conf = env.nginx_conf or "spec/fixtures/default_nginx.template"
+  local nginx_conf = " --nginx-conf " .. env.nginx_conf
 
   if dcbp and not env.declarative_config and not env.declarative_config_string then
     if not config_yml then

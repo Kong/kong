@@ -49,18 +49,18 @@ http {
     lua_shared_dict kong_core_db_cache_miss     12m;
     lua_shared_dict kong_db_cache               ${{MEM_CACHE_SIZE}};
     lua_shared_dict kong_db_cache_miss          12m;
-> if role == "control_plane" then
-    lua_shared_dict kong_clustering             5m;
+> if database == "cassandra" then
+    lua_shared_dict kong_cassandra              5m;
 > end
-    lua_shared_dict kong_mock_upstream_loggers  10m;
 
     lua_shared_dict kong_vitals_counters 5m;
     lua_shared_dict kong_vitals_lists   1m;
     lua_shared_dict kong_vitals 1m;
-    lua_shared_dict kong_counters       1m;
+    lua_shared_dict kong_counters   1m;
     lua_shared_dict kong_reports_consumers       1m;
     lua_shared_dict kong_reports_routes          1m;
     lua_shared_dict kong_reports_services        1m;
+    lua_shared_dict kong_reports_workspaces 1m;
     lua_shared_dict kong_keyring 5m;
     lua_shared_dict kong_profiling_state 1536k;  # 1.5 MBytes
 
@@ -85,6 +85,10 @@ http {
 
     init_worker_by_lua_block {
         Kong.init_worker()
+    }
+
+    exit_worker_by_lua_block {
+        Kong.exit_worker()
     }
 
 > if (role == "traditional" or role == "data_plane") and #proxy_listeners > 0 then
@@ -128,7 +132,7 @@ http {
 > end
 
         # injected nginx_proxy_* directives
-> for _, el in ipairs(nginx_proxy_directives) do
+> for _, el in ipairs(nginx_proxy_directives)  do
         $(el.name) $(el.value);
 > end
 > for _, ip in ipairs(trusted_ips) do
@@ -172,8 +176,6 @@ http {
             set $upstream_x_forwarded_path   '';
             set $upstream_x_forwarded_prefix '';
             set $kong_proxy_mode             'http';
-
-            set $set_request_id $request_id;
 
             proxy_http_version      1.1;
             proxy_buffering          on;
@@ -249,6 +251,7 @@ http {
             proxy_set_header      X-Forwarded-Proto  $upstream_x_forwarded_proto;
             proxy_set_header      X-Forwarded-Host   $upstream_x_forwarded_host;
             proxy_set_header      X-Forwarded-Port   $upstream_x_forwarded_port;
+            proxy_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
             proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
             proxy_set_header      X-Real-IP          $remote_addr;
             proxy_pass_header     Server;
@@ -322,10 +325,16 @@ http {
             default_type         '';
             set $kong_proxy_mode 'websocket';
 
-            lua_check_client_abort on;
+            # keep connections open for a brief window after the content handler exits
+            #
+            # this increases the likeliness of being able to perform a clean
+            # shutdown when terminating a WebSocket session under abnormal
+            # conditions (i.e. NGINX shutdown or other proxy-initiated close)
             lingering_close always;
             lingering_time 5s;
             lingering_timeout 1s;
+
+            lua_check_client_abort on;
 
             body_filter_by_lua_block {;}
 
@@ -354,7 +363,7 @@ http {
             body_filter_by_lua_block   {;}
             log_by_lua_block           {;}
 
-            proxy_http_version    1.1;
+            proxy_http_version 1.1;
             proxy_set_header      TE                 $upstream_te;
             proxy_set_header      Host               $upstream_host;
             proxy_set_header      Upgrade            $upstream_upgrade;
@@ -393,7 +402,6 @@ http {
     }
 > end -- (role == "traditional" or role == "data_plane") and #proxy_listeners > 0
 
-
 > if (role == "control_plane" or role == "traditional") and #admin_listen > 0 and #admin_gui_listeners > 0 then
 server {
     server_name kong_gui;
@@ -429,45 +437,13 @@ server {
       image/webp                            webp;
     }
 
+    access_log ${{ADMIN_GUI_ACCESS_LOG}};
+    error_log ${{ADMIN_GUI_ERROR_LOG}};
+
     gzip on;
     gzip_types text/plain text/css application/json application/javascript;
 
-    location ~* \.(jpg|jpeg|png|gif|ico|css|ttf|js)$ {
-        root gui;
-
-        expires 90d;
-        add_header Cache-Control 'public';
-        add_header X-Frame-Options 'sameorigin';
-        add_header X-XSS-Protection '1; mode=block';
-        add_header X-Content-Type-Options 'nosniff';
-        add_header X-Permitted-Cross-Domain-Policies 'master-only';
-        etag off;
-    }
-
-    location / {
-        root gui;
-
-        try_files $uri /index.html;
-
-        add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
-        add_header X-Frame-Options 'sameorigin';
-        add_header X-XSS-Protection '1; mode=block';
-        add_header X-Content-Type-Options 'nosniff';
-        add_header X-Permitted-Cross-Domain-Policies 'master-only';
-        etag off;
-
-        access_log ${{ADMIN_GUI_ACCESS_LOG}};
-        error_log ${{ADMIN_GUI_ERROR_LOG}};
-    }
-
-    location /robots.txt {
-        return 200 'User-agent: *\nDisallow: /';
-    }
-
-    location = /kconfig.js {
-        root gui_config;
-        expires -1;
-    }
+    include nginx-kong-gui-include.conf;
 }
 > end
 
@@ -625,7 +601,6 @@ server {
 > end
 > end
 
-
 > if (role == "control_plane" or role == "traditional") and #admin_listeners > 0 then
     server {
         charset UTF-8;
@@ -636,6 +611,12 @@ server {
 
         access_log ${{ADMIN_ACCESS_LOG}};
         error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
+
+        real_ip_header     ${{REAL_IP_HEADER}};
+        real_ip_recursive  ${{REAL_IP_RECURSIVE}};
+> for i = 1, #trusted_ips do
+    set_real_ip_from   $(trusted_ips[i]);
+> end
 
 > if admin_ssl_enabled then
 > for i = 1, #admin_ssl_cert do
@@ -650,36 +631,19 @@ server {
         $(el.name) $(el.value);
 > end
 
-        location /timers {
-            default_type application/json;
-            content_by_lua_block {
-                local body = {
-                    worker = {
-                        id = ngx.worker.id(),
-                        count = ngx.worker.count(),
-                    },
-                    stats = kong.timer:stats({
-                        verbose = true,
-                        flamegraph = true,
-                    })
-                }
-                ngx.say(require("cjson").encode(body))
-            }
-        }
-
         location / {
             default_type application/json;
             content_by_lua_block {
                 Kong.admin_content({
-                    acah = "Content-Type, ${{RBAC_AUTH_HEADER}}",
+                    acah = "Content-Type, ${{RBAC_AUTH_HEADER}}, Kong-Request-Type, Cache-Control",
                 })
             }
 
             log_by_lua_block {
                 local audit_log = require "kong.enterprise_edition.audit_log"
                 audit_log.admin_log_handler()
+                require("kong.tracing").flush()
             }
-
             header_filter_by_lua_block {
                 Kong.admin_header_filter()
             }
@@ -781,7 +745,13 @@ server {
         access_log ${{ADMIN_ACCESS_LOG}};
         error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
 
+> if cluster_mtls == "shared" then
         ssl_verify_client   optional_no_ca;
+> else
+        ssl_verify_client   on;
+        ssl_client_certificate ${{CLUSTER_CA_CERT}};
+        ssl_verify_depth     4;
+> end
         ssl_certificate     ${{CLUSTER_CERT}};
         ssl_certificate_key ${{CLUSTER_CERT_KEY}};
         ssl_session_cache   shared:ClusterSSL:10m;
@@ -803,7 +773,13 @@ server {
 
         access_log off;
 
+> if cluster_mtls == "shared" then
         ssl_verify_client   optional_no_ca;
+> else
+        ssl_verify_client   on;
+        ssl_client_certificate ${{CLUSTER_CA_CERT}};
+        ssl_verify_depth     4;
+> end
         ssl_certificate     ${{CLUSTER_CERT}};
         ssl_certificate_key ${{CLUSTER_CERT_KEY}};
         ssl_session_cache   shared:ClusterSSL:10m;
@@ -815,268 +791,6 @@ server {
         }
     }
 > end -- role == "control_plane"
-
-> if role ~= "data_plane" then
-    server {
-        server_name mock_upstream;
-
-        listen 15555;
-        listen 15556 ssl;
-
-> for i = 1, #ssl_cert do
-        ssl_certificate     $(ssl_cert[i]);
-        ssl_certificate_key $(ssl_cert_key[i]);
-> end
-        ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
-
-        set_real_ip_from 127.0.0.1;
-
-        location / {
-            content_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
-                ngx.status = 404
-                return mu.send_default_json_response()
-            }
-        }
-
-        location = / {
-            content_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
-                return mu.send_default_json_response({
-                    valid_routes = {
-                        ["/ws"]                         = "Websocket echo server",
-                        ["/get"]                        = "Accepts a GET request and returns it in JSON format",
-                        ["/xml"]                        = "Returns a simple XML document",
-                        ["/post"]                       = "Accepts a POST request and returns it in JSON format",
-                        ["/response-headers?:key=:val"] = "Returns given response headers",
-                        ["/cache/:n"]                   = "Sets a Cache-Control header for n seconds",
-                        ["/anything"]                   = "Accepts any request and returns it in JSON format",
-                        ["/request"]                    = "Alias to /anything",
-                        ["/delay/:duration"]            = "Delay the response for <duration> seconds",
-                        ["/basic-auth/:user/:pass"]     = "Performs HTTP basic authentication with the given credentials",
-                        ["/status/:code"]               = "Returns a response with the specified <status code>",
-                        ["/stream/:num"]                = "Stream <num> chunks of JSON data via chunked Transfer Encoding",
-                    },
-                })
-            }
-        }
-
-        location = /ws {
-            content_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
-                return mu.serve_web_sockets()
-            }
-        }
-
-        location = /ws/log {
-            content_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
-                return mu.retrieve_ws_log()
-            }
-        }
-
-        location /get {
-            access_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
-                return mu.filter_access_by_method("GET")
-            }
-            content_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
-                return mu.send_default_json_response()
-            }
-        }
-
-        location /xml {
-            content_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
-                local xml = [[
-                  <?xml version="1.0" encoding="UTF-8"?>
-                    <note>
-                      <body>Kong, Monolith destroyer.</body>
-                    </note>
-                ]]
-                return mu.send_text_response(xml, "application/xml")
-            }
-        }
-
-        location /post {
-            access_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
-                return mu.filter_access_by_method("POST")
-            }
-            content_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
-                return mu.send_default_json_response()
-            }
-        }
-
-        location = /response-headers {
-            access_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
-                return mu.filter_access_by_method("GET")
-            }
-            content_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
-                return mu.send_default_json_response({}, ngx.req.get_uri_args(0))
-            }
-        }
-
-        location = /hop-by-hop {
-            content_by_lua_block {
-                local header = ngx.header
-                header["Keep-Alive"]          = "timeout=5, max=1000"
-                header["Proxy"]               = "Remove-Me"
-                header["Proxy-Connection"]    = "close"
-                header["Proxy-Authenticate"]  = "Basic"
-                header["Proxy-Authorization"] = "Basic YWxhZGRpbjpvcGVuc2VzYW1l"
-                header["Transfer-Encoding"]   = "chunked"
-                header["Content-Length"]      = nil
-                header["TE"]                  = "trailers, deflate;q=0.5"
-                header["Trailer"]             = "Expires"
-                header["Upgrade"]             = "example/1, foo/2"
-
-                ngx.print("hello\r\n\r\nExpires: Wed, 21 Oct 2015 07:28:00 GMT\r\n\r\n")
-                ngx.exit(200)
-            }
-        }
-
-        location ~ "^/cache/(?<n>\d+)$" {
-            content_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
-                return mu.send_default_json_response({}, {
-                    ["Cache-Control"] = "public, max-age=" .. ngx.var.n,
-                })
-            }
-        }
-
-        location ~ "^/basic-auth/(?<username>[a-zA-Z0-9_]+)/(?<password>.+)$" {
-            access_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
-                return mu.filter_access_by_basic_auth(ngx.var.username,
-                                                      ngx.var.password)
-            }
-            content_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
-                return mu.send_default_json_response({
-                    authenticated = true,
-                    user          = ngx.var.username,
-                })
-            }
-        }
-
-        location ~ "^/(request|anything)" {
-            content_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
-                return mu.send_default_json_response()
-            }
-        }
-
-        location ~ "^/delay/(?<delay_seconds>\d{1,3})$" {
-            content_by_lua_block {
-                local mu            = require "spec.fixtures.mock_upstream"
-                local delay_seconds = tonumber(ngx.var.delay_seconds)
-                if not delay_seconds then
-                    return ngx.exit(ngx.HTTP_NOT_FOUND)
-                end
-
-                ngx.sleep(delay_seconds)
-
-                return mu.send_default_json_response({
-                    delay = delay_seconds,
-                })
-            }
-        }
-
-        location ~ "^/status/(?<code>\d{3})$" {
-            content_by_lua_block {
-                local mu   = require "spec.fixtures.mock_upstream"
-                local code = tonumber(ngx.var.code)
-                if not code then
-                    return ngx.exit(ngx.HTTP_NOT_FOUND)
-                end
-                ngx.status = code
-                return mu.send_default_json_response({
-                  code = code,
-                })
-            }
-        }
-
-        location ~ "^/stream/(?<num>\d+)$" {
-            content_by_lua_block {
-                local mu  = require "spec.fixtures.mock_upstream"
-                local rep = tonumber(ngx.var.num)
-                local res = require("cjson").encode(mu.get_default_json_response())
-
-                ngx.header["X-Powered-By"] = "mock_upstream"
-                ngx.header["Content-Type"] = "application/json"
-
-                for i = 1, rep do
-                  ngx.say(res)
-                end
-            }
-        }
-
-        location ~ "^/post_log/(?<logname>[a-z0-9_]+)$" {
-            content_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
-                return mu.store_log(ngx.var.logname)
-            }
-        }
-
-        location ~ "^/post_auth_log/(?<logname>[a-z0-9_]+)/(?<username>[a-zA-Z0-9_]+)/(?<password>.+)$" {
-            access_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
-                return mu.filter_access_by_basic_auth(ngx.var.username,
-                                                      ngx.var.password)
-            }
-            content_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
-                return mu.store_log(ngx.var.logname)
-            }
-        }
-
-        location ~ "^/read_log/(?<logname>[a-z0-9_]+)$" {
-            content_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
-                return mu.retrieve_log(ngx.var.logname)
-            }
-        }
-
-        location ~ "^/count_log/(?<logname>[a-z0-9_]+)$" {
-            content_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
-                return mu.count_log(ngx.var.logname)
-            }
-        }
-
-        location ~ "^/reset_log/(?<logname>[a-z0-9_]+)$" {
-            content_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
-                return mu.reset_log(ngx.var.logname)
-            }
-        }
-
-        location = /echo_sni {
-            return 200 'SNI=$ssl_server_name\n';
-        }
-
-        location = /ocsp {
-            content_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
-                return mu.handle_ocsp()
-            }
-        }
-
-        location = /set_ocsp {
-            content_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
-                return mu.set_ocsp(ngx.var.arg_status)
-            }
-        }
-    }
-> end -- role ~= "data_plane"
-
-    include '*.http_mock';
 
     server {
         charset UTF-8;
@@ -1118,6 +832,9 @@ stream {
     lua_shared_dict stream_kong_core_db_cache_miss     12m;
     lua_shared_dict stream_kong_db_cache               ${{MEM_CACHE_SIZE}};
     lua_shared_dict stream_kong_db_cache_miss          12m;
+> if database == "cassandra" then
+    lua_shared_dict stream_kong_cassandra              5m;
+> end
 
     lua_shared_dict stream_kong_vitals_counters 50m;
     lua_shared_dict stream_kong_counters 50m;

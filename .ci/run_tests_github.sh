@@ -74,6 +74,10 @@ function print_memusage {
 }
 trap print_memusage EXIT
 
+if [[ "$KONG_TEST_COVERAGE" = true ]]; then
+    export TEST_CMD="$TEST_CMD --keep-going"
+fi
+
 if [ "$TEST_SUITE" == "integration" ]; then
     if [[ "$TEST_SPLIT" == first-CE ]]; then
         # GitHub Actions, run first batch of integration tests
