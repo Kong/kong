@@ -187,33 +187,6 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      -- XXX EE include workspaces in tests [[
-      local ws = bp.workspaces:insert{
-        name = "ws1"
-      }
-
-      local service5 = bp.services:insert_ws({
-        protocol = "http",
-        host     = helpers.mock_upstream_host,
-        port     = helpers.mock_upstream_port,
-      }, ws)
-
-      local route5 = bp.routes:insert_ws( {
-        protocols = { "http" },
-        paths     ={"/wname_test"},
-        service = service5
-      }, ws)
-
-      bp.plugins:insert_ws ({
-        route = { id = route5.id },
-        name     = "file-log",
-        config   = {
-          path   = FILE_LOG_PATH,
-          reopen = true,
-        }
-      }, ws)
-      -- ]] EE
-
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -260,27 +233,6 @@ for _, strategy in helpers.each_strategy() do
       assert.is_number(log_message.response.size)
     end)
 
-    -- XXX EE include workspaces in tests [[
-    it("includes workspace_name 'ws1' in payload",function ()
-      local uuid = utils.random_string()
-
-      -- Making the request
-      local res = assert(proxy_client:send({
-        method = "GET",
-        path = "/wname_test",
-        headers = {
-          ["file-log-uuid"] = uuid
-        }
-      }))
-      assert.res_status(200, res)
-
-      local log_message = wait_for_json_log_entry()
-      assert.same("127.0.0.1", log_message.client_ip)
-      assert.same(uuid, log_message.request.headers["file-log-uuid"])
-      assert.same("ws1", log_message.workspace_name)
-    end)
-    -- ]] EE
-
     describe("custom log values by lua", function()
       it("logs custom values to file", function()
         local uuid = utils.random_string()
@@ -302,10 +254,6 @@ for _, strategy in helpers.each_strategy() do
         assert.is_number(log_message.request.size)
         assert.is_number(log_message.response.size)
         assert.same(123, log_message.new_field)
-
-        -- XXX EE include workspaces in tests [[
-        assert.same("default", log_message.workspace_name)
-        -- ]] EE
       end)
 
       it("unsets existing log values", function()
