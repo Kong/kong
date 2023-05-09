@@ -19,14 +19,13 @@ describe("migrations schema", function()
 
   for _, strategy in helpers.each_strategy({"postgres", "cassandra"}) do
 
-    it("requires at least one field of pg.up, pg.up_f, pg.teardown, c.up, c.up_f, c.teardown", function()
+    it("requires at least one field of pg.up, pg.up_f, pg.teardown", function()
       local t = {}
 
       local ok, errs = MigrationsSchema:validate(t)
       assert.is_nil(ok)
       assert.same({"at least one of these fields must be non-empty: " ..
-        "'postgres.up', 'postgres.up_f', 'postgres.teardown', 'cassandra.up', 'cassandra.up_f', " ..
-        "'cassandra.teardown'" },
+        "'postgres.up', 'postgres.up_f', 'postgres.teardown'" },
         errs["@entity"])
     end)
 

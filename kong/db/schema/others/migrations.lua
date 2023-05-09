@@ -14,7 +14,7 @@ return {
     },
     {
       cassandra = {
-        type = "record", required = true,
+        type = "record",
         fields = {
           { up = { type = "string", len_min = 0 } },
           { up_f = { type = "function" } },
@@ -26,8 +26,7 @@ return {
   entity_checks = {
     {
       at_least_one_of = {
-        "postgres.up", "postgres.up_f", "postgres.teardown",
-        "cassandra.up", "cassandra.up_f", "cassandra.teardown"
+        "postgres.up", "postgres.up_f", "postgres.teardown"
       },
     },
   },
