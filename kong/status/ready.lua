@@ -89,7 +89,7 @@ local function is_ready()
     return true
   end
 
-  local router_rebuilds = 
+  local router_rebuilds =
       tonumber(kong_shm:get(ROUTERS_REBUILD_COUNTER_KEY)) or 0
   local plugins_iterator_rebuilds =
       tonumber(kong_shm:get(PLUGINS_REBUILD_COUNTER_KEY)) or 0

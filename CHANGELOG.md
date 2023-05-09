@@ -61,8 +61,8 @@
   [#10385](https://github.com/Kong/kong/pull/10385)
 - Request and response buffering options are now enabled for incoming HTTP 2.0 requests too.
   Thanks [@PidgeyBE](https://github.com/PidgeyBE) for contributing this change.
-  [#10595](https://github.com/Kong/kong/pull/10595)
   [#10204](https://github.com/Kong/kong/pull/10204)
+  [#10595](https://github.com/Kong/kong/pull/10595)
 - Add `KONG_UPSTREAM_DNS_TIME` to `kong.ctx` so that we can record the time it takes for DNS
   resolution when Kong proxies to upstream.
   [#10355](https://github.com/Kong/kong/pull/10355)
@@ -72,10 +72,6 @@
   [#10288](https://github.com/Kong/kong/pull/10288)
 - Added new span attribute `http.client_ip` to capture the client IP when behind a proxy.
   [#10723](https://github.com/Kong/kong/pull/10723)
-  [#10204](https://github.com/Kong/kong/pull/10204)
-- Tracing: tracing_sampling_rate defaults to 0.01 (trace one of every 100 requests) instead of the previous 1
-  (trace all requests). Tracing all requests is inappropriate for most production systems
-  [#10774](https://github.com/Kong/kong/pull/10774)
 
 #### Admin API
 
@@ -166,6 +162,9 @@
   [#10680](https://github.com/Kong/kong/pull/10680)
 - Tracing: fix an approximation issue that resulted in reduced precision of the balancer span start and end times.
   [#10681](https://github.com/Kong/kong/pull/10681)
+- Tracing: tracing_sampling_rate defaults to 0.01 (trace one of every 100 requests) instead of the previous 1
+  (trace all requests). Tracing all requests is inappropriate for most production systems
+  [#10774](https://github.com/Kong/kong/pull/10774)
 - Fix issue when stopping a Kong could error out if using Vault references
   [#10775](https://github.com/Kong/kong/pull/10775)
 - Fix issue where Vault configuration stayed sticky and cached even when configurations were changed.

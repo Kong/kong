@@ -378,8 +378,8 @@ allow_inconsistent_data_plane_plugins = off
 openresty_path =
 
 opentelemetry_tracing = off
-tracing_instrumentations = off
 opentelemetry_tracing_sampling_rate = 0.01
+tracing_instrumentations = off
 tracing_sampling_rate = 0.01
 
 cluster_fallback_config_import = off

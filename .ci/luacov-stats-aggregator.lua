@@ -8,7 +8,7 @@
 -- Aggregates stats from multiple luacov stat files.
 -- Example stats for a 12 lines file `my/file.lua`
 -- that received hits on lines 3, 4, 9:
--- 
+--
 -- ["my/file.lua"] = {
 --   [3] = 1,
 --   [4] = 3,

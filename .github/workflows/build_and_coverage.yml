@@ -73,7 +73,6 @@ jobs:
       run: |
           source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           bin/busted spec/01-unit spec-ee/01-unit --coverage
-   
     - name: Archive coverage stats file
       uses: actions/upload-artifact@v3
       if: success()
