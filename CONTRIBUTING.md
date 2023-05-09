@@ -394,7 +394,7 @@ A few guidelines when writing tests:
   unrelated behaviors at the same time
 - Run tests related to the datastore against all supported databases
 
-And a few recommendations, when asserting types:
+And a few recommendations , when asserting types:
 
 ```lua
 -- bad
