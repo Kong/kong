@@ -57,7 +57,6 @@ jobs:
       release-label: ${{ steps.build-info.outputs.release-label || '' }}
       deploy-environment: ${{ steps.build-info.outputs.deploy-environment }}
       matrix: ${{ steps.build-info.outputs.matrix }}
-      arch: ${{ steps.build-info.outputs.arch }}
       gh-release-name: ${{ steps.build-info.outputs.gh-release-name }}
       gh-release-tag-name: ${{ steps.build-info.outputs.gh-release-tag-name }}
 
@@ -106,14 +105,6 @@ jobs:
         fi
 
         echo "matrix=$(yq -I=0 -o=json $matrix_file)" >> $GITHUB_OUTPUT
-
-        arch='amd64'
-        if [[ '${{ matrix.label }}' == *'arm64' ]]; then
-          arch='arm64'
-        fi
-
-        echo "arch=$arch"
-        echo "arch=$arch" >> $GITHUB_OUTPUT
 
         cat $GITHUB_OUTPUT
 
@@ -486,11 +477,11 @@ jobs:
         tag_name: "${{ needs.metadata.outputs.gh-release-tag-name }}"
         prerelease: true
         files: |
-            kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-cis-report.json
-            kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-cve-report.json
-            kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-cve-report.sarif
-            kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-sbom.cyclonedx.json
-            kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-${{ needs.metadata.outputs.arch }}-sbom.spdx.json
+            kong-*-${{ matrix.label }}-linux-*-cis-report.json
+            kong-*-${{ matrix.label }}-linux-*-cve-report.json
+            kong-*-${{ matrix.label }}-linux-*-cve-report.sarif
+            kong-*-${{ matrix.label }}-linux-*-sbom.cyclonedx.json
+            kong-*-${{ matrix.label }}-linux-*-sbom.spdx.json
 
   smoke-tests:
     name: Smoke Tests - ${{ matrix.label }}
@@ -639,9 +630,19 @@ jobs:
         name: ${{ matrix.artifact-from }}-packages
         path: bazel-bin/pkg
 
+    - name: Set package architecture
+      id: pkg-arch
+      run: |
+        arch='amd64'
+        if [[ '${{ matrix.label }}' == *'arm64' ]]; then
+          arch='arm64'
+        fi
+        echo "arch=$arch"
+        echo "arch=$arch" >> $GITHUB_OUTPUT
+
     - name: Upload Packages to PULP
       env:
-        ARCHITECTURE: ${{ needs.metadata.outputs.arch }}
+        ARCHITECTURE: ${{ steps.pkg-arch.outputs.arch }}
         OFFICIAL_RELEASE: ${{ github.event.inputs.official }}
         PULP_HOST: https://api.download.konghq.com
         PULP_USERNAME: admin
@@ -654,10 +655,23 @@ jobs:
         PACKAGE_TYPE: ${{ matrix.package }}
         VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
       run: |
+        # uploading package files with filenames that don't match the
+        # architecture of their contents is a re-occuring problem for us
+        #
+        # this test fails the build if the architecture deduced from
+        # matrix.label (in "Set package architecture" above) does not appear in
+        # the matrix.aritfact field
+        if echo "$ARTIFACT" | grep -v "$ARCHITECTURE"; then
+          echo "::error:: mismatched matrix artifact and matrix label architrecures"
+          echo 'failing to prevent upload of incorrectly named package file'
+          exit 1
+        fi
+
         if [[ ${{ matrix.label }} == *-fips ]]; then
           # this is required for rpm and apk packages, but not for deb
           export KONG_PACKAGE_NAME_OVERRIDE=kong-enterprise-edition-fips
         fi
+
         scripts/release-kong.sh
 
   release-images:
