@@ -10,6 +10,7 @@ local helpers    = require "spec.helpers"
 local ws         = require "spec-ee.fixtures.websocket"
 local ee_helpers = require "spec-ee.helpers"
 local cjson      = require "cjson"
+local pretty     = require "pl.pretty"
 
 local fmt = string.format
 
@@ -28,6 +29,28 @@ local function send_ws()
   conn:close()
   return thread
 end
+
+local function has_span(name, spans)
+  for _, span in ipairs(spans) do
+    if span.name == name then
+      return true
+    end
+  end
+  return false
+end
+
+local function assert_has_span(name, spans)
+  local found = has_span(name, spans)
+  assert.is_true(found, fmt("\nExpected to find %q span in:\n%s\n",
+                            name, pretty.write(spans)))
+end
+
+local function assert_has_no_span(name, spans)
+  local found = has_span(name, spans)
+  assert.is_false(found, fmt("\nExpected not to find %q span in:\n%s\n",
+                             name, pretty.write(spans)))
+end
+
 
 for _, strategy in helpers.each_strategy() do
   describe(fmt("#%s WebSocket instrumentation", strategy), function()
@@ -128,10 +151,12 @@ for _, strategy in helpers.each_strategy() do
 
         -- Making sure it's alright
         local spans = cjson.decode(res)
-        local expected_span_num = 2
+        assert_has_span("kong", spans)
+        assert_has_span("kong.database.query", spans)
 
-        assert.is_same(expected_span_num, #spans, res)
-        assert.is_same("kong.database.query", spans[2].name)
+        assert_has_no_span("kong.balancer", spans)
+        assert_has_no_span("kong.dns", spans)
+        assert_has_no_span("kong.router", spans)
       end)
     end)
 
@@ -154,8 +179,12 @@ for _, strategy in helpers.each_strategy() do
 
         -- Making sure it's alright
         local spans = cjson.decode(res)
-        assert.is_same(2, #spans, res)
-        assert.is_same("kong.router", spans[2].name)
+        assert_has_span("kong", spans)
+        assert_has_span("kong.router", spans)
+
+        assert_has_no_span("kong.balancer", spans)
+        assert_has_no_span("kong.database.query", spans)
+        assert_has_no_span("kong.dns", spans)
       end)
     end)
 
@@ -177,9 +206,12 @@ for _, strategy in helpers.each_strategy() do
 
         -- expected spans are returned
         local spans = cjson.decode(res)
-        assert.is_same(2, #spans, res)
-        local balancer_span = spans[2]
-        assert.is_same("kong.balancer", balancer_span.name)
+        assert_has_span("kong", spans)
+        assert_has_span("kong.balancer", spans)
+
+        assert_has_no_span("kong.database.query", spans)
+        assert_has_no_span("kong.dns", spans)
+        assert_has_no_span("kong.router", spans)
       end)
     end)
 
@@ -202,15 +234,12 @@ for _, strategy in helpers.each_strategy() do
 
         -- Making sure it's alright
         local spans = cjson.decode(res)
+        assert_has_span("kong", spans)
+        assert_has_span("kong.dns", spans)
 
-        local found
-        for _, span in ipairs(spans) do
-          if span.name == "kong.dns" then
-            found = true
-          end
-        end
-
-        assert.is_true(found, res)
+        assert_has_no_span("kong.balancer", spans)
+        assert_has_no_span("kong.database.query", spans)
+        assert_has_no_span("kong.router", spans)
       end)
     end)
 
@@ -234,6 +263,7 @@ for _, strategy in helpers.each_strategy() do
         -- Making sure it's alright
         local spans = cjson.decode(res)
         assert.is_same(1, #spans, res)
+        assert_has_span("kong", spans)
       end)
     end)
 
@@ -256,7 +286,12 @@ for _, strategy in helpers.each_strategy() do
 
         -- Making sure it's alright
         local spans = cjson.decode(res)
-        assert.is_true(#spans >= 6, res)
+
+        assert_has_span("kong", spans)
+        assert_has_span("kong.balancer", spans)
+        assert_has_span("kong.database.query", spans)
+        assert_has_span("kong.dns", spans)
+        assert_has_span("kong.router", spans)
       end)
     end)
   end)
