@@ -44,6 +44,13 @@ service Bouncer {
       get: "/v1/grow/tail"
     };
   }
+
+  rpc Echo(EchoMsg) returns (EchoMsg) {
+    option (google.api.http) = {
+      post: "/v1/echo"
+      body: "*"
+    };
+  }
 }
 
 
@@ -80,4 +87,9 @@ message Body {
   Limb hands = 2;
   Limb legs = 3;
   Limb tail = 4;
+}
+
+message EchoMsg {
+  repeated string array = 1;
+  string nullable = 2;
 }
