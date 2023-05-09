@@ -817,7 +817,7 @@ _M.objects_from_names = objects_from_names
 
 
 local function is_system_table(t)
-  local reserved_tables = { "workspace*", "sessions" }
+  local reserved_tables = { "workspace*", "sessions", "keyring_meta", "keyring_keys" }
   for _, v in ipairs(reserved_tables) do
     if string.find(t, v) then
       return true
@@ -1140,14 +1140,14 @@ local function resolve_role_endpoint_permissions(roles)
     end
 
   end
- 
+
   for ws, endpoints in pairs(pmap) do
     local endpoint_actions = nmap[ws] or {}
     for endpoint, _ in pairs(endpoints) do
       for action, negative in pairs(endpoint_actions[endpoint]) do
         if negative.negative then
           pmap[ws][endpoint] = bor(pmap[ws][endpoint],lshift(actions_bitfields[action], actions_bitfield_size))
-            
+
         else
           pmap[ws][endpoint] = bor(pmap[ws][endpoint], actions_bitfields[action])
         end
@@ -1276,7 +1276,7 @@ function _M.authorize_request_endpoint(map, workspace, endpoint, route_name, act
           if perm == 0 or band(rshift(perm, actions_bitfield_size), action) == action then
             return false
           end
-          
+
           if band(perm, action) == action then
             return true
           end
