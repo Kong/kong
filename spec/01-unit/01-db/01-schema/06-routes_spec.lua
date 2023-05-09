@@ -1370,7 +1370,7 @@ describe("routes schema (flavor = traditional_compatible)", function()
     assert.falsy(errs["@entity"])
   end)
 
-  it("don't fail when rust.regex update to 1.8", function()
+  it("won't fail when rust.regex update to 1.8", function()
     local route = {
       id             = a_valid_uuid,
       name           = "my_route",
