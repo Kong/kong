@@ -39,7 +39,7 @@ for _, strategy in helpers.each_strategy() do
           "services",
           "plugins",
         },
-        { "tcp-trace-exporter" }
+        { "tcp-trace-exporter", "pre-function" }
       )
 
       local service = assert(bp.services:insert({
@@ -62,6 +62,18 @@ for _, strategy in helpers.each_strategy() do
           host = "127.0.0.1",
           port = TCP_PORT,
           custom_spans = false,
+        },
+      })
+
+      assert(bp.plugins:insert {
+        name = "pre-function",
+        route = route,
+        protocols = { "ws" },
+        config = {
+          ws_handshake = {[[
+            -- execute a DB query to make sure we have a kong.database.query span
+            kong.db.routes:select({ id = ngx.ctx.route.id })
+          ]]}
         },
       })
 
