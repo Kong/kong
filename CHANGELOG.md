@@ -79,6 +79,7 @@
   [#10723](https://github.com/Kong/kong/pull/10723)
 - Backported the openresty `ngx.print` chunk encoding buffer double free bug fix.
   [#10816](https://github.com/Kong/kong/pull/10816)
+  [#10824](https://github.com/Kong/kong/pull/10824)
 
 #### Admin API
 
