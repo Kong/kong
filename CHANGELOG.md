@@ -77,6 +77,8 @@
   [#10288](https://github.com/Kong/kong/pull/10288)
 - Added new span attribute `http.client_ip` to capture the client IP when behind a proxy.
   [#10723](https://github.com/Kong/kong/pull/10723)
+- Backported the openresty `ngx.print` chunk encoding buffer double free bug fix.
+  [#10816](https://github.com/Kong/kong/pull/10816)
 
 #### Admin API
 
