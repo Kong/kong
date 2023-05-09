@@ -942,18 +942,20 @@ describe("helpers: utilities", function()
       local fname = assert(helpers.path.tmpname())
       assert(os.remove(fname))
 
-      local timeout = 1
-      local delay = 0.25
+      local timeout = 2
+      local delay = 1
       local start, duration
 
       local sema = require("ngx.semaphore").new()
 
       local ok, res
       ngx.timer.at(0, function()
+        ngx.update_time()
         start = time()
 
         ok, res = pcall(helpers.wait_for_file_contents, fname, timeout)
 
+        ngx.update_time()
         duration = time() - start
         sema:post(1)
       end)
@@ -967,16 +969,9 @@ describe("helpers: utilities", function()
       assert.truthy(ok, "timer raised an error: " .. tostring(res))
       assert.equals("test", res)
 
-      -- allow for some jitter
-      timeout = timeout * 1.25
-
-      assert.truthy(duration <= timeout,
-                    "expected to finish in <" .. tostring(timeout) .. "s" ..
-                    " but took " .. tostring(duration) ..  "s")
-
-      assert.truthy(duration >= delay,
-                    "expected to finish in >=" .. tostring(delay) .. "s" ..
-                    " but took " .. tostring(duration) ..  "s")
+      assert.near(delay, duration, delay * 0.25,
+                  "expected wait_for_file_contents to return in " ..
+                  "~" .. delay .. " seconds")
     end)
 
     it("doesn't wait longer than the timeout in the failure case", function()
@@ -989,10 +984,12 @@ describe("helpers: utilities", function()
 
       local ok, err
       ngx.timer.at(0, function()
+        ngx.update_time()
         start = time()
 
         ok, err = pcall(helpers.wait_for_file_contents, fname, timeout)
 
+        ngx.update_time()
         duration = time() - start
         sema:post(1)
       end)
@@ -1003,10 +1000,9 @@ describe("helpers: utilities", function()
       assert.falsy(ok, "expected wait_for_file_contents to fail")
       assert.not_nil(err)
 
-      local diff = math.abs(duration - timeout)
-      assert.truthy(diff < 0.5,
-                    "expected to finish in about " .. tostring(timeout) .. "s" ..
-                    " but took " .. tostring(duration) ..  "s")
+      assert.near(timeout, duration, timeout * 0.25,
+                  "expected wait_for_file_contents to timeout after " ..
+                  "~" .. timeout .. " seconds")
     end)
 
 
