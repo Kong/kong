@@ -1,4 +1,5 @@
 import axios from 'axios';
+import https from 'https';
 import {
   expect,
   Environment,
@@ -10,21 +11,30 @@ import {
   deleteGatewayRoute,
   getNegative,
   randomString,
-  isGwHybrid,
   wait,
   logResponse,
+  waitForHashUpdate,
+  getMetric,
 } from '@support';
+
+const agent = new https.Agent({
+  rejectUnauthorized: false,
+});
+
+axios.defaults.httpsAgent = agent;
 
 describe('Gateway Plugins: Request Validator', function () {
   const path = `/${randomString()}`;
-  const isHybrid = isGwHybrid();
-  const waitTime = 5000;
+  const pluginLoad = 1000;
   const paramPath = '~/status/(?<status_code>[a-z0-9]+)';
+  const classicWait = 4000;
+  let configAvailable: boolean;
   let serviceId: string;
   let routeId: string;
+  let configHash: string;
 
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: Environment.gateway.adminSec,
   })}/plugins`;
   const proxyUrl = `${getBasePath({
     environment: Environment.gateway.proxy,
@@ -50,6 +60,10 @@ describe('Gateway Plugins: Request Validator', function () {
         id: routeId,
       },
     };
+
+    configHash = await getMetric('kong_data_plane_config_hash');
+    if (configHash != '') configAvailable = true;
+    else configAvailable = false;
   });
 
   it('should not create RV Plugin with non-array parameter_schema', async function () {
@@ -60,7 +74,15 @@ describe('Gateway Plugins: Request Validator', function () {
       },
     };
 
-    const resp = await postNegative(url, pluginPayload);
+    const resp = await postNegative(
+      url,
+      pluginPayload,
+      'post',
+      {},
+      {
+        rejectUnauthorized: true,
+      }
+    );
     logResponse(resp);
 
     expect(resp.status, 'Status should be 400').to.equal(400);
@@ -78,7 +100,13 @@ describe('Gateway Plugins: Request Validator', function () {
       },
     };
 
-    const resp = await postNegative(url, pluginPayload);
+    const resp = await postNegative(
+      url,
+      pluginPayload,
+      'post',
+      {},
+      { rejectUnauthorized: true }
+    );
     logResponse(resp);
 
     expect(resp.status, 'Status should be 400').to.equal(400);
@@ -87,7 +115,7 @@ describe('Gateway Plugins: Request Validator', function () {
     );
   });
 
-  it('should crete plugin with version kong', async function () {
+  it('should create plugin with version kong', async function () {
     const pluginPayload = {
       ...basePayload,
       config: {
@@ -96,7 +124,6 @@ describe('Gateway Plugins: Request Validator', function () {
         version: 'kong',
       },
     };
-
     const resp = await axios({ method: 'post', url, data: pluginPayload });
     logResponse(resp);
 
@@ -109,17 +136,19 @@ describe('Gateway Plugins: Request Validator', function () {
       'kong'
     );
     pluginId = resp.data.id;
-    await wait(isHybrid ? 7000 : 1000);
+
+    configHash = await waitForHashUpdate(configHash, classicWait);
   });
 
   it('should validate request body with wrong key', async function () {
-    await wait(waitTime);
+    await wait(pluginLoad);
     const resp = await getNegative(
       `${proxyUrl}${path}`,
       {
         'Content-Type': 'application/json',
       },
-      { notype: 'test' }
+      { notype: 'test' },
+      { rejectUnauthorized: true }
     );
     logResponse(resp);
 
@@ -136,7 +165,8 @@ describe('Gateway Plugins: Request Validator', function () {
       {
         'Content-Type': 'application/json',
       },
-      { name: true }
+      { name: true },
+      { rejectUnauthorized: true }
     );
     logResponse(resp);
 
@@ -153,7 +183,8 @@ describe('Gateway Plugins: Request Validator', function () {
       {
         'Content-Type': 'text/plain',
       },
-      { name: true }
+      { name: true },
+      { rejectUnauthorized: true }
     );
     logResponse(resp);
 
@@ -201,6 +232,8 @@ describe('Gateway Plugins: Request Validator', function () {
 
     expect(resp.status, 'Status should be 200').to.equal(200);
 
+    configHash = await waitForHashUpdate(configHash, classicWait);
+
     resp = await axios(`${url}/${pluginId}`);
     logResponse(resp);
 
@@ -217,20 +250,28 @@ describe('Gateway Plugins: Request Validator', function () {
   });
 
   it('should validate wrong path parameter', async function () {
-    let resp = await axios({
-      method: 'patch',
-      url: `${url}/${pluginId}/route`,
-      data: {
+    let resp = await postNegative(
+      `${url}/${pluginId}/route`,
+      {
         strip_path: false,
         paths: [paramPath],
       },
-    });
+      'patch',
+      {},
+      { rejectUnauthorized: true }
+    );
     logResponse(resp);
 
-    expect(resp.status, 'Status should be 200').to.equal(200);
-    await wait(isHybrid ? 7000 : waitTime);
+    configHash = await waitForHashUpdate(configHash, classicWait);
 
-    resp = await getNegative(`${proxyUrl}/status/abc`);
+    expect(resp.status, 'Status should be 200').to.equal(200);
+
+    resp = await getNegative(
+      `${proxyUrl}/status/abc`,
+      {},
+      {},
+      { rejectUnauthorized: true }
+    );
     logResponse(resp);
 
     expect(resp.status, 'Status should be 400').to.equal(400);

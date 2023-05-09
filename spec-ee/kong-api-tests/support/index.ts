@@ -68,3 +68,9 @@ export {
 } from './utilities/redis';
 export { retryRequest } from './utilities/retry-axios';
 export { isValidDate, isValidUrl } from './utilities/validate';
+export {
+  getMetric,
+  getSharedDictValue,
+  waitForHashUpdate,
+  waitForDictUpdate,
+} from './utilities/metrics';
