@@ -48,7 +48,7 @@ https://konghq.com/kong-enterprise-edition/ or contact us at
 
 ### Community Edition
 
-There are multiple channels where you can get answers from the community
+There are multiple channels where you can get  answers from the community
 or the maintainers of this project:
 
 - Our public forum, [Kong Nation](https://discuss.konghq.com) is great for
