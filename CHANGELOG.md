@@ -73,6 +73,10 @@
 
 ### Fixes
 
+- Backported the openresty `ngx.print` chunk encoding buffer double free bug fix that
+  leads to the corruption of chunk-encoded response data.
+  [#10816](https://github.com/Kong/kong/pull/10816)
+  [#10824](https://github.com/Kong/kong/pull/10824)
 - Fixed a bug that causes `POST /config?flatten_errors=1` to throw an exception
   and return a 500 error under certain circumstances.
   [#10896](https://github.com/Kong/kong/pull/10896)
