@@ -366,8 +366,8 @@ end
 local function split_routes_and_services_by_path(routes_and_services)
   local routes_and_services_split = tb_new(#routes_and_services, 0)
 
-  for _, v in ipairs(routes_and_services) do
-    split_route_by_path_into(v, routes_and_services_split)
+  for i = 1, #routes_and_services do
+    split_route_by_path_into(routes_and_services[i], routes_and_services_split)
   end
 
   return routes_and_services_split
