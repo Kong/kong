@@ -6,7 +6,6 @@ local atc = require("kong.router.atc")
 local tb_new = require("table.new")
 local tb_clear = require("table.clear")
 local tb_nkeys = require("table.nkeys")
-local tablex = require("pl.tablex")
 local uuid = require("resty.jit-uuid")
 local utils = require("kong.tools.utils")
 
@@ -262,22 +261,25 @@ local function get_priority(route)
   if not is_empty_field(paths) then
     match_weight = match_weight + 1
 
-    for index, p in ipairs(paths) do
-      if index == 1 then
-        if is_regex_magic(p) then
-          regex_url = true
+    local p = paths[1]
 
-        else
-          uri_length = #p
-        end
+    if is_regex_magic(p) then
+      regex_url = true
+
+    else
+      uri_length = #p
+    end
+
+    for i = 2, #paths do
+      p = paths[i]
+
+      if regex_url then
+        assert(is_regex_magic(p),
+               "cannot mix regex and non-regex paths in get_priority()")
 
       else
-        if regex_url then
-          assert(is_regex_magic(p), "cannot mix regex and non-regex routes in get_priority")
-
-        else
-          assert(#p == uri_length, "cannot mix different length prefixes in get_priority")
-        end
+        assert(#p == uri_length,
+               "cannot mix different length prefixes in get_priority()")
       end
     end
   end
@@ -319,9 +321,9 @@ local function group_by(t, f)
   for _, value in ipairs(t) do
     local key = f(value)
     if result[key] then
-      table.insert(result[key], value)
+      tb_insert(result[key], value)
     else
-      result[key] = {value}
+      result[key] = { value }
     end
   end
   return result
@@ -330,38 +332,44 @@ end
 -- split routes into multiple routes, one for each prefix length and one for all
 -- regular expressions
 local function split_route_by_path_into(route_and_service, routes_and_services_split)
-  if is_empty_field(route_and_service.route.paths) or #route_and_service.route.paths == 1 then
-    table.insert(routes_and_services_split, route_and_service)
+  local original_route = route_and_service.route
+
+  if is_empty_field(original_route.paths) or #original_route.paths == 1 then
+    tb_insert(routes_and_services_split, route_and_service)
     return
   end
 
   -- make sure that route_and_service contains only the two expected entries, route and service
-  assert(tablex.size(route_and_service) == 2)
+  assert(tb_nkeys(route_and_service) == 2)
 
   local grouped_paths = group_by(
-    route_and_service.route.paths,
+    original_route.paths,
     function(path)
       return is_regex_magic(path) or #path
     end
   )
   for index, paths in pairs(grouped_paths) do
     local cloned_route = {
-      route = utils.shallow_copy(route_and_service.route),
+      route = utils.shallow_copy(original_route),
       service = route_and_service.service,
     }
-    cloned_route.route.original_route = route_and_service.route
+
+    cloned_route.route.original_route = original_route
     cloned_route.route.paths = paths
-    cloned_route.route.id = uuid_generator(route_and_service.route.id .. "#" .. tostring(index))
-    table.insert(routes_and_services_split, cloned_route)
+    cloned_route.route.id = uuid_generator(original_route.id .. "#" .. tostring(index))
+
+    tb_insert(routes_and_services_split, cloned_route)
   end
 end
 
 
 local function split_routes_and_services_by_path(routes_and_services)
   local routes_and_services_split = tb_new(#routes_and_services, 0)
+
   for i = 1, #routes_and_services do
     split_route_by_path_into(routes_and_services[i], routes_and_services_split)
   end
+
   return routes_and_services_split
 end
 
