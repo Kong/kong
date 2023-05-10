@@ -127,12 +127,10 @@ return {
       local endpoints = setmetatable({}, cjson.array_mt)
       local lapis_endpoints = require("kong.api").ordered_routes
 
-      for k, v in pairs(lapis_endpoints) do
-        if type(k) == "string" then -- skip numeric indices
-          endpoints[#endpoints + 1] = k:gsub(":([^/:]+)", function(m)
-              return "{" .. m .. "}"
-            end)
-        end
+      for i, v in pairs(lapis_endpoints) do
+        endpoints[i] = v:gsub(":([^/:]+)", function(m)
+            return "{" .. m .. "}"
+        end)
       end
       table.sort(endpoints, function(a, b)
         -- when sorting use lower-ascii char for "/" to enable segment based

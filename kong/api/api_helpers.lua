@@ -426,7 +426,7 @@ function _M.attach_routes(app, routes)
       methods["OPTIONS"] = options_method(concat(http_methods_array, ", ", 1, http_methods_count))
     end
 
-    app:match(route_path, route_path, app_helpers.respond_to(methods))
+    app:match(route_path, app_helpers.respond_to(methods))
 
     assert(hooks.run_hook("api:helpers:attach_routes",
       app, route_path, methods))
@@ -475,7 +475,7 @@ function _M.attach_new_db_routes(app, routes)
       methods["OPTIONS"] = options_method(concat(http_methods_array, ", ", 1, http_methods_count))
     end
 
-    app:match(route_path, route_path, app_helpers.respond_to(methods))
+    app:match(route_path, app_helpers.respond_to(methods))
 
     assert(hooks.run_hook("api:helpers:attach_new_db_routes",
       app, route_path, methods))

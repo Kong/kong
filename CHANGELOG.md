@@ -14,6 +14,8 @@
 
 - Bumped lua-resty-openssl from 0.8.20 to 0.8.22
   [#10837](https://github.com/Kong/kong/pull/10837)
+- Bumped kong-lapis from 1.8.3.1 to 1.14.0.1
+  [#10838](https://github.com/Kong/kong/pull/10838)
 
 ## 3.3.0
 
