@@ -779,31 +779,52 @@ describe("ee conf loader", function()
     end)
   end)
 
-  describe("fips", function()
+  describe("#fips", function()
     fips_test("with fips: validates correctly", function()
-      local conf = {
+      local conf, err = conf_loader(nil, {
         fips = true,
-      }
-      ee_conf_loader.validate_fips(conf, msgs)
+      })
+      assert.is_nil(err)
 
-      assert.same({}, msgs)
       assert.equal(conf.ssl_cipher_suite, "fips")
     end)
 
     non_fips_test("without fips: validates correctly", function()
-      local conf = {
+      local _, err = conf_loader(nil, {
         fips = false,
-      }
-      ee_conf_loader.validate_fips(conf, msgs)
+      })
+      assert.is_nil(err)
 
-      assert.same({}, msgs)
-
-      local conf = {
+      local _, err = conf_loader(nil, {
         fips = true,
-      }
-      ee_conf_loader.validate_fips(conf, msgs)
+      })
 
-      assert.match("cannot enable FIPS mode: openssl.set_fips_mod", msgs[1])
+      assert.match("cannot enable FIPS mode: openssl.set_fips_mod", err)
+    end)
+
+    fips_test("with fips: lua_ssl_verify_depth plus 1", function()
+      local conf, err = conf_loader(nil, {
+        fips = true,
+      })
+      assert.is_nil(err)
+
+      if helpers.is_fips_build() then
+        assert.same(2, conf.lua_ssl_verify_depth)
+      else
+        assert.same(1, conf.lua_ssl_verify_depth)
+      end
+
+      local conf, err = conf_loader(nil, {
+        fips = true,
+        lua_ssl_verify_depth = 3,
+      })
+      assert.is_nil(err)
+
+      if helpers.is_fips_build() then
+        assert.same(4, conf.lua_ssl_verify_depth)
+      else
+        assert.same(3, conf.lua_ssl_verify_depth)
+      end
     end)
   end)
 end)
