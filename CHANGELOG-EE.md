@@ -90,6 +90,8 @@ a copy. [KAG-739](https://konghq.atlassian.net/browse/KAG-739)
 * The systemd unit is incorrectly renamed to `kong.service` in 3.2.x.x versions, it's now reverted back to `kong-enterprise-edition.service` to keep consistent with previous releases. [KAG-878](https://konghq.atlassian.net/browse/KAG-878)
 * Fix failure to generate keyring when RBAC is enabled.
   [FTI-4863](https://konghq.atlassian.net/browse/FTI-4863)
+* Fix `lua_ssl_verify_depth` in FIPS mode to match the same depth of normal mode.
+  [KAG-1500](https://konghq.atlassian.net/browse/KAG-1500).
 
 
 #### Kong Manager
