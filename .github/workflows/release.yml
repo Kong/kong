@@ -603,6 +603,7 @@ jobs:
     uses: ./.github/workflows/gateway-api-tests.yml
     with:
       control_plane_image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}
+      gateway_version: ${{ needs.metadata.outputs.kong-version }}
       target_test: non-smoke
     secrets: inherit
 

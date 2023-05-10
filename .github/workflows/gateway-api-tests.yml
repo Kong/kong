@@ -80,7 +80,7 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.TEST_API_AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.TEST_API_AWS_SECRET_ACCESS_KEY }}
       VERBOSE_RESPONSE_LOGS: ${{ inputs.enable_verbose_response_logging || 'true'}}
-      KONG_VERSION: ${{ github.event.inputs.gateway_version || '3.3.0.0' }}
+      KONG_VERSION: ${{ inputs.gateway_version || '3.3.0.0' }}
       KONG_CONTAINER_NAME: ${{ inputs.target_test == 'smoke' && 'kong-cp' }}
       RUN_SPEC: ${{ inputs.target_test || 'all' }}
     strategy:
