@@ -2343,7 +2343,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("no Service found with those values", json.message)
       end)
 
-      it("#db rebuilds router correctly after passing special escape route", function()
+      it("#db rebuilds router correctly after passing route with special escape", function()
         local admin_client = helpers.admin_client()
 
         local res = assert(admin_client:post("/routes", {
