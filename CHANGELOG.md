@@ -10,6 +10,13 @@
 
 ## Unreleased
 
+### Fixes
+
+#### Plugins
+
+- **grpc-gateway**: Fixed an issue that empty (all default value) messages cannot be unframed correctly.
+  [#10836](https://github.com/Kong/kong/pull/10836)
+
 ### Dependencies
 
 - Bumped lua-resty-openssl from 0.8.20 to 0.8.22
