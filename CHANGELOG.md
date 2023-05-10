@@ -10,6 +10,10 @@
 
 ## Unreleased
 
+### Dependencies
+
+- Bumped lua-resty-openssl from 0.8.20 to 0.8.22
+  [#10463](https://github.com/Kong/kong/pull/10463)
 
 ## 3.3.0
 
