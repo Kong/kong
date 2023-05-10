@@ -353,7 +353,7 @@
   leads to the corruption of chunk-encoded response data.
   [#10816](https://github.com/Kong/kong/pull/10816)
   [#10824](https://github.com/Kong/kong/pull/10824)
-- Fix an issue where cli `kong vault get` doesn't work in dbless mode.
+- Make `kong vault get` CLI command work in dbless mode
   [#10675](https://github.com/Kong/kong/pull/10675)
 
 
