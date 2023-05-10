@@ -10,6 +10,17 @@
 
 ## Unreleased
 
+### Breaking Changes
+
+#### Plugins
+
+- Validation for queue related parameters has been
+  improved. `max_batch_size`, `max_entries` and `max_bytes` are now
+  `integer`s instead of `number`s.  `initial_retry_delay` and
+  `max_retry_delay` must now be `number`s greater than 0.001
+  (seconds).
+  [#10840](https://github.com/Kong/kong/pull/10840)
+
 ### Dependencies
 
 - Bumped lua-resty-openssl from 0.8.20 to 0.8.22
