@@ -30,7 +30,7 @@ jobs:
           SLACK_MAPPING: "${{ vars.SLACK_MAPPING }}"
 
       - name: Send Slack Message
-        uses: slackapi/slack-github-action@v1.23.0
+        uses: slackapi/slack-github-action@007b2c3c751a190b6f0f040e47ed024deaa72844 # v1.23.0
         with:
           payload: ${{ steps.generate-payload.outputs.result }}
         env:
