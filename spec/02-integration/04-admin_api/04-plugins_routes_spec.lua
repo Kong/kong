@@ -431,13 +431,13 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("/plugins/schema/{plugin}", function()
+    describe("/schemas/plugins/{plugin}", function()
       describe("GET", function()
         it("returns the schema of all bundled plugins", function()
           for plugin, _ in pairs(helpers.test_conf.loaded_plugins) do
             local res = assert(client:send {
               method = "GET",
-              path = "/plugins/schema/" .. plugin,
+              path = "/schemas/plugins/" .. plugin,
             })
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
@@ -447,7 +447,7 @@ for _, strategy in helpers.each_strategy() do
         it("returns nested records and empty array defaults as arrays", function()
           local res = assert(client:send {
             method = "GET",
-            path = "/plugins/schema/request-transformer",
+            path = "/schemas/plugins/request-transformer",
           })
           local body = assert.res_status(200, res)
           assert.match('{"fields":[{', body, 1, true)
@@ -458,7 +458,7 @@ for _, strategy in helpers.each_strategy() do
         it("returns 404 on invalid plugin", function()
           local res = assert(client:send {
             method = "GET",
-            path = "/plugins/schema/foobar",
+            path = "/schemas/plugins/foobar",
           })
           local body = assert.res_status(404, res)
           local json = cjson.decode(body)
