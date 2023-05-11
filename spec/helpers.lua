@@ -1389,9 +1389,10 @@ local function kill_tcp_server(port)
 end
 
 
--- If it applies, please use `http_mock`, the coroutine variant of `http_server`, which is
--- more determinative and less flaky.
 --- Starts a local HTTP server.
+--
+-- **DEPRECATED**: please use an `http_mock` instead (see example at `start_kong`).
+--
 -- Accepts a single connection and then closes. Sends a 200 ok, 'Connection:
 -- close' response.
 -- If the request received has path `/delay` then the response will be delayed
