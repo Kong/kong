@@ -23,11 +23,13 @@ for _, strategy in helpers.each_strategy() do
     local vault_env_value = "the secret"
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy, {
+      local bp, db = helpers.get_db_utils(strategy, {
         "routes",
         "services",
         "plugins",
       })
+
+      db:truncate()
 
       local service1 = bp.services:insert{
         protocol = "http",
