@@ -149,7 +149,7 @@ return {
     statsd = {
       "queue",
     },
-    ["statsd-advanced"] = {
+    statsd_advanced = {
       "queue",
     },
     datadog = {
