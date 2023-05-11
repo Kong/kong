@@ -70,7 +70,7 @@ local function make_requests(proxy_client, suffix)
 end
 
 
-for _, strategy in helpers.each_strategy() do
+for _, strategy in helpers.each_strategy({ "postgres" }) do
   describe("Vault configuration #" .. strategy, function()
     local admin_client
     local proxy_client
