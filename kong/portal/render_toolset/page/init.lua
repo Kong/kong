@@ -46,9 +46,10 @@ return function()
         end
 
         if plugin.name == "application-registration"
-        and plugin.service.id == service_id then
-          page.document_object.registration = true
-          break
+          and plugin.service.id == service_id
+          and plugin.enabled then
+            page.document_object.registration = true
+            break
         end
       end
     end

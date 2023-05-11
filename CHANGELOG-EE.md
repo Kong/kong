@@ -92,7 +92,9 @@ a copy. [KAG-739](https://konghq.atlassian.net/browse/KAG-739)
   [FTI-4863](https://konghq.atlassian.net/browse/FTI-4863)
 * Fix `lua_ssl_verify_depth` in FIPS mode to match the same depth of normal mode.
   [KAG-1500](https://konghq.atlassian.net/browse/KAG-1500).
-
+* Portal documentation page: field `registration` in `document_object` will not be set
+  when the plugin `Portal Application Registration` is installed but not enabled.
+  [FTI-4798](https://konghq.atlassian.net/browse/FTI-4798)
 
 #### Kong Manager
 
