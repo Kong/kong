@@ -1,15 +1,11 @@
-import { gatewayAuthHeader } from '../config/gateway-vars';
-const { authHeaderKey, authHeaderValue } = gatewayAuthHeader();
 import axios from 'axios';
 import { wait } from './random';
+import { expect } from '../assert/chai-expect';
 import { getBasePath, Environment } from '@support';
 import https from 'https';
-import { isGwHybrid } from '../config/gateway-vars';
 
-const headers = { authHeaderKey: authHeaderValue };
 const host = getBasePath({ environment: Environment.gateway.hostName });
 const metricsUrl = `https://${host}:8100/metrics`;
-const isHybrid = isGwHybrid();
 
 const agent = new https.Agent({
   rejectUnauthorized: false,
@@ -18,37 +14,78 @@ const agent = new https.Agent({
 axios.defaults.httpsAgent = agent;
 
 /**
- * Send a request to the status API to get metrics
+ * Send a request to the status API to get all metrics
  * @returns metrics response
  */
-export const getAllMetrics = async () => {
+const getAllMetrics = async () => {
   const resp = await axios({
     method: 'get',
     url: metricsUrl,
-    headers,
   });
-  if (resp.status == 200) return resp.data;
-  else return '';
+
+  expect(resp.status, 'Status for getting /metrics should be 200').equal(200);
+  return resp.data;
 };
 
 /**
- * Return a selected value from the metrics API
- * @param metricName - name of the metric to get, eg kong_data_plane_config_hash
- * @returns initial shared dict byte value
+ * Return a selected value from the metrics API if it is found
+ * @param {string} metricName - name of the metric to get, eg kong_data_plane_config_hash
+ * @returns {string} initial shared dict byte value
  */
 export const getMetric = async (metricName) => {
-  if (isHybrid) {
-    const metrics = await getAllMetrics();
-    const re = new RegExp(`${metricName}\\{.+\\} (.+)`);
-    const match = metrics.match(re);
-    if (match) return match[1];
+  const metrics = await getAllMetrics();
+  const re = new RegExp(`${metricName}\\{.+\\} (.+)`);
+  const match = metrics.match(re);
+  if (match) return match[1];
+};
+
+/**
+ * Recurse till the configuration hash changes twice and return the hash
+ * @param {string} configHash - initial value of the metric
+ * @param {object} options
+ * @property {number} targetNumberOfConfigHashChanges - times the config hash needs to ne changed to exit the recursion
+ * @property {number} timeout - timeout for waiting for configuration hash update
+ * @returns {string} - the latest configuration hash
+ */
+export const waitForHashUpdate = async (configHash, options: any = {}) => {
+  options = { targetNumberOfConfigHashChanges: 2, timeout: 13000, ...options };
+  const currentHash = await getMetric('kong_data_plane_config_hash');
+  const interval = 2500;
+  let timesHashChanged = options.timesHashChanged
+    ? options.timesHashChanged
+    : 0;
+
+  // wait the given timeout period if target number of hash changes wasn't reached
+  if (
+    currentHash === configHash ||
+    timesHashChanged !== options.targetNumberOfConfigHashChanges
+  ) {
+    await wait(interval);
   }
-  return '';
+
+  // return current hash value only when timeout is reached or the amount of hash changes
+  // equals to the given number. Sometimes hash needs to change twice for kong config changes to take effect
+  if (
+    options?.timeout === 0 ||
+    timesHashChanged === options.targetNumberOfConfigHashChanges
+  ) {
+    return currentHash;
+  } else {
+    // increase the times that hash has changed and decrease the timeout for next iteration/recursion
+    timesHashChanged += 1;
+    options.timeout = options.timeout - interval;
+
+    return await waitForHashUpdate(configHash, {
+      targetNumberOfConfigHashChanges: options.targetNumberOfConfigHashChanges,
+      timeout: options.timeout,
+      timesHashChanged,
+    });
+  }
 };
 
 /**
  * Return the shared dict byte value from the metrics API
- * @param dict_name - name of the shared dict to check
+ * @param {string }dict_name - name of the shared dict to check
  * @returns shared dict byte value
  */
 export const getSharedDictValue = async (dict_name) => {
@@ -60,32 +97,9 @@ export const getSharedDictValue = async (dict_name) => {
 };
 
 /**
- * Return when given config hash value has changed after a request is sent
- * @param initialValue - initial value of the metric
- */
-export const waitForHashUpdate = async (configHash, altWait) => {
-  if (configHash != '') {
-    let timeWaited = 0;
-    const timeout = 5000;
-
-    while (
-      (await getMetric('kong_data_plane_config_hash')) == configHash &&
-      timeWaited <= timeout
-    ) {
-      wait(10);
-      timeWaited += 10;
-    }
-    return await getMetric('kong_data_plane_config_hash');
-  } else {
-    await wait(altWait);
-    return '';
-  }
-};
-
-/**
  * Return when given shared dict value has changed after a request is sent
- * @param initialValue - initial value of the metric
- * @param dict_name - name of the shared dict to check
+ * @param {string} initialValue - initial value of the metric
+ * @param {string} dict_name - name of the shared dict to check
  */
 export const waitForDictUpdate = async (initialValue, dict_name) => {
   let timeWaited = 0;
