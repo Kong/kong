@@ -10,6 +10,45 @@
 
 ## Unreleased
 
+### Breaking Changes
+
+#### Core
+
+#### Plugins
+
+### Additions
+
+#### Core
+
+#### Admin API
+
+#### Status API
+
+#### Plugins
+
+#### PDK
+
+### Fixes
+
+#### Core
+
+#### Admin API
+
+#### Plugins
+
+- **ACME**: Fixed sanity test can't work with "kong" storage in Hybrid mode
+  [10852](https://github.com/Kong/kong/pull/10852)
+
+#### PDK
+
+### Changed
+
+#### Core
+
+#### PDK
+
+#### Plugins
+
 ### Dependencies
 
 - Bumped lua-resty-openssl from 0.8.20 to 0.8.22
