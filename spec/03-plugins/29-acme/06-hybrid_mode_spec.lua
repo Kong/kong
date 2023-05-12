@@ -16,7 +16,7 @@ for _, strategy in helpers.each_strategy({"postgres", "cassandra"}) do
         paths = { "/" },
       })
 
-      plugin = assert(bp.plugins:insert {
+      assert(bp.plugins:insert {
         name = "acme",
         config = {
           account_email = "test@test.com",
