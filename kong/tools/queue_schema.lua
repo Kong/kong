@@ -5,7 +5,7 @@ return Schema.define {
   type = "record",
   fields = {
     { max_batch_size = {
-      type = "number",
+      type = "integer",
       default = 1,
       between = { 1, 1000000 },
       -- description = "maximum number of entries that can be processed at a time"
@@ -19,13 +19,13 @@ return Schema.define {
       -- immediately in that case.
     } },
     { max_entries = {
-      type = "number",
+      type = "integer",
       default = 10000,
       between = { 1, 1000000 },
       -- description = "maximum number of entries that can be waiting on the queue",
     } },
     { max_bytes = {
-      type = "number",
+      type = "integer",
       default = nil,
       -- description = "maximum number of bytes that can be waiting on a queue, requires string content",
     } },
@@ -39,12 +39,14 @@ return Schema.define {
       initial_retry_delay = {
         type = "number",
         default = 0.01,
+        between = { 0.001, 1000000 }, -- effectively unlimited maximum
         -- description = "time in seconds before the initial retry is made for a failing batch."
-        -- For each subsequent retry, the previous retry time is doubled up to `max_retry_time`
+        -- For each subsequent retry, the previous retry time is doubled up to `max_retry_delay`
     } },
     { max_retry_delay = {
       type = "number",
       default = 60,
+      between = { 0.001, 1000000 }, -- effectively unlimited maximum
       -- description = "maximum time in seconds between retries, caps exponential backoff"
     } },
   }
