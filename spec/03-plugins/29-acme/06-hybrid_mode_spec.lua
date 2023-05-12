@@ -1,7 +1,6 @@
-local cjson = require "cjson"
 local helpers = require "spec.helpers"
 
-for _, strategy in helpers.each_strategy({"postgres", "cassandra"}) do
+for _, strategy in helpers.each_strategy({"postgres"}) do
   describe("Plugin: acme (handler.access) worked with [#" .. strategy .. "]", function()
     local domain = "mydomain.com"
 
@@ -60,14 +59,20 @@ for _, strategy in helpers.each_strategy({"postgres", "cassandra"}) do
 
     it("sanity test works with \"kong\" storage in Hybrid mode", function()
       local proxy_client = helpers.http_client("127.0.0.1", 9002)
-      local res = assert(proxy_client:send {
-        method  = "GET",
-        path    = "/.well-known/acme-challenge/x",
-        headers =  { host = domain }
-      })
+      helpers.wait_until(function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/.well-known/acme-challenge/x",
+          headers =  { host = domain }
+        })
 
-      local body = assert.response(res).has.status(200)
-      assert.same({ message = "ok" }, cjson.decode(body))
+        if res.status ~= 404 then
+          return false
+        end
+
+        local body = res:read_body()
+        return body == "Not found\n"
+      end, 10)
       proxy_client:close()
     end)
   end)

@@ -221,10 +221,9 @@ function ACMEHandler:access(conf)
     end
 
     if captures then
-      -- creating account through proxy side with "kong" storage in Hybrid mode is not supported
-      -- if this is just a sanity test, we always return 200 status
-      if captures[1] == "x" and kong.configuration.role == "data_plane" and conf.storage == "kong" then
-        return kong.response.exit(200, { message = "ok" })
+      -- if this is just a sanity test, we always return 404 status
+      if captures[1] == "x" then
+        return kong.response.exit(404, "Not found\n")
       end
 
       -- TODO: race condition creating account?
