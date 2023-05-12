@@ -907,7 +907,7 @@ for _ , strategy in strategies() do
     end)
   end)
 
-  describe("Plugin: oauth2-introspection: #regression" , function()
+  describe("Plugin: oauth2-introspection: #regression #" .. strategy, function()
     local client, admin_client
     lazy_setup(function()
       local db_strategy = strategy ~= "off" and strategy or nil

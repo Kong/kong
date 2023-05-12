@@ -8,13 +8,14 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
+for _, strategy in helpers.each_strategy() do
 
-describe("Plugin: proxy-cache-advanced", function()
+describe("Plugin: proxy-cache-advanced #" .. strategy, function()
   local bp
   local proxy_client, admin_client, cache_key, plugin1, route1
 
-  setup(function()
-    bp = helpers.get_db_utils(nil, nil, {"proxy-cache-advanced"})
+  lazy_setup(function()
+    bp = helpers.get_db_utils(strategy, nil, {"proxy-cache-advanced"})
 
     route1 = assert(bp.routes:insert {
       hosts = { "route-1.com" },
@@ -55,6 +56,7 @@ describe("Plugin: proxy-cache-advanced", function()
     })
 
     assert(helpers.start_kong({
+      database = strategy,
       plugins = "proxy-cache-advanced,request-transformer",
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
@@ -70,7 +72,7 @@ describe("Plugin: proxy-cache-advanced", function()
     proxy_client = helpers.proxy_client()
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong(nil, true)
   end)
 
@@ -437,3 +439,5 @@ describe("Plugin: proxy-cache-advanced", function()
     end)
   end)
 end)
+
+end

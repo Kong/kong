@@ -8,11 +8,13 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
-describe("jq API", function()
+for _, strategy in helpers.each_strategy() do
+
+describe("jq API #" .. strategy, function()
   local admin_client, bp
 
-  setup(function()
-    bp = helpers.get_db_utils(nil, nil, { "jq" })
+  lazy_setup(function()
+    bp = helpers.get_db_utils(strategy, nil, { "jq" })
 
     assert(bp.routes:insert {
       name  = "test",
@@ -20,13 +22,14 @@ describe("jq API", function()
     })
 
     assert(helpers.start_kong({
+      database   = strategy,
       plugins = "jq",
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
     admin_client = helpers.admin_client()
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if admin_client then
       admin_client:close()
     end
@@ -68,4 +71,6 @@ describe("jq API", function()
     end)
   end)
 end)
+
+end
 

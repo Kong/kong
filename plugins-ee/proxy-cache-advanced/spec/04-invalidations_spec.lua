@@ -13,7 +13,7 @@ local POLL_INTERVAL = 0.3
 
 
 for _, strategy in strategies() do
-describe("proxy-cache-advanced invalidations via: " .. strategy, function()
+describe("proxy-cache-advanced invalidations via: #" .. strategy, function()
 
   local client_1
   local client_2

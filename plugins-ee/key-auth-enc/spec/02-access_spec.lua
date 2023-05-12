@@ -638,7 +638,7 @@ for _, strategy in strategies() do
   end)
 
   if strategy ~= "off" then
-    describe("auto-expiring keys", function()
+    describe("auto-expiring keys #" .. strategy, function()
       local ttl = 20
       local inserted_at
       local proxy_client

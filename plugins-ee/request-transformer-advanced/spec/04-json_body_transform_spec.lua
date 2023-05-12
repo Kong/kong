@@ -10,7 +10,7 @@ local plt = require "pl.tablex"
 local cjson = require "cjson"
 
 for _, strategy in helpers.each_strategy() do
-  describe("json body transform", function()
+  describe("json body transform #" .. strategy, function()
     local proxy_client, admin_client, route, plugin
     local data = {
       default = {
@@ -31,7 +31,7 @@ for _, strategy in helpers.each_strategy() do
       },
     }
 
-    setup(function()
+    lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",
@@ -97,7 +97,7 @@ for _, strategy in helpers.each_strategy() do
       admin_client = helpers.admin_client()
     end)
 
-    teardown(function ()
+    lazy_teardown(function ()
       helpers.stop_kong()
       if admin_client then admin_client:close() end
     end)
