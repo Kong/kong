@@ -283,6 +283,16 @@ function OICHandler.access(_, conf)
 
   local response = responses.new(args, ctx, iss, client, anonymous, session)
 
+  local expose_error_code = args.get_conf_arg("expose_error_code", false)
+
+  local function forbidden(message, description)
+    return response.forbidden(message, description, expose_error_code)
+  end
+
+  local function unauthorized(message, description)
+    return response.unauthorized(message, description, expose_error_code)
+  end
+
   local proxy_despite_refresh_failure = false
 
   -- logout
@@ -832,10 +842,10 @@ function OICHandler.access(_, conf)
                 headers.no_cache()
 
                 if args.get_uri_arg("state") == state then
-                  return response.unauthorized(err)
+                  return unauthorized(err)
 
                 elseif args.get_post_arg("state") == state then
-                  return response.unauthorized(err)
+                  return unauthorized(err)
 
                 else
                   log(err)
@@ -956,7 +966,7 @@ function OICHandler.access(_, conf)
           end
 
         else
-          return response.unauthorized("no suitable authorization credentials were provided")
+          return unauthorized("no suitable authorization credentials were provided")
         end
       end
 
@@ -1049,7 +1059,7 @@ function OICHandler.access(_, conf)
            not auth_methods.kong_oauth2
         then
           log("unable to verify bearer token")
-          return response.unauthorized(err or "invalid jwt token")
+          return unauthorized(err or "invalid jwt token")
         end
 
         if err then
@@ -1067,13 +1077,13 @@ function OICHandler.access(_, conf)
       if type(tokens_decoded) ~= "table" then
         tokens_decoded, err = oic.token:decode(tokens_encoded, TOKEN_DECODE_OPTS)
         if type(tokens_decoded) ~= "table" then
-          return response.unauthorized(err)
+          return unauthorized(err)
         end
       end
 
       local access_token = type(tokens_encoded) == "table" and tokens_encoded.access_token
       if not access_token then
-        return response.unauthorized("bearer token not found")
+        return unauthorized("bearer token not found")
       end
 
       if type(tokens_decoded.access_token) == "table" then
@@ -1146,12 +1156,12 @@ function OICHandler.access(_, conf)
 
       if type(introspection_data) ~= "table" then
         log("authentication with bearer token failed")
-        return response.unauthorized(err or "invalid introspection results")
+        return unauthorized(err or "invalid introspection results")
       end
 
       if introspection_check_active and introspection_data.active ~= true then
         log("authentication with bearer token failed")
-        return response.unauthorized(err or "inactive token")
+        return unauthorized(err or "inactive token")
       end
 
       exp = claims.exp(introspection_data, tokens_encoded, ttl.now, exp_default)
@@ -1168,12 +1178,12 @@ function OICHandler.access(_, conf)
             log("jwt bearer token is active and not revoked")
 
           elseif introspection_check_active then
-            return response.unauthorized("jwt bearer token is not active anymore or has been revoked")
+            return unauthorized("jwt bearer token is not active anymore or has been revoked")
           end
 
         else
           log("unable to introspect jwt bearer token")
-          return response.unauthorized(err)
+          return unauthorized(err)
         end
 
         exp = claims.exp(introspection_data, tokens_encoded, ttl.now, exp_default)
@@ -1299,7 +1309,7 @@ function OICHandler.access(_, conf)
 
     if type(tokens_encoded) ~= "table" then
       log("unable to exchange credentials with tokens")
-      return response.unauthorized(err)
+      return unauthorized(err)
     end
 
     if type(tokens_decoded) ~= "table" then
@@ -1307,7 +1317,7 @@ function OICHandler.access(_, conf)
       tokens_decoded, err = oic.token:verify(tokens_encoded, auth_params)
       if type(tokens_decoded) ~= "table" then
         log("token verification failed")
-        return response.unauthorized(err)
+        return unauthorized(err)
 
       else
         log("tokens verified")
@@ -1337,12 +1347,12 @@ function OICHandler.access(_, conf)
     end
 
   else
-    return response.unauthorized("unable to authenticate with any enabled authentication method")
+    return unauthorized("unable to authenticate with any enabled authentication method")
   end
 
   log("checking for access token")
   if type(tokens_encoded) ~= "table" or not tokens_encoded.access_token then
-    return response.unauthorized("access token was not found")
+    return unauthorized("access token was not found")
 
   else
     log("found access token")
@@ -1401,7 +1411,7 @@ function OICHandler.access(_, conf)
 
         if type(tokens_decoded) ~= "table" then
           log("reverifying tokens failed")
-          return response.unauthorized(err)
+          return unauthorized(err)
 
         else
           log("reverified tokens")
@@ -1413,12 +1423,12 @@ function OICHandler.access(_, conf)
     -- possibly expired
 
     if not refresh_tokens then
-      return response.unauthorized("access token has expired and \
+      return unauthorized("access token has expired and \
       refreshing of tokens was disabled", TOKEN_EXPIRED_MESSAGE, true)
     end
 
     if not tokens_encoded.refresh_token then
-      return response.unauthorized("access token cannot be refreshed in \
+      return unauthorized("access token cannot be refreshed in \
       absence of refresh token", TOKEN_EXPIRED_MESSAGE, true)
     end
 
@@ -1448,7 +1458,7 @@ function OICHandler.access(_, conf)
 
     elseif type(tokens_refreshed) ~= "table" then
       log("unable to refresh access token using refresh token")
-      return response.unauthorized(err)
+      return unauthorized(err)
 
     else
       log("refreshed access token using refresh token")
@@ -1464,7 +1474,7 @@ function OICHandler.access(_, conf)
 
       if type(tokens_decoded) ~= "table" then
         log("unable to verify refreshed tokens")
-        return response.unauthorized(err)
+        return unauthorized(err)
 
       else
         log("verified refreshed tokens")
@@ -1488,7 +1498,7 @@ function OICHandler.access(_, conf)
         tokens_decoded, err = oic.token:decode(tokens_refreshed, TOKEN_DECODE_OPTS)
         if type(tokens_decoded) ~= "table" then
           log("unable to decode tokens with preserved tokens")
-          return response.unauthorized(err)
+          return unauthorized(err)
 
         else
           log("decoded tokens with preserved tokens")
@@ -1554,7 +1564,7 @@ function OICHandler.access(_, conf)
         log("validating jwt claim against jwt session cookie")
         local jwt_session_cookie_value = args.get_value(var["cookie_" .. jwt_session_cookie])
         if not jwt_session_cookie_value then
-          return response.unauthorized("jwt session cookie was not specified for session claim verification")
+          return unauthorized("jwt session cookie was not specified for session claim verification")
         end
 
         local jwt_session_claim_value
@@ -1563,12 +1573,12 @@ function OICHandler.access(_, conf)
 
         if not jwt_session_claim_value then
 
-          return response.unauthorized("jwt session claim (" .. jwt_session_claim ..
+          return unauthorized("jwt session claim (" .. jwt_session_claim ..
           ") was not specified in jwt access token")
         end
 
         if jwt_session_claim_value ~= jwt_session_cookie_value then
-          return response.unauthorized("invalid jwt session claim (" .. jwt_session_claim ..
+          return unauthorized("invalid jwt session claim (" .. jwt_session_claim ..
                                        ") was specified in jwt access token")
         end
 
@@ -1655,27 +1665,27 @@ function OICHandler.access(_, conf)
 
     ok, err = check_required("issuers", "issuers_allowed", nil, { "iss" })
     if not ok then
-      return response.unauthorized(err)
+      return unauthorized(err)
     end
 
     ok, err = check_required("scopes", "scopes_required", "scopes_claim", { "scope" })
     if not ok then
-      return response.forbidden(err)
+      return forbidden(err)
     end
 
     ok, err = check_required("audience", "audience_required", "audience_claim", { "aud" })
     if not ok then
-      return response.forbidden(err)
+      return forbidden(err)
     end
 
     ok, err = check_required("groups", "groups_required", "groups_claim", { "groups" })
     if not ok then
-      return response.forbidden(err)
+      return forbidden(err)
     end
 
     ok, err = check_required("roles", "roles_required", "roles_claim", { "roles" })
     if not ok then
-      return response.forbidden(err)
+      return forbidden(err)
     end
   end
 
@@ -1780,9 +1790,9 @@ function OICHandler.access(_, conf)
 
         else
           if err then
-            return response.forbidden("kong consumer was not found (" .. err .. ")")
+            return forbidden("kong consumer was not found (" .. err .. ")")
           else
-            return response.forbidden("kong consumer was not found")
+            return forbidden("kong consumer was not found")
           end
         end
 
@@ -1990,10 +2000,10 @@ function OICHandler.access(_, conf)
 
       if not token_exchanged or error_status ~= 200 then
         if error_status == 401 then
-          return response.unauthorized(err or "exchange token endpoint returned unauthorized")
+          return unauthorized(err or "exchange token endpoint returned unauthorized")
 
         elseif error_status == 403 then
-          return response.forbidden(err or "exchange token endpoint returned forbidden")
+          return forbidden(err or "exchange token endpoint returned forbidden")
 
         else
           if err then

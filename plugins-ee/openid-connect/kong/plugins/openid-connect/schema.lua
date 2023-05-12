@@ -1848,6 +1848,12 @@ local config = {
               default  = false,
             },
           },
+          {
+            expose_error_code = {
+              type = "boolean",
+              default = true,
+            },
+          },
         },
         shorthand_fields = {
           -- TODO: deprecated forms, to be removed in Kong 4.0

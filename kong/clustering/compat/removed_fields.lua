@@ -161,6 +161,9 @@ return {
     jwt_signer = {
       "add_claims",
       "set_claims",
-    }
+    },
+    openid_connect = {
+      "expose_error_code",
+    },
   },
 }

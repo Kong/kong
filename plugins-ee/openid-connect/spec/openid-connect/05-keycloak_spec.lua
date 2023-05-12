@@ -50,6 +50,15 @@ local REDIS_PORT_ERR = 6480
 local REDIS_USER_VALID = "openid-connect-user"
 local REDIS_PASSWORD = "secret"
 
+local function error_assert(res, code, desc)
+  local header = res.headers["WWW-Authenticate"]
+  assert.match(string.format('error="%s"', code), header)
+
+  if desc then
+    assert.match(string.format('error_description="%s"', desc), header)
+  end
+end
+
 local function extract_cookie(cookie)
   local user_session
   local user_session_header_table = {}
@@ -875,6 +884,7 @@ for _, strategy in helpers.all_strategies() do
           assert.response(res).has.status(401)
           local json = assert.response(res).has.jsonbody()
           assert.same("Unauthorized", json.message)
+          error_assert(res, "invalid_token")
         end)
 
         it("is allowed with valid credentials", function()
@@ -902,6 +912,7 @@ for _, strategy in helpers.all_strategies() do
           assert.response(res).has.status(401)
           local json = assert.response(res).has.jsonbody()
           assert.same("Unauthorized", json.message)
+          error_assert(res, "invalid_token")
         end)
 
         it("is not allowed with valid password credentials when grant type is given", function()
@@ -915,6 +926,7 @@ for _, strategy in helpers.all_strategies() do
           assert.response(res).has.status(401)
           local json = assert.response(res).has.jsonbody()
           assert.same("Unauthorized", json.message)
+          error_assert(res, "invalid_token")
         end)
 
         it("is allowed with valid credentials", function()
@@ -979,6 +991,7 @@ for _, strategy in helpers.all_strategies() do
           assert.response(res).has.status(401)
           local json = assert.response(res).has.jsonbody()
           assert.same("Unauthorized", json.message)
+          error_assert(res, "invalid_token")
         end)
 
         it("is allowed with valid user token", function()
@@ -1043,6 +1056,7 @@ for _, strategy in helpers.all_strategies() do
           assert.response(res).has.status(401)
           local json = assert.response(res).has.jsonbody()
           assert.same("Unauthorized", json.message)
+          error_assert(res, "invalid_token")
         end)
 
         it("is allowed with valid user token", function()
@@ -1109,6 +1123,7 @@ for _, strategy in helpers.all_strategies() do
           assert.response(res).has.status(401)
           local json = assert.response(res).has.jsonbody()
           assert.same("Unauthorized", json.message)
+          error_assert(res, "invalid_token")
         end)
 
         it("is allowed with valid user token", function()
@@ -1186,6 +1201,7 @@ for _, strategy in helpers.all_strategies() do
           assert.response(res).has.status(401)
           local json = assert.response(res).has.jsonbody()
           assert.same("Unauthorized", json.message)
+          error_assert(res, "invalid_token")
         end)
 
         it("is allowed with valid user token", function()
@@ -1277,6 +1293,7 @@ for _, strategy in helpers.all_strategies() do
             assert.response(res).has.status(401)
             local json = assert.response(res).has.jsonbody()
             assert.same("Unauthorized", json.message)
+            error_assert(res, "invalid_token")
           end)
 
           it("is allowed with valid token", function()
@@ -1556,6 +1573,7 @@ for _, strategy in helpers.all_strategies() do
           assert.response(res).has.status(401)
           local json = assert.response(res).has.jsonbody()
           assert.same("Unauthorized", json.message)
+          error_assert(res, "invalid_token")
         end)
 
 

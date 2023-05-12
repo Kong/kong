@@ -61,6 +61,8 @@ a copy. [KAG-739](https://konghq.atlassian.net/browse/KAG-739)
 - Kong Enterprise now supports using the AWS IAM database authentication to connect to the RDS(Postgres) database.
   [KAG-89](https://konghq.atlassian.net/browse/KAG-89)
   [KAG-167](https://konghq.atlassian.net/browse/KAG-167)
+- OpenID-Connect now support error reason header, and it can be turned off with `expose_error_code` set to false.
+  [FTI-1882](https://konghq.atlassian.net/browse/FTI-1882)
 
 #### Kong Manager
 
