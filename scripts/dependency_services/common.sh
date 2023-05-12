@@ -14,14 +14,14 @@ else
     DOCKER_COMPOSE="docker-compose"
 fi
 
-KONG_SERVICE_ENV_FILE=$1
-# clear the file
-> $KONG_SERVICE_ENV_FILE
-
 if [ "$2" == "down" ]; then
   $DOCKER_COMPOSE down
   exit 0
 fi
+
+KONG_SERVICE_ENV_FILE=$1
+# clear the file
+> $KONG_SERVICE_ENV_FILE
 
 cwd=$(realpath $(dirname $(readlink -f ${BASH_SOURCE[0]})))
 
