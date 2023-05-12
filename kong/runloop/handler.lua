@@ -21,6 +21,7 @@ local lrucache     = require "resty.lrucache"
 local marshall     = require "kong.cache.marshall"
 local ktls         = require "resty.kong.tls"
 local cjson        = require "cjson"
+local workspaces   = require "kong.workspaces"
 
 local PluginsIterator = require "kong.runloop.plugins_iterator"
 local instrumentation = require "kong.tracing.instrumentation"
@@ -109,6 +110,9 @@ local SERVER_HEADER = meta._SERVER_TOKENS
 
 local STREAM_TLS_TERMINATE_SOCK
 local STREAM_TLS_PASSTHROUGH_SOCK
+
+
+local WORKSPACE_NAMES = {}
 
 
 local set_authority
@@ -337,6 +341,52 @@ local function get_service_for_route(db, route, services_init_cache)
 end
 
 
+local function build_workspace_names_init_cache(db)
+  local workspaces_names_init_cache = {}
+  local workspaces = db.workspaces
+  local page_size
+  if workspaces.pagination then
+    page_size = workspaces.pagination.max_page_size
+  end
+
+  for workspace, err in workspaces:each(page_size, GLOBAL_QUERY_OPTS) do
+    if err then
+      return nil, err
+    end
+
+    workspaces_names_init_cache[workspace.id] = workspace.name
+  end
+
+  return workspaces_names_init_cache
+end
+
+
+local function collect_workspace_name_for_route(db, route, workspace_names_init_cache)
+  local ws_id = route.ws_id
+  if not ws_id then
+    return
+  end
+
+  local ws_name = workspace_names_init_cache[ws_id]
+  if ws_name then
+    return
+  end
+
+  if kong.core_cache and db.strategy ~= "off" then
+    local ws = workspaces.select_workspace_by_id_with_cache(ws_id)
+    if ws then
+      workspace_names_init_cache[ws_id] = ws.name
+    end
+
+  else
+    local ws = db.workspaces:select({ id = ws_id }, GLOBAL_QUERY_OPTS)
+    if ws then
+      workspace_names_init_cache[ws_id] = ws.name
+    end
+  end
+end
+
+
 local function get_router_version()
   return kong.core_cache:get("router:version", TTL_ZERO, utils.uuid)
 end
@@ -351,11 +401,17 @@ local function new_router(version)
   -- still not ready. For those cases, use a plain Lua table as a cache
   -- instead
   local services_init_cache = {}
+  local workspace_names_init_cache = {}
   if not kong.core_cache and db.strategy ~= "off" then
     services_init_cache, err = build_services_init_cache(db)
     if err then
       services_init_cache = {}
       log(WARN, "could not build services init cache: ", err)
+    end
+    workspace_names_init_cache, err = build_workspace_names_init_cache(db)
+    if err then
+      workspace_names_init_cache = {}
+      log(WARN, "could not build workspace names init cache: ", err)
     end
   end
 
@@ -386,6 +442,8 @@ local function new_router(version)
       if err then
         return nil, err
       end
+
+      collect_workspace_name_for_route(db, route, workspace_names_init_cache)
 
       -- routes with no services are added to router
       -- but routes where the services.enabled == false are not put in router
@@ -431,17 +489,18 @@ local function new_router(version)
     log(ERR, "failed to increase router rebuild counter: ", err)
   end
 
-  return new_router
+  return new_router, nil, workspace_names_init_cache
 end
 
 
 local function build_router(version)
-  local router, err = new_router(version)
+  local router, err, workspace_names = new_router(version)
   if not router then
     return nil, err
   end
 
   ROUTER = router
+  WORKSPACE_NAMES = workspace_names
 
   if version then
     ROUTER_VERSION = version
@@ -1143,8 +1202,8 @@ return {
         return true
       end
 
-
-      ctx.workspace = match_t.route and match_t.route.ws_id
+      ctx.workspace = route and route.ws_id
+      ctx.workspace_name = WORKSPACE_NAMES[ctx.workspace]
 
       local service = match_t.service
       local upstream_url_t = match_t.upstream_url_t
@@ -1205,13 +1264,15 @@ return {
         span:finish()
       end
 
-      ctx.workspace = match_t.route and match_t.route.ws_id
+      local route          = match_t.route
+
+      ctx.workspace        = route and route.ws_id
+      ctx.workspace_name   = WORKSPACE_NAMES[ctx.workspace]
 
       local host           = var.host
       local port           = tonumber(ctx.host_port, 10)
                           or tonumber(var.server_port, 10)
 
-      local route          = match_t.route
       local service        = match_t.service
       local upstream_url_t = match_t.upstream_url_t
 

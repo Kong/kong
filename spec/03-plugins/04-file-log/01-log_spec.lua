@@ -9,6 +9,7 @@ local cjson         = require "cjson"
 local utils         = require "kong.tools.utils"
 local helpers       = require "spec.helpers"
 local pl_file       = require "pl.file"
+local pl_path       = require "pl.path"
 local pl_stringx    = require "pl.stringx"
 local fmt           = string.format
 
@@ -187,6 +188,31 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
+      local ws = bp.workspaces:insert{
+        name = "ws1"
+      }
+
+      local service5 = bp.services:insert_ws({
+        protocol = "http",
+        host     = helpers.mock_upstream_host,
+        port     = helpers.mock_upstream_port,
+      }, ws)
+
+      local route5 = bp.routes:insert_ws( {
+        protocols = { "http" },
+        paths     ={"/wname_test"},
+        service = service5
+      }, ws)
+
+      bp.plugins:insert_ws ({
+        route = { id = route5.id },
+        name     = "file-log",
+        config   = {
+          path   = FILE_LOG_PATH,
+          reopen = true,
+        }
+      }, ws)
+
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -233,6 +259,30 @@ for _, strategy in helpers.each_strategy() do
       assert.is_number(log_message.response.size)
     end)
 
+    it("includes workspace_name 'ws1' in payload",function ()
+      local uuid = utils.random_string()
+
+      -- Making the request
+      local res = assert(proxy_client:send({
+        method = "GET",
+        path = "/wname_test",
+        headers = {
+          ["file-log-uuid"] = uuid
+        }
+      }))
+      assert.res_status(200, res)
+
+      helpers.wait_until(function()
+        return pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0
+      end, 10)
+
+      local log = pl_file.read(FILE_LOG_PATH)
+      local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
+      assert.same("127.0.0.1", log_message.client_ip)
+      assert.same(uuid, log_message.request.headers["file-log-uuid"])
+      assert.same("ws1", log_message.workspace_name)
+    end)
+
     describe("custom log values by lua", function()
       it("logs custom values to file", function()
         local uuid = utils.random_string()
@@ -254,6 +304,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_number(log_message.request.size)
         assert.is_number(log_message.response.size)
         assert.same(123, log_message.new_field)
+        assert.same("default", log_message.workspace_name)
       end)
 
       it("unsets existing log values", function()

@@ -856,7 +856,8 @@ do
         client_ip = var.remote_addr,
 
         -- XXX EE
-        workspace = ngx.ctx.workspace,
+        workspace = ctx.workspace,
+        workspace_name = ctx.workspace_name,
         started_at = okong.request.get_start_time(),
       }
 
@@ -900,7 +901,8 @@ do
         client_ip = var.remote_addr,
 
         -- XXX EE
-        workspace = ngx.ctx.workspace,
+        workspace = ctx.workspace,
+        workspace_name = ctx.workspace_name,
         started_at = okong.request.get_start_time(),
       }
 

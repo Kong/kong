@@ -81,8 +81,10 @@ describe("Log Serializer", function()
 
       local req_workspace = utils.uuid()
       ngx.ctx.workspace = req_workspace
+      ngx.ctx.workspace_name = "ws1"
       local res = kong.log.serialize({ngx = ngx, kong = kong, })
       assert.same(req_workspace,  res.workspace)
+      assert.same("ws1",res.workspace_name)
     end)
   end)
 end)
