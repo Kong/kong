@@ -256,6 +256,7 @@ jobs:
           cat /tmp/memusage.txt
 
     - uses: datadog/junit-upload-github-action@768dae7c808e17eed51ece17871e21f27fd5a000
+      continue-on-error: true
       if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }} # upload test results even if the job fails
       with:
         api-key: ${{ secrets.DATADOG_API_KEY }}
@@ -389,6 +390,7 @@ jobs:
           .ci/run_tests_github.sh
 
     - uses: datadog/junit-upload-github-action@768dae7c808e17eed51ece17871e21f27fd5a000
+      continue-on-error: true
       if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }} # upload test results even if the job fails
       with:
         api-key: ${{ secrets.DATADOG_API_KEY }}
@@ -471,6 +473,7 @@ jobs:
           .ci/run_tests_github.sh
 
     - uses: datadog/junit-upload-github-action@768dae7c808e17eed51ece17871e21f27fd5a000
+      continue-on-error: true
       if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }} # upload test results even if the job fails
       with:
         api-key: ${{ secrets.DATADOG_API_KEY }}
@@ -666,6 +669,7 @@ jobs:
           .ci/run_tests_github.sh
 
     - uses: datadog/junit-upload-github-action@768dae7c808e17eed51ece17871e21f27fd5a000
+      continue-on-error: true
       if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }} # upload test results even if the job fails
       with:
         api-key: ${{ secrets.DATADOG_API_KEY }}
