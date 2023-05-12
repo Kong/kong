@@ -8,7 +8,7 @@ bash "$cwd/common.sh" $KONG_SERVICE_ENV_FILE up
 
 if test $status -ne 0
     echo "Something goes wrong, please check common.sh output"
-    return
+    exit
 end
 
 source $KONG_SERVICE_ENV_FILE
