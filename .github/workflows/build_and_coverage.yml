@@ -30,15 +30,6 @@ jobs:
           - 5432:5432
         options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
 
-      cassandra:
-        image: cassandra:3
-        ports:
-          - 7199:7199
-          - 7000:7000
-          - 9160:9160
-          - 9042:9042
-        options: --health-cmd "cqlsh -e 'describe cluster'" --health-interval 5s --health-timeout 5s --health-retries 8
-
     steps:
     - name: Install packages
       run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev

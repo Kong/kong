@@ -107,7 +107,7 @@ function test_plugin {
   fi
 
   if [ -d ./spec ]; then
-    KONG_IMAGE=$DOCKER_IMAGE_NAME pongo run -- --exclude-tags=flaky $PONGO_EXTRA_ARG
+    KONG_IMAGE=$DOCKER_IMAGE_NAME pongo run -- --exclude-tags=flaky,cassandra $PONGO_EXTRA_ARG
     err_code=$?
     mv report.html $XML_OUTPUT/report-$plugin_name.xml
     pongo down
