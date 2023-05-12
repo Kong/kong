@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if [ "$#" -ne 1 ]; then
-    echo "Usage: $0 KONG_SERVICE_ENV_FILE"
+if [ "$#" -ne 2 ]; then
+    echo "Usage: $0 KONG_SERVICE_ENV_FILE [up|down]"
     exit 1
 fi
 
@@ -12,6 +12,11 @@ elif [[ -z $(which docker-compose) ]]; then
     exit 1
 else
     DOCKER_COMPOSE="docker-compose"
+fi
+
+if [ "$2" == "down" ]; then
+  $DOCKER_COMPOSE down
+  exit 0
 fi
 
 KONG_SERVICE_ENV_FILE=$1
