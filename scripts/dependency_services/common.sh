@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if [ "$#" -ne 1 ]; then
-    echo "Usage: $0 KONG_SERVICE_ENV_FILE"
+if [ "$#" -ne 2 ]; then
+    echo "Usage: $0 KONG_SERVICE_ENV_FILE [up|down]"
     exit 1
 fi
 
@@ -17,6 +17,11 @@ fi
 KONG_SERVICE_ENV_FILE=$1
 # clear the file
 > $KONG_SERVICE_ENV_FILE
+
+if [ "$2" == "down" ]; then
+  $DOCKER_COMPOSE down
+  exit 0
+fi
 
 cwd=$(realpath $(dirname $(readlink -f ${BASH_SOURCE[0]})))
 
