@@ -40,11 +40,6 @@ function _M.new(conf)
 
   setmetatable(self, _MT)
 
-  if conf.role == "control_plane" then
-    self.role =
-      require("kong.clustering.control_plane").new(self)
-  end
-
   return self
 end
 
@@ -81,6 +76,7 @@ function _M:init_cp_worker(plugins_list)
 
   events.init()
 
+  self.role = require("kong.clustering.control_plane").new(self)
   self.role:init_worker(plugins_list)
 end
 
