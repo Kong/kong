@@ -41,7 +41,7 @@ function _M.new(conf)
   setmetatable(self, _MT)
 
   if conf.role == "control_plane" then
-    self.cp =
+    self.role =
       require("kong.clustering.control_plane").new(self)
   end
 
@@ -73,7 +73,7 @@ function _M:handle_cp_websocket()
     return ngx_exit(444)
   end
 
-  return self.cp:handle_cp_websocket()
+  return self.role:handle_cp_websocket()
 end
 
 
@@ -81,7 +81,7 @@ function _M:init_cp_worker(plugins_list)
 
   events.init()
 
-  self.cp:init_worker(plugins_list)
+  self.role:init_worker(plugins_list)
 end
 
 
@@ -90,8 +90,8 @@ function _M:init_dp_worker(plugins_list)
     return
   end
 
-  self.dp = require("kong.clustering.data_plane").new(self)
-  self.dp:init_worker(plugins_list)
+  self.role = require("kong.clustering.data_plane").new(self)
+  self.role:init_worker(plugins_list)
 end
 
 
