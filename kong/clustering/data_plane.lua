@@ -157,8 +157,6 @@ function _M:communicate(premature)
     return
   end
 
-  local config_semaphore = semaphore.new(0)
-
   -- how DP connection management works:
   -- three threads are spawned, when any of these threads exits,
   -- it means a fatal error has occurred on the connection,
@@ -176,11 +174,10 @@ function _M:communicate(premature)
   --                 and is also responsible for handling timeout detection
 
   local ping_immediately
-  local config_exit
   local next_data
 
   events.clustering_recv_config(function(data)
-    if exiting() or config_exit or not data then
+    if exiting() or not data then
       return
     end
 
@@ -284,18 +281,6 @@ function _M:communicate(premature)
 
   elseif err_msg then
     ngx_log(ngx_ERR, _log_prefix, err_msg, log_suffix)
-  end
-
-  -- the config thread might be holding a lock if it's in the middle of an
-  -- update, so we need to give it a chance to terminate gracefully
-  config_exit = true
-
-  ok, err, perr = ngx.thread.wait(config_thread)
-  if not ok then
-    ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
-
-  elseif perr then
-    ngx_log(ngx_ERR, _log_prefix, perr, log_suffix)
   end
 
   if not exiting() then
