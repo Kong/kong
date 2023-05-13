@@ -84,8 +84,13 @@ local function init_dp()
 end
 
 
-local function clustering_recv_config(handler)
-  worker_events.register(handler, "clustering", "recv_config")
+local function clustering_recv_config(handler, is_reg)
+  if is_reg then
+    worker_events.register(handler, "clustering", "recv_config")
+
+  else
+    worker_events.unregister(handler)
+  end
 end
 
 
