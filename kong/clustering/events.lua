@@ -54,7 +54,7 @@ local function handle_dao_crud_event(data)
 end
 
 
-local function init()
+local function init_cp()
   cluster_events = assert(kong.cluster_events)
   worker_events  = assert(kong.worker_events)
 
@@ -79,8 +79,20 @@ local function clustering_push_config(handler)
 end
 
 
-return {
-  init = init,
+local function init_dp()
+  worker_events  = assert(kong.worker_events)
+end
 
+
+local function clustering_recv_config(handler)
+  worker_events.register(handler, "clustering", "recv_config")
+end
+
+
+return {
+  init_cp = init_cp,
   clustering_push_config = clustering_push_config,
+
+  init_dp = init_dp,
+  clustering_recv_config = clustering_recv_config,
 }

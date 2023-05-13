@@ -74,7 +74,7 @@ end
 
 function _M:init_cp_worker(plugins_list)
 
-  events.init()
+  events.init_cp()
 
   self.instance = require("kong.clustering.control_plane").new(self)
   self.instance:init_worker(plugins_list)
@@ -85,6 +85,8 @@ function _M:init_dp_worker(plugins_list)
   if not is_dp_worker_process() then
     return
   end
+
+  events.init_dp()
 
   self.instance = require("kong.clustering.data_plane").new(self)
   self.instance:init_worker(plugins_list)
