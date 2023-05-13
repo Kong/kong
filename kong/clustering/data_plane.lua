@@ -6,6 +6,7 @@ local semaphore = require("ngx.semaphore")
 local cjson = require("cjson.safe")
 local config_helper = require("kong.clustering.config_helper")
 local clustering_utils = require("kong.clustering.utils")
+local events = require("kong.clustering.events")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
 local utils = require("kong.tools.utils")
@@ -178,50 +179,41 @@ function _M:communicate(premature)
   local config_exit
   local next_data
 
-  local config_thread = ngx.thread.spawn(function()
-    while not exiting() and not config_exit do
-      local ok, err = config_semaphore:wait(1)
-      if ok then
-        local data = next_data
-        if data then
-          local msg = assert(inflate_gzip(data))
-          yield()
-          msg = assert(cjson_decode(msg))
-          yield()
+  events.clustering_recv_config(function(data)
+    if exiting() or config_exit or not data then
+      return
+    end
 
-          if msg.type == "reconfigure" then
-            if msg.timestamp then
-              ngx_log(ngx_DEBUG, _log_prefix, "received reconfigure frame from control plane with timestamp: ",
-                                 msg.timestamp, log_suffix)
+    local msg = assert(inflate_gzip(data))
+    yield()
+    msg = assert(cjson_decode(msg))
+    yield()
 
-            else
-              ngx_log(ngx_DEBUG, _log_prefix, "received reconfigure frame from control plane", log_suffix)
-            end
+    if msg.type ~= "reconfigure" then
+      return
+    end
 
-            local config_table = assert(msg.config_table)
-            local pok, res
-            pok, res, err = pcall(config_helper.update, self.declarative_config,
-                                  config_table, msg.config_hash, msg.hashes)
-            if pok then
-              if not res then
-                ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
-              end
+    ngx_log(ngx_DEBUG, _log_prefix, "received reconfigure frame from control plane",
+                       msg.timestamp and " with timestamp: " .. msg.timestamp or "",
+                       log_suffix)
 
-              ping_immediately = true
+    local config_table = assert(msg.config_table)
 
-            else
-              ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", res)
-            end
-
-            if next_data == data then
-              next_data = nil
-            end
-          end
-        end
-
-      elseif err ~= "timeout" then
-        ngx_log(ngx_ERR, _log_prefix, "semaphore wait error: ", err)
+    local pok, res, err = pcall(config_helper.update, self.declarative_config,
+                                config_table, msg.config_hash, msg.hashes)
+    if pok then
+      if not res then
+        ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
       end
+
+      ping_immediately = true
+
+    else
+      ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", res)
+    end
+
+    if next_data == data then
+      next_data = nil
     end
   end)
 
@@ -266,12 +258,7 @@ function _M:communicate(premature)
 
         if typ == "binary" then
           next_data = data
-          if config_semaphore:count() <= 0 then
-            -- the following line always executes immediately after the `if` check
-            -- because `:count` will never yield, end result is that the semaphore
-            -- count is guaranteed to not exceed 1
-            config_semaphore:post()
-          end
+          events.clustering_notify_recv_config(data)
 
         elseif typ == "pong" then
           ngx_log(ngx_DEBUG, _log_prefix, "received pong frame from control plane", log_suffix)
@@ -284,7 +271,7 @@ function _M:communicate(premature)
     end
   end)
 
-  local ok, err, perr = ngx.thread.wait(read_thread, write_thread, config_thread)
+  local ok, err, perr = ngx.thread.wait(read_thread, write_thread)
 
   ngx.thread.kill(read_thread)
   ngx.thread.kill(write_thread)

@@ -89,10 +89,19 @@ local function clustering_recv_config(handler)
 end
 
 
+local function clustering_notify_recv_config(data)
+  local res, err = worker_events.post_local("clustering", "recv_config", data)
+  if not res then
+    ngx_log(ngx_ERR, _log_prefix, "unable to post local event: ", err)
+  end
+end
+
+
 return {
   init_cp = init_cp,
   clustering_push_config = clustering_push_config,
 
   init_dp = init_dp,
   clustering_recv_config = clustering_recv_config,
+  clustering_notify_recv_config = clustering_notify_recv_config,
 }
