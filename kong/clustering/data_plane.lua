@@ -2,7 +2,6 @@ local _M = {}
 local _MT = { __index = _M, }
 
 
-local semaphore = require("ngx.semaphore")
 local cjson = require("cjson.safe")
 local config_helper = require("kong.clustering.config_helper")
 local clustering_utils = require("kong.clustering.utils")
