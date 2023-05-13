@@ -206,7 +206,7 @@ function _M:communicate(premature)
     end
   end
 
-  -- register the recv event handle in each communication
+  -- register the recv event handler in each communication
   events.clustering_recv_config(handler, true)
 
   local write_thread = ngx.thread.spawn(function()
@@ -278,7 +278,7 @@ function _M:communicate(premature)
     ngx_log(ngx_ERR, _log_prefix, err_msg, log_suffix)
   end
 
-  -- unregister the recv event handle
+  -- unregister the recv event handler
   events.clustering_recv_config(handler, false)
 
   if not exiting() then
