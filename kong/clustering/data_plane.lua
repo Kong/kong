@@ -157,13 +157,10 @@ function _M:communicate(premature)
   end
 
   -- how DP connection management works:
-  -- three threads are spawned, when any of these threads exits,
+  -- two threads are spawned, when any of these threads exits,
   -- it means a fatal error has occurred on the connection,
   -- and the other threads are also killed
   --
-  -- * config_thread: it grabs a received declarative config and apply it
-  --                  locally. In addition, this thread also persists the
-  --                  config onto the local file system
   -- * read_thread: it is the only thread that sends WS frames to the CP
   --                by sending out periodic PING frames to CP that checks
   --                for the healthiness of the WS connection. In addition,
