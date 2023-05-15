@@ -34,7 +34,7 @@ function add_copyright {
 
   local ret=0
   local header="$LOCAL_PATH/COPYRIGHT-HEADER"
-  local sha=$(shasum $header | cut -f1 -d' ')
+  local sha=$(sha1sum $header | cut -f1 -d' ')
   local eol="-- [ END OF LICENSE $sha ]"
   for f in $(find "." -type f -name "*.lua"); do
     grep -Fq "$sha" $f || {

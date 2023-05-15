@@ -7,7 +7,7 @@ LOCAL_PATH="$(dirname "$(realpath "$0")")"
 check_copyright_header_lua_files() {
   local path="$1"
   local sha
-  sha=$(shasum "$LOCAL_PATH/COPYRIGHT-HEADER" | cut -f1 -d ' ' )
+  sha=$(sha1sum "$LOCAL_PATH/COPYRIGHT-HEADER" | cut -f1 -d ' ' )
 
   mapfile -t -d '' files \
     < <(git -C "$path" ls-files -z '**/*.lua')
