@@ -51,7 +51,7 @@ describe("http-log plugin migration", function()
         uh.send_proxy_get_request()
 
         local ok, lines = thread:join()
-        assert.truthy(ok)
+        assert.truthy(ok, lines)
 
         -- verify that the log HTTP request had the configured header
         local idx = tablex.find(lines, custom_header_name .. ": " .. custom_header_content)
