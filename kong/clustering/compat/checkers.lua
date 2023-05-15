@@ -121,7 +121,7 @@ local compatible_checkers = {
       -- targets, upstreams, plugins, workspaces, clustering_data_planes and snis
       local entity_names = {
         "ca_certificates", "certificates", "consumers", "targets", "upstreams",
-        "plugins", "workspaces", "clustering_data_planes", "snis",
+        "plugins", "workspaces", "snis",
         }
 
       local has_update
