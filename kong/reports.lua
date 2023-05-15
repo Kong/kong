@@ -170,7 +170,6 @@ local function send_report(signal_type, t, host, port)
     local ok, err = sock:setkeepalive()
     if not ok then
       log(DEBUG, "failed to keepalive to ", host, ":", tostring(port), ": ", err)
-      _ssl_session = nil  -- force new SSL session on next request
       sock:close()
     end
   end
