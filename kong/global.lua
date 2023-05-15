@@ -201,7 +201,36 @@ function _GLOBAL.init_worker_events()
     return nil, err
   end
 
-  return worker_events
+  local PAYLOAD_MAX_LEN, PAYLOAD_TOO_BIG_ERR = 65535, "payload too big"
+  local TRUNCATED_PREFIX = ", truncated payload: "
+  local DEFAULT_TRUNCATED_PAYLOAD = TRUNCATED_PREFIX .. "not a serialized object"
+  local LEN = (#PAYLOAD_TOO_BIG_ERR + #DEFAULT_TRUNCATED_PAYLOAD) * 2
+
+  -- There is a limit for the payload size that events lib allows to send,
+  -- we overwrite `post` method to truncate the payload and send it again
+  -- when we get error message: "payload too big"
+  local worker_events_wrapper = {}
+  local _mt = { __index = worker_events }
+  setmetatable(worker_events_wrapper, _mt)
+
+  worker_events_wrapper.post = function (source, event, data, unique)
+    local ok, err = worker_events.post(source, event, data, unique)
+    -- exceeds the upper limit for the size of the payload
+    if err == PAYLOAD_TOO_BIG_ERR then
+      if type(data) == "string" then
+        -- truncate the payload and send it again  
+        data = PAYLOAD_TOO_BIG_ERR .. ", truncated payload: " .. string.sub(data, 1, PAYLOAD_MAX_LEN - LEN)
+      else
+        data = PAYLOAD_TOO_BIG_ERR .. DEFAULT_TRUNCATED_PAYLOAD
+      end
+
+      return worker_events.post(source, event, data, unique)
+    end
+
+    return ok, err
+  end
+
+  return worker_events_wrapper
 end
 
 
