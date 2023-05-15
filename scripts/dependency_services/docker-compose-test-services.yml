@@ -19,20 +19,6 @@ services:
     restart: on-failure
     stdin_open: true
     tty: true
-  cassandra:
-      image: cassandra:3
-      ports:
-        - 127.0.0.1::7199
-        - 127.0.0.1::7000
-        - 127.0.0.1::9160
-        - 127.0.0.1::9042
-      volumes:
-        - cassandra-data:/var/lib/cassandra
-      healthcheck:
-        test: ["CMD", "cqlsh", "-e", "'describe cluster'"]
-        interval: 5s
-        timeout: 5s
-        retries: 8
   redis:
     image: redis
     ports:
@@ -58,5 +44,4 @@ services:
 
 volumes:
   postgres-data:
-  cassandra-data:
   redis-data:

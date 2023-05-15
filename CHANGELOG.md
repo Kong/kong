@@ -10,17 +10,61 @@
 
 ## Unreleased
 
-### Fixes
+### Breaking Changes
+
+#### Core
+
+#### Plugins
+
+- Validation for queue related parameters has been
+  improved. `max_batch_size`, `max_entries` and `max_bytes` are now
+  `integer`s instead of `number`s.  `initial_retry_delay` and
+  `max_retry_delay` must now be `number`s greater than 0.001
+  (seconds).
+  [#10840](https://github.com/Kong/kong/pull/10840)
+
+### Additions
+
+#### Core
+
+#### Admin API
+
+#### Status API
 
 #### Plugins
 
 - **grpc-gateway**: Fixed an issue that empty (all default value) messages cannot be unframed correctly.
   [#10836](https://github.com/Kong/kong/pull/10836)
 
+#### PDK
+
+### Fixes
+
+#### Core
+
+#### Admin API
+
+#### Plugins
+
+- **ACME**: Fixed sanity test can't work with "kong" storage in Hybrid mode
+  [10852](https://github.com/Kong/kong/pull/10852)
+
+#### PDK
+
+### Changed
+
+#### Core
+
+#### PDK
+
+#### Plugins
+
 ### Dependencies
 
 - Bumped lua-resty-openssl from 0.8.20 to 0.8.22
   [#10837](https://github.com/Kong/kong/pull/10837)
+- Bumped kong-lapis from 1.8.3.1 to 1.14.0.2
+  [#10841](https://github.com/Kong/kong/pull/10841)
 
 ## 3.3.0
 
