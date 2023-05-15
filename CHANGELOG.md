@@ -33,6 +33,9 @@
 
 #### Plugins
 
+- **grpc-gateway**: Fixed an issue that empty (all default value) messages cannot be unframed correctly.
+  [#10836](https://github.com/Kong/kong/pull/10836)
+
 #### PDK
 
 ### Fixes
