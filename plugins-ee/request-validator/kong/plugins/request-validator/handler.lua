@@ -368,6 +368,9 @@ function RequestValidator:access(conf)
     -- if it isn't in cache, it will be created
     local validator = validator_cache[conf]
 
+    -- Warning: get_req_body_json() yields, so module-level tables (e.g.
+    -- template_environment) can only be accessed safely *before* it is called
+    -- i.e. parameters validation should only be done before this point.
     local body, err = get_req_body_json()
     if not body then
       return error_handler(err)
