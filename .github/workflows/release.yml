@@ -594,6 +594,8 @@ jobs:
         PACKAGE_TYPE: ${{ matrix.package }}
         KONG_RELEASE_LABEL: ${{ needs.metadata.outputs.release-label }}
       run: |
+        sha256sum bazel-bin/pkg/*
+
         scripts/release-kong.sh
 
   release-images:
