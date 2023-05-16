@@ -143,8 +143,6 @@ jobs:
         uses: kong/setup-deck@v1
 
       - name: Execute Gateway API Tests
-        id: execute_tests
-        continue-on-error: true
         run: |
           if [[ $RUN_SPEC == 'all' ]]; then 
             npm run test-gateway;
@@ -155,10 +153,6 @@ jobs:
           else
             npm run test-spec --spec=$RUN_SPEC;
           fi
-
-      - name: Retry Gateway Failed API Tests
-        if: steps.execute_tests.outcome == 'failure'
-        run: npm run test-multiple -- --spec=$(cat failed-tests.txt)
 
       - name: Get Gateway Details
         if: always()
