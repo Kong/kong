@@ -102,7 +102,7 @@ return function(args)
   -- inject necessary nginx directives (e.g. lmdb_*, lua_ssl_*)
   -- into the temporary nginx.conf that `resty` will create
   if inject_cmds[cmd_name] and not args.no_resty_cli_injection then
-    log.verbose("start to inject nginx directives and respawn")
+    log.verbose("start to inject nginx directives")
     inject_directives.run_command_with_injection(cmd_name, args)
     return
   end
