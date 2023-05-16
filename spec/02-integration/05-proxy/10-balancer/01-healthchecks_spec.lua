@@ -1169,9 +1169,24 @@ for _, strategy in helpers.each_strategy() do
 
                 -- Go hit them with our test requests
                 local client_oks1, client_fails1 = bu.client_requests(bu.SLOTS, api_host)
-                assert(bu.direct_request(localhost, port2, "/unhealthy"))
-                local client_oks2, client_fails2 = bu.client_requests(bu.SLOTS, api_host)
 
+                -- set server2 unhealthy
+                assert(bu.direct_request(localhost, port2, "/unhealthy"))
+                assert
+                  .with_timeout(5)
+                  .eventually(function()
+                    local client = helpers.http_client(localhost, port2)
+                    local res = assert(client:send({
+                      method = "GET",
+                      path = "/status", })
+                    )
+                    client:close()
+                    return res.status == 500
+                  end)
+                  .is_truthy()
+
+                -- Another test requests hit
+                local client_oks2, client_fails2 = bu.client_requests(bu.SLOTS, api_host)
                 local client_oks = client_oks1 + client_oks2
                 local client_fails = client_fails1 + client_fails2
 
@@ -1921,8 +1936,15 @@ for _, strategy in helpers.each_strategy() do
 
                   bu.end_testcase_setup(strategy, bp)
 
+                  -- set test parameters
+                  local req_burst = 100
+                  local total_requests = req_burst * 3
+                  local target1_reqs = req_burst * 2
+                  local target2_reqs = req_burst
+                  local accepted_var = 0.3
+
                   -- 1. target1 and target2 take requests
-                  local oks, fails = bu.client_requests(bu.SLOTS, api_host)
+                  local oks, fails = bu.client_requests(req_burst, api_host)
 
                   -- target2 goes unhealthy
                   assert(bu.direct_request(localhost, port1, "/unhealthy", protocol, "target2.test"))
@@ -1931,7 +1953,7 @@ for _, strategy in helpers.each_strategy() do
 
                   -- 2. target1 takes all requests
                   do
-                    local o, f = bu.client_requests(bu.SLOTS, api_host)
+                    local o, f = bu.client_requests(req_burst, api_host)
                     oks = oks + o
                     fails = fails + f
                   end
@@ -1943,7 +1965,7 @@ for _, strategy in helpers.each_strategy() do
 
                   -- 3. server1 and server2 take requests again
                   do
-                    local o, f = bu.client_requests(bu.SLOTS, api_host)
+                    local o, f = bu.client_requests(req_burst, api_host)
                     oks = oks + o
                     fails = fails + f
                   end
@@ -1951,11 +1973,11 @@ for _, strategy in helpers.each_strategy() do
                   -- collect server results; hitcount
                   local results = server1:shutdown()
                   ---- verify
-                  assert.are.equal(bu.SLOTS * 2, results["target1.test"].ok)
-                  assert.are.equal(bu.SLOTS, results["target2.test"].ok)
+                  assert.near(target1_reqs, results["target1.test"].ok, target1_reqs * accepted_var)
+                  assert.near(target2_reqs, results["target2.test"].ok, target2_reqs * accepted_var)
                   assert.are.equal(0, results["target1.test"].fail)
                   assert.are.equal(0, results["target1.test"].fail)
-                  assert.are.equal(bu.SLOTS * 3, oks)
+                  assert.are.equal(total_requests, oks)
                   assert.are.equal(0, fails)
                 end
               end)
