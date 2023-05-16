@@ -299,12 +299,10 @@ local function compile_conf(kong_config, conf_template)
   end
 
   -- the second value(the count) should not be returned
-  local nginx_conf = string.gsub(post_template, "(${%b{}})", function(w)
+  return (string.gsub(post_template, "(${%b{}})", function(w)
     local name = w:sub(4, -3)
     return compile_env[name:lower()] or ""
-  end)
-
-  return nginx_conf, nil
+  end))
 end
 
 local function write_env_file(path, data)
