@@ -163,7 +163,6 @@ for _, strategy in helpers.each_strategy() do
                                     .. ":"
                                     .. helpers.mock_upstream_port
                                     .. "/post_log/grpc",
-          timeout = 1
         },
       }
 
@@ -186,7 +185,6 @@ for _, strategy in helpers.each_strategy() do
                                     .. ":"
                                     .. helpers.mock_upstream_port
                                     .. "/post_log/grpcs",
-          timeout = 1
         },
       }
 
