@@ -160,13 +160,8 @@ local function run_command_with_injection(cmd_name, args)
 
   log.verbose("run_command_with_injection: %s", cmd)
 
-  local ok, code, stdout, stderr = pl_utils.executeex(cmd)
-  if ok and code == 0 then
-    print(stdout)
-
-  else
-    error(stderr)
-  end
+  local _, code = pl_utils.execute(cmd)
+  os.exit(code)
 end
 
 return {
