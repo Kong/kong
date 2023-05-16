@@ -1815,14 +1815,14 @@ for _, strategy in helpers.each_strategy() do
                   })
                   bu.end_testcase_setup(strategy, bp)
 
-                  -- 1) server1 and server2 take requests
+                  -- 1. server1 and server2 take requests
                   local oks, fails = bu.client_requests(bu.SLOTS, api_host)
                   -- server2 goes unhealthy
                   assert(bu.direct_request(localhost, port2, "/unhealthy", protocol, hostname))
                   -- Wait until healthchecker detects
                   bu.poll_wait_address_health(upstream_id, hostname, port1, localhost, port2, "UNHEALTHY")
 
-                  -- 2) server1 takes all requests
+                  -- 2. server1 takes all requests
                   do
                     local o, f = bu.client_requests(bu.SLOTS, api_host)
                     oks = oks + o
@@ -1834,7 +1834,7 @@ for _, strategy in helpers.each_strategy() do
                   -- Give time for healthchecker to detect
                   bu.poll_wait_address_health(upstream_id, hostname, port1, localhost, port2, "HEALTHY")
 
-                  -- 3) server1 and server2 take requests again
+                  -- 3. server1 and server2 take requests again
                   do
                     local o, f = bu.client_requests(bu.SLOTS, api_host)
                     oks = oks + o
@@ -1921,7 +1921,7 @@ for _, strategy in helpers.each_strategy() do
 
                   bu.end_testcase_setup(strategy, bp)
 
-                  -- 1) target1 and target2 take requests
+                  -- 1. target1 and target2 take requests
                   local oks, fails = bu.client_requests(bu.SLOTS, api_host)
 
                   -- target2 goes unhealthy
@@ -1929,7 +1929,7 @@ for _, strategy in helpers.each_strategy() do
                   -- Wait until healthchecker detects
                   bu.poll_wait_health(upstream_id, "target2.test", port1, "UNHEALTHY")
 
-                  -- 2) target1 takes all requests
+                  -- 2. target1 takes all requests
                   do
                     local o, f = bu.client_requests(bu.SLOTS, api_host)
                     oks = oks + o
@@ -1941,7 +1941,7 @@ for _, strategy in helpers.each_strategy() do
                   -- Give time for healthchecker to detect
                   bu.poll_wait_health(upstream_id, "target2.test", port1, "HEALTHY")
 
-                  -- 3) server1 and server2 take requests again
+                  -- 3. server1 and server2 take requests again
                   do
                     local o, f = bu.client_requests(bu.SLOTS, api_host)
                     oks = oks + o
@@ -2132,7 +2132,7 @@ for _, strategy in helpers.each_strategy() do
               server1:start()
               server2:start()
 
-              -- 1) server1 and server2 take requests
+              -- 1. server1 and server2 take requests
               local oks, fails = bu.client_requests(bu.SLOTS, api_host)
 
               -- manually bring it down using the endpoint
@@ -2145,7 +2145,7 @@ for _, strategy in helpers.each_strategy() do
                 bu.poll_wait_health(upstream_id, localhost, port2, "UNHEALTHY")
               end
 
-              -- 2) server1 takes all requests
+              -- 2. server1 takes all requests
               do
                 local o, f = bu.client_requests(bu.SLOTS, api_host)
                 oks = oks + o
@@ -2162,7 +2162,7 @@ for _, strategy in helpers.each_strategy() do
                 bu.poll_wait_health(upstream_id, localhost, port2, "HEALTHY")
               end
 
-              -- 3) server1 and server2 take requests again
+              -- 3. server1 and server2 take requests again
               do
                 local o, f = bu.client_requests(bu.SLOTS, api_host)
                 oks = oks + o
@@ -2218,12 +2218,12 @@ for _, strategy in helpers.each_strategy() do
 
               ngx.sleep(bu.CONSISTENCY_FREQ) -- wait for proxy state consistency timer
 
-              -- 1) server1 and server2 take requests
+              -- 1. server1 and server2 take requests
               local oks, fails = bu.client_requests(bu.SLOTS, api_host)
 
               assert(bu.direct_request(localhost, port2, "/timeout"))
 
-              -- 2) server1 takes all requests once server2 produces
+              -- 2. server1 takes all requests once server2 produces
               -- `nfails` failures (even though server2 will be ready
               -- to respond 200 again after `nfails`)
               do
