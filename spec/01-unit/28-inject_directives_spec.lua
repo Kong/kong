@@ -2,7 +2,7 @@ local pl_path = require "pl.path"
 local helpers = require "spec.helpers"
 local conf_loader = require "kong.conf_loader"
 local inject_directives = require "kong.cmd.utils.inject_directives"
-local construct_cmd = inject_directives.construct_cmd
+local construct_cmd = inject_directives._construct_cmd
 local currentdir = pl_path.currentdir
 local fmt = string.format
 
@@ -39,7 +39,7 @@ lua_ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
       }))
       local cmd, err = construct_cmd(conf, cmd_name, args)
       assert.is_nil(err)
-      local expected_args = "get test-env/test --v --no-inject"
+      local expected_args = "get test-env/test --v --no-resty-cli-injection"
       local expected_main_conf = main_conf
       if strategy == "off" then
         expected_main_conf = main_conf_off
@@ -81,7 +81,7 @@ lua_ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
       }))
       local cmd, err = construct_cmd(conf, cmd_name, args)
       assert.is_nil(err)
-      local expected_args = "get test-env/test --v --no-inject"
+      local expected_args = "get test-env/test --v --no-resty-cli-injection"
       local expected_main_conf = main_conf
       if strategy == "off" then
         expected_main_conf = main_conf_off
