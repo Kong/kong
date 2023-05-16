@@ -35,10 +35,11 @@ end
 
 -- convert relative path to absolute path
 -- as resty will run a temporary nginx instance
-local function convert_to_absolute_path(prefix, nginx_conf, patterns)
+local function convert_directive_path_to_absolute(prefix, nginx_conf, paths)
   local new_conf = nginx_conf
 
-  for _, pattern in ipairs(patterns) do
+  for _, path in ipairs(paths) do
+    local pattern = fmt("(%s) (.+);", path)
     local m, err = ngx.re.match(new_conf, pattern)
     if err then
       return nil, err
@@ -69,11 +70,10 @@ local function compile_main_inject(conf)
   end
 
   -- path directives that needs to be converted
-  local patterns = {
-    "(lmdb_environment_path) (.+);",
+  local paths = {
+    "lmdb_environment_path",
   }
-
-  return convert_to_absolute_path(conf.prefix, nginx_main_inject_conf, patterns)
+  return convert_directive_path_to_absolute(conf.prefix, nginx_main_inject_conf, paths)
 end
 
 local function compile_http_inject(conf)
@@ -150,7 +150,7 @@ local function construct_cmd(conf, cmd_name, args)
   return cmd, nil
 end
 
-local function respawn(cmd_name, args)
+local function run_command_with_injection(cmd_name, args)
   local conf = load_conf(args)
   local cmd, err = construct_cmd(conf, cmd_name, args)
 
@@ -158,7 +158,7 @@ local function respawn(cmd_name, args)
     error(err)
   end
 
-  log.verbose("respawn: %s", cmd)
+  log.verbose("run_command_with_injection: %s", cmd)
 
   local ok, code, stdout, stderr = pl_utils.executeex(cmd)
   if ok and code == 0 then
@@ -170,7 +170,7 @@ local function respawn(cmd_name, args)
 end
 
 return {
-  respawn = respawn,
+  run_command_with_injection = run_command_with_injection,
 
   -- for test purpose
   _construct_cmd = construct_cmd,
