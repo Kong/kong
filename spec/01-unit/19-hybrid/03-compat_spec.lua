@@ -343,13 +343,11 @@ describe("kong.clustering.compat", function()
   end)
 
   for _, strategy in helpers.each_strategy() do
-    describe("check compat for entities those have `updated_at` field", function()
+    describe("[#" .. strategy .. "]: check compat for entities those have `updated_at` field", function()
       local bp, db, entity_names
 
       setup(function()
-        -- excludes entities are not exported: clustering_data_planes, document_objects, files,
-        -- group_rbac_roles, groups, legacy_files, login_attempts, rbac_role_endpoints,
-        -- rbac_role_entities, rbac_roles, rbac_users
+        -- excludes entities not exportable: clustering_data_planes, 
         entity_names = {
           "services",
           "routes",
