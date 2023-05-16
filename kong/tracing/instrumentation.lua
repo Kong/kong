@@ -131,7 +131,7 @@ function _M.balancer(ctx)
         span:set_status(2)
       end
 
-      local upstream_finish_time = ctx.KONG_BODY_FILTER_ENDED_AT and ctx.KONG_BODY_FILTER_ENDED_AT * 1e6
+      local upstream_finish_time = ctx.KONG_BODY_FILTER_ENDED_AT_NS
       span:finish(upstream_finish_time)
     end
   end
