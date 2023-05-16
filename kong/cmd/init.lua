@@ -16,7 +16,10 @@ end
 local options = [[
  --v              verbose
  --vv             debug
- --no-inject      not inject nginx directives
+]]
+
+local internal_options = [[
+ --no-resty-cli-injection             not inject nginx directives to resty cli
 ]]
 
 local cmds_arr = {}
@@ -55,6 +58,8 @@ The available commands are:
 
 Options:
 %s]], table.concat(cmds_arr, "\n "), options)
+
+options = options .. internal_options
 
 return function(args)
   local cmd_name = table.remove(args, 1)
@@ -96,9 +101,9 @@ return function(args)
 
   -- inject necessary nginx directives (e.g. lmdb_*, lua_ssl_*)
   -- into the temporary nginx.conf that `resty` will create
-  if inject_cmds[cmd_name] and not args.no_inject then
+  if inject_cmds[cmd_name] and not args.no_resty_cli_injection then
     log.verbose("start to inject nginx directives and respawn")
-    inject_directives.respawn(cmd_name, args)
+    inject_directives.run_command_with_injection(cmd_name, args)
     return
   end
 

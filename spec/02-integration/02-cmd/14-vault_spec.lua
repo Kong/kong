@@ -143,7 +143,7 @@ describe("kong vault #" .. strategy, function()
       ngx.sleep(3)
 
       -- will fail without directives injected in dbless mode
-      local ok, stderr, stdout = helpers.kong_exec("vault get test-env/test --no-inject", {
+      local ok, stderr, stdout = helpers.kong_exec("vault get test-env/test --no-resty-cli-injection", {
         prefix = helpers.test_conf.prefix,
       })
       if strategy == "off" then

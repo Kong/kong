@@ -111,8 +111,8 @@ local function construct_args(args)
     end
   end
 
-  -- add `--no-inject` to terminate the recursion
-  named_args = named_args .. "--no-inject"
+  -- add `--no-resty-cli-injection` to terminate the recursion
+  named_args = named_args .. "--no-resty-cli-injection"
 
   return positional_args .. named_args
 end
@@ -173,5 +173,5 @@ return {
   respawn = respawn,
 
   -- for test purpose
-  construct_cmd = construct_cmd,
+  _construct_cmd = construct_cmd,
 }
