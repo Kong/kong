@@ -15,7 +15,7 @@ else
 fi
 
 if [ "$2" == "down" ]; then
-  $DOCKER_COMPOSE down
+  $DOCKER_COMPOSE down -v
   exit 0
 fi
 
