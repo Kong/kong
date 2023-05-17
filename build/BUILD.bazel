@@ -157,6 +157,7 @@ kong_directory_genrule(
         cp -r $(location @kong_portal//:dist_files) ${BUILD_DESTDIR}/kong/portal
 
         cp $(location //build/ee:luarocks_license) ${BUILD_DESTDIR}/kong/manifest.json
+        cp ${WORKSPACE_PATH}/kong/portal/migrations/portal_manifest.json ${BUILD_DESTDIR}/kong/portal_manifest.json
 
     """ + install_ssl_cmd + install_licensing_cmd + install_lib_deps_cmd + install_lualib_deps_cmd +
           fips_patch_cmd +
