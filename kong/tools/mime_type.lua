@@ -128,6 +128,18 @@ local function includes(this, other)
       if find(other_subtype, pattern) then
         return true
       end
+    else
+      -- considering included when this_subtype does not contain a suffix and is the suffix of other_subtype
+      local idx1 = find(this_subtype, "+", nil, true)
+      if not idx1 then -- this_subtype does not contain suffix
+        local idx2 = find(other_subtype, "+", nil, true)
+        if idx2 then -- other_subtype contains suffix
+          local other_subtype_suffix = sub(other_subtype, idx2 + 1)
+          if this_subtype == other_subtype_suffix then
+            return true
+          end
+        end
+      end
     end
   end
 

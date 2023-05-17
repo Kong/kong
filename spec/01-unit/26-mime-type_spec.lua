@@ -88,6 +88,8 @@ describe("kong.tools.mime_type", function()
         application_wildcard_xml = { type = "application", subtype = "*+xml" },
         suffix_xml = { type = "application", subtype = "x.y+z+xml" },
         application_json = { type = "application", subtype = "json" },
+        application_problem_json = { type = "application", subtype = "problem+json" },
+        application_problem_json_malformed1 = { type = "application", subtype = "problem+" },
       }
 
       local cases = {
@@ -149,6 +151,16 @@ describe("kong.tools.mime_type", function()
         {
           this = media_types.application_wildcard_xml,
           other = media_types.application_json,
+          result = false,
+        },
+        {
+          this = media_types.application_json,
+          other = media_types.application_problem_json,
+          result = true,
+        },
+        {
+          this = media_types.application_json,
+          other = media_types.application_problem_json_malformed1,
           result = false,
         },
       }
