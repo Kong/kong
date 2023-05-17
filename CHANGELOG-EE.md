@@ -42,6 +42,7 @@
 * `kong-openid-connect` is bumped from 2.5.4 to 2.5.5
 * `lua-resty-aws` is bumped from 1.1.2 to 1.2.2
 * `lua-resty-gcp` is bumped from 0.0.11 to 0.0.12
+* `lua-resty-ljsonschema` is bumped from 1.1.3 to 1.14
 
 ### Features
 

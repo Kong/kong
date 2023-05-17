@@ -283,7 +283,7 @@ for _, strategy in helpers.each_strategy() do
         })
        local body = assert.response(res).has.status(400)
        local json = cjson.decode(body)
-       assert.same("body 'body' validation failed with error: 'property status validation failed: matches non of the enum values'", json.message)
+       assert.same("body 'body' validation failed with error: 'property status validation failed: matches none of the enum values'", json.message)
       end)
 
       it("/pet put - invalid json body - missing name", function()
@@ -307,7 +307,7 @@ for _, strategy in helpers.each_strategy() do
         })
        local body = assert.response(res).has.status(400)
        local json = cjson.decode(body)
-       assert.same("body 'body' validation failed with error: 'property status validation failed: matches non of the enum values'", json.message)
+       assert.same("body 'body' validation failed with error: 'property status validation failed: matches none of the enum values'", json.message)
       end)
 
       it("/store/order/{orderId} - valid response", function()
@@ -333,7 +333,7 @@ for _, strategy in helpers.each_strategy() do
         })
        local body = assert.response(res).has.status(406)
        local json = cjson.decode(body)
-       assert.same("response body validation failed with error: property status validation failed: matches non of the enum values", json.message)
+       assert.same("response body validation failed with error: property status validation failed: matches none of the enum values", json.message)
       end)
 
       it("/store/order/{orderId} - valid response with incorrect content-type", function()

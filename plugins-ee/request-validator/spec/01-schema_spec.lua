@@ -88,7 +88,7 @@ describe("request-validator schema", function()
       }, request_validator_schema)
       assert.same("not a valid JSONschema draft 4 schema: property " ..
         "definitions validation failed: wrong type: " ..
-        "expected object, got table", err["@entity"][1])
+        "expected object, got array", err["@entity"][1])
       assert.is_nil(ok)
     end)
 

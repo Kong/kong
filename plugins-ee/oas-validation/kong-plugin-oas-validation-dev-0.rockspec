@@ -12,7 +12,7 @@ description = {
 }
 
 dependencies = {
-  "lua-resty-ljsonschema == 1.1.2",
+  "lua-resty-ljsonschema ~> 1", -- intentionally not pinned, so it will follow the pinned version in Kong-EE
   "lua-resty-openapi3-deserializer == 2.0.0",
 }
 

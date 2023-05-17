@@ -211,7 +211,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.response(res).has.status(400)
         local json = cjson.decode(body)
-        assert.same("query 'depArrInd' validation failed with error: 'matches non of the enum values'", json.message)
+        assert.same("query 'depArrInd' validation failed with error: 'matches none of the enum values'", json.message)
       end)
 
       it("/flightStatus/pts - no body", function()
@@ -232,7 +232,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.response(res).has.status(400)
         local json = cjson.decode(body)
-        assert.same("body 'sectors' validation failed with error: 'wrong type: expected object, got table'", json.message)
+        assert.same("body 'sectors' validation failed with error: 'wrong type: expected object, got array'", json.message)
       end)
 
       it("/flightStatus/pts - happy path", function()
