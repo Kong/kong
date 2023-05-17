@@ -74,3 +74,4 @@ export {
   waitForHashUpdate,
   waitForDictUpdate,
 } from './utilities/metrics';
+export { eventually } from './utilities/eventually';
