@@ -470,7 +470,21 @@ describe("kong start/stop #" .. strategy, function()
       end)
 
       it("starts with a valid declarative config string", function()
-        local config_string = [[{"_format_version":"1.1","services":[{"name":"my-service","url":"http://127.0.0.1:15555","routes":[{"name":"example-route","hosts":["example.test"]}]}]}]]
+        local config_string = cjson.encode {
+          _format_version = "1.1",
+          services =  {
+            {
+              name = "my-service",
+              url = "http://127.0.0.1:15555",
+              routes = {
+                {
+                  name = "example-route",
+                  hosts = { "example.test" }
+                }
+              }
+            }
+          }
+        }
 
         assert(helpers.start_kong({
           database = "off",
