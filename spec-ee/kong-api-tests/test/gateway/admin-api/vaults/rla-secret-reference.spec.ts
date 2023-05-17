@@ -55,7 +55,67 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
   // gcp secrets > aws_access_key, aws_secret_key
   const waitTime = 8000;
 
+  const window_size = 4;
+
   const doBasicRateLimitCheck = async () => {
+    /**
+     * This test will make 2 requests to the same path.
+     * The first request should be successful.
+     * The second request should be rate limited.
+     * 
+     * But there is a unlucky chance could make the previous
+     * assumption is wrong (2nd request will be successful).
+     * 
+     * | 1st request | 2nd request |
+     * +-------------+-------------+
+     *     1st Wnd       2nd Wnd
+     * 
+     * Wnd: Window
+     * 
+     * If the 2nd request hit the 2nd Window,
+     * it will be successful,
+     * and our test will fail.
+     * 
+     * If we are facing this situation,
+     * that means the 2nd request was made
+     * at the start of the 2nd Window.
+     * So we can wait for the 3rd Window SAFELY.
+     * 
+     * The resolution is that
+     * if the 2nd request is successful,
+     * we will wait for the 3rd Window,
+     * and then make two request immediately.
+     * 
+     * |    1st request   |    2nd request   | 3rd+4th requests |
+     * +------------------+------------------+------------------+
+     *        1st Wnd            2nd Wnd            3rd Wnd
+     * 
+     * As the Windows are 4 seconds,
+     * I believe the we can make 3rd+4th requests in 4 seconds.
+     */
+
+
+    for (let i = 0; i < 2; i++) {
+      const resp: any = await getNegative(`${proxyUrl}/${path}`);
+
+      if (i === 1) {
+        if (resp.status === 429) {
+          return;
+        }
+
+        if (resp.status != 200) {
+          expect(
+            resp.status,
+            'Status should be 429 meaning hcv reference for redis worked'
+          ).to.equal(429);
+        }
+      } else {
+        expect(resp.status, 'Status should be 200').to.equal(200);
+      }
+    }
+
+    await wait((window_size + 0.5) * 1000);
+
     for (let i = 0; i < 2; i++) {
       const resp: any = await getNegative(`${proxyUrl}/${path}`);
 
@@ -68,6 +128,7 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
         expect(resp.status, 'Status should be 200').to.equal(200);
       }
     }
+
   };
 
   before(async function () {
@@ -103,7 +164,7 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
       },
       config: {
         limit: [1],
-        window_size: [4],
+        window_size: [window_size],
         sync_rate: 0,
         strategy: 'redis',
         redis: {
