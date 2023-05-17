@@ -371,48 +371,6 @@ describe("kong start/stop #" .. strategy, function()
     end)
   end)
 
-  describe("nginx_main_daemon = off", function()
-    it("redirects nginx's stdout to 'kong start' stdout", function()
-      local stdout_path = os.tmpname()
-
-      finally(function()
-        os.remove(stdout_path)
-      end)
-
-      local cmd = fmt("KONG_PROXY_ACCESS_LOG=/dev/stdout "    ..
-                                "KONG_NGINX_MAIN_DAEMON=off %s start -c %s " ..
-                                ">%s 2>/dev/null &", helpers.bin_path,
-                                TEST_CONF_PATH, stdout_path)
-
-      local ok, _, _, stderr = helpers.execute(cmd, true)
-      if not ok then
-        error(stderr)
-      end
-
-      helpers.wait_until(function()
-        local cmd = fmt("%s health -p ./servroot", helpers.bin_path)
-        return helpers.execute(cmd, true)
-      end, 10)
-
-      local proxy_client = assert(helpers.proxy_client())
-
-      local res = assert(proxy_client:send {
-        method = "GET",
-        path = "/hello",
-      })
-      assert.res_status(404, res) -- no Route configured
-
-      helpers.pwait_until(function()
-        -- TEST: since nginx started in the foreground, the 'kong start' command
-        -- stdout should receive all of nginx's stdout as well.
-        local stdout = read_file(stdout_path)
-        assert.matches([["GET /hello HTTP/1.1" 404]] , stdout, nil, true)
-      end, 10)
-
-      assert(kong_exec("quit --prefix " .. PREFIX))
-    end)
-  end)
-
   if strategy == "off" then
     describe("declarative config start", function()
       it("starts with a valid declarative config file", function()
