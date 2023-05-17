@@ -732,6 +732,19 @@ describe("kong start/stop #" .. strategy, function()
       return ok, code, stdout, stderr
     end
 
+    local function assert_start()
+      local ok, code, stdout, stderr = start()
+      assert(ok, "failed to start kong...\n"
+              .. "exit code: " .. tostring(code) .. "\n"
+              .. "stdout:\n" .. tostring(stdout) .. "\n"
+              .. "stderr:\n" .. tostring(stderr) .. "\n")
+
+      assert.equals(0, code)
+      assert.matches("Kong started", stdout)
+
+      return stdout, stderr
+    end
+
 
     local function sigkill(pid)
       if type(pid) == "table" then
@@ -780,7 +793,7 @@ describe("kong start/stop #" .. strategy, function()
     before_each(function()
       helpers.clean_prefix(PREFIX)
 
-      assert(start())
+      assert_start()
 
       kill_all()
 
@@ -789,11 +802,7 @@ describe("kong start/stop #" .. strategy, function()
     end)
 
     it("removes unix socket files in the prefix directory", function()
-      local ok, code, stdout, stderr = start()
-      assert.truthy(ok, "expected `kong start` to succeed: " .. tostring(code or stderr))
-      assert.equals(0, code)
-
-      assert.matches("Kong started", stdout)
+      local _, stderr = assert_start()
 
       assert.matches("[warn] Found dangling unix sockets in the prefix directory", stderr, nil, true)
       assert.matches(PREFIX, stderr, nil, true)
@@ -803,32 +812,21 @@ describe("kong start/stop #" .. strategy, function()
     end)
 
     it("does not log anything if Kong was stopped cleanly and no sockets are found", function()
-      local ok, code, stdout, stderr = start()
-      assert.truthy(ok, "expected `kong start` to succeed: " .. tostring(code or stderr))
-      assert.equals(0, code)
-      assert.matches("Kong started", stdout)
+      assert_start()
 
       assert(helpers.stop_kong(PREFIX, true))
 
-      ok, code, stdout, stderr = start()
+      local stdout, stderr = assert_start()
 
-      assert.truthy(ok, "expected `kong start` to succeed: " .. tostring(code or stderr))
-      assert.equals(0, code)
-      assert.matches("Kong started", stdout)
       assert.not_matches("prefix directory .*not found", stdout)
-
       assert.not_matches("[warn] Found dangling unix sockets in the prefix directory", stderr, nil, true)
       assert.not_matches("unix socket", stderr)
     end)
 
     it("does not do anything if kong is already running", function()
-      local ok, code, stdout, stderr = start()
-      assert.truthy(ok, "initial startup of kong failed: " .. stderr)
-      assert.equals(0, code)
+      assert_start()
 
-      assert.matches("Kong started", stdout)
-
-      ok, code, _, stderr = start()
+      local ok, code, _, stderr = start()
       assert.falsy(ok, "expected `kong start` to fail with kong already running")
       assert.equals(1, code)
       assert.not_matches("unix socket", stderr)
