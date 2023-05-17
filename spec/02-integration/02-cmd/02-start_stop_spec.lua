@@ -54,6 +54,7 @@ describe("kong start/stop #" .. strategy, function()
       pg_database = TEST_CONF.pg_database,
       cassandra_keyspace = TEST_CONF.cassandra_keyspace,
     })
+
     assert.matches("failed to dereference '{vault://non-existent/pg_password}': vault not found (non-existent)", stderr, nil, true)
     assert.is_nil(stdout)
     assert.is_false(ok)
@@ -61,6 +62,7 @@ describe("kong start/stop #" .. strategy, function()
 
   it("resolves referenced secrets", function()
     helpers.setenv("PG_PASSWORD", "dummy")
+
     local _, stderr, stdout = assert(kong_exec("start", {
       prefix = PREFIX,
       database = TEST_CONF.database,
@@ -69,6 +71,7 @@ describe("kong start/stop #" .. strategy, function()
       cassandra_keyspace = TEST_CONF.cassandra_keyspace,
       vaults = "env",
     }))
+
     assert.not_matches("failed to dereference {vault://env/pg_password}", stderr, nil, true)
     assert.matches("Kong started", stdout, nil, true)
     assert(kong_exec("stop", {
@@ -80,10 +83,12 @@ describe("kong start/stop #" .. strategy, function()
     local _, stderr = kong_exec "start --help"
     assert.not_equal("", stderr)
   end)
+
   it("stop help", function()
     local _, stderr = kong_exec "stop --help"
     assert.not_equal("", stderr)
   end)
+
   it("start/stop gracefully with default conf/prefix", function()
     assert(kong_exec("start", {
       prefix = PREFIX,
@@ -91,12 +96,13 @@ describe("kong start/stop #" .. strategy, function()
       pg_database = TEST_CONF.pg_database,
       cassandra_keyspace = TEST_CONF.cassandra_keyspace
     }))
-    assert(kong_exec("stop", {
-      prefix = PREFIX,
-    }))
+
+    assert(kong_exec("stop", { prefix = PREFIX }))
   end)
+
   it("start/stop stops without error when references cannot be resolved #test", function()
     helpers.setenv("PG_PASSWORD", "dummy")
+
     local _, stderr, stdout = assert(kong_exec("start", {
       prefix = PREFIX,
       database = TEST_CONF.database,
@@ -105,25 +111,34 @@ describe("kong start/stop #" .. strategy, function()
       cassandra_keyspace = TEST_CONF.cassandra_keyspace,
       vaults = "env",
     }))
+
     assert.not_matches("failed to dereference {vault://env/pg_password}", stderr, nil, true)
     assert.matches("Kong started", stdout, nil, true)
+
     helpers.unsetenv("PG_PASSWORD")
+
     local _, stderr, stdout = assert(kong_exec("stop", {
       prefix = PREFIX,
     }))
+
     assert.not_matches("failed to dereference {vault://env/pg_password}", stderr, nil, true)
     assert.matches("Kong stopped", stdout, nil, true)
   end)
+
   it("start/stop custom Kong conf/prefix", function()
     assert(kong_exec("start --conf " .. TEST_CONF_PATH))
     assert(kong_exec("stop --prefix " .. PREFIX))
   end)
+
   it("stop honors custom Kong prefix higher than environment variable", function()
     assert(kong_exec("start --conf " .. TEST_CONF_PATH))
+
     helpers.setenv("KONG_PREFIX", "/tmp/dne")
     finally(function() helpers.unsetenv("KONG_PREFIX") end)
+
     assert(kong_exec("stop --prefix " .. PREFIX))
   end)
+
   it("start/stop Kong with only stream listeners enabled", function()
     assert(kong_exec("start ", {
       prefix = PREFIX,
@@ -131,14 +146,15 @@ describe("kong start/stop #" .. strategy, function()
       proxy_listen = "off",
       stream_listen = "127.0.0.1:9022",
     }))
-    assert(kong_exec("stop", {
-      prefix = PREFIX
-    }))
+
+    assert(kong_exec("stop", { prefix = PREFIX }))
   end)
+
   it("start dumps Kong config in prefix", function()
     assert(kong_exec("start --conf " .. TEST_CONF_PATH))
     assert.truthy(helpers.path.exists(TEST_CONF.kong_env))
   end)
+
   if strategy == "cassandra" then
     it("should not add [emerg], [alert], [crit], or [error] lines to error log", function()
       assert(kong_exec("start ", {
@@ -146,6 +162,7 @@ describe("kong start/stop #" .. strategy, function()
         stream_listen = "127.0.0.1:9022",
         status_listen = "0.0.0.0:8100",
       }))
+
       assert(kong_exec("stop", {
         prefix = PREFIX
       }))
@@ -155,6 +172,7 @@ describe("kong start/stop #" .. strategy, function()
       assert.logfile().has.no.line("[crit]", true)
       assert.logfile().has.no.line("[error]", true)
     end)
+
   else
     it("should not add [emerg], [alert], [crit], [error] or [warn] lines to error log", function()
       assert(kong_exec("start ", {
@@ -162,10 +180,9 @@ describe("kong start/stop #" .. strategy, function()
         stream_listen = "127.0.0.1:9022",
         status_listen = "0.0.0.0:8100",
       }))
+
       ngx.sleep(0.1)   -- wait unix domain socket
-      assert(kong_exec("stop", {
-        prefix = PREFIX
-      }))
+      assert(kong_exec("stop", { prefix = PREFIX }))
 
       assert.logfile().has.no.line("[emerg]", true)
       assert.logfile().has.no.line("[alert]", true)
@@ -183,9 +200,8 @@ describe("kong start/stop #" .. strategy, function()
         cassandra_contact_points = "localhost",
         cassandra_keyspace = TEST_CONF.cassandra_keyspace,
       }))
-      assert(kong_exec("stop", {
-        prefix = PREFIX,
-      }))
+
+      assert(kong_exec("stop", { prefix = PREFIX }))
     end)
   end
 
@@ -208,12 +224,14 @@ describe("kong start/stop #" .. strategy, function()
       local _, _, stdout = assert(kong_exec("start --v --conf " .. TEST_CONF_PATH))
       assert.matches("[verbose] prefix in use: ", stdout, nil, true)
     end)
+
     it("accepts debug --vv", function()
       local _, _, stdout = assert(kong_exec("start --vv --conf " .. TEST_CONF_PATH))
       assert.matches("[verbose] prefix in use: ", stdout, nil, true)
       assert.matches("[debug] prefix = ", stdout, nil, true)
       assert.matches("[debug] database = ", stdout, nil, true)
     end)
+
     it("prints ENV variables when detected #postgres", function()
       local _, _, stdout = assert(kong_exec("start --vv --conf " .. TEST_CONF_PATH, {
         database = "postgres",
@@ -222,10 +240,12 @@ describe("kong start/stop #" .. strategy, function()
       assert.matches('KONG_DATABASE ENV found with "postgres"', stdout, nil, true)
       assert.matches('KONG_ADMIN_LISTEN ENV found with "127.0.0.1:8001"', stdout, nil, true)
     end)
+
     it("prints config in alphabetical order", function()
       local _, _, stdout = assert(kong_exec("start --vv --conf " .. TEST_CONF_PATH))
       assert.matches("admin_listen.*anonymous_reports.*cassandra_ssl.*prefix.*", stdout)
     end)
+
     it("does not print sensitive settings in config", function()
       local _, _, stdout = assert(kong_exec("start --vv --conf " .. TEST_CONF_PATH, {
         pg_password = "do not print",
@@ -287,6 +307,7 @@ describe("kong start/stop #" .. strategy, function()
         assert.False(ok)
         assert.matches("the current database schema does not match this version of Kong.", stderr)
       end)
+
       it("does not start if migrations are not up to date", function()
         helpers.dao:run_migrations()
         -- Delete a migration to simulate inconsistencies between version
@@ -299,6 +320,7 @@ describe("kong start/stop #" .. strategy, function()
         assert.False(ok)
         assert.matches("the current database schema does not match this version of Kong.", stderr)
       end)
+
       it("connection check errors are prefixed with DB-specific prefix", function()
         local ok, stderr = kong_exec("start --conf " .. TEST_CONF_PATH, {
           pg_port = 99999,
@@ -446,6 +468,7 @@ describe("kong start/stop #" .. strategy, function()
           return ok
         end, 10)
       end)
+
       it("starts with a valid declarative config string", function()
         local config_string = [[{"_format_version":"1.1","services":[{"name":"my-service","url":"http://127.0.0.1:15555","routes":[{"name":"example-route","hosts":["example.test"]}]}]}]]
         local proxy_client
@@ -599,6 +622,7 @@ describe("kong start/stop #" .. strategy, function()
       assert.is_string(stderr)
       assert.matches("Error: no file at: foobar.conf", stderr, nil, true)
     end)
+
     it("stop inexistent prefix", function()
       assert(kong_exec("start --prefix " .. PREFIX, {
         pg_database = TEST_CONF.pg_database,
@@ -609,6 +633,7 @@ describe("kong start/stop #" .. strategy, function()
       assert.False(ok)
       assert.matches("Error: no such prefix: .*/inexistent", stderr)
     end)
+
     it("notifies when Kong is already running", function()
       assert(kong_exec("start --prefix " .. PREFIX, {
         pg_database = TEST_CONF.pg_database,
@@ -621,6 +646,7 @@ describe("kong start/stop #" .. strategy, function()
       assert.False(ok)
       assert.matches("Kong is already running in " .. PREFIX, stderr, nil, true)
     end)
+
     it("should not start Kong if already running in prefix", function()
       local kill = require "kong.cmd.utils.kill"
 
