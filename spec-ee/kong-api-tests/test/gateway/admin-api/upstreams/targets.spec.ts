@@ -7,6 +7,7 @@ import {
   postNegative,
   wait,
   logResponse,
+  retryRequest,
 } from '@support';
 import axios from 'axios';
 
@@ -341,21 +342,25 @@ describe('Gateway Admin API: Targets', function () {
     if (isHybrid) {
       this.skip();
     }
-    const resp = await axios(`${url}/${upstreamData.id}/health`);
-    logResponse(resp);
 
-    expect(resp.status, 'should return 200 status').to.equal(200);
-    expect(resp.data.data[0].id, 'should match target id').to.equal(
-      targetData.id
-    );
-    expect(
-      resp.data.data[0].health,
-      'should show a status of HEALTHY'
-    ).to.equal('HEALTHY');
-    expect(
-      resp.data.data[0].upstream.id,
-      'should show associated upstream in response'
-    ).to.equal(upstreamData.id);
+    const req = () => axios(`${url}/${upstreamData.id}/health`);
+
+    const assertions = (resp) => {
+      expect(resp.status, 'should return 200 status').to.equal(200);
+      expect(resp.data.data[0].id, 'should match target id').to.equal(
+        targetData.id
+      );
+      expect(
+        resp.data.data[0].health,
+        'should show a status of HEALTHY'
+      ).to.equal('HEALTHY');
+      expect(
+        resp.data.data[0].upstream.id,
+        'should show associated upstream in response'
+      ).to.equal(upstreamData.id);
+    };
+
+    await retryRequest(req, assertions, 10000);
   });
 
   it('should set target to unhealthy using target', async function () {
@@ -375,21 +380,25 @@ describe('Gateway Admin API: Targets', function () {
     if (isHybrid) {
       this.skip();
     }
-    const resp = await axios(`${url}/${upstreamData.id}/health`);
-    logResponse(resp);
 
-    expect(resp.status, 'should return 200 status').to.equal(200);
-    expect(resp.data.data[0].id, 'should match target id').to.equal(
-      targetData.id
-    );
-    expect(
-      resp.data.data[0].health,
-      'should show a status of UNHEALTHY'
-    ).to.equal('UNHEALTHY');
-    expect(
-      resp.data.data[0].upstream.id,
-      'should show associated upstream in response'
-    ).to.equal(upstreamData.id);
+    const req = () => axios(`${url}/${upstreamData.id}/health`);
+
+    const assertions = (resp) => {
+      expect(resp.status, 'should return 200 status').to.equal(200);
+      expect(resp.data.data[0].id, 'should match target id').to.equal(
+        targetData.id
+      );
+      expect(
+        resp.data.data[0].health,
+        'should show a status of UNHEALTHY'
+      ).to.equal('UNHEALTHY');
+      expect(
+        resp.data.data[0].upstream.id,
+        'should show associated upstream in response'
+      ).to.equal(upstreamData.id);
+    };
+
+    await retryRequest(req, assertions, 10000);
   });
 
   it('should delete target by id associated with upstream by id', async function () {
