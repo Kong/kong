@@ -300,6 +300,35 @@ describe("plugin queue", function()
     assert.match_re(log_messages, 'ERR .*1 queue entries were lost')
   end)
 
+  it("warns when queue reaches its capacity limit", function()
+    local capacity = 100
+    local function enqueue(entry)
+      Queue.enqueue(
+        queue_conf({
+          name = "capacity-warning",
+          max_batch_size = 1,
+          max_entries = capacity,
+          max_coalescing_delay = 0.1,
+        }),
+        function(_, batch)
+          return false
+        end,
+        nil,
+        entry
+      )
+    end
+    for i = 1, math.floor(capacity * Queue._CAPACITY_WARNING_THRESHOLD) - 1 do
+      enqueue("something")
+    end
+    assert.has.no.match_re(log_messages, "WARN .*queue queue at \\d*% capacity")
+    enqueue("something")
+    enqueue("something")
+    assert.match_re(log_messages, "WARN .*queue at \\d*% capacity")
+    log_messages = ""
+    enqueue("something")
+    assert.has.no.match_re(log_messages, "WARN .*queue queue at \\d*% capacity")
+  end)
+
   it("drops entries when queue reaches its capacity", function()
     local processed
     local function enqueue(entry)
