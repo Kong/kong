@@ -42,17 +42,35 @@ for _, strategy in helpers.each_strategy() do
     local admin_client, proxy_client
     local db, bp
 
-    setup(function()
+    lazy_setup(function()
+      local fixtures = {
+        http_mock = {
+          audit_server = [[
+            server {
+                server_name example.com;
+                listen 16798;
+
+                location = / {
+                    content_by_lua_block {
+                        local utils = require "kong.tools.utils"
+                        ngx.say(utils.get_request_id())
+                    }
+                }
+            }
+          ]],
+        },
+      }
+
       bp, db = helpers.get_db_utils(strategy)
 
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         audit_log  = "on",
-      }))
+      }, nil, nil, fixtures))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong(nil, true)
     end)
 
@@ -67,6 +85,21 @@ for _, strategy in helpers.each_strategy() do
     after_each(function()
       admin_client:close()
       proxy_client:close()
+    end)
+
+    describe("get_request_id()", function()
+      it("should never return empty outside the context of Admin API request", function()
+        local client = helpers.proxy_client(nil, 16798, "127.0.0.1")
+        local res = client:send {
+          method = "GET",
+          path = "/",
+          headers = {
+            ["Host"] = "example.com",
+          }
+        }
+        local body = assert.res_status(200, res)
+        assert.truthy(#body == 33)
+      end)
     end)
 
     describe("audit requests", function()

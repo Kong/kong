@@ -1630,7 +1630,7 @@ function _M.get_request_id()
   end
 
   local ok, res = pcall(function() return ngx.var.set_request_id end)
-  if ok then
+  if ok and type(res) == "string" and res ~= "" then
     return res
   end
 

@@ -97,6 +97,7 @@ a copy. [KAG-739](https://konghq.atlassian.net/browse/KAG-739)
 * Portal documentation page: field `registration` in `document_object` will not be set
   when the plugin `Portal Application Registration` is installed but not enabled.
   [FTI-4798](https://konghq.atlassian.net/browse/FTI-4798)
+* Fix the bug of getting empty request_id when generating auditting data. [FTI-2438](https://konghq.atlassian.net/browse/FTI-2438)
 
 #### Kong Manager
 
