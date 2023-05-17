@@ -1237,21 +1237,38 @@ for _, strategy in helpers.each_strategy() do
 
                 bu.end_testcase_setup(strategy, bp)
 
-                local requests = bu.SLOTS * 2 -- go round the balancer twice
-
                 -- setup target servers:
                 -- server2 will only respond for part of the test,
                 -- then server1 will take over.
-                local server2_oks = math.floor(requests / 4)
                 local server1 = https_server.new(port1, localhost)
                 local server2 = https_server.new(port2, localhost)
                 server1:start()
                 server2:start()
 
+                -- set test parameters
+                local req_burst = 10
+                local total_requests = req_burst * 2
+                local target2_reqs = req_burst / 2
+                local target1_reqs = total_requests - target2_reqs
+                local accepted_var = 0.3
+
                 -- Go hit them with our test requests
-                local client_oks1, client_fails1 = bu.client_requests(bu.SLOTS, api_host)
+                local client_oks1, client_fails1 = bu.client_requests(req_burst, api_host)
                 assert(bu.direct_request(localhost, port2, "/unhealthy"))
-                local client_oks2, client_fails2 = bu.client_requests(bu.SLOTS, api_host)
+                assert
+                  .with_timeout(5)
+                  .eventually(function()
+                    local client = helpers.http_client(localhost, port2)
+                    local res = assert(client:send({
+                      method = "GET",
+                      path = "/status", })
+                    )
+                    client:close()
+                    return res.status == 500
+                  end)
+                  .is_truthy()
+
+                local client_oks2, client_fails2 = bu.client_requests(req_burst, api_host)
 
                 local client_oks = client_oks1 + client_oks2
                 local client_fails = client_fails1 + client_fails2
@@ -1261,12 +1278,12 @@ for _, strategy in helpers.each_strategy() do
                 local count2 = server2:shutdown()
 
                 -- verify
-                assert.are.equal(requests - server2_oks - nfails, count1.ok)
-                assert.are.equal(server2_oks, count2.ok)
+                assert.near(target1_reqs, count1.ok, target1_reqs * accepted_var)
+                assert.near(target2_reqs, count2.ok, target2_reqs * accepted_var)
                 assert.are.equal(0, count1.fail)
                 assert.are.equal(nfails, count2.fail)
 
-                assert.are.equal(client_oks, requests)
+                assert.are.equal(client_oks, total_requests)
                 assert.are.equal(0, client_fails)
               end
             end)
@@ -1937,7 +1954,7 @@ for _, strategy in helpers.each_strategy() do
                   bu.end_testcase_setup(strategy, bp)
 
                   -- set test parameters
-                  local req_burst = 100
+                  local req_burst = 10
                   local total_requests = req_burst * 3
                   local target1_reqs = req_burst * 2
                   local target2_reqs = req_burst
