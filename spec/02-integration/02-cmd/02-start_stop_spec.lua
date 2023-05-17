@@ -13,15 +13,78 @@ local TEST_CONF = helpers.test_conf
 local TEST_CONF_PATH = helpers.test_conf_path
 
 
+local function wait_until_healthy(prefix)
+  prefix = prefix or PREFIX
+  local cmd = fmt("%s health -p %q", helpers.bin_path, prefix)
+
+  assert
+    .with_timeout(10)
+    .eventually(function()
+      local ok, code, stdout, stderr = helpers.execute(cmd, true)
+      if not ok then
+        return nil, { code = code, stdout = stdout, stderr = stderr }
+      end
+
+      return true
+    end)
+    .is_truthy("expected `" .. cmd .. "` to succeed")
+
+  local conf = assert(helpers.get_running_conf(prefix))
+
+  if conf.proxy_listen and conf.proxy_listen ~= "off" then
+    helpers.wait_for_file("socket", prefix .. "/worker_events.sock")
+  end
+
+  if conf.stream_listen and conf.stream_listen ~= "off" then
+    helpers.wait_for_file("socket", prefix .. "/stream_worker_events.sock")
+  end
+
+  if conf.admin_listen and conf.admin_listen ~= "off" then
+    local port = assert(conf.admin_listen:match(":([0-9]+)"))
+    assert
+      .with_timeout(5)
+      .eventually(function()
+        local client = helpers.admin_client(1000, port)
+        local res, err = client:send({ path = "/status", method = "GET" })
+
+        if res then res:read_body() end
+
+        client:close()
+
+        if not res then
+          return nil, err
+        end
+
+        if res.status ~= 200 then
+          return nil, res
+        end
+
+        return true
+      end)
+      .is_truthy("/status API did not return 200")
+  end
+end
+
+
 for _, strategy in helpers.each_strategy() do
 
 describe("kong start/stop #" .. strategy, function()
+  local proxy_client, admin_client
+
   lazy_setup(function()
     helpers.get_db_utils(strategy) -- runs migrations
     helpers.prepare_prefix()
   end)
 
   after_each(function()
+    if proxy_client then
+      proxy_client:close()
+    end
+
+    if admin_client then
+      admin_client:close()
+    end
+
     helpers.kill_all()
     helpers.clean_logfile()
   end)
@@ -147,6 +210,8 @@ describe("kong start/stop #" .. strategy, function()
       stream_listen = "127.0.0.1:9022",
     }))
 
+    wait_until_healthy()
+
     assert(kong_exec("stop", { prefix = PREFIX }))
   end)
 
@@ -162,6 +227,8 @@ describe("kong start/stop #" .. strategy, function()
         stream_listen = "127.0.0.1:9022",
         status_listen = "0.0.0.0:8100",
       }))
+
+      wait_until_healthy()
 
       assert(kong_exec("stop", {
         prefix = PREFIX
@@ -181,7 +248,8 @@ describe("kong start/stop #" .. strategy, function()
         status_listen = "0.0.0.0:8100",
       }))
 
-      ngx.sleep(0.1)   -- wait unix domain socket
+      wait_until_healthy()
+
       assert(kong_exec("stop", { prefix = PREFIX }))
 
       assert.logfile().has.no.line("[emerg]", true)
@@ -200,6 +268,8 @@ describe("kong start/stop #" .. strategy, function()
         cassandra_contact_points = "localhost",
         cassandra_keyspace = TEST_CONF.cassandra_keyspace,
       }))
+
+      wait_until_healthy()
 
       assert(kong_exec("stop", { prefix = PREFIX }))
     end)
@@ -350,17 +420,11 @@ describe("kong start/stop #" .. strategy, function()
         error(stderr)
       end
 
-      helpers.wait_until(function()
-        local cmd = fmt("%s health -p ./servroot", helpers.bin_path)
-        return helpers.execute(cmd, true)
-      end, 10)
+      wait_until_healthy()
 
-      local proxy_client = assert(helpers.proxy_client())
+      proxy_client = helpers.proxy_client()
 
-      local res = assert(proxy_client:send {
-        method = "GET",
-        path = "/hello",
-      })
+      local res = proxy_client:get("/hello")
       assert.res_status(404, res) -- no Route configured
 
       -- TEST: since nginx started in the foreground, the 'kong start' command
@@ -383,13 +447,8 @@ describe("kong start/stop #" .. strategy, function()
               - example.test
         ]]
 
-        local proxy_client
-
         finally(function()
           os.remove(yaml_file)
-          if proxy_client then
-            proxy_client:close()
-          end
         end)
 
         assert(helpers.start_kong({
@@ -399,41 +458,19 @@ describe("kong start/stop #" .. strategy, function()
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
-        helpers.wait_until(function()
-          -- get a connection, retry until kong starts
-          helpers.wait_until(function()
-            local pok
-            pok, proxy_client = pcall(helpers.proxy_client)
-            return pok
-          end, 10)
+        wait_until_healthy()
 
-          local res = assert(proxy_client:send {
-            method = "GET",
-            path = "/",
-            headers = {
-              host = "example.test",
-            }
-          })
-          local ok = res.status == 200
+        proxy_client = helpers.proxy_client()
 
-          if proxy_client then
-            proxy_client:close()
-            proxy_client = nil
-          end
+        local res = proxy_client:get("/", {
+          headers = { host = "example.test" }
+        })
 
-          return ok
-        end, 10)
+        assert.response(res).has.status(200)
       end)
 
       it("starts with a valid declarative config string", function()
         local config_string = [[{"_format_version":"1.1","services":[{"name":"my-service","url":"http://127.0.0.1:15555","routes":[{"name":"example-route","hosts":["example.test"]}]}]}]]
-        local proxy_client
-
-        finally(function()
-          if proxy_client then
-            proxy_client:close()
-          end
-        end)
 
         assert(helpers.start_kong({
           database = "off",
@@ -441,30 +478,15 @@ describe("kong start/stop #" .. strategy, function()
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
-        helpers.wait_until(function()
-          -- get a connection, retry until kong starts
-          helpers.wait_until(function()
-            local pok
-            pok, proxy_client = pcall(helpers.proxy_client)
-            return pok
-          end, 10)
+        wait_until_healthy()
 
-          local res = assert(proxy_client:send {
-            method = "GET",
-            path = "/",
-            headers = {
-              host = "example.test",
-            }
-          })
-          local ok = res.status == 200
+        proxy_client = helpers.proxy_client()
 
-          if proxy_client then
-            proxy_client:close()
-            proxy_client = nil
-          end
+        local res = proxy_client:get("/", {
+          headers = { host = "example.test" }
+        })
 
-          return ok
-        end, 10)
+        assert.response(res).has.status(200)
       end)
 
       it("hash is set correctly for a non-empty configuration", function()
@@ -479,13 +501,8 @@ describe("kong start/stop #" .. strategy, function()
               - example.test
         ]]
 
-        local admin_client, json_body
-
         finally(function()
           os.remove(yaml_file)
-          if admin_client then
-            admin_client:close()
-          end
         end)
 
         assert(helpers.start_kong({
@@ -494,45 +511,21 @@ describe("kong start/stop #" .. strategy, function()
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
-        helpers.wait_until(function()
-          helpers.wait_until(function()
-            local pok
-            pok, admin_client = pcall(helpers.admin_client)
-            return pok
-          end, 10)
+        wait_until_healthy()
 
-          local res = assert(admin_client:send {
-            method = "GET",
-            path = "/status"
-          })
-          if res.status ~= 200 then
-            return false
-          end
-          local body = assert.res_status(200, res)
-          json_body = cjson.decode(body)
+        admin_client = helpers.admin_client()
+        local res = admin_client:get("/status")
 
-          if admin_client then
-            admin_client:close()
-            admin_client = nil
-          end
+        assert.response(res).has.status(200)
 
-          return true
-        end, 10)
+        local json = assert.response(res).has.jsonbody()
 
-        assert.is_string(json_body.configuration_hash)
-        assert.equals(32, #json_body.configuration_hash)
-        assert.not_equal(constants.DECLARATIVE_EMPTY_CONFIG_HASH, json_body.configuration_hash)
+        assert.is_string(json.configuration_hash)
+        assert.equals(32, #json.configuration_hash)
+        assert.not_equal(constants.DECLARATIVE_EMPTY_CONFIG_HASH, json.configuration_hash)
       end)
 
       it("hash is set correctly for an empty configuration", function()
-
-        local admin_client, json_body
-
-        finally(function()
-          if admin_client then
-            admin_client:close()
-          end
-        end)
 
         -- not specifying declarative_config this time
         assert(helpers.start_kong({
@@ -540,33 +533,17 @@ describe("kong start/stop #" .. strategy, function()
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
-        helpers.wait_until(function()
-          helpers.wait_until(function()
-            local pok
-            pok, admin_client = pcall(helpers.admin_client)
-            return pok
-          end, 10)
+        wait_until_healthy()
 
-          local res = assert(admin_client:send {
-            method = "GET",
-            path = "/status"
-          })
-          if res.status ~= 200 then
-            return false
-          end
-          local body = assert.res_status(200, res)
-          json_body = cjson.decode(body)
+        admin_client = helpers.admin_client()
+        local res = admin_client:get("/status")
 
-          if admin_client then
-            admin_client:close()
-            admin_client = nil
-          end
+        assert.response(res).has.status(200)
 
-          return true
-        end, 10)
+        local json = assert.response(res).has.jsonbody()
 
-        assert.is_string(json_body.configuration_hash)
-        assert.equals(constants.DECLARATIVE_EMPTY_CONFIG_HASH, json_body.configuration_hash)
+        assert.is_string(json.configuration_hash)
+        assert.equals(constants.DECLARATIVE_EMPTY_CONFIG_HASH, json.configuration_hash)
       end)
     end)
   end
@@ -746,7 +723,13 @@ describe("kong start/stop #" .. strategy, function()
 
     local function start()
       local cmd = fmt("start -p %q", PREFIX)
-      return kong_exec(cmd, env, true)
+      local ok, code, stdout, stderr = kong_exec(cmd, env, true)
+
+      if ok then
+        wait_until_healthy()
+      end
+
+      return ok, code, stdout, stderr
     end
 
 
@@ -798,16 +781,6 @@ describe("kong start/stop #" .. strategy, function()
       helpers.clean_prefix(PREFIX)
 
       assert(start())
-
-      -- sanity
-      helpers.wait_until(function()
-        return kong_exec("health", env)
-      end, 5)
-
-      -- sanity
-      helpers.wait_until(function()
-        return helpers.path.exists(event_sock)
-      end, 5)
 
       kill_all()
 
@@ -898,20 +871,7 @@ describe("kong start/stop #" .. strategy, function()
       assert.truthy(started, "starting Kong failed: " .. tostring(err))
 
       -- wait until everything is running
-      helpers.wait_until(function()
-        local client = helpers.admin_client(5000, 8001)
-        local res, rerr = client:send({
-          method = "GET",
-          path = "/",
-        })
-
-        if res then res:read_body() end
-        client:close()
-
-        assert.is_table(res, rerr)
-
-        return res.status == 200
-      end)
+      wait_until_healthy(prefix)
 
       assert.truthy(helpers.path.exists(prefix .. "/worker_events.sock"))
       assert.truthy(helpers.path.exists(prefix .. "/stream_worker_events.sock"))
