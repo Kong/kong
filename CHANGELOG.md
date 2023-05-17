@@ -87,7 +87,7 @@
 - **http-log, statsd, opentelemetry, datadog**: The queueing system
   has been reworked, causing some plugin parameters to not function as expected
   anymore. If you use queues on these plugin, new parameters must be configured.
-  The module `kong.tools.batch_queue` has been renamed to `kong.tools.batch` in
+  The module `kong.tools.batch_queue` has been renamed to `kong.tools.queue` in
   the process and the API was changed.  If your custom plugin uses queues, it must
   be updated to use the new API.
   [#10172](https://github.com/Kong/kong/pull/10172)
