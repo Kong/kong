@@ -14,6 +14,7 @@ import {
   wait,
   logResponse,
   createMockbinBin,
+  eventually,
 } from '@support';
 
 describe('Gateway Plugins: http-log', function () {
@@ -152,32 +153,33 @@ describe('Gateway Plugins: http-log', function () {
     logResponse(resp);
 
     expect(resp.status, 'Status should be 200').to.equal(200);
-    // wait for logs to be sent to mockbin
-    await wait(1000);
+    
+    await eventually(async () => {
+      mockbinLogs = await getMockbinLogs(mockbinBinId);
+      // always take the last item of mockbin entries as it represents the last request logs
+      const requestDetails = JSON.parse(
+        mockbinLogs.log.entries[mockbinLogs.log.entries.length - 1].request
+          .postData.text
+      );
 
-    mockbinLogs = await getMockbinLogs(mockbinBinId);
-    // always take the last item of mockbin entries as it represents the last request logs
-    const requestDetails = JSON.parse(
-      mockbinLogs.log.entries[mockbinLogs.log.entries.length - 1].request
-        .postData.text
-    );
-
-    expect(
-      requestDetails.request.method,
-      'Should see correct kong request method in logs'
-    ).to.eq('GET');
-    expect(
-      requestDetails.request.headers.test,
-      'Should see correct kong request header in logs'
-    ).to.eq('test');
-    expect(
-      requestDetails.route.paths[0],
-      'Should see correct kong request route path in logs'
-    ).to.eq(path);
-    expect(
-      requestDetails.service.path,
-      'Should see correct kong request service path in logs'
-    ).to.eq('/anything');
+      expect(
+        requestDetails.request.method,
+        'Should see correct kong request method in logs'
+      ).to.eq('GET');
+      expect(
+        requestDetails.request.headers.test,
+        'Should see correct kong request header in logs'
+      ).to.eq('test');
+      expect(
+        requestDetails.route.paths[0],
+        'Should see correct kong request route path in logs'
+      ).to.eq(path);
+      expect(
+        requestDetails.service.path,
+        'Should see correct kong request service path in logs'
+      ).to.eq('/anything');
+    });
+    
   });
 
   pluginConfigHeaders.forEach((pluginConfigHeader) => {
@@ -208,16 +210,16 @@ describe('Gateway Plugins: http-log', function () {
       logResponse(resp);
 
       expect(resp.status, 'Status should be 200').to.equal(200);
-      // wait for logs to be sent to mockbin
-      await wait(1000);
 
-      mockbinLogs = await getMockbinLogs(mockbinBinId);
+      await eventually(async () => {
+        mockbinLogs = await getMockbinLogs(mockbinBinId);
 
-      expect(
-        mockbinLogs.log.entries[mockbinLogs.log.entries.length - 1].request
-          .method,
-        `Should use ${pluginConfigHeader} method to log request data`
-      ).to.eq(pluginConfigHeader);
+        expect(
+          mockbinLogs.log.entries[mockbinLogs.log.entries.length - 1].request
+            .method,
+          `Should use ${pluginConfigHeader} method to log request data`
+        ).to.eq(pluginConfigHeader);
+      });
     });
   });
 
@@ -246,19 +248,20 @@ describe('Gateway Plugins: http-log', function () {
     logResponse(resp);
 
     expect(resp.status, 'Status should be 200').to.equal(200);
-    // wait for logs to be sent to mockbin
-    await wait(1000);
 
-    mockbinLogs = await getMockbinLogs(mockbinBinId);
-    const requestDetails = JSON.parse(
-      mockbinLogs.log.entries[mockbinLogs.log.entries.length - 1].request
-        .postData.text
-    );
+    await eventually(async () => {
+      mockbinLogs = await getMockbinLogs(mockbinBinId);
 
-    expect(
-      requestDetails.kong,
-      'Should see return value of custom_fields_by_lua'
-    ).to.eq('http-log plugin api test');
+      const requestDetails = JSON.parse(
+        mockbinLogs.log.entries[mockbinLogs.log.entries.length - 1].request
+          .postData.text
+      );
+
+      expect(
+        requestDetails.kong,
+        'Should see return value of custom_fields_by_lua'
+      ).to.eq('http-log plugin api test');
+    });
   });
 
   // skipped due to https://konghq.atlassian.net/browse/KAG-503
