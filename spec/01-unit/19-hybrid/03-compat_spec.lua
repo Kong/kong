@@ -344,7 +344,9 @@ describe("kong.clustering.compat", function()
 
 
   for _, strategy in helpers.each_strategy() do
-    local compat_describe = (strategy == "postgres") and describe or pending
+    -- bypass test case against cassandra backend
+    local compat_describe = (strategy ~= "cassandra") and describe or pending
+
     compat_describe("[#" .. strategy .. "]: check compat for entities those have `updated_at` field", function()
       local bp, db, entity_names
 
