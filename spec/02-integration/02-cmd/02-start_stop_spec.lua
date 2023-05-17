@@ -9,12 +9,14 @@ describe("kong start/stop #" .. strategy, function()
     helpers.get_db_utils(strategy) -- runs migrations
     helpers.prepare_prefix()
   end)
+
   after_each(function()
     helpers.kill_all()
-    os.execute("rm -rf " .. helpers.test_conf.prefix .. "/worker_events.sock")
+    helpers.clean_logfile()
   end)
 
   lazy_teardown(function()
+    helpers.stop_kong()
     helpers.clean_prefix()
   end)
 
@@ -31,8 +33,6 @@ describe("kong start/stop #" .. strategy, function()
     assert.matches("Error: failed to dereference '{vault://env/ipheader}': unable to load value (ipheader) from vault (env): not found [{vault://env/ipheader}] for config option 'nginx_proxy_real_ip_header'", stderr, nil, true)
     assert.is_nil(stdout)
     assert.is_false(ok)
-
-    helpers.clean_logfile()
   end)
 
   it("fails to read referenced secrets when vault does not exist", function()
@@ -46,8 +46,6 @@ describe("kong start/stop #" .. strategy, function()
     assert.matches("failed to dereference '{vault://non-existent/pg_password}': vault not found (non-existent)", stderr, nil, true)
     assert.is_nil(stdout)
     assert.is_false(ok)
-
-    helpers.clean_logfile()
   end)
 
   it("resolves referenced secrets", function()
@@ -65,8 +63,6 @@ describe("kong start/stop #" .. strategy, function()
     assert(helpers.kong_exec("stop", {
       prefix = helpers.test_conf.prefix,
     }))
-
-    helpers.clean_logfile()
   end)
 
   it("start help", function()
@@ -106,7 +102,6 @@ describe("kong start/stop #" .. strategy, function()
     }))
     assert.not_matches("failed to dereference {vault://env/pg_password}", stderr, nil, true)
     assert.matches("Kong stopped", stdout, nil, true)
-    helpers.clean_logfile()
   end)
   it("start/stop custom Kong conf/prefix", function()
     assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path))
@@ -198,10 +193,6 @@ describe("kong start/stop #" .. strategy, function()
   end)
 
   describe("verbose args", function()
-    after_each(function ()
-      os.execute("rm -rf " .. helpers.test_conf.prefix .. "/worker_events.sock")
-    end)
-
     it("accepts verbose --v", function()
       local _, _, stdout = assert(helpers.kong_exec("start --v --conf " .. helpers.test_conf_path))
       assert.matches("[verbose] prefix in use: ", stdout, nil, true)
@@ -413,7 +404,6 @@ describe("kong start/stop #" .. strategy, function()
 
         finally(function()
           os.remove(yaml_file)
-          helpers.stop_kong(helpers.test_conf.prefix)
           if proxy_client then
             proxy_client:close()
           end
@@ -456,7 +446,6 @@ describe("kong start/stop #" .. strategy, function()
         local proxy_client
 
         finally(function()
-          helpers.stop_kong(helpers.test_conf.prefix)
           if proxy_client then
             proxy_client:close()
           end
@@ -510,7 +499,6 @@ describe("kong start/stop #" .. strategy, function()
 
         finally(function()
           os.remove(yaml_file)
-          helpers.stop_kong(helpers.test_conf.prefix)
           if admin_client then
             admin_client:close()
           end
@@ -557,7 +545,6 @@ describe("kong start/stop #" .. strategy, function()
         local admin_client, json_body
 
         finally(function()
-          helpers.stop_kong(helpers.test_conf.prefix)
           if admin_client then
             admin_client:close()
           end
@@ -654,10 +641,6 @@ describe("kong start/stop #" .. strategy, function()
         nginx_main_worker_processes = "1",
       }))
 
-      finally(function()
-        helpers.stop_kong()
-      end)
-
       local kong_env = prefix .. "/.kong_env"
 
       local before, err = helpers.file.read(kong_env)
@@ -689,7 +672,6 @@ describe("kong start/stop #" .. strategy, function()
 
       finally(function()
         pl_file.delete(new_templ_fixture)
-        helpers.stop_kong()
       end)
 
       for _, dict in ipairs(constants.DICTS) do
@@ -717,12 +699,6 @@ describe("kong start/stop #" .. strategy, function()
         assert.False(ok)
         assert.matches("could not resolve any of the provided Cassandra contact points " ..
                        "(cassandra_contact_points = 'invalid.inexistent.host')", stderr, nil, true)
-
-        finally(function()
-          helpers.stop_kong()
-          helpers.kill_all()
-          pcall(helpers.dir.rmtree)
-        end)
       end)
     end
 
@@ -745,7 +721,6 @@ describe("kong start/stop #" .. strategy, function()
 
         finally(function()
           os.remove(yaml_file)
-          helpers.stop_kong()
         end)
 
         local ok, err = helpers.start_kong({
@@ -763,10 +738,6 @@ describe("kong start/stop #" .. strategy, function()
   end)
 
   describe("deprecated properties", function()
-    after_each(function()
-      assert(helpers.stop_kong(helpers.test_conf.prefix))
-    end)
-
     it("deprecate <worker_consistency>", function()
       local _, stderr, _ = assert(helpers.kong_exec("start", {
         prefix = helpers.test_conf.prefix,
@@ -869,10 +840,6 @@ describe("kong start/stop #" .. strategy, function()
       assert.truthy(ok, "expected `kong start` to succeed: " .. tostring(code or stderr))
       assert.equals(0, code)
 
-      finally(function()
-        helpers.stop_kong(prefix)
-      end)
-
       assert.matches("Kong started", stdout)
 
       assert.matches("[warn] Found dangling unix sockets in the prefix directory", stderr, nil, true)
@@ -891,9 +858,6 @@ describe("kong start/stop #" .. strategy, function()
       assert(helpers.stop_kong(prefix, true))
 
       ok, code, stdout, stderr = start()
-      finally(function()
-        helpers.stop_kong(prefix)
-      end)
 
       assert.truthy(ok, "expected `kong start` to succeed: " .. tostring(code or stderr))
       assert.equals(0, code)
@@ -908,10 +872,6 @@ describe("kong start/stop #" .. strategy, function()
       local ok, code, stdout, stderr = start()
       assert.truthy(ok, "initial startup of kong failed: " .. stderr)
       assert.equals(0, code)
-
-      finally(function()
-        helpers.stop_kong(prefix)
-      end)
 
       assert.matches("Kong started", stdout)
 
