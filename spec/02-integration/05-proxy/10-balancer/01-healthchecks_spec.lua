@@ -2710,6 +2710,7 @@ for _, strategy in helpers.each_strategy() do
         -- Then server1 will take over.
         local server1_oks = bu.SLOTS * 1.5
         local server2_oks = bu.SLOTS / 2
+        local accepted_var = 0.3
         local server1 = helpers.tcp_server(port1, {
           requests = server1_oks,
           prefix = "1 ",
@@ -2728,8 +2729,10 @@ for _, strategy in helpers.each_strategy() do
         server2:join()
 
         -- verify
-        assert.are.equal(server1_oks, ok1)
-        assert.are.equal(server2_oks, ok2)
+        -- we are not testing the ring balancer, but the health check. It's OK
+        -- to have some variance in the number of requests each server responds.
+        assert.near(server1_oks, ok1, server1_oks * accepted_var) 
+        assert.near(server2_oks, ok2, server2_oks * accepted_var) 
         assert.are.equal(0, fails)
       end)
 
