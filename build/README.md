@@ -174,15 +174,16 @@ bazel build //:kong_el8 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_
 
 Cross compiling is currently only tested on Ubuntu 22.04 x86_64 with following targeting platforms:
 
-- **//:ubuntu-22.04-arm64** Ubuntu 22.04 ARM64
-  - Requires user to manually install `crossbuild-essential-arm64`.
-- **//:alpine-x86_64** Alpine Linux x86_64; bazel manages the build toolchain.
+- **//:generic-crossbuild-aarch64** Use the system installed aarch64 toolchain.
+  - Requires user to manually install `crossbuild-essential-arm64` on Debian/Ubuntu.
+- **//:alpine-crossbuild-x86_64** Alpine Linux x86_64; bazel manages the build toolchain.
+- **//:alpine-crossbuild-aarch64** Alpine Linux aarch64; bazel manages the build toolchain.
 
 Make sure platforms are selected both in building Kong and packaging kong:
 
 ```bash
-bazel build --config release //build:kong --platforms=//:ubuntu-2204-arm64
-bazel build --config release :kong_deb --platforms=//:ubuntu-2204-arm64
+bazel build --config release //build:kong --platforms=//:generic-crossbuild-aarch64
+bazel build --config release :kong_deb --platforms=//:generic-crossbuild-aarch64
 ```
 
 ## Troubleshooting
