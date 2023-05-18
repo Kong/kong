@@ -201,7 +201,7 @@ function _GLOBAL.init_worker_events()
     return nil, err
   end
 
-  local PAYLOAD_MAX_LEN, PAYLOAD_TOO_BIG_ERR = 65535, "payload too big"
+  local PAYLOAD_MAX_LEN, PAYLOAD_TOO_BIG_ERR = 65535, "failed to publish event: payload too big"
   local TRUNCATED_PREFIX = ", truncated payload: "
   local DEFAULT_TRUNCATED_PAYLOAD = TRUNCATED_PREFIX .. "not a serialized object"
   local LEN = (#PAYLOAD_TOO_BIG_ERR + #DEFAULT_TRUNCATED_PAYLOAD) * 2
@@ -217,11 +217,12 @@ function _GLOBAL.init_worker_events()
       if type(data) == "string" then
         -- truncate the payload and send it again  
         data = PAYLOAD_TOO_BIG_ERR .. ", truncated payload: " .. string.sub(data, 1, PAYLOAD_MAX_LEN - LEN)
+
       else
         data = PAYLOAD_TOO_BIG_ERR .. DEFAULT_TRUNCATED_PAYLOAD
       end
 
-      return worker_events.post(source, event, data, unique)
+      return native_post(source, event, data, unique)
     end
 
     return ok, err
