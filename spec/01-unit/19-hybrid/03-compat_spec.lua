@@ -342,6 +342,64 @@ describe("kong.clustering.compat", function()
     end)
   end)
 
+
+  for _, strategy in helpers.each_strategy() do
+    -- bypass test case against cassandra backend
+    local compat_describe = (strategy ~= "cassandra") and describe or pending
+
+    compat_describe("[#" .. strategy .. "]: check compat for entities those have `updated_at` field", function()
+      local bp, db, entity_names
+
+      setup(function()
+        -- excludes entities not exportable: clustering_data_planes, 
+        entity_names = {
+          "services",
+          "routes",
+          "ca_certificates",
+          "certificates",
+          "consumers",
+          "targets",
+          "upstreams",
+          "plugins",
+          "workspaces",
+          "snis",
+        }
+
+        local plugins_enabled = { "key-auth" }
+        bp, db = helpers.get_db_utils(strategy, entity_names, plugins_enabled)
+
+        for _, name in ipairs(entity_names) do
+          if name == "plugins" then
+            local plugin = {
+              name = "key-auth",
+              config = {
+                -- key_names has default value so we don't have to provide it
+                -- key_names = {}
+              }
+            }
+            bp[name]:insert(plugin)
+          elseif name == "routes" then
+            bp[name]:insert({ hosts = { "test1.test" }, })
+          else
+            bp[name]:insert()
+          end
+        end
+      end)
+
+      teardown(function()
+        for _, entity_name in ipairs(entity_names) do
+          db[entity_name]:truncate()
+        end
+      end)
+
+      it(function()
+        local config = { config_table = declarative.export_config() }
+        local has_update = compat.update_compatible_payload(config, "3.0.0", "test_")
+        assert.truthy(has_update)
+      end)
+  end)
+  end
+
   describe("core entities compatible changes", function()
     local config, db
 
