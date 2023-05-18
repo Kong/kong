@@ -209,12 +209,9 @@ function _GLOBAL.init_worker_events()
   -- There is a limit for the payload size that events lib allows to send,
   -- we overwrite `post` method to truncate the payload and send it again
   -- when we get error message: "payload too big"
-  local worker_events_wrapper = {}
-  local _mt = { __index = worker_events }
-  setmetatable(worker_events_wrapper, _mt)
-
-  worker_events_wrapper.post = function (source, event, data, unique)
-    local ok, err = worker_events.post(source, event, data, unique)
+  local native_post = worker_events.post
+  worker_events.post = function (source, event, data, unique)
+    local ok, err = native_post.post(source, event, data, unique)
     -- exceeds the upper limit for the size of the payload
     if err == PAYLOAD_TOO_BIG_ERR then
       if type(data) == "string" then
@@ -230,7 +227,7 @@ function _GLOBAL.init_worker_events()
     return ok, err
   end
 
-  return worker_events_wrapper
+  return worker_events
 end
 
 

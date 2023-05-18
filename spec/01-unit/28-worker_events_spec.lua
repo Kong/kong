@@ -10,11 +10,7 @@ describe("worker_events payload too big", function()
   local SOURCE, EVENT = "foo", "bar"
 
   local function generate_data()
-    local data = ""
-    for _ = 1, DATA_SIZE do
-      data = data .. "X"
-    end
-    return data
+    return string.rep("X", DATA_SIZE)
   end
 
   lazy_setup(function()
@@ -32,7 +28,7 @@ describe("worker_events payload too big", function()
   it("when type(payload) == 'string' ", function()
     local PAYLOAD = generate_data()
     worker_events.post(SOURCE, EVENT, PAYLOAD)
-    ngx.sleep(0.001)
+    worker_events.poll()
     --truncated payload
     assert.truthy(#payload_received > 60000)
   end)
@@ -43,7 +39,7 @@ describe("worker_events payload too big", function()
     }
 
     worker_events.post(SOURCE, EVENT, PAYLOAD)
-    ngx.sleep(0.001)
+    worker_events.poll()
     --truncated payload
     assert.truthy(payload_received == PAYLOAD_TOO_BIG_ERR .. DEFAULT_TRUNCATED_PAYLOAD)
   end)
