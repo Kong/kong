@@ -423,9 +423,7 @@ describe("kong start/stop #" .. strategy, function()
                                 TEST_CONF_PATH, stdout_path)
 
       local ok, _, _, stderr = helpers.execute(cmd, true)
-      if not ok then
-        error(stderr)
-      end
+      assert.truthy(ok, stderr)
 
       wait_until_healthy()
 
