@@ -211,7 +211,7 @@ function _GLOBAL.init_worker_events()
   -- when we get error message: "payload too big"
   local native_post = worker_events.post
   worker_events.post = function (source, event, data, unique)
-    local ok, err = native_post.post(source, event, data, unique)
+    local ok, err = native_post(source, event, data, unique)
     -- exceeds the upper limit for the size of the payload
     if err == PAYLOAD_TOO_BIG_ERR then
       if type(data) == "string" then
