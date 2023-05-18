@@ -362,12 +362,10 @@ describe("kong start/stop #" .. strategy, function()
         path = "/hello",
       })
       assert.res_status(404, res) -- no Route configured
-      assert(helpers.stop_kong(PREFIX))
 
       -- TEST: since nginx started in the foreground, the 'kong start' command
       -- stdout should receive all of nginx's stdout as well.
-      local stdout = read_file(stdout_path)
-      assert.matches([["GET /hello HTTP/1.1" 404]] , stdout, nil, true)
+      assert.logfile(stdout_path).has.line([["GET /hello HTTP/1.1" 404]], true, 5)
     end)
   end)
 
