@@ -40,7 +40,7 @@ configure_make(
         "@platforms//os:macos": {
             "AR": "/usr/bin/ar",
         },
-        "@kong//:arm64-linux-gnu-cross": {
+        "@kong//:aarch64-linux-anylibc-cross": {
             "MACHINE": "aarch64",
             "SYSTEM": "linux2",
         },
