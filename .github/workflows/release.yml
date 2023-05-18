@@ -11,6 +11,7 @@ on:  # yamllint disable-line rule:truthy
     - '.requirements'
     - '.github/workflows/release.yml'
     - '.github/matrix-*.yml'
+    - 'spec-ee/kong-api-tests'
   push:
     tags:
     - '**'
@@ -576,9 +577,10 @@ jobs:
   smoke-api-tests:
     name: Smoke API Tests - ${{ matrix.label }}
     needs: [metadata, build-images]
-    if: |
-      ! ( github.event_name == 'pull_request' &&
-          github.event.action == 'synchronize' )
+    # cancel previous runs if new commits are pushed to the PR, but run for each commit on master
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}-smoke-api-tests
+      cancel-in-progress: true
     strategy:
       fail-fast: false
       matrix:
@@ -593,9 +595,10 @@ jobs:
   e2e-api-tests:
     name: E2E API Tests - ${{ matrix.label }}
     needs: [metadata, build-images, smoke-tests, smoke-api-tests]
-    if: |
-      ! ( github.event_name == 'pull_request' &&
-          github.event.action == 'synchronize' )
+    # cancel previous runs if new commits are pushed to the PR, but run for each commit on master
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}-smoke-api-tests
+      cancel-in-progress: true
     strategy:
       fail-fast: false
       matrix:
