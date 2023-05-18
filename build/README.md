@@ -4,7 +4,7 @@ This directory contains the build system for the project.
 The build system is designed to be used with the [Bazel](https://bazel.build/).
 It is designed to be running on Linux without root privileges, and no virtualization technology is required.
 
-The build system is tested on Linux (x86_64 and arm64) and macOS (Intel chip and AppleSilicon Chip).
+The build system is tested on Linux (x86_64 and aarch64) and macOS (Intel chip and AppleSilicon Chip).
 
 ## Prerequisites
 
