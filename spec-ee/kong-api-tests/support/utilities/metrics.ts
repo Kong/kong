@@ -47,10 +47,13 @@ export const getMetric = async (metricName) => {
  * @property {number} timeout - timeout for waiting for configuration hash update
  * @returns {string} - the latest configuration hash
  */
-export const waitForHashUpdate = async (configHash, options: any = {}) => {
-  options = { targetNumberOfConfigHashChanges: 2, timeout: 13000, ...options };
+export const waitForConfigHashUpdate = async (
+  configHash,
+  options: any = {}
+) => {
+  options = { targetNumberOfConfigHashChanges: 1, timeout: 14000, ...options };
   const currentHash = await getMetric('kong_data_plane_config_hash');
-  const interval = 2500;
+  const interval = 2000;
   let timesHashChanged = options.timesHashChanged
     ? options.timesHashChanged
     : 0;
@@ -66,16 +69,22 @@ export const waitForHashUpdate = async (configHash, options: any = {}) => {
   // return current hash value only when timeout is reached or the amount of hash changes
   // equals to the given number. Sometimes hash needs to change twice for kong config changes to take effect
   if (
-    options?.timeout === 0 ||
+    options?.timeout <= 0 ||
     timesHashChanged === options.targetNumberOfConfigHashChanges
   ) {
     return currentHash;
   } else {
-    // increase the times that hash has changed and decrease the timeout for next iteration/recursion
-    timesHashChanged += 1;
-    options.timeout = options.timeout - interval;
+    // increase the times that hash has changed only when current hash doesn't equal previous hash
+    if (currentHash !== configHash) {
+      timesHashChanged += 1;
+    }
 
-    return await waitForHashUpdate(configHash, {
+    // decrease the timeout for next iteration/recursion
+    options.timeout -= interval;
+
+    // note that here we are passing currentHash as parameter instead of configHash
+    // this is done to keep track of how many times the hash has changed
+    return await waitForConfigHashUpdate(currentHash, {
       targetNumberOfConfigHashChanges: options.targetNumberOfConfigHashChanges,
       timeout: options.timeout,
       timesHashChanged,

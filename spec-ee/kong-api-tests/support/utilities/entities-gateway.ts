@@ -2,7 +2,9 @@ import axios, { AxiosRequestHeaders } from 'axios';
 import { expect } from '../assert/chai-expect';
 import { Environment, getBasePath, isGateway } from '../config/environment';
 import { logResponse } from './logging';
-import { randomString } from './random';
+import { randomString, wait } from './random';
+import { retryRequest } from './retry-axios';
+import { getNegative } from './negative-axios';
 
 export const getUrl = (endpoint: string) => {
   const basePath = getBasePath({
@@ -10,6 +12,10 @@ export const getUrl = (endpoint: string) => {
   });
   return `${basePath}/${endpoint}`;
 };
+
+const proxyUrl = `${getBasePath({
+  environment: Environment.gateway.proxy,
+})}`;
 
 /**
  * Request to create GW Service
@@ -308,4 +314,61 @@ export const deleteCache = async () => {
   });
   logResponse(resp);
   expect(resp.status, 'Status should be 204').to.equal(204);
+};
+
+/**
+ * Create a service and a route, send request to route until it is 200
+ * after getting 200, delete the service/route, send request again to the route until it is 404
+ * This triggers router rebuild making sure all configuration updates have been propagated in kong
+ * @param {object} options
+ * @property {number} timeout - retryRequest timeout
+ * @property {number} interval - retryRequest interval
+ */
+export const waitForConfigRebuild = async (options: any = {}) => {
+  // create a service
+  const service = await createGatewayService(`routerRebuild-${randomString()}`);
+  const serviceId = service.id;
+  await wait(1000);
+
+  // create a route for a service
+  const routePath = `/routerRebuild-${randomString()}`;
+  const route = await createRouteForService(serviceId, [routePath]);
+  const routeId = route.id;
+
+  // send request to route until response is 200
+  const reqSuccess = () => getNegative(`${proxyUrl}${routePath}`);
+  const assertionsSuccess = (resp) => {
+    expect(
+      resp.status,
+      'waitForConfigRebuild - route should return 200'
+    ).to.equal(200);
+  };
+
+  await retryRequest(
+    reqSuccess,
+    assertionsSuccess,
+    options?.timeout,
+    options?.interval
+  );
+
+  // removing the service and the route
+  await deleteGatewayRoute(routeId);
+  await wait(1000);
+  await deleteGatewayService(serviceId);
+
+  // send request to route until response is 404
+  const reqFail = () => getNegative(`${proxyUrl}${routePath}`);
+  const assertionsFail = (resp) => {
+    expect(
+      resp.status,
+      'waitForConfigRebuild - route should return 404'
+    ).to.equal(404);
+  };
+
+  await retryRequest(
+    reqFail,
+    assertionsFail,
+    options?.timeout,
+    options?.interval
+  );
 };

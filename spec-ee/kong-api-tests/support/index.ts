@@ -71,7 +71,7 @@ export { isValidDate, isValidUrl } from './utilities/validate';
 export {
   getMetric,
   getSharedDictValue,
-  waitForHashUpdate,
+  waitForConfigHashUpdate,
   waitForDictUpdate,
 } from './utilities/metrics';
 export { eventually } from './utilities/eventually';

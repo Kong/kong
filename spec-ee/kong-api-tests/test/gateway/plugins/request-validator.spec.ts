@@ -12,12 +12,13 @@ import {
   randomString,
   wait,
   logResponse,
-  waitForHashUpdate,
+  waitForConfigHashUpdate,
   getMetric,
   isGwHybrid,
 } from '@support';
 
 describe('Gateway Plugins: Request Validator', function () {
+  this.timeout(20000);
   const path = `/${randomString()}`;
   const isHybrid = isGwHybrid();
   const paramPath = '~/status/(?<status_code>[a-z0-9]+)';
@@ -118,8 +119,8 @@ describe('Gateway Plugins: Request Validator', function () {
     pluginId = resp.data.id;
 
     if (isHybrid) {
-      configHash = await waitForHashUpdate(configHash, {
-        targetNumberOfConfigHashChanges: 3,
+      configHash = await waitForConfigHashUpdate(configHash, {
+        targetNumberOfConfigHashChanges: 2,
       });
     } else {
       await wait(classicWait);
@@ -215,7 +216,7 @@ describe('Gateway Plugins: Request Validator', function () {
     expect(resp.status, 'Status should be 200').to.equal(200);
 
     if (isHybrid) {
-      configHash = await waitForHashUpdate(configHash);
+      configHash = await waitForConfigHashUpdate(configHash);
     } else {
       await wait(classicWait);
     }
@@ -248,7 +249,7 @@ describe('Gateway Plugins: Request Validator', function () {
     logResponse(resp);
 
     if (isHybrid) {
-      configHash = await waitForHashUpdate(configHash);
+      configHash = await waitForConfigHashUpdate(configHash);
     } else {
       await wait(classicWait);
     }

@@ -17,9 +17,13 @@ import {
   postNegative,
   logResponse,
   retryRequest,
+  waitForConfigRebuild,
+  getMetric,
+  waitForConfigHashUpdate,
 } from '@support';
 
 describe('Plugin Ordering: featuring RTA,basic-auth,RV plugins', function () {
+  this.timeout(45000);
   const path = `/${randomString()}`;
   const basicAuthPassword = randomString();
   const isHybrid = isGwHybrid();
@@ -162,6 +166,12 @@ describe('Plugin Ordering: featuring RTA,basic-auth,RV plugins', function () {
 
     expect(resp.status, 'Status should be 201').to.equal(201);
     plugins['rv'] = resp.data.id;
+
+    if (isHybrid) {
+      await waitForConfigHashUpdate(
+        await getMetric('kong_data_plane_config_hash')
+      );
+    }
   });
 
   it('should apply plugin ordering RTA > basic-auth > RV', async function () {
@@ -193,10 +203,15 @@ describe('Plugin Ordering: featuring RTA,basic-auth,RV plugins', function () {
 
   it('should get 401 error as RTA now runs after basic-auth', async function () {
     // Current plugin ordering is: basic-auth > RTA > RV
-    await wait(isHybrid ? hybridWaitTime : waitTime);
-    const resp = await getNegative(`${proxyUrl}${path}`);
-    logResponse(resp);
-    expect(resp.status, 'Status should be 401').to.equal(401);
+
+    await waitForConfigRebuild();
+
+    const req = () => getNegative(`${proxyUrl}${path}`);
+    const assertions = (resp) => {
+      expect(resp.status, 'Status should be 401').to.equal(401);
+    };
+
+    await retryRequest(req, assertions);
   });
 
   it('should put basic-auth plugin ordering to become after RV', async function () {
