@@ -153,7 +153,7 @@ describe('Gateway Plugins: http-log', function () {
     logResponse(resp);
 
     expect(resp.status, 'Status should be 200').to.equal(200);
-    
+
     await eventually(async () => {
       mockbinLogs = await getMockbinLogs(mockbinBinId);
       // always take the last item of mockbin entries as it represents the last request logs
@@ -179,7 +179,6 @@ describe('Gateway Plugins: http-log', function () {
         'Should see correct kong request service path in logs'
       ).to.eq('/anything');
     });
-    
   });
 
   pluginConfigHeaders.forEach((pluginConfigHeader) => {
