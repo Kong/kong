@@ -80,8 +80,13 @@ build-packages:
 - label: alpine
   os: ubuntu-22.04
   package: apk
-  bazel_args: --platforms=//:alpine-x86_64
+  bazel_args: --platforms=//:alpine-crossbuild-x86_64
   check-manifest-suite: alpine-amd64
+- label: alpine-arm64
+  os: ubuntu-22.04
+  package: apk
+  bazel_args: --platforms=//:alpine-crossbuild-aarch64
+  check-manifest-suite: alpine-arm64
 
 # Amazon Linux
 - label: amazonlinux-2
@@ -139,6 +144,8 @@ build-images:
   base-image: alpine:3.16
   package: apk
   artifact-from: alpine
+  artifact-from-alt: alpine-arm64
+  docker_platforms: linux/amd64, linux/arm64
 
 # Amazon Linux
 - label: amazonlinux-2
