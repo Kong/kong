@@ -413,7 +413,7 @@ jobs:
       matrix:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['scan-vulnerabilities'] }}"
     env:
-      IMAGE: ${{ needs.metadata.outputs.docker-repository }}:${{ github.sha }}-${{ matrix.label }}
+      IMAGE: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}
     steps:
     - name: Install regctl
       uses: regclient/actions/regctl-installer@main
