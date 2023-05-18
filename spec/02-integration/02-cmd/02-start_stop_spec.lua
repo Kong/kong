@@ -15,7 +15,15 @@ local TEST_CONF_PATH = helpers.test_conf_path
 
 local function wait_until_healthy(prefix)
   prefix = prefix or PREFIX
-  local cmd = fmt("%s health -p %q", helpers.bin_path, prefix)
+
+  local cmd
+
+  -- use `kong-health` if available
+  if helpers.path.exists(helpers.bin_path .. "-health") then
+    cmd = fmt("%s-health -p %q", helpers.bin_path, prefix)
+  else
+    cmd = fmt("%s health -p %q", helpers.bin_path, prefix)
+  end
 
   assert
     .with_timeout(10)
