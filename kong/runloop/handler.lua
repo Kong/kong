@@ -54,9 +54,9 @@ local DEFAULT_MATCH_LRUCACHE_SIZE = Router.DEFAULT_MATCH_LRUCACHE_SIZE
 
 
 local kong_shm          = ngx.shared.kong
-local PLUGINS_REBUILD_COUNTER_KEY = 
+local PLUGINS_REBUILD_COUNTER_KEY =
                                 constants.PLUGINS_REBUILD_COUNTER_KEY
-local ROUTERS_REBUILD_COUNTER_KEY = 
+local ROUTERS_REBUILD_COUNTER_KEY =
                                 constants.ROUTERS_REBUILD_COUNTER_KEY
 
 
@@ -495,7 +495,7 @@ end
 local new_plugins_iterator
 do
   local PluginsIterator_new = PluginsIterator.new
-  new_plugins_iterator = function(version) 
+  new_plugins_iterator = function(version)
     local plugin_iterator, err = PluginsIterator_new(version)
     if not plugin_iterator then
       return nil, err
@@ -934,7 +934,7 @@ return {
             return
           end
 
-          log(NOTICE, "log level changed to ", data, " for worker ", worker)
+          log(NOTICE, "log level changed to ", data.log_level, " for worker ", worker)
         end, "debug", "log_level")
       end
 
