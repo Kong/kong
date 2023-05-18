@@ -735,9 +735,10 @@ describe("kong start/stop #" .. strategy, function()
       nginx_main_worker_processes = 2, -- keeping this low for the sake of speed
     }
 
+    local start_cmd = fmt("start -p %q -c %q", PREFIX, TEST_CONF_PATH)
+
     local function start()
-      local cmd = fmt("start -p %q", PREFIX)
-      local ok, code, stdout, stderr = kong_exec(cmd, env, true)
+      local ok, code, stdout, stderr = kong_exec(start_cmd, env, true)
 
       if ok then
         wait_until_healthy()
@@ -866,7 +867,7 @@ describe("kong start/stop #" .. strategy, function()
         pcall(helpers.dir.rmtree, prefix)
       end)
 
-      assert(kong_exec(fmt("prepare -p %q", prefix), {
+      assert(kong_exec(fmt("prepare -p %q -c %q", prefix, TEST_CONF_PATH), {
         database = strategy,
         proxy_listen = "127.0.0.1:8000",
         stream_listen = "127.0.0.1:9000",
