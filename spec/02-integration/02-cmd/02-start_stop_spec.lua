@@ -93,13 +93,11 @@ describe("kong start/stop #" .. strategy, function()
       admin_client:close()
     end
 
-    helpers.kill_all()
-    helpers.clean_logfile()
+    helpers.stop_kong()
   end)
 
   lazy_teardown(function()
     helpers.stop_kong()
-    helpers.clean_prefix()
   end)
 
   it("fails with referenced values that are not initialized", function()
