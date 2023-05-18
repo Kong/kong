@@ -285,8 +285,9 @@ describe("kong start/stop #" .. strategy, function()
 
   it("creates prefix directory if it doesn't exist", function()
     finally(function()
-      helpers.kill_all("foobar")
-      pcall(helpers.dir.rmtree, "foobar")
+      -- this test uses a non-default prefix, so it must manage
+      -- its kong instance directly
+      helpers.stop_kong("foobar")
     end)
 
     assert.falsy(helpers.path.exists("foobar"))
@@ -871,8 +872,9 @@ describe("kong start/stop #" .. strategy, function()
       local prefix = "relpath"
 
       finally(function()
-        helpers.kill_all(prefix)
-        pcall(helpers.dir.rmtree, prefix)
+        -- this test uses a non-default prefix, so it must manage
+        -- its kong instance directly
+        helpers.stop_kong(prefix)
       end)
 
       assert(kong_exec(fmt("prepare -p %q -c %q", prefix, TEST_CONF_PATH), {
