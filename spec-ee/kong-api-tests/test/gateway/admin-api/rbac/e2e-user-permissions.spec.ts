@@ -23,6 +23,7 @@ import {
   isGwHybrid,
   wait,
   logResponse,
+  retryRequest,
 } from '@support';
 
 describe('Gateway RBAC: E2E User Permissions', function () {
@@ -247,24 +248,29 @@ describe('Gateway RBAC: E2E User Permissions', function () {
   });
 
   it('should see all updates in role permissions', async function () {
-    const resp = await axios(`${url}/rbac/roles/${role.id}/permissions`);
-    logResponse(resp);
+    const req = () => axios(`${url}/rbac/roles/${role.id}/permissions`);
 
-    expect(
-      resp.data.entities[`${pluginId}`].actions,
-      'Should see correct actions for plugin entity'
-    )
-      .to.be.ofSize(2)
-      .and.have.members(['delete', 'read']);
-    expect(
-      resp.data.endpoints.default[`/default${servicesEndpoint}`],
-      'Should not have services endpoint'
-    ).to.not.exist;
+    const assertions = (resp) => {
+      logResponse(resp);
 
-    expect(
-      resp.data.endpoints.default[`/default${routesEndpoint}`].actions,
-      'Should see negative false for routes endpoint'
-    ).to.deep.include({ read: { negative: false } });
+      expect(
+        resp.data.entities[`${pluginId}`].actions,
+        'Should see correct actions for plugin entity'
+      )
+        .to.be.ofSize(2)
+        .and.have.members(['delete', 'read']);
+      expect(
+        resp.data.endpoints.default[`/default${servicesEndpoint}`],
+        'Should not have services endpoint'
+      ).to.not.exist;
+
+      expect(
+        resp.data.endpoints.default[`/default${routesEndpoint}`].actions,
+        'Should see negative false for routes endpoint'
+      ).to.deep.include({ read: { negative: false } });
+    };
+
+    await retryRequest(req, assertions, 10000);
   });
 
   it('should not delete a service after removing the permission entirely', async function () {
