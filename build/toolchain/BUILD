@@ -8,21 +8,22 @@ filegroup(name = "empty")
 # aarch64-linux-gnu (installed with system)
 
 toolchain(
-    name = "gcc_cross_arm64_toolchain",
+    name = "local_aarch64-linux-gnu_toolchain",
     exec_compatible_with = [
         "@platforms//os:linux",
         "@platforms//cpu:x86_64",
     ],
     target_compatible_with = [
         "@platforms//os:linux",
-        "@platforms//cpu:arm64",
+        "@platforms//cpu:aarch64",
+        "//:glibc_system",
     ],
-    toolchain = ":gcc_cross_arm64_cc_toolchain",
+    toolchain = ":local_aarch64-linux-gnu_cc_toolchain",
     toolchain_type = "@bazel_tools//tools/cpp:toolchain_type",
 )
 
 cc_toolchain_config(
-    name = "gcc_cross_arm64_cc_toolchain_config",
+    name = "local_aarch64-linux-gnu_cc_toolchain_config",
     compiler_configuration = {},
     target_cpu = "aarch64",
     toolchain_path_prefix = "/usr/aarch64-linux-gnu/",  # is this required?
@@ -30,7 +31,7 @@ cc_toolchain_config(
 )
 
 cc_toolchain(
-    name = "gcc_cross_arm64_cc_toolchain",
+    name = "local_aarch64-linux-gnu_cc_toolchain",
     all_files = ":empty",
     compiler_files = ":empty",
     dwp_files = ":empty",

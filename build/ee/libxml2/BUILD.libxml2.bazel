@@ -25,7 +25,7 @@ configure_make(
         "--without-python",
         "--without-lzma",
     ] + select({
-        "@kong//:arm64-linux-gnu-cross": [
+        "@kong//:aarch64-linux-anylibc-cross": [
             "--host=aarch64-linux",
         ],
         "@kong//:x86_64-linux-musl-cross": [

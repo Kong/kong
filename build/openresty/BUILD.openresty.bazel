@@ -17,7 +17,7 @@ genrule(
               "//conditions:default": "0",
           }) + "\n" +
           "aarch64=" + select({
-              "@platforms//cpu:arm64": "1",
+              "@platforms//cpu:aarch64": "1",
               "//conditions:default": "0",
           }) + "\n" +
           "debug=" + select({
@@ -146,7 +146,7 @@ CONFIGURE_OPTIONS = [
     "--add-module=$$EXT_BUILD_ROOT$$/distribution/lua-resty-openssl-aux-module",
     "--add-module=$$EXT_BUILD_ROOT$$/distribution/lua-resty-openssl-aux-module/stream",
 ] + select({
-    "@kong//:arm64-linux-gnu-cross": [
+    "@kong//:aarch64-linux-anylibc-cross": [
         "--crossbuild=Linux:aarch64",
         "--with-endian=little",
         "--with-int=4",
@@ -182,7 +182,7 @@ CONFIGURE_OPTIONS = [
 }) + select({
     # any cross build that migrated to use libxcrypt needs those flags
     # alpine uses different libc so doesn't need it
-    "@kong//:arm64-linux-gnu-cross": [
+    "@kong//:aarch64-linux-anylibc-cross": [
         "--with-cc-opt=\"-I$$EXT_BUILD_DEPS$$/libxcrypt/include\"",
         "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/libxcrypt/lib\"",
     ],
@@ -258,7 +258,7 @@ configure_make(
     }) + select({
         # any cross build that migrated to use libxcrypt needs those flags
         # alpine uses different libc so doesn't need it
-        "@kong//:arm64-linux-gnu-cross": [
+        "@kong//:aarch64-linux-anylibc-cross": [
             "@cross_deps_libxcrypt//:libxcrypt",
         ],
         "//conditions:default": [],
