@@ -29,6 +29,12 @@ targets = {
         manifest="fixtures/alpine-amd64.txt",
         use_rpath=True,
     ),
+    "alpine-arm64": ExpectSuite(
+        name="Alpine Linux (arm64)",
+        manifest="fixtures/alpine-arm64.txt",
+        use_rpath=True,
+        extra_tests=[arm64_suites],
+    ),
     "amazonlinux-2-amd64": ExpectSuite(
         name="Amazon Linux 2 (amd64)",
         manifest="fixtures/amazonlinux-2-amd64.txt",

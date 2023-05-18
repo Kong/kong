@@ -204,7 +204,7 @@ alias(
 )
 
 platform(
-    name = "alpine-x86_64",
+    name = "alpine-crossbuild-x86_64",
     constraint_values = [
         "@platforms//os:linux",
         "@platforms//cpu:x86_64",
@@ -213,13 +213,29 @@ platform(
     ],
 )
 
+# backward compatibility
+alias(
+    name = "alpine-x86_64",
+    actual = ":alpine-crossbuild-x86_64",
+)
+
+platform(
+    name = "alpine-crossbuild-aarch64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:aarch64",
+        ":musl",
+        ":cross_build",
+    ],
+)
+
 # config_settings define a select() condition based on user-set constraint_values
 # see https://bazel.build/docs/configurable-attributes
 config_setting(
-    name = "arm64-linux-gnu-cross",
+    name = "aarch64-linux-anylibc-cross",
     constraint_values = [
         "@platforms//os:linux",
-        "@platforms//cpu:arm64",
+        "@platforms//cpu:aarch64",
         ":cross_build",
     ],
     visibility = ["//visibility:public"],
