@@ -234,10 +234,10 @@ describe("kong start/stop #" .. strategy, function()
         prefix = PREFIX
       }))
 
-      assert.logfile().has.no.line("[emerg]", true)
-      assert.logfile().has.no.line("[alert]", true)
-      assert.logfile().has.no.line("[crit]", true)
-      assert.logfile().has.no.line("[error]", true)
+      assert.logfile().has.no.line("[emerg]", true, 0)
+      assert.logfile().has.no.line("[alert]", true, 0)
+      assert.logfile().has.no.line("[crit]",  true, 0)
+      assert.logfile().has.no.line("[error]", true, 0)
     end)
 
   else
@@ -252,11 +252,11 @@ describe("kong start/stop #" .. strategy, function()
 
       assert(kong_exec("stop", { prefix = PREFIX }))
 
-      assert.logfile().has.no.line("[emerg]", true)
-      assert.logfile().has.no.line("[alert]", true)
-      assert.logfile().has.no.line("[crit]", true)
-      assert.logfile().has.no.line("[error]", true)
-      assert.logfile().has.no.line("[warn]", true)
+      assert.logfile().has.no.line("[emerg]", true, 0)
+      assert.logfile().has.no.line("[alert]", true, 0)
+      assert.logfile().has.no.line("[crit]",  true, 0)
+      assert.logfile().has.no.line("[error]", true, 0)
+      assert.logfile().has.no.line("[warn]",  true, 0)
     end)
   end
 
@@ -888,10 +888,11 @@ describe("kong start/stop #" .. strategy, function()
       assert.truthy(helpers.path.exists(prefix .. "/worker_events.sock"))
       assert.truthy(helpers.path.exists(prefix .. "/stream_worker_events.sock"))
 
-      assert.logfile(prefix .. "/logs/error.log").has.no.line("[error]", true)
-      assert.logfile(prefix .. "/logs/error.log").has.no.line("[alert]", true)
-      assert.logfile(prefix .. "/logs/error.log").has.no.line("[crit]", true)
-      assert.logfile(prefix .. "/logs/error.log").has.no.line("[emerg]", true)
+      local log = prefix .. "/logs/error.log"
+      assert.logfile(log).has.no.line("[error]", true, 0)
+      assert.logfile(log).has.no.line("[alert]", true, 0)
+      assert.logfile(log).has.no.line("[crit]",  true, 0)
+      assert.logfile(log).has.no.line("[emerg]", true, 0)
     end)
   end)
 
