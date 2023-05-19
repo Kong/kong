@@ -987,13 +987,20 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res_1)
         assert.equal("2", res_1.headers["Dummy-Plugin"])
 
-        assert_proxy_2_wait({
+        helpers.wait_for_all_config_update({
+          forced_admin_port = 8001, -- admin_client_1
+          forced_proxy_port = 9000, -- proxy_client_2
+        })
+
+        local res_2 = assert(proxy_client_2:send {
           method  = "GET",
           path    = "/status/200",
           headers = {
             host = "dummy.com",
           }
-        }, 200, { ["Dummy-Plugin"] = "2" })
+        })
+        assert.res_status(200, res_2)
+        assert.equal("2", res_2.headers["Dummy-Plugin"])
       end)
 
       it("on delete", function()
