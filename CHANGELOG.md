@@ -185,7 +185,10 @@
   [#10775](https://github.com/Kong/kong/pull/10775)
 - Fix issue where Vault configuration stayed sticky and cached even when configurations were changed.
   [#10776](https://github.com/Kong/kong/pull/10776)
-
+- Backported the openresty `ngx.print` chunk encoding buffer double free bug fix that
+  leads to the corruption of chunk-encoded response data.
+  [#10816](https://github.com/Kong/kong/pull/10816)
+  [#10824](https://github.com/Kong/kong/pull/10824)
 
 #### Admin API
 
