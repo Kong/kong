@@ -9,13 +9,17 @@ end
 table.insert(strategies, "off")
 for _, strategy in pairs(strategies) do
 describe("Admin API - Kong debug route with strategy #" .. strategy, function()
+  local https_server
   lazy_setup(function()
     local bp = helpers.get_db_utils(nil, {}) -- runs migrations
 
+    local mock_https_server_port = helpers.get_available_port()
+
     local service_mockbin = assert(bp.services:insert {
       name     = "service-mockbin",
-      url      = "https://mockbin.com/request",
+      url      = fmt("https://127.0.0.1:%s/request", mock_https_server_port)
     })
+
     assert(bp.routes:insert {
       protocols     = { "http" },
       hosts         = { "mockbin.com" },
@@ -27,11 +31,16 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
       service = service_mockbin,
     })
 
+    https_server = helpers.https_server.new(mock_https_server_port, nil, "https")
+    https_server:start()
+
     assert(helpers.start_kong {
       database = strategy,
       db_update_propagation = strategy == "cassandra" and 1 or 0,
       trusted_ips = "127.0.0.1",
       nginx_http_proxy_ssl_verify = "on",
+      -- Mocking https_server is using kong_spec key/cert pairs but the pairs does not
+      -- have domain defined, so ssl verify will still fail with domain mismatch
       nginx_http_proxy_ssl_trusted_certificate = "../spec/fixtures/kong_spec.crt",
       nginx_http_proxy_ssl_verify_depth = "5",
     })
@@ -75,6 +84,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
   end)
 
   lazy_teardown(function()
+    https_server:shutdown()
     helpers.stop_kong()
     helpers.stop_kong("node2")
 
@@ -145,9 +155,8 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
       })
       body = assert.res_status(502, res)
       assert.equal("An invalid response was received from the upstream server", body)
-      assert.logfile().has.no.line("upstream SSL certificate verify error: " ..
-      "(20:unable to get local issuer certificate) " ..
-      "while SSL handshaking to upstream", true, 2)
+      assert.logfile().has.no.line([[upstream SSL certificate does not match]] ..
+        [[ "127.0.0.1" while SSL handshaking to upstream]], true, 2)
 
       -- e2e test: we are not printing lower than alert
       helpers.clean_logfile()
@@ -197,9 +206,8 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
       })
       body = assert.res_status(502, res)
       assert.equal("An invalid response was received from the upstream server", body)
-      assert.logfile().has.line("upstream SSL certificate verify error: " ..
-      "(20:unable to get local issuer certificate) " ..
-      "while SSL handshaking to upstream", true, 30)
+      assert.logfile().has.line([[upstream SSL certificate does not match]] ..
+        [[ "127.0.0.1" while SSL handshaking to upstream]], true, 2)
 
       -- e2e test: we are printing higher than debug
       helpers.clean_logfile()
@@ -577,9 +585,8 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
       })
       body = assert.res_status(502, res)
       assert.equal("An invalid response was received from the upstream server", body)
-      assert.logfile().has.no.line("upstream SSL certificate verify error: " ..
-      "(20:unable to get local issuer certificate) " ..
-      "while SSL handshaking to upstream", true, 2)
+      assert.logfile().has.no.line([[upstream SSL certificate does not match]] ..
+        [[ "127.0.0.1" while SSL handshaking to upstream]], true, 2)
 
       -- e2e test: we are not printing lower than alert
       helpers.clean_logfile()
@@ -617,9 +624,8 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
       })
       body = assert.res_status(502, res)
       assert.equal("An invalid response was received from the upstream server", body)
-      assert.logfile().has.line("upstream SSL certificate verify error: " ..
-      "(20:unable to get local issuer certificate) " ..
-      "while SSL handshaking to upstream", true, 30)
+      assert.logfile().has.line([[upstream SSL certificate does not match]] ..
+        [[ "127.0.0.1" while SSL handshaking to upstream]], true, 2)
 
       -- e2e test: we are printing higher than debug
       helpers.clean_logfile()
