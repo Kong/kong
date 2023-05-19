@@ -707,14 +707,18 @@
                                  #
                                  # See http://nginx.org/en/docs/ngx_core_module.html#daemon.
 
-#mem_cache_size = 128m           # Size of each of the two in-memory caches
-                                 # for database entities. The accepted units are
-                                 # `k` and `m`, with a minimum recommended value of
-                                 # a few MBs.
+#mem_cache_size = 128m           # Size of each of the two shared memory caches
+                                 # for traditional mode database entities
+                                 # and runtime data.
+                                 # The accepted units are `k` and `m`, with a minimum
+                                 # recommended value of a few MBs.
                                  #
                                  # **Note**: As this option controls the size of two
-                                 # different cache entries, the total memory Kong
+                                 # different cache zones, the total memory Kong
                                  # uses to cache entities might be double this value.
+                                 # The created zones are shared by all worker
+                                 # processes and does not becomes larger when more
+                                 # worker is used.
 
 #ssl_cipher_suite = intermediate # Defines the TLS ciphers served by Nginx.
                                  # Accepted values are `modern`,
@@ -1432,6 +1436,19 @@
 
 #lmdb_map_size = 128m                 # Maximum size of the LMDB memory map, used to store the
                                       # DB-less and Hybird mode configurations. Default is 128m.
+                                      #
+                                      # This config defines the limit of LMDB file size, the
+                                      # actual file size growth will be on-demand and
+                                      # porpotional to the actual config size.
+                                      #
+                                      # Note this value can be set very large, say a couple of GBs
+                                      # to accomadate future database growth and
+                                      # Multi Version Concurrency Control (MVCC) headroom needs.
+                                      # The file size of the LMDB database file should stabilize
+                                      # after a few config reload/Hybrid mode syncs and the actual
+                                      # memory used by the LMDB database will be smaller than
+                                      # the file size due to dynamic swapping of database pages by
+                                      # the O/S.
 
 #------------------------------------------------------------------------------
 # DATASTORE CACHE
