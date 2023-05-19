@@ -837,9 +837,6 @@ do
     for ref in each_foreign_field(entity_type) do
       -- owned one-to-one relationship
       --
-      -- In this path, we extract the foreign entity and replace it with a
-      -- primary key table (if one exists).
-      --
       -- Example:
       --
       -- entity_type => "services"
@@ -870,11 +867,8 @@ do
       --   key  = "bad cert key data",
       -- }
       --
-      -- replacement => {
-      --   id = "d2e33f63-1424-408f-be55-d9d16cd2a382"
-      -- }
-      --
-      -- *after* handling the client_certificate errors, our entity looks like this:
+      -- because the client certificate entity has a valid ID, we store a
+      -- reference to it as a primary key on our entity table:
       --
       -- entity => {
       --   name = "my-invalid-service",
