@@ -18,7 +18,7 @@ end
 local function client_request(params)
   local client = assert(helpers.admin_client())
   local res = assert(client:send(params))
-  res.body = res.body_reader()
+  res.body = res:read_body()
   res.body = cjson.decode(res.body)
 
   close_clients({ client })
@@ -110,7 +110,7 @@ for _, strategy in helpers.each_strategy() do
 
         local res = post_file(file_path_1, contents)
         assert.equal(201, res.status)
-  
+
         res = post_file(file_path_2, contents)
         assert.equal(201, res.status)
 

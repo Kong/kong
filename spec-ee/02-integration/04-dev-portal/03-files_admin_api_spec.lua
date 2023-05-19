@@ -69,7 +69,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(res)
 
-      res.body = res.body_reader()
+      res.body = res:read_body()
 
       return res
     end
@@ -407,7 +407,7 @@ for _, strategy in helpers.each_strategy() do
             end
           end)
 
-          it([[returns 400 if the contents contains characters like {*}, 
+          it([[returns 400 if the contents contains characters like {*},
             this is fix a security issue specifically 'Server Side Template Injection' #portal]]
             , function()
 
@@ -420,7 +420,7 @@ for _, strategy in helpers.each_strategy() do
                   app_version: 2fc6a56
                   theme:
                     name: base
-                  # main menu 
+                  # main menu
                   menu:
                     - title: Catelog
                       url: documentation
@@ -444,7 +444,7 @@ for _, strategy in helpers.each_strategy() do
                   app_version: 2fc6a56
                   theme:
                     name: base
-                  # main menu 
+                  # main menu
                   menu:
                     - title: {*}
                       url: documentation
@@ -797,11 +797,11 @@ for _, strategy in helpers.each_strategy() do
                 code = 2,
                 fields = {
                   ["@entity"] = {
-                    [1] = "contents: cannot parse, files with 'spec/' prefix or file is portal.conf and" .. 
+                    [1] = "contents: cannot parse, files with 'spec/' prefix or file is portal.conf and" ..
                     " ending in '.yaml' or '.yml' must be valid yaml,1:21: found unexpected end of stream"
                   },
                 },
-                message = "schema violation (contents: cannot parse, files with 'spec/' prefix or file is portal.conf and" ..  
+                message = "schema violation (contents: cannot parse, files with 'spec/' prefix or file is portal.conf and" ..
                 " ending in '.yaml' or '.yml' must be valid yaml,1:21: found unexpected end of stream)",
                 name = "schema violation",
               }, json)

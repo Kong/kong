@@ -43,7 +43,7 @@ end
 local function client_request(params)
   local client = assert(helpers.admin_client())
   local res = assert(client:send(params))
-  res.body = res.body_reader()
+  res.body = res:read_body()
 
   close_clients({ client })
   return res
@@ -53,7 +53,7 @@ end
 local function api_client_request(params)
   local portal_api_client = assert(ee_helpers.portal_api_client())
   local res = assert(portal_api_client:send(params))
-  res.body = res.body_reader()
+  res.body = res:read_body()
 
   close_clients({ portal_api_client })
   return res
@@ -63,7 +63,7 @@ end
 local function gui_client_request(params)
   local portal_gui_client = assert(ee_helpers.portal_gui_client())
   local res = assert(portal_gui_client:send(params))
-  res.body = res.body_reader()
+  res.body = res:read_body()
 
   close_clients({ portal_gui_client })
   return res

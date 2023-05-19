@@ -38,7 +38,7 @@ end
 local function client_request(params)
   local client = assert(helpers.admin_client())
   local res = assert(client:send(params))
-  res.body = res.body_reader()
+  res.body = res:read_body()
   client:close()
 
   return res
