@@ -27,6 +27,10 @@
   `max_retry_delay` must now be `number`s greater than 0.001
   (seconds).
   [#10840](https://github.com/Kong/kong/pull/10840)
+- **CORS**: In cases where a single origin is configured for the plugin,
+  do not send the ACAO header based on the plugin configuration if the
+  configuration contains only non-PCRE metacharacters.
+  [#10898](https://github.com/Kong/kong/pull/10898)
 
 ### Additions
 
