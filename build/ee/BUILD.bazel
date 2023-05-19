@@ -21,10 +21,12 @@ genrule(
         done
 
         for plugin_ee in plugins-ee/*; do
-            echo "Installing plugin: $$(basename $$plugin_ee)" >> $$cwd/$@.tmp
-            pushd $$plugin_ee >> $$cwd/$@.tmp
-                $$cwd/$(location @luarocks//:luarocks_exec) make *.rockspec >> $$cwd/$@.tmp
-            popd >> $$cwd/$@.tmp
+            if [ -d "$$plugin_ee" ]; then
+                echo "Installing plugin: $$(basename $$plugin_ee)" >> $$cwd/$@.tmp
+                pushd $$plugin_ee >> $$cwd/$@.tmp
+                    $$cwd/$(location @luarocks//:luarocks_exec) make *.rockspec >> $$cwd/$@.tmp
+                popd >> $$cwd/$@.tmp
+            fi
         done
 
         # HACK
