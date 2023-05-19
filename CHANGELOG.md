@@ -9,6 +9,12 @@
 
 ## Unreleased
 
+### Fixes
+
+- Fixed a bug that causes `POST /config?flatten_errors=1` to throw an exception
+  and return a 500 error under certain circumstances.
+  [#10896](https://github.com/Kong/kong/pull/10896)
+
 ## 3.3.0
 
 ### Breaking Changes
