@@ -1412,13 +1412,10 @@
                                 # to be used when the `database` is set to
                                 # `off`.
                                 #
-                                # Entities are stored in Kong's in-memory cache,
-                                # so you must ensure that enough memory is
-                                # allocated to it via the `mem_cache_size`
-                                # property. You must also ensure that items
-                                # in the cache never expire, which means that
-                                # `db_cache_ttl` should preserve its default
-                                # value of 0.
+                                # Entities are stored in Kong's LMDB cache,
+                                # so you must ensure that enough headroom is
+                                # allocated to it via the `lmdb_map_size`
+                                # property.
                                 #
                                 # If the Hybrid mode `role` is set to `data_plane`
                                 # and there's no configuration cache file,
