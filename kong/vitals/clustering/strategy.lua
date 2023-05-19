@@ -107,7 +107,7 @@ end
 
 local function get_serve_ingest_func(self)
   local real_strategy = self.real_strategy
-  return function(payload)
+  return function(payload, node_id, node_hostname)
     if not kong.configuration.vitals then
       ngx.log(ngx.WARN, _log_prefix, "received telemetry from data plane, ",
         "but vitals is not enabled on control plane")
@@ -119,8 +119,6 @@ local function get_serve_ingest_func(self)
       error("Cannot use this function in data plane", 2)
     end
 
-    local node_id = ngx.var.arg_node_id
-    local node_hostname = ngx.var.arg_node_hostname
     if node_id == "" or node_hostname == "" then
       ngx.log(ngx.ERR, _log_prefix, "node_id or node_hostname not exist in query")
       return ngx.exit(400)

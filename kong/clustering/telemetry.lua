@@ -83,7 +83,7 @@ end
 
 
 -- XXX EE only used for telemetry, remove cruft
-local function ws_event_loop(ws, on_connection, on_error, on_message)
+local function ws_event_loop(ws, on_connection, on_error, on_message, cbs_args)
   local sem = semaphore.new()
   local queue = { sem = sem, }
 
@@ -130,7 +130,12 @@ local function ws_event_loop(ws, on_connection, on_error, on_message)
 
         if cbs then
           for _, cb in ipairs(cbs) do
-            local _, err = cb(data, queued_send)
+            local _, err = cb(
+              data,
+              queued_send,
+              cbs_args.on_message.node_id,
+              cbs_args.on_message.node_hostname
+            )
             if err then
               ngx_log(ngx_ERR, "error when executing on_message function: ", err)
             end
@@ -142,56 +147,56 @@ local function ws_event_loop(ws, on_connection, on_error, on_message)
     end
     end)
 
-    local send = ngx.thread.spawn(function()
-      while not exiting() do
-        local ok, err = sem:wait(10)
-        if ok then
-          local payload = table_remove(queue, 1)
-          assert(payload, "client message queue can not be empty after semaphore returns")
+  local send = ngx.thread.spawn(function()
+    while not exiting() do
+      local ok, err = sem:wait(10)
+      if ok then
+        local payload = table_remove(queue, 1)
+        assert(payload, "client message queue can not be empty after semaphore returns")
 
-          if payload == "PONG" then
-            local _
-            _, err = ws:send_pong()
-            if err then
-              ngx_log(ngx_ERR, "failed to send PONG back to peer: ", err)
-              return ngx_exit(ngx_ERR)
-            end
-
-            ngx_log(ngx_DEBUG, "sent PONG packet back to peer")
-          elseif payload == "PING" then
-            local _
-            _, err = send_ping(ws)
-            if err then
-              ngx_log(ngx_ERR, "failed to send PING to peer: ", err)
-              return ngx_exit(ngx_ERR)
-            end
-
-            ngx_log(ngx_DEBUG, "sent PING packet to peer")
-          else
-            payload = assert(deflate_gzip(payload))
-            local _, err = ws:send_binary(payload)
-            if err then
-              ngx_log(ngx_ERR, "unable to send binary to peer: ", err)
-            end
+        if payload == "PONG" then
+          local _
+          _, err = ws:send_pong()
+          if err then
+            ngx_log(ngx_ERR, "failed to send PONG back to peer: ", err)
+            return ngx_exit(ngx_ERR)
           end
 
-        else -- not ok
-          if err ~= "timeout" then
-            ngx_log(ngx_ERR, "semaphore wait error: ", err)
+          ngx_log(ngx_DEBUG, "sent PONG packet back to peer")
+        elseif payload == "PING" then
+          local _
+          _, err = send_ping(ws)
+          if err then
+            ngx_log(ngx_ERR, "failed to send PING to peer: ", err)
+            return ngx_exit(ngx_ERR)
+          end
+
+          ngx_log(ngx_DEBUG, "sent PING packet to peer")
+        else
+          payload = assert(deflate_gzip(payload))
+          local _, err = ws:send_binary(payload)
+          if err then
+            ngx_log(ngx_ERR, "unable to send binary to peer: ", err)
           end
         end
+
+      else -- not ok
+        if err ~= "timeout" then
+          ngx_log(ngx_ERR, "semaphore wait error: ", err)
+        end
       end
-    end)
-
-    local wait = function()
-      local ok, err, perr = ngx.thread.wait(recv, send)
-      ngx.thread.kill(recv)
-      ngx.thread.kill(send)
-
-      return ok, err, perr
     end
+  end)
 
-    return queued_send, wait
+  local wait = function()
+    local ok, err, perr = ngx.thread.wait(recv, send)
+    ngx.thread.kill(recv)
+    ngx.thread.kill(send)
+
+    return ok, err, perr
+  end
+
+  return queued_send, wait
 
 end
 
@@ -260,7 +265,8 @@ end
 
 local function handle_cp_websocket()
   local node_id = ngx_var.arg_node_id
-  if not node_id then
+  local node_hostname = ngx_var.arg_node_hostname
+  if not (node_id and node_hostname) then
     ngx_exit(400)
   end
 
@@ -280,7 +286,14 @@ local function handle_cp_websocket()
     function(_)
       return ngx_exit(ngx_ERR)
     end,
-    current_on_message_callbacks)
+    current_on_message_callbacks,
+    {
+      on_message = {
+        node_id = node_id,
+        host_name = node_hostname,
+      },
+    }
+  )
 
   wait()
 end

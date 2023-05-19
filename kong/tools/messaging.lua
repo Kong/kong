@@ -14,6 +14,8 @@ local cjson_encode = require "cjson".encode
 local kong = kong
 local knode  = (kong and kong.node) and kong.node or
                require "kong.pdk.node".new()
+local queue = require "kong.tools.queue"
+
 local new_tab = require("table.new")
 local clear_tab = require("table.clear")
 local KONG_VERSION = kong.version
@@ -191,13 +193,31 @@ function _M.new(opts)
   return setmetatable(self, mt)
 end
 
+local function ingest(handler_conf, items)
+  local serve_ingest = handler_conf.serve_ingest
+  local node_id = handler_conf.node_id
+  local hostname = handler_conf.hostname
+
+  for _, item in ipairs(items) do
+    if item ~= nil then
+      local ok, err = pcall(serve_ingest, item, node_id, hostname)
+      if not ok then
+        ngx.log(ngx.ERR, _log_prefix, "ingestion handler threw an exception: ", err)
+        return false, err
+      end
+
+      return true
+    end
+  end
+end
+
 function _M:register_for_messages()
   if not kong.clustering then
     ngx.log(ngx.WARN, _log_prefix, "Unable to register for messages, clustering object is not available")
     return
   end
 
-  kong.clustering.register_server_on_message(self.message_type, function(msg, queued_send)
+  kong.clustering.register_server_on_message(self.message_type, function(msg, queued_send, node_id, hostname)
     -- decode message
     local payload, err = self.unpack_message(msg, self.message_type, self.message_type_version)
     if err then
@@ -214,8 +234,39 @@ function _M:register_for_messages()
     end
     ngx.log(ngx.DEBUG, "recv size ", #msg.data, " sets ", #payload/2)
 
-    self.serve_ingest(payload)
+    local ok, err = queue.enqueue(
+      -- queue_conf
+      {
+        name = "messaging_" .. tostring(self.message_type),
+        max_batch_size = 1,
+        max_coalescing_delay = 0,
+        max_entries = 1000,
+        -- even if payloads bufferd in the queue are string type,
+        -- we can't predict the length of each of them, so it would
+        -- be better not to set the max_bytes value.
+        -- max_bytes = nil,
+        initial_retry_delay = 1,
+        -- the max time for a batch to retry
+        max_retry_time = 120,
+        -- delay between retries
+        max_retry_delay = 60,
+      },
+      -- handler
+      ingest,
+      -- handler_conf
+      {
+        serve_ingest = self.serve_ingest,
+        node_id = node_id,
+        hostname = hostname
+      },
+      -- item
+      payload
+    )
+    if not ok then
+      ngx.log(ngx.WARN, get_log_prefix(self), err)
+    end
   end)
+
   ngx.log(ngx.DEBUG, get_log_prefix(self), "registered on_message function")
 end
 

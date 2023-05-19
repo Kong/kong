@@ -76,6 +76,7 @@ a copy. [KAG-739](https://konghq.atlassian.net/browse/KAG-739)
 
 ### Fixes
 
+* Fix the bug that will cause the telemetry websocket to be broken when there is a bad latency in flushing vitals to database by decoupling the process of receving vitals data from DP and the process of flushing vitals to database in the side of CP with a queue as a buffer. [FTI-4386](https://konghq.atlassian.net/browse/FTI-4386)
 * Resolved an issue with the plugin iterator where sorting would become mixed up when dynamic reordering was applied. This fix ensures proper sorting behavior in all scenarios. [FTI-4945](https://konghq.atlassian.net/browse/FTI-4945)
 
 * The Redis strategy of Rate Limiting should return error upon Redis Cluster is down. [FTI-4898](https://konghq.atlassian.net/browse/FTI-4898)

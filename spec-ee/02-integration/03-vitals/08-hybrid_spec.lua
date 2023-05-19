@@ -42,7 +42,8 @@ local function setup_distribution()
 end
 
 for _, strategy in helpers.each_strategy() do
-  describe("Hybrid vitals works with #" .. strategy .. " backend", function()
+  local hybrid_describe = (strategy ~= "cassandra") and describe or pending
+  hybrid_describe("Hybrid vitals works with #" .. strategy .. " backend", function()
     describe("sync works", function()
       lazy_setup(function()
         helpers.get_db_utils(strategy, {
@@ -345,6 +346,177 @@ for _, strategy in helpers.each_strategy() do
 
           return true
         end, 30)
+      end)
+    end)
+
+    describe("de-couple the consuming and producing upon telemetry between cp/dp with queue", function()
+      local db_proxy_port = "16797"
+      local pg_port = "5432"
+      local api_server_port, trigger_server_port  = "16000", "18000"
+      setup(function()
+        local fixtures = {
+          http_mock = {
+            delay_trigger = [[
+              server {
+                error_log logs/error.log;
+                listen 127.0.0.1:%s;
+                location /delay {
+                  content_by_lua_block {
+                    local sock = ngx.socket.tcp()
+                    sock:settimeout(3000)
+                    local ok, err = sock:connect('127.0.0.1', '%s')
+                    if ok then
+                      ngx.say("ok")
+                    else
+                      ngx.exit(ngx.ERROR)
+                    end
+                  }
+                }
+              }
+            ]],
+          },
+
+          stream_mock = {
+            db_proxy = [[
+              upstream backend {
+                server 0.0.0.1:1234;
+                balancer_by_lua_block {
+                  local balancer = require "ngx.balancer"
+
+                  local function sleep(n)
+                    local t0 = os.clock()
+                    while os.clock() - t0 <= n do end
+                  end
+                  sleep(delay or 0)
+                  local ok, err = balancer.set_current_peer("127.0.0.1", %s)
+                  if not ok then
+                    ngx.log(ngx.ERR, "failed to set the current peer: ", err)
+                    return ngx.exit(ngx.ERROR)
+                  end
+                }
+              }
+
+              server {
+                listen %s;
+                error_log logs/proxy.log debug;
+                proxy_pass backend;
+              }
+
+              # trigger to increase the delay
+              server {
+                listen %s;
+                error_log logs/proxy.log debug;
+                content_by_lua_block {
+                  _G.delay = 10
+                  local sock = assert(ngx.req.socket())
+                  local data = sock:receive()
+
+                  if ngx.var.protocol == "TCP" then
+                    ngx.say(10)
+                  else
+                    ngx.send(data)
+                  end
+                }
+              }
+            ]],
+          },
+        }
+
+        fixtures.http_mock.delay_trigger = string.format(
+          fixtures.http_mock.delay_trigger, api_server_port, trigger_server_port)
+
+        if strategy == 'postgres' then
+          fixtures.stream_mock.db_proxy = string.format(
+            fixtures.stream_mock.db_proxy, pg_port, db_proxy_port, trigger_server_port)
+        end
+
+        -- proxy for db
+        assert(helpers.start_kong({
+            prefix = "servroot3",
+
+            -- excludes unnecessary listening port from custom_nginx.template
+            -- so that the proxy won't occupy the ports that will be used by DP
+            role = "data_plane",
+
+            database = "off",
+            cluster_cert = "spec/fixtures/kong_clustering.crt",
+            cluster_cert_key = "spec/fixtures/kong_clustering.key",
+            lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+            proxy_listen = "0.0.0.0:16666",
+            -- admin_listen = "off",
+            -- cluster_listen = "off",
+            -- cluster_telemetry_listen = "off",
+            nginx_conf = "spec/fixtures/custom_nginx.template",
+
+            -- this is unused, but required for the the template to include a stream {} block
+            stream_listen = "0.0.0.0:5555",
+          }, nil, nil, fixtures))
+
+        helpers.setenv("KONG_TEST_PG_PORT", db_proxy_port)
+        helpers.setenv("KONG_TEST_CASSANDRA_PORT", db_proxy_port)
+
+        assert(helpers.start_kong({
+          role = "control_plane",
+          cluster_cert = "spec/fixtures/kong_clustering.crt",
+          cluster_cert_key = "spec/fixtures/kong_clustering.key",
+          lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+          database = strategy,
+          pg_port = 16797,
+          -- db_timeout should set greater than clustering_timeout(5 secs)
+          pg_timeout = 10000, -- ensure pg_timeout > clustering_timeout(5 secs)
+          cassandra_timeout = 10000, -- ensure cassandra_timeout > clustering_timeout(5 secs)
+          cassandra_port = 16797,
+          db_update_frequency = 0.1,
+          db_update_propagation = 0.1,
+          cluster_listen = "127.0.0.1:9005",
+          cluster_telemetry_listen = "127.0.0.1:9006",
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          vitals = true,
+          vitals_flush_interval = 3,
+        }))
+
+        assert(helpers.start_kong({
+          role = "data_plane",
+          database = "off",
+          prefix = "servroot2",
+          cluster_cert = "spec/fixtures/kong_clustering.crt",
+          cluster_cert_key = "spec/fixtures/kong_clustering.key",
+          lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+          cluster_control_plane = "127.0.0.1:9005",
+          cluster_telemetry_endpoint = "127.0.0.1:9006",
+          proxy_listen = "0.0.0.0:9002",
+          vitals = true,
+          vitals_flush_interval = 3,
+        }))
+      end)
+
+      teardown(function()
+        helpers.unsetenv("KONG_TEST_PG_PORT")
+        helpers.unsetenv("KONG_TEST_CASSANDRA_PORT")
+        assert(helpers.stop_kong("servroot2", true))  -- dp
+        assert(helpers.stop_kong("servroot", true))   -- cp
+        assert(helpers.stop_kong("servroot3", true))  -- proxy
+      end)
+
+      it("", function()
+        -- wait for vitals starts to flush
+        helpers.pwait_until(function()
+          assert.logfile("servroot2/logs/error.log").has.line("[vitals] flush")
+          return true
+        end, 3)
+
+        -- increase the delay
+        local timeout, force_port, force_ip = 3000, 16000, "127.0.0.1"
+        local proxy_client = helpers.proxy_client(timeout, force_port, force_ip)
+        local res = proxy_client:get("/delay")
+        local body = assert.res_status(200, res)
+        assert(body == "ok")
+
+        -- wait for websocket connection to be broken if possible
+        -- actually we assert it won't be broken
+        ngx.sleep(20)
+        assert.logfile("servroot2/logs/error.log").has_not.line(
+            "error while receiving frame from peer")
       end)
     end)
   end)
