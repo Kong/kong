@@ -24,36 +24,36 @@ for _, strategy in helpers.each_strategy() do
 
     local regex_testcases = {
       {
-        -- single entry, host only: ignore value, always return configured data
+        -- single entry, host only: match on full normalized domain (i.e. all fail)
         origins = { "foo.test" },
         tests = {
-          ["http://evil.test"]          = "foo.test",
-          ["http://foo.test"]           = "foo.test",
-          ["http://foo.test.evil.test"] = "foo.test",
-          ["http://something.foo.test"] = "foo.test",
-          ["http://evilfoo.test"]       = "foo.test",
-          ["http://foo.test:80"]        = "foo.test",
-          ["http://foo.test:8000"]      = "foo.test",
-          ["https://foo.test:8000"]     = "foo.test",
-          ["http://foo.test:90"]        = "foo.test",
-          ["http://foobtest"]           = "foo.test",
-          ["https://bar.test:1234"]     = "foo.test",
+          ["http://evil.test"]          = false,
+          ["http://foo.test"]           = false,
+          ["http://foo.test.evil.test"] = false,
+          ["http://something.foo.test"] = false,
+          ["http://evilfoo.test"]       = false,
+          ["http://foo.test:80"]        = false,
+          ["http://foo.test:8000"]      = false,
+          ["https://foo.test:8000"]     = false,
+          ["http://foo.test:90"]        = false,
+          ["http://foobtest"]           = false,
+          ["https://bar.test:1234"]     = false,
         },
       },
       {
-        -- single entry, full domain (not regex): ignore value, always return configured data
+        -- single entry, full domain (not regex): match on full normalized domain
         origins = { "https://bar.test:1234" },
         tests = {
-          ["http://evil.test"]          = "https://bar.test:1234",
-          ["http://foo.test"]           = "https://bar.test:1234",
-          ["http://foo.test.evil.test"] = "https://bar.test:1234",
-          ["http://something.foo.test"] = "https://bar.test:1234",
-          ["http://evilfoo.test"]       = "https://bar.test:1234",
-          ["http://foo.test:80"]        = "https://bar.test:1234",
-          ["http://foo.test:8000"]      = "https://bar.test:1234",
-          ["https://foo.test:8000"]     = "https://bar.test:1234",
-          ["http://foo.test:90"]        = "https://bar.test:1234",
-          ["http://foobtest"]           = "https://bar.test:1234",
+          ["http://evil.test"]          = false,
+          ["http://foo.test"]           = false,
+          ["http://foo.test.evil.test"] = false,
+          ["http://something.foo.test"] = false,
+          ["http://evilfoo.test"]       = false,
+          ["http://foo.test:80"]        = false,
+          ["http://foo.test:8000"]      = false,
+          ["https://foo.test:8000"]     = false,
+          ["http://foo.test:90"]        = false,
+          ["http://foobtest"]           = false,
           ["https://bar.test:1234"]     = "https://bar.test:1234",
         },
       },
@@ -631,7 +631,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
         assert.equal("0", res.headers["Content-Length"])
         assert.equal("GET", res.headers["Access-Control-Allow-Methods"])
-        assert.equal("example.com", res.headers["Access-Control-Allow-Origin"])
+        assert.is_nil(res.headers["Access-Control-Allow-Origin"])
         assert.equal("23", res.headers["Access-Control-Max-Age"])
         assert.equal("true", res.headers["Access-Control-Allow-Credentials"])
         assert.equal("origin,type,accepts", res.headers["Access-Control-Allow-Headers"])
@@ -753,7 +753,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.res_status(200, res)
-        assert.equal("example.com", res.headers["Access-Control-Allow-Origin"])
+        assert.is_nil(res.headers["Access-Control-Allow-Origin"])
         assert.equal("x-auth-token", res.headers["Access-Control-Expose-Headers"])
         assert.equal("true", res.headers["Access-Control-Allow-Credentials"])
         assert.equal("Origin", res.headers["Vary"])
@@ -770,7 +770,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.res_status(502, res)
-        assert.equal("example.com", res.headers["Access-Control-Allow-Origin"])
+        assert.is_nil(res.headers["Access-Control-Allow-Origin"])
         assert.equal("x-auth-token", res.headers["Access-Control-Expose-Headers"])
         assert.equal("Origin", res.headers["Vary"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
@@ -787,7 +787,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.res_status(500, res)
-        assert.equal("example.com", res.headers["Access-Control-Allow-Origin"])
+        assert.is_nil(res.headers["Access-Control-Allow-Origin"])
         assert.equal("x-auth-token", res.headers["Access-Control-Expose-Headers"])
         assert.equal("Origin", res.headers["Vary"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])

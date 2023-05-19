@@ -74,21 +74,6 @@ local function configure_origin(conf, header_filter)
   -- https://github.com/rs/cors/issues/10
   add_vary_header(header_filter)
 
-  if n_origins == 1 then
-    -- if this doesnt look like a regex, set the ACAO header directly
-    -- otherwise, we'll fall through to an iterative search and
-    -- set the ACAO header based on the client Origin
-    local from, _, err = re_find(conf.origins[1], "^[A-Za-z0-9.:/-]+$", "jo")
-    if err then
-      kong.log.err("could not inspect origin for type: ", err)
-    end
-
-    if from then
-      set_header("Access-Control-Allow-Origin", conf.origins[1])
-      return false
-    end
-  end
-
   local req_origin = kong.request.get_header("origin")
   if req_origin then
     local cached_domains = config_cache[conf]
