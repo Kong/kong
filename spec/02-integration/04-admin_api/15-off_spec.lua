@@ -1094,6 +1094,13 @@ describe("Admin API #off /config [flattened errors]", function()
     if debug then
       helpers.intercept(body)
     end
+
+    assert.logfile().has.no.line("[emerg]", true, 0.01)
+    assert.logfile().has.no.line("[crit]",  true, 0.01)
+    assert.logfile().has.no.line("[alert]", true, 0.01)
+    assert.logfile().has.no.line("[error]", true, 0.01)
+    assert.logfile().has.no.line("[warn]",  true, 0.01)
+
     return errors
   end
 
@@ -2271,6 +2278,248 @@ R6InCcH2Wh8wSeY5AuDXvu2tv9g/PW9wIJmPuKSHMA==
     assert.same({ abnormal_extra_field = "unknown field" }, flattened.fields)
     assert.equals(4, #flattened.flattened_errors,
                   "unexpected number of flattened errors")
+  end)
+
+  it("does not throw for invalid input - (#10767)", function()
+    local username      = "774f8446-6427-43f9-9962-ce7ab8097fe4"
+    local consumer_id   = "68d5de9f-2211-5ed8-b827-22f57a492d0f"
+    local service_name  = "default.nginx-sample-1.nginx-sample-1.80"
+    local upstream_name = "nginx-sample-1.default.80.svc"
+
+    local plugin = {
+      name = "rate-limiting",
+      consumer = username,
+      config = {
+        error_code = 429,
+        error_message = "API rate limit exceeded",
+        fault_tolerant = true,
+        hide_client_headers = false,
+        limit_by = "consumer",
+        policy = "local",
+        redis_database = 0,
+        redis_port = 6379,
+        redis_ssl = false,
+        redis_ssl_verify = false,
+        redis_timeout = 2000,
+        second = 2000,
+      },
+      enabled = true,
+      protocols = {
+        "grpc",
+        "grpcs",
+        "http",
+        "https",
+      },
+      tags = {
+        "k8s-name:nginx-sample-1-rate",
+        "k8s-namespace:default",
+        "k8s-kind:KongPlugin",
+        "k8s-uid:5163972c-543d-48ae-b0f6-21701c43c1ff",
+        "k8s-group:configuration.konghq.com",
+        "k8s-version:v1",
+      },
+    }
+
+    local input = {
+      _format_version = "3.0",
+      consumers = {
+        {
+          acls = {
+            {
+              group = "app",
+              tags = {
+                "k8s-name:app-acl",
+                "k8s-namespace:default",
+                "k8s-kind:Secret",
+                "k8s-uid:f1c5661c-a087-4c4b-b545-2d8b3870d661",
+                "k8s-version:v1",
+              },
+            },
+          },
+
+          basicauth_credentials = {
+            {
+              password = "6ef728de-ba68-4e59-acb9-6e502c28ae0b",
+              tags = {
+                "k8s-name:app-cred",
+                "k8s-namespace:default",
+                "k8s-kind:Secret",
+                "k8s-uid:aadd4598-2969-49ea-82ac-6ab5159e2f2e",
+                "k8s-version:v1",
+              },
+              username = username,
+            },
+          },
+
+          id = consumer_id,
+          tags = {
+            "k8s-name:app",
+            "k8s-namespace:default",
+            "k8s-kind:KongConsumer",
+            "k8s-uid:7ee19bea-72d5-402b-bf0f-f57bf81032bf",
+            "k8s-group:configuration.konghq.com",
+            "k8s-version:v1",
+          },
+          username = username,
+        },
+      },
+
+      plugins = {
+        plugin,
+
+        {
+          config = {
+            error_code = 429,
+            error_message = "API rate limit exceeded",
+            fault_tolerant = true,
+            hide_client_headers = false,
+            limit_by = "consumer",
+            policy = "local",
+            redis_database = 0,
+            redis_port = 6379,
+            redis_ssl = false,
+            redis_ssl_verify = false,
+            redis_timeout = 2000,
+            second = 2000,
+          },
+          consumer = username,
+          enabled = true,
+          name = "rate-limiting",
+          protocols = {
+            "grpc",
+            "grpcs",
+            "http",
+            "https",
+          },
+          tags = {
+            "k8s-name:nginx-sample-2-rate",
+            "k8s-namespace:default",
+            "k8s-kind:KongPlugin",
+            "k8s-uid:89fa1cd1-78da-4c3e-8c3b-32be1811535a",
+            "k8s-group:configuration.konghq.com",
+            "k8s-version:v1",
+          },
+        },
+
+        {
+          config = {
+            allow = {
+              "nginx-sample-1",
+              "app",
+            },
+            hide_groups_header = false,
+          },
+          enabled = true,
+          name = "acl",
+          protocols = {
+            "grpc",
+            "grpcs",
+            "http",
+            "https",
+          },
+          service = service_name,
+          tags = {
+            "k8s-name:nginx-sample-1",
+            "k8s-namespace:default",
+            "k8s-kind:KongPlugin",
+            "k8s-uid:b9373482-32e1-4ac3-bd2a-8926ab728700",
+            "k8s-group:configuration.konghq.com",
+            "k8s-version:v1",
+          },
+        },
+      },
+
+      services = {
+        {
+          connect_timeout = 60000,
+          host = upstream_name,
+          id = "8c17ab3e-b6bd-51b2-b5ec-878b4d608b9d",
+          name = service_name,
+          path = "/",
+          port = 80,
+          protocol = "http",
+          read_timeout = 60000,
+          retries = 5,
+
+          routes = {
+            {
+              https_redirect_status_code = 426,
+              id = "84d45463-1faa-55cf-8ef6-4285007b715e",
+              methods = {
+                "GET",
+              },
+              name = "default.nginx-sample-1.nginx-sample-1..80",
+              path_handling = "v0",
+              paths = {
+                "/sample/1",
+              },
+              preserve_host = true,
+              protocols = {
+                "http",
+                "https",
+              },
+              regex_priority = 0,
+              request_buffering = true,
+              response_buffering = true,
+              strip_path = false,
+              tags = {
+                "k8s-name:nginx-sample-1",
+                "k8s-namespace:default",
+                "k8s-kind:Ingress",
+                "k8s-uid:916a6e5a-eebe-4527-a78d-81963eb3e043",
+                "k8s-group:networking.k8s.io",
+                "k8s-version:v1",
+              },
+            },
+          },
+          tags = {
+            "k8s-name:nginx-sample-1",
+            "k8s-namespace:default",
+            "k8s-kind:Service",
+            "k8s-uid:f7cc87f4-d5f7-41f8-b4e3-70608017e588",
+            "k8s-version:v1",
+          },
+          write_timeout = 60000,
+        },
+      },
+
+      upstreams = {
+        {
+          algorithm = "round-robin",
+          name = upstream_name,
+          tags = {
+            "k8s-name:nginx-sample-1",
+            "k8s-namespace:default",
+            "k8s-kind:Service",
+            "k8s-uid:f7cc87f4-d5f7-41f8-b4e3-70608017e588",
+            "k8s-version:v1",
+          },
+          targets = {
+            {
+              target = "nginx-sample-1.default.svc:80",
+            },
+          },
+        },
+      },
+    }
+
+    local flattened = post_config(input)
+    validate({
+      {
+        entity_type = "plugin",
+        entity_name = plugin.name,
+        entity_tags = plugin.tags,
+        entity      = plugin,
+
+        errors = {
+          {
+            field   = "consumer.id",
+            message = "missing primary key",
+            type    = "field",
+          }
+        },
+      },
+    }, flattened)
   end)
 end)
 
