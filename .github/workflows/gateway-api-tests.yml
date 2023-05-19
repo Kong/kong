@@ -4,15 +4,12 @@ on:
   repository_dispatch:
     types: [per-commit-test]
 
-# run this workflow whenever a PR is created on the master branch including changes in spec-ee/kong-api-tests
-# commenting out for a time-being as this workflow trigger causes failures, need to investigate
-  # pull_request:
-  #   branches:
-  #     - master
-  #   paths:
-  #     - 'spec-ee/kong-api-tests/**'
-  #     - '.github/workflows/gateway-api-tests.yml'
-  #     - '.github/workflows/gateway-api-tests-matrix.yml'
+# run this workflow whenever a PR is created from dependabot
+  pull_request:
+    paths:
+      - 'spec-ee/kong-api-tests/package*.json'
+    branches:
+      - master
 
   workflow_dispatch:
     inputs:
