@@ -148,8 +148,8 @@
 - Support timeout for dynamic log level
   [#10288](https://github.com/Kong/kong/pull/10288)
 - Added new span attribute `http.client_ip` to capture the client IP when behind a proxy.
+  Thanks [@backjo](https://github.com/backjo) for this contribution!
   [#10723](https://github.com/Kong/kong/pull/10723)
-  [#10204](https://github.com/Kong/kong/pull/10204)
 
 #### Admin API
 
