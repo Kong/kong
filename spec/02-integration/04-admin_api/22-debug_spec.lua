@@ -1,5 +1,6 @@
 local helpers = require("spec.helpers")
 local cjson = require("cjson")
+local fmt = string.format
 
 local strategies = {}
 for _, strategy in helpers.each_strategy() do
@@ -182,6 +183,8 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         message = "log level: debug"
         return json.message == message
       end, 30)
+
+      assert.logfile().has.line(fmt("log level changed to %s", ngx.DEBUG), true, 2)
 
       -- e2e test: we are printing higher than debug
       helpers.clean_logfile()
