@@ -15,10 +15,15 @@ describe("signals", function()
     assert(helpers.start_kong())
     helpers.signal(nil, "-USR1")
 
-    local conf = helpers.get_running_conf()
-    local _, code = helpers.execute("grep -F '(SIGUSR1) received from' " ..
-                                     conf.nginx_err_logs, true)
-    assert.equal(0, code)
+    assert
+      .eventually(function ()
+        local conf = helpers.get_running_conf()
+        local _, code = helpers.execute("grep -F '(SIGUSR1) received from' " ..
+                                        conf.nginx_err_logs, true)
+        assert.equal(0, code)
+      end)
+      .with_timeout(15)
+      .has_no_error()
   end)
 
   it("can receive USR2", function()
