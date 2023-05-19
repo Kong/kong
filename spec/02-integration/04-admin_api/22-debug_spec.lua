@@ -200,6 +200,8 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         return json.message == message
       end, 30)
 
+      assert.logfile().has.line(fmt("log level changed to %s", ngx.DEBUG), true, 2)
+
       -- e2e test: we are printing higher than debug
       helpers.clean_logfile()
       res = assert(helpers.proxy_client():send {

@@ -32,6 +32,9 @@
 
 #### Core
 
+- Fix a bug when worker consuming dynamic log level setting event and using a wrong reference for notice logging
+  [#10897](https://github.com/Kong/kong/pull/10897)
+
 #### Admin API
 
 #### Plugins
