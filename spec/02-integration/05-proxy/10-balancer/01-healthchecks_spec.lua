@@ -1162,9 +1162,24 @@ for _, strategy in helpers.each_strategy() do
 
                 -- Go hit them with our test requests
                 local client_oks1, client_fails1 = bu.client_requests(bu.SLOTS, api_host)
-                assert(bu.direct_request(localhost, port2, "/unhealthy"))
-                local client_oks2, client_fails2 = bu.client_requests(bu.SLOTS, api_host)
 
+                -- set server2 unhealthy
+                assert(bu.direct_request(localhost, port2, "/unhealthy"))
+                assert
+                  .with_timeout(5)
+                  .eventually(function()
+                    local client = helpers.http_client(localhost, port2)
+                    local res = assert(client:send({
+                      method = "GET",
+                      path = "/status", })
+                    )
+                    client:close()
+                    return res.status == 500
+                  end)
+                  .is_truthy()
+
+                -- Another test requests hit
+                local client_oks2, client_fails2 = bu.client_requests(bu.SLOTS, api_host)
                 local client_oks = client_oks1 + client_oks2
                 local client_fails = client_fails1 + client_fails2
 
@@ -1667,14 +1682,14 @@ for _, strategy in helpers.each_strategy() do
                   })
                   bu.end_testcase_setup(strategy, bp)
 
-                  -- 1) server1 and server2 take requests
+                  -- 1. server1 and server2 take requests
                   local oks, fails = bu.client_requests(bu.SLOTS, api_host)
                   -- server2 goes unhealthy
                   assert(bu.direct_request(localhost, port2, "/unhealthy", protocol, hostname))
                   -- Wait until healthchecker detects
                   bu.poll_wait_address_health(upstream_id, hostname, port1, localhost, port2, "UNHEALTHY")
 
-                  -- 2) server1 takes all requests
+                  -- 2. server1 takes all requests
                   do
                     local o, f = bu.client_requests(bu.SLOTS, api_host)
                     oks = oks + o
@@ -1686,7 +1701,7 @@ for _, strategy in helpers.each_strategy() do
                   -- Give time for healthchecker to detect
                   bu.poll_wait_address_health(upstream_id, hostname, port1, localhost, port2, "HEALTHY")
 
-                  -- 3) server1 and server2 take requests again
+                  -- 3. server1 and server2 take requests again
                   do
                     local o, f = bu.client_requests(bu.SLOTS, api_host)
                     oks = oks + o
@@ -1773,17 +1788,24 @@ for _, strategy in helpers.each_strategy() do
 
                   bu.end_testcase_setup(strategy, bp)
 
-                  -- 1) target1 and target2 take requests
-                  local oks, fails = bu.client_requests(bu.SLOTS, api_host)
+                  -- set test parameters
+                  local req_burst = 10
+                  local total_requests = req_burst * 3
+                  local target1_reqs = req_burst * 2
+                  local target2_reqs = req_burst
+                  local accepted_var = 0.3
+
+                  -- 1. target1 and target2 take requests
+                  local oks, fails = bu.client_requests(req_burst, api_host)
 
                   -- target2 goes unhealthy
                   assert(bu.direct_request(localhost, port1, "/unhealthy", protocol, "target2.test"))
                   -- Wait until healthchecker detects
                   bu.poll_wait_health(upstream_id, "target2.test", port1, "UNHEALTHY")
 
-                  -- 2) target1 takes all requests
+                  -- 2. target1 takes all requests
                   do
-                    local o, f = bu.client_requests(bu.SLOTS, api_host)
+                    local o, f = bu.client_requests(req_burst, api_host)
                     oks = oks + o
                     fails = fails + f
                   end
@@ -1793,9 +1815,9 @@ for _, strategy in helpers.each_strategy() do
                   -- Give time for healthchecker to detect
                   bu.poll_wait_health(upstream_id, "target2.test", port1, "HEALTHY")
 
-                  -- 3) server1 and server2 take requests again
+                  -- 3. server1 and server2 take requests again
                   do
-                    local o, f = bu.client_requests(bu.SLOTS, api_host)
+                    local o, f = bu.client_requests(req_burst, api_host)
                     oks = oks + o
                     fails = fails + f
                   end
@@ -1803,11 +1825,11 @@ for _, strategy in helpers.each_strategy() do
                   -- collect server results; hitcount
                   local results = server1:shutdown()
                   ---- verify
-                  assert.are.equal(bu.SLOTS * 2, results["target1.test"].ok)
-                  assert.are.equal(bu.SLOTS, results["target2.test"].ok)
+                  assert.near(target1_reqs, results["target1.test"].ok, target1_reqs * accepted_var)
+                  assert.near(target2_reqs, results["target2.test"].ok, target2_reqs * accepted_var)
                   assert.are.equal(0, results["target1.test"].fail)
                   assert.are.equal(0, results["target1.test"].fail)
-                  assert.are.equal(bu.SLOTS * 3, oks)
+                  assert.are.equal(total_requests, oks)
                   assert.are.equal(0, fails)
                 end
               end)
@@ -1984,7 +2006,7 @@ for _, strategy in helpers.each_strategy() do
               server1:start()
               server2:start()
 
-              -- 1) server1 and server2 take requests
+              -- 1. server1 and server2 take requests
               local oks, fails = bu.client_requests(bu.SLOTS, api_host)
 
               -- manually bring it down using the endpoint
@@ -1997,7 +2019,7 @@ for _, strategy in helpers.each_strategy() do
                 bu.poll_wait_health(upstream_id, localhost, port2, "UNHEALTHY")
               end
 
-              -- 2) server1 takes all requests
+              -- 2. server1 takes all requests
               do
                 local o, f = bu.client_requests(bu.SLOTS, api_host)
                 oks = oks + o
@@ -2014,7 +2036,7 @@ for _, strategy in helpers.each_strategy() do
                 bu.poll_wait_health(upstream_id, localhost, port2, "HEALTHY")
               end
 
-              -- 3) server1 and server2 take requests again
+              -- 3. server1 and server2 take requests again
               do
                 local o, f = bu.client_requests(bu.SLOTS, api_host)
                 oks = oks + o
@@ -2070,12 +2092,12 @@ for _, strategy in helpers.each_strategy() do
 
               ngx.sleep(bu.CONSISTENCY_FREQ) -- wait for proxy state consistency timer
 
-              -- 1) server1 and server2 take requests
+              -- 1. server1 and server2 take requests
               local oks, fails = bu.client_requests(bu.SLOTS, api_host)
 
               assert(bu.direct_request(localhost, port2, "/timeout"))
 
-              -- 2) server1 takes all requests once server2 produces
+              -- 2. server1 takes all requests once server2 produces
               -- `nfails` failures (even though server2 will be ready
               -- to respond 200 again after `nfails`)
               do
@@ -2523,6 +2545,7 @@ for _, strategy in helpers.each_strategy() do
         -- Then server1 will take over.
         local server1_oks = bu.SLOTS * 1.5
         local server2_oks = bu.SLOTS / 2
+        local accepted_var = 0.3
         local server1 = helpers.tcp_server(port1, {
           requests = server1_oks,
           prefix = "1 ",
@@ -2541,8 +2564,10 @@ for _, strategy in helpers.each_strategy() do
         server2:join()
 
         -- verify
-        assert.are.equal(server1_oks, ok1)
-        assert.are.equal(server2_oks, ok2)
+        -- we are not testing the ring balancer, but the health check. It's OK
+        -- to have some variance in the number of requests each server responds.
+        assert.near(server1_oks, ok1, server1_oks * accepted_var) 
+        assert.near(server2_oks, ok2, server2_oks * accepted_var) 
         assert.are.equal(0, fails)
       end)
 
