@@ -2708,7 +2708,8 @@ do
   local function re_match(subject, pattern)
     local pos, _, err = ngx.re.find(subject, pattern, "oj")
     if err then
-      error(err)
+      error(("invalid regex provided to logfile assertion %q: %s")
+            :format(pattern, err), 5)
     end
 
     if pos then
