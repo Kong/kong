@@ -71,6 +71,12 @@
 
 ## Unreleased
 
+### Fixes
+
+- Fixed a bug that causes `POST /config?flatten_errors=1` to throw an exception
+  and return a 500 error under certain circumstances.
+  [#10896](https://github.com/Kong/kong/pull/10896)
+
 ### Dependencies
 
 - Bumped lua-resty-timer-ng from 0.2.3 to 0.2.5
