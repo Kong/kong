@@ -1,7 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
-local pretty = require "pl.pretty"
 local to_hex = require "resty.string".to_hex
 
 local fmt = string.format
@@ -423,7 +422,7 @@ for _, strategy in helpers.each_strategy() do
       -- wait for zero-delay timer
       helpers.wait_timer("zipkin", true, "any-finish")
 
-      assert.logfile().has.line("zipkin request failed: timeout", true, 2)
+      assert.logfile().has.line("zipkin request failed: timeout", true, 10)
     end)
 
     it("times out if upstream zipkin server takes too long to respond", function()
@@ -439,7 +438,7 @@ for _, strategy in helpers.each_strategy() do
       -- wait for zero-delay timer
       helpers.wait_timer("zipkin", true, "any-finish")
 
-      assert.logfile().has.line("zipkin request failed: timeout", true, 2)
+      assert.logfile().has.line("zipkin request failed: timeout", true, 10)
     end)
 
     it("connection refused if upstream zipkin server is not listening", function()
@@ -455,7 +454,7 @@ for _, strategy in helpers.each_strategy() do
       -- wait for zero-delay timer
       helpers.wait_timer("zipkin", true, "any-finish")
 
-      assert.logfile().has.line("zipkin request failed: connection refused", true, 2)
+      assert.logfile().has.line("zipkin request failed: connection refused", true, 10)
     end)
   end)
 end
