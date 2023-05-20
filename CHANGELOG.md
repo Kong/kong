@@ -46,7 +46,7 @@
 
 #### Plugins
 
-- **grpc-gateway**: Fixed an issue that empty (all default value) messages cannot be unframed correctly.
+- **grpc-gateway**: Fixed an issue that empty (all default value) messages can not be unframed correctly.
   [#10836](https://github.com/Kong/kong/pull/10836)
 - **ACME**: Fixed sanity test can't work with "kong" storage in Hybrid mode
   [#10852](https://github.com/Kong/kong/pull/10852)
