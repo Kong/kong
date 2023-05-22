@@ -1445,7 +1445,7 @@
                                       # after a few config reload/Hybrid mode syncs and the actual
                                       # memory used by the LMDB database will be smaller than
                                       # the file size due to dynamic swapping of database pages by
-                                      # the O/S.
+                                      # the OS.
 
 #------------------------------------------------------------------------------
 # DATASTORE CACHE
