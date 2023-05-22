@@ -1,4 +1,6 @@
 local pl_path = require "pl.path"
+local pl_utils = require "pl.utils"
+local pl_stringx = require "pl.stringx"
 local helpers = require "spec.helpers"
 local conf_loader = require "kong.conf_loader"
 local inject_directives = require "kong.cmd.utils.inject_directives"
@@ -26,26 +28,29 @@ lua_ssl_verify_depth   1;
 lua_ssl_trusted_certificate '/usr/local/kong/.ca_combined';
 lua_ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 ]]
+      local ok, code, stdout, stderr = pl_utils.executeex("command -v resty")
+      assert(ok and code == 0)
+      local resty_path = pl_stringx.strip(stdout)
       local kong_path = cwd .. "/bin/kong"
-      local cmd_name = "vault"
-      local args = {
-        "test-env/test",
-        command = "get",
-        v = true,
+      _G.cli_args = {
+        [-1] = resty_path,
+        [0]  = kong_path,
+        [1]  = "vault",
+        [2]  = "get",
+        [3]  = "test-env/test",
+        [4] = "--v"
       }
-
       local conf = assert(conf_loader(nil, {
         database = strategy,
       }))
-      local cmd, err = construct_cmd(conf, cmd_name, args)
+      local cmd, err = construct_cmd(conf)
       assert.is_nil(err)
-      local expected_args = "get test-env/test --v --no-resty-cli-injection"
       local expected_main_conf = main_conf
       if strategy == "off" then
         expected_main_conf = main_conf_off
       end
-      local expected_cmd = fmt("resty --main-conf \"%s\" --http-conf \"%s\" --stream-conf \"%s\" %s %s %s",
-        expected_main_conf, http_conf, stream_conf, kong_path, cmd_name, expected_args)
+      local expected_cmd = fmt("%s --main-conf \"%s\" --http-conf \"%s\" --stream-conf \"%s\" %s vault get test-env/test --v --no-resty-cli-injection",
+        resty_path, expected_main_conf, http_conf, stream_conf, kong_path)
       assert.matches(expected_cmd, cmd, nil, true)
     end)
 
@@ -67,27 +72,30 @@ lua_ssl_verify_depth   1;
 lua_ssl_trusted_certificate '%s/servroot/.ca_combined';
 lua_ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 ]], cwd)
+      local ok, code, stdout, stderr = pl_utils.executeex("command -v resty")
+      assert(ok and code == 0)
+      local resty_path = pl_stringx.strip(stdout)
       local kong_path = cwd .. "/bin/kong"
-      local cmd_name = "vault"
-      local args = {
-        "test-env/test",
-        command = "get",
-        v = true,
+      _G.cli_args = {
+        [-1] = resty_path,
+        [0]  = kong_path,
+        [1]  = "vault",
+        [2]  = "get",
+        [3]  = "test-env/test",
+        [4]  = "--v"
       }
-
       local conf = assert(conf_loader(nil, {
         database = strategy,
         prefix = helpers.test_conf.prefix,
       }))
-      local cmd, err = construct_cmd(conf, cmd_name, args)
+      local cmd, err = construct_cmd(conf)
       assert.is_nil(err)
-      local expected_args = "get test-env/test --v --no-resty-cli-injection"
       local expected_main_conf = main_conf
       if strategy == "off" then
         expected_main_conf = main_conf_off
       end
-      local expected_cmd = fmt("resty --main-conf \"%s\" --http-conf \"%s\" --stream-conf \"%s\" %s %s %s",
-        expected_main_conf, http_conf, stream_conf, kong_path, cmd_name, expected_args)
+      local expected_cmd = fmt("%s --main-conf \"%s\" --http-conf \"%s\" --stream-conf \"%s\" %s vault get test-env/test --v --no-resty-cli-injection",
+        resty_path, expected_main_conf, http_conf, stream_conf, kong_path, cmd_name, expected_args)
       assert.matches(expected_cmd, cmd, nil, true)
     end)
   end
