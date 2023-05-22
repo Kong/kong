@@ -2012,7 +2012,7 @@ local function wait_for_all_config_update(opts)
     if stream_enabled then
       pwait_until(function ()
         local proxy = proxy_client(proxy_client_timeout, stream_port, stream_ip)
-  
+
         res = proxy:get("/always_200")
         local ok, err = pcall(assert, res.status == 200)
         proxy:close()
@@ -2699,6 +2699,40 @@ do
   luassert:register("modifier", "errlog", modifier_errlog) -- backward compat
   luassert:register("modifier", "logfile", modifier_errlog)
 
+  local function substr(subject, pattern)
+    if subject:find(pattern, nil, true) ~= nil then
+      return subject
+    end
+  end
+
+  local function re_match(subject, pattern)
+    local pos, _, err = ngx.re.find(subject, pattern, "oj")
+    if err then
+      error(("invalid regex provided to logfile assertion %q: %s")
+            :format(pattern, err), 5)
+    end
+
+    if pos then
+      return subject
+    end
+  end
+
+  local function find_in_file(fpath, pattern, matcher)
+    local fh = assert(io.open(fpath, "r"))
+    local found
+
+    for line in fh:lines() do
+      if matcher(line, pattern) then
+        found = line
+        break
+      end
+    end
+
+    fh:close()
+
+    return found
+  end
+
 
   --- Assertion checking if any line from a file matches the given regex or
   -- substring.
@@ -2728,37 +2762,30 @@ do
            "Expected the regex argument to be a string")
     assert(type(fpath) == "string",
            "Expected the file path argument to be a string")
-    assert(type(timeout) == "number" and timeout > 0,
-           "Expected the timeout argument to be a positive number")
+    assert(type(timeout) == "number" and timeout >= 0,
+           "Expected the timeout argument to be a number >= 0")
 
-    local pok = pcall(wait_until, function()
-      local logs = pl_file.read(fpath)
-      local from, _, err
 
-      for line in logs:gmatch("[^\r\n]+") do
-        if plain then
-          from = string.find(line, regex, nil, true)
+    local matcher = plain and substr or re_match
 
-        else
-          from, _, err = ngx.re.find(line, regex)
-          if err then
-            error(err)
-          end
-        end
+    local found = find_in_file(fpath, regex, matcher)
+    local deadline = ngx.now() + timeout
 
-        if from then
-          table.insert(args, 1, line)
-          table.insert(args, 1, regex)
-          args.n = 2
-          return true
-        end
-      end
-    end, timeout)
+    while not found and ngx.now() <= deadline do
+      ngx.sleep(0.05)
+      found = find_in_file(fpath, regex, matcher)
+    end
 
-    table.insert(args, 1, fpath)
-    args.n = args.n + 1
+    args[1] = fpath
+    args[2] = regex
+    args.n = 2
 
-    return pok
+    if found then
+      args[3] = found
+      args.n = 3
+    end
+
+    return found
   end
 
   say:set("assertion.match_line.negative", unindent [[
