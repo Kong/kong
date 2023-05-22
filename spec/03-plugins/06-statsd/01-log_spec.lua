@@ -2014,7 +2014,15 @@ for _, strategy in helpers.each_strategy() do
 
     describe("metrics #grpc", function()
       it("logs over UDP with default metrics", function()
-        local thread = helpers.udp_server(UDP_PORT, 8)
+        
+        assert(helpers.restart_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        }))
+  
+        shdict_count = #get_shdicts()
+        local metrics_count = 8 + shdict_count * 2
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
 
         local ok, resp = proxy_client_grpc({
           service = "hello.HelloService.SayHello",
