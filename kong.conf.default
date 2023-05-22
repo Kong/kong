@@ -717,7 +717,7 @@
                                  # different cache zones, the total memory Kong
                                  # uses to cache entities might be double this value.
                                  # The created zones are shared by all worker
-                                 # processes and does not becomes larger when more
+                                 # processes and do not become larger when more
                                  # worker is used.
 
 #ssl_cipher_suite = intermediate # Defines the TLS ciphers served by Nginx.
