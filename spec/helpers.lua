@@ -43,6 +43,8 @@ local REDIS_HOST = os.getenv("KONG_SPEC_TEST_REDIS_HOST") or "localhost"
 local REDIS_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_PORT") or 6379)
 local REDIS_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_SSL_PORT") or 6380)
 local REDIS_SSL_SNI = os.getenv("KONG_SPEC_TEST_REDIS_SSL_SNI") or "test-redis.example.com"
+local TEST_COVERAGE_MODE = os.getenv("KONG_COVERAGE")
+local TEST_COVERAGE_TIMEOUT = 30
 local BLACKHOLE_HOST = "10.255.255.255"
 local KONG_VERSION = require("kong.meta")._VERSION
 local PLUGINS_LIST
@@ -96,7 +98,6 @@ ffi.cdef [[
   int setenv(const char *name, const char *value, int overwrite);
   int unsetenv(const char *name);
 ]]
-
 
 local kong_exec   -- forward declaration
 
@@ -874,6 +875,12 @@ end
 function resty_http_proxy_mt:_connect()
   local opts = self.options
 
+  if TEST_COVERAGE_MODE == "true" then
+    opts.connect_timeout = TEST_COVERAGE_TIMEOUT * 1000
+    opts.send_timeout    = TEST_COVERAGE_TIMEOUT * 1000
+    opts.read_timeout    = TEST_COVERAGE_TIMEOUT * 1000
+  end
+
   local _, err = self:connect(opts)
   if err then
     error("Could not connect to " ..
@@ -959,6 +966,10 @@ end
 local function http_client(host, port, timeout)
   if type(host) == "table" then
     return http_client_opts(host)
+  end
+
+  if TEST_COVERAGE_MODE == "true" then
+    timeout = TEST_COVERAGE_TIMEOUT * 1000
   end
 
   return http_client_opts({
@@ -1064,6 +1075,10 @@ end
 -- @function admin_ssl_client
 -- @param timeout (optional, number) the timeout to use
 local function admin_ssl_client(timeout)
+  if TEST_COVERAGE_MODE == "true" then
+    timeout = TEST_COVERAGE_TIMEOUT * 1000
+  end
+
   local admin_ip, admin_port
   for _, entry in ipairs(conf.proxy_listeners) do
     if entry.ssl == true then
@@ -1271,6 +1286,9 @@ end
 local function tcp_server(port, opts)
   local threads = require "llthreads2.ex"
   opts = opts or {}
+  if TEST_COVERAGE_MODE == "true" then
+    opts.timeout = TEST_COVERAGE_TIMEOUT
+  end
   local thread = threads.new({
     function(port, opts)
       local socket = require "socket"
@@ -1407,6 +1425,9 @@ local function http_server(port, opts)
                         "or helpers.http_mock instead.", 2))
   local threads = require "llthreads2.ex"
   opts = opts or {}
+  if TEST_COVERAGE_MODE == "true" then
+    opts.timeout = TEST_COVERAGE_TIMEOUT
+  end
   local thread = threads.new({
     function(port, opts)
       local socket = require "socket"
@@ -1622,6 +1643,9 @@ end
 local function http_mock(port, opts)
   local socket = require "socket"
   local server = assert(socket.tcp())
+  if TEST_COVERAGE_MODE == "true" then
+    opts.timeout = TEST_COVERAGE_TIMEOUT
+  end
   server:settimeout(opts and opts.timeout or 60)
   assert(server:setoption('reuseaddr', true))
   assert(server:bind("*", port))
@@ -1674,6 +1698,10 @@ end
 -- @return A thread object (from the `llthreads2` Lua package)
 local function udp_server(port, n, timeout)
   local threads = require "llthreads2.ex"
+
+  if TEST_COVERAGE_MODE == "true" then
+    timeout = TEST_COVERAGE_TIMEOUT
+  end
 
   local thread = threads.new({
     function(port, n, timeout)
@@ -1751,6 +1779,10 @@ require("spec.helpers.wait")
 -- -- wait 10 seconds for a file "myfilename" to appear
 -- helpers.wait_until(function() return file_exist("myfilename") end, 10)
 local function wait_until(f, timeout, step)
+  if TEST_COVERAGE_MODE == "true" then
+    timeout = TEST_COVERAGE_TIMEOUT
+  end
+
   luassert.wait_until({
     condition = "truthy",
     fn = f,
@@ -1773,6 +1805,10 @@ end
 -- @return nothing. It returns when the condition is met, or throws an error
 -- when it times out.
 local function pwait_until(f, timeout, step)
+  if TEST_COVERAGE_MODE == "true" then
+    timeout = TEST_COVERAGE_TIMEOUT
+  end
+
   luassert.wait_until({
     condition = "no_error",
     fn = f,
@@ -1961,6 +1997,9 @@ end
 -- @tparam[opt=false] boolean opts.override_global_key_auth_plugin to override the global key-auth plugin in waiting
 local function wait_for_all_config_update(opts)
   opts = opts or {}
+  if TEST_COVERAGE_MODE == "true" then
+    opts.timeout = TEST_COVERAGE_TIMEOUT
+  end
   local timeout = opts.timeout or 30
   local admin_client_timeout = opts.admin_client_timeout
   local forced_admin_port = opts.forced_admin_port
@@ -3370,6 +3409,10 @@ end
 -- @param timeout (optional) in seconds, defaults to 10.
 local function wait_pid(pid_path, timeout, is_retry)
   local pid = get_pid_from_file(pid_path)
+
+  if TEST_COVERAGE_MODE == "true" then
+    timeout = TEST_COVERAGE_TIMEOUT
+  end
 
   if pid then
     if pid_dead(pid, timeout) then
