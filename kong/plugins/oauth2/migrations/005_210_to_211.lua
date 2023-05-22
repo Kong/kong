@@ -5,33 +5,8 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local operations = require "kong.db.migrations.operations.210_to_211"
-
-
-local plugin_entities = {
-  {
-    name = "oauth2_credentials",
-    unique_keys = {"client_id"},
-  },
-  {
-    name = "oauth2_authorization_codes",
-    unique_keys = {"code"},
-  },
-  {
-    name = "oauth2_tokens",
-    unique_keys = {"access_token", "refresh_token"},
-  },
-}
-
-
 return {
   postgres = {
-    up = [[]],
+    up = [[ SELECT 1 ]],
   },
-  cassandra = {
-    up = [[]],
-    teardown = function(connector)
-      return operations.clean_cassandra_fields(connector, plugin_entities)
-    end
-  }
 }

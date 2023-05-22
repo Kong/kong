@@ -405,10 +405,10 @@ describe("kong.clustering.compat", function()
   end)
 
   for _, strategy in helpers.each_strategy() do
-    describe("check compat for entities those have `updated_at` field", function()
+    describe("check compat for entities those have `updated_at` field #" .. strategy, function()
       local bp, db, entity_names
 
-      setup(function()
+      lazy_setup(function()
         -- excludes entities are not exported: clustering_data_planes, document_objects, files,
         -- group_rbac_roles, groups, legacy_files, login_attempts, rbac_role_endpoints,
         -- rbac_role_entities, rbac_roles, rbac_users
@@ -463,18 +463,85 @@ describe("kong.clustering.compat", function()
         end
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         for _, entity_name in ipairs(entity_names) do
           db[entity_name]:truncate()
         end
       end)
 
-      it(function()
+      it("", function()
         local config = { config_table = declarative.export_config() }
         local has_update = compat.update_compatible_payload(config, "3.0.0", "test_")
         assert.truthy(has_update)
       end)
-  end)
+    end)
+
+    describe("opentelemetry compatible changes #" .. strategy, function()
+      local config, db
+      lazy_setup(function()
+        local _
+        _, db = helpers.get_db_utils(strategy, {
+          "routes",
+          "services",
+          "plugins",
+        })
+        _G.kong.db = db
+  
+        assert(declarative.load_into_db({
+          services = {
+            service1 = {
+              id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6",
+              name = "service1",
+              host = "example.com",
+            },
+          },
+          routes = {
+            route1 = {
+              id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c7",
+              name = "route1",
+              paths = { "/route1" },
+            },
+          },
+          plugins = {
+            plugin1 = {
+              id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c8",
+              name = "opentelemetry",
+              route = { id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c7" },
+              config = {
+                endpoint = "http://example.com",
+              },
+            },
+            plugin2 = {
+              id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c9",
+              name = "opentelemetry",
+              service = { id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6" },
+              config = {
+                endpoint = "http://example.com",
+              },
+            },
+            plugin3 = {
+              id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c1",
+              name = "opentelemetry",
+              config = {
+                endpoint = "http://example.com",
+              },
+            },
+          },
+        }, { _transform = true }))
+
+        config = { config_table = declarative.export_config() }
+      end)
+
+      it("", function()
+        local has_update, result = compat.update_compatible_payload(config, "3.1.0", "test_")
+        assert.truthy(has_update)
+        result = cjson_decode(inflate_gzip(result)).config_table
+
+        local plugins = result.plugins
+        assert.same(1, #plugins)
+        assert.same(ngx.null, plugins[1].service)
+      end)
+    end)
   end
 
   describe("core entities compatible changes", function()
@@ -641,7 +708,7 @@ describe("kong.clustering.compat", function()
       config = { config_table = declarative.export_config() }
     end)
 
-    it(function()
+    it("upstream.use_srv_name", function()
       local has_update, result = compat.update_compatible_payload(config, "3.0.0", "test_")
       assert.truthy(has_update)
       result = cjson_decode(inflate_gzip(result)).config_table
@@ -710,72 +777,5 @@ describe("kong.clustering.compat", function()
       assert.is_nil(assert(services[3]).ca_certificates)
     end)
 
-  end)
-
-  describe("opentelemetry compatible changes", function()
-    local config, db
-    lazy_setup(function()
-      local _
-      _, db = helpers.get_db_utils(nil, {
-        "routes",
-        "services",
-        "plugins",
-      })
-      _G.kong.db = db
-
-      assert(declarative.load_into_db({
-        services = {
-          service1 = {
-            id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6",
-            name = "service1",
-            host = "example.com",
-          },
-        },
-        routes = {
-          route1 = {
-            id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c7",
-            name = "route1",
-            paths = { "/route1" },
-          },
-        },
-        plugins = {
-          plugin1 = {
-            id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c8",
-            name = "opentelemetry",
-            route = { id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c7" },
-            config = {
-              endpoint = "http://example.com",
-            },
-          },
-          plugin2 = {
-            id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c9",
-            name = "opentelemetry",
-            service = { id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6" },
-            config = {
-              endpoint = "http://example.com",
-            },
-          },
-          plugin3 = {
-            id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c1",
-            name = "opentelemetry",
-            config = {
-              endpoint = "http://example.com",
-            },
-          },
-        },
-      }, { _transform = true }))
-
-      config = { config_table = declarative.export_config() }
-    end)
-
-    it(function()
-      local has_update, result = compat.update_compatible_payload(config, "3.1.0", "test_")
-      assert.truthy(has_update)
-      result = cjson_decode(inflate_gzip(result)).config_table
-
-      local plugins = result.plugins
-      assert.same(1, #plugins)
-      assert.same(ngx.null, plugins[1].service)
-    end)
   end)
 end)

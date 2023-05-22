@@ -263,7 +263,7 @@ jobs:
           mkdir $TEST_RESULTS_XML_OUTPUT
           export XML_OUTPUT=$(realpath $TEST_RESULTS_XML_OUTPUT)
           watch -n 30 -t -w bash -c "free -m > /tmp/memusage.txt" 2>&1 >/dev/null &
-          TEST_CMD="bin/busted -v -o hjtest -Xoutput $XML_OUTPUT/report.xml spec/01-unit spec-ee/01-unit"
+          TEST_CMD="bin/busted -v -o hjtest -Xoutput $XML_OUTPUT/report.xml --exclude-tags='flaky,ipv6,ce,cassandra' spec/01-unit spec-ee/01-unit"
           if [[ $KONG_TEST_COVERAGE = true ]]; then
             TEST_CMD="$TEST_CMD --coverage"
           fi

@@ -36,9 +36,4 @@ return {
 
     ]],
   },
-  cassandra = {
-    up = [[
-      ALTER TABLE basicauth_credentials ADD tags set<text>;
-    ]],
-  }
 }

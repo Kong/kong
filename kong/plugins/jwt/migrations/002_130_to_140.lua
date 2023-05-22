@@ -36,9 +36,4 @@ return {
 
     ]],
   },
-  cassandra = {
-    up = [[
-      ALTER TABLE jwt_secrets ADD tags set<text>;
-    ]],
-  }
 }

@@ -16,11 +16,4 @@ return {
       END$$;
     ]],
   },
-
-  cassandra = {
-    up = [[
-      ALTER TABLE oauth2_authorization_codes ADD plugin_id uuid;
-      CREATE INDEX IF NOT EXISTS ON oauth2_authorization_codes(plugin_id);
-    ]],
-  },
 }

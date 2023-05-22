@@ -18,17 +18,4 @@ return {
       );
     ]],
   },
-
-  cassandra = {
-    up = [[
-      CREATE TABLE IF NOT EXISTS transformations (
-        id          uuid PRIMARY KEY,
-        name        text,
-        secret      text,
-        hash_secret boolean,
-        meta        text,
-        case        text
-      );
-    ]],
-  },
 }

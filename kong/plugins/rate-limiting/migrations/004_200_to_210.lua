@@ -23,9 +23,4 @@ return {
       END$$;
     ]],
   },
-
-  cassandra = {
-    up = [[
-    ]],
-  },
 }
