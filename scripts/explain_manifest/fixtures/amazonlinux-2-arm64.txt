@@ -69,23 +69,6 @@
   - ld-linux-aarch64.so.1
   Runpath   : /usr/local/kong/lib
 
-- Path      : /usr/local/kong/lib/libgmp.so.10.4.1
-  Needed    :
-  - libstdc++.so.6
-  - libm.so.6
-  - libc.so.6
-  - ld-linux-aarch64.so.1
-
-- Path      : /usr/local/kong/lib/libhogweed.so.6.4
-  Needed    :
-  - libstdc++.so.6
-  - libm.so.6
-  - libnettle.so.8
-  - libgmp.so.10
-  - libc.so.6
-  - ld-linux-aarch64.so.1
-  Runpath   : /usr/local/kong/lib
-
 - Path      : /usr/local/kong/lib/libjq.so.1.0.4
   Needed    :
   - libonig.so.4
@@ -102,14 +85,6 @@
   - libc.so.6
   - ld-linux-aarch64.so.1
   Rpath     : /usr/local/kong/lib
-
-- Path      : /usr/local/kong/lib/libnettle.so.8.4
-  Needed    :
-  - libstdc++.so.6
-  - libm.so.6
-  - libc.so.6
-  - ld-linux-aarch64.so.1
-  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/kong/lib/libonig.so.4.0.0
   Needed    :

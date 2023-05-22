@@ -93,9 +93,6 @@ def ee_suites(expect, fips: bool = False):
         .version_requirement.key("libxml2.so.2").is_not().greater_than("LIBXML2_%s" % LIBXML2_VERSION) \
         .version_requirement.key("libxslt.so.1").is_not().greater_than("LIBXML2_%s" % LIBXML2_VERSION)
 
-    expect("**/*.so", "libnettle version is less than nettle8") \
-        .version_requirement.key("libnettle.so.8").is_not().greater_than("NETTLE_8")
-
     if fips:
         expect("/usr/local/openresty/nginx/sbin/nginx", "nginx compiled with BoringSSL") \
             .nginx_compiled_openssl.equals("OpenSSL 1.1.0 (compatible; BoringSSL)")

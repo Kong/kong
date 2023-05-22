@@ -49,17 +49,6 @@
   - libc.so
   Rpath     : /usr/local/kong/lib
 
-- Path      : /usr/local/kong/lib/libgmp.so.10.4.1
-  Needed    :
-  - libc.so
-
-- Path      : /usr/local/kong/lib/libhogweed.so.6.4
-  Needed    :
-  - libnettle.so.8
-  - libgmp.so.10
-  - libc.so
-  Rpath     : /usr/local/kong/lib
-
 - Path      : /usr/local/kong/lib/libjq.so.1.0.4
   Needed    :
   - libonig.so.4
@@ -69,11 +58,6 @@
 - Path      : /usr/local/kong/lib/liblicense_utils.so
   Needed    :
   - libcrypto.so.1.1
-  - libc.so
-  Rpath     : /usr/local/kong/lib
-
-- Path      : /usr/local/kong/lib/libnettle.so.8.4
-  Needed    :
   - libc.so
   Rpath     : /usr/local/kong/lib
 

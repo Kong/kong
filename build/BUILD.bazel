@@ -8,12 +8,10 @@ exports_files([
 
 lib_deps = [
     # EE only
-    "@gmp",
     "@jq",
     "@libexpat",
     "@libxml2",
     "@libxslt",
-    "@nettle",
     "@passwdqc",
 ]
 
