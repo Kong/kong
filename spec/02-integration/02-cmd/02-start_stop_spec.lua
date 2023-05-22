@@ -7,11 +7,85 @@
 
 local helpers   = require "spec.helpers"
 local constants = require "kong.constants"
-local cjson     = require "cjson"
+
+local cjson = require "cjson"
+
+local fmt = string.format
+local kong_exec = helpers.kong_exec
+local read_file = helpers.file.read
+
+
+local PREFIX = helpers.test_conf.prefix
+local TEST_CONF = helpers.test_conf
+local TEST_CONF_PATH = helpers.test_conf_path
+
+
+local function wait_until_healthy(prefix)
+  prefix = prefix or PREFIX
+
+  local cmd
+
+  -- use `kong-health` if available
+  if helpers.path.exists(helpers.bin_path .. "-health") then
+    cmd = fmt("%s-health -p %q", helpers.bin_path, prefix)
+  else
+    cmd = fmt("%s health -p %q", helpers.bin_path, prefix)
+  end
+
+  assert
+    .with_timeout(10)
+    .eventually(function()
+      local ok, code, stdout, stderr = helpers.execute(cmd, true)
+      if not ok then
+        return nil, { code = code, stdout = stdout, stderr = stderr }
+      end
+
+      return true
+    end)
+    .is_truthy("expected `" .. cmd .. "` to succeed")
+
+  local conf = assert(helpers.get_running_conf(prefix))
+
+  if conf.proxy_listen and conf.proxy_listen ~= "off" then
+    helpers.wait_for_file("socket", prefix .. "/worker_events.sock")
+  end
+
+  if conf.stream_listen and conf.stream_listen ~= "off" then
+    helpers.wait_for_file("socket", prefix .. "/stream_worker_events.sock")
+  end
+
+  if conf.admin_listen and conf.admin_listen ~= "off" then
+    local port = assert(conf.admin_listen:match(":([0-9]+)"))
+    assert
+      .with_timeout(5)
+      .eventually(function()
+        local client = helpers.admin_client(1000, port)
+        local res, err = client:send({ path = "/status", method = "GET" })
+
+        if res then res:read_body() end
+
+        client:close()
+
+        if not res then
+          return nil, err
+        end
+
+        if res.status ~= 200 then
+          return nil, res
+        end
+
+        return true
+      end)
+      .is_truthy("/status API did not return 200")
+  end
+end
+
 
 for _, strategy in helpers.each_strategy() do
 
 describe("kong start/stop #" .. strategy, function()
+  local proxy_client, admin_client
+
   lazy_setup(function()
     helpers.get_db_utils(strategy) -- runs migrations
   end)
@@ -22,195 +96,217 @@ describe("kong start/stop #" .. strategy, function()
   end)
 
   after_each(function()
-    helpers.kill_all()
+    if proxy_client then
+      proxy_client:close()
+    end
+
+    if admin_client then
+      admin_client:close()
+    end
+
+    helpers.stop_kong()
   end)
 
   lazy_teardown(function()
-    helpers.kill_all()
-    helpers.clean_prefix()
+    helpers.stop_kong()
   end)
 
   it("fails with referenced values that are not initialized", function()
-    local ok, stderr, stdout = helpers.kong_exec("start", {
-      prefix = helpers.test_conf.prefix,
+    local ok, stderr, stdout = kong_exec("start", {
+      prefix = PREFIX,
       database = strategy,
       nginx_proxy_real_ip_header = "{vault://env/ipheader}",
-      pg_database = helpers.test_conf.pg_database,
-      cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+      pg_database = TEST_CONF.pg_database,
+      cassandra_keyspace = TEST_CONF.cassandra_keyspace,
       vaults = "env",
     })
 
     assert.matches("Error: failed to dereference '{vault://env/ipheader}': unable to load value (ipheader) from vault (env): not found [{vault://env/ipheader}] for config option 'nginx_proxy_real_ip_header'", stderr, nil, true)
     assert.is_nil(stdout)
     assert.is_false(ok)
-
-    helpers.clean_logfile()
   end)
 
   it("fails to read referenced secrets when vault does not exist", function()
-    local ok, stderr, stdout = helpers.kong_exec("start", {
-      prefix = helpers.test_conf.prefix,
-      database = helpers.test_conf.database,
+    local ok, stderr, stdout = kong_exec("start", {
+      prefix = PREFIX,
+      database = TEST_CONF.database,
       pg_password = "{vault://non-existent/pg_password}",
-      pg_database = helpers.test_conf.pg_database,
-      cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+      pg_database = TEST_CONF.pg_database,
+      cassandra_keyspace = TEST_CONF.cassandra_keyspace,
     })
+
     assert.matches("failed to dereference '{vault://non-existent/pg_password}': vault not found (non-existent)", stderr, nil, true)
     assert.is_nil(stdout)
     assert.is_false(ok)
-
-    helpers.clean_logfile()
   end)
 
   it("failure to read referenced secrets when admin_gui_auth_conf set with vault", function()
-    local ok, stderr, stdout = helpers.kong_exec("start", {
-      prefix = helpers.test_conf.prefix,
+    local ok, stderr, stdout = kong_exec("start", {
       database = strategy,
+      prefix = PREFIX,
       admin_gui_auth = "openid-connect",
       admin_gui_auth_conf = "{vault://env/auth_conf}",
-      pg_database = helpers.test_conf.pg_database,
-      cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+      pg_database = TEST_CONF.pg_database,
+      cassandra_keyspace = TEST_CONF.cassandra_keyspace,
       vaults = "env"
     })
+
+    assert.is_string(stderr)
     assert.matches("Error: failed to dereference '{vault://env/auth_conf}': unable to load value (auth_conf) from vault (env): not found [{vault://env/auth_conf}] for config option 'admin_gui_auth_conf",
       stderr, nil, true)
     assert.is_nil(stdout)
     assert.is_false(ok)
-
-    helpers.clean_logfile()
   end)
 
   it("kong startup success when admin_gui_auth_conf set with vault", function()
     local admin_gui_auth_conf = [[{ "hide_credentials": true }]]
     helpers.setenv("AUTH_CONF", admin_gui_auth_conf)
     finally(function() helpers.unsetenv("AUTH_CONF") end)
-    local ok, _, stdout = helpers.kong_exec("start", {
-      prefix = helpers.test_conf.prefix,
+
+    local ok, _, stdout = kong_exec("start", {
+      prefix = PREFIX,
       database = strategy,
       admin_gui_auth = "basic-auth",
       admin_gui_session_conf = [[{"secret":"Y29vbGJlYW5z","storage":"kong","cookie_secure":false}]],
       admin_gui_auth_conf = "{vault://env/auth_conf}",
       admin_gui_url = "http://localhost:8080",
-      pg_database = helpers.test_conf.pg_database,
+      pg_database = TEST_CONF.pg_database,
       enforce_rbac = "on",
-      cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+      cassandra_keyspace = TEST_CONF.cassandra_keyspace,
       vaults = "env"
     })
+
+    assert.is_string(stdout)
     assert.matches("Kong started", stdout, nil, true)
     assert.is_true(ok)
-    assert(helpers.kong_exec("stop", {
-        prefix = helpers.test_conf.prefix,
+    assert(kong_exec("stop", {
+        prefix = PREFIX,
     }))
-
-    helpers.clean_logfile()
   end)
 
   it("resolves referenced secrets", function()
     helpers.setenv("PG_PASSWORD", "dummy")
     finally(function() helpers.unsetenv("PG_PASSWORD") end)
-    local _, stderr, stdout = assert(helpers.kong_exec("start", {
-      prefix = helpers.test_conf.prefix,
-      database = helpers.test_conf.database,
+    local _, stderr, stdout = assert(kong_exec("start", {
+      prefix = PREFIX,
+      database = TEST_CONF.database,
       pg_password = "{vault://env/pg_password}",
-      pg_database = helpers.test_conf.pg_database,
-      cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+      pg_database = TEST_CONF.pg_database,
+      cassandra_keyspace = TEST_CONF.cassandra_keyspace,
       vaults = "env",
     }))
+
     assert.not_matches("failed to dereference {vault://env/pg_password}", stderr, nil, true)
     assert.matches("Kong started", stdout, nil, true)
-    assert(helpers.kong_exec("stop", {
-      prefix = helpers.test_conf.prefix,
+    assert(kong_exec("stop", {
+      prefix = PREFIX,
     }))
-
-    helpers.clean_logfile()
   end)
 
   it("start help", function()
-    local _, stderr = helpers.kong_exec "start --help"
+    local _, stderr = kong_exec "start --help"
     assert.not_equal("", stderr)
   end)
+
   it("stop help", function()
-    local _, stderr = helpers.kong_exec "stop --help"
+    local _, stderr = kong_exec "stop --help"
     assert.not_equal("", stderr)
   end)
+
   it("start/stop gracefully with default conf/prefix", function()
-    assert(helpers.kong_exec("start", {
-      prefix = helpers.test_conf.prefix,
-      database = helpers.test_conf.database,
-      pg_database = helpers.test_conf.pg_database,
-      cassandra_keyspace = helpers.test_conf.cassandra_keyspace
+    assert(kong_exec("start", {
+      prefix = PREFIX,
+      database = TEST_CONF.database,
+      pg_database = TEST_CONF.pg_database,
+      cassandra_keyspace = TEST_CONF.cassandra_keyspace
     }))
-    assert(helpers.kong_exec("stop", {
-      prefix = helpers.test_conf.prefix,
-    }))
+
+    assert(kong_exec("stop", { prefix = PREFIX }))
   end)
+
   it("start/stop stops without error when references cannot be resolved #test", function()
     helpers.setenv("PG_PASSWORD", "dummy")
-    local _, stderr, stdout = assert(helpers.kong_exec("start", {
-      prefix = helpers.test_conf.prefix,
-      database = helpers.test_conf.database,
+
+    local _, stderr, stdout = assert(kong_exec("start", {
+      prefix = PREFIX,
+      database = TEST_CONF.database,
       pg_password = "{vault://env/pg_password}",
-      pg_database = helpers.test_conf.pg_database,
-      cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+      pg_database = TEST_CONF.pg_database,
+      cassandra_keyspace = TEST_CONF.cassandra_keyspace,
       vaults = "env",
     }))
+
     assert.not_matches("failed to dereference {vault://env/pg_password}", stderr, nil, true)
     assert.matches("Kong started", stdout, nil, true)
+
     helpers.unsetenv("PG_PASSWORD")
-    local _, stderr, stdout = assert(helpers.kong_exec("stop", {
-      prefix = helpers.test_conf.prefix,
+
+    local _, stderr, stdout = assert(kong_exec("stop", {
+      prefix = PREFIX,
     }))
+
     assert.not_matches("failed to dereference {vault://env/pg_password}", stderr, nil, true)
     assert.matches("Kong stopped", stdout, nil, true)
-    helpers.clean_logfile()
   end)
+
   it("start/stop custom Kong conf/prefix", function()
-    assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path))
-    assert(helpers.kong_exec("stop --prefix " .. helpers.test_conf.prefix))
+    assert(kong_exec("start --conf " .. TEST_CONF_PATH))
+    assert(kong_exec("stop --prefix " .. PREFIX))
   end)
+
   it("stop honors custom Kong prefix higher than environment variable", function()
-    assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path))
+    assert(kong_exec("start --conf " .. TEST_CONF_PATH))
+
     helpers.setenv("KONG_PREFIX", "/tmp/dne")
     finally(function() helpers.unsetenv("KONG_PREFIX") end)
-    assert(helpers.kong_exec("stop --prefix " .. helpers.test_conf.prefix))
+
+    assert(kong_exec("stop --prefix " .. PREFIX))
   end)
+
   it("start/stop Kong with only stream listeners enabled", function()
-    assert(helpers.kong_exec("start ", {
-      prefix = helpers.test_conf.prefix,
+    assert(kong_exec("start ", {
+      prefix = PREFIX,
       admin_listen = "off",
       proxy_listen = "off",
       stream_listen = "127.0.0.1:9022",
     }))
-    assert(helpers.kong_exec("stop", {
-      prefix = helpers.test_conf.prefix
-    }))
+
+    wait_until_healthy()
+
+    assert(kong_exec("stop", { prefix = PREFIX }))
   end)
+
   it("start dumps Kong config in prefix", function()
-    assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path))
-    assert.truthy(helpers.path.exists(helpers.test_conf.kong_env))
+    assert(kong_exec("start --conf " .. TEST_CONF_PATH))
+    assert.truthy(helpers.path.exists(TEST_CONF.kong_env))
   end)
+
   if strategy == "cassandra" then
     it("should not add [emerg], [alert], [crit], or [error] lines to error log", function()
-      assert(helpers.kong_exec("start ", {
-        prefix = helpers.test_conf.prefix,
+      assert(kong_exec("start ", {
+        prefix = PREFIX,
         stream_listen = "127.0.0.1:9022",
         status_listen = "0.0.0.0:8100",
       }))
-      assert(helpers.kong_exec("stop", {
-        prefix = helpers.test_conf.prefix
+
+      wait_until_healthy()
+
+      assert(kong_exec("stop", {
+        prefix = PREFIX
       }))
 
-      assert.logfile().has.no.line("[emerg]", true)
-      assert.logfile().has.no.line("[alert]", true)
-      assert.logfile().has.no.line("[crit]", true)
-      assert.logfile().has.no.line("[error]", true)
+      assert.logfile().has.no.line("[emerg]", true, 0)
+      assert.logfile().has.no.line("[alert]", true, 0)
+      assert.logfile().has.no.line("[crit]",  true, 0)
+      assert.logfile().has.no.line("[error]", true, 0)
     end)
+
   else
     -- XXX EE license counters throw warnings and criticals when license is
     -- not set.
     it("should not add [emerg], [alert], [crit], [error] or [warn] lines to error log", function()
-      assert(helpers.kong_exec("start ", {
-        prefix = helpers.test_conf.prefix,
+      assert(kong_exec("start ", {
+        prefix = PREFIX,
         stream_listen = "127.0.0.1:9022",
         status_listen = "0.0.0.0:8100",
         -- XXX EE FIXME [[
@@ -218,76 +314,78 @@ describe("kong start/stop #" .. strategy, function()
         vaults = "off",
         -- ]]
       }))
-      ngx.sleep(0.1)   -- wait unix domain socket
-      assert(helpers.kong_exec("stop", {
-        prefix = helpers.test_conf.prefix
-      }))
 
-      assert.logfile().has.no.line("[emerg]", true)
-      assert.logfile().has.no.line("[alert]", true)
-      assert.logfile().has.no.line("[crit]", true)
-      assert.logfile().has.no.line("[error]", true)
-      assert.logfile().has.no.line("[warn]", true)
+      wait_until_healthy()
+
+      assert(kong_exec("stop", { prefix = PREFIX }))
+
+      assert.logfile().has.no.line("[emerg]", true, 0)
+      assert.logfile().has.no.line("[alert]", true, 0)
+      assert.logfile().has.no.line("[crit]",  true, 0)
+      assert.logfile().has.no.line("[error]", true, 0)
+      assert.logfile().has.no.line("[warn]",  true, 0)
     end)
   end
 
   if strategy == "cassandra" then
     it("start resolves cassandra contact points", function()
-      assert(helpers.kong_exec("start", {
-        prefix = helpers.test_conf.prefix,
+      assert(kong_exec("start", {
+        prefix = PREFIX,
         database = strategy,
         cassandra_contact_points = os.getenv("KONG_CASSANDRA_CONTACT_POINTS") or "localhost",
-        cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+        cassandra_keyspace = TEST_CONF.cassandra_keyspace,
       }))
-      assert(helpers.kong_exec("stop", {
-        prefix = helpers.test_conf.prefix,
-      }))
+
+      wait_until_healthy()
+
+      assert(kong_exec("stop", { prefix = PREFIX }))
     end)
   end
 
   it("creates prefix directory if it doesn't exist", function()
     finally(function()
-      helpers.kill_all("foobar")
-      pcall(helpers.dir.rmtree, "foobar")
+      -- this test uses a non-default prefix, so it must manage
+      -- its kong instance directly
+      helpers.stop_kong("foobar")
     end)
 
     assert.falsy(helpers.path.exists("foobar"))
-    assert(helpers.kong_exec("start --prefix foobar", {
-      pg_database = helpers.test_conf.pg_database,
-      cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+    assert(kong_exec("start --prefix foobar", {
+      pg_database = TEST_CONF.pg_database,
+      cassandra_keyspace = TEST_CONF.cassandra_keyspace,
     }))
     assert.truthy(helpers.path.exists("foobar"))
   end)
 
   describe("verbose args", function()
-    after_each(function ()
-      os.execute("rm -rf " .. helpers.test_conf.prefix .. "/worker_events.sock")
-    end)
-
     it("accepts verbose --v", function()
-      local _, _, stdout = assert(helpers.kong_exec("start --v --conf " .. helpers.test_conf_path))
+      local _, _, stdout = assert(kong_exec("start --v --conf " .. TEST_CONF_PATH))
       assert.matches("[verbose] prefix in use: ", stdout, nil, true)
     end)
+
     it("accepts debug --vv", function()
-      local _, _, stdout = assert(helpers.kong_exec("start --vv --conf " .. helpers.test_conf_path))
+      local _, _, stdout = assert(kong_exec("start --vv --conf " .. TEST_CONF_PATH))
       assert.matches("[verbose] prefix in use: ", stdout, nil, true)
       assert.matches("[debug] prefix = ", stdout, nil, true)
       assert.matches("[debug] database = ", stdout, nil, true)
     end)
+
     it("prints ENV variables when detected #postgres", function()
-      local _, _, stdout = assert(helpers.kong_exec("start --vv --conf " .. helpers.test_conf_path, {
+      local _, _, stdout = assert(kong_exec("start --vv --conf " .. TEST_CONF_PATH, {
         database = "postgres",
         admin_listen = "127.0.0.1:8001"
       }))
       assert.matches('KONG_DATABASE ENV found with "postgres"', stdout, nil, true)
       assert.matches('KONG_ADMIN_LISTEN ENV found with "127.0.0.1:8001"', stdout, nil, true)
     end)
+
     it("prints config in alphabetical order", function()
-      local _, _, stdout = assert(helpers.kong_exec("start --vv --conf " .. helpers.test_conf_path))
+      local _, _, stdout = assert(kong_exec("start --vv --conf " .. TEST_CONF_PATH))
       assert.matches("admin_listen.*anonymous_reports.*cassandra_ssl.*prefix.*", stdout)
     end)
+
     it("does not print sensitive settings in config", function()
-      local _, _, stdout = assert(helpers.kong_exec("start --vv --conf " .. helpers.test_conf_path, {
+      local _, _, stdout = assert(kong_exec("start --vv --conf " .. TEST_CONF_PATH, {
         pg_password = "do not print",
         cassandra_password = "do not print",
         smtp_password = "do not print",
@@ -314,24 +412,13 @@ describe("kong start/stop #" .. strategy, function()
   end)
 
   describe("custom --nginx-conf", function()
-    lazy_setup(function()
-      helpers.clean_prefix()
-    end)
     local templ_fixture = "spec/fixtures/custom_nginx.template"
 
     it("accept a custom Nginx configuration", function()
-      -- XXX: the previous test leaves the prefix in a wrong state that
-      -- makes consecutive tests fail. Adding the following prefix
-      -- "reset" fixes it but adding those as finally step of the
-      -- problematic one doesn't
-      helpers.clean_prefix()
-      helpers.prepare_prefix()
+      assert(kong_exec("start --conf " .. TEST_CONF_PATH .. " --nginx-conf " .. templ_fixture))
+      assert.truthy(helpers.path.exists(TEST_CONF.nginx_conf))
 
-      assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path .. " --nginx-conf " .. templ_fixture))
-
-      assert.truthy(helpers.path.exists(helpers.test_conf.nginx_conf))
-
-      local contents = helpers.file.read(helpers.test_conf.nginx_conf)
+      local contents = read_file(TEST_CONF.nginx_conf)
       assert.matches("# This is a custom nginx configuration template for Kong specs", contents, nil, true)
       assert.matches("daemon on;", contents, nil, true)
     end)
@@ -340,7 +427,7 @@ describe("kong start/stop #" .. strategy, function()
   describe("/etc/hosts resolving in CLI", function()
     if strategy == "cassandra" then
       it("resolves #cassandra hostname", function()
-        assert(helpers.kong_exec("start --vv --run-migrations --conf " .. helpers.test_conf_path, {
+        assert(kong_exec("start --vv --run-migrations --conf " .. TEST_CONF_PATH, {
           cassandra_contact_points = "localhost",
           database = "cassandra"
         }))
@@ -348,7 +435,7 @@ describe("kong start/stop #" .. strategy, function()
 
     elseif strategy == "postgres" then
       it("resolves #postgres hostname", function()
-        assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path, {
+        assert(kong_exec("start --conf " .. TEST_CONF_PATH, {
           pg_host = "localhost",
           database = "postgres"
         }))
@@ -369,10 +456,11 @@ describe("kong start/stop #" .. strategy, function()
 
     describe("errors", function()
       it("does not start with an empty datastore", function()
-        local ok, stderr  = helpers.kong_exec("start --conf "..helpers.test_conf_path)
+        local ok, stderr  = kong_exec("start --conf "..TEST_CONF_PATH)
         assert.False(ok)
         assert.matches("the current database schema does not match this version of Kong.", stderr)
       end)
+
       it("does not start if migrations are not up to date", function()
         helpers.dao:run_migrations()
         -- Delete a migration to simulate inconsistencies between version
@@ -381,105 +469,48 @@ describe("kong start/stop #" .. strategy, function()
         ]])
         assert.is_nil(err)
 
-        local ok, stderr  = helpers.kong_exec("start --conf "..helpers.test_conf_path)
+        local ok, stderr  = kong_exec("start --conf "..TEST_CONF_PATH)
         assert.False(ok)
         assert.matches("the current database schema does not match this version of Kong.", stderr)
       end)
+
       it("connection check errors are prefixed with DB-specific prefix", function()
-        local ok, stderr = helpers.kong_exec("start --conf " .. helpers.test_conf_path, {
+        local ok, stderr = kong_exec("start --conf " .. TEST_CONF_PATH, {
           pg_port = 99999,
           cassandra_port = 99999,
         })
         assert.False(ok)
-        assert.matches("[" .. helpers.test_conf.database .. " error]", stderr, 1, true)
+        assert.matches("[" .. TEST_CONF.database .. " error]", stderr, 1, true)
       end)
     end)
   end)
 
   describe("nginx_main_daemon = off", function()
     it("redirects nginx's stdout to 'kong start' stdout", function()
-      local pl_utils = require "pl.utils"
-      local pl_file = require "pl.file"
-
       local stdout_path = os.tmpname()
 
       finally(function()
         os.remove(stdout_path)
       end)
 
-      local cmd = string.format("KONG_PROXY_ACCESS_LOG=/dev/stdout "    ..
+      local cmd = fmt("KONG_PROXY_ACCESS_LOG=/dev/stdout "    ..
                                 "KONG_NGINX_MAIN_DAEMON=off %s start -c %s " ..
                                 ">%s 2>/dev/null &", helpers.bin_path,
-                                helpers.test_conf_path, stdout_path)
+                                TEST_CONF_PATH, stdout_path)
 
-      local ok, _, _, stderr = pl_utils.executeex(cmd)
-      if not ok then
-        error(stderr)
-      end
+      local ok, _, _, stderr = helpers.execute(cmd, true)
+      assert.truthy(ok, stderr)
 
-      helpers.wait_until(function()
-        local cmd = string.format("%s health -p ./servroot", helpers.bin_path)
-        return pl_utils.executeex(cmd)
-      end, 10)
+      wait_until_healthy()
 
-      local proxy_client = assert(helpers.proxy_client())
+      proxy_client = helpers.proxy_client()
 
-      local res = assert(proxy_client:send {
-        method = "GET",
-        path = "/hello",
-      })
+      local res = proxy_client:get("/hello")
       assert.res_status(404, res) -- no Route configured
-      assert(helpers.stop_kong(helpers.test_conf.prefix))
 
       -- TEST: since nginx started in the foreground, the 'kong start' command
       -- stdout should receive all of nginx's stdout as well.
-      local stdout = pl_file.read(stdout_path)
-      assert.matches([["GET /hello HTTP/1.1" 404]] , stdout, nil, true)
-    end)
-  end)
-
-  describe("nginx_main_daemon = off", function()
-    it("redirects nginx's stdout to 'kong start' stdout", function()
-      local pl_utils = require "pl.utils"
-      local pl_file = require "pl.file"
-
-      local stdout_path = os.tmpname()
-
-      finally(function()
-        os.remove(stdout_path)
-      end)
-
-      local cmd = string.format("KONG_PROXY_ACCESS_LOG=/dev/stdout "    ..
-                                "KONG_NGINX_MAIN_DAEMON=off %s start -c %s " ..
-                                ">%s 2>/dev/null &", helpers.bin_path,
-                                helpers.test_conf_path, stdout_path)
-
-      local ok, _, _, stderr = pl_utils.executeex(cmd)
-      if not ok then
-        error(stderr)
-      end
-
-      helpers.wait_until(function()
-        local cmd = string.format("%s health -p ./servroot", helpers.bin_path)
-        return pl_utils.executeex(cmd)
-      end, 10)
-
-      local proxy_client = assert(helpers.proxy_client())
-
-      local res = assert(proxy_client:send {
-        method = "GET",
-        path = "/hello",
-      })
-      assert.res_status(404, res) -- no Route configured
-
-      helpers.pwait_until(function()
-        -- TEST: since nginx started in the foreground, the 'kong start' command
-        -- stdout should receive all of nginx's stdout as well.
-        local stdout = pl_file.read(stdout_path)
-        assert.matches([["GET /hello HTTP/1.1" 404]] , stdout, nil, true)
-      end, 10)
-
-      assert(helpers.kong_exec("quit --prefix " .. helpers.test_conf.prefix))
+      assert.logfile(stdout_path).has.line([["GET /hello HTTP/1.1" 404]], true, 5)
     end)
   end)
 
@@ -497,14 +528,8 @@ describe("kong start/stop #" .. strategy, function()
               - example.test
         ]]
 
-        local proxy_client
-
         finally(function()
           os.remove(yaml_file)
-          helpers.stop_kong(helpers.test_conf.prefix)
-          if proxy_client then
-            proxy_client:close()
-          end
         end)
 
         assert(helpers.start_kong({
@@ -514,41 +539,33 @@ describe("kong start/stop #" .. strategy, function()
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
-        helpers.wait_until(function()
-          -- get a connection, retry until kong starts
-          helpers.wait_until(function()
-            local pok
-            pok, proxy_client = pcall(helpers.proxy_client)
-            return pok
-          end, 10)
+        wait_until_healthy()
 
-          local res = assert(proxy_client:send {
-            method = "GET",
-            path = "/",
-            headers = {
-              host = "example.test",
-            }
-          })
-          local ok = res.status == 200
+        proxy_client = helpers.proxy_client()
 
-          if proxy_client then
-            proxy_client:close()
-            proxy_client = nil
-          end
+        local res = proxy_client:get("/", {
+          headers = { host = "example.test" }
+        })
 
-          return ok
-        end, 10)
+        assert.response(res).has.status(200)
       end)
-      it("starts with a valid declarative config string", function()
-        local config_string = [[{"_format_version":"1.1","services":[{"name":"my-service","url":"http://127.0.0.1:15555","routes":[{"name":"example-route","hosts":["example.test"]}]}]}]]
-        local proxy_client
 
-        finally(function()
-          helpers.stop_kong(helpers.test_conf.prefix)
-          if proxy_client then
-            proxy_client:close()
-          end
-        end)
+      it("starts with a valid declarative config string", function()
+        local config_string = cjson.encode {
+          _format_version = "1.1",
+          services =  {
+            {
+              name = "my-service",
+              url = "http://127.0.0.1:15555",
+              routes = {
+                {
+                  name = "example-route",
+                  hosts = { "example.test" }
+                }
+              }
+            }
+          }
+        }
 
         assert(helpers.start_kong({
           database = "off",
@@ -556,30 +573,15 @@ describe("kong start/stop #" .. strategy, function()
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
-        helpers.wait_until(function()
-          -- get a connection, retry until kong starts
-          helpers.wait_until(function()
-            local pok
-            pok, proxy_client = pcall(helpers.proxy_client)
-            return pok
-          end, 10)
+        wait_until_healthy()
 
-          local res = assert(proxy_client:send {
-            method = "GET",
-            path = "/",
-            headers = {
-              host = "example.test",
-            }
-          })
-          local ok = res.status == 200
+        proxy_client = helpers.proxy_client()
 
-          if proxy_client then
-            proxy_client:close()
-            proxy_client = nil
-          end
+        local res = proxy_client:get("/", {
+          headers = { host = "example.test" }
+        })
 
-          return ok
-        end, 10)
+        assert.response(res).has.status(200)
       end)
 
       it("hash is set correctly for a non-empty configuration", function()
@@ -594,14 +596,8 @@ describe("kong start/stop #" .. strategy, function()
               - example.test
         ]]
 
-        local admin_client, json_body
-
         finally(function()
           os.remove(yaml_file)
-          helpers.stop_kong(helpers.test_conf.prefix)
-          if admin_client then
-            admin_client:close()
-          end
         end)
 
         assert(helpers.start_kong({
@@ -610,46 +606,21 @@ describe("kong start/stop #" .. strategy, function()
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
-        helpers.wait_until(function()
-          helpers.wait_until(function()
-            local pok
-            pok, admin_client = pcall(helpers.admin_client)
-            return pok
-          end, 10)
+        wait_until_healthy()
 
-          local res = assert(admin_client:send {
-            method = "GET",
-            path = "/status"
-          })
-          if res.status ~= 200 then
-            return false
-          end
-          local body = assert.res_status(200, res)
-          json_body = cjson.decode(body)
+        admin_client = helpers.admin_client()
+        local res = admin_client:get("/status")
 
-          if admin_client then
-            admin_client:close()
-            admin_client = nil
-          end
+        assert.response(res).has.status(200)
 
-          return true
-        end, 10)
+        local json = assert.response(res).has.jsonbody()
 
-        assert.is_string(json_body.configuration_hash)
-        assert.equals(32, #json_body.configuration_hash)
-        assert.not_equal(constants.DECLARATIVE_EMPTY_CONFIG_HASH, json_body.configuration_hash)
+        assert.is_string(json.configuration_hash)
+        assert.equals(32, #json.configuration_hash)
+        assert.not_equal(constants.DECLARATIVE_EMPTY_CONFIG_HASH, json.configuration_hash)
       end)
 
       it("hash is set correctly for an empty configuration", function()
-
-        local admin_client, json_body
-
-        finally(function()
-          helpers.stop_kong(helpers.test_conf.prefix)
-          if admin_client then
-            admin_client:close()
-          end
-        end)
 
         -- not specifying declarative_config this time
         assert(helpers.start_kong({
@@ -657,102 +628,83 @@ describe("kong start/stop #" .. strategy, function()
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
-        helpers.wait_until(function()
-          helpers.wait_until(function()
-            local pok
-            pok, admin_client = pcall(helpers.admin_client)
-            return pok
-          end, 10)
+        wait_until_healthy()
 
-          local res = assert(admin_client:send {
-            method = "GET",
-            path = "/status"
-          })
-          if res.status ~= 200 then
-            return false
-          end
-          local body = assert.res_status(200, res)
-          json_body = cjson.decode(body)
+        admin_client = helpers.admin_client()
+        local res = admin_client:get("/status")
 
-          if admin_client then
-            admin_client:close()
-            admin_client = nil
-          end
+        assert.response(res).has.status(200)
 
-          return true
-        end, 10)
+        local json = assert.response(res).has.jsonbody()
 
-        assert.is_string(json_body.configuration_hash)
-        assert.equals(constants.DECLARATIVE_EMPTY_CONFIG_HASH, json_body.configuration_hash)
+        assert.is_string(json.configuration_hash)
+        assert.equals(constants.DECLARATIVE_EMPTY_CONFIG_HASH, json.configuration_hash)
       end)
     end)
   end
 
   describe("errors", function()
     it("start inexistent Kong conf file", function()
-      local ok, stderr = helpers.kong_exec "start --conf foobar.conf"
+      local ok, stderr = kong_exec "start --conf foobar.conf"
       assert.False(ok)
       assert.is_string(stderr)
       assert.matches("Error: no file at: foobar.conf", stderr, nil, true)
     end)
+
     it("stop inexistent prefix", function()
-      assert(helpers.kong_exec("start --prefix " .. helpers.test_conf.prefix, {
-        pg_database = helpers.test_conf.pg_database,
-        cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+      assert(kong_exec("start --prefix " .. PREFIX, {
+        pg_database = TEST_CONF.pg_database,
+        cassandra_keyspace = TEST_CONF.cassandra_keyspace,
       }))
 
-      local ok, stderr = helpers.kong_exec("stop --prefix inexistent")
+      local ok, stderr = kong_exec("stop --prefix inexistent")
       assert.False(ok)
       assert.matches("Error: no such prefix: .*/inexistent", stderr)
     end)
+
     it("notifies when Kong is already running", function()
-      assert(helpers.kong_exec("start --prefix " .. helpers.test_conf.prefix, {
-        pg_database = helpers.test_conf.pg_database,
-        cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+      assert(kong_exec("start --prefix " .. PREFIX, {
+        pg_database = TEST_CONF.pg_database,
+        cassandra_keyspace = TEST_CONF.cassandra_keyspace,
       }))
 
-      local ok, stderr = helpers.kong_exec("start --prefix " .. helpers.test_conf.prefix, {
-        pg_database = helpers.test_conf.pg_database
+      local ok, stderr = kong_exec("start --prefix " .. PREFIX, {
+        pg_database = TEST_CONF.pg_database
       })
       assert.False(ok)
-      assert.matches("Kong is already running in " .. helpers.test_conf.prefix, stderr, nil, true)
+      assert.matches("Kong is already running in " .. PREFIX, stderr, nil, true)
     end)
+
     it("should not start Kong if already running in prefix", function()
       local kill = require "kong.cmd.utils.kill"
 
-      assert(helpers.kong_exec("start --prefix " .. helpers.test_conf.prefix, {
-        pg_database = helpers.test_conf.pg_database,
-        cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+      assert(kong_exec("start --prefix " .. PREFIX, {
+        pg_database = TEST_CONF.pg_database,
+        cassandra_keyspace = TEST_CONF.cassandra_keyspace,
       }))
 
-      local ok, stderr = helpers.kong_exec("start --prefix " .. helpers.test_conf.prefix, {
-        pg_database = helpers.test_conf.pg_database
+      local ok, stderr = kong_exec("start --prefix " .. PREFIX, {
+        pg_database = TEST_CONF.pg_database
       })
       assert.False(ok)
-      assert.matches("Kong is already running in " .. helpers.test_conf.prefix, stderr, nil, true)
+      assert.matches("Kong is already running in " .. PREFIX, stderr, nil, true)
 
-      assert(kill.is_running(helpers.test_conf.nginx_pid))
+      assert(kill.is_running(TEST_CONF.nginx_pid))
     end)
 
     it("does not prepare the prefix directory if Kong is already running", function()
-      local prefix = helpers.test_conf.prefix
-
-      assert(helpers.kong_exec("start --prefix " .. prefix, {
+      assert(kong_exec("start --prefix " .. PREFIX, {
         database = "off",
         nginx_main_worker_processes = "1",
       }))
 
-      finally(function()
-        helpers.stop_kong()
-      end)
+      local kong_env = PREFIX .. "/.kong_env"
 
-      local kong_env = prefix .. "/.kong_env"
-
-      local before, err = helpers.file.read(kong_env)
+      local before, err = read_file(kong_env)
       assert.truthy(before, "failed reading .kong_env: " .. tostring(err))
       assert.matches("nginx_main_worker_processes = 1", before) -- sanity
 
-      local ok, stderr = helpers.kong_exec("start --prefix " .. prefix, {
+      local ok, stderr = kong_exec("start --prefix " .. PREFIX, {
         database = "off",
         nginx_main_worker_processes = "2",
       })
@@ -761,23 +713,18 @@ describe("kong start/stop #" .. strategy, function()
       assert.matches("Kong is already running", stderr)
 
       local after
-      after, err = helpers.file.read(kong_env)
+      after, err = read_file(kong_env)
       assert.truthy(after, "failed reading .kong_env: " .. tostring(err))
 
       assert.equal(before, after, ".kong_env file was rewritten")
     end)
 
     it("ensures the required shared dictionaries are defined", function()
-      local constants = require "kong.constants"
-      local pl_file   = require "pl.file"
-      local fmt       = string.format
-
       local templ_fixture     = "spec/fixtures/custom_nginx.template"
       local new_templ_fixture = "spec/fixtures/custom_nginx.template.tmp"
 
       finally(function()
-        pl_file.delete(new_templ_fixture)
-        helpers.stop_kong()
+        os.remove(new_templ_fixture)
       end)
 
       for _, dict in ipairs(constants.DICTS) do
@@ -799,19 +746,13 @@ describe("kong start/stop #" .. strategy, function()
         local ok, stderr = helpers.start_kong({
           database = strategy,
           cassandra_contact_points = "invalid.inexistent.host",
-          cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+          cassandra_keyspace = TEST_CONF.cassandra_keyspace,
         })
 
         assert.False(ok)
         assert.matches("could not resolve any of the provided Cassandra contact points " ..
                        "(cassandra_contact_points = 'invalid.inexistent.host')", stderr, nil, true)
-
-        finally(function()
-          helpers.stop_kong()
-          helpers.kill_all()
-          pcall(helpers.dir.rmtree)
-  end)
-end)
+      end)
     end
 
     if strategy == "off" then
@@ -833,7 +774,6 @@ end)
 
         finally(function()
           os.remove(yaml_file)
-          helpers.stop_kong()
         end)
 
         local ok, err = helpers.start_kong({
@@ -851,13 +791,9 @@ end)
   end)
 
   describe("deprecated properties", function()
-    after_each(function()
-      assert(helpers.stop_kong(helpers.test_conf.prefix))
-    end)
-
     it("deprecate <worker_consistency>", function()
-      local _, stderr, _ = assert(helpers.kong_exec("start", {
-        prefix = helpers.test_conf.prefix,
+      local _, stderr, _ = assert(kong_exec("start", {
+        prefix = PREFIX,
         worker_consistency = "strict",
       }))
       assert.matches("the configuration value 'strict' for configuration property 'worker_consistency' is deprecated", stderr, nil, true)
@@ -866,14 +802,13 @@ end)
   end)
 
   describe("dangling socket cleanup", function()
-    local prefix = helpers.test_conf.prefix
-    local pidfile = helpers.test_conf.nginx_pid
+    local pidfile = TEST_CONF.nginx_pid
 
     -- the worker events socket is just one of many unix sockets we use
-    local event_sock = prefix .. "/worker_events.sock"
+    local event_sock = PREFIX .. "/worker_events.sock"
 
     local env = {
-      prefix                      = prefix,
+      prefix                      = PREFIX,
       database                    = strategy,
       admin_listen                = "127.0.0.1:9001",
       proxy_listen                = "127.0.0.1:8000",
@@ -881,9 +816,29 @@ end)
       nginx_main_worker_processes = 2, -- keeping this low for the sake of speed
     }
 
+    local start_cmd = fmt("start -p %q -c %q", PREFIX, TEST_CONF_PATH)
+
     local function start()
-      local cmd = string.format("start -p %q", prefix)
-      return helpers.kong_exec(cmd, env, true)
+      local ok, code, stdout, stderr = kong_exec(start_cmd, env, true)
+
+      if ok then
+        wait_until_healthy()
+      end
+
+      return ok, code, stdout, stderr
+    end
+
+    local function assert_start()
+      local ok, code, stdout, stderr = start()
+      assert(ok, "failed to start kong...\n"
+              .. "exit code: " .. tostring(code) .. "\n"
+              .. "stdout:\n" .. tostring(stdout) .. "\n"
+              .. "stderr:\n" .. tostring(stderr) .. "\n")
+
+      assert.equals(0, code)
+      assert.matches("Kong started", stdout)
+
+      return stdout, stderr
     end
 
 
@@ -924,7 +879,7 @@ end)
     local function kill_all()
       local workers = get_worker_pids()
 
-      local master = assert(helpers.file.read(pidfile))
+      local master = assert(read_file(pidfile))
       master = master:gsub("%s+", "")
       sigkill(master)
       sigkill(workers)
@@ -932,19 +887,9 @@ end)
 
 
     before_each(function()
-      helpers.clean_prefix(prefix)
+      helpers.clean_prefix(PREFIX)
 
-      assert(start())
-
-      -- sanity
-      helpers.wait_until(function()
-        return helpers.kong_exec("health", env)
-      end, 5)
-
-      -- sanity
-      helpers.wait_until(function()
-        return helpers.path.exists(event_sock)
-      end, 5)
+      assert_start()
 
       kill_all()
 
@@ -953,57 +898,31 @@ end)
     end)
 
     it("removes unix socket files in the prefix directory", function()
-      local ok, code, stdout, stderr = start()
-      assert.truthy(ok, "expected `kong start` to succeed: " .. tostring(code or stderr))
-      assert.equals(0, code)
-
-      finally(function()
-        helpers.stop_kong(prefix)
-      end)
-
-      assert.matches("Kong started", stdout)
+      local _, stderr = assert_start()
 
       assert.matches("[warn] Found dangling unix sockets in the prefix directory", stderr, nil, true)
-      assert.matches(prefix, stderr, nil, true)
+      assert.matches(PREFIX, stderr, nil, true)
 
       assert.matches("removing unix socket", stderr)
       assert.matches(event_sock, stderr, nil, true)
     end)
 
     it("does not log anything if Kong was stopped cleanly and no sockets are found", function()
-      local ok, code, stdout, stderr = start()
-      assert.truthy(ok, "expected `kong start` to succeed: " .. tostring(code or stderr))
-      assert.equals(0, code)
-      assert.matches("Kong started", stdout)
+      assert_start()
 
-      assert(helpers.stop_kong(prefix, true))
+      assert(helpers.stop_kong(PREFIX, true))
 
-      ok, code, stdout, stderr = start()
-      finally(function()
-        helpers.stop_kong(prefix)
-      end)
+      local stdout, stderr = assert_start()
 
-      assert.truthy(ok, "expected `kong start` to succeed: " .. tostring(code or stderr))
-      assert.equals(0, code)
-      assert.matches("Kong started", stdout)
       assert.not_matches("prefix directory .*not found", stdout)
-
       assert.not_matches("[warn] Found dangling unix sockets in the prefix directory", stderr, nil, true)
       assert.not_matches("unix socket", stderr)
     end)
 
     it("does not do anything if kong is already running", function()
-      local ok, code, stdout, stderr = start()
-      assert.truthy(ok, "initial startup of kong failed: " .. stderr)
-      assert.equals(0, code)
+      assert_start()
 
-      finally(function()
-        helpers.stop_kong(prefix)
-      end)
-
-      assert.matches("Kong started", stdout)
-
-      ok, code, _, stderr = start()
+      local ok, code, _, stderr = start()
       assert.falsy(ok, "expected `kong start` to fail with kong already running")
       assert.equals(1, code)
       assert.not_matches("unix socket", stderr)
@@ -1025,11 +944,12 @@ end)
       local prefix = "relpath"
 
       finally(function()
-        helpers.kill_all(prefix)
-        pcall(helpers.dir.rmtree, prefix)
+        -- this test uses a non-default prefix, so it must manage
+        -- its kong instance directly
+        helpers.stop_kong(prefix)
       end)
 
-      assert(helpers.kong_exec(string.format("prepare -p %q", prefix), {
+      assert(kong_exec(fmt("prepare -p %q -c %q", prefix, TEST_CONF_PATH), {
         database = strategy,
         proxy_listen = "127.0.0.1:8000",
         stream_listen = "127.0.0.1:9000",
@@ -1040,34 +960,22 @@ end)
       assert.is_string(nginx, err)
 
       local started
-      started, err = helpers.execute(string.format("%s -p %q -c nginx.conf",
+      started, err = helpers.execute(fmt("%s -p %q -c nginx.conf",
                                     nginx, prefix))
 
       assert.truthy(started, "starting Kong failed: " .. tostring(err))
 
       -- wait until everything is running
-      helpers.wait_until(function()
-        local client = helpers.admin_client(5000, 8001)
-        local res, rerr = client:send({
-          method = "GET",
-          path = "/",
-        })
-
-        if res then res:read_body() end
-        client:close()
-
-        assert.is_table(res, rerr)
-
-        return res.status == 200
-      end)
+      wait_until_healthy(prefix)
 
       assert.truthy(helpers.path.exists(prefix .. "/worker_events.sock"))
       assert.truthy(helpers.path.exists(prefix .. "/stream_worker_events.sock"))
 
-      assert.logfile(prefix .. "/logs/error.log").has.no.line("[error]", true)
-      assert.logfile(prefix .. "/logs/error.log").has.no.line("[alert]", true)
-      assert.logfile(prefix .. "/logs/error.log").has.no.line("[crit]", true)
-      assert.logfile(prefix .. "/logs/error.log").has.no.line("[emerg]", true)
+      local log = prefix .. "/logs/error.log"
+      assert.logfile(log).has.no.line("[error]", true, 0)
+      assert.logfile(log).has.no.line("[alert]", true, 0)
+      assert.logfile(log).has.no.line("[crit]",  true, 0)
+      assert.logfile(log).has.no.line("[emerg]", true, 0)
     end)
   end)
 

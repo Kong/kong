@@ -2819,6 +2819,75 @@ do
   luassert:register("modifier", "logfile", modifier_errlog)
 
 
+  local function substr(subject, pattern)
+    if subject:find(pattern, nil, true) ~= nil then
+      return subject
+    end
+  end
+
+  local function re_match(subject, pattern)
+    local pos, _, err = ngx.re.find(subject, pattern, "oj")
+    if err then
+      error(("invalid regex provided to logfile assertion %q: %s")
+            :format(pattern, err), 5)
+    end
+
+    if pos then
+      return subject
+    end
+  end
+
+
+  -- EE [[
+  -- FIXME: major hack here
+  --
+  -- CI and dev environments use an auto-generated license with a very
+  -- short life span, which triggers log entries like:
+  --
+  -- ```
+  -- 2022/11/10 15:50:17 [warn] 1440109#0: *54 stream [lua] license_helpers.lua:231: log_license_state(): The Kong Enterprise license will expire on 2022-12-20. Please contact <support@konghq.com> to renew your license., context: ngx.timer
+  -- ```
+  --
+  -- These log entries are a time bomb for our integration tests, because
+  -- we have many test cases that do something like this:
+  --
+  -- ```
+  -- -- ensure there are no warnings in the error.log after doing $thing
+  -- assert.logfile().has.no.line("[warn]")
+  -- ```
+  --
+  -- This code attempts to filter out license warnings.
+  local license_warning = "Please contact <support@konghq.com> to renew your license."
+  local license_warning_dev = "Using development (e.g. not a release) license validation"
+
+  local function is_ee_license_warning(line)
+    return line
+       and (substr(line, license_warning)
+            or substr(line, license_warning_dev))
+  end
+  -- ]] EE
+
+
+  local function find_in_file(fpath, pattern, matcher)
+    local fh = assert(io.open(fpath, "r"))
+    local found
+
+    for line in fh:lines() do
+      -- EE [[
+      -- see comment above re: filtering out license warnings
+      if matcher(line, pattern) and not is_ee_license_warning(line) then
+      -- ]] EE
+        found = line
+        break
+      end
+    end
+
+    fh:close()
+
+    return found
+  end
+
+
   --- Assertion checking if any line from a file matches the given regex or
   -- substring.
   -- @function line
@@ -2847,64 +2916,30 @@ do
            "Expected the regex argument to be a string")
     assert(type(fpath) == "string",
            "Expected the file path argument to be a string")
-    assert(type(timeout) == "number" and timeout > 0,
-           "Expected the timeout argument to be a positive number")
-
-    local pok = pcall(wait_until, function()
-      local logs = pl_file.read(fpath)
-      local from, _, err
-
-      for line in logs:gmatch("[^\r\n]+") do
-        if plain then
-          from = string.find(line, regex, nil, true)
-
-        else
-          from, _, err = ngx.re.find(line, regex)
-          if err then
-            error(err)
-          end
-        end
-
-        -- EE [[
-        -- FIXME: major hack here
-        --
-        -- CI and dev environments use an auto-generated license with a very
-        -- short life span, which triggers log entries like:
-        --
-        -- ```
-        -- 2022/11/10 15:50:17 [warn] 1440109#0: *54 stream [lua] license_helpers.lua:231: log_license_state(): The Kong Enterprise license will expire on 2022-12-20. Please contact <support@konghq.com> to renew your license., context: ngx.timer
-        -- ```
-        --
-        -- These log entries are a time bomb for our integration tests, because
-        -- we have many test cases that do something like this:
-        --
-        -- ```
-        -- -- ensure there are no warnings in the error.log after doing $thing
-        -- assert.logfile().has.no.line("[warn]")
-        -- ```
-        --
-        -- This code attempts to filter out license warnings.
-        local license_warning = "Please contact <support@konghq.com> to renew your license."
-        local license_warning_dev = "Using development (e.g. not a release) license validation"
-        if from and (line:find(license_warning, nil, true) or line:find(license_warning_dev, nil, true)) then
-          from = nil
-        end
-        -- ]] EE
+    assert(type(timeout) == "number" and timeout >= 0,
+           "Expected the timeout argument to be a number >= 0")
 
 
-        if from then
-          table.insert(args, 1, line)
-          table.insert(args, 1, regex)
-          args.n = 2
-          return true
-        end
-      end
-    end, timeout)
+    local matcher = plain and substr or re_match
 
-    table.insert(args, 1, fpath)
-    args.n = args.n + 1
+    local found = find_in_file(fpath, regex, matcher)
+    local deadline = ngx.now() + timeout
 
-    return pok
+    while not found and ngx.now() <= deadline do
+      ngx.sleep(0.05)
+      found = find_in_file(fpath, regex, matcher)
+    end
+
+    args[1] = fpath
+    args[2] = regex
+    args.n = 2
+
+    if found then
+      args[3] = found
+      args.n = 3
+    end
+
+    return found
   end
 
   say:set("assertion.match_line.negative", unindent [[
