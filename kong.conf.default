@@ -707,14 +707,18 @@
                                  #
                                  # See http://nginx.org/en/docs/ngx_core_module.html#daemon.
 
-#mem_cache_size = 128m           # Size of each of the two in-memory caches
-                                 # for database entities. The accepted units are
-                                 # `k` and `m`, with a minimum recommended value of
-                                 # a few MBs.
+#mem_cache_size = 128m           # Size of each of the two shared memory caches
+                                 # for traditional mode database entities
+                                 # and runtime data.
+                                 # The accepted units are `k` and `m`, with a minimum
+                                 # recommended value of a few MBs.
                                  #
                                  # **Note**: As this option controls the size of two
-                                 # different cache entries, the total memory Kong
+                                 # different cache zones, the total memory Kong
                                  # uses to cache entities might be double this value.
+                                 # The created zones are shared by all worker
+                                 # processes and do not become larger when more
+                                 # worker is used.
 
 #ssl_cipher_suite = intermediate # Defines the TLS ciphers served by Nginx.
                                  # Accepted values are `modern`,
@@ -1408,13 +1412,10 @@
                                 # to be used when the `database` is set to
                                 # `off`.
                                 #
-                                # Entities are stored in Kong's in-memory cache,
-                                # so you must ensure that enough memory is
-                                # allocated to it via the `mem_cache_size`
-                                # property. You must also ensure that items
-                                # in the cache never expire, which means that
-                                # `db_cache_ttl` should preserve its default
-                                # value of 0.
+                                # Entities are stored in Kong's LMDB cache,
+                                # so you must ensure that enough headroom is
+                                # allocated to it via the `lmdb_map_size`
+                                # property.
                                 #
                                 # If the Hybrid mode `role` is set to `data_plane`
                                 # and there's no configuration cache file,
@@ -1432,6 +1433,19 @@
 
 #lmdb_map_size = 128m                 # Maximum size of the LMDB memory map, used to store the
                                       # DB-less and Hybird mode configurations. Default is 128m.
+                                      #
+                                      # This config defines the limit of LMDB file size, the
+                                      # actual file size growth will be on-demand and
+                                      # porpotional to the actual config size.
+                                      #
+                                      # Note this value can be set very large, say a couple of GBs
+                                      # to accomadate future database growth and
+                                      # Multi Version Concurrency Control (MVCC) headroom needs.
+                                      # The file size of the LMDB database file should stabilize
+                                      # after a few config reload/Hybrid mode syncs and the actual
+                                      # memory used by the LMDB database will be smaller than
+                                      # the file size due to dynamic swapping of database pages by
+                                      # the OS.
 
 #------------------------------------------------------------------------------
 # DATASTORE CACHE
