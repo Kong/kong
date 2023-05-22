@@ -84,40 +84,7 @@ local function compile_stream_inject(conf)
   return compile_nginx_stream_inject_conf(conf)
 end
 
-local function construct_args(args)
-  local positional_args = ""
-  local named_args = ""
-
-  -- put the subcommand back to the first positional argument
-  if args.command then
-    table.insert(args, 1, args.command)
-    args.command = nil
-  end
-
-  -- construct positional arguments
-  while #args > 0 do
-    local arg =  table.remove(args, 1)
-    positional_args = positional_args .. arg .. " "
-  end
-
-  -- construct named arguments
-  for k, v in pairs(args) do
-    if type(v) == "boolean" then
-      if v then
-        named_args = named_args .. "--" .. gsub(k, "_", "-") .. " "
-      end
-    else
-      named_args = named_args .. "--" .. gsub(k, "_", "-") .. " " .. v .. " "
-    end
-  end
-
-  -- add `--no-resty-cli-injection` to terminate the recursion
-  named_args = named_args .. "--no-resty-cli-injection"
-
-  return positional_args .. named_args
-end
-
-local function construct_cmd(conf, cmd_name, args)
+local function construct_cmd(conf)
   local main_conf, err = compile_main_inject(conf)
   if err then
     return nil, err
@@ -133,26 +100,23 @@ local function construct_cmd(conf, cmd_name, args)
     return nil, err
   end
 
-  local kong_path
-  local ok, code, stdout, stderr = pl_utils.executeex("command -v kong")
-  if ok and code == 0 then
-    kong_path = pl_stringx.strip(stdout)
-
-  else
-    return nil, "could not find kong absolute path:" .. stderr
+  local cmd = {}
+  for i = -1, #_G.cli_args do
+    table.insert(cmd, _G.cli_args[i])
   end
 
-  local cmd_args = construct_args(args)
+  table.insert(cmd, 2, fmt("--main-conf \"%s\"", main_conf))
+  table.insert(cmd, 3, fmt("--http-conf \"%s\"", http_conf))
+  table.insert(cmd, 4, fmt("--stream-conf \"%s\"", stream_conf))
+  -- add `--no-resty-cli-injection` to terminate the recursion
+  table.insert(cmd, "--no-resty-cli-injection")
 
-  local cmd = fmt("resty --main-conf \"%s\" --http-conf \"%s\" --stream-conf \"%s\" %s %s %s",
-    main_conf, http_conf, stream_conf, kong_path, cmd_name, cmd_args)
-
-  return cmd, nil
+  return table.concat(cmd, " ")
 end
 
-local function run_command_with_injection(cmd_name, args)
+local function run_command_with_injection(args)
   local conf = load_conf(args)
-  local cmd, err = construct_cmd(conf, cmd_name, args)
+  local cmd, err = construct_cmd(conf)
 
   if err then
     error(err)
