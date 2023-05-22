@@ -579,7 +579,7 @@ jobs:
     needs: [metadata, build-images]
     # cancel previous runs if new commits are pushed to the PR, but run for each commit on master
     concurrency:
-      group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}-smoke-api-tests
+      group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}-${{ matrix.label }}-smoke-api-tests
       cancel-in-progress: true
     strategy:
       fail-fast: false
@@ -597,7 +597,7 @@ jobs:
     needs: [metadata, build-images, smoke-tests, smoke-api-tests]
     # cancel previous runs if new commits are pushed to the PR, but run for each commit on master
     concurrency:
-      group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}-smoke-api-tests
+      group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}-${{ matrix.label }}-e2e-api-tests
       cancel-in-progress: true
     strategy:
       fail-fast: false
