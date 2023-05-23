@@ -158,6 +158,18 @@ describe("CPU profling #" .. strategy, function ()
         assert.same(10, json.interval)
       end
 
+      for i = 1, 100 do
+        local client = assert(helpers.admin_client())
+
+        client:send {
+          method = "GET",
+          path = "/routes",
+        }
+
+        client:close()
+        ngx.sleep(0.002)
+      end
+
       ngx.sleep(12) -- wait for profiling to timeout
 
       local path = json.path
