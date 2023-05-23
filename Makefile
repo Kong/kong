@@ -44,6 +44,11 @@ BAZLISK_VERSION ?= 1.16.0
 BAZEL := $(shell command -v bazel 2> /dev/null)
 VENV = /dev/null # backward compatibility when no venv is built
 
+# Use x86_64 grpcurl v1.8.5 for Apple silicon chips
+ifeq ($(GRPCURL_OS)_$(MACHINE)_$(GRPCURL_VERSION), osx_arm64_1.8.5)
+GRPCURL_MACHINE = x86_64
+endif
+
 PACKAGE_TYPE ?= deb
 
 bin/bazel:
