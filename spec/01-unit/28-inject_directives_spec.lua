@@ -1,6 +1,4 @@
 local pl_path = require "pl.path"
-local pl_utils = require "pl.utils"
-local pl_stringx = require "pl.stringx"
 local helpers = require "spec.helpers"
 local conf_loader = require "kong.conf_loader"
 local inject_directives = require "kong.cmd.utils.inject_directives"
@@ -28,12 +26,9 @@ lua_ssl_verify_depth   1;
 lua_ssl_trusted_certificate '/usr/local/kong/.ca_combined';
 lua_ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 ]]
-      local ok, code, stdout, stderr = pl_utils.executeex("command -v resty")
-      assert(ok and code == 0, stderr)
-      local resty_path = pl_stringx.strip(stdout)
       local kong_path = cwd .. "/bin/kong"
       _G.cli_args = {
-        [-1] = resty_path,
+        [-1] = "resty",
         [0]  = kong_path,
         [1]  = "vault",
         [2]  = "get",
@@ -49,8 +44,8 @@ lua_ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
       if strategy == "off" then
         expected_main_conf = main_conf_off
       end
-      local expected_cmd = fmt("KONG_CLI_RESPAWNED=1 %s --main-conf \"%s\" --http-conf \"%s\" --stream-conf \"%s\" %s vault get test-env/test --v",
-        resty_path, expected_main_conf, http_conf, stream_conf, kong_path)
+      local expected_cmd = fmt("KONG_CLI_RESPAWNED=1 resty --main-conf \"%s\" --http-conf \"%s\" --stream-conf \"%s\" %s vault get test-env/test --v",
+        expected_main_conf, http_conf, stream_conf, kong_path)
       assert.matches(expected_cmd, cmd, nil, true)
     end)
 
@@ -72,12 +67,9 @@ lua_ssl_verify_depth   1;
 lua_ssl_trusted_certificate '%s/servroot/.ca_combined';
 lua_ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 ]], cwd)
-      local ok, code, stdout, stderr = pl_utils.executeex("command -v resty")
-      assert(ok and code == 0, stderr)
-      local resty_path = pl_stringx.strip(stdout)
       local kong_path = cwd .. "/bin/kong"
       _G.cli_args = {
-        [-1] = resty_path,
+        [-1] = "resty",
         [0]  = kong_path,
         [1]  = "vault",
         [2]  = "get",
@@ -94,8 +86,8 @@ lua_ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
       if strategy == "off" then
         expected_main_conf = main_conf_off
       end
-      local expected_cmd = fmt("KONG_CLI_RESPAWNED=1 %s --main-conf \"%s\" --http-conf \"%s\" --stream-conf \"%s\" %s vault get test-env/test --v",
-        resty_path, expected_main_conf, http_conf, stream_conf, kong_path)
+      local expected_cmd = fmt("KONG_CLI_RESPAWNED=1 resty --main-conf \"%s\" --http-conf \"%s\" --stream-conf \"%s\" %s vault get test-env/test --v",
+        expected_main_conf, http_conf, stream_conf, kong_path)
       assert.matches(expected_cmd, cmd, nil, true)
     end)
   end
