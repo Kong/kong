@@ -9,7 +9,6 @@ local HEADER_NAME_INPUT = "X-PW-Input"
 local HEADER_NAME_DISPATCH_ECHO = "X-PW-Dispatch-Echo"
 local HEADER_NAME_ADD_REQ_HEADER = "X-PW-Add-Header"
 local HEADER_NAME_ADD_RESP_HEADER = "X-PW-Add-Resp-Header"
-local ERROR_OR_CRIT = "\\[(error|crit)\\]"
 
 
 describe("proxy-wasm filters (#wasm)", function()
@@ -80,7 +79,8 @@ describe("proxy-wasm filters (#wasm)", function()
       })
 
       assert.res_status(200, res)
-      assert.logfile().has.no.line(ERROR_OR_CRIT)
+      assert.logfile().has.no.line("[error]", true, 0)
+      assert.logfile().has.no.line("[crit]",  true, 0)
     end)
 
     it("with multiple filters", function()
@@ -93,7 +93,8 @@ describe("proxy-wasm filters (#wasm)", function()
       })
 
       assert.res_status(200, res)
-      assert.logfile().has.no.line(ERROR_OR_CRIT)
+      assert.logfile().has.no.line("[error]", true, 0)
+      assert.logfile().has.no.line("[crit]",  true, 0)
     end)
   end)
 
@@ -115,7 +116,8 @@ describe("proxy-wasm filters (#wasm)", function()
       assert.equal("proxy-wasm", json.headers["via"])
       -- TODO: honor case-sensitivity (proxy-wasm-rust-sdk/ngx_wasm_module investigation)
       -- assert.equal("proxy-wasm", json.headers["Via"])
-      assert.logfile().has.no.line(ERROR_OR_CRIT)
+      assert.logfile().has.no.line("[error]", true, 0)
+      assert.logfile().has.no.line("[crit]",  true, 0)
     end)
 
     it("remove request headers", function()
@@ -134,7 +136,8 @@ describe("proxy-wasm filters (#wasm)", function()
       local json = cjson.decode(body)
       -- The 'test' Rust filter removes the "X-PW-*" request headers
       assert.is_nil(json.headers[HEADER_NAME_ADD_REQ_HEADER])
-      assert.logfile().has.no.line(ERROR_OR_CRIT)
+      assert.logfile().has.no.line("[error]", true, 0)
+      assert.logfile().has.no.line("[crit]",  true, 0)
     end)
 
     it("add response headers on_request_headers", function()
@@ -153,7 +156,8 @@ describe("proxy-wasm filters (#wasm)", function()
       local via = assert.response(res).has.header("x-via")
       assert.equal("proxy-wasm", via)
       assert.logfile().has.line([[testing in "RequestHeaders"]])
-      assert.logfile().has.no.line(ERROR_OR_CRIT)
+      assert.logfile().has.no.line("[error]", true, 0)
+      assert.logfile().has.no.line("[crit]",  true, 0)
     end)
 
     it("add response headers on_response_headers", function()
@@ -173,7 +177,8 @@ describe("proxy-wasm filters (#wasm)", function()
       local via = assert.response(res).has.header("x-via")
       assert.equal("proxy-wasm", via)
       assert.logfile().has.line([[testing in "ResponseHeaders"]])
-      assert.logfile().has.no.line(ERROR_OR_CRIT)
+      assert.logfile().has.no.line("[error]", true, 0)
+      assert.logfile().has.no.line("[crit]",  true, 0)
     end)
 
     -- describe+it:
@@ -230,7 +235,8 @@ describe("proxy-wasm filters (#wasm)", function()
 
       local body = assert.res_status(200, res)
       assert.equal("Hello from proxy-wasm", body)
-      assert.logfile().has.no.line(ERROR_OR_CRIT)
+      assert.logfile().has.no.line("[error]", true, 0)
+      assert.logfile().has.no.line("[crit]",  true, 0)
     end)
 
     it("send an http dispatch, return its response body", function()
@@ -257,7 +263,8 @@ describe("proxy-wasm filters (#wasm)", function()
                    helpers.mock_upstream_port .. "/headers",
                    json.url)
 
-      assert.logfile().has.no.line(ERROR_OR_CRIT)
+      assert.logfile().has.no.line("[error]", true, 0)
+      assert.logfile().has.no.line("[crit]",  true, 0)
     end)
 
     pending("start on_tick background timer", function()
@@ -271,7 +278,9 @@ describe("proxy-wasm filters (#wasm)", function()
       })
 
       assert.res_status(200, res)
-      assert.logfile().has.no.line(ERROR_OR_CRIT)
+      assert.logfile().has.no.line("[error]", true, 0)
+      assert.logfile().has.no.line("[crit]",  true, 0)
+
       -- TODO
     end)
   end)
@@ -291,7 +300,9 @@ describe("proxy-wasm filters (#wasm)", function()
 
       local body = assert.res_status(200, res)
       assert.equal("", body)
-      assert.logfile().has.no.line(ERROR_OR_CRIT)
+      assert.logfile().has.no.line("[error]", true, 0)
+      assert.logfile().has.no.line("[crit]",  true, 0)
+
       -- TODO: test that phases are properly invoked and the chain
       --       correctly interrupted, but how?
       --       no equivalent to Test::Nginx's grep_error_log_out

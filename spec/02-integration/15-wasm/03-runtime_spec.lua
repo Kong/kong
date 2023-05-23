@@ -1,7 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
-local ERROR_OR_CRIT = "\\[(error|crit)\\]"
 local HEADER = "X-Proxy-Wasm"
 
 local json = cjson.encode
@@ -390,7 +389,8 @@ describe("#wasm filter execution (#" .. strategy .. ")", function()
     })
 
     assert.response(res).has.status(200)
-    assert.logfile().has.no.line(ERROR_OR_CRIT)
+    assert.logfile().has.no.line("[error]", true, 0)
+    assert.logfile().has.no.line("[crit]",  true, 0)
 
     local header = assert.response(res).has.header(HEADER)
 
