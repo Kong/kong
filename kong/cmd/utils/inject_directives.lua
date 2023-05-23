@@ -4,7 +4,6 @@ local pl_stringx = require "pl.stringx"
 local pl_utils = require "pl.utils"
 local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local log = require "kong.cmd.utils.log"
-local gsub = string.gsub
 local fmt = string.format
 
 local compile_nginx_main_inject_conf = prefix_handler.compile_nginx_main_inject_conf
@@ -100,21 +99,24 @@ local function construct_cmd(conf)
     return nil, err
   end
 
-  local cmd = {}
+  -- terminate the recursion
+  local cmd = {"KONG_CLI_RESPAWNED=1"}
   for i = -1, #_G.cli_args do
     table.insert(cmd, _G.cli_args[i])
   end
 
-  table.insert(cmd, 2, fmt("--main-conf \"%s\"", main_conf))
-  table.insert(cmd, 3, fmt("--http-conf \"%s\"", http_conf))
-  table.insert(cmd, 4, fmt("--stream-conf \"%s\"", stream_conf))
-  -- add `--no-resty-cli-injection` to terminate the recursion
-  table.insert(cmd, "--no-resty-cli-injection")
+  table.insert(cmd, 3, fmt("--main-conf \"%s\"", main_conf))
+  table.insert(cmd, 4, fmt("--http-conf \"%s\"", http_conf))
+  table.insert(cmd, 5, fmt("--stream-conf \"%s\"", stream_conf))
 
   return table.concat(cmd, " ")
 end
 
 local function run_command_with_injection(args)
+  if os.getenv("KONG_CLI_RESPAWNED") then
+    return
+  end
+
   local conf = load_conf(args)
   local cmd, err = construct_cmd(conf)
 
