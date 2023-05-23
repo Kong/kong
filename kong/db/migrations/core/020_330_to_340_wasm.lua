@@ -12,7 +12,7 @@ return {
         "filters"     JSONB[],
         "tags"        TEXT[],
         "created_at"  TIMESTAMP WITH TIME ZONE,
-        "updated_at"  TIMESTAMP WITH TIME ZONE,
+        "updated_at"  TIMESTAMP WITH TIME ZONE
       );
 
       DO $$
@@ -23,8 +23,8 @@ return {
 
       DO $$
       BEGIN
-      CREATE UNIQUE INDEX IF NOT EXISTS "filter_chains_cache_key_idx"
-        ON "filter_chains" ("cache_key");
+        CREATE UNIQUE INDEX IF NOT EXISTS "filter_chains_cache_key_idx"
+          ON "filter_chains" ("cache_key");
       END$$;
 
       DO $$
