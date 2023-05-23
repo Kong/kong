@@ -8,6 +8,9 @@ workspace_path="{{workspace_path}}"
 KONG_VENV="$workspace_path/bazel-bin/build/$build_name"
 export KONG_VENV
 
+BUILD_NAME=$build_name
+export BUILD_NAME
+
 # set PATH
 if [ -n "${_OLD_KONG_VENV_PATH}" ]; then
     # restore old PATH first, if this script is called multiple times
