@@ -106,7 +106,6 @@ describe("kong start/stop #" .. strategy, function()
       database = strategy,
       nginx_proxy_real_ip_header = "{vault://env/ipheader}",
       pg_database = TEST_CONF.pg_database,
-      cassandra_keyspace = TEST_CONF.cassandra_keyspace,
       vaults = "env",
     })
 
@@ -121,7 +120,6 @@ describe("kong start/stop #" .. strategy, function()
       database = TEST_CONF.database,
       pg_password = "{vault://non-existent/pg_password}",
       pg_database = TEST_CONF.pg_database,
-      cassandra_keyspace = TEST_CONF.cassandra_keyspace,
     })
 
     assert.matches("failed to dereference '{vault://non-existent/pg_password}': vault not found (non-existent)", stderr, nil, true)
@@ -137,7 +135,6 @@ describe("kong start/stop #" .. strategy, function()
       database = TEST_CONF.database,
       pg_password = "{vault://env/pg_password}",
       pg_database = TEST_CONF.pg_database,
-      cassandra_keyspace = TEST_CONF.cassandra_keyspace,
       vaults = "env",
     }))
 
@@ -163,7 +160,6 @@ describe("kong start/stop #" .. strategy, function()
       prefix = PREFIX,
       database = TEST_CONF.database,
       pg_database = TEST_CONF.pg_database,
-      cassandra_keyspace = TEST_CONF.cassandra_keyspace
     }))
 
     assert(kong_exec("stop", { prefix = PREFIX }))
@@ -177,7 +173,6 @@ describe("kong start/stop #" .. strategy, function()
       database = TEST_CONF.database,
       pg_password = "{vault://env/pg_password}",
       pg_database = TEST_CONF.pg_database,
-      cassandra_keyspace = TEST_CONF.cassandra_keyspace,
       vaults = "env",
     }))
 
@@ -226,60 +221,23 @@ describe("kong start/stop #" .. strategy, function()
     assert.truthy(helpers.path.exists(TEST_CONF.kong_env))
   end)
 
-  if strategy == "cassandra" then
-    it("should not add [emerg], [alert], [crit], or [error] lines to error log", function()
-      assert(kong_exec("start ", {
-        prefix = PREFIX,
-        stream_listen = "127.0.0.1:9022",
-        status_listen = "0.0.0.0:8100",
-      }))
+  it("should not add [emerg], [alert], [crit], [error] or [warn] lines to error log", function()
+    assert(helpers.kong_exec("start ", {
+      prefix = helpers.test_conf.prefix,
+      stream_listen = "127.0.0.1:9022",
+      status_listen = "0.0.0.0:8100",
+    }))
+    ngx.sleep(0.1)   -- wait unix domain socket
+    assert(helpers.kong_exec("stop", {
+      prefix = helpers.test_conf.prefix
+    }))
 
-      wait_until_healthy()
-
-      assert(kong_exec("stop", {
-        prefix = PREFIX
-      }))
-
-      assert.logfile().has.no.line("[emerg]", true, 0)
-      assert.logfile().has.no.line("[alert]", true, 0)
-      assert.logfile().has.no.line("[crit]",  true, 0)
-      assert.logfile().has.no.line("[error]", true, 0)
-    end)
-
-  else
-    it("should not add [emerg], [alert], [crit], [error] or [warn] lines to error log", function()
-      assert(kong_exec("start ", {
-        prefix = PREFIX,
-        stream_listen = "127.0.0.1:9022",
-        status_listen = "0.0.0.0:8100",
-      }))
-
-      wait_until_healthy()
-
-      assert(kong_exec("stop", { prefix = PREFIX }))
-
-      assert.logfile().has.no.line("[emerg]", true, 0)
-      assert.logfile().has.no.line("[alert]", true, 0)
-      assert.logfile().has.no.line("[crit]",  true, 0)
-      assert.logfile().has.no.line("[error]", true, 0)
-      assert.logfile().has.no.line("[warn]",  true, 0)
-    end)
-  end
-
-  if strategy == "cassandra" then
-    it("start resolves cassandra contact points", function()
-      assert(kong_exec("start", {
-        prefix = PREFIX,
-        database = strategy,
-        cassandra_contact_points = "localhost",
-        cassandra_keyspace = TEST_CONF.cassandra_keyspace,
-      }))
-
-      wait_until_healthy()
-
-      assert(kong_exec("stop", { prefix = PREFIX }))
-    end)
-  end
+    assert.logfile().has.no.line("[emerg]", true)
+    assert.logfile().has.no.line("[alert]", true)
+    assert.logfile().has.no.line("[crit]", true)
+    assert.logfile().has.no.line("[error]", true)
+    assert.logfile().has.no.line("[warn]", true)
+  end)
 
   it("creates prefix directory if it doesn't exist", function()
     finally(function()
@@ -291,7 +249,6 @@ describe("kong start/stop #" .. strategy, function()
     assert.falsy(helpers.path.exists("foobar"))
     assert(kong_exec("start --prefix foobar", {
       pg_database = TEST_CONF.pg_database,
-      cassandra_keyspace = TEST_CONF.cassandra_keyspace,
     }))
     assert.truthy(helpers.path.exists("foobar"))
   end)
@@ -319,19 +276,16 @@ describe("kong start/stop #" .. strategy, function()
     end)
 
     it("prints config in alphabetical order", function()
-      local _, _, stdout = assert(kong_exec("start --vv --conf " .. TEST_CONF_PATH))
-      assert.matches("admin_listen.*anonymous_reports.*cassandra_ssl.*prefix.*", stdout)
+      local _, _, stdout = assert(helpers.kong_exec("start --vv --conf " .. TEST_CONF_PATH))
+      assert.matches("admin_listen.*anonymous_reports.*pg_user.*prefix.*", stdout)
     end)
 
     it("does not print sensitive settings in config", function()
       local _, _, stdout = assert(kong_exec("start --vv --conf " .. TEST_CONF_PATH, {
         pg_password = "do not print",
-        cassandra_password = "do not print",
       }))
       assert.matches('KONG_PG_PASSWORD ENV found with "******"', stdout, nil, true)
-      assert.matches('KONG_CASSANDRA_PASSWORD ENV found with "******"', stdout, nil, true)
       assert.matches('pg_password = "******"', stdout, nil, true)
-      assert.matches('cassandra_password = "******"', stdout, nil, true)
     end)
   end)
 
@@ -349,15 +303,7 @@ describe("kong start/stop #" .. strategy, function()
   end)
 
   describe("/etc/hosts resolving in CLI", function()
-    if strategy == "cassandra" then
-      it("resolves #cassandra hostname", function()
-        assert(kong_exec("start --vv --run-migrations --conf " .. TEST_CONF_PATH, {
-          cassandra_contact_points = "localhost",
-          database = "cassandra"
-        }))
-      end)
-
-    elseif strategy == "postgres" then
+    if strategy == "postgres" then
       it("resolves #postgres hostname", function()
         assert(kong_exec("start --conf " .. TEST_CONF_PATH, {
           pg_host = "localhost",
@@ -401,7 +347,6 @@ describe("kong start/stop #" .. strategy, function()
       it("connection check errors are prefixed with DB-specific prefix", function()
         local ok, stderr = kong_exec("start --conf " .. TEST_CONF_PATH, {
           pg_port = 99999,
-          cassandra_port = 99999,
         })
         assert.False(ok)
         assert.matches("[" .. TEST_CONF.database .. " error]", stderr, 1, true)
@@ -576,9 +521,8 @@ describe("kong start/stop #" .. strategy, function()
     end)
 
     it("stop inexistent prefix", function()
-      assert(kong_exec("start --prefix " .. PREFIX, {
+      assert(helpers.kong_exec("start --prefix " .. PREFIX, {
         pg_database = TEST_CONF.pg_database,
-        cassandra_keyspace = TEST_CONF.cassandra_keyspace,
       }))
 
       local ok, stderr = kong_exec("stop --prefix inexistent")
@@ -587,9 +531,8 @@ describe("kong start/stop #" .. strategy, function()
     end)
 
     it("notifies when Kong is already running", function()
-      assert(kong_exec("start --prefix " .. PREFIX, {
+      assert(helpers.kong_exec("start --prefix " .. PREFIX, {
         pg_database = TEST_CONF.pg_database,
-        cassandra_keyspace = TEST_CONF.cassandra_keyspace,
       }))
 
       local ok, stderr = kong_exec("start --prefix " .. PREFIX, {
@@ -602,9 +545,8 @@ describe("kong start/stop #" .. strategy, function()
     it("should not start Kong if already running in prefix", function()
       local kill = require "kong.cmd.utils.kill"
 
-      assert(kong_exec("start --prefix " .. PREFIX, {
+      assert(helpers.kong_exec("start --prefix " .. PREFIX, {
         pg_database = TEST_CONF.pg_database,
-        cassandra_keyspace = TEST_CONF.cassandra_keyspace,
       }))
 
       local ok, stderr = kong_exec("start --prefix " .. PREFIX, {
@@ -664,20 +606,6 @@ describe("kong start/stop #" .. strategy, function()
           dict .. " [SIZE];' directive is defined.", err, nil, true)
       end
     end)
-
-    if strategy == "cassandra" then
-      it("errors when cassandra contact points cannot be resolved", function()
-        local ok, stderr = helpers.start_kong({
-          database = strategy,
-          cassandra_contact_points = "invalid.inexistent.host",
-          cassandra_keyspace = TEST_CONF.cassandra_keyspace,
-        })
-
-        assert.False(ok)
-        assert.matches("could not resolve any of the provided Cassandra contact points " ..
-                       "(cassandra_contact_points = 'invalid.inexistent.host')", stderr, nil, true)
-      end)
-    end
 
     if strategy == "off" then
       it("does not start with an invalid declarative config file", function()

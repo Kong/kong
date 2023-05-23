@@ -182,8 +182,8 @@ for _, strategy in helpers.each_strategy() do
 
       local db_service = bp.services:insert{
         protocol = "tcp",
-        host = strategy == "postgres" and kong.configuration.pg_host or kong.configuration.cassandra_contact_points[1],
-        port = strategy == "postgres" and kong.configuration.pg_port or kong.configuration.cassandra_port,
+        host = kong.configuration.pg_host,
+        port = kong.configuration.pg_port,
       }
 
       bp.routes:insert{
@@ -207,9 +207,6 @@ for _, strategy in helpers.each_strategy() do
         database = strategy,
         pg_host = "127.0.0.1",
         pg_port = stream_proxy_port,
-        cassandra_contact_points = "127.0.0.1",
-        cassandra_port = stream_proxy_port,
-        db_update_propagation = strategy == "cassandra" and 1 or 0,
         plugins = "bundled,prometheus",
         declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
         admin_listen = "off",

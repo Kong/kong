@@ -9,15 +9,12 @@ for _, strategy in helpers.each_strategy() do
       -- truncate the database so we have zero upstreams
       helpers.get_db_utils(strategy, { "upstreams", })
 
-      local db_update_propagation = strategy == "cassandra" and 0.1 or 0
-
       assert(helpers.start_kong {
         log_level             = "debug",
         database              = strategy,
         proxy_listen          = "0.0.0.0:8000, 0.0.0.0:8443 ssl",
         admin_listen          = "0.0.0.0:8001",
         db_update_frequency   = POLL_INTERVAL,
-        db_update_propagation = db_update_propagation,
         nginx_conf            = "spec/fixtures/custom_nginx.template",
       })
     end)
