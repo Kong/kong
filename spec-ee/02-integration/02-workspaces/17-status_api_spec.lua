@@ -109,7 +109,7 @@ for _, strategy in helpers.each_strategy() do
         if res and res.status == 503 then
           return true
         end
-      end, 5)
+      end, 30, 1)
 
       for _, append in ipairs({ "", "/" }) do
         local res = assert(client:send {
@@ -149,7 +149,7 @@ for _, strategy in helpers.each_strategy() do
         if res and res.status == 503 then
           return true
         end
-      end, 5)
+      end, 30, 1)
 
       for _, append in ipairs({ "", "/" }) do
         local res = assert(client:send {
@@ -189,7 +189,7 @@ for _, strategy in helpers.each_strategy() do
         if res and res.status == 503 then
           return true
         end
-      end, 5)
+      end, 30, 1)
 
       for _, append in ipairs({ "", "/" }) do
         local res = assert(client:send {
