@@ -118,7 +118,13 @@ return {
       local opts = parse_config_post_opts(self.params)
 
       local old_hash = opts.check_hash and declarative.get_current_hash()
-      local dc = declarative.new_config(kong.configuration)
+
+      local dc = kong.db.declarative_config
+      if not dc then
+        kong.log.crit("received POST request to /config endpoint, but ",
+                      "kong.db.declarative_config was not initialized")
+        return kong.response.exit(500, { message = "An unexpected error occurred" })
+      end
 
       local dc_table, new_hash = hydrate_config_from_request(self.params, dc)
 
