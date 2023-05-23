@@ -101,7 +101,9 @@ local function construct_cmd(conf)
 
   -- terminate the recursion
   local cmd = {"KONG_CLI_RESPAWNED=1"}
-  for i = -1, #_G.cli_args do
+  -- resty isn't necessarily in the position -1
+  table.insert(cmd, "resty")
+  for i = 0, #_G.cli_args do
     table.insert(cmd, _G.cli_args[i])
   end
 
