@@ -110,6 +110,7 @@ a copy. [KAG-739](https://konghq.atlassian.net/browse/KAG-739)
 * Fixed an issue where the VerticalTabs’ content becomes blank on selecting a tab that is currently active. [KAG-1032](https://konghq.atlassian.net/browse/KAG-1032)
 * Fixed an issue where the `/register` route jumps to `/login` occasionally. [KAG-1282](https://konghq.atlassian.net/browse/KAG-1282)
 * Fixed an issue where the statsD plugin has custom identifier field under metric which does not exist in schema. [KAG-1138](https://konghq.atlassian.net/browse/KAG-1138)
+* Endpoint to list consumer groups under a consumer now reflects latest changes on consumer groups. [KAG-1378](https://konghq.atlassian.net/browse/KAG-1378)
 
 ## Plugins
 

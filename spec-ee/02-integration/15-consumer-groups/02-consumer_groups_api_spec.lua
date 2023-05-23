@@ -13,6 +13,7 @@ local client
 local db
 
 local function truncate_tables(db)
+  db:truncate("consumers")
   db:truncate("consumer_groups")
   db:truncate("consumer_group_plugins")
   db:truncate("consumer_group_consumers")
@@ -45,6 +46,7 @@ for _, strategy in helpers.each_strategy() do
 
       }))
       client = assert(helpers.admin_client())
+      assert(db.consumers)
       assert(db.consumer_groups)
       assert(db.consumer_group_consumers)
       assert(db.consumer_group_plugins)
@@ -628,6 +630,55 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    describe("/consumers/:consumer/consumer_groups :", function()
+      lazy_teardown(function()
+        truncate_tables(db)
+      end)
+
+      it("KAG-1378 - consumer group cache should be invalidated after updating", function()
+        local consumer_group = assert(db.consumer_groups:insert { name = "test_group_" .. utils.uuid() })
+        local consumer_group_old_name = consumer_group.name
+
+        local consumer = assert(db.consumers:insert({ username = "test_consumer_" .. utils.uuid() }))
+
+        assert(db.consumer_group_consumers:insert({
+          consumer       = { id = consumer.id },
+          consumer_group = { id = consumer_group.id },
+        }))
+
+        -- should have one consumer group with the old name under the consumer
+        local res = get_request("/consumers/" .. consumer.id .. "/consumer_groups")
+        assert.same(1, #res.consumer_groups)
+        assert.equal(consumer_group_old_name, res.consumer_groups[1].name)
+
+        local consumer_group_new_name = "test_group_" .. utils.uuid()
+
+        -- update the consumer group's name
+        res = assert(
+          cjson.decode(
+            assert.res_status(200, assert(
+              client:send {
+                method = "PATCH",
+                path = "/consumer_groups/" .. consumer_group.id,
+                body = {
+                  name = consumer_group_new_name,
+                },
+                headers = {
+                  ["Content-Type"] = "application/json",
+                },
+              })
+            )
+          )
+        )
+
+        assert.equal(consumer_group_new_name, res.name)
+
+        -- consumer group under the consumer should have the new name
+        res = get_request("/consumers/" .. consumer.id .. "/consumer_groups")
+        assert.same(1, #res.consumer_groups)
+        assert.equal(consumer_group_new_name, res.consumer_groups[1].name)
+      end)
+    end)
   end)
 
   describe("Consumer Groups API #postgres", function()

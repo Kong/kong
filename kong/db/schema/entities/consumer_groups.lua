@@ -11,7 +11,6 @@ return {
   name = "consumer_groups",
   primary_key = { "id" },
   endpoint_key = "name",
-  cache_key = { "name" },
   workspaceable = true,
 
   fields = {
