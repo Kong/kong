@@ -143,9 +143,11 @@ describe("kong vault #" .. strategy, function()
       ngx.sleep(3)
 
       -- will fail without directives injected in dbless mode
-      local ok, stderr, stdout = helpers.kong_exec("vault get test-env/test --no-resty-cli-injection", {
+      helpers.setenv("KONG_CLI_RESPAWNED", "1")
+      local ok, stderr, stdout = helpers.kong_exec("vault get test-env/test", {
         prefix = helpers.test_conf.prefix,
       })
+      helpers.unsetenv("KONG_CLI_RESPAWNED")
       if strategy == "off" then
         assert.matches("unable to open DB for access: no LMDB environment defined", stderr, nil, true)
         assert.matches("[{vault://test-env/test}]", stderr, nil, true)

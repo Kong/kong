@@ -17,7 +17,6 @@ end
 local options = [[
  --v              verbose
  --vv             debug
- --no-resty-cli-injection             not inject nginx directives to resty cli
 ]]
 
 local cmds_arr = {}
@@ -100,10 +99,8 @@ return function(args)
 
   -- inject necessary nginx directives (e.g. lmdb_*, lua_ssl_*)
   -- into the temporary nginx.conf that `resty` will create
-  if inject_cmds[cmd_name] and not args.no_resty_cli_injection then
-    log.verbose("start to inject nginx directives")
+  if inject_cmds[cmd_name] then
     inject_directives.run_command_with_injection(args)
-    return
   end
 
   log.verbose("Kong: %s", _KONG._VERSION)
