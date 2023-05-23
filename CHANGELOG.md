@@ -12,6 +12,9 @@
 
 ### Breaking Changes
 
+**Alpine packages, Docker images are now removed from the release and are no longer supported in future versions.**
+[#10926](https://github.com/Kong/kong/pull/10926)
+
 #### Core
 
 #### Plugins
