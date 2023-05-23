@@ -874,6 +874,21 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("metrics", function()
+      before_each(function()
+        if proxy_client then
+          proxy_client:close()
+        end
+  
+        assert(helpers.restart_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        }))
+  
+        proxy_client = helpers.proxy_client()
+        proxy_client_grpc = helpers.proxy_client_grpc()
+        shdict_count = #get_shdicts()
+      end)
+
       it("logs over UDP with default metrics", function()
         local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2
 
@@ -906,7 +921,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs over UDP with default metrics with dogstatsd tag_style", function()
-        local metrics_count = DEFAULT_METRICS_COUNT - 6
+        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
@@ -930,7 +945,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs over UDP with default metrics with influxdb tag_style", function()
-        local metrics_count = DEFAULT_METRICS_COUNT - 6
+        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
@@ -953,7 +968,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs over UDP with default metrics with librato tag_style", function()
-        local metrics_count = DEFAULT_METRICS_COUNT - 6
+        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
@@ -977,7 +992,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs over UDP with default metrics with signalfx tag_style", function()
-        local metrics_count = DEFAULT_METRICS_COUNT - 6
+        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
@@ -1002,7 +1017,7 @@ for _, strategy in helpers.each_strategy() do
 
 
       it("logs over UDP with default metrics and new prefix", function()
-        local metrics_count = DEFAULT_METRICS_COUNT
+        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2
         -- shdict_usage metrics, can't test again in 1 minutes
         -- metrics_count = metrics_count + shdict_count * 2
 
@@ -1036,7 +1051,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs over UDP with default metrics and new prefix with dogstatsd tag_style", function()
-        local metrics_count = DEFAULT_METRICS_COUNT - 6
+        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
@@ -1060,7 +1075,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs over UDP with default metrics and new prefix with influxdb tag_style", function()
-        local metrics_count = DEFAULT_METRICS_COUNT - 6
+        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
@@ -1084,7 +1099,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs over UDP with default metrics and new prefix with librato tag_style", function()
-        local metrics_count = DEFAULT_METRICS_COUNT - 6
+        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
@@ -1108,7 +1123,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs over UDP with default metrics and new prefix with signalfx tag_style", function()
-        local metrics_count = DEFAULT_METRICS_COUNT - 6
+        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
@@ -1132,7 +1147,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("request_size customer identifier with dogstatsd tag_style ", function()
-        local thread = helpers.udp_server(UDP_PORT, 1, 2)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
         local response = assert(proxy_client:send {
           method = "GET",
           path = "/request?apikey=kong",
@@ -1144,14 +1159,14 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, res = thread:join()
         assert.True(ok)
-        assert.matches("kong.request.size:%d+|c|#.*", res)
-        assert.not_matches(".*workspace=%s+-%s+-.*", res)
-        assert.matches(".*service:.*-.*-.*", res)
-        assert.matches(".*consumer:.*-.*-.*", res)
+        assert.contains("kong.request.size:%d+|c|#.*", res, true)
+        assert.not_contains(".*workspace=%s+-%s+-.*", res, true)
+        assert.contains(".*service:.*-.*-.*", res, true)
+        assert.contains(".*consumer:.*-.*-.*", res, true)
       end)
 
       it("request_size customer identifier with influxdb tag_style ", function()
-        local thread = helpers.udp_server(UDP_PORT, 1, 2)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
         local response = assert(proxy_client:send {
           method = "GET",
           path = "/request?apikey=kong",
@@ -1163,14 +1178,14 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, res = thread:join()
         assert.True(ok)
-        assert.matches("kong.request.size,.*:%d+|c", res)
-        assert.not_matches(".*workspace=%s+-%s+-.*", res)
-        assert.matches(".*service=.*-.*-.*", res)
-        assert.matches(".*consumer=.*-.*-.*", res)
+        assert.contains("kong.request.size,.*:%d+|c", res, true)
+        assert.not_contains(".*workspace=%s+-%s+-.*", res, true)
+        assert.contains(".*service=.*-.*-.*", res, true)
+        assert.contains(".*consumer=.*-.*-.*", res, true)
       end)
 
       it("request_size customer identifier with librato tag_style ", function()
-        local thread = helpers.udp_server(UDP_PORT, 1, 2)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
         local response = assert(proxy_client:send {
           method = "GET",
           path = "/request?apikey=kong",
@@ -1182,14 +1197,14 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, res = thread:join()
         assert.True(ok)
-        assert.matches("kong.request.size#.*:%d+|c", res)
-        assert.not_matches(".*workspace=%s+-%s+-.*", res)
-        assert.matches(".*service=.*-.*-.*", res)
-        assert.matches(".*consumer=.*-.*-.*", res)
+        assert.contains("kong.request.size#.*:%d+|c", res, true)
+        assert.not_contains(".*workspace=%s+-%s+-.*", res, true)
+        assert.contains(".*service=.*-.*-.*", res, true)
+        assert.contains(".*consumer=.*-.*-.*", res, true)
       end)
 
       it("request_size customer identifier with signalfx tag_style ", function()
-        local thread = helpers.udp_server(UDP_PORT, 1, 2)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
         local response = assert(proxy_client:send {
           method = "GET",
           path = "/request?apikey=kong",
@@ -1201,14 +1216,14 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, res = thread:join()
         assert.True(ok)
-        assert.matches("kong.request.size%[.*%]:%d+|c", res)
-        assert.not_matches(".*workspace=%s+-%s+-.*", res)
-        assert.matches(".*service=.*-.*-.*", res)
-        assert.matches(".*consumer=.*-.*-.*", res)
+        assert.contains("kong.request.size%[.*%]:%d+|c", res, true)
+        assert.not_contains(".*workspace=%s+-%s+-.*", res, true)
+        assert.contains(".*service=.*-.*-.*", res, true)
+        assert.contains(".*consumer=.*-.*-.*", res, true)
       end)
 
       it("request_count", function()
-        local thread = helpers.udp_server(UDP_PORT, 1, 2)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -1221,11 +1236,11 @@ for _, strategy in helpers.each_strategy() do
         local ok, res, err = thread:join()
         assert(ok, res)
         assert(res, err)
-        assert.equal("kong.service.statsd5.request.count:1|c", res)
+        assert.contains("kong.service.statsd5.request.count:1|c", res, true)
       end)
 
       it("status_count", function()
-        local thread = helpers.udp_server(UDP_PORT, 2,2)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 2, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -1237,11 +1252,11 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, res = thread:join()
         assert.True(ok)
-        assert.contains("kong.service.statsd3.status.200:1|c", res)
+        assert.contains("kong.service.statsd3.status.200:1|c", res, true)
       end)
 
       it("request_size", function()
-        local thread = helpers.udp_server(UDP_PORT)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -1253,11 +1268,11 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, res = thread:join()
         assert.True(ok)
-        assert.matches("kong.service.statsd4.request.size:%d+|c", res)
+        assert.contains("kong.service.statsd4.request.size:%d+|c", res, true)
       end)
 
       it("latency", function()
-        local thread = helpers.udp_server(UDP_PORT)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -1269,11 +1284,11 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, res = thread:join()
         assert.True(ok)
-        assert.matches("kong.service.statsd2.latency:.*|ms", res)
+        assert.contains("kong.service.statsd2.latency:.*|ms", res, true)
       end)
 
       it("response_size", function()
-        local thread = helpers.udp_server(UDP_PORT)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -1285,11 +1300,11 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, res = thread:join()
         assert.True(ok)
-        assert.matches("kong.service.statsd6.response.size:%d+|c", res)
+        assert.contains("kong.service.statsd6.response.size:%d+|c", res, true)
       end)
 
       it("upstream_latency", function()
-        local thread = helpers.udp_server(UDP_PORT)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -1301,11 +1316,11 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, res = thread:join()
         assert.True(ok)
-        assert.matches("kong.service.statsd7.upstream_latency:.*|ms", res)
+        assert.contains("kong.service.statsd7.upstream_latency:.*|ms", res, true)
       end)
 
       it("kong_latency", function()
-        local thread = helpers.udp_server(UDP_PORT)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -1317,11 +1332,11 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, res = thread:join()
         assert.True(ok)
-        assert.matches("kong.service.statsd8.kong_latency:.*|ms", res)
+        assert.contains("kong.service.statsd8.kong_latency:.*|ms", res, true)
       end)
 
       it("unique_users", function()
-        local thread = helpers.udp_server(UDP_PORT)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
         local response = assert(proxy_client:send {
           method = "GET",
           path = "/request?apikey=kong",
@@ -1333,11 +1348,11 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, res = thread:join()
         assert.True(ok)
-        assert.matches("kong.service.statsd9.user.uniques:robert|s", res)
+        assert.contains("kong.service.statsd9.user.uniques:robert|s", res, true)
       end)
 
       it("status_count_per_user", function()
-        local thread = helpers.udp_server(UDP_PORT, 1, 2)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1350,11 +1365,11 @@ for _, strategy in helpers.each_strategy() do
         local ok, res, err = thread:join()
         assert(ok, res)
         assert(res, err)
-        assert.matches("kong.service.statsd10.user.robert.status.200:1|c", res)
+        assert.contains("kong.service.statsd10.user.robert.status.200:1|c", res, true)
       end)
 
       it("request_per_user", function()
-        local thread = helpers.udp_server(UDP_PORT, 1, 2)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1367,11 +1382,11 @@ for _, strategy in helpers.each_strategy() do
         local ok, res, err = thread:join()
         assert(ok, res)
         assert(res, err)
-        assert.matches("kong.service.statsd11.user.bob.request.count:1|c", res)
+        assert.contains("kong.service.statsd11.user.bob.request.count:1|c", res, true)
       end)
 
       it("latency as gauge", function()
-        local thread = helpers.udp_server(UDP_PORT)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1383,11 +1398,11 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, res = thread:join()
         assert.True(ok)
-        assert.matches("kong%.service.statsd12.latency:%d+|g", res)
+        assert.contains("kong%.service.statsd12.latency:%d+|g", res, true)
       end)
 
       it("consumer by consumer_id", function()
-        local thread = helpers.udp_server(UDP_PORT, 1, 2)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1400,11 +1415,11 @@ for _, strategy in helpers.each_strategy() do
         local ok, res, err = thread:join()
         assert(ok, res)
         assert(res, err)
-        assert.matches("^kong.service.statsd14.user.uniques:" .. uuid_pattern .. "|s", res)
+        assert.contains("^kong.service.statsd14.user.uniques:" .. uuid_pattern .. "|s", res, true)
       end)
 
       it("status_count_per_user_per_route", function()
-        local thread = helpers.udp_server(UDP_PORT, 1, 2)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1417,11 +1432,11 @@ for _, strategy in helpers.each_strategy() do
         local ok, res, err = thread:join()
         assert(ok, res)
         assert(res, err)
-        assert.matches("kong.route." .. uuid_pattern .. ".user.bob.status.200:1|c", res)
+        assert.contains("kong.route." .. uuid_pattern .. ".user.bob.status.200:1|c", res, true)
       end)
 
       it("status_count_per_workspace", function()
-        local thread = helpers.udp_server(UDP_PORT, 1, 2)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1434,11 +1449,11 @@ for _, strategy in helpers.each_strategy() do
         local ok, res, err = thread:join()
         assert(ok, res)
         assert(res, err)
-        assert.matches("kong.service.statsd16.workspace." .. uuid_pattern .. ".status.200:1|c", res)
+        assert.contains("kong.service.statsd16.workspace." .. uuid_pattern .. ".status.200:1|c", res, true)
       end)
 
       it("status_count_per_workspace", function()
-        local thread = helpers.udp_server(UDP_PORT, 1, 2)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1451,7 +1466,8 @@ for _, strategy in helpers.each_strategy() do
         local ok, res, err = thread:join()
         assert(ok, res)
         assert(res, err)
-        assert.matches("kong.service.statsd17.workspace." .. workspace_name_pattern .. ".status.200:1|c", res)
+        assert.contains("kong.service.statsd17.workspace." .. 
+          workspace_name_pattern .. ".status.200:1|c", res, true)
       end)
 
       it("logs over TCP with one metric", function()
@@ -1472,7 +1488,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("combines udp packets", function()
-        local thread = helpers.udp_server(UDP_PORT, 1, 2)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1486,17 +1502,17 @@ for _, strategy in helpers.each_strategy() do
         assert(ok, res)
         assert(res, err)
         -- doesn't has single of metrics packet
-        assert.not_matches("^kong.service.statsd19.request.count:%d+|c$", res)
-        assert.not_matches("^kong.service.statsd19.upstream_latency:%d+|ms$", res)
-        assert.not_matches("^kong.service.statsd19.kong_latency:%d+|ms$", res)
+        assert.not_contains("^kong.service.statsd19.request.count:%d+|c$", res, true)
+        assert.not_contains("^kong.service.statsd19.upstream_latency:%d+|ms$", res, true)
+        assert.not_contains("^kong.service.statsd19.kong_latency:%d+|ms$", res, true)
         -- has a combined multi-metrics packet
-        assert.matches("^kong.service.statsd19.request.count:%d+|c\n" ..
+        assert.contains("^kong.service.statsd19.request.count:%d+|c\n" ..
           "kong.service.statsd19.upstream_latency:%d+|ms\n" ..
-          "kong.service.statsd19.kong_latency:%d+|ms$", res)
+          "kong.service.statsd19.kong_latency:%d+|ms$", res, true)
       end)
 
       it("combines and splits udp packets", function()
-        local thread = helpers.udp_server(UDP_PORT, 2, 2)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 2, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1522,7 +1538,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("throws an error if udp_packet_size is too small", function()
-        local thread = helpers.udp_server(UDP_PORT, 3, 2)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 3, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1545,7 +1561,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs service by service_id", function()
-        local thread = helpers.udp_server(UDP_PORT, 2, 2)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 2, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1563,7 +1579,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs service by service_host", function()
-        local thread = helpers.udp_server(UDP_PORT, 2, 2)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 2, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1581,7 +1597,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs service by service_name", function()
-        local thread = helpers.udp_server(UDP_PORT, 2, 2)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 2, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1601,7 +1617,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs service by service_name_or_host falls back to service host when service name is not set", function()
-        local thread = helpers.udp_server(UDP_PORT, 2, 2)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 2, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1621,7 +1637,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs service by service_name emits unnamed if service name is not set", function()
-        local thread = helpers.udp_server(UDP_PORT, 2, 2)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 2, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1830,7 +1846,7 @@ for _, strategy in helpers.each_strategy() do
         local hostname = get_hostname()
         hostname = string.gsub(hostname, "%.", "_")
 
-        local thread = helpers.udp_server(UDP_PORT, 1, 2)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1843,7 +1859,7 @@ for _, strategy in helpers.each_strategy() do
         local ok, metrics, err = thread:join()
         assert(ok, metrics)
         assert(metrics, err)
-        assert.matches("kong.node." .. hostname .. ".service.unnamed.request.count:1|c", metrics, nil, true)
+        assert.contains("kong.node." .. hostname .. ".service.unnamed.request.count:1|c", metrics, nil, true)
       end)
     end)
 
@@ -2047,7 +2063,7 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("kong.service.grpc_statsd1.kong_latency:%d*|ms", metrics, true)
       end)
       it("latency as gauge", function()
-        local thread = helpers.udp_server(UDP_PORT)
+        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
 
         local ok, resp = proxy_client_grpc({
           service = "hello.HelloService.SayHello",
@@ -2063,7 +2079,7 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, res = thread:join()
         assert.True(ok)
-        assert.matches("kong%.service%.grpc_statsd2%.latency:%d+|g", res)
+        assert.contains("kong%.service%.grpc_statsd2%.latency:%d+|g", res, true)
       end)
     end)
   end)
