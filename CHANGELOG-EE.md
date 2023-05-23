@@ -6,6 +6,8 @@
 
 ### Deprecations
 
+**Alpine packages, Docker images are now removed from the release and are no longer supported in future versions.**
+
 ### Dependencies
 
 * `lua-resty-ljsonschema` is bumped from 1.1.3 to 1.14
