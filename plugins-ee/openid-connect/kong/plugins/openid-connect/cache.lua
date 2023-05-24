@@ -20,6 +20,7 @@ local workspaces    = require "kong.workspaces"
 local concat        = table.concat
 local insert        = table.insert
 local ipairs        = ipairs
+local pairs         = pairs
 local encode_base64 = ngx.encode_base64
 local type          = type
 local ngx           = ngx
@@ -728,16 +729,16 @@ end
 
 local function log_multiple_matches(subject, matches)
   local match_info = {}
-
   for _, match in pairs(matches) do
-    table.insert(match_info, fmt("%s (id: %s)", match.username, match.id))
+    insert(match_info, fmt("%s (id: %s)", match.username, match.id))
   end
   log.notice(fmt("multiple consumers match '%s' by username case-insensitively: %s",
-                 subject,
-                 table.concat(match_info, ", ")))
+                 subject, concat(match_info, ", ")))
 end
 
+
 local consumers = {}
+
 
 local function consumers_load(subject, key, by_username_ignore_case)
   if not subject or subject == "" then
