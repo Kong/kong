@@ -16,7 +16,7 @@ end
 local mock_tls_server_port = helpers.get_available_port()
 
 local fixtures = {
-  dns_mock = helpers.dns_mock.new(),
+  dns_mock = helpers.dns_mock.new({ mocks_only = true }),
   http_mock = {
     test_upstream_tls_server = fmt([[
       server {
