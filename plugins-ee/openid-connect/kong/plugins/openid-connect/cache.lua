@@ -344,7 +344,7 @@ local function normalize_issuer(issuer)
 end
 
 
-local function discover(issuer, opts, now, issuer_entity)
+local function discover(issuer, opts, issuer_entity)
   opts = opts or {}
 
   local configuration_decoded
@@ -506,7 +506,8 @@ local function discover(issuer, opts, now, issuer_entity)
     end
   end
 
-  configuration_decoded.updated_at = now or time()
+  local updated_at = time()
+  configuration_decoded.updated_at = updated_at
 
   conf, err = json.encode(configuration_decoded)
   if type(conf) ~= "string" then
@@ -521,6 +522,7 @@ local function discover(issuer, opts, now, issuer_entity)
 
       conf = json.encode({
         issuer = issuer,
+        updated_at = updated_at,
       })
     end
   end
@@ -573,7 +575,7 @@ function issuers.rediscover(issuer, opts)
     end
   end
 
-  local conf, jwks = discover(issuer, opts, now, issuer_entity)
+  local conf, jwks = discover(issuer, opts, issuer_entity)
   if not conf or not jwks then
     log.notice("rediscovery failed")
   end
@@ -623,16 +625,23 @@ function issuers.rediscover(issuer, opts)
     return data.keys
 
   else
+    local created_at = time()
+
+    conf = conf or json.encode({
+      issuer = issuer,
+      updated_at = created_at,
+    })
+
     local data = {
       issuer        = issuer,
-      configuration = conf or {},
+      configuration = conf,
       keys          = jwks or {},
       secret        = get_secret(),
     }
 
     if kong.configuration.database == "off" then
       data.id = utils.uuid()
-      data.created_at = now
+      data.created_at = created_at
       discovery_data.n = discovery_data.n + 1
       discovery_data[discovery_data.n] = data
       discovery_data[data.id] = data
@@ -665,9 +674,7 @@ local function issuers_init(issuer, opts)
     return issuer_entity
   end
 
-  local now = time()
-
-  local conf, jwks = discover(issuer, opts, now, issuer_entity)
+  local conf, jwks = discover(issuer, opts, issuer_entity)
   if not conf then
     return nil, "discovery failed"
   end
@@ -676,6 +683,13 @@ local function issuers_init(issuer, opts)
   if issuer_entity then
     return issuer_entity
   end
+
+  local created_at = time()
+
+  conf = conf or json.encode({
+    issuer = issuer,
+    updated_at = created_at,
+  })
 
   local data = {
     issuer        = issuer,
@@ -686,7 +700,7 @@ local function issuers_init(issuer, opts)
 
   if kong.configuration.database == "off" then
     data.id = utils.uuid()
-    data.created_at = now
+    data.created_at = created_at
     discovery_data.n = discovery_data.n + 1
     discovery_data[discovery_data.n] = data
     discovery_data[data.id] = data
@@ -707,7 +721,7 @@ local function issuers_init(issuer, opts)
       end
 
       if not data.created_at then
-        data.created_at = time()
+        data.created_at = created_at
       end
     end
   end
