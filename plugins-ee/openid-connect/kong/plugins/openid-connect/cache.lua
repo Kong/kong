@@ -623,6 +623,12 @@ function issuers.rediscover(issuer, opts)
       discovery_data[data.id] = data
       discovery_data[data.issuer] = data
 
+      local key = cache_key(data.issuer, "oic_issuers")
+      cache_invalidate(key)
+      cache_get(key, nil, function()
+        return data
+      end)
+
     else
       local stored_data, err = kong.db.oic_issuers:upsert({ id = issuer_entity.id }, data)
       if not stored_data then
@@ -657,6 +663,12 @@ function issuers.rediscover(issuer, opts)
       discovery_data[discovery_data.n] = data
       discovery_data[data.id] = data
       discovery_data[data.issuer] = data
+
+      local key = cache_key(data.issuer, "oic_issuers")
+      cache_invalidate(key)
+      cache_get(key, nil, function()
+        return data
+      end)
 
     else
       local stored_data, err = kong.db.oic_issuers:upsert_by_issuer(data.issuer, data)
