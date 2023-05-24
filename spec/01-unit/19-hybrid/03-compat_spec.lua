@@ -344,14 +344,12 @@ describe("kong.clustering.compat", function()
 
 
   for _, strategy in helpers.each_strategy() do
-    -- bypass test case against cassandra backend
-    local compat_describe = (strategy ~= "cassandra") and describe or pending
 
-    compat_describe("[#" .. strategy .. "]: check compat for entities those have `updated_at` field", function()
+    describe("[#" .. strategy .. "]: check compat for entities those have `updated_at` field", function()
       local bp, db, entity_names
 
       setup(function()
-        -- excludes entities not exportable: clustering_data_planes, 
+        -- excludes entities not exportable: clustering_data_planes,
         entity_names = {
           "services",
           "routes",

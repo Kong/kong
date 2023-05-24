@@ -17,10 +17,4 @@ return {
       $$;
     ]],
   },
-
-  cassandra = {
-    up = [[
-      ALTER TABLE routes ADD https_redirect_status_code int;
-    ]],
-  },
 }

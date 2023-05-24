@@ -136,7 +136,6 @@ function DB:init_connector()
   -- I/O with the DB connector singleton
   -- Implementation up to the strategy's connector. A place for:
   --   - connection check
-  --   - cluster retrieval (cassandra)
   --   - prepare statements
   --   - nop (default)
 

@@ -12,8 +12,10 @@
 
 ### Breaking Changes
 
-**Alpine packages, Docker images are now removed from the release and are no longer supported in future versions.**
-[#10926](https://github.com/Kong/kong/pull/10926)
+- :warning: Alpine packages and Docker images based on Alpine are no longer supported
+  [#10926](https://github.com/Kong/kong/pull/10926)
+- :warning: Cassandra as a datastore for Kong is no longer supported
+  [#10931](https://github.com/Kong/kong/pull/10931)
 
 #### Core
 

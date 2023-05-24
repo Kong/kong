@@ -319,20 +319,6 @@ describe("NGINX conf compiler", function()
       local nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.matches("client_body_buffer_size%s+50m", nginx_conf)
     end)
-    it("writes kong_cassandra shm if using Cassandra", function()
-      local conf = assert(conf_loader(nil, {
-        database = "cassandra",
-      }))
-      local nginx_conf = prefix_handler.compile_kong_conf(conf)
-      assert.matches("lua_shared_dict%s+kong_cassandra", nginx_conf)
-    end)
-    it("does not write kong_cassandra shm if not using Cassandra", function()
-      local conf = assert(conf_loader(nil, {
-        database = "postgres",
-      }))
-      local nginx_conf = prefix_handler.compile_kong_conf(conf)
-      assert.not_matches("lua_shared_dict%s+kong_cassandra", nginx_conf)
-    end)
 
     describe("user directive", function()
       it("is included by default if the kong user/group exist", function()

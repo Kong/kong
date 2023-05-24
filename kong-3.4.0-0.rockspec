@@ -22,7 +22,6 @@ dependencies = {
   "multipart == 0.5.9",
   "version == 1.0.1",
   "kong-lapis == 1.14.0.2",
-  "lua-cassandra == 1.5.2",
   "pgmoon == 1.16.0",
   "luatz == 0.4",
   "lua_system_constants == 0.1.4",
@@ -82,7 +81,6 @@ build = {
     ["kong.clustering.tls"] = "kong/clustering/tls.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
-    ["kong.cluster_events.strategies.cassandra"] = "kong/cluster_events/strategies/cassandra.lua",
     ["kong.cluster_events.strategies.postgres"] = "kong/cluster_events/strategies/postgres.lua",
     ["kong.cluster_events.strategies.off"] = "kong/cluster_events/strategies/off.lua",
 
@@ -219,9 +217,6 @@ build = {
     ["kong.db.schema.topological_sort"] = "kong/db/schema/topological_sort.lua",
     ["kong.db.strategies"] = "kong/db/strategies/init.lua",
     ["kong.db.strategies.connector"] = "kong/db/strategies/connector.lua",
-    ["kong.db.strategies.cassandra"] = "kong/db/strategies/cassandra/init.lua",
-    ["kong.db.strategies.cassandra.connector"] = "kong/db/strategies/cassandra/connector.lua",
-    ["kong.db.strategies.cassandra.tags"] = "kong/db/strategies/cassandra/tags.lua",
     ["kong.db.strategies.postgres"] = "kong/db/strategies/postgres/init.lua",
     ["kong.db.strategies.postgres.connector"] = "kong/db/strategies/postgres/connector.lua",
     ["kong.db.strategies.postgres.tags"] = "kong/db/strategies/postgres/tags.lua",
@@ -251,7 +246,6 @@ build = {
     ["kong.db.migrations.core.018_310_to_320"] = "kong/db/migrations/core/018_310_to_320.lua",
     ["kong.db.migrations.core.019_320_to_330"] = "kong/db/migrations/core/019_320_to_330.lua",
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
-    ["kong.db.migrations.operations.210_to_211"] = "kong/db/migrations/operations/210_to_211.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",
     ["kong.db.migrations.operations.280_to_300"] = "kong/db/migrations/operations/280_to_300.lua",
     ["kong.db.migrations.migrate_path_280_300"] = "kong/db/migrations/migrate_path_280_300.lua",
@@ -506,7 +500,6 @@ build = {
     ["kong.plugins.zipkin.schema"] = "kong/plugins/zipkin/schema.lua",
     ["kong.plugins.zipkin.request_tags"] = "kong/plugins/zipkin/request_tags.lua",
 
-    ["kong.plugins.request-transformer.migrations.cassandra"] = "kong/plugins/request-transformer/migrations/cassandra.lua",
     ["kong.plugins.request-transformer.migrations.postgres"] = "kong/plugins/request-transformer/migrations/postgres.lua",
     ["kong.plugins.request-transformer.migrations.common"] = "kong/plugins/request-transformer/migrations/common.lua",
     ["kong.plugins.request-transformer.handler"] = "kong/plugins/request-transformer/handler.lua",
