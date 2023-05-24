@@ -646,7 +646,7 @@ function issuers.rediscover(issuer, opts)
     local data = {
       issuer        = issuer,
       configuration = conf,
-      keys          = jwks or {},
+      keys          = jwks or "[]",
       secret        = get_secret(),
     }
 
@@ -704,8 +704,8 @@ local function issuers_init(issuer, opts)
 
   local data = {
     issuer        = issuer,
-    configuration = conf or {},
-    keys          = jwks or {},
+    configuration = conf,
+    keys          = jwks or "[]",
     secret        = get_secret(),
   }
 
