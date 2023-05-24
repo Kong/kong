@@ -231,14 +231,14 @@ end
 
 local function init_worker()
   if kong.db and kong.db.oic_issuers and ngx.worker.id() == 0 then
-    for discovery, err in kong.db.oic_issuers:each() do
+    for issuer_entity, err in kong.db.oic_issuers:each() do
       if err then
         log.warn("warmup of issuer cache failed with: ", err)
         break
       end
 
-      local key = cache_key(discovery.issuer, "oic_issuers")
-      cache_get(key, nil, cache_issuer, discovery)
+      local key = cache_key(issuer_entity.issuer, "oic_issuers")
+      cache_get(key, nil, cache_issuer, issuer_entity)
     end
   end
 
@@ -344,22 +344,23 @@ local function normalize_issuer(issuer)
 end
 
 
-local function discover(issuer, opts, now, previous)
+local function discover(issuer, opts, now, issuer_entity)
   opts = opts or {}
 
-  local cdec
+  local configuration_decoded
 
   log.notice("loading configuration for ", issuer, " using discovery")
-  local claims, err = configuration.load(issuer, opts)
-  if type(claims) ~= "string" then
-    if previous then
+
+  local conf, err = configuration.load(issuer, opts)
+  if type(conf) ~= "string" then
+    if issuer_entity then
       log.notice("loading configuration for ", issuer, " using discovery failed: ", err or "unknown error",
                  " (falling back to previous configuration)")
-      cdec, err = json.decode(previous.configuration)
-      if type(cdec) ~= "table" then
+      configuration_decoded, err = json.decode(issuer_entity.configuration)
+      if type(configuration_decoded) ~= "table" then
         log.notice("decoding previous discovery document failed: ", err or "unknown error",
                    " (falling back to empty configuration)")
-        cdec = {
+        configuration_decoded = {
           issuer = issuer,
         }
       end
@@ -367,23 +368,23 @@ local function discover(issuer, opts, now, previous)
     else
       log.notice("loading configuration for ", issuer, " using discovery failed: ", err or "unknown error",
                  " (falling back to empty configuration)")
-      cdec = {
+      configuration_decoded = {
         issuer = issuer,
       }
     end
 
   else
-    cdec, err = json.decode(claims)
-    if type(cdec) ~= "table" then
-      if previous then
+    configuration_decoded, err = json.decode(conf)
+    if type(configuration_decoded) ~= "table" then
+      if issuer_entity then
         log.notice("decoding discovery document failed: ", err or "unknown error",
                    " (falling back to previous configuration)")
 
-        cdec, err = json.decode(previous.configuration)
-        if type(cdec) ~= "table" then
+        configuration_decoded, err = json.decode(issuer_entity.configuration)
+        if type(configuration_decoded) ~= "table" then
           log.notice("decoding previous discovery document failed: ", err or "unknown error",
                      " (falling back to empty configuration)")
-          cdec = {
+          configuration_decoded = {
             issuer = issuer,
           }
         end
@@ -391,14 +392,14 @@ local function discover(issuer, opts, now, previous)
       else
         log.notice("decoding discovery document failed: ", err or "unknown error",
                    " (falling back to empty configuration)")
-        cdec = {
+        configuration_decoded = {
           issuer = issuer,
         }
       end
     end
   end
 
-  local jwks_uri = cdec.jwks_uri
+  local jwks_uri = configuration_decoded.jwks_uri
   local jwks
   if type(jwks_uri) == "string" then
     log.notice("loading jwks from ", jwks_uri)
@@ -417,17 +418,17 @@ local function discover(issuer, opts, now, previous)
     end
   end
 
-  local jdec = cdec.jwks
-  if type(jdec) == "table" then
-    if type(jdec.keys) == "table" then
-      jdec = jdec.keys
+  local configuration_jwks = configuration_decoded.jwks
+  if type(configuration_jwks) == "table" then
+    if type(configuration_jwks.keys) == "table" then
+      configuration_jwks = configuration_jwks.keys
     end
 
     if type(jwks) ~= "table" then
-      jwks = jdec
+      jwks = configuration_jwks
 
     else
-      for _, jwk in ipairs(jdec) do
+      for _, jwk in ipairs(configuration_jwks) do
         insert(jwks, jwk)
       end
     end
@@ -482,10 +483,10 @@ local function discover(issuer, opts, now, previous)
   if type(jwks) == "table" then
     jwks, err = json.encode(jwks)
     if type(jwks) ~= "string" then
-      if previous then
+      if issuer_entity then
         log.notice("encoding jwks keys failed: ", err or "unknown error",
                    " (falling back to previous keys)")
-        jwks = previous.jwks
+        jwks = issuer_entity.jwks
 
       else
         log.notice("encoding jwks keys failed: ", err or "unknown error",
@@ -495,9 +496,9 @@ local function discover(issuer, opts, now, previous)
     end
 
   else
-    if previous then
+    if issuer_entity then
       log.notice("no keys found (falling back to previous keys)")
-      jwks = previous.keys
+      jwks = issuer_entity.keys
 
     else
       log.notice("no keys found (falling back to empty keys)")
@@ -505,26 +506,26 @@ local function discover(issuer, opts, now, previous)
     end
   end
 
-  cdec.updated_at = now or time()
+  configuration_decoded.updated_at = now or time()
 
-  claims, err = json.encode(cdec)
-  if type(claims) ~= "string" then
-    if previous then
+  conf, err = json.encode(configuration_decoded)
+  if type(conf) ~= "string" then
+    if issuer_entity then
       log.notice("encoding discovery document failed: ", err or "unknown error",
                  " (falling back to previous configuration)")
-      claims = previous.configuration
+      conf = issuer_entity.configuration
 
     else
       log.notice("encoding discovery document failed: ", err or "unknown error",
                  " (falling back to empty configuration)")
 
-      claims = json.encode({
+      conf = json.encode({
         issuer = issuer,
       })
     end
   end
 
-  return claims, jwks
+  return conf, jwks
 end
 
 
@@ -533,12 +534,14 @@ local function issuer_select(issuer)
     return discovery_data[issuer]
   end
 
-  local discovery, err = kong.db.oic_issuers:select_by_issuer(issuer)
+  log.notice("loading configuration for ", issuer, " from database")
+
+  local issuer_entity, err = kong.db.oic_issuers:select_by_issuer(issuer)
   if err then
     log.notice("unable to load discovery data (", err, ")")
   end
 
-  return discovery
+  return issuer_entity
 end
 
 
@@ -546,53 +549,50 @@ local issuers = {}
 
 
 function issuers.rediscover(issuer, opts)
+  issuer = normalize_issuer(issuer)
   opts = opts or {}
 
-  issuer = normalize_issuer(issuer)
-
-  log.notice("loading configuration for ", issuer, " from database")
-
-  local discovery = issuer_select(issuer)
+  local issuer_entity = issuer_select(issuer)
 
   local now = time()
 
-  if discovery then
-    local cdec, err = json.decode(discovery.configuration)
-    if not cdec then
+  if issuer_entity then
+    local configuration_decoded, err = json.decode(issuer_entity.configuration)
+    if not configuration_decoded then
       return nil, "decoding discovery document failed with " .. err
     end
 
     local rediscovery_lifetime = opts.rediscovery_lifetime or 30
 
-    local updated_at = cdec.updated_at or 0
+    local updated_at = configuration_decoded.updated_at or 0
     local secs_passed = now - updated_at
     if secs_passed < rediscovery_lifetime then
-      log.notice("openid connect rediscovery was done recently (", rediscovery_lifetime - secs_passed,
+      log.notice("rediscovery was done recently (", rediscovery_lifetime - secs_passed,
                  " seconds until next rediscovery)")
-      return discovery.keys
+      return issuer_entity.keys
     end
   end
 
-  local claims, jwks = discover(issuer, opts, now, discovery)
-  if not claims or not jwks then
-    log.notice("openid connect rediscovery failed")
+  local conf, jwks = discover(issuer, opts, now, issuer_entity)
+  if not conf or not jwks then
+    log.notice("rediscovery failed")
   end
 
-  if not discovery then
-    discovery = issuer_select(issuer)
+  if not issuer_entity then
+    issuer_entity = issuer_select(issuer)
   end
 
-  if discovery then
+  if issuer_entity then
     local data = {
-      issuer        = discovery.issuer,
-      configuration = claims or discovery.configuration,
-      keys          = jwks   or discovery.keys,
-      secret        = discovery.secret,
+      issuer        = issuer_entity.issuer,
+      configuration = conf or issuer_entity.configuration,
+      keys          = jwks or issuer_entity.keys,
+      secret        = issuer_entity.secret,
     }
 
     if kong.configuration.database == "off" then
-      data.id = discovery.id
-      data.created_at = discovery.created_at
+      data.id = issuer_entity.id
+      data.created_at = issuer_entity.created_at
 
       if discovery_data[data.issuer] then
         for i = 1, discovery_data.n do
@@ -611,7 +611,7 @@ function issuers.rediscover(issuer, opts)
       discovery_data[data.issuer] = data
 
     else
-      local stored_data, err = kong.db.oic_issuers:upsert({ id = discovery.id }, data)
+      local stored_data, err = kong.db.oic_issuers:upsert({ id = issuer_entity.id }, data)
       if not stored_data then
         log.warn("unable to upsert issuer ", data.issuer, " discovery documents in database (",
                  err or "unknown error", ")")
@@ -625,8 +625,8 @@ function issuers.rediscover(issuer, opts)
   else
     local data = {
       issuer        = issuer,
-      configuration = claims or {},
-      keys          = jwks   or {},
+      configuration = conf or {},
+      keys          = jwks or {},
       secret        = get_secret(),
     }
 
@@ -641,12 +641,12 @@ function issuers.rediscover(issuer, opts)
     else
       local stored_data, err = kong.db.oic_issuers:upsert_by_issuer(data.issuer, data)
       if not stored_data then
-        log.warn("unable to upsert issuer ", issuer, " discovery documents in database (", err
-                 or "unknown error", ")")
+        log.warn("unable to upsert issuer ", data.issuer, " discovery documents in database (",
+                 err or "unknown error", ")")
 
-        discovery = issuer_select(issuer)
-        if discovery then
-          return discovery.keys
+        issuer_entity = issuer_select(data.issuer)
+        if issuer_entity then
+          return issuer_entity.keys
         end
 
       else
@@ -660,31 +660,27 @@ end
 
 
 local function issuers_init(issuer, opts)
-  issuer = normalize_issuer(issuer)
-
-  log.notice("loading configuration for ", issuer, " from database")
-
-  local discovery = issuer_select(issuer)
-  if discovery then
-    return discovery
+  local issuer_entity = issuer_select(issuer)
+  if issuer_entity then
+    return issuer_entity
   end
 
   local now = time()
 
-  local claims, jwks = discover(issuer, opts or {}, now)
-  if not claims then
-    return nil, "openid connect discovery failed"
+  local conf, jwks = discover(issuer, opts, now, issuer_entity)
+  if not conf then
+    return nil, "discovery failed"
   end
 
-  discovery = issuer_select(issuer)
-  if discovery then
-    return discovery
+  issuer_entity = issuer_select(issuer)
+  if issuer_entity then
+    return issuer_entity
   end
 
   local data = {
     issuer        = issuer,
-    configuration = claims or {},
-    keys          = jwks   or {},
+    configuration = conf or {},
+    keys          = jwks or {},
     secret        = get_secret(),
   }
 
@@ -701,9 +697,9 @@ local function issuers_init(issuer, opts)
     if not stored_data then
       log.err("unable to upsert ", data.issuer, " discovery documents in database (", err, ")")
 
-      discovery = issuer_select(data.issuer)
-      if discovery then
-        return discovery
+      issuer_entity = issuer_select(data.issuer)
+      if issuer_entity then
+        return issuer_entity
       end
 
       if not data.id then
