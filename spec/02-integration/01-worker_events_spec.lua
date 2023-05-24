@@ -2,14 +2,16 @@ local helpers = require "spec.helpers"
 
 describe("worker_events", function()
   local strategy = "off"
+  local business_port
 
   lazy_setup(function()
+    business_port = helpers.get_available_port()
     local fixtures = {
       http_mock = {
         worker_events = [[
           server {
             server_name example.com;
-            listen 18080;
+            listen %s;
 
             location = /test {
               content_by_lua_block {
@@ -80,6 +82,8 @@ describe("worker_events", function()
       }
     }
 
+    fixtures.http_mock.worker_events = string.format(fixtures.http_mock.worker_events, business_port)
+
     assert(helpers.start_kong({
       database   = strategy,
       nginx_conf = "spec/fixtures/custom_nginx.template"
@@ -87,11 +91,11 @@ describe("worker_events", function()
   end)
 
   lazy_teardown(function ()
-    -- assert(helpers.stop_kong())
+    assert(helpers.stop_kong())
   end)
 
   it("payload too big", function()
-    local res = helpers.proxy_client(nil, 18080):get("/test", {
+    local res = helpers.proxy_client(nil, business_port):get("/test", {
       headers = {
         host = "example.com"
       }
