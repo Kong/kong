@@ -7,11 +7,11 @@
 
 local validators = require("kong.plugins.request-validator.validators")
 local cjson = require("cjson.safe").new()
-local stringx = require "pl.stringx"
 local typedefs = require "kong.db.schema.typedefs"
+local mime_type = require "kong.tools.mime_type"
+local nkeys = require "table.nkeys"
 
-local match = string.match
-local split = stringx.split
+local parse_mime_type = mime_type.parse_mime_type
 
 cjson.decode_array_with_array_mt(true)
 
@@ -93,25 +93,15 @@ local function validate_content_type(entity)
     return false, "content type cannot be empty"
   end
 
-  local parts = split(entity, ";")
-  local parts_n = #parts
-  if parts_n > 2 then
+  local t, _, params = parse_mime_type(entity)
+  if not t then
+    return false, "invalid value: " .. entity
+  end
+
+  if params and nkeys(params) > 1 then
     -- RFC does not claim the behavior of multiple parameters.
     -- Hence supports only one parameter for now(normally is 'charset').
     return false, "does not support multiple parameters: " .. entity
-  end
-  for i = 2, parts_n do
-    local p = parts[i]
-    local sub_parts = split(p, "=")
-    if #sub_parts ~= 2 then
-      return false, "invalid value: " .. entity
-    end
-  end
-
-  local mime_type = parts[1]
-  if mime_type == nil or mime_type == ""
-    or not match(mime_type, "^[^%s]+%/[^ ;]+$") then
-    return false, "invalid value: " .. entity
   end
 
   return true
