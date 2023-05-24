@@ -532,7 +532,7 @@ end
 
 
 local function issuer_select(issuer)
-  if discovery_data[issuer] then
+  if kong.configuration.database == "off" and discovery_data[issuer] then
     return discovery_data[issuer]
   end
 
@@ -541,6 +541,17 @@ local function issuer_select(issuer)
   local issuer_entity, err = kong.db.oic_issuers:select_by_issuer(issuer)
   if err then
     log.notice("unable to load discovery data (", err, ")")
+  end
+
+  if kong.configuration.database == "off" and discovery_data[issuer] then
+    return discovery_data[issuer]
+  end
+
+  if kong.configuration.database == "off" and type(issuer_entity) == "table" then
+    discovery_data.n = discovery_data.n + 1
+    discovery_data[discovery_data.n] = issuer_entity
+    discovery_data[issuer_entity.id] = issuer_entity
+    discovery_data[issuer_entity.issuer] = issuer_entity
   end
 
   return issuer_entity
