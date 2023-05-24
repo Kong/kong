@@ -97,7 +97,7 @@ describe("worker_events", function()
   it("payload too big", function()
     local res = helpers.proxy_client(nil, business_port):get("/test", {
       headers = {
-        host = "example.com"
+        host = "example.com",
       }
     })
     assert.res_status(200, res)
