@@ -873,6 +873,11 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
+    local function expected_metrics_count(ecpect_metrics_count)
+      -- shdict_count will dynamic change when nginx conf change
+      return ecpect_metrics_count + shdict_count * 2
+    end
+
     describe("metrics", function()
       before_each(function()
         -- it's important to restart kong between each test
@@ -893,7 +898,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs over UDP with default metrics", function()
-        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2
+        local metrics_count = expected_metrics_count(DEFAULT_METRICS_COUNT)
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
@@ -924,8 +929,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs over UDP with default metrics with dogstatsd tag_style", function()
-        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
-
+        local metrics_count = expected_metrics_count(DEFAULT_METRICS_COUNT - 6)
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
@@ -948,7 +952,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs over UDP with default metrics with influxdb tag_style", function()
-        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
+        local metrics_count = expected_metrics_count(DEFAULT_METRICS_COUNT - 6)
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
@@ -971,8 +975,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs over UDP with default metrics with librato tag_style", function()
-        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
-
+        local metrics_count = expected_metrics_count(DEFAULT_METRICS_COUNT - 6)
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
@@ -995,8 +998,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs over UDP with default metrics with signalfx tag_style", function()
-        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
-
+        local metrics_count = expected_metrics_count(DEFAULT_METRICS_COUNT - 6)
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
@@ -1020,10 +1022,9 @@ for _, strategy in helpers.each_strategy() do
 
 
       it("logs over UDP with default metrics and new prefix", function()
-        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2
+        local metrics_count = expected_metrics_count(DEFAULT_METRICS_COUNT)
         -- shdict_usage metrics, can't test again in 1 minutes
         -- metrics_count = metrics_count + shdict_count * 2
-
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
@@ -1054,8 +1055,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs over UDP with default metrics and new prefix with dogstatsd tag_style", function()
-        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
-
+        local metrics_count = expected_metrics_count(DEFAULT_METRICS_COUNT - 6)
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
@@ -1078,8 +1078,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs over UDP with default metrics and new prefix with influxdb tag_style", function()
-        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
-
+        local metrics_count = expected_metrics_count(DEFAULT_METRICS_COUNT - 6)
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
@@ -1102,8 +1101,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs over UDP with default metrics and new prefix with librato tag_style", function()
-        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
-
+        local metrics_count = expected_metrics_count(DEFAULT_METRICS_COUNT - 6)
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
@@ -1126,8 +1124,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs over UDP with default metrics and new prefix with signalfx tag_style", function()
-        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
-
+        local metrics_count = expected_metrics_count(DEFAULT_METRICS_COUNT - 6)
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
@@ -1150,7 +1147,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("request_size customer identifier with dogstatsd tag_style ", function()
-        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
+        local metrics_count = expected_metrics_count(1)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method = "GET",
           path = "/request?apikey=kong",
@@ -1169,7 +1167,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("request_size customer identifier with influxdb tag_style ", function()
-        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
+        local metrics_count = expected_metrics_count(1)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method = "GET",
           path = "/request?apikey=kong",
@@ -1188,7 +1187,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("request_size customer identifier with librato tag_style ", function()
-        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
+        local metrics_count = expected_metrics_count(1)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method = "GET",
           path = "/request?apikey=kong",
@@ -1207,7 +1207,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("request_size customer identifier with signalfx tag_style ", function()
-        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
+        local metrics_count = expected_metrics_count(1)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method = "GET",
           path = "/request?apikey=kong",
@@ -1226,7 +1227,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("request_count", function()
-        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
+        local metrics_count = expected_metrics_count(1)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -1243,7 +1245,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("status_count", function()
-        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 2, 2)
+        local metrics_count = expected_metrics_count(2)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -1259,7 +1262,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("request_size", function()
-        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
+        local metrics_count = expected_metrics_count(1)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -1275,7 +1279,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("latency", function()
-        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
+        local metrics_count = expected_metrics_count(1)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -1291,7 +1296,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("response_size", function()
-        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
+        local metrics_count = expected_metrics_count(1)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -1307,7 +1313,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("upstream_latency", function()
-        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
+        local metrics_count = expected_metrics_count(1)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -1323,7 +1330,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("kong_latency", function()
-        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
+        local metrics_count = expected_metrics_count(1)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -1339,7 +1347,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("unique_users", function()
-        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
+        local metrics_count = expected_metrics_count(1)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method = "GET",
           path = "/request?apikey=kong",
@@ -1372,7 +1381,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("request_per_user", function()
-        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
+        local metrics_count = expected_metrics_count(1)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1389,7 +1399,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("latency as gauge", function()
-        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
+        local metrics_count = expected_metrics_count(1)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1405,7 +1416,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("consumer by consumer_id", function()
-        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
+        local metrics_count = expected_metrics_count(1)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1422,7 +1434,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("status_count_per_user_per_route", function()
-        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
+        local metrics_count = expected_metrics_count(1)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1439,7 +1452,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("status_count_per_workspace", function()
-        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
+        local metrics_count = expected_metrics_count(1)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1456,7 +1470,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("status_count_per_workspace", function()
-        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
+        local metrics_count = expected_metrics_count(1)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1491,7 +1506,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("combines udp packets", function()
-        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
+        local metrics_count = expected_metrics_count(1)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1515,7 +1531,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("combines and splits udp packets", function()
-        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 2, 2)
+        local metrics_count = expected_metrics_count(2)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1541,7 +1558,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("throws an error if udp_packet_size is too small", function()
-        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 3, 2)
+        local metrics_count = expected_metrics_count(3)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1564,7 +1582,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs service by service_id", function()
-        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 2, 2)
+        local metrics_count = expected_metrics_count(2)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1582,7 +1601,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs service by service_host", function()
-        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 2, 2)
+        local metrics_count = expected_metrics_count(2)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1600,7 +1620,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs service by service_name", function()
-        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 2, 2)
+        local metrics_count = expected_metrics_count(2)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1620,7 +1641,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs service by service_name_or_host falls back to service host when service name is not set", function()
-        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 2, 2)
+        local metrics_count = expected_metrics_count(2)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1640,7 +1662,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs service by service_name emits unnamed if service name is not set", function()
-        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 2, 2)
+        local metrics_count = expected_metrics_count(2)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1671,11 +1694,11 @@ for _, strategy in helpers.each_strategy() do
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
-        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2
 
         proxy_client = helpers.proxy_client()
-
+        local metrics_count = expected_metrics_count(DEFAULT_METRICS_COUNT)
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
+
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1708,11 +1731,10 @@ for _, strategy in helpers.each_strategy() do
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
-        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
-
         proxy_client = helpers.proxy_client()
-
+        local metrics_count = expected_metrics_count(DEFAULT_METRICS_COUNT - 6)
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
+
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1745,8 +1767,7 @@ for _, strategy in helpers.each_strategy() do
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
-        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
-
+        local metrics_count = expected_metrics_count(DEFAULT_METRICS_COUNT - 6)
         proxy_client = helpers.proxy_client()
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
@@ -1782,8 +1803,7 @@ for _, strategy in helpers.each_strategy() do
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
-        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
-
+        local metrics_count = expected_metrics_count(DEFAULT_METRICS_COUNT - 6)
         proxy_client = helpers.proxy_client()
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
@@ -1819,8 +1839,7 @@ for _, strategy in helpers.each_strategy() do
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
-        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
-
+        local metrics_count = expected_metrics_count(DEFAULT_METRICS_COUNT - 6)
         proxy_client = helpers.proxy_client()
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
@@ -1848,8 +1867,9 @@ for _, strategy in helpers.each_strategy() do
       it("prefixes metric names with the hostname", function()
         local hostname = get_hostname()
         hostname = string.gsub(hostname, "%.", "_")
+        local metrics_count = expected_metrics_count(1)
 
-        local thread = helpers.udp_server(UDP_PORT, shdict_count * 2 + 1, 2)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -1875,9 +1895,8 @@ for _, strategy in helpers.each_strategy() do
         }))
 
 
-        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2
-
-        local proxy_client = helpers.proxy_client()
+        local metrics_count = expected_metrics_count(DEFAULT_METRICS_COUNT)
+        proxy_client = helpers.proxy_client()
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
@@ -1908,9 +1927,8 @@ for _, strategy in helpers.each_strategy() do
         }))
 
 
-        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
-
-        local proxy_client = helpers.proxy_client()
+        local metrics_count = expected_metrics_count(DEFAULT_METRICS_COUNT - 6)
+        proxy_client = helpers.proxy_client()
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
@@ -1941,9 +1959,8 @@ for _, strategy in helpers.each_strategy() do
         }))
 
 
-        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
-
-        local proxy_client = helpers.proxy_client()
+        local metrics_count = expected_metrics_count(DEFAULT_METRICS_COUNT - 6)
+        proxy_client = helpers.proxy_client()
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
@@ -1974,9 +1991,8 @@ for _, strategy in helpers.each_strategy() do
         }))
 
 
-        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
-
-        local proxy_client = helpers.proxy_client()
+        local metrics_count = expected_metrics_count(DEFAULT_METRICS_COUNT - 6)
+        proxy_client = helpers.proxy_client()
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
@@ -2007,9 +2023,8 @@ for _, strategy in helpers.each_strategy() do
         }))
 
 
-        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
-
-        local proxy_client = helpers.proxy_client()
+        local metrics_count = expected_metrics_count(DEFAULT_METRICS_COUNT - 6)
+        proxy_client = helpers.proxy_client()
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
@@ -2040,7 +2055,8 @@ for _, strategy in helpers.each_strategy() do
         }))
   
         shdict_count = #get_shdicts()
-        local metrics_count = 8 + shdict_count * 2
+
+        local metrics_count = expected_metrics_count(8)
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
 
         local ok, resp = proxy_client_grpc({
