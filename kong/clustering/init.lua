@@ -68,7 +68,7 @@ function _M:handle_cp_websocket()
     return ngx_exit(444)
   end
 
-  return self.role:handle_cp_websocket()
+  return self.instance:handle_cp_websocket()
 end
 
 
@@ -76,8 +76,8 @@ function _M:init_cp_worker(plugins_list)
 
   events.init()
 
-  self.role = require("kong.clustering.control_plane").new(self)
-  self.role:init_worker(plugins_list)
+  self.instance = require("kong.clustering.control_plane").new(self)
+  self.instance:init_worker(plugins_list)
 end
 
 
@@ -86,8 +86,8 @@ function _M:init_dp_worker(plugins_list)
     return
   end
 
-  self.role = require("kong.clustering.data_plane").new(self)
-  self.role:init_worker(plugins_list)
+  self.instance = require("kong.clustering.data_plane").new(self)
+  self.instance:init_worker(plugins_list)
 end
 
 
