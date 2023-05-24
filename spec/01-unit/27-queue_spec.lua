@@ -125,7 +125,7 @@ describe("plugin queue", function()
     local log_tag = utils.uuid()
     Queue.enqueue(
       queue_conf({ name = "log-tag", log_tag = log_tag }),
-      function (conf)
+      function ()
         handler_invoked = true
         return true
       end,
@@ -310,23 +310,27 @@ describe("plugin queue", function()
           max_entries = capacity,
           max_coalescing_delay = 0.1,
         }),
-        function(_, batch)
+        function()
           return false
         end,
         nil,
         entry
       )
     end
-    for i = 1, math.floor(capacity * Queue._CAPACITY_WARNING_THRESHOLD) - 1 do
+    for _ = 1, math.floor(capacity * Queue._CAPACITY_WARNING_THRESHOLD) - 1 do
       enqueue("something")
     end
-    assert.has.no.match_re(log_messages, "WARN .*queue queue at \\d*% capacity")
+    assert.has.no.match_re(log_messages, "WARN .*queue at \\d*% capacity")
     enqueue("something")
     enqueue("something")
     assert.match_re(log_messages, "WARN .*queue at \\d*% capacity")
     log_messages = ""
     enqueue("something")
-    assert.has.no.match_re(log_messages, "WARN .*queue queue at \\d*% capacity")
+    assert.has.no.match_re(
+      log_messages,
+      "WARN .*queue at \\d*% capacity",
+      "the capacity warning should not be logged more than once"
+    )
   end)
 
   it("drops entries when queue reaches its capacity", function()
