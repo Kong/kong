@@ -664,6 +664,46 @@ describe("propagation.parse", function()
       assert.spy(warn).not_called()
     end)
 
+    it("empty trace_id, valid span_id, sampled", function()
+      local t = { parse({
+        ["x-datadog-trace-id"] = "",
+        ["x-datadog-parent-id"] = span_id,
+        ["x-datadog-sampling-priority"] = "1",
+      })}
+      assert.same({ "datadog", nil, nil, nil, true }, to_hex_ids(t))
+      assert.spy(warn).was_called_with("x-datadog-trace-id header invalid; ignoring.")
+    end)
+
+    it("missing trace_id, valid span_id, sampled", function()
+      local t = { parse({
+        ["x-datadog-trace-id"] = nil,
+        ["x-datadog-parent-id"] = span_id,
+        ["x-datadog-sampling-priority"] = "1",
+      })}
+      assert.same({ }, to_hex_ids(t))
+      assert.spy(warn).not_called()
+    end)
+
+    it("valid trace_id, empty parent_id, sampled", function()
+      local t = { parse({
+        ["x-datadog-trace-id"] = trace_id,
+        ["x-datadog-parent-id"] = "",
+        ["x-datadog-sampling-priority"] = "1",
+      })}
+      assert.same({ "datadog", nil, nil, nil, true }, to_hex_ids(t))
+      assert.spy(warn).was_called_with("x-datadog-parent-id header invalid; ignoring.")
+    end)
+
+    it("valid trace_id, missing parent_id, sampled", function()
+      local t = { parse({
+        ["x-datadog-trace-id"] = trace_id,
+        ["x-datadog-parent-id"] = nil,
+        ["x-datadog-sampling-priority"] = "1",
+      })}
+      assert.same({ "datadog", "01", nil, nil, true }, to_hex_ids(t))
+      assert.spy(warn).not_called()
+    end)
+
     it("valid big_dec_trace_id, valid big_dec_span_id, no sampled flag", function()
       local t = { parse({
         ["x-datadog-trace-id"] = big_dec_trace_id,

@@ -363,6 +363,7 @@ local function parse_datadog_headers(headers)
       warn("x-datadog-trace-id header invalid; ignoring.")
       return nil, nil, should_sample
     end
+    trace_id = from_dec(trace_id):to_binary()
   end
 
   local parent_id = headers["x-datadog-parent-id"]
@@ -372,10 +373,8 @@ local function parse_datadog_headers(headers)
       warn("x-datadog-parent-id header invalid; ignoring.")
       return nil, nil, should_sample
     end
+    parent_id = from_dec(parent_id):to_binary()
   end
-
-  trace_id = from_dec(trace_id):to_binary()
-  parent_id = from_dec(parent_id):to_binary()
 
   return trace_id, parent_id, should_sample
 end
