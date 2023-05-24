@@ -279,7 +279,7 @@ jobs:
         path: |
           luacov.stats.out
 
-    - uses: datadog/junit-upload-github-action@768dae7c808e17eed51ece17871e21f27fd5a000
+    - uses: datadog/junit-upload-github-action@056dec14f19687cd7d1e97f2009df81f8e64d621
       continue-on-error: true
       if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }} # upload test results even if the job fails
       with:
@@ -413,7 +413,7 @@ jobs:
           export XML_OUTPUT=$(realpath $TEST_RESULTS_XML_OUTPUT)
           .ci/run_tests_github.sh
 
-    - uses: datadog/junit-upload-github-action@768dae7c808e17eed51ece17871e21f27fd5a000
+    - uses: datadog/junit-upload-github-action@056dec14f19687cd7d1e97f2009df81f8e64d621
       continue-on-error: true
       if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }} # upload test results even if the job fails
       with:
@@ -496,7 +496,7 @@ jobs:
           export XML_OUTPUT=$(realpath $TEST_RESULTS_XML_OUTPUT)
           .ci/run_tests_github.sh
 
-    - uses: datadog/junit-upload-github-action@768dae7c808e17eed51ece17871e21f27fd5a000
+    - uses: datadog/junit-upload-github-action@056dec14f19687cd7d1e97f2009df81f8e64d621
       continue-on-error: true
       if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }} # upload test results even if the job fails
       with:
@@ -704,7 +704,7 @@ jobs:
           export XML_OUTPUT=$(realpath $TEST_RESULTS_XML_OUTPUT)
           .ci/run_tests_github.sh
 
-    - uses: datadog/junit-upload-github-action@768dae7c808e17eed51ece17871e21f27fd5a000
+    - uses: datadog/junit-upload-github-action@056dec14f19687cd7d1e97f2009df81f8e64d621
       continue-on-error: true
       if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }} # upload test results even if the job fails
       with:
