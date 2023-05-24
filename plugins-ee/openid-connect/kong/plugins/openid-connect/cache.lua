@@ -18,6 +18,7 @@ local workspaces    = require "kong.workspaces"
 local semaphore     = require "ngx.semaphore"
 
 
+local setmetatable  = setmetatable
 local concat        = table.concat
 local insert        = table.insert
 local sort          = table.sort
@@ -32,7 +33,8 @@ local sub           = string.sub
 local find          = string.find
 local fmt           = string.format
 local tonumber      = tonumber
-local tostring      = tostring
+local spawn         = ngx.thread.spawn
+local wait          = ngx.thread.wait
 local kong          = kong
 
 
@@ -66,6 +68,7 @@ local rediscovery_semaphores = {}
 
 
 local discovery_data = { n = 0 }
+local jwks_cache = {}
 
 
 local function cache_get(key, opts, func, ...)
@@ -349,6 +352,86 @@ local function normalize_issuer(issuer)
 end
 
 
+local function load_configuration(issuer, opts)
+  local conf, err = configuration.load(issuer, opts)
+  if not conf then
+    return nil, err
+  end
+
+  return {
+    updated_at = time(),
+    conf = conf,
+  }
+end
+
+
+local function fetch_configuration(issuer, opts)
+  local key = "oic:" .. sha256_base64url(issuer)
+  local data, err = cache_get(key, nil, load_configuration, issuer, opts)
+  if not data then
+    return nil, err
+  end
+
+  local rediscovery_lifetime = opts.rediscovery_lifetime or 30
+  local updated_at = data.updated_at or 0
+  local seconds_since_last_rediscovery = time() - updated_at
+  if seconds_since_last_rediscovery < rediscovery_lifetime then
+    log.notice("rediscovery for ", issuer, " was done recently (",
+               rediscovery_lifetime - seconds_since_last_rediscovery,
+               " seconds until next rediscovery)")
+    return data.conf
+  end
+
+  cache_invalidate(key)
+  data, err = cache_get(key, nil, load_configuration, issuer, opts)
+  if not data then
+    return nil, err
+  end
+
+  return data.conf
+end
+
+
+local function load_keys(jwks_uri, opts)
+  local jwks, err = keys.load(jwks_uri, opts)
+  if not jwks then
+    return nil, err
+  end
+
+  return {
+    updated_at = time(),
+    jwks = jwks,
+  }
+end
+
+
+local function fetch_keys(jwks_uri, opts)
+  local key = "oic:" .. sha256_base64url(jwks_uri)
+  local data, err = cache_get(key, nil, load_keys, jwks_uri, opts)
+  if not data then
+    return nil, err
+  end
+
+  local rediscovery_lifetime = opts.rediscovery_lifetime or 30
+  local updated_at = data.updated_at or 0
+  local seconds_since_last_rediscovery = time() - updated_at
+  if seconds_since_last_rediscovery < rediscovery_lifetime then
+    log.notice("rediscovery for ", jwks_uri, " was done recently (",
+               rediscovery_lifetime - seconds_since_last_rediscovery,
+               " seconds until next rediscovery)")
+    return data.jwks
+  end
+
+  cache_invalidate(key)
+  data, err = cache_get(key, nil, load_keys, jwks_uri, opts)
+  if not data then
+    return nil, err
+  end
+
+  return data.jwks
+end
+
+
 local function discover(issuer, opts, issuer_entity)
   opts = opts or {}
 
@@ -356,7 +439,7 @@ local function discover(issuer, opts, issuer_entity)
 
   log.notice("loading configuration for ", issuer, " using discovery")
 
-  local conf, err = configuration.load(issuer, opts)
+  local conf, err = fetch_configuration(issuer, opts)
   if type(conf) ~= "string" then
     if issuer_entity then
       log.notice("loading configuration for ", issuer, " using discovery failed: ", err or "unknown error",
@@ -404,39 +487,27 @@ local function discover(issuer, opts, issuer_entity)
     end
   end
 
-  local jwks_uri = configuration_decoded.jwks_uri
-  local jwks
-  if type(jwks_uri) == "string" then
-    log.notice("loading jwks from ", jwks_uri)
-    jwks, err = keys.load(jwks_uri, opts)
-    if type(jwks) ~= "string" then
-      log.notice("loading jwks from ", jwks_uri, " failed: ", err or "unknown error")
-
-    else
-      jwks, err = json.decode(jwks)
-      if type(jwks) ~= "table" then
-        log.notice("decoding jwks failed: ", err or "unknown error")
-
-      elseif type(jwks.keys) == "table" then
-        jwks = jwks.keys
-      end
-    end
-  end
-
+  local jwks = setmetatable({}, json.array_mt)
+  local jwk_count = 0
   local configuration_jwks = configuration_decoded.jwks
   if type(configuration_jwks) == "table" then
     if type(configuration_jwks.keys) == "table" then
       configuration_jwks = configuration_jwks.keys
     end
 
-    if type(jwks) ~= "table" then
-      jwks = configuration_jwks
-
-    else
-      for _, jwk in ipairs(configuration_jwks) do
-        insert(jwks, jwk)
-      end
+    for _, jwk in ipairs(configuration_jwks) do
+      jwk_count = jwk_count + 1
+      jwks[jwk_count] = jwk
     end
+  end
+
+  local jwks_uris_count = 0
+  local jwks_uris = {}
+  local jwks_uri = configuration_decoded.jwks_uri
+  if type(jwks_uri) == "string" then
+    jwks_uris_count = jwks_uris_count + 1
+    jwks_uris[jwks_uris_count] = jwks_uri
+    jwks_uris[jwks_uri] = true
   end
 
   local extra_jwks_uris = opts.extra_jwks_uris
@@ -445,47 +516,89 @@ local function discover(issuer, opts, issuer_entity)
       extra_jwks_uris = { extra_jwks_uris }
     end
 
-    local extra_jwks
     for _, extra_jwks_uri in ipairs(extra_jwks_uris) do
-      if type(extra_jwks_uri) ~= "string" then
-        log.notice("extra jwks uri is not a string (", tostring(extra_jwks_uri) , ")")
+      if type(extra_jwks_uri) == "string" and not jwks_uris[extra_jwks_uri] then
+        jwks_uris_count = jwks_uris_count + 1
+        jwks_uris[jwks_uris_count] = extra_jwks_uri
+        jwks_uris[extra_jwks_uri] = true
+      end
+    end
+  end
 
-      else
-        log.notice("loading extra jwks from ", extra_jwks_uri)
-        extra_jwks, err = keys.load(extra_jwks_uri, opts)
-        if type(extra_jwks) ~= "string" then
-          log.notice("loading extra jwks from ", extra_jwks_uri, " failed: ", err or "unknown error")
+  if jwks_uris_count > 0 then
+    local threads = kong.table.new(jwks_uris_count, 0)
+    for i = 1, jwks_uris_count do
+      log.notice("loading jwks from ", jwks_uris[i])
+      threads[i] = spawn(fetch_keys, jwks_uris[i], opts)
+    end
+    local jwks_string, ok
+    for i = 1, jwks_uris_count do
+      local jwks_uri_jwks
+      jwks_uri = jwks_uris[i]
+      ok, jwks_string, err = wait(threads[i])
+      if not ok then
+        if jwks_cache[jwks_uri] then
+          log.notice("loading jwks from ", jwks_uri, " thread failed: ", jwks_string or "unknown error",
+                     " (falling back to previous jwks)")
+          jwks_uri_jwks, err = json.decode(jwks_cache[jwks_uri])
+          if type(jwks_uri_jwks) ~= "table" then
+            log.notice("decoding previous jwks failed: ", err or "type error")
+          end
 
         else
-          extra_jwks, err = json.decode(extra_jwks)
-          if type(extra_jwks) ~= "table" then
-            log.notice("decoding extra jwks failed: ", err or "unknown error")
+          log.notice("loading jwks from ", jwks_uri, " failed: ", err or "unknown error",
+                     " (ignoring)")
+        end
+
+      else
+        if type(jwks_string) ~= "string" then
+          if jwks_cache[jwks_uri] then
+            log.notice("loading jwks from ", jwks_uri, " failed: ", err or "unknown error",
+                       " (falling back to previous jwks)")
+            jwks_uri_jwks, err = json.decode(jwks_cache[jwks_uri])
+            if type(jwks_uri_jwks) ~= "table" then
+              log.notice("decoding previous jwks failed: ", err or "type error")
+            end
 
           else
-            if type(extra_jwks.keys) == "table" then
-              extra_jwks = extra_jwks.keys
-            end
+            log.notice("loading jwks from ", jwks_uri, " failed: ", err or "unknown error",
+                    " (ignoring)")
+          end
 
-            if type(extra_jwks) ~= "table" then
-              log.notice("unknown extra jwks format")
+        else
+          jwks_uri_jwks, err = json.decode(jwks_string)
+          if type(jwks_uri_jwks) == "table" then
+            jwks_cache[jwks_uri] = jwks_string
+
+          else
+            if jwks_cache[jwks_uri] then
+              log.notice("decoding jwks failed: ", err or "type error (falling back to previous jwks)")
+              jwks_uri_jwks, err = json.decode(jwks_cache[jwks_uri])
+              if type(jwks_uri_jwks) ~= "table" then
+                log.notice("decoding previous jwks failed: ", err or "type error")
+              end
 
             else
-              if not jwks then
-                jwks = extra_jwks
-
-              else
-                for _, extra_jwk in ipairs(extra_jwks) do
-                  insert(jwks, extra_jwk)
-                end
-              end
+              log.notice("decoding jwks failed: ", err or "type error (ignoring)")
             end
           end
+        end
+      end
+
+      if type(jwks_uri_jwks) == "table" then
+        if type(jwks_uri_jwks.keys) == "table" then
+          jwks_uri_jwks = jwks_uri_jwks.keys
+        end
+
+        for _, jwk in ipairs(jwks_uri_jwks) do
+          jwk_count = jwk_count + 1
+          jwks[jwk_count] = jwk
         end
       end
     end
   end
 
-  if type(jwks) == "table" then
+  if jwk_count > 0 then
     jwks, err = json.encode(jwks)
     if type(jwks) ~= "string" then
       if issuer_entity then
