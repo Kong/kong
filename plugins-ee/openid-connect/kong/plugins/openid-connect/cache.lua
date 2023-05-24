@@ -11,7 +11,6 @@ require "kong.plugins.openid-connect.env"
 local log           = require "kong.plugins.openid-connect.log"
 local configuration = require "kong.openid-connect.configuration"
 local keys          = require "kong.openid-connect.keys"
-local hash          = require "kong.openid-connect.hash"
 local utils         = require "kong.tools.utils"
 local http          = require "resty.http"
 local json          = require "cjson.safe"
@@ -44,6 +43,20 @@ local TOKEN_DECODE_SIGNATURE_OPTS = {
   verify_signature = true,
   verify_claims    = false,
 }
+
+
+local sha256_base64url do
+  if utils.sha256_base64url then
+    sha256_base64url = utils.sha256_base64url
+
+  else
+    local S256 = require("kong.openid-connect.hash").S256
+    local encode_base64url = require("ngx.base64").encode_base64url
+    sha256_base64url = function(key)
+      return encode_base64url(S256(key))
+    end
+  end
+end
 
 
 local discovery_data = { n = 0 }
@@ -960,10 +973,10 @@ function introspection.load(oic, access_token, hint, ttl, use_cache, ignore_sign
     return nil, "no access token given for token introspection"
   end
 
-  local key = cache_key(encode_base64(hash.S256(concat({
+  local key = cache_key(sha256_base64url(concat({
     opts.introspection_endpoint or oic.configuration.issuer,
     access_token
-  }, "#introspection=")), true))
+  }, "#introspection=")))
 
   local res
   local err
@@ -1022,20 +1035,20 @@ function tokens.load(oic, args, ttl, use_cache, flush, salt)
         return nil, "no credentials given for refresh token grant"
       end
 
-      key = cache_key(encode_base64(hash.S256(concat {
+      key = cache_key(sha256_base64url(concat {
         iss,
         "#grant_type=refresh_token&",
         args.refresh_token,
         salt and "&",
         salt,
-      }), true))
+      }))
 
     elseif args.grant_type == "password" then
       if not args.username or not args.password then
         return nil, "no credentials given for password grant"
       end
 
-      key = cache_key(encode_base64(hash.S256(concat {
+      key = cache_key(sha256_base64url(concat {
         iss,
         "#grant_type=password&",
         args.username,
@@ -1043,7 +1056,7 @@ function tokens.load(oic, args, ttl, use_cache, flush, salt)
         args.password,
         salt and "&",
         salt,
-      }), true))
+      }))
 
     elseif args.grant_type == "client_credentials" then
       if not ((args.client_id and args.client_secret) or args.assertion) then
@@ -1051,16 +1064,16 @@ function tokens.load(oic, args, ttl, use_cache, flush, salt)
       end
 
       if args.assertion then
-        key = cache_key(encode_base64(hash.S256(concat {
+        key = cache_key(sha256_base64url(concat {
           iss,
           "#grant_type=client_credentials&",
           args.assertion,
           salt and "&",
           salt,
-        }), true))
+        }))
 
       else
-        key = cache_key(encode_base64(hash.S256(concat {
+        key = cache_key(sha256_base64url(concat {
           iss,
           "#grant_type=client_credentials&",
           args.client_id,
@@ -1068,7 +1081,7 @@ function tokens.load(oic, args, ttl, use_cache, flush, salt)
           args.client_secret,
           salt and "&",
           salt,
-        }), true))
+        }))
       end
     end
 
@@ -1156,10 +1169,10 @@ function token_exchange.load(access_token, endpoint, opts, ttl, use_cache)
     return nil, "no token exchange endpoint given for token exchange"
   end
 
-  local key = cache_key(encode_base64(hash.S256(concat({
+  local key = cache_key(sha256_base64url(concat({
     endpoint,
     access_token
-  }, "#exchange=")), true))
+  }, "#exchange=")))
 
   local res
   local err
@@ -1224,10 +1237,10 @@ function userinfo.load(oic, access_token, ttl, use_cache, ignore_signature, opts
     return nil, "no access token given for user info"
   end
 
-  local key = cache_key(encode_base64(hash.S256(concat({
+  local key = cache_key(sha256_base64url(concat({
     oic.configuration.issuer,
     access_token
-  }, "#userinfo=")), true))
+  }, "#userinfo=")))
 
   local res, err
   if use_cache and key then
