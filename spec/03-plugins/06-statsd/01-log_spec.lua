@@ -875,6 +875,9 @@ for _, strategy in helpers.each_strategy() do
 
     describe("metrics", function()
       before_each(function()
+        -- it's important to restart kong between each test
+        -- to prevent flaky tests caused by periodic 
+        -- sending of metrics by statsd.
         if proxy_client then
           proxy_client:close()
         end
