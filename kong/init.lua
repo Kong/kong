@@ -1039,6 +1039,7 @@ end
 function Kong.balancer()
   -- This may be called multiple times, and no yielding here!
   local now_ms = now() * 1000
+  local now_ns = time_ns()
 
   local ctx = ngx.ctx
   if not ctx.KONG_BALANCER_START then
@@ -1079,7 +1080,7 @@ function Kong.balancer()
   tries[try_count] = current_try
 
   current_try.balancer_start = now_ms
-  current_try.balancer_start_ns = time_ns()
+  current_try.balancer_start_ns = now_ns
 
   if try_count > 1 then
     -- only call balancer on retry, first one is done in `runloop.access.after`
@@ -1439,6 +1440,7 @@ function Kong.body_filter()
   end
 
   ctx.KONG_BODY_FILTER_ENDED_AT = get_updated_now_ms()
+  ctx.KONG_BODY_FILTER_ENDED_AT_NS = time_ns()
   ctx.KONG_BODY_FILTER_TIME = ctx.KONG_BODY_FILTER_ENDED_AT - ctx.KONG_BODY_FILTER_START
 
   if ctx.KONG_PROXIED then
