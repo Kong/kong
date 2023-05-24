@@ -86,7 +86,7 @@ describe("worker_events", function()
 
     assert(helpers.start_kong({
       database   = strategy,
-      nginx_conf = "spec/fixtures/custom_nginx.template"
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }, nil, nil, fixtures))
   end)
 
