@@ -355,7 +355,7 @@ kong.analytics = get_analytics()
 --- Iterator over DB strategies.
 -- @function each_strategy
 -- @param strategies (optional string array) explicit list of strategies to use,
--- defaults to `{ "postgres", "cassandra" }`.
+-- defaults to `{ "postgres", }`.
 -- @see all_strategies
 -- @usage
 -- -- repeat all tests for each strategy
@@ -373,13 +373,13 @@ end
 -- To test with DB-less, check the example.
 -- @function all_strategies
 -- @param strategies (optional string array) explicit list of strategies to use,
--- defaults to `{ "postgres", "cassandra", "off" }`.
+-- defaults to `{ "postgres", "off" }`.
 -- @see each_strategy
 -- @see make_yaml_file
 -- @usage
 -- -- example of using DB-less testing
 --
--- -- use "all_strategies" to iterate over; "postgres", "cassandra", "off"
+-- -- use "all_strategies" to iterate over; "postgres", "off"
 -- for _, strategy in helpers.all_strategies() do
 --   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
 --
@@ -413,7 +413,6 @@ end
 --         -- really runs DB-less despite that Postgres was used as intermediary
 --         -- storage.
 --         pg_host = strategy == "off" and "unknownhost.konghq.com" or nil,
---         cassandra_contact_points = strategy == "off" and "unknownhost.konghq.com" or nil,
 --       }))
 --     end)
 --
@@ -422,8 +421,8 @@ local function all_strategies() -- luacheck: ignore   -- required to trick ldoc 
 end
 
 do
-  local def_db_strategies = {"postgres", "cassandra"}
-  local def_all_strategies = {"postgres", "cassandra", "off"}
+  local def_db_strategies = {"postgres"}
+  local def_all_strategies = {"postgres", "off"}
   local env_var = os.getenv("KONG_DATABASE")
   if env_var then
     def_db_strategies = { env_var }
@@ -594,8 +593,6 @@ local function get_db_utils(strategy, tables, plugins, vaults, skip_migrations)
     kong_global = kong_global,
   }
 
-  -- cleanup the tags table, since it will be hacky and
-  -- not necessary to implement "truncate trigger" in Cassandra
   db:truncate("tags")
 
   -- initialize portal router
@@ -3752,20 +3749,7 @@ local function restart_kong(env, tables, fixtures)
   return start_kong(env, tables, true, fixtures)
 end
 
---- Wait until no common workers.
--- This will wait until all the worker PID's listed have gone (others may have appeared). If an `expected_total` is specified, it will also wait until the new workers have reached this number.
--- @function wait_until_no_common_workers
--- @tparam table workers an array of worker PID's (the return value of `get_kong_workers`)
--- @tparam[opt] number expected_total the expected total workers count
--- @tparam[opt] table wait_opts options to use, the available fields are:
--- @tparam[opt] number wait_opts.timeout timeout passed to `wait_until`
--- @tparam[opt] number wait_opts.step step passed to `wait_until`
-local function wait_until_no_common_workers(workers, expected_total, wait_opts)
-  local strategy = conf.database
-  if strategy == "cassandra" then
-    ngx.sleep(0.5)
-  end
-  wait_opts = wait_opts or {}
+local function wait_until_no_common_workers(workers, expected_total, strategy)
   wait_until(function()
     local pok, admin_client = pcall(admin_client)
     if not pok then

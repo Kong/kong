@@ -142,7 +142,6 @@ State.__index = State
 -- @return nil (no executed migrations for subsystem found) or an array with at
 -- least one element like:
 -- { name = "000_base",
---   cassandra = { up = string, teardown = function | nil },
 --   postgres = { up = string, teardown = function | nil }
 -- },
 local function get_executed_migrations_for_subsystem(self, subsystem_name)
@@ -182,7 +181,6 @@ end
 --                                          -- like "kong.plugins.acl.migrations
 --   migrations = { -- an array with at least one element like:
 --     { name = "000_base",
---       cassandra = { up = string, teardown = function | nil },
 --       postgres = { up = string, teardown = function | nil }
 --    },
 -- }

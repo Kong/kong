@@ -431,15 +431,13 @@ describe("kong.clustering.compat", function()
   end)
 
   for _, strategy in helpers.each_strategy() do
-    -- bypass test case against cassandra backend
-    local compat_describe = (strategy ~= "cassandra") and describe or pending
 
-    compat_describe("[#" .. strategy .. "]: check compat for entities who have `updated_at` field", function()
+    describe("[#" .. strategy .. "]: check compat for entities those have `updated_at` field", function()
       local bp, db, entity_names
 
       setup(function()
-        -- excludes entities which are not exportable: clustering_data_planes, 
-        -- document_objects, files, group_rbac_roles, groups, legacy_files, 
+        -- excludes entities not exportable: clustering_data_planes,
+        -- document_objects, files, group_rbac_roles, groups, legacy_files,
         -- login_attempts, rbac_role_endpoints, -- rbac_role_entities, rbac_roles,
         -- rbac_users
         entity_names = {
@@ -516,7 +514,7 @@ describe("kong.clustering.compat", function()
           "plugins",
         })
         _G.kong.db = db
-  
+
         assert(declarative.load_into_db({
           services = {
             service1 = {

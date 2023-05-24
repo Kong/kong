@@ -37,25 +37,6 @@ local postgres = {
 
 
 --------------------------------------------------------------------------------
--- Cassandra operations for Workspace migration
---------------------------------------------------------------------------------
-
-
-local cassandra = {
-
-  up = [[
-  ]],
-
-  teardown = {
-    -- These migrations were fixed since they were originally released,
-    -- thus those that have updated already, need to re-run it.
-    ws_update_composite_cache_key = operations_200_210.cassandra.teardown.ws_update_composite_cache_key,
-  }
-
-}
-
-
---------------------------------------------------------------------------------
 -- Higher-level operations for Workspace migration
 --------------------------------------------------------------------------------
 
@@ -75,7 +56,6 @@ end
 
 
 postgres.teardown.ws_adjust_data = ws_adjust_data
-cassandra.teardown.ws_adjust_data = ws_adjust_data
 
 
 --------------------------------------------------------------------------------
@@ -83,5 +63,4 @@ cassandra.teardown.ws_adjust_data = ws_adjust_data
 
 return {
   postgres = postgres,
-  cassandra = cassandra,
 }

@@ -2,7 +2,7 @@
 
 # This script runs the database upgrade tests from the
 # spec/05-migration directory.  It uses docker compose to stand up a
-# simple environment with cassandra and postgres database servers and
+# simple environment with postgres database server and
 # two Kong nodes.  One node contains the oldest supported version, the
 # other has the current version of Kong.  The testing is then done as
 # described in https://docs.google.com/document/d/1Df-iq5tNyuPj1UNG7bkhecisJFPswOfFqlOS3V4wXSc/edit?usp=sharing
@@ -155,7 +155,7 @@ function initialize_test_list() {
 
 function run_tests() {
     # Run the tests
-    BUSTED="env KONG_DATABASE=$1 KONG_DNS_RESOLVER= KONG_TEST_CASSANDRA_KEYSPACE=kong KONG_TEST_PG_DATABASE=kong /kong/bin/busted -o gtest"
+    BUSTED="env KONG_DATABASE=$1 KONG_DNS_RESOLVER= KONG_TEST_PG_DATABASE=kong /kong/bin/busted -o gtest"
     shift
 
     set $TESTS
@@ -192,7 +192,6 @@ function cleanup() {
 build_containers
 initialize_test_list
 run_tests postgres
-run_tests cassandra
 [ -z "$UPGRADE_ENV_PREFIX" ] && cleanup
 
 trap "" 0

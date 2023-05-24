@@ -31,15 +31,11 @@ lua_shared_dict stream_kong_core_db_cache          ${{MEM_CACHE_SIZE}};
 lua_shared_dict stream_kong_core_db_cache_miss     12m;
 lua_shared_dict stream_kong_db_cache               ${{MEM_CACHE_SIZE}};
 lua_shared_dict stream_kong_db_cache_miss          12m;
-> if database == "cassandra" then
-lua_shared_dict stream_kong_cassandra              5m;
-> end
 lua_shared_dict stream_kong_vitals_counters 50m;
 lua_shared_dict stream_kong_counters 50m;
 lua_shared_dict stream_kong_vitals_lists     1m;
 lua_shared_dict stream_kong_vitals 1m;
 lua_shared_dict stream_kong_keyring 5m;
-
 
 > if ssl_ciphers then
 ssl_ciphers ${{SSL_CIPHERS}};

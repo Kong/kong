@@ -1074,10 +1074,6 @@ return {
       do
         local rebuild_timeout = 60
 
-        if strategy == "cassandra" then
-          rebuild_timeout = kong.configuration.cassandra_timeout / 1000
-        end
-
         if strategy == "postgres" then
           rebuild_timeout = kong.configuration.pg_timeout / 1000
         end

@@ -10,8 +10,4 @@ return {
     up = [[
     ]],
   },
-  cassandra = {
-    up = [[
-    ]],
-  }
 }

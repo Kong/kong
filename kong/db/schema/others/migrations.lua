@@ -19,16 +19,6 @@ return {
         },
       },
     },
-    {
-      cassandra = {
-        type = "record",
-        fields = {
-          { up = { type = "string", len_min = 0 } },
-          { up_f = { type = "function" } },
-          { teardown = { type = "function" } },
-        },
-      }
-    },
   },
   entity_checks = {
     {

@@ -230,10 +230,6 @@ local constants = {
     POSTGRES = {
       MIN = "9.5",
     },
-    CASSANDRA = {
-      MIN = "3.0",
-      DEPRECATED = "2.2",
-    },
     -- a bit over three years maximum to make it more safe against
     -- integer overflow (time() + ttl)
     DAO_MAX_TTL = 1e8,
