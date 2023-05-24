@@ -34,7 +34,7 @@ $DOCKER_COMPOSE up -d
 
 if [ $? -ne 0 ]; then
     echo "Something goes wrong, please check $DOCKER_COMPOSE output"
-    return
+    exit 1
 fi
 
 # [service_name_in_docker_compose]="env_var_name_1:port_1_in_docker_compose env_var_name_2:port_2_in_docker_compose"

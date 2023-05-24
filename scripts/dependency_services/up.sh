@@ -16,7 +16,7 @@ fi
 bash "$cwd/common.sh" $KONG_SERVICE_ENV_FILE up
 if [ $? -ne 0 ]; then
     echo "Something goes wrong, please check common.sh output"
-    return
+    exit 1
 fi
 
 . $KONG_SERVICE_ENV_FILE
