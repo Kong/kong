@@ -108,18 +108,4 @@ return {
       END$$;
     ]],
   },
-
-  cassandra = {
-    up = [[
-      ALTER TABLE plugins ADD updated_at timestamp;
-      ALTER TABLE ca_certificates ADD updated_at timestamp;
-      ALTER TABLE certificates ADD updated_at timestamp;
-      ALTER TABLE consumers ADD updated_at timestamp;
-      ALTER TABLE snis ADD updated_at timestamp;
-      ALTER TABLE targets ADD updated_at timestamp;
-      ALTER TABLE upstreams ADD updated_at timestamp;
-      ALTER TABLE workspaces ADD updated_at timestamp;
-      ALTER TABLE clustering_data_planes ADD updated_at timestamp;
-    ]]
-  },
 }

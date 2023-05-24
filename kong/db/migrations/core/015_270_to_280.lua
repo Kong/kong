@@ -39,23 +39,4 @@ return {
       END$$;
     ]]
   },
-
-  cassandra = {
-    up = [[
-      CREATE TABLE IF NOT EXISTS vaults_beta (
-        id          uuid,
-        ws_id       uuid,
-        prefix      text,
-        name        text,
-        description text,
-        config      text,
-        created_at  timestamp,
-        updated_at  timestamp,
-        tags        set<text>,
-        PRIMARY KEY (id)
-      );
-      CREATE INDEX IF NOT EXISTS vaults_beta_prefix_idx ON vaults_beta (prefix);
-      CREATE INDEX IF NOT EXISTS vaults_beta_ws_id_idx  ON vaults_beta (ws_id);
-    ]]
-  },
 }
