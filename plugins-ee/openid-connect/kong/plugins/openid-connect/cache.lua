@@ -746,6 +746,9 @@ local function issuers_init(issuer, opts)
       if not data.created_at then
         data.created_at = created_at
       end
+
+    else
+      data = stored_data
     end
   end
 
