@@ -486,7 +486,7 @@ local function discover(issuer, opts, now, issuer_entity)
       if issuer_entity then
         log.notice("encoding jwks keys failed: ", err or "unknown error",
                    " (falling back to previous keys)")
-        jwks = issuer_entity.jwks
+        jwks = issuer_entity.keys
 
       else
         log.notice("encoding jwks keys failed: ", err or "unknown error",
