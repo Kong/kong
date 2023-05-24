@@ -25,19 +25,4 @@ return {
       END$$;
     ]],
   },
-
-  cassandra = {
-    up = [[
-      CREATE TABLE IF NOT EXISTS oic_issuers (
-        id             uuid        PRIMARY KEY,
-        issuer         text,
-        configuration  text,
-        keys           text,
-        secret         text,
-        created_at     timestamp,
-      );
-
-      CREATE INDEX IF NOT EXISTS ON oic_issuers (issuer);
-    ]],
-  },
 }

@@ -44,7 +44,6 @@ for _, strategy in strategies() do
 
       assert(helpers.start_kong({
         database   = strategy ~= "off" and strategy or nil,
-        db_update_propagation = strategy == "cassandra" and 1 or 0,
         plugins = "key-auth-enc",
         declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -496,10 +495,7 @@ for _, strategy in strategies() do
           assert.equal(3, #json_2.data)
 
           assert.not_same(json_1.data, json_2.data)
-          -- Disabled: on Cassandra, the last page still returns a
-          -- next_page token, and thus, an offset proprty in the
-          -- response of the Admin API.
-          --assert.is_nil(json_2.offset) -- last page
+          assert.is_nil(json_2.offset) -- last page
         end)
       end)
 

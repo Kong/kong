@@ -23,11 +23,4 @@ return {
       END$$;
     ]],
   },
-
-  cassandra = {
-    up = [[
-      ALTER TABLE keyauth_enc_credentials with default_time_to_live = 1209600;
-    ]],
-  },
-
 }

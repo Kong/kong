@@ -119,7 +119,7 @@ local function find_form_action(html)
 end
 
 
-local function sp_init_flow(res, username, password) 
+local function sp_init_flow(res, username, password)
   local body = res:read_body()
   assert.equal(200, res.status)
   assert.is_not_nil(body)
@@ -187,157 +187,182 @@ end
 
 
 for _, strategy in helpers.all_strategies() do
-  if strategy ~= "cassandra" then
-    for _, session_storage in ipairs {"memcached", "redis", "cookie"} do
-      describe(PLUGIN_NAME .. ": #" .. strategy .. "_" .. session_storage, function()
-          local redis
-          local redis_version
+  for _, session_storage in ipairs {"memcached", "redis", "cookie"} do
+    describe(PLUGIN_NAME .. ": #" .. strategy .. "_" .. session_storage, function()
+        local redis
+        local redis_version
 
-          setup(function()
-              redis, redis_version = redis_connect()
-              add_redis_user(redis, redis_version)
+        setup(function()
+            redis, redis_version = redis_connect()
+            add_redis_user(redis, redis_version)
 
-          end)
+        end)
 
-          teardown(function()
-              remove_redis_user(redis, redis_version)
-          end)
+        teardown(function()
+            remove_redis_user(redis, redis_version)
+        end)
 
-          local proxy_client
+        local proxy_client
 
-          lazy_setup(function()
-              local db_strategy = strategy ~= "off" and strategy or nil
-              local bp = helpers.get_db_utils(db_strategy, {
-                  "routes",
-                  "services",
-                  "plugins",
-                                                        }, {
-                  PLUGIN_NAME
-              })
-
-              local service = bp.services:insert {
-                name = PLUGIN_NAME,
-                path = "/anything"
-              }
-
-              local anon = bp.consumers:insert {
-                username = "anonymous"
-              }
-
-              bp.consumers:insert {
-                username = "samluser1",
-              }
-
-              local route_anon = bp.routes:insert {
-                service = service,
-                paths   = { "/anon" },
-              }
-
-              local route_non_anon = bp.routes:insert {
-                service = service,
-                paths   = { "/non-anon" },
-              }
-
-              local idp_cert = retrieve_cert_from_idp()
-
-              bp.plugins:insert {
-                route   = route_anon,
-                name    = PLUGIN_NAME,
-                config  = {
-                  issuer    = ISSUER_URL,
-                  assertion_consumer_path = "/consume",
-                  idp_sso_url = IDP_SSO_URL,
-                  nameid_format = "EmailAddress",
-                  idp_certificate = idp_cert,
-                  session_secret = SESSION_SECRET,
-                  session_redis_host = REDIS_HOST,
-                  session_redis_username = REDIS_USER_VALID,
-                  session_redis_password = REDIS_PASSWORD,
-                  session_memcached_host = MEMCACHED_HOST,
-                  session_storage = session_storage,
-                  validate_assertion_signature = false,
-                  anonymous = anon.id,
-                },
-              }
-
-              bp.plugins:insert {
-                route   = route_non_anon,
-                name    = PLUGIN_NAME,
-                config  = {
-                  issuer    = ISSUER_URL,
-                  assertion_consumer_path = "/consume",
-                  idp_sso_url = IDP_SSO_URL,
-                  nameid_format = "EmailAddress",
-                  idp_certificate = idp_cert,
-                  session_secret = SESSION_SECRET,
-                  session_redis_host = REDIS_HOST,
-                  session_redis_username = REDIS_USER_VALID,
-                  session_redis_password = REDIS_PASSWORD,
-                  session_memcached_host = MEMCACHED_HOST,
-                  session_storage = session_storage,
-                  validate_assertion_signature = false,
-                },
-              }
-
-              local cookie_route = bp.routes:insert {
-                paths   = { "/cookie-tst" },
-              }
-
-              bp.plugins:insert {
-                route = cookie_route,
-                name = PLUGIN_NAME,
-                config = {
-                  issuer = ISSUER_URL,
-                  assertion_consumer_path = "/consume",
-                  session_cookie_http_only = false,
-                  session_cookie_domain = "example.org",
-                  session_cookie_path = "/test",
-                  session_cookie_same_site = "Default",
-                  session_cookie_secure = true,
-                  idp_sso_url = IDP_SSO_URL,
-                  nameid_format = "EmailAddress",
-                  idp_certificate = idp_cert,
-                  session_secret = SESSION_SECRET,
-                  session_redis_host = REDIS_HOST,
-                  session_redis_username = REDIS_USER_VALID,
-                  session_redis_password = REDIS_PASSWORD,
-                  session_memcached_host = MEMCACHED_HOST,
-                  session_storage = session_storage,
-                  validate_assertion_signature = false,
-                },
-              }
-
-              assert(helpers.start_kong({
-                    database   = db_strategy,
-                    nginx_conf = "spec/fixtures/custom_nginx.template",
-                    plugins    = "bundled," .. PLUGIN_NAME,
-              }))
-          end)
-
-          lazy_teardown(function()
-              helpers.stop_kong()
-          end)
-
-          before_each(function()
-              proxy_client = helpers.proxy_client()
-          end)
-
-          after_each(function()
-              if proxy_client then
-                proxy_client:close()
-              end
-          end)
-
-          it("correctly configures cookie attributes", function()
-            local res = proxy_client:get("/cookie-tst", {
-                headers = {
-                  ["Host"] = "kong",
-                  ["Accept"] = "text/html"
-                }
+        lazy_setup(function()
+            local db_strategy = strategy ~= "off" and strategy or nil
+            local bp = helpers.get_db_utils(db_strategy, {
+                "routes",
+                "services",
+                "plugins",
+                                                      }, {
+                PLUGIN_NAME
             })
 
+            local service = bp.services:insert {
+              name = PLUGIN_NAME,
+              path = "/anything"
+            }
+
+            local anon = bp.consumers:insert {
+              username = "anonymous"
+            }
+
+            bp.consumers:insert {
+              username = "samluser1",
+            }
+
+            local route_anon = bp.routes:insert {
+              service = service,
+              paths   = { "/anon" },
+            }
+
+            local route_non_anon = bp.routes:insert {
+              service = service,
+              paths   = { "/non-anon" },
+            }
+
+            local idp_cert = retrieve_cert_from_idp()
+
+            bp.plugins:insert {
+              route   = route_anon,
+              name    = PLUGIN_NAME,
+              config  = {
+                issuer    = ISSUER_URL,
+                assertion_consumer_path = "/consume",
+                idp_sso_url = IDP_SSO_URL,
+                nameid_format = "EmailAddress",
+                idp_certificate = idp_cert,
+                session_secret = SESSION_SECRET,
+                session_redis_host = REDIS_HOST,
+                session_redis_username = REDIS_USER_VALID,
+                session_redis_password = REDIS_PASSWORD,
+                session_memcached_host = MEMCACHED_HOST,
+                session_storage = session_storage,
+                validate_assertion_signature = false,
+                anonymous = anon.id,
+              },
+            }
+
+            bp.plugins:insert {
+              route   = route_non_anon,
+              name    = PLUGIN_NAME,
+              config  = {
+                issuer    = ISSUER_URL,
+                assertion_consumer_path = "/consume",
+                idp_sso_url = IDP_SSO_URL,
+                nameid_format = "EmailAddress",
+                idp_certificate = idp_cert,
+                session_secret = SESSION_SECRET,
+                session_redis_host = REDIS_HOST,
+                session_redis_username = REDIS_USER_VALID,
+                session_redis_password = REDIS_PASSWORD,
+                session_memcached_host = MEMCACHED_HOST,
+                session_storage = session_storage,
+                validate_assertion_signature = false,
+              },
+            }
+
+            local cookie_route = bp.routes:insert {
+              paths   = { "/cookie-tst" },
+            }
+
+            bp.plugins:insert {
+              route = cookie_route,
+              name = PLUGIN_NAME,
+              config = {
+                issuer = ISSUER_URL,
+                assertion_consumer_path = "/consume",
+                session_cookie_http_only = false,
+                session_cookie_domain = "example.org",
+                session_cookie_path = "/test",
+                session_cookie_same_site = "Default",
+                session_cookie_secure = true,
+                idp_sso_url = IDP_SSO_URL,
+                nameid_format = "EmailAddress",
+                idp_certificate = idp_cert,
+                session_secret = SESSION_SECRET,
+                session_redis_host = REDIS_HOST,
+                session_redis_username = REDIS_USER_VALID,
+                session_redis_password = REDIS_PASSWORD,
+                session_memcached_host = MEMCACHED_HOST,
+                session_storage = session_storage,
+                validate_assertion_signature = false,
+              },
+            }
+
+            assert(helpers.start_kong({
+                  database   = db_strategy,
+                  nginx_conf = "spec/fixtures/custom_nginx.template",
+                  plugins    = "bundled," .. PLUGIN_NAME,
+            }))
+        end)
+
+        lazy_teardown(function()
+            helpers.stop_kong()
+        end)
+
+        before_each(function()
+            proxy_client = helpers.proxy_client()
+        end)
+
+        after_each(function()
+            if proxy_client then
+              proxy_client:close()
+            end
+        end)
+
+        it("correctly configures cookie attributes", function()
+          local res = proxy_client:get("/cookie-tst", {
+              headers = {
+                ["Host"] = "kong",
+                ["Accept"] = "text/html"
+              }
+          })
+
+          local saml_response, relay_state = sp_init_flow(res, USERNAME, PASSWORD)
+          local response, err = proxy_client:post("/cookie-tst/consume", {
+              headers = {
+                ["Host"] = "kong",
+                ["Content-Type"] = "application/x-www-form-urlencoded",
+              },
+              body = "SAMLResponse=" .. ngx.escape_uri(saml_response) .. "&RelayState=" .. ngx.escape_uri(relay_state),
+          })
+          assert.is_nil(err)
+          assert.equal(302, response.status)
+          local cookie = response.headers["Set-Cookie"]
+          assert.is_not_nil(cookie)
+          assert.does_not.match("HttpOnly", cookie)
+          assert.matches("Domain=example.org", cookie)
+          assert.matches("Path=/test", cookie)
+          assert.matches("SameSite=Default", cookie)
+          assert.matches("Secure", cookie)
+        end)
+
+        it("SP request with anonymous consumer is successful", function()
+            local res = proxy_client:get("/anon", {
+                headers = {
+                  ["Host"] = "kong",
+                  ["Accept"] = "text/html",
+                }
+            })
             local saml_response, relay_state = sp_init_flow(res, USERNAME, PASSWORD)
-            local response, err = proxy_client:post("/cookie-tst/consume", {
+            local response, err = proxy_client:post("/anon/consume", {
                 headers = {
                   ["Host"] = "kong",
                   ["Content-Type"] = "application/x-www-form-urlencoded",
@@ -346,138 +371,111 @@ for _, strategy in helpers.all_strategies() do
             })
             assert.is_nil(err)
             assert.equal(302, response.status)
-            local cookie = response.headers["Set-Cookie"]
-            assert.is_not_nil(cookie)
-            assert.does_not.match("HttpOnly", cookie)
-            assert.matches("Domain=example.org", cookie)
-            assert.matches("Path=/test", cookie)
-            assert.matches("SameSite=Default", cookie)
-            assert.matches("Secure", cookie)
-          end)
 
-          it("SP request with anonymous consumer is successful", function()
-              local res = proxy_client:get("/anon", {
-                  headers = {
-                    ["Host"] = "kong",
-                    ["Accept"] = "text/html",
-                  }
-              })
-              local saml_response, relay_state = sp_init_flow(res, USERNAME, PASSWORD)
-              local response, err = proxy_client:post("/anon/consume", {
-                  headers = {
-                    ["Host"] = "kong",
-                    ["Content-Type"] = "application/x-www-form-urlencoded",
-                  },
-                  body = "SAMLResponse=" .. ngx.escape_uri(saml_response) .. "&RelayState=" .. ngx.escape_uri(relay_state),
-              })
-              assert.is_nil(err)
-              assert.equal(302, response.status)
+        end)
 
-          end)
+        it("SP request with consumer is successful", function()
+            local res = proxy_client:get("/non-anon", {
+                headers = {
+                  ["Host"] = "kong",
+                  ["Accept"] = "text/html",
+                }
+            })
+            local saml_response, relay_state = sp_init_flow(res, USERNAME, PASSWORD)
+            local response, err = proxy_client:post("/non-anon/consume", {
+                headers = {
+                  ["Host"] = "kong",
+                  ["Content-Type"] = "application/x-www-form-urlencoded",
+                },
+                body = "SAMLResponse=" .. ngx.escape_uri(saml_response) .. "&RelayState=" .. ngx.escape_uri(relay_state),
+            })
+            assert.is_nil(err)
+            assert.equal(302, response.status)
 
-          it("SP request with consumer is successful", function()
-              local res = proxy_client:get("/non-anon", {
-                  headers = {
-                    ["Host"] = "kong",
-                    ["Accept"] = "text/html",
-                  }
-              })
-              local saml_response, relay_state = sp_init_flow(res, USERNAME, PASSWORD)
-              local response, err = proxy_client:post("/non-anon/consume", {
-                  headers = {
-                    ["Host"] = "kong",
-                    ["Content-Type"] = "application/x-www-form-urlencoded",
-                  },
-                  body = "SAMLResponse=" .. ngx.escape_uri(saml_response) .. "&RelayState=" .. ngx.escape_uri(relay_state),
-              })
-              assert.is_nil(err)
-              assert.equal(302, response.status)
+        end)
 
-          end)
+        it("invalid SAMLResponse posted to /consume callback results in 400 error", function()
+            local response, err = proxy_client:post("/anon/consume", {
+                headers = {
+                  ["Content-Type"] = "application/x-www-form-urlencoded",
+                },
+                body = "SAMLResponse=not_valid",
+            })
+            assert.is_nil(err)
+            assert.equal(400, response.status)
 
-          it("invalid SAMLResponse posted to /consume callback results in 400 error", function()
-              local response, err = proxy_client:post("/anon/consume", {
-                  headers = {
-                    ["Content-Type"] = "application/x-www-form-urlencoded",
-                  },
-                  body = "SAMLResponse=not_valid",
-              })
-              assert.is_nil(err)
-              assert.equal(400, response.status)
+        end)
 
-          end)
+        it("SP request with missing consumer is rejected", function()
+            local res = proxy_client:get("/non-anon", {
+                headers = {
+                  ["Host"] = "kong",
+                  ["Accept"] = "text/html",
+                }
+            })
+            local saml_response, relay_state = sp_init_flow(res, "samluser2", "pass1234#")
+            local response, err = proxy_client:post("/non-anon/consume", {
+                headers = {
+                  ["Content-Type"] = "application/x-www-form-urlencoded",
+                },
+                body = "SAMLResponse=" .. ngx.escape_uri(saml_response) .. "&RelayState=" .. ngx.escape_uri(relay_state),
+            })
 
-          it("SP request with missing consumer is rejected", function()
-              local res = proxy_client:get("/non-anon", {
-                  headers = {
-                    ["Host"] = "kong",
-                    ["Accept"] = "text/html",
-                  }
-              })
-              local saml_response, relay_state = sp_init_flow(res, "samluser2", "pass1234#")
-              local response, err = proxy_client:post("/non-anon/consume", {
-                  headers = {
-                    ["Content-Type"] = "application/x-www-form-urlencoded",
-                  },
-                  body = "SAMLResponse=" .. ngx.escape_uri(saml_response) .. "&RelayState=" .. ngx.escape_uri(relay_state),
-              })
+            assert.is_nil(err)
+            assert.equal(302, response.status)
+        end)
 
-              assert.is_nil(err)
-              assert.equal(302, response.status)
-          end)
+        it("POST data is preserved during IdP interaction", function()
+            local res = proxy_client:post("/non-anon", {
+                headers = {
+                  ["Host"] = "kong",
+                  ["Accept"] = "text/html",
+                  ["Content-type"] = "application/x-www-form-urlencoded",
+                },
+                body = {
+                  this = "is",
+                  some = "body",
+                },
+            })
+            local saml_response, relay_state = sp_init_flow(res, "samluser2", "pass1234#")
+            local res, err = proxy_client:post("/non-anon/consume", {
+                headers = {
+                  ["Content-Type"] = "application/x-www-form-urlencoded",
+                },
+                body = "SAMLResponse=" .. ngx.escape_uri(saml_response) .. "&RelayState=" .. ngx.escape_uri(relay_state),
+            })
 
-          it("POST data is preserved during IdP interaction", function()
-              local res = proxy_client:post("/non-anon", {
-                  headers = {
-                    ["Host"] = "kong",
-                    ["Accept"] = "text/html",
-                    ["Content-type"] = "application/x-www-form-urlencoded",
-                  },
-                  body = {
-                    this = "is",
-                    some = "body",
-                  },
-              })
-              local saml_response, relay_state = sp_init_flow(res, "samluser2", "pass1234#")
-              local res, err = proxy_client:post("/non-anon/consume", {
-                  headers = {
-                    ["Content-Type"] = "application/x-www-form-urlencoded",
-                  },
-                  body = "SAMLResponse=" .. ngx.escape_uri(saml_response) .. "&RelayState=" .. ngx.escape_uri(relay_state),
-              })
+            assert.is_nil(err)
+            assert.equal(200, res.status)
+            local body = res:read_body()
+            assert.equal("is", find_form_field_value(body, "this"))
+            assert.equal("body", find_form_field_value(body, "some"))
+        end)
 
-              assert.is_nil(err)
-              assert.equal(200, res.status)
-              local body = res:read_body()
-              assert.equal("is", find_form_field_value(body, "this"))
-              assert.equal("body", find_form_field_value(body, "some"))
-          end)
+        it("POST request with unsupported encoding is rejected", function()
+            local res = proxy_client:post("/non-anon", {
+                headers = {
+                  ["Host"] = "kong",
+                  ["Accept"] = "text/html",
+                  ["Content-type"] = "multipart/form-data",
+                },
+                body = {
+                  this = "is",
+                  some = "body",
+                },
+            })
+            assert.equal(415, res.status)
+        end)
 
-          it("POST request with unsupported encoding is rejected", function()
-              local res = proxy_client:post("/non-anon", {
-                  headers = {
-                    ["Host"] = "kong",
-                    ["Accept"] = "text/html",
-                    ["Content-type"] = "multipart/form-data",
-                  },
-                  body = {
-                    this = "is",
-                    some = "body",
-                  },
-              })
-              assert.equal(415, res.status)
-          end)
-
-          it("API request with no session is rejected as unauthorized", function()
-              local res = proxy_client:get("/non-anon", {
-                  headers = {
-                    ["Host"] = "kong",
-                    ["Accept"] = "application/json",
-                  }
-              })
-              assert.equal(401, res.status)
-          end)
-      end)
-    end
+        it("API request with no session is rejected as unauthorized", function()
+            local res = proxy_client:get("/non-anon", {
+                headers = {
+                  ["Host"] = "kong",
+                  ["Accept"] = "application/json",
+                }
+            })
+            assert.equal(401, res.status)
+        end)
+    end)
   end
 end

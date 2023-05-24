@@ -46,7 +46,6 @@ for _, strategy in strategies() do
 
       assert(helpers.start_kong({
         database   = strategy ~= "off" and strategy or nil,
-        db_update_propagation = strategy == "cassandra" and 1 or 0,
         declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins    = "bundled,key-auth-enc",

@@ -39,20 +39,4 @@ return {
       END$$;
     ]],
   },
-
-  cassandra = {
-    up = [[
-      CREATE TABLE IF NOT EXISTS konnect_applications(
-        id            uuid,
-        ws_id         uuid,
-        created_at    timestamp,
-        client_id     text,
-        scopes        set<text>,
-        tags          set<text>,
-        PRIMARY KEY (id)
-      );
-      CREATE INDEX IF NOT EXISTS konnect_applications_client_id_idx ON konnect_applications(client_id);
-      CREATE INDEX IF NOT EXISTS konnect_applications_ws_id_idx  ON konnect_applications (ws_id);
-    ]],
-  },
 }

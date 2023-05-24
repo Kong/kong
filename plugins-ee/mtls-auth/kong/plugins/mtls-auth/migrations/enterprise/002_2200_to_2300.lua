@@ -32,9 +32,4 @@ return {
       END$$;
     ]],
   },
-  cassandra = {
-    up = [[
-      ALTER TABLE mtls_auth_credentials ADD tags set<text>;
-    ]],
-  }
 }

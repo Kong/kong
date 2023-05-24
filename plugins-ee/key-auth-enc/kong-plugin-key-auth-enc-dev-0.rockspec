@@ -26,7 +26,6 @@ build = {
     ["kong.plugins.key-auth-enc.migrations.enterprise.002_3100_to_3200"] = "kong/plugins/key-auth-enc/migrations/enterprise/002_3100_to_3200.lua",
     ["kong.plugins.key-auth-enc.migrations.enterprise.002_2800_to_3200"] = "kong/plugins/key-auth-enc/migrations/enterprise/002_2800_to_3200.lua",
     ["kong.plugins.key-auth-enc.strategies.postgres.keyauth_enc_credentials"] = "kong/plugins/key-auth-enc/strategies/postgres/keyauth_enc_credentials.lua",
-    ["kong.plugins.key-auth-enc.strategies.cassandra.keyauth_enc_credentials"] = "kong/plugins/key-auth-enc/strategies/cassandra/keyauth_enc_credentials.lua",
     ["kong.plugins.key-auth-enc.strategies.off.keyauth_enc_credentials"] = "kong/plugins/key-auth-enc/strategies/off/keyauth_enc_credentials.lua",
   }
 }

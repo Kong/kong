@@ -68,12 +68,10 @@ for _, db_strategy in strategies() do
 
             assert(helpers.start_kong({
                 database = db_strategy,
-                db_update_propagation = db_strategy == "cassandra" and 1 or 0,
                 plugins = "bundled,graphql-rate-limiting-advanced",
                 nginx_conf = "spec/fixtures/custom_nginx.template",
                 declarative_config = db_strategy == "off" and yaml_file or nil,
                 pg_host = db_strategy == "off" and "unknownhost.konghq.com" or nil,
-                cassandra_contact_points = db_strategy == "off" and "unknownhost.konghq.com" or nil,
             }, nil, nil, fixtures))
         end)
 

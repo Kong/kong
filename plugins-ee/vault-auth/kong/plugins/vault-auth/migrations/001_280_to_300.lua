@@ -24,20 +24,4 @@ return {
       );
     ]],
   },
-  cassandra = {
-    up = [[
-      CREATE TABLE IF NOT EXISTS vault_auth_vaults (
-        id          uuid,
-        created_at  timestamp,
-        updated_at  timestamp,
-        name        text,
-        protocol    text,
-        host        text,
-        port        int,
-        mount       text,
-        vault_token text,
-        PRIMARY KEY (id)
-      );
-    ]],
-  },
 }

@@ -630,7 +630,6 @@ for _, strategy in strategies() do
           plugins = "rate-limiting-advanced,key-auth,exit-transformer",
           nginx_conf = "spec/fixtures/custom_nginx.template",
           database = strategy ~= "off" and strategy or nil,
-          db_update_propagation = strategy == "cassandra" and 1 or 0,
           db_update_frequency = 0.1,
           prefix = "node1",
           declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
@@ -641,7 +640,6 @@ for _, strategy in strategies() do
         assert(helpers.start_kong{
           plugins = "rate-limiting-advanced,key-auth,exit-transformer",
           database = strategy ~= "off" and strategy or nil,
-          db_update_propagation = strategy == "cassandra" and 1 or 0,
           declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
           db_update_frequency = 0.1,
           prefix = "node2",

@@ -167,7 +167,6 @@ for _, strategy in strategies() do
 
       assert(helpers.start_kong({
         database   = strategy ~= "off" and strategy or nil,
-        db_update_propagation = strategy == "cassandra" and 1 or 0,
         declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
         plugins    = "key-auth-enc",
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -675,12 +674,10 @@ for _, strategy in strategies() do
 
         assert(helpers.start_kong({
           database   = strategy,
-          db_update_propagation = strategy == "cassandra" and 1 or 0,
           plugins    = "bundled,key-auth-enc",
           nginx_conf = "spec/fixtures/custom_nginx.template",
           declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
           pg_host = strategy == "off" and "unknownhost.konghq.com" or nil,
-          cassandra_contact_points = strategy == "off" and "unknownhost.konghq.com" or nil,
         }))
       end)
 
@@ -834,7 +831,6 @@ for _, strategy in strategies() do
 
       assert(helpers.start_kong({
         database   = strategy ~= "off" and strategy or nil,
-        db_update_propagation = strategy == "cassandra" and 1 or 0,
         declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
         plugins    = "key-auth-enc, basic-auth",
         nginx_conf = "spec/fixtures/custom_nginx.template",

@@ -14,7 +14,6 @@ description = {
 build = {
   type = "builtin",
   modules = {
-    ["kong.plugins.request-transformer-advanced.migrations.cassandra"] = "kong/plugins/request-transformer-advanced/migrations/cassandra.lua",
     ["kong.plugins.request-transformer-advanced.migrations.postgres"] = "kong/plugins/request-transformer-advanced/migrations/postgres.lua",
     ["kong.plugins.request-transformer-advanced.migrations.common"] = "kong/plugins/request-transformer-advanced/migrations/common.lua",
     ["kong.plugins.request-transformer-advanced.migrations.enterprise"] = "kong/plugins/request-transformer-advanced/migrations/enterprise/init.lua",

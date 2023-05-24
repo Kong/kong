@@ -12,9 +12,4 @@ return {
       DROP INDEX IF EXISTS "oic_issuers_idx";
     ]],
   },
-
-  cassandra = {
-    up = [[
-    ]],
-  },
 }

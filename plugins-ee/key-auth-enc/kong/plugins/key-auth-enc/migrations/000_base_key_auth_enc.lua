@@ -29,19 +29,4 @@ return {
         ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC';
     ]],
   },
-
-  cassandra = {
-    up = [[
-      CREATE TABLE IF NOT EXISTS keyauth_enc_credentials(
-        id          uuid PRIMARY KEY,
-        created_at  timestamp,
-        consumer_id uuid,
-        key         text,
-        key_ident   text
-      );
-      CREATE INDEX IF NOT EXISTS ON keyauth_enc_credentials(key);
-      CREATE INDEX IF NOT EXISTS ON keyauth_enc_credentials(consumer_id);
-      CREATE INDEX IF NOT EXISTS ON keyauth_enc_credentials(key_ident);
-    ]],
-  },
 }

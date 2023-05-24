@@ -29,25 +29,4 @@ return {
             END $$;
         ]]
     },
-
-    cassandra = {
-        up = [[
-            CREATE TABLE IF NOT EXISTS "graphql_ratelimiting_advanced_cost_decoration" (
-              "partition"         text,
-              "id"                uuid,
-              "service_id"        uuid,
-              "type_path"         text,
-              "add_arguments"     list<text>,
-              "add_constant"      float,
-              "mul_arguments"     list<text>,
-              "mul_constant"      float,
-              "created_at"        timestamp,
-              "updated_at"        timestamp,
-              PRIMARY KEY         (partition, id)
-            );
-
-            CREATE INDEX IF NOT EXISTS graphql_ratelimiting_advanced_cost_decoration_service_id_idx ON
-                                       graphql_ratelimiting_advanced_cost_decoration(service_id);
-        ]]
-    }
 }

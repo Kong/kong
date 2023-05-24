@@ -35,10 +35,4 @@ return {
       END$$;
     ]],
   },
-
-  cassandra = {
-    up = [[
-      ALTER TABLE keyauth_enc_credentials ADD tags set<text>;
-    ]],
-  },
 }

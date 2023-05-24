@@ -42,7 +42,4 @@ return {
       $$;
     ]],
   },
-  cassandra = {
-    up = "",
-  },
 }

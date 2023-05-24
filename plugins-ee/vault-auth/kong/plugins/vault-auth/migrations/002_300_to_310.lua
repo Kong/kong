@@ -17,9 +17,4 @@ return {
       $$;
     ]],
   },
-  cassandra = {
-    up = [[
-      ALTER TABLE vault_auth_vaults ADD kv text;
-    ]],
-  },
 }
