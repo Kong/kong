@@ -15,6 +15,7 @@ local utils         = require "kong.tools.utils"
 local http          = require "resty.http"
 local json          = require "cjson.safe"
 local workspaces    = require "kong.workspaces"
+local semaphore     = require "ngx.semaphore"
 
 
 local concat        = table.concat
@@ -58,6 +59,9 @@ local sha256_base64url do
     end
   end
 end
+
+
+local rediscovery_semaphores = {}
 
 
 local discovery_data = { n = 0 }
@@ -558,46 +562,20 @@ local function issuer_select(issuer)
 end
 
 
-local issuers = {}
-
-
-function issuers.rediscover(issuer, opts)
-  issuer = normalize_issuer(issuer)
-  opts = opts or {}
-
-  local issuer_entity = issuer_select(issuer)
-
-  local now = time()
-
-  if issuer_entity then
-    local configuration_decoded, err = json.decode(issuer_entity.configuration)
-    if not configuration_decoded then
-      return nil, "decoding discovery document failed with " .. err
-    end
-
-    local rediscovery_lifetime = opts.rediscovery_lifetime or 30
-
-    local updated_at = configuration_decoded.updated_at or 0
-    local secs_passed = now - updated_at
-    if secs_passed < rediscovery_lifetime then
-      log.notice("rediscovery was done recently (", rediscovery_lifetime - secs_passed,
-                 " seconds until next rediscovery)")
-      return issuer_entity.keys
-    end
+local function rediscover(issuer, opts, issuer_entity)
+  if not issuer_entity then
+    issuer_entity = issuer_select(issuer)
   end
 
   local conf, jwks = discover(issuer, opts, issuer_entity)
   if not conf or not jwks then
     log.notice("rediscovery failed")
-  end
-
-  if not issuer_entity then
     issuer_entity = issuer_select(issuer)
   end
 
   if issuer_entity then
     local data = {
-      issuer        = issuer_entity.issuer,
+      issuer        = issuer,
       configuration = conf or issuer_entity.configuration,
       keys          = jwks or issuer_entity.keys,
       secret        = issuer_entity.secret,
@@ -633,7 +611,7 @@ function issuers.rediscover(issuer, opts)
       local stored_data, err = kong.db.oic_issuers:upsert({ id = issuer_entity.id }, data)
       if not stored_data then
         log.warn("unable to upsert issuer ", data.issuer, " discovery documents in database (",
-                 err or "unknown error", ")")
+                err or "unknown error", ")")
       else
         data = stored_data
       end
@@ -674,7 +652,7 @@ function issuers.rediscover(issuer, opts)
       local stored_data, err = kong.db.oic_issuers:upsert_by_issuer(data.issuer, data)
       if not stored_data then
         log.warn("unable to upsert issuer ", data.issuer, " discovery documents in database (",
-                 err or "unknown error", ")")
+                err or "unknown error", ")")
 
         issuer_entity = issuer_select(data.issuer)
         if issuer_entity then
@@ -688,6 +666,98 @@ function issuers.rediscover(issuer, opts)
 
     return data.keys
   end
+end
+
+
+local issuers = {}
+
+
+function issuers.rediscover(issuer, opts)
+  issuer = normalize_issuer(issuer)
+  opts = opts or {}
+
+  local issuer_entity = issuer_select(issuer)
+  local updated_at = 0
+
+  if issuer_entity then
+    local configuration_decoded, err = json.decode(issuer_entity.configuration)
+    if type(configuration_decoded) == "table" then
+      updated_at = configuration_decoded.updated_at or 0
+
+    else
+      log.notice("rediscovery failed when decoding discovery for ",
+                 issuer, " (", err, ")")
+    end
+
+    local rediscovery_lifetime = opts.rediscovery_lifetime or 30
+    local seconds_since_last_rediscovery = time() - updated_at
+    if seconds_since_last_rediscovery < rediscovery_lifetime then
+      log.notice("rediscovery for ", issuer, " was done recently (",
+                 rediscovery_lifetime - seconds_since_last_rediscovery,
+                 " seconds until next rediscovery)")
+      return issuer_entity.keys
+    end
+  end
+
+  local err
+  local rediscovery_semaphore = rediscovery_semaphores[issuer]
+  if not rediscovery_semaphore then
+    rediscovery_semaphore, err = semaphore.new(1)
+    if err then
+      log.warn("rediscovery was unable to create a semaphore for ",
+               issuer, " (", err, ")")
+    else
+      rediscovery_semaphores[issuer] = rediscovery_semaphore
+    end
+  end
+
+  local locked
+  local new_issuer_entity
+  if rediscovery_semaphore then
+    -- waiting at most 1.5 seconds, last wait being half a second
+    for i = 1, 5 do
+      locked, err = rediscovery_semaphore:wait(0.1 * i)
+      new_issuer_entity = issuer_select(issuer)
+      if new_issuer_entity then
+        local configuration_decoded = json.decode(new_issuer_entity.configuration)
+        local new_updated_at = type(configuration_decoded) == "table" and
+                               configuration_decoded.updated_at or 0
+
+        if new_updated_at > updated_at then
+          if locked then
+            rediscovery_semaphore:post()
+          end
+          return new_issuer_entity.keys
+        end
+      end
+
+      if locked then
+        break
+      end
+    end
+  end
+
+  if not locked then
+    -- Couldn't get a lock and the keys were not updated during 1.5 seconds.
+    -- We return old keys, and this will most likely result 401 on the client.
+    log.notice("unable to acquire a lock for ", issuer, " rediscovery (", err, ")")
+    if new_issuer_entity then
+      return new_issuer_entity.keys or "[]"
+    end
+
+    if issuer_entity then
+      return issuer_entity.keys or "[]"
+    end
+
+    return "[]"
+  end
+
+  local new_keys = rediscover(issuer, opts, new_issuer_entity)
+  if locked then
+    rediscovery_semaphore:post()
+  end
+
+  return new_keys
 end
 
 
