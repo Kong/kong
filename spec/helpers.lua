@@ -1302,6 +1302,9 @@ end
 -- @return A thread object (from the `llthreads2` Lua package)
 -- @see kill_http_server
 local function http_server(port, opts)
+  print(debug.traceback("[warning] http_server is deprecated, " ..
+                        "use helpers.start_kong's fixture parameter " ..
+                        "or helpers.http_mock instead.", 2))
   local threads = require "llthreads2.ex"
   opts = opts or {}
   local thread = threads.new({
