@@ -20,6 +20,7 @@ local semaphore     = require "ngx.semaphore"
 
 local concat        = table.concat
 local insert        = table.insert
+local sort          = table.sort
 local ipairs        = ipairs
 local pairs         = pairs
 local encode_base64 = ngx.encode_base64
@@ -535,20 +536,20 @@ local function discover(issuer, opts, issuer_entity)
 end
 
 
-local function issuer_select(issuer)
-  if kong.configuration.database == "off" and discovery_data[issuer] then
-    return discovery_data[issuer]
+local function issuer_select(identifier)
+  if kong.configuration.database == "off" and discovery_data[identifier] then
+    return discovery_data[identifier]
   end
 
-  log.notice("loading configuration for ", issuer, " from database")
+  log.notice("loading configuration for ", identifier, " from database")
 
-  local issuer_entity, err = kong.db.oic_issuers:select_by_issuer(issuer)
+  local issuer_entity, err = kong.db.oic_issuers:select_by_issuer(identifier)
   if err then
     log.notice("unable to load discovery data (", err, ")")
   end
 
-  if kong.configuration.database == "off" and discovery_data[issuer] then
-    return discovery_data[issuer]
+  if kong.configuration.database == "off" and discovery_data[identifier] then
+    return discovery_data[identifier]
   end
 
   if kong.configuration.database == "off" and type(issuer_entity) == "table" then
@@ -562,20 +563,31 @@ local function issuer_select(issuer)
 end
 
 
-local function rediscover(issuer, opts, issuer_entity)
+local function issuer_identifier(issuer, opts)
+  local extra_jwks_uris = opts and opts.extra_jwks_uris
+  if extra_jwks_uris and #extra_jwks_uris > 0 then
+    sort(extra_jwks_uris)
+    local hash = sha256_base64url(concat(extra_jwks_uris, ":"))
+    return issuer .. "#" .. hash
+  end
+  return issuer
+end
+
+
+local function rediscover(issuer, identifier, opts, issuer_entity)
   if not issuer_entity then
-    issuer_entity = issuer_select(issuer)
+    issuer_entity = issuer_select(identifier)
   end
 
   local conf, jwks = discover(issuer, opts, issuer_entity)
   if not conf or not jwks then
     log.notice("rediscovery failed")
-    issuer_entity = issuer_select(issuer)
+    issuer_entity = issuer_select(identifier)
   end
 
   if issuer_entity then
     local data = {
-      issuer        = issuer,
+      issuer        = identifier,
       configuration = conf or issuer_entity.configuration,
       keys          = jwks or issuer_entity.keys,
       secret        = issuer_entity.secret,
@@ -628,7 +640,7 @@ local function rediscover(issuer, opts, issuer_entity)
     })
 
     local data = {
-      issuer        = issuer,
+      issuer        = identifier,
       configuration = conf,
       keys          = jwks or "[]",
       secret        = get_secret(),
@@ -676,7 +688,8 @@ function issuers.rediscover(issuer, opts)
   issuer = normalize_issuer(issuer)
   opts = opts or {}
 
-  local issuer_entity = issuer_select(issuer)
+  local identifier = issuer_identifier(issuer, opts)
+  local issuer_entity = issuer_select(identifier)
   local updated_at = 0
 
   if issuer_entity then
@@ -686,13 +699,13 @@ function issuers.rediscover(issuer, opts)
 
     else
       log.notice("rediscovery failed when decoding discovery for ",
-                 issuer, " (", err, ")")
+                 identifier, " (", err, ")")
     end
 
     local rediscovery_lifetime = opts.rediscovery_lifetime or 30
     local seconds_since_last_rediscovery = time() - updated_at
     if seconds_since_last_rediscovery < rediscovery_lifetime then
-      log.notice("rediscovery for ", issuer, " was done recently (",
+      log.notice("rediscovery for ", identifier, " was done recently (",
                  rediscovery_lifetime - seconds_since_last_rediscovery,
                  " seconds until next rediscovery)")
       return issuer_entity.keys
@@ -700,14 +713,14 @@ function issuers.rediscover(issuer, opts)
   end
 
   local err
-  local rediscovery_semaphore = rediscovery_semaphores[issuer]
+  local rediscovery_semaphore = rediscovery_semaphores[identifier]
   if not rediscovery_semaphore then
     rediscovery_semaphore, err = semaphore.new(1)
     if err then
       log.warn("rediscovery was unable to create a semaphore for ",
-               issuer, " (", err, ")")
+              identifier, " (", err, ")")
     else
-      rediscovery_semaphores[issuer] = rediscovery_semaphore
+      rediscovery_semaphores[identifier] = rediscovery_semaphore
     end
   end
 
@@ -717,7 +730,7 @@ function issuers.rediscover(issuer, opts)
     -- waiting at most 1.5 seconds, last wait being half a second
     for i = 1, 5 do
       locked, err = rediscovery_semaphore:wait(0.1 * i)
-      new_issuer_entity = issuer_select(issuer)
+      new_issuer_entity = issuer_select(identifier)
       if new_issuer_entity then
         local configuration_decoded = json.decode(new_issuer_entity.configuration)
         local new_updated_at = type(configuration_decoded) == "table" and
@@ -740,7 +753,7 @@ function issuers.rediscover(issuer, opts)
   if not locked then
     -- Couldn't get a lock and the keys were not updated during 1.5 seconds.
     -- We return old keys, and this will most likely result 401 on the client.
-    log.notice("unable to acquire a lock for ", issuer, " rediscovery (", err, ")")
+    log.notice("unable to acquire a lock for ", identifier, " rediscovery (", err, ")")
     if new_issuer_entity then
       return new_issuer_entity.keys or "[]"
     end
@@ -752,7 +765,7 @@ function issuers.rediscover(issuer, opts)
     return "[]"
   end
 
-  local new_keys = rediscover(issuer, opts, new_issuer_entity)
+  local new_keys = rediscover(issuer, identifier, opts, new_issuer_entity)
   if locked then
     rediscovery_semaphore:post()
   end
@@ -761,8 +774,8 @@ function issuers.rediscover(issuer, opts)
 end
 
 
-local function issuers_init(issuer, opts)
-  local issuer_entity = issuer_select(issuer)
+local function issuers_init(issuer, identifier, opts)
+  local issuer_entity = issuer_select(identifier)
   if issuer_entity then
     return issuer_entity
   end
@@ -772,7 +785,7 @@ local function issuers_init(issuer, opts)
     return nil, "discovery failed"
   end
 
-  issuer_entity = issuer_select(issuer)
+  issuer_entity = issuer_select(identifier)
   if issuer_entity then
     return issuer_entity
   end
@@ -785,7 +798,7 @@ local function issuers_init(issuer, opts)
   })
 
   local data = {
-    issuer        = issuer,
+    issuer        = identifier,
     configuration = conf,
     keys          = jwks or "[]",
     secret        = get_secret(),
@@ -828,10 +841,11 @@ end
 
 function issuers.load(issuer, opts)
   issuer = normalize_issuer(issuer)
-
-  local key = cache_key(issuer, "oic_issuers")
-  return cache_get(key, nil, issuers_init, issuer, opts)
+  local identifier = issuer_identifier(issuer, opts)
+  local key = cache_key(identifier, "oic_issuers")
+  return cache_get(key, nil, issuers_init, issuer, identifier, opts)
 end
+
 
 local function log_multiple_matches(subject, matches)
   local match_info = {}
