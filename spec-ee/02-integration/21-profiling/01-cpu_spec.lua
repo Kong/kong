@@ -14,7 +14,7 @@ local DEBUG_LISTEN_PORT = 9200
 
 for _, strategy in helpers.each_strategy() do
 
-describe("CPU profling #" .. strategy, function ()
+describe("CPU profiling #" .. strategy, function ()
   lazy_setup(function()
     helpers.get_db_utils(strategy)
 

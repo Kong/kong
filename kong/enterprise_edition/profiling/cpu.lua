@@ -26,7 +26,7 @@ local ngx_worker_pid            = ngx.worker.pid
 local ngx_log                   = ngx.log
 
 local MAX_STACK_DEPTH           = 64  -- depth of stacktrace
-local SYNC_INTERVAL             = 1   -- interval of store the 
+local SYNC_INTERVAL             = 1   -- interval of store the
                                       -- current_samples to shdict (in seconds)
 
 local SHDICT_SATATE             = "kong_profiling_state"
@@ -43,7 +43,7 @@ local PATH_KEY                  = "cpu:path"
 local SAMPLES_KEY               = "cpu:samples"
 
 -- For checking the lock status
-local LOCK_OPTS_FOR_CHECKING    = { timeout = 0 }
+local LOCK_OPTS_FOR_CHECKING    = { timeout = 0, }
 local LOCK_OPTS_FOR_STATE_LOCK  = { timeout = 0, exptime = 0, }
 -- For file lock, we assume the time of writing the file is less than 30 seconds
 local LOCK_OPTS_FOR_FILE_LOCK   = { timeout = 0, exptime = 30, }
@@ -63,7 +63,7 @@ local _M                        = {}
       instructions (byte code) executed by LuaJIT, once the
       counter reaches the limit, it will trigger a callback
       to record the stacktrace.
-    
+
     * time-based: It will trigger a callback every N microseconds
       to record the stacktrace.
 
@@ -127,7 +127,7 @@ local function instruction_callback(event, _line)
 
   -- remove the last ';'
   local top = callstack[1]
-  callstack[1] = string_sub(top, 1, #top -  1)
+  callstack[1] = string_sub(top, 1, -2)
 
   local _callstack = callstack
   callstack = {}
@@ -294,7 +294,7 @@ function _M.state()
     if state.path and not pl_path.exists(state.path) then
       --[[
         We expect the file is exists if status is "stopped",
-        but if the file is not exists, 
+        but if the file does not exist,
         we should clear the path because user can't find the file.
 
         The following reasons may cause this branch:
@@ -380,7 +380,7 @@ function _M.stop()
   local fp = assert(io.open(state.path, "w"))
 
   for k, v in pairs(old_stacktrace) do
-    fp:write(string.format("%s %d\n", k, v))
+    fp:write(string_format("%s %d\n", k, v))
   end
 
   fp:close()
