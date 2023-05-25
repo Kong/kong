@@ -17,7 +17,6 @@ describe("worker_events", function()
             location = /test_too_big_string {
               content_by_lua_block {
                 local PAYLOAD_TOO_BIG_ERR = "failed to publish event: payload too big"
-                local DEFAULT_TRUNCATED_PAYLOAD = ", truncated payload: not a serialized object"
                 local SOURCE, EVENT = "foo", "string"
                 local payload_received = ""
                 local worker_events = kong.worker_events
