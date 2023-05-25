@@ -54,7 +54,7 @@ describe("worker_events", function()
                 end
 
                 assert(wait_until(function()
-                  return #payload_received > 60000
+                  return #payload_received > 60000 and #payload_received < 65535
                 end, 1))
 
                 ngx.status = ngx.HTTP_OK
@@ -138,7 +138,8 @@ describe("worker_events", function()
           host = "example.com",
         }
       })
-      assert.res_status(200, res)
+      local body = assert.res_status(200, res)
+      assert.equal(body, "ok")
     end)
   end
 end)
