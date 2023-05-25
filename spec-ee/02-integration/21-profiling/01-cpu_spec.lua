@@ -112,14 +112,14 @@ describe("CPU profiling #" .. strategy, function ()
       if mode == "instruction" then
         body = {
           mode = "instruction",
-          step = 100,
-          timeout = 11,
+          step = 50,
+          timeout = 5,
         }
       else
         body = {
           mode = "time",
-          interval = 10,
-          timeout = 11,
+          interval = 1,
+          timeout = 5,
         }
       end
 
@@ -151,11 +151,11 @@ describe("CPU profiling #" .. strategy, function ()
 
       if mode == "instruction" then
         assert.falsy(json.interval)
-        assert.same(100, json.step)
+        assert.same(50, json.step)
 
       else
         assert.falsy(json.step)
-        assert.same(10, json.interval)
+        assert.same(1, json.interval)
       end
 
       for i = 1, 100 do
@@ -170,7 +170,7 @@ describe("CPU profiling #" .. strategy, function ()
         ngx.sleep(0.002)
       end
 
-      ngx.sleep(12) -- wait for profiling to timeout
+      ngx.sleep(5 + 1) -- wait for profiling to timeout
 
       local path = json.path
 
@@ -183,7 +183,7 @@ describe("CPU profiling #" .. strategy, function ()
       json = cjson.decode(body)
       assert.same({status = "stopped", path = path}, json)
 
-      helpers.wait_for_file_contents(path, 15)
+      helpers.wait_for_file_contents(path, 10)
     end
   end)
 
@@ -266,11 +266,11 @@ describe("CPU profiling #" .. strategy, function ()
       },
       {
         request_body = {
-          timeout = 1,
+          timeout = 0,
         },
         response_body = {
           status = "error",
-          message = "invalid timeout (must be between 10 and 600): 1",
+          message = "invalid timeout (must be between 1 and 600): 0",
         },
       },
       {
@@ -279,7 +279,7 @@ describe("CPU profiling #" .. strategy, function ()
         },
         response_body = {
           status = "error",
-          message = "invalid timeout (must be between 10 and 600): 601",
+          message = "invalid timeout (must be between 1 and 600): 601",
         },
       },
     }
@@ -419,8 +419,8 @@ describe("CPU profiling #" .. strategy, function ()
         body = {
           pid = pid,
           mode = "instruction",
-          step = 100,
-          timeout = 10,
+          step = 50,
+          timeout = 5,
         },
         headers = {
           ["Content-Type"] = "application/json"
@@ -443,8 +443,7 @@ describe("CPU profiling #" .. strategy, function ()
       end, 3)
 
       -- wait for the profiling to be stopped
-      ngx.update_time()
-      ngx.sleep(7) -- 10 - 3 = 7
+      ngx.sleep(5 - 3)
 
       helpers.pwait_until(function()
         res = assert(admin_client:send {

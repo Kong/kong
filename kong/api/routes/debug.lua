@@ -32,7 +32,7 @@ local NODE_LEVEL_BROADCAST            = false
 local CLUSTER_LEVEL_BROADCAST         = true
 local DEFAULT_LOG_LEVEL_TIMEOUT       = 60 -- 60s
 
-local MIN_PROFILING_TIMEOUT           = 10      -- seconds
+local MIN_PROFILING_TIMEOUT           = 1       -- seconds
 local MAX_PROFILING_TIMEOUT           = 600     -- seconds
 
 local DEFAULT_CPU_PROFILING_MODE      = "time"
