@@ -1,6 +1,7 @@
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import { isGwNative } from 'support/config/gateway-vars';
 
 /**
  * Sets Kong Gateway target container variables
@@ -9,9 +10,11 @@ import * as path from 'path';
  */
 export const setGatewayContainerEnvVariable = (
   targetEnvironmentVariables: object,
-  containerName = 'kong-cp'
+  containerName
 ) => {
+  const isKongNative = isGwNative();
   const newVars: any = [];
+  let restartCommand;
 
   for (const envVar in targetEnvironmentVariables) {
     const modifiedVar = `-e ${envVar}=${targetEnvironmentVariables[envVar]}`;
@@ -20,9 +23,18 @@ export const setGatewayContainerEnvVariable = (
 
   const finalVars = newVars.join(' ');
 
+  if (isKongNative) {
+    restartCommand =
+      containerName === 'kong-dp1'
+        ? `kong restart -c kong-dp.conf`
+        : `kong restart -c kong.conf`;
+  } else {
+    restartCommand = 'kong reload';
+  }
+
   try {
     return execSync(
-      `kongVars="${finalVars}" make gwContainerName=${containerName} update_kong_container_env_var`,
+      `kongVars="${finalVars}" command="${restartCommand}" make gwContainerName=${containerName} update_kong_container_env_var`,
       { stdio: 'inherit' }
     );
   } catch (error) {
@@ -53,27 +65,30 @@ export const startGwWithCustomEnvVars = (
 
 /**
  * Reads given kong container logs
- * @param {string} containerName - target docker kong container name, default is 'kong-cp'
+ * @param {string} containerName - target docker kong container name
  * @param {number} numberOfLinesToRead - the number of lines to read from logs
  */
 export const getGatewayContainerLogs = (
-  containerName = 'kong-cp',
+  containerName,
   numberOfLinesToRead = 4
 ) => {
+  const isKongNative = isGwNative();
+  const logFile = path.resolve(process.cwd(), 'error.log');
+
+  const command = isKongNative
+    ? `docker cp "${containerName}":/var/error.log ${logFile}`
+    : `docker logs $(docker ps -aqf name="${containerName}") --tail ${numberOfLinesToRead} 2>&1 | cat > error.log`;
+
   try {
     // using | cat as simple redirection like &> or >& doesn't work in CI Ubuntu
-    execSync(
-      `docker logs $(docker ps -aqf name="${containerName}") --tail ${numberOfLinesToRead} 2>&1 | cat > logs.txt`
-    );
-    const logFile = path.resolve(process.cwd(), 'logs.txt');
-    const logs = fs.readFileSync(logFile, 'utf8');
-
+    execSync(command);
+    const logs = execSync(`tail -n ${numberOfLinesToRead} ${logFile}`);
     console.log(`Printing current log slice of kong container: \n${logs}`);
 
     // remove logs file
     if (fs.existsSync(logFile)) {
       fs.unlinkSync(logFile);
-      console.log(`\nSuccessfully removed target file: 'logs.txt'`);
+      console.log(`\nSuccessfully removed target file: 'error.log'`);
     }
 
     return logs;

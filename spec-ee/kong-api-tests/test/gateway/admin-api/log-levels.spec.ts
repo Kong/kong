@@ -22,6 +22,8 @@ import {
   getNegative,
   deleteRole,
   createPlugin,
+  isGwNative,
+  getKongContainerName,
   retryRequest,
 } from '@support';
 
@@ -38,6 +40,8 @@ describe('Dynamic Log Level Tests', function () {
   let currentLogs: any;
   const path = `/${randomString()}`;
   const isHybrid = isGwHybrid();
+  const isKongNative = isGwNative();
+  const kongContainerName = getKongContainerName();
 
   const logUrl = isHybrid
     ? 'cluster/control-planes-nodes/log-level'
@@ -138,7 +142,7 @@ describe('Dynamic Log Level Tests', function () {
 
   it('should see debug logs in container', async function () {
     await wait(3000);
-    const logs = getGatewayContainerLogs();
+    const logs = getGatewayContainerLogs(kongContainerName);
     const isLogFound = findRegex('\\[debug\\]', logs);
     expect(isLogFound, 'Should see debug logs').to.be.true;
   });
@@ -165,8 +169,12 @@ describe('Dynamic Log Level Tests', function () {
   });
 
   it('should not see debug logs in container after log is set to notice', async function () {
-    await wait(4000);
-    currentLogs = getGatewayContainerLogs();
+    await wait(isKongNative ? 8000 : 4000);
+    // read the last 2 lines of logs for package tests to avoid flakiness
+    currentLogs = getGatewayContainerLogs(
+      kongContainerName,
+      isKongNative ? 2 : 4
+    );
 
     const isLogFound = findRegex('\\[debug\\]', currentLogs);
     expect(
@@ -286,7 +294,7 @@ describe('Dynamic Log Level Tests', function () {
     const resp = await getNegative(`${proxyUrl}${path}`);
     logResponse(resp);
 
-    const logs = getGatewayContainerLogs();
+    const logs = getGatewayContainerLogs(kongContainerName);
 
     const isLogFound = findRegex('\\[error\\]', logs);
     const isInfoLogFound = findRegex('\\[info\\]', logs);
@@ -320,7 +328,9 @@ describe('Dynamic Log Level Tests', function () {
     logResponse(resp);
 
     await wait(isHybrid ? 7000 : 2000);
-    const logs = getGatewayContainerLogs(isHybrid ? 'kong-dp1' : 'kong-cp');
+    const logs = getGatewayContainerLogs(
+      isHybrid ? 'kong-dp1' : kongContainerName
+    );
 
     const isLogFound = findRegex('\\[error\\]', logs);
     expect(isLogFound, 'Should see error logs').to.be.true;

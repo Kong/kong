@@ -17,6 +17,7 @@ import {
   getGatewayContainerLogs,
   findRegex,
   retryRequest,
+  getKongContainerName,
 } from '@support';
 
 const agent = new https.Agent({
@@ -54,6 +55,7 @@ describe('@smoke: Router Functionality Tests', function () {
 
   const isHybrid = isGwHybrid();
   const serviceName = randomString();
+  const kongContainerName = getKongContainerName();
   const regexPath = '~/(hell?o|world)-(?<user>\\S+)';
   const waitTime = 5000;
 
@@ -348,7 +350,7 @@ describe('@smoke: Router Functionality Tests', function () {
     expect(resp.status, 'Status should be 400').to.equal(400);
 
     await wait(4000);
-    const currentLogs = getGatewayContainerLogs('kong-cp', 15);
+    const currentLogs = getGatewayContainerLogs(kongContainerName, 15);
     const errorLog = findRegex('\\[error\\]', currentLogs);
     const panickLog = findRegex('panicked', currentLogs);
     const outOfRangeLog = findRegex('out of range', currentLogs);

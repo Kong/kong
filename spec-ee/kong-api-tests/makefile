@@ -44,9 +44,9 @@ login_with_kongcloudpull:
 	${ssh} 'echo "${kongCloudPullPassword}" | docker login -u "kongcloudpull" --password-stdin || true'
 
 update_kong_container_env_var:
-# usage: kongVars="-e KONG_PORTAL=on -e KONG_VITALS=on" make gwContainerName=kong-cp update_kong_container_env_var
+# usage: kongVars="-e KONG_PORTAL=on -e KONG_VITALS=on" command="kong reload" make gwContainerName=kong-cp update_kong_container_env_var
 	@echo "Updating Kong container environment variable"
-	docker exec ${kongVars} $$(docker ps -aqf name=$(gwContainerName)) kong reload
+	docker exec ${kongVars} $$(docker ps -aqf name=$(gwContainerName)) ${command}
 
 get_kong_container_logs:
 	@echo "Reading kong container logs"

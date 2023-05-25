@@ -157,13 +157,17 @@ kvEngineVersions.forEach((kvVersion) => {
     });
 
     it('should proxy a request with correct secrets as querystring parameters', async function () {
-      const resp = await axios({
-        method: 'get',
-        url: `${proxyUrl}${path}?access_token=${credentials.access_token}&secret_token=${credentials.secret_token}`,
-      });
-      logResponse(resp);
+      const req = () =>
+        axios({
+          method: 'get',
+          url: `${proxyUrl}${path}?access_token=${credentials.access_token}&secret_token=${credentials.secret_token}`,
+        });
 
-      expect(resp.status, 'Status should be 200').to.equal(200);
+      const assertions = (resp) => {
+        expect(resp.status, 'Status should be 200').to.equal(200);
+      };
+
+      await retryRequest(req, assertions);
     });
 
     it('should proxy a request with correct secrets in request header', async function () {

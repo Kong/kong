@@ -3,8 +3,6 @@ import { constants } from './constants';
 export const vars = {
   AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
   AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
-  KONG_VERSION: process.env.KONG_VERSION,
-  KONG_CONTAINER_NAME: process.env.KONG_CONTAINER_NAME,
 };
 
 export const checkGwVars = () => {
@@ -40,11 +38,35 @@ export const getGatewayMode = (): string => {
 };
 
 /**
- * Check if cy=urrent gateway mode is hybrid
+ * Check if current gateway mode is hybrid
  * @returns {boolean} - true if gateway runs in hybrid mode else false
  */
 export const isGwHybrid = (): boolean => {
   return getGatewayMode() === 'hybrid' ? true : false;
+};
+
+/**
+ * Check if gateway is installed natively (package tests)
+ * @returns {boolean} - true if gateway is installed using a package
+ */
+export const isGwNative = (): boolean => {
+  return process.env.KONG_PACKAGE ? true : false;
+};
+
+/**
+ * Get running kong container name based on which test suite is running
+ * @returns {string} - the name of the container
+ */
+export const getKongContainerName = (): string => {
+  return process.env.KONG_PACKAGE ? process.env.KONG_PACKAGE : 'kong-cp';
+};
+
+/**
+ * Get kong version
+ * @returns {string} - the name of the container
+ */
+export const getKongVersion = (): string | undefined => {
+  return process.env.KONG_VERSION;
 };
 
 /**

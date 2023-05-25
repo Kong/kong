@@ -33,8 +33,8 @@ describe('@smoke: Gateway RBAC: Role Endpoint Permissions', function () {
   });
 
   it('should create a role endpoint permission', async function () {
-    {
-      const req = () => axios({
+    const req = () =>
+      axios({
         method: 'post',
         url: `${url}/${role.id}/endpoints`,
         data: {
@@ -45,47 +45,52 @@ describe('@smoke: Gateway RBAC: Role Endpoint Permissions', function () {
         },
       });
 
-      const assertions = (resp) => {
-        logResponse(resp);
-
-        expect(resp.status, 'Status should be 201').to.equal(201);
-        expect(resp.data.role, 'Response should have role id').to.haveOwnProperty(
-            'id',
-            role.id
-        );
-        expect(resp.data.workspace, 'Should see correct workspace name').to.eq(
-            workspaceName
-        );
-        expect(resp.data.created_at, 'Should have created_at number').to.be.a(
-            'number'
-        );
-        expect(resp.data.endpoint, 'Should have correct endpoint').to.eq(endpoint1);
-        expect(resp.data.negative, 'Should have negative false').to.be.false;
-        expect(resp.data.actions, 'Should have correct actions').to.have.members([
-          'create',
-          'read',
-        ]);
-      };
-
-      await retryRequest(req, assertions);
-    }
-    {
-      // should not create an endpoint permission twice
-      const resp = await postNegative(
-          `${url}/${role.id}/endpoints`,
-          {
-            endpoint: endpoint1,
-            actions: 'read,create,update',
-          },
-          'post'
-      );
+    const assertions = (resp) => {
       logResponse(resp);
 
+      expect(resp.status, 'Status should be 201').to.equal(201);
+      expect(resp.data.role, 'Response should have role id').to.haveOwnProperty(
+        'id',
+        role.id
+      );
+      expect(resp.data.workspace, 'Should see correct workspace name').to.eq(
+        workspaceName
+      );
+      expect(resp.data.created_at, 'Should have created_at number').to.be.a(
+        'number'
+      );
+      expect(resp.data.endpoint, 'Should have correct endpoint').to.eq(
+        endpoint1
+      );
+      expect(resp.data.negative, 'Should have negative false').to.be.false;
+      expect(resp.data.actions, 'Should have correct actions').to.have.members([
+        'create',
+        'read',
+      ]);
+    };
+
+    await retryRequest(req, assertions);
+  });
+
+  it('should not create an endpoint permission twice', async function () {
+    const req = () =>
+      postNegative(
+        `${url}/${role.id}/endpoints`,
+        {
+          endpoint: endpoint1,
+          actions: 'read,create,update',
+        },
+        'post'
+      );
+
+    const assertions = (resp) => {
       expect(resp.status, 'Status should be 400').to.equal(400);
       expect(resp.data.name, 'Should have correct error name').to.eq(
-          'primary key violation'
+        'primary key violation'
       );
-    }
+    };
+
+    await retryRequest(req, assertions);
   });
 
   it('should not create an endpoint permission without endpoint', async function () {

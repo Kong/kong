@@ -69,7 +69,7 @@ There are tests which rely on specific gateway environment variables, make sure 
 
   [GCP_SERVICE_ACCOUNT](https://start.1password.com/open/i?a=KJVYOL2OTVGRPAAAHEVOL6MXZE&v=q7r4hh4465zentymwtoonxxp3m&i=w2gvxcep5ffevmiykbfq4ffb64&h=team-kong.1password.com)`="<gcp_service_account_key>"`
 
-**Test specific 3rd party service requirements for Gateway**
+## Test specific 3rd party service requirements for Gateway
 
 There are specific tests which rely on particular 3rd party services to run alongside the gateway.\
 Make sure to enable these services using [gateway-docker-compose-generator](https://eu.api.konghq.com/konnect-api)
@@ -78,6 +78,7 @@ Make sure to enable these services using [gateway-docker-compose-generator](http
 - `1_vitals-influxdb` test requires [INFLUXDB](https://github.com/Kong/gateway-docker-compose-generator/blob/d9ee692675d4efdb14d0e1b8376b20a290f72b34/docker-compose.yml.sh#L32)
 - `aws-lambda-secret-reference` and `rla-secret-reference` tests require [HCV](https://github.com/Kong/gateway-docker-compose-generator/blob/d9ee692675d4efdb14d0e1b8376b20a290f72b34/docker-compose.yml.sh#L40)
 - `opentelemtry` test requires [JAEGER](https://github.com/Kong/gateway-docker-compose-generator/blob/d9ee692675d4efdb14d0e1b8376b20a290f72b34/docker-compose.yml.sh#L54)
+- `rate-limiting-advanced` test requires [REDIS (standalone)](https://github.com/Kong/gateway-docker-compose-generator/blob/d9ee692675d4efdb14d0e1b8376b20a290f72b34/docker-compose.yml.sh#L29)
 - `oas-validation` test requires [SWAGGER](https://github.com/Kong/gateway-docker-compose-generator/blob/main/docker-compose.yml.sh#L36)
 
 **Test specific configuration requirements for Gateway**
@@ -109,18 +110,19 @@ npm run test-gateway
 npm run test-spec --spec=service
 ```
 
-- Release package tests
-
-Make sure to have `KONG_VERSION` and `KONG_CONTAINER_NAME` variables set in your environment.\
-For example, `export KONG_CONTAINER_NAME=kong-cp KONG_VERSION=3.3.0.0` or in your `.env` file
-
-
-```bash
-npm run test-spec --spec=package-test
-```
-
 - Smoke tests
 
 ```bash
 npm run test-smoke
 ```
+
+- Release package tests
+
+Make sure to have `KONG_VERSION` and `KONG_PACKAGE` variables set in your environment.\
+For example, `export KONG_PACKAGE=ubuntu-22.04 KONG_VERSION=3.3.0.0` or in your `.env` file
+
+**When `KONG_PACKAGE` environment variable is set in your environment the framework will automatically\
+understand that api tests should run against natively installed kong (download kong from pulp and install).**
+After this, you can run the tests as mentioned above.
+
+Refer to [How to run API smoke tests](https://konghq.atlassian.net/wiki/spaces/FTT/pages/3072917606/Running+smoke+tests+on+released+artifacts) to learn about running the tests in GH Actions.

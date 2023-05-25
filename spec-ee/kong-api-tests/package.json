@@ -7,10 +7,10 @@
     "format": "prettier --write \"**/*.{js,ts}\"",
     "lint": "eslint \"**/*.{js,ts}\" --fix",
     "test-spec": "mocha \"test/gateway/**/${npm_config_spec}.spec.ts\"",
-    "test-gateway": "mocha \"test/gateway/**/*.spec.ts\" --ignore \"test/gateway/packages/*.spec.ts\"",
+    "test-gateway": "mocha \"test/gateway/**/*.spec.ts\"",
     "test-multiple": "mocha ${npm_config_spec}",
     "test-smoke": "mocha -g @smoke --recursive",
-    "test-non-smoke": "mocha --invert -g @smoke --recursive --ignore \"test/gateway/packages/*.spec.ts\""
+    "test-non-smoke": "mocha --invert -g @smoke --recursive"
   },
   "dependencies": {
     "axios": "^0.27.2",

@@ -8,7 +8,8 @@ import {
   postNegative,
   randomString,
   getKongVersionFromContainer,
-  vars,
+  getKongContainerName,
+  getKongVersion,
 } from '@support';
 import axios, { AxiosRequestHeaders, AxiosResponse } from 'axios';
 
@@ -22,8 +23,8 @@ describe('@smoke: Gateway Admin API: Services', function () {
     url: 'http://httpbin/anything',
   };
   const newPath = '/anythingUpdated';
-  const kongContainerName = vars.KONG_CONTAINER_NAME;
-  const kongVersion = vars.KONG_VERSION;
+  const kongContainerName = getKongContainerName();
+  const kongVersion = getKongVersion();
 
   let headers: AxiosRequestHeaders | undefined;
   let serviceId: string;
@@ -239,8 +240,8 @@ describe('@smoke: Gateway Admin API: Services', function () {
     expect(resp.status, 'Status should be 204').to.equal(204);
   });
 
-  // run this test only when KONG_CONTAINER_NAME env variable is specified
-  if (kongContainerName && kongContainerName !== 'false') {
+  // run this test only when KONG_PACKAGE env variable is specified
+  if (kongContainerName && kongContainerName !== 'kong-cp') {
     it('should have correct kong docker image version', async function () {
       const version = getKongVersionFromContainer(kongContainerName);
       expect(version).to.eq(`Kong Enterprise ${kongVersion}`);

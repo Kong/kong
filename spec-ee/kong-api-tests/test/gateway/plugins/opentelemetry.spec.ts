@@ -14,6 +14,7 @@ import {
   deletePlugin,
   createRouteForService,
   setGatewayContainerEnvVariable,
+  getKongContainerName,
 } from '@support';
 
 describe('Gateway Plugins: OpenTelemetry', function () {
@@ -24,11 +25,7 @@ describe('Gateway Plugins: OpenTelemetry', function () {
   const hybridWaitTime = 8000;
   const jaegerWait = 10000;
   const configEndpoint = 'http://jaeger:4318/v1/traces';
-  const paths = ['/jaegertest1', '/jaegertest2'];
-  let serviceId: string;
-  let routeId: string;
-  let totalTraces: number;
-  let maxAllowedTraces: number;
+  const paths = ['/jaegertest1', '/jaegertest2', '/jaegertest3'];
 
   const host = `${getBasePath({
     environment: Environment.gateway.hostName,
@@ -38,18 +35,28 @@ describe('Gateway Plugins: OpenTelemetry', function () {
   const url = `${getBasePath({
     environment: Environment.gateway.admin,
   })}/plugins`;
+
   const proxyUrl = `${getBasePath({
     environment: Environment.gateway.proxy,
   })}`;
 
+  const gwContainerName = getKongContainerName();
+
+  let serviceId: string;
+  let routeId: string;
   let pluginId: string;
+  let totalTraces: number;
+  let maxAllowedTraces: number;
 
   before(async function () {
     // enable kong opel tracing for requests for this test
-    setGatewayContainerEnvVariable({
-      KONG_TRACING_INSTRUMENTATIONS: 'request',
-      KONG_TRACING_SAMPLING_RATE: 1,
-    });
+    setGatewayContainerEnvVariable(
+      {
+        KONG_TRACING_INSTRUMENTATIONS: 'request',
+        KONG_TRACING_SAMPLING_RATE: 1,
+      },
+      gwContainerName
+    );
     if (isHybrid) {
       setGatewayContainerEnvVariable(
         {
@@ -59,7 +66,9 @@ describe('Gateway Plugins: OpenTelemetry', function () {
         'kong-dp1'
       );
     }
-    await wait(2000);
+
+    //  wait longer if running kong natively
+    await wait(gwContainerName === 'kong-cp' ? 2000 : 5000);
     const service = await createGatewayService(randomString());
     serviceId = service.id;
     const route = await createRouteForService(serviceId, ['/']);
@@ -253,10 +262,13 @@ describe('Gateway Plugins: OpenTelemetry', function () {
   });
 
   after(async function () {
-    setGatewayContainerEnvVariable({
-      KONG_TRACING_INSTRUMENTATIONS: 'off',
-      KONG_TRACING_SAMPLING_RATE: 0.01,
-    });
+    setGatewayContainerEnvVariable(
+      {
+        KONG_TRACING_INSTRUMENTATIONS: 'off',
+        KONG_TRACING_SAMPLING_RATE: 0.01,
+      },
+      gwContainerName
+    );
     if (isHybrid) {
       setGatewayContainerEnvVariable(
         {

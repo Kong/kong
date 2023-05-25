@@ -23,6 +23,9 @@ export {
   getGatewayMode,
   isGwHybrid,
   vars,
+  isGwNative,
+  getKongContainerName,
+  getKongVersion,
 } from './config/gateway-vars';
 export {
   createUuidEmail,

@@ -15,18 +15,30 @@ on:
         description: 'Run only a single test by spec name, smoke, non-smoke or all tests'
         required: false
         default: 'all'
+      target_package:
+        description: 'Run tests only for the given package/artifact'
+        required: false
+        default: 'all'
+      package_install_method:
+        description: 'Where from to download kong package, either repository or package'
+        required: false
+        default: 'all'
       target_matrix:
         description: 'Run only the given test matrix "postgres | docker | package", default is all'
         required: false
         default: 'all'
       gateway_image:
         description: 'Docker Image with tag for matrix test run'
-        required: true
+        required: false
         default: 'kong/kong-gateway-internal:nightly-ubuntu'
       gateway_version:
         description: 'Kong Version'
         required: false
         default: '3.3.0.0'
+      pulp_repository:
+        description: 'Pulp repository, either internal or prod, default is internal'
+        required: false
+        default: 'internal'
 
   workflow_call:
     inputs:
@@ -36,10 +48,18 @@ on:
         type: 'string'
       send_slack_results:
         description: 'Send test result notifications to slack'
-        required: true
+        required: false
         type: string
       target_test:
         description: 'Run only a single test by spec name, smoke, non-smoke or all tests'
+        required: false
+        type: string
+      target_package:
+        description: 'Run tests only for the given package/artifact'
+        required: false
+        type: 'string'
+      package_install_method:
+        description: 'Where from to download kong package, either repository or package'
         required: false
         type: string
       target_matrix:
@@ -48,16 +68,20 @@ on:
         type: 'string'
       gateway_image:
         description: 'Docker Image with tag for matrix test run'
-        required: true
+        required: false
         type: 'string'
       gateway_version:
         description: 'Kong Version'
         required: false
         type: 'string'
+      pulp_repository:
+        description: 'Pulp repository, either internal or prod, default is internal'
+        required: false
+        type: 'string'
 
 env:
-  SEND_SLACK_RESULTS: ${{ github.event.inputs.send_slack_results || 'true' }}
-  GW_INPUT_IMAGE: ${{ github.event.inputs.gateway_image || 'kong/kong-gateway-internal:nightly-ubuntu' }}
+  SEND_SLACK_RESULTS: ${{ inputs.send_slack_results || 'true' }}
+  GW_INPUT_IMAGE: ${{ inputs.gateway_image || 'kong/kong-gateway-internal:nightly-ubuntu' }}
   RUN_SPEC: ${{ inputs.target_test || 'all' }}
   VERBOSE_RESPONSE_LOGS: ${{ inputs.enable_verbose_response_logging || 'true'}}
   AWS_ACCESS_KEY_ID: ${{ secrets.TEST_API_AWS_ACCESS_KEY_ID }}
@@ -68,7 +92,7 @@ jobs:
   construct_docker_image_matrix:
     name: Construct Gateway docker images for docker matrix test run
     if: ${{ github.event.inputs.target_matrix  == 'all' || github.event.inputs.target_matrix  == 'docker' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-kong
     outputs:
       image_matrix: ${{ steps.construct_docker_images.outputs.custom_matrix }}
     steps:
@@ -103,12 +127,42 @@ jobs:
             echo "custom_matrix=$docker_image_matrix" >> $GITHUB_OUTPUT
           fi
 
+  define_package_matrix:
+    runs-on: ubuntu-latest-kong
+    if: ${{ inputs.target_matrix  == 'all' || inputs.target_matrix  == 'package' }}
+    outputs:
+      package_matrix: ${{ steps.define-package-matrix.outputs.package_matrix }}
+      package_install_method_matrix: ${{ steps.define-package-matrix.outputs.package_install_method_matrix }}
+      original_package: ${{ steps.define-package-matrix.outputs.original_package }}
+    steps:
+    - name: Define Package Test Matrices
+      id: define-package-matrix
+      env:
+        TARGET_PACKAGE: ${{ inputs.target_package || 'all'}}
+        PACKAGE_INSTALL_METHOD: ${{ inputs.package_install_method || 'all'}}
+      run: |
+        echo "The given package is >$TARGET_PACKAGE<"
+        # use original_package to control what jobs to skip for test run
+        echo "original_package=$TARGET_PACKAGE" >> $GITHUB_OUTPUT
+        # if target_package is provided run tests only for that package else run all packages
+ 
+        default_package_matrix="[\"debian-11\", \"debian-10\", \"ubuntu-22.04\", \"ubuntu-22.04-fips\", \"ubuntu-20.04\", \"ubuntu-20.04-fips\", \"ubuntu-18.04\", \"rhel-8\", \"rhel-8-fips\" , \"rhel-7\", \"amazonlinux-2\", \"amazonlinux-2022\", \"centos-7\", \"alpine\"]"
+        given_package="[\"$TARGET_PACKAGE\"]"
+        if [[ $TARGET_PACKAGE == 'all' ]]; then echo "package_matrix=$default_package_matrix" >> $GITHUB_OUTPUT; else echo "package_matrix=$given_package" >> $GITHUB_OUTPUT; fi
+
+        # if package_install_method is provided download and install kong using that method else use both repository and pulp download methods
+
+        default_package_install_matrix="[\"repository\", \"package\"]"
+        given_install_method="[\"$PACKAGE_INSTALL_METHOD\"]"
+        if [[ $PACKAGE_INSTALL_METHOD == 'all' ]]; then echo "package_install_method_matrix=$default_package_install_matrix" >> $GITHUB_OUTPUT; else echo "package_install_method_matrix=$given_install_method" >> $GITHUB_OUTPUT; fi
+
+
   gateway_tests_for_docker:
     name: Gateway API Test Matrix for Docker images
     # github doesn't accept env context in if conditional, hence using .inputs
     if: ${{ github.event.inputs.target_matrix  == 'all' || github.event.inputs.target_matrix  == 'docker' }}
     needs: construct_docker_image_matrix
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-kong
     defaults:
       run:
         working-directory: spec-ee/kong-api-tests
@@ -116,9 +170,6 @@ jobs:
       GW_IMAGE: ${{ matrix.gateway_image }}
       GW_DP_IMAGE: ${{ matrix.gateway_image }}
       GW_MODE: ${{ matrix.gateway_mode }}
-      # below 2 variables are being used for checking kong version during smoke service test
-      KONG_CONTAINER_NAME: kong-cp
-      KONG_VERSION: ${{ github.event.inputs.gateway_version || '3.3.0.0' }}
     strategy:
       fail-fast: false
       matrix:
@@ -225,7 +276,7 @@ jobs:
   gateway_tests_for_postgres:
     name: Gateway API Test Matrix for Postgres versions
     if: ${{ github.event.inputs.target_matrix  == 'all' || github.event.inputs.target_matrix  == 'postgres' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-kong
     defaults:
       run:
         working-directory: spec-ee/kong-api-tests
@@ -345,22 +396,48 @@ jobs:
           name: ${{ matrix.gateway_mode }}-postgres-${{ matrix.postgres_version }}-${{ matrix.pg_ssl_version }}-test-results
           path: spec-ee/kong-api-tests/results/
 
-
   gateway_tests_for_release_packages:
-    name: Gateway API Test Matrix for Release Packages
-    if: ${{ github.event.inputs.target_matrix  == 'all' || github.event.inputs.target_matrix  == 'package' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 3
+    name: Package API Tests
+    needs: define_package_matrix
+    # using if condition to skip arm64 and alpine runs because gh matrix exclude somehow is not working
+    if: (inputs.target_matrix  == 'all' || inputs.target_matrix  == 'package') && (!contains(needs.define_package_matrix.outputs.original_package, 'alpine') && !contains(needs.define_package_matrix.outputs.original_package, 'arm64'))
+    runs-on: ubuntu-latest-kong
+    timeout-minutes: 50
     env:
-      KONG_VERSION: ${{ github.event.inputs.gateway_version || '3.3.0.0' }}
+      KONG_VERSION: ${{ inputs.gateway_version || '3.3.0.0' }}
+      GW_MODE: ${{ matrix.gateway_mode }}
     defaults:
       run:
         working-directory: spec-ee/kong-api-tests
     strategy:
       fail-fast: false
       matrix:
-        package_name: ['debian', 'ubuntu', 'rhel', 'amazonlinux']
-        install_method: ['repository', 'package']
+        package_name: ${{ fromJson(needs.define_package_matrix.outputs.package_matrix) }} 
+        install_method: ${{ fromJson(needs.define_package_matrix.outputs.package_install_method_matrix) }} 
+        gateway_mode: ['classic', 'hybrid']
+        exclude:
+        # execute only one install method (any, doesn't matter) for fips packages and for alpine as we use wget to download kong
+          - package_name: 'ubuntu-22.04-fips'
+            install_method: 'repository'
+          - package_name: 'ubuntu-20.04-fips'
+            install_method: 'repository'
+          - package_name: 'rhel-8-fips'
+            install_method: 'repository'
+        # exclude internal repositories with known issues
+          - package_name: 'rhel-8'
+            install_method: 'repository'
+          - package_name: 'rhel-7'
+            install_method: 'repository'
+          - package_name: 'amazonlinux-2'
+            install_method: 'repository'
+          - package_name: 'amazonlinux-2022'
+            install_method: 'repository'
+          - package_name: 'centos-7'
+            install_method: 'repository'
+          # - package_name: 'alpine'
+        # exclude arm64 packages as this platform is not yet supported
+          # - package_name: 'ubuntu-22.04-arm64'
+          # - package_name: 'amazonlinux-2-arm64'
 
     steps:
       - name: Checkout Source Code
@@ -371,7 +448,7 @@ jobs:
         with:
           repository: Kong/gateway-docker-compose-generator
           path: spec-ee/kong-api-tests/gateway-docker-compose-generator
-          token: ${{ secrets.TEST_API_GH_TOKEN}}
+          token: ${{ secrets.TEST_API_GH_TOKEN }}
 
       - name: Login to Docker Hub
         uses: docker/login-action@v2
@@ -379,11 +456,38 @@ jobs:
           username: ${{ secrets.GHA_DOCKERHUB_PULL_USER }}
           password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
 
+      - name: Finalize Kong Package Name
+        run: |
+          fips_suffix_excluded_name=$(echo "${{ matrix.package_name }}" | sed 's/-fips//')
+          echo "fips_suffix_excluded_name=$fips_suffix_excluded_name" >> $GITHUB_ENV
+
+          if [[ $fips_suffix_excluded_name != ${{ matrix.package_name }} ]]; then
+            echo "Current package should run in fips mode"
+          fi
+
+          echo "KONG_PACKAGE=$fips_suffix_excluded_name" >> $GITHUB_ENV
+          echo "KONG_PACKAGE is $fips_suffix_excluded_name"
+
       - name: Start Gateway
-        run: cd gateway-docker-compose-generator && package="${{ matrix.package_name }}" make start-package
+        run: cd gateway-docker-compose-generator && make generate_package && make set_pg_permissions && make start_package
         env:
-          KONG_PACKAGE: ${{ matrix.package_name }}
+          PULP_REPOSITORY: ${{ inputs.pulp_repository || 'internal' }}
+          PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
+          FIPS_MODE: ${{ endsWith( matrix.package_name, 'fips' ) && 'on' || 'off' }}
           INSTALL_METHOD: ${{ matrix.install_method }}
+          EE_LICENSE: false
+          PKI: true
+          INFLUXDB: true
+          REDIS_MODE: standalone
+          SWAGGER: true
+          GW_HOST: localhost
+          HCV: true
+          JAEGER: true
+          CUSTOM_CONFIG_ALL: "KONG_DB_UPDATE_FREQUENCY: 1; RLA_REDISU: redisuser; RLA_REDISP: redispassword; AWS_REGION: us-east-2; AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID }}; AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY }}; GCP_SERVICE_ACCOUNT: '${{ secrets.TEST_API_GCP_SERVICE_ACCOUNT }}'"
+          HTTP2: true
+
+      - name: Install decK
+        uses: kong/setup-deck@v1
 
       - name: Install Packages
         run: npm install && ls ..
@@ -391,11 +495,18 @@ jobs:
       - name: Execute Gateway API Tests
         id: execute_tests
         continue-on-error: true
-        env:
-          # CI set to false to not deploy ee license for this type of tests
-          CI: false
-          KONG_CONTAINER_NAME: ${{ matrix.package_name }}
-        run: npm run test-spec --spec=package-test
+        run: |
+          if [[ $RUN_SPEC == 'all' ]]; then 
+            npm run test-gateway;
+          elif [[ $RUN_SPEC == 'smoke' ]]; then
+            npm run test-smoke;
+          else
+            npm run test-spec --spec=$RUN_SPEC;
+          fi
+
+      - name: Retry Gateway Failed API Tests
+        if: steps.execute_tests.outcome == 'failure'
+        run: npm run test-multiple -- --spec=$(cat failed-tests.txt)
 
       - name: Send test results to Slack
         if: ${{ env.SEND_SLACK_RESULTS == 'true' && always() && github.ref == 'refs/heads/master' }}
@@ -403,14 +514,7 @@ jobs:
         uses: ./.github/actions/gw-slack-results/
         with:
           gw_version: ${{ env.KONG_VERSION }}
+          gw_mode: ${{ matrix.gateway_mode }}
           job_status: ${{ job.status }}
           test_title: release-${{ matrix.package_name }}-${{ matrix.install_method }}
           slack_url: ${{ secrets.TEST_API_SLACK_MATRIX_URL }}
-
-      - name: Upload Test Results
-        uses: actions/upload-artifact@v3
-        continue-on-error: true
-        if: always()
-        with:
-          name: release-${{ matrix.package_name }}-${{ matrix.install_method }}-test-results
-          path: spec-ee/kong-api-tests/results/

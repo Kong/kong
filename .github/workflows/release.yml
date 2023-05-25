@@ -321,6 +321,26 @@ jobs:
 
         python ./main.py -f filelist.txt -p $pkg -o test.txt -s ${{ matrix.check-manifest-suite }}
 
+  smoke-api-package-tests:
+    name: Smoke API Package Tests - ${{ matrix.label }}
+    needs: [metadata, build-packages]
+    # cancel previous runs if new commits are pushed to the PR, but run for each commit on master
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}-${{ matrix.label }}-smoke-api-package-tests
+      cancel-in-progress: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-packages'] }}"
+    uses: ./.github/workflows/gateway-api-tests-matrix.yml
+    with:
+      gateway_version: ${{ needs.metadata.outputs.kong-version }}
+      target_package: ${{ matrix.label }}
+      target_matrix: package
+      target_test: smoke
+      send_slack_results: 'false'
+    secrets: inherit
+
   build-images:
     name: Build Images - ${{ matrix.label }}
     needs: [metadata, build-packages]
@@ -612,7 +632,7 @@ jobs:
 
   release-packages:
     name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
-    needs: [metadata, build-packages, build-images, smoke-tests]
+    needs: [metadata, build-packages, build-images, smoke-tests, smoke-api-package-tests]
     runs-on: ubuntu-22.04
     if: github.repository_owner == 'Kong' && fromJSON(needs.metadata.outputs.matrix)['release-packages'] != ''
     timeout-minutes: 5 # PULP takes a while to publish
@@ -682,7 +702,7 @@ jobs:
 
   release-images:
     name: Release Images - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
-    needs: [metadata, build-images, smoke-tests]
+    needs: [metadata, build-images, smoke-tests, smoke-api-tests]
     runs-on: ubuntu-22.04
     if: github.repository_owner == 'Kong' && fromJSON(needs.metadata.outputs.matrix)['release-images'] != ''
 

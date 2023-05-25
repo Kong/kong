@@ -34,7 +34,11 @@ runs:
           echo "finalTitle=Gateway API Docker Image Matrix Tests:  (${{ inputs.gw_mode }}, $(echo ${{ inputs.test_title }} | cut -d ':' -f2))" >> $GITHUB_ENV
 
         elif [[ "${{ inputs.test_title }}" == *"release-"* ]]; then
-          echo "finalTitle=Gateway API Release Package Smoke Tests:  ($(echo ${{ inputs.test_title }} | cut -d '-' -f2), Install Method: $(echo ${{ inputs.test_title }} | cut -d '-' -f3))" >> $GITHUB_ENV
+
+          package_name=$(echo "${{ inputs.test_title }}" | sed 's/^[^-]*-\(.*\)-[^-]*$/\1/')
+          install_method=$(echo "${{ inputs.test_title }}" | awk -F'-' '{print $NF}')
+
+          echo "finalTitle=Gateway API Release Package Tests:  ( $package_name ), Install Method: ($install_method), ${{ inputs.gw_mode }} mode" >> $GITHUB_ENV
 
         else
           echo "finalTitle=Gateway API Tests: ${{ inputs.gw_mode }} mode" >> $GITHUB_ENV
