@@ -481,9 +481,7 @@ local function has_declarative_config(kong_config)
 end
 
 
-local function parse_declarative_config(kong_config)
-  local dc = declarative.new_config(kong_config)
-
+local function parse_declarative_config(kong_config, dc)
   local declarative_config, is_file, is_string = has_declarative_config(kong_config)
 
   local entities, err, _, meta, hash
@@ -714,13 +712,22 @@ function Kong.init()
   end
 
   if is_dbless(config) then
+    local dc, err = declarative.new_config(config)
+    if not dc then
+      error(err)
+    end
+
+    kong.db.declarative_config = dc
+
+
     if is_http_module or
        (#config.proxy_listeners == 0 and
         #config.admin_listeners == 0 and
         #config.status_listeners == 0)
     then
-      local err
-      declarative_entities, err, declarative_meta, declarative_hash = parse_declarative_config(kong.configuration)
+      declarative_entities, err, declarative_meta, declarative_hash =
+        parse_declarative_config(kong.configuration, dc)
+
       if not declarative_entities then
         error(err)
       end

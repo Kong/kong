@@ -69,8 +69,11 @@ function _M.new(clustering)
   assert(type(clustering.cert_key) == "cdata",
          "kong.clustering did not provide the cluster certificate private key")
 
+  assert(kong.db.declarative_config,
+         "kong.db.declarative_config was not initialized")
+
   local self = {
-    declarative_config = assert(declarative.new_config(clustering.conf)),
+    declarative_config = kong.db.declarative_config,
     conf = clustering.conf,
     cert = clustering.cert,
     cert_key = clustering.cert_key,
