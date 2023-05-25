@@ -2,6 +2,7 @@ local helpers = require "spec.helpers"
 
 describe("worker_events", function()
   local strategy = "off"
+  local test_cases = {'string', 'table'}
   local business_port
 
   lazy_setup(function()
@@ -13,11 +14,11 @@ describe("worker_events", function()
             server_name example.com;
             listen %s;
 
-            location = /test {
+            location = /test_too_big_string {
               content_by_lua_block {
                 local PAYLOAD_TOO_BIG_ERR = "failed to publish event: payload too big"
                 local DEFAULT_TRUNCATED_PAYLOAD = ", truncated payload: not a serialized object"
-                local SOURCE, EVENT = "foo", "bar"
+                local SOURCE, EVENT = "foo", "string"
                 local payload_received = ""
                 local worker_events = kong.worker_events
                 local cjson = require "cjson.safe"
@@ -57,6 +58,43 @@ describe("worker_events", function()
                   return #payload_received > 60000
                 end, 1))
 
+                ngx.status = ngx.HTTP_OK
+                ngx.say("ok")
+                ngx.exit(200)
+              }
+            }
+
+            location = /test_too_big_table {
+              content_by_lua_block {
+                local PAYLOAD_TOO_BIG_ERR = "failed to publish event: payload too big"
+                local DEFAULT_TRUNCATED_PAYLOAD = ", truncated payload: not a serialized object"
+                local SOURCE, EVENT = "foo", "table"
+                local payload_received = ""
+                local worker_events = kong.worker_events
+                local cjson = require "cjson.safe"
+
+                local function generate_data()
+                  return string.rep("X", 70000)
+                end
+
+                local function wait_until(validator, timeout)
+                  local deadline = ngx.now() + (timeout or 5)
+                  local res
+                  repeat
+                    worker_events.poll()
+                    res = validator()
+                  until res or ngx.now() >= deadline
+                  return res
+                end
+
+                -- subscribe
+                local ok, err = worker_events.register(function(data)
+                  payload_received = data
+                end, SOURCE, EVENT)
+
+                -- we look forward to receiving the payload even if 
+                -- the size of the payload exceeds the limit
+
                 -- when payload is a table
                 PAYLOAD = {
                   ['data'] = generate_data()
@@ -94,12 +132,14 @@ describe("worker_events", function()
     assert(helpers.stop_kong())
   end)
 
-  it("payload too big", function()
-    local res = helpers.proxy_client(nil, business_port):get("/test", {
-      headers = {
-        host = "example.com",
-      }
-    })
-    assert.res_status(200, res)
-  end)
+  for _, payload_type in ipairs(test_cases) do
+    it("too big `" .. payload_type .. "` payload", function()
+      local res = helpers.proxy_client(nil, business_port):get("/test_too_big_" .. payload_type, {
+        headers = {
+          host = "example.com"
+        }
+      })
+      assert.res_status(200, res)
+    end)
+  end
 end)
