@@ -418,6 +418,9 @@ luassert:register("modifier", "with_max_tries",
 luassert:register("modifier", "ignore_exceptions",
                   wait_until_modifier("ignore_exceptions"))
 
+luassert:register("modifier", "with_debug",
+                  wait_until_modifier("debug"))
+
 
 ---@param ctx spec.helpers.wait.ctx
 local function ctx_builder(ctx)
@@ -437,6 +440,7 @@ local function ctx_builder(ctx)
   self.with_timeout = with("timeout")
   self.with_step = with("step")
   self.with_max_tries = with("max_tries")
+  self.with_debug = with("debug")
 
   self.ignore_exceptions = function(ignore)
     ctx.ignore_exceptions = ctx:validate("ignore_exceptions", ignore,
