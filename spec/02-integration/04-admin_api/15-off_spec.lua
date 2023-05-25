@@ -2281,6 +2281,24 @@ R6InCcH2Wh8wSeY5AuDXvu2tv9g/PW9wIJmPuKSHMA==
   end)
 
   it("does not throw for invalid input - (#10767)", function()
+    -- The problem with this input is that the user has attempted to associate
+    -- two different plugin instances with the same `consumer.username`. The
+    -- final error that is returned ("consumer.id / missing primary key") is
+    -- somewhat nonsensical. That is okay, because the purpose of this test is
+    -- really just to ensure that we don't throw a 500 error for this kind of
+    -- input.
+    --
+    -- If at some later date we improve the flattening logic of the
+    -- declarative config parser, this test may fail and require an update,
+    -- as the "shape" of the error will likely be changed--hopefully to
+    -- something that is more helpful to the end user.
+
+
+    -- NOTE: the fact that the username is a UUID *should not* be assumed to
+    -- have any real significance here. It was chosen to keep the test input
+    -- 1-1 with the github issue that resulted this test. As of this writing,
+    -- the test behaves exactly the same with any random string as it does
+    -- with a UUID.
     local username      = "774f8446-6427-43f9-9962-ce7ab8097fe4"
     local consumer_id   = "68d5de9f-2211-5ed8-b827-22f57a492d0f"
     local service_name  = "default.nginx-sample-1.nginx-sample-1.80"
