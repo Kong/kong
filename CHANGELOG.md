@@ -43,6 +43,13 @@
 
 #### PDK
 
+#### Performance
+
+- In dbless mode, the declarative schema is now fully initialized at startup
+  instead of on-demand in the request path. This is most evident in decreased
+  response latency when updating configuration via the `/config` API endpoint.
+  [#10932](https://github.com/Kong/kong/pull/10932)
+
 ### Fixes
 
 #### Core
