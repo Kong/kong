@@ -2,7 +2,7 @@ local helpers = require "spec.helpers"
 
 describe("worker_events", function()
   local strategy = "off"
-  local test_cases = {'string', 'table'}
+  local test_cases = {"string", "table", }
   local business_port
 
   lazy_setup(function()
