@@ -195,7 +195,7 @@ return {
       local periods = timestamp.get_timestamps(current_timestamp)
       local cache_key = get_local_key(conf, identifier, period, periods[period])
 
-      -- the usage of redis command incr insted of get is to avoid race condition in concurrent calls
+      -- the usage of redis command incr instead of get is to avoid race conditions in concurrent calls
       local current_metric, err = red:eval([[
         local cache_key, expiration = KEYS[1], ARGV[1]
         local result_incr = redis.call("incr", cache_key)
