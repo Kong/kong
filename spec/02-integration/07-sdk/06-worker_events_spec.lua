@@ -136,7 +136,7 @@ describe("worker_events", function()
     it("too big `" .. payload_type .. "` payload", function()
       local res = helpers.proxy_client(nil, business_port):get("/test_too_big_" .. payload_type, {
         headers = {
-          host = "example.com"
+          host = "example.com",
         }
       })
       assert.res_status(200, res)
