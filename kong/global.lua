@@ -216,7 +216,8 @@ function _GLOBAL.init_worker_events()
     if err == PAYLOAD_TOO_BIG_ERR then
       if type(data) == "string" then
         -- truncate the payload and send it again  
-        data = PAYLOAD_TOO_BIG_ERR .. ", truncated payload: " .. string.sub(data, 1, PAYLOAD_MAX_LEN - TRUNCATED_LEN)
+        data = PAYLOAD_TOO_BIG_ERR .. TRUNCATED_PREFIX .. 
+                    string.sub(data, 1, PAYLOAD_MAX_LEN - TRUNCATED_LEN)
 
       else
         data = PAYLOAD_TOO_BIG_ERR .. DEFAULT_TRUNCATED_PAYLOAD
