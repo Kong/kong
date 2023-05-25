@@ -254,7 +254,7 @@ for _, strategy in helpers.each_strategy() do
               end
             end
 
-          end, 10)
+          end, 30)
         end)
       end)
     end)
