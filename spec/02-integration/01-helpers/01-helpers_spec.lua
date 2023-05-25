@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
 local spy = require "luassert.spy"
-
+local splitlines = require("pl.stringx").splitlines
 
 for _, strategy in helpers.each_strategy() do
   describe("helpers [#" .. strategy .. "]: assertions and modifiers", function()
@@ -856,6 +856,279 @@ for _, strategy in helpers.each_strategy() do
           end)
         end)
       end)
+
+      describe("failure messages", function()
+        it("truthy", function()
+          local e = assert.has_error(function()
+            assert.eventually(function()
+                    return false, "nope!"
+                  end)
+                  .with_timeout(0.01)
+                  .is_truthy("foo condition")
+          end)
+
+          assert.is_string(e.message)
+          local lines = splitlines(e.message)
+
+          assert.contains("Failed to assert eventual condition", lines, true)
+          assert.contains("foo condition", lines, true)
+
+          assert.contains("Result: timed out", lines, true)
+
+          assert.contains("Last returned error:", lines, true)
+          assert.contains("nope!", lines, true)
+
+          assert.contains("Last returned value:", lines, true)
+          assert.contains("false", lines, true)
+
+          assert.not_contains("Last raised error:", lines, true)
+
+          assert.contains("Timeout%s+= ",     lines, true)
+          assert.contains("Step%s+=",         lines, true)
+          assert.contains("Elapsed%s+=",      lines, true)
+          assert.contains("Tries%s+=",        lines, true)
+          assert.contains("Raised%s+= false", lines, true)
+        end)
+
+        it("truthy + error() + ignore_exceptions=false", function()
+          local e = assert.has_error(function()
+            assert.eventually(raises("my error"))
+                  .with_timeout(0.01)
+                  .is_truthy("foo condition")
+          end)
+
+          assert.is_string(e.message)
+          local lines = splitlines(e.message)
+
+          assert.contains("Failed to assert eventual condition", lines, true)
+          assert.contains("foo condition", lines, true)
+
+          assert.contains("Result: error() raised", lines, true)
+
+          assert.not_contains("Last returned error:", lines, true)
+          assert.not_contains("Last returned value:", lines, true)
+
+          assert.contains("Last raised error:", lines, true)
+          assert.contains("my error", lines, true)
+
+          assert.contains("stack traceback:", lines, true)
+
+          assert.contains("Timeout%s+= ",     lines, true)
+          assert.contains("Step%s+=",         lines, true)
+          assert.contains("Elapsed%s+=",      lines, true)
+          -- note: only one try because of the uncaught exception
+          assert.contains("Tries%s+= 1",      lines, true)
+          assert.contains("Raised%s+= true",  lines, true)
+        end)
+
+        it("truthy + error() + ignore_execptions=true", function()
+          local e = assert.has_error(function()
+            local n = 0
+            assert.eventually(function()
+                    n = n + 1
+                    if n < 2 then
+                      return nil, "some error"
+                    end
+
+                    error("some exception")
+                  end)
+                  .ignore_exceptions(true)
+                  .with_timeout(0.01)
+                  .is_truthy("foo condition")
+          end)
+
+          assert.is_string(e.message)
+          local lines = splitlines(e.message)
+
+          assert.contains("Failed to assert eventual condition", lines, true)
+          assert.contains("foo condition", lines, true)
+
+          assert.contains("Result: timed out", lines, true)
+
+          assert.contains("Last returned error:", lines, true)
+          assert.contains("some error", lines, true)
+
+          assert.not_contains("Last returned value:", lines, true)
+
+          assert.contains("Last raised error:", lines, true)
+          assert.contains("some exception", lines, true)
+          assert.contains("stack traceback:", lines, true)
+
+          assert.contains("Timeout%s+= ",     lines, true)
+          assert.contains("Step%s+=",         lines, true)
+          assert.contains("Elapsed%s+=",      lines, true)
+          assert.contains("Tries%s+=",        lines, true)
+          -- note: raised = true
+          assert.contains("Raised%s+= true",  lines, true)
+        end)
+
+
+        it("falsy", function()
+          local e = assert.has_error(function()
+            assert.eventually(returns("yup"))
+                  .with_timeout(0.01)
+                  .is_falsy("foo condition")
+          end)
+
+          assert.is_string(e.message)
+          local lines = splitlines(e.message)
+
+          assert.contains("Failed to assert eventual condition", lines, true)
+          assert.contains("foo condition", lines, true)
+
+          assert.contains("Result: timed out", lines, true)
+
+          assert.contains("Last returned value:", lines, true)
+          assert.contains("yup", lines, true)
+
+          assert.not_contains("Last raised error:", lines, true)
+
+          assert.contains("Timeout%s+= ",     lines, true)
+          assert.contains("Step%s+=",         lines, true)
+          assert.contains("Elapsed%s+=",      lines, true)
+          assert.contains("Tries%s+=",        lines, true)
+          assert.contains("Raised%s+= false", lines, true)
+        end)
+
+        it("falsy + error() + ignore_exceptions=false", function()
+          local e = assert.has_error(function()
+            assert.eventually(raises("my error"))
+                  .with_timeout(0.01)
+                  .is_falsy("foo condition")
+          end)
+
+          assert.is_string(e.message)
+          local lines = splitlines(e.message)
+
+          assert.contains("Failed to assert eventual condition", lines, true)
+          assert.contains("foo condition", lines, true)
+
+          assert.contains("Result: error() raised", lines, true)
+
+          assert.not_contains("Last returned error:", lines, true)
+          assert.not_contains("Last returned value:", lines, true)
+
+          assert.contains("Last raised error:", lines, true)
+          assert.contains("my error", lines, true)
+          assert.contains("stack traceback:", lines, true)
+
+          assert.contains("Timeout%s+= ",     lines, true)
+          assert.contains("Step%s+=",         lines, true)
+          assert.contains("Elapsed%s+=",      lines, true)
+          -- note: only one try because of the uncaught exception
+          assert.contains("Tries%s+= 1",      lines, true)
+          assert.contains("Raised%s+= true",  lines, true)
+        end)
+
+        it("falsy + error() + ignore_execptions=true", function()
+          local e = assert.has_error(function()
+            local n = 0
+            assert.eventually(function()
+                    n = n + 1
+                    if n < 2 then
+                      return "maybe"
+                    end
+
+                    error("some exception")
+                  end)
+                  .ignore_exceptions(true)
+                  .with_timeout(0.01)
+                  .is_falsy("foo condition")
+          end)
+
+          assert.is_string(e.message)
+          local lines = splitlines(e.message)
+
+          assert.contains("Failed to assert eventual condition", lines, true)
+          assert.contains("foo condition", lines, true)
+
+          assert.contains("Result: timed out", lines, true)
+
+          assert.not_contains("Last returned error:", lines, true)
+
+          assert.contains("Last returned value:", lines, true)
+          assert.contains("maybe", lines, true)
+
+          assert.contains("Last raised error:", lines, true)
+          assert.contains("some exception", lines, true)
+          assert.contains("stack traceback:", lines, true)
+
+          assert.contains("Timeout%s+= ",     lines, true)
+          assert.contains("Step%s+=",         lines, true)
+          assert.contains("Elapsed%s+=",      lines, true)
+          assert.contains("Tries%s+=",        lines, true)
+          assert.contains("Raised%s+= true",  lines, true)
+        end)
+
+
+        it("has_no_error", function()
+          local e = assert.has_error(function()
+            assert.eventually(raises("don't raise me, bro"))
+                  .with_timeout(0.01)
+                  .has_no_error("foo condition")
+          end)
+
+          assert.is_string(e.message)
+          local lines = splitlines(e.message)
+
+          assert.contains("Failed to assert eventual condition", lines, true)
+          assert.contains("foo condition", lines, true)
+
+          assert.contains("Result: timed out", lines, true)
+
+          assert.contains("Last raised error:", lines, true)
+          assert.contains("don't raise me, bro", lines, true)
+          assert.contains("stack traceback:", lines, true)
+
+          assert.not_contains("Last returned value:", lines, true)
+          assert.not_contains("Last returned error:", lines, true)
+
+          assert.contains("Timeout%s+= ",     lines, true)
+          assert.contains("Step%s+=",         lines, true)
+          assert.contains("Elapsed%s+=",      lines, true)
+          assert.contains("Tries%s+=",        lines, true)
+          assert.contains("Raised%s+= true",  lines, true)
+        end)
+
+
+        it("has_error", function()
+          local e = assert.has_error(function()
+            local n = 0
+            assert.eventually(function()
+                    n = n + 1
+                    if n < 2 then
+                      return false, "my returned error"
+                    else
+                      return "my return value"
+                    end
+                  end)
+                  .with_timeout(0.01)
+                  .has_error("foo condition")
+          end)
+
+          assert.is_string(e.message)
+          local lines = splitlines(e.message)
+
+          assert.contains("Failed to assert eventual condition", lines, true)
+          assert.contains("foo condition", lines, true)
+
+          assert.contains("Result: timed out", lines, true)
+
+          assert.not_contains("Last raised error:", lines, true)
+
+          assert.contains("Last returned value:", lines, true)
+          assert.contains("my return value", lines, true)
+
+          assert.contains("Last returned error:", lines, true)
+          assert.contains("my returned error", lines, true)
+
+          assert.contains("Timeout%s+= ",     lines, true)
+          assert.contains("Step%s+=",         lines, true)
+          assert.contains("Elapsed%s+=",      lines, true)
+          assert.contains("Tries%s+=",        lines, true)
+          assert.contains("Raised%s+= false", lines, true)
+        end)
+      end)
     end)
 
   end)
@@ -895,8 +1168,8 @@ describe("helpers: utilities", function()
           error("oops")
         end, 1)
       end)
-      assert.is_string(e)
-      assert.matches("oops", e)
+      assert.is_string(e.message)
+      assert.matches("oops", e.message)
     end)
 
     it("fails when test function raised an assertion error", function()
