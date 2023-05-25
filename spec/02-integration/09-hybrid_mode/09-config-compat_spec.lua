@@ -13,7 +13,7 @@ local PLUGIN_LIST
 
 local function cluster_client(opts)
   opts = opts or {}
-  local res = helpers.clustering_client({
+  local res, err = helpers.clustering_client({
     host = CP_HOST,
     port = CP_PORT,
     cert = "spec/fixtures/kong_clustering.crt",
@@ -24,6 +24,7 @@ local function cluster_client(opts)
     node_plugins_list = PLUGIN_LIST,
   })
 
+  assert.is_nil(err)
   if res and res.config_table then
     res.config = res.config_table
   end
