@@ -15,7 +15,10 @@ local UPSTREAM_URL      = string.format("http://%s:%d/always_200", UPSTREAM_HOST
 local fmt               = string.format
 local proxy_client      = helpers.proxy_client
 local table_insert      = table.insert
+local tonumber          = tonumber
 
+local ngx_sleep         = ngx.sleep
+local ngx_now           = ngx.now
 
 
 -- This performs the test up to two times (and no more than two).
@@ -29,7 +32,7 @@ local table_insert      = table.insert
 -- was an actual problem detected by the test.
 local function retry(fn)
   if not pcall(fn) then
-    ngx.sleep(61 - (ngx.now() % 60))  -- Wait for minute to expire
+    ngx_sleep(61 - (ngx_now() % 60))  -- Wait for minute to expire
     fn()
   end
 end
@@ -722,10 +725,9 @@ if limit_by == "ip" then
     local service = setup_service(admin_client, UPSTREAM_URL)
     local route = setup_route(admin_client, service, { test_path })
     local rl_plugin = setup_rl_plugin(admin_client, {
-      minute              = 6,
+      second              = 1,
       policy              = policy,
-      limit_by            = limit_by,
-      path                = test_path,
+      limit_by            = "ip",
       redis_host          = REDIS_HOST,
       redis_port          = ssl_conf.redis_port,
       redis_password      = REDIS_PASSWORD,
@@ -746,21 +748,29 @@ if limit_by == "ip" then
       override_global_key_auth_plugin = true,
     })
 
-    local function proxy_fn()
-      return GET(test_path)
-    end
+    assert
+      .with_max_tries(10)
+      .ignore_exceptions(false)
+      .eventually(function()
+        local res1 = GET(test_path, { headers = { ["X-Real-IP"] = "127.0.0.3" }})
+        local res2 = GET(test_path, { headers = { ["X-Real-IP"] = "127.0.0.3" }})
 
-    local t = 61 - (ngx.now() % 60)
+        assert.res_status(200, res1)
+        assert.are.same(1, tonumber(res1.headers["RateLimit-Limit"]))
+        assert.are.same(0, tonumber(res1.headers["RateLimit-Remaining"]))
+        assert.is_true(tonumber(res1.headers["ratelimit-reset"]) >= 0)
+        assert.are.same(1, tonumber(res1.headers["X-RateLimit-Limit-Second"]))
+        assert.are.same(0, tonumber(res1.headers["X-RateLimit-Remaining-Second"]))
 
-    retry(function ()
-      validate_headers(client_requests(7, proxy_fn), true, true)
-      t = 61 - (ngx.now() % 60)
-    end)
+        local body2 = assert.res_status(429, res2)
+        local json2 = cjson.decode(body2)
+        assert.same({ message = "API rate limit exceeded" }, json2)
 
-    -- wait for the counter to expire
-    ngx.sleep(t)
-
-    validate_headers(client_requests(7, proxy_fn), true, true)
+        ngx_sleep(1)
+        local res3 = GET(test_path, { headers = { ["X-Real-IP"] = "127.0.0.3" }})
+        assert.res_status(200, res3)
+      end)
+      .has_no_error("counter is cleared after current window")
   end)
 
   it("blocks with a custom error code and message", function()
