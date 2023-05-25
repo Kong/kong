@@ -216,6 +216,15 @@ local function generate_consumers(admin_client, list, modulo)
 end
 
 
+local function continue_after(time)
+  assert.eventually(function()
+    ngx.update_time()
+    return ngx.now() > time
+  end)
+  .is_truthy()
+end
+
+
 for _, strategy in strategies() do
   describe("Plugin: canary (access) [#" .. strategy .. "]", function()
     local proxy_client, admin_client
@@ -294,6 +303,15 @@ for _, strategy in strategies() do
       assert.response(res).has.status(201)
       local json = assert.response(res).has.jsonbody()
       test_plugin_id = json.id
+    end
+
+    local function del_canary()
+      local res = assert(admin_client:send {
+        method = "DELETE",
+        path = "/plugins/" .. test_plugin_id,
+      })
+      assert.response(res).has.status(204)
+      test_plugin_id = nil
     end
 
     before_each(function()
@@ -630,18 +648,45 @@ for _, strategy in strategies() do
         assert.are.equal("/requests/path2", json.vars.request_uri)
       end)
 
-      it("test start with default hash #flaky", function()
+      it("test start with default hash", function()
         local ids = generate_consumers(admin_client, {0,1,2}, 3)
+        local try = 0
+      ::retry::
+        assert(try < 10, "exceeds the max number of tries")
+        try = try + 1
+
+        if test_plugin_id then
+          del_canary()
+        end
+
+        local steps = 3
+        local duration_per_step = 3
+        local duration = steps * duration_per_step
+        ngx.update_time()
+        local start = ngx.time() + 2
         add_canary(route1.id, {
           upstream_uri = "/requests/path2",
           percentage = nil,
-          steps = 3,
-          start = ngx.time() + 2,
-          duration = 6
+          steps = steps,
+          start = start,
+          duration = duration,
         })
-        local count = {}
-        ngx.sleep(1.9)
-        for n = 1, 3 do
+        -- The expected behavior of this test depends on the server-side time.
+        -- We need to make sure all the requests are processed in the same expected step.
+        -- So we measure the starting time and end time of the requests.
+        -- If they are not processed in the expected time range, we'll retry the test.
+        -- But even then we can't guarantee the server-side time and the client-side time
+        -- are perfectly synchronized, so it's better to add a margin.
+        -- margins:   v     v     v     v
+        -- requests:   |...| |...| |...|
+        -- steps:     |  1  |  2  |  3  |
+        for n = 1, steps do
+          local count = {}
+          local left_border = start + (n - 1) * duration_per_step + 0.5  -- 0.5s margin
+          local right_border = start + n * duration_per_step - 0.5       -- 0.5s margin
+          continue_after(left_border)
+
+          local proxy_client = helpers.proxy_client()
           for _, apikey in pairs(ids) do
             local res = assert(proxy_client:send {
               method = "GET",
@@ -655,13 +700,22 @@ for _, strategy in strategies() do
             local json = assert.response(res).has.jsonbody()
             count[json.vars.request_uri] = (count[json.vars.request_uri] or  0) + 1
           end
+          proxy_client:close()
+
+          -- make sure all the requests are counted in the current step
+          ngx.update_time()
+          if ngx.now() > right_border then
+            goto retry
+          end
+
           assert.are.equal(n, count["/requests/path2"])
           assert.are.equal(3 - n, count["/requests"] or  0)
-          count = {}
-          ngx.sleep(2)
         end
 
+        continue_after(start + duration + 0.5) -- 0.5s margin
+
         -- now all request should route to new target
+        local proxy_client = helpers.proxy_client()
         for _, apikey in pairs(ids) do
           local res = assert(proxy_client:send {
             method = "GET",
@@ -675,21 +729,50 @@ for _, strategy in strategies() do
           local json = assert.response(res).has.jsonbody()
           assert.is_equal("/requests/path2", json.vars.request_uri)
         end
+        proxy_client:close()
       end)
 
-      it("test start with default hash and upstream_host #flaky", function()
+      it("test start with default hash and upstream_host", function()
         local ids = generate_consumers(admin_client, {0,1,2}, 3)
+        local try = 0
+      ::retry::
+        assert(try < 10, "exceeds the max number of tries")
+        try = try + 1
+
+        if test_plugin_id then
+          del_canary()
+        end
+
+        local steps = 3
+        local duration_per_step = 3
+        local duration = steps * duration_per_step
+        ngx.update_time()
+        local start = ngx.time() + 2
         add_canary(route1.id, {
           upstream_host = HEALTHY_UPSTREAM_HOST_2,
           upstream_port = HEALTHY_UPSTREAM_PORT_2,
           percentage = nil,
-          steps = 3,
-          start = ngx.time() + 2,
-          duration = 6
+          steps = steps,
+          start = start,
+          duration = duration,
         })
-        local count = {}
-        ngx.sleep(1.9)
-        for n = 1, 3 do
+
+        -- The expected behavior of this test depends on the server-side time.
+        -- We need to make sure all the requests are processed in the same expected step.
+        -- So we measure the starting time and end time of the requests.
+        -- If they are not processed in the expected time range, we'll retry the test.
+        -- But even then we can't guarantee the server-side time and the client-side time
+        -- are perfectly synchronized, so it's better to add a margin.
+        -- margins:   v     v     v     v
+        -- requests:   |...| |...| |...|
+        -- steps:     |  1  |  2  |  3  |
+        for n = 1, steps do
+          local count = {}
+          local left_border = start + (n - 1) * duration_per_step + 0.5  -- 0.5s margin
+          local right_border = start + n * duration_per_step - 0.5       -- 0.5s margin
+          continue_after(left_border)
+
+          local proxy_client = helpers.proxy_client()
           for _, apikey in pairs(ids) do
             local res = assert(proxy_client:send {
               method = "GET",
@@ -703,13 +786,22 @@ for _, strategy in strategies() do
             local json = assert.response(res).has.jsonbody()
             count[json.vars.request_uri] = (count[json.vars.request_uri] or  0) + 1
           end
+          proxy_client:close()
+
+          -- make sure all the requests are counted in the current step
+          ngx.update_time()
+          if ngx.now() > right_border then
+            goto retry
+          end
+
           assert.are.equal(n, count["/requests/path2"])
           assert.are.equal(3 - n, count["/requests"] or  0)
-          count = {}
-          ngx.sleep(2)
         end
 
+        continue_after(start + duration + 0.5) -- 0.5s margin
+
         -- now all request should route to new target
+        local proxy_client = helpers.proxy_client()
         for _, apikey in pairs(ids) do
           local res = assert(proxy_client:send {
             method = "GET",
@@ -723,23 +815,52 @@ for _, strategy in strategies() do
           local json = assert.response(res).has.jsonbody()
           assert.is_equal("/requests/path2", json.vars.request_uri)
         end
+        proxy_client:close()
 
         assert.is_equal(9, get_mock_upstream_successes(HEALTHY_UPSTREAM_HOST_2, HEALTHY_UPSTREAM_PORT_2))
       end)
 
       it("test start with hash as `ip`", function()
         local ids = generate_consumers(admin_client, {0,1,2}, 3)
+        local try = 0
+      ::retry::
+        assert(try < 10, "exceeds the max number of tries")
+        try = try + 1
+
+        if test_plugin_id then
+          del_canary()
+        end
+
+        local steps = 3
+        local duration_per_step = 3
+        local duration = steps * duration_per_step
+        ngx.update_time()
+        local start = ngx.time() + 2
         add_canary(route1.id, {
           upstream_uri = "/requests/path2",
           percentage = nil,
-          steps = 3,
-          start = ngx.time() + 2,
-          duration = 6,
+          steps = steps,
+          start = start,
+          duration = duration,
           hash = "ip",
         })
-        local count = {}
-        ngx.sleep(1.9)
-        for _ = 1, 3 do
+
+        -- The expected behavior of this test depends on the server-side time.
+        -- We need to make sure all the requests are processed in the same expected step.
+        -- So we measure the starting time and end time of the requests.
+        -- If they are not processed in the expected time range, we'll retry the test.
+        -- But even then we can't guarantee the server-side time and the client-side time
+        -- are perfectly synchronized, so it's better to add a margin.
+        -- margins:   v     v     v     v
+        -- requests:   |...| |...| |...|
+        -- steps:     |  1  |  2  |  3  |
+        for n = 1, steps do
+          local count = {}
+          local left_border = start + (n - 1) * duration_per_step + 0.5  -- 0.5s margin
+          local right_border = start + n * duration_per_step - 0.5       -- 0.5s margin
+          continue_after(left_border)
+
+          local proxy_client = helpers.proxy_client()
           for _, apikey in pairs(ids) do
             local res = assert(proxy_client:send {
               method = "GET",
@@ -752,8 +873,15 @@ for _, strategy in strategies() do
             assert.response(res).has.status(200)
             local json = assert.response(res).has.jsonbody()
             count[json.vars.request_uri] = (count[json.vars.request_uri] or  0) + 1
-
           end
+          proxy_client:close()
+
+          -- make sure all the requests are counted in the current step
+          ngx.update_time()
+          if ngx.now() > right_border then
+            goto retry
+          end
+
           -- we have 4 consumers, but they should, based on ip, be all in the same target
           if count["/requests/path2"] then
             assert.are.equal(3, count["/requests/path2"])
@@ -762,11 +890,12 @@ for _, strategy in strategies() do
             assert.are.equal(3, count["/requests"])
             assert.is_nil(count["/requests/path2"])
           end
-          count = {}
-          ngx.sleep(2)
         end
 
+        continue_after(start + duration + 0.5) -- 0.5s margin
+
         -- now all request should route to new target
+        local proxy_client = helpers.proxy_client()
         for _, apikey in pairs(ids) do
           local res = assert(proxy_client:send {
             method = "GET",
@@ -780,6 +909,7 @@ for _, strategy in strategies() do
           local json = assert.response(res).has.jsonbody()
           assert.is_equal("/requests/path2", json.vars.request_uri)
         end
+        proxy_client:close()
       end)
 
       it("test 'preserve_host' setting on route", function()
