@@ -9,6 +9,8 @@ if test (echo $FISH_VERSION | head -c 1) -lt 3
     echo "Fish version 3.0.0 or higher is required."
 end
 
+set -xg BUILD_NAME "$build_name"
+
 # Modified from virtualenv: https://github.com/pypa/virtualenv/blob/main/src/virtualenv/activation/fish/activate.fish
 
 set -xg KONG_VENV "$workspace_path/bazel-bin/build/$build_name"
