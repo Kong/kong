@@ -49,12 +49,12 @@
 
 ### Fixes
 
-- Fixed a bug that causes `POST /config?flatten_errors=1` to throw an exception
-  and return a 500 error under certain circumstances.
-  [#10896](https://github.com/Kong/kong/pull/10896)
 
 #### Core
 
+- Fixed a bug that causes `POST /config?flatten_errors=1` to throw an exception
+  and return a 500 error under certain circumstances.
+  [#10896](https://github.com/Kong/kong/pull/10896)
 - Fix a bug when worker consuming dynamic log level setting event and using a wrong reference for notice logging
   [#10897](https://github.com/Kong/kong/pull/10897)
 
