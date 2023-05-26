@@ -27,9 +27,6 @@
   `max_retry_delay` must now be `number`s greater than 0.001
   (seconds).
   [#10840](https://github.com/Kong/kong/pull/10840)
-- **Response Transformer**: fix an issue that plugin does not transform the response body while upstream returns a Content-Type with +json suffix at subtype.
-  [#10656](https://github.com/Kong/kong/pull/10656)
-
 
 ### Additions
 
@@ -65,6 +62,8 @@
 
 #### Plugins
 
+- **Response Transformer**: fix an issue that plugin does not transform the response body while upstream returns a Content-Type with +json suffix at subtype.
+  [#10656](https://github.com/Kong/kong/pull/10656)
 - **grpc-gateway**: Fixed an issue that empty (all default value) messages can not be unframed correctly.
   [#10836](https://github.com/Kong/kong/pull/10836)
 - **ACME**: Fixed sanity test can't work with "kong" storage in Hybrid mode
