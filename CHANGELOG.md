@@ -64,6 +64,8 @@
 
 #### Plugins
 
+- **Response Transformer**: fix an issue that plugin does not transform the response body while upstream returns a Content-Type with +json suffix at subtype.
+  [#10656](https://github.com/Kong/kong/pull/10656)
 - **grpc-gateway**: Fixed an issue that empty (all default value) messages can not be unframed correctly.
   [#10836](https://github.com/Kong/kong/pull/10836)
 - **ACME**: Fixed sanity test can't work with "kong" storage in Hybrid mode
@@ -73,8 +75,6 @@
   [#10559](https://github.com/Kong/kong/pull/10559)
 - **Zipkin**: Fixed an issue that traces not being generated correctly when instrumentations are enabled.
   [#10983](https://github.com/Kong/kong/pull/10983)
-- **Response Transformer**: fix an issue that plugin does not transform the response body while upstream returns a Content-Type with +json suffix at subtype.
-  [#10656](https://github.com/Kong/kong/pull/10656)
 
 #### PDK
 
