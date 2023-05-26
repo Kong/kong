@@ -2,6 +2,10 @@ local uuid      = require("kong.tools.utils").uuid
 local helpers   = require "spec.helpers"
 local timestamp = require "kong.tools.timestamp"
 
+--[[
+  basically a copy of `get_local_key()` 
+  in `kong/plugins/rate-limiting/policies/init.lua`
+--]]
 local get_local_key = function(conf, identifier, period, period_date)
   return string.format("ratelimit:%s:%s:%s:%s:%s",
     conf.route_id, conf.service_id, identifier, period_date, period)
@@ -141,5 +145,42 @@ describe("Plugin: rate-limiting (policies)", function()
       end)
     end)
   end
+
+  describe("redis", function()
+    local identifier = uuid()
+    local conf       = {
+      route_id = uuid(),
+      service_id = uuid(),
+      redis_host = helpers.redis_host,
+      redis_port = helpers.redis_port,
+      redis_database = 0,
+    }
+
+    before_each(function()
+      local red = require "resty.redis"
+      local redis = assert(red:new())
+      redis:set_timeout(1000)
+      assert(redis:connect(conf.redis_host, conf.redis_port))
+      redis:flushall()
+      redis:close()
+    end)
+
+    it("increase & usage", function()
+      local current_timestamp = 1424217600
+      local periods = timestamp.get_timestamps(current_timestamp)
+
+      for period in pairs(periods) do
+
+        local metric = assert(policies.redis.usage(conf, identifier, period, current_timestamp))
+        assert.equal(0, metric)
+
+        for i = 1, 3 do
+          assert(policies.redis.increment(conf, { [period] = 2 }, identifier, current_timestamp, 1))
+          metric = assert(policies.redis.usage(conf, identifier, period, current_timestamp))
+          assert.equal(i, metric)
+        end
+      end
+    end)
+  end)
 
 end)
