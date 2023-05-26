@@ -276,7 +276,8 @@ function _M.init_worker(conf, backup_role)
     export(conf)
 
   elseif backup_role == "importer" then
-    declarative_config = declarative.new_config(conf)
+    declarative_config = assert(kong.db.declarative_config,
+                                "kong.db.declarative_config was not initialized")
 
   else
     ngx_log(ngx_ERR, FALLBACK_CONFIG_PREFIX, "unknown role: ", backup_role)

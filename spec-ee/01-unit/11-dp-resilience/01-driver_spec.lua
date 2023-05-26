@@ -131,6 +131,10 @@ local function mocking()
         registed_events[source][event](...)
       end,
     },
+
+    db = {
+      declarative_config = mock_declarative:new_config(),
+    },
   }
   setmetatable(_G.kong, never_error_table)
 end
