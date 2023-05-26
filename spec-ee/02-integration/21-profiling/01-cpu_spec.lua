@@ -360,8 +360,8 @@ describe("CPU profiling #" .. strategy, function ()
     local admin_client = assert(helpers.admin_client())
     local body = {
       mode = "instruction",
-      step = 100,
-      timeout = 11,
+      step = 50,
+      timeout = 5,
     }
 
     local res = assert(admin_client:send {
@@ -404,7 +404,7 @@ describe("CPU profiling #" .. strategy, function ()
       assert.same({
         status = "stopped",
       }, json)
-    end, 22)
+    end, 5 + 10 + 1)
 
   end)
 
