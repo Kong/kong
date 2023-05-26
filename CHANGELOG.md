@@ -15,6 +15,11 @@
   and return a 500 error under certain circumstances.
   [#10896](https://github.com/Kong/kong/pull/10896)
 
+#### Core
+
+- Fix a bug that might lead to an error when running migrations due to a slow consensus across the database cluster.
+  [#10946](https://github.com/Kong/kong/pull/10946)
+
 ## 3.3.0
 
 ### Breaking Changes

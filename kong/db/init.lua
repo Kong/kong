@@ -554,6 +554,14 @@ do
             end
           end
 
+          -- ensure schema consensus is reached before running DML queries
+          -- in up_f that could span all peers
+          ok, err = self.connector:wait_for_schema_consensus()
+          if not ok then
+            self.connector:close()
+            return nil, prefix_err(self, err)
+          end
+
           if strategy_migration.up_f then
             local pok, perr, err = xpcall(strategy_migration.up_f, debug.traceback, self.connector)
             if not pok or err then
