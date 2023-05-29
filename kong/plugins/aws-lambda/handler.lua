@@ -4,6 +4,7 @@ local aws_v4 = require "kong.plugins.aws-lambda.v4"
 local aws_serializer = require "kong.plugins.aws-lambda.aws-serializer"
 local aws_ecs_cred_provider = require "kong.plugins.aws-lambda.iam-ecs-credentials"
 local aws_ec2_cred_provider = require "kong.plugins.aws-lambda.iam-ec2-credentials"
+local aws_sts_cred_source = require "kong.plugins.aws-lambda.iam-sts-credentials"
 local http = require "resty.http"
 local cjson = require "cjson.safe"
 local meta = require "kong.meta"
@@ -18,7 +19,12 @@ local AWS_PORT = 443
 local AWS_REGION do
   AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
 end
-
+local AWS_ROLE_ARN do
+  AWS_ROLE_ARN = os.getenv("AWS_ROLE_ARN")
+end
+local AWS_WEB_IDENTITY_TOKEN_FILE do
+  AWS_WEB_IDENTITY_TOKEN_FILE = os.getenv("AWS_WEB_IDENTITY_TOKEN_FILE")
+end
 
 local function fetch_aws_credentials(aws_conf)
   local fetch_metadata_credentials do
@@ -37,13 +43,24 @@ local function fetch_aws_credentials(aws_conf)
   end
 
   if aws_conf.aws_assume_role_arn then
-    local metadata_credentials, err = fetch_metadata_credentials(aws_conf)
+    local metadata_credentials, err
+
+    if aws_conf.aws_web_identity_credential then
+      local err_wic
+      metadata_credentials, err_wic = aws_sts_cred_source.fetchCredentials(aws_conf)
+      if err_wic then
+        kong.log.err(err_wic, " falling back to fetch_metadata_credentials")
+      end
+    end
+
+    if (metadata_credentials == nil) or (not metadata_credentials.access_key) then
+      metadata_credentials, err = fetch_metadata_credentials(aws_conf)
+    end
 
     if err then
       return nil, err
     end
 
-    local aws_sts_cred_source = require "kong.plugins.aws-lambda.iam-sts-credentials"
     return aws_sts_cred_source.fetch_assume_role_credentials(aws_conf.aws_region,
                                                              aws_conf.aws_assume_role_arn,
                                                              aws_conf.aws_role_session_name,
@@ -52,7 +69,17 @@ local function fetch_aws_credentials(aws_conf)
                                                              metadata_credentials.session_token)
 
   else
-    return fetch_metadata_credentials(aws_conf)
+    if not aws_conf.aws_web_identity_credential then
+      return fetch_metadata_credentials(aws_conf)
+    end
+
+    local credentials, err
+    credentials, err = aws_sts_cred_source.fetchCredentials(aws_conf)
+    if err then
+      kong.log.err(err, " falling back to fetch_metadata_credentials")
+      return fetch_metadata_credentials(aws_conf)
+    end
+    return credentials
   end
 end
 
@@ -269,6 +296,9 @@ function AWSLambdaHandler:access(conf)
     aws_assume_role_arn = conf.aws_assume_role_arn,
     aws_role_session_name = conf.aws_role_session_name,
     aws_imds_protocol_version = conf.aws_imds_protocol_version,
+    aws_web_identity_credential = conf.aws_web_identity_credential,
+    aws_web_identity_token_file = conf.aws_web_identity_token_file or AWS_WEB_IDENTITY_TOKEN_FILE,
+    aws_web_identity_role_arn = conf.aws_web_identity_role_arn or AWS_ROLE_ARN,
   }
 
   if not conf.aws_key then

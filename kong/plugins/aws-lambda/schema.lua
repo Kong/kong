@@ -31,6 +31,21 @@ return {
           referenceable = true,
           description = "The AWS secret credential to be used when invoking the function. ",
         } },
+        { aws_web_identity_credential = {
+          description = "Whether to use AWS Web Identity Credential Provider (IRSA) flow to obtain temporary credentials to invoke the Lambda function",
+          type = "boolean",
+          default = false,
+        } },
+        { aws_web_identity_token_file = {
+          description = "The path to the file containing the token (JWT). Falls back to the environment variable AWS_WEB_IDENTITY_TOKEN_FILE if not specified.",
+          type = "string",
+          required = false,
+        } },
+        { aws_web_identity_role_arn = {
+          description = "The target AWS IAM role ARN used to obtain temporary credentials. Falls back to the environment variable AWS_ROLE_ARN if not specified.",
+          type = "string",
+          required = false,
+        } },
         { aws_assume_role_arn = { description = "The target AWS IAM role ARN used to invoke the Lambda function.", type = "string",
           encrypted = true, -- Kong Enterprise-exclusive feature, does nothing in Kong CE
           referenceable = true,
