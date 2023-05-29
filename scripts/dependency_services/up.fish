@@ -14,6 +14,9 @@ end
 source $KONG_SERVICE_ENV_FILE
 
 function stop_services -d 'Stop dependency services of Kong and clean up environment variables.'
+    # set this again in child process without need to export env var
+    set cwd (dirname (status --current-filename))
+
     if test -n $COMPOSE_FILE && test -n $COMPOSE_PROJECT_NAME
         bash "$cwd/common.sh" $KONG_SERVICE_ENV_FILE down
     end
