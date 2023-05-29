@@ -15,8 +15,6 @@ on:
     - master
     - release/*
     - test-please/*
-  schedule:
-    - cron: "15 0 * * 0"
   workflow_dispatch:
     inputs:
       coverage:
