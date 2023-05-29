@@ -635,7 +635,6 @@ function Kong.init()
 
     kong.db.declarative_config = dc
 
-
     if is_http_module or
        (#config.proxy_listeners == 0 and
         #config.admin_listeners == 0 and
@@ -721,6 +720,8 @@ function Kong.init_worker()
     end
   end
 
+  schema_state = nil
+
   local worker_events, err = kong_global.init_worker_events()
   if not worker_events then
     stash_init_worker_error("failed to instantiate 'kong.worker_events' " ..
@@ -792,6 +793,11 @@ function Kong.init_worker()
                                         declarative_entities,
                                         declarative_meta,
                                         declarative_hash)
+
+      declarative_entities = nil
+      declarative_meta = nil
+      declarative_hash = nil
+
       if not ok then
         stash_init_worker_error("failed to load declarative config file: " .. err)
         return
