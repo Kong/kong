@@ -148,29 +148,6 @@ make build-venv
 you face any problems. It also describes the build process in detail, if you want to development on the build
 system itself.
 
-### Databases
-
-The easiest way to handle these as a single group is via docker-compose. It's also recommended to set your user as a [docker manager](https://docs.docker.com/install/linux/linux-postinstall/#manage-docker-as-a-non-root-user) to simplify the next steps.
-
-Make sure the docker daemon is enabled and running: `sudo systemctl enable docker` and `sudo systemctl start docker`. Verify that `docker ps` shows no errors.
-
-On a Fedora VM, you might have to disable SELinux:
-
-```
-sudo vim /etc/selinux/config        # change the line to SELINUX=disabled
-sudo setenforce 0
-```
-
-Now pull the compose script from the repository and fire it up:
-
-```
-git clone https://github.com/thibaultcha/kong-tests-compose.git
-cd kong-tests-compose
-docker-compose up
-```
-
-Verify the three new containers are up and running with `docker ps` on a separate terminal.
-
 ### Start Kong
 
 Now you can start Kong:
