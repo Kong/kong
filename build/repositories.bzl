@@ -51,12 +51,16 @@ def _copyright_header(ctx):
         if path.endswith(".js") or path.endswith(".map") or path.endswith(".css"):
             content = ctx.read(path)
             if not content.startswith(copyright_content_js):
-                ctx.file(path, copyright_content_js + content)
+                # the default enabled |legacy_utf8| leads to a double-encoded utf-8
+                # while writing utf-8 content read by |ctx.read|, let's disable it
+                ctx.file(path, copyright_content_js + content, legacy_utf8 = False)
 
         elif path.endswith(".html"):
             content = ctx.read(path)
             if not content.startswith(copyright_content_html):
-                ctx.file(path, copyright_content_html + content)
+                # the default enabled |legacy_utf8| leads to a double-encoded utf-8
+                # while writing utf-8 content read by |ctx.read|, let's disable it
+                ctx.file(path, copyright_content_html + content, legacy_utf8 = False)
 
 def _github_release_impl(ctx):
     ctx.file("WORKSPACE", "workspace(name = \"%s\")\n" % ctx.name)
