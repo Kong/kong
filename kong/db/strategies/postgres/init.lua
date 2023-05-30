@@ -9,7 +9,10 @@ local arrays        = require "pgmoon.arrays"
 local json          = require "pgmoon.json"
 local cjson         = require "cjson"
 local cjson_safe    = require "cjson.safe"
-local pl_tablex     = require "pl.tablex"
+local utils         = require "kong.tools.utils"
+local new_tab       = require "table.new"
+local clear_tab     = require "table.clear"
+local nkeys         = require "table.nkeys"
 
 
 local kong          = kong
@@ -44,45 +47,6 @@ local log           = ngx.log
 local NOTICE        = ngx.NOTICE
 local LIMIT         = {}
 local UNIQUE        = {}
-
-
-local new_tab
-local clear_tab
-local nkeys
-
-
-do
-  local pcall = pcall
-  local ok
-
-  ok, new_tab = pcall(require, "table.new")
-  if not ok then
-    new_tab = function () return {} end
-  end
-
-  ok, clear_tab = pcall(require, "table.clear")
-  if not ok then
-    clear_tab = function (tab)
-      for k, _ in pairs(tab) do
-        tab[k] = nil
-      end
-    end
-  end
-
-  -- OpenResty branch of LuaJIT New API
-  ok, nkeys = pcall(require, "table.nkeys")
-  if not ok then
-    nkeys = function (tab)
-      local count = 0
-      for _, v in pairs(tab) do
-        if v ~= nil then
-          count = count + 1
-        end
-      end
-      return count
-    end
-  end
-end
 
 
 local function noop(...)
@@ -1192,7 +1156,7 @@ function _M.new(connector, schema, errors)
   do
     local function add(name, opts, add_ws)
       local orig_argn = opts.argn
-      opts = pl_tablex.deepcopy(opts)
+      opts = utils.cycle_aware_deep_copy(opts)
 
       -- ensure LIMIT table is the same
       for i, n in ipairs(orig_argn) do
@@ -1339,7 +1303,7 @@ function _M.new(connector, schema, errors)
     }
   })
 
-  local page_search_next_names = pl_tablex.deepcopy(page_next_names)
+  local page_search_next_names = utils.cycle_aware_deep_copy(page_next_names)
   insert(page_search_next_names, "search_fields")
   add_statement("page_search_next", {
     operation = "read",
@@ -1366,7 +1330,7 @@ function _M.new(connector, schema, errors)
   insert(order_by_next_args, "sort_offset")
   insert(order_by_next_args, LIMIT)
 
-  local order_by_search_next_args = pl_tablex.deepcopy(order_by_next_args)
+  local order_by_search_next_args = utils.cycle_aware_deep_copy(order_by_next_args)
   insert(order_by_search_next_args, "search_fields")
 
   for op, sort_order in pairs({[">"] = "asc", ["<"] = "desc"}) do

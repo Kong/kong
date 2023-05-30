@@ -46,6 +46,8 @@ local re_match      = ngx.re.match
 local inflate_gzip  = zlib.inflateGzip
 local deflate_gzip  = zlib.deflateGzip
 local match         = string.match
+local setmetatable  = setmetatable
+local getmetatable  = getmetatable
 
 ffi.cdef[[
 typedef unsigned char u_char;
@@ -630,10 +632,11 @@ do
   end
 end
 
+
 --- Merges two tables recursively
--- For each subtable in t1 and t2, an equivalent (but different) table will
--- be created in the resulting merge. If t1 and t2 have a subtable with in the
--- same key k, res[k] will be a deep merge of both subtables.
+-- For each sub-table in t1 and t2, an equivalent (but different) table will
+-- be created in the resulting merge. If t1 and t2 have a sub-table with the
+-- same key k, res[k] will be a deep merge of both sub-tables.
 -- Metatables are not taken into account.
 -- Keys are copied by reference (if tables are used as keys they will not be
 -- duplicated)
@@ -653,6 +656,87 @@ function _M.deep_merge(t1, t2)
 
   return res
 end
+
+
+--- Cycle aware deep copies a table into a new table.
+-- Cycle aware means that a table value is only copied once even
+-- if it is referenced multiple times in input table or its sub-tables.
+-- Tables used as keys are not deep copied. Metatables are set to same
+-- on copies as they were in the original.
+-- @param orig The table to copy
+-- @param remove_metatables Removes the metatables when set to `true`.
+-- @param deep_copy_keys Deep copies the keys (and not only the values) when set to `true`.
+-- @param cycle_aware_cache Cached tables that are not copied (again).
+--                          (the function creates this table when not given)
+-- @return Returns a copy of the input table
+function _M.cycle_aware_deep_copy(orig, remove_metatables, deep_copy_keys, cycle_aware_cache)
+  if type(orig) ~= "table" then
+    return orig
+  end
+
+  cycle_aware_cache = cycle_aware_cache or {}
+  if cycle_aware_cache[orig] then
+    return cycle_aware_cache[orig]
+  end
+
+  local copy = _M.shallow_copy(orig)
+
+  cycle_aware_cache[orig] = copy
+
+  local mt
+  if not remove_metatables then
+    mt = getmetatable(orig)
+  end
+
+  for k, v in pairs(orig) do
+    if type(v) == "table" then
+      copy[k] = _M.cycle_aware_deep_copy(v, remove_metatables, deep_copy_keys, cycle_aware_cache)
+    end
+
+    if deep_copy_keys and type(k) == "table" then
+      local new_k = _M.cycle_aware_deep_copy(k, remove_metatables, deep_copy_keys, cycle_aware_cache)
+      copy[new_k] = copy[k]
+      copy[k] = nil
+    end
+  end
+
+  if mt then
+    setmetatable(copy, mt)
+  end
+
+  return copy
+end
+
+
+--- Cycle aware merges two tables recursively
+-- The table t1 is deep copied using cycle_aware_deep_copy function.
+-- The table t2 is deep merged into t1. The t2 values takes precedence
+-- over t1 ones. Tables used as keys are not deep copied. Metatables
+-- are set to same on copies as they were in the original.
+-- @param t1 one of the tables to merge
+-- @param t2 one of the tables to merge
+-- @param remove_metatables Removes the metatables when set to `true`.
+-- @param deep_copy_keys Deep copies the keys (and not only the values) when set to `true`.
+-- @param cycle_aware_cache Cached tables that are not copied (again)
+--                          (the function creates this table when not given)
+-- @return Returns a table representing a deep merge of the new table
+function _M.cycle_aware_deep_merge(t1, t2, remove_metatables, deep_copy_keys, cycle_aware_cache)
+  cycle_aware_cache = cycle_aware_cache or {}
+  local merged = _M.cycle_aware_deep_copy(t1, remove_metatables, deep_copy_keys, cycle_aware_cache)
+  for k, v in pairs(t2) do
+    if type(v) == "table" then
+      if type(merged[k]) == "table" then
+        merged[k] = _M.cycle_aware_deep_merge(merged[k], v, remove_metatables, deep_copy_keys, cycle_aware_cache)
+      else
+        merged[k] = _M.cycle_aware_deep_copy(v, remove_metatables, deep_copy_keys, cycle_aware_cache)
+      end
+    else
+      merged[k] = v
+    end
+  end
+  return merged
+end
+
 
 local err_list_mt = {}
 

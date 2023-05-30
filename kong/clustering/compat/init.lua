@@ -17,7 +17,6 @@ local table_insert = table.insert
 local table_remove = table.remove
 local table_sort = table.sort
 local gsub = string.gsub
-local deep_copy = utils.deep_copy
 local split = utils.split
 local deflate_gzip = utils.deflate_gzip
 local cjson_encode = cjson.encode
@@ -480,7 +479,7 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix,
   end
 
   local has_update
-  payload = deep_copy(payload, false)
+  payload = utils.cycle_aware_deep_copy(payload, true)
   local config_table = payload["config_table"]
 
   -- XXX EE

@@ -10,7 +10,6 @@ local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 
 
-local deep_merge = utils.deep_merge
 local fmt = string.format
 
 
@@ -26,10 +25,10 @@ end
 function Blueprint:build(overrides)
   overrides = overrides or {}
   if self._defaults then
-    overrides = deep_merge(self._defaults, overrides)
+    overrides = utils.cycle_aware_deep_merge(self._defaults, overrides)
   end
 
-  return deep_merge(self.build_function(overrides), overrides)
+  return utils.cycle_aware_deep_merge(self.build_function(overrides), overrides)
 end
 
 
@@ -125,7 +124,7 @@ local _M = {}
 
 function _M.new(db)
   local res = {}
-  
+
   -- prepare Sequences and random values
   local acl_group_seq = new_sequence("acl-group-%d")
   local consumer_custom_id_seq = new_sequence("consumer-id-%s")
@@ -413,7 +412,7 @@ function _M.new(db)
       consumer_group = overrides.consumer_group or res.consumer_groups:insert(),
     }
   end)
-  
+
   res.clustering_data_planes = new_blueprint(db.clustering_data_planes, function()
     return {
       hostname = "dp.example.com",

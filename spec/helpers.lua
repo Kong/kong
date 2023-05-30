@@ -918,7 +918,7 @@ end
 -- @see admin_ssl_client
 local function http_client_opts(options)
   if not options.scheme then
-    options = utils.deep_copy(options)
+    options = utils.cycle_aware_deep_copy(options)
     options.scheme = "http"
     if options.port == 443 then
       options.scheme = "https"
@@ -3674,7 +3674,7 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
         return nil, err
       end
     end
-    env = utils.deep_copy(env)
+    env = utils.cycle_aware_deep_copy(env)
     env.declarative_config = config_yml
   end
 

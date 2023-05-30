@@ -201,7 +201,7 @@ describe("DAO", function()
         update = function(_, _, value)
           -- defaults pre-applied before partial update
           assert(value.b == "hello")
-          data = utils.deep_merge(data, value)
+          data = utils.cycle_aware_deep_merge(data, value)
           return data
         end,
       }
@@ -226,7 +226,7 @@ describe("DAO", function()
         update = function(_, _, value)
           -- no defaults pre-applied before partial update
           assert(value.r.f2 == nil)
-          data = utils.deep_merge(data, value)
+          data = utils.cycle_aware_deep_merge(data, value)
           return data
         end,
       }
@@ -255,7 +255,7 @@ describe("DAO", function()
             f1 = null,
             f2 = "world",
           }, value.r)
-          data = utils.deep_merge(data, value)
+          data = utils.cycle_aware_deep_merge(data, value)
           return data
         end,
       }
@@ -281,7 +281,7 @@ describe("DAO", function()
           -- defaults pre-applied before partial update
           assert.equal("hello", value.b)
           assert.same(null, value.r)
-          data = utils.deep_merge(data, value)
+          data = utils.cycle_aware_deep_merge(data, value)
           return data
         end,
       }
@@ -305,7 +305,7 @@ describe("DAO", function()
           return data
         end,
         update = function(_, _, value)
-          data = utils.deep_merge(data, value)
+          data = utils.cycle_aware_deep_merge(data, value)
           return data
         end,
       }
@@ -357,7 +357,7 @@ describe("DAO", function()
           return data
         end,
         update = function(_, _, value)
-          data = utils.deep_merge(data, value)
+          data = utils.cycle_aware_deep_merge(data, value)
           return data
         end,
       }
@@ -380,7 +380,7 @@ describe("DAO", function()
           return data
         end,
         update = function(_, _, value)
-          data = utils.deep_merge(data, value)
+          data = utils.cycle_aware_deep_merge(data, value)
           return data
         end,
       }
@@ -403,7 +403,7 @@ describe("DAO", function()
           return data
         end,
         update = function(_, _, value)
-          data = utils.deep_merge(data, value)
+          data = utils.cycle_aware_deep_merge(data, value)
           return data
         end,
       }
@@ -426,7 +426,7 @@ describe("DAO", function()
           return data
         end,
         update = function(_, _, value)
-          data = utils.deep_merge(data, value)
+          data = utils.cycle_aware_deep_merge(data, value)
           return data
         end,
       }
@@ -449,7 +449,7 @@ describe("DAO", function()
           return data
         end,
         update = function(_, _, value)
-          data = utils.deep_merge(data, value)
+          data = utils.cycle_aware_deep_merge(data, value)
           return data
         end,
       }

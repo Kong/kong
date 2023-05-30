@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local blueprints = require "spec.fixtures.blueprints"
-local tablex = require "pl.tablex"
+local utils = require "kong.tools.utils"
 
 
 local dc_blueprints = {}
@@ -43,7 +43,7 @@ function dc_blueprints.new(db)
   for name, _ in pairs(db.daos) do
     dc_as_db[name] = {
       insert = function(_, tbl)
-        tbl = tablex.deepcopy(tbl)
+        tbl = utils.cycle_aware_deep_copy(tbl)
         if not dc[name] then
           dc[name] = {}
         end
@@ -57,13 +57,13 @@ function dc_blueprints.new(db)
           end
         end
         table.insert(dc[name], remove_nulls(tbl))
-        return tablex.deepcopy(tbl)
+        return utils.cycle_aware_deep_copy(tbl)
       end,
       update = function(_, id, tbl)
         if not dc[name] then
           return nil, "not found"
         end
-        tbl = tablex.deepcopy(tbl)
+        tbl = utils.cycle_aware_deep_copy(tbl)
         local element
         for _, e in ipairs(dc[name]) do
           if e.id == id then

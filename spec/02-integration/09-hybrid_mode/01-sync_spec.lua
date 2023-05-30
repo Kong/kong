@@ -9,7 +9,6 @@
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson.safe"
-local pl_tablex = require "pl.tablex"
 local _VERSION_TABLE = require "kong.meta" ._VERSION_TABLE
 local MAJOR = _VERSION_TABLE.major
 local MINOR = _VERSION_TABLE.minor
@@ -382,7 +381,7 @@ describe("CP/DP #version check #" .. strategy, function()
 
     local plugins_map = {}
     -- generate a map of current plugins
-    local plugin_list = pl_tablex.deepcopy(helpers.get_plugins_list())
+    local plugin_list = utils.cycle_aware_deep_copy(helpers.get_plugins_list())
     for _, plugin in pairs(plugin_list) do
       plugins_map[plugin.name] = plugin.version
     end
@@ -432,7 +431,7 @@ describe("CP/DP #version check #" .. strategy, function()
       },
     }
 
-    local pl1 = pl_tablex.deepcopy(helpers.get_plugins_list())
+    local pl1 = utils.cycle_aware_deep_copy(helpers.get_plugins_list())
     table.insert(pl1, 2, { name = "banana", version = "1.1.1" })
     table.insert(pl1, { name = "pineapple", version = "1.1.2" })
     allowed_cases["DP plugin set is a superset of CP"] = {
@@ -444,7 +443,7 @@ describe("CP/DP #version check #" .. strategy, function()
       plugins_list = { KEY_AUTH_PLUGIN }
     }
 
-    local pl2 = pl_tablex.deepcopy(helpers.get_plugins_list())
+    local pl2 = utils.cycle_aware_deep_copy(helpers.get_plugins_list())
     for i, _ in ipairs(pl2) do
       local v = pl2[i].version
       local minor = v and v:match("%d+%.(%d+)%.%d+")
@@ -464,7 +463,7 @@ describe("CP/DP #version check #" .. strategy, function()
       plugins_list = pl2
     }
 
-    local pl3 = pl_tablex.deepcopy(helpers.get_plugins_list())
+    local pl3 = utils.cycle_aware_deep_copy(helpers.get_plugins_list())
     for i, _ in ipairs(pl3) do
       local v = pl3[i].version
       local patch = v and v:match("%d+%.%d+%.(%d+)")

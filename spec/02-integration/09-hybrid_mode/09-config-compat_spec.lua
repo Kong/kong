@@ -140,7 +140,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
       local id = utils.uuid()
       local plugin = get_plugin(id, "3.0.0", rate_limit.name)
 
-      local expected = utils.deep_copy(rate_limit.config)
+      local expected = utils.cycle_aware_deep_copy(rate_limit.config)
       expected.error_code = nil
       expected.error_message = nil
 
