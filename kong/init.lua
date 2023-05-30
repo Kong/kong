@@ -920,7 +920,6 @@ function Kong.init_worker()
     end
   end
 
-  runloop.init_worker.after()
   -- XXX EE [[
   ee.handlers.init_worker.after(ngx.ctx)
   -- ]]
@@ -953,10 +952,9 @@ function Kong.ssl_certificate()
   -- this is the first phase to run on an HTTPS request
   ctx.workspace = kong.default_workspace
 
-  runloop.certificate.before(ctx)
+  certificate.execute()
   local plugins_iterator = runloop.get_updated_plugins_iterator()
   execute_global_plugins_iterator(plugins_iterator, "certificate", ctx)
-  runloop.certificate.after(ctx)
 
   -- TODO: do we want to keep connection context?
   kong.table.clear(ngx.ctx)
@@ -1069,8 +1067,6 @@ function Kong.rewrite()
   end
 
   execute_global_plugins_iterator(plugins_iterator, "rewrite", ctx)
-
-  runloop.rewrite.after(ctx)
 
   ctx.KONG_REWRITE_ENDED_AT = get_updated_now_ms()
   ctx.KONG_REWRITE_TIME = ctx.KONG_REWRITE_ENDED_AT - ctx.KONG_REWRITE_START
@@ -1407,9 +1403,7 @@ do
     kong.response.set_status(status)
     kong.response.set_headers(headers)
 
-    runloop.response.before(ctx)
     execute_collected_plugins_iterator(plugins_iterator, "response", ctx)
-    runloop.response.after(ctx)
 
     ctx.KONG_RESPONSE_ENDED_AT = get_updated_now_ms()
     ctx.KONG_RESPONSE_TIME = ctx.KONG_RESPONSE_ENDED_AT - ctx.KONG_RESPONSE_START
