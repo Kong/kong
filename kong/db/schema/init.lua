@@ -2205,27 +2205,6 @@ local function get_foreign_schema_for_field(field)
 end
 
 
---- Cycle-aware table copy.
--- To be replaced by tablex.deepcopy() when it supports cycles.
-local function copy(t, cache)
-  if type(t) ~= "table" then
-    return t
-  end
-  cache = cache or {}
-  if cache[t] then
-    return cache[t]
-  end
-  local c = {}
-  cache[t] = c
-  for k, v in pairs(t) do
-    local kk = copy(k, cache)
-    local vv = copy(v, cache)
-    c[kk] = vv
-  end
-  return c
-end
-
-
 function Schema:get_constraints()
   if self.name == "workspaces" then
     -- merge explicit and implicit constraints for workspaces
@@ -2384,7 +2363,7 @@ function Schema.new(definition, is_subschema)
     return nil, validation_errors.SCHEMA_NO_FIELDS
   end
 
-  local self = copy(definition)
+  local self = tablex.deepcopy(definition)
   setmetatable(self, Schema)
 
   local cache_key = self.cache_key
