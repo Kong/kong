@@ -6,7 +6,7 @@ local Schema = require("kong.db.schema")
 local constants = require("kong.constants")
 local plugin_loader = require("kong.db.schema.plugin_loader")
 local vault_loader = require("kong.db.schema.vault_loader")
-local schema_topological_sort = require "kong.db.schema.topological_sort"
+local schema_topological_sort = require("kong.db.schema.topological_sort")
 
 
 local null = ngx.null
@@ -19,6 +19,7 @@ local insert = table.insert
 local concat = table.concat
 local tostring = tostring
 local cjson_encode = require("cjson.safe").encode
+local tablex_deepcopy = require("pl.tablex").deepcopy
 
 
 local DeclarativeConfig = {}
@@ -98,7 +99,7 @@ local function add_top_level_entities(fields, known_entities)
   local records = {}
 
   for _, entity in ipairs(known_entities) do
-    local definition = utils.deep_copy(all_schemas[entity], false)
+    local definition = tablex_deepcopy(all_schemas[entity])
 
     for k, _ in pairs(definition.fields) do
       if type(k) ~= "number" then
@@ -131,7 +132,7 @@ end
 
 
 local function copy_record(record, include_foreign, duplicates, name)
-  local copy = utils.deep_copy(record, false)
+  local copy = tablex_deepcopy(record)
   if include_foreign then
     return copy
   end
@@ -357,7 +358,7 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
       end
 
       if parent_fk then
-        item[child_key] = utils.deep_copy(parent_fk, false)
+        item[child_key] = tablex_deepcopy(parent_fk)
       end
     end
 
@@ -540,7 +541,7 @@ local function generate_ids(input, known_entities, parent_entity)
       local pk_name, key = get_key_for_uuid_gen(entity, item, schema,
                                                 parent_fk, child_key)
       if key then
-        item = utils.deep_copy(item, false)
+        item = tablex_deepcopy(item)
         item[pk_name] = generate_uuid(schema.name, key)
         input[entity][i] = item
       end
@@ -600,7 +601,7 @@ local function populate_ids_for_validation(input, known_entities, parent_entity,
       end
 
       if parent_fk and not item[child_key] then
-        item[child_key] = utils.deep_copy(parent_fk, false)
+        item[child_key] = tablex_deepcopy(parent_fk)
       end
     end
 
@@ -692,7 +693,7 @@ local function flatten(self, input)
       self.full_schema = DeclarativeConfig.load(self.plugin_set, self.vault_set, true)
     end
 
-    local input_copy = utils.deep_copy(input, false)
+    local input_copy = tablex_deepcopy(input)
     populate_ids_for_validation(input_copy, self.known_entities)
     local ok2, err2 = self.full_schema:validate(input_copy)
     if not ok2 then
