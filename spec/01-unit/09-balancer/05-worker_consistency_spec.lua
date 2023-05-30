@@ -187,7 +187,7 @@ for _, consistency in ipairs({"strict", "eventual"}) do
         },
       }
 
-      local passive_hc = utils.deep_copy(hc_defaults)
+      local passive_hc = utils.cycle_aware_deep_copy(hc_defaults)
       passive_hc.passive.healthy.successes = 1
       passive_hc.passive.unhealthy.http_failures = 1
 

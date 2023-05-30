@@ -166,7 +166,7 @@ local function expand(root_test)
     for _, test in ipairs(expanded_tests) do
       if type(test[field_name]) == "table" then
         for _, field_value in ipairs(test[field_name]) do
-          local et = utils.deep_copy(test)
+          local et = utils.cycle_aware_deep_copy(test)
           et[field_name] = field_value
           new_tests[#new_tests + 1] = et
         end
