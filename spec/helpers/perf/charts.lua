@@ -2,7 +2,7 @@ local math = require "math"
 local utils = require("spec.helpers.perf.utils")
 local logger = require("spec.helpers.perf.logger")
 local cjson = require "cjson"
-local tablex = require "pl.tablex"
+local cycle_aware_deep_copy = require("kong.tools.utils").cycle_aware_deep_copy
 
 local fmt = string.format
 local my_logger = logger.new_logger("[charts]")
@@ -83,7 +83,7 @@ local function ingest_combined_results(ver, results, suite_name)
     return false
   end
 
-  local row = tablex.deepcopy(results)
+  local row = cycle_aware_deep_copy(results)
   row.version = ver
   row.suite = suite_name
 

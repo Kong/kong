@@ -25,7 +25,7 @@ local fileexists = require("pl.path").exists
 local semaphore = require("ngx.semaphore").new
 local lrucache = require("resty.lrucache")
 local resolver = require("resty.dns.resolver")
-local deepcopy = require("pl.tablex").deepcopy
+local cycle_aware_deep_copy = require("kong.tools.utils").cycle_aware_deep_copy
 local time = ngx.now
 local log = ngx.log
 local ERR = ngx.ERR
@@ -799,7 +799,7 @@ local function asyncQuery(qname, r_opts, try_list)
     key = key,
     semaphore = semaphore(),
     qname = qname,
-    r_opts = deepcopy(r_opts),
+    r_opts = cycle_aware_deep_copy(r_opts),
     try_list = try_list,
   }
   queue[key] = item

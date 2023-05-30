@@ -49,7 +49,7 @@ local prefix = ""
 
 
 local function healthchecks_config(config)
-  return utils.deep_merge(healthchecks_defaults, config)
+  return utils.cycle_aware_deep_merge(healthchecks_defaults, config)
 end
 
 
@@ -99,7 +99,7 @@ local function put_target_endpoint(upstream_id, host, port, endpoint)
   return res, err
 end
 
--- client_sync_request requires a route with 
+-- client_sync_request requires a route with
 -- hosts = { "200.test" } to sync requests
 local function client_sync_request(proxy_host , proxy_port)
   -- kong have two port 9100(TCP) and 80(HTTP)
@@ -129,10 +129,10 @@ local function client_requests(n, host_or_headers, proxy_host, proxy_port, proto
   local last_status
   for _ = 1, n do
     -- hack sync avoid concurrency request
-    -- There is an issue here, if a request is completed and a response is received, 
-    -- it does not necessarily mean that the log phase has been executed 
-    -- (many operations require execution in the log phase, such as passive health checks), 
-    -- so we need to ensure that the log phase has been completely executed here. 
+    -- There is an issue here, if a request is completed and a response is received,
+    -- it does not necessarily mean that the log phase has been executed
+    -- (many operations require execution in the log phase, such as passive health checks),
+    -- so we need to ensure that the log phase has been completely executed here.
     -- We choose to wait here for the log phase of the last connection to finish.
     client_sync_request(proxy_host, proxy_port)
     local client
@@ -228,7 +228,7 @@ do
 
   add_certificate = function(bp, data)
     local certificate_id = utils.uuid()
-    local req = utils.deep_copy(data) or {}
+    local req = utils.cycle_aware_deep_copy(data) or {}
     req.id = certificate_id
     bp.certificates:insert(req)
     return certificate_id
@@ -236,7 +236,7 @@ do
 
   add_upstream = function(bp, data)
     local upstream_id = utils.uuid()
-    local req = utils.deep_copy(data) or {}
+    local req = utils.cycle_aware_deep_copy(data) or {}
     local upstream_name = req.name or gen_sym("upstream")
     req.name = upstream_name
     req.slots = req.slots or SLOTS
@@ -311,7 +311,7 @@ do
 
   add_target = function(bp, upstream_id, host, port, data)
     port = port or get_available_port()
-    local req = utils.deep_copy(data) or {}
+    local req = utils.cycle_aware_deep_copy(data) or {}
     if host == "[::1]" then
       host = "[0000:0000:0000:0000:0000:0000:0000:0001]"
     end
@@ -323,7 +323,7 @@ do
   end
 
   update_target = function(bp, upstream_id, host, port, data)
-    local req = utils.deep_copy(data) or {}
+    local req = utils.cycle_aware_deep_copy(data) or {}
     if host == "[::1]" then
       host = "[0000:0000:0000:0000:0000:0000:0000:0001]"
     end

@@ -28,7 +28,7 @@ describe("option no_broadcast_crud_event", function()
           return data
         end,
         update = function(_, _, value)
-          data = utils.deep_merge(data, value)
+          data = utils.cycle_aware_deep_merge(data, value)
           return data
         end,
       }
@@ -60,7 +60,7 @@ describe("option no_broadcast_crud_event", function()
           return data
         end,
         update = function(_, _, value)
-          data = utils.deep_merge(data, value)
+          data = utils.cycle_aware_deep_merge(data, value)
           return data
         end,
       }

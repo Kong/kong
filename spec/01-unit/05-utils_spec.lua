@@ -850,4 +850,798 @@ describe("Utils", function()
       assert.equals("Cycle detected, cannot sort topologically", err)
     end)
   end)
+
+  local function count_keys(t, n)
+    n = n or 0
+    if type(t) ~= "table" then
+      return n
+    end
+    for k, v in pairs(t) do
+      n = count_keys(k, n)
+      n = count_keys(v, n)
+      n = n + 1
+    end
+    return n
+  end
+
+  describe("deep_copy(t)", function()
+    it("copies values, keys and metatables and sets metatables", function()
+      local meta = {}
+      local meta2 = {}
+      local ref = {}
+      local ref2 = setmetatable({}, meta)
+
+      ref[1] = 1
+      ref[2] = ref2
+      ref[3] = nil
+      ref[4] = 4
+
+      local a = setmetatable({
+        a = setmetatable({
+          a = "clone",
+        }, meta2),
+        b = ref,
+      }, meta)
+
+      local b = {
+        [a] = a,
+        a = a,
+        b = ref,
+      }
+
+      local c = utils.deep_copy(b)
+
+      assert.not_same(b, c)
+      assert.not_equal(b, c)
+
+      assert.equal(b[a], b.a)
+      assert.not_equal(c[a], c.a)
+
+      assert.equal(b.b, ref)
+      assert.not_equal(c.b, ref)
+
+      assert.equal(b.b[1], 1)
+      assert.equal(c.b[1], 1)
+
+      assert.equal(b.b[2], ref2)
+      assert.not_equal(c.b[2], ref2)
+
+      assert.equal(getmetatable(b.b[2]), meta)
+      assert.not_equal(getmetatable(c.b[2]), meta)
+
+      assert.equal(b.b[3], nil)
+      assert.equal(c.b[3], nil)
+
+      assert.equal(b.b[4], 4)
+      assert.equal(c.b[4], 4)
+
+      assert.equal(getmetatable(b[a]), meta)
+      assert.is_nil(getmetatable(c[a]))
+
+      assert.equal(getmetatable(b.a), meta)
+      assert.not_equal(getmetatable(c.a), meta)
+      assert.is_table(getmetatable(c.a), meta)
+
+      assert.not_equal(getmetatable(b[a]), getmetatable(c[a]))
+      assert.not_equal(getmetatable(b.a), getmetatable(c.a))
+
+      assert.is_table(getmetatable(b[a]))
+      assert.is_nil(getmetatable(c[a]))
+
+      assert.is_table(getmetatable(b.a))
+      assert.is_table(getmetatable(c.a))
+
+      assert.equal(getmetatable(b[a].a), meta2)
+      assert.is_nil(getmetatable(c[a] and c[a].a or nil))
+      assert.not_equal(getmetatable(b[a].a), getmetatable(c[a] and c[a].a or nil))
+
+      assert.equal(getmetatable(b.a.a), meta2)
+      assert.not_equal(getmetatable(c.a.a), meta2)
+      assert.not_equal(getmetatable(b.a.a), getmetatable(c.a.a))
+
+      assert.not_equal(b[a], c[a])
+      assert.not_equal(b.a, c.a)
+      assert.not_equal(b[a].a, c[a] and c[a].a or nil)
+      assert.not_equal(b.a.a, c.a.a)
+      assert.not_equal(b[a].a.a, c[a] and c[a].a and c[a].a.a or nil)
+      assert.equal(b.a.a.a, c.a.a.a)
+
+      local key_found
+      for k in pairs(b) do
+        key_found = nil
+        for k2 in pairs(c) do
+          if k == k2 then
+            key_found = true
+            break
+          end
+        end
+        if type(k) == "table" then
+          assert.is_nil(key_found)
+        else
+          assert.is_true(key_found)
+        end
+      end
+
+      key_found = nil
+      for k in pairs(b) do
+        if k == a then
+          key_found = true
+          break
+        end
+      end
+      assert.is_true(key_found)
+
+      key_found = nil
+      for k in pairs(c) do
+        if k == a then
+          key_found = true
+          break
+        end
+      end
+      assert.is_nil(key_found)
+
+      assert.equal(count_keys(b), 24)
+      assert.equal(count_keys(c), 24)
+    end)
+  end)
+
+  describe("deep_copy(t, false)", function()
+    it("copies values and keys and removes metatables", function()
+      local meta = {}
+      local meta2 = {}
+      local ref = {}
+      local ref2 = setmetatable({}, meta)
+
+      ref[1] = 1
+      ref[2] = ref2
+      ref[3] = nil
+      ref[4] = 4
+
+      local a = setmetatable({
+        a = setmetatable({
+          a = "clone",
+        }, meta2),
+        b = ref,
+      }, meta)
+
+      local b = {
+        [a] = a,
+        a = a,
+        b = ref,
+      }
+
+      local c = utils.deep_copy(b, false)
+
+      assert.not_same(b, c)
+      assert.not_equal(b, c)
+
+      assert.equal(b[a], b.a)
+      assert.not_equal(c[a], c.a)
+
+      assert.equal(b.b, ref)
+      assert.not_equal(c.b, ref)
+
+      assert.equal(b.b[1], 1)
+      assert.equal(c.b[1], 1)
+
+      assert.equal(b.b[2], ref2)
+      assert.not_equal(c.b[2], ref2)
+
+      assert.equal(getmetatable(b.b[2]), meta)
+      assert.not_equal(getmetatable(c.b[2]), meta)
+
+      assert.equal(b.b[3], nil)
+      assert.equal(c.b[3], nil)
+
+      assert.equal(b.b[4], 4)
+      assert.equal(c.b[4], 4)
+
+      assert.equal(getmetatable(b[a]), meta)
+      assert.is_nil(getmetatable(c[a]))
+
+      assert.equal(getmetatable(b.a), meta)
+      assert.not_equal(getmetatable(c.a), meta)
+      assert.is_nil(getmetatable(c.a), meta)
+
+      assert.not_equal(getmetatable(b[a]), getmetatable(c[a]))
+      assert.not_equal(getmetatable(b.a), getmetatable(c.a))
+
+      assert.is_table(getmetatable(b[a]))
+      assert.is_nil(getmetatable(c[a]))
+
+      assert.is_table(getmetatable(b.a))
+      assert.is_nil(getmetatable(c.a))
+
+      assert.equal(getmetatable(b[a].a), meta2)
+      assert.is_nil(getmetatable(c[a] and c[a].a or nil))
+      assert.not_equal(getmetatable(b[a].a), getmetatable(c[a] and c[a].a or nil))
+
+      assert.equal(getmetatable(b.a.a), meta2)
+      assert.not_equal(getmetatable(c.a.a), meta2)
+      assert.not_equal(getmetatable(b.a.a), getmetatable(c.a.a))
+
+      assert.not_equal(b[a], c[a])
+      assert.not_equal(b.a, c.a)
+      assert.not_equal(b[a].a, c[a] and c[a].a or nil)
+      assert.not_equal(b.a.a, c.a.a)
+      assert.not_equal(b[a].a.a, c[a] and c[a].a and c[a].a.a or nil)
+      assert.equal(b.a.a.a, c.a.a.a)
+
+      local key_found
+      for k in pairs(b) do
+        key_found = nil
+        for k2 in pairs(c) do
+          if k == k2 then
+            key_found = true
+            break
+          end
+        end
+        if type(k) == "table" then
+          assert.is_nil(key_found)
+        else
+          assert.is_true(key_found)
+        end
+      end
+
+      key_found = nil
+      for k in pairs(b) do
+        if k == a then
+          key_found = true
+          break
+        end
+      end
+      assert.is_true(key_found)
+
+      key_found = nil
+      for k in pairs(c) do
+        if k == a then
+          key_found = true
+          break
+        end
+      end
+      assert.is_nil(key_found)
+
+      assert.equal(count_keys(b), 24)
+      assert.equal(count_keys(c), 24)
+    end)
+  end)
+
+  describe("cycle_aware_deep_copy(t)", function()
+    it("cycle aware copies values and sets the metatables but does not copy keys or metatables", function()
+      local meta = {}
+      local meta2 = {}
+      local ref = {}
+      local ref2 = setmetatable({}, meta)
+
+      ref[1] = 1
+      ref[2] = ref2
+      ref[3] = nil
+      ref[4] = 4
+
+      local a = setmetatable({
+        a = setmetatable({
+          a = "clone",
+        }, meta2),
+        b = ref,
+      }, meta)
+
+      local b = {
+        [a] = a,
+        a = a,
+        b = ref,
+      }
+
+      local c = utils.cycle_aware_deep_copy(b)
+
+      assert.same(b, c)
+      assert.not_equal(b, c)
+
+      assert.equal(b[a], b.a)
+      assert.equal(c[a], c.a)
+
+      assert.equal(b.b, ref)
+      assert.not_equal(c.b, ref)
+
+      assert.equal(b.b[1], 1)
+      assert.equal(c.b[1], 1)
+
+      assert.equal(b.b[2], ref2)
+      assert.not_equal(c.b[2], ref2)
+
+      assert.equal(getmetatable(b.b[2]), meta)
+      assert.equal(getmetatable(c.b[2]), meta)
+
+      assert.equal(b.b[3], nil)
+      assert.equal(c.b[3], nil)
+
+      assert.equal(b.b[4], 4)
+      assert.equal(c.b[4], 4)
+
+      assert.equal(getmetatable(b[a]), meta)
+      assert.equal(getmetatable(c[a]), meta)
+
+      assert.equal(getmetatable(b.a), meta)
+      assert.equal(getmetatable(c.a), meta)
+
+      assert.equal(getmetatable(b[a]), getmetatable(c[a]))
+      assert.equal(getmetatable(b.a), getmetatable(c.a))
+
+      assert.equal(getmetatable(b[a].a), meta2)
+      assert.equal(getmetatable(c[a].a), meta2)
+      assert.equal(getmetatable(b[a].a), getmetatable(c[a].a))
+
+      assert.equal(getmetatable(b.a.a), meta2)
+      assert.equal(getmetatable(c.a.a), meta2)
+      assert.equal(getmetatable(b.a.a), getmetatable(c.a.a))
+
+      assert.not_equal(b[a], c[a])
+      assert.not_equal(b.a, c.a)
+      assert.not_equal(b[a].a, c[a].a)
+      assert.not_equal(b.a.a, c.a.a)
+      assert.equal(b[a].a.a, c[a].a.a)
+      assert.equal(b.a.a.a, c.a.a.a)
+
+      local key_found
+      for k in pairs(b) do
+        key_found = nil
+        for k2 in pairs(c) do
+          if k == k2 then
+            key_found = true
+            break
+          end
+        end
+        assert.is_true(key_found)
+      end
+
+      key_found = nil
+      for k in pairs(b) do
+        if k == a then
+          key_found = true
+          break
+        end
+      end
+      assert.is_true(key_found)
+
+      key_found = nil
+      for k in pairs(c) do
+        if k == a then
+          key_found = true
+          break
+        end
+      end
+      assert.is_true(key_found)
+
+      assert.equal(count_keys(b), 24)
+      assert.equal(count_keys(c), 24)
+    end)
+  end)
+
+  describe("cycle_aware_deep_copy(t, true)", function()
+    it("cycle aware copies values and removes metatables but does not copy keys", function()
+      local meta = {}
+      local meta2 = {}
+      local ref = {}
+      local ref2 = setmetatable({}, meta)
+
+      ref[1] = 1
+      ref[2] = ref2
+      ref[3] = nil
+      ref[4] = 4
+
+      local a = setmetatable({
+        a = setmetatable({
+          a = "clone",
+        }, meta2),
+        b = ref,
+      }, meta)
+
+      local b = {
+        [a] = a,
+        a = a,
+        b = ref,
+      }
+
+      local c = utils.cycle_aware_deep_copy(b, true)
+
+      assert.same(b, c)
+      assert.not_equal(b, c)
+
+      assert.equal(b[a], b.a)
+      assert.equal(c[a], c.a)
+
+      assert.equal(b.b, ref)
+      assert.not_equal(c.b, ref)
+
+      assert.equal(b.b[1], 1)
+      assert.equal(c.b[1], 1)
+
+      assert.equal(b.b[2], ref2)
+      assert.not_equal(c.b[2], ref2)
+
+      assert.equal(getmetatable(b.b[2]), meta)
+      assert.is_nil(getmetatable(c.b[2]))
+
+      assert.equal(b.b[3], nil)
+      assert.equal(c.b[3], nil)
+
+      assert.equal(b.b[4], 4)
+      assert.equal(c.b[4], 4)
+
+      assert.equal(getmetatable(b[a]), meta)
+      assert.is_nil(getmetatable(c[a]), meta)
+
+      assert.equal(getmetatable(b.a), meta)
+      assert.is_nil(getmetatable(c.a))
+
+      assert.not_equal(getmetatable(b[a]), getmetatable(c[a]))
+      assert.not_equal(getmetatable(b.a), getmetatable(c.a))
+
+      assert.equal(getmetatable(b[a].a), meta2)
+      assert.is_nil(getmetatable(c[a].a))
+      assert.not_equal(getmetatable(b[a].a), getmetatable(c[a].a))
+
+      assert.equal(getmetatable(b.a.a), meta2)
+      assert.is_nil(getmetatable(c.a.a))
+      assert.not_equal(getmetatable(b.a.a), getmetatable(c.a.a))
+
+      assert.not_equal(b[a], c[a])
+      assert.not_equal(b.a, c.a)
+      assert.not_equal(b[a].a, c[a].a)
+      assert.not_equal(b.a.a, c.a.a)
+      assert.equal(b[a].a.a, c[a].a.a)
+      assert.equal(b.a.a.a, c.a.a.a)
+
+      local key_found
+      for k in pairs(b) do
+        key_found = nil
+        for k2 in pairs(c) do
+          if k == k2 then
+            key_found = true
+            break
+          end
+        end
+        assert.is_true(key_found)
+      end
+
+      key_found = nil
+      for k in pairs(b) do
+        if k == a then
+          key_found = true
+          break
+        end
+      end
+      assert.is_true(key_found)
+
+      key_found = nil
+      for k in pairs(c) do
+        if k == a then
+          key_found = true
+          break
+        end
+      end
+      assert.is_true(key_found)
+
+      assert.equal(count_keys(b), 24)
+      assert.equal(count_keys(c), 24)
+    end)
+  end)
+
+  describe("cycle_aware_deep_copy(t, nil, true)", function()
+    it("cycle aware copies values and keys, and sets metatables", function()
+      local meta = {}
+      local meta2 = {}
+      local ref = {}
+      local ref2 = setmetatable({}, meta)
+
+      ref[1] = 1
+      ref[2] = ref2
+      ref[3] = nil
+      ref[4] = 4
+
+      local a = setmetatable({
+        a = setmetatable({
+          a = "clone",
+        }, meta2),
+        b = ref,
+      }, meta)
+
+      local b = {
+        [a] = a,
+        a = a,
+        b = ref,
+      }
+
+      local c = utils.cycle_aware_deep_copy(b, nil, true)
+
+      assert.not_same(b, c)
+      assert.not_equal(b, c)
+
+      assert.equal(b[a], b.a)
+      assert.is_nil(c[a])
+
+      assert.equal(b.b, ref)
+      assert.not_equal(c.b, ref)
+
+      assert.equal(b.b[1], 1)
+      assert.equal(c.b[1], 1)
+
+      assert.equal(b.b[2], ref2)
+      assert.not_equal(c.b[2], ref2)
+
+      assert.equal(getmetatable(b.b[2]), meta)
+      assert.equal(getmetatable(c.b[2]), meta)
+
+      assert.equal(b.b[3], nil)
+      assert.equal(c.b[3], nil)
+
+      assert.equal(b.b[4], 4)
+      assert.equal(c.b[4], 4)
+
+      assert.equal(getmetatable(b[a]), meta)
+      assert.is_nil(getmetatable(c[a]))
+
+      assert.equal(getmetatable(b.a), meta)
+      assert.equal(getmetatable(c.a), meta)
+
+      assert.not_equal(getmetatable(b[a]), getmetatable(c[a]))
+      assert.equal(getmetatable(b.a), getmetatable(c.a))
+
+      assert.equal(getmetatable(b[a].a), meta2)
+      assert.is_nil(getmetatable(c[a] and c[a].a))
+      assert.not_equal(getmetatable(b[a].a), getmetatable(c[a] and c[a].a or nil))
+
+      assert.equal(getmetatable(b.a.a), meta2)
+      assert.equal(getmetatable(c.a.a), meta2)
+      assert.equal(getmetatable(b.a.a), getmetatable(c.a.a))
+
+      assert.not_equal(b[a], c[a])
+      assert.not_equal(b.a, c.a)
+      assert.not_equal(b[a].a, c[a] and c[a].a or nil)
+      assert.not_equal(b.a.a, c.a.a)
+      assert.not_equal(b[a].a.a, c[a] and c[a].a and c[a].a.a or nil)
+      assert.equal(b.a.a.a, c.a.a.a)
+
+      local key_found
+      for k in pairs(b) do
+        key_found = nil
+        for k2 in pairs(c) do
+          if k == k2 then
+            key_found = true
+            break
+          end
+        end
+        if type(k) == "table" then
+          assert.is_nil(key_found)
+        else
+          assert.is_true(key_found)
+        end
+      end
+
+      key_found = nil
+      for k in pairs(b) do
+        if k == a then
+          key_found = true
+          break
+        end
+      end
+      assert.is_true(key_found)
+
+      key_found = nil
+      for k in pairs(c) do
+        if k == a then
+          key_found = true
+          break
+        end
+      end
+      assert.is_nil(key_found)
+
+      assert.equal(count_keys(b), 24)
+      assert.equal(count_keys(c), 24)
+    end)
+  end)
+
+  describe("cycle_aware_deep_copy(t, nil, nil, cache)", function()
+    it("cycle aware copies values that are not already cached and sets metatables but does not copy keys or metatables", function()
+      local cache = {}
+      local meta = {}
+      local meta2 = {}
+      local ref = {}
+      local ref2 = setmetatable({}, meta)
+
+      cache[ref] = ref
+      cache[ref2] = ref2
+
+      ref[1] = 1
+      ref[2] = ref2
+      ref[3] = nil
+      ref[4] = 4
+
+      local a = setmetatable({
+        a = setmetatable({
+          a = "clone",
+        }, meta2),
+        b = ref,
+      }, meta)
+
+      cache[a] = a
+
+      local b = {
+        [a] = a,
+        a = a,
+        b = ref,
+      }
+
+      local c = utils.cycle_aware_deep_copy(b, nil, nil, cache)
+
+      assert.same(b, c)
+      assert.not_equal(b, c)
+
+      assert.equal(b[a], b.a)
+      assert.equal(c[a], c.a)
+
+      assert.equal(b.b, ref)
+      assert.equal(c.b, ref)
+
+      assert.equal(b.b[1], 1)
+      assert.equal(c.b[1], 1)
+
+      assert.equal(b.b[2], ref2)
+      assert.equal(c.b[2], ref2)
+
+      assert.equal(getmetatable(b.b[2]), meta)
+      assert.equal(getmetatable(c.b[2]), meta)
+
+      assert.equal(b.b[3], nil)
+      assert.equal(c.b[3], nil)
+
+      assert.equal(b.b[4], 4)
+      assert.equal(c.b[4], 4)
+
+      assert.equal(getmetatable(b[a]), meta)
+      assert.equal(getmetatable(c[a]), meta)
+
+      assert.equal(getmetatable(b.a), meta)
+      assert.equal(getmetatable(c.a), meta)
+
+      assert.equal(getmetatable(b[a]), getmetatable(c[a]))
+      assert.equal(getmetatable(b.a), getmetatable(c.a))
+
+      assert.equal(getmetatable(b[a].a), meta2)
+      assert.equal(getmetatable(c[a].a), meta2)
+      assert.equal(getmetatable(b[a].a), getmetatable(c[a].a))
+
+      assert.equal(getmetatable(b.a.a), meta2)
+      assert.equal(getmetatable(c.a.a), meta2)
+      assert.equal(getmetatable(b.a.a), getmetatable(c.a.a))
+
+      assert.equal(b[a], c[a])
+      assert.equal(b.a, c.a)
+      assert.equal(b[a].a, c[a].a)
+      assert.equal(b.a.a, c.a.a)
+      assert.equal(b[a].a.a, c[a].a.a)
+      assert.equal(b.a.a.a, c.a.a.a)
+
+      local key_found
+      for k in pairs(b) do
+        key_found = nil
+        for k2 in pairs(c) do
+          if k == k2 then
+            key_found = true
+            break
+          end
+        end
+        assert.is_true(key_found)
+      end
+
+      key_found = nil
+      for k in pairs(b) do
+        if k == a then
+          key_found = true
+          break
+        end
+      end
+      assert.is_true(key_found)
+
+      key_found = nil
+      for k in pairs(c) do
+        if k == a then
+          key_found = true
+          break
+        end
+      end
+      assert.is_true(key_found)
+
+      assert.equal(count_keys(b), 24)
+      assert.equal(count_keys(c), 24)
+    end)
+  end)
+
+  describe("deep_merge(t1, t2)", function()
+    it("deep merges t2 into copy of t1", function()
+      local meta = {}
+      local ref = setmetatable({
+        a = "ref",
+      }, meta)
+
+      local t1 = {
+        a = "t1",
+        b = {
+          a = ref,
+        },
+        c = {
+          a = "t1",
+        },
+      }
+
+      local t2 = {
+        a = "t2",
+        b = {
+          a = ref,
+          b = "t2",
+        },
+        c = "t2",
+      }
+
+      local t3 = utils.deep_merge(t1, t2)
+
+      assert.not_equal(t3, t1)
+      assert.not_equal(t3, t2)
+
+      assert.same({
+        a = "t2",
+        b = {
+          a = ref,
+          b = "t2",
+        },
+        c = "t2",
+      }, t3)
+
+      assert.not_equal(meta, getmetatable(t3.b.a))
+      assert.is_table(getmetatable(t3.b.a))
+    end)
+  end)
+
+  describe("cycle_aware_deep_merge(t1, t2)", function()
+    it("cycle aware deep merges t2 into copy of t1", function()
+      local meta = {}
+      local ref = setmetatable({
+        a = "ref",
+      }, meta)
+
+      local t1 = {
+        a = "t1",
+        b = {
+          a = ref,
+        },
+        c = {
+          a = "t1",
+        },
+      }
+
+      local t2 = {
+        a = "t2",
+        b = {
+          a = ref,
+          b = "t2",
+        },
+        c = "t2",
+      }
+
+      local t3 = utils.cycle_aware_deep_merge(t1, t2)
+
+      assert.not_equal(t3, t1)
+      assert.not_equal(t3, t2)
+
+      assert.same({
+        a = "t2",
+        b = {
+          a = ref,
+          b = "t2",
+        },
+        c = "t2",
+      }, t3)
+
+      assert.equal(meta, getmetatable(t3.b.a))
+    end)
+  end)
 end)
