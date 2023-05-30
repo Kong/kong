@@ -584,7 +584,7 @@ for _, strategy in strategies() do
         assert.res_status(200, res)
 
         local log_message = get_log(res)
-        assert.equal("FAILED:self signed certificate", log_message.request.tls.client_verify)
+        assert.equal("FAILED:self-signed certificate", log_message.request.tls.client_verify)
       end)
 
       it("works with http (no mTLS handshake)", function()

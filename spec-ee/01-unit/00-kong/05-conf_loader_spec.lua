@@ -799,7 +799,7 @@ describe("ee conf loader", function()
         fips = true,
       })
 
-      assert.match("cannot enable FIPS mode: openssl.set_fips_mod", err)
+      assert.match("cannot enable FIPS mode: provider.load", err)
     end)
 
     fips_test("with fips: lua_ssl_verify_depth plus 1", function()

@@ -30,7 +30,9 @@ CONFIGURE_OPTIONS = select({
     "-DPURIFY",
     "no-threads",
     "no-unit-test",
+    "--prefix=%s/kong" % KONG_VAR["INSTALL_DESTDIR"],
     "--openssldir=%s/kong" % KONG_VAR["INSTALL_DESTDIR"],
+    "--libdir=lib",  # force lib instead of lib64 (multilib postfix)
     "-Wl,-rpath,%s/kong/lib" % KONG_VAR["INSTALL_DESTDIR"],
 ] + select({
     "@kong//:debug_flag": ["-d"],
@@ -64,7 +66,9 @@ configure_make(
     }),
     targets = [
         "-j" + KONG_VAR["NPROC"],
-        "install_sw LIBDIR=lib",  # force lib instead of lib64
+        # don't set the prefix by --prefix switch, but only override the install destdir using INSTALLTOP
+        # while install. this makes both bazel and openssl (build time generated) paths happy.
+        "install_sw INSTALLTOP=$BUILD_TMPDIR/$INSTALL_PREFIX",
     ],
     # TODO: uncomment this to allow bazel build a perl if not installed on system
     # toolchains = ["@rules_perl//:current_toolchain"],
