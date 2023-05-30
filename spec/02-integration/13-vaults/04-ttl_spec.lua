@@ -127,6 +127,7 @@ describe("vault ttl and rotation (#" .. strategy .. ") #" .. vault.name, functio
 
   lazy_setup(function()
     helpers.setenv("KONG_LUA_PATH_OVERRIDE", LUA_PATH)
+    helpers.setenv("KONG_VAULT_ROTATION_INTERVAL", "1")
 
     helpers.test_conf.loaded_plugins = {
       dummy = true,
