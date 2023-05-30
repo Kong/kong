@@ -10,10 +10,10 @@ local table_insert = table.insert
 local table_sort = table.sort
 local table_remove = table.remove
 local gsub = string.gsub
-local deep_copy = utils.deep_copy
 local split = utils.split
 local deflate_gzip = utils.deflate_gzip
 local cjson_encode = cjson.encode
+local tablex_deepcopy = require("pl.tablex").deepcopy
 
 local ngx = ngx
 local ngx_log = ngx.log
@@ -375,7 +375,7 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix)
   end
 
   local has_update
-  payload = deep_copy(payload, false)
+  payload = tablex_deepcopy(payload)
   local config_table = payload["config_table"]
 
   for _, checker in ipairs(COMPATIBILITY_CHECKERS) do

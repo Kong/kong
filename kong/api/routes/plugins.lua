@@ -1,5 +1,4 @@
 local cjson = require "cjson"
-local utils = require "kong.tools.utils"
 local reports = require "kong.reports"
 local endpoints = require "kong.api.endpoints"
 local arguments = require "kong.api.arguments"
@@ -12,6 +11,7 @@ local find = string.find
 local pairs = pairs
 local lower = string.lower
 local setmetatable = setmetatable
+local tablex_deepcopy = require("pl.tablex").deepcopy
 
 
 local function reports_timer(premature, data)
@@ -19,7 +19,7 @@ local function reports_timer(premature, data)
     return
   end
 
-  local r_data = utils.deep_copy(data)
+  local r_data = tablex_deepcopy(data)
 
   r_data.config = nil
   r_data.route = nil

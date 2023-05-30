@@ -9,7 +9,7 @@ local kong = kong
 local insert = table.insert
 local tablepool_fetch = tablepool.fetch
 local tablepool_release = tablepool.release
-local deep_copy = utils.deep_copy
+local tablex_deepcopy = require("pl.tablex").deepcopy
 local table_merge = utils.table_merge
 local setmetatable = setmetatable
 
@@ -160,7 +160,7 @@ do
   encode_traces = function(spans, resource_attributes)
     local tab = tablepool_fetch(POOL_OTLP, 0, 2)
     if not tab.resource_spans then
-      tab.resource_spans = deep_copy(pb_memo.resource_spans)
+      tab.resource_spans = tablex_deepcopy(pb_memo.resource_spans)
     end
 
     local resource = tab.resource_spans[1].resource
