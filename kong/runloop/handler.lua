@@ -1048,13 +1048,6 @@ return {
 
       end
     end,
-    after = NOOP,
-  },
-  certificate = {
-    before = function(ctx) -- Note: ctx here is for a connection (not for a single request)
-      certificate.execute()
-    end,
-    after = NOOP,
   },
   preread = {
     before = function(ctx)
@@ -1116,7 +1109,6 @@ return {
       ctx.host_port = HOST_PORTS[server_port] or server_port
       instrumentation.request(ctx)
     end,
-    after = NOOP,
   },
   access = {
     before = function(ctx)
@@ -1417,10 +1409,6 @@ return {
         clear_header("Proxy-Connection")
       end
     end
-  },
-  response = {
-    before = NOOP,
-    after = NOOP,
   },
   header_filter = {
     before = function(ctx)
