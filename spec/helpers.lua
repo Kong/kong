@@ -1391,7 +1391,8 @@ end
 
 --- Starts a local HTTP server.
 --
--- **DEPRECATED**: please use an `http_mock` instead (see example at `start_kong`).
+-- **DEPRECATED**: please use `spec.helpers.http_mock` instead. `http_server` has very poor
+-- support to anything other then a single shot simple request.
 --
 -- Accepts a single connection and then closes. Sends a 200 ok, 'Connection:
 -- close' response.
@@ -1608,6 +1609,9 @@ end
 
 
 --- Start a local HTTP server with coroutine.
+--
+-- **DEPRECATED**: please use `spec.helpers.http_mock` instead.
+--
 -- local mock = helpers.http_mock(1234, { timeout = 0.1 })
 -- wait for a request, and respond with the custom response
 -- the request is returned as the function's return values
@@ -3590,6 +3594,8 @@ end
 --   stream_mock = {},
 --   dns_mock = helpers.dns_mock.new()
 -- }
+--
+-- **DEPRECATED**: http_mock fixture is deprecated. Please use `spec.helpers.http_mock` instead.
 --
 -- fixtures.dns_mock:A {
 --   name = "a.my.srv.test.com",
