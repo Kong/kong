@@ -111,7 +111,6 @@ function Sequence:gen()
   return self.count
 end
 
-
 local function new_sequence(sequence_string, gen)
   return setmetatable({
     count           = 0,
@@ -126,28 +125,32 @@ local _M = {}
 
 function _M.new(db)
   local res = {}
-
+  
   -- prepare Sequences and random values
-  local sni_seq = new_sequence("sni-%s", utils.uuid)
-  local upstream_name_seq = new_sequence("upstream-%s", utils.uuid)
+  local acl_group_seq = new_sequence("acl-group-%d")
   local consumer_custom_id_seq = new_sequence("consumer-id-%s")
   local consumer_username_seq = new_sequence("consumer-username-%s", utils.uuid)
-  -- endpoint is an url path
-  local rbac_role_endpoint_seq = new_sequence("/rbac-role-endpoint-%d")
-  local group_name_seq = new_sequence("group-name-%d")
+  local consumer_group_name_seq = new_sequence("consumer-group-name-%d")
   local developer_email_seq = new_sequence("dev-%d@example.com")
   local file_name_seq = new_sequence("file-path-%d.txt")
-  local plugin_name_seq = new_sequence("custom-plugin-%d")
-  local consumer_group_name_seq = new_sequence("consumer-group-name-%d")
+  local group_name_seq = new_sequence("group-name-%d")
+  local hmac_username_seq = new_sequence("hmac-username-%d")
+  local jwt_key_seq = new_sequence("jwt-key-%d")
+  local key_sets_seq = new_sequence("key-sets-%d")
+  local keys_seq = new_sequence("keys-%d")
+  local keyauth_key_seq = new_sequence("keyauth-key-%d")
   local named_service_name_seq = new_sequence("service-name-%d")
   local named_service_host_seq = new_sequence("service-host-%d.test")
   local named_route_name_seq = new_sequence("route-name-%d")
   local named_route_host_seq = new_sequence("route-host-%d.test")
-  local workspace_name_seq = new_sequence("workspace-name-%d")
+  local oauth_code_seq = new_sequence("oauth-code-%d")
+  local plugin_name_seq = new_sequence("custom-plugin-%d")
+  local rbac_role_endpoint_seq = new_sequence("/rbac-role-endpoint-%d")
   local rbac_user_name_seq = new_sequence("rbac-user-%d")
   local rbac_roles_seq = new_sequence("rbac-role-%d")
-  local key_sets_seq = new_sequence("key-sets-%d")
-  local keys_seq = new_sequence("keys-%d")
+  local sni_seq = new_sequence("sni-%s", utils.uuid)
+  local upstream_name_seq = new_sequence("upstream-%s", utils.uuid)
+  local workspace_name_seq = new_sequence("workspace-name-%d")
 
   local random_ip = tostring(math.random(1, 255)) .. "." ..
     tostring(math.random(1, 255)) .. "." ..
@@ -198,9 +201,9 @@ function _M.new(db)
 
   res.targets = new_blueprint(db.targets, function(overrides)
     return {
-      weight = 10,
+      weight = overrides.weight or 10,
       upstream = overrides.upstream or res.upstreams:insert(),
-      target = random_target
+      target = overrides.target or random_target,
     }
   end)
 
@@ -443,7 +446,6 @@ function _M.new(db)
     }
   end)
 
-  local acl_group_seq = new_sequence("acl-group-%d")
   res.acls = new_blueprint(db.acls, function()
     return {
       group = acl_group_seq:next(),
@@ -498,7 +500,6 @@ function _M.new(db)
     }
   end)
 
-  local jwt_key_seq = new_sequence("jwt-key-%d")
   res.jwt_secrets = new_blueprint(db.jwt_secrets, function()
     return {
       key       = jwt_key_seq:next(),
@@ -527,7 +528,6 @@ function _M.new(db)
     }
   end)
 
-  local oauth_code_seq = new_sequence("oauth-code-%d")
   res.oauth2_authorization_codes = new_blueprint(db.oauth2_authorization_codes, function()
     return {
       code  = oauth_code_seq:next(),
@@ -550,7 +550,6 @@ function _M.new(db)
     }
   end)
 
-  local keyauth_key_seq = new_sequence("keyauth-key-%d")
   res.keyauth_credentials = new_blueprint(db.keyauth_credentials, function()
     return {
       key = keyauth_key_seq:next(),
@@ -582,7 +581,6 @@ function _M.new(db)
     }
   end)
 
-  local hmac_username_seq = new_sequence("hmac-username-%d")
   res.hmacauth_credentials = new_blueprint(db.hmacauth_credentials, function()
     return {
       username = hmac_username_seq:next(),
