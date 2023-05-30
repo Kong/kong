@@ -112,6 +112,9 @@
   The module `kong.tools.batch_queue` has been renamed to `kong.tools.queue` in
   the process and the API was changed.  If your custom plugin uses queues, it must
   be updated to use the new API.
+  See
+  [this blog post](https://konghq.com/blog/product-releases/reworked-plugin-queues-in-kong-gateway-3-3)
+  for a tour of the new queues and how they are parametrized.
   [#10172](https://github.com/Kong/kong/pull/10172)
 - **http-log**: If the log server responds with a 3xx HTTP status code, the
   plugin will consider it to be an error and retry according to the retry
