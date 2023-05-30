@@ -5,16 +5,16 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+
 return {
-  name = "dummy",
+  name = "test",
   fields = {
     {
       config = {
         type = "record",
         fields = {
-          { resp_header_value = { type = "string", default = "1", referenceable = true } },
-          { append_body = { type = "string" } },
-          { resp_code = { type = "number" } },
+          { default_value     = { type = "string", required = false } },
+          { default_value_ttl = { type = "number", required = false } },
         },
       },
     },

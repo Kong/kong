@@ -51,9 +51,10 @@ local parse_path = require("socket.url").parse_path
 local encode_base64url = require("ngx.base64").encode_base64url
 local decode_json = cjson.decode
 
+local ROTATION_INTERVAL = tonumber(os.getenv("KONG_VAULT_ROTATION_INTERVAL") or 60)
+
 
 local function new(self)
-  local ROTATION_INTERVAL = 60
   local ROTATION_SEMAPHORE = semaphore.new(1)
   local ROTATION_WAIT = 0
 
