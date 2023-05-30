@@ -282,7 +282,7 @@ jobs:
   integration-tests-postgres:
     name: Postgres ${{ matrix.suite }} - ${{ matrix.split }} tests
     runs-on: ubuntu-latest-kong
-    timeout-minutes: 30
+    timeout-minutes: ${{ inputs.coverage == false && github.event_name != 'schedule' && 30 || 480 }}
     needs: build
 
     strategy:
@@ -443,7 +443,7 @@ jobs:
   integration-tests-dbless:
     name: DB-less integration tests
     runs-on: ubuntu-latest-kong
-    timeout-minutes: 25
+    timeout-minutes: ${{ inputs.coverage == false && github.event_name != 'schedule' && 25 || 480 }}
     needs: build
 
     services:
@@ -553,7 +553,7 @@ jobs:
   pdk-tests:
     name: PDK tests
     runs-on: ubuntu-latest-kong
-    timeout-minutes: 10
+    timeout-minutes: ${{ inputs.coverage == false && github.event_name != 'schedule' && 10 || 480 }}
     needs: build
 
     steps:
@@ -679,7 +679,7 @@ jobs:
   plugins-ee-tests:
     name: plugins EE - ${{ matrix.split }} tests
     runs-on: ubuntu-latest-kong
-    timeout-minutes: 30
+    timeout-minutes: ${{ inputs.coverage == false && github.event_name != 'schedule' && 30 || 480 }}
     needs: build-image
 
     strategy:
