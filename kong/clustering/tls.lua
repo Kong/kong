@@ -32,7 +32,7 @@ local function validate_shared_cert(cert, cert_digest)
 
   if digest ~= cert_digest then
     return nil, "data plane presented incorrect client certificate during " ..
-                "handshake (digest does not match the control plane certifiate)"
+                "handshake (digest does not match the control plane certificate)"
   end
 
   return true
