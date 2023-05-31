@@ -7,3 +7,4 @@ with following changes:
 - Removed the bazel mirror as it's missing latest versions
 - Remove runnable test for now until cross compile has been sorted out
 - Use system Perl for now
+- Updated to be reusable
