@@ -195,10 +195,14 @@ describe("worker respawn", function()
     }))
     assert.res_status(200, res)
 
+    local workers = helpers.get_kong_workers()
+    proxy_client:close()
+
     -- kill all the workers forcing all of them to respawn
     helpers.signal_workers(nil, "-TERM")
 
-    proxy_client:close()
+    helpers.wait_until_no_common_workers(workers, WORKER_PROCS)
+
     proxy_client = assert(helpers.proxy_client())
 
     res = assert(proxy_client:get("/"))
