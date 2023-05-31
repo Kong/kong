@@ -205,17 +205,18 @@ function tls.validate_client_cert(kong_config, cp_cert, dp_cert_pem)
   if kong_config.cluster_mtls == "shared" then
     _, err = validate_shared_cert(cert, cp_cert.digest)
 
+  -- "on" or "optional"
   elseif kong_config.cluster_ocsp ~= "off" then
     ok, err = check_for_revocation_status()
     if ok == false then
       err = "data plane client certificate was revoked: " ..  err
 
     elseif not ok then
-      if kong_config.cluster_ocsp == "on" then
-        err = "data plane client certificate revocation check failed: " .. err
+      err = "data plane client certificate revocation check failed: " .. err
 
-      else
-        log(WARN, "data plane client certificate revocation check failed: ", err)
+      -- "optional"
+      if kong_config.cluster_ocsp ~= "on" then
+        log(WARN, err)
         err = nil
       end
     end
