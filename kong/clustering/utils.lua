@@ -166,7 +166,7 @@ end
 
 
 function _M.is_dp_worker_process()
-  if kong.configuration.privileged_agent then
+  if kong.configuration.privileged_agent == true then
     return process_type() == "privileged agent"
   end
 

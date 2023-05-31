@@ -9,6 +9,7 @@ local declarative = require("kong.db.declarative")
 local kong_version = require("kong.meta").version
 local cjson = require("cjson")
 local utils = require("kong.tools.utils")
+local clustering_utils = require("kong.clustering.utils")
 local config_helper = require("kong.clustering.config_helper")
 local semaphore = require("ngx.semaphore")
 local DECLARATIVE_EMPTY_CONFIG_HASH = require("kong.constants").DECLARATIVE_EMPTY_CONFIG_HASH
@@ -25,7 +26,6 @@ local semaphore_new = semaphore.new
 local type = type
 local error = error
 local assert = assert
-local worker_id = ngx.worker.id
 
 
 local FALLBACK_CONFIG_PREFIX = "[fallback config] "
@@ -116,7 +116,7 @@ local export_config_loop do
     if not ok and err ~= "timeout" then
       ngx_log(ngx_ERR, FALLBACK_CONFIG_PREFIX, "failed to acquire semaphore: ", err)
     end
-  
+
     if not ok then
       return export_config_loop()
     end
@@ -160,7 +160,7 @@ end
 -- this function must only be called from 0 worker
 -- this function never throw errors
 local function export_config(exported)
-  assert(worker_id() == 0, "fallback config export_config should only be called at worker #0")
+  assert(clustering_utils.is_dp_worker_process(), "fallback config export_config should only be called at worker #0 or privileged agent")
 
   -- only exporters has a timer to answer export_smph. but we mute this function
   if not kong.configuration.cluster_fallback_config_export then
@@ -262,7 +262,7 @@ end
 
 
 function _M.init_worker(conf, backup_role)
-  if worker_id() ~= 0 then
+  if not clustering_utils.is_dp_worker_process() then
     return
   end
 

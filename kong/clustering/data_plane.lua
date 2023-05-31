@@ -88,7 +88,7 @@ function _M:init_worker(plugins_list)
 
   self.plugins_list = plugins_list
 
-  -- only run in process which worker_id() == 0
+  -- only run in process which worker_id() == 0 or privileged agent when that is turned on
   assert(ngx.timer.at(0, function(premature)
     self:communicate(premature)
   end))
@@ -228,7 +228,7 @@ function _M:communicate(premature)
       local config_table = assert(msg.config_table)
 
       -- [[ XXX EE
-      -- the DP config_thread must be at 0 worker. If not, remember to rewrite the implementation.
+      -- the DP config_thread must be at 0 worker or privileged agent. If not, remember to rewrite the implementation.
       backup_export_config(config_table)
       -- EE ]]
 
