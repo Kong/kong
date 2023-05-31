@@ -1,4 +1,5 @@
 local uuid = require("resty.jit-uuid")
+local clone = require("table.clone")
 local utils = require("kong.tools.utils")
 local Errors = require("kong.db.errors")
 local Entity = require("kong.db.schema.entity")
@@ -18,8 +19,58 @@ local ipairs = ipairs
 local insert = table.insert
 local concat = table.concat
 local tostring = tostring
+local getmetatable = getmetatable
+local setmetatable = setmetatable
 local cjson_encode = require("cjson.safe").encode
-local tablex_deepcopy = require("pl.tablex").deepcopy
+
+
+local function deepclone(value, cycle_aware_cache)
+  if type(value) ~= "table" then
+    return value
+  end
+
+  cycle_aware_cache = cycle_aware_cache or {}
+  if cycle_aware_cache[value] then
+    return cycle_aware_cache[value]
+  end
+
+  local copy = clone(value)
+
+  cycle_aware_cache[value] = copy
+
+  local mt = getmetatable(value)
+  for k, v in pairs(value) do
+    if type(v) == "table" then
+      copy[k] = deepclone(v, cycle_aware_cache)
+    end
+  end
+
+  if mt then
+    setmetatable(copy, mt)
+  end
+
+  return copy
+end
+
+
+
+local function deepmerge(t1, t2)
+  local cycle_aware_cache = {}
+  local merged = deepclone(t1)
+  for k, v in pairs(t2) do
+    if type(v) == "table" then
+      if type(merged[k]) == "table" then
+        merged[k] = deepmerge(merged[k], v, cycle_aware_cache)
+      else
+        merged[k] = deepclone(v, cycle_aware_cache)
+      end
+    else
+      merged[k] = v
+    end
+  end
+  return merged
+end
+
 
 
 local DeclarativeConfig = {}
@@ -99,7 +150,7 @@ local function add_top_level_entities(fields, known_entities)
   local records = {}
 
   for _, entity in ipairs(known_entities) do
-    local definition = tablex_deepcopy(all_schemas[entity])
+    local definition = deepclone(all_schemas[entity])
 
     for k, _ in pairs(definition.fields) do
       if type(k) ~= "number" then
@@ -131,8 +182,8 @@ local function add_top_level_entities(fields, known_entities)
 end
 
 
-local function copy_record(record, include_foreign, duplicates, name)
-  local copy = tablex_deepcopy(record)
+local function copy_record(record, include_foreign, duplicates, name, cycle_aware_cache)
+  local copy = deepclone(record, cycle_aware_cache)
   if include_foreign then
     return copy
   end
@@ -166,6 +217,7 @@ end
 -- indexable by entity name. These records are modified in-place.
 local function nest_foreign_relationships(known_entities, records, include_foreign)
   local duplicates = {}
+  local cycle_aware_cache = {}
   for i = #known_entities, 1, -1 do
     local entity = known_entities[i]
     local record = records[entity]
@@ -178,7 +230,7 @@ local function nest_foreign_relationships(known_entities, records, include_forei
         insert(records[ref].fields, {
           [entity] = {
             type = "array",
-            elements = copy_record(record, include_foreign, duplicates, entity),
+            elements = copy_record(record, include_foreign, duplicates, entity, cycle_aware_cache),
           },
         })
 
@@ -186,7 +238,7 @@ local function nest_foreign_relationships(known_entities, records, include_forei
           insert(dest.fields, {
             [entity] = {
               type = "array",
-              elements = copy_record(record, include_foreign, duplicates, entity)
+              elements = copy_record(record, include_foreign, duplicates, entity, cycle_aware_cache)
             }
           })
         end
@@ -358,7 +410,7 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
       end
 
       if parent_fk then
-        item[child_key] = tablex_deepcopy(parent_fk)
+        item[child_key] = deepclone(parent_fk)
       end
     end
 
@@ -541,7 +593,7 @@ local function generate_ids(input, known_entities, parent_entity)
       local pk_name, key = get_key_for_uuid_gen(entity, item, schema,
                                                 parent_fk, child_key)
       if key then
-        item = tablex_deepcopy(item)
+        item = deepclone(item)
         item[pk_name] = generate_uuid(schema.name, key)
         input[entity][i] = item
       end
@@ -601,7 +653,7 @@ local function populate_ids_for_validation(input, known_entities, parent_entity,
       end
 
       if parent_fk and not item[child_key] then
-        item[child_key] = tablex_deepcopy(parent_fk)
+        item[child_key] = deepclone(parent_fk)
       end
     end
 
@@ -693,11 +745,11 @@ local function flatten(self, input)
       self.full_schema = DeclarativeConfig.load(self.plugin_set, self.vault_set, true)
     end
 
-    local input_copy = tablex_deepcopy(input)
+    local input_copy = deepclone(input)
     populate_ids_for_validation(input_copy, self.known_entities)
     local ok2, err2 = self.full_schema:validate(input_copy)
     if not ok2 then
-      local err3 = utils.deep_merge(err2, extract_null_errors(err))
+      local err3 = deepmerge(err2, extract_null_errors(err))
       return nil, err3
     end
 
