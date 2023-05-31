@@ -40,6 +40,7 @@ export {
   setGatewayContainerEnvVariable,
   startGwWithCustomEnvVars,
   getKongVersionFromContainer,
+  runDockerContainerCommand,
 } from './exec/gateway-container';
 export { removeSecretFile, safeStopGateway, startGateway } from './exec/gw-ec2';
 export {
@@ -71,6 +72,11 @@ export {
 } from './utilities/redis';
 export { retryRequest } from './utilities/retry-axios';
 export { isValidDate, isValidUrl } from './utilities/validate';
+export {
+  expectStatusReadyEndpointOk,
+  expectStatusReadyEndpoint503,
+  waitForTargetStatus,
+} from './utilities/status-endpoint';
 export {
   getMetric,
   getSharedDictValue,

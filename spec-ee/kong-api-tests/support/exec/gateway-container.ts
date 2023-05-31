@@ -123,3 +123,18 @@ export const getKongVersionFromContainer = (containerName = 'kong-cp') => {
     );
   }
 };
+
+/**
+ * Run docker start on db container
+ * @param {string} containerName - name of the container to start
+ * @param {string} command - command to run, can be either stop or start
+ */
+export const runDockerContainerCommand = async (containerName, command) => {
+  // stop docker postgres database container
+  try {
+    const result = await execSync(`docker ${command} ${containerName}`);
+    return result;
+  } catch (error) {
+    `Something went wrong while running docker ${command} ${containerName}: ${error}`;
+  }
+};
