@@ -186,52 +186,9 @@ return {
   },
   ["redis"] = {
     increment = function(conf, limits, identifier, current_timestamp, value)
-      local red, err = get_redis_connection(conf)
-      if not red then
-        return nil, err
-      end
+            -- the usage function already incremented the value of redis key to avoid race condition in concurrent calls
 
-      local keys = {}
-      local expiration = {}
-      local idx = 0
-      local periods = timestamp.get_timestamps(current_timestamp)
-      for period, period_date in pairs(periods) do
-        if limits[period] then
-          local cache_key = get_local_key(conf, identifier, period, period_date)
-          local exists, err = red:exists(cache_key)
-          if err then
-            kong.log.err("failed to query Redis: ", err)
-            return nil, err
-          end
-
-          idx = idx + 1
-          keys[idx] = cache_key
-          if not exists or exists == 0 then
-            expiration[idx] = EXPIRATION[period]
-          end
-
-          red:init_pipeline()
-          for i = 1, idx do
-            red:incrby(keys[i], value)
-            if expiration[i] then
-              red:expire(keys[i], expiration[i])
-            end
-          end
-        end
-      end
-
-      local _, err = red:commit_pipeline()
-      if err then
-        kong.log.err("failed to commit increment pipeline in Redis: ", err)
-        return nil, err
-      end
-
-      local ok, err = red:set_keepalive(10000, 100)
-      if not ok then
-        kong.log.err("failed to set Redis keepalive: ", err)
-        return nil, err
-      end
-
+      -- because of that we don't need to increment here
       return true
     end,
     usage = function(conf, identifier, period, current_timestamp)
@@ -245,7 +202,17 @@ return {
       local periods = timestamp.get_timestamps(current_timestamp)
       local cache_key = get_local_key(conf, identifier, period, periods[period])
 
-      local current_metric, err = red:get(cache_key)
+      -- the usage of redis command incr instead of get is to avoid race conditions in concurrent calls
+      local current_metric, err = red:eval([[
+        local cache_key, expiration = KEYS[1], ARGV[1]
+        local result_incr = redis.call("incr", cache_key)
+        if result_incr == 1 then
+          redis.call("expire", cache_key, expiration)
+        end
+
+        return result_incr - 1
+      ]], 1, cache_key, EXPIRATION[period])
+
       if err then
         return nil, err
       end
