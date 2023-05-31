@@ -199,11 +199,11 @@ function tls.validate_client_cert(kong_config, cp_cert, dp_cert_pem)
     return nil, "unable to load data plane client certificate during handshake: " .. err
   end
 
-  local ok
+  local ok, _
 
   -- use mutual TLS authentication
   if kong_config.cluster_mtls == "shared" then
-    ok, err = validate_shared_cert(cert, cp_cert.digest)
+    _, err = validate_shared_cert(cert, cp_cert.digest)
 
   -- "on" or "optional"
   elseif kong_config.cluster_ocsp ~= "off" then
