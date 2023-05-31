@@ -8,6 +8,7 @@ BUSTED_ARGS ?= -v
 TEST_CMD ?= bin/busted $(BUSTED_ARGS)
 
 BUILD_NAME ?= kong-dev
+BAZEL_ARGS ?= --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME) --//:skip_webui=true
 
 ifeq ($(OS), darwin)
 HOMEBREW_DIR ?= /opt/homebrew
@@ -74,13 +75,13 @@ ifndef BAZEL
 endif
 
 build-kong: check-bazel
-	$(BAZEL) build //build:kong --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME)
+	$(BAZEL) build //build:kong $(BAZEL_ARGS)
 
 build-venv: check-bazel
 	$(eval VENV := bazel-bin/build/$(BUILD_NAME)-venv.sh)
 
 	@if [ ! -e bazel-bin/build/$(BUILD_NAME)-venv.sh ]; then \
-		$(BAZEL) build //build:venv --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME); \
+		$(BAZEL) build //build:venv $(BAZEL_ARGS); \
 	fi
 
 install-dev-rocks: build-venv
@@ -110,7 +111,7 @@ package/apk: check-bazel build-release
 package/rpm: check-bazel build-release
 	$(BAZEL) build --config release :kong_el8 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE
 	$(BAZEL) build --config release :kong_el7 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE
-	$(BAZEL) build --config release :kong_aws2	--action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE
+	$(BAZEL) build --config release :kong_aws2 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE
 	$(BAZEL) build --config release :kong_aws2022 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE
 
 functional-tests: dev test
@@ -119,10 +120,10 @@ install: dev
 	@$(VENV) luarocks make
 
 clean: check-bazel
-	$(BAZEL) clean
+	@$(BAZEL) clean
 
 expunge: check-bazel
-	$(BAZEL) clean --expunge
+	@$(BAZEL) clean --expunge
 
 sca:
 	$(info Beginning static code analysis)

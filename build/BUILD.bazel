@@ -71,6 +71,14 @@ fips_patch_cmd = select({
     "//conditions:default": "\n",
 })
 
+install_webui_cmd = select({
+    "//conditions:default": """
+        cp -r $(location @kong_admin//:dist_files) ${BUILD_DESTDIR}/kong/gui
+        cp -r $(location @kong_portal//:dist_files) ${BUILD_DESTDIR}/kong/portal
+    """,
+    "@kong//:skip_webui_flags": "\n",
+})
+
 kong_directory_genrule(
     name = "kong",
     srcs = [
@@ -84,8 +92,6 @@ kong_directory_genrule(
         "//build/ee:copy_distributions_constants",
         "//build/ee:bytecode_compile",
         # EE new files
-        "@kong_admin//:dist_files",
-        "@kong_portal//:dist_files",
         "//build/ee:luarocks_license",
     ] + select({
         "@kong//:licensing_flag": [
@@ -98,6 +104,12 @@ kong_directory_genrule(
         ],
         "//conditions:default": [
             "@openssl",
+        ],
+    }) + select({
+        "@kong//:skip_webui_flags": [],
+        "//conditions:default": [
+            "@kong_admin//:dist_files",
+            "@kong_portal//:dist_files",
         ],
     }) + lib_deps + lualib_deps,
     cmd = """ set -e
@@ -151,14 +163,11 @@ kong_directory_genrule(
         mkdir -p ${BUILD_DESTDIR}/usr/share/doc/kong-enterprise-edition/
         cp LICENSE ${BUILD_DESTDIR}/LICENSE
 
-        cp -r $(location @kong_admin//:dist_files) ${BUILD_DESTDIR}/kong/gui
-        cp -r $(location @kong_portal//:dist_files) ${BUILD_DESTDIR}/kong/portal
-
         cp $(location //build/ee:luarocks_license) ${BUILD_DESTDIR}/kong/manifest.json
         cp ${WORKSPACE_PATH}/kong/portal/migrations/portal_manifest.json ${BUILD_DESTDIR}/kong/portal_manifest.json
 
     """ + install_ssl_cmd + install_licensing_cmd + install_lib_deps_cmd + install_lualib_deps_cmd +
-          fips_patch_cmd +
+          fips_patch_cmd + install_webui_cmd +
           """
         mkdir -p ${BUILD_DESTDIR}/etc/kong
         cp kong.conf.default ${BUILD_DESTDIR}/etc/kong/kong.conf.default
