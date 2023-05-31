@@ -7,6 +7,42 @@ local constants = require("kong.constants")
 local plugin_loader = require("kong.db.schema.plugin_loader")
 local vault_loader = require("kong.db.schema.vault_loader")
 local schema_topological_sort = require "kong.db.schema.topological_sort"
+local types = require ('pl.types')
+--local tablex_deepcopy = require("pl.tablex").deepcopy
+
+
+local deepcopy_cache = {}
+
+local function complain (idx,msg)
+  error(('argument %d is not %s'):format(idx,msg),3)
+end
+
+local function assert_arg_iterable (idx,val)
+  if not types.is_iterable(val) then
+    complain(idx,"iterable")
+  end
+end
+
+local function cycle_aware_copy(t, cache)
+  if type(t) ~= 'table' then return t end
+  if cache[t] then return cache[t] end
+  assert_arg_iterable(1,t)
+  local res = {}
+  cache[t] = res
+  local mt = getmetatable(t)
+  for k,v in pairs(t) do
+    k = cycle_aware_copy(k, cache)
+    v = cycle_aware_copy(v, cache)
+    res[k] = v
+  end
+  setmetatable(res,mt)
+  return res
+end
+
+local function deepcopy(t)
+  --return tablex_deepcopy(t)
+  return cycle_aware_copy(t, deepcopy_cache)
+end
 
 
 local null = ngx.null
@@ -98,7 +134,7 @@ local function add_top_level_entities(fields, known_entities)
   local records = {}
 
   for _, entity in ipairs(known_entities) do
-    local definition = utils.deep_copy(all_schemas[entity], false)
+    local definition = deepcopy(all_schemas[entity], false)
 
     for k, _ in pairs(definition.fields) do
       if type(k) ~= "number" then
@@ -131,7 +167,7 @@ end
 
 
 local function copy_record(record, include_foreign, duplicates, name)
-  local copy = utils.deep_copy(record, false)
+  local copy = deepcopy(record, false)
   if include_foreign then
     return copy
   end
@@ -357,7 +393,7 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
       end
 
       if parent_fk then
-        item[child_key] = utils.deep_copy(parent_fk, false)
+        item[child_key] = deepcopy(parent_fk, false)
       end
     end
 
@@ -540,7 +576,7 @@ local function generate_ids(input, known_entities, parent_entity)
       local pk_name, key = get_key_for_uuid_gen(entity, item, schema,
                                                 parent_fk, child_key)
       if key then
-        item = utils.deep_copy(item, false)
+        item = deepcopy(item, false)
         item[pk_name] = generate_uuid(schema.name, key)
         input[entity][i] = item
       end
@@ -600,7 +636,7 @@ local function populate_ids_for_validation(input, known_entities, parent_entity,
       end
 
       if parent_fk and not item[child_key] then
-        item[child_key] = utils.deep_copy(parent_fk, false)
+        item[child_key] = deepcopy(parent_fk, false)
       end
     end
 
@@ -692,7 +728,7 @@ local function flatten(self, input)
       self.full_schema = DeclarativeConfig.load(self.plugin_set, self.vault_set, true)
     end
 
-    local input_copy = utils.deep_copy(input, false)
+    local input_copy = deepcopy(input, false)
     populate_ids_for_validation(input_copy, self.known_entities)
     local ok2, err2 = self.full_schema:validate(input_copy)
     if not ok2 then
@@ -836,6 +872,8 @@ function DeclarativeConfig.load(plugin_set, vault_set, include_foreign)
   schema.insert_default_workspace_if_not_given = insert_default_workspace_if_not_given
   schema.plugin_set = plugin_set
   schema.vault_set = vault_set
+
+  --deepcopy_cache = nil -- cleanup
 
   return schema, nil, def
 end
