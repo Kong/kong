@@ -79,6 +79,8 @@
 ### Changed
 
 #### Core
+- Tracing: new attribute `http.route` added to http request spans.
+  [#10981](https://github.com/Kong/kong/pull/10981)
 
 #### PDK
 

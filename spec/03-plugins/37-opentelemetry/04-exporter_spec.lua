@@ -455,6 +455,7 @@ for _, strategy in helpers.each_strategy() do
           { key = "http.flavor", value = { string_value = "1.1", value = "string_value" } },
           { key = "http.host", value = { string_value = "0.0.0.0", value = "string_value" } },
           { key = "http.method", value = { string_value = "GET", value = "string_value" } },
+          { key = "http.route", value = { string_value = "/", value = "string_value" } },
           { key = "http.scheme", value = { string_value = "http", value = "string_value" } },
           { key = "http.status_code", value = { int_value = 200, value = "int_value" } },
           { key = "http.url", value = { string_value = "http://0.0.0.0/", value = "string_value" } },
