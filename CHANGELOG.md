@@ -67,6 +67,7 @@
 - **ACME**: Fixed sanity test can't work with "kong" storage in Hybrid mode
   [#10852](https://github.com/Kong/kong/pull/10852)
 - **rate-limiting**: Fixed an issue that impact the accuracy with the `redis` policy.
+  Thanks [@giovanibrioni](https://github.com/giovanibrioni) for contributing this change.
   [#10559](https://github.com/Kong/kong/pull/10559)
 
 #### PDK
@@ -176,7 +177,7 @@
   prepared to process user requests.
   Load balancers frequently utilize this functionality to ascertain
   Kong's availability to distribute incoming requests.
-  [#10610](https://github.com/Kong/kong/pull/10610),
+  [#10610](https://github.com/Kong/kong/pull/10610)
   [#10787](https://github.com/Kong/kong/pull/10787)
 
 #### Plugins
