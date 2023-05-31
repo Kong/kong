@@ -166,6 +166,16 @@ describe("Plugin: rate-limiting (policies)", function()
     end)
 
     it("increase & usage", function()
+      --[[
+        Just a simple test:
+        - increase 1
+        - check usage == 1
+        - increase 1
+        - check usage == 2
+        - increase 1 (beyond the limit)
+        - check usage == 3
+      --]]
+
       local current_timestamp = 1424217600
       local periods = timestamp.get_timestamps(current_timestamp)
 
