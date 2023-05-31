@@ -60,7 +60,7 @@ end
 
 
 # actually set env vars
-set -xg KONG_VENV_ENV_FILE $(mktemp)
+set -xg KONG_VENV_ENV_FILE (mktemp)
 bash $KONG_VENV-venv/lib/venv-commons $KONG_VENV $KONG_VENV_ENV_FILE
 source $KONG_VENV_ENV_FILE
 set -xg PATH "$PATH"
