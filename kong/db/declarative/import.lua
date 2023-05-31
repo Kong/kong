@@ -7,7 +7,6 @@ local declarative_config = require("kong.db.schema.others.declarative_config")
 
 
 local cjson_encode = require("cjson.safe").encode
-local deepcopy = require("pl.tablex").deepcopy
 local marshall = require("kong.db.declarative.marshaller").marshall
 local schema_topological_sort = require("kong.db.schema.topological_sort")
 local nkeys = require("table.nkeys")
@@ -85,13 +84,15 @@ local function load_into_db(entities, meta)
     transform = meta._transform,
   }
 
+  local cycle_aware_cache = {}
+
   for i = 1, #sorted_schemas do
     local schema = sorted_schemas[i]
     local schema_name = schema.name
 
     local primary_key, ok, err, err_t
     for _, entity in pairs(entities[schema_name]) do
-      entity = deepcopy(entity)
+      entity = kong.table.deepclone(entity, cycle_aware_cache)
       entity._tags = nil
       entity.ws_id = nil
 

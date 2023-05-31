@@ -1,5 +1,12 @@
 local table_merge = require("kong.tools.utils").table_merge
 
+
+local getmetatable = getmetatable
+local setmetatable = setmetatable
+local pairs = pairs
+local type = type
+
+
 --- Utilities for Lua tables.
 --
 -- @module kong.table
@@ -38,6 +45,58 @@ local new_tab = require "table.new"
 local clear_tab = require "table.clear"
 
 
+local clone_tab = require "table.clone"
+
+
+local function deepclone_tab(value, cycle_aware_cache, clone_keys, drop_metatables)
+  if type(value) ~= "table" then
+    return value
+  end
+
+  if cycle_aware_cache ~= false then
+    cycle_aware_cache = cycle_aware_cache or {}
+    if cycle_aware_cache[value] then
+      return cycle_aware_cache[value]
+    end
+  end
+
+  local copy = clone_tab(value)
+
+  cycle_aware_cache[value] = copy
+
+  local mt
+  if not drop_metatables then
+    mt = getmetatable(value)
+  end
+
+  for k_old, v_old in pairs(value) do
+    local k_new
+    local v_new
+
+    if clone_keys and type(k_old) == "table" then
+      k_new = deepclone_tab(k_old, cycle_aware_cache, clone_keys, drop_metatables)
+    end
+    if type(v_old) == "table" then
+      v_new = deepclone_tab(v_old, cycle_aware_cache, clone_keys, drop_metatables)
+    end
+
+    if k_new then
+      copy[k_old] = nil
+      copy[k_new] = v_new or v_old
+
+    elseif v_new then
+      copy[k_old] = v_new
+    end
+  end
+
+  if mt then
+    setmetatable(copy, mt)
+  end
+
+  return copy
+end
+
+
 --- Merges the contents of two tables together, producing a new one.
 -- The entries of both tables are copied non-recursively to the new one.
 -- If both tables have the same key, the second one takes precedence.
@@ -58,6 +117,8 @@ local function new(self)
     new = new_tab,
     clear = clear_tab,
     merge = merge_tab,
+    clone = clone_tab,
+    deepclone = deepclone_tab,
   }
 end
 

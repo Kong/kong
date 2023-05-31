@@ -6,7 +6,6 @@ local hooks = require "kong.hooks"
 local workspaces = require "kong.workspaces"
 local new_tab = require "table.new"
 local DAO_MAX_TTL = require("kong.constants").DATABASE.DAO_MAX_TTL
-local tablex_deepcopy = require("pl.tablex").deepcopy
 
 
 local setmetatable = setmetatable
@@ -156,7 +155,7 @@ local function get_pagination_options(self, options)
     error("options must be a table when specified", 3)
   end
 
-  options = tablex_deepcopy(options)
+  options = kong.table.deepclone(options)
 
   if type(options.pagination) == "table" then
     options.pagination = table_merge(self.pagination, options.pagination)
@@ -1446,12 +1445,12 @@ function DAO:post_crud_event(operation, entity, old_entity, options)
   if self.events then
     local entity_without_nulls
     if entity then
-      entity_without_nulls = remove_nulls(tablex_deepcopy(entity))
+      entity_without_nulls = remove_nulls(kong.table.deepclone(entity))
     end
 
     local old_entity_without_nulls
     if old_entity then
-      old_entity_without_nulls = remove_nulls(tablex_deepcopy(old_entity))
+      old_entity_without_nulls = remove_nulls(kong.table.deepclone(old_entity))
     end
 
     local ok, err = self.events.post_local("dao:crud", operation, {

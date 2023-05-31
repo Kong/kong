@@ -25,7 +25,6 @@ local fileexists = require("pl.path").exists
 local semaphore = require("ngx.semaphore").new
 local lrucache = require("resty.lrucache")
 local resolver = require("resty.dns.resolver")
-local deepcopy = require("pl.tablex").deepcopy
 local time = ngx.now
 local log = ngx.log
 local ERR = ngx.ERR
@@ -799,7 +798,7 @@ local function asyncQuery(qname, r_opts, try_list)
     key = key,
     semaphore = semaphore(),
     qname = qname,
-    r_opts = deepcopy(r_opts),
+    r_opts = kong.table.deepclone(r_opts),
     try_list = try_list,
   }
   queue[key] = item

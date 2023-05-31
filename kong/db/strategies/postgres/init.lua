@@ -1081,7 +1081,7 @@ function _M.new(connector, schema, errors)
   do
     local function add(name, opts, add_ws)
       local orig_argn = opts.argn
-      opts = pl_tablex.deepcopy(opts)
+      opts = kong.table.deepclone(opts)
 
       -- ensure LIMIT table is the same
       for i, n in ipairs(orig_argn) do

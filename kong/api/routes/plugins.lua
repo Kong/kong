@@ -11,7 +11,6 @@ local find = string.find
 local pairs = pairs
 local lower = string.lower
 local setmetatable = setmetatable
-local tablex_deepcopy = require("pl.tablex").deepcopy
 
 
 local function reports_timer(premature, data)
@@ -19,7 +18,7 @@ local function reports_timer(premature, data)
     return
   end
 
-  local r_data = tablex_deepcopy(data)
+  local r_data = kong.table.deepclone(data)
 
   r_data.config = nil
   r_data.route = nil

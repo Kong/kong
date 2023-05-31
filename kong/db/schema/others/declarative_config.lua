@@ -19,7 +19,6 @@ local insert = table.insert
 local concat = table.concat
 local tostring = tostring
 local cjson_encode = require("cjson.safe").encode
-local tablex_deepcopy = require("pl.tablex").deepcopy
 
 
 local DeclarativeConfig = {}
@@ -95,11 +94,13 @@ end
 -- @tparam array<string> entities The list of entity names
 -- @treturn map<string,table> A map of record definitions added to `fields`,
 -- indexable by entity name
-local function add_top_level_entities(fields, known_entities)
+local function add_top_level_entities(fields, known_entities, cycle_aware_cache)
+  cycle_aware_cache = cycle_aware_cache or {}
+
   local records = {}
 
   for _, entity in ipairs(known_entities) do
-    local definition = tablex_deepcopy(all_schemas[entity])
+    local definition = kong.table.deepclone(all_schemas[entity], cycle_aware_cache)
 
     for k, _ in pairs(definition.fields) do
       if type(k) ~= "number" then
@@ -131,8 +132,8 @@ local function add_top_level_entities(fields, known_entities)
 end
 
 
-local function copy_record(record, include_foreign, duplicates, name)
-  local copy = tablex_deepcopy(record)
+local function copy_record(record, include_foreign, duplicates, name, cycle_aware_cache)
+  local copy = kong.table.deepclone(record, cycle_aware_cache or {})
   if include_foreign then
     return copy
   end
@@ -164,7 +165,8 @@ end
 -- (e.g. `service` as a string key in the `routes` entry).
 -- @tparam map<string,table> records A map of top-level record definitions,
 -- indexable by entity name. These records are modified in-place.
-local function nest_foreign_relationships(known_entities, records, include_foreign)
+local function nest_foreign_relationships(known_entities, records, include_foreign, cycle_aware_cache)
+  cycle_aware_cache = cycle_aware_cache or {}
   local duplicates = {}
   for i = #known_entities, 1, -1 do
     local entity = known_entities[i]
@@ -178,7 +180,7 @@ local function nest_foreign_relationships(known_entities, records, include_forei
         insert(records[ref].fields, {
           [entity] = {
             type = "array",
-            elements = copy_record(record, include_foreign, duplicates, entity),
+            elements = copy_record(record, include_foreign, duplicates, entity, cycle_aware_cache),
           },
         })
 
@@ -186,7 +188,7 @@ local function nest_foreign_relationships(known_entities, records, include_forei
           insert(dest.fields, {
             [entity] = {
               type = "array",
-              elements = copy_record(record, include_foreign, duplicates, entity)
+              elements = copy_record(record, include_foreign, duplicates, entity, cycle_aware_cache)
             }
           })
         end
@@ -231,8 +233,9 @@ local function build_fields(known_entities, include_foreign)
     _ignore = true,
   })
 
-  local records = add_top_level_entities(fields, known_entities)
-  nest_foreign_relationships(known_entities, records, include_foreign)
+  local cycle_aware_cache = {}
+  local records = add_top_level_entities(fields, known_entities, cycle_aware_cache)
+  nest_foreign_relationships(known_entities, records, include_foreign, cycle_aware_cache)
 
   return fields, records
 end
@@ -302,7 +305,8 @@ local function load_vault_subschemas(fields, vault_set)
 end
 
 
-local function populate_references(input, known_entities, by_id, by_key, expected, parent_entity)
+local function populate_references(input, known_entities, by_id, by_key, expected, parent_entity, cycle_aware_cache)
+  cycle_aware_cache = cycle_aware_cache or {}
   for _, entity in ipairs(known_entities) do
     yield(true)
 
@@ -327,7 +331,7 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
     for i, item in ipairs(input[entity]) do
       yield(true)
 
-      populate_references(item, known_entities, by_id, by_key, expected, entity)
+      populate_references(item, known_entities, by_id, by_key, expected, entity, cycle_aware_cache)
 
       local item_id = DeclarativeConfig.pk_string(entity_schema, item)
       by_id[entity] = by_id[entity] or {}
@@ -358,7 +362,7 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
       end
 
       if parent_fk then
-        item[child_key] = tablex_deepcopy(parent_fk)
+        item[child_key] = kong.table.deepclone(parent_fk, cycle_aware_cache)
       end
     end
 
@@ -373,12 +377,14 @@ local function find_entity(key, entity, by_key, by_id)
 end
 
 
-local function validate_references(self, input)
+local function validate_references(self, input, cycle_aware_cache)
+  cycle_aware_cache = cycle_aware_cache or {}
+
   local by_id = {}
   local by_key = {}
   local expected = {}
 
-  populate_references(input, self.known_entities, by_id, by_key, expected)
+  populate_references(input, self.known_entities, by_id, by_key, expected, nil, cycle_aware_cache)
 
   local errors = {}
 
@@ -519,7 +525,8 @@ local function get_key_for_uuid_gen(entity, item, schema, parent_fk, child_key)
 end
 
 
-local function generate_ids(input, known_entities, parent_entity)
+local function generate_ids(input, known_entities, parent_entity, cycle_aware_cache)
+  cycle_aware_cache = cycle_aware_cache or {}
   for _, entity in ipairs(known_entities) do
     if type(input[entity]) ~= "table" then
       goto continue
@@ -541,12 +548,12 @@ local function generate_ids(input, known_entities, parent_entity)
       local pk_name, key = get_key_for_uuid_gen(entity, item, schema,
                                                 parent_fk, child_key)
       if key then
-        item = tablex_deepcopy(item)
+        item = kong.table.deepclone(item, cycle_aware_cache)
         item[pk_name] = generate_uuid(schema.name, key)
         input[entity][i] = item
       end
 
-      generate_ids(item, known_entities, entity)
+      generate_ids(item, known_entities, entity, cycle_aware_cache)
     end
 
     ::continue::
@@ -554,7 +561,8 @@ local function generate_ids(input, known_entities, parent_entity)
 end
 
 
-local function populate_ids_for_validation(input, known_entities, parent_entity, by_id, by_key)
+local function populate_ids_for_validation(input, known_entities, parent_entity, by_id, by_key, cycle_aware_cache)
+  cycle_aware_cache = cycle_aware_cache or {}
   local by_id  = by_id  or {}
   local by_key = by_key or {}
   for _, entity in ipairs(known_entities) do
@@ -585,7 +593,7 @@ local function populate_ids_for_validation(input, known_entities, parent_entity,
         end
       end
 
-      populate_ids_for_validation(item, known_entities, entity, by_id, by_key)
+      populate_ids_for_validation(item, known_entities, entity, by_id, by_key, cycle_aware_cache)
 
       local item_id = DeclarativeConfig.pk_string(schema, item)
       by_id[entity] = by_id[entity] or {}
@@ -601,7 +609,7 @@ local function populate_ids_for_validation(input, known_entities, parent_entity,
       end
 
       if parent_fk and not item[child_key] then
-        item[child_key] = tablex_deepcopy(parent_fk)
+        item[child_key] = kong.table.deepclone(parent_fk, cycle_aware_cache)
       end
     end
 
@@ -682,6 +690,8 @@ local function flatten(self, input)
     input._transform = true
   end
 
+  local cycle_aware_cache = {}
+
   local ok, err = self:validate(input)
   if not ok then
     yield()
@@ -693,8 +703,8 @@ local function flatten(self, input)
       self.full_schema = DeclarativeConfig.load(self.plugin_set, self.vault_set, true)
     end
 
-    local input_copy = tablex_deepcopy(input)
-    populate_ids_for_validation(input_copy, self.known_entities)
+    local input_copy = kong.table.deepclone(input, cycle_aware_cache)
+    populate_ids_for_validation(input_copy, self.known_entities, nil, nil, nil, cycle_aware_cache)
     local ok2, err2 = self.full_schema:validate(input_copy)
     if not ok2 then
       local err3 = utils.deep_merge(err2, extract_null_errors(err))
@@ -704,7 +714,7 @@ local function flatten(self, input)
     yield()
   end
 
-  generate_ids(input, self.known_entities)
+  generate_ids(input, self.known_entities, nil, cycle_aware_cache)
 
   yield()
 
@@ -712,7 +722,7 @@ local function flatten(self, input)
 
   yield()
 
-  local by_id, by_key = validate_references(self, processed)
+  local by_id, by_key = validate_references(self, processed, cycle_aware_cache)
   if not by_id then
     return nil, by_key
   end

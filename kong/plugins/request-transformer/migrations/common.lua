@@ -1,6 +1,3 @@
-local utils = require "kong.tools.utils"
-
-
 local _M = {}
 
 
@@ -11,6 +8,8 @@ function _M.rt_rename(_, _, dao)
     return err
   end
 
+  local cycle_aware_cache = {}
+
   for i = 1, #plugins do
     local plugin = plugins[i]
     local _, err = dao.plugins:insert({
@@ -18,7 +17,7 @@ function _M.rt_rename(_, _, dao)
       api_id = plugin.api_id,
       consumer_id = plugin.consumer_id,
       enabled = plugin.enabled,
-      config = utils.deep_copy(plugin.config),
+      config = kong.table.deepclone(plugin.config, cycle_aware_cache),
     })
     if err then
       return err
@@ -34,4 +33,3 @@ end
 
 
 return _M
-

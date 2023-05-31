@@ -13,7 +13,6 @@ local gsub = string.gsub
 local split = utils.split
 local deflate_gzip = utils.deflate_gzip
 local cjson_encode = cjson.encode
-local tablex_deepcopy = require("pl.tablex").deepcopy
 
 local ngx = ngx
 local ngx_log = ngx.log
@@ -375,7 +374,7 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix)
   end
 
   local has_update
-  payload = tablex_deepcopy(payload)
+  payload = kong.table.deepclone(payload)
   local config_table = payload["config_table"]
 
   for _, checker in ipairs(COMPATIBILITY_CHECKERS) do

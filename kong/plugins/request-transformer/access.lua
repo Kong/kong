@@ -23,7 +23,6 @@ local str_find = string.find
 local pairs = pairs
 local error = error
 local rawset = rawset
-local pl_copy_table = pl_tablex.deepcopy
 local lua_enabled = sandbox.configuration.enabled
 local sandbox_enabled = sandbox.configuration.sandbox_enabled
 
@@ -530,7 +529,7 @@ function _M.execute(conf)
   local template_env = {}
   if lua_enabled and sandbox_enabled then
     -- load the sandbox environment to be used to render the template
-    template_env = pl_copy_table(sandbox.configuration.environment)
+    template_env = kong.table.deepclone(sandbox.configuration.environment)
     -- here we can optionally add functions to expose to the sandbox, eg:
     -- tostring = tostring,
     -- because headers may contain array elements such as duplicated headers
