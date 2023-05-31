@@ -201,7 +201,9 @@ jobs:
       run: |
         yum groupinstall -y 'Development Tools'
         dnf config-manager --set-enabled powertools || true # enable devel packages on rockylinux:8
-        yum install -y libyaml-devel
+        yum install -y libyaml-devel cpanminus
+        # required for openssl 3.x config
+        cpanm IPC/Cmd.pm
 
     - name: Build Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'

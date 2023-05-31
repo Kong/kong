@@ -1595,7 +1595,7 @@ R6InCcH2Wh8wSeY5AuDXvu2tv9g/PW9wIJmPuKSHMA==
         entity_type = "certificate",
         errors = { {
             field = "cert",
-            message = "invalid certificate: x509.new: asn1/tasn_dec.c:309:error:0D07803A:asn1 encoding routines:asn1_item_embed_d2i:nested asn1 error",
+            message = "invalid certificate: x509.new: asn1/tasn_dec.c:349:error:0688010A:asn1 encoding routines::nested asn1 error",
             type = "field"
           } }
       },

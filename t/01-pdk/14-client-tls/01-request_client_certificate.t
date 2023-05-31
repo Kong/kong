@@ -113,7 +113,7 @@ client certificate subject: nil
 --- request
 GET /t
 --- response_body
-FAILED:certificate chain too long
+FAILED:unable to get local issuer certificate
 
 --- error_log
 ssl cert by lua is running!
@@ -227,7 +227,7 @@ client certificate subject: CN=foo@example.com,O=Kong Testing,ST=California,C=US
 --- request
 GET /t
 --- response_body
-FAILED:certificate chain too long
+FAILED:unable to get issuer certificate
 
 --- error_log
 ssl cert by lua is running!
@@ -313,7 +313,7 @@ client certificate subject: CN=foo@example.com,O=Kong Testing,ST=California,C=US
 --- request
 GET /t
 --- response_body
-FAILED:certificate chain too long
+FAILED:unable to get issuer certificate
 
 --- error_log
 ssl cert by lua is running!
