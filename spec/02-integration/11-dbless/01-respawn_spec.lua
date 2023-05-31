@@ -1,6 +1,31 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
+local WORKER_PROCS = 4
+
+local function count_common_values(t1, t2)
+  local counts = {}
+
+  for _, item in ipairs(t1) do
+    assert(counts[item] == nil, "duplicate item in table")
+    counts[item] = 1
+  end
+
+  for _, item in ipairs(t2) do
+    counts[item] = (counts[item] or 0) + 1
+  end
+
+  local common = 0
+
+  for _, c in pairs(counts) do
+    if c > 1 then
+      common = common + 1
+    end
+  end
+
+  return common
+end
+
 
 describe("worker respawn", function()
   local admin_client, proxy_client
@@ -9,6 +34,7 @@ describe("worker respawn", function()
     assert(helpers.start_kong({
       database   = "off",
       nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_main_worker_processes = WORKER_PROCS,
     }))
   end)
 
@@ -37,12 +63,14 @@ describe("worker respawn", function()
     local json = cjson.decode(body)
     local pids = json.pids.workers
 
+    assert.same(WORKER_PROCS, #pids, "unexpected number of worker pids")
+
     helpers.signal_workers(nil, "-TERM")
 
-    helpers.wait_until(function()
+    assert.eventually(function()
       local pok, admin_client2 = pcall(helpers.admin_client)
       if not pok then
-        return false
+        return nil, "failed creating admin client: " .. tostring(admin_client2)
       end
 
       local res2 = admin_client2:get("/")
@@ -52,38 +80,17 @@ describe("worker respawn", function()
 
       admin_client2:close()
 
-      local matching = 0
-      local nonmatching = 0
-      for _, p in ipairs(pids) do
-        for _, p2 in ipairs(pids2) do
-          if p == p2 then
-            matching = matching + 1 -- worker process seeds should be rotated
-          else
-            nonmatching = nonmatching + 1 -- master process seeds should not be rotated
-          end
-        end
+      if #pids2 ~= WORKER_PROCS then
+        return nil, "unexpected number of new worker pids: " .. tostring(#pids2)
       end
 
-      assert.equal(0, matching)
-      assert.equal(1, nonmatching)
-
-      matching = 0
-      nonmatching = 0
-      for _, p2 in ipairs(pids2) do
-        for _, p in ipairs(pids) do
-          if p == p2 then
-            matching = matching + 1 -- worker process seeds should be rotated
-          else
-            nonmatching = nonmatching + 1 -- master process seeds should not be rotated
-          end
-        end
+      if count_common_values(pids, pids2) > 0 then
+        return nil, "old and new worker pids both present"
       end
-
-      assert.equal(0, matching)
-      assert.equal(1, nonmatching)
 
       return true
     end)
+    .is_truthy("expected the admin API to report only new (respawned) worker pids")
   end)
 
   it("rotates kong:mem stats and deletes the old ones", function()
@@ -188,10 +195,14 @@ describe("worker respawn", function()
     }))
     assert.res_status(200, res)
 
+    local workers = helpers.get_kong_workers()
+    proxy_client:close()
+
     -- kill all the workers forcing all of them to respawn
     helpers.signal_workers(nil, "-TERM")
 
-    proxy_client:close()
+    helpers.wait_until_no_common_workers(workers, WORKER_PROCS)
+
     proxy_client = assert(helpers.proxy_client())
 
     res = assert(proxy_client:get("/"))
