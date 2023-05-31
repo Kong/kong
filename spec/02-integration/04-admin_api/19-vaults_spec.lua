@@ -89,15 +89,12 @@ for _, strategy in helpers.each_strategy() do
             assert.same(vaults[1], json)
           end)
 
-          -- TODO: `unique_across_ws=true` doesn't seem to work with Cassandra
-          if strategy ~= "cassandra" then
-            it("retrieves a vault by prefix", function()
-              local res = client:get("/vaults/" .. vaults[1].prefix)
-              local body = assert.res_status(200, res)
-              local json = cjson.decode(body)
-              assert.same(vaults[1], json)
-            end)
-          end
+          it("retrieves a vault by prefix", function()
+            local res = client:get("/vaults/" .. vaults[1].prefix)
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.same(vaults[1], json)
+          end)
 
           it("returns 404 if not found by id", function()
             local res = client:get("/vaults/f4aecadc-05c7-11e6-8d41-1f3b3d5fa15c")
@@ -172,20 +169,17 @@ for _, strategy in helpers.each_strategy() do
               assert.equal("schema violation", json.name)
             end)
 
-            -- TODO: `unique_across_ws=true` doesn't seem to work with Cassandra
-            if strategy ~= "cassandra" then
-              it("handles invalid input by prefix", function()
-                local res = client:put("/vaults/env", {
-                  headers = HEADERS,
-                  body = {
-                    name = "env",
-                  },
-                })
-                local body = assert.res_status(400, res)
-                local json = cjson.decode(body)
-                assert.equal("invalid unique prefix", json.name)
-              end)
-            end
+            it("handles invalid input by prefix", function()
+              local res = client:put("/vaults/env", {
+                headers = HEADERS,
+                body = {
+                  name = "env",
+                },
+              })
+              local body = assert.res_status(400, res)
+              local json = cjson.decode(body)
+              assert.equal("invalid unique prefix", json.name)
+            end)
           end)
         end)
 
@@ -206,24 +200,21 @@ for _, strategy in helpers.each_strategy() do
             vaults[1] = json
           end)
 
-          -- TODO: `unique_across_ws=true` doesn't seem to work with Cassandra
-          if strategy ~= "cassandra" then
-            it("updates a vault by prefix", function()
-              local res = client:patch("/vaults/env-1", {
-                headers = HEADERS,
-                body = {
-                  config = {
-                    prefix = "CERT_",
-                  }
-                },
-              })
-              local body = assert.res_status(200, res)
-              local json = cjson.decode(body)
-              assert.equal("CERT_", json.config.prefix)
+          it("updates a vault by prefix", function()
+            local res = client:patch("/vaults/env-1", {
+              headers = HEADERS,
+              body = {
+                config = {
+                  prefix = "CERT_",
+                }
+              },
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.equal("CERT_", json.config.prefix)
 
-              vaults[1] = json
-            end)
-          end
+            vaults[1] = json
+          end)
 
           describe("errors", function()
             it("handles invalid input by id", function()
@@ -236,18 +227,15 @@ for _, strategy in helpers.each_strategy() do
               assert.equal("schema violation", json.name)
             end)
 
-            -- TODO: `unique_across_ws=true` doesn't seem to work with Cassandra
-            if strategy ~= "cassandra" then
-              it("handles invalid input by prefix", function()
-                local res = client:patch("/vaults/env-1", {
-                  headers = HEADERS,
-                  body = { prefix = "env" },
-                })
-                local body = assert.res_status(400, res)
-                local json = cjson.decode(body)
-                assert.equal("schema violation", json.name)
-              end)
-            end
+            it("handles invalid input by prefix", function()
+              local res = client:patch("/vaults/env-1", {
+                headers = HEADERS,
+                body = { prefix = "env" },
+              })
+              local body = assert.res_status(400, res)
+              local json = cjson.decode(body)
+              assert.same("schema violation", json.name)
+            end)
 
             it("returns 404 if not found", function()
               local res = client:patch("/vaults/f4aecadc-05c7-11e6-8d41-1f3b3d5fa15c", {
@@ -296,19 +284,16 @@ for _, strategy in helpers.each_strategy() do
             assert.res_status(404, res)
           end)
 
-          -- TODO: `unique_across_ws=true` doesn't seem to work with Cassandra
-          if strategy ~= "cassandra" then
-            it("deletes by prefix", function()
-              local res = client:get("/vaults/env-2")
-              assert.res_status(200, res)
+          it("deletes by prefix", function()
+            local res = client:get("/vaults/env-2")
+            assert.res_status(200, res)
 
-              res = client:delete("/vaults/env-2")
-              assert.res_status(204, res)
+            res = client:delete("/vaults/env-2")
+            assert.res_status(204, res)
 
-              res = client:get("/vaults/env-2")
-              assert.res_status(404, res)
-            end)
-          end
+            res = client:get("/vaults/env-2")
+            assert.res_status(404, res)
+          end)
 
           it("returns 204 if not found", function()
             local res = client:delete("/vaults/f4aecadc-05c7-11e6-8d41-1f3b3d5fa15c")

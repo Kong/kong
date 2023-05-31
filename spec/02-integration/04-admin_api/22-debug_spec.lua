@@ -43,7 +43,6 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
 
     assert(helpers.start_kong {
       database = strategy,
-      db_update_propagation = strategy == "cassandra" and 1 or 0,
       trusted_ips = "127.0.0.1",
       nginx_http_proxy_ssl_verify = "on",
       -- Mocking https_server is using kong_spec key/cert pairs but the pairs does not
@@ -54,7 +53,6 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
     assert(helpers.start_kong{
       database = strategy,
       prefix = "node2",
-      db_update_propagation = strategy == "cassandra" and 1 or 0,
       admin_listen = "127.0.0.1:9110",
       admin_gui_listen = "off",
       proxy_listen = "off",

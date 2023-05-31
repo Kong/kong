@@ -23,8 +23,7 @@ for _, workspace in ipairs({ "ws1", "ws2" }) do
 
   local bp
 
-  local DB_UPDATE_PROPAGATION = strategy == "cassandra" and 0.1 or 0
-  local DB_UPDATE_FREQUENCY   = strategy == "cassandra" and 0.1 or 0.1
+  local DB_UPDATE_FREQUENCY   = 0.1
   local proxy_port_1 = 9000
   local proxy_port_ssl = 9443
   local proxy_port_grpc = 9002
@@ -97,7 +96,6 @@ describe("workspace-" .. workspace, function ()
         proxy_listen = default_proxy_listen,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         db_update_frequency = DB_UPDATE_FREQUENCY,
-        db_update_propagation = DB_UPDATE_PROPAGATION,
       }, nil, nil, fixtures))
 
       -- XXX EE [[
@@ -701,7 +699,6 @@ describe("workspace-" .. workspace, function ()
         lua_ssl_trusted_certificate = "spec/fixtures/kong_spec.crt",
         stream_listen = "off",
         db_update_frequency = DB_UPDATE_FREQUENCY,
-        db_update_propagation = DB_UPDATE_PROPAGATION,
         plugins = "bundled,fail-once-auth",
       }))
 
@@ -739,7 +736,6 @@ describe("workspace-" .. workspace, function ()
           prefix = "servroot2",
           log_level = "debug",
           db_update_frequency = DB_UPDATE_FREQUENCY,
-          db_update_propagation = DB_UPDATE_PROPAGATION,
         })
       end)
 
@@ -2428,7 +2424,6 @@ describe("workspace-" .. workspace, function ()
         proxy_listen = default_proxy_listen,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         db_update_frequency = DB_UPDATE_FREQUENCY,
-        db_update_propagation = DB_UPDATE_PROPAGATION,
       }, nil, nil, fixtures))
 
       -- XXX EE [[
@@ -2678,7 +2673,6 @@ describe("workspace-" .. workspace, function ()
           proxy_listen = default_proxy_listen,
           nginx_conf = "spec/fixtures/custom_nginx.template",
           db_update_frequency = DB_UPDATE_FREQUENCY,
-          db_update_propagation = DB_UPDATE_PROPAGATION,
           stream_listen = "127.0.0.1:9100"
         }))
 

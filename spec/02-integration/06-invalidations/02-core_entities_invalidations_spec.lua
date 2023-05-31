@@ -65,8 +65,6 @@ for _, strategy in helpers.each_strategy() do
         service_fixture = bp.services:insert()
       end, db)
 
-      local db_update_propagation = strategy == "cassandra" and 0.1 or 0
-
       assert(helpers.start_kong {
         log_level             = "debug",
         prefix                = "servroot1",
@@ -74,7 +72,6 @@ for _, strategy in helpers.each_strategy() do
         proxy_listen          = "0.0.0.0:8000, 0.0.0.0:8443 ssl",
         admin_listen          = "0.0.0.0:8001",
         db_update_frequency   = POLL_INTERVAL,
-        db_update_propagation = db_update_propagation,
         nginx_conf            = "spec/fixtures/custom_nginx.template",
         worker_state_update_frequency = POLL_INTERVAL,
       })
@@ -86,7 +83,6 @@ for _, strategy in helpers.each_strategy() do
         proxy_listen          = "0.0.0.0:9000, 0.0.0.0:9443 ssl",
         admin_listen          = "0.0.0.0:9001",
         db_update_frequency   = POLL_INTERVAL,
-        db_update_propagation = db_update_propagation,
         worker_state_update_frequency = POLL_INTERVAL,
       })
 
@@ -1183,8 +1179,6 @@ for _, strategy in helpers.each_strategy() do
       -- insert single fixture Service
       service_fixture = bp.services:insert()
 
-      local db_update_propagation = strategy == "cassandra" and 0.1 or 0
-
       assert(helpers.start_kong {
         log_level             = "debug",
         prefix                = "servroot1",
@@ -1192,7 +1186,6 @@ for _, strategy in helpers.each_strategy() do
         proxy_listen          = "0.0.0.0:8000, 0.0.0.0:8443 ssl",
         admin_listen          = "0.0.0.0:8001",
         db_update_frequency   = POLL_INTERVAL,
-        db_update_propagation = db_update_propagation,
         nginx_conf            = "spec/fixtures/custom_nginx.template",
         declarative_config    = "ignore-me.yml",
       })
@@ -1204,7 +1197,6 @@ for _, strategy in helpers.each_strategy() do
         proxy_listen          = "0.0.0.0:9000, 0.0.0.0:9443 ssl",
         admin_listen          = "0.0.0.0:9001",
         db_update_frequency   = POLL_INTERVAL,
-        db_update_propagation = db_update_propagation,
         declarative_config    = "ignore-me.yml",
       })
 
@@ -1333,8 +1325,6 @@ for _, strategy in helpers.each_strategy() do
         service = { id = service.id },
       }
 
-      local db_update_propagation = strategy == "cassandra" and 0.1 or 0
-
       assert(helpers.start_kong {
         log_level             = "debug",
         prefix                = "servroot1",
@@ -1343,7 +1333,6 @@ for _, strategy in helpers.each_strategy() do
         proxy_listen          = "0.0.0.0:8000, 0.0.0.0:8443 ssl",
         admin_listen          = "0.0.0.0:8001",
         db_update_frequency   = POLL_INTERVAL,
-        db_update_propagation = db_update_propagation,
         nginx_conf            = "spec/fixtures/custom_nginx.template",
       })
 
@@ -1355,7 +1344,6 @@ for _, strategy in helpers.each_strategy() do
         proxy_listen          = "0.0.0.0:9000, 0.0.0.0:9443 ssl",
         admin_listen          = "off",
         db_update_frequency   = POLL_INTERVAL,
-        db_update_propagation = db_update_propagation,
       })
     end)
 
