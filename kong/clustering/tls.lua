@@ -57,7 +57,7 @@ do
     ocsp_url, err = ocsp.get_ocsp_responder_from_der_chain(der_cert)
     if not ocsp_url then
       return nil, err or ("OCSP responder endpoint can not be determined, " ..
-                          "maybe the client certificate is missing the " ..
+                          "the client certificate may be missing the " ..
                           "required extensions")
     end
 
@@ -79,7 +79,7 @@ do
     })
 
     if not res then
-      return nil, "failed sending request to OCSP responder: " .. tostring(err)
+      return nil, "failed to send request to OCSP responder: " .. tostring(err)
     end
     if res.status ~= 200 then
       return nil, "OCSP responder returns bad HTTP status code: " .. res.status
