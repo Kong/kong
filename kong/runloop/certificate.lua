@@ -1,6 +1,6 @@
 local ngx_ssl = require "ngx.ssl"
 local pl_utils = require "pl.utils"
-local mlcache = require "resty.mlcache"
+local mlcache = require "kong.resty.mlcache"
 local new_tab = require "table.new"
 local openssl_x509_store = require "resty.openssl.x509.store"
 local openssl_x509 = require "resty.openssl.x509"
