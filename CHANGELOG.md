@@ -69,6 +69,8 @@
 - **rate-limiting**: Fixed an issue that impact the accuracy with the `redis` policy.
   Thanks [@giovanibrioni](https://github.com/giovanibrioni) for contributing this change.
   [#10559](https://github.com/Kong/kong/pull/10559)
+- **Zipkin**: Fixed an issue that traces not being generated correctly when instrumentations are enabled.
+  [#10983](https://github.com/Kong/kong/pull/10983)
 
 #### PDK
 
