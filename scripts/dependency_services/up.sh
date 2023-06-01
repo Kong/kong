@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 if [ "${BASH_SOURCE-}" = "$0" ]; then
     echo "You must source this script: \$ source $0" >&2
@@ -13,7 +13,7 @@ else
     cwd=$(dirname $(readlink -f ${BASH_SOURCE[0]}))
 fi
 
-bash "$cwd/common.sh" $KONG_SERVICE_ENV_FILE up
+/usr/bin/env bash "$cwd/common.sh" $KONG_SERVICE_ENV_FILE up
 if [ $? -ne 0 ]; then
     echo "Something goes wrong, please check common.sh output"
     exit 1
