@@ -85,7 +85,7 @@ describe("kong.tools.mime_type", function()
         text_plain = { type = "text", subtype = "plain" },
         text_all = { type = "text", subtype = "*" },
         application_soap_xml = { type = "application", subtype = "soap+xml" },
-        application_wildcard_xml = { type = "application", subtype = "*+xml" },
+        application_wildcard_xml = { type = "application", subtype = "xml" },
         suffix_xml = { type = "application", subtype = "x.y+z+xml" },
         application_json = { type = "application", subtype = "json" },
         application_problem_json = { type = "application", subtype = "problem+json" },
