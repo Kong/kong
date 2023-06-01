@@ -1476,7 +1476,7 @@ for _, strategy in helpers.each_strategy() do
 end
 
 for _, strategy in helpers.each_strategy() do
-  describe("can works with OTel", function()
+  describe("Integration tests with instrumentations enabled", function()
     local proxy_client, zipkin_client, service
 
     setup(function()
@@ -1519,7 +1519,7 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
-    it("generates traces when instrumentations are enabled", function()
+    it("generates spans for regular requests", function()
       local start_s = ngx.now()
 
       local r = proxy_client:get("/", {
