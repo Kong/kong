@@ -13,7 +13,6 @@ for _, strategy in helpers.each_strategy() do
 
   local function init_db()
     local conf = utils.deep_copy(helpers.test_conf)
-    conf.cassandra_timeout = 60000 -- default used in the `migrations` cmd as well
 
     local db = assert(DB.new(conf, strategy))
     assert(db:init_connector())

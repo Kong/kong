@@ -5,10 +5,8 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local fmt           = string.format
 local openssl_x509  = require "resty.openssl.x509"
 local str           = require "resty.string"
-local cassandra     = require "cassandra"
 
 local function pg_delete_we_orphan(entity)
   return [[
@@ -45,69 +43,6 @@ local function pg_fix_we_counters(entity)
   ]]
 end
 
-local function c_migrate_license_data(connector)
-  -- migrate `license_data` from the old table to a new one
-  local res, err = connector:query([[ SELECT * FROM license_data LIMIT 1; ]])
-
-  if not err and not res.license_creation_date then
-    local coordinator = connector:connect_migrations()
-    local cluster = connector.cluster;
-    for rows, err in coordinator:iterate("SELECT * FROM license_data") do
-      if err then
-        return nil, err
-      end
-
-      for _, row in ipairs(rows) do
-        assert(cluster:execute("UPDATE license_data_tmp SET req_cnt = req_cnt + ? WHERE node_id = ?",
-          {
-            cassandra.counter(row.req_cnt),
-            cassandra.uuid(row.node_id)
-          }))
-      end
-    end
-
-    -- drop table
-    assert(connector:query([[
-          DROP TABLE IF EXISTS license_data;
-        ]]))
-
-    -- recreate table with the new field
-    assert(connector:query([[
-          /* License data */
-          CREATE TABLE IF NOT EXISTS license_data (
-            node_id                 uuid,
-            license_creation_date   timestamp,
-            req_cnt                 counter,
-            PRIMARY KEY (node_id, license_creation_date)
-          );
-        ]]))
-
-    -- copy data from temp table to a new one
-    for rows, err in coordinator:iterate("SELECT * FROM license_data_tmp") do
-      if err then
-        return nil, err
-      end
-
-      -- add current timestamp for old data which didn't have license creation date info
-      local date = os.time() * 1000
-      for _, row in ipairs(rows) do
-        assert(cluster:execute(
-          "UPDATE license_data SET req_cnt = req_cnt + ? WHERE node_id = ? AND license_creation_date = ?",
-          {
-            cassandra.counter(row.req_cnt),
-            cassandra.uuid(row.node_id),
-            cassandra.timestamp(date),
-          }))
-      end
-    end
-
-    -- drop temp table
-    assert(connector:query([[
-          DROP TABLE IF EXISTS license_data_tmp;
-        ]]))
-  end
-end
-
 local function pg_ca_certificates_migration(connector)
   assert(connector:connect_migrations())
 
@@ -129,31 +64,6 @@ local function pg_ca_certificates_migration(connector)
   end
 
   assert(connector:query('ALTER TABLE ca_certificates ALTER COLUMN cert_digest SET NOT NULL'))
-end
-
-local function c_ca_certificates_migration(connector)
-  local coordinator = connector:connect_migrations()
-
-  for rows, err in coordinator:iterate("SELECT cert, id FROM ca_certificates") do
-    if err then
-      return nil, err
-    end
-
-    for _, ca_cert in ipairs(rows) do
-      local digest = str.to_hex(openssl_x509.new(ca_cert.cert):digest("sha256"))
-      if not digest then
-        return nil, "cannot create digest value of certificate with id: " .. ca_cert.id
-      end
-
-      _, err = connector:query(
-        fmt("UPDATE ca_certificates SET cert_digest = '%s' WHERE partition = 'ca_certificates' AND id = %s",
-          digest, ca_cert.id)
-      )
-      if err then
-        return nil, err
-      end
-    end
-  end
 end
 
 return {
@@ -275,90 +185,4 @@ return {
       pg_ca_certificates_migration(connector)
     end,
   },
-
-  cassandra = {
-    up = [[
-      -- XXX: EE keep run_on for now
-      ALTER TABLE plugins ADD run_on TEXT;
-
-      /* Add temporary table for license data table */
-      CREATE TABLE IF NOT EXISTS license_data_tmp (
-        node_id         uuid,
-        req_cnt         counter,
-        PRIMARY KEY (node_id)
-      );
-
-      CREATE TABLE IF NOT EXISTS applications (
-        id          uuid,
-        created_at  timestamp,
-        updated_at  timestamp,
-        name text,
-        description text,
-        redirect_uri text,
-        meta text,
-        developer_id uuid,
-        consumer_id  uuid,
-        PRIMARY KEY(id)
-      );
-
-      CREATE INDEX IF NOT EXISTS applications_developer_id_idx ON applications(developer_id);
-      CREATE INDEX IF NOT EXISTS applications_consumer_id_idx ON applications(consumer_id);
-
-      CREATE TABLE IF NOT EXISTS application_instances (
-        id          uuid,
-        created_at  timestamp,
-        updated_at  timestamp,
-        status int,
-        service_id uuid,
-        application_id uuid,
-        composite_id text,
-        suspended boolean,
-        PRIMARY KEY(id)
-      );
-
-      CREATE INDEX IF NOT EXISTS application_instances_composite_id_idx ON application_instances(composite_id);
-      CREATE INDEX IF NOT EXISTS application_instances_service_id_idx ON application_instances(service_id);
-      CREATE INDEX IF NOT EXISTS application_instances_application_id_idx ON application_instances(application_id);
-
-      CREATE TABLE IF NOT EXISTS document_objects (
-        id          uuid,
-        created_at  timestamp,
-        updated_at  timestamp,
-        service_id uuid,
-        path text,
-        PRIMARY KEY(id)
-      );
-
-      CREATE INDEX IF NOT EXISTS document_objects_path_idx ON document_objects(path);
-      CREATE INDEX IF NOT EXISTS document_objects_service_id_idx ON document_objects(service_id);
-
-      CREATE TABLE IF NOT EXISTS event_hooks (
-        id             uuid PRIMARY KEY,
-        created_at     timestamp,
-        source         text,
-        event          text,
-        handler        text,
-        on_change      boolean,
-        snooze         int,
-        config         text
-      );
-
-      -- ca_certificates
-      ALTER TABLE ca_certificates ADD cert_digest text;
-
-      DROP INDEX IF EXISTS ca_certificates_cert_idx;
-      CREATE INDEX IF NOT EXISTS ca_certificates_cert_digest_idx ON ca_certificates(cert_digest);
-    ]],
-    teardown = function(connector)
-      -- XXX: EE keep run_on for now, ignore error
-      connector:query([[
-        ALTER TABLE plugins ADD run_on TEXT;
-      ]])
-
-      c_migrate_license_data(connector)
-
-      -- add `cert_digest` field for `ca_certificates` table
-      c_ca_certificates_migration(connector)
-    end,
-  }
 }

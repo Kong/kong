@@ -33,25 +33,4 @@ return {
       $$;
     ]]
   },
-
-  cassandra = {
-    up = [[
-      ALTER TABLE consumer_group_consumers ADD updated_at timestamp;
-      ALTER TABLE consumer_group_plugins ADD updated_at timestamp;
-      ALTER TABLE consumer_groups ADD updated_at timestamp;
-      ALTER TABLE credentials ADD updated_at timestamp;
-      ALTER TABLE event_hooks ADD updated_at timestamp;
-      ALTER TABLE files ADD updated_at timestamp;
-      ALTER TABLE group_rbac_roles ADD updated_at timestamp;
-      ALTER TABLE groups ADD updated_at timestamp;
-      ALTER TABLE keyring_meta ADD updated_at timestamp;
-      ALTER TABLE legacy_files ADD updated_at timestamp;
-      ALTER TABLE login_attempts ADD updated_at timestamp;
-      ALTER TABLE parameters ADD updated_at timestamp;
-      ALTER TABLE rbac_role_endpoints ADD updated_at timestamp;
-      ALTER TABLE rbac_role_entities ADD updated_at timestamp;
-      ALTER TABLE rbac_roles ADD updated_at timestamp;
-      ALTER TABLE rbac_users ADD updated_at timestamp;
-    ]]
-  },
 }

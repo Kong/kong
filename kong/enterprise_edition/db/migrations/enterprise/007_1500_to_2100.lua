@@ -150,13 +150,4 @@ return {
 
     teardown = ws_migration_teardown(operations.postgres.teardown),
   },
-
-  cassandra = {
-    up = [[
-      ALTER TABLE applications ADD custom_id text;
-      CREATE INDEX IF NOT EXISTS applications_custom_id_idx ON applications(custom_id);
-    ]] .. ws_migration_up(operations.cassandra.up),
-
-    teardown = ws_migration_teardown(operations.cassandra.teardown),
-  }
 }

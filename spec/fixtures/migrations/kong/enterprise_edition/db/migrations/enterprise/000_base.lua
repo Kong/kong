@@ -18,16 +18,4 @@ return {
       );
     ]]
   },
-  cassandra = {
-    up = [[
-      CREATE TABLE IF NOT EXISTS workspaces(
-        id uuid PRIMARY KEY,
-        name text,
-        comment text,
-        created_at timestamp,
-        meta text,
-        config text
-      );
-    ]],
-  }
 }

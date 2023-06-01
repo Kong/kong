@@ -16,18 +16,4 @@ return {
         );
     ]],
   },
-
-  cassandra = {
-    up = [[
-      CREATE TABLE IF NOT EXISTS licenses (
-        partition       text,
-        id              uuid,
-        payload         text,
-        created_at      timestamp,
-        updated_at      timestamp,
-        PRIMARY KEY     (partition, id)
-      );
-      CREATE INDEX IF NOT EXISTS licenses_payload_idx ON licenses(payload);
-    ]],
-  },
 }

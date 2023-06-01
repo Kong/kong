@@ -40,8 +40,4 @@ return {
       ]]))
     end,
   },
-
-  cassandra = {
-    up = [[]],
-  },
 }

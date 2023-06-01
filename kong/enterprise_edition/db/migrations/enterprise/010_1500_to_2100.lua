@@ -19,13 +19,5 @@ return {
       teardown = function(connector)
       end,
     },
-  
-    cassandra = {
-      up = [[
-        
-      ]],
-      teardown = function(connector)
-      end,
-    }
   }
   

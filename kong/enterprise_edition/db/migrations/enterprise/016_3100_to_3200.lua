@@ -19,12 +19,4 @@ return {
       $$;
     ]]
   },
-
-  cassandra = {
-    up = [[
-      -- add rbac_user_name,request_source to audit_requests
-      ALTER TABLE audit_requests ADD rbac_user_name text;
-      ALTER TABLE audit_requests ADD request_source text;
-    ]]
-  },
 }

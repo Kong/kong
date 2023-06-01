@@ -9,7 +9,7 @@ local helpers = require "spec.helpers"
 local pl_file = require "pl.file"
 local cjson = require "cjson"
 
-for _, strategy in helpers.each_strategy({"postgres", "cassandra"}) do
+for _, strategy in helpers.each_strategy({"postgres"}) do
 describe("Keyring recovery #" .. strategy, function()
   local admin_client
 
@@ -55,8 +55,7 @@ describe("Keyring recovery #" .. strategy, function()
         local json = cjson.decode(body)
         client:close()
         return json.active ~= nil
-      end, strategy == "cassandra" and 15 or 5)
-      -- the above requires cluster_events sync, thus might be slow with cassandra
+      end, 5)
 
       local res = assert(admin_client:send {
         method = "GET",

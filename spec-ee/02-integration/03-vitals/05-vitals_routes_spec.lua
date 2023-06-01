@@ -7,7 +7,6 @@
 
 local helpers     = require "spec.helpers"
 local utils       = require "kong.tools.utils"
-local cassandra   = require "kong.vitals.cassandra.strategy"
 local postgres    = require "kong.vitals.postgres.strategy"
 local cjson       = require "cjson"
 local time        = ngx.time
@@ -90,15 +89,6 @@ for _, db_strategy in helpers.each_strategy() do
 
             for i, node in ipairs(nodes) do
               assert(connector:query(fmt(node_q, node, "testhostname" .. i)))
-            end
-          else
-            strategy = cassandra.new(db)
-
-            local node_q = "insert into vitals_node_meta(node_id, hostname) values("
-            local nodes = { node_1, node_2, node_3 }
-
-            for i, node in ipairs(nodes) do
-              assert(connector.cluster:execute(node_q .. node .. ", '" .. "testhostname" .. i .. "')"))
             end
           end
 
@@ -1068,19 +1058,11 @@ for _, db_strategy in helpers.each_strategy() do
             it("retrieves the seconds-level response code data for a given service", function()
               local now = time()
 
-              if db.strategy == "cassandra" then
-                assert(strategy:insert_status_codes_by_service({
-                  { service_id, 404, now, 1, 101},
-                  { service_id, 200, now - 1, 1, 205},
-                  { service_id, 500, now - 1, 1, 6},
-                }))
-              else
-                assert(strategy:insert_status_codes_by_route({
-                  { utils.uuid(), service_id, "404", now, 1, 101 },
-                  { utils.uuid(), service_id, "200", now - 1, 1, 205 },
-                  { utils.uuid(), service_id, "500", now - 1, 1, 6 },
-                }))
-              end
+              assert(strategy:insert_status_codes_by_route({
+                { utils.uuid(), service_id, "404", now, 1, 101 },
+                { utils.uuid(), service_id, "200", now - 1, 1, 205 },
+                { utils.uuid(), service_id, "500", now - 1, 1, 6 },
+              }))
 
               local res = assert(client:send {
                 method = "GET",
@@ -1132,19 +1114,11 @@ for _, db_strategy in helpers.each_strategy() do
             it("retrieves the minutes-level response code data for a given service", function()
               local minute_start_at = time() - (time() % 60)
 
-              if db.strategy == "cassandra" then
-                assert(strategy:insert_status_codes_by_service({
-                  { service_id, 404, minute_start_at, 60, 101},
-                  { service_id, 200, minute_start_at - 60, 60, 205},
-                  { service_id, 500, minute_start_at - 60, 60, 6},
-                }))
-              else
-                assert(strategy:insert_status_codes_by_route({
-                  { utils.uuid(), service_id, "404", minute_start_at, 60, 101 },
-                  { utils.uuid(), service_id, "200", minute_start_at - 60, 60, 205 },
-                  { utils.uuid(), service_id, "500", minute_start_at - 60, 60, 6 },
-                }))
-              end
+              assert(strategy:insert_status_codes_by_route({
+                { utils.uuid(), service_id, "404", minute_start_at, 60, 101 },
+                { utils.uuid(), service_id, "200", minute_start_at - 60, 60, 205 },
+                { utils.uuid(), service_id, "500", minute_start_at - 60, 60, 6 },
+              }))
 
               local res = assert(client:send {
                 method = "GET",
@@ -2084,19 +2058,11 @@ for _, db_strategy in helpers.each_strategy() do
 
               local now = time()
 
-              if db.strategy == "cassandra" then
-                assert(strategy:insert_consumer_stats({
-                  -- inserting minute and second data, but only expecting second data in response
-                  { consumer.id, now, 60, 45 },
-                  { consumer.id, now, 1, 17 }
-                }, utils.uuid()))
-              else
-                assert(strategy:insert_status_codes_by_consumer_and_route({
-                  -- inserting minute and second data, but only expecting second data in response
-                  { consumer.id, utils.uuid(), utils.uuid(), "200", now, 60, 45 },
-                  { consumer.id, utils.uuid(), utils.uuid(), "200", now, 1, 17 }
-                }))
-              end
+              assert(strategy:insert_status_codes_by_consumer_and_route({
+                -- inserting minute and second data, but only expecting second data in response
+                { consumer.id, utils.uuid(), utils.uuid(), "200", now, 60, 45 },
+                { consumer.id, utils.uuid(), utils.uuid(), "200", now, 1, 17 }
+              }))
 
               local res = assert(client:send {
                 method = "GET",

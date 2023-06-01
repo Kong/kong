@@ -15,10 +15,4 @@ return {
       -- Risky migrations
     end
   },
-  cassandra = {
-    up = [[]],
-    teardown = function(connector)
-      -- Risky migrations
-    end
-  }
 }

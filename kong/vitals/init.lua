@@ -265,8 +265,6 @@ function _M.new(opts)
       if db.strategy == "postgres" then
         db_strategy = pg_strat
         strategy_opts.delete_interval = opts.delete_interval_pg or 90000
-      elseif db.strategy == "cassandra" then
-        db_strategy = require "kong.vitals.cassandra.strategy"
       elseif db.strategy == "off" then
         db_strategy = require "kong.vitals.off.strategy"
       elseif kong.configuration.role == "traditional" then

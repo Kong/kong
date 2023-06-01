@@ -127,28 +127,6 @@ end
 
 
 local function overwrites()
-  -- yayyy more legacy hacks
-  local c_cluster = require "resty.cassandra.cluster"
-  local iterate_orig = c_cluster.iterate
-  local function iterate(self, query, args, opts)
-    local t = trace("cassandra_iterate", trace_data and {
-      query     = query,
-      traceback = debug.traceback(),
-    })
-
-    if trace_data and args then
-      t:add_data("args", setmetatable(args, __data_mt))
-    end
-
-    local r = pack(iterate_orig(self, query, args, opts))
-
-    t:finish()
-
-    return unpack(r)
-  end
-  c_cluster.iterate = iterate
-
-
   -- kong.db connector overwrite
   local function connector_query_wrap(connector)
     local query_orig = connector.query

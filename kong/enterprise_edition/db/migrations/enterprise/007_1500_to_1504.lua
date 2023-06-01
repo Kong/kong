@@ -19,12 +19,4 @@ return {
     teardown = function(connector)
     end,
   },
-
-  cassandra = {
-    up = [[
-      ALTER TABLE audit_requests ADD removed_from_payload TEXT;
-    ]],
-    teardown = function(connector)
-    end,
-  }
 }

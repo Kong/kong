@@ -42,8 +42,7 @@ local function setup_distribution()
 end
 
 for _, strategy in helpers.each_strategy() do
-  local hybrid_describe = (strategy ~= "cassandra") and describe or pending
-  hybrid_describe("Hybrid vitals works with #" .. strategy .. " backend", function()
+  describe("Hybrid vitals works with #" .. strategy .. " backend", function()
     describe("sync works", function()
       lazy_setup(function()
         helpers.get_db_utils(strategy, {
@@ -453,7 +452,6 @@ for _, strategy in helpers.each_strategy() do
           }, nil, nil, fixtures))
 
         helpers.setenv("KONG_TEST_PG_PORT", db_proxy_port)
-        helpers.setenv("KONG_TEST_CASSANDRA_PORT", db_proxy_port)
 
         assert(helpers.start_kong({
           role = "control_plane",
@@ -464,8 +462,6 @@ for _, strategy in helpers.each_strategy() do
           pg_port = 16797,
           -- db_timeout should set greater than clustering_timeout(5 secs)
           pg_timeout = 10000, -- ensure pg_timeout > clustering_timeout(5 secs)
-          cassandra_timeout = 10000, -- ensure cassandra_timeout > clustering_timeout(5 secs)
-          cassandra_port = 16797,
           db_update_frequency = 0.1,
           db_update_propagation = 0.1,
           cluster_listen = "127.0.0.1:9005",
@@ -492,7 +488,6 @@ for _, strategy in helpers.each_strategy() do
 
       teardown(function()
         helpers.unsetenv("KONG_TEST_PG_PORT")
-        helpers.unsetenv("KONG_TEST_CASSANDRA_PORT")
         assert(helpers.stop_kong("servroot2", true))  -- dp
         assert(helpers.stop_kong("servroot", true))   -- cp
         assert(helpers.stop_kong("servroot3", true))  -- proxy

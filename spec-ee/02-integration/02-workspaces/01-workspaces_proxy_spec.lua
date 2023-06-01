@@ -59,7 +59,6 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
-        db_update_propagation = strategy == "cassandra" and 3 or 0
       }))
       proxy_client = helpers.proxy_client()
     end)
@@ -108,7 +107,6 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
-        db_update_propagation = strategy == "cassandra" and 3 or 0
       }))
       admin_client = helpers.admin_client()
       proxy_client = helpers.proxy_client()
@@ -291,7 +289,6 @@ for _, strategy in helpers.each_strategy() do
       -- start Kong instance with our services and plugins
       assert(helpers.start_kong {
         database = strategy,
-        db_update_propagation = strategy == "cassandra" and 3 or 0
       })
     end)
 
@@ -508,7 +505,6 @@ for _, strategy in helpers.each_strategy() do
       -- start Kong instance with our services and plugins
       assert(helpers.start_kong {
         database = strategy,
-        db_update_propagation = strategy == "cassandra" and 3 or 0
       })
     end)
 
@@ -651,7 +647,6 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
-        db_update_propagation = strategy == "cassandra" and 3 or 0
       }))
       proxy_client = helpers.proxy_client()
     end)

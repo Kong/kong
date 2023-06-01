@@ -38,7 +38,6 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_teardown(function()
       truncate_tables()
-      ngx.shared.kong_cassandra:flush_expired()
     end)
 
     describe("validate_admin_and_attach_ctx()", function()

@@ -49,7 +49,6 @@ describe("rbac entities are invalidated with db: #" .. strategy .. ", role: #" .
 
   setup(function()
     bp, db = helpers.get_db_utils(strategy)
-    local db_update_propagation = strategy == "cassandra" and 3 or 0
 
     assert(helpers.start_kong {
       log_level                    = "debug",
@@ -63,7 +62,6 @@ describe("rbac entities are invalidated with db: #" .. strategy .. ", role: #" .
       cluster_listen               = "0.0.0.0:8005",
       cluster_telemetry_listen     = "0.0.0.0:8006",
       db_update_frequency          = POLL_INTERVAL,
-      db_update_propagation        = db_update_propagation,
       enforce_rbac                 = "on",
       role                         = role,
       cluster_cert                 = "spec/fixtures/kong_clustering.crt",
@@ -83,7 +81,6 @@ describe("rbac entities are invalidated with db: #" .. strategy .. ", role: #" .
       cluster_listen               = "0.0.0.0:9005",
       cluster_telemetry_listen     = "0.0.0.0:9006",
       db_update_frequency          = POLL_INTERVAL,
-      db_update_propagation        = db_update_propagation,
       enforce_rbac                 = "on",
       role                         = role,
       cluster_cert                 = "spec/fixtures/kong_clustering.crt",

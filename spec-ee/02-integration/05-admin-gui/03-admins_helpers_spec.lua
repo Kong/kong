@@ -83,8 +83,6 @@ for _, strategy in helpers.each_strategy() do
       db:truncate("rbac_roles")
       db:truncate("rbac_users")
       db:truncate("admins")
-
-      ngx.shared.kong_cassandra:flush_expired()
     end)
 
     describe("find all admins", function()

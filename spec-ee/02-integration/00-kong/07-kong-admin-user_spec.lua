@@ -19,7 +19,6 @@ for _, strategy in helpers.each_strategy() do
 
   local function init_db()
     local conf = utils.deep_copy(helpers.test_conf)
-    conf.cassandra_timeout = 60000 -- default used in the `migrations` cmd as well
 
     local db = assert(DB.new(conf, strategy))
     assert(db:init_connector())
@@ -31,8 +30,6 @@ for _, strategy in helpers.each_strategy() do
     return db
   end
 
-  -- XXX resetting and bootstrapping cassandra is S L O W!
-  -- do we need this test? Is there a way to faster test this?
   describe("bootstrapping [#" .. strategy .. "]", function()
     it("creates an admin with correct basicauth ", function()
       local db = init_db()

@@ -25,19 +25,6 @@ local function list_fields(db, tname)
         db.connector.config.schema,
         tname)
     end,
-    cassandra = function()
-      -- Handle schema system tables and column name differences between Apache
-      -- Cassandra version
-      if db.connector.major_version >= 3 then
-        return fmt("SELECT column_name FROM system_schema.columns WHERE keyspace_name='%s' and table_name='%s';",
-          db.connector.keyspace,
-          tname)
-      else
-        return fmt("SELECT column_name FROM system.schema_columns WHERE keyspace_name='%s' and columnfamily_name='%s';",
-          db.connector.keyspace,
-          tname)
-      end
-    end,
     off = function()
       return setmetatable({}, {
         __index = function()

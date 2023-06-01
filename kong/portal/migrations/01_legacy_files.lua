@@ -1139,7 +1139,7 @@ return {
         <section class="page-wrapper kong-doc">
           <h1>Kong Architecture Overview</h1>
           <p>Broadly, Kong is suite of software that utilizes OpenResty to dynamically configure NGINX and process HTTP requests. This article covers the purpose and architecture of those underlying components as they relate to Kong’s execution.</p>
-         
+
           <h2>NGINX</h2>
           <p>NGINX provides a robust HTTP server infrastructure. It handles HTTP request processing, TLS encryption, request logging, and allocation of operating system resources (e.g. listening for and managing client connections and spawning new processes).</p>
 
@@ -1149,12 +1149,12 @@ return {
           <p>In some cases, it’s useful to add your own NGINX configuration alongside Kong’s, e.g. to serve a static website alongside your API gateway. In those cases, you can <a href="https://getkong.org/docs/latest/configuration/#custom-nginx-configuration">modify the configuration templates used by Kong</a>.</p>
 
           <p>Requests handled by NGINX pass through a sequence of <a href="https://nginx.org/en/docs/dev/development_guide.html#http_phases">phases</a>. Much of NGINX’s functionality (e.g. the <a href="http://nginx.org/en/docs/http/ngx_http_gzip_module.html">ability to use gzip compression</a> is provided by modules (written in C) that hook into these phases. While it is possible to write your own modules, NGINX must be recompiled every time a module is added or updated. To simplify the process of adding new functionality, Kong uses OpenResty.</p>
-          
+
           <h2>OpenResty</h2>
           <p>OpenResty is a software suite that bundles NGINX, a set of modules, LuaJIT, and a set of Lua libraries. Chief among these is <code>ngx_http_lua_module</code>, an NGINX module which embeds Lua and provides Lua equivalents for most NGINX request phases. This effectively allows development of NGINX modules in Lua while maintaining high performance (LuaJIT is quite fast), and Kong uses it to provide its core configuration management and plugin management infrastructure.</p>
-          
+
           <p>To understand how this is done, it helps to look at an abbreviated section of the Kong NGINX configuration:</p>
-          
+
           <pre><code>upstream kong_upstream {
               server 0.0.0.1;
               balancer_by_lua_block {
@@ -1189,25 +1189,25 @@ return {
 
                   access_by_lua_block {
                       kong.access()
-                  
+
                   }
                   ...
                   proxy_pass         $upstream_scheme://kong_upstream$upstream_uri;
                   ...
                 </code></pre>
-                
+
           <p>The above configuration first defines an upstream for later use. Typical configuration would specify an actual address for the upstream, but Kong instead uses the invalid placeholder address <code>0.0.0.1</code>, which will be overwritten by code executed in the <code>balancer_by_lua_block</code> section–Kong’s <code>balancer</code> function determines an appropriate address for upstream traffic based on the API and plugin configuration in Kong’s datastore.</p>
-          
+
           <p>The remaining configuration sets up which addresses and ports NGINX listens on, defines log paths, and defines a location block. The location block indicates a URI prefix to apply configuration to–in this case, the prefix <code>/</code> simply matches all paths. After initializing NGINX variables for use later, it executes Kong’s <code>rewrite</code> and <code>access</code> functions in the appropriate OpenResty Lua blocks. The access phase, for example, corresponds to the <code>NGX_HTTP_ACCESS_PHASE</code> in an NGINX module, and is used to determine whether a client is allowed to make a request. As such, it’s appropriate for running authentication and access control code.</p>
-          
-          <p>Beyond running Lua code within NGINX, OpenResty provides modules that allow NGINX to communicate with a variety of database backends, including PostgreSQL and Apache Cassandra. These allow Kong to store and retrieve configurations in a more easily distributed fashion than is possible with flat files.</p>
-          
+
+          <p>Beyond running Lua code within NGINX, OpenResty provides modules that allow NGINX to communicate with a variety of database backends, including PostgreSQL. These allow Kong to store and retrieve configurations in a more easily distributed fashion than is possible with flat files.</p>
+
           <h2>Kong</h2>
           <p>Kong provides a framework for hooking into the above request phases via its plugin architecture. Following from the example above, both the Key Auth and ACL plugins control whether a client (alternately called a consumer) should be able to make a request. Each defines its own access function in its handler, and that function is executed for each plugin enabled on a given route or service by <code>kong.access()</code>. Execution order is determined by a priority value–if Key Auth has priority 1003<br>
           and ACL has priority 950, Kong will execute Key Auth’s access function first and, if it does not drop the request, will then execute ACL’s before passing it upstream via <code>proxy_pass</code>.</p>
-          
+
           <p>Because Kong’s request routing and handling configuration is controlled via its admin API, plugin configuration can be added and removed on on the fly without editing the underlying NGINX configuration, as Kong essentially provides a means to inject location blocks (via API definitions) and configuration within them (by assigning plugins, certificates, etc. to those APIs).</p>
-          
+
           <h2>Summary</h2>
           <p>Kong’s overall infrastructure is composed of three main parts: NGINX provides protocol implementations and worker process management, OpenResty provides Lua integration and hooks into NGINX’s request processing phases, and Kong itself utilizes those hooks to route and transform requests.</p>
         </section>
@@ -1433,7 +1433,7 @@ return {
 ## Option 1 - The Terminal
 
 - Upload a Specification file with the following call in the terminal
-	- In this example we are using the 
+	- In this example we are using the
 	[Swagger Petstore](http://petstore.swagger.io/v2/swagger.json)
 
 ```bash
@@ -1457,7 +1457,7 @@ should now be listed.
 - Click the **_Create File_** button
 - Copy and paste your spec file into the code editor.
 - Once finished, click the **_Update File_** button.
-- Back in the Dev Portal, navigate to the Dev Portal 
+- Back in the Dev Portal, navigate to the Dev Portal
 [API Catalog](/documentation), the new Swagger Spec should now be listed.
 
 
@@ -1868,12 +1868,12 @@ function buildSidebarURL (string) {
         message: "This account has been revoked."
       }
     }
-    
+
     var errorMessage = errorMessages[resp.data.status] && errorMessages[resp.data.status].message || window.getMessageFromError(error)
     alert('Login failed. ' + errorMessage)
   }
 
-  /* 
+  /*
    * When a user attempts to register, but registration fails.
    */
   function onRegistrationError(error) {
@@ -1924,7 +1924,7 @@ window.helpers.searchConfig = {
   /**
    * files to exclude from search, will be filtered based of url path
    * aliases are identified by file title
-   * 
+   *
    * NOTE: 'unauthenticated/' path will not be included in filter query.
    *       For example, including '404' will filter pages with the both
    *       the path of '404' and 'unauthenticated/404'
@@ -2005,7 +2005,7 @@ window.helpers.fetchPageList = (files) => {
         let splitPath = loader.name.split('unauthenticated/')
         let initPath = splitPath[splitPath.length - 1]
         let virtualPath = initPath.split('loader')[0] + title
-        
+
         let searchConfig = window.helpers.searchConfig
         let aliasList = searchConfig && searchConfig.aliasList
           ? searchConfig.aliasList
@@ -2046,7 +2046,7 @@ window.helpers.fetchPageList = (files) => {
       if (file.auth) {
         return true
       }
-      
+
       // Return true/false if authenticated version exists
       !!files.find(comparisonFile => {
         return (file.path === comparisonFile.path) && comparisonFile.auth
@@ -2868,7 +2868,7 @@ window.registerApp(function () {
   {{#*inline "content-block"}}
     <div class="app-container">
       <div class="container">
-        {{> spec/sidebar}} 
+        {{> spec/sidebar}}
         {{> spec/renderer}}
       </div>
     </div>
@@ -4003,7 +4003,7 @@ window.registerApp(function () {
 <div class="spec sidebar-list" id="spec-sidebar-list" v-if="sidebarData.length">
   <ul :class="{ active: !isLoading }">
     <li class="list-title">Resources</li>
-    <li 
+    <li
       v-for="sidebarItem in sidebarData"
       class="submenu"
       :class="{ active: isTagActive(sidebarItem.tag) }">
@@ -4082,7 +4082,7 @@ window.registerApp(function () {
       subMenuClicked (sidebarItem) {
         if (this.isTagActive(sidebarItem.tag)) {
           this.activeTags = this.activeTags.filter(activeTag => activeTag !== sidebarItem.tag)
-          return 
+          return
         }
         this.activeTags.push(sidebarItem.tag)
       }
@@ -4163,8 +4163,8 @@ window.registerApp(function () {
     content: '';
     top: 2px;
     left: -1rem;
-    width: 0; 
-    height: 0; 
+    width: 0;
+    height: 0;
     border-top: 5px solid transparent;
     border-bottom: 5px solid transparent;
     border-left: 5px solid black;
@@ -4270,14 +4270,14 @@ window.registerApp(function () {
   {
     type = "page",
     name = "unauthenticated/unauthorized",
-    contents = [[{{#> unauthenticated/layout pageTitle="Unauthorized" }} 
+    contents = [[{{#> unauthenticated/layout pageTitle="Unauthorized" }}
 
 {{#*inline "content-block"}}
   <div class="app-container authentication">
       <h2>Unauthorized</h2>
       <p style="max-width: 400px; text-align: left;">You are unauthorized to view this page because you are not an approved or registered developer. Please try <a href="{{config.PORTAL_GUI_URL}}/login">logging in</a>, or <a href="{{config.PORTAL_GUI_URL}}/register">signing up</a> for access.</p>
   </div>
-{{/inline}} 
+{{/inline}}
 
 {{/unauthenticated/layout}}
 ]],
@@ -4343,10 +4343,10 @@ window.helpers.isObject = (item) => {
       <div class="container">
         {{> guides/sidebar}}
         <section class="page-wrapper kong-doc">
-          <h1>Welcome to Kong Enterprise Edition</h1> 
-          <p>Before going further into Kong Enterprise Edition (EE), make sure you understand its <a href="https://getkong.org/about/">purpose and philosophy</a>. Once you are confident with the concept of API Gateways, this guide is going to take you through a quick introduction on how to use Kong and perform basic operations such as:</p> 
-          
-          <ul> 
+          <h1>Welcome to Kong Enterprise Edition</h1>
+          <p>Before going further into Kong Enterprise Edition (EE), make sure you understand its <a href="https://getkong.org/about/">purpose and philosophy</a>. Once you are confident with the concept of API Gateways, this guide is going to take you through a quick introduction on how to use Kong and perform basic operations such as:</p>
+
+          <ul>
             <li>
               <a href="https://getkong.org/docs/enterprise/latest/getting-started/quickstart">Running your own Kong instance</a>.
             </li>
@@ -4356,16 +4356,16 @@ window.helpers.isObject = (item) => {
             <li>
               <a href="https://getkong.org/docs/enterprise/latest/getting-started/enabling-plugins">Installing plugins on Kong</a>.
             </li>
-          </ul> 
-          
-          <h3>What is Kong, technically?</h3> 
-          <p>You’ve probably heard that Kong is built on NGINX, leveraging its stability and efficiency. But how is this possible exactly?</p> 
-          <p>To be more precise, Kong is a Lua application running in NGINX and made possible by the <a href="https://github.com/openresty/lua-nginx-module">lua-nginx-module</a>. Instead of compiling NGINX with this module, Kong is distributed along with <a href="https://openresty.org/">OpenResty</a>, which already includes lua-nginx-module. OpenResty is <em>not</em> a fork of NGINX, but a bundle of modules extending its capabilities.</p> 
-          
-          <p>This sets the foundations for a pluggable architecture, where Lua scripts (referred to as <em>”Kong plugins”</em>) can be enabled and executed at runtime. Because of this, we like to think of Kong as <strong>a paragon of microservice architecture</strong>: at its core, it implements database abstraction, routing and plugin management. Plugins can live in separate code bases and be injected anywhere into the request lifecycle, all in a few lines of code.</p> 
-          
+          </ul>
+
+          <h3>What is Kong, technically?</h3>
+          <p>You’ve probably heard that Kong is built on NGINX, leveraging its stability and efficiency. But how is this possible exactly?</p>
+          <p>To be more precise, Kong is a Lua application running in NGINX and made possible by the <a href="https://github.com/openresty/lua-nginx-module">lua-nginx-module</a>. Instead of compiling NGINX with this module, Kong is distributed along with <a href="https://openresty.org/">OpenResty</a>, which already includes lua-nginx-module. OpenResty is <em>not</em> a fork of NGINX, but a bundle of modules extending its capabilities.</p>
+
+          <p>This sets the foundations for a pluggable architecture, where Lua scripts (referred to as <em>”Kong plugins”</em>) can be enabled and executed at runtime. Because of this, we like to think of Kong as <strong>a paragon of microservice architecture</strong>: at its core, it implements database abstraction, routing and plugin management. Plugins can live in separate code bases and be injected anywhere into the request lifecycle, all in a few lines of code.</p>
+
           <h3>Next Steps</h3>
-          <p>Now, lets get familiar with learning how to “start” and “stop” Kong EE.</p> 
+          <p>Now, lets get familiar with learning how to “start” and “stop” Kong EE.</p>
           <p>Go to <a href="{{config.PORTAL_GUI_URL}}/guides/5-minute-quickstart">5-minute quickstart with Kong ›</a></p>
         </section>
       </div>
@@ -4384,13 +4384,13 @@ window.helpers.isObject = (item) => {
 |--------------------------------------------------------------------------
 | Code snippet language selections for swagger ui.
 |--------------------------------------------------------------------------
-| 
+|
 */
 window.snippetLanguages = [
   {
     prismLanguage: 'javascript',
     target: 'javascript',
-    client: 'xhr' // 'jquery', 
+    client: 'xhr' // 'jquery',
   },
   {
     prismLanguage: 'bash',
@@ -6399,7 +6399,7 @@ function buildSidebarURL (string) {
           have you start Kong to give you access to the RESTful Admin API, and easy-to-use
           Admin GUI, through which you manage your APIs, consumers, and more. Data sent
           through the Admin API and GUI is stored in Kong’s <a href="https://getkong.org/docs/latest/configuration/#datastore-section">datastore</a>
-          (Kong supports PostgreSQL and Cassandra).</p>
+          (Kong supports PostgreSQL).</p>
 
           <h3>1. Start Kong EE</h3>
           <p>Issue the following command to prepare your datastore by running the Kong
@@ -6485,7 +6485,7 @@ window.helpers.searchConfig = {
   /**
    * files to exclude from search, will be filtered based of url path
    * aliases are identified by file title
-   * 
+   *
    * NOTE: 'unauthenticated/' path will not be included in filter query.
    *       For example, including '404' will filter pages with the both
    *       the path of '404' and 'unauthenticated/404'
@@ -6566,7 +6566,7 @@ window.helpers.fetchPageList = (files) => {
         let splitPath = loader.name.split('unauthenticated/')
         let initPath = splitPath[splitPath.length - 1]
         let virtualPath = initPath.split('loader')[0] + title
-        
+
         let searchConfig = window.helpers.searchConfig
         let aliasList = searchConfig && searchConfig.aliasList
           ? searchConfig.aliasList
@@ -6607,7 +6607,7 @@ window.helpers.fetchPageList = (files) => {
       if (file.auth) {
         return true
       }
-      
+
       // Return true/false if authenticated version exists
       !!files.find(comparisonFile => {
         return (file.path === comparisonFile.path) && comparisonFile.auth
@@ -7891,7 +7891,7 @@ p {}
   {{#*inline "content-block"}}
     <div class="app-container">
       <div class="container">
-        {{> unauthenticated/spec/sidebar}} 
+        {{> unauthenticated/spec/sidebar}}
         {{> unauthenticated/spec/renderer}}
       </div>
     </div>
@@ -7997,7 +7997,7 @@ p {}
           <p>The Vitals feature in Kong’s Admin API and GUI provides useful metrics about the health and performance of your Kong nodes, as well as metrics about the usage of your Kong-proxied APIs.</p>
 
           <h2>Requirements</h2>
-          <p>Vitals requires PostgreSQL 9.5+ or Cassandra 2.1+.</p>
+          <p>Vitals requires PostgreSQL 9.5+.</p>
           <p>Vitals must also be enabled in Kong configuration. See below for details.</p>
 
           <h2>Enabling and Disabling Vitals</h2>
@@ -8063,9 +8063,6 @@ p {}
           <p>Vitals data does not appear in the Admin UI or the API<br>
           First, make sure Vitals is enabled. (<code>vitals=on</code> in your Kong configuration).</p>
           <p>Then, check your log files. If you see <code>[vitals] kong_vitals_requests_consumers cache is full</code> or <code>[vitals] error attempting to push to list: no memory</code>, then Vitals is no longer able to track requests because its cache is full.  This condition may resolve itself if traffic to the node subsides long enough for it to work down the cache. Regardless, the node will continue to proxy requests as usual.</p>
-
-          <h3>Limitations in Cassandra 2.x</h3>
-          <p>Vitals data is purged regularly: 1-second data is purged after one hour, and 1-minute data is purged after 25 hours. Due to limitations in Cassandra 2.x query options, the counter table vitals_consumers is not purged. If it becomes necessary to prune this table, you will need to do so manually.</p>
 
         </section>
       </div>

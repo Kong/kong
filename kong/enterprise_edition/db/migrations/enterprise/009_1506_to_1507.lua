@@ -16,11 +16,4 @@ return {
 
     end
   },
-  cassandra = {
-    -- cassandra expires rows by ttl in the database itself
-    up = [[
-    ]],
-    teardown = function(connector)
-    end
-  }
 }

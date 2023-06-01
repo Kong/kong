@@ -455,10 +455,6 @@ for _, strategy in helpers.each_strategy() do
       before_each(function()
         vitals.counter_cache:flush_all() -- mark expired
         vitals.counter_cache:flush_expired() -- really clean them up
-        if db.strategy == "cassandra" then
-          assert(db:truncate("vitals_consumers"))
-          assert(db:truncate("vitals_codes_by_service"))
-        end
         assert(db:truncate("vitals_code_classes_by_cluster"))
         assert(db:truncate("vitals_code_classes_by_workspace"))
         assert(db:truncate("vitals_codes_by_route"))
@@ -468,10 +464,6 @@ for _, strategy in helpers.each_strategy() do
       after_each(function()
         vitals.counter_cache:flush_all() -- mark expired
         vitals.counter_cache:flush_expired() -- really clean them up
-        if db.strategy == "cassandra" then
-          assert(db:truncate("vitals_consumers"))
-          assert(db:truncate("vitals_codes_by_service"))
-        end
         assert(db:truncate("vitals_code_classes_by_cluster"))
         assert(db:truncate("vitals_code_classes_by_workspace"))
         assert(db:truncate("vitals_codes_by_route"))
@@ -563,11 +555,6 @@ for _, strategy in helpers.each_strategy() do
           minute,
           minute,
         }
-        if db.strategy == "cassandra" then
-          for i, v in ipairs(ats) do
-            ats[i] = v * 1000
-          end
-        end
 
         local expected = {
           {
@@ -622,11 +609,6 @@ for _, strategy in helpers.each_strategy() do
           minute,
           minute,
         }
-        if db.strategy == "cassandra" then
-          for i, v in ipairs(ats) do
-            ats[i] = v * 1000
-          end
-        end
 
         local expected = {
           {
@@ -656,46 +638,6 @@ for _, strategy in helpers.each_strategy() do
           assert.same(expected[i], res[i])
         end
 
-        -- vitals_consumers is cassandra-only
-        local res, err
-        if db.strategy == "cassandra" then
-          res, err = db.connector:query("select * from vitals_consumers")
-
-          assert.is_nil(err)
-          table.sort(res, function(a,b)
-            return a.count < b.count
-          end)
-
-          local ats = {
-            now - 1,
-            minute,
-          }
-
-          for i, v in ipairs(ats) do
-            ats[i] = v * 1000
-          end
-
-          local expected = {
-            {
-              at = ats[1],
-              consumer_id = consumer_id,
-              count = 1,
-              duration = 1,
-              node_id = vitals.node_id,
-            }, {
-              at = ats[2],
-              consumer_id = consumer_id,
-              count = 3,
-              duration = 60,
-              node_id = vitals.node_id,
-            },
-          }
-
-          for i = 1, 2 do
-            assert.same(expected[i], res[i])
-          end
-        end
-
         local res, err
 
         if db.strategy == "postgres" then
@@ -713,12 +655,6 @@ for _, strategy in helpers.each_strategy() do
           now - 1,
           minute,
         }
-
-        if db.strategy == "cassandra" then
-          for i, v in ipairs(ats) do
-            ats[i] = v * 1000
-          end
-        end
 
         local expected = {
           {
@@ -875,9 +811,6 @@ for _, strategy in helpers.each_strategy() do
       local cons_id = utils.uuid()
 
       after_each(function()
-        if db.strategy == "cassandra" then
-          assert(db.connector:query("truncate table vitals_consumers"))
-        end
         assert(db.connector:query("truncate table vitals_node_meta"))
         assert(db.connector:query("truncate table vitals_codes_by_consumer_route"))
       end)
@@ -1509,11 +1442,7 @@ for _, strategy in helpers.each_strategy() do
         local q = "insert into vitals_node_meta(node_id, hostname) values('%s', '%s')"
 
         for _, row in ipairs(data_to_insert) do
-          if strategy == "cassandra" then
-            assert(vitals.strategy:init(unpack(row)))
-          else
-            assert(db.connector:query(fmt(q, unpack(row))))
-          end
+          assert(db.connector:query(fmt(q, unpack(row))))
         end
 
         local res, _ = vitals:get_node_meta({ node_id, node_id_2 })

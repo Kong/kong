@@ -33,38 +33,4 @@ return {
         return true
       end,
     },
-
-    cassandra = {
-      up = [[
-        ALTER TABLE plugins ADD ordering TEXT;
-
-        CREATE TABLE IF NOT EXISTS keyring_keys (
-            id                  text PRIMARY KEY,
-            recovery_key_id     text,
-            key_encrypted       text,
-            created_at          timestamp,
-            updated_at          timestamp
-          );
-      ]],
-      teardown = function(connector)
-        local coordinator = assert(connector:get_stored_connection())
-        local cassandra = require "cassandra"
-        for rows, err in coordinator:iterate("SELECT id, name FROM plugins WHERE name = 'collector'") do
-          if err then
-            return nil, err
-          end
-
-          for i = 1, #rows do
-            local plugin = rows[i]
-            local _, err = coordinator:execute("DELETE FROM plugins WHERE id = ?",
-              { cassandra.uuid(plugin.id) })
-            if err then
-              return nil, err
-            end
-          end
-        end
-
-        return true
-      end
-    },
 }

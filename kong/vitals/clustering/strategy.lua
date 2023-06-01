@@ -187,8 +187,6 @@ function _M.new(db, opts)
     local strategy
     if db.strategy == "postgres" then
       strategy = require "kong.vitals.postgres.strategy"
-    elseif db.strategy == "cassandra" then
-      strategy = require "kong.vitals.cassandra.strategy"
     else
       error("Unsupported db stragey " .. (db.strategy or "nil"), 2)
     end

@@ -25,26 +25,4 @@ return {
       operations_230_260.output_duplicate_username_lower_report(connector, "postgres")
     end,
   },
-
-  cassandra = {
-    up = [[
-      ALTER TABLE admins ADD username_lower text;
-
-      CREATE INDEX IF NOT EXISTS admins_username_lower_idx ON admins(username_lower);
-    ]],
-    teardown = function(connector)
-      local coordinator = assert(connector:get_stored_connection())
-
-      local _, err  = operations_230_260.cassandra_copy_usernames_to_lower(coordinator, "admins")
-      if err then
-        return nil, err
-      end
-
-      local success
-
-      success, err = operations_230_260.output_duplicate_username_lower_report(coordinator, "cassandra")
-
-      return success, err
-    end,
-  },
 }

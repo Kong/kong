@@ -111,7 +111,6 @@ build = {
     ["kong.counters.sales"] = "kong/counters/sales/init.lua",
     ["kong.counters.sales.strategies.common"] = "kong/counters/sales/strategies/common.lua",
     ["kong.counters.sales.strategies.postgres"] = "kong/counters/sales/strategies/postgres/init.lua",
-    ["kong.counters.sales.strategies.cassandra"] = "kong/counters/sales/strategies/cassandra/init.lua",
     ["kong.counters.sales.strategies.off"] = "kong/counters/sales/strategies/off/init.lua",
     ["kong.counters.sales.strategies.clustering"] = "kong/counters/sales/strategies/clustering/init.lua",
 
@@ -261,7 +260,6 @@ build = {
     ["kong.tools.channel"] = "kong/tools/channel.lua",
 
     ["kong.tools.public.rate-limiting"] = "kong/tools/public/rate-limiting/init.lua",
-    ["kong.tools.public.rate-limiting.strategies.cassandra"] = "kong/tools/public/rate-limiting/strategies/cassandra.lua",
     ["kong.tools.public.rate-limiting.strategies.postgres"] = "kong/tools/public/rate-limiting/strategies/postgres.lua",
     ["kong.tools.public.rate-limiting.strategies.redis"] = "kong/tools/public/rate-limiting/strategies/redis.lua",
     ["kong.tools.json-schema.draft4"] = "kong/tools/json-schema/draft4/init.lua",
@@ -285,7 +283,6 @@ build = {
     ["kong.enterprise_edition.db.migrations.enterprise.012_2600_to_2700"] = "kong/enterprise_edition/db/migrations/enterprise/012_2600_to_2700.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.012_2600_to_2700_1"] = "kong/enterprise_edition/db/migrations/enterprise/012_2600_to_2700_1.lua",
 
-    ["kong.enterprise_edition.db.migrations.operations.2600_to_2700"] = "kong/enterprise_edition/db/migrations/operations/2600_to_2700.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.013_2700_to_2800"] = "kong/enterprise_edition/db/migrations/enterprise/013_2700_to_2800.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.014_2800_to_3000"] = "kong/enterprise_edition/db/migrations/enterprise/014_2800_to_3000.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.015_3000_to_3100"] = "kong/enterprise_edition/db/migrations/enterprise/015_3000_to_3100.lua",
@@ -358,7 +355,6 @@ build = {
     ["kong.vitals"] = "kong/vitals/init.lua",
     ["kong.vitals.utils"] = "kong/vitals/utils.lua",
     ["kong.vitals.off.strategy"] = "kong/vitals/off/strategy.lua",
-    ["kong.vitals.cassandra.strategy"] = "kong/vitals/cassandra/strategy.lua",
     ["kong.vitals.postgres.strategy"] = "kong/vitals/postgres/strategy.lua",
     ["kong.vitals.postgres.table_rotater"] = "kong/vitals/postgres/table_rotater.lua",
     ["kong.vitals.prometheus.strategy"] = "kong/vitals/prometheus/strategy.lua",
@@ -457,20 +453,6 @@ build = {
     ["kong.db.schema.plugin_dependency"] = "kong/db/schema/plugin_dependency.lua",
     ["kong.db.strategies"] = "kong/db/strategies/init.lua",
     ["kong.db.strategies.connector"] = "kong/db/strategies/connector.lua",
-<<<<<<< HEAD
-    ["kong.db.strategies.cassandra"] = "kong/db/strategies/cassandra/init.lua",
-    ["kong.db.strategies.cassandra.admins"] = "kong/db/strategies/cassandra/admins.lua",
-    ["kong.db.strategies.cassandra.connector"] = "kong/db/strategies/cassandra/connector.lua",
-    ["kong.db.strategies.cassandra.tags"] = "kong/db/strategies/cassandra/tags.lua",
-    ["kong.db.strategies.cassandra.consumers"] = "kong/db/strategies/cassandra/consumers.lua",
-    -- [[ XXX EE
-    ["kong.db.strategies.cassandra.consumer_group_consumers"] = "kong/db/strategies/cassandra/consumer_group_consumers.lua",
-    ["kong.db.strategies.cassandra.rbac_role_endpoints"] = "kong/db/strategies/cassandra/rbac_role_endpoints.lua",
-    ["kong.db.strategies.cassandra.rbac_role_entities"] = "kong/db/strategies/cassandra/rbac_role_entities.lua",
-    ["kong.db.strategies.cassandra.keyring_meta"] = "kong/db/strategies/cassandra/keyring_meta.lua",
-    -- EE ]]
-=======
->>>>>>> 1148c1875 (chore: drop all code related to cassandra (#10931))
     ["kong.db.strategies.postgres"] = "kong/db/strategies/postgres/init.lua",
     ["kong.db.strategies.postgres.connector"] = "kong/db/strategies/postgres/connector.lua",
     ["kong.db.strategies.postgres.tags"] = "kong/db/strategies/postgres/tags.lua",

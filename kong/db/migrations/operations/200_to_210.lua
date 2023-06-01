@@ -356,7 +356,6 @@ end
 
 if not bootstrapping then
   mock_ce_only_destructive_functions(postgres)
-  mock_ce_only_destructive_functions(cassandra)
 end
 
 return {

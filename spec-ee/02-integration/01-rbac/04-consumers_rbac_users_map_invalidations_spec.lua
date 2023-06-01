@@ -74,15 +74,12 @@ for _, strategy in helpers.each_strategy() do
         role_id = super_role.role_id,
       }))
 
-      local db_update_propagation = strategy == "cassandra" and 3 or 0
-
       assert(helpers.start_kong {
         admin_gui_auth        = "basic-auth",
         enforce_rbac          = "on",
         log_level             = "debug",
         database              = strategy,
         db_update_frequency   = POLL_INTERVAL,
-        db_update_propagation = db_update_propagation,
         nginx_conf            = "spec/fixtures/custom_nginx.template",
       })
 

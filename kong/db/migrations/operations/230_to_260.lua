@@ -13,7 +13,6 @@
 -- If you want to reuse these operations in a future migration,
 -- copy the functions over to a new versioned module.
 
-local cassandra   = require "cassandra"
 local re_gsub     = ngx.re.gsub
 local log         = require "kong.cmd.utils.log"
 local enums       = require "kong.enterprise_edition.dao.enums"
@@ -40,8 +39,6 @@ local function output_duplicate_username_lower_report(coordinator, strategy)
 
     if strategy == 'postgres' then
       result, err = coordinator:query(fmt("SELECT name FROM workspaces WHERE id = '%s'", ws_id))
-    elseif strategy == 'cassandra' then
-      result, err = coordinator:execute("SELECT name FROM workspaces WHERE id = ?", { cassandra.uuid(ws_id) })
     end
 
     if result and #result == 1 then
@@ -53,9 +50,6 @@ local function output_duplicate_username_lower_report(coordinator, strategy)
   end
 
   local remove_ws_id = function(str)
-    if strategy == 'cassandra' then
-      return re_gsub(str, "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:", "")
-    end
     return str
   end
 
@@ -73,12 +67,7 @@ local function output_duplicate_username_lower_report(coordinator, strategy)
 
   local process_row = function(row)
     if type(row.username_lower) == 'string' then
-      local key
-      if strategy == "cassandra" then
-        key = row.username_lower
-      else
-        key = fmt("%s:%s", row.ws_id, row.username_lower)
-      end
+      local key = fmt("%s:%s", row.ws_id, row.username_lower)
 
       if type(unique_username_lowers[key]) == 'table' then
         unique_username_lower_count = unique_username_lower_count + 1
@@ -127,10 +116,6 @@ help determine which accounts should be deleted.]]
 
     if strategy == 'postgres' then
       process_row(rows)
-    elseif strategy == 'cassandra' then
-      for _, row in ipairs(rows) do
-        process_row(row)
-      end
     end
 
   end
@@ -149,29 +134,6 @@ help determine which accounts should be deleted.]]
   return true
 end
 
-local function cassandra_copy_usernames_to_lower(coordinator, table_name)
-  for rows, err in coordinator:iterate("SELECT id, username FROM " .. table_name) do
-    if err then
-      return nil, err
-    end
-
-    for _, row in ipairs(rows) do
-      if type(row.username) == 'string' then
-        local _, err = coordinator:execute("UPDATE " .. table_name .. " SET username_lower = ? WHERE id = ?", {
-          cassandra.text(row.username:lower()),
-          cassandra.uuid(row.id),
-        })
-        if err then
-          return nil, err
-        end
-      end
-    end
-  end
-
-  return true
-end
-
 return {
-  cassandra_copy_usernames_to_lower = cassandra_copy_usernames_to_lower,
   output_duplicate_username_lower_report = output_duplicate_username_lower_report
 }

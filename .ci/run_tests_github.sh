@@ -51,21 +51,19 @@ fi
 export KONG_TEST_LICENSE_DATA=$KONG_LICENSE_DATA
 
 
-export BUSTED_ARGS=${BUSTED_ARGS:-"-o hjtest -Xoutput $XML_OUTPUT/report.xml -v --exclude-tags=flaky,ipv6,ce,cassandra"}
+export BUSTED_ARGS=${BUSTED_ARGS:-"-o hjtest -Xoutput $XML_OUTPUT/report.xml -v --exclude-tags=flaky,ipv6,ce"}
 spec_ee_lua_path="$(__repo_root_path)/spec-ee/fixtures/custom_plugins/?.lua;$(__repo_root_path)/spec-ee/fixtures/custom_plugins/?/init.lua"
 export LUA_PATH="$LUA_PATH;$spec_ee_lua_path"
 
 if [ "$KONG_TEST_DATABASE" == "postgres" ]; then
-    export TEST_CMD="bin/busted $BUSTED_ARGS,cassandra,off"
+    export TEST_CMD="bin/busted $BUSTED_ARGS,off"
     create_postgresql_user
 
 elif [ "$KONG_TEST_DATABASE" == "cassandra" ]; then
-    export KONG_TEST_CASSANDRA_KEYSPACE=kong_tests
-    export KONG_TEST_DB_UPDATE_PROPAGATION=1
-    export TEST_CMD="bin/busted $BUSTED_ARGS,postgres,off"
-
+    echo "Cassandra is no longer supported"
+    exit 1
 else
-    export TEST_CMD="bin/busted $BUSTED_ARGS,postgres,cassandra,db"
+    export TEST_CMD="bin/busted $BUSTED_ARGS,postgres,db"
 fi
 
 ### DEBUG: print memory usage to adjust self-runner VM memory

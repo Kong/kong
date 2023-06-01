@@ -5,8 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local operations_2600_2700 = require "kong.enterprise_edition.db.migrations.operations.2600_to_2700"
-
 
 return {
   postgres = {
@@ -46,29 +44,5 @@ return {
       $$;
 
     ]]
-  },
-
-  cassandra = {
-    up = [[
-      /* Add temporary table for license data table */
-      CREATE TABLE IF NOT EXISTS license_data_tmp_2600_to_2700 (
-        node_id                 uuid,
-        license_creation_date   timestamp,
-        req_cnt                 counter,
-        PRIMARY KEY (node_id, license_creation_date)
-      );
-    ]],
-    teardown = function(connector)
-      local _, err = operations_2600_2700.cassandra_migrate_consumers(connector)
-      if err then
-        return nil, err
-      end
-
-      local _, err = operations_2600_2700.cassandra_migrate_license_data(connector)
-      if err then
-        return nil, err
-      end
-
-    end,
   },
 }

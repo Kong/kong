@@ -17,11 +17,5 @@ return {
         $$;
       ]]
     },
-  
-    cassandra = {
-      up = [[
-        ALTER TABLE services ADD enabled boolean;
-      ]]
-    },
   }
  

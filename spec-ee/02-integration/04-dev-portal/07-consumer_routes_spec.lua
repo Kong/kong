@@ -358,12 +358,6 @@ for _, strategy in helpers.each_strategy() do
 
       it("exact page size", function()
         local page_size = 101
-        if strategy == "cassandra" then
-          --  cassandra only detects the end of a pagination when
-          -- we go past the number of rows in the iteration - it doesn't
-          -- seem to detect the pages ending at the limit
-          page_size = page_size + 1
-        end
         local res = assert(client:send {
           method = "GET",
           path = "/consumers?size=" .. page_size,

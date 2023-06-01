@@ -2844,10 +2844,7 @@ describe("Admin API RBAC with #" .. strategy, function()
       end)
 
       describe("errors", function()
-        -- cassandra cannot apply the PK constraint here
-        -- FIXME on cassandra
-        local block = strategy == "cassandra" and pending or it
-        block("on duplicate PK", function()
+        it("on duplicate PK", function()
           local res
 
           res = assert(client:send {

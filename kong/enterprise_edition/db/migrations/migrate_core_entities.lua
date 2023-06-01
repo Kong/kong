@@ -83,44 +83,6 @@ local strategies = function(connector)
     return connector:escape_identifier(identifier)
   end
 
-  local function c_escape(literal, type)
-    return connector:escape(literal, type)
-  end
-
-  local function is_partitioned(schema)
-    local cql
-
-    -- Assume a release version number of 3 & greater will use the same schema.
-    if connector.major_version >= 3 then
-      cql = fmt([[
-        SELECT * FROM system_schema.columns
-        WHERE keyspace_name = '%s'
-        AND table_name = '%s'
-        AND column_name = 'partition';
-      ]], connector.keyspace, schema)
-
-    else
-      cql = fmt([[
-        SELECT * FROM system.schema_columns
-        WHERE keyspace_name = '%s'
-        AND columnfamily_name = '%s'
-        AND column_name = 'partition';
-      ]], connector.keyspace, schema)
-    end
-
-    local rows, err = connector:query(cql, {}, nil, "read")
-    if err then
-      return nil, err
-    end
-
-    -- Assume a release version number of 3 & greater will use the same schema.
-    if connector.major_version >= 3 then
-      return rows[1] and rows[1].kind == "partition_key"
-    end
-
-    return not not rows[1]
-  end
-
   return {
     postgres = {
       default_workspace = function()
@@ -210,116 +172,6 @@ local strategies = function(connector)
                    pg_escape_literal(entity_id))
       end,
     },
-    cassandra = {
-      default_workspace = function()
-        local res, err = connector:query(fmt([[
-          SELECT id, name FROM workspaces WHERE name = '%s' LIMIT 1;
-        ]], DEFAULT_WORKSPACE))
-        if err or not res then return nil, err end
-        return res[1]
-      end,
-
-      should_run = function()
-        local res, err = connector:query([[
-          SELECT SUM(count) AS count FROM workspace_entity_counters;
-        ]])
-        if err then return false, err end
-        return res[1].count < WORKSPACE_THRESHOLD
-      end,
-
-      workspace_entity_ids = function()
-        local res, err = connector:query([[
-          SELECT entity_id, unique_field_name FROM workspace_entities;
-        ]])
-        if err then return nil, err end
-        if not res then return {} end
-        local ids = {}
-        for i = 1, #res do
-          if not ids[res[i].entity_id] then
-            ids[res[i].entity_id] = {}
-          end
-          ids[res[i].entity_id][res[i].unique_field_name] = true
-        end
-        return ids
-      end,
-
-      entities = function(entity)
-        -- Did not manage to get the cassandra cluster iterator to work for my
-        -- case. Maybe another day. I guess it returns an iterator of pages?
-        --
-        local query = { "SELECT * FROM %s" }
-        if is_partitioned(entity) then
-          table.insert(query, fmt(" WHERE PARTITION = '%s'", entity))
-        end
-        table.insert(query, ";")
-
-        local rows, err = connector:query(fmt(table.concat(query), entity))
-        if err then return nil, err end
-        local n = #rows
-        local i = 0
-        return function()
-          i = i + 1
-          if i <= n then return rows[i] end
-        end
-      end,
-
-      add_entity = function(workspace, entity)
-        return {
-          [[ INSERT INTO workspace_entities (workspace_name, workspace_id, entity_id, entity_type, unique_field_name, unique_field_value)
-             VALUES (?, ?, ?, ?, ?, ?); ]], {
-            c_escape(workspace.name, "string"),
-            c_escape(workspace.id, "uuid"),
-            c_escape(entity.id, "string"),
-            c_escape(entity.entity_type, "string"),
-            c_escape(entity.unique_field_name, "string"),
-            c_escape(entity.unique_field_value, "string")
-          }
-        }
-      end,
-
-      update_entity_unique_field = function(entity)
-        local query = { "UPDATE %s SET %s = ? WHERE id = ?" }
-        if is_partitioned(entity.entity_type) then
-          table.insert(query, fmt(" AND partition = '%s'", entity.entity_type))
-        end
-        table.insert(query, ";")
-        query = table.concat(query)
-
-        return {
-          fmt(query, entity.entity_type, entity.unique_field_name), {
-            c_escape(DEFAULT_WORKSPACE .. WORKSPACE_DELIMITER .. entity.unique_field_value, "string"),
-            c_escape(entity.id, "uuid")
-          }
-        }
-      end,
-
-      update_entity_field = function(entity, entity_schema, field_name, field_value)
-        local query = "UPDATE %s SET %s = ? WHERE id = ?;"
-
-        return {
-          fmt(query, entity_schema.name, field_name), {
-            field_value,
-            c_escape(entity.id, "uuid")
-          }
-        }
-      end,
-
-      update_cache_key = function(entity_type, entity_id, cache_key)
-        local query = { [[ UPDATE %s SET cache_key = ? WHERE id = ? ]] }
-        if is_partitioned(entity_type) then
-          table.insert(query, fmt(" AND partition = '%s'", entity_type))
-        end
-        table.insert(query, ";")
-        query = table.concat(query)
-
-        return {
-          fmt(query, entity_type), {
-            c_escape(cache_key, "string"),
-            c_escape(entity_id, "uuid"),
-          }
-        }
-      end,
-    }
   }
 end
 
@@ -489,14 +341,6 @@ local function migrate_core_entities(db, opts)
   if strategy == "postgres" then
     buffer[#buffer + 1] = "COMMIT;"
     assert(connector:query(concat(buffer, '\n')))
-  -- Unfortunately counts cannot be batched on cassandra
-  elseif strategy == "cassandra" then
-    -- running single queries instead of batch because it is more efficient in this case
-    for _, row in ipairs(buffer) do
-      local query = row[1]
-      local args = row[2]
-      assert(connector.cluster:execute(query, args, nil, "write"))
-    end
   end
 
   counters.initialize_counters(db)

@@ -15,7 +15,7 @@ local fmt = string.format
 
 local UPDATE_FREQUENCY = 0.1
 
-for _, strategy in helpers.each_strategy({"postgres", "cassandra"}) do
+for _, strategy in helpers.each_strategy({"postgres"}) do
 for _, consistency in ipairs({ "strict", "eventual" }) do
 
 describe("WebSocket admin API #" .. strategy .. " (worker_consistency = " .. consistency .. ")", function()

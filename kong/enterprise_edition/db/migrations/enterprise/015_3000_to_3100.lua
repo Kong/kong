@@ -34,11 +34,4 @@ return {
       END$$;
     ]]
   },
-
-  cassandra = {
-    up = [[
-      -- add tags to consumer_groups
-      ALTER TABLE consumer_groups ADD tags set<text>;
-    ]]
-  },
 }

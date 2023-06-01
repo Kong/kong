@@ -5,9 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local operations_230_260 = require "kong.db.migrations.operations.230_to_260"
-
-
 return {
   postgres = {
     up = [[
@@ -22,16 +19,4 @@ return {
       UPDATE consumers SET username_lower=LOWER(username);
     ]],
   },
-  cassandra = {
-    up = [[
-      ALTER TABLE consumers ADD username_lower text;
-
-      CREATE INDEX IF NOT EXISTS consumers_username_lower_idx ON consumers(username_lower);
-    ]],
-    teardown = function(connector)
-      local coordinator = assert(connector:get_stored_connection())
-
-      return operations_230_260.cassandra_copy_usernames_to_lower(coordinator, "consumers")
-    end,
-  }
 }

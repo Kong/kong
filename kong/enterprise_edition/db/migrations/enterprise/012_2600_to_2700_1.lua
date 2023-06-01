@@ -111,40 +111,4 @@ return {
       ]] .. ws_migration_up(operations.postgres.up),
       teardown = ws_migration_teardown(operations.postgres.teardown),
     },
-  cassandra = {
-      up = [[
-        CREATE TABLE IF NOT EXISTS consumer_groups(
-          id          uuid PRIMARY KEY,
-          created_at  timestamp,
-          name        text
-        );
-
-        CREATE INDEX IF NOT EXISTS consumer_groups_name_idx ON consumer_groups(name);
-
-        CREATE TABLE IF NOT EXISTS consumer_group_consumers(
-          created_at  timestamp,
-          consumer_id uuid,
-          consumer_group_id uuid,
-          cache_key   text,
-          PRIMARY KEY(consumer_group_id,consumer_id)
-        );
-
-        CREATE INDEX IF NOT EXISTS consumer_group_consumer_idx ON consumer_group_consumers(consumer_id);
-        CREATE INDEX IF NOT EXISTS consumer_group_consumer_cache_key_idx ON consumer_group_consumers(cache_key);
-
-        CREATE TABLE IF NOT EXISTS consumer_group_plugins(
-          id          uuid PRIMARY KEY,
-          created_at  timestamp,
-          consumer_group_id uuid,
-          name        text,
-          cache_key   text,
-          config      text
-        );
-
-        CREATE INDEX IF NOT EXISTS consumer_group_plugins_group_id_idx ON consumer_group_plugins(consumer_group_id);
-        CREATE INDEX IF NOT EXISTS consumer_group_plugins_plugin_name_idx ON consumer_group_plugins(name);
-        CREATE INDEX IF NOT EXISTS consumer_group_plugins_cache_key_idx ON consumer_group_plugins(cache_key);
-      ]] .. ws_migration_up(operations.cassandra.up),
-      teardown = ws_migration_teardown(operations.cassandra.teardown),
-    },
   }

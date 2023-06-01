@@ -125,14 +125,7 @@ for _, strategy in helpers.each_strategy() do
           local res = assert(client:send({
             method = "GET",
             path = "/applications",
-            -- XXX: There is a weird problem with Cassandra paging that affects
-            -- this test. If `size` is exactly equal to the number of remaining
-            -- rows in the result set, the response from Cassandra will erroneously
-            -- report that there is indeed another page/offset.
-            --
-            -- Therefore even though we know there to be only one remaining row,
-            -- we need to set the size higher than one.
-            query = { offset = json.offset, size = 2 },
+            query = { offset = json.offset, size = 1 },
             headers = {["Content-Type"] = "application/json"}
           }))
 
