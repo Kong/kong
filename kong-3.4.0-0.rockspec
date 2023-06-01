@@ -41,7 +41,6 @@ dependencies = {
   --"http == 0.3",
   "lua-resty-cookie == 0.1.0",
   "lua-resty-healthcheck == 1.6.2",
-  "lua-resty-mlcache == 2.6.0",
   "lua-messagepack == 0.5.2",
   "lua-resty-openssl == 0.8.22",
   "lua-resty-counter == 0.2.1",
@@ -178,6 +177,9 @@ build = {
     ["kong.resty.dns.utils"] = "kong/resty/dns/utils.lua",
     ["kong.resty.ctx"] = "kong/resty/ctx.lua",
     ["kong.resty.lock"] = "kong/resty/lock.lua",
+
+    ["kong.resty.mlcache"] = "kong/resty/mlcache/init.lua",
+    ["kong.resty.mlcache.ipc"] = "kong/resty/mlcache/ipc.lua",
 
     ["kong.cmd"] = "kong/cmd/init.lua",
     ["kong.cmd.roar"] = "kong/cmd/roar.lua",
