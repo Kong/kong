@@ -50,7 +50,7 @@ local match_any_list = {
 
 -- Field attributes which match a validator function in the Schema class
 local validators = {
-  { between = { type = "array", elements = { type = "integer" }, len_eq = 2 }, },
+  { between = { type = "array", elements = { type = "number" }, len_eq = 2 }, },
   { eq = { type = "any" }, },
   { ne = { type = "any" }, },
   { gt = { type = "number" }, },

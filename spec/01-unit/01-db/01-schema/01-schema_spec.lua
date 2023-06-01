@@ -107,14 +107,14 @@ describe("schema", function()
     it("validates a range with 'between'", function()
       local Test = Schema.new({
         fields = {
-          { a_number = { type = "number", between = { 10, 20 } } }
+          { a_number = { type = "number", between = { 9.5, 20.5 } } }
         }
       })
       assert.truthy(Test:validate({ a_number = 15 }))
       assert.truthy(Test:validate({ a_number = 10 }))
       assert.truthy(Test:validate({ a_number = 20 }))
-      assert.falsy(Test:validate({ a_number = 9 }))
-      assert.falsy(Test:validate({ a_number = 21 }))
+      assert.falsy(Test:validate({ a_number = 9.4 }))
+      assert.falsy(Test:validate({ a_number = 20.9 }))
       assert.falsy(Test:validate({ a_number = "wat" }))
     end)
 
