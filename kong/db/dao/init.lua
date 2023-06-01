@@ -566,13 +566,6 @@ local function check_upsert(self, key, entity, options, name)
     transform = true
   end
 
-  local entity_to_upsert, err =
-    self.schema:process_auto_fields(entity, "upsert")
-  if not entity_to_upsert then
-    local err_t = self.errors:schema_violation(err)
-    return nil, nil, tostring(err_t), err_t
-  end
-
   local rbw_entity
   local err, err_t
   if name then
@@ -582,6 +575,17 @@ local function check_upsert(self, key, entity, options, name)
   end
   if err then
     return nil, nil, err, err_t
+  end
+
+  if rbw_entity and rbw_entity.created_at then
+    entity.created_at = rbw_entity.created_at
+  end
+
+  local entity_to_upsert, err =
+    self.schema:process_auto_fields(entity, "upsert")
+  if not entity_to_upsert then
+    local err_t = self.errors:schema_violation(err)
+    return nil, nil, tostring(err_t), err_t
   end
 
   if name then

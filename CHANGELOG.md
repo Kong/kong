@@ -57,6 +57,9 @@
   [#10896](https://github.com/Kong/kong/pull/10896)
 - Fix a bug when worker consuming dynamic log level setting event and using a wrong reference for notice logging
   [#10897](https://github.com/Kong/kong/pull/10897)
+- Fix a bug that the field `created_at` of entity changes every time entity is 
+  modified by a `PUT` method via admin API.
+  [#10987](https://github.com/Kong/kong/pull/10987)
 
 #### Admin API
 
