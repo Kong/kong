@@ -54,6 +54,9 @@ class FileInfo():
         self.path = path
         self.relpath = relpath
 
+        self._lazy_evaluate_cache = {}
+        self._lazy_evaluate_attrs = {}
+
         if Path(path).is_symlink():
             self.link = os.readlink(path)
         elif Path(path).is_dir():
@@ -64,6 +67,25 @@ class FileInfo():
             self.uid = os.stat(path).st_uid
             self.gid = os.stat(path).st_gid
             self.size = os.stat(path).st_size
+        
+        self._lazy_evaluate_attrs.update({
+            "binary_content": lambda: open(path, "rb").read(),
+            "text_content": lambda: open(path, "rb").read().decode('utf-8'),
+        })
+
+    def __getattr__(self, name):
+        if name in self._lazy_evaluate_cache:
+            return self._lazy_evaluate_cache[name]
+
+        ret = None
+        if name in self._lazy_evaluate_attrs:
+            ret = self._lazy_evaluate_attrs[name]()
+
+        if ret:
+            self._lazy_evaluate_cache[name] = ret
+            return ret
+
+        return self.__getattribute__(name)
 
     def explain(self, opts: ExplainOpts):
         lines = [("Path", self.relpath)]
@@ -94,8 +116,6 @@ class ElfFileInfo(FileInfo):
         self.get_exported_symbols = None
         self.get_imported_symbols = None
         self.version_requirement = {}
-
-        self._lazy_evaluate_cache = {}
 
         if not os.path.isfile(path):
             return
@@ -130,24 +150,12 @@ class ElfFileInfo(FileInfo):
             self.version_requirement[f.name] = [LooseVersion(
                 a.name) for a in f.get_auxiliary_symbols()]
             self.version_requirement[f.name].sort()
-
-    def __getattr__(self, name):
-        if name in self._lazy_evaluate_cache:
-            return self._lazy_evaluate_cache[name]
-
-        ret = None
-        if name == "exported_symbols" and self.get_exported_symbols:
-            ret = self.get_exported_symbols()
-        elif name == "imported_symbols" and self.get_imported_symbols:
-            ret = self.get_imported_symbols()
-        elif name == "functions" and self.get_functions:
-            ret = self.get_functions()
-
-        if ret:
-            self._lazy_evaluate_cache[name] = ret
-            return ret
-
-        return self.__getattribute__(name)
+        
+        self._lazy_evaluate_attrs.update({
+            "exported_symbols": self.get_exported_symbols,
+            "imported_symbols": self.get_imported_symbols,
+            "functions": self.get_functions,
+        })
 
     def explain(self, opts: ExplainOpts):
         pline = super().explain(opts)
@@ -170,7 +178,7 @@ class ElfFileInfo(FileInfo):
             req = []
             for k in sorted(self.version_requirement):
                 req.append("%s: %s" %
-                           (k, ", ".join(self.version_requirement[k])))
+                           (k, ", ".join(map(str, self.version_requirement[k]))))
             lines.append(("Version Requirement", req))
 
         return pline + lines
