@@ -224,53 +224,7 @@ called lru:delete() with key: my_key
 
 
 
-=== TEST 6: purge() with mlcache_shm invalidates other workers' LRU cache (OpenResty < 1.13.6.2)
---- skip_eval: 3: t::Util::skip_openresty('>=', '1.13.6.2')
---- http_config eval: $::HttpConfig
---- config
-    location = /t {
-        content_by_lua_block {
-            local mlcache = require "kong.resty.mlcache"
-
-            local opts = {
-                ipc_shm = "ipc_shm",
-                debug = true -- allows same worker to receive its own published events
-            }
-
-            local cache = assert(mlcache.new("namespace", "cache_shm", opts))
-            local cache_clone = assert(mlcache.new("namespace", "cache_shm", opts))
-
-            local lru = cache.lru
-            local lru_clone = cache_clone.lru
-
-            assert(cache:purge())
-
-            -- cache.lru should be different now
-            ngx.say("cache has new lru: ", cache.lru ~= lru)
-
-            ngx.say("cache_clone still has same lru: ", cache_clone.lru == lru_clone)
-
-            ngx.say("calling update on cache_clone")
-            assert(cache_clone:update())
-
-            -- cache.lru should be different now
-            ngx.say("cache_clone has new lru: ", cache_clone.lru ~= lru_clone)
-        }
-    }
---- request
-GET /t
---- response_body
-cache has new lru: true
-cache_clone still has same lru: true
-calling update on cache_clone
-cache_clone has new lru: true
---- no_error_log
-[error]
-
-
-
-=== TEST 7: purge() with mlcache_shm invalidates other workers' LRU cache (OpenResty >= 1.13.6.2)
---- skip_eval: 3: t::Util::skip_openresty('<', '1.13.6.2')
+=== TEST 6: purge() with mlcache_shm invalidates other workers' LRU cache
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
