@@ -716,7 +716,7 @@ from shm: table world bar
 GET /t
 --- error_code: 500
 --- error_log eval
-qr/\[error\] .*?mlcache\.lua:\d+: cannot cache value of type userdata/
+qr/\[error\] .*?init\.lua:\d+: cannot cache value of type userdata/
 
 
 
