@@ -125,7 +125,7 @@ if [ "$TEST_SUITE" == "plugins" ]; then
     fi
 fi
 if [ "$TEST_SUITE" == "pdk" ]; then
-    prove -I. -r t/01-pdk
+    prove -I. -r t
 fi
 if [ "$TEST_SUITE" == "unit" ]; then
     unset KONG_TEST_NGINX_USER KONG_PG_PASSWORD KONG_TEST_PG_PASSWORD
