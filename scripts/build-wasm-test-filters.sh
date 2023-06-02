@@ -113,7 +113,6 @@ main() {
 
     # symlink the target to a standard location used in spec/kong_tests.conf
     ln -sfv \
-        --no-target-directory \
         "$KONG_TEST_WASM_FILTERS_PATH" \
         "$FIXTURE_PATH/build"
 }
