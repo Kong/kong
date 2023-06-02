@@ -695,7 +695,7 @@ end
 -- Validate Wasm properties
 local function validate_wasm(conf)
   if conf.wasm then
-    if conf.wasm_filters_path and 
+    if conf.wasm_filters_path and
       (not exists(conf.wasm_filters_path) or not isdir(conf.wasm_filters_path)) then
       return nil, fmt("wasm_filters_path '%s' is not a valid directory", conf.wasm_filters_path)
     end
@@ -703,7 +703,7 @@ local function validate_wasm(conf)
     for k, value in pairs(conf) do
       local wasm_entry = match(k, "wasm_(.+)")
       if wasm_entry then
-        log.warn("Wasm is disabled but %s %s", wasm_entry, 
+        log.warn("Wasm is disabled but %s %s", wasm_entry,
                 "property is used, please check your configuration.")
       end
     end
@@ -1304,7 +1304,7 @@ local function check_and_parse(conf, opts)
     end
   end
 
-  local ok, err = validate_wasm(conf.wasm, conf.wasm_filters_path)
+  local ok, err = validate_wasm(conf)
   if not ok then
     errors[#errors + 1] = err
   end
