@@ -171,4 +171,9 @@ plugins/opentelemetry:
 - kong/plugins/opentelemetry/**/*
 
 schema-change-noteworthy:
-- kong/db/schema/entities/**/*
+- kong/db/schema/**/*.lua
+- kong/**/schema.lua
+- kong/plugins/**/daos.lua
+- plugins-ee/**/daos.lua
+- plugins-ee/**/schema.lua
+- kong/db/dao/*.lua
