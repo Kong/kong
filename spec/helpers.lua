@@ -3795,9 +3795,11 @@ end
 -- Will wait for a successful call to the admin-api for a maximum of 10 seconds,
 -- before returning a timeout.
 -- @function get_kong_workers
+-- @tparam[opt] number expected_total the expected total workers count
 -- @return array of worker PID's
-local function get_kong_workers()
+local function get_kong_workers(expected_total)
   local workers
+
   wait_until(function()
     local pok, admin_client = pcall(admin_client)
     if not pok then
@@ -3814,7 +3816,23 @@ local function get_kong_workers()
     local json = cjson.decode(body)
 
     admin_client:close()
-    workers = json.pids.workers
+
+    workers = {}
+
+    for _, item in ipairs(json.pids.workers) do
+      if item ~= ngx.null then
+        table.insert(workers, item)
+      end
+    end
+
+    if expected_total and #workers ~= expected_total then
+      return nil, ("expected %s worker pids, got %s"):format(expected_total,
+                                                             #workers)
+
+    elseif #workers == 0 then
+      return nil, "GET / returned no worker pids"
+    end
+
     return true
   end, 10)
   return workers
