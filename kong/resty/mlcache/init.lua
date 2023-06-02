@@ -1024,7 +1024,7 @@ function _M:get_bulk(bulk, opts)
                 = pcall(check_opts, self, b_opts)
             if not pok then
                 -- strip the stacktrace
-                local err = ttl:match("mlcache%.lua:%d+:%s(.*)")
+                local err = ttl:match("init%.lua:%d+:%s(.*)")
                 error("options at index " .. i + 1 .. " for operation " ..
                       ceil(i / 4) .. " are invalid: " .. err, 2)
             end
