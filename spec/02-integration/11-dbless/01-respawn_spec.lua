@@ -3,6 +3,24 @@ local cjson = require "cjson"
 
 local WORKER_PROCS = 4
 
+-- transient errors can leave holes in worker PID tables/arrays,
+-- which may be encoded as NULL by cjson, so we need to filter those
+-- out before attempting any maths
+local function remove_nulls(t)
+  local n = 0
+
+  for i = 1, #t do
+    local item = t[i]
+    t[i] = nil
+
+    if item ~= cjson.null then
+      n = n + 1
+      t[n] = item
+    end
+  end
+end
+
+
 local function count_common_values(t1, t2)
   local counts = {}
 
@@ -58,76 +76,87 @@ describe("worker respawn", function()
   end)
 
   it("rotates pids and deletes the old ones", function()
-    local res = admin_client:get("/")
-    local body = assert.res_status(200, res)
-    local json = cjson.decode(body)
-    local pids = json.pids.workers
+    local pids
 
-    assert.same(WORKER_PROCS, #pids, "unexpected number of worker pids")
+    assert.eventually(function()
+      local res = admin_client:get("/")
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      pids = json.pids.workers
+      remove_nulls(pids)
+
+      if #pids == WORKER_PROCS then
+        return true
+      end
+
+      return nil, {
+                    err = "invalid worker pid count",
+                    exp = WORKER_PROCS,
+                    got = #pids,
+                  }
+    end)
+    .is_truthy("expected / API endpoint to return the current number of workers")
 
     helpers.signal_workers(nil, "-TERM")
 
+    -- `helpers.wait_until_no_common_workers()` is not used here because it
+    -- works by using the very same API that this case is supposed to test
     assert.eventually(function()
-      local pok, admin_client2 = pcall(helpers.admin_client)
-      if not pok then
-        return nil, "failed creating admin client: " .. tostring(admin_client2)
-      end
-
-      local res2 = admin_client2:get("/")
+      local res2 = admin_client:get("/")
       local body2 = assert.res_status(200, res2)
       local json2 = cjson.decode(body2)
       local pids2 = json2.pids.workers
-
-      admin_client2:close()
-
-      if #pids2 ~= WORKER_PROCS then
-        return nil, "unexpected number of new worker pids: " .. tostring(#pids2)
-      end
+      remove_nulls(pids2)
 
       if count_common_values(pids, pids2) > 0 then
         return nil, "old and new worker pids both present"
+
+      elseif #pids2 ~= WORKER_PROCS then
+        return nil, {
+                      err = "unexpected number of worker pids",
+                      exp = WORKER_PROCS,
+                      got = #pids2,
+                    }
       end
 
       return true
     end)
+    .ignore_exceptions(true)
     .is_truthy("expected the admin API to report only new (respawned) worker pids")
   end)
 
   it("rotates kong:mem stats and deletes the old ones", function()
-    local proxy_res = proxy_client:get("/")
-    assert.res_status(404, proxy_res)
+    local mem
 
-    local res = admin_client:get("/status")
-    local body = assert.res_status(200, res)
-    local json = cjson.decode(body)
-    local mem = json.memory.workers_lua_vms
+    assert.eventually(function()
+      local res = admin_client:get("/status")
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      mem = json.memory.workers_lua_vms
+      remove_nulls(mem)
+
+      if #mem == WORKER_PROCS then
+        return true
+      end
+
+      return nil, {
+                    err = "unexpected worker count",
+                    exp = WORKER_PROCS,
+                    got = #mem,
+                  }
+    end)
+    .is_truthy("expected /status API endpoint to return the current number of workers")
 
     helpers.signal_workers(nil, "-TERM")
 
-    helpers.wait_until(function()
-      local pok, proxy_client2 = pcall(helpers.proxy_client)
-      if not pok then
-        return false
-      end
-
-      local proxy_res2 = proxy_client2:get("/")
-      assert.res_status(404, proxy_res2)
-      proxy_client2:close()
-
-      local admin_client2
-      pok, admin_client2 = pcall(helpers.admin_client)
-      if not pok then
-        return false
-      end
-
-      local res2 = admin_client2:get("/status")
+    -- `helpers.wait_until_no_common_workers()` is not used here because it
+    -- more-or-less relies on the same mechanism that is being tested here.
+    assert.eventually(function()
+      local res2 = admin_client:get("/status")
       local body2 = assert.res_status(200, res2)
       local json2 = cjson.decode(body2)
       local mem2 = json2.memory.workers_lua_vms
-
-      admin_client2:close()
-
-      assert.equal(#mem, #mem2)
+      remove_nulls(mem2)
 
       local matching = 0
       for _, value in ipairs(mem) do
@@ -137,14 +166,26 @@ describe("worker respawn", function()
 
           if value.pid == value2.pid then
             matching = matching + 1
+            break
           end
         end
       end
 
-      assert.equal(0, matching)
+      if matching > 0 then
+        return nil, "old and new worker mem stats still present"
+
+      elseif #mem2 ~= WORKER_PROCS then
+        return nil, {
+                      err = "unexpected number of workers",
+                      exp = WORKER_PROCS,
+                      got = #mem2,
+                    }
+      end
 
       return true
     end)
+    .ignore_exceptions(true)
+    .is_truthy("expected defunct worker memory stats to be cleared")
   end)
 
   it("lands on the correct cache page #5799", function()
@@ -195,7 +236,7 @@ describe("worker respawn", function()
     }))
     assert.res_status(200, res)
 
-    local workers = helpers.get_kong_workers()
+    local workers = helpers.get_kong_workers(WORKER_PROCS)
     proxy_client:close()
 
     -- kill all the workers forcing all of them to respawn
