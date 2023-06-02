@@ -571,7 +571,7 @@ jobs:
             export PDK_LUACOV=1
           fi
           eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
-          TEST_NGINX_RANDOMIZE=1 prove -I. -r t/01-pdk/
+          TEST_NGINX_RANDOMIZE=1 prove -I. -r t
 
     - name: Archive coverage stats file
       uses: actions/upload-artifact@v3

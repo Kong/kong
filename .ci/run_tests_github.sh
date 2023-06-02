@@ -190,7 +190,7 @@ if [ "$TEST_SUITE" == "plugins" ]; then
 fi
 
 if [ "$TEST_SUITE" == "pdk" ]; then
-    prove -I. -r t/01-pdk
+    prove -I. -r t
 fi
 
 if [ "$TEST_SUITE" == "plugins-ee" ]; then
