@@ -36,6 +36,9 @@
 
 #### Status API
 
+- Remove the database information from the status API when operating in dbless
+  mode or data plane.
+
 #### Plugins
 
 #### PDK
