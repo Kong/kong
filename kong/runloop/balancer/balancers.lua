@@ -101,6 +101,7 @@ end
 local function create_balancer_exclusive(upstream)
   local health_threshold = upstream.healthchecks and
     upstream.healthchecks.threshold or nil
+  local err
 
   targets.clean_targets_cache(upstream)
   local targets_list = targets.fetch_targets(upstream)
