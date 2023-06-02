@@ -131,7 +131,6 @@ ok
 
 
 === TEST 4: purge() deletes all items from L1 with a custom LRU
---- skip_eval: 3: t::Util::skip_openresty('<', '1.13.6.2')
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
@@ -178,39 +177,7 @@ lru instance is the same one: true
 
 
 
-=== TEST 5: purge() is prevented if custom LRU does not support flush_all()
---- skip_eval: 3: t::Util::skip_openresty('>', '1.13.6.1')
---- http_config eval: $::HttpConfig
---- config
-    location = /t {
-        content_by_lua_block {
-            local mlcache = require "kong.resty.mlcache"
-            local lrucache = require "resty.lrucache"
-
-            local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
-                ipc_shm = "ipc_shm",
-                lru = lrucache.new(10),
-            }))
-
-            local pok, perr = pcall(cache.purge, cache)
-            if not pok then
-                ngx.say(perr)
-                return
-            end
-
-            ngx.say("ok")
-        }
-    }
---- request
-GET /t
---- response_body
-cannot purge when using custom LRU cache with OpenResty < 1.13.6.2
---- no_error_log
-[error]
-
-
-
-=== TEST 6: purge() deletes all items from shm_miss is specified
+=== TEST 5: purge() deletes all items from shm_miss is specified
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
@@ -258,7 +225,7 @@ ok
 
 
 
-=== TEST 7: purge() does not call shm:flush_expired() by default
+=== TEST 6: purge() does not call shm:flush_expired() by default
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
@@ -293,7 +260,7 @@ flush_expired called with 'max_count'
 
 
 
-=== TEST 8: purge() calls shm:flush_expired() if argument specified
+=== TEST 7: purge() calls shm:flush_expired() if argument specified
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
@@ -330,7 +297,7 @@ flush_expired called with 'max_count': nil
 
 
 
-=== TEST 9: purge() calls shm:flush_expired() if shm_miss is specified
+=== TEST 8: purge() calls shm:flush_expired() if shm_miss is specified
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
@@ -369,7 +336,7 @@ flush_expired called with 'max_count': nil
 
 
 
-=== TEST 10: purge() calls broadcast() on purge channel
+=== TEST 9: purge() calls broadcast() on purge channel
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
