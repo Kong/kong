@@ -17,8 +17,8 @@
 
 local ffi = require "ffi"
 local uuid = require "resty.jit-uuid"
+local buffer = require "string.buffer"
 local pl_stringx = require "pl.stringx"
-local pl_stringio = require "pl.stringio"
 local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
@@ -45,7 +45,6 @@ local re_find       = ngx.re.find
 local re_match      = ngx.re.match
 local inflate_gzip  = zlib.inflateGzip
 local deflate_gzip  = zlib.deflateGzip
-local stringio_open = pl_stringio.open
 local match         = string.match
 
 ffi.cdef[[
@@ -1272,24 +1271,30 @@ do
   -- so use 64KB - 1 instead
   local GZIP_CHUNK_SIZE = 65535
 
-  local function gzip_helper(op, input)
-    local f = stringio_open(input)
-    local output_table = {}
-    local output_table_n = 0
+  local function read_input_buffer(input_buffer)
+    return function(size)
+      local data = input_buffer:get(size)
+      return data ~= "" and data or nil
+    end
+  end
 
-    local res, err = op(function(size)
-      return f:read(size)
-    end,
-    function(res)
-      output_table_n = output_table_n + 1
-      output_table[output_table_n] = res
-    end, GZIP_CHUNK_SIZE)
+  local function write_output_buffer(output_buffer)
+    return function(data)
+      return output_buffer:put(data)
+    end
+  end
 
-    if not res then
+  local function gzip_helper(inflate_or_deflate, input)
+    local input_buffer = buffer.new(0):set(input)
+    local output_buffer = buffer.new()
+    local ok, err = inflate_or_deflate(read_input_buffer(input_buffer),
+                                       write_output_buffer(output_buffer),
+                                       GZIP_CHUNK_SIZE)
+    if not ok then
       return nil, err
     end
 
-    return concat(output_table)
+    return output_buffer:get()
   end
 
   --- Gzip compress the content of a string
@@ -1298,7 +1303,6 @@ do
   function _M.deflate_gzip(str)
     return gzip_helper(deflate_gzip, str)
   end
-
 
   --- Gzip decompress the content of a string
   -- @tparam string gz the Gzip compressed string
