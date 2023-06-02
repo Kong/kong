@@ -103,7 +103,7 @@ local function create_balancer_exclusive(upstream)
     upstream.healthchecks.threshold or nil
 
   targets.clean_targets_cache(upstream)
-  local targets_list, err = targets.fetch_targets(upstream)
+  local targets_list = targets.fetch_targets(upstream)
   if not targets_list then
     return nil, "failed fetching targets for upstream " .. upstream.name or upstream.id
   end
