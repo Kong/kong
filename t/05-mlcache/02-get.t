@@ -1360,7 +1360,6 @@ hit level from shm: 2
 
 
 === TEST 30: get() returns hit level for boolean false hits
---- skip_eval: 3: t::Util::skip_openresty('<', '1.11.2.3')
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
