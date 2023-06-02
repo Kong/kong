@@ -139,6 +139,7 @@ services:
 
         if strategy == "off" then
           assert.is_nil(json.database)
+
         else
           assert.is_table(json.database)
           assert.is_boolean(json.database.reachable)
@@ -314,6 +315,7 @@ for _, strategy in helpers.all_strategies() do
 
       if strategy == "off" then
         assert.is_nil(json.database)
+
       else
         assert.is_table(json.database)
         assert.is_boolean(json.database.reachable)

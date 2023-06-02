@@ -38,6 +38,7 @@
 
 - Remove the database information from the status API when operating in dbless
   mode or data plane.
+  [#10995](https://github.com/Kong/kong/pull/10995)
 
 #### Plugins
 

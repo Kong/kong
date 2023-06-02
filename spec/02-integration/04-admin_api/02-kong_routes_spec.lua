@@ -243,12 +243,15 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       })
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
+
       if strategy == "off" then
         assert.is_nil(json.database)
+
       else
         assert.is_table(json.database)
         assert.is_boolean(json.database.reachable)
       end
+
       assert.is_table(json.server)
       assert.is_number(json.server.connections_accepted)
       assert.is_number(json.server.connections_active)
