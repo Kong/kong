@@ -47,6 +47,8 @@ contents:
   dst: /lib/systemd/system/kong-enterprise-edition.service
 - src: nfpm-prefix/LICENSE
   dst: /usr/share/doc/kong-enterprise-edition/copyright
+- src: kong/portal/migrations/portal_manifest.json
+  dst: /usr/local/kong/portal_manifest.json
 scripts:
   postinstall: ./build/package/postinstall.sh
 replaces:

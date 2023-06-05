@@ -158,13 +158,12 @@ kong_directory_genrule(
         cp -r $(locations @protoc//:all_srcs) ${BUILD_DESTDIR}/kong/.
 
         # EE
+
+        # files under prefix are symlinks, so we copy the actual files to be consumable by nfpm
+        cp LICENSE ${BUILD_DESTDIR}/LICENSE
         cp COPYRIGHT ${BUILD_DESTDIR}/COPYRIGHT
 
-        mkdir -p ${BUILD_DESTDIR}/usr/share/doc/kong-enterprise-edition/
-        cp LICENSE ${BUILD_DESTDIR}/LICENSE
-
         cp $(location //build/ee:luarocks_license) ${BUILD_DESTDIR}/kong/manifest.json
-        cp ${WORKSPACE_PATH}/kong/portal/migrations/portal_manifest.json ${BUILD_DESTDIR}/kong/portal_manifest.json
 
     """ + install_ssl_cmd + install_licensing_cmd + install_lib_deps_cmd + install_lualib_deps_cmd +
           fips_patch_cmd + install_webui_cmd +
