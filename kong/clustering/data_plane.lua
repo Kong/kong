@@ -194,11 +194,13 @@ function _M:communicate(premature)
 
     local pok, res, err = pcall(config_helper.update, self.declarative_config,
                                 config_table, msg.config_hash, msg.hashes)
+
+    if pok then
+      ping_immediately = true
+    end
+
     if not pok or not res then
       ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
-
-    else
-      ping_immediately = true
     end
 
     if next_data == data then
