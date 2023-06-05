@@ -171,11 +171,14 @@ function _M:communicate(premature)
 
   local ping_immediately
   local next_data
+  local is_reconfiguring = false
 
   local on_recv_config = function(data)
     if exiting() or not data then
       return
     end
+
+    is_reconfiguring = true
 
     local msg = assert(inflate_gzip(data))
     yield()
@@ -183,6 +186,7 @@ function _M:communicate(premature)
     yield()
 
     if msg.type ~= "reconfigure" then
+      is_reconfiguring = false
       return
     end
 
@@ -206,6 +210,8 @@ function _M:communicate(premature)
     if next_data == data then
       next_data = nil
     end
+
+    is_reconfiguring = false
   end
 
   -- register the recv event handler in each communication
@@ -252,7 +258,9 @@ function _M:communicate(premature)
 
         if typ == "binary" then
           next_data = data
-          events.clustering_notify_recv_config(data)
+          if not is_reconfiguring then
+            events.clustering_notify_recv_config(data)
+          end
 
         elseif typ == "pong" then
           ngx_log(ngx_DEBUG, _log_prefix, "received pong frame from control plane", log_suffix)
