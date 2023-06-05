@@ -59,6 +59,7 @@ local ngx = ngx
 local ngx_log = ngx.log
 local ngx_sleep = ngx.sleep
 local ngx_re_match = ngx.re.match
+local ngx_re_gsub = ngx.re.gsub
 local ngx_print = ngx.print
 local error = error
 local type = type
@@ -69,6 +70,7 @@ local tonumber = tonumber
 local st_format = string.format
 local table_sort = table.sort
 local tb_clear = require("table.clear")
+local tb_new = require("table.new")
 local yield = require("kong.tools.utils").yield
 
 
@@ -191,11 +193,11 @@ local function full_metric_name(name, label_names, label_values)
       label_value = tostring(label_values[idx])
     end
     if string.find(label_value, "\\") then
-      label_value = ngx.re.gsub(label_value, "\\", "\\\\", "jo")
+      label_value = ngx_re_gsub(label_value, "\\", "\\\\", "jo")
     end
 
     if string.find(label_value, '"') then
-      label_value = ngx.re.gsub(label_value, '"', '\\"', "jo")
+      label_value = ngx_re_gsub(label_value, '"', '\\"', "jo")
     end
 
     label_parts[idx] = table.concat({key, '="', label_value, '"'})
