@@ -181,47 +181,50 @@ function _M:communicate(premature)
   local config_thread = ngx.thread.spawn(function()
     while not exiting() and not config_exit do
       local ok, err = config_semaphore:wait(1)
-      if ok then
-        local data = next_data
-        if data then
-          local msg = assert(inflate_gzip(data))
-          yield()
-          msg = assert(cjson_decode(msg))
-          yield()
 
-          if msg.type == "reconfigure" then
-            if msg.timestamp then
-              ngx_log(ngx_DEBUG, _log_prefix, "received reconfigure frame from control plane with timestamp: ",
-                                 msg.timestamp, log_suffix)
-
-            else
-              ngx_log(ngx_DEBUG, _log_prefix, "received reconfigure frame from control plane", log_suffix)
-            end
-
-            local config_table = assert(msg.config_table)
-            local pok, res
-            pok, res, err = pcall(config_helper.update, self.declarative_config,
-                                  config_table, msg.config_hash, msg.hashes)
-            if pok then
-              if not res then
-                ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
-              end
-
-              ping_immediately = true
-
-            else
-              ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", res)
-            end
-
-            if next_data == data then
-              next_data = nil
-            end
-          end
+      if not ok then
+        if err ~= "timeout" then
+          ngx_log(ngx_ERR, _log_prefix, "semaphore wait error: ", err)
         end
 
-      elseif err ~= "timeout" then
-        ngx_log(ngx_ERR, _log_prefix, "semaphore wait error: ", err)
+        goto continue
       end
+
+      local data = next_data
+      if not data then
+        goto continue
+      end
+
+      local msg = assert(inflate_gzip(data))
+      yield()
+      msg = assert(cjson_decode(msg))
+      yield()
+
+      if msg.type ~= "reconfigure" then
+        goto continue
+      end
+
+      ngx_log(ngx_DEBUG, _log_prefix, "received reconfigure frame from control plane",
+                         msg.timestamp and " with timestamp: " .. msg.timestamp or "",
+                         log_suffix)
+
+      local config_table = assert(msg.config_table)
+
+      local pok, res, err = pcall(config_helper.update, self.declarative_config,
+                                  config_table, msg.config_hash, msg.hashes)
+      if pok then
+        ping_immediately = true
+      end
+
+      if not pok or not res then
+        ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
+      end
+
+      if next_data == data then
+        next_data = nil
+      end
+
+      ::continue::
     end
   end)
 
