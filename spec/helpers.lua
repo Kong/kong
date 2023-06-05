@@ -1301,75 +1301,6 @@ local function kill_tcp_server(port)
 end
 
 
---- Starts a local HTTP server.
---
--- **DEPRECATED**: please use `spec.helpers.http_mock` instead. `http_server` has very poor
--- support to anything other then a single shot simple request.
---
--- Accepts a single connection and then closes. Sends a 200 ok, 'Connection:
--- close' response.
--- If the request received has path `/delay` then the response will be delayed
--- by 2 seconds.
--- @function http_server
--- @tparam number port The port the server will be listening on
--- @tparam[opt] table opts options defining the server's behavior with the following fields:
--- @tparam[opt=60] number opts.timeout time (in seconds) after which the server exits
--- @return A thread object (from the `llthreads2` Lua package)
--- @see kill_http_server
-local function http_server(port, opts)
-  print(debug.traceback("[warning] http_server is deprecated, " ..
-                        "use helpers.start_kong's fixture parameter " ..
-                        "or helpers.http_mock instead.", 2))
-  local threads = require "llthreads2.ex"
-  opts = opts or {}
-  if TEST_COVERAGE_MODE == "true" then
-    opts.timeout = TEST_COVERAGE_TIMEOUT
-  end
-  local thread = threads.new({
-    function(port, opts)
-      local socket = require "socket"
-      local server = assert(socket.tcp())
-      server:settimeout(opts.timeout or 60)
-      assert(server:setoption('reuseaddr', true))
-      assert(server:bind("*", port))
-      assert(server:listen())
-      local client = assert(server:accept())
-
-      local content_length
-      local lines = {}
-      local line, err
-      repeat
-        line, err = client:receive("*l")
-        if err then
-          break
-        end
-        table.insert(lines, line)
-        content_length = tonumber(line:lower():match("^content%-length:%s*(%d+)$")) or content_length
-      until line == ""
-
-      if #lines > 0 and lines[1] == "GET /delay HTTP/1.0" then
-        ngx.sleep(2)
-      end
-
-      if err then
-        server:close()
-        error(err)
-      end
-
-      local body, _ = client:receive(content_length or "*a")
-
-      client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
-      client:close()
-      server:close()
-
-      return lines, body
-    end
-  }, port, opts)
-
-  return thread:start()
-end
-
-
 local code_status = {
   [200] = "OK",
   [201] = "Created",
@@ -1550,17 +1481,6 @@ local function http_mock(port, opts)
     server:close()
     return true
   end)
-end
-
-
---- Stops a local HTTP server.
--- A server previously created with `http_server` can be stopped prematurely by
--- calling this function.
--- @function kill_http_server
--- @param port the port the HTTP server is listening on.
--- @see http_server
-local function kill_http_server(port)
-  os.execute("fuser -n tcp -k " .. port)
 end
 
 
@@ -3931,9 +3851,7 @@ end
   tcp_server = tcp_server,
   udp_server = udp_server,
   kill_tcp_server = kill_tcp_server,
-  http_server = http_server,
   http_mock = http_mock,
-  kill_http_server = kill_http_server,
   get_proxy_ip = get_proxy_ip,
   get_proxy_port = get_proxy_port,
   proxy_client = proxy_client,

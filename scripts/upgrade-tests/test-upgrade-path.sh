@@ -150,6 +150,8 @@ function initialize_test_list() {
     docker exec ${OLD_CONTAINER} ln -sf /kong/bin/kong /upgrade-test/bin
     docker exec ${OLD_CONTAINER} bash -c "ln -sf /kong/spec/* /upgrade-test/spec"
     docker exec ${OLD_CONTAINER} tar -xf ${TESTS_TAR} -C /upgrade-test
+    docker cp spec/helpers/http_mock ${OLD_CONTAINER}:/upgrade-test/spec/helpers
+    docker cp spec/helpers/http_mock.lua ${OLD_CONTAINER}:/upgrade-test/spec/helpers
     rm ${TESTS_TAR}
 }
 
@@ -185,7 +187,7 @@ function run_tests() {
 }
 
 function cleanup() {
-    git worktree remove worktree/$OLD_KONG_VERSION
+    git worktree remove worktree/$OLD_KONG_VERSION --force
     $COMPOSE down
 }
 
