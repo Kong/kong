@@ -172,7 +172,7 @@ function _M:communicate(premature)
   local ping_immediately
   local next_data
 
-  local handler = function(data)
+  local on_recv_config = function(data)
     if exiting() or not data then
       return
     end
@@ -207,7 +207,7 @@ function _M:communicate(premature)
   end
 
   -- register the recv event handler in each communication
-  events.clustering_recv_config(handler, true)
+  events.clustering_recv_config(on_recv_config, true)
 
   local write_thread = ngx.thread.spawn(function()
     while not exiting() do
@@ -279,7 +279,7 @@ function _M:communicate(premature)
   end
 
   -- unregister the recv event handler
-  events.clustering_recv_config(handler, false)
+  events.clustering_recv_config(on_recv_config, false)
 
   if not exiting() then
     assert(ngx.timer.at(reconnection_delay, function(premature)
