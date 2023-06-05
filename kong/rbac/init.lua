@@ -312,6 +312,11 @@ do
 
     local cache_key = dao:cache_key(id)
 
+    local result = kong.cache:get(cache_key, nil, get_with_cache_fn, dao, id, workspace)
+    if result and not result.ws_id then
+      kong.cache:invalidate(cache_key)
+    end
+
     return kong.cache:get(cache_key, nil, get_with_cache_fn, dao, id, workspace)
   end
 

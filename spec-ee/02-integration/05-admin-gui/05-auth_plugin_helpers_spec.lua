@@ -14,6 +14,10 @@ local db
 
 local ADMIN_CONSUMER_USERNAME_SUFFIX = constants.ADMIN_CONSUMER_USERNAME_SUFFIX
 
+local function retrieve_consumer(db, id, options)
+  return db.consumers:select({ id = id }, options or {})
+end
+
 for _, strategy in helpers.each_strategy() do
   local function truncate_tables()
     db:truncate("consumers")
@@ -43,6 +47,107 @@ for _, strategy in helpers.each_strategy() do
     describe("validate_admin_and_attach_ctx()", function()
       before_each(function()
         truncate_tables()
+      end)
+
+      it("attach workspaces from cache's consumer well when show_ws_id is false", function()
+        local stub_validate_admin = stub(ee_api, "validate_admin")
+        local stub_attach = stub(ee_api, "attach_consumer_and_workspaces")
+        local username = "not_exists@email.com"
+        local self = {}
+        local admin = db.admins:select_by_username(
+          username,
+          { skip_rbac = true }
+        )
+
+        assert.is_nil(admin)
+
+        assert(auth_plugin_helpers.validate_admin_and_attach_ctx(
+          self,
+          false,
+          username,
+          nil,
+          true,
+          true,
+          true
+        ))
+
+        admin = db.admins:select_by_username(
+          username,
+          { skip_rbac = true }
+        )
+        local consumer_id = admin.consumer.id
+
+        -- Begining doesn't have consumer in cache
+        local cache_key = db.consumers:cache_key(consumer_id)
+        local cache_consumer = kong.cache:get(cache_key, nil, retrieve_consumer, db, consumer_id)
+        assert.is_not_nil(cache_consumer)
+        assert.is_nil(cache_consumer.ws_id)
+
+        -- after load from db and validate the consumer
+        cache_consumer = kong.cache:get(cache_key, nil, retrieve_consumer, db, consumer_id)
+        assert.is_not_nil(cache_consumer)
+        assert.is_nil(cache_consumer.ws_id)
+
+        assert.same(username, admin.username)
+        assert(ee_api.attach_workspaces(self, consumer_id))
+        assert.is_not_nil(self.workspaces)
+        assert.same(default_ws.id, self.workspaces[1].id)
+
+        -- after attache workspace validate the consumer
+        cache_consumer = kong.cache:get(cache_key, nil, retrieve_consumer, db, consumer_id)
+        assert.is_not_nil(cache_consumer)
+        assert.is_not_nil(cache_consumer.ws_id)
+
+        stub_validate_admin:revert()
+        stub_attach:revert()
+      end)
+
+      it("attach workspaces from cache's consumer well when show_ws_id is true", function()
+        local stub_validate_admin = stub(ee_api, "validate_admin")
+        local stub_attach = stub(ee_api, "attach_consumer_and_workspaces")
+        local username = "not_exists@email.com"
+        local self = {}
+        local admin = db.admins:select_by_username(
+          username,
+          { skip_rbac = true }
+        )
+
+        assert.is_nil(admin)
+
+        assert(auth_plugin_helpers.validate_admin_and_attach_ctx(
+          self,
+          false,
+          username,
+          nil,
+          true,
+          true,
+          true
+        ))
+
+        admin = db.admins:select_by_username(
+          username,
+          { skip_rbac = true }
+        )
+        local consumer_id = admin.consumer.id
+
+        -- Begining doesn't have consumer in cache
+        local cache_key = db.consumers:cache_key(consumer_id)
+        local cache_consumer = kong.cache:get(cache_key, nil, retrieve_consumer, db, consumer_id, { show_ws_id = true })
+        assert.is_not_nil(cache_consumer)
+        assert.is_not_nil(cache_consumer.ws_id)
+
+        assert.same(username, admin.username)
+        assert(ee_api.attach_workspaces(self, consumer_id))
+        assert.is_not_nil(self.workspaces)
+        assert.same(default_ws.id, self.workspaces[1].id)
+
+        -- after attache workspace validate the consumer
+        cache_consumer = kong.cache:get(cache_key, nil, retrieve_consumer, db, consumer_id)
+        assert.is_not_nil(cache_consumer)
+        assert.is_not_nil(cache_consumer.ws_id)
+
+        stub_validate_admin:revert()
+        stub_attach:revert()
       end)
 
       it("creates admin if not exists", function()
