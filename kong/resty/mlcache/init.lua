@@ -10,30 +10,8 @@
 local new_tab    = require "table.new"
 local lrucache   = require "resty.lrucache"
 local resty_lock = require "resty.lock"
-local tablepool
-do
-    local pok
-    pok, tablepool = pcall(require, "tablepool")
-    if not pok then
-        -- fallback for OpenResty < 1.15.8.1
-        tablepool = {
-            fetch = function(_, narr, nrec)
-                return new_tab(narr, nrec)
-            end,
-            release = function(_, _, _)
-                -- nop (obj will be subject to GC)
-            end,
-        }
-    end
-end
-local codec
-do
-    local pok
-    pok, codec = pcall(require, "string.buffer")
-    if not pok then
-        codec = require "cjson"
-    end
-end
+local tablepool  = require "tablepool"
+local buffer     = require "string.buffer"
 
 
 local now          = ngx.now
@@ -49,8 +27,8 @@ local traceback    = debug.traceback
 local error        = error
 local tostring     = tostring
 local tonumber     = tonumber
-local encode       = codec.encode
-local decode       = codec.decode
+local encode       = buffer.encode
+local decode       = buffer.decode
 local thread_spawn = ngx.thread.spawn
 local thread_wait  = ngx.thread.wait
 local setmetatable = setmetatable
@@ -156,15 +134,8 @@ local unmarshallers = {
 
 local function rebuild_lru(self)
     if self.lru then
-        if self.lru.flush_all then
-            self.lru:flush_all()
-            return
-        end
-
-        -- fallback for OpenResty < 1.13.6.2
-        -- Invalidate the entire LRU by GC-ing it.
-        LRU_INSTANCES[self.name] = nil
-        self.lru = nil
+        self.lru:flush_all()
+        return
     end
 
     -- Several mlcache instances can have the same name and hence, the same
@@ -1350,11 +1321,6 @@ end
 function _M:purge(flush_expired)
     if not self.broadcast then
         error("no ipc to propagate purge, specify opts.ipc_shm or opts.ipc", 2)
-    end
-
-    if not self.lru.flush_all and LRU_INSTANCES[self.name] ~= self.lru then
-        error("cannot purge when using custom LRU cache with " ..
-              "OpenResty < 1.13.6.2", 2)
     end
 
     -- clear shm first
