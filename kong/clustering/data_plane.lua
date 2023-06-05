@@ -271,7 +271,7 @@ function _M:communicate(premature)
           next_data = data
           if config_semaphore:count() <= 0 then
             -- the following line always executes immediately after the `if` check
-            -- because `:count` will never yield, and result is that the semaphore
+            -- because `:count` will never yield, end result is that the semaphore
             -- count is guaranteed to not exceed 1
             config_semaphore:post()
           end
