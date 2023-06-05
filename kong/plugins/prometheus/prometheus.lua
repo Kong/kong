@@ -176,24 +176,29 @@ local function full_metric_name(name, label_names, label_values)
   if not label_names then
     return name
   end
-  local label_parts = {}
+
+  local label_parts = tb_new(#label_names, 0)
+  local label_value
   for idx, key in ipairs(label_names) do
-    local label_value
     if type(label_values[idx]) == "string" then
       local valid, pos = validate_utf8_string(label_values[idx])
       if not valid then
         label_value = string.sub(label_values[idx], 1, pos - 1)
-                        :gsub("\\", "\\\\")
-                        :gsub('"', '\\"')
       else
         label_value = label_values[idx]
-                        :gsub("\\", "\\\\")
-                        :gsub('"', '\\"')
       end
     else
       label_value = tostring(label_values[idx])
     end
-    table.insert(label_parts, key .. '="' .. label_value .. '"')
+    if string.find(label_value, "\\") then
+      label_value = ngx.re.gsub(label_value, "\\", "\\\\", "jo")
+    end
+
+    if string.find(label_value, '"') then
+      label_value = ngx.re.gsub(label_value, '"', '\\"', "jo")
+    end
+
+    label_parts[idx] = table.concat({key, '="', label_value, '"'})
   end
   return name .. "{" .. table.concat(label_parts, ",") .. "}"
 end
