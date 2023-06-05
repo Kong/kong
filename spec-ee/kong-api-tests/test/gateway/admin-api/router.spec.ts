@@ -70,7 +70,7 @@ describe('@smoke: Router Functionality Tests', function () {
 
   before(async function () {
     const serviceReq = await createGatewayService(serviceName, {
-      url: 'http://httpbin:8000/anything',
+      url: 'http://httpbin/anything',
     });
     serviceDetails = {
       id: serviceReq.id,

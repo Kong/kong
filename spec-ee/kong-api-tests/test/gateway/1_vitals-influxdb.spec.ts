@@ -52,7 +52,7 @@ describe('Vitals with InfluxDB Tests', function () {
     await wait(longWait);
 
     const service = await createGatewayService('VitalsService', {
-      url: 'http://httpbin:8000/status',
+      url: 'http://httpbin/status',
     });
     serviceId = service.id;
 
@@ -224,7 +224,7 @@ describe('Vitals with InfluxDB Tests', function () {
 
   it('should see an entry in kong_request for a request with a new route and service', async function () {
     const service = await createGatewayService('VitalsService2', {
-      url: 'http://httpbin:8000/anything',
+      url: 'http://httpbin/anything',
     });
     serviceId2 = service.id;
 

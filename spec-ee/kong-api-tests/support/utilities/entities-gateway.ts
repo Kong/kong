@@ -36,7 +36,7 @@ export const createGatewayService = async (
 
   const requestPayload = payload || {
     name,
-    url: 'http://httpbin:8000/anything',
+    url: 'http://httpbin/anything',
   };
 
   const resp = await axios({
