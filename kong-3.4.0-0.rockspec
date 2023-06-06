@@ -53,7 +53,7 @@ dependencies = {
   "lua-resty-gcp == 0.0.12",
   "lua-resty-aws == 1.2.2",
   "lua-resty-acme == 0.11.0",
-  "lua-resty-session == 4.0.3",
+  "lua-resty-session == 4.0.4",
   "lua-resty-timer-ng == 0.2.5",
   "lpeg == 1.0.2",
 }

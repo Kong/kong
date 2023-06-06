@@ -88,6 +88,8 @@
   [#10841](https://github.com/Kong/kong/pull/10841)
 - Bumped lua-resty-events from 0.1.4 to 0.1.5
   [#10883](https://github.com/Kong/kong/pull/10883)
+- Bumped lua-resty-session from 4.0.3 to 4.0.4
+  [#11011](https://github.com/Kong/kong/pull/11011)
 
 ## 3.3.0
 
