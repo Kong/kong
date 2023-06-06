@@ -176,6 +176,21 @@ config_setting(
     visibility = ["//visibility:public"],
 )
 
+# --//:private_luarocks=false
+# builds from internal luarocks server
+bool_flag(
+    name = "private_luarocks",
+    build_setting_default = True,
+)
+
+config_setting(
+    name = "private_luarocks_flag",
+    flag_values = {
+        ":private_luarocks": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
 ##### constraints, platforms and config_settings for cross-compile
 
 constraint_setting(name = "libc_version")

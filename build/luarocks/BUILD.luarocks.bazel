@@ -11,9 +11,32 @@ filegroup(
     ),
 )
 
-# This rules is used to install luarocks to install rockspecs
-# we need a different rule to install luarocks in release artifact
-# so that we got correct interpreter path etc.
+# This variable contains the path to the underlying SSL library provider
+# `select` (https://bazel.build/reference/be/functions#select) sets it conditionally
+# based on whether the `fips_flag` is set (see its definition in BUILD.bazel);
+#
+libssl_dir_env_vars = select({
+    "@kong//:fips_flag": """
+        OPENSSL_DIR=$$WORKSPACE_PATH/$(BINDIR)/external/boringssl_fips
+    """,
+    "//conditions:default": """
+        OPENSSL_DIR=$$WORKSPACE_PATH/$$(echo '$(locations @openssl)' | awk '{print $$1}')
+    """,
+})
+
+# This variable contains a list of custom flags that need to be set if our
+# private luarocks server is to be used. This was added in the context of NIST SLSA
+# requirements
+private_rocks_url = "https://dummy:%s@raw.githubusercontent.com/Kong/kongrocks/main" % KONG_VAR["GITHUB_TOKEN"]
+
+luarocks_servers_flags = select({
+    "@kong//:private_luarocks_flag": " --only-sources='" + private_rocks_url + "' --only-server='" + private_rocks_url + "' ",
+    "//conditions:default": "",
+})
+
+# This rules is used to bootstrap luarocks to install rocks dependencies
+# A different rule is used to install luarocks in the release artifact
+# so that we got correct interpreter path, lua paths, etc.
 configure_make(
     name = "luarocks_host",
     configure_command = "configure",
@@ -92,11 +115,13 @@ rocks_trees = {
     { name = [[system]], root = [[$$ROCKS_DIR]] }
 }
 local_cache = '$$CACHE_DIR'
+show_downloads = true
 gcc_rpath = false -- disable default rpath, add our own
 variables = {
     CC = '$$CC',
     LD = '$$LD',
     LDFLAGS = '-Wl,-rpath,$$LIB_RPATH',
+    WGET = 'invalid', -- force curl, wget is known to not cope well with the basic auth in use here
 }
 " > $$ROCKS_CONFIG
 
@@ -120,7 +145,7 @@ export EXT_BUILD_ROOT=$$WORKSPACE_PATH # for musl
 # force the interpreter here instead of invoking luarocks directly,
 # some distros has BINPRM_BUF_SIZE smaller than the shebang generated,
 # which is usually more than 160 bytes
-$$host_luajit $$WORKSPACE_PATH/$$LUAROCKS_HOST/bin/luarocks \\$$@ \\
+$$host_luajit $$WORKSPACE_PATH/$$LUAROCKS_HOST/bin/luarocks """ + luarocks_servers_flags + """ \\$$@ \\
     OPENSSL_DIR=$$OPENSSL_DIR \\
     CRYPTO_DIR=$$OPENSSL_DIR \\
     EXPAT_DIR=$$EXPAT_DIR \\
