@@ -192,11 +192,11 @@ local function full_metric_name(name, label_names, label_values)
     else
       label_value = tostring(label_values[idx])
     end
-    if string.find(label_value, "\\") then
+    if string.find(label_value, "\\", 1, true) then
       label_value = ngx_re_gsub(label_value, "\\", "\\\\", "jo")
     end
 
-    if string.find(label_value, '"') then
+    if string.find(label_value, '"', 1, true) then
       label_value = ngx_re_gsub(label_value, '"', '\\"', "jo")
     end
 
