@@ -423,6 +423,11 @@ jobs:
             install_method: 'repository'
           - package_name: 'rhel-8-fips'
             install_method: 'repository'
+          - package_name: 'alpine'
+            install_method: 'repository'
+            # remove when alpine download issue is resolved
+          - package_name: 'alpine'
+            install_method: 'package'
         # exclude internal repositories with known issues
           - package_name: 'rhel-8'
             install_method: 'repository'
