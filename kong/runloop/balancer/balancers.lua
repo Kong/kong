@@ -101,7 +101,6 @@ end
 local function create_balancer_exclusive(upstream)
   local health_threshold = upstream.healthchecks and
     upstream.healthchecks.threshold or nil
-  local err
 
   targets.clean_targets_cache(upstream)
   local targets_list = targets.fetch_targets(upstream)
@@ -140,6 +139,7 @@ local function create_balancer_exclusive(upstream)
     target.balancer = balancer
   end
 
+  local err
   targets_list, err = targets.resolve_targets(targets_list)
   if not targets_list then
     return nil, "failed resolving targets:" .. err
