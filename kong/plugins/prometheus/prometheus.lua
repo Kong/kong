@@ -200,9 +200,9 @@ local function full_metric_name(name, label_names, label_values)
       label_value = ngx_re_gsub(label_value, '"', '\\"', "jo")
     end
 
-    label_parts[idx] = table.concat({key, '="', label_value, '"'})
+    label_parts[idx] = string.format('%s="%s"', key, label_value)
   end
-  return name .. "{" .. table.concat(label_parts, ",") .. "}"
+  return string.format('%s{%s}', name, table.concat(label_parts, ","))
 end
 
 -- Extract short metric name from the full one.
