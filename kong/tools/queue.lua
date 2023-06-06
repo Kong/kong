@@ -455,4 +455,7 @@ function Queue._exists(name)
 end
 
 
+Queue._CAPACITY_WARNING_THRESHOLD = CAPACITY_WARNING_THRESHOLD
+
+
 return Queue
