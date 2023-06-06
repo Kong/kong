@@ -135,14 +135,14 @@ describe('Gateway Plugins: http-log', function () {
     logResponse(resp);
 
     expect(resp.status, 'Status should be 200').to.equal(200);
-    // wait for logs to be sent to mockbin
-    await wait(1000);
 
-    mockbinLogs = await getMockbinLogs(mockbinBinId);
-    expect(
-      mockbinLogs.log.entries[0].request.method,
-      'Should use POST method to log request data'
-    ).to.eq('POST');
+    await eventually(async () => {
+      mockbinLogs = await getMockbinLogs(mockbinBinId);
+      expect(
+        mockbinLogs.log.entries[0].request.method,
+        'Should use POST method to log request data'
+      ).to.eq('POST');
+    });
   });
 
   it('should send http request random header details to http_endpoint', async function () {

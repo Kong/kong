@@ -11,7 +11,7 @@ on:  # yamllint disable-line rule:truthy
     - '.requirements'
     - '.github/workflows/release.yml'
     - '.github/matrix-*.yml'
-    - 'spec-ee/kong-api-tests'
+    - 'spec-ee/kong-api-tests/**'
   push:
     tags:
     - '**'
