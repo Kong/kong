@@ -77,7 +77,6 @@ function insert_yaml_file_into_nav_file() {
 echo "Generating docs ..."
 
 rm -rf ./autodoc/output
-./autodoc/admin-api/generate.lua
 ./autodoc/cli/generate.lua
 ./autodoc/upgrading/generate.lua
 ./autodoc/pdk/generate.lua
