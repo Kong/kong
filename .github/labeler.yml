@@ -44,9 +44,6 @@ core/logs:
 core/pdk:
 - any: ['kong/pdk/**/*', '!kong/pdk/log.lua']
 
-core/proxy:
-- any: ['kong/runloop/**/*', '!kong/runloop/balancer/*', '!kong/runloop/plugin_servers/*']
-
 core/router:
 - kong/router.lua
 
