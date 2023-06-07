@@ -168,6 +168,14 @@ local function latest_kong_require(module)
     return package.loaded[module]
   end
 
+  -- kong module is too heavy to load, and we need to even go through the whole
+  -- build process to get it, so we just return an empty table and leave the functions
+  -- that uses them not implemented
+  if "latest.kong" == module:sub(1, 11) then
+    package.loaded[module] = {}
+    return package.loaded[module]
+  end
+
   local path = package.searchpath(module, package.path .. ";./?/init.lua")
 
   -- some buildin modules like ffi don't have a path
