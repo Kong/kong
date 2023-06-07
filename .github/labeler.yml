@@ -57,6 +57,9 @@ core/tracing:
 - kong/tracing/**/*
 - kong/pdk/tracing.lua
 
+core/wasm:
+- '**/*wasm*'
+
 chore:
 - .github/**/*
 - .devcontainer/**/*
