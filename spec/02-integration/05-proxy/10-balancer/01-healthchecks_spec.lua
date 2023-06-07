@@ -6,6 +6,9 @@ local utils = require "kong.tools.utils"
 
 local https_server = helpers.https_server
 
+-- we are not testing the ring balancer, but the health check. It's OK
+-- to have some variance in the number of requests each server responds.
+local ACCEPTED_LB_VAR = 0.3
 
 for _, strategy in helpers.each_strategy() do
   local bp
@@ -1158,6 +1161,7 @@ for _, strategy in helpers.each_strategy() do
                 -- server2 will only respond for part of the test,
                 -- then server1 will take over.
                 local server2_oks = math.floor(requests / 4)
+                local server1_oks = requests - server2_oks
                 local server1 = https_server.new(port1, localhost)
                 local server2 = https_server.new(port2, localhost)
                 server1:start()
@@ -1191,10 +1195,10 @@ for _, strategy in helpers.each_strategy() do
                 local count2 = server2:shutdown()
 
                 -- verify
-                assert.are.equal(requests - server2_oks - nfails, count1.ok)
-                assert.are.equal(server2_oks, count2.ok)
+                assert.near(server1_oks, count1.ok, server1_oks * ACCEPTED_LB_VAR)
+                assert.near(server2_oks, count2.ok, server2_oks * ACCEPTED_LB_VAR)
                 assert.are.equal(0, count1.fail)
-                assert.are.equal(nfails, count2.fail)
+                assert.near(nfails, count2.fail, nfails * ACCEPTED_LB_VAR)
 
                 assert.are.equal(requests - nfails, client_oks)
                 assert.are.equal(nfails, client_fails)
@@ -1246,7 +1250,6 @@ for _, strategy in helpers.each_strategy() do
                 local total_requests = req_burst * 2
                 local target2_reqs = req_burst / 2
                 local target1_reqs = total_requests - target2_reqs
-                local accepted_var = 0.3
 
                 -- Go hit them with our test requests
                 local client_oks1, client_fails1 = bu.client_requests(req_burst, api_host)
@@ -1274,8 +1277,8 @@ for _, strategy in helpers.each_strategy() do
                 local count2 = server2:shutdown()
 
                 -- verify
-                assert.near(target1_reqs, count1.ok, target1_reqs * accepted_var)
-                assert.near(target2_reqs, count2.ok, target2_reqs * accepted_var)
+                assert.near(target1_reqs, count1.ok, target1_reqs * ACCEPTED_LB_VAR)
+                assert.near(target2_reqs, count2.ok, target2_reqs * ACCEPTED_LB_VAR)
                 assert.are.equal(0, count1.fail)
                 assert.are.equal(nfails, count2.fail)
 
@@ -1327,6 +1330,7 @@ for _, strategy in helpers.each_strategy() do
                 -- server2 will only respond for part of the test,
                 -- then server1 will take over.
                 local server2_oks = math.floor(requests / 4)
+                local server1_oks = requests - server2_oks
                 local server1 = https_server.new(port1, localhost)
                 local server2 = https_server.new(port2, localhost)
                 server1:start()
@@ -1345,8 +1349,8 @@ for _, strategy in helpers.each_strategy() do
                 local count2 = server2:shutdown()
 
                 -- verify
-                assert.are.equal(requests - server2_oks - nfails, count1.ok)
-                assert.are.equal(server2_oks, count2.ok)
+                assert.near(server1_oks, count1.ok, server1_oks * ACCEPTED_LB_VAR)
+                assert.near(server2_oks, count2.ok, server2_oks * ACCEPTED_LB_VAR)
                 assert.are.equal(0, count1.fail)
                 assert.are.equal(nfails, count2.fail)
 
@@ -1954,7 +1958,6 @@ for _, strategy in helpers.each_strategy() do
                   local total_requests = req_burst * 3
                   local target1_reqs = req_burst * 2
                   local target2_reqs = req_burst
-                  local accepted_var = 0.3
 
                   -- 1. target1 and target2 take requests
                   local oks, fails = bu.client_requests(req_burst, api_host)
@@ -1986,8 +1989,8 @@ for _, strategy in helpers.each_strategy() do
                   -- collect server results; hitcount
                   local results = server1:shutdown()
                   ---- verify
-                  assert.near(target1_reqs, results["target1.test"].ok, target1_reqs * accepted_var)
-                  assert.near(target2_reqs, results["target2.test"].ok, target2_reqs * accepted_var)
+                  assert.near(target1_reqs, results["target1.test"].ok, target1_reqs * ACCEPTED_LB_VAR)
+                  assert.near(target2_reqs, results["target2.test"].ok, target2_reqs * ACCEPTED_LB_VAR)
                   assert.are.equal(0, results["target1.test"].fail)
                   assert.are.equal(0, results["target1.test"].fail)
                   assert.are.equal(total_requests, oks)
@@ -2704,7 +2707,6 @@ for _, strategy in helpers.each_strategy() do
         -- Then server1 will take over.
         local server1_oks = bu.SLOTS * 1.5
         local server2_oks = bu.SLOTS / 2
-        local accepted_var = 0.3
         local server1 = helpers.tcp_server(port1, {
           requests = server1_oks,
           prefix = "1 ",
@@ -2723,10 +2725,8 @@ for _, strategy in helpers.each_strategy() do
         server2:join()
 
         -- verify
-        -- we are not testing the ring balancer, but the health check. It's OK
-        -- to have some variance in the number of requests each server responds.
-        assert.near(server1_oks, ok1, server1_oks * accepted_var) 
-        assert.near(server2_oks, ok2, server2_oks * accepted_var) 
+        assert.near(server1_oks, ok1, server1_oks * ACCEPTED_LB_VAR) 
+        assert.near(server2_oks, ok2, server2_oks * ACCEPTED_LB_VAR) 
         assert.are.equal(0, fails)
       end)
 
