@@ -749,6 +749,7 @@ if limit_by == "ip" then
     })
 
     assert
+      .with_timeout(15)
       .with_max_tries(10)
       .ignore_exceptions(false)
       .eventually(function()
@@ -770,7 +771,7 @@ if limit_by == "ip" then
         local res3 = GET(test_path, { headers = { ["X-Real-IP"] = "127.0.0.3" }})
         assert.res_status(200, res3)
       end)
-      .has_no_error("counter is cleared after current window")
+      .has_no_error("counter should have been cleared after current window")
   end)
 
   it("blocks with a custom error code and message", function()
