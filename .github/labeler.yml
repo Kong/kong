@@ -76,6 +76,9 @@ plugins/azure-functions:
 plugins/basic-auth:
 - kong/plugins/basic-auth/**/*
 
+plugins/basic-rate-limiting:
+- kong/plugins/basic-rate-limiting/**/*
+
 plugins/bot-detection:
 - kong/plugins/bot-detection/**/*
 
