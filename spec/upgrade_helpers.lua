@@ -164,13 +164,11 @@ local function latest_kong_require(module)
     module = "latest." .. module
   end
 
-  print("loading module: " .. module)
-
   if package.loaded[module] then
     return package.loaded[module]
   end
 
-  local path = package.searchpath(module, package.path)
+  local path = package.searchpath(module, package.path .. ";./?/init.lua")
 
   -- some buildin modules like ffi don't have a path
   if not path then
@@ -181,7 +179,7 @@ local function latest_kong_require(module)
   -- recursively load with lastest code
   setfenv(module_code, latest_kong_require_meta)
 
-  package.loaded[module] = module_code()
+  package.loaded[module] = assert(module_code())
   
   return package.loaded[module]
 end

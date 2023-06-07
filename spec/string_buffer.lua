@@ -104,3 +104,5 @@ function _M:get(...)
 end
 
 _M.free = _M.reset
+
+return _M
