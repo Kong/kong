@@ -157,8 +157,17 @@ local latest_kong_require_meta
 
 -- This is a hack to make the latest kong module and helper functions available to the test suite
 local function latest_kong_require(module)
-  if "kong." == module:sub(1, 5) or "spec." == module:sub(1, 5) then
+  -- backport of `string.buffer` module of LuaJIT
+  if module == "string.buffer" then
+    module = "latest.spec.string_buffer"
+  elseif "kong." == module:sub(1, 5) or "spec." == module:sub(1, 5) then
     module = "latest." .. module
+  end
+
+  print("loading module: " .. module)
+
+  if package.loaded[module] then
+    return package.loaded[module]
   end
 
   local path = package.searchpath(module, package.path)
@@ -171,7 +180,10 @@ local function latest_kong_require(module)
   local module_code = assert(loadfile(path))
   -- recursively load with lastest code
   setfenv(module_code, latest_kong_require_meta)
-  return module_code()
+
+  package.loaded[module] = module_code()
+  
+  return package.loaded[module]
 end
 
 latest_kong_require_meta = { require = latest_kong_require, __index = _G }
