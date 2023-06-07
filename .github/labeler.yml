@@ -59,6 +59,7 @@ core/tracing:
 
 core/wasm:
 - '**/*wasm*'
+- kong/runloop/wasm.lua
 
 chore:
 - .github/**/*
