@@ -1,5 +1,6 @@
 local kong = kong
 local ngx = ngx
+local get_phase = ngx.get_phase
 local lower = string.lower
 local concat = table.concat
 local ngx_timer_pending_count = ngx.timer.pending_count
@@ -413,6 +414,8 @@ local function metric_data(write_fn)
     end
   end
 
+  local phase = get_phase()
+
   -- only export upstream health metrics in traditional mode and data plane
   if role ~= "control_plane" and should_export_upstream_health_metrics then
     -- erase all target/upstream metrics, prevent exposing old metrics
@@ -424,7 +427,7 @@ local function metric_data(write_fn)
       -- long loop maybe spike proxy request latency, so we 
       -- need yield to avoid blocking other requests
       -- kong.tools.utils.yield(true)
-      yield(true)
+      yield(true, phase)
       local _, upstream_name = key:match("^([^:]*):(.-)$")
       upstream_name = upstream_name and upstream_name or key
       -- based on logic from kong.db.dao.targets
