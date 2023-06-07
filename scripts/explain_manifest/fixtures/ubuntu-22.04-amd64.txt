@@ -59,6 +59,16 @@
   - libc.so.6
   Runpath   : /usr/local/kong/lib
 
+- Path      : /usr/local/kong/lib/libwasmer.so
+  Needed    :
+  - libgcc_s.so.1
+  - librt.so.1
+  - libpthread.so.0
+  - libm.so.6
+  - libdl.so.2
+  - libc.so.6
+  - ld-linux-x86-64.so.2
+
 - Path      : /usr/local/lib/lua/5.1/lfs.so
   Needed    :
   - libc.so.6
