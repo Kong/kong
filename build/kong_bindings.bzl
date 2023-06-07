@@ -61,6 +61,10 @@ def _load_vars(ctx):
 
     content += '"OPENRESTY_PATCHES": [%s],' % (", ".join(patches))
 
+    ngx_wasm_module_remote = ctx.os.environ.get("NGX_WASM_MODULE_REMOTE")
+    if ngx_wasm_module_remote:
+        content += '"NGX_WASM_MODULE_REMOTE": "%s",' % ngx_wasm_module_remote
+
     # wasm runtime options
     if ctx.os.name == "mac os x":
         content += '"V8_OS": "darwin",'
