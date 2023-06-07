@@ -623,6 +623,14 @@ local CONF_SENSITIVE = {
   pg_password = true,
   pg_ro_password = true,
   proxy_server = true, -- hide proxy server URL as it may contain credentials
+  declarative_config_string = true, -- config may contain sensitive info
+  -- may contain absolute or base64 value of the the key
+  cluster_cert_key = true,
+  ssl_cert_key = true,
+  client_ssl_cert_key = true,
+  admin_ssl_cert_key = true,
+  status_ssl_cert_key = true,
+  debug_ssl_cert_key = true,
 }
 
 ee_conf_loader.add(CONF_SENSITIVE, ee_conf_loader.EE_CONF_SENSITIVE)

@@ -208,12 +208,19 @@ local EE_CONF_INFERENCES = {
 
 
 local EE_CONF_SENSITIVE = {
+  admin_gui_ssl_cert_key = true,
   smtp_password = true,
   admin_gui_auth_header = true,
   admin_gui_auth_conf = true,
   admin_gui_session_conf = true,
+  portal_gui_ssl_cert_key = true,
+  portal_api_ssl_cert_key = true,
   portal_auth_conf = true,
   portal_session_conf = true,
+  vitals_tsdb_password = true,
+  keyring_private_key = true,
+  keyring_recovery_public_key = true,
+  vault_hcv_token = true,
 }
 
 
