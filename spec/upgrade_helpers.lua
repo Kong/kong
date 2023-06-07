@@ -1,3 +1,5 @@
+setmetatable(_G, nil)
+
 local say = require "say"
 local assert = require "luassert"
 
@@ -151,6 +153,32 @@ local function all_phases(phrase, f)
   return it_when("all_phases", phrase, f)
 end
 
+local latest_kong_require_meta
+
+-- This is a hack to make the latest kong module and helper functions available to the test suite
+local function latest_kong_require(module)
+  if "kong." == module:sub(1, 5) or "spec." == module:sub(1, 5) then
+    module = "latest." .. module
+  end
+
+  local path = package.searchpath(module, package.path)
+
+  -- some buildin modules like ffi don't have a path
+  if not path then
+    return require(module)
+  end
+
+  local module_code = assert(loadfile(path))
+  -- recursively load with lastest code
+  setfenv(module_code, latest_kong_require_meta)
+  return module_code()
+end
+
+latest_kong_require_meta = { require = latest_kong_require, __index = _G }
+setmetatable(latest_kong_require_meta, latest_kong_require_meta)
+
+local latest_helpers = latest_kong_require "spec.helpers"
+
 return {
   database_type = database_type,
   get_database = get_database,
@@ -164,5 +192,7 @@ return {
   old_after_up = old_after_up,
   new_after_up = new_after_up,
   new_after_finish = new_after_finish,
-  all_phases = all_phases
+  all_phases = all_phases,
+  latest_kong_require = latest_kong_require,
+  latest_helpers = latest_helpers,
 }

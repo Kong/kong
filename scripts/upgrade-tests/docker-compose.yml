@@ -17,6 +17,7 @@ services:
       KONG_TEST_PG_HOST: db_postgres
     volumes:
       - ../../worktree/${OLD_KONG_VERSION}:/kong
+      - ../..:/upgrade-test/lastest
     restart: on-failure
     networks:
       upgrade_tests:

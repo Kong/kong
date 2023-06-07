@@ -3,57 +3,10 @@ local cjson = require "cjson"
 local tablex = require "pl.tablex"
 
 local uh = require "spec/upgrade_helpers"
+local new_helpers = uh.last_helpers
+local http_server = new_helpers.http_server
 
-local HTTP_PORT = 29100
-
--- Copied from 3.x helpers.lua
-
-local function http_server(port, opts)
-  local threads = require "llthreads2.ex"
-  opts = opts or {}
-  local thread = threads.new(
-    {
-      function(port, opts)
-        local socket = require "socket"
-        local server = assert(socket.tcp())
-        server:settimeout(opts.timeout or 60)
-        assert(server:setoption('reuseaddr', true))
-        assert(server:bind("*", port))
-        assert(server:listen())
-        local client = assert(server:accept())
-
-        local lines = {}
-        local line, err
-        repeat
-          line, err = client:receive("*l")
-          if err then
-            break
-          else
-            table.insert(lines, line)
-          end
-        until line == ""
-
-        if #lines > 0 and lines[1] == "GET /delay HTTP/1.0" then
-          ngx.sleep(2)
-        end
-
-        if err then
-          server:close()
-          error(err)
-        end
-
-        local body, _ = client:receive("*a")
-
-        client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
-        client:close()
-        server:close()
-
-        return lines, body
-      end
-    },
-    port, opts)
-  return thread:start()
-end
+local HTTP_PORT = new_helpers.get_available_port()
 
 describe("http-log plugin migration", function()
 
