@@ -546,11 +546,11 @@ local CONF_PARSERS = {
   proxy_server_ssl_verify = { typ = "boolean" },
 
   wasm = { typ = "boolean" },
-  wasm_filters_path = { typ = "string" },
-  wasm_compiler = { 
+  wasm_compiler = {
     typ = "string",
     directives = { "nginx_wasm_compiler" },
   },
+  wasm_filters_path = { typ = "string" },
   wasm_shm_kv = {
     typ = "string",
     directives = {
