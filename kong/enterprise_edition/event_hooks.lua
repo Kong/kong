@@ -10,6 +10,8 @@ local tx = require "pl/tablex"
 local to_hex = require "resty.string".to_hex
 
 local Queue = require "kong.tools.queue"
+local queue_schema_definition = require "kong.tools.queue_schema"
+local Schema = require "kong.db.schema"
 local sandbox = require "kong.tools.sandbox"
 local request = require "kong.enterprise_edition.utils".request
 local normalize_table = require "kong.enterprise_edition.utils".normalize_table
@@ -21,6 +23,20 @@ local ngx_null = ngx.null
 local md5 = ngx.md5
 local hmac_sha1 = ngx.hmac_sha1
 local timer_at = ngx.timer.at
+
+local QUEUE_OPTS = {
+  max_batch_size = 1,
+  max_coalescing_delay = 0,
+  max_entries = 10000,
+}
+
+-- Make sure that our queue options are valid according to the common queue schema (KAG-1760)
+local queue_schema = assert(Schema.new(queue_schema_definition))
+QUEUE_OPTS = queue_schema:process_auto_fields(QUEUE_OPTS)
+local ok, err = queue_schema:validate(QUEUE_OPTS)
+assert(ok, "Invalid QUEUE_OPTS: " .. require("inspect")(err))
+QUEUE_OPTS.name = "event-hooks"
+QUEUE_OPTS.max_bytes = nil
 
 -- XXX Somehow initializing this fails when kong runs on stream only. Something
 -- missing on ngx.location
@@ -99,7 +115,7 @@ _M.ping = function(entity, operation)
   local handler = _M.handlers[entity.handler](entity, entity.config)
 
   if not handler.ping then
-    return false, nil, fmt("handler '%s' does not support 'ping'", entity.handler)
+    return nil, fmt("handler '%s' does not support 'ping'", entity.handler)
   end
 
   return handler.ping(operation)
@@ -179,35 +195,25 @@ _M.digest = function(data, opts)
 end
 
 
-local process_callback = function(batch)
+local process_callback = function(config, batch)
   local entry = batch[1]
   -- not so easy to parse:
   -- pok: pcall ok
-  -- cok_or_perr: callback ok or pcall err
-  -- cres: callback res
+  -- cres_or_perr: pcall err or callback result
   -- cerr: callback err
-  -- XXX there's probably some fancy unpack that's possible
-  local pok, cok_or_perr, cres, cerr = pcall(entry.callback, unpack(entry.args))
+  local pok, cres_or_perr, cerr = pcall(entry.callback, unpack(entry.args))
 
   if not pok then
-    kong.log.err(cok_or_perr)
+    kong.log.err(cres_or_perr)
     -- not ok, no result, pcall error
-    return false, nil, cok_or_perr
+    return nil, cres_or_perr
   end
 
-  -- callback ok?, callback result, callback error
-  return cok_or_perr, cres, cerr
+  return cres_or_perr, cerr
 end
 
 _M.enqueue = function(entry)
-  local queue_opts = {
-    name = "event-hooks",
-    batch_max_size = 1,
-    process_delay = 0,
-    max_queued_batches = 10000,
-  }
-
-  Queue.enqueue(queue_opts, process_callback, nil, entry)
+  Queue.enqueue(QUEUE_OPTS, process_callback, nil, entry)
 end
 
 _M.callback = function(entity)
@@ -414,7 +420,7 @@ _M.handlers = {
           }
         end
 
-        return false, nil, err
+        return nil, err
       end,
 
       ping = function(operation)
@@ -452,7 +458,7 @@ _M.handlers = {
           }
         end
 
-        return false, nil, err
+        return nil, err
       end,
     }
   end,
@@ -520,7 +526,7 @@ _M.handlers = {
           }
         end
 
-        return false, nil, err
+        return nil, err
       end,
     }
   end,
@@ -564,7 +570,11 @@ _M.handlers = {
           end
         end
 
-        return not err, data, err
+        if err then
+          return nil, err
+        else
+          return data
+        end
       end,
     }
   end,

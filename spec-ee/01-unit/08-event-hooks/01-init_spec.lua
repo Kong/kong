@@ -622,21 +622,19 @@ describe("event-hooks", function()
           args = { { some = "data" }, "some_event", "some_source", 1234 },
         }
 
-        local ok, res, err = event_hooks.process_callback({ blob })
-        assert.is_false(ok)
+        local ok, err = event_hooks.process_callback(nil, { blob })
+        assert.is_nil(ok)
         assert.matches("something bad", err)
-        assert.is_nil(res)
       end)
 
-      it("returns true on correct execution", function()
+      it("returns non-nil on correct execution", function()
         local blob = {
           callback = function(data, event, source, pid)
-            return true, "hello world"
+            return "hello world"
           end,
           args = { { some = "data" }, "some_event", "some_source", 1234 },
         }
-        local ok, res, err = event_hooks.process_callback({ blob })
-        assert.is_true(ok)
+        local res, err = event_hooks.process_callback(nil, { blob })
         assert.equal("hello world", res)
         assert.is_nil(err)
       end)
@@ -648,12 +646,11 @@ describe("event-hooks", function()
         local pid = 1234
         local blob = {
           callback = function(data, event, source, pid)
-            return true, { data, event, source, pid }
+            return { data, event, source, pid }
           end,
           args = { data, event, source, pid },
         }
-        local ok, res, _ = event_hooks.process_callback({ blob })
-        assert.is_true(ok)
+        local res, _ = event_hooks.process_callback(nil, { blob })
         assert.same({ data, event, source, pid }, res)
       end)
     end)
@@ -708,8 +705,7 @@ describe("event-hooks", function()
             ]],
           }
           local cb = handler(entity, entity.config).callback
-          local ok, res = cb({ some = "data"}, "some_event", "some_source", 1234)
-          assert.is_true(ok)
+          local res = cb({ some = "data"}, "some_event", "some_source", 1234)
           assert.equal("HELLO WORLD", res)
         end)
 
@@ -727,8 +723,8 @@ describe("event-hooks", function()
             ]],
           }
           local cb = handler(entity, entity.config).callback
-          local ok, _, err = cb({ some = "data"}, "some_event", "some_source", 1234)
-          assert.is_false(ok)
+          local ok, err = cb({ some = "data"}, "some_event", "some_source", 1234)
+          assert(not ok)
           assert.equal("some bad error", err)
         end)
 
@@ -746,8 +742,8 @@ describe("event-hooks", function()
             ]],
           }
           local cb = handler(entity, entity.config).callback
-          local ok, _, err = cb({ some = "data"}, "some_event", "some_source", 1234)
-          assert.is_false(ok)
+          local ok, err = cb({ some = "data"}, "some_event", "some_source", 1234)
+          assert(not ok)
           assert.match("'=' expected near 'finction'", err)
         end)
 
@@ -1155,7 +1151,7 @@ describe("event-hooks", function()
       stub(event_hooks.handlers, handler).returns({
         callback = function() end,
       })
-      local _, _, err = event_hooks.ping(entity, op)
+      local _, err = event_hooks.ping(entity, op)
       assert.equal("handler 'some_handler' does not support 'ping'", err)
     end)
   end)

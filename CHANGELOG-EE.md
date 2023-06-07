@@ -21,6 +21,8 @@
 * Fix the bug that will cause the telemetry websocket to be broken when there is a bad latency in flushing vitals to database by decoupling the process of receving vitals data from DP and the process of flushing vitals to database in the side of CP with a queue as a buffer. [FTI-4386](https://konghq.atlassian.net/browse/FTI-4386)
 * Fix the bug of getting empty request_id when generating auditting data. [FTI-2438](https://konghq.atlassian.net/browse/FTI-2438)
 * Fix a bug that would cause an error when the header x-datadog-parent-id is not passed to Kong. [KAG-1642](https://konghq.atlassian.net/browse/KAG-1642)
+* Fix a queueing related bug that caused the event-hooks feature to
+  not work in release 3.3.0.0 [KAG-1760](https://konghq.atlassian.net/browse/KAG-1760)
 
 ## Plugins
 
