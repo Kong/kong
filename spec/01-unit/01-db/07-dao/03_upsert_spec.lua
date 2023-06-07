@@ -3,6 +3,7 @@ local helpers = require ("spec.helpers")
 describe("dao upsert: ", function()
   local db
   lazy_setup(function()
+    local _
     _, db = helpers.get_db_utils("postgres", {
       "services"
     })
