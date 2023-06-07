@@ -18,6 +18,7 @@ local sha256 = utils.sha256_bin
 
 local VERSION_KEY = "wasm_filter_chains:version"
 local TTL_ZERO = { ttl = 0 }
+local ATTACH_OPTS = {}
 
 
 ---
@@ -525,6 +526,8 @@ function _M.init(kong_config)
 
   proxy_wasm = require "resty.http.proxy_wasm"
   ENABLED = true
+
+  ATTACH_OPTS.isolation = proxy_wasm.isolations.FILTER
 end
 
 
@@ -566,7 +569,7 @@ function _M.attach(ctx)
     return
   end
 
-  local ok, err = proxy_wasm.attach(chain.c_plan)
+  local ok, err = proxy_wasm.attach(chain.c_plan, ATTACH_OPTS)
   if not ok then
     log(ERR, "failed attaching ", chain.label, " filter chain to request: ", err)
     error(err)

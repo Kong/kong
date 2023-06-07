@@ -18,6 +18,28 @@ jobs:
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
+    - name: Set ngx_wasm_module path/branch vars
+      run: |
+        grep ^NGX_WASM_MODULE_BRANCH= .requirements >> $GITHUB_ENV || {
+          echo "ERROR: NGX_WASM_MODULE_BRANCH is not defined in .requirements"
+          exit 1
+        }
+        echo "NGX_WASM_MODULE_REMOTE=$PWD/ngx_wasm_module" >> $GITHUB_ENV
+
+    - name: Checkout ngx_wasm_module
+      uses: actions/checkout@v3
+      with:
+        repository: Kong/ngx_wasm_module
+        path: ${{ env.NGX_WASM_MODULE_REMOTE }}
+        ref: ${{ env.NGX_WASM_MODULE_BRANCH }}
+        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+
+    # these aren't necessarily used by all tests, but building them here will
+    # ensures that we have a warm cache when other tests _do_ need to build the
+    # filters
+    - name: Build WASM Test Filters
+      uses: ./.github/actions/build-wasm-test-filters
+
     - name: Lookup build cache
       id: cache-deps
       uses: actions/cache@v3
@@ -36,12 +58,25 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       run: |
         make build-kong
-        BUILD_PREFIX=$BUILD_ROOT/kong-dev
-        export PATH="$BUILD_PREFIX/bin:$BUILD_PREFIX/openresty/nginx/sbin:$BUILD_PREFIX/openresty/bin:$PATH"
-        chmod +rw -R $BUILD_PREFIX
-        nginx -V
+        chmod +rw -R "$BUILD_ROOT/kong-dev"
+
+    - name: Update PATH
+      run: |
+        echo "$BUILD_ROOT/kong-dev/bin" >> $GITHUB_PATH
+        echo "$BUILD_ROOT/kong-dev/openresty/nginx/sbin" >> $GITHUB_PATH
+        echo "$BUILD_ROOT/kong-dev/openresty/bin" >> $GITHUB_PATH
+
+    - name: Debug (nginx)
+      run: |
+        echo nginx: $(which nginx)
+        nginx -V 2>&1 | sed -re 's/ --/\n--/g'
         ldd $(which nginx)
-        luarocks
+
+    - name: Debug (luarocks)
+      run: |
+        echo luarocks: $(which luarocks)
+        luarocks --version
+        luarocks config
 
     - name: Bazel Outputs
       uses: actions/upload-artifact@v3
@@ -51,11 +86,6 @@ jobs:
         path: |
           bazel-out/_tmp/actions
         retention-days: 3
-
-    - name: Build WASM Test Filters
-      uses: ./.github/actions/build-wasm-test-filters
-      with:
-        fixture-path: ./spec/fixtures/proxy_wasm_filters
 
     - name: Build Dev Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'

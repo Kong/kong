@@ -37,6 +37,7 @@ jobs:
     uses: ./.github/workflows/build.yml
     with:
       relative-build-root: bazel-bin/build
+    secrets: inherit
 
   lint-doc-and-unit-tests:
     name: Lint, Doc and Unit tests
@@ -167,6 +168,9 @@ jobs:
 
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
+    - name: Build WASM Test Filters
+      uses: ./.github/actions/build-wasm-test-filters
+
     - name: Add gRPC test host names
       run: |
           echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
@@ -201,6 +205,24 @@ jobs:
           curl -L -s -o /tmp/aws-sam-cli.zip https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip
           unzip -o /tmp/aws-sam-cli.zip -d /tmp/aws-sam-cli
           sudo /tmp/aws-sam-cli/install --update
+
+    - name: Update PATH
+      run: |
+        echo "$BUILD_ROOT/kong-dev/bin" >> $GITHUB_PATH
+        echo "$BUILD_ROOT/kong-dev/openresty/nginx/sbin" >> $GITHUB_PATH
+        echo "$BUILD_ROOT/kong-dev/openresty/bin" >> $GITHUB_PATH
+
+    - name: Debug (nginx)
+      run: |
+        echo nginx: $(which nginx)
+        nginx -V 2>&1 | sed -re 's/ --/\n--/g'
+        ldd $(which nginx)
+
+    - name: Debug (luarocks)
+      run: |
+        echo luarocks: $(which luarocks)
+        luarocks --version
+        luarocks config
 
     - name: Tests
       env:
@@ -250,6 +272,9 @@ jobs:
           ${{ env.BUILD_ROOT }}
 
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+
+    - name: Build WASM Test Filters
+      uses: ./.github/actions/build-wasm-test-filters
 
     - name: Add gRPC test host names
       run: |
