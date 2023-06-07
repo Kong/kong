@@ -251,6 +251,7 @@ build = {
     ["kong.db.migrations.core.018_310_to_320"] = "kong/db/migrations/core/018_310_to_320.lua",
     ["kong.db.migrations.core.019_320_to_330"] = "kong/db/migrations/core/019_320_to_330.lua",
     ["kong.db.migrations.core.020_330_to_340"] = "kong/db/migrations/core/020_330_to_340.lua",
+    ["kong.db.migrations.core.020_330_to_340_wasm"] = "kong/db/migrations/core/020_330_to_340_wasm.lua",
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",
     ["kong.db.migrations.operations.280_to_300"] = "kong/db/migrations/operations/280_to_300.lua",
