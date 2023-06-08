@@ -48,7 +48,6 @@ build = {
     ["kong.meta"] = "kong/meta.lua",
     ["kong.cache"] = "kong/cache/init.lua",
     ["kong.cache.warmup"] = "kong/cache/warmup.lua",
-    ["kong.cache.marshall"] = "kong/cache/marshall.lua",
     ["kong.global"] = "kong/global.lua",
     ["kong.router"] = "kong/router/init.lua",
     ["kong.router.traditional"] = "kong/router/traditional.lua",
