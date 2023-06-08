@@ -292,6 +292,8 @@ if ngx.config.ngx_lua_version >= 10011 then
     if lmdb_metrics_last_sent + LMDB_METRICS_SEND_THRESHOLD < now then
       lmdb_metrics_last_sent = now
       local lmdb_info, err = lmdb_get_env_info()
+      local lmdb_used_size = lmdb_info.lmdb.used_pages * lmdb_info.lmdb.page_size
+      local lmdb_capacity = lmdb_info.lmdb.map_size
       if err then
         kong.log.err("failed to get lmdb info: ", err)
         return
@@ -301,20 +303,20 @@ if ngx.config.ngx_lua_version >= 10011 then
           ["node"] = hostname,
         }
         logger:send_statsd("lmdb.used_space",
-          lmdb_info.last_used_page * lmdb_info.page_size, logger.stat_types.gauge,
+          lmdb_used_size, logger.stat_types.gauge,
           metric_config.sample_rate, tags, conf.tag_style)
         logger:send_statsd("lmdb.capacity",
-          lmdb_info.map_size, logger.stat_types.gauge,
+          lmdb_capacity, logger.stat_types.gauge,
           metric_config.sample_rate, tags, conf.tag_style)
 
       else
         local lmdb_used_space_metric_name = conf.hostname_in_prefix and "lmdb.used_space" or string_format("node.%s.lmdb.used_space", hostname)
         local lmdb_capacity_metric_name = conf.hostname_in_prefix and "lmdb.capacity" or string_format("node.%s.lmdb.capacity", hostname)
         logger:send_statsd(lmdb_used_space_metric_name,
-            lmdb_info.last_used_page * lmdb_info.page_size, logger.stat_types.gauge,
+            lmdb_used_size, logger.stat_types.gauge,
             metric_config.sample_rate)
         logger:send_statsd(lmdb_capacity_metric_name,
-            lmdb_info.last_used_page * lmdb_info.page_size, logger.stat_types.gauge,
+            lmdb_capacity, logger.stat_types.gauge,
             metric_config.sample_rate)
       end
     end
