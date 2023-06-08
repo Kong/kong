@@ -46,6 +46,10 @@
   instead of on-demand in the request path. This is most evident in decreased
   response latency when updating configuration via the `/config` API endpoint.
   [#10932](https://github.com/Kong/kong/pull/10932)
+- The Prometheus plugin has been optimized to address latency issues in scraping metrics
+  spikes for the proxy. This has been achieved through the use of `yield` in the long loop
+  iteration of upstream health.
+  [#10949](https://github.com/Kong/kong/pull/10949)
 
 ### Fixes
 
