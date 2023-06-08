@@ -482,7 +482,7 @@ for _, strategy in helpers.each_strategy() do
           end
         end
 
-        local thread = helpers.udp_server(UDP_PORT, metrics_count, 5)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -919,7 +919,7 @@ for _, strategy in helpers.each_strategy() do
         metrics_count = metrics_count + shdict_count * 2
         -- should have no vitals metrics
 
-        local thread = helpers.udp_server(UDP_PORT, metrics_count, 5)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
