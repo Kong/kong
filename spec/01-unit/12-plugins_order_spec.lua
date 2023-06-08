@@ -68,6 +68,7 @@ describe("Plugins", function()
       "ip-restriction",
       "request-size-limiting",
       "acl",
+      "basic-rate-limiting",
       "rate-limiting",
       "response-ratelimiting",
       "request-transformer",
