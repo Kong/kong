@@ -129,7 +129,7 @@ jobs:
       fail-fast: false
       matrix:
         suite: [integration, plugins]
-        split: [first (01-04), second (>= 05)]
+        split: [first batch , second batch, third batch ]
 
     services:
       postgres:
@@ -229,6 +229,11 @@ jobs:
     runs-on: ubuntu-22.04
     needs: build
 
+    strategy:
+      fail-fast: false
+      matrix:
+        split: [first batch , second batch, third batch ]
+
     services:
       grpcbin:
         image: moul/grpcbin
@@ -277,6 +282,7 @@ jobs:
         KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
         KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
         TEST_SUITE: dbless
+        TEST_SPLIT: ${{ matrix.split }}
       run: |
           make dev # required to install other dependencies like bin/grpcurl
           source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
