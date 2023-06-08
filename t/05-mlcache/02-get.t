@@ -2383,61 +2383,79 @@ is stale: true
 --- config
     location = /t {
         content_by_lua_block {
-            local forced_now = ngx.now()
-            ngx.now = function()
-                return forced_now
-            end
-
             local mlcache = require "kong.resty.mlcache"
-
             local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
                 ttl = 0.2,
             }))
+
+            local lru = cache.lru
 
             local function cb(v)
                 return v or 42
             end
 
-            local data, err = cache:get("key", nil, cb)
-            assert(data == 42, err or "invalid data value: " .. data)
-
-            -- drop L1 cache value
-            cache.lru:delete("key")
-
-            -- advance 0.2 second in the future, and simulate another :get()
-            -- call; the L2 shm entry will still be alive (as its clock is
-            -- not faked), but mlcache will compute a remaining_ttl of 0;
-            -- In such cases, we should _not_ cache the value indefinitely in
-            -- the L1 LRU cache.
-            forced_now = forced_now + 0.2
-
             local data, err, hit_lvl = cache:get("key", nil, cb)
             assert(data == 42, err or "invalid data value: " .. data)
-
-            ngx.say("+0.200s hit_lvl: ", hit_lvl)
-
-            -- the value is not cached in LRU (too short ttl anyway)
+            ngx.say("hit_lvl: ", hit_lvl)
 
             data, err, hit_lvl = cache:get("key", nil, cb)
             assert(data == 42, err or "invalid data value: " .. data)
+            ngx.say("hit_lvl: ", hit_lvl)
 
-            ngx.say("+0.200s hit_lvl: ", hit_lvl)
+            lru:delete("key")
 
-            -- make it expire in shm (real wait)
+            data, err, hit_lvl = cache:get("key", nil, cb)
+            assert(data == 42, err or "invalid data value: " .. data)
+            ngx.say("hit_lvl: ", hit_lvl)
+
+            data, err, hit_lvl = cache:get("key", nil, cb)
+            assert(data == 42, err or "invalid data value: " .. data)
+            ngx.say("hit_lvl: ", hit_lvl)
+
+            ngx.sleep(0.2)
+
+            data, err, hit_lvl = cache:get("key", nil, cb)
+            assert(data == 42, err or "invalid data value: " .. data)
+            ngx.say("hit_lvl: ", hit_lvl)
+
+            ngx.update_time()
+            local start = ngx.now() * 1000
+            while true do
+                lru:delete("key")
+                data, err, hit_lvl = cache:get("key", nil, cb)
+                if hit_lvl == 3 then
+                    assert(data == 42, err or "invalid data value: " .. data)
+                    ngx.say("hit_lvl: ", hit_lvl)
+                    break
+                end
+                ngx.sleep(0)
+            end
+            ngx.update_time()
+            local took = ngx.now() * 1000 - start
+            assert(took > 198 and took < 202)
+
+            data, err, hit_lvl = cache:get("key", nil, cb)
+            assert(data == 42, err or "invalid data value: " .. data)
+            ngx.say("hit_lvl: ", hit_lvl)
+
             ngx.sleep(0.201)
 
             data, err, hit_lvl = cache:get("key", nil, cb, 91)
             assert(data == 91, err or "invalid data value: " .. data)
-
-            ngx.say("+0.201s hit_lvl: ", hit_lvl)
+            ngx.say("hit_lvl: ", hit_lvl)
         }
     }
 --- request
 GET /t
 --- response_body
-+0.200s hit_lvl: 2
-+0.200s hit_lvl: 2
-+0.201s hit_lvl: 3
+hit_lvl: 3
+hit_lvl: 1
+hit_lvl: 2
+hit_lvl: 1
+hit_lvl: 3
+hit_lvl: 3
+hit_lvl: 1
+hit_lvl: 3
 --- no_error_log
 [error]
 
@@ -2474,7 +2492,7 @@ GET /t
 
             -- pos_cb should run again
 
-            data, err = cache:get("pos_key", opts, pos_cb)
+            data, err, hit_level = cache:get("pos_key", opts, pos_cb)
             assert(err == nil, err)
             assert(data == 1)
             assert(hit_level == 3)
@@ -2483,14 +2501,14 @@ GET /t
 
             -- don't cache our value (runs neg_cb)
 
-            data, err = cache:get("neg_key", opts, neg_cb)
+            data, err, hit_level = cache:get("neg_key", opts, neg_cb)
             assert(err == nil, err)
             assert(data == nil)
             assert(hit_level == 3)
 
             -- neg_cb should run again
 
-            data, err = cache:get("neg_key", opts, neg_cb)
+            data, err, hit_level = cache:get("neg_key", opts, neg_cb)
             assert(err == nil, err)
             assert(data == nil)
             assert(hit_level == 3)
@@ -2539,7 +2557,7 @@ in negative callback
 
             -- hit from lru
 
-            local data, err, hit_lvl = cache:get("key")
+            data, err, hit_lvl = cache:get("key")
             ngx.say()
             ngx.say("-> from LRU")
             ngx.say("data: ", data)
@@ -2550,7 +2568,7 @@ in negative callback
 
             cache.lru:delete("key")
 
-            local data, err, hit_lvl = cache:get("key")
+            data, err, hit_lvl = cache:get("key")
             ngx.say()
             ngx.say("-> from shm")
             ngx.say("data: ", data)
@@ -2559,7 +2577,7 @@ in negative callback
 
             -- promoted to lru again
 
-            local data, err, hit_lvl = cache:get("key")
+            data, err, hit_lvl = cache:get("key")
             ngx.say()
             ngx.say("-> promoted to LRU")
             ngx.say("data: ", data)
@@ -2623,7 +2641,7 @@ hit_lvl: 1
 
             -- hit from lru
 
-            local data, err, hit_lvl = cache:get("key")
+            data, err, hit_lvl = cache:get("key")
             ngx.say()
             ngx.say("-> from LRU")
             ngx.say("data: ", data)
@@ -2634,7 +2652,7 @@ hit_lvl: 1
 
             cache.lru:delete("key")
 
-            local data, err, hit_lvl = cache:get("key")
+            data, err, hit_lvl = cache:get("key")
             ngx.say()
             ngx.say("-> from shm")
             ngx.say("data: ", data)
@@ -2643,7 +2661,7 @@ hit_lvl: 1
 
             -- promoted to lru again
 
-            local data, err, hit_lvl = cache:get("key")
+            data, err, hit_lvl = cache:get("key")
             ngx.say()
             ngx.say("-> promoted to LRU")
             ngx.say("data: ", data)
