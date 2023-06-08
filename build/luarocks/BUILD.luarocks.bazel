@@ -37,18 +37,10 @@ configure_make(
     ],
 )
 
-libssl_dir_env_vars = select({
-    "@kong//:fips_flag": """
-        OPENSSL_DIR=$$WORKSPACE_PATH/$(BINDIR)/external/boringssl_fips
-    """,
-    "//conditions:default": """
-        OPENSSL_DIR=$$WORKSPACE_PATH/$$(echo '$(locations @openssl)' | awk '{print $$1}')
-    """,
-})
-
 genrule(
     name = "luarocks_exec",
     srcs = [
+        "@openssl",
         # EE only
         "@libexpat",
         "@libxml2",
@@ -57,13 +49,6 @@ genrule(
         "//conditions:default": [
             ":luarocks_host",
             "@openresty//:luajit",
-        ],
-    }) + select({
-        "@kong//:fips_flag": [
-            "@boringssl_fips//:build",
-        ],
-        "//conditions:default": [
-            "@openssl",
         ],
     }),
     outs = ["luarocks_exec.sh"],
@@ -82,8 +67,7 @@ ROCKS_CONFIG=$$(readlink -f "$$ROCKS_DIR/../luarocks_config.lua")
 
 EXPAT_DIR=$$WORKSPACE_PATH/$$(echo '$(locations @libexpat)' | awk '{print $$1}')
 LIBXML2_DIR=$$WORKSPACE_PATH/$$(echo '$(locations @libxml2)' | awk '{print $$1}')
-""" + libssl_dir_env_vars +
-          """
+OPENSSL_DIR=$$WORKSPACE_PATH/$$(echo '$(locations @openssl)' | awk '{print $$1}')
 
 # we use system libyaml on macos
 if [[ "$$OSTYPE" == "darwin"* ]]; then

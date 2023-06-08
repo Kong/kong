@@ -42,20 +42,6 @@ install_lualib_deps_cmd = "\n".join([
     for dep in lualib_deps
 ])
 
-install_ssl_cmd = select({
-    "@kong//:fips_flag": """
-        BINDIR=$(dirname $OPENRESTY)/../../
-        cp ${BINDIR}/boringssl_fips/crypto/libcrypto.so* ${BUILD_DESTDIR}/kong/lib/.
-        cp ${BINDIR}/boringssl_fips/ssl/libssl.so* ${BUILD_DESTDIR}/kong/lib/.
-        cp -r ${BINDIR}/boringssl_fips/include/openssl ${BUILD_DESTDIR}/kong/include/.
-    """,
-    "//conditions:default": """
-        OPENSSL=${WORKSPACE_PATH}/$(echo $(locations @openssl) | awk '{print $1}')
-        # use tar magic to exclude files and create with correct permission
-        copy_with_filter $OPENSSL ${BUILD_DESTDIR}/kong
-    """,
-})
-
 install_licensing_cmd = select({
     "@kong//:licensing_flag": """
         KONG_LICENSING=${WORKSPACE_PATH}/$(echo $(locations @kong-licensing) | awk '{print $1}')/liblicense_utils.${libext}
@@ -64,9 +50,14 @@ install_licensing_cmd = select({
     "//conditions:default": "\n",
 })
 
-fips_patch_cmd = select({
+install_fips_cmd = select({
     "@kong//:fips_flag": """
         sed -i -e 's/fips = off/fips = on/g' ${BUILD_DESTDIR}/share/lua/5.1/kong/templates/kong_defaults.lua
+
+        OPENSSL_FIPS=${WORKSPACE_PATH}/$(echo $(locations @openssl_fips) | awk '{print $1}')
+        cp $OPENSSL_FIPS/fipsmodule/lib/ossl-modules/fips.${libext} ${BUILD_DESTDIR}/kong/lib/ossl-modules/
+        cp build/ee/openssl_fips/openssl.cnf ${BUILD_DESTDIR}/kong/openssl.cnf
+        cat $OPENSSL_FIPS/fipsmodule/fipsmodule.cnf >> ${BUILD_DESTDIR}/kong/openssl.cnf
     """,
     "//conditions:default": "\n",
 })
@@ -87,6 +78,7 @@ kong_directory_genrule(
         "@luarocks//:luarocks_make",
         "@luarocks//:luarocks_target",
         "@protoc//:all_srcs",
+        "@openssl",
         # EE in-place modifications
         "//build/ee:luarocks_install_ee_plugins",
         "//build/ee:copy_distributions_constants",
@@ -100,11 +92,9 @@ kong_directory_genrule(
         "//conditions:default": [],
     }) + select({
         "@kong//:fips_flag": [
-            "@boringssl_fips//:build",
+            "@openssl_fips",
         ],
-        "//conditions:default": [
-            "@openssl",
-        ],
+        "//conditions:default": [],
     }) + select({
         "@kong//:skip_webui_flags": [],
         "//conditions:default": [
@@ -157,6 +147,10 @@ kong_directory_genrule(
 
         cp -r $(locations @protoc//:all_srcs) ${BUILD_DESTDIR}/kong/.
 
+        OPENSSL=${WORKSPACE_PATH}/$(echo $(locations @openssl) | awk '{print $1}')
+        # use tar magic to exclude files and create with correct permission
+        copy_with_filter $OPENSSL ${BUILD_DESTDIR}/kong
+
         # EE
 
         # files under prefix are symlinks, so we copy the actual files to be consumable by nfpm
@@ -165,8 +159,8 @@ kong_directory_genrule(
 
         cp $(location //build/ee:luarocks_license) ${BUILD_DESTDIR}/kong/manifest.json
 
-    """ + install_ssl_cmd + install_licensing_cmd + install_lib_deps_cmd + install_lualib_deps_cmd +
-          fips_patch_cmd + install_webui_cmd +
+    """ + install_licensing_cmd + install_lib_deps_cmd + install_lualib_deps_cmd +
+          install_fips_cmd + install_webui_cmd +
           """
         mkdir -p ${BUILD_DESTDIR}/etc/kong
         cp kong.conf.default ${BUILD_DESTDIR}/etc/kong/kong.conf.default

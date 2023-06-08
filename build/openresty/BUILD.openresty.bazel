@@ -123,6 +123,8 @@ CONFIGURE_OPTIONS = [
     "--with-cc-opt=\"-I$$EXT_BUILD_DEPS$$/luajit/include\"",
     "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/pcre/lib\"",
     "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/luajit/lib\"",
+    "--with-cc-opt=\"-I$$EXT_BUILD_DEPS$$/openssl/include\"",
+    "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/openssl/lib\"",
     # here let's try not having --disable-new-dtags; --disable-new-dtags creates runpath instead of rpath
     # note runpath can't handle indirect dependency (nginx -> luajit -> dlopen("other")), so each indirect
     # dependency should have its rpath set (luajit, libxslt etc); on the other side, rpath is not
@@ -194,15 +196,6 @@ CONFIGURE_OPTIONS = [
         "--with-cc-opt=\"-DNGX_LUA_USE_ASSERT -DNGX_LUA_ABORT_AT_PANIC\"",
     ],
     "//conditions:default": [],
-}) + select({
-    "@kong//:fips_flag": [
-        "--with-cc-opt=\"-I$$EXT_BUILD_DEPS$$/include\"",
-        "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/lib -Wl,-Bsymbolic-functions -Wl,-z,relro\"",
-    ],
-    "//conditions:default": [
-        "--with-cc-opt=\"-I$$EXT_BUILD_DEPS$$/openssl/include\"",
-        "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/openssl/lib\"",
-    ],
 })
 
 # TODO: set prefix to populate pid_path, conf_path, log_path etc
@@ -243,14 +236,9 @@ configure_make(
     visibility = ["//visibility:public"],
     deps = [
         "@pcre",
+        "@openssl",
         "@openresty//:luajit",
     ] + select({
-        "@kong//:fips_flag": [
-            "@boringssl_fips//:ssl",
-            "@boringssl_fips//:crypto",
-        ],
-        "//conditions:default": ["@openssl//:openssl"],
-    }) + select({
         "@kong//:any-cross": [
             "@cross_deps_zlib//:zlib",
         ],

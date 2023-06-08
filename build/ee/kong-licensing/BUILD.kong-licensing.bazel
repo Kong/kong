@@ -11,22 +11,12 @@ filegroup(
 
 make(
     name = "kong-licensing",
-    args = select({
-        "@kong//:fips_flag": [
-            "LDFLAGS=\"-L$$EXT_BUILD_DEPS/lib -Wl,-rpath,%s/kong/lib\"" % KONG_VAR["INSTALL_DESTDIR"],
-        ],
-        "//conditions:default": [
-            "LDFLAGS=\"-L$$EXT_BUILD_DEPS/openssl/lib -Wl,-rpath,%s/kong/lib\"" % KONG_VAR["INSTALL_DESTDIR"],
-        ],
-    }),
-    env = select({
-        "@kong//:fips_flag": {
-            "CFLAGS": "-I$$EXT_BUILD_DEPS/include",
-        },
-        "//conditions:default": {
-            "CFLAGS": "-I$$EXT_BUILD_DEPS/openssl/include",
-        },
-    }),
+    args = [
+        "LDFLAGS=\"-L$$EXT_BUILD_DEPS/openssl/lib -Wl,-rpath,%s/kong/lib\"" % KONG_VAR["INSTALL_DESTDIR"],
+    ],
+    env = {
+        "CFLAGS": "-I$$EXT_BUILD_DEPS/openssl/include",
+    },
     lib_source = ":all_srcs",
     out_lib_dir = "",
     out_shared_libs = [
@@ -40,11 +30,7 @@ make(
         "liblicense_utils.so -j" + KONG_VAR["NPROC"],
     ],
     visibility = ["//visibility:public"],
-    deps = select({
-        "@kong//:fips_flag": [
-            "@boringssl_fips//:ssl",
-            "@boringssl_fips//:crypto",
-        ],
-        "//conditions:default": ["@openssl//:openssl"],
-    }),
+    deps = [
+        "@openssl",
+    ],
 )
