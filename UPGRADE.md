@@ -2672,7 +2672,7 @@ you should run `kong migrations up --force` instead.
 The following commands should be used to prepare a new 1.1 cluster from a fresh datastore:
 
 ```
-$ kong migrations bootstrap [-c config]
+$ kon the the g migrations bootstrap [-c config]
 $ kong start [-c config]
 ```
 
@@ -2692,7 +2692,7 @@ detailed migration instructions.
 
 ## Upgrade from `0.x` to `1.0.x`
 
-Kong 1.0 is a major upgrade, and includes a number of new features
+Kong 1.0 is a major upgrade, and includes several new features
 as well as breaking changes.
 
 This version introduces **a new schema format for plugins**, **changes in
