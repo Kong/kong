@@ -6,12 +6,13 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local resty_mlcache = require "kong.resty.mlcache"
-local marshall = require "kong.cache.marshall"
+local buffer = require "string.buffer"
 
 -- XXX EE
 local reports = require "kong.reports"
 
 
+local encode  = buffer.encode
 local type    = type
 local pairs   = pairs
 local error   = error
@@ -21,9 +22,13 @@ local shared  = ngx.shared
 local ngx_log = ngx.log
 
 
+
 local ERR     = ngx.ERR
 local NOTICE  = ngx.NOTICE
 local DEBUG   = ngx.DEBUG
+
+
+local NO_TTL_FLAG = resty_mlcache.NO_TTL_FLAG
 
 
 local CHANNEL_NAME = "mlcache"
@@ -91,7 +96,7 @@ function _M.new(opts)
     error("opts.resty_lock_opts must be a table", 2)
   end
 
-  local shm_name      = opts.shm_name
+  local shm_name = opts.shm_name
   if not shared[shm_name] then
     log(ERR, "shared dictionary ", shm_name, " not found")
   end
@@ -196,12 +201,12 @@ end
 
 
 function _M:safe_set(key, value)
-  local marshalled, err = marshall(value, self.ttl, self.neg_ttl)
+  local marshalled, err = encode(value)
   if err then
     return nil, err
   end
 
-  return self.dict:safe_set(self.shm_name .. key, marshalled)
+  return self.dict:safe_set(self.shm_name .. key, marshalled, self.ttl, self.ttl == 0 and NO_TTL_FLAG or 0)
 end
 
 

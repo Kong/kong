@@ -18,9 +18,10 @@ local constants    = require "kong.constants"
 local certificate  = require "kong.runloop.certificate"
 local concurrency  = require "kong.concurrency"
 local lrucache     = require "resty.lrucache"
-local marshall     = require "kong.cache.marshall"
 local ktls         = require "resty.kong.tls"
 local workspaces   = require "kong.workspaces"
+
+
 
 local PluginsIterator = require "kong.runloop.plugins_iterator"
 local log_level       = require "kong.runloop.log_level"
@@ -53,6 +54,7 @@ local subsystem         = ngx.config.subsystem
 local clear_header      = ngx.req.clear_header
 local http_version      = ngx.req.http_version
 local escape            = require("kong.tools.uri").escape
+local encode            = require("string.buffer").encode
 
 
 local is_http_module   = subsystem == "http"
@@ -943,7 +945,7 @@ local function set_init_versions_in_cache()
   local core_cache_shm = ngx.shared["kong_core_db_cache"]
 
   -- ttl = forever is okay as "*:versions" keys are always manually invalidated
-  local marshalled_value = marshall("init", 0, 0)
+  local marshalled_value = encode("init")
 
   -- see kong.cache.safe_set function
   local ok, err = core_cache_shm:safe_set("kong_core_db_cacherouter:version", marshalled_value)

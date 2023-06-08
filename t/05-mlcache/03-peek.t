@@ -151,7 +151,110 @@ ttl: 18
 
 
 
-=== TEST 4: peek() returns a negative ttl when a key expired
+=== TEST 4: peek() returns 0 as ttl when a key never expires in positive cache
+--- http_config eval: $::HttpConfig
+--- config
+    location = /t {
+        content_by_lua_block {
+            local mlcache = require "kong.resty.mlcache"
+
+            local cache = assert(mlcache.new("my_mlcache", "cache_shm"))
+
+            local function cb()
+                return "cat"
+            end
+
+            local val, err = cache:get("my_key", { ttl = 0 }, cb)
+            if err then
+                ngx.log(ngx.ERR, err)
+                return
+            end
+
+            ngx.sleep(1)
+
+            local ttl, _, _, _, no_ttl = assert(cache:peek("my_key"))
+            ngx.say("ttl: ", math.ceil(ttl))
+            ngx.say("no ttl: ", tostring(no_ttl))
+
+            ngx.sleep(1)
+
+            ttl, _, _, _, no_ttl = assert(cache:peek("my_key"))
+            ngx.say("ttl: ", math.ceil(ttl))
+            ngx.say("no ttl: ", tostring(no_ttl))
+        }
+    }
+--- request
+GET /t
+--- response_body
+ttl: 0
+no ttl: true
+ttl: 0
+no ttl: true
+--- no_error_log
+[error]
+
+
+
+=== TEST 5: peek() never returns no_ttl = true when key has positive ttl 0 in positive cache
+--- http_config eval: $::HttpConfig
+--- config
+    location = /t {
+        content_by_lua_block {
+            local mlcache = require "kong.resty.mlcache"
+            local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
+                shm_miss = "cache_shm_miss",
+            }))
+
+            local function cb()
+                return "cat"
+            end
+
+            local val, err = cache:get("my_key", { ttl = 0.2 }, cb)
+            if err then
+                ngx.log(ngx.ERR, err)
+                return
+            end
+
+            local ttl, _, _, _, no_ttl = assert(cache:peek("my_key", true))
+            ngx.say("ttl positive: ", tostring(ttl > 0))
+            ngx.say("no ttl: ", tostring(no_ttl))
+
+            local zero_printed
+
+            while true do
+                ttl, _, _, _, no_ttl = assert(cache:peek("my_key", true))
+                assert(no_ttl == false, "should never return 'no_ttl = true'")
+                if ttl == 0 and not zero_printed then
+                    zero_printed = true
+                    ngx.say("ttl zero: ", tostring(ttl == 0))
+                    ngx.say("no ttl: ", tostring(no_ttl))
+
+                elseif ttl < 0 then
+                    break
+                end
+                ngx.sleep(0)
+            end
+
+            ttl, _, _, _, no_ttl = assert(cache:peek("my_key", true))
+            ngx.say("ttl negative: ", tostring(ttl < 0))
+            ngx.say("no ttl: ", tostring(no_ttl))
+        }
+    }
+--- request
+GET /t
+--- response_body
+ttl positive: true
+no ttl: false
+ttl zero: true
+no ttl: false
+ttl negative: true
+no ttl: false
+--- no_error_log
+[error]
+
+
+
+=== TEST 6: peek() returns 0 as ttl when a key never expires in negative cache
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
@@ -172,26 +275,89 @@ ttl: 18
 
             ngx.sleep(1)
 
-            local ttl = assert(cache:peek("my_key"))
+            local ttl, _, _, _, no_ttl = assert(cache:peek("my_key"))
             ngx.say("ttl: ", math.ceil(ttl))
+            ngx.say("no ttl: ", tostring(no_ttl))
 
             ngx.sleep(1)
 
-            local ttl = assert(cache:peek("my_key"))
+            ttl, _, _, _, no_ttl = assert(cache:peek("my_key"))
             ngx.say("ttl: ", math.ceil(ttl))
+            ngx.say("no ttl: ", tostring(no_ttl))
         }
     }
 --- request
 GET /t
 --- response_body
-ttl: -1
-ttl: -2
+ttl: 0
+no ttl: true
+ttl: 0
+no ttl: true
 --- no_error_log
 [error]
 
 
 
-=== TEST 5: peek() returns remaining ttl if shm_miss is specified
+=== TEST 7: peek() never returns no_ttl = true when key has positive ttl 0 in negative cache
+--- http_config eval: $::HttpConfig
+--- config
+    location = /t {
+        content_by_lua_block {
+            local mlcache = require "kong.resty.mlcache"
+            local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
+                shm_miss = "cache_shm_miss",
+            }))
+
+            local function cb()
+                return nil
+            end
+
+            local val, err = cache:get("my_key", { neg_ttl = 0.2 }, cb)
+            if err then
+                ngx.log(ngx.ERR, err)
+                return
+            end
+
+            local ttl, _, _, _, no_ttl = assert(cache:peek("my_key", true))
+            ngx.say("ttl positive: ", tostring(ttl > 0))
+            ngx.say("no ttl: ", tostring(no_ttl))
+
+            local zero_printed
+
+            while true do
+                ttl, _, _, _, no_ttl = assert(cache:peek("my_key", true))
+                assert(no_ttl == false, "should never return 'no_ttl = true'")
+                if ttl == 0 and not zero_printed then
+                    zero_printed = true
+                    ngx.say("ttl zero: ", tostring(ttl == 0))
+                    ngx.say("no ttl: ", tostring(no_ttl))
+
+                elseif ttl < 0 then
+                    break
+                end
+                ngx.sleep(0)
+            end
+
+            ttl, _, _, _, no_ttl = assert(cache:peek("my_key", true))
+            ngx.say("ttl negative: ", tostring(ttl < 0))
+            ngx.say("no ttl: ", tostring(no_ttl))
+        }
+    }
+--- request
+GET /t
+--- response_body
+ttl positive: true
+no ttl: false
+ttl zero: true
+no ttl: false
+ttl negative: true
+no ttl: false
+--- no_error_log
+[error]
+
+
+
+=== TEST 8: peek() returns remaining ttl if shm_miss is specified
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
@@ -241,7 +407,7 @@ ttl: 18
 
 
 
-=== TEST 6: peek() returns the value if a key has been fetched before
+=== TEST 9: peek() returns the value if a key has been fetched before
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
@@ -301,7 +467,7 @@ ttl: \d* nil_val: nil
 
 
 
-=== TEST 7: peek() returns the value if shm_miss is specified
+=== TEST 10: peek() returns the value if shm_miss is specified
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
@@ -340,7 +506,7 @@ ttl: \d* nil_val: nil
 
 
 
-=== TEST 8: peek() JITs on hit
+=== TEST 11: peek() JITs on hit
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
@@ -372,7 +538,7 @@ qr/\[TRACE\s+\d+ content_by_lua\(nginx\.conf:\d+\):13 loop\]/
 
 
 
-=== TEST 9: peek() JITs on miss
+=== TEST 12: peek() JITs on miss
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
@@ -400,7 +566,7 @@ qr/\[TRACE\s+\d+ content_by_lua\(nginx\.conf:\d+\):6 loop\]/
 
 
 
-=== TEST 10: peek() returns nil if a value expired
+=== TEST 13: peek() returns nil if a value expired
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
@@ -441,7 +607,7 @@ stale: nil
 
 
 
-=== TEST 11: peek() returns nil if a value expired in 'shm_miss'
+=== TEST 14: peek() returns nil if a value expired in 'shm_miss'
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
@@ -488,7 +654,7 @@ stale: nil
 
 
 
-=== TEST 12: peek() accepts stale arg and returns stale values
+=== TEST 15: peek() accepts stale arg and returns stale values
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
@@ -529,7 +695,7 @@ stale: true
 
 
 
-=== TEST 13: peek() accepts stale arg and returns stale values from 'shm_miss'
+=== TEST 16: peek() accepts stale arg and returns stale values from 'shm_miss'
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
@@ -576,7 +742,7 @@ stale: true
 
 
 
-=== TEST 14: peek() does not evict stale items from L2 shm
+=== TEST 17: peek() does not evict stale items from L2 shm
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
@@ -621,7 +787,7 @@ data: 123
 
 
 
-=== TEST 15: peek() does not evict stale negative data from L2 shm_miss
+=== TEST 18: peek() does not evict stale negative data from L2 shm_miss
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
