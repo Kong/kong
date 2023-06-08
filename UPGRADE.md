@@ -3187,7 +3187,7 @@ complete list of changes and new features.
 - The required OpenResty version has been bumped to 1.13.6.2. If you
   are installing Kong from one of our distribution packages, you are not
   affected by this change.
-- Support for PostreSQL 9.4 (deprecated in 0.12.0) is now dropped.
+- Support for PostgreSQL 9.4 (deprecated in 0.12.0) is now dropped.
 - Support for Cassandra 2.1 (deprecated in 0.12.0) is now dropped.
 
 ##### Configuration
@@ -3825,7 +3825,7 @@ database") for more details about this process.
   SSL termination somewhere before your requests hit Kong, and if you have
   configured `https_only` on the API, or if you use a plugin that requires
   HTTPS traffic (e.g. OAuth2).
-- The internal DNS resolver now honours the `search` and `ndots` configuration
+- The internal DNS resolver now honors the `search` and `ndots` configuration
   options of your `resolv.conf` file. Make sure that DNS resolution is still
   consistent in your environment, and consider eventually not using FQDNs
   anymore.
