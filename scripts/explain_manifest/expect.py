@@ -159,7 +159,7 @@ class ExpectChain():
                     return True
                 v = v[self._key_name]
             (ok, err_template) = fn(v)
-            if ok == self._logical_reverse:
+            if (not not ok) == self._logical_reverse:
                 _not = "not"
                 if self._logical_reverse:
                     _not = "actually"
@@ -184,7 +184,7 @@ class ExpectChain():
         return self._compare(attr, lambda a: (a == expect, "'{}' does {NOT} equal to '%s'" % expect))
 
     def _match(self, attr, expect):
-        return self._compare(attr, lambda a: (re.match(expect, a), "'{}' does {NOT} match '%s'" % expect))
+        return self._compare(attr, lambda a: (re.search(expect, a), "'{}' does {NOT} match '%s'" % expect))
 
     def _less_than(self, attr, expect):
         def fn(a):
@@ -227,7 +227,7 @@ class ExpectChain():
             if isinstance(a, list):
                 msg = "'%s' is {NOT} found in the list" % expect
                 for e in a:
-                    if re.match(expect, e):
+                    if re.search(expect, e):
                         return True, msg
                 return False, msg
             else:
@@ -300,7 +300,8 @@ class ExpectChain():
         for f in self._files:
             if not hasattr(f, attr):
                 self._print_error(
-                    "\"%s\" expect \"%s\" attribute to be present, but it's not for %s" % (name, attr, f.relpath))
+                    "\"%s\" expect \"%s\" attribute to be present, but it's absent for %s (a %s)" % (
+                    name, attr, f.relpath, type(f)))
                 return dummy_call
 
         def cls(expect):

@@ -94,10 +94,12 @@ def ee_suites(expect, fips: bool = False):
         .version_requirement.key("libxslt.so.1").is_not().greater_than("LIBXML2_%s" % LIBXML2_VERSION)
 
     if fips:
-        expect("/usr/local/openresty/nginx/sbin/nginx", "nginx compiled with BoringSSL") \
-            .nginx_compiled_openssl.equals("OpenSSL 1.1.0 (compatible; BoringSSL)")
+        expect("/usr/local/kong/lib/ossl-modules/fips.so", "includes OpenSSL FIPS provider library").exists()
 
-        # no version requirements info for BoringSSL
+        expect("/usr/local/kong/openssl.cnf", "includes valid OpenSSL FIPS configuration") \
+            .exists() \
+            .text_content.matches("\[fips_sect\]") \
+            .text_content.matches("module-mac = [A-F:\d]+")
 
 
 def libc_libcpp_suites(expect, max_libc: str, max_libcxx: str, max_cxxabi: str):
@@ -114,7 +116,7 @@ def libc_libcpp_suites(expect, max_libc: str, max_libcxx: str, max_cxxabi: str):
 
     if max_cxxabi:
         expect("**/*.so", "cxxabi version is less than %s" % max_cxxabi) \
-            .version_requirement.key("libstdc++.so.6").is_not().greater_than("CXXABI_%s" % max_libcxx)
+            .version_requirement.key("libstdc++.so.6").is_not().greater_than("CXXABI_%s" % max_cxxabi)
 
 
 def arm64_suites(expect):
