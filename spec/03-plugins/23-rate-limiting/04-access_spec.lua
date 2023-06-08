@@ -761,8 +761,6 @@ if limit_by == "ip" then
       .ignore_exceptions(false)
       .eventually(function()
         local res1 = GET(test_path, { headers = { ["X-Real-IP"] = "127.0.0.3" }})
-        local res2 = GET(test_path, { headers = { ["X-Real-IP"] = "127.0.0.3" }})
-
         assert.res_status(200, res1)
         assert.are.same(1, tonumber(res1.headers["RateLimit-Limit"]))
         assert.are.same(0, tonumber(res1.headers["RateLimit-Remaining"]))
@@ -770,6 +768,7 @@ if limit_by == "ip" then
         assert.are.same(1, tonumber(res1.headers["X-RateLimit-Limit-Second"]))
         assert.are.same(0, tonumber(res1.headers["X-RateLimit-Remaining-Second"]))
 
+        local res2 = GET(test_path, { headers = { ["X-Real-IP"] = "127.0.0.3" }})
         local body2 = assert.res_status(429, res2)
         local json2 = cjson.decode(body2)
         assert.same({ message = "API rate limit exceeded" }, json2)
