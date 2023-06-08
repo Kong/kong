@@ -466,8 +466,11 @@ local function metric_data(write_fn)
   end
 
   if kong.configuration.database == "off" then
-    metrics.memory_stats.lmdb_capacity:set(res.lmdb.map_size, { node_id })
-    metrics.memory_stats.lmdb:set(res.lmdb.used_size, { node_id })
+    local lmdb_used_size = res.lmdb.used_pages * res.lmdb.page_size
+    local lmdb_capacity = res.lmdb.map_size
+
+    metrics.memory_stats.lmdb_capacity:set(lmdb_capacity, { node_id })
+    metrics.memory_stats.lmdb:set(lmdb_used_size, { node_id })
   end
 
   -- Hybrid mode status
