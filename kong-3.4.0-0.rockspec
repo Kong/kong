@@ -37,7 +37,7 @@ dependencies = {
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.11.0",
-  "lua-resty-session == 4.0.3",
+  "lua-resty-session == 4.0.4",
   "lua-resty-timer-ng == 0.2.5",
   "lpeg == 1.0.2",
 }

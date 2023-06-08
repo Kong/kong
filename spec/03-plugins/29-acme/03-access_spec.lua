@@ -196,7 +196,7 @@ for _, strategy in helpers.each_strategy() do
           headers =  { host = "a.subdomain." .. do_domain }
         }
         return res and res.status == 200
-      end, 15)
+      end, 5)
 
       -- key-auth should not run
       local body = assert.response(res).has.status(200)

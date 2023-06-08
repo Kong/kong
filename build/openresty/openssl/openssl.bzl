@@ -18,6 +18,7 @@ CONFIGURE_OPTIONS = select({
     "//conditions:default": [],
 }) + [
     "-g",
+    "-O3",  # force -O3 even we are using --debug (for example on CI)
     "shared",
     "-DPURIFY",
     "no-threads",
@@ -27,7 +28,7 @@ CONFIGURE_OPTIONS = select({
     "--libdir=lib",  # force lib instead of lib64 (multilib postfix)
     "-Wl,-rpath,%s/kong/lib" % KONG_VAR["INSTALL_DESTDIR"],
 ] + select({
-    "@kong//:debug_flag": ["-d"],
+    "@kong//:debug_flag": ["--debug"],
     "//conditions:default": [],
 })
 
