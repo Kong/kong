@@ -266,6 +266,7 @@ function _M:communicate(premature)
 
   local read_thread = ngx.thread.spawn(function()
     local last_seen = ngx_time()
+
     while not exiting() do
       local data, typ, err = c:recv_frame()
       if err then
@@ -278,31 +279,37 @@ function _M:communicate(premature)
           return nil, "did not receive pong frame from control plane within " .. PING_WAIT .. " seconds"
         end
 
-      else
-        if typ == "close" then
-          ngx_log(ngx_DEBUG, _log_prefix, "received close frame from control plane", log_suffix)
-          return
-        end
-
-        last_seen = ngx_time()
-
-        if typ == "binary" then
-          next_data = data
-          if config_semaphore:count() <= 0 then
-            -- the following line always executes immediately after the `if` check
-            -- because `:count` will never yield, end result is that the semaphore
-            -- count is guaranteed to not exceed 1
-            config_semaphore:post()
-          end
-
-        elseif typ == "pong" then
-          ngx_log(ngx_DEBUG, _log_prefix, "received pong frame from control plane", log_suffix)
-
-        else
-          ngx_log(ngx_NOTICE, _log_prefix, "received unknown (", tostring(typ), ") frame from control plane",
-                              log_suffix)
-        end
+        goto continue
       end
+
+      if typ == "close" then
+        ngx_log(ngx_DEBUG, _log_prefix, "received close frame from control plane", log_suffix)
+        return nil
+      end
+
+      last_seen = ngx_time()
+
+      if typ == "binary" then
+        next_data = data
+        if config_semaphore:count() <= 0 then
+          -- the following line always executes immediately after the `if` check
+          -- because `:count` will never yield, end result is that the semaphore
+          -- count is guaranteed to not exceed 1
+          config_semaphore:post()
+        end
+
+      elseif typ == "pong" then
+        ngx_log(ngx_DEBUG, _log_prefix,
+                "received pong frame from control plane",
+                log_suffix)
+
+      else
+        ngx_log(ngx_NOTICE, _log_prefix,
+                "received unknown (", tostring(typ), ") frame from control plane",
+                log_suffix)
+      end
+
+      ::continue::
     end
   end)
 
