@@ -14,6 +14,10 @@ description = {
    license = "MIT"
 }
 
+dependencies = {
+  "kong-gql == 0.2.3",
+}
+
 build = {
    type = "builtin",
    modules = {

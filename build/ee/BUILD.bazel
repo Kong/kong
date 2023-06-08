@@ -13,13 +13,6 @@ genrule(
         touch $@.tmp
 
         cwd=$$(pwd)
-        for dir in kong-openid-connect lua-resty-openapi3-deserializer kong-gql; do
-            echo "Installing library: $$dir" >> $$cwd/$@.tmp
-            pushd distribution/$$dir >> $$cwd/$@.tmp
-                $$cwd/$(location @luarocks//:luarocks_exec) make *.rockspec >> $$cwd/$@.tmp
-            popd >> $$cwd/$@.tmp
-        done
-
         for plugin_ee in plugins-ee/*; do
             if [ -d "$$plugin_ee" ]; then
                 echo "Installing plugin: $$(basename $$plugin_ee)" >> $$cwd/$@.tmp
