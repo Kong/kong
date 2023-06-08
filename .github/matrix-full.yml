@@ -27,7 +27,7 @@ build-packages:
 - label: ubuntu-22.04-arm64
   os: ubuntu-22.04
   package: deb
-  bazel_args: --platforms=//:generic-crossbuild-aarch64
+  bazel_args: --platforms=//:generic-crossbuild-aarch64 --//:wasmx=false
   check-manifest-suite: ubuntu-22.04-arm64
 
 # Debian

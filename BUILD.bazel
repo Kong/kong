@@ -155,7 +155,7 @@ config_setting(
 # --//:wasmx=false
 bool_flag(
     name = "wasmx",
-    build_setting_default = False,
+    build_setting_default = True,
 )
 
 config_setting(
@@ -169,7 +169,7 @@ config_setting(
 # --//:wasm_runtime=wasmer
 string_flag(
     name = "wasm_runtime",
-    build_setting_default = "wasmer",
+    build_setting_default = "wasmtime",
     values = [
         "v8",
         "wasmer",
@@ -178,7 +178,7 @@ string_flag(
 )
 
 config_setting(
-    name = "wasmx_v8",
+    name = "wasmx_v8_flag",
     flag_values = {
         ":wasm_runtime": "v8",
     },
@@ -186,7 +186,7 @@ config_setting(
 )
 
 config_setting(
-    name = "wasmx_wasmer",
+    name = "wasmx_wasmer_flag",
     flag_values = {
         ":wasm_runtime": "wasmer",
     },
@@ -194,11 +194,36 @@ config_setting(
 )
 
 config_setting(
-    name = "wasmx_wasmtime",
+    name = "wasmx_wasmtime_flag",
     flag_values = {
         ":wasm_runtime": "wasmtime",
     },
     visibility = ["//visibility:public"],
+)
+
+# wasm runtime settings should only be set when wasm is enabled
+selects.config_setting_group(
+    name = "wasmx_v8",
+    match_all = [
+        ":wasmx_v8_flag",
+        ":wasmx_flag",
+    ],
+)
+
+selects.config_setting_group(
+    name = "wasmx_wasmer",
+    match_all = [
+        ":wasmx_wasmer_flag",
+        ":wasmx_flag",
+    ],
+)
+
+selects.config_setting_group(
+    name = "wasmx_wasmtime",
+    match_all = [
+        ":wasmx_wasmtime_flag",
+        ":wasmx_flag",
+    ],
 )
 
 ##### constraints, platforms and config_settings for cross-compile
