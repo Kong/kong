@@ -240,15 +240,15 @@ end
 --   (string) short metric name with no labels. For a `*_bucket` metric of
 --     histogram the _bucket suffix will be removed.
 local function short_metric_name(full_name)
-  local labels_start, _ = full_name:find("{")
+  local labels_start, _ = full_name:find("{", 1, true)
   if not labels_start then
     return full_name
   end
   -- Try to detect if this is a histogram metric. We only check for the
   -- `_bucket` suffix here, since it alphabetically goes before other
   -- histogram suffixes (`_count` and `_sum`).
-  local suffix_idx, _ = full_name:find("_bucket{")
-  if suffix_idx and full_name:find("le=") then
+  local suffix_idx, _ = full_name:find("_bucket{", 1, true)
+  if suffix_idx and full_name:find("le=", 1, true) then
     -- this is a histogram metric
     return full_name:sub(1, suffix_idx - 1)
   end
