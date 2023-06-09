@@ -2672,7 +2672,7 @@ you should run `kong migrations up --force` instead.
 The following commands should be used to prepare a new 1.1 cluster from a fresh datastore:
 
 ```
-$ kon the the g migrations bootstrap [-c config]
+$ kong migrations bootstrap [-c config]
 $ kong start [-c config]
 ```
 
