@@ -54,6 +54,7 @@
 
 -- This library provides per-worker counters used to store counter metric
 -- increments. Copied from https://github.com/Kong/lua-resty-counter
+local buffer = require("string.buffer")
 local resty_counter_lib = require("prometheus_resty_counter")
 local ngx = ngx
 local ngx_log = ngx.log
@@ -70,7 +71,6 @@ local tonumber = tonumber
 local st_format = string.format
 local table_sort = table.sort
 local tb_clear = require("table.clear")
-local tb_new = require("table.new")
 local yield = require("kong.tools.utils").yield
 
 
@@ -179,19 +179,24 @@ local function full_metric_name(name, label_names, label_values)
     return name
   end
 
-  local label_parts = tb_new(#label_names, 0)
-  local label_value
+  -- format "name{k1=v1,k2=v2}"
+  local buf = buffer.new()
+  buf:put(name .. "{")
+
   for idx, key in ipairs(label_names) do
-    if type(label_values[idx]) == "string" then
-      local valid, pos = validate_utf8_string(label_values[idx])
+    local label_value = label_values[idx]
+
+    if type(label_value) == "string" then
+      local valid, pos = validate_utf8_string(label_value)
+
       if not valid then
-        label_value = string.sub(label_values[idx], 1, pos - 1)
-      else
-        label_value = label_values[idx]
+        label_value = string.sub(label_value, 1, pos - 1)
       end
+
     else
-      label_value = tostring(label_values[idx])
+      label_value = tostring(label_value)
     end
+
     if string.find(label_value, "\\", 1, true) then
       label_value = ngx_re_gsub(label_value, "\\", "\\\\", "jo")
     end
@@ -200,9 +205,11 @@ local function full_metric_name(name, label_names, label_values)
       label_value = ngx_re_gsub(label_value, '"', '\\"', "jo")
     end
 
-    label_parts[idx] = string.format('%s="%s"', key, label_value)
+    buf:putf('%s="%s",', key, label_value)
   end
-  return string.format('%s{%s}', name, table.concat(label_parts, ","))
+
+  -- remove the ',' at the end of string
+  return buf:get(#buf - 1) .. "}"
 end
 
 -- Extract short metric name from the full one.
