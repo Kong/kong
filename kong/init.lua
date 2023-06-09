@@ -101,7 +101,6 @@ local concurrency = require "kong.concurrency"
 local cache_warmup = require "kong.cache.warmup"
 local balancer = require "kong.runloop.balancer"
 local kong_error_handlers = require "kong.error_handlers"
-local migrations_utils = require "kong.cmd.utils.migrations"
 local plugin_servers = require "kong.runloop.plugin_servers"
 local lmdb_txn = require "resty.lmdb.transaction"
 local instrumentation = require "kong.tracing.instrumentation"
@@ -622,18 +621,22 @@ function Kong.init()
   instrumentation.db_query(db.connector)
   assert(db:init_connector())
 
-  schema_state = assert(db:schema_state())
-  migrations_utils.check_state(schema_state)
+  -- check state of migration only if there is an external database
+  if not is_dbless(config) then
+    schema_state = assert(db:schema_state())
+    local migrations_utils = require "kong.cmd.utils.migrations"
+    migrations_utils.check_state(schema_state)
 
-  if schema_state.missing_migrations or schema_state.pending_migrations then
-    if schema_state.missing_migrations then
-      ngx_log(ngx_WARN, "database is missing some migrations:\n",
-                        schema_state.missing_migrations)
-  end
+    if schema_state.missing_migrations or schema_state.pending_migrations then
+      if schema_state.missing_migrations then
+        ngx_log(ngx_WARN, "database is missing some migrations:\n",
+                          schema_state.missing_migrations)
+    end
 
-  if schema_state.pending_migrations then
-      ngx_log(ngx_WARN, "database has pending migrations:\n",
-                        schema_state.pending_migrations)
+    if schema_state.pending_migrations then
+        ngx_log(ngx_WARN, "database has pending migrations:\n",
+                          schema_state.pending_migrations)
+      end
     end
   end
 
@@ -787,7 +790,7 @@ function Kong.init_worker()
     return
   end
 
-  if worker_id() == 0 then
+  if worker_id() == 0 and not is_dbless(kong.configuration) then
     if schema_state.missing_migrations then
       ngx_log(ngx_WARN, "missing migrations: ",
               list_migrations(schema_state.missing_migrations))
