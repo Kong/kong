@@ -127,7 +127,6 @@ local function new(self)
   --   -- if the `kong` uses dbless mode, the following will be present:
   --  lmdb = {
   --    map_size: "128.00 MiB",
-  --    page_size: "0.004 MiB",
   --    max_readers: 126,
   --    num_readers: 16,
   --    used_pages: 2,
@@ -163,7 +162,6 @@ local function new(self)
   --   -- if the `kong` uses dbless mode, the following will be present:
   --  lmdb = {
   --    map_size: "131072 KB",
-  --    page_size: "4 KB",
   --    max_readers: 126,
   --    num_readers: 16,
   --    used_pages: 2,
@@ -261,7 +259,6 @@ local function new(self)
       else
         local info = self.table.new(0, 6)
         info.map_size = convert_bytes(lmdb_info.map_size, unit, scale)
-        info.page_size = convert_bytes(lmdb_info.page_size, unit, scale)
         info.alocated_pages = lmdb_info.alocated_pages
         info.used_pages = lmdb_info.used_pages
         info.entries = lmdb_info.entries
