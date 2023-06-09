@@ -186,6 +186,7 @@ local function full_metric_name(name, label_names, label_values)
   for idx, key in ipairs(label_names) do
     local label_value = label_values[idx]
 
+    -- we only check string value for '\\' and '"'
     if type(label_value) == "string" then
       local valid, pos = validate_utf8_string(label_value)
 
@@ -193,19 +194,16 @@ local function full_metric_name(name, label_names, label_values)
         label_value = string.sub(label_value, 1, pos - 1)
       end
 
-    else
-      label_value = tostring(label_value)
+      if string.find(label_value, "\\", 1, true) then
+        label_value = ngx_re_gsub(label_value, "\\", "\\\\", "jo")
+      end
+
+      if string.find(label_value, '"', 1, true) then
+        label_value = ngx_re_gsub(label_value, '"', '\\"', "jo")
+      end
     end
 
-    if string.find(label_value, "\\", 1, true) then
-      label_value = ngx_re_gsub(label_value, "\\", "\\\\", "jo")
-    end
-
-    if string.find(label_value, '"', 1, true) then
-      label_value = ngx_re_gsub(label_value, '"', '\\"', "jo")
-    end
-
-    buf:putf('%s="%s",', key, label_value)
+    buf:putf('%s="%s",', key, tostring(label_value))
   end
 
   -- remove the ',' at the end of string
