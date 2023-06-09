@@ -88,7 +88,7 @@ local TYPE_LITERAL = {
 
 
 -- Default size for string.buffer.new()
-local STRING_BUFFER_SIZE_HINT = 1024
+local STRING_BUFFER_SIZE_HINT = 128
 
 -- Default name for error metric incremented by this library.
 local DEFAULT_ERROR_METRIC_NAME = "nginx_metric_errors_total"
