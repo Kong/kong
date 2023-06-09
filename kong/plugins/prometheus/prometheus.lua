@@ -207,7 +207,12 @@ local function full_metric_name(name, label_names, label_values)
   end
 
   -- remove the ',' at the end of string
-  return buf:get(#buf - 1) .. "}"
+  local metric = buf:get(#buf - 1) .. "}"
+
+  -- free buffer space ASAP
+  buf:free()
+
+  return metric
 end
 
 -- Extract short metric name from the full one.
