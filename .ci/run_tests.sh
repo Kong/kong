@@ -32,7 +32,7 @@ fi
 if [ "$TEST_SUITE" == "integration" ]; then
     if [[ "$TEST_SPLIT" == first* ]]; then
         # GitHub Actions, run first batch of integration tests
-        eval "$TEST_CMD" $(ls -d spec/02-integration/* | sort | grep -v 05-proxy)
+        eval "$TEST_CMD" $(ls -d spec/02-integration/* | sort | grep -v 05-proxy | grep 1)
 
     elif [[ "$TEST_SPLIT" == second* ]]; then
         # GitHub Actions, run second batch of integration tests
@@ -46,7 +46,7 @@ if [ "$TEST_SUITE" == "integration" ]; then
         # Note that the split here is chosen carefully to result
         # in a similar run time between the two batches, and should
         # be adjusted if imbalance become significant in the future
-        eval "$TEST_CMD" $(ls -d spec/02-integration/* | sort | grep 05-proxy-balancer)
+        eval "$TEST_CMD" $((ls -d spec/02-integration/* | sort | grep 05-proxy-balancer; ls -d spec/02-integration/* | sort | grep -v 05-proxy | grep -v 1 ) | sort)
 
     else
         # Non GitHub Actions
@@ -62,7 +62,8 @@ if [ "$TEST_SUITE" == "dbless" ]; then
         eval "$TEST_CMD" spec/02-integration/05-proxy 
       
     elif [[ "$TEST_SPLIT" == third* ]]; then
-        eval "$TEST_CMD" spec/02-integration/04-admin_api/02-kong_routes_spec.lua \
+        eval "$TEST_CMD" spec/02-integration/05-proxy-balancer  \
+                    spec/02-integration/04-admin_api/02-kong_routes_spec.lua \
                      spec/02-integration/04-admin_api/15-off_spec.lua \
                      spec/02-integration/08-status_api/01-core_routes_spec.lua \
                      spec/02-integration/08-status_api/03-readiness_endpoint_spec.lua \
