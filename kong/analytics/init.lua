@@ -71,17 +71,14 @@ end
 local function get_server_name()
   local conf = kong.configuration
   local server_name
-  if conf.cluster_mtls == "shared" then
-    server_name = "kong_clustering"
 
-  else
-    -- server_name will be set to the host if it is not explicitly defined here
-    if conf.cluster_telemetry_server_name ~= "" then
-      server_name = conf.cluster_telemetry_server_name
-    elseif conf.cluster_server_name ~= "" then
-      server_name = conf.cluster_server_name
-    end
+  -- server_name will be set to the host if it is not explicitly defined here
+  if conf.cluster_telemetry_server_name ~= "" then
+    server_name = conf.cluster_telemetry_server_name
+  elseif conf.cluster_server_name ~= "" then
+    server_name = conf.cluster_server_name
   end
+
   return server_name
 end
 
@@ -257,7 +254,7 @@ function _M:create_payload(message)
       ratelimit_enabled_day = false,
       ratelimit_enabled_month = false,
       ratelimit_enabled_year = false
-      
+
     },
     route = {
       id = "",

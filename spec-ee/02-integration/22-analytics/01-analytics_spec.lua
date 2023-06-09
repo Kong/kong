@@ -69,6 +69,7 @@ for _, mode in ipairs({"hybrid", "traditional"}) do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         cluster_telemetry_endpoint = "127.0.0.1:9006",
         cluster_telemetry_listen = "127.0.0.1:9006",
+        cluster_telemetry_server_name = "kong_clustering",
         node_id = node_id,
         admin_listen = "127.0.0.1:8001"
       }, nil, nil, fixtures))
@@ -113,6 +114,7 @@ for _, strategy in helpers.each_strategy() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         cluster_telemetry_endpoint = "127.0.0.1:9006",
         cluster_telemetry_listen = "127.0.0.1:9006",
+        cluster_telemetry_server_name = "kong_clustering",
         node_id = node_id,
         admin_listen = "127.0.0.1:8001"
       }, nil, nil, fixtures))
