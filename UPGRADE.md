@@ -1455,7 +1455,7 @@ previous release, so you will need to rebuild them with the latest patches.
 
 In order to use all Kong features, including the new
 dynamic upstream keepalive behavior, the required OpenResty version is
-[1.15.8.3](http://openresty.org/en/changelog-1015008.html) and the
+[1.15.8.3](http://openresty.org/en/changelog-1015008.html) and 
 the set of [OpenResty
 patches](https://github.com/Kong/kong-build-tools/tree/master/openresty-build-tools/openresty-patches)
 included has changed, including the latest release of
@@ -1601,8 +1601,7 @@ If you are building your dependencies by hand, there are changes since the
 previous release, so you will need to rebuild them with the latest patches.
 
 The required OpenResty version is
-[1.15.8.2](http://openresty.org/en/changelog-1015008.html), and the
-the set of [OpenResty
+[1.15.8.2](http://openresty.org/en/changelog-1015008.html), and the set of [OpenResty
 patches](https://github.com/Kong/kong-build-tools/tree/master/openresty-build-tools/openresty-patches)
 included has changed, including the latest release of
 [lua-kong-nginx-module](https://github.com/Kong/lua-kong-nginx-module).
