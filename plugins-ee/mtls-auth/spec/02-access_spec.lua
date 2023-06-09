@@ -522,6 +522,54 @@ for _, strategy in strategies() do
       end)
     end)
 
+    describe("use skip_consumer_lookup with authenticated_group_by", function()
+      lazy_setup(function()
+        local res = assert(admin_client:send({
+          method  = "PATCH",
+          path    = "/plugins/" .. plugin.id,
+          body    = {
+            config = {
+              skip_consumer_lookup = true,
+              authenticated_group_by = ngx.null,
+            },
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        }))
+        assert.res_status(200, res)
+      end)
+      lazy_teardown(function()
+        local res = assert(admin_client:send({
+          method  = "PATCH",
+          path    = "/plugins/" .. plugin.id,
+          body    = {
+            config = {
+              skip_consumer_lookup = false,
+              authenticated_group_by = "CN",
+            },
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        }))
+        assert.res_status(200, res)
+      end)
+      it("doesn't fail when authenticated_group_by = null", function()
+        local res = assert(mtls_client:send {
+          method  = "GET",
+          path    = "/example_client",
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.is_nil(json.headers["x-consumer-username"])
+        assert.is_nil(json.headers["x-consumer-id"])
+        assert.is_nil(json.headers["x-consumer-custom-id"])
+        assert.not_nil(json.headers["x-client-cert-san"])
+        assert.not_nil(json.headers["x-client-cert-dn"])
+      end)
+    end)
+
     describe("config.anonymous", function()
       lazy_setup(function()
         local res = assert(admin_client:send({

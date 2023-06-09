@@ -43,6 +43,9 @@
   [FTI-4798](https://konghq.atlassian.net/browse/FTI-4798)
 * **gRPC-Gateway**: fix an issue where an array with one element would fail to be encoded.
   [FTI-5074](https://konghq.atlassian.net/browse/FTI-5074)
+* **Mtls-auth**: Fix a bug that would cause an unexpected error when `skip_consumer_lookup` is enabled and `authenticated_group_by` is set to `null`.
+  [FTI-5101](https://konghq.atlassian.net/browse/FTI-5101)
+
 
 # 3.3.0.0
 

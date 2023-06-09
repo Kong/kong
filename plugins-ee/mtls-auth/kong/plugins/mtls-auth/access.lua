@@ -477,7 +477,7 @@ local function do_authentication(conf)
     end
 
     if conf.skip_consumer_lookup then
-      if conf.consumer_by then
+      if conf.authenticated_group_by then
         local group
         group, err = authenticate_group_by[conf.authenticated_group_by](cn)
         if not group then
