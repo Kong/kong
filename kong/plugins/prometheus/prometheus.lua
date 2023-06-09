@@ -207,7 +207,12 @@ local function full_metric_name(name, label_names, label_values)
       end
     end
 
-    buf:putf('%s%s="%s"', idx == 1 and "" or ",", key, tostring(label_value))
+    -- add a comma to seperate k=v
+    if idx > 1 then
+      buf:put(",")
+    end
+
+    buf:putf('%s="%s"', key, tostring(label_value))
   end
 
   buf:put("}")  -- close the bracket
