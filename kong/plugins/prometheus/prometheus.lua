@@ -216,8 +216,7 @@ local function full_metric_name(name, label_names, label_values)
 
   local metric = buf:get()
 
-  -- free buffer space ASAP
-  buf:free()
+  buf:free()    -- free buffer space ASAP
 
   return metric
 end
