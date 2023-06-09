@@ -87,8 +87,8 @@ local TYPE_LITERAL = {
 }
 
 
--- Default size for string.buffer.new()
-local STRING_BUFFER_SIZE_HINT = 128
+-- Default metric name size for string.buffer.new()
+local NAME_BUFFER_SIZE_HINT = 256
 
 -- Default name for error metric incremented by this library.
 local DEFAULT_ERROR_METRIC_NAME = "nginx_metric_errors_total"
@@ -182,7 +182,7 @@ local function full_metric_name(name, label_names, label_values)
     return name
   end
 
-  local buf = buffer.new(STRING_BUFFER_SIZE_HINT)
+  local buf = buffer.new(NAME_BUFFER_SIZE_HINT)
 
   -- format "name{k1=v1,k2=v2}"
   buf:put(name):put("{")
@@ -218,8 +218,8 @@ local function full_metric_name(name, label_names, label_values)
   buf:put("}")  -- close the bracket
 
   -- update the size hint
-  if STRING_BUFFER_SIZE_HINT < #buf then
-    STRING_BUFFER_SIZE_HINT = #buf
+  if NAME_BUFFER_SIZE_HINT < #buf then
+    NAME_BUFFER_SIZE_HINT = #buf
   end
 
   local metric = buf:get()
