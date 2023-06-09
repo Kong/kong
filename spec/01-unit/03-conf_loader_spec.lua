@@ -1702,7 +1702,7 @@ describe("Configuration loader", function()
       local cert_full_path = lfs.currentdir() .. "/" .. cert_rel_path
       local conf, err = conf_loader(nil, {
         wasm = "on",
-        wasm_filters_path = "spec/fixtures/proxy_wasm_filters/target/wasm32-wasi/debug/",
+        wasm_filters_path = "spec/fixtures/proxy_wasm_filters",
         wasm_compiler = "auto",
         wasm_shm_kv = "kong_shared_kv 4k",
         wasm_shm_queue = "kong_shared_queue 1024k",
@@ -1732,7 +1732,7 @@ describe("Configuration loader", function()
     it("#wasm VM injected confs", function()
       local conf, err = conf_loader(nil, {
         wasm = "on",
-        wasm_filters_path = "spec/fixtures/proxy_wasm_filters/target/wasm32-wasi/debug/",
+        wasm_filters_path = "spec/fixtures/proxy_wasm_filters",
         nginx_wasm_backtraces = "on",
         nginx_wasm_compiler = "auto",
         nginx_wasm_shm_kv = "kong_shared_kv 4k",
