@@ -217,7 +217,10 @@ local function full_metric_name(name, label_names, label_values)
 
   buf:put("}")  -- close the bracket
 
-  STRING_BUFFER_SIZE_HINT = #buf
+  -- update the size hint
+  if STRING_BUFFER_SIZE_HINT < #buf then
+    STRING_BUFFER_SIZE_HINT = #buf
+  end
 
   local metric = buf:get()
 
