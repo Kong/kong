@@ -192,5 +192,4 @@ wasm_dynamic_module = NONE
 wasm_compiler = NONE
 wasm_shm_kv = NONE
 wasm_shm_queue = NONE
-wasm_tls_no_verify_warn = NONE
 ]]

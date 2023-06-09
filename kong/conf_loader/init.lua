@@ -563,12 +563,6 @@ local CONF_PARSERS = {
       "nginx_wasm_shm_queue",
     },
   },
-  wasm_tls_no_verify_warn = {
-    typ = "ngx_boolean",
-    directives = {
-      "nginx_wasm_tls_no_verify_warn",
-    },
-  },
 
   error_template_html = { typ = "string" },
   error_template_json = { typ = "string" },
@@ -2113,6 +2107,10 @@ local function load(path, custom_conf, opts)
       })
       insert(wasm_directives, {
         name  = "tls_verify_host",
+        value = "on",
+      })
+      insert(wasm_directives, {
+        name  = "tls_no_verify_warn",
         value = "on",
       })
     end
