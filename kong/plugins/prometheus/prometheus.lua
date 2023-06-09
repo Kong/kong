@@ -181,7 +181,7 @@ local function full_metric_name(name, label_names, label_values)
 
   -- format "name{k1=v1,k2=v2}"
   local buf = buffer.new()
-  buf:put(name .. "{")
+  buf:put(name):put("{")
 
   for idx, key in ipairs(label_names) do
     local label_value = label_values[idx]
@@ -203,11 +203,10 @@ local function full_metric_name(name, label_names, label_values)
       end
     end
 
-    buf:putf('%s="%s",', key, tostring(label_value))
+    buf:putf('%s%s="%s"', idx == 1 and "" or ",", key, tostring(label_value))
   end
 
-  -- remove the ',' at the end of string
-  local metric = buf:get(#buf - 1) .. "}"
+  local metric = buf:put("}"):get()
 
   -- free buffer space ASAP
   buf:free()
