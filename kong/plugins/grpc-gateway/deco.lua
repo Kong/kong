@@ -178,8 +178,8 @@ function deco.new(method, path, protofile)
 end
 
 local function get_field_type(typ, field)
-  local _, _, field_typ = pb.field(typ, field)
-  return field_typ
+  local _, _, field_typ, _, label = pb.field(typ, field)
+  return field_typ, (label == "repeated")
 end
 
 local function encode_fix(v, typ)
@@ -198,10 +198,11 @@ end
 ]]
 local function add_to_table( t, path, v, typ )
   local tab = t -- set up pointer to table root
-  local msg_typ = typ;
+  local msg_typ = typ
+  local repeated
   for m in re_gmatch( path , "([^.]+)(\\.)?") do
     local key, dot = m[1], m[2]
-    msg_typ = get_field_type(msg_typ, key)
+    msg_typ, repeated = get_field_type(msg_typ, key)
 
     -- not argument that we concern with
     if not msg_typ then
@@ -211,6 +212,18 @@ local function add_to_table( t, path, v, typ )
     if dot then
       tab[key] = tab[key] or {} -- create empty nested table if key does not exist
       tab = tab[key]
+
+    elseif repeated then
+      if type(v) ~= "table" then
+        v = {v}
+      end
+
+      for i, val in ipairs(v) do
+        v[i] = encode_fix(val, msg_typ)
+      end
+
+      tab[key] = v
+
     else
       tab[key] = encode_fix(v, msg_typ)
     end

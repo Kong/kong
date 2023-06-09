@@ -41,7 +41,8 @@
 * Portal documentation page: field `registration` in `document_object` will not be set
   when the plugin `Portal Application Registration` is installed but not enabled.
   [FTI-4798](https://konghq.atlassian.net/browse/FTI-4798)
-
+* **gRPC-Gateway**: fix an issue where an array with one element would fail to be encoded.
+  [FTI-5074](https://konghq.atlassian.net/browse/FTI-5074)
 
 # 3.3.0.0
 
