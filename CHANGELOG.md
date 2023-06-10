@@ -46,6 +46,8 @@
   instead of on-demand in the request path. This is most evident in decreased
   response latency when updating configuration via the `/config` API endpoint.
   [#10932](https://github.com/Kong/kong/pull/10932)
+- The Prometheus plugin has been optimized to reduce proxy latency impacts during scraping.
+  [#10949](https://github.com/Kong/kong/pull/10949)
 
 ### Fixes
 
@@ -79,6 +81,12 @@
 ### Changed
 
 #### Core
+
+#### Status API
+
+- Remove the database information from the status API when operating in dbless
+  mode or data plane.
+  [#10995](https://github.com/Kong/kong/pull/10995)
 
 #### PDK
 
