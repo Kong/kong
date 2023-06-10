@@ -321,31 +321,34 @@ function _M:handle_cp_websocket()
                       PING_WAIT .. " seconds"
         end
 
-      else
-        if typ == "close" then
-          ngx_log(ngx_DEBUG, _log_prefix, "received close frame from data plane", log_suffix)
-          return
-        end
-
-        if not data then
-          return nil, "did not receive ping frame from data plane"
-        end
-
-        -- dps only send pings
-        if typ ~= "ping" then
-          return nil, "invalid websocket frame received from data plane: " .. typ
-        end
-
-        ngx_log(ngx_DEBUG, _log_prefix, "received ping frame from data plane", log_suffix)
-
-        config_hash = data
-        last_seen = ngx_time()
-        update_sync_status()
-
-        -- queue PONG to avoid races
-        table_insert(queue, PONG_TYPE)
-        queue.post()
+        goto continue
       end
+
+      if typ == "close" then
+        ngx_log(ngx_DEBUG, _log_prefix, "received close frame from data plane", log_suffix)
+        return
+      end
+
+      if not data then
+        return nil, "did not receive ping frame from data plane"
+      end
+
+      -- dps only send pings
+      if typ ~= "ping" then
+        return nil, "invalid websocket frame received from data plane: " .. typ
+      end
+
+      ngx_log(ngx_DEBUG, _log_prefix, "received ping frame from data plane", log_suffix)
+
+      config_hash = data
+      last_seen = ngx_time()
+      update_sync_status()
+
+      -- queue PONG to avoid races
+      table_insert(queue, PONG_TYPE)
+      queue.post()
+
+      ::continue::
     end
   end)
 
