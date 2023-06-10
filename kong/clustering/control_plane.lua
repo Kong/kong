@@ -195,19 +195,17 @@ function _M:handle_cp_websocket()
     else
       data, err = cjson_decode(data)
       if type(data) ~= "table" then
-        if err then
-          err = "failed to decode websocket basic info data: " .. err
-        else
-          err = "failed to decode websocket basic info data"
+          err = "failed to decode websocket basic info data" ..
+                (err and ": " .. err or "")
         end
 
       else
         if data.type ~= "basic_info" then
-          err =  "invalid basic info data type: " .. (data.type  or "unknown")
+          err = "invalid basic info data type: " .. (data.type or "unknown")
 
         else
           if type(data.plugins) ~= "table" then
-            err =  "missing plugins in basic info data"
+            err = "missing plugins in basic info data"
           end
         end
       end
