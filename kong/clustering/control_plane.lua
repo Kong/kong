@@ -197,7 +197,6 @@ function _M:handle_cp_websocket()
       if type(data) ~= "table" then
           err = "failed to decode websocket basic info data" ..
                 (err and ": " .. err or "")
-        end
 
       else
         if data.type ~= "basic_info" then
@@ -355,66 +354,76 @@ function _M:handle_cp_websocket()
   local write_thread = ngx.thread.spawn(function()
     while not exiting() do
       local ok, err = queue.wait(5)
+
       if exiting() then
         return
       end
-      if ok then
-        local payload = table_remove(queue, 1)
-        if not payload then
-          return nil, "config queue can not be empty after semaphore returns"
+
+      if not ok then
+        if err ~= "timeout" then
+          return nil, "semaphore wait error: " .. err
         end
 
-        if payload == PONG_TYPE then
-          local _, err = wb:send_pong()
-          if err then
-            if not is_timeout(err) then
-              return nil, "failed to send pong frame to data plane: " .. err
-            end
-
-            ngx_log(ngx_NOTICE, _log_prefix, "failed to send pong frame to data plane: ", err, log_suffix)
-
-          else
-            ngx_log(ngx_DEBUG, _log_prefix, "sent pong frame to data plane", log_suffix)
-          end
-
-        else -- is reconfigure
-          local previous_sync_status = sync_status
-          ok, err, sync_status = self:check_configuration_compatibility(
-                                    { dp_plugins_map = dp_plugins_map, })
-          if ok then
-            local has_update, deflated_payload, err = update_compatible_payload(self.reconfigure_payload, dp_version, log_suffix)
-            if not has_update then -- no modification, use the cached payload
-              deflated_payload = self.deflated_reconfigure_payload
-            elseif err then
-              ngx_log(ngx_WARN, "unable to update compatible payload: ", err, ", the unmodified config ",
-                                "is returned", log_suffix)
-              deflated_payload = self.deflated_reconfigure_payload
-            end
-
-            -- config update
-            local _, err = wb:send_binary(deflated_payload)
-            if err then
-              if not is_timeout(err) then
-                return nil, "unable to send updated configuration to data plane: " .. err
-              end
-
-              ngx_log(ngx_NOTICE, _log_prefix, "unable to send updated configuration to data plane: ", err, log_suffix)
-
-            else
-              ngx_log(ngx_DEBUG, _log_prefix, "sent config update to data plane", log_suffix)
-            end
-
-          else
-            ngx_log(ngx_WARN, _log_prefix, "unable to send updated configuration to data plane: ", err, log_suffix)
-            if sync_status ~= previous_sync_status then
-              update_sync_status()
-            end
-          end
-        end
-
-      elseif err ~= "timeout" then
-        return nil, "semaphore wait error: " .. err
+        goto continue
       end
+
+      local payload = table_remove(queue, 1)
+      if not payload then
+        return nil, "config queue can not be empty after semaphore returns"
+      end
+
+      if payload == PONG_TYPE then
+        local _, err = wb:send_pong()
+        if err then
+          if not is_timeout(err) then
+            return nil, "failed to send pong frame to data plane: " .. err
+          end
+
+          ngx_log(ngx_NOTICE, _log_prefix, "failed to send pong frame to data plane: ", err, log_suffix)
+
+        else
+          ngx_log(ngx_DEBUG, _log_prefix, "sent pong frame to data plane", log_suffix)
+        end
+
+        goto continue
+      end
+
+      -- is reconfigure
+      local previous_sync_status = sync_status
+      ok, err, sync_status = self:check_configuration_compatibility(
+                                { dp_plugins_map = dp_plugins_map, })
+      if not ok then
+        ngx_log(ngx_WARN, _log_prefix, "unable to send updated configuration to data plane: ", err, log_suffix)
+        if sync_status ~= previous_sync_status then
+          update_sync_status()
+        end
+
+        goto continue
+      end
+
+      local has_update, deflated_payload, err = update_compatible_payload(self.reconfigure_payload, dp_version, log_suffix)
+      if not has_update then -- no modification, use the cached payload
+        deflated_payload = self.deflated_reconfigure_payload
+      elseif err then
+        ngx_log(ngx_WARN, "unable to update compatible payload: ", err, ", the unmodified config ",
+                          "is returned", log_suffix)
+        deflated_payload = self.deflated_reconfigure_payload
+      end
+
+      -- config update
+      local _, err = wb:send_binary(deflated_payload)
+      if err then
+        if not is_timeout(err) then
+          return nil, "unable to send updated configuration to data plane: " .. err
+        end
+
+        ngx_log(ngx_NOTICE, _log_prefix, "unable to send updated configuration to data plane: ", err, log_suffix)
+
+      else
+        ngx_log(ngx_DEBUG, _log_prefix, "sent config update to data plane", log_suffix)
+      end
+
+      ::continue::
     end
   end)
 
