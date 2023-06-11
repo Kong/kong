@@ -95,7 +95,15 @@ end
 
 
 local function escape_str(str)
-  return "\"" .. str:gsub([[\]], [[\\]]):gsub([["]], [[\"]]) .. "\""
+  if str:find([[\]], 1, true) then
+    str:gsub([[\]], [[\\]])
+  end
+
+  if str:find([["]], 1, true) then
+    str:gsub([["]], [[\"]])
+  end
+
+  return "\"" .. str .. "\""
 end
 
 
