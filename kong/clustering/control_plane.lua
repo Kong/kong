@@ -319,6 +319,7 @@ function _M:handle_cp_websocket()
                       PING_WAIT .. " seconds"
         end
 
+        -- timeout
         goto continue
       end
 
@@ -363,6 +364,7 @@ function _M:handle_cp_websocket()
           return nil, "semaphore wait error: " .. err
         end
 
+        -- timeout
         goto continue
       end
 
@@ -384,6 +386,7 @@ function _M:handle_cp_websocket()
           ngx_log(ngx_DEBUG, _log_prefix, "sent pong frame to data plane", log_suffix)
         end
 
+        -- ping ok
         goto continue
       end
 
