@@ -386,7 +386,7 @@ function _M:handle_cp_websocket()
           ngx_log(ngx_DEBUG, _log_prefix, "sent pong frame to data plane", log_suffix)
         end
 
-        -- ping ok
+        -- pong ok
         goto continue
       end
 
@@ -472,42 +472,50 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
       return
     end
 
-    if ok then
-      if isempty(self.clients) then
-        ngx_log(ngx_DEBUG, _log_prefix, "skipping config push (no connected clients)")
-        sleep(1)
-        -- re-queue the task. wait until we have clients connected
-        if push_config_semaphore:count() <= 0 then
-          push_config_semaphore:post()
-        end
-
-      else
-        ok, err = pcall(self.push_config, self)
-        if ok then
-          local sleep_left = delay
-          while sleep_left > 0 do
-            if sleep_left <= 1 then
-              ngx.sleep(sleep_left)
-              break
-            end
-
-            ngx.sleep(1)
-
-            if exiting() then
-              return
-            end
-
-            sleep_left = sleep_left - 1
-          end
-
-        else
-          ngx_log(ngx_ERR, _log_prefix, "export and pushing config failed: ", err)
-        end
+    if not ok then
+      if err ~= "timeout" then
+        ngx_log(ngx_ERR, _log_prefix, "semaphore wait error: ", err)
       end
 
-    elseif err ~= "timeout" then
-      ngx_log(ngx_ERR, _log_prefix, "semaphore wait error: ", err)
+      goto continue
     end
+
+    if isempty(self.clients) then
+      ngx_log(ngx_DEBUG, _log_prefix, "skipping config push (no connected clients)")
+      sleep(1)
+      -- re-queue the task. wait until we have clients connected
+      if push_config_semaphore:count() <= 0 then
+        push_config_semaphore:post()
+      end
+
+      goto continue
+    end
+
+    ok, err = pcall(self.push_config, self)
+    if not ok then
+      ngx_log(ngx_ERR, _log_prefix, "export and pushing config failed: ", err)
+      goto continue
+    end
+
+    -- push_config ok, waiting for a while
+
+    local sleep_left = delay
+    while sleep_left > 0 do
+      if sleep_left <= 1 then
+        ngx.sleep(sleep_left)
+        break
+      end
+
+      ngx.sleep(1)
+
+      if exiting() then
+        return
+      end
+
+      sleep_left = sleep_left - 1
+    end
+
+    ::continue::
   end
 end
 
