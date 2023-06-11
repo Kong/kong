@@ -403,13 +403,15 @@ function _M:handle_cp_websocket()
         goto continue
       end
 
-      local has_update, deflated_payload, err = update_compatible_payload(self.reconfigure_payload, dp_version, log_suffix)
-      if not has_update then -- no modification, use the cached payload
+      local _, deflated_payload, err = update_compatible_payload(self.reconfigure_payload, dp_version, log_suffix)
+
+      if not deflated_payload then -- no modification or err, use the cached payload
         deflated_payload = self.deflated_reconfigure_payload
-      elseif err then
+      end
+
+      if err then
         ngx_log(ngx_WARN, "unable to update compatible payload: ", err, ", the unmodified config ",
                           "is returned", log_suffix)
-        deflated_payload = self.deflated_reconfigure_payload
       end
 
       -- config update
