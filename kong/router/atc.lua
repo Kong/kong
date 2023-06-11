@@ -52,9 +52,8 @@ local LOGICAL_OR  = " || "
 local LOGICAL_AND = " && "
 
 
--- reuse table objects
+-- reuse buffer object
 local values_buf = buffer.new(64)
-local gen_values_t = tb_new(10, 0)
 
 
 local CACHED_SCHEMA
@@ -115,7 +114,7 @@ local function gen_for_field(name, op, vals, val_transform)
   local vals_n = #vals
   assert(vals_n > 0)
 
-  values_buf:put("(")
+  values_buf:reset():put("(")
 
   for i = 1, vals_n do
     local p = vals[i]
@@ -125,12 +124,13 @@ local function gen_for_field(name, op, vals, val_transform)
       values_buf:put(LOGICAL_OR)
     end
 
-    values_buf:put(name):put(" "):put(op):put(" ")
-    values_buf:put(escape_str(val_transform and val_transform(op, p) or p))
+    values_buf:putf("%s %s %s", name, op,
+                    escape_str(val_transform and val_transform(op, p) or p))
   end
 
   values_buf:put(")")
 
+  -- consume the whole buffer
   return values_buf:get()
 end
 
