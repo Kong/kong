@@ -275,7 +275,6 @@ function _M:handle_cp_websocket()
   self.clients[wb] = queue
 
   if self.deflated_reconfigure_payload then
-    local _
     -- initial configuration compatibility for sync status variable
     _, _, sync_status = self:check_configuration_compatibility(
                               { dp_plugins_map = dp_plugins_map, })
