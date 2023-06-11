@@ -128,10 +128,8 @@ local function gen_for_field(name, op, vals, val_transform)
                     escape_str(val_transform and val_transform(op, p) or p))
   end
 
-  values_buf:put(")")
-
   -- consume the whole buffer
-  return values_buf:get()
+  return values_buf:put(")"):get()
 end
 
 
