@@ -190,3 +190,4 @@ jobs:
         with:
           name: gateway_api_${{ env.RUN_SPEC }}_test_results_${{ matrix.gateway_mode }}
           path: spec-ee/kong-api-tests/results/
+          retention-days: 3

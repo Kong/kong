@@ -69,6 +69,7 @@ jobs:
         name: bazel-outputs
         path: |
           bazel-out/_tmp/actions
+        retention-days: 3
 
     - name: Collect artifacts
       if: steps.cache-deps.outputs.cache-hit != 'true'
@@ -87,3 +88,4 @@ jobs:
           artifacts
           ${{ env.RELATIVE_BUILD_ROOT }}
           !${{ env.RELATIVE_BUILD_ROOT }}/kong-dev/**/*
+        retention-days: 3

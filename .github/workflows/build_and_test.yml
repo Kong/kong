@@ -614,6 +614,7 @@ jobs:
       with:
         name: docker-image
         path: docker-image/**
+        retention-days: 3
 
   plugins-ee-tests:
     name: plugins EE - ${{ matrix.split }} tests

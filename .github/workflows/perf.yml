@@ -99,6 +99,7 @@ jobs:
         name: bazel-outputs
         path: |
           bazel-out/_tmp/actions
+        retention-days: 3
 
     - run: |
         sudo chown -R $USER:$USER /tmp/build/usr/local/kong/gui
@@ -113,6 +114,7 @@ jobs:
       with:
         name: build
         path: /tmp/build.tar.gz
+        retention-days: 3
 
     - name: Build Dev Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'

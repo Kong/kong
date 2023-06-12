@@ -285,6 +285,7 @@ jobs:
       with:
         name: ${{ matrix.label }}-packages
         path: bazel-bin/pkg
+        retention-days: 3
 
   build-packages-verify-manifest:
     needs: [metadata, build-packages]

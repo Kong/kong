@@ -272,6 +272,7 @@ jobs:
         with:
           name: gateway_${{ matrix.gateway_mode }}_${{ steps.get_gw_details.outputs.image_name }}_test_results
           path: spec-ee/kong-api-tests/results/
+          retention-days: 31
 
   gateway_tests_for_postgres:
     name: Gateway API Test Matrix for Postgres versions
@@ -395,6 +396,7 @@ jobs:
         with:
           name: ${{ matrix.gateway_mode }}-postgres-${{ matrix.postgres_version }}-${{ matrix.pg_ssl_version }}-test-results
           path: spec-ee/kong-api-tests/results/
+          retention-days: 31
 
   gateway_tests_for_release_packages:
     name: Package API Tests
