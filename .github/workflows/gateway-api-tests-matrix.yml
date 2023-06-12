@@ -95,15 +95,31 @@ jobs:
     runs-on: ubuntu-latest-kong
     outputs:
       image_matrix: ${{ steps.construct_docker_images.outputs.custom_matrix }}
+      arm64_matrix: ${{ steps.construct_docker_images.outputs.arm64_matrix }}
     steps:
       - name: Construct Docker Images
         id: construct_docker_images
         run: |
-          default_matrix="[\"kong/kong-gateway-internal:nightly-ubuntu\", \"kong/kong-gateway-internal:nightly-debian\", \"kong/kong-gateway-internal:nightly-rhel\", \"kong/kong-gateway-internal:nightly-ubuntu-fips\", \"kong/kong-gateway-internal:nightly-amazonlinux-2022\", \"kong/kong-gateway-internal:nightly-amazonlinux-2\"]"
+          default_image_matrix="[\"kong/kong-gateway-internal:nightly-ubuntu\", \"kong/kong-gateway-internal:nightly-debian\", \"kong/kong-gateway-internal:nightly-rhel\", \"kong/kong-gateway-internal:nightly-ubuntu-fips\", \"kong/kong-gateway-internal:nightly-amazonlinux-2022\", \"kong/kong-gateway-internal:nightly-amazonlinux-2\"]"
+          
+          # include arm64 os to the matrix for ubuntu and amazonlinux images
+          default_arm64_matrix="[{\"os\": \"ubuntu-22.04-arm64\", \"gateway_image\": \"kong/kong-gateway-internal:nightly-ubuntu\", \"gateway_mode\": \"classic\"}, \
+          {\"os\":\"ubuntu-22.04-arm64\",\"gateway_image\":\"kong/kong-gateway-internal:nightly-ubuntu\",\"gateway_mode\":\"hybrid\"}, \
+          {\"os\":\"ubuntu-22.04-arm64\",\"gateway_image\":\"kong/kong-gateway-internal:nightly-amazonlinux-2\",\"gateway_mode\":\"classic\"}, \
+          {\"os\":\"ubuntu-22.04-arm64\",\"gateway_image\":\"kong/kong-gateway-internal:nightly-amazonlinux-2\",\"gateway_mode\":\"hybrid\"}, \
+          {\"os\":\"ubuntu-22.04-arm64\",\"gateway_image\":\"kong/kong-gateway-internal:nightly-amazonlinux-2022\",\"gateway_mode\":\"classic\"}, \
+          {\"os\":\"ubuntu-22.04-arm64\",\"gateway_image\":\"kong/kong-gateway-internal:nightly-amazonlinux-2022\",\"gateway_mode\":\"hybrid\"}]"
 
           IFS='-' read -ra parts <<< "$GW_INPUT_IMAGE"
           current_image_tag=${parts[-1]}
-          echo "images=${GW_INPUT_IMAGE/-${parts[-1]}/-ubuntu}" >> $GITHUB_OUTPUT
+
+          # if current image tag is ubuntu or amazonlnux - include in the arm64 matrix
+          if [[ "$current_image_tag" == *"ubuntu"* || "$current_image_tag" == *"2"* ]]; then
+            custom_arm64_matrix=("{\"os\": \"ubuntu-22.04-arm64\", \"gateway_image\": \"$GW_INPUT_IMAGE\", \"gateway_mode\": \"classic\"},{\"os\": \"ubuntu-22.04-arm64\", \"gateway_image\": \"$GW_INPUT_IMAGE\", \"gateway_mode\": \"hybrid\"}")
+          else
+            # placeholder os value which won't affect the matrix
+            custom_arm64_matrix=("{\"os\": \"ubuntu-latest-kong\"}")
+          fi
 
           # create new docker images array with the current image already in it
           docker_images=(\"$GW_INPUT_IMAGE\")
@@ -112,19 +128,28 @@ jobs:
           for tag in rhel ubuntu ubuntu-fips debian amazonlinux-2022 amazonlinux-2; do
               # skip image for current tag
               if [[ $tag == $current_image_tag ]]; then continue; fi
+
               image=${GW_INPUT_IMAGE/-$current_image_tag/-${tag}}
               echo "current new image is $image"
               docker_images+=,\"$image\"
+
+              if [[ $tag == "ubuntu" || $tag == *"amazonlinux"* ]]; then
+                custom_arm64_matrix+=",{\"os\": \"ubuntu-22.04-arm64\", \"gateway_image\": \"$image\", \"gateway_mode\": \"classic\"},{\"os\": \"ubuntu-22.04-arm64\", \"gateway_image\": \"$image\", \"gateway_mode\": \"hybrid\"}"
+              fi
           done
 
           docker_image_matrix=[$docker_images]
+          custom_arm64_matrix=[$custom_arm64_matrix]
 
-          echo "The final matrix is {\"gateway_image\": $docker_image_matrix}"
+          echo "The final custom_arm64_matrix is $custom_arm64_matrix"; echo ""
+          echo "The final docker_image_matrix is {\"gateway_image\": $docker_image_matrix}"
 
           if [[ $GW_INPUT_IMAGE == "kong/kong-gateway-internal:nightly-ubuntu" ]]; then 
-            echo "custom_matrix=$default_matrix" >> $GITHUB_OUTPUT; 
+            echo "custom_matrix=$default_image_matrix" >> $GITHUB_OUTPUT; 
+            echo "arm64_matrix=$default_arm64_matrix" >> $GITHUB_OUTPUT; 
           else 
-            echo "custom_matrix=$docker_image_matrix" >> $GITHUB_OUTPUT
+            echo "custom_matrix=$docker_image_matrix" >> $GITHUB_OUTPUT;
+            echo "arm64_matrix=$custom_arm64_matrix" >> $GITHUB_OUTPUT;
           fi
 
   define_package_matrix:
@@ -134,8 +159,9 @@ jobs:
       package_matrix: ${{ steps.define-package-matrix.outputs.package_matrix }}
       package_install_method_matrix: ${{ steps.define-package-matrix.outputs.package_install_method_matrix }}
       original_package: ${{ steps.define-package-matrix.outputs.original_package }}
+      arm64_package_matrix: ${{ steps.define-package-matrix.outputs.arm64_package_matrix }}
     steps:
-    - name: Define Package Test Matrices
+    - name: Define Package Test Matrix
       id: define-package-matrix
       env:
         TARGET_PACKAGE: ${{ inputs.target_package || 'all'}}
@@ -148,10 +174,31 @@ jobs:
  
         default_package_matrix="[\"debian-11\", \"debian-10\", \"ubuntu-22.04\", \"ubuntu-22.04-fips\", \"ubuntu-20.04\", \"ubuntu-20.04-fips\", \"ubuntu-18.04\", \"rhel-8\", \"rhel-8-fips\" , \"rhel-7\", \"amazonlinux-2\", \"amazonlinux-2022\", \"centos-7\", \"alpine\"]"
         given_package="[\"$TARGET_PACKAGE\"]"
-        if [[ $TARGET_PACKAGE == 'all' ]]; then echo "package_matrix=$default_package_matrix" >> $GITHUB_OUTPUT; else echo "package_matrix=$given_package" >> $GITHUB_OUTPUT; fi
+
+        # include arm64 os to the matrix for all supported packages
+        default_arm64_package_matrix="[{\"os\":\"ubuntu-22.04-arm64\",\"package_name\":\"ubuntu-22.04\",\"install_method\":\"package\",\"gateway_mode\":\"classic\"}, \
+        {\"os\":\"ubuntu-22.04-arm64\",\"package_name\":\"ubuntu-22.04\",\"install_method\":\"package\",\"gateway_mode\":\"hybrid\"}, \
+        {\"os\":\"ubuntu-22.04-arm64\",\"package_name\":\"amazonlinux-2\",\"install_method\":\"package\",\"gateway_mode\":\"classic\"}, \
+        {\"os\":\"ubuntu-22.04-arm64\",\"package_name\":\"amazonlinux-2022\",\"install_method\":\"package\",\"gateway_mode\":\"classic\"}]"
+
+        # if current package is ubuntu or amazonlnux - include in the arm64 matrix
+        if [[ "$TARGET_PACKAGE" == *"ubuntu"* || "$TARGET_PACKAGE" == *"amazonlinux"* ]]; then
+          custom_arm64_package_matrix="[{\"os\":\"ubuntu-22.04-arm64\",\"package_name\":\"$TARGET_PACKAGE\",\"install_method\":\"package\",\"gateway_mode\":\"classic\"}, \
+          {\"os\":\"ubuntu-22.04-arm64\",\"package_name\":\"$TARGET_PACKAGE\",\"install_method\":\"package\",\"gateway_mode\":\"hybrid\"}]"
+        else
+          # placeholder os value which won't affect the matrix
+          custom_arm64_package_matrix="[{\"os\": \"ubuntu-latest-kong\"}]"
+        fi
+
+        if [[ $TARGET_PACKAGE == 'all' ]]; then 
+          echo "package_matrix=$default_package_matrix" >> $GITHUB_OUTPUT;
+          echo "arm64_package_matrix=$default_arm64_package_matrix" >> $GITHUB_OUTPUT;
+        else 
+          echo "package_matrix=$given_package" >> $GITHUB_OUTPUT;
+          echo "arm64_package_matrix=$custom_arm64_package_matrix" >> $GITHUB_OUTPUT;
+        fi
 
         # if package_install_method is provided download and install kong using that method else use both repository and pulp download methods
-
         default_package_install_matrix="[\"repository\", \"package\"]"
         given_install_method="[\"$PACKAGE_INSTALL_METHOD\"]"
         if [[ $PACKAGE_INSTALL_METHOD == 'all' ]]; then echo "package_install_method_matrix=$default_package_install_matrix" >> $GITHUB_OUTPUT; else echo "package_install_method_matrix=$given_install_method" >> $GITHUB_OUTPUT; fi
@@ -162,7 +209,7 @@ jobs:
     # github doesn't accept env context in if conditional, hence using .inputs
     if: ${{ github.event.inputs.target_matrix  == 'all' || github.event.inputs.target_matrix  == 'docker' }}
     needs: construct_docker_image_matrix
-    runs-on: ubuntu-latest-kong
+    runs-on: ${{ matrix.os }}
     defaults:
       run:
         working-directory: spec-ee/kong-api-tests
@@ -175,6 +222,8 @@ jobs:
       matrix:
         gateway_mode: ['classic', 'hybrid']
         gateway_image: ${{ fromJson(needs.construct_docker_image_matrix.outputs.image_matrix) }}
+        os: ['ubuntu-latest-kong']
+        include: ${{ fromJson(needs.construct_docker_image_matrix.outputs.arm64_matrix) }}
 
     steps:
       - name: Overwrite environment variables if workflow dispatch
@@ -205,7 +254,7 @@ jobs:
           echo "FIPS_MODE=$FIPS_MODE" >> $GITHUB_ENV
 
       - name: Start Gateway
-        run: cd gateway-docker-compose-generator && make set_pg_permissions && make generate && make start
+        run: cd gateway-docker-compose-generator && make generate && make start
         env:
           EE_LICENSE: false
           PKI: true
@@ -330,7 +379,7 @@ jobs:
           password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
 
       - name: Start Gateway
-        run: cd gateway-docker-compose-generator && make set_pg_permissions && make generate && make start
+        run: cd gateway-docker-compose-generator && make generate && make start
         env:
           EE_LICENSE: false
           PKI: true
@@ -402,8 +451,8 @@ jobs:
     name: Package API Tests
     needs: define_package_matrix
     # using if condition to skip arm64 and alpine runs because gh matrix exclude somehow is not working
-    if: (inputs.target_matrix  == 'all' || inputs.target_matrix  == 'package') && (!contains(needs.define_package_matrix.outputs.original_package, 'alpine') && !contains(needs.define_package_matrix.outputs.original_package, 'arm64'))
-    runs-on: ubuntu-latest-kong
+    if: (inputs.target_matrix  == 'all' || inputs.target_matrix  == 'package')
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 50
     env:
       KONG_VERSION: ${{ inputs.gateway_version || '3.3.0.0' }}
@@ -417,6 +466,8 @@ jobs:
         package_name: ${{ fromJson(needs.define_package_matrix.outputs.package_matrix) }} 
         install_method: ${{ fromJson(needs.define_package_matrix.outputs.package_install_method_matrix) }} 
         gateway_mode: ['classic', 'hybrid']
+        os: ['ubuntu-latest-kong']
+        include: ${{ fromJson(needs.define_package_matrix.outputs.arm64_package_matrix) }}
         exclude:
         # execute only one install method (any, doesn't matter) for fips packages and for alpine as we use wget to download kong
           - package_name: 'ubuntu-22.04-fips'
@@ -427,10 +478,10 @@ jobs:
             install_method: 'repository'
           - package_name: 'alpine'
             install_method: 'repository'
-            # remove when alpine download issue is resolved
+          # remove when alpine build issue is resolved
           - package_name: 'alpine'
             install_method: 'package'
-        # exclude internal repositories with known issues
+          # exclude internal repositories with known issues
           - package_name: 'rhel-8'
             install_method: 'repository'
           - package_name: 'rhel-7'
@@ -441,10 +492,6 @@ jobs:
             install_method: 'repository'
           - package_name: 'centos-7'
             install_method: 'repository'
-          # - package_name: 'alpine'
-        # exclude arm64 packages as this platform is not yet supported
-          # - package_name: 'ubuntu-22.04-arm64'
-          # - package_name: 'amazonlinux-2-arm64'
 
     steps:
       - name: Checkout Source Code
@@ -476,7 +523,7 @@ jobs:
           echo "KONG_PACKAGE is $fips_suffix_excluded_name"
 
       - name: Start Gateway
-        run: cd gateway-docker-compose-generator && make generate_package && make set_pg_permissions && make start_package
+        run: cd gateway-docker-compose-generator && make generate_package && make start_package
         env:
           PULP_REPOSITORY: ${{ inputs.pulp_repository || 'internal' }}
           PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}

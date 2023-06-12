@@ -67,7 +67,7 @@ export const getHcvSecretUrl = async (
  */
 export const createHcvVault = async (
   targetMount = 'secret',
-  targetHcvToken = 'vault-plaintext-root-token',
+  targetHcvToken = hcvToken,
   vaultPrefix = 'my-hcv'
 ) => {
   const kvVersion = await getHcvKvVersion(targetMount);
@@ -307,7 +307,7 @@ export const createVaultAuthVaultEntity = async (
     protocol: 'http',
     host: 'host.docker.internal',
     port: 8200,
-    vault_token: 'vault-plaintext-root-token',
+    vault_token: hcvToken,
     kv: kvEngineVersion,
   });
 

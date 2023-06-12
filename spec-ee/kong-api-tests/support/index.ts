@@ -59,7 +59,7 @@ export * from './utilities/jwe-keys';
 export { logDebug, logResponse } from './utilities/logging';
 export { createMockbinBin, getMockbinLogs } from './utilities/mockbin';
 export { getNegative, postNegative } from './utilities/negative-axios';
-export { execCustomCommand } from './utilities/prog';
+export { execCustomCommand, checkForArm64 } from './utilities/prog';
 export { findRegex, randomString, wait } from './utilities/random';
 export {
   client,

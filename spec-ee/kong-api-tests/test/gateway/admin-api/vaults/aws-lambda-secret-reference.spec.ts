@@ -56,7 +56,8 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
   // gcp secrets > aws_access_key, aws_secret_key
 
   const doBasicRequestCheck = async () => {
-    const resp = await axios(`${proxyUrl}/${path}`);
+    const resp = await axios(`${proxyUrl}${path}`);
+    logResponse(resp);
     expect(resp.status, 'Status should be 200').to.equal(200);
   };
 
