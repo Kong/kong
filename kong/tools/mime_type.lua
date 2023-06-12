@@ -3,10 +3,10 @@ local lpeg = require "lpeg"
 local P, S, R, C = lpeg.P, lpeg.S, lpeg.R, lpeg.C
 local ipairs = ipairs
 local lower = string.lower
-local sub = string.sub
 local find = string.find
 local type = type
 local error = error
+local match = string.match
 
 local WILDCARD = "*"
 
@@ -106,39 +106,20 @@ local function includes(this, other)
     error("other must be a table", 2)
   end
 
-  local this_type = this.type
-  local this_subtype = this.subtype
-  local other_type = other.type
-  local other_subtype = other.subtype
-
-  if this_type == WILDCARD then
+  if this.type == WILDCARD then
     -- */* includes anything
     return true
   end
 
-  if this_type == other_type then
-    if this_subtype == other_subtype or this_subtype == WILDCARD then
+  if this.type == other.type then
+    if this.subtype == other.subtype or this.subtype == WILDCARD then
       return true
     end
 
-    if sub(this_subtype, 1, 2) == "*+" then
-      -- subtype is wildcard with suffix, e.g. *+json
-      local this_subtype_suffix = sub(this.subtype, 3)
-      local pattern = "^.-+" .. this_subtype_suffix ..  "$"
-      if find(other_subtype, pattern) then
+    -- considering included when this.subtype does not contain a suffix and is the suffix of other.subtype
+    if not find(this.subtype, "+", nil, true) then -- this.subtype does not contain suffix
+      if match(other.subtype, "+" .. this.subtype .. "$") then -- suffix match
         return true
-      end
-    else
-      -- considering included when this_subtype does not contain a suffix and is the suffix of other_subtype
-      local idx1 = find(this_subtype, "+", nil, true)
-      if not idx1 then -- this_subtype does not contain suffix
-        local idx2 = find(other_subtype, "+", nil, true)
-        if idx2 then -- other_subtype contains suffix
-          local other_subtype_suffix = sub(other_subtype, idx2 + 1)
-          if this_subtype == other_subtype_suffix then
-            return true
-          end
-        end
       end
     end
   end

@@ -63,6 +63,7 @@ jobs:
         name: bazel-outputs
         path: |
           bazel-out/_tmp/actions
+        retention-days: 3
 
     - name: Build Dev Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
