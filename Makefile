@@ -52,18 +52,14 @@ endif
 PACKAGE_TYPE ?= deb
 
 bin/bazel:
-ifeq (,$(wildcard bin/bazel))
 	curl -s -S -L \
 		https://github.com/bazelbuild/bazelisk/releases/download/v$(BAZLISK_VERSION)/bazelisk-$(OS)-$(BAZELISK_MACHINE) -o bin/bazel
 	chmod +x bin/bazel
-endif
 
 bin/grpcurl:
-ifeq (,$(wildcard bin/grpcurl))
 	@curl -s -S -L \
 		https://github.com/fullstorydev/grpcurl/releases/download/v$(GRPCURL_VERSION)/grpcurl_$(GRPCURL_VERSION)_$(GRPCURL_OS)_$(GRPCURL_MACHINE).tar.gz | tar xz -C bin;
 	$(RM) bin/LICENSE
-endif
 
 check-bazel: bin/bazel
 ifndef BAZEL
