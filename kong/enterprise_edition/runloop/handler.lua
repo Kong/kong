@@ -7,7 +7,6 @@
 
 local file_helpers = require "kong.portal.file_helpers"
 local workspaces = require "kong.workspaces"
-
 local tracing = require "kong.tracing"
 local utils = require "kong.tools.utils"
 
@@ -19,7 +18,6 @@ local log = ngx.log
 local ERR = ngx.ERR
 local DEBUG = ngx.DEBUG
 local unpack = unpack
-local worker_pid = ngx.worker.pid
 
 
 function handler.register_events()
@@ -122,55 +120,6 @@ function handler.register_events()
   worker_events.register(function(data)
     kong.portal_router.set_version(data.cache_key, data.cache_val)
   end, "portal", "router")
-
-  worker_events.register(function(data)
-    if data.pid ~= worker_pid() then
-      return
-    end
-
-    local mode = data.mode
-    local step = data.step
-    local interval = data.interval
-    local timeout = data.timeout
-    local path = data.path
-
-    local pok, res, err = pcall(kong.profiling.cpu.start, {
-      mode = mode,
-      step = step,
-      interval = interval,
-      timeout = timeout,
-      path = path,
-    })
-
-    if not pok then
-      log(ERR, "failed to start profiling: ", res)
-    end
-
-    if not res then
-      log(ERR, "failed to start profiling: ", err)
-    end
-
-  end, "profiling", "start")
-
-  worker_events.register(function(data)
-    if data.pid ~= worker_pid() then
-      return
-    end
-
-    kong.profiling.cpu.stop()
-  end, "profiling", "stop")
-
-  worker_events.register(function(data)
-    if data.pid ~= worker_pid() then
-      return
-    end
-
-    local pok, err = pcall(kong.profiling.gc_snapshot.dump, data.path, data.timeout)
-
-    if not pok then
-      log(ERR, "failed to snapshot GC: ", err)
-    end
-  end, "profiling", "gc-snapshot")
 
 end
 

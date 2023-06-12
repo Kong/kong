@@ -897,7 +897,10 @@ return {
       },
       ["/debug/profiling/gc-snapshot"] = {
         skip = true  -- this endpoint is only for internal use
-      }
+      },
+      ["/debug/profiling/memory"] = {
+        skip = true  -- this endpoint is only for internal use
+      },
     },
     tags = {
       title = [[ Tags ]],

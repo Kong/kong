@@ -8,7 +8,8 @@ globals = {
     "_KONG",
     "kong",
     "ngx.IS_CLI",
-    "gcsnapshot",
+    "kprof",
+    "ngx.worker.pids",
 }
 
 

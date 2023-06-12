@@ -809,6 +809,12 @@ function Kong.init_worker()
     return
   end
   kong.worker_events = worker_events
+
+  -- XXX EE [[
+  -- register prprofiling events
+  require("kong.enterprise_edition.profiling").init_worker()
+  -- ]]
+
   local cluster_events, err = kong_global.init_cluster_events(kong.configuration, kong.db)
   if not cluster_events then
     stash_init_worker_error("failed to instantiate 'kong.cluster_events' " ..

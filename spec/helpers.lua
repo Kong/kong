@@ -3911,6 +3911,17 @@ local function clustering_client(opts)
 end
 
 
+--- Create a temporary directory, and return its path.
+-- @function tmpdir
+-- @return string path to the temporary directory
+local function tmpdir()
+  local handle = assert(io.popen("mktemp -d"))
+  local path = handle:read("*a")
+  handle:close()
+  return path:sub(1, #path - 1)
+end
+
+
 --- Generate asymmetric keys
 -- @function generate_keys
 -- @param fmt format to receive the public and private pair
@@ -4074,6 +4085,7 @@ end
   all_strategies = all_strategies,
   validate_plugin_config_schema = validate_plugin_config_schema,
   clustering_client = clustering_client,
+  tmpdir = tmpdir,
   https_server = https_server,
   stress_generator = stress_generator,
 

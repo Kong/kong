@@ -14,20 +14,54 @@ local DEBUG_LISTEN_HOST = "0.0.0.0"
 local DEBUG_LISTEN_PORT = 9200
 
 for _, strategy in helpers.each_strategy() do
+for __, deploy in ipairs({ "traditional", "hybrid" }) do
 
-describe("GC snapshot #" .. strategy, function ()
+describe("GC snapshot #" .. strategy .. " #" .. deploy, function ()
   lazy_setup(function()
     helpers.get_db_utils(strategy)
 
-    assert(helpers.start_kong({
-      database   = strategy,
-      nginx_conf = "spec/fixtures/custom_nginx.template",
-      debug_listen = string.format("%s:%d", DEBUG_LISTEN_HOST, DEBUG_LISTEN_PORT),
-    }))
+    if deploy == "traditional" then
+      assert(helpers.start_kong({
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        debug_listen = string.format("%s:%d", DEBUG_LISTEN_HOST, DEBUG_LISTEN_PORT),
+      }))
+
+    elseif deploy == "hybrid" then
+      assert(helpers.start_kong({
+        role = "control_plane",
+        cluster_cert = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+        database = strategy,
+        db_update_frequency = 0.1,
+        cluster_listen = "127.0.0.1:9005",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+
+      assert(helpers.start_kong({
+        role = "data_plane",
+        database = "off",
+        prefix = "servroot2",
+        cluster_cert = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+        cluster_control_plane = "127.0.0.1:9005",
+        proxy_listen = "0.0.0.0:9002",
+        debug_listen = string.format("%s:%d", DEBUG_LISTEN_HOST, DEBUG_LISTEN_PORT),
+      }))
+
+    else
+      error("unknown deploy mode: " .. deploy)
+    end
   end)
 
   lazy_teardown(function()
-      assert(helpers.stop_kong())
+    assert(helpers.stop_kong())
+
+    if deploy == "hybrid" then
+      assert(helpers.stop_kong("servroot2"))
+    end
   end)
 
   it("debug_listen is enabled", function ()
@@ -35,7 +69,7 @@ describe("GC snapshot #" .. strategy, function ()
 
     local res = assert(http_client:send {
       method = "GET",
-      path = "/debug/profiling/cpu",
+      path = "/debug/profiling/gc-snapshot",
     })
 
     assert.res_status(200, res)
@@ -127,4 +161,5 @@ describe("GC snapshot #" .. strategy, function ()
 end)
 
 
+end
 end

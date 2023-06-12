@@ -23,13 +23,25 @@ local ERROR_KEY                 = "gc-snapshot:error"
 local LOCK_OPTS_FOR_CHECKING    = { timeout = 0 }
 local LOCK_OPTS_FOR_LOCK        = { timeout = 0, exptime = 0, }
 
+--[[
+  The 10 seconds is an arbitrary value,
+  we assume it is enough for finishing (such as I/O) the profiling
+  after the timeout.
+--]]
+local TORLERANCE_TIME           = 10
+
 local current_lock              = nil
 
 local _M                        = {}
 
 
+local function get_shdict()
+  return assert(ngx.shared[SHDICT_SATATE])
+end
+
+
 local function mark_active(path, timeout)
-  local shm = ngx.shared[SHDICT_SATATE]
+  local shm = get_shdict()
 
   local timeout_at = ngx_time() + timeout
 
@@ -37,7 +49,7 @@ local function mark_active(path, timeout)
     Almostly all keys should be expired after 10 seconds more than the timeout to
     avoid some cases like worker crash, or the worker process is killed by the OS (like OOM).
   --]]
-  local expire = timeout + 10
+  local expire = timeout + TORLERANCE_TIME
 
   LOCK_OPTS_FOR_LOCK.exptime = expire
   current_lock = assert(resty_lock:new(SHDICT_LOCK, LOCK_OPTS_FOR_LOCK))
@@ -53,7 +65,7 @@ end
 
 
 local function mark_inactive()
-  local shm = ngx.shared[SHDICT_SATATE]
+  local shm = get_shdict()
 
   assert(shm:set(STATUS_KEY, "stopped", 0), "failed to set status")
 
@@ -87,7 +99,7 @@ end
 
 
 function _M.state()
-  local shm = ngx.shared[SHDICT_SATATE]
+  local shm = get_shdict()
 
   local status = shm:get(STATUS_KEY) or "stopped"
   local pid = shm:get(PID_ID_KEY)
@@ -130,7 +142,7 @@ function _M.dump(path, timeout)
   mark_active(path, timeout)
 
   --[[
-    ok, err = gcsnapshot(filename[, timeout=120])
+    ok, err = kprof.mem.gcsnapshot(filename[, timeout=120])
 
     This function will trigger a full GC cycle, and then dump the Lua VM heap.
 
@@ -143,10 +155,10 @@ function _M.dump(path, timeout)
     (the timeout is not precise, and the actual time may be longer than the timeout,
     please see the implementation of gcsnapshot() in luajit/src/lj_gcsnapshot.c)
   --]]
-  local ok, err = gcsnapshot(path, timeout) -- luacheck: ignore
+  local ok, err = kprof.mem.gcsnapshot(path, timeout) -- luacheck: ignore
 
   if not ok then
-    local shm = ngx.shared[SHDICT_SATATE]
+    local shm = get_shdict()
     shm:set(ERROR_KEY, err)
   end
 

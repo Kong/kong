@@ -12,21 +12,95 @@ local cjson = require "cjson"
 local DEBUG_LISTEN_HOST = "0.0.0.0"
 local DEBUG_LISTEN_PORT = 9200
 
-for _, strategy in helpers.each_strategy() do
 
-describe("CPU profiling #" .. strategy, function ()
+local function wait_for_profiler_started()
+  local json
+
+  assert.eventually(function()
+    local admin_client = assert(helpers.admin_client())
+    local res = assert(admin_client:send {
+      method = "GET",
+      path = "/debug/profiling/cpu",
+    })
+    local body = assert.res_status(200, res)
+    json = cjson.decode(body)
+    assert.same("started", json.status)
+  end)
+  .with_timeout(3)
+  .has_no_error("failed to wait the profiler to be started")
+
+  return json
+end
+
+
+local function wait_for_proifler_stopped()
+  local json
+
+  assert.eventually(function()
+    local admin_client = assert(helpers.admin_client())
+    local res = assert(admin_client:send {
+      method = "GET",
+      path = "/debug/profiling/cpu",
+    })
+    local body = assert.res_status(200, res)
+    json = cjson.decode(body)
+    assert.same("stopped", json.status)
+  end)
+  .with_timeout(10)
+  .has_no_error("failed to wait the profiler to be stopped")
+
+  return json
+end
+
+for _, strategy in helpers.each_strategy() do
+for __, deploy in ipairs({ "traditional", "hybrid" }) do
+
+  describe("CPU profiling #" .. strategy .. " #" .. deploy, function ()
   lazy_setup(function()
     helpers.get_db_utils(strategy)
 
-    assert(helpers.start_kong({
-      database   = strategy,
-      nginx_conf = "spec/fixtures/custom_nginx.template",
-      debug_listen = string.format("%s:%d", DEBUG_LISTEN_HOST, DEBUG_LISTEN_PORT),
-    }))
+    if deploy == "traditional" then
+      assert(helpers.start_kong({
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        debug_listen = string.format("%s:%d", DEBUG_LISTEN_HOST, DEBUG_LISTEN_PORT),
+      }))
+
+    elseif deploy == "hybrid" then
+      assert(helpers.start_kong({
+        role = "control_plane",
+        cluster_cert = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+        database = strategy,
+        db_update_frequency = 0.1,
+        cluster_listen = "127.0.0.1:9005",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+
+      assert(helpers.start_kong({
+        role = "data_plane",
+        database = "off",
+        prefix = "servroot2",
+        cluster_cert = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+        cluster_control_plane = "127.0.0.1:9005",
+        proxy_listen = "0.0.0.0:9002",
+        debug_listen = string.format("%s:%d", DEBUG_LISTEN_HOST, DEBUG_LISTEN_PORT),
+      }))
+
+    else
+      error("unknown deploy mode: " .. deploy)
+    end
   end)
 
   lazy_teardown(function()
     assert(helpers.stop_kong())
+
+    if deploy == "hybrid" then
+      assert(helpers.stop_kong("servroot2"))
+    end
   end)
 
   before_each(function()
@@ -34,7 +108,19 @@ describe("CPU profiling #" .. strategy, function ()
       We need to wait for one second to make Kong generate a unique path of result file,
       beacuase kong uses `ngx.time()` to generate the path.
     --]]
+    ngx.update_time()
     ngx.sleep(1.2)
+
+    local admin_client = assert(helpers.admin_client())
+    local res = assert(admin_client:send {
+      method = "GET",
+      path = "/debug/profiling/cpu",
+    })
+
+    local body = assert.res_status(200, res)
+    local json = cjson.decode(body)
+
+    assert.same("stopped", json.status)
   end)
 
   it("debug_listen is enabled", function ()
@@ -53,7 +139,7 @@ describe("CPU profiling #" .. strategy, function ()
     local body = {
       mode = "instruction",
       step = 100,
-      timeout = 11,
+      timeout = 5,
     }
 
     local res = assert(admin_client:send {
@@ -67,18 +153,7 @@ describe("CPU profiling #" .. strategy, function ()
 
     assert.res_status(201, res)
 
-    -- wait for the worker events to be processed
-    helpers.pwait_until(function()
-      res = assert(admin_client:send {
-        method = "GET",
-        path = "/debug/profiling/cpu",
-      })
-
-      local body = assert.res_status(200, res)
-      local json = cjson.decode(body)
-
-      return json.status == "started"
-    end, 3)
+    wait_for_profiler_started()
 
     res = assert(admin_client:send {
       method = "POST",
@@ -104,8 +179,8 @@ describe("CPU profiling #" .. strategy, function ()
     assert.res_status(204, res)
   end)
 
-  it("profiling", function ()
-    for _, mode in ipairs({ "instruction", "time" }) do
+  for _, mode in ipairs({ "instruction", "time" }) do
+    it(string.format("profiling #%s-based", mode), function ()
       local admin_client = assert(helpers.admin_client())
       local body
 
@@ -134,14 +209,7 @@ describe("CPU profiling #" .. strategy, function ()
 
       assert.res_status(201, res)
 
-      res = assert(admin_client:send {
-        method = "GET",
-        path = "/debug/profiling/cpu",
-      })
-
-      body = assert.res_status(200, res)
-      local json = cjson.decode(body)
-
+      local json = wait_for_profiler_started()
       assert.truthy(json.path)
       assert.truthy(json.pid)
       assert.truthy(json.remain)
@@ -174,18 +242,11 @@ describe("CPU profiling #" .. strategy, function ()
 
       local path = json.path
 
-      res = assert(admin_client:send {
-        method = "GET",
-        path = "/debug/profiling/cpu",
-      })
-
-      body = assert.res_status(200, res)
-      json = cjson.decode(body)
-      assert.same({status = "stopped", path = path}, json)
+      assert.same(path, wait_for_proifler_stopped().path)
 
       helpers.wait_for_file_contents(path, 10)
-    end
-  end)
+    end)
+  end
 
   it("stop profiling manually", function ()
     for _, mode in ipairs({ "instruction", "time" }) do
@@ -196,13 +257,13 @@ describe("CPU profiling #" .. strategy, function ()
         body = {
           mode = "instruction",
           step = 50,
-          timeout = 120,
+          timeout = 5,
         }
       else
         body = {
           mode = "time",
           interval = 1,
-          timeout = 120,
+          timeout = 5,
         }
       end
 
@@ -230,8 +291,8 @@ describe("CPU profiling #" .. strategy, function ()
         local json = cjson.decode(body)
         path = json.path
 
-        return json.status == "started"
-      end, 10)
+        assert(json.status == "started")
+      end, 3)
 
       res = assert(admin_client:send {
         method = "DELETE",
@@ -240,7 +301,7 @@ describe("CPU profiling #" .. strategy, function ()
 
       assert.res_status(204, res)
 
-      helpers.wait_for_file("file", path, 15)
+      helpers.wait_for_file("file", path, 5)
     end
   end)
 
@@ -385,7 +446,7 @@ describe("CPU profiling #" .. strategy, function ()
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
 
-      return json.status == "started"
+      assert.same("started", json.status)
     end, 3)
 
     -- reload
@@ -393,6 +454,11 @@ describe("CPU profiling #" .. strategy, function ()
 
     -- wait for automatic recovery
     helpers.pwait_until(function()
+      --[[
+        since we are reloading, the old connection will be closed,
+        so we need to create a new one  
+      --]]
+      local admin_client = assert(helpers.admin_client())
       res = assert(admin_client:send {
         method = "GET",
         path = "/debug/profiling/cpu",
@@ -400,6 +466,8 @@ describe("CPU profiling #" .. strategy, function ()
 
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
+
+      admin_client:close()
 
       assert.same({
         status = "stopped",
@@ -439,7 +507,7 @@ describe("CPU profiling #" .. strategy, function ()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        return json.status == "started"
+        assert(json.status == "started")
       end, 3)
 
       -- wait for the profiling to be stopped
@@ -476,5 +544,5 @@ describe("CPU profiling #" .. strategy, function ()
   end)
 end)
 
-
+end
 end

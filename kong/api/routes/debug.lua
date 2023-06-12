@@ -5,63 +5,90 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local cjson                           = require("cjson.safe")
-local set_log_level                   = require("resty.kong.log").set_log_level
-local get_log_level                   = require("resty.kong.log").get_log_level
-local constants                       = require("kong.constants")
+local cjson                              = require("cjson.safe")
+local set_log_level                      = require("resty.kong.log").set_log_level
+local get_log_level                      = require("resty.kong.log").get_log_level
+local constants                          = require("kong.constants")
 
-local LOG_LEVELS                      = constants.LOG_LEVELS
-local DYN_LOG_LEVEL_KEY               = constants.DYN_LOG_LEVEL_KEY
-local DYN_LOG_LEVEL_TIMEOUT_AT_KEY    = constants.DYN_LOG_LEVEL_TIMEOUT_AT_KEY
+-- XXX EE [[
+local profiling                          = require("kong.enterprise_edition.profiling")
+-- ]]
 
-local ngx                             = ngx
-local kong                            = kong
-local pcall                           = pcall
-local type                            = type
-local tostring                        = tostring
-local string_format                   = string.format
-local math_max                        = math.max
-local math_random                     = math.random
-local table_remove                    = table.remove
+local LOG_LEVELS                         = constants.LOG_LEVELS
+local DYN_LOG_LEVEL_KEY                  = constants.DYN_LOG_LEVEL_KEY
+local DYN_LOG_LEVEL_TIMEOUT_AT_KEY       = constants.DYN_LOG_LEVEL_TIMEOUT_AT_KEY
 
-local ngx_time                        = ngx.time
-local ngx_worker_pids                 = ngx.worker.pids -- luacheck: ignore
-local ngx_worker_pid                  = ngx.worker.pid
+local ngx                                = ngx
+local kong                               = kong
+local pcall                              = pcall
+local type                               = type
+local tostring                           = tostring
+local string_format                      = string.format
+local math_max                           = math.max
+local math_random                        = math.random
+local table_remove                       = table.remove
 
-local NODE_LEVEL_BROADCAST            = false
-local CLUSTER_LEVEL_BROADCAST         = true
-local DEFAULT_LOG_LEVEL_TIMEOUT       = 60 -- 60s
+local ngx_time                           = ngx.time
+local ngx_worker_pids                    = ngx.worker.pids -- luacheck: ignore
+local ngx_worker_pid                     = ngx.worker.pid
 
-local MIN_PROFILING_TIMEOUT           = 1       -- seconds
-local MAX_PROFILING_TIMEOUT           = 600     -- seconds
+local NODE_LEVEL_BROADCAST               = false
+local CLUSTER_LEVEL_BROADCAST            = true
+local DEFAULT_LOG_LEVEL_TIMEOUT          = 60          -- 60s
 
-local DEFAULT_CPU_PROFILING_MODE      = "time"
-local DEFAULT_CPU_PROFILING_STEP      = 250
-local DEFAULT_CPU_PROFILING_INTERVAL  = 100     -- microseconds
-local DEFAULT_CPU_PROFILING_TIMEOUT   = 60      -- seconds
-local MIN_CPU_PROFILING_STEP          = 50
-local MAX_CPU_PROFILING_STEP          = 1000
-local MIN_CPU_PROFILING_INTERVAL      = 1       -- microseconds
-local MAX_CPU_PROFILING_INTERVAL      = 1000000 -- microseconds
+local MIN_PROFILING_TIMEOUT              = 1           -- seconds
+local MAX_PROFILING_TIMEOUT              = 600         -- seconds
+local MIN_TRACING_TIMEOUT                = 1           -- seconds
 
-local DEFAULT_GC_SNAPSHOT_TIMEOUT     = 120     -- seconds
+local DEFAULT_CPU_PROFILING_MODE         = "time"
+local DEFAULT_CPU_PROFILING_STEP         = 500
+local DEFAULT_CPU_PROFILING_INTERVAL     = 10000       -- microseconds
+local DEFAULT_CPU_PROFILING_TIMEOUT      = 10          -- seconds
+local MIN_CPU_PROFILING_STEP             = 50
+local MAX_CPU_PROFILING_STEP             = 1000
+local MIN_CPU_PROFILING_INTERVAL         = 1           -- microseconds
+local MAX_CPU_PROFILING_INTERVAL         = 1000000     -- microseconds
 
-local ERR_MSG_INVALID_TIMEOUT         = string.format(
-                                          "invalid timeout (must be between %d and %d): ",
-                                          MIN_PROFILING_TIMEOUT, MAX_PROFILING_TIMEOUT
-                                        )
+local DEFAULT_GC_SNAPSHOT_TIMEOUT        = 120         -- seconds
 
-local ERR_MSG_INVALID_STEP            = string.format(
-                                          "invalid step (must be between %d and %d): ",
-                                          MIN_CPU_PROFILING_STEP, MAX_CPU_PROFILING_STEP
-                                        )
+local DEFAULT_MEMORY_TRACING_TIMEOUT     = 10          -- seconds
+local DEFAULT_MEMORY_TRACING_STACK_DEPTH = 8
+local DEFAULT_MEMORY_TRACING_BLOCK_SIZE  = 2^20 * 512  -- 512 MiB
+local MIN_MEMORY_TRACING_BLOCK_SIZE      = 2^20 * 512  -- 512 MiB
+local MAX_MEMORY_TRACING_BLOCK_SIZE      = 2^30 * 5    -- 5 GiB
+local MIN_MEMORY_TRACING_STACK_DEPTH     = 1
 
-local ERR_MSG_INVALID_INTERVAL        = string.format(
-                                          "invalid interval (must be between %d and %d): ",
-                                          MIN_CPU_PROFILING_INTERVAL, MAX_CPU_PROFILING_INTERVAL
-                                        )
+local ERR_MSG_INVALID_PROFILING_TIMEOUT  = string.format(
+                                           "invalid timeout (must be between %d and %d): ",
+                                           MIN_PROFILING_TIMEOUT, MAX_PROFILING_TIMEOUT
+                                         )
 
-local ERR_MSG_INVALID_MODE            = "invalid mode (must be 'time' or 'instruction'): "
+local ERR_MSG_INVALID_TRACING_TIMEOUT    = string.format(
+                                           "invalid timeout (must be greater than %d): ",
+                                           MIN_TRACING_TIMEOUT
+                                         )
+
+local ERR_MSG_INVALID_STEP               = string.format(
+                                           "invalid step (must be between %d and %d): ",
+                                           MIN_CPU_PROFILING_STEP, MAX_CPU_PROFILING_STEP
+                                         )
+
+local ERR_MSG_INVALID_INTERVAL           = string.format(
+                                           "invalid interval (must be between %d and %d): ",
+                                           MIN_CPU_PROFILING_INTERVAL, MAX_CPU_PROFILING_INTERVAL
+                                         )
+
+local ERR_MSG_INVALID_MODE               = "invalid mode (must be 'time' or 'instruction'): "
+
+local ERR_MSG_INVALID_BLOCK_SIZE         = string.format(
+                                           "invalid block size (must be between %d and %d): ",
+                                           MIN_MEMORY_TRACING_BLOCK_SIZE, MAX_MEMORY_TRACING_BLOCK_SIZE
+                                         )
+
+local ERR_MSG_INVALID_STACK_DEPTH        = string.format(
+                                           "invalid stack depth (must be greater than or equal to %d): ",
+                                           MIN_MEMORY_TRACING_STACK_DEPTH
+                                         )
 
 
 local function handle_put_log_level(self, broadcast)
@@ -136,6 +163,7 @@ local function handle_put_log_level(self, broadcast)
   return kong.response.exit(200, { message = "log level changed" })
 end
 
+
 local function is_valid_worker_pid(pid)
   local pids = ngx_worker_pids()
 
@@ -147,6 +175,30 @@ local function is_valid_worker_pid(pid)
 
   return false
 end
+
+
+local function make_profiling_data_path(name, pid, has_suffix)
+  local fmt = "%s/profiling/%s-%d-%d"
+  if has_suffix then
+    fmt = fmt .. ".bin"
+  end
+
+
+  return string_format(fmt,
+                       kong.configuration.prefix,
+                       name,
+                       pid,
+                       ngx_time())
+end
+
+
+local function response_body(status, message)
+  return {
+    status  = status,
+    message = message,
+  }
+end
+
 
 local routes = {
   ["/debug/node/log-level"] = {
@@ -168,7 +220,7 @@ local routes = {
   },
   ["/debug/profiling/cpu"] = {
     GET = function(self)
-      local state = kong.profiling.cpu.state()
+      local state = profiling.cpu.state()
 
       if state.status == "started" then
         state.remain = math_max(state.timeout_at - ngx_time(), 0)
@@ -179,7 +231,7 @@ local routes = {
     end,
 
     POST = function(self)
-      local state = kong.profiling.cpu.state()
+      local state = profiling.cpu.state()
 
       if state.status == "started" then
         local resp_body = {
@@ -196,91 +248,47 @@ local routes = {
       local timeout   = tonumber(self.params.timeout)   or DEFAULT_CPU_PROFILING_TIMEOUT
 
       if not is_valid_worker_pid(pid) then
-        local resp_body = {
-          status = "error",
-          message = "invalid pid: " .. pid,
-        }
-        return kong.response.exit(400, resp_body)
+        return kong.response.exit(400, response_body("error", "invalid pid: " .. pid))
       end
 
       if mode ~= "time" and mode ~= "instruction" then
-        local resp_body = {
-          status = "error",
-          message = ERR_MSG_INVALID_MODE .. mode,
-        }
-        return kong.response.exit(400, resp_body)
+        return kong.response.exit(400, response_body("error", ERR_MSG_INVALID_MODE .. mode))
       end
 
       if step < MIN_CPU_PROFILING_STEP or step > MAX_CPU_PROFILING_STEP then
-        local resp_body = {
-          status = "error",
-          message = ERR_MSG_INVALID_STEP .. step,
-        }
-        return kong.response.exit(400, resp_body)
+        return kong.response.exit(400, response_body("error", ERR_MSG_INVALID_STEP .. step))
       end
 
       if interval < MIN_CPU_PROFILING_INTERVAL or interval > MAX_CPU_PROFILING_INTERVAL then
-        local resp_body = {
-          status = "error",
-          message = ERR_MSG_INVALID_INTERVAL .. interval,
-        }
-        return kong.response.exit(400, resp_body)
+        return kong.response.exit(400, response_body("error", ERR_MSG_INVALID_INTERVAL .. interval))
       end
 
       if timeout < MIN_PROFILING_TIMEOUT or timeout > MAX_PROFILING_TIMEOUT then
-        local resp_body = {
-          status = "error",
-          message = ERR_MSG_INVALID_TIMEOUT .. timeout,
-        }
-        return kong.response.exit(400, resp_body)
+        return kong.response.exit(400, response_body("error", ERR_MSG_INVALID_PROFILING_TIMEOUT .. timeout))
       end
 
-      local path = string_format("%s/profiling/prof-%d-%d.cbt",
-                                 kong.configuration.prefix, pid, ngx_time())
-
-      local ok, err = kong.worker_events.post("profiling", "start", {
-        pid = pid,
-        mode = mode,
-        step = step,
-        interval = interval,
-        path = path,
-        timeout = timeout,
-      })
+      local ok, err = profiling.cpu.start(mode, step, interval, timeout,
+                                          make_profiling_data_path("prof", pid, true),
+                                          pid)
 
       if not ok then
-        local resp_body = {
-          status = "error",
-          message = "failed to post worker event: " .. err,
-        }
-        return kong.response.exit(500, resp_body)
+        return kong.response.exit(500, response_body("error", "failed to start: " .. err))
       end
 
-      local resp_body = {
-        status = "started",
-        message = "profiling is activated at pid: " .. pid,
-      }
-      return kong.response.exit(201, resp_body)
+      return kong.response.exit(201, response_body("started", "profiling is activated at pid: " .. pid))
     end,
 
     DELETE = function(self)
-      local state = kong.profiling.cpu.state()
+      local state = profiling.cpu.state()
 
       if state.status ~= "started" then
-        local resp_body = {
-          status = "error",
-          message = "profiling is not active",
-        }
-        return kong.response.exit(400, resp_body)
+        return kong.response.exit(400, response_body("error", "profiling is not active"))
       end
 
-      local ok, err = kong.worker_events.post("profiling", "stop", { pid = tonumber(state.pid) })
+      local ok, err = profiling.cpu.stop()
 
       if not ok then
-        local resp_body = {
-          status = "error",
-          message = "failed to post worker event: " .. err,
-        }
-        return kong.response.exit(500, resp_body)
+        return kong.response.exit(500, response_body("error", "failed to stop: " .. err))
       end
 
       return kong.response.exit(204)
@@ -288,7 +296,7 @@ local routes = {
   },
   ["/debug/profiling/gc-snapshot"] = {
     GET = function(self)
-      local state = kong.profiling.gc_snapshot.state()
+      local state = profiling.gc_snapshot.state()
 
       if state.status == "started" then
         state.remain = math_max(state.timeout_at - ngx_time(), 0)
@@ -298,33 +306,21 @@ local routes = {
       return kong.response.exit(200, state)
     end,
     POST = function(self)
-      local state = kong.profiling.gc_snapshot.state()
+      local state = profiling.gc_snapshot.state()
 
       if state.status == "started" then
-        local resp_body = {
-          status = "error",
-          message = "gc-snapshot is already active at pid: " .. state.pid,
-        }
-        return kong.response.exit(409, resp_body)
+        return kong.response.exit(409, response_body("error", "gc-snapshot is already active at pid: " .. state.pid))
       end
 
       local pid     = tonumber(self.params.pid)     or ngx_worker_pid()
       local timeout = tonumber(self.params.timeout) or DEFAULT_GC_SNAPSHOT_TIMEOUT
 
       if timeout < MIN_PROFILING_TIMEOUT or timeout > MAX_PROFILING_TIMEOUT then
-        local resp_body = {
-          status = "error",
-          message = ERR_MSG_INVALID_TIMEOUT .. timeout,
-        }
-        return kong.response.exit(400, resp_body)
+        return kong.response.exit(400, response_body("error", ERR_MSG_INVALID_PROFILING_TIMEOUT .. timeout))
       end
 
       if not is_valid_worker_pid(pid) then
-        local resp_body = {
-          status = "error",
-          message = "invalid pid: " .. pid,
-        }
-        return kong.response.exit(400, resp_body)
+        return kong.response.exit(400, response_body("error", "invalid pid: " .. pid))
       end
 
       local pids = ngx_worker_pids()
@@ -349,28 +345,80 @@ local routes = {
         pid = pids[math_random(#pids)]
       end
 
-      local path = string_format("%s/profiling/gc-snapshot-%d-%d.bin",
-                                 kong.configuration.prefix, pid, ngx_time())
-
-      local ok, err = kong.worker_events.post("profiling", "gc-snapshot", {
-        pid = pid,
-        timeout = timeout,
-        path = path,
-      })
+      local ok, err = profiling.gc_snapshot.dump(make_profiling_data_path("gc-snapshot", pid, true),
+                                                 timeout, pid)
 
       if not ok then
-        local resp_body = {
-          status = "error",
-          message = "failed to post worker event: " .. err,
-        }
-        return kong.response.exit(500, resp_body)
+        return kong.response.exit(500, response_body("error", "failed to start: " .. err))
       end
 
-      local resp_body = {
-        status = "started",
-        message = "Dumping snapshot in progress on pid: " .. pid,
-      }
-      return kong.response.exit(201, resp_body)
+      return kong.response.exit(201, response_body("Dumping snapshot in progress on pid: " .. pid))
+    end,
+  },
+  ["/debug/profiling/memory"] = {
+    GET = function(self)
+      local state = profiling.memory.state()
+
+      if state.status == "started" then
+        state.remain = math_max(state.timeout_at - ngx_time(), 0)
+        state.timeout_at = nil
+      end
+
+      return kong.response.exit(200, state)
+    end,
+
+    POST = function(self)
+      local state = profiling.memory.state()
+
+      if state.status == "started" then
+        return kong.response.exit(409, response_body("error", "memory tracing is already active at pid: " .. state.pid))
+      end
+
+      local pid         = tonumber(self.params.pid)         or ngx_worker_pid()
+      local timeout     = tonumber(self.params.timeout)     or DEFAULT_MEMORY_TRACING_TIMEOUT
+      local block_size  = tonumber(self.params.block_size)  or DEFAULT_MEMORY_TRACING_BLOCK_SIZE
+      local stack_depth = tonumber(self.params.stack_depth) or DEFAULT_MEMORY_TRACING_STACK_DEPTH
+
+      if not is_valid_worker_pid(pid) then
+        return kong.response.exit(400, response_body("error", "invalid pid: " .. pid))
+      end
+
+      if timeout < MIN_TRACING_TIMEOUT then
+        return kong.response.exit(400, response_body("error", ERR_MSG_INVALID_TRACING_TIMEOUT .. timeout))
+      end
+
+      if block_size < MIN_MEMORY_TRACING_BLOCK_SIZE or block_size > MAX_MEMORY_TRACING_BLOCK_SIZE then
+        return kong.response.exit(400, response_body("error", ERR_MSG_INVALID_BLOCK_SIZE .. block_size))
+      end
+
+      if stack_depth < MIN_MEMORY_TRACING_STACK_DEPTH then
+        return kong.response.exit(400, response_body("error", ERR_MSG_INVALID_STACK_DEPTH .. stack_depth))
+      end
+
+      local ok, err = profiling.memory.start(make_profiling_data_path("trace", pid, false),
+                                             timeout, block_size, stack_depth, pid)
+
+      if not ok then
+        return kong.response.exit(500, response_body("error", "failed to start: " .. err))
+      end
+
+      return kong.response.exit(201, response_body("started", "memory tracing is activated at pid: " .. pid))
+    end,
+
+    DELETE = function(self)
+      local state = profiling.memory.state()
+
+      if state.status ~= "started" then
+        return kong.response.exit(400, response_body("error", "memory tracing is not active"))
+      end
+
+      local ok, err = profiling.memory.stop()
+
+      if not ok then
+        return kong.response.exit(500, response_body("error", "failed to stop: " .. err))
+      end
+
+      return kong.response.exit(204)
     end,
   },
 }
@@ -383,6 +431,7 @@ if kong.configuration.role == "control_plane" then
 else
   cluster_name = "/debug/cluster/log-level/:log_level"
 end
+
 
 routes[cluster_name] = {
   PUT = function(self)

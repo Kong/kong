@@ -80,9 +80,10 @@ def ee_suites(expect, fips: bool = False):
     # binary correctness
 
     # LuaJIT profiling patch
-    expect("/usr/local/openresty/luajit/lib/libluajit-5.1.so", "LuaJIT should include profiling patch") \
+    expect("/usr/local/openresty/luajit/lib/libluajit-5.1.so",
+           "LuaJIT should include Kong profiling extension patch") \
         .functions \
-        .contain("lj_cf_gcsnapshot")
+        .contain("luaopen_kprof")
 
     ZLIB_VERSION = "1.2.13"
     expect("**/*.so", "zlib version is less than %s" % ZLIB_VERSION) \

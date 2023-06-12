@@ -48,13 +48,25 @@ local LOCK_OPTS_FOR_STATE_LOCK  = { timeout = 0, exptime = 0, }
 -- For file lock, we assume the time of writing the file is less than 30 seconds
 local LOCK_OPTS_FOR_FILE_LOCK   = { timeout = 0, exptime = 30, }
 
+--[[
+  The 10 seconds is an arbitrary value,
+  we assume it is enough for finishing (such as I/O) the profiling
+  after the timeout.
+--]]
+local TORLERANCE_TIME           = 10
+
 local stacktrace                = {}
 local force_stop_at             = math.huge
 local current_samples           = 0
 local last_sync_samples         = math.huge
 local current_state_lock        = nil
 
-local _M                        = {}
+local _M                        = {
+  VALIDATE_MODES = {
+    ["instruction"] = true,
+    ["time"] = true,
+  },
+}
 
 
 --[[
@@ -85,8 +97,13 @@ local _M                        = {}
 --]]
 
 
+local function get_shdict()
+  return assert(ngx.shared[SHDICT_SATATE])
+end
+
+
 local function sync_samples()
-  local shm = ngx.shared[SHDICT_SATATE]
+  local shm = get_shdict()
   shm:set(SAMPLES_KEY, current_samples)
 end
 
@@ -201,7 +218,7 @@ end
 
 
 local function mark_active(opt)
-  local shm = ngx.shared[SHDICT_SATATE]
+  local shm = get_shdict()
 
   local timeout_at = ngx_time() + opt.timeout
   local step = math_ceil(opt.step)
@@ -213,7 +230,7 @@ local function mark_active(opt)
       Almostly all keys should be expired after 10 seconds more than the timeout to
       avoid some cases like worker crash, or the worker process is killed by the OS (like OOM).
   --]]
-  local expire = opt.timeout + 10
+  local expire = opt.timeout + TORLERANCE_TIME
 
   LOCK_OPTS_FOR_STATE_LOCK.exptime = expire
   current_state_lock = assert(resty_lock:new(SHDICT_LOCK, LOCK_OPTS_FOR_STATE_LOCK))
@@ -236,7 +253,7 @@ end
 
 
 local function mark_inactive()
-  local shm = ngx.shared[SHDICT_SATATE]
+  local shm = get_shdict()
 
   assert(shm:set(STATUS_KEY, "stopped", 0), "failed to set profiling state")
 
@@ -269,7 +286,7 @@ end
 
 function _M.state()
   local state = {}
-  local shm = ngx.shared[SHDICT_SATATE]
+  local shm = get_shdict()
 
   state.status = shm:get(STATUS_KEY) or "stopped"
   state.path = shm:get(PATH_KEY)
@@ -324,17 +341,6 @@ function _M.start(opt)
   local step = math_ceil(opt.step)
   local interval = math_ceil(opt.interval)
   local mode = opt.mode
-
-  local ok, err = ngx.timer.at(opt.timeout, function(premature)
-    if premature then
-        return
-    end
-    _M.stop()
-  end)
-
-  if not ok then
-    return false, err
-  end
 
   if mode == "instruction" then
     debug.sethook(instruction_callback, "", step)
