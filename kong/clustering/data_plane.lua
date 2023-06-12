@@ -229,19 +229,19 @@ function _M:communicate(premature)
   end)
 
   local write_thread = ngx.thread.spawn(function()
-    while not exiting() do
-      send_ping(c, log_suffix)
+    local counter = 0   -- count down to ping
 
-      for _ = 1, PING_INTERVAL do
-        ngx_sleep(1)
-        if exiting() then
-          return
-        end
-        if ping_immediately then
-          ping_immediately = nil
-          break
-        end
+    while not exiting() do
+      if ping_immediately or counter <= 0 then
+        ping_immediately = nil
+        counter = PING_INTERVAL
+
+        send_ping(c, log_suffix)
       end
+
+      counter = counter - 1
+
+      ngx_sleep(1)
     end
   end)
 
