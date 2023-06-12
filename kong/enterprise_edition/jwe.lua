@@ -932,13 +932,13 @@ end
 --
 -- @function kong.enterprise_edition.jwe.encrypt
 --
--- @tparam   string        alg        Algorithm used for key management
--- @tparam   string        enc        Encryption algorithm used for content encryption
--- @tparam   string|table  key        Public key
--- @tparam   string        plaintext  Plaintext
--- @tparam   ?table        options    Options (optional), default: nil
--- @treturn  string                   JWE encrypted JWT token, or nil
--- @treturn  string                   Error message, or nil
+-- @tparam        string        alg        Algorithm used for key management
+-- @tparam        string        enc        Encryption algorithm used for content encryption
+-- @tparam        string|table  key        Public key
+-- @tparam        string        plaintext  Plaintext
+-- @tparam[opt]   table         options    Options (optional), default: nil
+-- @treturn       string                   JWE encrypted JWT token, or nil
+-- @treturn       string                   Error message, or nil
 function jwe.encrypt(alg, enc, key, plaintext, options)
   assert(ALGORITHM[alg], "invalid alg argument")
   assert(ENCRYPTION[enc], "invalid enc argument")

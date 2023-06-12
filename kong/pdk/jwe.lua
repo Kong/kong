@@ -162,13 +162,13 @@ local function new(self)
 --
 -- @function kong.enterprise_edition.jwe.encrypt
 --
--- @tparam   string        alg        Algorithm used for key management
--- @tparam   string        enc        Encryption algorithm used for content encryption
--- @tparam   string|table  key        Public key
--- @tparam   string        plaintext  Plaintext
--- @tparam   ?table        options    Options (optional), default: nil
--- @treturn  string                   JWE encrypted JWT token, or nil
--- @treturn  string                   Error message, or nil
+-- @tparam        string        alg        Algorithm used for key management
+-- @tparam        string        enc        Encryption algorithm used for content encryption
+-- @tparam        string|table  key        Public key
+-- @tparam        string        plaintext  Plaintext
+-- @tparam[opt]   table         options    Options (optional), default: nil
+-- @treturn       string                   JWE encrypted JWT token, or nil
+-- @treturn       string                   Error message, or nil
   function _JWE:encrypt(alg, enc, key, plaintext, options)
     return jwe.encrypt(alg, enc, key, plaintext, options)
   end
