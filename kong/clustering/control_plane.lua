@@ -504,11 +504,11 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
     local sleep_left = delay
     while sleep_left > 0 do
       if sleep_left <= 1 then
-        ngx.sleep(sleep_left)
+        sleep(sleep_left)
         break
       end
 
-      ngx.sleep(1)
+      sleep(1)
 
       if exiting() then
         return
