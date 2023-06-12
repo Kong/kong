@@ -391,6 +391,8 @@ function _M:handle_cp_websocket()
       end
 
       -- is reconfigure
+      assert(payload == RECONFIGURE_TYPE)
+
       local previous_sync_status = sync_status
       ok, err, sync_status = self:check_configuration_compatibility(
                                 { dp_plugins_map = dp_plugins_map, })
