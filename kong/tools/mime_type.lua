@@ -118,7 +118,7 @@ local function includes(this, other)
 
     -- considering included when this_subtype does not contain a suffix and is the suffix of other_subtype
     if not find(this.subtype, "+", nil, true) then -- this_subtype does not contain suffix
-      if match(other.subtype, this.subtype .. "$") then -- suffix match
+      if match(other.subtype, "+" .. this.subtype .. "$") then -- suffix match
         return true
       end
     end
