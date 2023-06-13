@@ -3536,6 +3536,12 @@ end
 -- @param preserve_prefix (boolean) if truthy, the prefix will not be deleted after stopping
 -- @param preserve_dc ???
 local function cleanup_kong(prefix, preserve_prefix, preserve_dc)
+  -- remove socket files to ensure `pl.dir.rmtree()` ok
+  local socks = { "/worker_events.sock", "/stream_worker_events.sock", }
+  for _, name in ipairs(socks) do
+    local sock_file = (prefix or conf.prefix) .. name
+    os.remove(sock_file)
+  end
 
   -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped
   if not (preserve_prefix or os.getenv("KONG_DONT_CLEAN")) then
