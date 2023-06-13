@@ -19,6 +19,7 @@ local split_host_port = atc.split_host_port
 local type = type
 local pairs = pairs
 local ipairs = ipairs
+local assert = assert
 local tb_concat = table.concat
 local tb_insert = table.insert
 local tb_sort = table.sort
@@ -38,14 +39,22 @@ local ASTERISK         = byte("*")
 local MAX_HEADER_COUNT = 255
 
 
--- reuse buffer objects
-local expr_buf = buffer.new(128)
-
-
 -- reuse table objects
 local exp_hosts_t         = tb_new(10, 0)
 local exp_headers_t       = tb_new(10, 0)
 local exp_single_header_t = tb_new(10, 0)
+
+
+-- reuse buffer objects
+local expr_buf = buffer.new(128)
+
+
+local function buffer_append(buf, sep, str)
+  if #buf > 0 then
+    buf:put(assert(sep))
+  end
+  buf:put(str)
+end
 
 
 local function is_regex_magic(path)
@@ -80,7 +89,7 @@ local function get_expression(route)
 
   local gen = gen_for_field("http.method", OP_EQUAL, methods)
   if gen then
-    expr_buf:put(gen)
+    buffer_append(expr_buf, LOGICAL_AND, gen)
   end
 
   local gen = gen_for_field("tls.sni", OP_EQUAL, snis, function(_, p)
@@ -96,10 +105,7 @@ local function get_expression(route)
     -- then SNI matching should simply not be considered
     gen = "net.protocol != \"https\"" .. LOGICAL_OR .. gen
 
-    if #expr_buf > 0 then
-      expr_buf:put(LOGICAL_AND)
-    end
-    expr_buf:put(gen)
+    buffer_append(expr_buf, LOGICAL_AND, gen)
   end
 
   if not is_empty_field(hosts) then
@@ -131,10 +137,8 @@ local function get_expression(route)
       end
     end -- for route.hosts
 
-    if #expr_buf > 0 then
-      expr_buf:put(LOGICAL_AND)
-    end
-    expr_buf:put("(" .. tb_concat(hosts_t, LOGICAL_OR) .. ")")
+    buffer_append(expr_buf, LOGICAL_AND,
+                  "(" .. tb_concat(hosts_t, LOGICAL_OR) .. ")")
   end
 
   -- resort `paths` to move regex routes to the front of the array
@@ -157,10 +161,7 @@ local function get_expression(route)
     return p
   end)
   if gen then
-    if #expr_buf > 0 then
-      expr_buf:put(LOGICAL_AND)
-    end
-    expr_buf:put(gen)
+    buffer_append(expr_buf, LOGICAL_AND, gen)
   end
 
   if not is_empty_field(headers) then
@@ -190,7 +191,7 @@ local function get_expression(route)
     if #expr_buf > 0 then
       expr_buf:put(LOGICAL_AND)
     end
-    expr_buf:put(tb_concat(headers_t, LOGICAL_AND))
+    buffer_append(expr_buf, LOGICAL_AND, tb_concat(headers_t, LOGICAL_AND))
   end
 
   return expr_buf:get()
