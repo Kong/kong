@@ -5,10 +5,10 @@ local bit = require("bit")
 local buffer = require("string.buffer")
 local atc = require("kong.router.atc")
 local tb_new = require("table.new")
-local tb_clear = require("table.clear")
 local tb_nkeys = require("table.nkeys")
 local uuid = require("resty.jit-uuid")
 local utils = require("kong.tools.utils")
+
 
 local escape_str      = atc.escape_str
 local is_empty_field  = atc.is_empty_field
@@ -20,7 +20,6 @@ local type = type
 local pairs = pairs
 local ipairs = ipairs
 local assert = assert
-local tb_concat = table.concat
 local tb_insert = table.insert
 local tb_sort = table.sort
 local byte = string.byte
