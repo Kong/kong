@@ -2,6 +2,7 @@ local _M = {}
 
 
 local bit = require("bit")
+local buffer = require("string.buffer")
 local atc = require("kong.router.atc")
 local tb_new = require("table.new")
 local tb_clear = require("table.clear")
@@ -37,8 +38,11 @@ local ASTERISK         = byte("*")
 local MAX_HEADER_COUNT = 255
 
 
+-- reuse buffer objects
+local expr_buf = buffer.new(128)
+
+
 -- reuse table objects
-local exp_out_t           = tb_new(10, 0)
 local exp_hosts_t         = tb_new(10, 0)
 local exp_headers_t       = tb_new(10, 0)
 local exp_single_header_t = tb_new(10, 0)
@@ -72,12 +76,11 @@ local function get_expression(route)
   local headers = route.headers
   local snis    = route.snis
 
-  tb_clear(exp_out_t)
-  local out = exp_out_t
+  expr_buf:reset()
 
   local gen = gen_for_field("http.method", OP_EQUAL, methods)
   if gen then
-    tb_insert(out, gen)
+    expr_buf:put(gen)
   end
 
   local gen = gen_for_field("tls.sni", OP_EQUAL, snis, function(_, p)
@@ -92,7 +95,11 @@ local function get_expression(route)
     -- See #6425, if `net.protocol` is not `https`
     -- then SNI matching should simply not be considered
     gen = "net.protocol != \"https\"" .. LOGICAL_OR .. gen
-    tb_insert(out, gen)
+
+    if #expr_buf > 0 then
+      expr_buf:put(LOGICAL_AND)
+    end
+    expr_buf:put(gen)
   end
 
   if not is_empty_field(hosts) then
@@ -124,7 +131,10 @@ local function get_expression(route)
       end
     end -- for route.hosts
 
-    tb_insert(out, "(" .. tb_concat(hosts_t, LOGICAL_OR) .. ")")
+    if #expr_buf > 0 then
+      expr_buf:put(LOGICAL_AND)
+    end
+    expr_buf:put("(" .. tb_concat(hosts_t, LOGICAL_OR) .. ")")
   end
 
   -- resort `paths` to move regex routes to the front of the array
@@ -147,7 +157,10 @@ local function get_expression(route)
     return p
   end)
   if gen then
-    tb_insert(out, gen)
+    if #expr_buf > 0 then
+      expr_buf:put(LOGICAL_AND)
+    end
+    expr_buf:put(gen)
   end
 
   if not is_empty_field(headers) then
@@ -174,10 +187,13 @@ local function get_expression(route)
       tb_insert(headers_t, "(" .. tb_concat(single_header_t, LOGICAL_OR) .. ")")
     end
 
-    tb_insert(out, tb_concat(headers_t, LOGICAL_AND))
+    if #expr_buf > 0 then
+      expr_buf:put(LOGICAL_AND)
+    end
+    expr_buf:put(tb_concat(headers_t, LOGICAL_AND))
   end
 
-  return tb_concat(out, LOGICAL_AND)
+  return expr_buf:get()
 end
 
 
