@@ -40,13 +40,13 @@ local MAX_HEADER_COUNT = 255
 
 
 -- reuse table objects
-local exp_hosts_t         = tb_new(10, 0)
 local exp_headers_t       = tb_new(10, 0)
 local exp_single_header_t = tb_new(10, 0)
 
 
 -- reuse buffer objects
-local expr_buf = buffer.new(128)
+local expr_buf  = buffer.new(128)
+local hosts_buf = buffer.new(64)
 
 
 local function buffer_append(buf, sep, str)
@@ -109,8 +109,7 @@ local function get_expression(route)
   end
 
   if not is_empty_field(hosts) then
-    tb_clear(exp_hosts_t)
-    local hosts_t = exp_hosts_t
+    hosts_buf:reset()
 
     for _, h in ipairs(hosts) do
       local host, port = split_host_port(h)
@@ -129,16 +128,16 @@ local function get_expression(route)
 
       local exp = "http.host ".. op .. " \"" .. host .. "\""
       if not port then
-        tb_insert(hosts_t, exp)
+        buffer_append(hosts_buf, LOGICAL_OR, exp)
 
       else
-        tb_insert(hosts_t, "(" .. exp .. LOGICAL_AND ..
-                           "net.port ".. OP_EQUAL .. " " .. port .. ")")
+        buffer_append(hosts_buf, LOGICAL_OR,
+                      "(" .. exp .. LOGICAL_AND ..
+                      "net.port ".. OP_EQUAL .. " " .. port .. ")")
       end
     end -- for route.hosts
 
-    buffer_append(expr_buf, LOGICAL_AND,
-                  "(" .. tb_concat(hosts_t, LOGICAL_OR) .. ")")
+    buffer_append(expr_buf, LOGICAL_AND, "(" .. hosts_buf:put(")"):get())
   end
 
   -- resort `paths` to move regex routes to the front of the array
