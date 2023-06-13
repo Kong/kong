@@ -123,14 +123,11 @@ local function get_expression(route)
       end
 
       local exp = "http.host ".. op .. " \"" .. host .. "\""
-      if not port then
-        buffer_append(hosts_buf, LOGICAL_OR, exp)
-
-      else
-        buffer_append(hosts_buf, LOGICAL_OR,
-                      "(" .. exp .. LOGICAL_AND ..
-                      "net.port ".. OP_EQUAL .. " " .. port .. ")")
+      if port then
+        exp = "(" .. exp .. LOGICAL_AND ..
+              "net.port ".. OP_EQUAL .. " " .. port .. ")"
       end
+      buffer_append(hosts_buf, LOGICAL_OR, exp)
     end -- for route.hosts
 
     buffer_append(expr_buf, LOGICAL_AND,
