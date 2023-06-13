@@ -60,14 +60,14 @@ endif
 PACKAGE_TYPE ?= deb
 
 bin/bazel:
-	curl -s -S -L \
+	@curl -s -S -L \
 		https://github.com/bazelbuild/bazelisk/releases/download/v$(BAZLISK_VERSION)/bazelisk-$(OS)-$(BAZELISK_MACHINE) -o bin/bazel
-	chmod +x bin/bazel
+	@chmod +x bin/bazel
 
 bin/grpcurl:
 	@curl -s -S -L \
 		https://github.com/fullstorydev/grpcurl/releases/download/v$(GRPCURL_VERSION)/grpcurl_$(GRPCURL_VERSION)_$(GRPCURL_OS)_$(GRPCURL_MACHINE).tar.gz | tar xz -C bin;
-	@rm bin/LICENSE
+	@$(RM) bin/LICENSE
 
 check-bazel: bin/bazel
 ifndef BAZEL
@@ -120,10 +120,12 @@ install: dev
 	@$(VENV) luarocks make
 
 clean: check-bazel
-	@$(BAZEL) clean
+	$(BAZEL) clean
+	$(RM) bin/bazel bin/grpcurl
 
 expunge: check-bazel
-	@$(BAZEL) clean --expunge
+	$(BAZEL) clean --expunge
+	$(RM) bin/bazel bin/grpcurl
 
 sca:
 	$(info Beginning static code analysis)
