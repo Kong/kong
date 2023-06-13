@@ -4,6 +4,7 @@ Documentation=https://docs.konghq.com/
 After=syslog.target network.target remote-fs.target nss-lookup.target
 
 [Service]
+User=root
 ExecStartPre=/usr/local/bin/kong prepare -p /usr/local/kong
 ExecStart=/usr/local/openresty/nginx/sbin/nginx -p /usr/local/kong -c nginx.conf
 ExecReload=/usr/local/bin/kong prepare -p /usr/local/kong
