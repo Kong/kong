@@ -51,14 +51,6 @@
   - libc.so.6
   Runpath   : /usr/local/kong/lib
 
-- Path      : /usr/local/kong/lib/ossl-modules/legacy.so
-  Needed    :
-  - libstdc++.so.6
-  - libm.so.6
-  - libcrypto.so.3
-  - libc.so.6
-  Runpath   : /usr/local/kong/lib
-
 - Path      : /usr/local/kong/lib/libwasmer.so
   Needed    :
   - libgcc_s.so.1
@@ -68,6 +60,14 @@
   - libdl.so.2
   - libc.so.6
   - ld-linux-x86-64.so.2
+
+- Path      : /usr/local/kong/lib/ossl-modules/legacy.so
+  Needed    :
+  - libstdc++.so.6
+  - libm.so.6
+  - libcrypto.so.3
+  - libc.so.6
+  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/lfs.so
   Needed    :
