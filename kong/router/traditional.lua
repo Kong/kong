@@ -1530,7 +1530,8 @@ function _M.new(routes, cache, cache_neg)
     check_select_params(req_method, req_uri, req_host, req_scheme,
                         src_ip, src_port,
                         dst_ip, dst_port,
-                        sni, req_headers)
+                        sni, req_headers,
+                        nil)
 
     -- input sanitization for matchers
 

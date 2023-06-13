@@ -32,6 +32,7 @@ local ngx_log       = ngx.log
 local get_phase     = ngx.get_phase
 local get_method    = ngx.req.get_method
 local get_headers   = ngx.req.get_headers
+local get_uri_args  = ngx.req.get_uri_args
 local ngx_ERR       = ngx.ERR
 
 
@@ -62,7 +63,7 @@ do
     ["String"] = {"net.protocol", "tls.sni",
                   "http.method", "http.host",
                   "http.path", "http.raw_path",
-                  "http.headers.*",
+                  "http.headers.*","http.queries.*",
                  },
 
     ["Int"]    = {"net.port",
@@ -170,6 +171,19 @@ local function has_header_matching_field(fields)
   return false
 end
 
+local function is_http_queries_field(field) 
+  return field:sub(1,13) == "http.queries."
+end
+
+local function has_query_matching_field(fields)
+  for _, field in ipairs(fields) do
+    if is_http_queries_field(field) then
+      return true 
+    end
+  end
+
+  return false
+end
 
 local function new_from_scratch(routes, get_exp_and_priority)
   local phase = get_phase()
@@ -211,6 +225,7 @@ local function new_from_scratch(routes, get_exp_and_priority)
 
   local fields = inst:get_fields()
   local match_headers = has_header_matching_field(fields)
+  local match_queries = has_query_matching_field(fields)
 
   return setmetatable({
       schema = CACHED_SCHEMA,
@@ -219,6 +234,7 @@ local function new_from_scratch(routes, get_exp_and_priority)
       services = services_t,
       fields = fields,
       match_headers = match_headers,
+      match_queries = match_queries,
       updated_at = new_updated_at,
       rebuilding = false,
     }, _MT)
@@ -304,6 +320,7 @@ local function new_from_previous(routes, get_exp_and_priority, old_router)
 
   old_router.fields = fields
   old_router.match_headers = has_header_matching_field(fields)
+  old_router.match_queries = has_query_matching_field(fields)
   old_router.updated_at = new_updated_at
   old_router.rebuilding = false
 
@@ -382,11 +399,13 @@ end
 function _M:select(req_method, req_uri, req_host, req_scheme,
                    src_ip, src_port,
                    dst_ip, dst_port,
-                   sni, req_headers)
+                   sni, req_headers,
+                   req_queries)
   check_select_params(req_method, req_uri, req_host, req_scheme,
                       src_ip, src_port,
                       dst_ip, dst_port,
-                      sni, req_headers)
+                      sni, req_headers,
+                      req_queries)
 
   local c = context.new(self.schema)
 
@@ -440,8 +459,38 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
           end
         end
       end
+
+    elseif req_queries and is_http_queries_field(field) then
+      local query_param_name = field:sub(14)
+      local query_param_val = req_queries[query_param_name]
+      
+      if query_param_val then
+        -- the query parameter has only one value, like /?foo=bar
+        if type(query_param_val) == "string" then
+          local res, err = c:add_value(field,query_param_val)
+          if not res then
+            return nil, err
+          end
+        -- the query parameter has no value, like /?foo, get_uri_arg will get a boolean `false`
+        -- we treat as empty string here.
+        -- TODO: 
+        elseif type(query_param_val) == "boolean" then
+          local res, err = c:add_value(field,"")
+          if not res then 
+            return nil, err
+          end
+        -- multiple values for a single query parameter, like /?foo=bar&foo=baz
+        else
+          for _, v in ipairs(query_param_val) do
+            local res, err = c:add_value(field, v)
+            if not res then
+              return nil, err
+            end
+          end  
+        end
+      end
     end
-  end
+  end -- end of for 
 
   local matched = self.router:execute(c)
   if not matched then
@@ -513,6 +562,26 @@ do
   end
 end
 
+local get_queries_key 
+  do 
+    local queries_buf = buffer.new(64)
+
+  get_queries_key = function(queries)
+    queries_buf:reset()
+
+    local queries_count = 0
+    for name, value in pairs(queries) do
+      if type(value) == "table" then
+        tb_sort(value)
+        value = tb_concat(value, ", ")
+      end
+      queries_buf:putf("|%s=%s",name,value)
+    end
+
+    return queries_buf:get()
+  end
+end
+
 
 function _M:exec(ctx)
   local req_method = get_method()
@@ -536,6 +605,18 @@ function _M:exec(ctx)
 
     headers_key = get_headers_key(headers)
   end
+  
+  local query_params, queries_key
+  if self.match_queries then
+    local err 
+    query_params,err = get_uri_args()
+    if err == "truncated" then
+      local lua_max_req_queries = (kong and kong.configuration and kong.configuration.lua_max_req_queries) or 100
+      ngx_log(ngx_ERR,"router: the request contains more than",lua_max_req_queries)
+    end
+
+    queries_key = get_queries_key(query_params)
+  end 
 
   req_uri = strip_uri_args(req_uri)
 
@@ -544,7 +625,8 @@ function _M:exec(ctx)
   local cache_key = (req_method or "") .. "|" ..
                     (req_uri    or "") .. "|" ..
                     (req_host   or "") .. "|" ..
-                    (sni        or "") .. (headers_key or "")
+                    (sni        or "") .. (headers_key or "") ..
+                    (queries_key or "")
 
   local match_t = self.cache:get(cache_key)
   if not match_t then
@@ -558,7 +640,7 @@ function _M:exec(ctx)
     local err
     match_t, err = self:select(req_method, req_uri, req_host, req_scheme,
                           nil, nil, nil, nil,
-                          sni, headers)
+                          sni, headers, query_params)
     if not match_t then
       if err then
         ngx_log(ngx_ERR, "router returned an error: ", err,
