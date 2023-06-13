@@ -181,7 +181,7 @@ be used to pass opaque/arbitrary options to the strategy class.
 
 #### strategy:push_diffs
 
-*syntax: strategy:push_diffs(diffs)*
+*syntax: ok, err = strategy:push_diffs(diffs)*
 
 Push a table of key diffs to the storage server. `diffs` is a table provided
 in the following format:
@@ -209,10 +209,11 @@ in the following format:
   ...
 ```
 
+Returns error if failed to push diffs to the strategy.
 
 #### strategy:get_counters
 
-*syntax: rows = strategy:get_counters(namespace, window_sizes, time?)*
+*syntax: rows, err = strategy:get_counters(namespace, window_sizes, time?)*
 
 Return an iterator for each key stored in the datastore/redis for a given
 `namepsace` and list of window sizes. 'time' is an optional unix second-
@@ -221,9 +222,11 @@ It is encouraged to pass this via a previous defined timestamp, depending
 on the context (e.g., if previous calls in the same thread took a nontrivial
 amount of time to run).
 
+Returns error if failed to get counters from the strategy.
 
 #### strategy:get_window
 
-*syntax: window = strategy:get_window(key, namespace, window_start, window_size)*
+*syntax: window, err = strategy:get_window(key, namespace, window_start, window_size)*
 
-Retrieve a single key from the data store based on the values provided.
+Retrieve a single key from the data store based on the values provided. Returns errors
+if failed to get values from the strategy.

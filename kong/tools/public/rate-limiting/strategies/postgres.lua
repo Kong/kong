@@ -146,6 +146,7 @@ function _M:push_diffs(diffs)
   local res, err = self.db:query(concat(query_tab, '; '))
   if not res then
     log(ERR, "failed to upsert counter values: ", err)
+    return nil, err
   end
 end
 
@@ -182,7 +183,7 @@ function _M:get_counters(namespace, window_sizes, time)
   local rows, err = self.db:query(q)
   if not rows then
     log(ERR, "failed to select sync keys for namespace ", namespace, ": ", err)
-    return
+    return nil, err
   end
 
   local row_idx = 0
@@ -248,7 +249,7 @@ function _M:purge(namespace, window_sizes, window_start)
   local res, err = self.db:query(concat(query_tab, '; '))
   if not res then
     log(ERR, "failed to delete counters: ", err)
-    return false
+    return nil, err
   end
 
   return true

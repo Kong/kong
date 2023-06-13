@@ -27,7 +27,7 @@ local _M = {}
 --- Returns Redis Cluster nodes list.
 -- The list can be configured in environment variable `KONG_SPEC_TEST_REDIS_CLUSTER_ADDRESSES`.
 -- @function parsed_redis_cluster_addresses
--- @treturn table nodes list from ENV or else the default: `{ "localhost:7000" }`
+-- @treturn table nodes list
 -- @usage
 -- ~ $ export KONG_SPEC_TEST_REDIS_CLUSTER_ADDRESSES=node-1:6379,node-2:6379,node-3:6379
 --
@@ -35,8 +35,9 @@ local _M = {}
 function _M.parsed_redis_cluster_addresses()
   local env_cluster_addresses = os.getenv("KONG_SPEC_TEST_REDIS_CLUSTER_ADDRESSES")
 
+  -- default
   if not env_cluster_addresses then
-    return { "localhost:7000" }
+    return {  "localhost:6381", "localhost:6382", "localhost:6383" }
   end
 
   local redis_cluster_addresses = {}
@@ -1076,7 +1077,7 @@ do
   })
 
 
-  
+
   --- A client object that is loosely compatible with `spec.helpers.proxy_client`
   -- but is WebSocket-aware.
   --
@@ -1088,7 +1089,7 @@ do
     return setmetatable({ ssl = false }, { __index = ws_compat_client })
   end
 
-  --- A client for wss. Same as the WS one, but for WSS. 
+  --- A client for wss. Same as the WS one, but for WSS.
   -- See `spec-ee.helpers.ws_proxy_client_compat` and `spec-ee.helpers.each_protocol`.
   function _M.wss_proxy_client_compat()
     return setmetatable({ ssl = true }, { __index = ws_compat_client })
@@ -1152,12 +1153,12 @@ end
 -- @field portal_api_listeners the listener configuration for the Portal API
 -- @field portal_gui_listeners the listener configuration for the Portal GUI
 -- @field admin_gui_listeners the listener configuration for the Admin GUI
-
+-- @field redis_cluster_addresses the contact points for the Redis Cluster
 
 local http_flags = { "ssl", "http2", "proxy_protocol", "transparent" }
 _M.portal_api_listeners = listeners._parse_listeners(helpers.test_conf.portal_api_listen, http_flags)
 _M.portal_gui_listeners = listeners._parse_listeners(helpers.test_conf.portal_gui_listen, http_flags)
 _M.admin_gui_listeners = listeners._parse_listeners(helpers.test_conf.admin_gui_listen, http_flags)
-
+_M.redis_cluster_addresses = _M.parsed_redis_cluster_addresses()
 
 return _M

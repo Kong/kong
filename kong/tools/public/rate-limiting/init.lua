@@ -116,16 +116,22 @@ local function fetch(premature, namespace, time, timeout)
   -- this worker is allowed to fetch and update the sync keys
   log(DEBUG, "rl fetch mutex established on pid ", ngx.worker.pid())
 
-  for row in cfg.strategy:get_counters(namespace, cfg.window_sizes, time) do
-    local dict_key = namespace .. "|" .. row.window_start ..
-                     "|" .. row.window_size .. "|" .. row.key
+  local row_iter, err = cfg.strategy:get_counters(namespace, cfg.window_sizes, time)
+  if not row_iter then
+    log(ERR, "error in fetching counters for namespace ", namespace, ": ", err)
 
-    log(DEBUG, "setting sync key ", dict_key)
+  else
+    for row in row_iter do
+      local dict_key = namespace .. "|" .. row.window_start ..
+                       "|" .. row.window_size .. "|" .. row.key
 
-    local ok, err = dict:set(dict_key .. "|sync", row.count, math_max(cfg.exptime, row.window_size * 2))
+      log(DEBUG, "setting sync key ", dict_key)
 
-    if not ok then
-      log(ERR, "err setting sync key: ", err)
+      local ok, err = dict:set(dict_key .. "|sync", row.count, math_max(cfg.exptime, row.window_size * 2))
+
+      if not ok then
+        log(ERR, "err setting sync key: ", err)
+      end
     end
   end
 

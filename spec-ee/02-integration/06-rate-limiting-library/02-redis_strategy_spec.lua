@@ -8,6 +8,7 @@
 local redis_strategy = require "kong.tools.public.rate-limiting.strategies.redis"
 local redis = require "resty.redis"
 local helpers = require "spec.helpers"
+local ee_helpers = require "spec-ee.helpers"
 
 
 require"kong.resty.dns.client".init(nil)
@@ -223,5 +224,59 @@ describe("rate-limiting: Redis strategy", function()
 
       assert.equal(#expected_rows, i)
     end)
+  end)
+end)
+
+describe("public tool rate-limiting redis cluster", function()
+  local config, redis_cluster
+  local key, window, size, namespace, time
+
+  config = {
+    ok_conf = {
+      connect_timeout = 100,
+      send_timeout    = 100,
+      read_timeout    = 100,
+      keepalive_pool_size = 5,
+      keepalive_backlog = 5,
+      cluster_addresses = ee_helpers.redis_cluster_addresses,
+    },
+    err_conf = {
+      connect_timeout = 100,
+      send_timeout    = 100,
+      read_timeout    = 100,
+      keepalive_pool_size = 5,
+      keepalive_backlog = 5,
+      cluster_addresses = { "localhost:7654" },
+    },
+  }
+
+  key = "df52e254-a4a1-5b08-a5b0-b9ba1e5948d4"
+  window = 1679037600
+  size = 60
+  namespace = "Kma6XU50u8rDZvalU3uf8Xs1JnFtZna7"
+  time = window + 10
+
+  it("valid addresses does not return error", function()
+    local _, err
+    redis_cluster = redis_strategy.new(nil, config.ok_conf)
+
+    _, err = redis_cluster:get_counters(namespace, { size }, time)
+    assert.is_nil(err)
+
+    _, err = redis_cluster:get_window(key, namespace, window, size)
+    assert.is_nil(err)
+  end)
+
+  it("invalid addresses must return error", function()
+    local _, err
+    redis_cluster = redis_strategy.new(nil, config.err_conf)
+
+    _, err = redis_cluster:get_counters(namespace, { size }, time)
+    assert.is_not_nil(err)
+    assert(err:find("failed to fetch slots: connection refused", nil, true))
+
+    _, err = redis_cluster:get_window(key, namespace, window, size)
+    assert.is_not_nil(err)
+    assert(err:find("failed to fetch slots: connection refused", nil, true))
   end)
 end)

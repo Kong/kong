@@ -10,6 +10,7 @@ local redis = require "kong.enterprise_edition.redis"
 
 local ngx_log  = ngx.log
 local ERR      = ngx.ERR
+local DEBUG    = ngx.DEBUG
 local ngx_time = ngx.time
 local ceil     = math.ceil
 local floor    = math.floor
@@ -49,9 +50,14 @@ function _M:push_diffs(diffs)
     error("diffs must be a table", 2)
   end
 
-  local red = redis.connection(self.config)
-  if not red or #diffs == 0 then
+  if #diffs == 0 then
     return
+  end
+
+  local red, err = redis.connection(self.config)
+  if not red then
+    log(ERR, "failed to connect to redis: ", err)
+    return nil, err
   end
 
   red:init_pipeline()
@@ -72,6 +78,7 @@ function _M:push_diffs(diffs)
   local results, err = red:commit_pipeline()
   if not results then
     log(ERR, "failed to push diff pipeline: ", err)
+    return nil, err
   end
 
   -- redis cluster library handles keepalive itself
@@ -82,9 +89,10 @@ end
 
 
 function _M:get_counters(namespace, window_sizes, time)
-  local red = redis.connection(self.config)
+  local red, err = redis.connection(self.config)
   if not red then
-    return
+    log(ERR, "failed to connect to redis under namespace ", namespace, ": ", err)
+    return nil, err
   end
 
   time = time or ngx_time()
@@ -101,7 +109,7 @@ function _M:get_counters(namespace, window_sizes, time)
   local res, err = red:commit_pipeline()
   if not res then
     log(ERR, "failed to retrieve keys under namespace ", namespace, ": ", err)
-    return
+    return nil, err
   end
 
   -- redis cluster library handles keepalive itself
@@ -119,7 +127,8 @@ function _M:get_counters(namespace, window_sizes, time)
       res_idx = res_idx + 1
 
       if res_idx > num_hashes then
-        return nil
+        log(DEBUG, "index exceeds number of hash values under namespace ", namespace)
+        return
       end
 
       hash = res[res_idx]
@@ -157,16 +166,18 @@ end
 
 
 function _M:get_window(key, namespace, window_start, window_size)
-  local red = redis.connection(self.config)
+  local red, err = redis.connection(self.config)
   if not red then
-    return
+    log(ERR, "failed to connect to redis under namespace ", namespace, ": ", err)
+    return nil, err
   end
 
   local rkey = window_start .. ":" .. window_size .. ":" .. namespace
 
   local res, err = red:hget(rkey, key)
   if not res then
-    log(ERR, "failed to retrieve ", key, ": ", err)
+    log(ERR, "failed to retrieve ", key, " under namespace ", namespace, ": ", err)
+    return nil, err
   end
 
   -- redis cluster library handles keepalive itself
