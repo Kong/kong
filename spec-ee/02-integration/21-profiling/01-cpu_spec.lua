@@ -472,7 +472,9 @@ for __, deploy in ipairs({ "traditional", "hybrid" }) do
       assert.same({
         status = "stopped",
       }, json)
-    end, 5 + 10 + 1)
+    end, 5 + 10 + 5) -- 5 seconds for the profiling timeout
+                     -- 10 seconds for the key in shdict timeout
+                     -- 5 seconds for the tolerance
 
   end)
 

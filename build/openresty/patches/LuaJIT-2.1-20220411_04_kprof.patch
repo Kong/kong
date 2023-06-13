@@ -1,4 +1,4 @@
-From 2dc9627e2652ca083d2a9b1209d08f57dfa4b1ed Mon Sep 17 00:00:00 2001
+From 207b6e0f12a634b2b63dba0fac74974873de83c4 Mon Sep 17 00:00:00 2001
 From: Qi <add_sp@outlook.com>
 Date: Sun, 27 Nov 2022 08:08:30 +0000
 Subject: [PATCH] feat(profiling): Kong Profiling extension library
@@ -14,6 +14,8 @@ subsystem: any
 This function will dump all LuaJIT GC objects to a file specified by the `filename`.
 During the dumping,
 the worker will stop processing requests until this function is done.
+
+chore(ci): disable Travis
 
 feat(profiling): support memory tracing on the fly (#1)
 
@@ -71,6 +73,17 @@ Return a table like:
 ---------
 
 Co-authored-by: Chrono <chrono_cpp@me.com>
+
+fix(tracing): fix compiler error
+
+lj_mem_tracing.c: In function '_write_trace_event':
+lj_mem_tracing.c:283:3: error: 'for' loop initial declarations are only allowed in C99 mode
+   for (int i = 0; i < g_max_stack_depth; i++) {
+   ^
+lj_mem_tracing.c:283:3: note: use option -std=c99 or -std=gnu99 to compile your code
+lj_mem_tracing.c: In function 'lj_mem_tracing_stop':
+lj_mem_tracing.c:528:3: error: 'for' loop initial declarations are only allowed in C99 mode
+   for (int i = 0; i < sizeof(g_mbufs) / sizeof(g_mbufs[0]); i++) {
 ---
 
 diff --git a/bundle/LuaJIT-2.1-20220411/src/Makefile b/bundle/LuaJIT-2.1-20220411/src/Makefile
@@ -1660,10 +1673,10 @@ index 00000000..e0317edf
 +#endif /* LUAJIT_DISABLE_KPROF */
 diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_mem_tracing.c b/bundle/LuaJIT-2.1-20220411/src/lj_mem_tracing.c
 new file mode 100644
-index 00000000..c9eff0a0
+index 00000000..e194fdae
 --- /dev/null
 +++ b/bundle/LuaJIT-2.1-20220411/src/lj_mem_tracing.c
-@@ -0,0 +1,711 @@
+@@ -0,0 +1,714 @@
 +#ifndef LUAJIT_DISABLE_KPROF
 +
 +#define lj_mem_tracing_c
@@ -1939,6 +1952,7 @@ index 00000000..c9eff0a0
 +static void _write_trace_event() {
 +  size_t event_max_size = MSGPACK_UINT8_SIZE +
 +                          g_max_stack_depth * MSGPACK_UINT64_SIZE;
++  int i;
 +
 +  if (LJ_UNLIKELY(lj_mbuf_left(&g_mbufs[1]) < event_max_size)) {
 +    _switch_buffer();
@@ -1946,7 +1960,7 @@ index 00000000..c9eff0a0
 +
 +  msgpack_pack_fix_uint8(&g_packer, EVENT_TRACE);
 +
-+  for (int i = 0; i < g_max_stack_depth; i++) {
++  for (i = 0; i < g_max_stack_depth; i++) {
 +    if (g_protos[i] == NULL) msgpack_pack_nil(&g_packer);
 +    else msgpack_pack_fix_uint64(&g_packer, (uint64_t)g_protos[i]);
 +  }
@@ -2171,6 +2185,8 @@ index 00000000..c9eff0a0
 +
 +
 +int lj_mem_tracing_stop(lua_State *L) {
++  int i;
++
 +  if (!g_enabled) {
 +    if (L && g_error) {
 +      lua_pushstring(L, g_error);
@@ -2191,7 +2207,7 @@ index 00000000..c9eff0a0
 +    error_strs++;
 +  }
 +
-+  for (int i = 0; i < sizeof(g_mbufs) / sizeof(g_mbufs[0]); i++) {
++  for (i = 0; i < sizeof(g_mbufs) / sizeof(g_mbufs[0]); i++) {
 +    if (lj_mbuf_is_initialized(&g_mbufs[i]) && lj_mbuf_free(&g_mbufs[i], &g_error)) {
 +      if (L) {
 +        /* `\n` is for separating multiple error messages */
