@@ -155,7 +155,7 @@ function initialize_test_list() {
 
 function run_tests() {
     # Run the tests
-    BUSTED="env KONG_DATABASE=$1 KONG_DNS_RESOLVER= KONG_TEST_PG_DATABASE=kong /kong/bin/busted -o gtest"
+    BUSTED="env KONG_DATABASE=$1 KONG_DNS_RESOLVER= KONG_TEST_PG_DATABASE=kong /kong/bin/busted"
     shift
 
     set $TESTS
