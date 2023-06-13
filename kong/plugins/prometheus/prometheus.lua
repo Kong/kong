@@ -54,6 +54,7 @@
 
 -- This library provides per-worker counters used to store counter metric
 -- increments. Copied from https://github.com/Kong/lua-resty-counter
+local buffer = require("string.buffer")
 local resty_counter_lib = require("prometheus_resty_counter")
 local ngx = ngx
 local ngx_log = ngx.log
@@ -70,7 +71,6 @@ local tonumber = tonumber
 local st_format = string.format
 local table_sort = table.sort
 local tb_clear = require("table.clear")
-local tb_new = require("table.new")
 local yield = require("kong.tools.utils").yield
 
 
@@ -86,6 +86,9 @@ local TYPE_LITERAL = {
   [TYPE_HISTOGRAM] = "histogram",
 }
 
+
+-- Default metric name size for string.buffer.new()
+local NAME_BUFFER_SIZE_HINT = 256
 
 -- Default name for error metric incremented by this library.
 local DEFAULT_ERROR_METRIC_NAME = "nginx_metric_errors_total"
@@ -179,30 +182,51 @@ local function full_metric_name(name, label_names, label_values)
     return name
   end
 
-  local label_parts = tb_new(#label_names, 0)
-  local label_value
+  local buf = buffer.new(NAME_BUFFER_SIZE_HINT)
+
+  -- format "name{k1=v1,k2=v2}"
+  buf:put(name):put("{")
+
   for idx, key in ipairs(label_names) do
-    if type(label_values[idx]) == "string" then
-      local valid, pos = validate_utf8_string(label_values[idx])
+    local label_value = label_values[idx]
+
+    -- we only check string value for '\\' and '"'
+    if type(label_value) == "string" then
+      local valid, pos = validate_utf8_string(label_value)
+
       if not valid then
-        label_value = string.sub(label_values[idx], 1, pos - 1)
-      else
-        label_value = label_values[idx]
+        label_value = string.sub(label_value, 1, pos - 1)
       end
-    else
-      label_value = tostring(label_values[idx])
-    end
-    if string.find(label_value, "\\", 1, true) then
-      label_value = ngx_re_gsub(label_value, "\\", "\\\\", "jo")
+
+      if string.find(label_value, "\\", 1, true) then
+        label_value = ngx_re_gsub(label_value, "\\", "\\\\", "jo")
+      end
+
+      if string.find(label_value, '"', 1, true) then
+        label_value = ngx_re_gsub(label_value, '"', '\\"', "jo")
+      end
     end
 
-    if string.find(label_value, '"', 1, true) then
-      label_value = ngx_re_gsub(label_value, '"', '\\"', "jo")
+    -- add a comma to seperate k=v
+    if idx > 1 then
+      buf:put(",")
     end
 
-    label_parts[idx] = string.format('%s="%s"', key, label_value)
+    buf:putf('%s="%s"', key, tostring(label_value))
   end
-  return string.format('%s{%s}', name, table.concat(label_parts, ","))
+
+  buf:put("}") -- close the bracket
+
+  -- update the size hint
+  if NAME_BUFFER_SIZE_HINT < #buf then
+    NAME_BUFFER_SIZE_HINT = #buf
+  end
+
+  local metric = buf:get()
+
+  buf:free() -- free buffer space ASAP
+
+  return metric
 end
 
 -- Extract short metric name from the full one.
@@ -216,15 +240,15 @@ end
 --   (string) short metric name with no labels. For a `*_bucket` metric of
 --     histogram the _bucket suffix will be removed.
 local function short_metric_name(full_name)
-  local labels_start, _ = full_name:find("{")
+  local labels_start, _ = full_name:find("{", 1, true)
   if not labels_start then
     return full_name
   end
   -- Try to detect if this is a histogram metric. We only check for the
   -- `_bucket` suffix here, since it alphabetically goes before other
   -- histogram suffixes (`_count` and `_sum`).
-  local suffix_idx, _ = full_name:find("_bucket{")
-  if suffix_idx and full_name:find("le=") then
+  local suffix_idx, _ = full_name:find("_bucket{", 1, true)
+  if suffix_idx and full_name:find("le=", 1, true) then
     -- this is a histogram metric
     return full_name:sub(1, suffix_idx - 1)
   end

@@ -48,6 +48,7 @@
   [#10932](https://github.com/Kong/kong/pull/10932)
 - The Prometheus plugin has been optimized to reduce proxy latency impacts during scraping.
   [#10949](https://github.com/Kong/kong/pull/10949)
+  [#11040](https://github.com/Kong/kong/pull/11040)
 
 ### Fixes
 
