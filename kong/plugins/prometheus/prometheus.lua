@@ -215,7 +215,7 @@ local function full_metric_name(name, label_names, label_values)
     buf:putf('%s="%s"', key, tostring(label_value))
   end
 
-  buf:put("}")  -- close the bracket
+  buf:put("}") -- close the bracket
 
   -- update the size hint
   if NAME_BUFFER_SIZE_HINT < #buf then
@@ -224,7 +224,7 @@ local function full_metric_name(name, label_names, label_values)
 
   local metric = buf:get()
 
-  buf:free()    -- free buffer space ASAP
+  buf:free() -- free buffer space ASAP
 
   return metric
 end
