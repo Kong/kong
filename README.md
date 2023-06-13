@@ -75,7 +75,7 @@ Use the [Plugin Development Guide](https://docs.konghq.com/latest/plugin-develop
 Please see the [Changelog](CHANGELOG.md) for more details about a given release. The [SemVer Specification](https://semver.org) is followed when versioning Gateway releases.
 
 ## Join the Community
-
+To connect with our amazing community :- 
 - Join the Kong discussions at the Kong Nation forum: [https://discuss.konghq.com/](https://discuss.konghq.com/)
 - Follow us on Twitter: [https://twitter.com/thekonginc](https://twitter.com/thekonginc)
 - Check out the docs: [https://docs.konghq.com/](https://docs.konghq.com/)
