@@ -188,9 +188,6 @@ local function get_expression(route)
       tb_insert(headers_t, "(" .. tb_concat(single_header_t, LOGICAL_OR) .. ")")
     end
 
-    if #expr_buf > 0 then
-      expr_buf:put(LOGICAL_AND)
-    end
     buffer_append(expr_buf, LOGICAL_AND, tb_concat(headers_t, LOGICAL_AND))
   end
 
