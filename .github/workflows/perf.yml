@@ -26,7 +26,7 @@ concurrency:
 jobs:
   build-packages:
     name: Build dependencies
-    runs-on: ubuntu-latest-kong
+    runs-on: ${{ vars.RUNS_ON }}
     if: |
       github.event_name == 'schedule' ||
       (github.event_name == 'pull_request' && startsWith(github.event.pull_request.title, 'perf(')) ||
@@ -125,7 +125,7 @@ jobs:
 
   perf:
     name: RPS, latency and flamegraphs
-    runs-on: ubuntu-latest-kong
+    runs-on: ${{ vars.RUNS_ON }}
     needs: build-packages
 
     permissions:

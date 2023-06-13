@@ -14,7 +14,7 @@ on:
 jobs:
   check-manager-approvals:
     name: Did manager approve this backport?
-    runs-on: ubuntu-latest-kong
+    runs-on: ${{ vars.RUNS_ON }}
 
     steps:
     - name: check manager approval

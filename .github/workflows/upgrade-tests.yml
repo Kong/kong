@@ -25,7 +25,7 @@ concurrency:
 jobs:
   upgrade-test:
     name: Run migration tests
-    runs-on: ubuntu-latest-kong
+    runs-on: ${{ vars.RUNS_ON }}
 
     steps:
       - name: Install prerequisites

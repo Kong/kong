@@ -8,7 +8,7 @@ on:
 jobs:
   backport:
     name: Backport
-    runs-on: ubuntu-latest-kong
+    runs-on: ${{ vars.RUNS_ON }}
     if: >
       github.event.pull_request.merged
       && (

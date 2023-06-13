@@ -14,7 +14,7 @@ build-packages:
 
 # Ubuntu
 - label: ubuntu-18.04
-  os: ubuntu-22.04
+  os: vars.RELEASE_RUNS_ON
   image: ubuntu:18.04
   package: deb
   check-manifest-suite: ubuntu-18.04-amd64
@@ -23,11 +23,11 @@ build-packages:
   package: deb
   check-manifest-suite: ubuntu-20.04-amd64
 - label: ubuntu-22.04
-  os: ubuntu-22.04
+  os: vars.RELEASE_RUNS_ON
   package: deb
   check-manifest-suite: ubuntu-22.04-amd64
 - label: ubuntu-22.04-arm64
-  os: ubuntu-22.04
+  os: vars.RELEASE_RUNS_ON
   package: deb
   bazel_args: --platforms=//:generic-crossbuild-aarch64
   check-manifest-suite: ubuntu-22.04-arm64
@@ -37,14 +37,14 @@ build-packages:
   bazel_args: --//:fips=true
   check-manifest-suite: ubuntu-20.04-amd64-fips
 - label: ubuntu-22.04-fips
-  os: ubuntu-22.04
+  os: vars.RELEASE_RUNS_ON
   package: deb
   bazel_args: --//:fips=true
   check-manifest-suite: ubuntu-22.04-amd64-fips
 
 # Debian
 - label: debian-10
-  os: ubuntu-22.04
+  os: vars.RELEASE_RUNS_ON
   image: ubuntu:18.04
   package: deb
   check-manifest-suite: ubuntu-18.04-amd64
@@ -55,7 +55,7 @@ build-packages:
 
 # CentOS
 - label: centos-7
-  os: ubuntu-22.04
+  os: vars.RELEASE_RUNS_ON
   image: centos:7
   package: rpm
   package-distro: el7
@@ -63,13 +63,13 @@ build-packages:
 
 # RHEL
 - label: rhel-7
-  os: ubuntu-22.04
+  os: vars.RELEASE_RUNS_ON
   image: centos:7
   package: rpm
   package-distro: el7
   check-manifest-suite: el7-amd64
 - label: rhel-8-fips
-  os: ubuntu-22.04
+  os: vars.RELEASE_RUNS_ON
   image: rockylinux:8 # note we are not using ubi8 here as some packages needs subscription
   package: rpm
   package-distro: el8
@@ -78,7 +78,7 @@ build-packages:
 
 # Amazon Linux
 - label: amazonlinux-2
-  os: ubuntu-22.04
+  os: vars.RELEASE_RUNS_ON
   image: amazonlinux:2
   package: rpm
   package-distro: aws2

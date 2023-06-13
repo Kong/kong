@@ -92,7 +92,7 @@ jobs:
   construct_docker_image_matrix:
     name: Construct Gateway docker images for docker matrix test run
     if: ${{ github.event.inputs.target_matrix  == 'all' || github.event.inputs.target_matrix  == 'docker' }}
-    runs-on: ubuntu-latest-kong
+    runs-on: ${{ vars.RUNS_ON }}
     outputs:
       image_matrix: ${{ steps.construct_docker_images.outputs.custom_matrix }}
       arm64_matrix: ${{ steps.construct_docker_images.outputs.arm64_matrix }}
@@ -118,7 +118,7 @@ jobs:
             custom_arm64_matrix=("{\"os\": \"ubuntu-22.04-arm64\", \"gateway_image\": \"$GW_INPUT_IMAGE\", \"gateway_mode\": \"classic\"},{\"os\": \"ubuntu-22.04-arm64\", \"gateway_image\": \"$GW_INPUT_IMAGE\", \"gateway_mode\": \"hybrid\"}")
           else
             # placeholder os value which won't affect the matrix
-            custom_arm64_matrix=("{\"os\": \"ubuntu-latest-kong\"}")
+            custom_arm64_matrix=("{\"os\": \"${{ vars.RUNS_ON }}\"}")
           fi
 
           # create new docker images array with the current image already in it
@@ -153,7 +153,7 @@ jobs:
           fi
 
   define_package_matrix:
-    runs-on: ubuntu-latest-kong
+    runs-on: ${{ vars.RUNS_ON }}
     if: ${{ inputs.target_matrix  == 'all' || inputs.target_matrix  == 'package' }}
     outputs:
       package_matrix: ${{ steps.define-package-matrix.outputs.package_matrix }}
@@ -187,7 +187,7 @@ jobs:
           {\"os\":\"ubuntu-22.04-arm64\",\"package_name\":\"$TARGET_PACKAGE\",\"install_method\":\"package\",\"gateway_mode\":\"hybrid\"}]"
         else
           # placeholder os value which won't affect the matrix
-          custom_arm64_package_matrix="[{\"os\": \"ubuntu-latest-kong\"}]"
+          custom_arm64_package_matrix="[{\"os\": \"${{ vars.RUNS_ON }}\"}]"
         fi
 
         if [[ $TARGET_PACKAGE == 'all' ]]; then 
@@ -222,7 +222,7 @@ jobs:
       matrix:
         gateway_mode: ['classic', 'hybrid']
         gateway_image: ${{ fromJson(needs.construct_docker_image_matrix.outputs.image_matrix) }}
-        os: ['ubuntu-latest-kong']
+        os: ['${{ vars.RUNS_ON }}']
         include: ${{ fromJson(needs.construct_docker_image_matrix.outputs.arm64_matrix) }}
 
     steps:
@@ -326,7 +326,7 @@ jobs:
   gateway_tests_for_postgres:
     name: Gateway API Test Matrix for Postgres versions
     if: ${{ github.event.inputs.target_matrix  == 'all' || github.event.inputs.target_matrix  == 'postgres' }}
-    runs-on: ubuntu-latest-kong
+    runs-on: ${{ vars.RUNS_ON }}
     defaults:
       run:
         working-directory: spec-ee/kong-api-tests
@@ -466,7 +466,7 @@ jobs:
         package_name: ${{ fromJson(needs.define_package_matrix.outputs.package_matrix) }} 
         install_method: ${{ fromJson(needs.define_package_matrix.outputs.package_install_method_matrix) }} 
         gateway_mode: ['classic', 'hybrid']
-        os: ['ubuntu-latest-kong']
+        os: ['${{ vars.RUNS_ON }}']
         include: ${{ fromJson(needs.define_package_matrix.outputs.arm64_package_matrix) }}
         exclude:
         # execute only one install method (any, doesn't matter) for fips packages and for alpine as we use wget to download kong

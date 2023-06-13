@@ -48,7 +48,7 @@ env:
 jobs:
   metadata:
     name: Metadata
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.RELEASE_RUNS_ON }}
     outputs:
       kong-version: ${{ steps.build-info.outputs.kong-version }}
       prerelease-docker-repository: ${{ env.PRERELEASE_DOCKER_REPOSITORY }}
@@ -105,7 +105,8 @@ jobs:
           echo "deploy-environment=release" >> $GITHUB_OUTPUT
         fi
 
-        echo "matrix=$(yq -I=0 -o=json $matrix_file)" >> $GITHUB_OUTPUT
+        # replace vars.RELEASE_RUNS_ON to the actual vars value, and convert into json
+        echo "matrix=$(yq e '(.build-packages[] | select(.os == "vars.RELEASE_RUNS_ON").os) |= "${{ vars.RELEASE_RUNS_ON }}"' $matrix_file | yq e -I=0 -o=json -)" >> $GITHUB_OUTPUT
 
         cat $GITHUB_OUTPUT
 
@@ -290,7 +291,7 @@ jobs:
   build-packages-verify-manifest:
     needs: [metadata, build-packages]
     name: Verify Manifest - ${{ matrix.label }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.RELEASE_RUNS_ON }}
 
     strategy:
       fail-fast: false
@@ -344,7 +345,9 @@ jobs:
   build-images:
     name: Build Images - ${{ matrix.label }}
     needs: [metadata, build-packages]
-    runs-on: ubuntu-22.04
+    # TODO: this workflow requires the binfmt_misc kernel module
+    # which is not available on self-hosted-runner (kvm kernel) yet
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -426,7 +429,7 @@ jobs:
   scan:
     name: Scan - ${{ matrix.label }}
     needs: [metadata, build-images]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.RELEASE_RUNS_ON }}
     if: always() && needs.build-images.result == 'success' && github.repository_owner == 'Kong' && fromJSON(needs.metadata.outputs.matrix)['scan-vulnerabilities'] != ''
     strategy:
       fail-fast: false
@@ -507,7 +510,7 @@ jobs:
   smoke-tests:
     name: Smoke Tests - ${{ matrix.label }}
     needs: [metadata, build-images]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.RELEASE_RUNS_ON }}
     if: github.repository_owner == 'Kong'
 
     # TODO: test packages
@@ -633,7 +636,7 @@ jobs:
   release-packages:
     name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-packages, build-images, smoke-tests, smoke-api-package-tests]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.RELEASE_RUNS_ON }}
     if: github.repository_owner == 'Kong' && fromJSON(needs.metadata.outputs.matrix)['release-packages'] != ''
     timeout-minutes: 5 # PULP takes a while to publish
     environment: release
@@ -703,7 +706,7 @@ jobs:
   release-images:
     name: Release Images - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-images, smoke-tests, smoke-api-tests]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.RELEASE_RUNS_ON }}
     if: github.repository_owner == 'Kong' && fromJSON(needs.metadata.outputs.matrix)['release-images'] != ''
 
     strategy:

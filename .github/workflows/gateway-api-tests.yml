@@ -67,7 +67,7 @@ env:
 jobs:
   construct_platform_matrix:
     name: Construct API Test platform matrix
-    runs-on: ubuntu-latest-kong
+    runs-on: ${{ vars.RUNS_ON }}
     outputs:
       arm64_matrix: ${{ steps.construct_arm64_platform_matrix.outputs.arm64_matrix }}
     steps:
@@ -82,7 +82,7 @@ jobs:
             custom_arm64_matrix=("{\"os\": \"ubuntu-22.04-arm64\", \"gateway_image\": \"$GW_IMAGE\", \"gateway_mode\": \"classic\"},{\"os\": \"ubuntu-22.04-arm64\", \"gateway_image\": \"$GW_IMAGE\", \"gateway_mode\": \"hybrid\"}")
           else
             # placeholder os value which won't affect the matrix
-            custom_arm64_matrix=("{\"os\": \"ubuntu-latest-kong\"}")
+            custom_arm64_matrix=("{\"os\": \"${{ vars.RUNS_ON }}\"}")
           fi
 
           custom_arm64_matrix=[$custom_arm64_matrix]
@@ -107,7 +107,7 @@ jobs:
       fail-fast: false
       matrix:
         gateway_mode: ['classic', 'hybrid']
-        os: ['ubuntu-latest-kong']
+        os: ['${{ vars.RUNS_ON }}']
         include: ${{ fromJson(needs.construct_platform_matrix.outputs.arm64_matrix) }}
 
     steps:

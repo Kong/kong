@@ -6,7 +6,7 @@ permissions:
   pull-requests: write
 jobs:
   assign-author:
-    runs-on: ubuntu-latest-kong
+    runs-on: ${{ vars.RUNS_ON }}
     steps:
       - name: assign-author
         # ignore the pull requests opened from PR because token is not correct

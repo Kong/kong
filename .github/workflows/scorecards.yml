@@ -20,7 +20,7 @@ permissions: read-all
 jobs:
   analysis:
     name: Scorecards analysis
-    runs-on: ubuntu-latest-kong
+    runs-on: ${{ vars.RUNS_ON }}
     permissions:
       contents: read
       actions: read

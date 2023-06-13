@@ -19,7 +19,7 @@ on:
 jobs:
   build:
     name: Build dependencies
-    runs-on: ubuntu-latest-kong
+    runs-on: ${{ vars.RUNS_ON }}
 
     env:
       DOWNLOAD_ROOT: $HOME/download-root
@@ -70,7 +70,7 @@ jobs:
           source .ci/setup_env_github.sh
           make dev
   autodoc:
-    runs-on: ubuntu-latest-kong
+    runs-on: ${{ vars.RUNS_ON }}
     needs: [build]
     steps:
       - name: Set environment variables

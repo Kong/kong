@@ -21,7 +21,7 @@ jobs:
 
   autoformat:
     name: Auto-format and Check
-    runs-on: ubuntu-latest-kong
+    runs-on: ${{ vars.RUNS_ON }}
 
     steps:
       - name: Check out code
