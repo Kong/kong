@@ -28,6 +28,10 @@ our $InitByLuaBlockConfig = <<_EOC_;
     if os.getenv("PDK_PHASE_CHECKS_LUACOV") == "1" then
         require("luacov.runner")("t/phase_checks.luacov")
         jit.off()
+    
+    elseif os.getenv("PDK_LUACOV") == "1" then
+        require("luacov.runner")("t/pdk.luacov")
+        jit.off()
     end
 
     local private_phases = require("kong.pdk.private.phases")

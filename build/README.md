@@ -4,7 +4,7 @@ This directory contains the build system for the project.
 The build system is designed to be used with the [Bazel](https://bazel.build/).
 It is designed to be running on Linux without root privileges, and no virtualization technology is required.
 
-The build system is tested on Linux (x86_64 and arm64) and macOS (Intel chip and AppleSilicon Chip).
+The build system is tested on Linux (x86_64 and aarch64) and macOS (Intel chip and AppleSilicon Chip).
 
 ## Prerequisites
 
@@ -107,17 +107,17 @@ We can learn more about Bazel query from [Bazel query](https://bazel.build/versi
 
 Following build options can be used to set specific features:
 
-- `**--//:debug=true**`
+- **`--//:debug=true`**
   - Default to true.
   - Turn on debug options and debugging symbols for OpenResty, LuaJIT and OpenSSL, which useful for debug with GDB and SystemTap.
 
-- `**--action_env=BUILD_NAME=**`
+- **`--action_env=BUILD_NAME=`**
   - Default to `kong-dev`.
   - Set the `build_name`, multiple build can exist at same time to allow you
 switch between different Kong versions or branches. Don't set this when you are
 building a building an binary package.
 
-- `**--action_env=INSTALL_DESTDIR=**`
+- **`--action_env=INSTALL_DESTDIR=`**
   - Default to `bazel-bin/build/<BUILD_NAME>`.
   - Set the directory when the build is intended to be installed. Bazel won't
 actually install files into this directory, but this will make sure certain hard coded paths and RPATH is correctly set when building a package.
@@ -174,15 +174,16 @@ bazel build //:kong_el8 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_
 
 Cross compiling is currently only tested on Ubuntu 22.04 x86_64 with following targeting platforms:
 
-- **//:ubuntu-22.04-arm64** Ubuntu 22.04 ARM64
-  - Requires user to manually install `crossbuild-essential-arm64`.
-- **//:alpine-x86_64** Alpine Linux x86_64; bazel manages the build toolchain.
+- **//:generic-crossbuild-aarch64** Use the system installed aarch64 toolchain.
+  - Requires user to manually install `crossbuild-essential-arm64` on Debian/Ubuntu.
+- **//:alpine-crossbuild-x86_64** Alpine Linux x86_64; bazel manages the build toolchain.
+- **//:alpine-crossbuild-aarch64** Alpine Linux aarch64; bazel manages the build toolchain.
 
 Make sure platforms are selected both in building Kong and packaging kong:
 
 ```bash
-bazel build --config release //build:kong --platforms=//:ubuntu-2204-arm64
-bazel build --config release :kong_deb --platforms=//:ubuntu-2204-arm64
+bazel build --config release //build:kong --platforms=//:generic-crossbuild-aarch64
+bazel build --config release :kong_deb --platforms=//:generic-crossbuild-aarch64
 ```
 
 ## Troubleshooting

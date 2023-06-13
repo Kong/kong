@@ -1,7 +1,7 @@
 OS := $(shell uname | awk '{print tolower($$0)}')
 MACHINE := $(shell uname -m)
 
-DEV_ROCKS = "busted 2.1.2" "busted-htest 1.0.0" "luacheck 1.1.0" "lua-llthreads2 0.1.6" "http 0.4" "ldoc 1.4.6"
+DEV_ROCKS = "busted 2.1.2" "busted-htest 1.0.0" "luacheck 1.1.0" "lua-llthreads2 0.1.6" "http 0.4" "ldoc 1.4.6" "luacov 0.15.0"
 WIN_SCRIPTS = "bin/busted" "bin/kong" "bin/kong-health"
 BUSTED_ARGS ?= -v
 TEST_CMD ?= bin/busted $(BUSTED_ARGS)
@@ -44,17 +44,22 @@ BAZLISK_VERSION ?= 1.16.0
 BAZEL := $(shell command -v bazel 2> /dev/null)
 VENV = /dev/null # backward compatibility when no venv is built
 
+# Use x86_64 grpcurl v1.8.5 for Apple silicon chips
+ifeq ($(GRPCURL_OS)_$(MACHINE)_$(GRPCURL_VERSION), osx_arm64_1.8.5)
+GRPCURL_MACHINE = x86_64
+endif
+
 PACKAGE_TYPE ?= deb
 
 bin/bazel:
-	curl -s -S -L \
+	@curl -s -S -L \
 		https://github.com/bazelbuild/bazelisk/releases/download/v$(BAZLISK_VERSION)/bazelisk-$(OS)-$(BAZELISK_MACHINE) -o bin/bazel
-	chmod +x bin/bazel
+	@chmod +x bin/bazel
 
 bin/grpcurl:
 	@curl -s -S -L \
 		https://github.com/fullstorydev/grpcurl/releases/download/v$(GRPCURL_VERSION)/grpcurl_$(GRPCURL_VERSION)_$(GRPCURL_OS)_$(GRPCURL_MACHINE).tar.gz | tar xz -C bin;
-	@rm bin/LICENSE
+	@$(RM) bin/LICENSE
 
 check-bazel: bin/bazel
 ifndef BAZEL
@@ -108,9 +113,11 @@ install: dev
 
 clean: check-bazel
 	$(BAZEL) clean
+	$(RM) bin/bazel bin/grpcurl
 
 expunge: check-bazel
 	$(BAZEL) clean --expunge
+	$(RM) bin/bazel bin/grpcurl
 
 lint: dev
 	@$(VENV) luacheck -q .

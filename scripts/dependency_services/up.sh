@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 if [ "${BASH_SOURCE-}" = "$0" ]; then
     echo "You must source this script: \$ source $0" >&2
@@ -13,17 +13,17 @@ else
     cwd=$(dirname $(readlink -f ${BASH_SOURCE[0]}))
 fi
 
-bash "$cwd/common.sh" $KONG_SERVICE_ENV_FILE
+/usr/bin/env bash "$cwd/common.sh" $KONG_SERVICE_ENV_FILE up
 if [ $? -ne 0 ]; then
     echo "Something goes wrong, please check common.sh output"
-    return
+    exit 1
 fi
 
 . $KONG_SERVICE_ENV_FILE
 
 stop_services () {
     if test -n "$COMPOSE_FILE" && test -n "$COMPOSE_PROJECT_NAME"; then
-        docker compose down
+        bash "$cwd/common.sh" $KONG_SERVICE_ENV_FILE down
     fi
 
     for i in $(cat $KONG_SERVICE_ENV_FILE | cut -f2 | cut -d '=' -f1); do

@@ -248,7 +248,7 @@ local config_yml
 --- Iterator over DB strategies.
 -- @function each_strategy
 -- @param strategies (optional string array) explicit list of strategies to use,
--- defaults to `{ "postgres", "cassandra" }`.
+-- defaults to `{ "postgres", }`.
 -- @see all_strategies
 -- @usage
 -- -- repeat all tests for each strategy
@@ -266,13 +266,13 @@ end
 -- To test with DB-less, check the example.
 -- @function all_strategies
 -- @param strategies (optional string array) explicit list of strategies to use,
--- defaults to `{ "postgres", "cassandra", "off" }`.
+-- defaults to `{ "postgres", "off" }`.
 -- @see each_strategy
 -- @see make_yaml_file
 -- @usage
 -- -- example of using DB-less testing
 --
--- -- use "all_strategies" to iterate over; "postgres", "cassandra", "off"
+-- -- use "all_strategies" to iterate over; "postgres", "off"
 -- for _, strategy in helpers.all_strategies() do
 --   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
 --
@@ -306,7 +306,6 @@ end
 --         -- really runs DB-less despite that Postgres was used as intermediary
 --         -- storage.
 --         pg_host = strategy == "off" and "unknownhost.konghq.com" or nil,
---         cassandra_contact_points = strategy == "off" and "unknownhost.konghq.com" or nil,
 --       }))
 --     end)
 --
@@ -315,8 +314,8 @@ local function all_strategies() -- luacheck: ignore   -- required to trick ldoc 
 end
 
 do
-  local def_db_strategies = {"postgres", "cassandra"}
-  local def_all_strategies = {"postgres", "cassandra", "off"}
+  local def_db_strategies = {"postgres"}
+  local def_all_strategies = {"postgres", "off"}
   local env_var = os.getenv("KONG_DATABASE")
   if env_var then
     def_db_strategies = { env_var }
@@ -481,8 +480,6 @@ local function get_db_utils(strategy, tables, plugins, vaults, skip_migrations)
   assert(db.plugins:load_plugin_schemas(conf.loaded_plugins))
   assert(db.vaults:load_vault_schemas(conf.loaded_vaults))
 
-  -- cleanup the tags table, since it will be hacky and
-  -- not necessary to implement "truncate trigger" in Cassandra
   db:truncate("tags")
 
   _G.kong.db = db
@@ -1286,9 +1283,11 @@ local function kill_tcp_server(port)
 end
 
 
--- If it applies, please use `http_mock`, the coroutine variant of `http_server`, which is
--- more determinative and less flaky.
 --- Starts a local HTTP server.
+--
+-- **DEPRECATED**: please use `spec.helpers.http_mock` instead. `http_server` has very poor
+-- support to anything other then a single shot simple request.
+--
 -- Accepts a single connection and then closes. Sends a 200 ok, 'Connection:
 -- close' response.
 -- If the request received has path `/delay` then the response will be delayed
@@ -1300,6 +1299,9 @@ end
 -- @return A thread object (from the `llthreads2` Lua package)
 -- @see kill_http_server
 local function http_server(port, opts)
+  print(debug.traceback("[warning] http_server is deprecated, " ..
+                        "use helpers.start_kong's fixture parameter " ..
+                        "or helpers.http_mock instead.", 2))
   local threads = require "llthreads2.ex"
   opts = opts or {}
   local thread = threads.new({
@@ -1488,6 +1490,9 @@ end
 
 
 --- Start a local HTTP server with coroutine.
+--
+-- **DEPRECATED**: please use `spec.helpers.http_mock` instead.
+--
 -- local mock = helpers.http_mock(1234, { timeout = 0.1 })
 -- wait for a request, and respond with the custom response
 -- the request is returned as the function's return values
@@ -2011,7 +2016,7 @@ local function wait_for_all_config_update(opts)
     if stream_enabled then
       pwait_until(function ()
         local proxy = proxy_client(proxy_client_timeout, stream_port, stream_ip)
-  
+
         res = proxy:get("/always_200")
         local ok, err = pcall(assert, res.status == 200)
         proxy:close()
@@ -2698,6 +2703,40 @@ do
   luassert:register("modifier", "errlog", modifier_errlog) -- backward compat
   luassert:register("modifier", "logfile", modifier_errlog)
 
+  local function substr(subject, pattern)
+    if subject:find(pattern, nil, true) ~= nil then
+      return subject
+    end
+  end
+
+  local function re_match(subject, pattern)
+    local pos, _, err = ngx.re.find(subject, pattern, "oj")
+    if err then
+      error(("invalid regex provided to logfile assertion %q: %s")
+            :format(pattern, err), 5)
+    end
+
+    if pos then
+      return subject
+    end
+  end
+
+  local function find_in_file(fpath, pattern, matcher)
+    local fh = assert(io.open(fpath, "r"))
+    local found
+
+    for line in fh:lines() do
+      if matcher(line, pattern) then
+        found = line
+        break
+      end
+    end
+
+    fh:close()
+
+    return found
+  end
+
 
   --- Assertion checking if any line from a file matches the given regex or
   -- substring.
@@ -2727,37 +2766,30 @@ do
            "Expected the regex argument to be a string")
     assert(type(fpath) == "string",
            "Expected the file path argument to be a string")
-    assert(type(timeout) == "number" and timeout > 0,
-           "Expected the timeout argument to be a positive number")
+    assert(type(timeout) == "number" and timeout >= 0,
+           "Expected the timeout argument to be a number >= 0")
 
-    local pok = pcall(wait_until, function()
-      local logs = pl_file.read(fpath)
-      local from, _, err
 
-      for line in logs:gmatch("[^\r\n]+") do
-        if plain then
-          from = string.find(line, regex, nil, true)
+    local matcher = plain and substr or re_match
 
-        else
-          from, _, err = ngx.re.find(line, regex)
-          if err then
-            error(err)
-          end
-        end
+    local found = find_in_file(fpath, regex, matcher)
+    local deadline = ngx.now() + timeout
 
-        if from then
-          table.insert(args, 1, line)
-          table.insert(args, 1, regex)
-          args.n = 2
-          return true
-        end
-      end
-    end, timeout)
+    while not found and ngx.now() <= deadline do
+      ngx.sleep(0.05)
+      found = find_in_file(fpath, regex, matcher)
+    end
 
-    table.insert(args, 1, fpath)
-    args.n = args.n + 1
+    args[1] = fpath
+    args[2] = regex
+    args.n = 2
 
-    return pok
+    if found then
+      args[3] = found
+      args.n = 3
+    end
+
+    return found
   end
 
   say:set("assertion.match_line.negative", unindent [[
@@ -3409,6 +3441,8 @@ end
 --   dns_mock = helpers.dns_mock.new()
 -- }
 --
+-- **DEPRECATED**: http_mock fixture is deprecated. Please use `spec.helpers.http_mock` instead.
+--
 -- fixtures.dns_mock:A {
 --   name = "a.my.srv.test.com",
 --   address = "127.0.0.1",
@@ -3502,6 +3536,12 @@ end
 -- @param preserve_prefix (boolean) if truthy, the prefix will not be deleted after stopping
 -- @param preserve_dc ???
 local function cleanup_kong(prefix, preserve_prefix, preserve_dc)
+  -- remove socket files to ensure `pl.dir.rmtree()` ok
+  local socks = { "/worker_events.sock", "/stream_worker_events.sock", }
+  for _, name in ipairs(socks) do
+    local sock_file = (prefix or conf.prefix) .. name
+    os.remove(sock_file)
+  end
 
   -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped
   if not (preserve_prefix or os.getenv("KONG_DONT_CLEAN")) then
@@ -3566,9 +3606,6 @@ end
 
 
 local function wait_until_no_common_workers(workers, expected_total, strategy)
-  if strategy == "cassandra" then
-    ngx.sleep(0.5)
-  end
   wait_until(function()
     local pok, admin_client = pcall(admin_client)
     if not pok then
@@ -3601,8 +3638,9 @@ local function wait_until_no_common_workers(workers, expected_total, strategy)
 end
 
 
-local function get_kong_workers()
+local function get_kong_workers(expected_total)
   local workers
+
   wait_until(function()
     local pok, admin_client = pcall(admin_client)
     if not pok then
@@ -3619,7 +3657,23 @@ local function get_kong_workers()
     local json = cjson.decode(body)
 
     admin_client:close()
-    workers = json.pids.workers
+
+    workers = {}
+
+    for _, item in ipairs(json.pids.workers) do
+      if item ~= ngx.null then
+        table.insert(workers, item)
+      end
+    end
+
+    if expected_total and #workers ~= expected_total then
+      return nil, ("expected %s worker pids, got %s"):format(expected_total,
+                                                             #workers)
+
+    elseif #workers == 0 then
+      return nil, "GET / returned no worker pids"
+    end
+
     return true
   end, 10)
   return workers

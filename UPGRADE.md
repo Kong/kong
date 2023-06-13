@@ -133,7 +133,7 @@ Data Planes (DPs) are capable of serving traffic normally during the entire migr
    as your old one. Run `kong migrations up` and `kong migrations finish`.
 3. Start the newly installed 3.0.x CP. Old DPs are expected to complain
 about connection failure to the CP in the log, for example:
-`connection to Control Plane ... broken: failed to connect: connection refused` but this is perfectly okay during the upgrade ad does not affect normal proxy traffic.
+`connection to Control Plane ... broken: failed to connect: connection refused` but this is perfectly okay during the upgrade and does not affect normal proxy traffic.
 4. Start provisioning 3.0.x DPs.
 5. Gradually shift traffic from your old 2.8.x DPs to
    your 3.0.x DPs. Monitor your traffic to make sure everything

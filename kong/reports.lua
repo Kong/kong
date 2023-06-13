@@ -151,12 +151,14 @@ local function send_report(signal_type, t, host, port)
   local ok, err
   ok, err = sock:connect(host, port)
   if not ok then
+    sock:close()
     return nil, err
   end
 
   ok, err = sock:sslhandshake(_ssl_session, nil, _ssl_verify)
   if not ok then
     log(DEBUG, "failed to complete SSL handshake for reports: ", err)
+    sock:close()
     return nil, "failed to complete SSL handshake for reports: " .. err
   end
 
@@ -165,7 +167,11 @@ local function send_report(signal_type, t, host, port)
   -- send return nil plus err msg on failure
   local bytes, err = sock:send(concat(_buffer, ";", 1, mutable_idx) .. "\n")
   if bytes then
-    sock:setkeepalive()
+    local ok, err = sock:setkeepalive()
+    if not ok then
+      log(DEBUG, "failed to keepalive to ", host, ":", tostring(port), ": ", err)
+      sock:close()
+    end
   end
   return bytes, err
 end

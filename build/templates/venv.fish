@@ -9,6 +9,8 @@ if test (echo $FISH_VERSION | head -c 1) -lt 3
     echo "Fish version 3.0.0 or higher is required."
 end
 
+set -xg BUILD_NAME "$build_name"
+
 # Modified from virtualenv: https://github.com/pypa/virtualenv/blob/main/src/virtualenv/activation/fish/activate.fish
 
 set -xg KONG_VENV "$workspace_path/bazel-bin/build/$build_name"
@@ -58,7 +60,7 @@ end
 
 
 # actually set env vars
-set -xg KONG_VENV_ENV_FILE $(mktemp)
+set -xg KONG_VENV_ENV_FILE (mktemp)
 bash $KONG_VENV-venv/lib/venv-commons $KONG_VENV $KONG_VENV_ENV_FILE
 source $KONG_VENV_ENV_FILE
 set -xg PATH "$PATH"

@@ -55,11 +55,11 @@ return {
     { id = typedefs.uuid },
     -- note: prefix must be valid in a host part of vault reference uri:
     -- {vault://<vault-prefix>/<secret-id>[/<secret-key]}
-    { prefix = { type = "string", required = true, unique = true, unique_across_ws = true,
+    { prefix = { description = "The unique prefix (or identifier) for this Vault configuration.", type = "string", required = true, unique = true, unique_across_ws = true,
                  match = [[^[a-z][a-z%d-]-[a-z%d]+$]], not_one_of = VAULTS }},
-    { name = { type = "string", required = true }},
-    { description = { type = "string" }},
-    { config = { type = "record", abstract = true }},
+    { name = { description = "The name of the Vault that's going to be added.", type = "string", required = true }},
+    { description = { description = "The description of the Vault entity.", type = "string" }},
+    { config = { description = "The configuration properties for the Vault which can be found on the vaults' documentation page.", type = "record", abstract = true }},
     { created_at = typedefs.auto_timestamp_s },
     { updated_at = typedefs.auto_timestamp_s },
     { tags = typedefs.tags },

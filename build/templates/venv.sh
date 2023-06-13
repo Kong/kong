@@ -8,6 +8,9 @@ workspace_path="{{workspace_path}}"
 KONG_VENV="$workspace_path/bazel-bin/build/$build_name"
 export KONG_VENV
 
+BUILD_NAME=$build_name
+export BUILD_NAME
+
 # set PATH
 if [ -n "${_OLD_KONG_VENV_PATH}" ]; then
     # restore old PATH first, if this script is called multiple times
@@ -25,7 +28,7 @@ deactivate () {
     unset _OLD_KONG_VENV_PATH _OLD_KONG_VENV_PS1
     unset LUAROCKS_CONFIG LUA_PATH LUA_CPATH KONG_PREFIX LIBRARY_PREFIX OPENSSL_DIR
 
-    type stop_services >/dev/null && stop_services
+    type stop_services &>/dev/null && stop_services
 
     unset -f deactivate
     unset -f start_services

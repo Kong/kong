@@ -75,6 +75,7 @@ local function send_to_loggly(conf, message, pri)
   local ok, err = sock:setpeername(host, port)
   if not ok then
     kong.log.err("failed to connect to ", host, ":", tostring(port), ": ", err)
+    sock:close()
     return
   end
 

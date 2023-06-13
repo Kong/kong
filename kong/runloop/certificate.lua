@@ -1,6 +1,6 @@
 local ngx_ssl = require "ngx.ssl"
 local pl_utils = require "pl.utils"
-local mlcache = require "resty.mlcache"
+local mlcache = require "kong.resty.mlcache"
 local new_tab = require "table.new"
 local openssl_x509_store = require "resty.openssl.x509.store"
 local openssl_x509 = require "resty.openssl.x509"
@@ -205,9 +205,16 @@ end
 
 local function get_certificate(pk, sni_name)
   local cache_key = kong.db.certificates:cache_key(pk)
-  return kong.core_cache:get(cache_key,
-                             get_certificate_opts, fetch_certificate,
-                             pk, sni_name)
+  local certificate, err, hit_level = kong.core_cache:get(cache_key,
+                                                          get_certificate_opts,
+                                                          fetch_certificate,
+                                                          pk, sni_name)
+
+  if certificate and hit_level ~= 3 then
+    kong.vault.update(certificate)
+  end
+
+  return certificate, err
 end
 
 

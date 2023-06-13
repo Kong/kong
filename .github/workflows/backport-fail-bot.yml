@@ -1,0 +1,37 @@
+name: Forward failed backport alert to Slack
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  check_comment:
+    runs-on: ubuntu-latest
+    if: github.event.issue.pull_request != null && contains(github.event.comment.body, 'To backport manually, run these commands in your terminal')
+    steps:
+      - name: Generate Slack Payload
+        id: generate-payload
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const slack_mapping = JSON.parse(process.env.SLACK_MAPPING);
+            const pr_url = "${{ github.event.issue.pull_request.html_url}}";
+            const pr_author_github_id = "${{ github.event.issue.user.login }}"
+            const pr_author_slack_id = slack_mapping[pr_author_github_id];
+            const author = (pr_author_slack_id ? `<@${pr_author_slack_id}>` : pr_author_github_id);
+            const payload = {
+              text: `Backport failed in PR: ${pr_url}. Please check it ${author}.`,
+              channel: process.env.SLACK_CHANNEL,
+            };
+            return JSON.stringify(payload);
+          result-encoding: string
+        env:
+          SLACK_CHANNEL: gateway-notifications
+          SLACK_MAPPING: "${{ vars.GH_ID_2_SLACK_ID_MAPPING }}"
+
+      - name: Send Slack Message
+        uses: slackapi/slack-github-action@e28cf165c92ffef168d23c5c9000cffc8a25e117 # v1.24.0
+        with:
+          payload: ${{ steps.generate-payload.outputs.result }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_GATEWAY_NOTIFICATIONS_WEBHOOK }}

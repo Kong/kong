@@ -1188,16 +1188,10 @@ for _, strategy in helpers.each_strategy() do
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
 
-            if strategy == "cassandra" then
-              assert.equals(ngx.null, json.paths)
-              assert.equals(ngx.null, json.methods)
-
-            else
-              assert.matches('"methods":%[%]', body)
-              assert.matches('"paths":%[%]', body)
-              assert.same({}, json.paths)
-              assert.same({}, json.methods)
-            end
+            assert.matches('"methods":%[%]', body)
+            assert.matches('"paths":%[%]', body)
+            assert.same({}, json.paths)
+            assert.same({}, json.methods)
 
             assert.same({ "my-updated.tld" }, json.hosts)
             assert.equal(route.id, json.id)
@@ -1795,8 +1789,7 @@ for _, strategy in helpers.each_strategy() do
               end
             end)
 
-            -- Cassandra doesn't fail on this because its insert is an upsert
-            pending("returns 409 on id conflict (same plugin id)", function(content_type)
+            it("returns 409 on id conflict (same plugin id)", function(content_type)
               return function()
                 local route = bp.routes:insert({ paths = { "/my-route" } })
                 -- insert initial plugin

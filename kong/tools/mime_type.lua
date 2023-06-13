@@ -3,6 +3,12 @@ local lpeg = require "lpeg"
 local P, S, R, C = lpeg.P, lpeg.S, lpeg.R, lpeg.C
 local ipairs = ipairs
 local lower = string.lower
+local find = string.find
+local type = type
+local error = error
+local match = string.match
+
+local WILDCARD = "*"
 
 --[[
 RFC2045(https://www.ietf.org/rfc/rfc2045.txt)
@@ -88,7 +94,40 @@ local function parse_mime_type(mime_type)
   return media_type:match(mime_type)
 end
 
+--- Checks if this mime-type includes other mime-type
+-- @tparam table this This mime-type
+-- @tparam table other Other mime-type
+-- @treturn boolean Returns `true` if this mime-type includes other, `false` otherwise
+local function includes(this, other)
+  if type(this) ~= "table" then
+    error("this must be a table", 2)
+  end
+  if type(other) ~= "table" then
+    error("other must be a table", 2)
+  end
+
+  if this.type == WILDCARD then
+    -- */* includes anything
+    return true
+  end
+
+  if this.type == other.type then
+    if this.subtype == other.subtype or this.subtype == WILDCARD then
+      return true
+    end
+
+    -- considering included when this.subtype does not contain a suffix and is the suffix of other.subtype
+    if not find(this.subtype, "+", nil, true) then -- this.subtype does not contain suffix
+      if match(other.subtype, "+" .. this.subtype .. "$") then -- suffix match
+        return true
+      end
+    end
+  end
+
+  return false
+end
 
 return {
-  parse_mime_type = parse_mime_type
+  parse_mime_type = parse_mime_type,
+  includes = includes,
 }

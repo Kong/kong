@@ -3,6 +3,7 @@ set -e
 
 if [ -d /workspace ] ;  then
     redis-server                                                    \
+        --port 6379                                                 \
         --tls-port 6380                                             \
         --tls-cert-file /workspace/spec/fixtures/redis/server.crt   \
         --tls-key-file /workspace/spec/fixtures/redis/server.key    \

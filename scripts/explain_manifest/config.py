@@ -21,45 +21,76 @@ def transform(f: FileInfo):
         # otherwise remain unmodified
 
 
-# https://repology.org/project/glibc/versions
+# libc:
+# - https://repology.org/project/glibc/versions
+# GLIBCXX and CXXABI based on gcc version:
+# - https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html
+# - https://repology.org/project/gcc/versions
 # TODO: libstdc++ verions
 targets = {
     "alpine-amd64": ExpectSuite(
         name="Alpine Linux (amd64)",
         manifest="fixtures/alpine-amd64.txt",
         use_rpath=True,
+        # alpine 3.16: gcc 11.2.1
+        libcxx_max_version="3.4.29",
+        cxxabi_max_version="1.3.13",
+    ),
+    "alpine-arm64": ExpectSuite(
+        name="Alpine Linux (arm64)",
+        manifest="fixtures/alpine-arm64.txt",
+        use_rpath=True,
+        extra_tests=[arm64_suites],
     ),
     "amazonlinux-2-amd64": ExpectSuite(
         name="Amazon Linux 2 (amd64)",
         manifest="fixtures/amazonlinux-2-amd64.txt",
         use_rpath=True,
         libc_max_version="2.26",
+        # gcc 7.3.1
+        libcxx_max_version="3.4.24",
+        cxxabi_max_version="1.3.11",
     ),
     "el7-amd64": ExpectSuite(
         name="Redhat 7 (amd64)",
         manifest="fixtures/el7-amd64.txt",
         use_rpath=True,
         libc_max_version="2.17",
+        # gcc 4.8.5
+        libcxx_max_version="3.4.19",
+        cxxabi_max_version="1.3.7",
     ),
     "ubuntu-18.04-amd64": ExpectSuite(
         name="Ubuntu 18.04 (amd64)",
         manifest="fixtures/ubuntu-18.04-amd64.txt",
         libc_max_version="2.27",
+        # gcc 7.4.0
+        libcxx_max_version="3.4.24",
+        cxxabi_max_version="1.3.11",
     ),
     "ubuntu-20.04-amd64": ExpectSuite(
         name="Ubuntu 20.04 (amd64)",
         manifest="fixtures/ubuntu-20.04-amd64.txt",
         libc_max_version="2.30",
+        # gcc 9.3.0
+        libcxx_max_version="3.4.28",
+        cxxabi_max_version="1.3.12",
     ),
     "ubuntu-22.04-amd64": ExpectSuite(
         name="Ubuntu 22.04 (amd64)",
         manifest="fixtures/ubuntu-22.04-amd64.txt",
         libc_max_version="2.35",
+        # gcc 11.2.0
+        libcxx_max_version="3.4.29",
+        cxxabi_max_version="1.3.13",
     ),
     "ubuntu-22.04-arm64": ExpectSuite(
         name="Ubuntu 22.04 (arm64)",
         manifest="fixtures/ubuntu-22.04-arm64.txt",
         libc_max_version="2.35",
+        # gcc 11.2.0
+        libcxx_max_version="3.4.29",
+        cxxabi_max_version="1.3.13",
         extra_tests=[arm64_suites],
     ),
 }

@@ -1,27 +1,158 @@
 # Table of Contents
 
+- [3.3.0](#330)
 - [3.2.0](#320)
 - [3.1.0](#310)
 - [3.0.1](#301)
 - [3.0.0](#300)
 - [Previous releases](#previous-releases)
 
+
 ## Unreleased
 
 ### Breaking Changes
 
+- :warning: Alpine packages and Docker images based on Alpine are no longer supported
+  [#10926](https://github.com/Kong/kong/pull/10926)
+- :warning: Cassandra as a datastore for Kong is no longer supported
+  [#10931](https://github.com/Kong/kong/pull/10931)
+
+#### Core
+
 #### Plugins
 
+- Validation for queue related parameters has been
+  improved. `max_batch_size`, `max_entries` and `max_bytes` are now
+  `integer`s instead of `number`s.  `initial_retry_delay` and
+  `max_retry_delay` must now be `number`s greater than 0.001
+  (seconds).
+  [#10840](https://github.com/Kong/kong/pull/10840)
+
+### Additions
+
+#### Core
+
+#### Admin API
+
+#### Status API
+
+#### Plugins
+
+#### PDK
+
+#### Performance
+
+- In dbless mode, the declarative schema is now fully initialized at startup
+  instead of on-demand in the request path. This is most evident in decreased
+  response latency when updating configuration via the `/config` API endpoint.
+  [#10932](https://github.com/Kong/kong/pull/10932)
+- The Prometheus plugin has been optimized to reduce proxy latency impacts during scraping.
+  [#10949](https://github.com/Kong/kong/pull/10949)
+  [#11040](https://github.com/Kong/kong/pull/11040)
+
+### Fixes
+
+
+#### Core
+
+- Fixed a bug that causes `POST /config?flatten_errors=1` to throw an exception
+  and return a 500 error under certain circumstances.
+  [#10896](https://github.com/Kong/kong/pull/10896)
+- Fix a bug when worker consuming dynamic log level setting event and using a wrong reference for notice logging
+  [#10897](https://github.com/Kong/kong/pull/10897)
+
+#### Admin API
+
+#### Plugins
+
+- **Response Transformer**: fix an issue that plugin does not transform the response body while upstream returns a Content-Type with +json suffix at subtype.
+  [#10656](https://github.com/Kong/kong/pull/10656)
+- **grpc-gateway**: Fixed an issue that empty (all default value) messages can not be unframed correctly.
+  [#10836](https://github.com/Kong/kong/pull/10836)
+- **ACME**: Fixed sanity test can't work with "kong" storage in Hybrid mode
+  [#10852](https://github.com/Kong/kong/pull/10852)
+- **rate-limiting**: Fixed an issue that impact the accuracy with the `redis` policy.
+  Thanks [@giovanibrioni](https://github.com/giovanibrioni) for contributing this change.
+  [#10559](https://github.com/Kong/kong/pull/10559)
+- **Zipkin**: Fixed an issue that traces not being generated correctly when instrumentations are enabled.
+  [#10983](https://github.com/Kong/kong/pull/10983)
+
+#### PDK
+
+### Changed
+
+#### Core
+
+- The default value of `lmdb_map_size` config has been bumped to `2048m`
+  from `128m` to accommodate most commonly deployed config sizes in DB-less
+  and Hybrid mode.
+  [#11047](https://github.com/Kong/kong/pull/11047)
+
+#### Status API
+
+- Remove the database information from the status API when operating in dbless
+  mode or data plane.
+  [#10995](https://github.com/Kong/kong/pull/10995)
+
+#### PDK
+
+#### Plugins
+
+### Dependencies
+
+- Bumped lua-resty-openssl from 0.8.20 to 0.8.22
+  [#10837](https://github.com/Kong/kong/pull/10837)
+- Bumped kong-lapis from 1.8.3.1 to 1.14.0.2
+  [#10841](https://github.com/Kong/kong/pull/10841)
+- Bumped lua-resty-events from 0.1.4 to 0.1.5
+  [#10883](https://github.com/Kong/kong/pull/10883)
+- Bumped lua-resty-session from 4.0.3 to 4.0.4
+  [#11011](https://github.com/Kong/kong/pull/11011)
+
+## 3.3.0
+
+### Breaking Changes
+
+#### Core
+
+- The `traditional_compat` router mode has been made more compatible with the
+  behavior of `traditional` mode by splitting routes with multiple paths into
+  multiple atc routes with separate priorities.  Since the introduction of the new
+  router in Kong Gateway 3.0, `traditional_compat` mode assigned only one priority
+  to each route, even if different prefix path lengths and regular expressions
+  were mixed in a route. This was not how multiple paths were handled in the
+  `traditional` router and the behavior has now been changed so that a separate
+  priority value is assigned to each path in a route.
+  [#10615](https://github.com/Kong/kong/pull/10615)
+
+#### Plugins
+
+- **http-log, statsd, opentelemetry, datadog**: The queueing system
+  has been reworked, causing some plugin parameters to not function as expected
+  anymore. If you use queues on these plugin, new parameters must be configured.
+  The module `kong.tools.batch_queue` has been renamed to `kong.tools.queue` in
+  the process and the API was changed.  If your custom plugin uses queues, it must
+  be updated to use the new API.
+  See
+  [this blog post](https://konghq.com/blog/product-releases/reworked-plugin-queues-in-kong-gateway-3-3)
+  for a tour of the new queues and how they are parametrized.
+  [#10172](https://github.com/Kong/kong/pull/10172)
+- **http-log**: If the log server responds with a 3xx HTTP status code, the
+  plugin will consider it to be an error and retry according to the retry
+  configuration.  Previously, 3xx status codes would be interpreted as success,
+  causing the log entries to be dropped.
+  [#10172](https://github.com/Kong/kong/pull/10172)
 - **Serverless Functions**: `kong.cache` now points to a cache instance that is dedicated to the
   Serverless Functions plugins: it does not provide access to the global kong cache. Access to
   certain fields in kong.configuration has also been restricted.
   [#10417](https://github.com/Kong/kong/pull/10417)
-- **Opentelemetry**: plugin version has been updated to match Kong's version
-  [#10646](https://github.com/Kong/kong/pull/10646)
 - **Zipkin**: The zipkin plugin now uses queues for internal
   buffering.  The standard queue parameter set is available to
   control queuing behavior.
   [#10753](https://github.com/Kong/kong/pull/10753)
+- Tracing: tracing_sampling_rate defaults to 0.01 (trace one of every 100 requests) instead of the previous 1
+  (trace all requests). Tracing all requests is inappropriate for most production systems
+  [#10774](https://github.com/Kong/kong/pull/10774)
 
 ### Additions
 
@@ -49,7 +180,7 @@
 - Request and response buffering options are now enabled for incoming HTTP 2.0 requests too.
   Thanks [@PidgeyBE](https://github.com/PidgeyBE) for contributing this change.
   [#10595](https://github.com/Kong/kong/pull/10595)
-  [#10204](https://github.com/Kong/kong/pull/10204)  
+  [#10204](https://github.com/Kong/kong/pull/10204)
 - Add `KONG_UPSTREAM_DNS_TIME` to `kong.ctx` so that we can record the time it takes for DNS
   resolution when Kong proxies to upstream.
   [#10355](https://github.com/Kong/kong/pull/10355)
@@ -58,6 +189,7 @@
 - Support timeout for dynamic log level
   [#10288](https://github.com/Kong/kong/pull/10288)
 - Added new span attribute `http.client_ip` to capture the client IP when behind a proxy.
+  Thanks [@backjo](https://github.com/backjo) for this contribution!
   [#10723](https://github.com/Kong/kong/pull/10723)
 
 #### Admin API
@@ -78,6 +210,7 @@
   Load balancers frequently utilize this functionality to ascertain
   Kong's availability to distribute incoming requests.
   [#10610](https://github.com/Kong/kong/pull/10610)
+  [#10787](https://github.com/Kong/kong/pull/10787)
 
 #### Plugins
 
@@ -103,11 +236,17 @@
   Previously, the `header_type` was hardcoded to `preserve`, now it can be set to one of the
   following values: `preserve`, `ignore`, `b3`, `b3-single`, `w3c`, `jaeger`, `ot`.
   [#10620](https://github.com/Kong/kong/pull/10620)
+- **Prometheus**: add `lmdb_usage` related metrics in Prometheus plugin.
+  [#10301](https://github.com/Kong/kong/pull/10301)
+- **Statsd**: add `lmdb_usage` related metrics in Statsd plugin.
+  [#10301](https://github.com/Kong/kong/pull/10301)
 
 #### PDK
 
 - PDK now supports getting plugins' ID with `kong.plugin.get_id`.
   [#9903](https://github.com/Kong/kong/pull/9903)
+- PDK now supports getting lmdb environment information with `kong.node.get_memory_stats`.
+  [#10301](https://github.com/Kong/kong/pull/10301)
 
 ### Fixes
 
@@ -148,6 +287,18 @@
   [#10680](https://github.com/Kong/kong/pull/10680)
 - Tracing: fix an approximation issue that resulted in reduced precision of the balancer span start and end times.
   [#10681](https://github.com/Kong/kong/pull/10681)
+- Tracing: tracing_sampling_rate defaults to 0.01 (trace one of every 100 requests) instead of the previous 1
+  (trace all requests). Tracing all requests is inappropriate for most production systems
+  [#10774](https://github.com/Kong/kong/pull/10774)
+- Fix issue when stopping a Kong could error out if using Vault references
+  [#10775](https://github.com/Kong/kong/pull/10775)
+- Fix issue where Vault configuration stayed sticky and cached even when configurations were changed.
+  [#10776](https://github.com/Kong/kong/pull/10776)
+- Backported the openresty `ngx.print` chunk encoding buffer double free bug fix that
+  leads to the corruption of chunk-encoded response data.
+  [#10816](https://github.com/Kong/kong/pull/10816)
+  [#10824](https://github.com/Kong/kong/pull/10824)
+
 
 #### Admin API
 
@@ -170,29 +321,16 @@
   [#10663](https://github.com/Kong/kong/pull/10663)
 - **gRPC gateway**: `null` in the JSON payload caused an uncaught exception to be thrown during pb.encode.
   [#10687](https://github.com/Kong/kong/pull/10687)
-
+- **Oauth2**: prevent an authorization code created by one plugin instance to be exchanged for an access token by a different plugin instance.
+  [#10011](https://github.com/Kong/kong/pull/10011)
+- **gRPC gateway**: fixed an issue that empty arrays in JSON are incorrectly encoded as `"{}"`; they are
+now encoded as `"[]"` to comply with standard.
+  [#10790](https://github.com/Kong/kong/pull/10790)
 
 #### PDK
 
 - Fixed an issue for tracing PDK where sample rate does not work.
   [#10485](https://github.com/Kong/kong/pull/10485)
-
-### Breaking Changes
-
-#### Plugins
-
-- **http-log, statsd, opentelemetry, datadog**: The queueing system
-  has been reworked, causing some plugin parameters to not function as expected
-  anymore. If you use queues on these plugin, new parameters must be configured.
-  The module `kong.tools.batch_queue` has been renamed to `kong.tools.batch` in
-  the process and the API was changed.  If your custom plugin uses queues, it must
-  be updated to use the new API.
-  [#10172](https://github.com/Kong/kong/pull/10172)
-- **http-log**: If the log server responds with a 3xx HTTP status code, the
-  plugin will consider it to be an error and retry according to the retry
-  configuration.  Previously, 3xx status codes would be interpreted as success,
-  causing the log entries to be dropped.
-  [#10172](https://github.com/Kong/kong/pull/10172)
 
 ### Changed
 
@@ -226,8 +364,9 @@
 
 - Bumped lua-resty-session from 4.0.2 to 4.0.3
   [#10338](https://github.com/Kong/kong/pull/10338)
-- Bumped lua-protobuf from 0.3.3 to 0.4.2
+- Bumped lua-protobuf from 0.3.3 to 0.5.0
   [#10137](https://github.com/Kong/kong/pull/10413)
+  [#10790](https://github.com/Kong/kong/pull/10790)
 - Bumped lua-resty-timer-ng from 0.2.3 to 0.2.5
   [#10419](https://github.com/Kong/kong/pull/10419)
   [#10664](https://github.com/Kong/kong/pull/10664)
@@ -1172,6 +1311,7 @@ Please see [CHANGELOG-OLD.md](CHANGELOG-OLD.md) file for < 3.0 releases.
 
 [Back to TOC](#table-of-contents)
 
+[3.3.0]: https://github.com/Kong/kong/compare/3.2.0...3.3.0
 [3.2.0]: https://github.com/Kong/kong/compare/3.1.0...3.2.0
 [3.1.0]: https://github.com/Kong/kong/compare/3.0.1...3.1.0
 [3.0.1]: https://github.com/Kong/kong/compare/3.0.0...3.0.1

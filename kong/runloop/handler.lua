@@ -54,9 +54,9 @@ local DEFAULT_MATCH_LRUCACHE_SIZE = Router.DEFAULT_MATCH_LRUCACHE_SIZE
 
 
 local kong_shm          = ngx.shared.kong
-local PLUGINS_REBUILD_COUNTER_KEY = 
+local PLUGINS_REBUILD_COUNTER_KEY =
                                 constants.PLUGINS_REBUILD_COUNTER_KEY
-local ROUTERS_REBUILD_COUNTER_KEY = 
+local ROUTERS_REBUILD_COUNTER_KEY =
                                 constants.ROUTERS_REBUILD_COUNTER_KEY
 
 
@@ -495,7 +495,7 @@ end
 local new_plugins_iterator
 do
   local PluginsIterator_new = PluginsIterator.new
-  new_plugins_iterator = function(version) 
+  new_plugins_iterator = function(version)
     local plugin_iterator, err = PluginsIterator_new(version)
     if not plugin_iterator then
       return nil, err
@@ -661,6 +661,7 @@ do
 
       kong.core_cache:purge()
       kong.cache:purge()
+      kong.vault.flush()
 
       if router then
         ROUTER = router
@@ -933,7 +934,7 @@ return {
             return
           end
 
-          log(NOTICE, "log level changed to ", data, " for worker ", worker)
+          log(NOTICE, "log level changed to ", data.log_level, " for worker ", worker)
         end, "debug", "log_level")
       end
 
@@ -964,10 +965,6 @@ return {
 
       do
         local rebuild_timeout = 60
-
-        if strategy == "cassandra" then
-          rebuild_timeout = kong.configuration.cassandra_timeout / 1000
-        end
 
         if strategy == "postgres" then
           rebuild_timeout = kong.configuration.pg_timeout / 1000
@@ -1051,13 +1048,6 @@ return {
 
       end
     end,
-    after = NOOP,
-  },
-  certificate = {
-    before = function(ctx) -- Note: ctx here is for a connection (not for a single request)
-      certificate.execute()
-    end,
-    after = NOOP,
   },
   preread = {
     before = function(ctx)
@@ -1119,7 +1109,6 @@ return {
       ctx.host_port = HOST_PORTS[server_port] or server_port
       instrumentation.request(ctx)
     end,
-    after = NOOP,
   },
   access = {
     before = function(ctx)
@@ -1420,10 +1409,6 @@ return {
         clear_header("Proxy-Connection")
       end
     end
-  },
-  response = {
-    before = NOOP,
-    after = NOOP,
   },
   header_filter = {
     before = function(ctx)

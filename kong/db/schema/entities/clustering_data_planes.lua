@@ -29,6 +29,7 @@ return {
                       required = true,
                       one_of = SYNC_STATUS_CHOICES,
                       default = "unknown",
+                      description = "The status of the clustering data planes sync.",
                     }
     },
   },

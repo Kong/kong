@@ -207,6 +207,7 @@ describe("Plugin: jwt (parser)", function()
       local token = jwt_parser.encode({exp = os.time() - 10}, "secret")
       local jwt = assert(jwt_parser:new(token))
 
+      ngx.update_time()
       local ok, errors = jwt:verify_registered_claims({"exp"})
       assert.False(ok)
       assert.same({exp = "token expired"}, errors)

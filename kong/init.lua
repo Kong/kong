@@ -82,7 +82,6 @@ local concurrency = require "kong.concurrency"
 local cache_warmup = require "kong.cache.warmup"
 local balancer = require "kong.runloop.balancer"
 local kong_error_handlers = require "kong.error_handlers"
-local migrations_utils = require "kong.cmd.utils.migrations"
 local plugin_servers = require "kong.runloop.plugin_servers"
 local lmdb_txn = require "resty.lmdb.transaction"
 local instrumentation = require "kong.tracing.instrumentation"
@@ -448,9 +447,7 @@ local function has_declarative_config(kong_config)
 end
 
 
-local function parse_declarative_config(kong_config)
-  local dc = declarative.new_config(kong_config)
-
+local function parse_declarative_config(kong_config, dc)
   local declarative_config, is_file, is_string = has_declarative_config(kong_config)
 
   local entities, err, _, meta, hash
@@ -586,18 +583,23 @@ function Kong.init()
   instrumentation.db_query(db.connector)
   assert(db:init_connector())
 
-  schema_state = assert(db:schema_state())
-  migrations_utils.check_state(schema_state)
+  -- check state of migration only if there is an external database
+  if not is_dbless(config) then
+    ngx_log(ngx_DEBUG, "checking database schema state")
+    local migrations_utils = require "kong.cmd.utils.migrations"
+    schema_state = assert(db:schema_state())
+    migrations_utils.check_state(schema_state)
 
-  if schema_state.missing_migrations or schema_state.pending_migrations then
-    if schema_state.missing_migrations then
-      ngx_log(ngx_WARN, "database is missing some migrations:\n",
-                        schema_state.missing_migrations)
-    end
+    if schema_state.missing_migrations or schema_state.pending_migrations then
+      if schema_state.missing_migrations then
+        ngx_log(ngx_WARN, "database is missing some migrations:\n",
+                          schema_state.missing_migrations)
+      end
 
-    if schema_state.pending_migrations then
-      ngx_log(ngx_WARN, "database has pending migrations:\n",
-                        schema_state.pending_migrations)
+      if schema_state.pending_migrations then
+        ngx_log(ngx_WARN, "database has pending migrations:\n",
+                          schema_state.pending_migrations)
+      end
     end
   end
 
@@ -625,13 +627,22 @@ function Kong.init()
   end
 
   if is_dbless(config) then
+    local dc, err = declarative.new_config(config)
+    if not dc then
+      error(err)
+    end
+
+    kong.db.declarative_config = dc
+
+
     if is_http_module or
        (#config.proxy_listeners == 0 and
         #config.admin_listeners == 0 and
         #config.status_listeners == 0)
     then
-      local err
-      declarative_entities, err, declarative_meta, declarative_hash = parse_declarative_config(kong.configuration)
+      declarative_entities, err, declarative_meta, declarative_hash =
+        parse_declarative_config(kong.configuration, dc)
+
       if not declarative_entities then
         error(err)
       end
@@ -689,7 +700,7 @@ function Kong.init_worker()
     return
   end
 
-  if worker_id() == 0 then
+  if worker_id() == 0 and not is_dbless(kong.configuration) then
     if schema_state.missing_migrations then
       ngx_log(ngx_WARN, "missing migrations: ",
               list_migrations(schema_state.missing_migrations))
@@ -734,6 +745,8 @@ function Kong.init_worker()
   kong.core_cache = core_cache
 
   kong.db:set_events_handler(worker_events)
+
+  kong.vault.init_worker()
 
   if is_dbless(kong.configuration) then
     -- databases in LMDB need to be explicitly created, otherwise `get`
@@ -814,8 +827,6 @@ function Kong.init_worker()
     end
   end
 
-  runloop.init_worker.after()
-
   if is_not_control_plane then
     plugin_servers.start()
   end
@@ -844,10 +855,9 @@ function Kong.ssl_certificate()
   -- this is the first phase to run on an HTTPS request
   ctx.workspace = kong.default_workspace
 
-  runloop.certificate.before(ctx)
+  certificate.execute()
   local plugins_iterator = runloop.get_updated_plugins_iterator()
   execute_global_plugins_iterator(plugins_iterator, "certificate", ctx)
-  runloop.certificate.after(ctx)
 
   -- TODO: do we want to keep connection context?
   kong.table.clear(ngx.ctx)
@@ -961,8 +971,6 @@ function Kong.rewrite()
 
   execute_global_plugins_iterator(plugins_iterator, "rewrite", ctx)
 
-  runloop.rewrite.after(ctx)
-
   ctx.KONG_REWRITE_ENDED_AT = get_updated_now_ms()
   ctx.KONG_REWRITE_TIME = ctx.KONG_REWRITE_ENDED_AT - ctx.KONG_REWRITE_START
 end
@@ -1037,6 +1045,7 @@ end
 function Kong.balancer()
   -- This may be called multiple times, and no yielding here!
   local now_ms = now() * 1000
+  local now_ns = time_ns()
 
   local ctx = ngx.ctx
   if not ctx.KONG_BALANCER_START then
@@ -1077,7 +1086,7 @@ function Kong.balancer()
   tries[try_count] = current_try
 
   current_try.balancer_start = now_ms
-  current_try.balancer_start_ns = time_ns()
+  current_try.balancer_start_ns = now_ns
 
   if try_count > 1 then
     -- only call balancer on retry, first one is done in `runloop.access.after`
@@ -1289,9 +1298,7 @@ do
     kong.response.set_status(status)
     kong.response.set_headers(headers)
 
-    runloop.response.before(ctx)
     execute_collected_plugins_iterator(plugins_iterator, "response", ctx)
-    runloop.response.after(ctx)
 
     ctx.KONG_RESPONSE_ENDED_AT = get_updated_now_ms()
     ctx.KONG_RESPONSE_TIME = ctx.KONG_RESPONSE_ENDED_AT - ctx.KONG_RESPONSE_START
@@ -1437,6 +1444,7 @@ function Kong.body_filter()
   end
 
   ctx.KONG_BODY_FILTER_ENDED_AT = get_updated_now_ms()
+  ctx.KONG_BODY_FILTER_ENDED_AT_NS = time_ns()
   ctx.KONG_BODY_FILTER_TIME = ctx.KONG_BODY_FILTER_ENDED_AT - ctx.KONG_BODY_FILTER_START
 
   if ctx.KONG_PROXIED then

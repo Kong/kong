@@ -1,7 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-if [ "$#" -ne 1 ]; then
-    echo "Usage: $0 KONG_SERVICE_ENV_FILE"
+if [ "$#" -ne 2 ]; then
+    echo "Usage: $0 KONG_SERVICE_ENV_FILE [up|down]"
     exit 1
 fi
 
@@ -12,6 +12,11 @@ elif [[ -z $(which docker-compose) ]]; then
     exit 1
 else
     DOCKER_COMPOSE="docker-compose"
+fi
+
+if [ "$2" == "down" ]; then
+  $DOCKER_COMPOSE down -v
+  exit 0
 fi
 
 KONG_SERVICE_ENV_FILE=$1
@@ -29,13 +34,12 @@ $DOCKER_COMPOSE up -d
 
 if [ $? -ne 0 ]; then
     echo "Something goes wrong, please check $DOCKER_COMPOSE output"
-    return
+    exit 1
 fi
 
 # [service_name_in_docker_compose]="env_var_name_1:port_1_in_docker_compose env_var_name_2:port_2_in_docker_compose"
 declare -A ports=(
     ["postgres"]="PG_PORT:5432"
-    ["cassandra"]="CASSANDRA_PORT:9042"
     ["redis"]="REDIS_PORT:6379 REDIS_SSL_PORT:6380"
     ["grpcbin"]="GRPCBIN_PORT:9000 GRPCBIN_SSL_PORT:9001"
     ["zipkin"]="ZIPKIN_PORT:9411"

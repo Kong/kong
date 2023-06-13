@@ -58,62 +58,8 @@ local postgres = {
 
 
 --------------------------------------------------------------------------------
--- Cassandra operations for Workspace migration
---------------------------------------------------------------------------------
-
-
-local cassandra = {
-
-  up = {},
-
-  teardown = {
-
-    ------------------------------------------------------------------------------
-    -- General function to fixup a plugin configuration
-    fixup_plugin_config = function(_, connector, plugin_name, fixup_fn)
-      local coordinator = assert(connector:get_stored_connection())
-      local cassandra = require("cassandra")
-      local cjson = require("cjson")
-
-      for rows, err in coordinator:iterate("SELECT id, name, config FROM plugins") do
-        if err then
-          return nil, err
-        end
-
-        for i = 1, #rows do
-          local plugin = rows[i]
-          if plugin.name == plugin_name then
-            if type(plugin.config) ~= "string" then
-              return nil, "plugin config is not a string"
-            end
-            local config = cjson.decode(plugin.config)
-            local fix = fixup_fn(config)
-
-            if fix then
-              local _, err = coordinator:execute("UPDATE plugins SET config = ? WHERE id = ?", {
-                cassandra.text(cjson.encode(config)),
-                cassandra.uuid(plugin.id)
-              })
-              if err then
-                return nil, err
-              end
-            end
-          end
-        end
-      end
-
-      return true
-    end,
-
-  }
-
-}
-
-
---------------------------------------------------------------------------------
 
 
 return {
   postgres = postgres,
-  cassandra = cassandra,
 }

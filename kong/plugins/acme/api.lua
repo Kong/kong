@@ -166,7 +166,7 @@ return {
     end,
   },
 
-  ["/acme/certificates/:ceritificates"] = {
+  ["/acme/certificates/:certificates"] = {
     GET = function(self)
       local plugin, err = find_plugin()
       if err then
@@ -176,7 +176,7 @@ return {
       end
 
       local conf = plugin.config
-      local host = self.params.ceritificates
+      local host = self.params.certificates
       local certkey, err = client.load_certkey(conf, host)
       if err then
         return kong.response.exit(500, { message = err })

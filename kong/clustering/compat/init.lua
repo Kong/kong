@@ -8,6 +8,7 @@ local type = type
 local ipairs = ipairs
 local table_insert = table.insert
 local table_sort = table.sort
+local table_remove = table.remove
 local gsub = string.gsub
 local deep_copy = utils.deep_copy
 local split = utils.split
@@ -245,6 +246,20 @@ local function rename_field(config, name_from, name_to, has_update)
   return has_update
 end
 
+local function remove_field_array_value(config, remove_val, has_update)
+  if config then
+    local iterate_table = config
+    for i, v in ipairs(iterate_table) do
+      if v == remove_val then
+        table_remove(config, i)
+        has_update = true
+      end
+    end
+  end
+
+  return has_update
+end
+
 
 local function invalidate_keys_from_config(config_plugins, keys, log_suffix, dp_version_num)
   if not config_plugins then
@@ -271,6 +286,15 @@ local function invalidate_keys_from_config(config_plugins, keys, log_suffix, dp_
 
             if config["cookie_samesite"] == "Default" then
               config["cookie_samesite"] = "Lax"
+            end
+          end
+        end
+
+        if dp_version_num < 3003000000 then
+          -- OSS
+          if name == "statsd" then
+            if utils.table_contains(config.metrics, "lmdb_usage") then
+              has_update = remove_field_array_value(config.metrics, "lmdb_usage", has_update)
             end
           end
         end

@@ -451,7 +451,7 @@ end
 
 
 -- set outgoing propagation headers
--- 
+--
 -- @tparam string conf_header_type type of tracing header to use
 -- @tparam string found_header_type type of tracing header found in request
 -- @tparam table proxy_span span to be propagated
@@ -466,7 +466,9 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
     kong.log.debug("skipping propagation of noop span")
     return
   end
-  set_propagated(proxy_span)
+  if reuse then
+    set_propagated(proxy_span)
+  end
 
   local set_header = kong.service.request.set_header
 

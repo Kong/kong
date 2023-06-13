@@ -7,70 +7,14 @@
 -- copy the functions over to a new versioned module.
 
 
-local ngx = ngx
 local uuid = require "resty.jit-uuid"
-local cassandra = require "cassandra"
 
 
 local default_ws_id = uuid.generate_v4()
-local ws_id
 
 
 local function render(template, keys)
   return (template:gsub("$%(([A-Z_]+)%)", keys))
-end
-
-
-local function cassandra_get_default_ws(coordinator)
-  if ws_id then
-    return ws_id
-  end
-
-  local rows, err = coordinator:execute("SELECT id FROM workspaces WHERE name='default'", nil, {
-    consistency = cassandra.consistencies.serial,
-  })
-  if err then
-    return nil, err
-  end
-
-  if not rows or not rows[1] or not rows[1].id then
-    return nil
-  end
-
-  ws_id = rows[1].id
-
-  return ws_id
-end
-
-
-local function cassandra_create_default_ws(coordinator)
-  local created_at = ngx.time() * 1000
-
-  local _, err = coordinator:execute("INSERT INTO workspaces(id, name, created_at) VALUES (?, 'default', ?)", {
-    cassandra.uuid(default_ws_id),
-    cassandra.timestamp(created_at),
-  }, {
-    consistency = cassandra.consistencies.quorum,
-  })
-  if err then
-    return nil, err
-  end
-
-  return cassandra_get_default_ws(coordinator)
-end
-
-
-local function cassandra_ensure_default_ws(coordinator)
-  local default_ws, err = cassandra_get_default_ws(coordinator)
-  if err then
-    return nil, err
-  end
-
-  if default_ws then
-    return default_ws
-  end
-
-  return cassandra_create_default_ws(coordinator)
 end
 
 
@@ -280,220 +224,6 @@ local postgres = {
 
 
 --------------------------------------------------------------------------------
--- Cassandra operations for Workspace migration
---------------------------------------------------------------------------------
-
-
-local cassandra = {
-
-  up = {
-
-    ----------------------------------------------------------------------------
-    -- Add `workspaces` table.
-    -- @return string: CQL
-    ws_add_workspaces = function(_)
-      return [[
-
-          CREATE TABLE IF NOT EXISTS workspaces(
-            id         uuid,
-            name       text,
-            comment    text,
-            created_at timestamp,
-            meta       text,
-            config     text,
-            PRIMARY KEY (id)
-          );
-
-          CREATE INDEX IF NOT EXISTS workspaces_name_idx ON workspaces(name);
-
-      ]]
-    end,
-
-    ----------------------------------------------------------------------------
-    -- Add `ws_id` field to a table.
-    -- @param table_name string: name of the table, e.g. "services"
-    -- @param fk_users {string:string}: map of tables and field names
-    -- for other tables that use this table as a foreign key.
-    -- We do NOT get these from the schemas because
-    -- we want the migration to remain self-contained and unchanged no matter
-    -- what changes to the schemas in the latest version of Kong.
-    -- @return string: CQL
-    ws_add_ws_id = function(_, table_name, fk_users)
-      return render([[
-
-          -- 1. Add ws_id to $(TABLE)
-          ALTER TABLE $(TABLE) ADD ws_id uuid;
-
-          -- 2. Create index to filter by workspace
-          CREATE INDEX IF NOT EXISTS $(TABLE)_ws_id_idx ON $(TABLE)(ws_id);
-
-      ]], {
-        TABLE = table_name
-      })
-    end,
-
-    ----------------------------------------------------------------------------
-    -- Make field unique per workspace only.
-    -- @param table_name string: name of the table, e.g. "services"
-    -- @param field_name string: name of the field, e.g. "name"
-    -- @return string: CQL
-    ws_unique_field = function(_, table_name, field_name)
-      -- The Cassandra strategy controls this via Lua code
-      return ""
-    end,
-
-    ----------------------------------------------------------------------------
-    -- Adjust foreign key to take ws_id into account and ensure it matches
-    -- @param table_name string: name of the table e.g. "routes"
-    -- @param fk_prefix string: name of the foreign field in the schema,
-    -- which is used as a prefix in foreign key entries in tables e.g. "service"
-    -- @param foreign_table_name string: name of the table the foreign field
-    -- refers to e.g. "services"
-    -- @return string: CQL
-    ws_adjust_foreign_key = function(_, table_name, fk_prefix, foreign_table_name)
-      -- The Cassandra strategy controls this via Lua code
-      return ""
-    end,
-  },
-
-  teardown = {
-
-    ------------------------------------------------------------------------------
-    -- Update composite cache keys to workspace-aware formats
-    ws_update_composite_cache_key = function(_, connector, table_name, is_partitioned)
-      local coordinator = assert(connector:get_stored_connection())
-      local default_ws, err = cassandra_get_default_ws(coordinator)
-      if err then
-        return nil, err
-      end
-
-      if not default_ws then
-        return nil, "unable to find a default workspace"
-      end
-
-      for rows, err in coordinator:iterate("SELECT id, cache_key FROM " .. table_name) do
-        if err then
-          return nil, err
-        end
-
-        for i = 1, #rows do
-          local row = rows[i]
-          if row.cache_key:match(":$") then
-            local cql = render("UPDATE $(TABLE) SET cache_key = '$(CACHE_KEY)' WHERE $(PARTITION) id = $(ID)", {
-              TABLE = table_name,
-              CACHE_KEY = row.cache_key .. ":" .. default_ws,
-              PARTITION = is_partitioned
-                        and "partition = '" .. table_name .. "' AND"
-                        or  "",
-              ID = row.id,
-            })
-
-            local _, err = coordinator:execute(cql)
-            if err then
-              return nil, err
-            end
-          end
-        end
-      end
-
-      return true
-    end,
-
-    ------------------------------------------------------------------------------
-    -- Update keys to workspace-aware formats
-    ws_update_keys = function(_, connector, table_name, unique_keys, is_partitioned)
-      local coordinator = assert(connector:get_stored_connection())
-      local default_ws, err = cassandra_get_default_ws(coordinator)
-      if err then
-        return nil, err
-      end
-
-      if not default_ws then
-        return nil, "unable to find a default workspace"
-      end
-
-      for rows, err in coordinator:iterate("SELECT * FROM " .. table_name) do
-        if err then
-          return nil, err
-        end
-
-        for i = 1, #rows do
-          local row = rows[i]
-          if row.ws_id == nil then
-            local set_list = { "ws_id = " .. default_ws }
-            for _, key in ipairs(unique_keys) do
-              if row[key] then
-                table.insert(set_list, render([[$(KEY) = '$(WS):$(VALUE)']], {
-                  KEY = key,
-                  WS = default_ws,
-                  VALUE = row[key],
-                }))
-              end
-            end
-
-            local cql = render("UPDATE $(TABLE) SET $(SET_LIST) WHERE $(PARTITION) id = $(ID)", {
-              PARTITION = is_partitioned
-                          and "partition = '" .. table_name .. "' AND"
-                          or  "",
-              TABLE = table_name,
-              SET_LIST = table.concat(set_list, ", "),
-              ID = row.id,
-            })
-
-            local _, err = coordinator:execute(cql)
-            if err then
-              return nil, err
-            end
-          end
-        end
-      end
-
-      return true
-    end,
-
-    ------------------------------------------------------------------------------
-    -- General function to fixup a plugin configuration
-    fixup_plugin_config = function(_, connector, plugin_name, fixup_fn)
-      local coordinator = assert(connector:get_stored_connection())
-      local cassandra = require("cassandra")
-      local cjson = require("cjson")
-
-      for rows, err in coordinator:iterate("SELECT id, name, config FROM plugins") do
-        if err then
-          return nil, err
-        end
-
-        for i = 1, #rows do
-          local plugin = rows[i]
-          if plugin.name == plugin_name then
-            if type(plugin.config) ~= "string" then
-              return nil, "plugin config is not a string"
-            end
-            local config = cjson.decode(plugin.config)
-            local fix = fixup_fn(config)
-
-            if fix then
-              local _, err = coordinator:execute("UPDATE plugins SET config = ? WHERE id = ?", {
-                cassandra.text(cjson.encode(config)),
-                cassandra.uuid(plugin.id)
-              })
-              if err then
-                return nil, err
-              end
-            end
-          end
-        end
-      end
-
-      return true
-    end,
-
-  }
-
-}
-
-
---------------------------------------------------------------------------------
 -- Higher-level operations for Workspace migration
 --------------------------------------------------------------------------------
 
@@ -542,11 +272,9 @@ end
 
 
 postgres.up.ws_adjust_fields = ws_adjust_fields
-cassandra.up.ws_adjust_fields = ws_adjust_fields
 
 
 postgres.teardown.ws_adjust_data = ws_adjust_data
-cassandra.teardown.ws_adjust_data = ws_adjust_data
 
 
 --------------------------------------------------------------------------------
@@ -571,11 +299,6 @@ local function ws_migrate_plugin(plugin_entities)
       up = ws_migration_up(postgres.up),
       teardown = ws_migration_teardown(postgres.teardown),
     },
-
-    cassandra = {
-      up = ws_migration_up(cassandra.up),
-      teardown = ws_migration_teardown(cassandra.teardown),
-    },
   }
 end
 
@@ -585,9 +308,5 @@ end
 
 return {
   postgres = postgres,
-  cassandra = cassandra,
   ws_migrate_plugin = ws_migrate_plugin,
-  cassandra_get_default_ws = cassandra_get_default_ws,
-  cassandra_create_default_ws = cassandra_create_default_ws,
-  cassandra_ensure_default_ws = cassandra_ensure_default_ws,
 }

@@ -63,6 +63,7 @@ for _, strategy in helpers.each_strategy() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "opentelemetry",
         tracing_instrumentations = types,
+        tracing_sampling_rate = 1,
       })
 
       proxy_url = fmt("http://%s:%s", helpers.get_proxy_ip(), helpers.get_proxy_port())

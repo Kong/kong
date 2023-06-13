@@ -1497,11 +1497,6 @@ return {
         would have otherwise matched config B.
       ]],
 
-      -- deprecated
-      ["/plugins/schema/:name"] = {
-        skip = true,
-      },
-
       ["/plugins/enabled"] = {
         GET = {
           title = [[Retrieve Enabled Plugins]],

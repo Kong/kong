@@ -1,0 +1,47 @@
+name: Notify Slack user on workflow failure
+
+on:
+  workflow_run:
+    workflows: ["Package & Release", "Build & Test"]
+    types:
+      - completed
+    branches:
+      - master
+      - release/*
+      - next/*
+
+jobs:
+  notify_failure:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    steps:
+    - name: Generate Slack Payload
+      id: generate-payload
+      env:
+        SLACK_CHANNEL: gateway-notifications
+        SLACK_MAPPING: "${{ vars.GH_ID_2_SLACK_ID_MAPPING }}"
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const slack_mapping = JSON.parse(process.env.SLACK_MAPPING);
+          const repo_name = "${{ github.event.workflow_run.repository.full_name }}";
+          const run_id = ${{ github.event.workflow_run.id }};
+          const run_url = `https://github.com/${repo_name}/actions/runs/${run_id}`;
+          const workflow_name = "${{ github.event.workflow_run.name }}";
+          const branch_name = "${{ github.event.workflow_run.head_branch }}";
+          const actor_github_id = "${{ github.event.workflow_run.actor.login }}";
+          const actor_slack_id = slack_mapping[actor_github_id];
+          const actor = actor_slack_id ? `<@${actor_slack_id}>` : actor_github_id;
+          const payload = {
+            text: `Workflow “${workflow_name}” failed in repo: "${repo_name}", branch: "${branch_name}". Run URL: ${run_url}. Please check it ${actor} .`,
+            channel: process.env.SLACK_CHANNEL,
+          };
+          return JSON.stringify(payload);
+        result-encoding: string
+
+    - name: Send Slack Message
+      uses: slackapi/slack-github-action@e28cf165c92ffef168d23c5c9000cffc8a25e117 # v1.24.0
+      with:
+        payload: ${{ steps.generate-payload.outputs.result }}
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_GATEWAY_NOTIFICATIONS_WEBHOOK }}

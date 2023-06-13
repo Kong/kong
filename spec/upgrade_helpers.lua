@@ -23,13 +23,7 @@ local function database_has_trigger(state, arguments)
   local trigger_name = arguments[1]
   local db = get_database()
   local res, err
-  if database_type() == 'cassandra' then
-    res, err = db.connector:query(string.format(
-        "select *"
-        .. " from system_schema.triggers"
-        .. " where trigger_name = '%s'",
-        trigger_name))
-  elseif database_type() == 'postgres' then
+  if database_type() == 'postgres' then
     res, err = db.connector:query(string.format(
         "select true"
         .. " from pg_trigger"
@@ -52,19 +46,9 @@ local function table_has_column(state, arguments)
   local table = arguments[1]
   local column_name = arguments[2]
   local postgres_type = arguments[3]
-  local cassandra_type = arguments[4] or postgres_type
   local db = get_database()
   local res, err
-  if database_type() == 'cassandra' then
-    res, err = db.connector:query(string.format(
-        "select *"
-        .. " from system_schema.columns"
-        .. " where table_name = '%s'"
-        .. "   and column_name = '%s'"
-        .. "   and type = '%s'"
-        .. " allow filtering",
-        table, column_name, cassandra_type))
-  elseif database_type() == 'postgres' then
+  if database_type() == 'postgres' then
     res, err = db.connector:query(string.format(
         "select true"
         .. " from information_schema.columns"

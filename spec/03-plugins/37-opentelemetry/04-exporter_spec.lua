@@ -1,13 +1,14 @@
 require "kong.plugins.opentelemetry.proto"
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
-local tablex = require "pl.tablex"
 local pb = require "pb"
 local pl_file = require "pl.file"
 local ngx_re = require "ngx.re"
 local to_hex = require "resty.string".to_hex
 
 local fmt = string.format
+
+local HTTP_MOCK_TIMEOUT = 1
 
 local function gen_trace_id()
   return to_hex(utils.get_rand_bytes(16))
@@ -92,10 +93,12 @@ for _, strategy in helpers.each_strategy() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "opentelemetry",
         tracing_instrumentations = types,
+        tracing_sampling_rate = 1,
       }, nil, nil, fixtures))
     end
 
     describe("valid #http request", function ()
+      local mock
       lazy_setup(function()
         bp, _ = assert(helpers.get_db_utils(strategy, {
           "services",
@@ -108,17 +111,19 @@ for _, strategy in helpers.each_strategy() do
             ["X-Access-Token"] = "token",
           },
         })
+        mock = helpers.http_mock(HTTP_SERVER_PORT, { timeout = HTTP_MOCK_TIMEOUT })
       end)
 
       lazy_teardown(function()
         helpers.stop_kong()
-        helpers.kill_http_server(HTTP_SERVER_PORT)
+        if mock then
+          mock("close", true)
+        end
       end)
 
       it("works", function ()
         local headers, body
         helpers.wait_until(function()
-          local thread = helpers.http_server(HTTP_SERVER_PORT, { timeout = 10 })
           local cli = helpers.proxy_client(7000, PROXY_PORT)
           local r = assert(cli:send {
             method  = "GET",
@@ -129,20 +134,18 @@ for _, strategy in helpers.each_strategy() do
           -- close client connection
           cli:close()
 
-          local ok
-          ok, headers, body = thread:join()
+          local lines
+          lines, body, headers = mock()
 
-          return ok
+          return lines
         end, 10)
 
         assert.is_string(body)
 
-        local idx = tablex.find(headers, "Content-Type: application/x-protobuf")
-        assert.not_nil(idx, headers)
+        assert.equals(headers["Content-Type"], "application/x-protobuf")
 
         -- custom http headers
-        idx = tablex.find(headers, "X-Access-Token: token")
-        assert.not_nil(idx, headers)
+        assert.equals(headers["X-Access-Token"], "token")
 
         local decoded = assert(pb.decode("opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest", body))
         assert.not_nil(decoded)
@@ -174,6 +177,7 @@ for _, strategy in helpers.each_strategy() do
                               .. (case[2] and " service" or "")
                               .. (case[3] and " with global" or "")
       , function ()
+        local mock
         lazy_setup(function()
           bp, _ = assert(helpers.get_db_utils(strategy, {
             "services",
@@ -186,15 +190,17 @@ for _, strategy in helpers.each_strategy() do
               ["X-Access-Token"] = "token",
             },
           }, nil, case[1], case[2], case[3])
+          mock = helpers.http_mock(HTTP_SERVER_PORT, { timeout = HTTP_MOCK_TIMEOUT })
         end)
 
         lazy_teardown(function()
           helpers.stop_kong()
-          helpers.kill_http_server(HTTP_SERVER_PORT)
+          if mock then
+            mock("close", true)
+          end
         end)
 
         it("works", function ()
-          local thread = helpers.http_server(HTTP_SERVER_PORT, { timeout = 10 })
           local cli = helpers.proxy_client(7000, PROXY_PORT)
           local r = assert(cli:send {
             method  = "GET",
@@ -205,20 +211,21 @@ for _, strategy in helpers.each_strategy() do
           -- close client connection
           cli:close()
 
-          local ok, err = thread:join()
+          local lines, err = mock()
 
-          -- we should have no telemetry reported
+          -- we should only have telemetry reported from the global plugin
           if case[3] then
-            assert(ok, err)
+            assert(lines, err)
 
           else
-            assert.is_falsy(ok)
+            assert.is_falsy(lines)
             assert.matches("timeout", err)
           end
         end)
       end)
     end
     describe("overwrite resource attributes #http", function ()
+      local mock
       lazy_setup(function()
         bp, _ = assert(helpers.get_db_utils(strategy, {
           "services",
@@ -232,17 +239,19 @@ for _, strategy in helpers.each_strategy() do
             ["os.version"] = "debian",
           }
         })
+        mock = helpers.http_mock(HTTP_SERVER_PORT, { timeout = HTTP_MOCK_TIMEOUT })
       end)
 
       lazy_teardown(function()
         helpers.stop_kong()
-        helpers.kill_http_server(HTTP_SERVER_PORT)
+        if mock then
+          mock("close", true)
+        end
       end)
 
       it("works", function ()
         local headers, body
         helpers.wait_until(function()
-          local thread = helpers.http_server(HTTP_SERVER_PORT, { timeout = 10 })
           local cli = helpers.proxy_client(7000, PROXY_PORT)
           local r = assert(cli:send {
             method  = "GET",
@@ -253,16 +262,15 @@ for _, strategy in helpers.each_strategy() do
           -- close client connection
           cli:close()
 
-          local ok
-          ok, headers, body = thread:join()
+          local lines
+          lines, body, headers = mock()
 
-          return ok
+          return lines
         end, 10)
 
         assert.is_string(body)
 
-        local idx = tablex.find(headers, "Content-Type: application/x-protobuf")
-        assert.not_nil(idx, headers)
+        assert.equals(headers["Content-Type"], "application/x-protobuf")
 
         local decoded = assert(pb.decode("opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest", body))
         assert.not_nil(decoded)
@@ -385,6 +393,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("#propagation", function ()
+      local mock
       lazy_setup(function()
         bp, _ = assert(helpers.get_db_utils(strategy, {
           "services",
@@ -393,11 +402,14 @@ for _, strategy in helpers.each_strategy() do
         }, { "opentelemetry" }))
 
         setup_instrumentations("request")
+        mock = helpers.http_mock(HTTP_SERVER_PORT, { timeout = HTTP_MOCK_TIMEOUT })
       end)
 
       lazy_teardown(function()
         helpers.stop_kong()
-        helpers.kill_http_server(HTTP_SERVER_PORT)
+        if mock then
+          mock("close", true)
+        end
       end)
 
       it("#propagate w3c traceparent", function ()
@@ -406,7 +418,6 @@ for _, strategy in helpers.each_strategy() do
 
         local headers, body
         helpers.wait_until(function()
-          local thread = helpers.http_server(HTTP_SERVER_PORT, { timeout = 10 })
           local cli = helpers.proxy_client(7000, PROXY_PORT)
           local r = assert(cli:send {
             method  = "GET",
@@ -420,16 +431,15 @@ for _, strategy in helpers.each_strategy() do
           -- close client connection
           cli:close()
 
-          local ok
-          ok, headers, body = thread:join()
+          local lines
+          lines, body, headers = mock()
 
-          return ok
+          return lines
         end, 10)
 
         assert.is_string(body)
 
-        local idx = tablex.find(headers, "Content-Type: application/x-protobuf")
-        assert.not_nil(idx, headers)
+        assert.equals(headers["Content-Type"], "application/x-protobuf")
 
         local decoded = assert(pb.decode("opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest", body))
         assert.not_nil(decoded)
@@ -454,6 +464,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("#referenceable fields", function ()
+      local mock
       lazy_setup(function()
         helpers.setenv("TEST_OTEL_ACCESS_KEY", "secret-1")
         helpers.setenv("TEST_OTEL_ACCESS_SECRET", "secret-2")
@@ -470,20 +481,22 @@ for _, strategy in helpers.each_strategy() do
             ["X-Access-Secret"] = "{vault://env/test_otel_access_secret}",
           },
         })
+        mock = helpers.http_mock(HTTP_SERVER_PORT, { timeout = HTTP_MOCK_TIMEOUT })
       end)
 
       lazy_teardown(function()
         helpers.unsetenv("TEST_OTEL_ACCESS_KEY")
         helpers.unsetenv("TEST_OTEL_ACCESS_SECRET")
-        helpers.kill_http_server(HTTP_SERVER_PORT)
         helpers.stop_kong()
+        if mock then
+          mock("close", true)
+        end
       end)
 
       it("works", function ()
         local headers, body
         helpers.wait_until(function()
-          local thread = helpers.http_server(HTTP_SERVER_PORT, { timeout = 10 })
-          local cli = helpers.proxy_client(7000)
+          local cli = helpers.proxy_client(7000, PROXY_PORT)
           local r = assert(cli:send {
             method  = "GET",
             path    = "/",
@@ -493,23 +506,19 @@ for _, strategy in helpers.each_strategy() do
           -- close client connection
           cli:close()
 
-          local ok
-          ok, headers, body = thread:join()
+          local lines
+          lines, body, headers = mock()
 
-          return ok
+          return lines
         end, 60)
 
         assert.is_string(body)
 
-        local idx = tablex.find(headers, "Content-Type: application/x-protobuf")
-        assert.not_nil(idx, headers)
+        assert.equals(headers["Content-Type"], "application/x-protobuf")
 
         -- dereferenced headers
-        idx = tablex.find(headers, "X-Access-Key: secret-1")
-        assert.not_nil(idx, headers)
-
-        idx = tablex.find(headers, "X-Access-Secret: secret-2")
-        assert.not_nil(idx, headers)
+        assert.equals(headers["X-Access-Key"], "secret-1")
+        assert.equals(headers["X-Access-Secret"], "secret-2")
       end)
     end)
   end)

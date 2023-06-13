@@ -27,7 +27,7 @@ build-packages:
 - label: ubuntu-22.04-arm64
   os: ubuntu-22.04
   package: deb
-  bazel_args: --platforms=//:ubuntu-22.04-arm64
+  bazel_args: --platforms=//:generic-crossbuild-aarch64
   check-manifest-suite: ubuntu-22.04-arm64
 
 # Debian
@@ -54,13 +54,6 @@ build-packages:
   image: centos:7
   package: rpm
   check-manifest-suite: el7-amd64
-
-# Alpine
-- label: alpine
-  os: ubuntu-22.04
-  package: apk
-  bazel_args: --platforms=//:alpine-x86_64
-  check-manifest-suite: alpine-amd64
 
 # Amazon Linux
 - label: amazonlinux-2
@@ -99,23 +92,15 @@ build-images:
   package: rpm
   artifact-from: rhel-7
 
-# Alpine
-- label: alpine
-  base-image: alpine:3.16
-  package: apk
-  artifact-from: alpine
-
 smoke-tests:
 - label: ubuntu
 - label: debian
 - label: rhel
-- label: alpine
 
 scan-vulnerabilities:
 - label: ubuntu
 - label: debian
 - label: rhel
-- label: alpine
 
 release-packages:
 # Ubuntu
@@ -194,15 +179,7 @@ release-packages:
   artifact-type: amazonlinux
   artifact: kong.aws2022.amd64.rpm
 
-# Alpine
-- label: alpine
-  package: apk
-  artifact-from: alpine
-  artifact-type: alpine
-  artifact: kong.amd64.apk.tar.gz
-
 release-images:
 - label: ubuntu
 - label: debian
 - label: rhel
-- label: alpine

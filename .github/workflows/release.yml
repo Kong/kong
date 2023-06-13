@@ -83,14 +83,14 @@ jobs:
         cat $GITHUB_OUTPUT
 
         echo "### :package: Building and packaging for $release_desc" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "- event_name: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
-        echo "- ref_name: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
-        echo "- inputs.version: ${{ github.event.inputs.version }}" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "```" >> $GITHUB_STEP_SUMMARY
+        echo >> $GITHUB_STEP_SUMMARY
+        echo '- event_name: ${{ github.event_name }}' >> $GITHUB_STEP_SUMMARY
+        echo '- ref_name: ${{ github.ref_name }}' >> $GITHUB_STEP_SUMMARY
+        echo '- inputs.version: ${{ github.event.inputs.version }}' >> $GITHUB_STEP_SUMMARY
+        echo >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
         cat $GITHUB_OUTPUT >> $GITHUB_STEP_SUMMARY
-        echo "```" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
 
   build-packages:
     needs: metadata
@@ -141,7 +141,7 @@ jobs:
         ./configure --prefix=/usr/local/git
         make -j$(nproc)
         make install
-    
+
     - name: Add Git to PATH
       if: matrix.package == 'rpm' || matrix.image == 'ubuntu:18.04'
       run: |
@@ -201,7 +201,9 @@ jobs:
       run: |
         yum groupinstall -y 'Development Tools'
         dnf config-manager --set-enabled powertools || true # enable devel packages on rockylinux:8
-        yum install -y libyaml-devel
+        yum install -y libyaml-devel cpanminus
+        # required for openssl 3.x config
+        cpanm IPC/Cmd.pm
 
     - name: Build Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
@@ -264,6 +266,7 @@ jobs:
       with:
         name: ${{ matrix.label }}-packages
         path: bazel-bin/pkg
+        retention-days: 3
 
   build-packages-verify-manifest:
     needs: [metadata, build-packages]
@@ -592,6 +595,8 @@ jobs:
         PACKAGE_TYPE: ${{ matrix.package }}
         KONG_RELEASE_LABEL: ${{ needs.metadata.outputs.release-label }}
       run: |
+        sha256sum bazel-bin/pkg/*
+
         scripts/release-kong.sh
 
   release-images:

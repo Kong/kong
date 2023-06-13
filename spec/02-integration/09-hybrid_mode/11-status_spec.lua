@@ -19,7 +19,7 @@ for _, strategy in helpers.each_strategy() do
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         cluster_control_plane = "127.0.0.1:9005",
         proxy_listen = "127.0.0.1:9002",
-        nginx_worker_processes = 8,
+        nginx_main_worker_processes = 8,
         status_listen = "127.0.0.1:" .. dp_status_port,
       })
     end
@@ -33,8 +33,7 @@ for _, strategy in helpers.each_strategy() do
         prefix = "serve_cp",
         cluster_listen = "127.0.0.1:9005",
         nginx_conf = "spec/fixtures/custom_nginx.template",
-
-        status_listen = "127.0.0.1:" .. cp_status_port
+        status_listen = "127.0.0.1:" .. cp_status_port,
       })
     end
 
@@ -70,10 +69,10 @@ for _, strategy in helpers.each_strategy() do
     describe("dp status ready endpoint for no config", function()
 
       lazy_setup(function()
-        assert(start_kong_dp())
         assert(start_kong_cp())
+        assert(start_kong_dp())
       end)
-  
+
       lazy_teardown(function()
           assert(helpers.stop_kong("serve_cp"))
           assert(helpers.stop_kong("serve_dp"))

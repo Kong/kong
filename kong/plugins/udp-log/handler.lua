@@ -23,6 +23,7 @@ local function log(premature, conf, str)
   local ok, err = sock:setpeername(conf.host, conf.port)
   if not ok then
     kong.log.err("could not connect to ", conf.host, ":", conf.port, ": ", err)
+    sock:close()
     return
   end
 
