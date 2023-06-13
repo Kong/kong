@@ -3586,7 +3586,7 @@ local function stop_kong(prefix, preserve_prefix, preserve_dc, signal, nowait)
   wait_until(function()
     local sock_file = prefix .. "/worker_events.sock"
     return not pl_path.exists(sock_file)
-  end, 1, 0.002)
+  end, 5)
 
   cleanup_kong(prefix, preserve_prefix, preserve_dc)
 
