@@ -45,8 +45,10 @@ local headers_buf       = buffer.new(128)
 local single_header_buf = buffer.new(64)
 
 
-local function buffer_append(buf, sep, str)
-  if #buf > 0 then
+local function buffer_append(buf, sep, str, idx)
+  if #buf > 0 and
+     (idx == nil or idx > 1)
+  then
     buf:put(assert(sep))
   end
   buf:put(str)
@@ -105,9 +107,9 @@ local function get_expression(route)
   end
 
   if not is_empty_field(hosts) then
-    hosts_buf:reset()
+    hosts_buf:reset():put("(")
 
-    for _, h in ipairs(hosts) do
+    for i, h in ipairs(hosts) do
       local host, port = split_host_port(h)
 
       local op = OP_EQUAL
@@ -127,11 +129,11 @@ local function get_expression(route)
         exp = "(" .. exp .. LOGICAL_AND ..
               "net.port ".. OP_EQUAL .. " " .. port .. ")"
       end
-      buffer_append(hosts_buf, LOGICAL_OR, exp)
+      buffer_append(hosts_buf, LOGICAL_OR, exp, i)
     end -- for route.hosts
 
     buffer_append(expr_buf, LOGICAL_AND,
-                  "(" .. hosts_buf:put(")"):get())
+                  hosts_buf:put(")"):get())
   end
 
   -- resort `paths` to move regex routes to the front of the array
@@ -161,9 +163,9 @@ local function get_expression(route)
     headers_buf:reset()
 
     for h, v in pairs(headers) do
-      single_header_buf:reset()
+      single_header_buf:reset():put("(")
 
-      for _, value in ipairs(v) do
+      for i, value in ipairs(v) do
         local name = "any(http.headers." .. h:gsub("-", "_"):lower() .. ")"
         local op = OP_EQUAL
 
@@ -174,11 +176,11 @@ local function get_expression(route)
         end
 
         buffer_append(single_header_buf, LOGICAL_OR,
-                      name .. " " .. op .. " " .. escape_str(value:lower()))
+                      name .. " " .. op .. " " .. escape_str(value:lower()), i)
       end
 
       buffer_append(headers_buf, LOGICAL_AND,
-                    "(" .. single_header_buf:put(")"):get())
+                    single_header_buf:put(")"):get())
     end
 
     buffer_append(expr_buf, LOGICAL_AND, headers_buf:get())
