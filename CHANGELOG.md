@@ -38,6 +38,11 @@
 
 #### Plugins
 
+- **OpenTelemetry**: Support AWS X-Ray propagation header
+  The field `header_type`now accepts the `aws` value to handle this specific
+  propagation header.
+  [11075](https://github.com/Kong/kong/pull/11075)
+
 #### PDK
 
 #### Performance
