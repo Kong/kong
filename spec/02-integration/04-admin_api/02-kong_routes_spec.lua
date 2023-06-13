@@ -211,10 +211,7 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       })
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      assert.is_table(json.database)
       assert.is_table(json.server)
-
-      assert.is_boolean(json.database.reachable)
 
       assert.is_number(json.server.connections_accepted)
       assert.is_number(json.server.connections_active)
@@ -225,8 +222,12 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       assert.is_number(json.server.total_requests)
       if strategy == "off" then
         assert.is_equal(empty_config_hash, json.configuration_hash) -- all 0 in DBLESS mode until configuration is applied
+        assert.is_nil(json.database)
+
       else
         assert.is_nil(json.configuration_hash) -- not present in DB mode
+        assert.is_table(json.database)
+        assert.is_boolean(json.database.reachable)
       end
     end)
 
@@ -255,9 +256,16 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       })
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      assert.is_table(json.database)
+
+      if strategy == "off" then
+        assert.is_nil(json.database)
+
+      else
+        assert.is_table(json.database)
+        assert.is_boolean(json.database.reachable)
+      end
+
       assert.is_table(json.server)
-      assert.is_boolean(json.database.reachable)
       assert.is_number(json.server.connections_accepted)
       assert.is_number(json.server.connections_active)
       assert.is_number(json.server.connections_handled)
@@ -285,7 +293,11 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
 
-      assert.is_true(json.database.reachable)
+      if strategy == "off" then
+        assert.is_nil(json.database)
+      else
+        assert.is_true(json.database.reachable)
+      end
     end)
 
     describe("memory stats", function()
