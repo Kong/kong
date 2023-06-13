@@ -39,14 +39,11 @@ local ASTERISK         = byte("*")
 local MAX_HEADER_COUNT = 255
 
 
--- reuse table objects
-local exp_single_header_t = tb_new(10, 0)
-
-
 -- reuse buffer objects
-local expr_buf    = buffer.new(128)
-local hosts_buf   = buffer.new(64)
-local headers_buf = buffer.new(128)
+local expr_buf          = buffer.new(128)
+local hosts_buf         = buffer.new(64)
+local headers_buf       = buffer.new(128)
+local single_header_buf = buffer.new(64)
 
 
 local function buffer_append(buf, sep, str)
@@ -137,7 +134,8 @@ local function get_expression(route)
       end
     end -- for route.hosts
 
-    buffer_append(expr_buf, LOGICAL_AND, "(" .. hosts_buf:put(")"):get())
+    buffer_append(expr_buf, LOGICAL_AND,
+                  "(" .. hosts_buf:put(")"):get())
   end
 
   -- resort `paths` to move regex routes to the front of the array
@@ -167,8 +165,7 @@ local function get_expression(route)
     headers_buf:reset()
 
     for h, v in pairs(headers) do
-      tb_clear(exp_single_header_t)
-      local single_header_t = exp_single_header_t
+      single_header_buf:reset()
 
       for _, value in ipairs(v) do
         local name = "any(http.headers." .. h:gsub("-", "_"):lower() .. ")"
@@ -180,11 +177,12 @@ local function get_expression(route)
           op = OP_REGEX
         end
 
-        tb_insert(single_header_t, name .. " " .. op .. " " .. escape_str(value:lower()))
+        buffer_append(single_header_buf, LOGICAL_OR,
+                      name .. " " .. op .. " " .. escape_str(value:lower()))
       end
 
       buffer_append(headers_buf, LOGICAL_AND,
-                    "(" .. tb_concat(single_header_t, LOGICAL_OR) .. ")")
+                    "(" .. single_header_buf:put(")"):get())
     end
 
     buffer_append(expr_buf, LOGICAL_AND, headers_buf:get())
