@@ -22,6 +22,11 @@ build-packages:
   os: ubuntu-20.04
   package: deb
   check-manifest-suite: ubuntu-20.04-amd64
+- label: ubuntu-20.04-fips
+  os: ubuntu-20.04
+  package: deb
+  bazel_args: --//:fips=true
+  check-manifest-suite: ubuntu-20.04-amd64-fips
 - label: ubuntu-22.04
   os: vars.RELEASE_RUNS_ON
   package: deb
@@ -31,11 +36,6 @@ build-packages:
   package: deb
   bazel_args: --platforms=//:generic-crossbuild-aarch64
   check-manifest-suite: ubuntu-22.04-arm64
-- label: ubuntu-20.04-fips
-  os: ubuntu-20.04
-  package: deb
-  bazel_args: --//:fips=true
-  check-manifest-suite: ubuntu-20.04-amd64-fips
 - label: ubuntu-22.04-fips
   os: vars.RELEASE_RUNS_ON
   package: deb
@@ -45,13 +45,20 @@ build-packages:
 # Debian
 - label: debian-10
   os: vars.RELEASE_RUNS_ON
-  image: ubuntu:18.04
+  image: debian:10
   package: deb
-  check-manifest-suite: ubuntu-18.04-amd64
+  check-manifest-suite: debian-10-amd64
 - label: debian-11
-  os: ubuntu-20.04
+  os: ubuntu-22.04
+  image: debian:11
   package: deb
-  check-manifest-suite: ubuntu-20.04-amd64
+  check-manifest-suite: debian-11-amd64
+- label: debian-11-arm64
+  os: vars.RELEASE_RUNS_ON
+  image: debian:11
+  package: deb
+  bazel_args: --platforms=//:generic-crossbuild-aarch64
+  check-manifest-suite: debian-11-arm64
 
 # CentOS
 - label: centos-7
@@ -119,6 +126,8 @@ build-images:
   base-image: debian:11-slim
   package: deb
   artifact-from: debian-11
+  artifact-from-alt: debian-11-arm64
+  docker_platforms: linux/amd64, linux/arm64
 
 # RHEL
 - label: rhel
@@ -173,6 +182,12 @@ release-packages:
   artifact-version: 20.04
   artifact-type: ubuntu
   artifact: kong.amd64.deb
+- label: ubuntu-20.04-fips
+  package: deb
+  artifact-from: ubuntu-20.04-fips
+  artifact-version: 20.04
+  artifact-type: ubuntu
+  artifact: kong.amd64.deb
 - label: ubuntu-22.04
   package: deb
   artifact-from: ubuntu-22.04
@@ -185,12 +200,6 @@ release-packages:
   artifact-version: 22.04
   artifact-type: ubuntu
   artifact: kong.arm64.deb
-- label: ubuntu-20.04-fips
-  package: deb
-  artifact-from: ubuntu-20.04-fips
-  artifact-version: 20.04
-  artifact-type: ubuntu
-  artifact: kong.amd64.deb
 - label: ubuntu-22.04-fips
   package: deb
   artifact-from: ubuntu-22.04-fips
@@ -211,6 +220,12 @@ release-packages:
   artifact-version: 11
   artifact-type: debian
   artifact: kong.amd64.deb
+- label: debian-11-arm64
+  package: deb
+  artifact-from: debian-11-arm64
+  artifact-version: 11
+  artifact-type: debian
+  artifact: kong.arm64.deb
 
 # CentOS
 - label: centos-7

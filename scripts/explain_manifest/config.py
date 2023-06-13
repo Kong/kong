@@ -1,4 +1,6 @@
 
+from copy import deepcopy
+
 from globmatch import glob_match
 
 from main import FileInfo
@@ -45,12 +47,6 @@ targets = {
         libcxx_max_version="3.4.29",
         cxxabi_max_version="1.3.13",
     ),
-    "alpine-arm64": ExpectSuite(
-        name="Alpine Linux (arm64)",
-        manifest="fixtures/alpine-arm64.txt",
-        use_rpath=True,
-        extra_tests=[arm64_suites],
-    ),
     "amazonlinux-2-amd64": ExpectSuite(
         name="Amazon Linux 2 (amd64)",
         manifest="fixtures/amazonlinux-2-amd64.txt",
@@ -68,16 +64,6 @@ targets = {
         # gcc 11.2.1
         libcxx_max_version="3.4.29",
         cxxabi_max_version="1.3.13",
-    ),
-    "amazonlinux-2-arm64": ExpectSuite(
-        name="Amazon Linux 2 (arm64)",
-        manifest="fixtures/amazonlinux-2-arm64.txt",
-        use_rpath=True,
-        libc_max_version="2.26",
-        # gcc 11.2.1
-        libcxx_max_version="3.4.29",
-        cxxabi_max_version="1.3.13",
-        extra_tests=[arm64_suites],
     ),
     "el7-amd64": ExpectSuite(
         name="Redhat 7 (amd64)",
@@ -140,13 +126,37 @@ targets = {
         libcxx_max_version="3.4.29",
         cxxabi_max_version="1.3.13",
     ),
-    "ubuntu-22.04-arm64": ExpectSuite(
-        name="Ubuntu 22.04 (arm64)",
-        manifest="fixtures/ubuntu-22.04-arm64.txt",
-        libc_max_version="2.35",
-        # gcc 11.2.0
-        libcxx_max_version="3.4.29",
-        cxxabi_max_version="1.3.13",
-        extra_tests=[arm64_suites],
+    "debian-10-amd64": ExpectSuite(
+        name="Debian 10 (amd64)",
+        manifest="fixtures/debian-10-amd64.txt",
+        libc_max_version="2.28",
+        # gcc 8.3.0
+        libcxx_max_version="3.4.25",
+        cxxabi_max_version="1.3.11",
+    ),
+    "debian-11-amd64": ExpectSuite(
+        name="Debian 11 (amd64)",
+        manifest="fixtures/debian-11-amd64.txt",
+        libc_max_version="2.31",
+        # gcc 10.2.1
+        libcxx_max_version="3.4.28",
+        cxxabi_max_version="1.3.12",
     ),
 }
+
+# populate arm64 suites from amd64 suites
+
+for target in list(targets.keys()):
+    # TODO: no dedicated for amazonlinux-2022 for now
+    if target.split("-")[0] not in ("alpine", "ubuntu", "debian", "amazonlinux") or \
+        target == "amazonlinux-2022-amd64" or \
+        target.endswith("-fips"):
+        continue
+
+    e = deepcopy(targets[target])
+    e.manifest = e.manifest.replace("-amd64.txt", "-arm64.txt")
+    e.name = e.name.replace("(amd64)", "(arm64)")
+    e.extra_tests = [arm64_suites]
+
+    targets[target.replace("-amd64", "-arm64")] = e
+
