@@ -2,6 +2,7 @@ local _M = {}
 local _MT = { __index = _M, }
 
 
+local buffer = require("string.buffer")
 local schema = require("resty.router.schema")
 local router = require("resty.router.router")
 local context = require("resty.router.context")
@@ -51,8 +52,8 @@ local LOGICAL_OR  = " || "
 local LOGICAL_AND = " && "
 
 
--- reuse table objects
-local gen_values_t = tb_new(10, 0)
+-- reuse buffer object
+local values_buf = buffer.new(64)
 
 
 local CACHED_SCHEMA
@@ -93,7 +94,15 @@ end
 
 
 local function escape_str(str)
-  return "\"" .. str:gsub([[\]], [[\\]]):gsub([["]], [[\"]]) .. "\""
+  if str:find([[\]], 1, true) then
+    str = str:gsub([[\]], [[\\]])
+  end
+
+  if str:find([["]], 1, true) then
+    str = str:gsub([["]], [[\"]])
+  end
+
+  return "\"" .. str .. "\""
 end
 
 
@@ -102,23 +111,25 @@ local function gen_for_field(name, op, vals, val_transform)
     return nil
   end
 
-  tb_clear(gen_values_t)
+  local vals_n = #vals
+  assert(vals_n > 0)
 
-  local values_n = 0
-  local values   = gen_values_t
+  values_buf:reset():put("(")
 
-  for _, p in ipairs(vals) do
-    values_n = values_n + 1
+  for i = 1, vals_n do
+    local p = vals[i]
     local op = (type(op) == "string") and op or op(p)
-    values[values_n] = name .. " " .. op .. " " ..
-                       escape_str(val_transform and val_transform(op, p) or p)
+
+    if i > 1 then
+      values_buf:put(LOGICAL_OR)
+    end
+
+    values_buf:putf("%s %s %s", name, op,
+                    escape_str(val_transform and val_transform(op, p) or p))
   end
 
-  if values_n > 0 then
-    return "(" .. tb_concat(values, LOGICAL_OR) .. ")"
-  end
-
-  return nil
+  -- consume the whole buffer
+  return values_buf:put(")"):get()
 end
 
 
