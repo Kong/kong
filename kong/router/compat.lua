@@ -40,13 +40,13 @@ local MAX_HEADER_COUNT = 255
 
 
 -- reuse table objects
-local exp_headers_t       = tb_new(10, 0)
 local exp_single_header_t = tb_new(10, 0)
 
 
 -- reuse buffer objects
-local expr_buf  = buffer.new(128)
-local hosts_buf = buffer.new(64)
+local expr_buf    = buffer.new(128)
+local hosts_buf   = buffer.new(64)
+local headers_buf = buffer.new(128)
 
 
 local function buffer_append(buf, sep, str)
@@ -164,8 +164,7 @@ local function get_expression(route)
   end
 
   if not is_empty_field(headers) then
-    tb_clear(exp_headers_t)
-    local headers_t = exp_headers_t
+    headers_buf:reset()
 
     for h, v in pairs(headers) do
       tb_clear(exp_single_header_t)
@@ -184,10 +183,11 @@ local function get_expression(route)
         tb_insert(single_header_t, name .. " " .. op .. " " .. escape_str(value:lower()))
       end
 
-      tb_insert(headers_t, "(" .. tb_concat(single_header_t, LOGICAL_OR) .. ")")
+      buffer_append(headers_buf, LOGICAL_AND,
+                    "(" .. tb_concat(single_header_t, LOGICAL_OR) .. ")")
     end
 
-    buffer_append(expr_buf, LOGICAL_AND, tb_concat(headers_t, LOGICAL_AND))
+    buffer_append(expr_buf, LOGICAL_AND, headers_buf:get())
   end
 
   return expr_buf:get()
