@@ -105,7 +105,7 @@ local function do_restrict(conf)
   if not isempty(allow) then
     local allowed = match_bin(allow, binary_remote_addr)
     if not allowed then
-      do_exit(status, message)
+      return do_exit(status, message)
     end
   end
 end
