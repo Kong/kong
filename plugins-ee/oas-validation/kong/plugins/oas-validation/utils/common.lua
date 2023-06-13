@@ -9,8 +9,6 @@ local cjson                 = require("cjson.safe").new()
 local pl_stringx            = require "pl.stringx"
 
 local re_match              = ngx.re.match
-local ngx_req_read_body     = ngx.req.read_body
-local ngx_req_get_body_data = ngx.req.get_body_data
 local json_decode           = cjson.decode
 local gsub                  = string.gsub
 
@@ -36,9 +34,9 @@ end
 
 
 function _M.get_req_body_json()
-  ngx_req_read_body()
+  ngx.req.read_body()
 
-  local body_data = ngx_req_get_body_data()
+  local body_data = ngx.req.get_body_data()
 
   if not body_data then
     --no raw body, check temp body

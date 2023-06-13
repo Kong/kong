@@ -42,6 +42,7 @@ local json_encode           = cjson.encode
 local EMPTY                 = pl_tablex.readonly({})
 local find                  = pl_tablex.find
 local replace               = pl_stringx.replace
+local string_sub            = string.sub
 
 
 cjson.decode_array_with_array_mt(true)
@@ -59,47 +60,6 @@ local OASValidationPlugin = {
   -- priority after security & rate limiting plugins
   PRIORITY = 850,
 }
-
-
--- meta table for the sandbox, exposing lazily loaded values
-local template_environment
-local __meta_environment = {
-  __index = function(self, key)
-    local lazy_loaders = {
-      header = function(self)
-        return kong.request.get_headers() or EMPTY
-      end,
-      query = function(self)
-        return kong.request.get_query() or EMPTY
-      end,
-      path = function(self)
-        return split(string.sub(normalize(kong.request.get_path(),true), 2),"/") or EMPTY
-      end
-    }
-    local loader = lazy_loaders[key]
-    if not loader then
-      -- we don't have a loader, so just return nothing
-      return
-    end
-    -- set the result on the table to not load again
-    local value = loader()
-    rawset(self, key, value)
-    return value
-  end,
-  __new_index = function(self)
-    error("This environment is read-only.")
-  end,
-}
-
-template_environment = setmetatable({
-}, __meta_environment)
-
-
-local function clear_environment()
-  rawset(template_environment, "header", nil)
-  rawset(template_environment, "query", nil)
-  rawset(template_environment, "path", nil)
-end
 
 
 local validator_cache = setmetatable({}, {
@@ -128,7 +88,7 @@ local validator_param_cache = setmetatable({}, {
 
 
 local function validate_style_deepobject(location, parameter)
-
+  local template_environment = kong.ctx.plugin.template_environment
   local validator = validator_param_cache[parameter]
   local result, err = deserialize(parameter.style, parameter.decoded_schema.type,
           parameter.explode, parameter.name, template_environment[location], location)
@@ -281,6 +241,7 @@ end
 
 
 local function check_required_parameter(parameter, path_spec)
+  local template_environment = kong.ctx.plugin.template_environment
   local value
   local location = parameter["in"]
   if location == "body" then
@@ -330,6 +291,7 @@ end
 
 -- check parameters existence according to their location
 local function check_parameter_existence(spec_params, location, allowed)
+  local template_environment = kong.ctx.plugin.template_environment
   for qname, _ in pairs(template_environment[location]) do
     local exists = false
     for _, parameter in pairs(spec_params) do
@@ -444,10 +406,42 @@ function OASValidationPlugin:response(conf)
   end
 end
 
+local function init_template_environment()
+  -- meta table for the sandbox, exposing lazily loaded values
+  local __meta_environment = {
+    __index = function(self, key)
+      local lazy_loaders = {
+        header = function(self)
+          return kong.request.get_headers() or EMPTY
+        end,
+        query = function(self)
+          return kong.request.get_query() or EMPTY
+        end,
+        path = function(self)
+          return split(string_sub(normalize(kong.request.get_path(),true), 2),"/") or EMPTY
+        end
+      }
+      local loader = lazy_loaders[key]
+      if not loader then
+        -- we don't have a loader, so just return nothing
+        return
+      end
+      -- set the result on the table to not load again
+      local value = loader()
+      rawset(self, key, value)
+      return value
+    end,
+    __new_index = function(self)
+      error("This environment is read-only.")
+    end,
+  }
+
+  return setmetatable({}, __meta_environment)
+end
+
 
 function OASValidationPlugin:access(conf)
-
-  clear_environment()
+  kong.ctx.plugin.template_environment = init_template_environment()
 
   local method = kong.request.get_method()
   local path = normalize(kong.request.get_path(), true)

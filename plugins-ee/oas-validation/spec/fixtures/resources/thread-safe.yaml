@@ -1,0 +1,33 @@
+swagger: "2.0"
+info:
+  title: Sample API
+  description: A Sample OpenAPI Spec
+  version: 1.0.0
+paths:
+  /users:
+    post:
+      summary: Creates a new user.
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: user
+          description: The user to create.
+          schema:
+            type: object
+            required:
+              - userName
+            properties:
+              userName:
+                type: string
+              firstName:
+                type: string
+              lastName:
+                type: string
+        - in: query
+          name: type
+          type: string
+          required: true
+      responses:
+        201:
+          description: Created
