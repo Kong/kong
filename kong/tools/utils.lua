@@ -1278,8 +1278,9 @@ do
   end
 
   local function gzip_helper(inflate_or_deflate, input)
-    local input_buffer = buffer.new(0):set(input)
-    local output_buffer = buffer.new()
+    local len = #input
+    local input_buffer = buffer.new(len):set(input)
+    local output_buffer = buffer.new(len)
     local ok, err = inflate_or_deflate(read_input_buffer(input_buffer),
                                        write_output_buffer(output_buffer),
                                        GZIP_CHUNK_SIZE)
