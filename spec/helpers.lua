@@ -3537,9 +3537,9 @@ end
 -- @param preserve_dc ???
 local function cleanup_kong(prefix, preserve_prefix, preserve_dc)
   -- remove socket files to ensure `pl.dir.rmtree()` ok
-  local socks = {"/worker_events.sock", "/stream_worker_events.sock"}
+  local socks = { "/worker_events.sock", "/stream_worker_events.sock", }
   for _, name in ipairs(socks) do
-    local sock_file = (prefix or conf.prefix) .. "/worker_events.sock"
+    local sock_file = (prefix or conf.prefix) .. name
     os.remove(sock_file)
   end
 
