@@ -90,6 +90,9 @@ local TYPE_LITERAL = {
 -- Default metric name size for string.buffer.new()
 local NAME_BUFFER_SIZE_HINT = 256
 
+-- Default metric data size for string.buffer.new()
+local DATA_BUFFER_SIZE_HINT = 4096
+
 -- Default name for error metric incremented by this library.
 local DEFAULT_ERROR_METRIC_NAME = "nginx_metric_errors_total"
 
@@ -913,19 +916,19 @@ function Prometheus:metric_data(write_fn, local_only)
   table_sort(keys)
 
   local seen_metrics = {}
-  local output = {}
+
+  local output = buffer.new(DATA_BUFFER_SIZE_HINT)
   local output_count = 0
 
   local function buffered_print(data)
     if data then
       output_count = output_count + 1
-      output[output_count] = data
+      output:put(data)
     end
 
     if output_count >= 100 or not data then
-      write_fn(output)
+      write_fn(output:get())  -- cosume the whole buffer
       output_count = 0
-      tb_clear(output)
     end
   end
 
