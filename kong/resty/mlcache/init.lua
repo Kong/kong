@@ -17,6 +17,8 @@ local buffer     = require "string.buffer"
 
 local bor          = bit.bor
 local band         = bit.band
+local lshift       = bit.lshift
+local rshift       = bit.rshift
 local min          = math.min
 local ceil         = math.ceil
 local fmt          = string.format
@@ -55,17 +57,32 @@ local TYPES_SUPPORTED = {
 }
 
 
+-- The low bytes are used for flags,
+-- e.g. high / low: 0xVersFlgs
 local STALE_FLAG  = 0x00000001
 local NO_TTL_FLAG = 0x00000002
 
 
 local function set_flag(flags, flag)
-    return bor(flags, flag)
+    local low = band(flags, 0xffff)
+    local high = band(rshift(flags, 16), 0xffff)
+    return bor(bor(low, flag), lshift(high, 16))
 end
 
 
 local function has_flag(flags, flag)
-    return band(flags, flag) ~= 0
+    return band(band(flags, 0xffff), flag) ~= 0
+end
+
+
+local function get_version(flags)
+    return band(rshift(flags, 16), 0xffff)
+end
+
+
+local function set_version(flags, version)
+    local low = band(flags, 0xffff)
+    return bor(low, lshift(version, 16))
 end
 
 
@@ -559,13 +576,13 @@ local function check_opts(self, opts)
 end
 
 
-local function unlock_and_ret(lock, res, err, hit_lvl)
+local function unlock_and_ret(lock, res, err, hit_lvl_or_ttl)
     local ok, lerr = lock:unlock()
     if not ok and lerr ~= "unlocked" then
         return nil, "could not unlock callback: " .. lerr
     end
 
-    return res, err, hit_lvl
+    return res, err, hit_lvl_or_ttl
 end
 
 
@@ -771,6 +788,186 @@ function _M:get(key, opts, cb, ...)
                         went_stale, l1_serializer, resurrect_ttl,
                         shm_set_tries, cb, ...)
 end
+
+
+function _M:renew(key, opts, cb, ...)
+    if not self.broadcast then
+        error("no ipc to propagate renew, specify opts.ipc_shm or opts.ipc", 2)
+    end
+
+    if type(key) ~= "string" then
+        error("key must be a string", 2)
+    end
+
+    -- opts validation
+    local ttl, neg_ttl, _, l1_serializer, shm_set_tries = check_opts(self, opts)
+
+    if type(cb) ~= "function" then
+        error("callback must be a function", 2)
+    end
+
+    -- restrict this key to the current namespace, so we isolate this
+    -- mlcache instance from potential other instances using the same
+    -- shm
+    local namespaced_key = self.name .. key
+
+    local v, shmerr = self.dict:get_stale(namespaced_key)
+    if v == nil then
+        if shmerr then
+            -- shmerr can be 'flags' upon successful get_stale() calls, so we
+            -- also check v == nil
+            return nil, "could not read from lua_shared_dict: " .. shmerr
+        end
+
+        -- if we specified shm_miss, it might be a negative hit cached
+        -- there
+        if self.dict_miss then
+            v, shmerr = self.dict_miss:get_stale(namespaced_key)
+            if v == nil and shmerr then
+                -- shmerr can be 'flags' upon successful get_stale() calls, so we
+                -- also check v == nil
+                return nil, "could not read from lua_shared_dict (miss): " .. shmerr
+            end
+        end
+    end
+
+    local version_before = get_version(shmerr or 0)
+
+    local lock, err = resty_lock:new(self.shm_locks, self.resty_lock_opts)
+    if not lock then
+        return nil, "could not create lock: " .. err
+    end
+
+    local elapsed, err = lock:lock(LOCK_KEY_PREFIX .. namespaced_key)
+    if not elapsed and err ~= "timeout"  then
+        return nil, "could not acquire callback lock: " .. err
+    end
+
+    local is_hit
+    local is_miss
+
+    v, shmerr = self.dict:get_stale(namespaced_key)
+    if v ~= nil then
+        is_hit = true
+
+    else
+        if shmerr then
+            -- shmerr can be 'flags' upon successful get_stale() calls, so we
+            -- also check v == nil
+            return nil, "could not read from lua_shared_dict: " .. shmerr
+        end
+
+        -- if we specified shm_miss, it might be a negative hit cached
+        -- there
+        if self.dict_miss then
+            v, shmerr = self.dict_miss:get_stale(namespaced_key)
+            if v ~= nil then
+                is_miss = true
+
+            elseif shmerr then
+                -- shmerr can be 'flags' upon successful get_stale() calls, so we
+                -- also check v == nil
+                return nil, "could not read from lua_shared_dict (miss): " .. shmerr
+            end
+        end
+    end
+
+    local version_after
+    if not shmerr then
+        version_after = 0
+
+    else
+        version_after = get_version(shmerr or 0)
+        if version_before ~= version_after then
+            local ttl_left
+            if is_miss then
+                ttl_left = self.dict_miss:ttl(namespaced_key)
+            else
+                ttl_left = self.dict:ttl(namespaced_key)
+            end
+
+            if ttl_left then
+                v = decode(v)
+                if not err then
+                    return unlock_and_ret(lock, v, nil, ttl_left)
+                end
+                return v, nil, ttl_left
+            end
+        end
+    end
+
+    if err == "timeout" then
+        return nil, "could not acquire callback lock: timeout"
+    end
+
+    local ok, data, new_ttl
+    ok, data, err, new_ttl = xpcall(cb, traceback, ...)
+    if not ok then
+        return unlock_and_ret(lock, nil, "callback threw an error: " .. tostring(data))
+    end
+
+    if err then
+        return unlock_and_ret(lock, data, tostring(err))
+    end
+
+    if type(new_ttl) == "number" then
+        if new_ttl < 0 then
+            -- bypass cache
+            return unlock_and_ret(lock, data, nil, new_ttl)
+        end
+
+        if data == nil then
+            neg_ttl = new_ttl
+
+        else
+            ttl = new_ttl
+        end
+    end
+
+    local version
+    if data == nil then
+        version = 0
+    elseif version_after >= 65535 then
+        version = 1
+    else
+        version = version_after + 1
+    end
+
+    local flags = set_version(0, version)
+
+    data, err = set_shm_set_lru(self, key, namespaced_key, data, ttl, neg_ttl, flags,
+                                shm_set_tries, l1_serializer)
+    if err then
+        return unlock_and_ret(lock, nil, err)
+    end
+
+    if data == CACHE_MISS_SENTINEL_LRU then
+        data = nil
+        if is_hit then
+            ok, err = self.dict:delete(namespaced_key)
+            if not ok then
+                return unlock_and_ret(lock, nil, "could not delete from shm: " .. err)
+            end
+        end
+
+
+    elseif is_miss then
+        ok, err = self.dict_miss:delete(namespaced_key)
+        if not ok then
+            return unlock_and_ret(lock, nil, "could not delete from shm (miss): " .. err)
+        end
+    end
+
+    _, err = self.broadcast(self.events.invalidation.channel, key)
+    if err then
+        return unlock_and_ret(lock, nil, "could not broadcast renew: " .. err)
+    end
+
+    -- unlock and return
+
+    return unlock_and_ret(lock, data, nil, data == nil and neg_ttl or ttl)
+end
+
 
 
 do
