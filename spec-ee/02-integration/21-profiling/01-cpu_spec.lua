@@ -436,6 +436,8 @@ for __, deploy in ipairs({ "traditional", "hybrid" }) do
 
     assert.res_status(201, res)
 
+    local path
+
     -- wait for the worker events to be processed
     helpers.pwait_until(function()
       res = assert(admin_client:send {
@@ -447,6 +449,7 @@ for __, deploy in ipairs({ "traditional", "hybrid" }) do
       local json = cjson.decode(body)
 
       assert.same("started", json.status)
+      path = json.path
     end, 3)
 
     -- reload
@@ -454,6 +457,9 @@ for __, deploy in ipairs({ "traditional", "hybrid" }) do
 
     -- wait for automatic recovery
     helpers.pwait_until(function()
+      -- remove the file to emulate a crash
+      os.execute("rm -rf " .. path)
+
       --[[
         since we are reloading, the old connection will be closed,
         so we need to create a new one  
