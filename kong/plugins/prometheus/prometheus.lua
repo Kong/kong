@@ -921,13 +921,13 @@ function Prometheus:metric_data(write_fn, local_only)
   local output = buffer.new(DATA_BUFFER_SIZE_HINT)
   local output_count = 0
 
-  local function buffered_print(data, ...)
-    if data then
+  local function buffered_print(fmt, ...)
+    if fmt then
       output_count = output_count + 1
-      output:putf(data, ...)
+      output:putf(fmt, ...)
     end
 
-    if output_count >= 100 or not data then
+    if output_count >= 100 or not fmt then
       write_fn(output:get())  -- cosume the whole buffer
       output_count = 0
     end
