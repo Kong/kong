@@ -704,8 +704,9 @@ end
 -- Returns:
 --   an object that should be used to register metrics.
 function Prometheus.init(dict_name, options_or_prefix)
-  if ngx.get_phase() ~= 'init' and ngx.get_phase() ~= 'init_worker' and
-      ngx.get_phase() ~= 'timer' then
+  local phase = ngx.get_phase()
+  if phase ~= 'init' and phase ~= 'init_worker' and
+     phase ~= 'timer' then
     error('Prometheus.init can only be called from ' ..
       'init_by_lua_block, init_worker_by_lua_block or timer' , 2)
   end
