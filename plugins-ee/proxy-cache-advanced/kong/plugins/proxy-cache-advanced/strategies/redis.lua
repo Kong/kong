@@ -25,7 +25,7 @@ local _M = {}
 
 
 function _M.new(opts)
-  local conf = utils.deep_copy(opts)
+  local conf = utils.cycle_aware_deep_copy(opts)
 
   local ok, feature_flags = utils.load_module_if_exists("kong.enterprise_edition.feature_flags")
   if ok and feature_flags then

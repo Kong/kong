@@ -57,7 +57,7 @@ return function()
   -- to not interfere with is_authenticated checks
   user.preauth_claims = function()
     local render_ctx = ngx.ctx.render_ctx
-    return utils.deep_copy(render_ctx.preauth_claims)
+    return utils.cycle_aware_deep_copy(render_ctx.preauth_claims)
   end
 
   return user

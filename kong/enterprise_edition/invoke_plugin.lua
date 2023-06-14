@@ -49,7 +49,7 @@ local function prepare_plugin(opts)
   local fields = {
     name = opts.name,
     service = { id = SERVICE_IDS[opts.api_type], },
-    config = utils.deep_copy(opts.config or {}),
+    config = utils.cycle_aware_deep_copy(opts.config) or {},
   }
 
   if opts.api_type == "admin" then
@@ -119,7 +119,7 @@ local function validate(opts)
   if type(opts.config) == "string" then
     config = cjson.decode(opts.config)
   elseif type(opts.config) == "table" then
-    config = utils.deep_copy(opts.config)
+    config = utils.cycle_aware_deep_copy(opts.config)
   end
 
   local fields = {

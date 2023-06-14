@@ -6,11 +6,10 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local statsd_handler = require "kong.plugins.statsd.handler"
-local tablex = require "pl.tablex"
 
 local kong = kong
 
-local handler = tablex.deepcopy(statsd_handler)
+local handler = require("kong.tools.utils").cycle_aware_deep_copy(statsd_handler)
 local logging_flag = false
 local log = handler.log
 

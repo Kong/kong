@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local split = require("pl.utils").split
-local deepcopy = require("pl.tablex").deepcopy
+local utils = require("kong.tools.utils")
 
 local _M = {}
 
@@ -67,7 +67,7 @@ local function dereference_single_level(full_spec, schema, depth)
       if not ref_target then
         return nil, "failed dereferencing schema: " .. err
       end
-      value = deepcopy(ref_target)
+      value = utils.cycle_aware_deep_copy(ref_target)
       schema[key] = value
     end
 
@@ -84,7 +84,7 @@ end
 
 local function get_dereferenced_schema(full_spec)
   -- wrap to also deref top level
-  local schema = deepcopy(full_spec)
+  local schema = utils.cycle_aware_deep_copy(full_spec)
   local wrapped_schema, err = dereference_single_level(full_spec, { schema }, 0)
   if not wrapped_schema then
     return nil, err

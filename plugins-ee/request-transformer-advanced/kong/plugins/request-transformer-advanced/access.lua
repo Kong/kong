@@ -5,10 +5,10 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local utils = require "kong.tools.utils"
 local multipart = require "multipart"
 local cjson = require("cjson.safe").new()
 local pl_template = require "pl.template"
-local pl_tablex = require "pl.tablex"
 local sandbox = require "kong.tools.sandbox"
 local json_navigator = require "kong.enterprise_edition.transformations.plugins.json_navigator"
 local sub = string.sub
@@ -35,7 +35,6 @@ local pairs = pairs
 local error = error
 local tostring = tostring
 local rawset = rawset
-local pl_copy_table = pl_tablex.deepcopy
 local lua_enabled = sandbox.configuration.enabled
 local sandbox_enabled = sandbox.configuration.sandbox_enabled
 local navigate_and_apply = json_navigator.navigate_and_apply
@@ -48,7 +47,7 @@ local CONTENT_LENGTH = "content-length"
 local CONTENT_TYPE = "content-type"
 local HOST = "host"
 local JSON, MULTI, ENCODED = "json", "multi_part", "form_encoded"
-local EMPTY = pl_tablex.readonly({})
+local EMPTY = require("pl.tablex").readonly({})
 
 
 cjson.decode_array_with_array_mt(true)
@@ -243,7 +242,7 @@ local function transform_querystrings(conf, template_env)
     return
   end
 
-  local querystring = pl_copy_table(template_env.query_params)
+  local querystring = utils.cycle_aware_deep_copy(template_env.query_params)
 
   -- Remove querystring(s)
   for _, name, value in iter(conf.remove.querystring, template_env) do
@@ -697,7 +696,7 @@ function _M.execute(conf)
   local template_env = {}
   if lua_enabled and sandbox_enabled then
     -- load the sandbox environment to be used to render the template
-    template_env = pl_copy_table(sandbox.configuration.environment)
+    template_env = utils.cycle_aware_deep_copy(sandbox.configuration.environment)
     -- here we can optionally add functions to expose to the sandbox, eg:
     -- tostring = tostring,
     -- because headers may contain array elements such as duplicated headers

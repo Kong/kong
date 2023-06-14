@@ -129,7 +129,7 @@ local function check_oidc_session()
     workspace,
     { decode_json = true }
   )
-  conf = utils.deep_copy(conf or {})
+  conf = utils.cycle_aware_deep_copy(conf) or {}
   local cookie_name = get_conf_arg(conf, "session_cookie_name", "session")
 
   local vars = ngx.var

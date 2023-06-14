@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
-local plt = require "pl.tablex"
+local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 
 for _, strategy in helpers.each_strategy() do
@@ -138,7 +138,7 @@ for _, strategy in helpers.each_strategy() do
 
       local json_body = cjson.decode(body)
 
-      assert(plt.deepcompare(json_body, expected))
+      assert(require("pl.tablex").deepcompare(json_body, expected))
     end
 
     describe("without index", function ()
@@ -155,7 +155,7 @@ for _, strategy in helpers.each_strategy() do
             append = {body = {},},
           }
 
-          local expected = plt.deepcopy(data)
+          local expected = utils.cycle_aware_deep_copy(data)
           expected['kong']['route']['name'] = nil
 
           execute(config, expected)
@@ -189,7 +189,7 @@ for _, strategy in helpers.each_strategy() do
             add = {body = {}},
             append = {body = {}},
           }
-          local expected = plt.deepcopy(data)
+          local expected = utils.cycle_aware_deep_copy(data)
           local v = expected['kong']['route']['name']
           expected['kong']['route']['name'] = nil
           expected['kong']['route']['nickname'] = v
@@ -225,7 +225,7 @@ for _, strategy in helpers.each_strategy() do
             add = {body = {},},
             append = {body = {},},
           }
-          local expected = plt.deepcopy(data)
+          local expected = utils.cycle_aware_deep_copy(data)
           expected['kong']['route']['name'] = "replace"
 
           execute(config, expected)
@@ -274,7 +274,7 @@ for _, strategy in helpers.each_strategy() do
             replace = {body = {},},
             append = {body = {},},
           }
-          local expected = plt.deepcopy(data)
+          local expected = utils.cycle_aware_deep_copy(data)
           expected['kong']['route']['plugins'] = "add"
 
           execute(config, expected)
@@ -293,7 +293,7 @@ for _, strategy in helpers.each_strategy() do
             replace = {body = {},},
             add = {body = {},},
           }
-          local expected = plt.deepcopy(data)
+          local expected = utils.cycle_aware_deep_copy(data)
           expected['default']['service'] = { "append" }
 
           execute(config, expected)
@@ -310,7 +310,7 @@ for _, strategy in helpers.each_strategy() do
             replace = {body = {},},
             add = {body = {},},
           }
-          local expected = plt.deepcopy(data)
+          local expected = utils.cycle_aware_deep_copy(data)
           table.insert(expected['default']['plugins'], "append")
 
           execute(config, expected)
@@ -366,7 +366,7 @@ for _, strategy in helpers.each_strategy() do
             add = {body = {},},
             append = {body = {},},
           }
-          local expected = plt.deepcopy(data)
+          local expected = utils.cycle_aware_deep_copy(data)
           expected['default']['plugins'][2]['order'] = nil
 
           execute(config, expected)
@@ -383,7 +383,7 @@ for _, strategy in helpers.each_strategy() do
             add = {body = {},},
             append = {body = {},},
           }
-          local expected = plt.deepcopy(data)
+          local expected = utils.cycle_aware_deep_copy(data)
           for _, value in ipairs(expected['default']['plugins']) do
             value['order'] = nil
           end
@@ -404,7 +404,7 @@ for _, strategy in helpers.each_strategy() do
             add = {body = {},},
             append = {body = {},},
           }
-          local expected = plt.deepcopy(data)
+          local expected = utils.cycle_aware_deep_copy(data)
           local value = expected['default']['plugins'][2]['order']
           expected['default']['plugins'][2]['order'] = nil
           expected['default']['plugins'][2]['priority'] = value
@@ -423,7 +423,7 @@ for _, strategy in helpers.each_strategy() do
             add = {body = {},},
             append = {body = {},},
           }
-          local expected = plt.deepcopy(data)
+          local expected = utils.cycle_aware_deep_copy(data)
           for _, plugin in ipairs(expected['default']['plugins']) do
             local value = plugin['order']
             plugin['order'] = nil
@@ -447,7 +447,7 @@ for _, strategy in helpers.each_strategy() do
             add = {body = {},},
             append = {body = {},},
           }
-          local expected = plt.deepcopy(data)
+          local expected = utils.cycle_aware_deep_copy(data)
           expected['default']['plugins'][2]['order'] = 1000
 
           execute(config, expected)
@@ -465,7 +465,7 @@ for _, strategy in helpers.each_strategy() do
             add = {body = {},},
             append = {body = {},},
           }
-          local expected = plt.deepcopy(data)
+          local expected = utils.cycle_aware_deep_copy(data)
           for _, plugin in ipairs(expected['default']['plugins']) do
             plugin['order'] = 1000
           end
@@ -486,7 +486,7 @@ for _, strategy in helpers.each_strategy() do
             replace = {body = {},},
             append = {body = {},},
           }
-          local expected = plt.deepcopy(data)
+          local expected = utils.cycle_aware_deep_copy(data)
           expected['default']['plugins'][2]['type'] = "add"
 
           execute(config, expected)
@@ -503,7 +503,7 @@ for _, strategy in helpers.each_strategy() do
             replace = {body = {},},
             append = {body = {},},
           }
-          local expected = plt.deepcopy(data)
+          local expected = utils.cycle_aware_deep_copy(data)
           for _, plugin in ipairs(expected['default']['plugins']) do
             plugin['type'] = "add"
           end
@@ -524,7 +524,7 @@ for _, strategy in helpers.each_strategy() do
             replace = {body = {},},
             add = {body = {},},
           }
-          local expected = plt.deepcopy(data)
+          local expected = utils.cycle_aware_deep_copy(data)
           expected['default']['plugins'][2]['type'] = {"add"}
 
           execute(config, expected)
@@ -541,7 +541,7 @@ for _, strategy in helpers.each_strategy() do
             replace = {body = {},},
             add = {body = {},},
           }
-          local expected = plt.deepcopy(data)
+          local expected = utils.cycle_aware_deep_copy(data)
           for _, plugin in ipairs(expected['default']['plugins']) do
             plugin['name'] = {plugin['name'], "add"}
           end

@@ -114,7 +114,7 @@ return function()
   local workspace = workspaces.get_workspace()
   local workspace_conf = ee.prepare_portal(render_ctx, kong.configuration)
   local portal_gui_url = workspace_config.build_ws_portal_gui_url(conf, workspace)
-  local portal = helpers.tbl.deepcopy(render_ctx.portal or {})
+  local portal = helpers.tbl.cycle_aware_deep_copy(render_ctx.portal) or {}
 
   -- Add any fields that might have been missed
   for k, v in pairs(workspace_conf) do

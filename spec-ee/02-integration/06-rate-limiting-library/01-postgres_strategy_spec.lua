@@ -27,7 +27,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
                             mock_window_size
 
     setup(function()
-      local conf = utils.deep_copy(helpers.test_conf, false)
+      local conf = utils.cycle_aware_deep_copy(helpers.test_conf, true)
       conf.pg_database =
         os.getenv("KONG_TEST_PG_DATABASE") or helpers.test_conf.pg_database
 

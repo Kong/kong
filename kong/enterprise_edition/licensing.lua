@@ -7,11 +7,11 @@
 
 local tx = require "pl.tablex"
 
+local utils = require "kong.tools.utils"
 local conf_loader = require "kong.conf_loader"
 local license_helpers = require "kong.enterprise_edition.license_helpers"
 local event_hooks = require "kong.enterprise_edition.event_hooks"
 
-local tx_deepcopy = tx.deepcopy
 local tx_deepcompare = tx.deepcompare
 local next = next
 local string_find = string.find
@@ -242,10 +242,10 @@ function _M:update(license)
   ngx.log(ngx.INFO, "[licensing] license type: ", _M.l_type)
 
   _M.features:clear()
-  _M.features:update(tx_deepcopy(license_helpers.get_featureset(_M.l_type)))
+  _M.features:update(utils.cycle_aware_deep_copy(license_helpers.get_featureset(_M.l_type)))
 
   _M.configuration:clear()
-  _M.configuration:update(tx_deepcopy(_M.kong_conf))
+  _M.configuration:update(utils.cycle_aware_deep_copy(_M.kong_conf))
   _M.configuration:update(_M.features.conf or {}, true)
 end
 

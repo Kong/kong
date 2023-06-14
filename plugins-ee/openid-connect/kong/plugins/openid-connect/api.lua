@@ -53,7 +53,7 @@ local function filter_jwks(jwks)
     return nil
   end
 
-  local keyset = utils.deep_copy(jwks)
+  local keyset = utils.cycle_aware_deep_copy(jwks)
   if type(keyset) == "table" and type(keyset.keys) == "table" then
     for _, jwk in ipairs(keyset.keys) do
       jwk.k = nil
@@ -93,7 +93,7 @@ return {
         if #issuers == 0 and db.strategy == "off" and cache.discovery_data then
           -- TODO: implement paging
           for i, data in ipairs(cache.discovery_data) do
-            issuers[i] = utils.deep_copy(data)
+            issuers[i] = utils.cycle_aware_deep_copy(data)
           end
         end
 
@@ -166,7 +166,7 @@ return {
         if not entity and db.strategy == "off"
            and cache.discovery_data and cache.discovery_data[self.params.oic_issuers]
         then
-          entity = utils.deep_copy(cache.discovery_data[self.params.oic_issuers])
+          entity = utils.cycle_aware_deep_copy(cache.discovery_data[self.params.oic_issuers])
         end
 
         if not entity then

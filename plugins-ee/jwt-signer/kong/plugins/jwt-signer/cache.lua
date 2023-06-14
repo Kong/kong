@@ -18,9 +18,6 @@ local log         = require "kong.plugins.jwt-signer.log"
 local workspaces  = require "kong.workspaces"
 
 
-local tablex      = require "pl.tablex"
-
-
 local worker_id   = ngx.worker.id
 local decode_args = ngx.decode_args
 local encode_args = ngx.encode_args
@@ -625,7 +622,7 @@ local function introspect(endpoint, opaque_token, hint, authorization, args, cac
         return introspect_uri(endpoint, opaque_token, hint, authorization, args_table or args, timeout)
       end
 
-      return tablex.deepcopy(res[1])
+      return utils.cycle_aware_deep_copy(res[1])
 
     else
       log("unable to generate a cache key for introspection")

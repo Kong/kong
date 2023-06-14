@@ -10,14 +10,13 @@ local boolean_generator = require "kong.plugins.mocking.jsonschema-mocker.type.b
 local integer_generator = require "kong.plugins.mocking.jsonschema-mocker.type.integer"
 local number_generator = require "kong.plugins.mocking.jsonschema-mocker.type.number"
 local string_generator = require "kong.plugins.mocking.jsonschema-mocker.type.string"
-local pl_tablex = require "pl.tablex"
+local utils = require "kong.tools.utils"
 
 local type = type
 local table_insert = table.insert
 local pairs = pairs
 local ipairs = ipairs
 local random = math.random
-local deepcopy = pl_tablex.deepcopy
 
 local _M = {}
 
@@ -102,7 +101,7 @@ mock = function(schema)
     error("invalid type of schema")
   end
 
-  schema = deepcopy(schema)
+  schema = utils.cycle_aware_deep_copy(schema)
 
   while schema.allOf or schema.oneOf do
     local resolved_schema = {}
@@ -144,7 +143,3 @@ end
 _M.mock = mock
 
 return _M
-
-
-
-

@@ -33,7 +33,7 @@ end
 
 
 function _M.new(_, opts)
-  local conf = utils.deep_copy(opts)
+  local conf = utils.cycle_aware_deep_copy(opts)
 
   -- initialize redis configuration - e.g., parse
   -- Sentinel addresses

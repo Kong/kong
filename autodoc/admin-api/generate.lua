@@ -10,7 +10,6 @@ setmetatable(_G, nil)
 
 local lfs = require("lfs")
 local cjson = require("cjson")
-local pl_tablex = require("pl.tablex")
 local general = require("autodoc.admin-api.general")
 
 local method_array = {
@@ -79,7 +78,8 @@ local utils = {
     end)
     -- force very first character uppercase
     return text:sub(1,1):upper()..text:sub(2)
-  end
+  end,
+  cycle_aware_deep_copy = require("kong.tools.utils").cycle_aware_deep_copy
 }
 
 local KONG_PATH = os.getenv("KONG_PATH") or "."
@@ -115,7 +115,7 @@ local function deep_merge(t1, t2)
   return copy
 end
 
-admin_api_data = deep_merge(admin_api_data, pl_tablex.deepcopy(ee_admin_api_data))
+admin_api_data = deep_merge(admin_api_data, utils.cycle_aware_deep_copy(ee_admin_api_data))
 
 local Endpoints = require("kong.api.endpoints")
 

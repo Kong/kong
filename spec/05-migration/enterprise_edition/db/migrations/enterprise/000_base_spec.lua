@@ -12,7 +12,7 @@ local DB = require "kong.db"
 for _, strategy in helpers.each_strategy() do
 
   local function init_db()
-    local conf = utils.deep_copy(helpers.test_conf)
+    local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
 
     local db = assert(DB.new(conf, strategy))
     assert(db:init_connector())

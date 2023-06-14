@@ -7,9 +7,8 @@
 
 local split         = require("pl.utils").split
 local clone         = require "table.clone"
-local deepcopy      = require("pl.tablex").deepcopy
+local utils         = require("kong.tools.utils")
 local lrucache      = require "resty.lrucache"
-local sha256_hex    = require("kong.tools.utils").sha256_hex
 local cjson         = require("cjson.safe").new()
 local lyaml         = require "lyaml"
 local normalize     = require("kong.tools.uri").normalize
@@ -20,6 +19,7 @@ local gsub          = string.gsub
 local match         = string.match
 local json_decode   = cjson.decode
 local yaml_load     = lyaml.load
+local sha256_hex    = utils.sha256_hex
 
 
 local SCHEMA_CACHE_SIZE = 1000
@@ -83,7 +83,7 @@ local function get_dereferenced_schema(full_spec)
         if not ref_target then
             return nil, "failed dereferencing schema: " .. err
         end
-        value = deepcopy(ref_target)
+        value = utils.cycle_aware_deep_copy(ref_target)
         schema[key] = value
       end
 
@@ -99,7 +99,7 @@ local function get_dereferenced_schema(full_spec)
   end
 
   -- wrap to also deref top level
-  local schema = deepcopy(full_spec)
+  local schema = utils.cycle_aware_deep_copy(full_spec)
   local wrapped_schema, err = dereference_single_level( { schema }, {} )
   if not wrapped_schema then
       return nil, err
