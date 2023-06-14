@@ -398,6 +398,8 @@ do
 end
 
 
+if is_http then
+
 function _M:select(req_method, req_uri, req_host, req_scheme,
                    src_ip, src_port,
                    dst_ip, dst_port,
@@ -459,21 +461,6 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
           end
         end
       end
-
-    -- stream subsystem [[
-    elseif field == "net.src_ip" then
-      assert(c:add_value(field, src_ip))
-
-    elseif field == "net.dst_ip" then
-      assert(c:add_value(field, dst_ip))
-
-    elseif field == "net.src_port" then
-      assert(c:add_value(field, src_port))
-
-    elseif field == "net.dst_port" then
-      assert(c:add_value(field, dst_port))
-    -- stream subsystem ]]
-
     end
   end
 
@@ -551,8 +538,6 @@ do
 end
 
 
-if is_http then
-
 function _M:exec(ctx)
   local req_method = get_method()
   local req_uri = ctx and ctx.request_uri or var.request_uri
@@ -624,6 +609,44 @@ end
 
 else  -- is stream subsystem
 
+function _M:select(scheme,
+                   src_ip, src_port,
+                   dst_ip, dst_port,
+                   sni)
+  check_select_params(nil, nil, nil, scheme,
+                      src_ip, src_port,
+                      dst_ip, dst_port,
+                      sni, nil)
+
+  local c = context.new(self.schema)
+
+  for _, field in ipairs(self.fields) do
+    if field == "net.protocol" then
+      assert(c:add_value(field, scheme))
+
+    elseif field == "tls.sni" then
+      local res, err = c:add_value(field, sni)
+      if not res then
+        return nil, err
+      end
+
+    elseif field == "net.src_ip" then
+      assert(c:add_value(field, src_ip))
+
+    elseif field == "net.dst_ip" then
+      assert(c:add_value(field, dst_ip))
+
+    elseif field == "net.src_port" then
+      assert(c:add_value(field, src_port))
+
+    elseif field == "net.dst_port" then
+      assert(c:add_value(field, dst_port))
+
+    end -- if
+  end -- for
+end
+
+
 function _M:exec(ctx)
   local src_ip = var.remote_addr
   local dst_ip = var.server_addr
@@ -651,10 +674,18 @@ function _M:exec(ctx)
     dst_port = tonumber(var.proxy_protocol_server_port)
   end
 
-  local match_t, err = self:select(nil, nil, nil, scheme,
+  local match_t, err = self:select(scheme,
                                    src_ip, src_port,
                                    dst_ip, dst_port,
                                    sni)
+  if not match_t then
+    if err then
+      ngx_log(ngx_ERR, "router returned an error: ", err)
+    end
+
+    return nil
+  end
+
   return match_t
 end
 
