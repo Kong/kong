@@ -82,7 +82,7 @@ do
 
       ["IpAddr"] = { "net.src_ip", "net.dst_ip", },
 
-      ["IpCidr"] = { "net.cidr", },
+      ["IpCidr"] = { "net.src_cidr", "net.dst_cidr", },
     }
   end
 
@@ -636,6 +636,12 @@ function _M:select(scheme,
       assert(c:add_value(field, src_ip))
 
     elseif field == "net.dst_ip" then
+      assert(c:add_value(field, dst_ip))
+
+    elseif field == "net.src_cidr" then
+      assert(c:add_value(field, src_ip))
+
+    elseif field == "net.dst_cidr" then
       assert(c:add_value(field, dst_ip))
 
     elseif field == "net.src_port" then
