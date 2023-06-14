@@ -1,6 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
 
+local MESSAGE = "echo, ping, pong. echo, ping, pong. echo, ping, pong.\n"
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: ip-restriction (access) [#" .. strategy .. "]", function()
@@ -90,6 +91,45 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "ip-restriction-grpc3.com" },
         service = grpc_service,
       })
+
+      -- tcp services/routes
+      local tcp_srv = bp.services:insert({
+        name = "tcp",
+        host = helpers.mock_upstream_host,
+        port = helpers.mock_upstream_stream_port,
+        protocol = "tcp"
+      })
+
+      local tls_srv = bp.services:insert({
+        name = "tls",
+        host = helpers.mock_upstream_host,
+        port = helpers.mock_upstream_stream_ssl_port,
+        protocol = "tls"
+      })
+
+      local route_tcp_allow = bp.routes:insert {
+        destinations = {
+          {
+            port = 19000,
+          },
+        },
+        protocols = {
+          "tcp",
+        },
+        service = tcp_srv,
+      }
+
+      local route_tcp_deny = bp.routes:insert {
+        destinations = {
+          {
+            port = 19443,
+          },
+        },
+        protocols = {
+          "tls",
+        },
+        service = tls_srv,
+      }
 
       bp.plugins:insert {
         name     = "ip-restriction",
@@ -194,6 +234,22 @@ for _, strategy in helpers.each_strategy() do
 
       assert(db.plugins:insert {
         name     = "ip-restriction",
+        route = { id = route_tcp_allow.id },
+        config   = {
+          allow = { "127.0.0.0/24" },
+        },
+      })
+
+      assert(db.plugins:insert {
+        name     = "ip-restriction",
+        route = { id = route_tcp_deny.id },
+        config   = {
+          deny = { "127.0.0.1, 127.0.0.2" },
+        },
+      })
+
+      assert(db.plugins:insert {
+        name     = "ip-restriction",
         route = { id = route_grpc_deny.id },
         config   = {
           deny = { "127.0.0.1", "127.0.0.2" }
@@ -222,6 +278,8 @@ for _, strategy in helpers.each_strategy() do
         real_ip_recursive = "on",
         trusted_ips       = "0.0.0.0/0, ::/0",
         nginx_conf        = "spec/fixtures/custom_nginx.template",
+        stream_listen     = helpers.get_proxy_ip(false) .. ":19000" ..
+                            helpers.get_proxy_ip(false) .. ":19443 ssl"
       })
 
       proxy_client = helpers.proxy_client()
@@ -276,6 +334,16 @@ for _, strategy in helpers.each_strategy() do
         assert.matches("Code: PermissionDenied", err)
       end)
 
+      it("blocks a request when the IP is denied #tcp", function()
+        local tcp = ngx.socket.tcp()
+        assert(tcp:connect(helpers.get_proxy_ip(true), 19443))
+        assert(tcp:sslhandshake(nil, nil, false))
+        assert(tcp:send(MESSAGE))
+        local body = assert(tcp:receive("*a"))
+        assert.is_true(string.find(body, "IP address not allowed"))
+        tcp:close()
+      end)
+
       it("allows a request when the IP is not denied", function()
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -298,6 +366,16 @@ for _, strategy in helpers.each_strategy() do
           },
         }
         assert.truthy(ok)
+      end)
+
+      it("allows a request when the IP is not denied #tcp", function()
+        local tcp = ngx.socket.tcp()
+        local ip = helpers.get_proxy_ip(false)
+        assert(tcp:connect(ip, 19000))
+        assert(tcp:send(MESSAGE))
+        local body = assert(tcp:receive("*a"))
+        assert.equal(MESSAGE, body)
+        tcp:close()
       end)
 
       it("blocks IP with CIDR", function()
