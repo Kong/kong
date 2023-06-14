@@ -225,50 +225,6 @@ return {
         "key"   TEXT     NOT NULL,
         "cert"  TEXT     NOT NULL
       );
-
-
-      -- TODO: delete on 1.0.0 migrations
-      CREATE TABLE IF NOT EXISTS "ttls" (
-        "primary_key_value"  TEXT                         NOT NULL,
-        "primary_uuid_value" UUID,
-        "table_name"         TEXT                         NOT NULL,
-        "primary_key_name"   TEXT                         NOT NULL,
-        "expire_at"          TIMESTAMP WITHOUT TIME ZONE  NOT NULL,
-
-        PRIMARY KEY ("primary_key_value", "table_name")
-      );
-
-      DO $$
-      BEGIN
-        CREATE INDEX IF NOT EXISTS "ttls_primary_uuid_value_idx" ON "ttls" ("primary_uuid_value");
-      EXCEPTION WHEN UNDEFINED_COLUMN THEN
-        -- Do nothing, accept existing state
-      END$$;
-
-      CREATE OR REPLACE FUNCTION "upsert_ttl" (v_primary_key_value TEXT, v_primary_uuid_value UUID, v_primary_key_name TEXT, v_table_name TEXT, v_expire_at TIMESTAMP WITHOUT TIME ZONE) RETURNS void
-      LANGUAGE plpgsql
-      AS $$
-        BEGIN
-          LOOP
-            UPDATE ttls
-               SET expire_at = v_expire_at
-             WHERE primary_key_value = v_primary_key_value
-               AND table_name = v_table_name;
-
-            IF FOUND then
-              RETURN;
-            END IF;
-
-            BEGIN
-              INSERT INTO ttls (primary_key_value, primary_uuid_value, primary_key_name, table_name, expire_at)
-                   VALUES (v_primary_key_value, v_primary_uuid_value, v_primary_key_name, v_table_name, v_expire_at);
-              RETURN;
-            EXCEPTION WHEN unique_violation THEN
-
-            END;
-          END LOOP;
-        END;
-        $$;
     ]]
   },
 }
