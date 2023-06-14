@@ -305,7 +305,7 @@ local function construct_bucket_format(buckets)
   for _, bucket in ipairs(buckets) do
     assert(type(bucket) == "number", "bucket boundaries should be numeric")
     -- floating point number with all trailing zeros removed
-    local as_string = string.format("%f", bucket):gsub("0*$", "")
+    local as_string = st_format("%f", bucket):gsub("0*$", "")
     local dot_idx = as_string:find(".", 1, true)
     max_order = math.max(max_order, dot_idx - 1)
     max_precision = math.max(max_precision, as_string:len() - dot_idx)
@@ -364,7 +364,7 @@ local function lookup_or_create(self, label_values)
   local cnt = label_values and #label_values or 0
   -- specially, if first element is nil, # will treat it as "non-empty"
   if cnt ~= self.label_count or (self.label_count > 0 and label_values[1] == nil) then
-    return nil, string.format("inconsistent labels count, expected %d, got %d",
+    return nil, st_format("inconsistent labels count, expected %d, got %d",
                               self.label_count, cnt)
   end
   local t = self.lookup
@@ -408,13 +408,13 @@ local function lookup_or_create(self, label_values)
     end
 
     for i, buc in ipairs(self.buckets) do
-      full_name[i+2] = string.format("%sle=\"%s\"}", bucket_pref, self.bucket_format:format(buc))
+      full_name[i+2] = st_format("%sle=\"%s\"}", bucket_pref, self.bucket_format:format(buc))
     end
     -- Last bucket. Note, that the label value is "Inf" rather than "+Inf"
     -- required by Prometheus. This is necessary for this bucket to be the last
     -- one when all metrics are lexicographically sorted. "Inf" will get replaced
     -- by "+Inf" in Prometheus:metric_data().
-    full_name[self.bucket_count+3] = string.format("%sle=\"Inf\"}", bucket_pref)
+    full_name[self.bucket_count+3] = st_format("%sle=\"Inf\"}", bucket_pref)
   else
     full_name = full_metric_name(self.name, self.label_names, label_values)
   end
