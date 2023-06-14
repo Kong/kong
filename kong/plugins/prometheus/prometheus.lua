@@ -937,7 +937,7 @@ function Prometheus:metric_data(write_fn, local_only)
   for i = 1, count do
     yield()
 
-    key = keys[i]
+    local key = keys[i]
 
     local value, err
     local is_local_metrics = true
