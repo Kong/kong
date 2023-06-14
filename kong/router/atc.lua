@@ -70,19 +70,18 @@ do
 
       ["Int"]    = {"net.port",
                    },
-
     }
+
   else  -- stream subsystem
     FIELDS = {
 
       ["String"] = { "net.protocol", "tls.sni", },
 
+      ["Int"]    = { "net.src_port", "net.dst_port", },
+
+      ["IpAddr"] = { "net.src_ip", "net.dst_ip", },
+
       ["IpCidr"] = { "net.cidr", },
-
-      ["IpAddr"] = { "net.addr", },
-
-      ["Int"]    = { "net.port", },
-
     }
   end
 
@@ -460,6 +459,21 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
           end
         end
       end
+
+    -- stream subsystem [[
+    elseif field == "net.src_ip" then
+      assert(c:add_value(field, src_ip))
+
+    elseif field == "net.dst_ip" then
+      assert(c:add_value(field, dst_ip))
+
+    elseif field == "net.src_port" then
+      assert(c:add_value(field, src_port))
+
+    elseif field == "net.dst_port" then
+      assert(c:add_value(field, dst_port))
+    -- stream subsystem ]]
+
     end
   end
 
