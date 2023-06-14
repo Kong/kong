@@ -49,7 +49,7 @@ local function buffer_append(buf, sep, str, idx)
   if #buf > 0 and
      (idx == nil or idx > 1)
   then
-    buf:put(assert(sep))
+    buf:put(sep)
   end
   buf:put(str)
 end
