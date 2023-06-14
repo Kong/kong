@@ -928,7 +928,7 @@ function Prometheus:metric_data(write_fn, local_only)
     end
 
     if output_count >= 100 or not fmt then
-      write_fn(output:get())  -- cosume the whole buffer
+      write_fn(output:get())  -- consume the whole buffer
       output_count = 0
     end
   end
