@@ -551,6 +551,8 @@ do
 end
 
 
+if is_http then
+
 function _M:exec(ctx)
   local req_method = get_method()
   local req_uri = ctx and ctx.request_uri or var.request_uri
@@ -619,6 +621,44 @@ function _M:exec(ctx)
 
   return match_t
 end
+
+else  -- is stream subsystem
+
+function _M:exec(ctx)
+  local src_ip = var.remote_addr
+  local dst_ip = var.server_addr
+  local src_port = tonumber(var.remote_port, 10)
+  local dst_port = tonumber((ctx or ngx.ctx).host_port, 10)
+                or tonumber(var.server_port, 10)
+  -- error value for non-TLS connections ignored intentionally
+  local sni = server_name()
+  -- fallback to preread SNI if current connection doesn't terminate TLS
+  if not sni then
+    sni = var.ssl_preread_server_name
+  end
+
+  local scheme
+  if var.protocol == "UDP" then
+    scheme = "udp"
+  else
+    scheme = sni and "tls" or "tcp"
+  end
+
+  -- when proxying TLS request in second layer or doing TLS passthrough
+  -- rewrite the dst_ip, port back to what specified in proxy_protocol
+  if var.kong_tls_passthrough_block == "1" or var.ssl_protocol then
+    dst_ip = var.proxy_protocol_server_addr
+    dst_port = tonumber(var.proxy_protocol_server_port)
+  end
+
+  local match_t, err = self:select(nil, nil, nil, scheme,
+                                   src_ip, src_port,
+                                   dst_ip, dst_port,
+                                   sni)
+  return match_t
+end
+
+end   -- if is_http
 
 
 function _M._set_ngx(mock_ngx)
