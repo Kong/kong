@@ -90,7 +90,7 @@ end
 
 local function init()
   local shm = "prometheus_metrics"
-  if not ngx.shared.prometheus_metrics then
+  if not ngx.shared[shm] then
     kong.log.err("prometheus: ngx shared dict 'prometheus_metrics' not found")
     return
   end
