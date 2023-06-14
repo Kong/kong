@@ -49,24 +49,42 @@ local LOGICAL_OR  = " || "
 local LOGICAL_AND = " && "
 
 
+local is_http = ngx.config.subsystem == "http"
+
 -- reuse buffer object
 local values_buf = buffer.new(64)
 
 
 local CACHED_SCHEMA
 do
-  local FIELDS = {
+  local FIELDS
 
-    ["String"] = {"net.protocol", "tls.sni",
-                  "http.method", "http.host",
-                  "http.path", "http.raw_path",
-                  "http.headers.*",
-                 },
+  if is_http then
+    FIELDS = {
 
-    ["Int"]    = {"net.port",
-                 },
+      ["String"] = {"net.protocol", "tls.sni",
+                    "http.method", "http.host",
+                    "http.path", "http.raw_path",
+                    "http.headers.*",
+                   },
 
-  }
+      ["Int"]    = {"net.port",
+                   },
+
+    }
+  else  -- stream subsystem
+    FIELDS = {
+
+      ["String"] = { "net.protocol", "tls.sni", },
+
+      ["IpCidr"] = { "net.cidr", },
+
+      ["IpAddr"] = { "net.addr", },
+
+      ["Int"]    = { "net.port", },
+
+    }
+  end
 
   CACHED_SCHEMA = schema.new()
 
