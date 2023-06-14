@@ -613,6 +613,7 @@ function _M:select(scheme,
                    src_ip, src_port,
                    dst_ip, dst_port,
                    sni)
+
   check_select_params(nil, nil, nil, scheme,
                       src_ip, src_port,
                       dst_ip, dst_port,
@@ -644,6 +645,24 @@ function _M:select(scheme,
 
     end -- if
   end -- for
+
+  local matched = self.router:execute(c)
+  if not matched then
+    return nil
+  end
+
+  local uuid = c:get_result()
+
+  local service = self.services[uuid]
+  local matched_route = self.routes[uuid]
+
+  local service_protocol = get_service_info(service)
+
+  return {
+    route           = matched_route,
+    service         = service,
+    upstream_scheme = service_protocol,
+  }
 end
 
 
