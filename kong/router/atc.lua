@@ -491,6 +491,7 @@ do
   get_headers_key = function(headers)
     headers_buf:reset()
 
+    -- NOTE: DO NOT yield until headers_buf:get()
     for name, value in pairs(headers) do
       local name = name:gsub("-", "_"):lower()
 
