@@ -51,6 +51,7 @@ local LOGICAL_AND = " && "
 
 local is_http = ngx.config.subsystem == "http"
 
+
 -- reuse buffer object
 local values_buf = buffer.new(64)
 
