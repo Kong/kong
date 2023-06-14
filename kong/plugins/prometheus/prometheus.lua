@@ -70,7 +70,6 @@ local tostring = tostring
 local tonumber = tonumber
 local st_format = string.format
 local table_sort = table.sort
-local tb_clear = require("table.clear")
 local yield = require("kong.tools.utils").yield
 
 
@@ -917,6 +916,7 @@ function Prometheus:metric_data(write_fn, local_only)
 
   local seen_metrics = {}
 
+  -- the output is an integral string, not an array any more
   local output = buffer.new(DATA_BUFFER_SIZE_HINT)
   local output_count = 0
 
