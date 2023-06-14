@@ -655,11 +655,18 @@ function _M:select(scheme,
   local service = self.services[uuid]
   local matched_route = self.routes[uuid]
 
-  local service_protocol = get_service_info(service)
+  local service_protocol, _,  --service_type
+        service_host, service_port,
+        service_hostname_type = get_service_info(service)
 
   return {
-    route           = matched_route,
-    service         = service,
+    route          = matched_route,
+    service        = service,
+    upstream_url_t = {
+      type = service_hostname_type,
+      host = service_host,
+      port = service_port,
+    },
     upstream_scheme = service_protocol,
   }
 end
