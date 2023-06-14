@@ -921,10 +921,10 @@ function Prometheus:metric_data(write_fn, local_only)
   local output = buffer.new(DATA_BUFFER_SIZE_HINT)
   local output_count = 0
 
-  local function buffered_print(data)
+  local function buffered_print(data, ...)
     if data then
       output_count = output_count + 1
-      output:put(data)
+      output:putf(data, ...)
     end
 
     if output_count >= 100 or not data then
@@ -954,12 +954,12 @@ function Prometheus:metric_data(write_fn, local_only)
       local m = self.registry[short_name]
       if m then
         if m.help then
-          buffered_print(st_format("# HELP %s%s %s\n",
-            self.prefix, short_name, m.help))
+          buffered_print("# HELP %s%s %s\n",
+            self.prefix, short_name, m.help)
         end
         if m.typ then
-          buffered_print(st_format("# TYPE %s%s %s\n",
-            self.prefix, short_name, TYPE_LITERAL[m.typ]))
+          buffered_print("# TYPE %s%s %s\n",
+            self.prefix, short_name, TYPE_LITERAL[m.typ])
         end
       end
       seen_metrics[short_name] = true
@@ -967,7 +967,7 @@ function Prometheus:metric_data(write_fn, local_only)
     if not is_local_metrics then -- local metrics is always a gauge
       key = fix_histogram_bucket_labels(key)
     end
-    buffered_print(st_format("%s%s %s\n", self.prefix, key, value))
+    buffered_print("%s%s %s\n", self.prefix, key, value)
 
     ::continue::
 
