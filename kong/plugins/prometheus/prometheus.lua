@@ -933,8 +933,10 @@ function Prometheus:metric_data(write_fn, local_only)
     end
   end
 
-  for _, key in ipairs(keys) do
+  for i = 1, count do
     yield()
+
+    key = keys[i]
 
     local value, err
     local is_local_metrics = true
