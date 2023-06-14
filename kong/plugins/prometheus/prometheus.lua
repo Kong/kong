@@ -402,7 +402,7 @@ local function lookup_or_create(self, label_values)
     local bucket_pref
     if self.label_count > 0 then
       -- strip last }
-      bucket_pref = self.name .. "_bucket" .. string.sub(labels, 1, #labels-1) .. ","
+      bucket_pref = self.name .. "_bucket" .. string.sub(labels, 1, -2) .. ","
     else
       bucket_pref = self.name .. "_bucket{"
     end
