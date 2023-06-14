@@ -83,6 +83,11 @@
 
 #### Core
 
+- The default value of `lmdb_map_size` config has been bumped to `2048m`
+  from `128m` to accommodate most commonly deployed config sizes in DB-less
+  and Hybrid mode.
+  [#11047](https://github.com/Kong/kong/pull/11047)
+
 #### Status API
 
 - Remove the database information from the status API when operating in dbless
