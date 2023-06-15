@@ -115,12 +115,12 @@ local function get_expression(route)
     buffer_append(exp_buf, LOGICAL_AND, gen)
   end
 
-  local gen = gen_for_nets("net.src_ip", "net.src_port", srcs)
+  local gen = gen_for_nets("net.src.ip", "net.src.port", srcs)
   if gen then
     buffer_append(exp_buf, LOGICAL_AND, gen)
   end
 
-  local gen = gen_for_nets("net.dst_ip", "net.dst_port", dsts)
+  local gen = gen_for_nets("net.dst.ip", "net.dst.port", dsts)
   if gen then
     buffer_append(exp_buf, LOGICAL_AND, gen)
   end

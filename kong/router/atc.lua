@@ -78,9 +78,10 @@ do
 
       ["String"] = { "net.protocol", "tls.sni", },
 
-      ["Int"]    = { "net.src_port", "net.dst_port", },
+      ["Int"]    = { "net.src.port", "net.dst.port", },
 
-      ["IpAddr"] = { "net.src_ip", "net.dst_ip", },
+      --["IpAddr"] = { "net.src.ip", "net.dst.ip", },
+      ["IpCidr"] = { "net.src.ip", "net.dst.ip", },
     }
   end
 
@@ -162,7 +163,6 @@ local function add_atc_matcher(inst, route, route_id,
 
   local ok, err = inst:add_matcher(priority, route_id, exp)
   if not ok then
-    print(exp)
     return nil, "could not add route: " .. route_id .. ", err: " .. err
   end
 
@@ -609,7 +609,7 @@ end
 
 else  -- is stream subsystem
 
-function _M:select(scheme,
+function _M:select(req_method, req_uri, req_host, scheme,
                    src_ip, src_port,
                    dst_ip, dst_port,
                    sni)
@@ -631,16 +631,16 @@ function _M:select(scheme,
         return nil, err
       end
 
-    elseif field == "net.src_ip" then
+    elseif field == "net.src.ip" then
       assert(c:add_value(field, src_ip))
 
-    elseif field == "net.src_port" then
+    elseif field == "net.src.port" then
       assert(c:add_value(field, src_port))
 
-    elseif field == "net.dst_ip" then
+    elseif field == "net.dst.ip" then
       assert(c:add_value(field, dst_ip))
 
-    elseif field == "net.dst_port" then
+    elseif field == "net.dst.port" then
       assert(c:add_value(field, dst_port))
 
     end -- if
@@ -700,7 +700,7 @@ function _M:exec(ctx)
     dst_port = tonumber(var.proxy_protocol_server_port)
   end
 
-  local match_t, err = self:select(scheme,
+  local match_t, err = self:select(nil, nil, nil, scheme,
                                    src_ip, src_port,
                                    dst_ip, dst_port,
                                    sni)
