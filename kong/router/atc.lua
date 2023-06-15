@@ -633,11 +633,11 @@ function _M:select(scheme,
     elseif field == "net.src_ip" then
       assert(c:add_value(field, src_ip))
 
-    elseif field == "net.dst_ip" then
-      assert(c:add_value(field, dst_ip))
-
     elseif field == "net.src_port" then
       assert(c:add_value(field, src_port))
+
+    elseif field == "net.dst_ip" then
+      assert(c:add_value(field, dst_ip))
 
     elseif field == "net.dst_port" then
       assert(c:add_value(field, dst_port))
