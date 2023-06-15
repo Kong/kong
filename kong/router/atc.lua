@@ -609,7 +609,7 @@ end
 
 else  -- is stream subsystem
 
-function _M:select(req_method, req_uri, req_host, scheme,
+function _M:select(_, _, _, scheme,
                    src_ip, src_port,
                    dst_ip, dst_port,
                    sni)
@@ -617,7 +617,7 @@ function _M:select(req_method, req_uri, req_host, scheme,
   check_select_params(nil, nil, nil, scheme,
                       src_ip, src_port,
                       dst_ip, dst_port,
-                      sni, nil)
+                      sni)
 
   local c = context.new(self.schema)
 
