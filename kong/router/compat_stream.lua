@@ -1,11 +1,9 @@
 local _M = {}
 
 
-local bit = require("bit")
 local buffer = require("string.buffer")
 local atc = require("kong.router.atc")
-local tb_new = require("table.new")
-local tb_nkeys = require("table.nkeys")
+
 
 local is_empty_field  = atc.is_empty_field
 local gen_for_field   = atc.gen_for_field
@@ -13,11 +11,15 @@ local gen_for_field   = atc.gen_for_field
 
 local type = type
 local ipairs = ipairs
+local byte = string.byte
 
 
 local ngx       = ngx
 local ngx_log   = ngx.log
 local ngx_ERR   = ngx.ERR
+
+
+local DOT         = byte(".")
 
 
 local OP_EQUAL    = "=="
@@ -29,9 +31,8 @@ local LOGICAL_AND = atc.LOGICAL_AND
 
 
 -- reuse buffer objects
-local expr_buf = buffer.new(128)
-local srcs_buf = buffer.new(64)
-local dsts_buf = buffer.new(64)
+local exp_buf  = buffer.new(128)
+local nets_buf = buffer.new(64)
 
 
 local function buffer_append(buf, sep, str, idx)
@@ -44,12 +45,51 @@ local function buffer_append(buf, sep, str, idx)
 end
 
 
+local function gen_for_nets(ip_field, port_field, vals)
+  if is_empty_field(vals) then
+    return nil
+  end
+
+  nets_buf:reset():put("(")
+
+  for i, v in ipairs(vals) do
+    local ip = v.ip
+    local port = v.port
+
+    local exp_ip, exp_port
+
+    if ip then
+      exp_ip = ip_field .. " " ..
+               (string.find(ip, "/", 1, true) and OP_IN or OP_EQUAL) ..
+               " \"" .. ip .. "\""
+    end
+
+    if port then
+      exp_port = port_field .. " " ..  OP_EQUAL .. " " .. port
+    end
+
+    if not ip then
+      buffer_append(nets_buf, LOGICAL_OR, exp_port, i)
+
+    elseif not port then
+      buffer_append(nets_buf, LOGICAL_OR, exp_ip, i)
+
+    else
+      buffer_append(nets_buf, LOGICAL_OR,
+                    "(" .. exp_ip .. LOGICAL_AND .. exp_port .. ")", i)
+    end
+  end   -- for
+
+  return nets_buf:get()
+end
+
+
 local function get_expression(route)
   local snis = route.snis
   local srcs = route.sources
   local dsts = route.destinations
 
-  expr_buf:reset()
+  exp_buf:reset()
 
   local gen = gen_for_field("tls.sni", OP_EQUAL, snis, function(_, p)
     if #p > 1 and byte(p, -1) == DOT then
@@ -60,70 +100,25 @@ local function get_expression(route)
     return p
   end)
   if gen then
-    buffer_append(expr_buf, LOGICAL_AND, gen)
+    buffer_append(exp_buf, LOGICAL_AND, gen)
   end
 
-  if not is_empty_field(srcs) then
-    srcs_buf:reset():put("(")
-
-    for i, src in ipairs(srcs) do
-      local ip = src.ip
-      local port = src.port
-
-      local op
-      if string.find(ip, "/", 1, true) then
-        op = OP_IN
-      else
-        op = OP_EQUAL
-      end
-
-      local expr = "net.src_ip " .. op .. " \"" .. ip .. "\""
-
-      if port then
-        expr = "(" .. expr .. LOGICAL_AND ..
-               "net.src_port " .. OP_EQUAL .. " " .. port .. ")"
-      end
-
-      buffer_append(srcs_buf, LOGICAL_OR, expr, i)
-    end   -- route.srcs
-
-    buffer_append(expr_buf, LOGICAL_AND,
-                  srcs_buf:put(")"):get())
+  local gen = gen_for_nets("net.src_ip", "net.src_port", srcs)
+  if gen then
+    buffer_append(exp_buf, LOGICAL_AND, gen)
   end
 
-  if not is_empty_field(dsts) then
-    dsts_buf:reset():put("(")
-
-    for i, dst in ipairs(dsts) do
-      local ip = dst.ip
-      local port = dst.port
-
-      local op
-      if string.find(ip, "/", 1, true) then
-        op = OP_IN
-      else
-        op = OP_EQUAL
-      end
-
-      local expr = "net.dst_ip " .. op .. " \"" .. ip .. "\""
-
-      if port then
-        expr = "(" .. expr .. LOGICAL_AND ..
-               "net.dst_port " .. OP_EQUAL .. " " .. port .. ")"
-      end
-
-      buffer_append(dsts_buf, LOGICAL_OR, expr, i)
-    end   -- route.dsts
-
-    buffer_append(expr_buf, LOGICAL_AND,
-                  dsts_buf:put(")"):get())
+  local gen = gen_for_nets("net.dst_ip", "net.dst_port", dsts)
+  if gen then
+    buffer_append(exp_buf, LOGICAL_AND, gen)
   end
 
-  return expr_buf:get()
+  return exp_buf:get()
 end
 
 
 local function get_priority(route)
+  return 100
 end
 
 
