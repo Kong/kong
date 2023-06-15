@@ -233,7 +233,12 @@ function _GLOBAL.init_cache(kong_config, cluster_events, worker_events)
     db_cache_neg_ttl = 0
    end
 
-  return kong_cache.new {
+  local lru_size
+  if kong_config.role == "control_plane" then
+    lru_size = 1000
+  end
+
+  return kong_cache.new({
     shm_name        = "kong_db_cache",
     cluster_events  = cluster_events,
     worker_events   = worker_events,
@@ -243,7 +248,8 @@ function _GLOBAL.init_cache(kong_config, cluster_events, worker_events)
     page            = page,
     cache_pages     = cache_pages,
     resty_lock_opts = LOCK_OPTS,
-  }
+    lru_size        = lru_size,
+  })
 end
 
 
@@ -258,7 +264,12 @@ function _GLOBAL.init_core_cache(kong_config, cluster_events, worker_events)
     db_cache_neg_ttl = 0
   end
 
-  return kong_cache.new {
+  local lru_size
+  if kong_config.role == "control_plane" then
+    lru_size = 1000
+  end
+
+  return kong_cache.new({
     shm_name        = "kong_core_db_cache",
     cluster_events  = cluster_events,
     worker_events   = worker_events,
@@ -268,7 +279,8 @@ function _GLOBAL.init_core_cache(kong_config, cluster_events, worker_events)
     page            = page,
     cache_pages     = cache_pages,
     resty_lock_opts = LOCK_OPTS,
-  }
+    lru_size        = lru_size,
+  })
 end
 
 
