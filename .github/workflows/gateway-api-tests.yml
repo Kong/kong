@@ -33,6 +33,11 @@ on:
         description: 'Kong Version'
         required: false
         default: '3.3.0.0'
+      multiarch:
+        description: 'Also run ARM64 test for the image'
+        required: false
+        type: boolean
+        default: false
 
   workflow_call:
     inputs:
@@ -56,6 +61,11 @@ on:
         description: 'Kong Version'
         required: false
         type: 'string'
+      multiarch:
+        description: 'Also run ARM64 test for the image'
+        required: false
+        type: boolean
+        default: false
 
 env:
   GW_IMAGE: ${{ inputs.control_plane_image || 'kong/kong-gateway-internal:nightly-ubuntu' }}
@@ -65,50 +75,24 @@ env:
   HAS_ACCESS_TO_SECRETS: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && !contains(github.actor, 'dependabot')) }}
 
 jobs:
-  construct_platform_matrix:
-    name: Construct API Test platform matrix
-    runs-on: ${{ vars.RUNS_ON }}
-    outputs:
-      arm64_matrix: ${{ steps.construct_arm64_platform_matrix.outputs.arm64_matrix }}
-    steps:
-      - name: Construct Platform Matrix
-        id: construct_arm64_platform_matrix
-        run: |
-          IFS='-' read -ra parts <<< "$GW_IMAGE"
-          current_image_tag=${parts[-1]}
-
-          # if current image tag is ubuntu or amazonlnux - include in the arm64 matrix
-          if [[ "$current_image_tag" == *"ubuntu"* || "$current_image_tag" == *"2"* ]]; then
-            custom_arm64_matrix=("{\"os\": \"ubuntu-22.04-arm64\", \"gateway_image\": \"$GW_IMAGE\", \"gateway_mode\": \"classic\"},{\"os\": \"ubuntu-22.04-arm64\", \"gateway_image\": \"$GW_IMAGE\", \"gateway_mode\": \"hybrid\"}")
-          else
-            # placeholder os value which won't affect the matrix
-            custom_arm64_matrix=("{\"os\": \"${{ vars.RUNS_ON }}\"}")
-          fi
-
-          custom_arm64_matrix=[$custom_arm64_matrix]
-
-          echo "The final custom_arm64_matrix is $custom_arm64_matrix";
-          echo "arm64_matrix=$custom_arm64_matrix" >> $GITHUB_OUTPUT;
-
   gateway_api_tests:
     defaults:
       run:
         working-directory: spec-ee/kong-api-tests
-    needs: construct_platform_matrix
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runs_on }}
     timeout-minutes: 40
     env:
       GW_MODE: ${{ matrix.gateway_mode }}
       AWS_ACCESS_KEY_ID: ${{ secrets.TEST_API_AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.TEST_API_AWS_SECRET_ACCESS_KEY }}
-      VERBOSE_RESPONSE_LOGS: ${{ inputs.enable_verbose_response_logging || 'true'}}
+      VERBOSE_RESPONSE_LOGS: ${{ inputs.enable_verbose_response_logging || 'true' }}
       RUN_SPEC: ${{ inputs.target_test || 'all' }}
     strategy:
       fail-fast: false
       matrix:
         gateway_mode: ['classic', 'hybrid']
-        os: ['${{ vars.RUNS_ON }}']
-        include: ${{ fromJson(needs.construct_platform_matrix.outputs.arm64_matrix) }}
+        runs_on: ["${{ vars.RUNS_ON }}", "${{ fromJSON(inputs.multiarch && '[\"ubuntu-22.04-arm64\"]' || '[]') }}" ]
+    name: ${{ inputs.target_test }} API test - ${{ inputs.target_mode }} ${{ matrix.gateway_mode }} mode on ${{ matrix.runs_on }} for ${{ inputs.control_plane_image }}
 
     steps:
       - name: Overwrite environment variables if workflow dispatch

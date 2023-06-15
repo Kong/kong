@@ -334,18 +334,21 @@ jobs:
 
         python ./main.py -f filelist.txt -p $pkg -o test.txt -s ${{ matrix.check-manifest-suite }}
 
-  smoke-api-package-tests:
-    name: Smoke API Package Tests
+  test-packages:
+    name: API Test Packages - ${{ matrix.label }}
     needs: [metadata, build-packages]
     # cancel previous runs if new commits are pushed to the PR, but run for each commit on master
     concurrency:
-      group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}-smoke-api-package-tests
+      group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}-${{ matrix.label }}-test-packages
       cancel-in-progress: true
     uses: ./.github/workflows/gateway-api-tests-matrix.yml
+    strategy:
+      matrix:
+        include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-packages'] }}"
     with:
       gateway_version: ${{ needs.metadata.outputs.kong-version }}
       # if deploy-environment is release run all package tests else run only ubuntu-22.04 package tests
-      target_package: ${{ needs.metadata.outputs.deploy-environment == 'release' && 'all' || fromJSON(needs.metadata.outputs.matrix)['build-packages'][0].label }}
+      target_package: ${{ matrix.label }}
       target_matrix: package
       target_test: smoke
       send_slack_results: 'false'
@@ -433,8 +436,8 @@ jobs:
           Docker image available `${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}`
           Artifacts available https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-  scan:
-    name: Scan - ${{ matrix.label }}
+  scan-images:
+    name: Scan Images - ${{ matrix.label }}
     needs: [metadata, build-images]
     runs-on: ${{ vars.RELEASE_RUNS_ON }}
     if: always() && needs.build-images.result == 'success' && github.repository_owner == 'Kong' && fromJSON(needs.metadata.outputs.matrix)['scan-vulnerabilities'] != ''
@@ -515,10 +518,9 @@ jobs:
             kong-*-${{ matrix.label }}-linux-*-sbom.spdx.json
 
   smoke-tests:
-    name: Smoke Tests - ${{ matrix.label }}
+    name: Legacy Smoke Tests - ${{ matrix.label }}
     needs: [metadata, build-images]
     runs-on: ${{ vars.RELEASE_RUNS_ON }}
-    if: github.repository_owner == 'Kong'
 
     # TODO: test packages
     strategy:
@@ -604,45 +606,47 @@ jobs:
         VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
       run: build/tests/03-http2-admin-api.sh
 
-  smoke-api-tests:
-    name: Smoke API Tests - ${{ matrix.label }}
+  test-images-smoke:
+    name: Smoke Test Images - ${{ matrix.label }}
     needs: [metadata, build-images]
     # cancel previous runs if new commits are pushed to the PR, but run for each commit on master
     concurrency:
-      group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}-${{ matrix.label }}-smoke-api-tests
+      group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}-${{ matrix.label }}-smoke-test-images
       cancel-in-progress: true
     strategy:
       fail-fast: false
       matrix:
-        include: "${{ fromJSON(needs.metadata.outputs.matrix)['smoke-tests'] }}"
+        include: "${{ fromJSON(needs.metadata.outputs.matrix)['test-images'] }}"
     uses: ./.github/workflows/gateway-api-tests.yml
     with:
       control_plane_image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}
       gateway_version: ${{ needs.metadata.outputs.kong-version }}
+      multiarch: ${{ matrix.multiarch != '' && true || false }}
       target_test: smoke
     secrets: inherit
 
-  e2e-api-tests:
-    name: E2E API Tests - ${{ matrix.label }}
-    needs: [metadata, build-images, smoke-tests, smoke-api-tests]
+  test-images-e2e:
+    name: E2E Test Images - ${{ matrix.label }}
+    needs: [metadata, build-images]
     # cancel previous runs if new commits are pushed to the PR, but run for each commit on master
     concurrency:
-      group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}-${{ matrix.label }}-e2e-api-tests
+      group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}-${{ matrix.label }}-e2e-test-images
       cancel-in-progress: true
     strategy:
       fail-fast: false
       matrix:
-        include: "${{ fromJSON(needs.metadata.outputs.matrix)['smoke-tests'] }}"
+        include: "${{ fromJSON(needs.metadata.outputs.matrix)['test-images'] }}"
     uses: ./.github/workflows/gateway-api-tests.yml
     with:
       control_plane_image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}
       gateway_version: ${{ needs.metadata.outputs.kong-version }}
+      multiarch: ${{ matrix.multiarch != '' && true || false }}
       target_test: non-smoke
     secrets: inherit
 
   release-packages:
     name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
-    needs: [metadata, build-packages, build-images, smoke-tests, smoke-api-package-tests, smoke-api-tests, e2e-api-tests]
+    needs: [metadata, build-packages, build-images, smoke-tests, test-packages, test-images-smoke, test-images-e2e]
     runs-on: ${{ vars.RELEASE_RUNS_ON }}
     if: github.repository_owner == 'Kong' && fromJSON(needs.metadata.outputs.matrix)['release-packages'] != ''
     timeout-minutes: 5 # PULP takes a while to publish
@@ -712,7 +716,7 @@ jobs:
 
   release-images:
     name: Release Images - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
-    needs: [metadata, build-images, smoke-tests, smoke-api-package-tests, smoke-api-tests, e2e-api-tests]
+    needs: [metadata, build-images, smoke-tests, test-packages, test-images-smoke, test-images-e2e]
     runs-on: ${{ vars.RELEASE_RUNS_ON }}
     if: github.repository_owner == 'Kong' && fromJSON(needs.metadata.outputs.matrix)['release-images'] != ''
 

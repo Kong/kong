@@ -154,12 +154,11 @@ jobs:
 
   define_package_matrix:
     runs-on: ${{ vars.RUNS_ON }}
-    if: ${{ inputs.target_matrix  == 'all' || inputs.target_matrix  == 'package' }}
+    if: ${{ inputs.target_matrix  == 'package' }}
     outputs:
       package_matrix: ${{ steps.define-package-matrix.outputs.package_matrix }}
       package_install_method_matrix: ${{ steps.define-package-matrix.outputs.package_install_method_matrix }}
       original_package: ${{ steps.define-package-matrix.outputs.original_package }}
-      arm64_package_matrix: ${{ steps.define-package-matrix.outputs.arm64_package_matrix }}
     steps:
     - name: Define Package Test Matrix
       id: define-package-matrix
@@ -172,37 +171,22 @@ jobs:
         echo "original_package=$TARGET_PACKAGE" >> $GITHUB_OUTPUT
         # if target_package is provided run tests only for that package else run all packages
  
-        default_package_matrix="[\"debian-11\", \"debian-10\", \"ubuntu-22.04\", \"ubuntu-22.04-fips\", \"ubuntu-20.04\", \"ubuntu-20.04-fips\", \"ubuntu-18.04\", \"rhel-8\", \"rhel-8-fips\" , \"rhel-7\", \"amazonlinux-2\", \"amazonlinux-2022\", \"centos-7\", \"alpine\"]"
-        given_package="[\"$TARGET_PACKAGE\"]"
-
-        # include arm64 os to the matrix for all supported packages
-        default_arm64_package_matrix="[{\"os\":\"ubuntu-22.04-arm64\",\"package_name\":\"ubuntu-22.04\",\"install_method\":\"package\",\"gateway_mode\":\"classic\"}, \
-        {\"os\":\"ubuntu-22.04-arm64\",\"package_name\":\"ubuntu-22.04\",\"install_method\":\"package\",\"gateway_mode\":\"hybrid\"}, \
-        {\"os\":\"ubuntu-22.04-arm64\",\"package_name\":\"amazonlinux-2\",\"install_method\":\"package\",\"gateway_mode\":\"classic\"}, \
-        {\"os\":\"ubuntu-22.04-arm64\",\"package_name\":\"amazonlinux-2022\",\"install_method\":\"package\",\"gateway_mode\":\"classic\"}]"
-
-        # if current package is ubuntu or amazonlnux - include in the arm64 matrix
-        if [[ "$TARGET_PACKAGE" == *"ubuntu"* || "$TARGET_PACKAGE" == *"amazonlinux"* ]]; then
-          custom_arm64_package_matrix="[{\"os\":\"ubuntu-22.04-arm64\",\"package_name\":\"$TARGET_PACKAGE\",\"install_method\":\"package\",\"gateway_mode\":\"classic\"}, \
-          {\"os\":\"ubuntu-22.04-arm64\",\"package_name\":\"$TARGET_PACKAGE\",\"install_method\":\"package\",\"gateway_mode\":\"hybrid\"}]"
+        if [[ $TARGET_PACKAGE == 'all' ]]; then
+          matrix_file=".github/matrix-full.yml"
+          # output the `label` field as `package_name` for all packages under `build-packages` matrix
+          echo "package_matrix=$(yq e '(.build-packages[] | select(.os == "vars.RELEASE_RUNS_ON").os) |= "${{ vars.RELEASE_RUNS_ON }}"' $matrix_file | yq e -I=0 -o=json '[ .build-packages[] | .label ]' -)" >> $GITHUB_OUTPUT
         else
-          # placeholder os value which won't affect the matrix
-          custom_arm64_package_matrix="[{\"os\": \"${{ vars.RUNS_ON }}\"}]"
-        fi
-
-        if [[ $TARGET_PACKAGE == 'all' ]]; then 
-          echo "package_matrix=$default_package_matrix" >> $GITHUB_OUTPUT;
-          echo "arm64_package_matrix=$default_arm64_package_matrix" >> $GITHUB_OUTPUT;
-        else 
-          echo "package_matrix=$given_package" >> $GITHUB_OUTPUT;
-          echo "arm64_package_matrix=$custom_arm64_package_matrix" >> $GITHUB_OUTPUT;
+          echo "package_matrix=[\"$TARGET_PACKAGE\"]" >> $GITHUB_OUTPUT
         fi
 
         # if package_install_method is provided download and install kong using that method else use both repository and pulp download methods
-        default_package_install_matrix="[\"repository\", \"package\"]"
-        given_install_method="[\"$PACKAGE_INSTALL_METHOD\"]"
-        if [[ $PACKAGE_INSTALL_METHOD == 'all' ]]; then echo "package_install_method_matrix=$default_package_install_matrix" >> $GITHUB_OUTPUT; else echo "package_install_method_matrix=$given_install_method" >> $GITHUB_OUTPUT; fi
+        if [[ $PACKAGE_INSTALL_METHOD == 'all' ]]; then
+          echo "package_install_method_matrix=[\"repository\",\"package\"]" >> $GITHUB_OUTPUT
+        else
+          echo "package_install_method_matrix=[\"$PACKAGE_INSTALL_METHOD\"]" >> $GITHUB_OUTPUT
+        fi
 
+        cat $GITHUB_OUTPUT
 
   gateway_tests_for_docker:
     name: Gateway API Test Matrix for Docker images
@@ -448,11 +432,11 @@ jobs:
           retention-days: 31
 
   gateway_tests_for_release_packages:
-    name: Package API Tests
+    name: Package API Tests - using ${{ matrix.install_method }}, ${{ matrix.gateway_mode }} mode
     needs: define_package_matrix
     # using if condition to skip arm64 and alpine runs because gh matrix exclude somehow is not working
     if: (inputs.target_matrix  == 'all' || inputs.target_matrix  == 'package')
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ endsWith(matrix.package_name, '-arm64') && 'ubuntu-22.04-arm64' || vars.RUNS_ON }}
     timeout-minutes: 50
     env:
       KONG_VERSION: ${{ inputs.gateway_version || '3.3.0.0' }}
@@ -463,13 +447,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package_name: ${{ fromJson(needs.define_package_matrix.outputs.package_matrix) }} 
+        package_name: ${{ fromJson(needs.define_package_matrix.outputs.package_matrix) }}
         install_method: ${{ fromJson(needs.define_package_matrix.outputs.package_install_method_matrix) }} 
         gateway_mode: ['classic', 'hybrid']
-        os: ['${{ vars.RUNS_ON }}']
-        include: ${{ fromJson(needs.define_package_matrix.outputs.arm64_package_matrix) }}
         exclude:
-        # execute only one install method (any, doesn't matter) for fips packages and for alpine as we use wget to download kong
+          # execute only one install method (any, doesn't matter) for fips packages and for alpine as we use wget to download kong
           - package_name: 'ubuntu-22.04-fips'
             install_method: 'repository'
           - package_name: 'ubuntu-20.04-fips'
@@ -487,6 +469,8 @@ jobs:
           - package_name: 'rhel-7'
             install_method: 'repository'
           - package_name: 'amazonlinux-2'
+            install_method: 'repository'
+          - package_name: 'amazonlinux-2-arm64'
             install_method: 'repository'
           - package_name: 'amazonlinux-2022'
             install_method: 'repository'
@@ -512,15 +496,15 @@ jobs:
 
       - name: Finalize Kong Package Name
         run: |
-          fips_suffix_excluded_name=$(echo "${{ matrix.package_name }}" | sed 's/-fips//')
-          echo "fips_suffix_excluded_name=$fips_suffix_excluded_name" >> $GITHUB_ENV
+          suffix_excluded_name=$(echo "${{ matrix.package_name }}" | sed 's/-fips\|-arm64//')
+          echo "suffix_excluded_name=$suffix_excluded_name" >> $GITHUB_ENV
 
-          if [[ $fips_suffix_excluded_name != ${{ matrix.package_name }} ]]; then
-            echo "Current package should run in fips mode"
+          if [[ $suffix_excluded_name != ${{ matrix.package_name }} ]]; then
+            echo "Current package name is modified from ${{ matrix.package_name }} to $suffix_excluded_name"
           fi
 
-          echo "KONG_PACKAGE=$fips_suffix_excluded_name" >> $GITHUB_ENV
-          echo "KONG_PACKAGE is $fips_suffix_excluded_name"
+          echo "KONG_PACKAGE=$suffix_excluded_name" >> $GITHUB_ENV
+          echo "KONG_PACKAGE is $suffix_excluded_name"
 
       - name: Start Gateway
         run: cd gateway-docker-compose-generator && make generate_package && make start_package
