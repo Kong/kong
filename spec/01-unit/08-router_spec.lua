@@ -3,12 +3,14 @@ local atc_compat = require "kong.router.compat"
 local path_handling_tests = require "spec.fixtures.router_path_handling_tests"
 local uuid = require("kong.tools.utils").uuid
 
-local function reload_router(flavor)
+local function reload_router(flavor, subsystem)
   _G.kong = {
     configuration = {
       router_flavor = flavor,
     },
   }
+
+  ngx.config.subsystem = subsystem or "http"
 
   package.loaded["kong.router.atc"] = nil
   package.loaded["kong.router"] = nil
@@ -4210,8 +4212,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
     if flavor == "traditional" or flavor == "traditional_compatible" then
       describe("#stream context", function()
         -- enable compat_stream module
-        ngx.config.subsystem = "stream"
-        reload_router(flavor)
+        reload_router(flavor, "stream")
 
         describe("[sources]", function()
           local use_case, router
@@ -4275,7 +4276,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             router = assert(new_router(use_case))
           end)
 
-          it("#only [src_ip]", function()
+          it("[src_ip]", function()
             local match_t = router:select(nil, nil, nil, "tcp", "127.0.0.1")
             assert.truthy(match_t)
             assert.same(use_case[1].route, match_t.route)
