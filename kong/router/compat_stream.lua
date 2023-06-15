@@ -53,6 +53,14 @@ local function gen_for_nets(ip_field, port_field, vals)
   nets_buf:reset():put("(")
 
   for i, v in ipairs(vals) do
+    if type(v) ~= "table" then
+      return nil, "sources/destinations elements must be a table"
+    end
+
+    if is_empty_field(v) then
+      return nil, "sources/destinations elements must not be empty"
+    end
+
     local ip = v.ip
     local port = v.port
 
@@ -70,14 +78,18 @@ local function gen_for_nets(ip_field, port_field, vals)
 
     if not ip then
       buffer_append(nets_buf, LOGICAL_OR, exp_port, i)
-
-    elseif not port then
-      buffer_append(nets_buf, LOGICAL_OR, exp_ip, i)
-
-    else
-      buffer_append(nets_buf, LOGICAL_OR,
-                    "(" .. exp_ip .. LOGICAL_AND .. exp_port .. ")", i)
+      goto continue
     end
+
+    if not port then
+      buffer_append(nets_buf, LOGICAL_OR, exp_ip, i)
+      goto continue
+    end
+
+    buffer_append(nets_buf, LOGICAL_OR,
+                  "(" .. exp_ip .. LOGICAL_AND .. exp_port .. ")", i)
+
+    ::continue::
   end   -- for
 
   return nets_buf:get()
