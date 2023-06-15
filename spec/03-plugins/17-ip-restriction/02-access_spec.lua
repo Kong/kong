@@ -244,7 +244,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "ip-restriction",
         route = { id = route_tcp_deny.id },
         config   = {
-          deny = { "127.0.0.1, 127.0.0.2" },
+          deny = { "127.0.0.1/32, 127.0.0.2/32" },
         },
       })
 
@@ -252,7 +252,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "ip-restriction",
         route = { id = route_grpc_deny.id },
         config   = {
-          deny = { "127.0.0.1", "127.0.0.2" }
+          deny = { "127.0.0.1/32", "127.0.0.2/32" }
         },
       })
 
@@ -260,7 +260,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "ip-restriction",
         route = { id = route_grpc_allow.id },
         config   = {
-          deny = { "127.0.0.2" }
+          deny = { "127.0.0.2/32" }
         },
       })
 
@@ -268,7 +268,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "ip-restriction",
         route = { id = route_grpc_xforwarded_deny.id },
         config   = {
-          allow = { "127.0.0.4" },
+          allow = { "127.0.0.4/32" },
         },
       })
 
