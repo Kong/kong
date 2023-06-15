@@ -65,6 +65,12 @@ local LOGICAL_OR  = atc.LOGICAL_OR
 local LOGICAL_AND = atc.LOGICAL_AND
 
 
+-- When splitting routes, we need to assign new UUIDs to the split routes.  We use uuid v5 to generate them from
+-- the original route id and the path index so that incremental rebuilds see stable IDs for routes that have not
+-- changed.
+local uuid_generator = assert(uuid.factory_v5('7f145bf9-0dce-4f91-98eb-debbce4b9f6b'))
+
+
 local function gen_for_nets(ip_field, port_field, vals)
   if is_empty_field(vals) then
     return nil
@@ -116,12 +122,6 @@ local function gen_for_nets(ip_field, port_field, vals)
 end
 
 
--- When splitting routes, we need to assign new UUIDs to the split routes.  We use uuid v5 to generate them from
--- the original route id and the path index so that incremental rebuilds see stable IDs for routes that have not
--- changed.
-local uuid_generator = assert(uuid.factory_v5('7f145bf9-0dce-4f91-98eb-debbce4b9f6b'))
-
-
 local function get_expression(route)
   local methods = route.methods
   local hosts   = route.hosts
@@ -154,6 +154,7 @@ local function get_expression(route)
   end
 
   -- stream subsystem
+
   if not is_http then
     local gen = gen_for_nets("net.src.ip", "net.src.port", srcs)
     if gen then
@@ -299,7 +300,8 @@ local function get_priority(route)
     match_weight = match_weight + 1
   end
 
-  -- stream subsystem expressions
+  -- stream subsystem
+
   if not is_http then
     if not is_empty_field(srcs) then
       match_weight = match_weight + 1
@@ -312,7 +314,7 @@ local function get_priority(route)
     return match_weight
   end
 
-  -- http subsystem expressions
+  -- http subsystem
 
   if not is_empty_field(methods) then
     match_weight = match_weight + 1
@@ -470,7 +472,9 @@ function _M.new(routes_and_services, cache, cache_neg, old_router)
     return error("expected arg #1 routes to be a table", 2)
   end
 
-  routes_and_services = split_routes_and_services_by_path(routes_and_services)
+  if is_http then
+    routes_and_services = split_routes_and_services_by_path(routes_and_services)
+  end
 
   return atc.new(routes_and_services, cache, cache_neg, old_router, get_exp_and_priority)
 end
