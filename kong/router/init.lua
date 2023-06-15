@@ -7,15 +7,9 @@ local kong = kong
 
 local traditional = require("kong.router.traditional")
 local expressions = require("kong.router.expressions")
+local compat      = require("kong.router.compat")
 local utils       = require("kong.router.utils")
 
-
-local compat
-if ngx.config.subsystem == "http" then
-  compat = require("kong.router.compat")
-else
-  compat = require("kong.router.compat_stream")
-end
 
 local phonehome_statistics = utils.phonehome_statistics
 

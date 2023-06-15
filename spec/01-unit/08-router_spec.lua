@@ -13,6 +13,7 @@ local function reload_router(flavor, subsystem)
   ngx.config.subsystem = subsystem or "http"
 
   package.loaded["kong.router.atc"] = nil
+  package.loaded["kong.router.compat"] = nil
   package.loaded["kong.router"] = nil
 
   Router = require "kong.router"

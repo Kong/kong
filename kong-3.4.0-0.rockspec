@@ -52,7 +52,6 @@ build = {
     ["kong.router"] = "kong/router/init.lua",
     ["kong.router.traditional"] = "kong/router/traditional.lua",
     ["kong.router.compat"] = "kong/router/compat.lua",
-    ["kong.router.compat_stream"] = "kong/router/compat_stream.lua",
     ["kong.router.expressions"] = "kong/router/expressions.lua",
     ["kong.router.atc"] = "kong/router/atc.lua",
     ["kong.router.utils"] = "kong/router/utils.lua",

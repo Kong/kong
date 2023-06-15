@@ -28,6 +28,9 @@ local byte = string.byte
 local bor, band, lshift = bit.bor, bit.band, bit.lshift
 
 
+local is_http = ngx.config.subsystem == "http"
+
+
 local DOT              = byte(".")
 local TILDE            = byte("~")
 local ASTERISK         = byte("*")
@@ -55,10 +58,62 @@ local OP_EQUAL    = "=="
 local OP_PREFIX   = "^="
 local OP_POSTFIX  = "=^"
 local OP_REGEX    = "~"
+local OP_IN       = "in"
 
 
 local LOGICAL_OR  = atc.LOGICAL_OR
 local LOGICAL_AND = atc.LOGICAL_AND
+
+
+local function gen_for_nets(ip_field, port_field, vals)
+  if is_empty_field(vals) then
+    return nil
+  end
+
+  local nets_buf = buffer.new(64):put("(")
+
+  for i, v in ipairs(vals) do
+    if type(v) ~= "table" then
+      return nil, "sources/destinations elements must be a table"
+    end
+
+    if is_empty_field(v) then
+      return nil, "sources/destinations elements must not be empty"
+    end
+
+    local ip = v.ip
+    local port = v.port
+
+    local exp_ip, exp_port
+
+    if ip then
+      exp_ip = ip_field .. " " ..
+               (string.find(ip, "/", 1, true) and OP_IN or OP_EQUAL) ..
+               " " .. ip
+    end
+
+    if port then
+      exp_port = port_field .. " " ..  OP_EQUAL .. " " .. port
+    end
+
+    if not ip then
+      buffer_append(nets_buf, LOGICAL_OR, exp_port, i)
+      goto continue
+    end
+
+    if not port then
+      buffer_append(nets_buf, LOGICAL_OR, exp_ip, i)
+      goto continue
+    end
+
+    buffer_append(nets_buf, LOGICAL_OR,
+                  "(" .. exp_ip .. LOGICAL_AND .. exp_port .. ")", i)
+
+    ::continue::
+  end   -- for
+
+  return nets_buf:put(")"):get()
+end
 
 
 -- When splitting routes, we need to assign new UUIDs to the split routes.  We use uuid v5 to generate them from
@@ -73,6 +128,10 @@ local function get_expression(route)
   local paths   = route.paths
   local headers = route.headers
   local snis    = route.snis
+
+  -- stream subsystem
+  local srcs    = route.sources
+  local dsts    = route.destinations
 
   expr_buf:reset()
 
@@ -89,13 +148,33 @@ local function get_expression(route)
 
     return p
   end)
+
   if gen then
     -- See #6425, if `net.protocol` is not `https`
     -- then SNI matching should simply not be considered
-    gen = "(net.protocol != \"https\"" .. LOGICAL_OR .. gen .. ")"
+    if is_http then
+      gen = "(net.protocol != \"https\"" .. LOGICAL_OR .. gen .. ")"
+    end
 
     buffer_append(expr_buf, LOGICAL_AND, gen)
   end
+
+  -- stream subsystem
+  if not is_http then
+    local gen = gen_for_nets("net.src.ip", "net.src.port", srcs)
+    if gen then
+      buffer_append(expr_buf, LOGICAL_AND, gen)
+    end
+
+    local gen = gen_for_nets("net.dst.ip", "net.dst.port", dsts)
+    if gen then
+      buffer_append(expr_buf, LOGICAL_AND, gen)
+    end
+
+    return expr_buf:get()
+  end
+
+  -- http subsystem
 
   if not is_empty_field(hosts) then
     hosts_buf:reset():put("(")
@@ -211,7 +290,30 @@ local function get_priority(route)
   local headers = route.headers
   local snis    = route.snis
 
+  -- stream subsystem
+  local srcs    = route.sources
+  local dsts    = route.destinations
+
   local match_weight = 0
+
+  if not is_empty_field(snis) then
+    match_weight = match_weight + 1
+  end
+
+  -- stream subsystem expressions
+  if not is_http then
+    if not is_empty_field(srcs) then
+      match_weight = match_weight + 1
+    end
+
+    if not is_empty_field(dsts) then
+      match_weight = match_weight + 1
+    end
+
+    return match_weight
+  end
+
+  -- http subsystem expressions
 
   if not is_empty_field(methods) then
     match_weight = match_weight + 1
@@ -231,10 +333,6 @@ local function get_priority(route)
                         " headers count capped at 255 when sorting")
       headers_count = MAX_HEADER_COUNT
     end
-  end
-
-  if not is_empty_field(snis) then
-    match_weight = match_weight + 1
   end
 
   local plain_host_only = type(hosts) == "table"
