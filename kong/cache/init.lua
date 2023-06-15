@@ -169,6 +169,20 @@ function _M:get(key, opts, cb, ...)
 end
 
 
+function _M:renew(key, opts, cb, ...)
+  if type(key) ~= "string" then
+    error("key must be a string", 2)
+  end
+
+  local v, err, ttl = self.mlcache:renew(key, opts, cb, ...)
+  if err then
+    return nil, "failed to renew key in node cache: " .. err
+  end
+
+  return v, nil, ttl
+end
+
+
 function _M:get_bulk(bulk, opts)
   if type(bulk) ~= "table" then
     error("bulk must be a table", 2)
