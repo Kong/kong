@@ -7,7 +7,6 @@ local kong = kong
 
 local traditional = require("kong.router.traditional")
 local expressions = require("kong.router.expressions")
-local compat      = require("kong.router.compat")
 local utils       = require("kong.router.utils")
 
 
