@@ -306,7 +306,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(403, res)
         local json = cjson.decode(body)
-        assert.matches(json, "IP address not allowed")
+        assert.matches("IP address not allowed", json)
       end)
 
       it("blocks a request when the IP is denied with status/message", function()
