@@ -160,6 +160,7 @@ local function get_exp_and_priority(route)
 
   local exp      = get_expression(route)
   local priority = get_priority(route)
+  print(exp)
 
   return exp, priority
 end

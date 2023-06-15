@@ -10,7 +10,9 @@ local function reload_router(flavor)
     },
   }
 
+  package.loaded["kong.router.atc"] = nil
   package.loaded["kong.router"] = nil
+
   Router = require "kong.router"
 end
 
@@ -4205,8 +4207,12 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
     end)
 
 
-    if flavor == "traditional" then
+    if flavor == "traditional" or flavor == "traditional_compatible" then
       describe("#stream context", function()
+        -- enable compat_stream module
+        ngx.config.subsystem = "stream"
+        reload_router(flavor)
+
         describe("[sources]", function()
           local use_case, router
 
@@ -4216,6 +4222,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
               {
                 service = service,
                 route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
                   sources = {
                     { ip = "127.0.0.1" },
                     { ip = "127.0.0.2" },
@@ -4225,6 +4232,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
               {
                 service = service,
                 route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
                   sources = {
                     { port = 65001 },
                     { port = 65002 },
@@ -4235,6 +4243,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
               {
                 service = service,
                 route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8103",
                   sources = {
                     { ip = "127.168.0.0/8" },
                   }
@@ -4244,6 +4253,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
               {
                 service = service,
                 route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8104",
                   sources = {
                     { ip = "127.0.0.1", port = 65001 },
                   }
@@ -4252,6 +4262,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
               {
                 service = service,
                 route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8105",
                   sources = {
                     { ip = "127.0.0.2", port = 65300 },
                     { ip = "127.168.0.0/16", port = 65301 },
@@ -4263,7 +4274,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             router = assert(new_router(use_case))
           end)
 
-          it("[src_ip]", function()
+          it("#only [src_ip]", function()
             local match_t = router:select(nil, nil, nil, "tcp", "127.0.0.1")
             assert.truthy(match_t)
             assert.same(use_case[1].route, match_t.route)
