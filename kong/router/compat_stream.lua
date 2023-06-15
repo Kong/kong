@@ -118,7 +118,25 @@ end
 
 
 local function get_priority(route)
-  return 100
+  local snis = route.snis
+  local srcs = route.sources
+  local dsts = route.destinations
+
+  local match_weight = 0
+
+  if not is_empty_field(srcs) then
+    match_weight = match_weight + 1
+  end
+
+  if not is_empty_field(dsts) then
+    match_weight = match_weight + 1
+  end
+
+  if not is_empty_field(snis) then
+    match_weight = match_weight + 1
+  end
+
+  return match_weight
 end
 
 
