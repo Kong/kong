@@ -162,6 +162,7 @@ local function add_atc_matcher(inst, route, route_id,
 
   local ok, err = inst:add_matcher(priority, route_id, exp)
   if not ok then
+    print(exp)
     return nil, "could not add route: " .. route_id .. ", err: " .. err
   end
 

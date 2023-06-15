@@ -69,7 +69,7 @@ local function gen_for_nets(ip_field, port_field, vals)
     if ip then
       exp_ip = ip_field .. " " ..
                (string.find(ip, "/", 1, true) and OP_IN or OP_EQUAL) ..
-               " \"" .. ip .. "\""
+               " " .. ip
     end
 
     if port then
@@ -160,7 +160,6 @@ local function get_exp_and_priority(route)
 
   local exp      = get_expression(route)
   local priority = get_priority(route)
-  print(exp)
 
   return exp, priority
 end
