@@ -4584,13 +4584,14 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
     end
 
     if flavor == "traditional_compatible" then
-      describe("#stream context", function()
+      describe("#only #stream context", function()
         -- enable compat_stream
         reload_router(flavor, "stream")
 
+        local get_expression = require("kong.router.compat").get_expression
+
         describe("check empty route fields", function()
           local use_case
-          local get_expression = require("kong.router.compat").get_expression
 
           before_each(function()
             use_case = {
@@ -4631,10 +4632,10 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             end)
           end
         end)
-      end)
-    end
-  end)
-end
+      end)  -- #stream context
+    end     -- if flavor == "traditional_compatible"
+  end)  -- describe("Router (flavor =
+end     -- for _, flavor
 
 
 describe("[both regex and prefix with regex_priority]", function()
