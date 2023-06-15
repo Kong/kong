@@ -92,7 +92,7 @@ local function gen_for_nets(ip_field, port_field, vals)
     ::continue::
   end   -- for
 
-  return nets_buf:get()
+  return nets_buf:put(")"):get()
 end
 
 
