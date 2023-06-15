@@ -135,11 +135,6 @@ local function get_expression(route)
 
   expr_buf:reset()
 
-  local gen = gen_for_field("http.method", OP_EQUAL, methods)
-  if gen then
-    buffer_append(expr_buf, LOGICAL_AND, gen)
-  end
-
   local gen = gen_for_field("tls.sni", OP_EQUAL, snis, function(_, p)
     if #p > 1 and byte(p, -1) == DOT then
       -- last dot in FQDNs must not be used for routing
@@ -148,7 +143,6 @@ local function get_expression(route)
 
     return p
   end)
-
   if gen then
     -- See #6425, if `net.protocol` is not `https`
     -- then SNI matching should simply not be considered
@@ -175,6 +169,11 @@ local function get_expression(route)
   end
 
   -- http subsystem
+
+  local gen = gen_for_field("http.method", OP_EQUAL, methods)
+  if gen then
+    buffer_append(expr_buf, LOGICAL_AND, gen)
+  end
 
   if not is_empty_field(hosts) then
     hosts_buf:reset():put("(")
