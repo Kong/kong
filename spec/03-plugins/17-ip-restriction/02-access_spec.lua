@@ -278,8 +278,8 @@ for _, strategy in helpers.each_strategy() do
         real_ip_recursive = "on",
         trusted_ips       = "0.0.0.0/0, ::/0",
         nginx_conf        = "spec/fixtures/custom_nginx.template",
-        stream_listen     = helpers.get_proxy_ip(false) .. ":19000" ..
-                            helpers.get_proxy_ip(false) .. ":19443 ssl"
+        stream_listen     = helpers.get_proxy_ip(false) .. "0.0.0.0/0:19000" ..
+                            helpers.get_proxy_ip(false) .. "0.0.0.0/0:19443 ssl"
       })
 
       proxy_client = helpers.proxy_client()
