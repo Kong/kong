@@ -4212,7 +4212,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
 
     if flavor == "traditional" or flavor == "traditional_compatible" then
       describe("#stream context", function()
-        -- enable compat_stream module
+        -- enable compat_stream
         reload_router(flavor, "stream")
 
         describe("[sources]", function()
@@ -4579,6 +4579,57 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
                                         "172.168.0.1", nil, "www.example.org")
           assert.truthy(match_t)
           assert.same(use_case[2].route, match_t.route)
+        end)
+      end)
+    end
+
+    if flavor == "traditional_compatible" then
+      describe("#stream context", function()
+        -- enable compat_stream
+        reload_router(flavor, "stream")
+
+        describe("check empty route fields", function()
+          local use_case
+          local get_expression = require("kong.router.compat").get_expression
+
+          before_each(function()
+            use_case = {
+              {
+                service = service,
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  snis = { "www.example.org" },
+                  sources = {
+                    { ip = "127.0.0.1" },
+                  }
+                },
+              },
+            }
+          end)
+
+          local empty_values = { {}, ngx.null, nil }
+          for i = 1, 3 do
+            it("empty snis", function()
+              use_case[1].route.snis = v
+
+              assert.equal(get_expression(use_case[1].route), [[(net.src.ip == 127.0.0.1)]])
+              --assert(new_router(use_case))
+            end)
+
+            it("empty sources", function()
+              use_case[1].route.sources = v
+
+              assert.equal(get_expression(use_case[1].route), [[(tls.sni == "www.example.org")]])
+              --assert(new_router(use_case))
+            end)
+
+            it("empty destinations", function()
+              use_case[1].route.destinations = v
+
+              assert.equal(get_expression(use_case[1].route), [[(tls.sni == "www.example.org") && (net.src.ip == 127.0.0.1)]])
+              --assert(new_router(use_case))
+            end)
+          end
         end)
       end)
     end
