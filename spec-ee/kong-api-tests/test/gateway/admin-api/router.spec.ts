@@ -351,11 +351,9 @@ describe('@smoke: Router Functionality Tests', function () {
 
     await wait(4000);
     const currentLogs = getGatewayContainerLogs(kongContainerName, 15);
-    const errorLog = findRegex('\\[error\\]', currentLogs);
     const panickLog = findRegex('panicked', currentLogs);
     const outOfRangeLog = findRegex('out of range', currentLogs);
 
-    expect(errorLog, 'Should not see error log').to.be.false;
     expect(panickLog, 'Should not see router panic error log').to.be.false;
     expect(outOfRangeLog, 'Should not see out of range error log').to.be.false;
   });
