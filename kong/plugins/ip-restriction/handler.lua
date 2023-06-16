@@ -51,7 +51,7 @@ else
 
     tcpsock:send(cjson_encode({
       message = message
-    }))z
+    }))
 
     return ngx_exit(status)
   end
