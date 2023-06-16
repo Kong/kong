@@ -162,6 +162,8 @@ return {
       "add_claims",
       "set_claims",
     },
+  },
+  [3004000000] = {
     openid_connect = {
       "expose_error_code",
     },
