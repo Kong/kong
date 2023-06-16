@@ -339,7 +339,7 @@ for _, strategy in helpers.each_strategy() do
         assert(tcp:sslhandshake(nil, nil, false))
         assert(tcp:send(MESSAGE))
         local body = assert(tcp:receive("*a"))
-        assert.matches("IP address not allowed", body))
+        assert.matches("IP address not allowed", body)
         tcp:close()
       end)
 
