@@ -71,6 +71,22 @@ local LOGICAL_AND = atc.LOGICAL_AND
 local uuid_generator = assert(uuid.factory_v5('7f145bf9-0dce-4f91-98eb-debbce4b9f6b'))
 
 
+local parse_ip_addr
+do
+  local ipmatcher = require("resty.ipmatcher")
+  parse_ip_addr = function(ip)
+    local addr, mask = ipmatcher.split_ip(ip)
+
+    if not mask then
+      return addr
+    end
+
+    -- TODO
+    return addr, mask
+  end
+end
+
+
 local function gen_for_nets(ip_field, port_field, vals)
   if is_empty_field(vals) then
     return nil
@@ -93,9 +109,16 @@ local function gen_for_nets(ip_field, port_field, vals)
     local exp_ip, exp_port
 
     if ip then
-      exp_ip = ip_field .. " " ..
-               (string.find(ip, "/", 1, true) and OP_IN or OP_EQUAL) ..
-               " " .. ip
+      local addr, mask = parse_ip_addr(ip)
+
+      if not mask then
+        exp_ip = ip_field .. " " ..  OP_EQUAL .. " " ..
+                 addr
+
+      else
+        exp_ip = ip_field .. " " .. OP_IN ..  " " ..
+                 addr .. "/" .. mask
+      end
     end
 
     if port then
