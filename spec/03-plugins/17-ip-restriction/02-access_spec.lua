@@ -386,8 +386,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         local body = assert.res_status(403, res)
-        local json = cjson.decode(body)
-        assert.is_true(string.find(json, "IP address not allowed"))
+        assert.matches("IP address not allowed", body)
       end)
       it("blocks an IP on a allowed CIDR range", function()
         local res = assert(proxy_client:send {
@@ -398,8 +397,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         local body = assert.res_status(403, res)
-        local json = cjson.decode(body)
-        assert.is_true(string.find(json, "IP address not allowed"))
+        assert.matches("IP address not allowed", body)
       end)
       it("takes precedence over an allowed IP", function()
         local res = assert(proxy_client:send {
@@ -410,8 +408,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         local body = assert.res_status(403, res)
-        local json = cjson.decode(body)
-        assert.is_true(string.find(json, "IP address not allowed"))
+        assert.matches("IP address not allowed", body)
       end)
       it("takes precedence over an allowed CIDR range", function()
         local res = assert(proxy_client:send {
@@ -422,8 +419,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         local body = assert.res_status(403, res)
-        local json = cjson.decode(body)
-        assert.is_true(string.find(json, "IP address not allowed"))
+        assert.matches("IP address not allowed", body)
       end)
 
       describe("X-Forwarded-For", function()
@@ -462,8 +458,7 @@ for _, strategy in helpers.each_strategy() do
             }
           })
           local body = assert.res_status(403, res)
-          local json = cjson.decode(body)
-          assert.is_true(string.find(json, "IP address not allowed"))
+          assert.matches("IP address not allowed", body)
         end)
       end)
     end)
@@ -502,8 +497,7 @@ for _, strategy in helpers.each_strategy() do
             }
           })
           local body = assert.res_status(403, res)
-          local json = cjson.decode(body)
-          assert.is_true(string.find(json, "IP address not allowed"))
+          assert.matches("IP address not allowed", body)
         end)
         it("block with not allowed X-Forwarded-For header", function()
           local res = assert(proxy_client:send {
@@ -515,8 +509,7 @@ for _, strategy in helpers.each_strategy() do
             }
           })
           local body = assert.res_status(403, res)
-          local json = cjson.decode(body)
-          assert.is_true(string.find(json, "IP address not allowed"))
+          assert.matches("IP address not allowed", body)
         end)
         it("block with not allowed X-Forwarded-For header #grpc", function()
           local ok, err = helpers.proxy_client_grpc(){
@@ -598,8 +591,7 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       local body = assert.res_status(403, res)
-      local json = cjson.decode(body)
-      assert.is_true(string.find(json, "IP address not allowed"))
+      assert.matches("IP address not allowed", body)
 
       res = assert(admin_client:send {
         method  = "PATCH",
