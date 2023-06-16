@@ -44,7 +44,16 @@ if is_http_subsystem then
 
 else
   do_exit = function(status, message)
-    return kong.response.exit(status, { message = message })
+    local tcpsock, err = ngx_req.socket(true)
+    if err then
+      error(err)
+    end
+
+    tcpsock:send(cjson_encode({
+      message = message
+    }))z
+
+    return ngx_exit(status)
   end
 end
 
