@@ -17,11 +17,7 @@ local ngx_ERR = ngx.ERR
 
 -- map to normal protocol
 local protocols_mapping = {
-  http            = "http",
-  https           = "https",
-  tcp             = "tcp",
   tls             = "tcp",
-  udp             = "udp",
   tls_passthrough = "tcp",
   grpc            = "http",
   grpcs           = "https",
@@ -36,8 +32,10 @@ local function get_exp_and_priority(route)
     return
   end
 
-  local gen = gen_for_field("net.protocol", OP_EQUAL,
-                            protocols_mapping[route.protocols])
+  local gen = gen_for_field("net.protocol", OP_EQUAL, route.protocols,
+                            function(_, p)
+                              return protocols_mapping[p] or p
+                            end)
   if gen then
     exp = exp .. LOGICAL_AND .. gen
   end
