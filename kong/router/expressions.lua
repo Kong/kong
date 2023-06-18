@@ -37,7 +37,7 @@ local function get_exp_and_priority(route)
   end
 
   local gen = gen_for_field("net.protocol", OP_EQUAL,
-                            protocols_mapping(route.protocols))
+                            protocols_mapping[route.protocols])
   if gen then
     exp = exp .. LOGICAL_AND .. gen
   end
