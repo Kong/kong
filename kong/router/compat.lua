@@ -17,6 +17,7 @@ local escape_str      = atc.escape_str
 local is_empty_field  = atc.is_empty_field
 local gen_for_field   = atc.gen_for_field
 local split_host_port = atc.split_host_port
+local parse_ip_addr   = require("kong.router.utils").parse_ip_addr
 
 
 local type = type
@@ -69,22 +70,6 @@ local LOGICAL_AND = atc.LOGICAL_AND
 -- the original route id and the path index so that incremental rebuilds see stable IDs for routes that have not
 -- changed.
 local uuid_generator = assert(uuid.factory_v5('7f145bf9-0dce-4f91-98eb-debbce4b9f6b'))
-
-
-local parse_ip_addr
-do
-  local ipmatcher = require("resty.ipmatcher")
-  parse_ip_addr = function(ip)
-    local addr, mask = ipmatcher.split_ip(ip)
-
-    if not mask then
-      return addr
-    end
-
-    -- TODO
-    return addr, mask
-  end
-end
 
 
 local function gen_for_nets(ip_field, port_field, vals)
