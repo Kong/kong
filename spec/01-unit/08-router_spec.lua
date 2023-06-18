@@ -4610,6 +4610,8 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
 
           local empty_values = { {}, ngx.null, nil }
           for i = 1, 3 do
+            local v = empty_values[i]
+
             it("empty snis", function()
               use_case[1].route.snis = v
 
