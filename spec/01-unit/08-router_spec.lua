@@ -4247,8 +4247,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
                 route = {
                   id = "e8fb37f1-102d-461e-9c51-6608a6bb8103",
                   sources = {
-                    --{ ip = "127.168.0.0/8" }, -- XXX
-                    { ip = "127.0.0.0/8" },
+                    { ip = "127.168.0.0/8" },
                   }
                 }
               },
