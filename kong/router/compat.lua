@@ -137,10 +137,6 @@ local function get_expression(route)
   local headers = route.headers
   local snis    = route.snis
 
-  -- stream subsystem
-  local srcs    = route.sources
-  local dsts    = route.destinations
-
   expr_buf:reset()
 
   local gen = gen_for_field("tls.sni", OP_EQUAL, snis, function(_, p)
@@ -164,12 +160,12 @@ local function get_expression(route)
   -- stream subsystem
 
   if not is_http then
-    local gen = gen_for_nets("net.src.ip", "net.src.port", srcs)
+    local gen = gen_for_nets("net.src.ip", "net.src.port", route.sources)
     if gen then
       buffer_append(expr_buf, LOGICAL_AND, gen)
     end
 
-    local gen = gen_for_nets("net.dst.ip", "net.dst.port", dsts)
+    local gen = gen_for_nets("net.dst.ip", "net.dst.port", route.destinations)
     if gen then
       buffer_append(expr_buf, LOGICAL_AND, gen)
     end
@@ -298,10 +294,6 @@ local function get_priority(route)
   local headers = route.headers
   local snis    = route.snis
 
-  -- stream subsystem
-  local srcs    = route.sources
-  local dsts    = route.destinations
-
   local match_weight = 0
 
   if not is_empty_field(snis) then
@@ -311,11 +303,11 @@ local function get_priority(route)
   -- stream subsystem
 
   if not is_http then
-    if not is_empty_field(srcs) then
+    if not is_empty_field(route.sources) then
       match_weight = match_weight + 1
     end
 
-    if not is_empty_field(dsts) then
+    if not is_empty_field(route.destinations) then
       match_weight = match_weight + 1
     end
 
