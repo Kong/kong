@@ -10,7 +10,7 @@ local function reload_router(flavor, subsystem)
     },
   }
 
-  ngx.config.subsystem = subsystem or "http"
+  ngx.config.subsystem = subsystem or "http" -- luacheck: ignore
 
   package.loaded["kong.router.atc"] = nil
   package.loaded["kong.router.compat"] = nil
