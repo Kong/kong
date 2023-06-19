@@ -4584,7 +4584,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
     end
 
     if flavor == "traditional_compatible" then
-      describe("#only #stream context", function()
+      describe("#stream context", function()
         -- enable compat_stream
         reload_router(flavor, "stream")
 
