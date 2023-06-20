@@ -60,18 +60,18 @@ local CACHED_SCHEMA
 do
   local FIELDS = {
 
-      ["String"] = {"net.protocol", "tls.sni",
-                    "http.method", "http.host",
-                    "http.path", "http.raw_path",
-                    "http.headers.*",
-                   },
+    ["String"] = {"net.protocol", "tls.sni",
+                  "http.method", "http.host",
+                  "http.path", "http.raw_path",
+                  "http.headers.*",
+                 },
 
-      ["Int"]    = {"net.port",
-                    "net.src.port", "net.dst.port",
-                   },
+    ["Int"]    = {"net.port",
+                  "net.src.port", "net.dst.port",
+                 },
 
-      --["IpAddr"] = { "net.src.ip", "net.dst.ip", },
-      ["IpCidr"] = { "net.src.ip", "net.dst.ip", },
+    --["IpAddr"] = { "net.src.ip", "net.dst.ip", },
+    ["IpCidr"] = { "net.src.ip", "net.dst.ip", },
   }
 
   CACHED_SCHEMA = schema.new()
