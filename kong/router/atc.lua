@@ -16,7 +16,6 @@ local context = require("resty.router.context")
 local lrucache = require("resty.lrucache")
 local server_name = require("ngx.ssl").server_name
 local tb_new = require("table.new")
-local tb_clear = require("table.clear")
 local utils = require("kong.router.utils")
 local yield = require("kong.tools.utils").yield
 
@@ -494,13 +493,12 @@ end
 
 local get_headers_key
 do
-  local headers_t = tb_new(8, 0)
+  local headers_buf = buffer.new(64)
 
   get_headers_key = function(headers)
-    tb_clear(headers_t)
+    headers_buf:reset()
 
-    local headers_count = 0
-
+    -- NOTE: DO NOT yield until headers_buf:get()
     for name, value in pairs(headers) do
       local name = name:gsub("-", "_"):lower()
 
@@ -515,15 +513,10 @@ do
         value = value:lower()
       end
 
-      headers_t[headers_count + 1] = "|"
-      headers_t[headers_count + 2] = name
-      headers_t[headers_count + 3] = "="
-      headers_t[headers_count + 4] = value
-
-      headers_count = headers_count + 4
+      headers_buf:putf("|%s=%s", name, value)
     end
 
-    return tb_concat(headers_t, nil, 1, headers_count)
+    return headers_buf:get()
   end
 end
 
