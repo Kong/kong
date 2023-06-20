@@ -36,6 +36,9 @@
 
 #### Core
 
+- Enable `expressions` and `traditional_compatible` router in stream subsystem.
+  [#11071](https://github.com/Kong/kong/pull/11071)
+
 #### Admin API
 
 #### Kong Manager
