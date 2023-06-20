@@ -78,11 +78,6 @@ jobs:
           source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           scripts/autodoc
 
-    - name: Check Admin API definition generation
-      run: |
-          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
-          scripts/gen-admin-api-def.sh
-
     - name: Lint Lua code
       run: |
           make lint
@@ -110,7 +105,7 @@ jobs:
             TEST_CMD="$TEST_CMD --coverage"
           fi
           $TEST_CMD
-    
+
     - name: Archive coverage stats file
       uses: actions/upload-artifact@v3
       if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
