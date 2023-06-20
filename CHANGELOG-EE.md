@@ -25,6 +25,8 @@
 * Fix a bug that would cause an error when the header x-datadog-parent-id is not passed to Kong. [KAG-1642](https://konghq.atlassian.net/browse/KAG-1642)
 * Fix a queueing related bug that caused the event-hooks feature to
   not work in release 3.3.0.0 [KAG-1760](https://konghq.atlassian.net/browse/KAG-1760)
+* Update the datafile library to make the SAML plugin work again when
+  Kong is controlled by systemd [KAG-1832](https://konghq.atlassian.net/browse/KAG-1832)
 
 ## Plugins
 
@@ -49,7 +51,6 @@
   [FTI-5074](https://konghq.atlassian.net/browse/FTI-5074)
 * **Mtls-auth**: Fix a bug that would cause an unexpected error when `skip_consumer_lookup` is enabled and `authenticated_group_by` is set to `null`.
   [FTI-5101](https://konghq.atlassian.net/browse/FTI-5101)
-
 
 # 3.3.0.0
 

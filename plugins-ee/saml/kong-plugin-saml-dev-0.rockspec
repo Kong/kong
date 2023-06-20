@@ -13,7 +13,7 @@ description = {
 }
 
 dependencies = {
-  "datafile == 0.9-1",
+  "datafile == 0.10-1",
 }
 
 build = {
