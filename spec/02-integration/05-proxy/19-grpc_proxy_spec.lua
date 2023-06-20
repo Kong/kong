@@ -14,7 +14,10 @@ local function reload_router(flavor)
   }
 
   package.loaded["spec.helpers"] = nil
+  package.loaded["kong.db"] = nil
   package.loaded["kong.db.schema.entities.routes"] = nil
+  package.loaded["kong.db.schema.entities.routes_subschemas"] = nil
+
   helpers = require "spec.helpers"
 end
 
@@ -25,7 +28,7 @@ local function gen_route(flavor, r)
   end
 
   r.expression = atc_compat.get_expression(r)
-  r.priority = atc_compat._get_priority(r)
+  r.priority = tonumber(atc_compat._get_priority(r))
 
   r.hosts = nil
   r.paths = nil
