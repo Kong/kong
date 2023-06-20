@@ -4,7 +4,7 @@ local pl_path = require "pl.path"
 
 local FILE_LOG_PATH = os.tmpname()
 
-for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
+for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
 for _, strategy in helpers.each_strategy() do
 
   describe("gRPC Proxying [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
