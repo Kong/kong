@@ -4,9 +4,10 @@ local pl_path = require "pl.path"
 
 local FILE_LOG_PATH = os.tmpname()
 
+for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
 for _, strategy in helpers.each_strategy() do
 
-  describe("gRPC Proxying [#" .. strategy .. "]", function()
+  describe("gRPC Proxying [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
     local proxy_client_grpc
     local proxy_client_grpcs
     local proxy_client
@@ -115,6 +116,7 @@ for _, strategy in helpers.each_strategy() do
       ]]
 
       assert(helpers.start_kong({
+        router_flavor = flavor,
         database = strategy,
         nginx_conf       = "spec/fixtures/custom_nginx.template",
       }, nil, nil, fixtures))
@@ -363,3 +365,4 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 end
+end   -- flavor
