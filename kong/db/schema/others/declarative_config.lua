@@ -682,31 +682,33 @@ local function flatten(self, input)
     input._transform = true
   end
 
-  local ok, err = self:validate(input)
-  if not ok then
-    yield()
+  if kong.configuration.role ~= "data_plane" then
+    local ok, err = self:validate(input)
+    if not ok then
+      yield()
 
-    -- the error may be due entity validation that depends on foreign entity,
-    -- and that is the reason why we try to validate the input again with the
-    -- filled foreign keys
-    if not self.full_schema then
-      self.full_schema = DeclarativeConfig.load(self.plugin_set, self.vault_set, true)
+      -- the error may be due entity validation that depends on foreign entity,
+      -- and that is the reason why we try to validate the input again with the
+      -- filled foreign keys
+      if not self.full_schema then
+        self.full_schema = DeclarativeConfig.load(self.plugin_set, self.vault_set, true)
+      end
+
+      local input_copy = utils.cycle_aware_deep_copy(input, true)
+      populate_ids_for_validation(input_copy, self.known_entities)
+      local ok2, err2 = self.full_schema:validate(input_copy)
+      if not ok2 then
+        local err3 = utils.cycle_aware_deep_merge(err2, extract_null_errors(err))
+        return nil, err3
+      end
+
+      yield()
     end
 
-    local input_copy = utils.cycle_aware_deep_copy(input, true)
-    populate_ids_for_validation(input_copy, self.known_entities)
-    local ok2, err2 = self.full_schema:validate(input_copy)
-    if not ok2 then
-      local err3 = utils.cycle_aware_deep_merge(err2, extract_null_errors(err))
-      return nil, err3
-    end
+    generate_ids(input, self.known_entities)
 
     yield()
   end
-
-  generate_ids(input, self.known_entities)
-
-  yield()
 
   local processed = self:process_auto_fields(input, "insert")
 
