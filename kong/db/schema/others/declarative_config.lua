@@ -10,6 +10,7 @@ local schema_topological_sort = require("kong.db.schema.topological_sort")
 
 
 local null = ngx.null
+local byte = string.byte
 local type = type
 local next = next
 local pairs = pairs
@@ -19,6 +20,9 @@ local insert = table.insert
 local concat = table.concat
 local tostring = tostring
 local cjson_encode = require("cjson.safe").encode
+
+
+local UNDERSCORE = byte("_")
 
 
 local DeclarativeConfig = {}
@@ -723,7 +727,7 @@ local function flatten(self, input)
 
   local meta = {}
   for key, value in pairs(processed) do
-    if key:sub(1,1) == "_" then
+    if byte(key) == UNDERSCORE then
       meta[key] = value
     end
   end
