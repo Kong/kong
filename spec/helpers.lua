@@ -225,9 +225,6 @@ end
 ---------------
 local conf = assert(conf_loader(TEST_CONF_PATH))
 
--- backup router_flavor
-local router_flavor = kong and kong.configuration and  kong.configuration.router_flavor
-
 _G.kong = kong_global.new()
 kong_global.init_pdk(_G.kong, conf)
 ngx.ctx.KONG_PHASE = kong_global.phases.access
@@ -240,14 +237,6 @@ _G.kong.core_cache = {
     return func(...)
   end
 }
-
--- restore global router_flavor
-if router_flavor then
-  _G.kong.configuration = {
-    router_flavor = router_flavor,
-    remove_sensitive = _G.kong.configuration.remove_sensitive,
-    }
-end
 
 local db = assert(DB.new(conf))
 assert(db:init_connector())
