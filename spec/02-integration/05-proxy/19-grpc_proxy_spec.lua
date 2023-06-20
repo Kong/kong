@@ -51,9 +51,9 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client_h2c
     local proxy_client_h2
 
-    reload_router(flavor)
-
     lazy_setup(function()
+      reload_router(flavor)
+
       local bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",
@@ -173,6 +173,7 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_teardown(function()
       helpers.stop_kong()
+      helpers.unsetenv("KONG_ROUTER_FLAVOR")
     end)
 
     it("proxies grpc", function()
