@@ -1,8 +1,39 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local pl_path = require "pl.path"
+local atc_compat = require "kong.router.compat"
 
 local FILE_LOG_PATH = os.tmpname()
+
+
+local function reload_router(flavor)
+  _G.kong = {
+    configuration = {
+      router_flavor = flavor,
+    },
+  }
+
+  package.loaded["spec.helpers"] = nil
+  package.loaded["kong.db.schema.entities.routes"] = nil
+  helpers = require "spec.helpers"
+end
+
+
+local function gen_route(flavor, r)
+  if flavor ~= "expressions" then
+    return r
+  end
+
+  r.expression = atc_compat.get_expression(r)
+  r.priority = atc_compat._get_priority(r)
+
+  r.hosts = nil
+  r.paths = nil
+  r.snis  = nil
+
+  return r
+end
+
 
 for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
 for _, strategy in helpers.each_strategy() do
@@ -14,6 +45,8 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client_ssl
     local proxy_client_h2c
     local proxy_client_h2
+
+    reload_router(flavor)
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -55,38 +88,38 @@ for _, strategy in helpers.each_strategy() do
         target = "127.0.0.1:8765",
       })
 
-      assert(bp.routes:insert {
+      assert(bp.routes:insert(gen_route(flavor, {
         protocols = { "grpc" },
         hosts = { "grpc" },
         service = service1,
-      })
+      })))
 
-      assert(bp.routes:insert {
+      assert(bp.routes:insert(gen_route(flavor, {
         protocols = { "grpcs" },
         hosts = { "grpcs" },
         service = service2,
-      })
+      })))
 
-      assert(bp.routes:insert {
+      assert(bp.routes:insert(gen_route(flavor, {
         protocols = { "grpc" },
         hosts = { "grpc_authority_1.example" },
         service = mock_grpc_service,
         preserve_host = true,
-      })
+      })))
 
-      assert(bp.routes:insert {
+      assert(bp.routes:insert(gen_route(flavor, {
         protocols = { "grpc" },
         hosts = { "grpc_authority_2.example" },
         service = mock_grpc_service,
         preserve_host = false,
-      })
+      })))
 
-      assert(bp.routes:insert {
+      assert(bp.routes:insert(gen_route(flavor, {
         protocols = { "grpc" },
         hosts = { "grpc_authority_retry.example" },
         service = mock_grpc_service_retry,
         preserve_host = false,
-      })
+      })))
 
       assert(bp.plugins:insert {
         service = mock_grpc_service_retry,
