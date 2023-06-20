@@ -243,7 +243,10 @@ _G.kong.core_cache = {
 
 -- restore global router_flavor
 if router_flavor then
-  _G.kong.configuration = {router_flavor = router_flavor}
+  _G.kong.configuration = {
+    router_flavor = router_flavor,
+    remove_sensitive = _G.kong.configuration.remove_sensitive,
+    }
 end
 
 local db = assert(DB.new(conf))
