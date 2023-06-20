@@ -18,10 +18,10 @@ return {
   db_export = false,
   fields = {
     { id             = typedefs.uuid, },
-    { name           =  {type = "string", required = true, unique = true}}, -- we accept '@' so it's not a typedef.name
-    { comment = {type = "string"} },
+    { name           =  { description = "The name of the RBAC role.", type = "string", required = true, unique = true}}, -- we accept '@' so it's not a typedef.name
+    { comment = { description = "Additional comment or description for the RBAC role.", type = "string" } },
     { created_at     = typedefs.auto_timestamp_s },
     { updated_at     = typedefs.auto_timestamp_s },
-    { is_default = {type = "boolean", required = true, default = false} },
+    { is_default = { description = "Indicates whether the RBAC role is the default role.", type = "boolean", required = true, default = false } },
   }
 }

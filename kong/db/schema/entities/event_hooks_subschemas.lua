@@ -20,25 +20,23 @@ local webhook_schema = {
         { method = typedefs.http_method { required = true } },
         -- payload as a data map of string:string ideally we allow here any
         -- data structure, but I think that's not allowed
-        { payload = { type = "map",
-                      keys = { type = "string" },
-                      values = { type = "string" },
-                      required = false } },
+        { payload = { description = "The payload data for the webhook requests.", type = "map", keys = { type = "string" }, values = { type = "string" }, required = false } },
         -- run resty templates on payload values
-        { payload_format = { type = "boolean", default = true } },
+        { payload_format = { description = "Indicates whether to apply Resty templates on the payload values.", type = "boolean", default = true } },
         -- raw body
-        { body = { type = "string", required = false, len_min = 0} },
+        { body = { description = "The raw body for the webhook requests.", type = "string", required = false, len_min = 0 } },
         -- run body as a resty template
-        { body_format = { type = "boolean", default = true} },
-        { headers = { type = "map",
+        { body_format = { description = "Indicates whether to run the body as a Resty template.", type = "boolean", default = true } },
+        { headers = { description = "The headers for the webhook requests.",
+                      type = "map",
                       keys = { type = "string" },
                       values = { type = "string" },
                       default = {} } },
         -- run resty template on header values
-        { headers_format = { type = "boolean", default = false } },
+        { headers_format = { description = "Indicates whether to apply Resty templates on the header values.", type = "boolean", default = false } },
         -- sign body with secret
-        { secret = { type = "string", required = false } },
-        { ssl_verify = { type = "boolean", default = false } },
+        { secret = { description = "The secret used to sign the webhook request body.", type = "string", required = false } },
+        { ssl_verify = { description = "Indicates whether to verify SSL certificates for the webhook requests.", type = "boolean", default = false } },
       },
     } }
   },
@@ -52,13 +50,14 @@ local simple_webhook_schema = {
       required = true,
       fields = {
         { url = typedefs.url { required = true } },
-        { headers = { type = "map",
+        { headers = { description = "The headers for the webhook requests.",
+                      type = "map",
                       keys = { type = "string" },
                       values = { type = "string" },
                       default = {} } },
         -- sign body with secret
-        { secret = { type = "string", required = false } },
-        { ssl_verify = { type = "boolean", default = false } },
+        { secret = { description = "The secret used to sign the webhook request body.", type = "string", required = false } },
+        { ssl_verify = { description = "Indicates whether to verify SSL certificates for the webhook requests.", type = "boolean", default = false } },
       },
     } }
   },

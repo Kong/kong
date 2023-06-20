@@ -15,10 +15,10 @@ return {
   db_export = false,
   fields = {
     { id              = typedefs.uuid },
-    { consumer        = { type = "foreign", reference = "consumers", }, },
+    { consumer = { description = "The consumer associated with the credential.", type = "foreign", reference = "consumers" } },
     { consumer_type   = ee_typedefs.consumer_type { required = true }},
-    { plugin          = { type = "string", required = true }, },
-    { credential_data = { type = "string", } },
+    { plugin = { description = "The plugin associated with the credential.", type = "string", required = true } },
+    { credential_data = { description = "Any data associated with the credential.", type = "string" } },
     { created_at      = typedefs.auto_timestamp_s },
     { updated_at      = typedefs.auto_timestamp_s },
   },

@@ -77,8 +77,7 @@ local config = {
             },
           },
           {
-            discovery_headers_names = {
-              required = false,
+            discovery_headers_names = { description = "Extra header names passed to the discovery endpoint.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -86,8 +85,7 @@ local config = {
             },
           },
           {
-            discovery_headers_values = {
-              required = false,
+            discovery_headers_values = { description = "Extra header values passed to the discovery endpoint.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -95,22 +93,19 @@ local config = {
             },
           },
           {
-            extra_jwks_uris = {
-              required = false,
+            extra_jwks_uris = { description = "JWKS URIs whose public keys are trusted (in addition to the keys found with the discovery).", required = false,
               type     = "set",
               elements = typedefs.url,
             },
           },
           {
-            rediscovery_lifetime = {
-              required = false,
+            rediscovery_lifetime = { description = "Specifies how long (in seconds) the plugin waits between discovery attempts. Discovery is still triggered on an as-needed basis.", required = false,
               type     = "number",
               default  = 30,
             },
           },
           {
-            auth_methods = {
-              required = false,
+            auth_methods = { description = "Types of credentials/grants to enable: - `password`: OAuth legacy password grant - `client_credentials`: OAuth client credentials grant - `authorization_code`: authorization code flow - `bearer`: JWT access token verification - `introspection`: OAuth introspection - `userinfo`: OpenID Connect user info endpoint authentication - `kong_oauth2`: Kong OAuth plugin issued tokens verification - `refresh_token`: OAuth refresh token grant - `session`: session cookie authentication", required = false,
               type     = "array",
               default  = {
                 "password",
@@ -140,8 +135,7 @@ local config = {
             },
           },
           {
-            client_id = {
-              required  = false,
+            client_id = { description = "The client id(s) that the plugin uses when it calls authenticated endpoints on the identity provider. Other settings that are associated with the client are: - `config.client_secret` - `config.client_auth` - `config.client_jwk` - `config.client_alg` - `config.redirect_uri` - `config.login_redirect_uri` - `config.logout_redirect_uri` - `config.unauthorized_redirect_uri` - `config.forbidden_redirect_uri` - `config.unexpected_redirect_uri`  Use the same array index when configuring related settings for the client.", required  = false,
               type      = "array",
               encrypted = true,
               elements  = {
@@ -151,8 +145,7 @@ local config = {
             },
           },
           {
-            client_secret = {
-              required  = false,
+            client_secret = { description = "The client secret.", required  = false,
               type      = "array",
               encrypted = true,
               elements  = {
@@ -162,8 +155,7 @@ local config = {
             },
           },
           {
-            client_auth = {
-              required  = false,
+            client_auth = { description = "The authentication method used by the client (plugin) when calling the endpoint.", required  = false,
               type      = "array",
               elements  = {
                 type    = "string",
@@ -209,78 +201,67 @@ local config = {
             },
           },
           {
-            client_arg = {
-              required = false,
+            client_arg = { description = "The client to use for this request (the selection is made with a request parameter with the same name). For example, setting this value to `Client`, and sending the request header `Client: 1` will cause the plugin to use the first client (see: `config.client_id`) from the client array.", required = false,
               type     = "string",
               default  = "client_id",
             },
           },
           {
-            redirect_uri = {
-              required = false,
+            redirect_uri = { description = "The redirect URI passed to the authorization and token endpoints.", required = false,
               type     = "array",
               elements = typedefs.url,
             },
           },
           {
-            login_redirect_uri = {
-              required = false,
+            login_redirect_uri = { description = "Where to redirect the client when `login_action` is set to `redirect`.", required = false,
               type     = "array",
               elements = typedefs.url,
             },
           },
           {
-            logout_redirect_uri = {
-              required = false,
+            logout_redirect_uri = { description = "Where to redirect the client after the logout.", required = false,
               type     = "array",
               elements = typedefs.url,
             },
           },
           {
-            forbidden_redirect_uri = {
-              required = false,
+            forbidden_redirect_uri = { description = "Where to redirect the client on forbidden requests.", required = false,
               type     = "array",
               elements = typedefs.url,
             },
           },
           {
-            forbidden_error_message = {
-              required = false,
+            forbidden_error_message = { description = "The error message for the forbidden requests (when not using the redirection).", required = false,
               type     = "string",
               default  = "Forbidden",
             },
           },
           {
-            forbidden_destroy_session = {
-              required = false,
+            forbidden_destroy_session = { description = "Destroy any active session for the forbidden requests.", required = false,
               type     = "boolean",
               default  = true,
             },
           },
           {
-            unauthorized_redirect_uri = {
-              required = false,
+            unauthorized_redirect_uri = { description = "Where to redirect the client on unauthorized requests.", required = false,
               type     = "array",
               elements = typedefs.url,
             },
           },
           {
-            unauthorized_error_message = {
-              required = false,
+            unauthorized_error_message = { description = "The error message for the unauthorized requests (when not using the redirection).", required = false,
               type     = "string",
               default  = "Unauthorized",
             },
           },
           {
-            unexpected_redirect_uri = {
-              required = false,
+            unexpected_redirect_uri = { description = "Where to redirect the client when unexpected errors happen with the requests.", required = false,
               type     = "array",
               elements = typedefs.url,
             },
           },
           {
-            response_mode = {
-              required = false,
+            response_mode = { description = "The response mode passed to the authorization endpoint: - `query`: Instructs the identity provider to pass parameters in query string - `form_post`: Instructs the identity provider to pass parameters in request body - `fragment`: Instructs the identity provider to pass parameters in uri fragment (rarely useful as the plugin itself cannot read it)", required = false,
               type     = "string",
               default  = "query",
               one_of   = {
@@ -291,8 +272,7 @@ local config = {
             },
           },
           {
-            response_type = {
-              required = false,
+            response_type = { description = "The response type passed to the authorization endpoint.", required = false,
               type     = "array",
               default  = {
                 "code",
@@ -303,8 +283,7 @@ local config = {
             },
           },
           {
-            scopes = {
-              required = false,
+            scopes = { description = "The scopes passed to the authorization and token endpoints.", required = false,
               type     = "array",
               default  = {
                 "openid",
@@ -315,7 +294,23 @@ local config = {
             },
           },
           {
-            audience = {
+            audience = { description = "The audience passed to the authorization endpoint.", required = false,
+              type     = "array",
+              elements = {
+                type = "string",
+              },
+            },
+          },
+          {
+            issuers_allowed = { description = "The issuers allowed to be present in the tokens (`iss` claim).", required = false,
+              type     = "array",
+              elements = {
+                type = "string",
+              },
+            },
+          },
+          {
+            scopes_required = { description = "The scopes (`scopes_claim` claim) required to be present in the access token (or introspection results) for successful authorization. This config parameter works in both **AND** / **OR** cases. - When `[\"scope1 scope2\"]` are in the same array indices, both `scope1` AND `scope2` need to be present in access token (or introspection results). - When `[\"scope1\", \"scope2\"]` are in different array indices, either `scope1` OR `scope2` need to be present in access token (or introspection results).",
               required = false,
               type     = "array",
               elements = {
@@ -324,26 +319,7 @@ local config = {
             },
           },
           {
-            issuers_allowed = {
-              required = false,
-              type     = "array",
-              elements = {
-                type = "string",
-              },
-            },
-          },
-          {
-            scopes_required = {
-              required = false,
-              type     = "array",
-              elements = {
-                type = "string",
-              },
-            },
-          },
-          {
-            scopes_claim = {
-              required = false,
+            scopes_claim = { description = "The claim that contains the scopes.", required = false,
               type     = "array",
               default  = { "scope" },
               elements = {
@@ -352,7 +328,7 @@ local config = {
             },
           },
           {
-            audience_required = {
+            audience_required = { description = "The audiences (`audience_claim` claim) required to be present in the access token (or introspection results) for successful authorization. This config parameter works in both **AND** / **OR** cases. - When `[\"audience1 audience2\"]` are in the same array indices, both `audience1` AND `audience2` need to be present in access token (or introspection results). - When `[\"audience1\", \"audience2\"]` are in different array indices, either `audience1` OR `audience2` need to be present in access token (or introspection results).",
               required = false,
               type     = "array",
               elements = {
@@ -361,8 +337,7 @@ local config = {
             },
           },
           {
-            audience_claim = {
-              required = false,
+            audience_claim = { description = "The claim that contains the audience.", required = false,
               type     = "array",
               default  = { "aud" },
               elements = {
@@ -371,7 +346,7 @@ local config = {
             },
           },
           {
-            groups_required = {
+            groups_required = { description = "The groups (`groups_claim` claim) required to be present in the access token (or introspection results) for successful authorization. This config parameter works in both **AND** / **OR** cases. - When `[\"group1 group2\"]` are in the same array indices, both `group1` AND `group2` need to be present in access token (or introspection results). - When `[\"group1\", \"group2\"]` are in different array indices, either `group1` OR `group2` need to be present in access token (or introspection results).",
               required = false,
               type     = "array",
               elements = {
@@ -380,8 +355,7 @@ local config = {
             },
           },
           {
-            groups_claim = {
-              required = false,
+            groups_claim = { description = "The claim that contains the groups.", required = false,
               type     = "array",
               default  = { "groups" },
               elements = {
@@ -390,7 +364,7 @@ local config = {
             },
           },
           {
-            roles_required = {
+            roles_required = { description = "The roles (`roles_claim` claim) required to be present in the access token (or introspection results) for successful authorization. This config parameter works in both **AND** / **OR** cases. - When `[\"role1 role2\"]` are in the same array indices, both `role1` AND `role2` need to be present in access token (or introspection results). - When `[\"role1\", \"role2\"]` are in different array indices, either `role1` OR `role2` need to be present in access token (or introspection results).",
               required = false,
               type     = "array",
               elements = {
@@ -399,8 +373,7 @@ local config = {
             },
           },
           {
-            roles_claim = {
-              required = false,
+            roles_claim = { description = "The claim that contains the roles.", required = false,
               type     = "array",
               default  = { "roles" },
               elements = {
@@ -409,8 +382,7 @@ local config = {
             },
           },
           {
-            domains = {
-              required = false,
+            domains = { description = "The allowed values for the `hd` claim.", required = false,
               type     = "array",
               elements = {
                 type = "string",
@@ -418,14 +390,12 @@ local config = {
             },
           },
           {
-            max_age = {
-              required = false,
+            max_age = { description = "The maximum age (in seconds) compared to the `auth_time` claim.", required = false,
               type     = "number",
             },
           },
           {
-            authenticated_groups_claim = {
-              required = false,
+            authenticated_groups_claim = { description = "The claim that contains authenticated groups. This setting can be used together with ACL plugin, but it also enables IdP managed groups with other applications and integrations (for example, Kong Manager and Dev Portal). The OpenID Connect plugin itself does not do anything other than set the context value.", required = false,
               type     = "array",
               elements = {
                 type = "string",
@@ -438,8 +408,7 @@ local config = {
             },
           },
           {
-            authorization_query_args_names = {
-              required = false,
+            authorization_query_args_names = { description = "Extra query argument names passed to the authorization endpoint.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -447,8 +416,7 @@ local config = {
             },
           },
           {
-            authorization_query_args_values = {
-              required = false,
+            authorization_query_args_values = { description = "Extra query argument values passed to the authorization endpoint.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -456,8 +424,7 @@ local config = {
             },
           },
           {
-            authorization_query_args_client = {
-              required = false,
+            authorization_query_args_client = { description = "Extra query arguments passed from the client to the authorization endpoint.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -465,15 +432,13 @@ local config = {
             },
           },
           {
-            authorization_rolling_timeout = {
-              required = false,
+            authorization_rolling_timeout = { description = "Network IO timeout in milliseconds.", required = false,
               type     = "number",
               default  = 600,
             },
           },
           {
-            authorization_cookie_name = {
-              required = false,
+            authorization_cookie_name = { description = "The authorization cookie name.", required = false,
               type     = "string",
               default  = "authorization",
             },
@@ -485,14 +450,12 @@ local config = {
             },
           },
           {
-            authorization_cookie_domain = {
-              required = false,
+            authorization_cookie_domain = { description = "The authorization cookie Domain flag.", required = false,
               type     = "string",
             },
           },
           {
-            authorization_cookie_same_site = {
-              required = false,
+            authorization_cookie_same_site = { description = "Controls whether a cookie is sent with cross-origin requests, providing some protection against cross-site request forgery attacks: - `Strict`: Cookies will only be sent in a first-party context and not be sent along with requests initiated by third party websites. - `Lax`: Cookies are not sent on normal cross-site subrequests (for example to load images or frames into a third party site), but are sent when a user is navigating to the origin site (for instance, when following a link). - `None`: Cookies will be sent in all contexts, for example in responses to both first-party and cross-origin requests. If `SameSite=None` is set, the cookie Secure attribute must also be set (or the cookie will be blocked). - `Default`: Do not explicitly specify a SameSite attribute.", required = false,
               type     = "string",
               default  = "Default",
               one_of   = {
@@ -504,21 +467,18 @@ local config = {
             },
           },
           {
-            authorization_cookie_http_only = {
-              required = false,
+            authorization_cookie_http_only = { description = "Forbids JavaScript from accessing the cookie, for example, through the `Document.cookie` property.", required = false,
               type     = "boolean",
               default  = true,
             },
           },
           {
-            authorization_cookie_secure = {
-              required = false,
+            authorization_cookie_secure = { description = "Cookie is only sent to the server when a request is made with the https: scheme (except on localhost), and therefore is more resistant to man-in-the-middle attacks.", required = false,
               type     = "boolean",
             },
           },
           {
-            preserve_query_args = {
-              required = false,
+            preserve_query_args = { description = "With this parameter, you can preserve request query arguments even when doing authorization code flow.", required = false,
               type     = "boolean",
               default  = false,
             },
@@ -529,8 +489,7 @@ local config = {
             },
           },
           {
-            token_endpoint_auth_method = {
-              required = false,
+            token_endpoint_auth_method = { description = "The token endpoint authentication method: - `client_secret_basic`: send `client_id` and `client_secret` in `Authorization: Basic` header - `client_secret_post`: send `client_id` and `client_secret` as part of the body - `client_secret_jwt`: send client assertion signed with the `client_secret` as part of the body - `private_key_jwt`:  send client assertion signed with the `private key` as part of the body - `none`: do not authenticate", required = false,
               type     = "string",
               one_of   = {
                 "client_secret_basic",
@@ -542,8 +501,7 @@ local config = {
             },
           },
           {
-            token_headers_names = {
-              required = false,
+            token_headers_names = { description = "Extra header names passed to the token endpoint.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -551,8 +509,7 @@ local config = {
             },
           },
           {
-            token_headers_values = {
-              required = false,
+            token_headers_values = { description = "Extra header values passed to the token endpoint.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -560,8 +517,7 @@ local config = {
             },
           },
           {
-            token_headers_client = {
-              required = false,
+            token_headers_client = { description = "Extra headers passed from the client to the token endpoint.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -569,8 +525,7 @@ local config = {
             },
           },
           {
-            token_headers_replay = {
-              required = false,
+            token_headers_replay = { description = "The names of token endpoint response headers to forward to the downstream client.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -578,14 +533,12 @@ local config = {
             },
           },
           {
-            token_headers_prefix = {
-              required = false,
+            token_headers_prefix = { description = "Add a prefix to the token endpoint response headers before forwarding them to the downstream client.", required = false,
               type     = "string",
             },
           },
           {
-            token_headers_grants = {
-              required = false,
+            token_headers_grants = { description = "Enable the sending of the token endpoint response headers only with certain grants: - `password`: with OAuth password grant - `client_credentials`: with OAuth client credentials grant - `authorization_code`: with authorization code flow - `refresh_token` with refresh token grant", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -599,8 +552,7 @@ local config = {
             },
           },
           {
-            token_post_args_names = {
-              required = false,
+            token_post_args_names = { description = "Extra post argument names passed to the token endpoint.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -608,8 +560,7 @@ local config = {
             },
           },
           {
-            token_post_args_values = {
-              required = false,
+            token_post_args_values = { description = "Extra post argument values passed to the token endpoint.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -617,8 +568,7 @@ local config = {
             },
           },
           {
-            token_post_args_client = {
-              required = false,
+            token_post_args_client = { description = "Pass extra arguments from the client to the OpenID-Connect plugin. If arguments exist, the client can pass them using: - Request Body - Query parameters  This parameter can be used with `scope` values, like this:  `config.token_post_args_client=scope`  In this case, the token would take the `scope` value from the query parameter or from the request body and send it to the token endpoint.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -631,8 +581,7 @@ local config = {
             },
           },
           {
-            introspection_endpoint_auth_method = {
-              required = false,
+            introspection_endpoint_auth_method = { description = "The introspection endpoint authentication method: - `client_secret_basic`: send `client_id` and `client_secret` in `Authorization: Basic` header - `client_secret_post`: send `client_id` and `client_secret` as part of the body - `client_secret_jwt`: send client assertion signed with the `client_secret` as part of the body - `private_key_jwt`:  send client assertion signed with the `private key` as part of the body - `none`: do not authenticate", required = false,
               type     = "string",
               one_of   = {
                 "client_secret_basic",
@@ -644,22 +593,19 @@ local config = {
             },
           },
           {
-            introspection_hint = {
-              required = false,
+            introspection_hint = { description = "Introspection hint parameter value passed to the introspection endpoint.", required = false,
               type     = "string",
               default  = "access_token",
             },
           },
           {
-            introspection_check_active = {
-              required = false,
+            introspection_check_active = { description = "Check that the introspection response has an `active` claim with a value of `true`.", required = false,
               type     = "boolean",
               default  = true,
             },
           },
           {
-            introspection_accept = {
-              required = false,
+            introspection_accept = { description = "The value of `Accept` header for introspection requests: - `application/json`: introspection response as JSON - `application/token-introspection+jwt`: introspection response as JWT (from the current IETF draft document) - `application/jwt`: introspection response as JWT (from the obsolete IETF draft document)", required = false,
               type     = "string",
               default  = "application/json",
               one_of   = {
@@ -670,8 +616,7 @@ local config = {
             },
           },
           {
-            introspection_headers_names = {
-              required = false,
+            introspection_headers_names = { description = "Extra header names passed to the introspection endpoint.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -679,8 +624,7 @@ local config = {
             },
           },
           {
-            introspection_headers_values = {
-              required = false,
+            introspection_headers_values = { description = "Extra header values passed to the introspection endpoint.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -688,8 +632,7 @@ local config = {
             },
           },
           {
-            introspection_headers_client = {
-              required = false,
+            introspection_headers_client = { description = "Extra headers passed from the client to the introspection endpoint.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -697,8 +640,7 @@ local config = {
             },
           },
           {
-            introspection_post_args_names = {
-              required = false,
+            introspection_post_args_names = { description = "Extra post argument names passed to the introspection endpoint.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -706,8 +648,7 @@ local config = {
             },
           },
           {
-            introspection_post_args_values = {
-              required = false,
+            introspection_post_args_values = { description = "Extra post argument values passed to the introspection endpoint.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -715,8 +656,7 @@ local config = {
             },
           },
           {
-            introspection_post_args_client = {
-              required = false,
+            introspection_post_args_client = { description = "Extra post arguments passed from the client to the introspection endpoint.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -724,8 +664,7 @@ local config = {
             },
           },
           {
-            introspect_jwt_tokens = {
-              required = false,
+            introspect_jwt_tokens = { description = "Specifies whether to introspect the JWT access tokens (can be used to check for revocations).", required = false,
               type     = "boolean",
               default  = false,
             },
@@ -736,8 +675,7 @@ local config = {
             },
           },
           {
-            revocation_endpoint_auth_method = {
-              required = false,
+            revocation_endpoint_auth_method = { description = "The revocation endpoint authentication method: - `client_secret_basic`: send `client_id` and `client_secret` in `Authorization: Basic` header - `client_secret_post`: send `client_id` and `client_secret` as part of the body - `client_secret_jwt`: send client assertion signed with the `client_secret` as part of the body - `private_key_jwt`:  send client assertion signed with the `private key` as part of the body - `none`: do not authenticate", required = false,
               type     = "string",
               one_of   = {
                 "client_secret_basic",
@@ -759,8 +697,7 @@ local config = {
             },
           },
           {
-            userinfo_accept = {
-              required = false,
+            userinfo_accept = { description = "The value of `Accept` header for user info requests: - `application/json`: user info response as JSON - `application/jwt`: user info response as JWT (from the obsolete IETF draft document)", required = false,
               type     = "string",
               default  = "application/json",
               one_of   = {
@@ -770,8 +707,7 @@ local config = {
             },
           },
           {
-            userinfo_headers_names = {
-              required = false,
+            userinfo_headers_names = { description = "Extra header names passed to the user info endpoint.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -779,8 +715,7 @@ local config = {
             },
           },
           {
-            userinfo_headers_values = {
-              required = false,
+            userinfo_headers_values = { description = "Extra header values passed to the user info endpoint.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -788,8 +723,7 @@ local config = {
             },
           },
           {
-            userinfo_headers_client = {
-              required = false,
+            userinfo_headers_client = { description = "Extra headers passed from the client to the user info endpoint.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -797,8 +731,7 @@ local config = {
             },
           },
           {
-            userinfo_query_args_names = {
-              required = false,
+            userinfo_query_args_names = { description = "Extra query argument names passed to the user info endpoint.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -806,8 +739,7 @@ local config = {
             },
           },
           {
-            userinfo_query_args_values = {
-              required = false,
+            userinfo_query_args_values = { description = "Extra query argument values passed to the user info endpoint.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -815,8 +747,7 @@ local config = {
             },
           },
           {
-            userinfo_query_args_client = {
-              required = false,
+            userinfo_query_args_client = { description = "Extra query arguments passed from the client to the user info endpoint.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -829,72 +760,62 @@ local config = {
             },
           },
           {
-            session_secret = {
-              required = false,
+            session_secret = { description = "The session secret.", required = false,
               type     = "string",
               encrypted = true,
               referenceable = true,
             },
           },
           {
-            session_audience = {
-              required = false,
+            session_audience = { description = "The session audience, which is the intended target application. For example `\"my-application\"`.", required = false,
               type     = "string",
               default  = "default",
             },
           },
           {
-            session_cookie_name = {
-              required = false,
+            session_cookie_name = { description = "The session cookie name.", required = false,
               type     = "string",
               default  = "session",
             },
           },
           {
-            session_remember = {
-              required = false,
+            session_remember = { description = "Enables or disables persistent sessions.", required = false,
               type     = "boolean",
               default  = false,
             },
           },
           {
-            session_remember_cookie_name = {
-              required = false,
+            session_remember_cookie_name = { description = "Persistent session cookie name. Use with the `remember` configuration parameter.", required = false,
               type     = "string",
               default  = "remember",
             },
           },
           {
-            session_remember_rolling_timeout = {
-              required = false,
+            session_remember_rolling_timeout = { description = "Network IO timeout in milliseconds.", required = false,
               type     = "number",
               default  = 604800,
             },
           },
           {
-            session_remember_absolute_timeout = {
-              required = false,
+            session_remember_absolute_timeout = { description = "Network IO timeout in milliseconds.", required = false,
               type     = "number",
               default  = 2592000,
             },
           },
           {
-            session_idling_timeout = {
-              required = false,
+            session_idling_timeout = { description = "Network IO timeout in milliseconds.", required = false,
               type     = "number",
               default  = 900,
             },
           },
           {
-            session_rolling_timeout = {
-              required = false,
+            session_rolling_timeout = { description = "Network IO timeout in milliseconds.", required = false,
               type     = "number",
               default  = 3600,
             },
           },
           {
-            session_absolute_timeout = {
-              required = false,
+            session_absolute_timeout = { description = "Network IO timeout in milliseconds.", required = false,
               type     = "number",
               default  = 86400,
             },
@@ -906,14 +827,12 @@ local config = {
             },
           },
           {
-            session_cookie_domain = {
-              required = false,
+            session_cookie_domain = { description = "The session cookie Domain flag.", required = false,
               type     = "string",
             },
           },
           {
-            session_cookie_same_site = {
-              required = false,
+            session_cookie_same_site = { description = "Controls whether a cookie is sent with cross-origin requests, providing some protection against cross-site request forgery attacks: - `Strict`: Cookies will only be sent in a first-party context and aren't sent along with requests initiated by third party websites. - `Lax`: Cookies are not sent on normal cross-site subrequests (for example to load images or frames into a third party site), but are sent when a user is navigating to the origin site (for example, when following a link). - `None`: Cookies will be sent in all contexts, for example in responses to both first party and cross-origin requests. If `SameSite=None` is set, the cookie `Secure` attribute must also be set, or the cookie will be blocked. - `Default`: Do not explicitly specify a `SameSite` attribute.", required = false,
               type     = "string",
               default  = "Lax",
               one_of   = {
@@ -925,14 +844,14 @@ local config = {
             },
           },
           {
-            session_cookie_http_only = {
+            session_cookie_http_only = { description = "Forbids JavaScript from accessing the cookie, for example, through the `Document.cookie` property.",
               required = false,
               type     = "boolean",
               default  = true,
             },
           },
           {
-            session_cookie_secure = {
+            session_cookie_secure = { description = "Cookie is only sent to the server when a request is made with the https: scheme (except on localhost), and therefore is more resistant to man-in-the-middle attacks.",
               required = false,
               type     = "boolean",
             },
@@ -944,8 +863,7 @@ local config = {
             session_response_headers = session_headers,
           },
           {
-            session_storage = {
-              required = false,
+            session_storage = { description = "The session storage for session data: - `cookie`: stores session data with the session cookie (the session cannot be invalidated or revoked without changing session secret, but is stateless, and doesn't require a database) - `memcache`: stores session data in memcached - `redis`: stores session data in Redis", required = false,
               type     = "string",
               default  = "cookie",
               one_of   = {
@@ -957,48 +875,41 @@ local config = {
             },
           },
           {
-            session_store_metadata = {
-              required = false,
+            session_store_metadata = { description = "Configures whether or not session metadata should be stored. This metadata includes information about the active sessions for a specific audience belonging to a specific subject.", required = false,
               type     = "boolean",
               default  = false,
             },
           },
           {
-            session_enforce_same_subject = {
-              required = false,
+            session_enforce_same_subject = { description = "When set to `true`, audiences are forced to share the same subject.", required = false,
               type     = "boolean",
               default  = false,
             },
           },
           {
-            session_hash_subject = {
-              required = false,
+            session_hash_subject = { description = "When set to `true`, the value of subject is hashed before being stored. Only applies when `session_store_metadata` is enabled.", required = false,
               type     = "boolean",
               default  = false,
             },
           },
           {
-            session_hash_storage_key = {
-              required = false,
+            session_hash_storage_key = { description = "When set to `true`, the storage key (session ID) is hashed for extra security. Hashing the storage key means it is impossible to decrypt data from the storage without a cookie.", required = false,
               type     = "boolean",
               default  = false,
             },
           },
           {
-            session_memcached_prefix = {
-              required = false,
+            session_memcached_prefix = { description = "The memcached session key prefix.", required = false,
               type     = "string",
             },
           },
           {
-            session_memcached_socket = {
-              required = false,
+            session_memcached_socket = { description = "The memcached unix socket path.", required = false,
               type     = "string",
             },
           },
           {
-            session_memcached_host = {
-              required = false,
+            session_memcached_host = { description = "The memcached host.", required = false,
               type     = "string",
               default  = "127.0.0.1",
             },
@@ -1010,20 +921,17 @@ local config = {
             },
           },
           {
-            session_redis_prefix = {
-              required = false,
+            session_redis_prefix = { description = "The Redis session key prefix.", required = false,
               type     = "string",
             },
           },
           {
-            session_redis_socket = {
-              required = false,
+            session_redis_socket = { description = "The Redis unix socket path.", required = false,
               type     = "string",
             },
           },
           {
-            session_redis_host = {
-              required = false,
+            session_redis_host = { description = "The Redis host", required = false,
               type     = "string",
               default  = "127.0.0.1",
             },
@@ -1035,61 +943,52 @@ local config = {
             },
           },
           {
-            session_redis_username = {
-              required = false,
+            session_redis_username = { description = "Username to use for Redis connection when the `redis` session storage is defined and ACL authentication is desired. If undefined, ACL authentication will not be performed. This requires Redis v6.0.0+. The username **cannot** be set to `default`.", required = false,
               type = "string",
               referenceable = true,
             },
           },
           {
-            session_redis_password = {
-              required = false,
+            session_redis_password = { description = "Password to use for Redis connection when the `redis` session storage is defined. If undefined, no AUTH commands are sent to Redis.", required = false,
               type = "string",
               encrypted = true,
               referenceable = true,
             },
           },
           {
-            session_redis_connect_timeout = {
-              required = false,
+            session_redis_connect_timeout = { description = "Network IO timeout in milliseconds.", required = false,
               type = "integer",
             },
           },
           {
-            session_redis_read_timeout = {
-              required = false,
+            session_redis_read_timeout = { description = "Network IO timeout in milliseconds.", required = false,
               type = "integer",
             },
           },
           {
-            session_redis_send_timeout = {
-              required = false,
+            session_redis_send_timeout = { description = "Network IO timeout in milliseconds.", required = false,
               type = "integer",
             },
           },
           {
-            session_redis_ssl = {
-              required = false,
+            session_redis_ssl = { description = "Use SSL/TLS for Redis connection.", required = false,
               type     = "boolean",
               default  = false,
             },
           },
           {
-            session_redis_ssl_verify = {
-              required = false,
+            session_redis_ssl_verify = { description = "Verify identity provider server certificate.", required = false,
               type     = "boolean",
               default  = false,
             },
           },
           {
-            session_redis_server_name = {
-              required = false,
+            session_redis_server_name = { description = "The SNI used for connecting the Redis server.", required = false,
               type     = "string",
             },
           },
           {
-            session_redis_cluster_nodes = {
-              required = false,
+            session_redis_cluster_nodes = { description = "The Redis cluster node host. Takes an array of host records, with either `ip` or `host`, and `port` values.", required = false,
               type = "array",
               elements = {
                 type = "record",
@@ -1110,34 +1009,29 @@ local config = {
             },
           },
           {
-            session_redis_cluster_max_redirections = {
-              required = false,
+            session_redis_cluster_max_redirections = { description = "The Redis cluster maximum redirects.", required = false,
               type = "integer",
             },
           },
           {
-            reverify = {
-              required = false,
+            reverify = { description = "Specifies whether to always verify tokens stored in the session.", required = false,
               type     = "boolean",
               default  = false,
             },
           },
           {
-            jwt_session_claim = {
-              required = false,
+            jwt_session_claim = { description = "The claim to match against the JWT session cookie.", required = false,
               type     = "string",
               default  = "sid",
             },
           },
           {
-            jwt_session_cookie = {
-              required = false,
+            jwt_session_cookie = { description = "The name of the JWT session cookie.", required = false,
               type     = "string",
             },
           },
           {
-            bearer_token_param_type = {
-              required = false,
+            bearer_token_param_type = { description = "Where to look for the bearer token: - `header`: search the HTTP headers - `query`: search the URL's query string - `body`: search the HTTP request body - `cookie`: search the HTTP request cookies specified with `config.bearer_token_cookie_name`", required = false,
               type     = "array",
               default  = {
                 "header",
@@ -1156,14 +1050,12 @@ local config = {
             },
           },
           {
-            bearer_token_cookie_name = {
-              required = false,
+            bearer_token_cookie_name = { description = "The name of the cookie in which the bearer token is passed.", required = false,
               type     = "string",
             },
           },
           {
-            client_credentials_param_type = {
-              required = false,
+            client_credentials_param_type = { description = "Where to look for the client credentials: - `header`: search the HTTP headers - `query`: search the URL's query string - `body`: search from the HTTP request body", required = false,
               type     = "array",
               default  = {
                 "header",
@@ -1181,8 +1073,7 @@ local config = {
             },
           },
           {
-            password_param_type = {
-              required = false,
+            password_param_type = { description = "Where to look for the username and password: - `header`: search the HTTP headers - `query`: search the URL's query string - `body`: search the HTTP request body", required = false,
               type     = "array",
               default  = {
                 "header",
@@ -1200,8 +1091,7 @@ local config = {
             },
           },
           {
-            id_token_param_type = {
-              required = false,
+            id_token_param_type = { description = "Where to look for the id token: - `header`: search the HTTP headers - `query`: search the URL's query string - `body`: search the HTTP request body", required = false,
               type     = "array",
               default  = {
                 "header",
@@ -1219,14 +1109,12 @@ local config = {
             },
           },
           {
-            id_token_param_name = {
-              required = false,
+            id_token_param_name = { description = "The name of the parameter used to pass the id token.", required = false,
               type     = "string",
             },
           },
           {
-            refresh_token_param_type = {
-              required = false,
+            refresh_token_param_type = { description = "Where to look for the refresh token: - `header`: search the HTTP headers - `query`: search the URL's query string - `body`: search the HTTP request body", required = false,
               type     = "array",
               default  = {
                 "header",
@@ -1244,21 +1132,18 @@ local config = {
             },
           },
           {
-            refresh_token_param_name = {
-              required = false,
+            refresh_token_param_name = { description = "The name of the parameter used to pass the refresh token.", required = false,
               type     = "string",
             },
           },
           {
-            refresh_tokens = {
-              required = false,
+            refresh_tokens = { description = "Specifies whether the plugin should try to refresh (soon to be) expired access tokens if the plugin has a `refresh_token` available.", required = false,
               type     = "boolean",
               default  = true,
             },
           },
           {
-            upstream_headers_claims = {
-              required = false,
+            upstream_headers_claims = { description = "The upstream header claims.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -1266,8 +1151,7 @@ local config = {
             },
           },
           {
-            upstream_headers_names = {
-              required = false,
+            upstream_headers_names = { description = "The upstream header names for the claim values.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -1275,51 +1159,43 @@ local config = {
             },
           },
           {
-            upstream_access_token_header = {
-              required = false,
+            upstream_access_token_header = { description = "The upstream access token header.", required = false,
               type     = "string",
               default  = "authorization:bearer",
             },
           },
           {
-            upstream_access_token_jwk_header = {
-              required = false,
+            upstream_access_token_jwk_header = { description = "The upstream access token JWK header.", required = false,
               type     = "string",
             },
           },
           {
-            upstream_id_token_header = {
-              required = false,
+            upstream_id_token_header = { description = "The upstream id token header.", required = false,
               type     = "string",
             },
           },
           {
-            upstream_id_token_jwk_header = {
-              required = false,
+            upstream_id_token_jwk_header = { description = "The upstream id token JWK header.", required = false,
               type     = "string",
             },
           },
           {
-            upstream_refresh_token_header = {
-              required = false,
+            upstream_refresh_token_header = { description = "The upstream refresh token header.", required = false,
               type     = "string",
             },
           },
           {
-            upstream_user_info_header = {
-              required = false,
+            upstream_user_info_header = { description = "The upstream user info header.", required = false,
               type     = "string",
             },
           },
           {
-            upstream_user_info_jwt_header = {
-              required = false,
+            upstream_user_info_jwt_header = { description = "The upstream user info JWT header (in case the user info returns a JWT response).", required = false,
               type     = "string",
             },
           },
           {
-            upstream_introspection_header = {
-              required = false,
+            upstream_introspection_header = { description = "The upstream introspection header.", required = false,
               type     = "string",
             },
           },
@@ -1330,14 +1206,12 @@ local config = {
             },
           },
           {
-            upstream_session_id_header = {
-              required = false,
+            upstream_session_id_header = { description = "The upstream session id header.", required = false,
               type     = "string",
             },
           },
           {
-            downstream_headers_claims = {
-              required = false,
+            downstream_headers_claims = { description = "The downstream header claims.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -1345,8 +1219,7 @@ local config = {
             },
           },
           {
-            downstream_headers_names = {
-              required = false,
+            downstream_headers_names = { description = "The downstream header names for the claim values.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -1354,50 +1227,42 @@ local config = {
             },
           },
           {
-            downstream_access_token_header = {
-              required = false,
+            downstream_access_token_header = { description = "The downstream access token header.", required = false,
               type     = "string",
             },
           },
           {
-            downstream_access_token_jwk_header = {
-              required = false,
+            downstream_access_token_jwk_header = { description = "The downstream access token JWK header.", required = false,
               type     = "string",
             },
           },
           {
-            downstream_id_token_header = {
-              required = false,
+            downstream_id_token_header = { description = "The downstream id token header.", required = false,
               type     = "string",
             },
           },
           {
-            downstream_id_token_jwk_header = {
-              required = false,
+            downstream_id_token_jwk_header = { description = "The downstream id token JWK header.", required = false,
               type     = "string",
             },
           },
           {
-            downstream_refresh_token_header = {
-              required = false,
+            downstream_refresh_token_header = { description = "The downstream refresh token header.", required = false,
               type     = "string",
             },
           },
           {
-            downstream_user_info_header = {
-              required = false,
+            downstream_user_info_header = { description = "The downstream user info header.", required = false,
               type     = "string",
             },
           },
           {
-            downstream_user_info_jwt_header = {
-              required = false,
+            downstream_user_info_jwt_header = { description = "The downstream user info JWT header (in case the user info returns a JWT response).", required = false,
               type     = "string",
             },
           },
           {
-            downstream_introspection_header = {
-              required = false,
+            downstream_introspection_header = { description = "The downstream introspection header.", required = false,
               type     = "string",
             },
           },
@@ -1408,14 +1273,12 @@ local config = {
             },
           },
           {
-            downstream_session_id_header = {
-              required = false,
+            downstream_session_id_header = { description = "The downstream session id header.", required = false,
               type     = "string",
             },
           },
           {
-            login_methods = {
-              required = false,
+            login_methods = { description = "Enable login functionality with specified grants: - `password`: enable for OAuth password grant - `client_credentials`: enable OAuth client credentials grant - `authorization_code`: enable for authorization code flow - `bearer`: enable for JWT access token authentication - `introspection`: enable for OAuth introspection authentication - `userinfo`: enable for OpenID Connect user info endpoint authentication - `kong_oauth2`: enable for Kong OAuth Plugin authentication - `refresh_token`: enable for OAuth refresh token grant - `session`: enable for session cookie authentication", required = false,
               type     = "array",
               default  = {
                 "authorization_code",
@@ -1437,8 +1300,7 @@ local config = {
             },
           },
           {
-            login_action = {
-              required = false,
+            login_action = { description = "What to do after successful login: - `upstream`: proxy request to upstream service - `response`: terminate request with a response - `redirect`: redirect to a different location", required = false,
               type     = "string",
               default  = "upstream",
               one_of   = {
@@ -1449,8 +1311,7 @@ local config = {
             },
           },
           {
-            login_tokens = {
-              required = false,
+            login_tokens = { description = "What tokens to include in `response` body or `redirect` query string or fragment: - `id_token`: include id token - `access_token`: include access token - `refresh_token`: include refresh token - `tokens`: include the full token endpoint response - `introspection`: include introspection response", required = false,
               type     = "array",
               default  = {
                 "id_token",
@@ -1468,8 +1329,7 @@ local config = {
             },
           },
           {
-            login_redirect_mode = {
-              required = false,
+            login_redirect_mode = { description = "Where to place `login_tokens` when using `redirect` `login_action`: - `query`: place tokens in query string - `fragment`: place tokens in url fragment (not readable by servers)", required = false,
               type     = "string",
               default  = "fragment",
               one_of   = {
@@ -1479,26 +1339,22 @@ local config = {
             },
           },
           {
-            logout_query_arg = {
-              required = false,
+            logout_query_arg = { description = "The request query argument that activates the logout.", required = false,
               type     = "string",
             },
           },
           {
-            logout_post_arg = {
-              required = false,
+            logout_post_arg = { description = "The request body argument that activates the logout.", required = false,
               type     = "string",
             },
           },
           {
-            logout_uri_suffix = {
-              required = false,
+            logout_uri_suffix = { description = "The request URI suffix that activates the logout.", required = false,
               type     = "string",
             },
           },
           {
-            logout_methods = {
-              required = false,
+            logout_methods = { description = "The request methods that can activate the logout: - `POST`: HTTP POST method - `GET`: HTTP GET method - `DELETE`: HTTP DELETE method", required = false,
               type     = "array",
               default  = {
                 "POST",
@@ -1515,29 +1371,25 @@ local config = {
             },
           },
           {
-            logout_revoke = {
-              required = false,
+            logout_revoke = { description = "Revoke tokens as part of the logout.", required = false,
               type     = "boolean",
               default  = false,
             },
           },
           {
-            logout_revoke_access_token = {
-              required = false,
+            logout_revoke_access_token = { description = "Revoke the access token as part of the logout.", required = false,
               type     = "boolean",
               default  = true,
             },
           },
           {
-            logout_revoke_refresh_token = {
-              required = false,
+            logout_revoke_refresh_token = { description = "Revoke the refresh token as part of the logout.", required = false,
               type     = "boolean",
               default  = true,
             },
           },
           {
-            consumer_claim = {
-              required = false,
+            consumer_claim = { description = "The claim used for consumer mapping.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -1545,8 +1397,7 @@ local config = {
             },
           },
           {
-            consumer_by = {
-              required = false,
+            consumer_by = { description = "Consumer fields used for mapping: - `id`: try to find the matching Consumer by `id` - `username`: try to find the matching Consumer by `username` - `custom_id`: try to find the matching Consumer by `custom_id`", required = false,
               type     = "array",
               default  = {
                 "username",
@@ -1563,15 +1414,13 @@ local config = {
             },
           },
           {
-            consumer_optional = {
-              required = false,
+            consumer_optional = { description = "Do not terminate the request if consumer mapping fails.", required = false,
               type     = "boolean",
               default  = false,
             },
           },
           {
-            credential_claim = {
-              required = false,
+            credential_claim = { description = "The claim used to derive virtual credentials (e.g. to be consumed by the rate-limiting plugin), in case the consumer mapping is not used.", required = false,
               type     = "array",
               default  = {
                 "sub",
@@ -1582,56 +1431,48 @@ local config = {
             },
           },
           {
-            anonymous = {
-              required = false,
+            anonymous = { description = "An optional string (consumer UUID or username) value that functions as an “anonymous” consumer if authentication fails. If empty (default null), requests that fail authentication will return a `4xx` HTTP status code. This value must refer to the consumer `id` or `username` attribute, and **not** its `custom_id`.", required = false,
               type     = "string",
             },
           },
           {
-            run_on_preflight = {
-              required = false,
+            run_on_preflight = { description = "Specifies whether to run this plugin on pre-flight (`OPTIONS`) requests.", required = false,
               type     = "boolean",
               default  = true,
             },
           },
           {
-            leeway = {
-              required = false,
+            leeway = { description = "Allow some leeway on the ttl / expiry verification.", required = false,
               type     = "number",
               default  = 0,
             },
           },
           {
-            verify_parameters = {
-              required = false,
+            verify_parameters = { description = "Verify plugin configuration against discovery.", required = false,
               type     = "boolean",
               default  = false,
             },
           },
           {
-            verify_nonce = {
-              required = false,
+            verify_nonce = { description = "Verify nonce on authorization code flow.", required = false,
               type     = "boolean",
               default  = true,
             },
           },
           {
-            verify_claims = {
-              required = false,
+            verify_claims = { description = "Verify tokens for standard claims.", required = false,
               type     = "boolean",
               default  = true,
             },
           },
           {
-            verify_signature = {
-              required = false,
+            verify_signature = { description = "Verify signature of tokens.", required = false,
               type     = "boolean",
               default  = true,
             },
           },
           {
-            ignore_signature = {
-              required = false,
+            ignore_signature = { description = "Skip the token signature verification on certain grants: - `password`: OAuth password grant - `client_credentials`: OAuth client credentials grant - `authorization_code`: authorization code flow - `refresh_token`: OAuth refresh token grant - `session`: session cookie authentication - `introspection`: OAuth introspection - `userinfo`: OpenID Connect user info endpoint authentication", required = false,
               type     = "array",
               default  = {
               },
@@ -1650,15 +1491,13 @@ local config = {
             },
           },
           {
-            enable_hs_signatures = {
-              required = false,
+            enable_hs_signatures = { description = "Enable shared secret, for example, HS256, signatures (when disabled they will not be accepted).", required = false,
               type     = "boolean",
               default  = false,
             },
           },
           {
-            disable_session = {
-              required = false,
+            disable_session = { description = "Disable issuing the session cookie with the specified grants: - `password`: do not start a session with the password grant - `client_credentials`: do not start a session with the client credentials grant - `authorization_code`: do not start a session after authorization code flow - `bearer`: do not start session with JWT access token authentication - `introspection`: do not start session with introspection authentication - `userinfo`: do not start session with user info authentication - `kong_oauth2`: do not start session with Kong OAuth authentication - `refresh_token` do not start session with refresh token grant - `session`: do not renew the session with session cookie authentication", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -1677,88 +1516,75 @@ local config = {
             },
           },
           {
-            cache_ttl = {
-              required = false,
+            cache_ttl = { description = "The default cache ttl in seconds that is used in case the cached object does not specify the expiry.", required = false,
               type     = "number",
               default  = 3600,
             },
           },
           {
-            cache_ttl_max = {
-              required = false,
+            cache_ttl_max = { description = "The maximum cache ttl in seconds (enforced).", required = false,
               type     = "number",
             },
           },
           {
-            cache_ttl_min = {
-              required = false,
+            cache_ttl_min = { description = "The minimum cache ttl in seconds (enforced).", required = false,
               type     = "number",
             },
           },
           {
-            cache_ttl_neg = {
-              required = false,
+            cache_ttl_neg = { description = "The negative cache ttl in seconds.", required = false,
               type     = "number",
             },
           },
           {
-            cache_ttl_resurrect = {
-              required = false,
+            cache_ttl_resurrect = { description = "The resurrection ttl in seconds.", required = false,
               type     = "number",
             },
           },
           {
-            cache_tokens = {
-              required = false,
+            cache_tokens = { description = "Cache the token endpoint requests.", required = false,
               type     = "boolean",
               default  = true,
             },
           },
           {
-            cache_tokens_salt = {
-              required = false,
+            cache_tokens_salt = { description = "Salt used for generating the cache key that us used for caching the token endpoint requests.", required = false,
               type     = "string",
               auto     = true,
             },
           },
           {
-            cache_introspection = {
-              required = false,
+            cache_introspection = { description = "Cache the introspection endpoint requests.", required = false,
               type     = "boolean",
               default  = true,
             },
           },
           {
-            cache_token_exchange = {
-              required = false,
+            cache_token_exchange = { description = "Cache the token exchange endpoint requests.", required = false,
               type     = "boolean",
               default  = true,
             },
           },
           {
-            cache_user_info = {
-              required = false,
+            cache_user_info = { description = "Cache the user info requests.", required = false,
               type     = "boolean",
               default  = true,
             },
           },
           {
-            search_user_info = {
-              required = false,
+            search_user_info = { description = "Specify whether to use the user info endpoint to get additional claims for consumer mapping, credential mapping, authenticated groups, and upstream and downstream headers.", required = false,
               type     = "boolean",
               default  = false,
             },
           },
           {
-            hide_credentials = {
-              required = false,
+            hide_credentials = { description = "Remove the credentials used for authentication from the request. If multiple credentials are sent with the same request, the plugin will remove those that were used for successful authentication.", required = false,
               type     = "boolean",
               default  = false,
             },
           },
           {
-            http_version = {
-              required = false,
+            http_version = { description = "The HTTP version used for the requests by this plugin: - `1.1`: HTTP 1.1 (the default) - `1.0`: HTTP 1.0", required = false,
               type     = "number",
               default  = 1.1,
               custom_validator = function(v)
@@ -1776,8 +1602,7 @@ local config = {
             },
           },
           {
-            http_proxy_authorization = {
-              required = false,
+            http_proxy_authorization = { description = "The HTTP proxy authorization.", required = false,
               type     = "string",
             },
           },
@@ -1787,48 +1612,41 @@ local config = {
             },
           },
           {
-            https_proxy_authorization = {
-              required = false,
+            https_proxy_authorization = { description = "The HTTPS proxy authorization.", required = false,
               type     = "string",
             },
           },
           {
-            no_proxy = {
-              required = false,
+            no_proxy = { description = "Do not use proxy with these hosts.", required = false,
               type     = "string",
             },
           },
           {
-            keepalive = {
-              required = false,
+            keepalive = { description = "Use keepalive with the HTTP client.", required = false,
               type     = "boolean",
               default  = true,
             },
           },
           {
-            ssl_verify = {
-              required = false,
+            ssl_verify = { description = "Verify identity provider server certificate.", required = false,
               type     = "boolean",
               default  = false,
             },
           },
           {
-            timeout = {
-              required = false,
+            timeout = { description = "Network IO timeout in milliseconds.", required = false,
               type     = "number",
               default  = 10000,
             },
           },
           {
-            display_errors = {
-              required = false,
+            display_errors = { description = "Display errors on failure responses.", required = false,
               type     = "boolean",
               default  = false,
             },
           },
           {
-            by_username_ignore_case = {
-              required = false,
+            by_username_ignore_case = { description = "If `consumer_by` is set to `username`, specify whether `username` can match consumers case-insensitively.", required = false,
               type     = "boolean",
               default  = false,
             },
@@ -1842,8 +1660,7 @@ local config = {
           --   },
           -- },
           {
-            resolve_distributed_claims = {
-              required = false,
+            resolve_distributed_claims = { description = "Distributed claims are represented by the `_claim_names` and `_claim_sources` members of the JSON object containing the claims. If this parameter is set to `true`, the plugin explicitly resolves these distributed claims.", required = false,
               type     = "boolean",
               default  = false,
             },

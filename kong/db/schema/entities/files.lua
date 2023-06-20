@@ -121,6 +121,7 @@ return {
     {updated_at = typedefs.auto_timestamp_s},
     {
       path = {
+        description = "The path to the file.",
         type = "string",
         required = true,
         unique = true,

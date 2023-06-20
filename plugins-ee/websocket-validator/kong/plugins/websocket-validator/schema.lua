@@ -45,15 +45,13 @@ local content_validation = {
   type = "record",
   required = false,
   fields = {
-    { type = {
-        type = "string",
+    { type = { description = "The corresponding validation library for `config.upstream.binary.schema`. Currently, only `draft4` is supported.", type = "string",
         required = true,
         one_of = VALIDATION_TYPES,
       },
     },
     {
-      schema = {
-        type = "string",
+      schema = { description = "Schema used to validate upstream-originated binary frames. The semantics of this field depend on the validation type set by `config.upstream.binary.type`.", type = "string",
         required = true,
       },
     },

@@ -20,29 +20,36 @@ return {
   fields = {
     { id = typedefs.uuid { required = true } },
     { request_id = {
+      description = "The ID of the request associated with the audit object.",
       type = "string"
     }},
     { entity_key = {
+      description = "The key of the entity associated with the audit object.",
       type = "string",
       uuid = true,
     }},
     { dao_name = {
+      description = "The name of the DAO (Data Access Object) associated with the audit object.",
       type = "string",
       required = true,
     }},
     { operation = {
+      description = "The operation performed on the entity ('create', 'update', or 'delete').",
       type = "string",
       one_of = { "create", "update", "delete" },
       required = true,
     }},
     { entity = {
+      description = "The entity associated with the audit object.",
       type = "string",
     }},
     { rbac_user_id = {
+      description = "The ID of the RBAC (Role-Based Access Control) user associated with the audit object.",
       type = "string",
       uuid = true,
     }},
     { signature = {
+      description = "The signature associated with the audit object.",
       type = "string",
     }},
   },

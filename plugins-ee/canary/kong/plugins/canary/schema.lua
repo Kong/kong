@@ -37,6 +37,7 @@ return {
           -- deprecated forms, to be removed in Kong 3.0
           { hash = {
             type = "string",
+            description = "Hash algorithm to be used for canary release. `whitelist` is deprecated. Use `allow` instead `blacklist` is deprecated. Use `deny` instead.",
             func = function(value)
               if value == "whitelist" then
                 value = "allow"
@@ -49,42 +50,48 @@ return {
           }},
         },
         fields = {
-          { start = {
-              type = "number",
+          { start = { description = "Future time in seconds since epoch, when the canary release will start. Ignored when `percentage` is set, or when using `allow` or `deny` in `hash`.", type = "number",
               custom_validator = check_start
           }},
           { hash = {
+              description = "Hash algorithm to be used for canary release.\n\n* `consumer`: The hash will be based on the consumer.\n* `ip`: The hash will be based on the client IP address.\n* `none`: No hash will be applied.\n* `allow`: Allows the specified groups to access the canary release.\n* `deny`: Denies the specified groups from accessing the canary release.\n* `header`: The hash will be based on the specified header value.",
               type = "string",
               default = "consumer",
               one_of = { "consumer", "ip", "none", "allow", "deny", "header" },
           }},
           { hash_header = typedefs.header_name },
           { duration = {
+              description = "The duration of the canary release in seconds.",
               type = "number",
               default = 60 * 60,
               gt = 0
           }},
           { steps = {
+              description = "The number of steps for the canary release.",
               type = "number",
               default = 1000,
               gt = 1
           }},
           { percentage = {
+              description = "The percentage of traffic to be routed to the canary release.",
               type = "number",
               between = { 0, 100 }
           }},
           { upstream_host = typedefs.host },
           { upstream_port = typedefs.port },
           { upstream_uri = {
+              description = "The URI of the upstream server to be used for the canary release.",
               type = "string",
               len_min = 1
           }},
           { upstream_fallback = {
+              description = "Specifies whether to fallback to the upstream server if the canary release fails.",
               type = "boolean",
               default = false,
               required = true
           }},
           { groups = {
+              description = "The groups allowed to access the canary release.",
               type = "array",
               elements = { type = "string" }
           }},

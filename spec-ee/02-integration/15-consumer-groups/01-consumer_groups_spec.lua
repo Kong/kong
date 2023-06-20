@@ -73,6 +73,7 @@ for _, strategy in helpers.each_strategy() do
           {
             id = {
               type = "string",
+              description = "A string representing a UUID (universally unique identifier).",
               uuid = true,
               auto = true
             }
@@ -80,6 +81,7 @@ for _, strategy in helpers.each_strategy() do
           {
             created_at = {
               timestamp = true,
+              description = "An integer representing an automatic Unix timestamp in seconds.",
               type = "integer",
               auto = true
             }
@@ -87,6 +89,7 @@ for _, strategy in helpers.each_strategy() do
           {
             updated_at = {
               timestamp = true,
+              description = "An integer representing an automatic Unix timestamp in seconds.",
               type = "integer",
               auto = true
             }
@@ -94,6 +97,7 @@ for _, strategy in helpers.each_strategy() do
           {
             name = {
               unique = true,
+              description = "The name of the consumer group.",
               required = true,
               indexed = true,
               type = "string"
@@ -102,7 +106,9 @@ for _, strategy in helpers.each_strategy() do
           {
             tags = {
               type = "set",
+              description = "A set of strings representing tags.",
               elements = {
+                description = "A string representing a tag.",
                 required = true,
                 type = "string"
               },
@@ -127,6 +133,7 @@ for _, strategy in helpers.each_strategy() do
         local expected_schema = {
           {
             created_at = {
+              description = "An integer representing an automatic Unix timestamp in seconds.",
               timestamp = true,
               type = "integer",
               auto = true
@@ -134,6 +141,7 @@ for _, strategy in helpers.each_strategy() do
           },
           {
             updated_at = {
+              description = "An integer representing an automatic Unix timestamp in seconds.",
               timestamp = true,
               type = "integer",
               auto = true
@@ -142,6 +150,7 @@ for _, strategy in helpers.each_strategy() do
           {
             consumer_group = {
               type = "foreign",
+              description = "The consumer group to which the consumer belongs.",
               required = true,
               reference = "consumer_groups",
               on_delete = "cascade"
@@ -149,6 +158,7 @@ for _, strategy in helpers.each_strategy() do
           },
           {
             consumer = {
+              description = "The consumer associated with the consumer group.",
               type = "foreign",
               required = true,
               reference = "consumers",

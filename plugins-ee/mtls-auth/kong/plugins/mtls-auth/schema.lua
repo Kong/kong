@@ -15,55 +15,45 @@ return {
     { config = {
         type = "record",
         fields = {
-          { anonymous = { type = "string" } },
-          { consumer_by = {
-            type = "array",
+          { anonymous = { description = "An optional string (consumer UUID or username) value to use as an “anonymous” consumer if authentication fails. If empty (default null), the request fails with an authentication failure `4xx`. Note that this value must refer to the consumer `id` or `username` attribute, and **not** its `custom_id`.", type = "string" } },
+          { consumer_by = { description = "Whether to match the subject name of the client-supplied certificate against consumer's `username` and/or `custom_id` attribute. If set to `[]` (the empty array), then auto-matching is disabled.", type = "array",
             elements = { type = "string", one_of = { "username", "custom_id" }},
             required = false,
             default = { "username", "custom_id" },
           }, },
-          { ca_certificates = {
-            type = "array",
+          { ca_certificates = { description = "List of CA Certificates strings to use as Certificate Authorities (CA) when validating a client certificate. At least one is required but you can specify as many as needed. The value of this array is comprised of primary keys (`id`).", type = "array",
             required = true,
             elements = { type = "string", uuid = true, },
           }, },
-          { cache_ttl = {
-            type = "number",
+          { cache_ttl = { description = "Cache expiry time in seconds.", type = "number",
             required = true,
             default = 60
           }, },
-          { skip_consumer_lookup = {
-            type = "boolean",
+          { skip_consumer_lookup = { description = "Skip consumer lookup once certificate is trusted against the configured CA list.", type = "boolean",
             required = true,
             default = false
           }, },
-          { allow_partial_chain = {
-            type = "boolean",
+          { allow_partial_chain = { description = "Allow certificate verification with only an intermediate certificate. When this is enabled, you don't need to upload the full chain to Kong Certificates.", type = "boolean",
             required = true,
             default = false
           }, },
-          { authenticated_group_by = {
-            required = false,
+          { authenticated_group_by = { description = "Certificate property to use as the authenticated group. Valid values are `CN` (Common Name) or `DN` (Distinguished Name). Once `skip_consumer_lookup` is applied, any client with a valid certificate can access the Service/API. To restrict usage to only some of the authenticated users, also add the ACL plugin (not covered here) and create allowed or denied groups of users.", required = false,
             type = "string",
             one_of = {"CN", "DN"},
             default = "CN"
           }, },
-          { revocation_check_mode = {
-            required = false,
+          { revocation_check_mode = { description = ">**Known Issue:** The default value `IGNORE_CA_ERROR` has a known issue in versions 1.5.0.0 and later.m As a workaround, manually set the value to `SKIP`.  Controls client certificate revocation check behavior. Valid values are `SKIP`, `IGNORE_CA_ERROR`, or `STRICT`. If set to `SKIP`, no revocation check is performed. If set to `IGNORE_CA_ERROR`, the plugin respects the revocation status when either OCSP or CRL URL is set, and doesn't fail on network issues. If set to `STRICT`, the plugin only treats the certificate as valid when it's able to verify the revocation status, and a missing OCSP or CRL URL in the certificate or a failure to connect to the server results in a revoked status.", required = false,
             type = "string",
             one_of = {"SKIP", "IGNORE_CA_ERROR", "STRICT"},
             default = "IGNORE_CA_ERROR"
           }, },
-          { http_timeout = {
-            type = "number",
+          { http_timeout = { description = "HTTP timeout threshold in milliseconds when communicating with the OCSP server or downloading CRL.", type = "number",
             default = 30000,
           }, },
-          { cert_cache_ttl = {
-            type = "number",
+          { cert_cache_ttl = { description = "The length of time in milliseconds between refreshes of the revocation check status cache.", type = "number",
             default = 60000,
           }, },
-          { send_ca_dn = {
-            type = "boolean",
+          { send_ca_dn = { description = "Sends the distinguished names (DN) of the configured CA list in the TLS handshake message.", type = "boolean",
             default = false
           }, },
           { http_proxy_host = typedefs.host },

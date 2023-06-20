@@ -19,7 +19,7 @@ return {
     { id             = typedefs.uuid, },
     { created_at     = typedefs.auto_timestamp_s },
     { updated_at     = typedefs.auto_timestamp_s },
-    { service        = { type = "foreign", reference = "services" }, },
-    { path           = { type = "string", required = true , unique = true}, },
+    { service = { description = "The service associated with the route.", type = "foreign", reference = "services" } },
+    { path = { description = "The request path pattern associated with the route.", type = "string", required = true, unique = true } },
   },
 }

@@ -17,13 +17,13 @@ return {
       config = {
         type = "record",
         fields = {
-          { strategy = {
+          { strategy = { description = "The backing data store in which to hold cached entities. Accepted value is `memory`.",
             type = "string",
             one_of = strategies.STRATEGY_TYPES,
             default = "memory",
             required = true,
           } },
-          { cache_ttl = {
+          { cache_ttl = { description = "TTL in seconds of cache entities. Must be a value greater than 0.",
             type = "integer",
             default = 300,
             gt = 0,
@@ -31,15 +31,13 @@ return {
           { memory = {
             type = "record",
             fields = {
-              { dictionary_name = {
-                type = "string",
+              { dictionary_name = { description = "The name of the shared dictionary in which to hold cache entities when the memory strategy is selected. This dictionary currently must be defined manually in the Kong Nginx template.", type = "string",
                 required = true,
                 default = "kong_db_cache",
               } },
             },
           } },
-          { vary_headers = {
-            type = "array",
+          { vary_headers = { description = "Relevant headers considered for the cache key. If undefined, none of the headers are taken into consideration.", type = "array",
             elements = { type = "string" },
           }},
         }

@@ -161,9 +161,8 @@ return {
         fields = {
           { host = typedefs.host({ default = "localhost" }), },
           { port = typedefs.port({ default = 8125 }), },
-          { prefix = { type = "string", default = "kong" }, },
-          { metrics = {
-              type = "array",
+          { prefix = { description = "String to prefix to each metric's name.", type = "string", default = "kong" }, },
+          { metrics = { description = "List of Metrics to be logged.", type = "array",
               default = DEFAULT_METRICS,
               elements = {
                 type = "record",
@@ -203,8 +202,7 @@ return {
                 },
               },
           }, },
-          { allow_status_codes = {
-            type = "array",
+          { allow_status_codes = { description = "List of status code ranges that are allowed to be logged in metrics.", type = "array",
             elements = {
               type = "string",
               match = constants.REGEX_STATUS_CODE_RANGE,
@@ -212,12 +210,12 @@ return {
           }, },
           -- combine udp packet up to this value, don't combine if it's 0
           -- 65,507 bytes (65,535 − 8 byte UDP header − 20 byte IP header) -- Wikipedia
-          { udp_packet_size = { type = "number", between = {0, 65507}, default = 0 }, },
-          { use_tcp = { type = "boolean", default = false }, },
-          { hostname_in_prefix = { type = "boolean", default = false }, },
-          { consumer_identifier_default = { type = "string", required = true, default = "custom_id", one_of = CONSUMER_IDENTIFIERS }, },
-          { service_identifier_default = { type = "string", required = true, default = "service_name_or_host", one_of = SERVICE_IDENTIFIERS }, },
-          { workspace_identifier_default = { type = "string", required = true, default = "workspace_id", one_of = WORKSPACE_IDENTIFIERS }, },
+          { udp_packet_size = { description = "Combine UDP packet up to the size configured. If zero (0), don't combine the UDP packet. Must be a number between 0 and 65507 (inclusive).", type = "number", between = {0, 65507}, default = 0 }, },
+          { use_tcp = { description = "Use TCP instead of UDP.", type = "boolean", default = false }, },
+          { hostname_in_prefix = { description = "Include the `hostname` in the `prefix` for each metric name.", type = "boolean", default = false }, },
+          { consumer_identifier_default = { description = "The default consumer identifier for metrics. This will take effect when a metric's consumer identifier is omitted. Allowed values are `custom_id`, `consumer_id`, `username`.", type = "string", required = true, default = "custom_id", one_of = CONSUMER_IDENTIFIERS }, },
+          { service_identifier_default = { description = "The default service identifier for metrics. This will take effect when a metric's service identifier is omitted. Allowed values are `service_name_or_host`, `service_id`, `service_name`, `service_host`.", type = "string", required = true, default = "service_name_or_host", one_of = SERVICE_IDENTIFIERS }, },
+          { workspace_identifier_default = { description = "The default workspace identifier for metrics. This will take effect when a metric's workspace identifier is omitted. Allowed values are `workspace_id`, `workspace_name`.   ", type = "string", required = true, default = "workspace_id", one_of = WORKSPACE_IDENTIFIERS }, },
           { queue = typedefs.queue },
         },
       },

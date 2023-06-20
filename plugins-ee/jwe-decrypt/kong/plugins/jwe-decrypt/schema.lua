@@ -15,23 +15,19 @@ return {
     { config = {
       type = "record",
       fields = {
-        { lookup_header_name = {
-          type = "string",
+        { lookup_header_name = { description = "The name of the header to look for the JWE token.", type = "string",
           required = true,
           default = "Authorization"
         } },
-        { forward_header_name = {
-          type = "string",
+        { forward_header_name = { description = "The name of the header that is used to set the decrypted value.", type = "string",
           required = true,
           default = "Authorization"
         } },
-        { key_sets = {
-          type = "array",
+        { key_sets = { description = "Denote the name or names of all Key Sets that should be inspected when trying to find a suitable key to decrypt the JWE token.", type = "array",
           elements = { type = "string" },
           required = true
         } },
-        { strict = {
-            type = "boolean",
+        { strict = { description = "Defines how the plugin behaves in cases where no token was found in the request. When using `strict` mode, the request requires a token to be present and subsequently raise an error if none could be found.", type = "boolean",
             default = true,
           }
         }

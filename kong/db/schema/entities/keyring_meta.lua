@@ -15,8 +15,8 @@ return {
   dao = "kong.db.dao.keyring_meta",
 
   fields = {
-    { id = { type = "string", required = true } },
-    { state = { type = "string", one_of = { "active", "alive", "tombstoned" }, required = true, default = "alive" } },
+    { id = { description = "The key ID.", type = "string", required = true } },
+    { state = { description = "The current state of the keyring. Available states are `active` `alive` and `tombstoned`.", type = "string", one_of = { "active", "alive", "tombstoned" }, required = true, default = "alive" } },
     { created_at = typedefs.auto_timestamp_s },
     { updated_at = typedefs.auto_timestamp_s },
   }

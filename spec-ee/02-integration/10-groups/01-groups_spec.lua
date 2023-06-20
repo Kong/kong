@@ -75,52 +75,61 @@ for _, strategy in helpers.each_strategy() do
             id = {
               type = "string",
               uuid = true,
-              auto = true
+              auto = true,
+              description = "A string representing a UUID (universally unique identifier)."
             }
           },
           {
             created_at = {
               timestamp = true,
               type = "integer",
-              auto = true
+              auto = true,
+              description = "An integer representing an automatic Unix timestamp in seconds."
             }
           },
           {
             updated_at = {
               timestamp = true,
               type = "integer",
-              auto = true
+              auto = true,
+              description = "An integer representing an automatic Unix timestamp in seconds."
             }
           },
           {
             name = {
               unique = true,
               required = true,
-              type = "string"
+              type = "string",
+              description = "The name of the group",
             }
           },
           {
             comment = {
-              type = "string"
+              type = "string",
+              description = "Any comments associated with the specific group."
             }
           },
           comment = {
-            type = "string"
+            type = "string",
+            description = "Any comments associated with the specific group."
           },
           created_at = {
             timestamp = true,
             type = "integer",
-            auto = true
+            auto = true,
+            description = "An integer representing an automatic Unix timestamp in seconds."
           },
           name = {
             unique = true,
             required = true,
-            type = "string"
+            type = "string",
+            description = "The name of the group",
           },
           id = {
             type = "string",
             uuid = true,
-            auto = true
+            auto = true,
+            description = "A string representing a UUID (universally unique identifier)."
           }
         }
 
@@ -142,12 +151,14 @@ for _, strategy in helpers.each_strategy() do
           {
             created_at = {
               timestamp = true,
+              description = "An integer representing an automatic Unix timestamp in seconds.",
               type = "integer",
               auto = true
             }
           },
           {
             updated_at = {
+              description = "An integer representing an automatic Unix timestamp in seconds.",
               timestamp = true,
               type = "integer",
               auto = true
@@ -155,6 +166,7 @@ for _, strategy in helpers.each_strategy() do
           },
           {
             group = {
+              description = "The group associated with the RBAC role",
               type = "foreign",
               required = true,
               reference = "groups",
@@ -163,6 +175,7 @@ for _, strategy in helpers.each_strategy() do
           },
           {
             rbac_role = {
+              description = "The RBAC role",
               type = "foreign",
               required = true,
               reference = "rbac_roles",
@@ -171,6 +184,7 @@ for _, strategy in helpers.each_strategy() do
           },
           {
             workspace = {
+              description = "The workspace associated with the RBAC role.",
               type = "foreign",
               required = true,
               reference = "workspaces",
@@ -186,7 +200,6 @@ for _, strategy in helpers.each_strategy() do
 
         local json = assert.res_status(200, res)
         local schema = assert(cjson.decode(json).fields)
-
         for i, v in pairs(schema) do
           compare_all_field(v, expected_schema[i])
         end

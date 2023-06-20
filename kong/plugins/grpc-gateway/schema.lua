@@ -15,6 +15,7 @@ return {
       fields = {
         {
           proto = {
+            description = "Describes the gRPC types and methods.",
             type = "string",
             required = false,
             default = nil,

@@ -20,12 +20,12 @@ return {
     { created_at     = typedefs.auto_timestamp_s },
     { updated_at     = typedefs.auto_timestamp_s },
     { redirect_uri   = typedefs.url },
-    { custom_id      = { type = "string", unique = true }, },
-    { name           = { type = "string", required = true }, },
-    { description    = { type = "string" }, },
-    { consumer       = { type = "foreign", reference = "consumers", required = true }, },
-    { developer      = { type = "foreign", reference = "developers", required = true }, },
-    { meta           = { type = "string" }, },
+    { custom_id      = { description = "The custom ID of the application (unique identifier).", type = "string", unique = true } },
+    { name           = { description = "The name of the application.", type = "string", required = true } },
+    { description    = { description = "The description of the application.", type = "string" } },
+    { consumer       = { description = "The foreign key referencing the associated consumer.", type = "foreign", reference = "consumers", required = true } },
+    { developer      = { description = "The foreign key referencing the associated developer.", type = "foreign", reference = "developers", required = true } },
+    { meta           = { description = "Additional metadata associated with the application.", type = "string" } },
   },
 }
 

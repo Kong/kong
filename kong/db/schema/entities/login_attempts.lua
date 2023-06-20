@@ -16,8 +16,9 @@ return {
   fields = {
     { created_at     = typedefs.auto_timestamp_s },
     { updated_at     = typedefs.auto_timestamp_s },
-    { consumer       = { type = "foreign", reference = "consumers", required = true } },
+    { consumer       = { description = "The consumer who has attempted to log in.", type = "foreign", reference = "consumers", required = true } },
     { attempts       = {
+      description = "The number of attempts the consumer has tried to log in.",
       type = "map",
       required = true,
       keys = typedefs.ip,

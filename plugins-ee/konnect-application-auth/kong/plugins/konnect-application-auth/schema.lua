@@ -27,13 +27,14 @@ local schema = {
         type = "record",
         fields = {
           { key_names = {
+            description = "The names of the headers containing the API key. You can specify multiple header names.",
             type = "array",
             required = true,
             elements = typedefs.header_name,
             default = { "apikey" },
         }, },
-          { auth_type = { required = true, type = "string", one_of = AUTH_TYPES, default = "openid-connect", } },
-          { scope = { required = true, type = "string", unique = true } },
+          { auth_type = { description = "The type of authentication to be performed. Possible values are: 'openid-connect', 'key-auth'.", required = true, type = "string", one_of = AUTH_TYPES, default = "openid-connect", } },
+          { scope = { description = "The unique scope identifier for the plugin configuration.", required = true, type = "string", unique = true } },
         },
         entity_checks = {},
       },

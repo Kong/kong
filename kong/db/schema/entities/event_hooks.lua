@@ -24,12 +24,12 @@ return {
     { id             = typedefs.uuid, },
     { created_at     = typedefs.auto_timestamp_s },
     { updated_at     = typedefs.auto_timestamp_s },
-    { source         = { type = "string", required = true } },
-    { event          = { type = "string" } },
-    { on_change      = { type = "boolean" } },
-    { snooze         = { type = "integer" } },
-    { handler        = { type = "string", required = true } },
-    { config         = { type = "record", required = true, abstract = true } },
+    { source         = { description = "The source of the event hook.", type = "string", required = true } },
+    { event          = { description = "The event associated with the hook.", type = "string" } },
+    { on_change      = { description = "Indicates whether the hook should be triggered on change.", type = "boolean" } },
+    { snooze         = { description = "The snooze duration for the hook.", type = "integer" } },
+    { handler        = { description = "The handler for the event hook.", type = "string", required = true } },
+    { config         = { description = "The configuration for the event hook.", type = "record", required = true, abstract = true } },
   },
   -- This entity check makes sure the source and the event exist, assuming
   -- they have been published using event_hooks.publish.

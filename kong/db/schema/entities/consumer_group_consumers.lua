@@ -16,7 +16,7 @@ return {
   fields = {
     { created_at = typedefs.auto_timestamp_s },
     { updated_at = typedefs.auto_timestamp_s },
-    { consumer_group = { type = "foreign", required = true, reference = "consumer_groups", on_delete = "cascade" }, },
-    { consumer = { type = "foreign", required = true, reference = "consumers", on_delete = "cascade" }, },
+    { consumer_group = { description = "The consumer group to which the consumer belongs.", type = "foreign", required = true, reference = "consumer_groups", on_delete = "cascade" } },
+    { consumer = { description = "The consumer associated with the consumer group.", type = "foreign", required = true, reference = "consumers", on_delete = "cascade" } },
   }
 }

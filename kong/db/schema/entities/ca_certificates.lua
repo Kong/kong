@@ -24,7 +24,7 @@ return {
     { created_at = typedefs.auto_timestamp_s },
     { updated_at = typedefs.auto_timestamp_s },
     { cert = typedefs.certificate { required = true }, },
-    { cert_digest = { type = "string", unique = true }, },
+    { cert_digest = { description = "The digest of the CA certificate.", type = "string", unique = true } },
     { tags = typedefs.tags },
   },
 

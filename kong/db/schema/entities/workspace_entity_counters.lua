@@ -16,7 +16,7 @@ return {
 
   fields = {
     { workspace_id = typedefs.uuid },
-    { entity_type = { type = "string", required = true } },
-    { count = { type = "integer" } },
+    { entity_type = { description = "The type of the entity for which the counter is maintained.", type = "string", required = true } },
+    { count = { description = "The count of entities of the specified type in the workspace.", type = "integer" } },
   }
 }

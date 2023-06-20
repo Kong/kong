@@ -205,7 +205,7 @@ return {
           { add     = colon_strings_array_record_plus_json_types },
           { append  = colon_strings_array_record_plus_json_types },
           { allow   = strings_set_record },
-          { dots_in_keys = { type = "boolean", default = true }, },
+          { dots_in_keys = { description = "Specify whether dots (for example, `customers.info.phone`) should be treated as part of a property name or used to descend into nested JSON objects.  See [Arrays and nested objects](#arrays-and-nested-objects).", type = "boolean", default = true }, },
         },
         custom_validator = check_for_config,
       },

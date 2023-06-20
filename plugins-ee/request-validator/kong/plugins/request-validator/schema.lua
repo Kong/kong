@@ -115,26 +115,22 @@ return {
     { config = {
         type = "record",
         fields = {
-          { body_schema = {
-            type = "string",
+          { body_schema = { description = "The request body schema specification. One of `body_schema` or `parameter_schema` must be specified.", type = "string",
             required = false,
           }},
-          { allowed_content_types = {
-            type = "set",
+          { allowed_content_types = { description = "List of allowed content types. The value can be configured with the `charset` parameter. For example, `application/json; charset=UTF-8`.", type = "set",
             default = DEFAULT_CONTENT_TYPES,
             elements = { type = "string",
               required = true,
               custom_validator = validate_content_type,
             },
           }},
-          { version = {
-            type = "string",
+          { version = { description = "Which validator to use. Supported values are `kong` (default) for using Kong's own schema validator, or `draft4` for using a JSON Schema Draft 4-compliant validator.", type = "string",
             one_of = SUPPORTED_VERSIONS,
             default = SUPPORTED_VERSIONS[1],
             required = true,
           }},
-          { parameter_schema = {
-            type = "array",
+          { parameter_schema = { description = "Array of parameter validator specification. One of `body_schema` or `parameter_schema` must be specified.", type = "array",
             required = false,
             elements = {
               type = "record",
@@ -157,8 +153,7 @@ return {
               }
             },
           }},
-          { verbose_response = {
-            type = "boolean",
+          { verbose_response = { description = "If enabled, the plugin returns more verbose and detailed validation errors.", type = "boolean",
             default = false,
             required = true,
           }},

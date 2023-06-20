@@ -18,9 +18,9 @@ return {
     { id = typedefs.uuid, },
     { created_at = typedefs.auto_timestamp_s, },
     { updated_at = typedefs.auto_timestamp_s, },
-    { consumer = { type = "foreign", reference = "consumers", on_delete = "cascade", required = true, }, },
-    { secret = { type = "string", auto = true, required = true, }, },
-    { status = { type = "integer", default = 1, between = { 1, 3 }, required = true, }, },
-    { client_addr = { type = "string", required = true, } },
+    { consumer = { description = "The consumer associated with the secret", type = "foreign", reference = "consumers", on_delete = "cascade", required = true, }, },
+    { secret = { description = "The secret value", type = "string", auto = true, required = true, }, },
+    { status = { description = "The status of the reset.", type = "integer", default = 1, between = { 1, 3 }, required = true, }, },
+    { client_addr = { description = "The client address associated with the reset secret.", type = "string", required = true, } },
   },
 }

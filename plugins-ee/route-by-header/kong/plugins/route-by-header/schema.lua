@@ -51,7 +51,7 @@ return {
     { config = {
       type = "record",
       fields = {
-        { rules = { type = "array", default = {}, elements = rule }},
+        { rules = { type = "array", default = {}, elements = rule, description = "Route by header rules." }},
       }
     }}
   }

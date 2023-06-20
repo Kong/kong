@@ -26,8 +26,8 @@ return {
       type = "record",
       fields = {
         { functions = functions_array },
-        { handle_unknown = { type = "boolean", default = false } },
-        { handle_unexpected = { type = "boolean", default = false } },
+        { handle_unknown = { description = "Determines whether to handle unknown status codes by transforming their responses.", type = "boolean", default = false } },
+        { handle_unexpected = { description = "Determines whether to handle unexpected errors by transforming their responses.", type = "boolean", default = false } },
       }
     } }
   },

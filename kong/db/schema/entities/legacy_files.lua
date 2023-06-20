@@ -32,8 +32,8 @@ return {
     { created_at = typedefs.auto_timestamp_s },
     { updated_at = typedefs.auto_timestamp_s },
     { type       = type },
-    { name       = { type = "string", required = true, unique = true } },
-    { auth       = { type = "boolean", default = true } },
-    { contents   = { type = "string", len_min = 0, required = true } },
+    { name       = { description = "the name of the legacy file.", type = "string", required = true, unique = true } },
+    { auth       = { description = " A boolean representation of the auth status of the files.", type = "boolean", default = true } },
+    { contents   = { description = "The contents of the legacy files.", type = "string", len_min = 0, required = true } },
   }
 }

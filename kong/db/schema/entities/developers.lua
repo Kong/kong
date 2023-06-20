@@ -17,6 +17,7 @@ local email_validator_pattern = lp_email.email_nocfws * EOF
 local email = Schema.define {
   type = "string",
   required = true,
+  description = "The email address of the developer.",
   unique = true,
   custom_validator = function(s)
     local has_match = email_validator_pattern:match(s)
@@ -28,7 +29,7 @@ local email = Schema.define {
 }
 
 
-local developer_status = Schema.define { type = "integer", between = { 0, 5 }, default = 5 }
+local developer_status = Schema.define { description = "The status of the developer.", type = "integer", between = { 0, 5 }, default = 5 }
 
 
 return {
@@ -46,9 +47,9 @@ return {
     { updated_at     = typedefs.auto_timestamp_s },
     { email          = email },
     { status         = developer_status },
-    { custom_id      = { type = "string", unique = true }, },
-    { consumer       = { type = "foreign", reference = "consumers", }, },
-    { meta           = { type = "string" }, },
-    { rbac_user      = { type = "foreign", reference = "rbac_users" }, },
+    { custom_id = { description = "A custom identifier for the developer.", type = "string", unique = true } },
+    { consumer = { description = "The consumer associated with the developer.", type = "foreign", reference = "consumers" } },
+    { meta = { description = "Additional metadata for the developer.", type = "string" } },
+    { rbac_user = { description = "The RBAC user associated with the developer.", type = "foreign", reference = "rbac_users" } },
   },
 }

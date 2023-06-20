@@ -120,7 +120,7 @@ return {
       }}
       },
       { replace = { type = "record", fields = {
-          { body = { type = "string" } },
+          { body = { description = "String with which to replace the entire response body.", type = "string" } },
           { json = colon_strings_array },
           { json_types = json_types_array },
           { headers = colon_strings_array },
@@ -148,7 +148,7 @@ return {
           { if_status = status_array },
           { json = strings_array },
       }}},
-      { dots_in_keys = { type = "boolean", default = true }, },
+      { dots_in_keys = { description = "Whether dots (for example, `customers.info.phone`) should be treated as part of a property name or used to descend into nested JSON objects..", type = "boolean", default = true }, },
   },
   }}},
 }

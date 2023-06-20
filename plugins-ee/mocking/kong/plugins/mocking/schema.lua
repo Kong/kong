@@ -30,16 +30,16 @@ return {
     { config = {
       type = "record",
       fields = {
-        { api_specification_filename = { type = "string", required = false } },
-        { api_specification = { type = "string", required = false, custom_validator = validate_specification } },
-        { random_delay = { type = "boolean", default = false } },
-        { max_delay_time = { type = "number", default = 1 } },
-        { min_delay_time = { type = "number", default = 0.001 } },
+        { api_specification_filename = { description = "The path and name of the specification file loaded into Kong Gateway's database. You cannot use this option for DB-less or hybrid mode.", type = "string", required = false } },
+        { api_specification = { description = "The contents of the specification file. You must use this option for hybrid or DB-less mode. With this configuration option, you can include the full specification as part of the configuration, instead of referring to a separate file with `api_specification_filename` that lives next to the Kong Gateway. In Kong Manager, you can copy and paste the contents of the spec directly into the `Config.Api Specification` text field.", type = "string", required = false, custom_validator = validate_specification } },
+        { random_delay = { description = "Enables a random delay in the mocked response. Introduces delays to simulate real-time response times by APIs.", type = "boolean", default = false } },
+        { max_delay_time = { description = "The maximum value in seconds of delay time. Set this value when `random_delay` is enabled and you want to adjust the default. The value must be greater than the `min_delay_time`.", type = "number", default = 1 } },
+        { min_delay_time = { description = "The minimum value in seconds of delay time. Set this value when `random_delay` is enabled and you want to adjust the default. The value must be less than the `max_delay_time`.", type = "number", default = 0.001 } },
         -- this causes to randomly select one example if multiple examples
         -- are present.
-        { random_examples = { type = "boolean", default = false } },
-        { included_status_codes = { type = "array", elements = { type = "integer" } } },
-        { random_status_code = { type = "boolean", required = true, default = false } },
+        { random_examples = { description = "Randomly selects one example and returns it. This parameter requires the spec to have multiple examples configured.", type = "boolean", default = false } },
+        { included_status_codes = { description = "A global list of the HTTP status codes that can only be selected and returned.", type = "array", elements = { type = "integer" } } },
+        { random_status_code = { description = "Determines whether to randomly select an HTTP status code from the responses of the corresponding API method. The default value is `false`, which means the minimum HTTP status code is always selected and returned.", type = "boolean", required = true, default = false } },
       }
     } },
   },

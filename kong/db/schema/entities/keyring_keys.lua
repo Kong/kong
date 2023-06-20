@@ -14,9 +14,9 @@ return {
   primary_key = { "id" },
 
   fields = {
-    { id = { type = "string", required = true } },
-    { recovery_key_id = { type = "string", required = true } },
-    { key_encrypted = { type = "string", required = true } },
+    { id = { description = "The key ID.", type = "string", required = true } },
+    { recovery_key_id = { description = "The ID of the recovery key.", type = "string", required = true } },
+    { key_encrypted = { description = "A string representing an encrypted key.", type = "string", required = true } },
     { created_at = typedefs.auto_timestamp_s },
     { updated_at = typedefs.auto_timestamp_s },
   }

@@ -16,7 +16,8 @@ return {
   db_export = true,   -- maybe play with this if we don't want it passed along?
   fields = {
     { id             = typedefs.uuid },
-    { payload        = { type = "string",
+    { payload        = { description = "The license payload.", 
+                         type = "string",
                          required = true,
                          unique = true,
                          custom_validator = license_helpers.is_valid_license }

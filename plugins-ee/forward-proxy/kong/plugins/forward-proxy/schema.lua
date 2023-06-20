@@ -16,6 +16,7 @@ return {
         type = "record",
         fields = {
           { x_headers = {
+            description = "Determines how to handle headers when forwarding the request.",
             type = "string",
             one_of = { "append", "transparent", "delete", },
             required = true,
@@ -27,24 +28,20 @@ return {
           { https_proxy_host = typedefs.host },
           { https_proxy_port = typedefs.port },
 
-          { proxy_scheme = {
-            type = "string",
+          { proxy_scheme = { description = "The proxy scheme to use when connecting. Only `http` is supported.", type = "string",
             one_of = { "http" },
             required = true,
             default = "http",
           }},
-          { auth_username = {
-            type = "string",
+          { auth_username = { description = "The username to authenticate with, if the forward proxy is protected\nby basic authentication.", type = "string",
             required = false,
             referenceable = true,
           }},
-          { auth_password = {
-            type = "string",
+          { auth_password = { description = "The password to authenticate with, if the forward proxy is protected\nby basic authentication.", type = "string",
             required = false,
             referenceable = true,
           }},
-          { https_verify = {
-            type = "boolean",
+          { https_verify = { description = "Whether the server certificate will be verified according to the CA certificates specified in lua_ssl_trusted_certificate.", type = "boolean",
             required = true,
             default = false,
           }},

@@ -19,46 +19,58 @@ return {
 
   fields = {
     { request_id = {
+      description = "The ID of the audit request.",
       type = "string",
     }},
     { request_source = {
+      description = "The source of the audit request.",
       type = "string"
     }},
     { request_timestamp = typedefs.auto_timestamp_s },
     { client_ip = {
+      description = "The IP address of the client making the request.",
       type = "string",
       required = true,
     }},
     { path = {
+      description = "The path of the requested resource.",
       type = "string",
       required = true,
     }},
     { method = {
+      description = "The HTTP method of the request.",
       type = "string",
       required = true,
     }},
     { payload = {
+      description = "The payload of the request.",
       type = "string",
     }},
     { removed_from_payload = {
+      description = "The removed data from the payload.",
       type = "string",
     }},
     { status = {
+      description = "The status code of the request.",
       type = "integer",
       required = true,
     }},
     { rbac_user_id = {
+      description = "The ID of the RBAC (Role-Based Access Control) user associated with the request.",
       type = "string",
       uuid = true,
     }},
     { rbac_user_name = {
+      description = "The name of the RBAC user associated with the request.",
       type = "string"
     }},
     { workspace = {
+      description = "The ID of the workspace associated with the request.",
       type = "string",
       uuid = true
     }},
     { signature = {
+      description = "The signature associated with the request.",
       type = "string",
     }},
   },

@@ -26,6 +26,7 @@ return {
           { tls_client_certificate = {
             required = false,
             type = "string",
+            description = "TLS Client Certificate",
             one_of = {"REQUEST"},
             default = "REQUEST"
           }, },

@@ -18,10 +18,10 @@ return {
     { config = {
         type = "record",
         fields = {
-          { display_name = { type = "string", unique = true, required = true }, },
-          { description = { type = "string", unique = true }, },
-          { auto_approve = { type = "boolean", required = true, default = false }, },
-          { show_issuer = { type = "boolean", required = true, default = false }, },
+          { display_name = { description = "Unique display name used for a Service in the Developer Portal.", type = "string", unique = true, required = true }, },
+          { description = { description = "Unique description displayed in information about a Service in the Developer Portal.", type = "string", unique = true }, },
+          { auto_approve = { description = "If enabled, all new Service Contracts requests are automatically approved.", type = "boolean", required = true, default = false }, },
+          { show_issuer = { description = "Displays the **Issuer URL** in the **Service Details** dialog.", type = "boolean", required = true, default = false }, },
         },
       },
     },

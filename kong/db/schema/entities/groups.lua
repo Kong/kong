@@ -21,7 +21,7 @@ return {
     { id             = typedefs.uuid },
     { created_at     = typedefs.auto_timestamp_s },
     { updated_at     = typedefs.auto_timestamp_s },
-    { name           = { type = "string", required = true, unique = true }},
-    { comment        = { type = "string" }},
+    { name           = { description = "The name of the group", type = "string", required = true, unique = true }},
+    { comment        = { description = "Any comments associated with the specific group.", type = "string" }},
   },
 }

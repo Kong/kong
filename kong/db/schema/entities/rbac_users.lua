@@ -27,11 +27,11 @@ return {
     { id = typedefs.uuid, },
     { created_at = typedefs.auto_timestamp_s },
     { updated_at = typedefs.auto_timestamp_s },
-    { name = { type = "string", required = true, unique = true } },
+    { name = { description = "The name of the user.", type = "string", required = true, unique = true } },
     { user_token = typedefs.rbac_user_token },
-    { user_token_ident = { type = "string" } },
-    { comment = { type = "string" } },
-    { enabled = { type = "boolean", required = true, default = true } }
+    { user_token_ident = { description = " The user token.", type = "string" } },
+    { comment = { description = "Any comments associated with the user.", type = "string" } },
+    { enabled = { description = "Wether or not the user has RBAC enabled.", type = "boolean", required = true, default = true } }
   },
   entity_checks = { {
     custom_entity_check = {

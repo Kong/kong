@@ -25,31 +25,37 @@ return {
         fields = {
           { inject_client_cert_details = {
             type = "boolean",
+            description = "Enables TLS client certificate metadata values to be injected into HTTP headers.",
             default = false
           }, },
           { client_cert_header_name = {
             type = "string",
             required = true,
+            description = "Define the HTTP header name used for the PEM format URL encoded client certificate.",
             default = "X-Client-Cert"
           }, },
           { client_serial_header_name = {
             type = "string",
             required = true,
+            description = "Define the HTTP header name used for the serial number of the client certificate.",
             default = "X-Client-Cert-Serial"
           }, },
           { client_cert_issuer_dn_header_name = {
             type = "string",
             required = true,
+            description = "Define the HTTP header name used for the issuer DN of the client certificate.",
             default = "X-Client-Cert-Issuer-DN"
           }, },
           { client_cert_subject_dn_header_name = {
             type = "string",
             required = true,
+            description = "Define the HTTP header name used for the subject DN of the client certificate.",
             default = "X-Client-Cert-Subject-DN"
           }, },
           { client_cert_fingerprint_header_name = {
             type = "string",
             required = true,
+            description = "Define the HTTP header name used for the SHA1 fingerprint of the client certificate.",
             default = "X-Client-Cert-Fingerprint"
           }, },
         },

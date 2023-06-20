@@ -28,60 +28,54 @@ return {
     { config = {
         type = "record",
         fields = {
-          { identifier = {
-            type = "string",
+          { identifier = { description = "How to define the rate limit key. Can be `ip`, `credential`, `consumer`.", type = "string",
             one_of = { "ip", "credential", "consumer" },
             default = "consumer",
             required = true,
           }},
-          { window_size = {
-            type = "array",
+          { window_size = { description = "One or more window sizes to apply a limit to (defined in seconds).", type = "array",
             elements = {
               type = "number",
             },
             required = true,
           }},
-          { window_type = {
-            type = "string",
+          { window_type = { description = "Sets the time window to either `sliding` or `fixed`.", type = "string",
             one_of = { "fixed", "sliding" },
             default = "sliding",
           }},
-          { limit = {
-            type = "array",
+          { limit = { description = "One or more requests-per-window limits to apply.", type = "array",
             elements = {
               type = "number",
             },
             required = true,
           }},
-          { sync_rate = {
+          { sync_rate = { description = "How often to sync counter data to the central data store. A value of 0 results in synchronous behavior; a value of -1 ignores sync behavior entirely and only stores counters in node memory. A value greater than 0 syncs the counters in that many number of seconds.",
             type = "number",
             required = true,
           }},
-          { namespace = {
-            type = "string",
+          { namespace = { description = "The rate limiting library namespace to use for this plugin instance.", type = "string",
             auto = true,
           }},
-          { strategy = {
-            type = "string",
+          { strategy = { description = "The rate-limiting strategy to use for retrieving and incrementing the limits.", type = "string",
             one_of = { "cluster", "redis", },
             default = "cluster",
             required = true,
           }},
-          { dictionary_name = {
-            type = "string",
+          { dictionary_name = { description = "The shared dictionary where counters will be stored until the next sync cycle.", type = "string",
             default = "kong_rate_limiting_counters",
             required = true,
           }},
-          { hide_client_headers = {
-            type = "boolean",
+          { hide_client_headers = { description = "Optionally hide informative response headers. Available options: `true` or `false`.", type = "boolean",
             default = false,
           }},
           { cost_strategy = {
+            description = "Strategy to use to evaluate query costs. Either `default` or `node_quantifier`.",
             type = "string",
             one_of = { "default", "node_quantifier" },
             default = "default",
           }},
           { score_factor = {
+            description = "A scoring factor to multiply (or divide) the cost. The `score_factor` must always be greater than 0.",
             type = "number",
             required = false,
             default = 1.0,
@@ -89,6 +83,7 @@ return {
             gt = 0
           }},
           { max_cost = {
+            description = "A defined maximum cost per query. 0 means unlimited.",
             type = "number",
             required = false,
             default = 0,
