@@ -58,10 +58,7 @@ local values_buf = buffer.new(64)
 
 local CACHED_SCHEMA
 do
-  local FIELDS
-
-  if is_http then
-    FIELDS = {
+  local FIELDS = {
 
       ["String"] = {"net.protocol", "tls.sni",
                     "http.method", "http.host",
@@ -70,20 +67,12 @@ do
                    },
 
       ["Int"]    = {"net.port",
+                    "net.src.port", "net.dst.port",
                    },
-    }
-
-  else  -- stream subsystem
-    FIELDS = {
-
-      ["String"] = { "net.protocol", "tls.sni", },
-
-      ["Int"]    = { "net.src.port", "net.dst.port", },
 
       --["IpAddr"] = { "net.src.ip", "net.dst.ip", },
       ["IpCidr"] = { "net.src.ip", "net.dst.ip", },
-    }
-  end
+  }
 
   CACHED_SCHEMA = schema.new()
 
