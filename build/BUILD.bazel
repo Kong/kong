@@ -50,21 +50,27 @@ wasmx_vm_deps = select({
 })
 
 wasmx_deps = select({
-    "@kong//:wasmx_flag": [
+    "@kong//:wasmx_static_mod_flag": [
+        "@ngx_wasm_module//:lua_libs",
+    ],
+    "@kong//:wasmx_dynamic_mod_flag": [
         "@ngx_wasm_module//:lua_libs",
     ],
     "//conditions:default": [],
 }) + wasmx_vm_deps
 
-wasm_libs_cmd = select({
-    "@kong//:wasmx_flag": """
+WASM_LIBS_INSTALL = """
     for fname in $(locations @ngx_wasm_module//:lua_libs); do
         base=${fname##*/ngx_wasm_module/lib/}
         dest="${BUILD_DESTDIR}/openresty/lualib/$base"
         mkdir -p "$(dirname "$dest")"
         cp -v "$fname" "$dest"
     done
-""",
+"""
+
+wasm_libs_cmd = select({
+    "@kong//:wasmx_static_mod_flag": WASM_LIBS_INSTALL,
+    "@kong//:wasmx_dynamic_mod_flag": WASM_LIBS_INSTALL,
     "//conditions:default": "\n",
 })
 

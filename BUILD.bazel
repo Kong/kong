@@ -158,10 +158,30 @@ bool_flag(
     build_setting_default = True,
 )
 
+# --//:wasmx_module=static
+string_flag(
+    name = "wasmx_module",
+    build_setting_default = "static",
+    values = [
+        "dynamic",
+        "static",
+    ],
+)
+
 config_setting(
-    name = "wasmx_flag",
+    name = "wasmx_static_mod_flag",
     flag_values = {
         ":wasmx": "true",
+        ":wasmx_module": "static",
+    },
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "wasmx_dynamic_mod_flag",
+    flag_values = {
+        ":wasmx": "true",
+        ":wasmx_module": "dynamic",
     },
     visibility = ["//visibility:public"],
 )
