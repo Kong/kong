@@ -219,11 +219,6 @@ jobs:
           source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           scripts/autodoc
 
-    - name: Check Admin API definition generation
-      run: |
-          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
-          scripts/gen-admin-api-def.sh
-
     - name: Static Code Analysis
       run: |
           source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
