@@ -49,8 +49,6 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client_h2c
     local proxy_client_h2
 
-    local it_trad_only = (flavor == "traditional") and it or pending
-
     reload_router(flavor)
 
     lazy_setup(function()
@@ -386,7 +384,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same("Non-gRPC request matched gRPC route", json.message)
       end)
 
-      it_trad_only("grpc on grpcs route", function()
+      it("grpc on grpcs route", function()
         local ok, resp = proxy_client_grpc({
           service = "hello.HelloService.SayHello",
           body = {
@@ -398,8 +396,14 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.falsy(ok)
 
-        assert.matches("Code: Canceled", resp, nil, true)
-        assert.matches("Message: gRPC request matched gRPCs route", resp, nil, true)
+        if flavor == "expressions" then
+          assert.matches("Code: NotFound", resp, nil, true)
+          assert.matches("Message: NotFound", resp, nil, true)
+
+        else
+          assert.matches("Code: Canceled", resp, nil, true)
+          assert.matches("Message: gRPC request matched gRPCs route", resp, nil, true)
+        end
       end)
     end)
   end)
