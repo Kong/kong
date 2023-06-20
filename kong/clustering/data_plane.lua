@@ -298,16 +298,21 @@ function _M:communicate(premature)
           config_semaphore:post()
         end
 
-      elseif typ == "pong" then
+        goto continue
+      end
+
+      if typ == "pong" then
         ngx_log(ngx_DEBUG, _log_prefix,
                 "received pong frame from control plane",
                 log_suffix)
 
-      else
-        ngx_log(ngx_NOTICE, _log_prefix,
-                "received unknown (", tostring(typ), ") frame from control plane",
-                log_suffix)
+        goto continue
       end
+
+      -- unknown websocket frame
+      ngx_log(ngx_NOTICE, _log_prefix,
+              "received unknown (", tostring(typ), ") frame from control plane",
+              log_suffix)
 
       ::continue::
     end
