@@ -8,6 +8,7 @@
 -- TODO: get rid of 'kong.meta'; this module is king
 local meta = require "kong.meta"
 local PDK = require "kong.pdk"
+local process = require "ngx.process"
 local phase_checker = require "kong.pdk.private.phases"
 local kong_cache = require "kong.cache"
 local kong_cluster_events = require "kong.cluster_events"
@@ -223,7 +224,8 @@ end
 
 
 local function get_lru_size(kong_config)
-  if (kong_config.role == "control_plane")
+  if (process.type() == "privileged agent")
+  or (kong_config.role == "control_plane")
   or (kong_config.role == "traditional" and #kong_config.proxy_listeners  == 0
                                         and #kong_config.stream_listeners == 0)
   then
