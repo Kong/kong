@@ -87,6 +87,9 @@
   from `128m` to accommodate most commonly deployed config sizes in DB-less
   and Hybrid mode.
   [#11047](https://github.com/Kong/kong/pull/11047)
+- The default value of `cluster_max_payload` config has been bumped to `16m`
+  from `4m` to accommodate most commonly deployed config sizes in Hybrid mode.
+  [#11090](https://github.com/Kong/kong/pull/11090)
 
 #### Status API
 
