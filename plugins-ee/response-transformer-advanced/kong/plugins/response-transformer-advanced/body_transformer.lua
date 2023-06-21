@@ -8,18 +8,24 @@
 local transform_utils = require "kong.plugins.response-transformer-advanced.transform_utils"
 local json_navigator = require "kong.enterprise_edition.transformations.plugins.json_navigator"
 local sandbox = require "kong.tools.sandbox"
-
+local mime_type = require "kong.tools.mime_type"
+local ngx_re = require "ngx.re"
+local pl_stringx = require "pl.stringx"
 local cjson = require("cjson.safe").new()
 local tablex = require("pl.tablex")
 
 local skip_transform = transform_utils.skip_transform
 local navigate_and_apply = json_navigator.navigate_and_apply
 local insert = table.insert
-local find = string.find
 local sub = string.sub
 local gsub = string.gsub
 local match = string.match
-local lower = string.lower
+local ipairs = ipairs
+local parse_mime_type = mime_type.parse_mime_type
+local mime_type_includes = mime_type.includes
+local split = ngx_re.split
+local strip = pl_stringx.strip
+
 
 local next = next
 local pcall = pcall
@@ -130,7 +136,24 @@ end
 
 
 function _M.is_json_body(content_type)
-  return content_type and find(lower(content_type), "application/json", nil, true)
+  if not content_type then
+    return false
+  end
+  local content_types = split(content_type, ",")
+  local expected_media_type = { type = "application", subtype = "json" }
+  for _, content_type in ipairs(content_types) do
+    local t, subtype = parse_mime_type(strip(content_type))
+    if not t or not subtype then
+      goto continue
+    end
+    local media_type = { type = t, subtype = subtype }
+    if mime_type_includes(expected_media_type, media_type) then
+      return true
+    end
+    ::continue::
+  end
+
+  return false
 end
 
 
