@@ -17,7 +17,6 @@ local ngx_ERR = ngx.ERR
 
 -- map to normal protocol
 local protocols_mapping = {
-  tls             = "tcp",
   tls_passthrough = "tcp",
   grpc            = "http",
   grpcs           = "https",
