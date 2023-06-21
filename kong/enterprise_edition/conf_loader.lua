@@ -19,6 +19,7 @@ local openssl_version = require "resty.openssl.version"
 local openssl_x509 = require "resty.openssl.x509"
 local openssl_pkey = require "resty.openssl.pkey"
 local url = require "socket.url"
+local deprecation = require("kong.deprecation")
 
 
 local re_match = ngx.re.match
