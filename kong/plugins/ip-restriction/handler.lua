@@ -1,10 +1,8 @@
-local cjson = require "cjson.safe"
 local lrucache = require "resty.lrucache"
 local ipmatcher = require "resty.ipmatcher"
 local kong_meta = require "kong.meta"
 
 
-local cjson_encode = cjson.encode
 local error = error
 local kong = kong
 local ngx_exit = ngx.exit
@@ -49,9 +47,7 @@ else
       error(err)
     end
 
-    tcpsock:send(cjson_encode({
-      message = message
-    }))
+    tcpsock:send(message)
 
     return ngx_exit(status)
   end
