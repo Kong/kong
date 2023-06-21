@@ -21,7 +21,6 @@ local pairs = pairs
 local ipairs = ipairs
 local assert = assert
 local tb_insert = table.insert
-local tb_sort = table.sort
 local byte = string.byte
 local bor, band, lshift = bit.bor, bit.band, bit.lshift
 
