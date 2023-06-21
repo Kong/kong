@@ -12,6 +12,8 @@ on:  # yamllint disable-line rule:truthy
     - '.github/workflows/release.yml'
     - '.github/matrix-*.yml'
     - 'spec-ee/kong-api-tests/**'
+    - 'kong/**'
+    - 'plugins-ee/**'
   push:
     tags:
     - '**'
@@ -635,7 +637,7 @@ jobs:
 
   release-packages:
     name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
-    needs: [metadata, build-packages, build-images, smoke-tests, smoke-api-package-tests]
+    needs: [metadata, build-packages, build-images, smoke-tests, smoke-api-package-tests, smoke-api-tests, e2e-api-tests]
     runs-on: ${{ vars.RELEASE_RUNS_ON }}
     if: github.repository_owner == 'Kong' && fromJSON(needs.metadata.outputs.matrix)['release-packages'] != ''
     timeout-minutes: 5 # PULP takes a while to publish
@@ -705,7 +707,7 @@ jobs:
 
   release-images:
     name: Release Images - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
-    needs: [metadata, build-images, smoke-tests, smoke-api-tests]
+    needs: [metadata, build-images, smoke-tests, smoke-api-package-tests, smoke-api-tests, e2e-api-tests]
     runs-on: ${{ vars.RELEASE_RUNS_ON }}
     if: github.repository_owner == 'Kong' && fromJSON(needs.metadata.outputs.matrix)['release-images'] != ''
 
