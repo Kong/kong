@@ -10,7 +10,11 @@ local printable_metric_data = function(_)
     buf:put(new_metric_data)
   end)
 
-  return buf:get()
+  local str = buf:get()
+
+  buf:free()
+
+  return str
 end
 
 

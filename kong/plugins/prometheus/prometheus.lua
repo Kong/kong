@@ -976,6 +976,8 @@ function Prometheus:metric_data(write_fn, local_only)
   end
 
   buffered_print(nil)
+
+  output:free()
 end
 
 -- Present all metrics in a text format compatible with Prometheus.
