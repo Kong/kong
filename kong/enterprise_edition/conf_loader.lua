@@ -9,7 +9,6 @@ local enterprise_utils = require "kong.enterprise_edition.utils"
 local listeners = require "kong.conf_loader.listeners"
 local log = require "kong.cmd.utils.log"
 local try_decode_base64 = require "kong.tools.utils".try_decode_base64
-local deprecation = require("kong.deprecation")
 
 local pl_stringx = require "pl.stringx"
 local pl_path = require "pl.path"
