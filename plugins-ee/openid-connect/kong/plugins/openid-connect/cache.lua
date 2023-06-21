@@ -432,6 +432,39 @@ local function fetch_keys(jwks_uri, opts)
 end
 
 
+local function decode_previous_configuration(issuer_entity, issuer)
+  local configuration_decoded, err = json.decode(issuer_entity.configuration)
+  if type(configuration_decoded) ~= "table" then
+    log.notice("decoding previous discovery document failed: ", err or "unknown error",
+               " (falling back to empty configuration)")
+    return {
+      issuer = issuer,
+    }
+  end
+
+  return configuration_decoded
+end
+
+
+local function decode_previous_jwks(jwks_uri, jwks_string, err)
+  if jwks_cache[jwks_uri] then
+    log.notice("loading jwks from ", jwks_uri, " thread failed: ", jwks_string or "unknown error",
+               " (falling back to previous jwks)")
+    local jwks_uri_jwks
+    jwks_uri_jwks, err = json.decode(jwks_cache[jwks_uri])
+    if type(jwks_uri_jwks) ~= "table" then
+      log.notice("decoding previous jwks failed: ", err or "type error")
+      return
+    end
+
+    return jwks_uri_jwks
+  end
+
+  log.notice("loading jwks from ", jwks_uri, " failed: ", err or "unknown error",
+             " (ignoring)")
+end
+
+
 local function discover(issuer, opts, issuer_entity)
   opts = opts or {}
 
@@ -444,14 +477,7 @@ local function discover(issuer, opts, issuer_entity)
     if issuer_entity then
       log.notice("loading configuration for ", issuer, " using discovery failed: ", err or "unknown error",
                  " (falling back to previous configuration)")
-      configuration_decoded, err = json.decode(issuer_entity.configuration)
-      if type(configuration_decoded) ~= "table" then
-        log.notice("decoding previous discovery document failed: ", err or "unknown error",
-                   " (falling back to empty configuration)")
-        configuration_decoded = {
-          issuer = issuer,
-        }
-      end
+      configuration_decoded = decode_previous_configuration(issuer_entity, issuer)
 
     else
       log.notice("loading configuration for ", issuer, " using discovery failed: ", err or "unknown error",
@@ -468,14 +494,7 @@ local function discover(issuer, opts, issuer_entity)
         log.notice("decoding discovery document failed: ", err or "unknown error",
                    " (falling back to previous configuration)")
 
-        configuration_decoded, err = json.decode(issuer_entity.configuration)
-        if type(configuration_decoded) ~= "table" then
-          log.notice("decoding previous discovery document failed: ", err or "unknown error",
-                     " (falling back to empty configuration)")
-          configuration_decoded = {
-            issuer = issuer,
-          }
-        end
+        configuration_decoded = decode_previous_configuration(issuer_entity, issuer)
 
       else
         log.notice("decoding discovery document failed: ", err or "unknown error",
@@ -537,33 +556,11 @@ local function discover(issuer, opts, issuer_entity)
       jwks_uri = jwks_uris[i]
       ok, jwks_string, err = wait(threads[i])
       if not ok then
-        if jwks_cache[jwks_uri] then
-          log.notice("loading jwks from ", jwks_uri, " thread failed: ", jwks_string or "unknown error",
-                     " (falling back to previous jwks)")
-          jwks_uri_jwks, err = json.decode(jwks_cache[jwks_uri])
-          if type(jwks_uri_jwks) ~= "table" then
-            log.notice("decoding previous jwks failed: ", err or "type error")
-          end
-
-        else
-          log.notice("loading jwks from ", jwks_uri, " failed: ", err or "unknown error",
-                     " (ignoring)")
-        end
+        jwks_uri_jwks = decode_previous_jwks(jwks_uri, jwks_string, err)
 
       else
         if type(jwks_string) ~= "string" then
-          if jwks_cache[jwks_uri] then
-            log.notice("loading jwks from ", jwks_uri, " failed: ", err or "unknown error",
-                       " (falling back to previous jwks)")
-            jwks_uri_jwks, err = json.decode(jwks_cache[jwks_uri])
-            if type(jwks_uri_jwks) ~= "table" then
-              log.notice("decoding previous jwks failed: ", err or "type error")
-            end
-
-          else
-            log.notice("loading jwks from ", jwks_uri, " failed: ", err or "unknown error",
-                    " (ignoring)")
-          end
+          jwks_uri_jwks = decode_previous_jwks(jwks_uri, jwks_string, err)
 
         else
           jwks_uri_jwks, err = json.decode(jwks_string)
