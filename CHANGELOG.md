@@ -38,6 +38,11 @@
 
 #### Plugins
 
+- **OpenTelemetry**: Support AWS X-Ray propagation header
+  The field `header_type`now accepts the `aws` value to handle this specific
+  propagation header.
+  [11075](https://github.com/Kong/kong/pull/11075)
+
 #### PDK
 
 #### Performance
@@ -46,6 +51,9 @@
   instead of on-demand in the request path. This is most evident in decreased
   response latency when updating configuration via the `/config` API endpoint.
   [#10932](https://github.com/Kong/kong/pull/10932)
+- The Prometheus plugin has been optimized to reduce proxy latency impacts during scraping.
+  [#10949](https://github.com/Kong/kong/pull/10949)
+  [#11040](https://github.com/Kong/kong/pull/11040)
 
 ### Fixes
 
@@ -80,6 +88,17 @@
 
 #### Core
 
+- The default value of `lmdb_map_size` config has been bumped to `2048m`
+  from `128m` to accommodate most commonly deployed config sizes in DB-less
+  and Hybrid mode.
+  [#11047](https://github.com/Kong/kong/pull/11047)
+
+#### Status API
+
+- Remove the database information from the status API when operating in dbless
+  mode or data plane.
+  [#10995](https://github.com/Kong/kong/pull/10995)
+
 #### PDK
 
 #### Plugins
@@ -90,8 +109,11 @@
   [#10837](https://github.com/Kong/kong/pull/10837)
 - Bumped kong-lapis from 1.8.3.1 to 1.14.0.2
   [#10841](https://github.com/Kong/kong/pull/10841)
-- Bumped lua-resty-events from 0.1.4 to 0.1.5
+- Bumped lua-resty-events from 0.1.4 to 0.1.6
   [#10883](https://github.com/Kong/kong/pull/10883)
+  [#11083](https://github.com/Kong/kong/pull/11083)
+- Bumped lua-resty-session from 4.0.3 to 4.0.4
+  [#11011](https://github.com/Kong/kong/pull/11011)
 
 ## 3.3.0
 
@@ -599,6 +621,9 @@ now encoded as `"[]"` to comply with standard.
   [#9611](https://github.com/Kong/kong/pull/9611)
 - **HTTP-Log**: Support `http_endpoint` field to be referenceable
   [#9714](https://github.com/Kong/kong/pull/9714)
+- **rate-limiting**: Add a new configuration `sync_rate` to the `redis` policy,
+  which synchronizes metrics to redis periodically instead of on every request.
+  [#9538](https://github.com/Kong/kong/pull/9538)
 
 
 #### Hybrid Mode

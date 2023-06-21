@@ -2,12 +2,13 @@ local _M = {}
 
 
 local bit = require("bit")
+local buffer = require("string.buffer")
 local atc = require("kong.router.atc")
 local tb_new = require("table.new")
-local tb_clear = require("table.clear")
 local tb_nkeys = require("table.nkeys")
 local uuid = require("resty.jit-uuid")
 local utils = require("kong.tools.utils")
+
 
 local escape_str      = atc.escape_str
 local is_empty_field  = atc.is_empty_field
@@ -18,9 +19,8 @@ local split_host_port = atc.split_host_port
 local type = type
 local pairs = pairs
 local ipairs = ipairs
-local tb_concat = table.concat
+local assert = assert
 local tb_insert = table.insert
-local tb_sort = table.sort
 local byte = string.byte
 local bor, band, lshift = bit.bor, bit.band, bit.lshift
 
@@ -37,11 +37,21 @@ local ASTERISK         = byte("*")
 local MAX_HEADER_COUNT = 255
 
 
--- reuse table objects
-local exp_out_t           = tb_new(10, 0)
-local exp_hosts_t         = tb_new(10, 0)
-local exp_headers_t       = tb_new(10, 0)
-local exp_single_header_t = tb_new(10, 0)
+-- reuse buffer objects
+local expr_buf          = buffer.new(128)
+local hosts_buf         = buffer.new(64)
+local headers_buf       = buffer.new(128)
+local single_header_buf = buffer.new(64)
+
+
+local function buffer_append(buf, sep, str, idx)
+  if #buf > 0 and
+     (idx == nil or idx > 1)
+  then
+    buf:put(sep)
+  end
+  buf:put(str)
+end
 
 
 local function is_regex_magic(path)
@@ -72,12 +82,11 @@ local function get_expression(route)
   local headers = route.headers
   local snis    = route.snis
 
-  tb_clear(exp_out_t)
-  local out = exp_out_t
+  expr_buf:reset()
 
   local gen = gen_for_field("http.method", OP_EQUAL, methods)
   if gen then
-    tb_insert(out, gen)
+    buffer_append(expr_buf, LOGICAL_AND, gen)
   end
 
   local gen = gen_for_field("tls.sni", OP_EQUAL, snis, function(_, p)
@@ -92,14 +101,14 @@ local function get_expression(route)
     -- See #6425, if `net.protocol` is not `https`
     -- then SNI matching should simply not be considered
     gen = "net.protocol != \"https\"" .. LOGICAL_OR .. gen
-    tb_insert(out, gen)
+
+    buffer_append(expr_buf, LOGICAL_AND, gen)
   end
 
   if not is_empty_field(hosts) then
-    tb_clear(exp_hosts_t)
-    local hosts_t = exp_hosts_t
+    hosts_buf:reset():put("(")
 
-    for _, h in ipairs(hosts) do
+    for i, h in ipairs(hosts) do
       local host, port = split_host_port(h)
 
       local op = OP_EQUAL
@@ -115,23 +124,15 @@ local function get_expression(route)
       end
 
       local exp = "http.host ".. op .. " \"" .. host .. "\""
-      if not port then
-        tb_insert(hosts_t, exp)
-
-      else
-        tb_insert(hosts_t, "(" .. exp .. LOGICAL_AND ..
-                           "net.port ".. OP_EQUAL .. " " .. port .. ")")
+      if port then
+        exp = "(" .. exp .. LOGICAL_AND ..
+              "net.port ".. OP_EQUAL .. " " .. port .. ")"
       end
+      buffer_append(hosts_buf, LOGICAL_OR, exp, i)
     end -- for route.hosts
 
-    tb_insert(out, "(" .. tb_concat(hosts_t, LOGICAL_OR) .. ")")
-  end
-
-  -- resort `paths` to move regex routes to the front of the array
-  if not is_empty_field(paths) then
-    tb_sort(paths, function(a, b)
-      return is_regex_magic(a) and not is_regex_magic(b)
-    end)
+    buffer_append(expr_buf, LOGICAL_AND,
+                  hosts_buf:put(")"):get())
   end
 
   gen = gen_for_field("http.path", function(path)
@@ -147,18 +148,16 @@ local function get_expression(route)
     return p
   end)
   if gen then
-    tb_insert(out, gen)
+    buffer_append(expr_buf, LOGICAL_AND, gen)
   end
 
   if not is_empty_field(headers) then
-    tb_clear(exp_headers_t)
-    local headers_t = exp_headers_t
+    headers_buf:reset()
 
     for h, v in pairs(headers) do
-      tb_clear(exp_single_header_t)
-      local single_header_t = exp_single_header_t
+      single_header_buf:reset():put("(")
 
-      for _, value in ipairs(v) do
+      for i, value in ipairs(v) do
         local name = "any(http.headers." .. h:gsub("-", "_"):lower() .. ")"
         local op = OP_EQUAL
 
@@ -168,16 +167,18 @@ local function get_expression(route)
           op = OP_REGEX
         end
 
-        tb_insert(single_header_t, name .. " " .. op .. " " .. escape_str(value:lower()))
+        buffer_append(single_header_buf, LOGICAL_OR,
+                      name .. " " .. op .. " " .. escape_str(value:lower()), i)
       end
 
-      tb_insert(headers_t, "(" .. tb_concat(single_header_t, LOGICAL_OR) .. ")")
+      buffer_append(headers_buf, LOGICAL_AND,
+                    single_header_buf:put(")"):get())
     end
 
-    tb_insert(out, tb_concat(headers_t, LOGICAL_AND))
+    buffer_append(expr_buf, LOGICAL_AND, headers_buf:get())
   end
 
-  return tb_concat(out, LOGICAL_AND)
+  return expr_buf:get()
 end
 
 

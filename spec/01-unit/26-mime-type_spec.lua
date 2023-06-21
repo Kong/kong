@@ -85,11 +85,12 @@ describe("kong.tools.mime_type", function()
         text_plain = { type = "text", subtype = "plain" },
         text_all = { type = "text", subtype = "*" },
         application_soap_xml = { type = "application", subtype = "soap+xml" },
-        application_wildcard_xml = { type = "application", subtype = "*+xml" },
+        application_wildcard_xml = { type = "application", subtype = "xml" },
         suffix_xml = { type = "application", subtype = "x.y+z+xml" },
         application_json = { type = "application", subtype = "json" },
         application_problem_json = { type = "application", subtype = "problem+json" },
         application_problem_json_malformed1 = { type = "application", subtype = "problem+" },
+        application_xxxjson = { type = "application", subtype = "xxxxjson" },
       }
 
       local cases = {
@@ -161,6 +162,11 @@ describe("kong.tools.mime_type", function()
         {
           this = media_types.application_json,
           other = media_types.application_problem_json_malformed1,
+          result = false,
+        },
+        {
+          this = media_types.application_json,
+          other = media_types.application_xxxjson,
           result = false,
         },
       }

@@ -551,6 +551,14 @@ local CONF_SENSITIVE = {
   pg_password = true,
   pg_ro_password = true,
   proxy_server = true, -- hide proxy server URL as it may contain credentials
+  declarative_config_string = true, -- config may contain sensitive info
+  -- may contain absolute or base64 value of the the key
+  cluster_cert_key = true,
+  ssl_cert_key = true,
+  client_ssl_cert_key = true,
+  admin_ssl_cert_key = true,
+  status_ssl_cert_key = true,
+  debug_ssl_cert_key = true,
 }
 
 
@@ -1140,7 +1148,7 @@ local function check_and_parse(conf, opts)
 
   if conf.tracing_instrumentations and #conf.tracing_instrumentations > 0 then
     local instrumentation = require "kong.tracing.instrumentation"
-    local available_types_map = tablex.deepcopy(instrumentation.available_types)
+    local available_types_map = utils.cycle_aware_deep_copy(instrumentation.available_types)
     available_types_map["all"] = true
     available_types_map["off"] = true
     available_types_map["request"] = true
@@ -1949,7 +1957,7 @@ return setmetatable({
   end,
 
   remove_sensitive = function(conf)
-    local purged_conf = tablex.deepcopy(conf)
+    local purged_conf = utils.cycle_aware_deep_copy(conf)
 
     local refs = purged_conf["$refs"]
     if type(refs) == "table" then

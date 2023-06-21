@@ -1332,15 +1332,15 @@
                                       #
                                       # This path is relative under the Kong `prefix`.
 
-#lmdb_map_size = 128m                 # Maximum size of the LMDB memory map, used to store the
-                                      # DB-less and Hybird mode configurations. Default is 128m.
+#lmdb_map_size = 2048m                # Maximum size of the LMDB memory map, used to store the
+                                      # DB-less and Hybird mode configurations. Default is 2048m.
                                       #
                                       # This config defines the limit of LMDB file size, the
                                       # actual file size growth will be on-demand and
-                                      # porpotional to the actual config size.
+                                      # proportional to the actual config size.
                                       #
                                       # Note this value can be set very large, say a couple of GBs
-                                      # to accomadate future database growth and
+                                      # to accommodate future database growth and
                                       # Multi Version Concurrency Control (MVCC) headroom needs.
                                       # The file size of the LMDB database file should stabilize
                                       # after a few config reload/Hybrid mode syncs and the actual

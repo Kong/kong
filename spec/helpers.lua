@@ -815,7 +815,7 @@ end
 -- @see admin_ssl_client
 local function http_client_opts(options)
   if not options.scheme then
-    options = utils.deep_copy(options)
+    options = utils.cycle_aware_deep_copy(options)
     options.scheme = "http"
     if options.port == 443 then
       options.scheme = "https"
@@ -3520,7 +3520,7 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
         return nil, err
       end
     end
-    env = utils.deep_copy(env)
+    env = utils.cycle_aware_deep_copy(env)
     env.declarative_config = config_yml
   end
 
@@ -3536,6 +3536,12 @@ end
 -- @param preserve_prefix (boolean) if truthy, the prefix will not be deleted after stopping
 -- @param preserve_dc ???
 local function cleanup_kong(prefix, preserve_prefix, preserve_dc)
+  -- remove socket files to ensure `pl.dir.rmtree()` ok
+  local socks = { "/worker_events.sock", "/stream_worker_events.sock", }
+  for _, name in ipairs(socks) do
+    local sock_file = (prefix or conf.prefix) .. name
+    os.remove(sock_file)
+  end
 
   -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped
   if not (preserve_prefix or os.getenv("KONG_DONT_CLEAN")) then
@@ -3632,8 +3638,9 @@ local function wait_until_no_common_workers(workers, expected_total, strategy)
 end
 
 
-local function get_kong_workers()
+local function get_kong_workers(expected_total)
   local workers
+
   wait_until(function()
     local pok, admin_client = pcall(admin_client)
     if not pok then
@@ -3650,7 +3657,23 @@ local function get_kong_workers()
     local json = cjson.decode(body)
 
     admin_client:close()
-    workers = json.pids.workers
+
+    workers = {}
+
+    for _, item in ipairs(json.pids.workers) do
+      if item ~= ngx.null then
+        table.insert(workers, item)
+      end
+    end
+
+    if expected_total and #workers ~= expected_total then
+      return nil, ("expected %s worker pids, got %s"):format(expected_total,
+                                                             #workers)
+
+    elseif #workers == 0 then
+      return nil, "GET / returned no worker pids"
+    end
+
     return true
   end, 10)
   return workers

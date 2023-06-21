@@ -50,6 +50,8 @@ function PrometheusHandler.log(self, conf)
 
   if conf.upstream_health_metrics then
     exporter.set_export_upstream_health_metrics(true)
+  else
+    exporter.set_export_upstream_health_metrics(false)
   end
 
   exporter.log(message, serialized)
