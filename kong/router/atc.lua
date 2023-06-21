@@ -28,8 +28,6 @@ local ipairs = ipairs
 
 
 local max = math.max
-local tb_concat = table.concat
-local tb_sort = table.sort
 
 
 local ngx           = ngx
@@ -493,6 +491,9 @@ end
 
 local get_headers_key
 do
+  local tb_sort = table.sort
+  local tb_concat = table.concat
+
   local headers_buf = buffer.new(64)
 
   get_headers_key = function(headers)

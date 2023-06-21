@@ -28,7 +28,6 @@ local pairs = pairs
 local ipairs = ipairs
 local assert = assert
 local tb_insert = table.insert
-local tb_sort = table.sort
 local byte = string.byte
 local bor, band, lshift = bit.bor, bit.band, bit.lshift
 
@@ -141,13 +140,6 @@ local function get_expression(route)
 
     buffer_append(expr_buf, LOGICAL_AND,
                   hosts_buf:put(")"):get())
-  end
-
-  -- resort `paths` to move regex routes to the front of the array
-  if not is_empty_field(paths) then
-    tb_sort(paths, function(a, b)
-      return is_regex_magic(a) and not is_regex_magic(b)
-    end)
   end
 
   gen = gen_for_field("http.path", function(path)
