@@ -59,7 +59,7 @@ wasmx_deps = select({
     "//conditions:default": [],
 }) + wasmx_vm_deps
 
-WASM_LIBS_INSTALL = """
+wasm_libs_install = """
     for fname in $(locations @ngx_wasm_module//:lua_libs); do
         base=${fname##*/ngx_wasm_module/lib/}
         dest="${BUILD_DESTDIR}/openresty/lualib/$base"
@@ -69,8 +69,8 @@ WASM_LIBS_INSTALL = """
 """
 
 wasm_libs_cmd = select({
-    "@kong//:wasmx_static_mod_flag": WASM_LIBS_INSTALL,
-    "@kong//:wasmx_dynamic_mod_flag": WASM_LIBS_INSTALL,
+    "@kong//:wasmx_static_mod_flag": wasm_libs_install,
+    "@kong//:wasmx_dynamic_mod_flag": wasm_libs_install,
     "//conditions:default": "\n",
 })
 
@@ -96,6 +96,20 @@ wasmx_vm_cmd = select({
     fi
 """,
     "//conditions:default": "",
+})
+
+wasmx_load_module = select({
+  "@kong//:wasmx_dynamic_mod_flag": """
+  if ! grep -q "ngx_wasm_module.so" kong/templates/nginx.lua; then
+      WASM_LINE=$((`grep -n -m1 "error_log"  kong/templates/nginx.lua | cut -d: -f1` + 1))
+      if [[ "$OSTYPE" == "darwin"* ]]; then
+          gsed -i "$WASM_LINE a load_module ${BUILD_DESTDIR}/openresty/nginx/modules/ngx_wasm_module.so;" kong/templates/nginx.lua
+      else
+          sed -i "$WASM_LINE a load_module ${BUILD_DESTDIR}/openresty/nginx/modules/ngx_wasm_module.so;" kong/templates/nginx.lua
+      fi
+  fi
+""",
+  "//conditions:default": "",
 })
 
 kong_directory_genrule(
@@ -150,7 +164,8 @@ kong_directory_genrule(
 
         ATC_ROUTER=${WORKSPACE_PATH}/$(location @atc_router)
         cp $ATC_ROUTER ${BUILD_DESTDIR}/openresty/lualib/.
-
+    """ + wasmx_load_module +
+        """
         cp -r $(locations @protoc//:all_srcs) ${BUILD_DESTDIR}/kong/.
 
     """ + install_lib_deps_cmd + install_lualib_deps_cmd + wasm_libs_cmd + wasmx_vm_cmd +
