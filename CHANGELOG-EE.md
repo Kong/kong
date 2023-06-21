@@ -4,6 +4,10 @@
 
 ### Breaking Changes
 
+- :warning: Vitals is deprecated and disabled by default
+  [KAG-1656](https://konghq.atlassian.net/browse/KAG-1656)
+  [#5738](https://github.com/Kong/kong-ee/pull/5738)
+
 ### Deprecations
 
 - **Alpine packages, Docker images are now removed from the release and are no longer supported in future versions.**
