@@ -98,7 +98,7 @@ function _M.new(opts)
     shm_miss         = shm_miss_name,
     shm_locks        = "kong_locks",
     shm_set_tries    = 3,
-    lru_size         = LRU_SIZE,
+    lru_size         = opts.lru_size or LRU_SIZE,
     ttl              = ttl,
     neg_ttl          = neg_ttl,
     resurrect_ttl    = opts.resurrect_ttl or 30,

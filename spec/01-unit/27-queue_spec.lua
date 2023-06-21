@@ -8,7 +8,7 @@ local queue_num = 1
 
 
 local function queue_conf(conf)
-  local defaulted_conf = utils.deep_copy(conf)
+  local defaulted_conf = utils.cycle_aware_deep_copy(conf)
   if not conf.name then
     defaulted_conf.name = "test-" .. tostring(queue_num)
     queue_num = queue_num + 1

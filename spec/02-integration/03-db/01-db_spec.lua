@@ -49,7 +49,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       postgres_only("initializes infos with custom schema", function()
-        local conf = utils.deep_copy(helpers.test_conf)
+        local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
 
         conf.pg_schema = "demo"
 
@@ -72,7 +72,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       postgres_only("initializes infos with readonly support", function()
-        local conf = utils.deep_copy(helpers.test_conf)
+        local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
 
         conf.pg_ro_host = "127.0.0.1"
 
@@ -135,7 +135,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     postgres_only("initializes infos with custom schema", function()
-      local conf = utils.deep_copy(helpers.test_conf)
+      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
 
       conf.pg_schema = "demo"
 
@@ -200,7 +200,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     postgres_only("connects to custom schema when configured", function()
-      local conf = utils.deep_copy(helpers.test_conf)
+      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
 
       conf.pg_schema = "demo"
 
@@ -289,7 +289,7 @@ for _, strategy in helpers.each_strategy() do
     postgres_only("returns opened connection with ssl (cosockets)", function()
       ngx.IS_CLI = false
 
-      local conf = utils.deep_copy(helpers.test_conf)
+      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
 
       conf.pg_ssl = true
 
@@ -315,7 +315,7 @@ for _, strategy in helpers.each_strategy() do
     postgres_only("returns opened connection with ssl (luasocket)", function()
       ngx.IS_CLI = true
 
-      local conf = utils.deep_copy(helpers.test_conf)
+      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
 
       conf.pg_ssl = true
 
@@ -341,7 +341,7 @@ for _, strategy in helpers.each_strategy() do
     postgres_only("connects to postgres with readonly account (cosockets)", function()
       ngx.IS_CLI = false
 
-      local conf = utils.deep_copy(helpers.test_conf)
+      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
       conf.pg_ro_host = conf.pg_host
 
       local db, err = DB.new(conf, strategy)
@@ -369,7 +369,7 @@ for _, strategy in helpers.each_strategy() do
     postgres_only("connects to postgres with readonly account (luasocket)", function()
       ngx.IS_CLI = true
 
-      local conf = utils.deep_copy(helpers.test_conf)
+      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
       conf.pg_ro_host = conf.pg_host
 
       local db, err = DB.new(conf, strategy)
@@ -460,7 +460,7 @@ for _, strategy in helpers.each_strategy() do
     postgres_only("returns true when there is a stored connection with ssl (cosockets)", function()
       ngx.IS_CLI = false
 
-      local conf = utils.deep_copy(helpers.test_conf)
+      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
 
       conf.pg_ssl = true
 
@@ -488,7 +488,7 @@ for _, strategy in helpers.each_strategy() do
     postgres_only("returns true when there is a stored connection with ssl (luasocket)", function()
       ngx.IS_CLI = true
 
-      local conf = utils.deep_copy(helpers.test_conf)
+      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
 
       conf.pg_ssl = true
 
@@ -543,7 +543,7 @@ for _, strategy in helpers.each_strategy() do
     postgres_only("keepalives both read only and write connection (cosockets)", function()
       ngx.IS_CLI = false
 
-      local conf = utils.deep_copy(helpers.test_conf)
+      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
       conf.pg_ro_host = conf.pg_host
 
       local db, err = DB.new(conf, strategy)
@@ -580,7 +580,7 @@ for _, strategy in helpers.each_strategy() do
     postgres_only("connects and keepalives only write connection (luasocket)", function()
       ngx.IS_CLI = true
 
-      local conf = utils.deep_copy(helpers.test_conf)
+      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
       conf.pg_ro_host = conf.pg_host
 
       local db, err = DB.new(conf, strategy)
@@ -669,7 +669,7 @@ for _, strategy in helpers.each_strategy() do
     postgres_only("returns true when there is a stored connection with ssl (cosockets)", function()
       ngx.IS_CLI = false
 
-      local conf = utils.deep_copy(helpers.test_conf)
+      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
 
       conf.pg_ssl = true
 
@@ -695,7 +695,7 @@ for _, strategy in helpers.each_strategy() do
     postgres_only("returns true when there is a stored connection with ssl (luasocket)", function()
       ngx.IS_CLI = true
 
-      local conf = utils.deep_copy(helpers.test_conf)
+      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
 
       conf.pg_ssl = true
 
@@ -747,7 +747,7 @@ for _, strategy in helpers.each_strategy() do
     postgres_only("returns true when both read-only and write connection exists (cosockets)", function()
       ngx.IS_CLI = false
 
-      local conf = utils.deep_copy(helpers.test_conf)
+      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
       conf.pg_ro_host = conf.pg_host
 
       local db, err = DB.new(conf, strategy)
@@ -784,7 +784,7 @@ for _, strategy in helpers.each_strategy() do
     postgres_only("returns true when both read-only and write connection exists (luasocket)", function()
       ngx.IS_CLI = true
 
-      local conf = utils.deep_copy(helpers.test_conf)
+      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
       conf.pg_ro_host = conf.pg_host
 
       local db, err = DB.new(conf, strategy)

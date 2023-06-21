@@ -77,9 +77,7 @@ function insert_yaml_file_into_nav_file() {
 echo "Generating docs ..."
 
 rm -rf ./autodoc/output
-./autodoc/admin-api/generate.lua
 ./autodoc/cli/generate.lua
-./autodoc/upgrading/generate.lua
 ./autodoc/pdk/generate.lua
 
 exit_code=$?
@@ -163,9 +161,6 @@ fi
 
 copy autodoc/output/admin-api/admin-api.md "$DOCS_APP/admin-api/index.md"
 copy autodoc/output/cli.md "$DOCS_APP/reference/cli.md"
-
-rm -rf "$DOCS_APP/install-and-run/upgrade-oss.md"
-copy autodoc/output/upgrading.md "$DOCS_APP/install-and-run/upgrade-oss.md"
 
 rm -rf "$DOCS_APP/pdk/"
 mkdir -p "$DOCS_APP/pdk"

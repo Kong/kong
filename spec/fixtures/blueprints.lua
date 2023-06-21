@@ -1,7 +1,5 @@
 local ssl_fixtures = require "spec.fixtures.ssl"
 local utils = require "kong.tools.utils"
-
-local deep_merge = utils.deep_merge
 local fmt = string.format
 
 
@@ -11,7 +9,7 @@ Blueprint.__index = Blueprint
 
 function Blueprint:build(overrides)
   overrides = overrides or {}
-  return deep_merge(self.build_function(overrides), overrides)
+  return utils.cycle_aware_deep_merge(self.build_function(overrides), overrides)
 end
 
 

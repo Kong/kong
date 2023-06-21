@@ -6,7 +6,7 @@ local Schema = require("kong.db.schema")
 local constants = require("kong.constants")
 local plugin_loader = require("kong.db.schema.plugin_loader")
 local vault_loader = require("kong.db.schema.vault_loader")
-local schema_topological_sort = require "kong.db.schema.topological_sort"
+local schema_topological_sort = require("kong.db.schema.topological_sort")
 
 
 local null = ngx.null
@@ -98,7 +98,7 @@ local function add_top_level_entities(fields, known_entities)
   local records = {}
 
   for _, entity in ipairs(known_entities) do
-    local definition = utils.deep_copy(all_schemas[entity], false)
+    local definition = utils.cycle_aware_deep_copy(all_schemas[entity], true)
 
     for k, _ in pairs(definition.fields) do
       if type(k) ~= "number" then
@@ -130,8 +130,8 @@ local function add_top_level_entities(fields, known_entities)
 end
 
 
-local function copy_record(record, include_foreign, duplicates, name)
-  local copy = utils.deep_copy(record, false)
+local function copy_record(record, include_foreign, duplicates, name, cycle_aware_cache)
+  local copy = utils.cycle_aware_deep_copy(record, true, nil, cycle_aware_cache)
   if include_foreign then
     return copy
   end
@@ -165,6 +165,7 @@ end
 -- indexable by entity name. These records are modified in-place.
 local function nest_foreign_relationships(known_entities, records, include_foreign)
   local duplicates = {}
+  local cycle_aware_cache = {}
   for i = #known_entities, 1, -1 do
     local entity = known_entities[i]
     local record = records[entity]
@@ -177,7 +178,7 @@ local function nest_foreign_relationships(known_entities, records, include_forei
         insert(records[ref].fields, {
           [entity] = {
             type = "array",
-            elements = copy_record(record, include_foreign, duplicates, entity),
+            elements = copy_record(record, include_foreign, duplicates, entity, cycle_aware_cache),
           },
         })
 
@@ -185,7 +186,7 @@ local function nest_foreign_relationships(known_entities, records, include_forei
           insert(dest.fields, {
             [entity] = {
               type = "array",
-              elements = copy_record(record, include_foreign, duplicates, entity)
+              elements = copy_record(record, include_foreign, duplicates, entity, cycle_aware_cache)
             }
           })
         end
@@ -357,7 +358,7 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
       end
 
       if parent_fk then
-        item[child_key] = utils.deep_copy(parent_fk, false)
+        item[child_key] = utils.cycle_aware_deep_copy(parent_fk, true)
       end
     end
 
@@ -540,7 +541,7 @@ local function generate_ids(input, known_entities, parent_entity)
       local pk_name, key = get_key_for_uuid_gen(entity, item, schema,
                                                 parent_fk, child_key)
       if key then
-        item = utils.deep_copy(item, false)
+        item = utils.cycle_aware_deep_copy(item, true)
         item[pk_name] = generate_uuid(schema.name, key)
         input[entity][i] = item
       end
@@ -600,7 +601,7 @@ local function populate_ids_for_validation(input, known_entities, parent_entity,
       end
 
       if parent_fk and not item[child_key] then
-        item[child_key] = utils.deep_copy(parent_fk, false)
+        item[child_key] = utils.cycle_aware_deep_copy(parent_fk, true)
       end
     end
 
@@ -692,11 +693,11 @@ local function flatten(self, input)
       self.full_schema = DeclarativeConfig.load(self.plugin_set, self.vault_set, true)
     end
 
-    local input_copy = utils.deep_copy(input, false)
+    local input_copy = utils.cycle_aware_deep_copy(input, true)
     populate_ids_for_validation(input_copy, self.known_entities)
     local ok2, err2 = self.full_schema:validate(input_copy)
     if not ok2 then
-      local err3 = utils.deep_merge(err2, extract_null_errors(err))
+      local err3 = utils.cycle_aware_deep_merge(err2, extract_null_errors(err))
       return nil, err3
     end
 

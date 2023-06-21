@@ -19,7 +19,7 @@ local function reports_timer(premature, data)
     return
   end
 
-  local r_data = utils.deep_copy(data)
+  local r_data = utils.cycle_aware_deep_copy(data)
 
   r_data.config = nil
   r_data.route = nil

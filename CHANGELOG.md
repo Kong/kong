@@ -104,8 +104,9 @@
   [#10837](https://github.com/Kong/kong/pull/10837)
 - Bumped kong-lapis from 1.8.3.1 to 1.14.0.2
   [#10841](https://github.com/Kong/kong/pull/10841)
-- Bumped lua-resty-events from 0.1.4 to 0.1.5
+- Bumped lua-resty-events from 0.1.4 to 0.1.6
   [#10883](https://github.com/Kong/kong/pull/10883)
+  [#11083](https://github.com/Kong/kong/pull/11083)
 - Bumped lua-resty-session from 4.0.3 to 4.0.4
   [#11011](https://github.com/Kong/kong/pull/11011)
 
@@ -615,6 +616,9 @@ now encoded as `"[]"` to comply with standard.
   [#9611](https://github.com/Kong/kong/pull/9611)
 - **HTTP-Log**: Support `http_endpoint` field to be referenceable
   [#9714](https://github.com/Kong/kong/pull/9714)
+- **rate-limiting**: Add a new configuration `sync_rate` to the `redis` policy,
+  which synchronizes metrics to redis periodically instead of on every request.
+  [#9538](https://github.com/Kong/kong/pull/9538)
 
 
 #### Hybrid Mode
