@@ -6,7 +6,11 @@
 
 ### Deprecations
 
-**Alpine packages, Docker images are now removed from the release and are no longer supported in future versions.**
+- **Alpine packages, Docker images are now removed from the release and are no longer supported in future versions.**
+- Developer portal is deprecated, please use [Konnect Developer portal](https://konghq.com/products/kong-konnect).
+  Contact the Kong team for further details.
+  [#5752](https://github.com/Kong/kong-ee/pull/5752)
+  [KAG-1657](https://konghq.atlassian.net/browse/KAG-1657)
 
 ### Dependencies
 
