@@ -99,7 +99,7 @@ wasmx_vm_cmd = select({
 })
 
 wasmx_load_module = select({
-  "@kong//:wasmx_dynamic_mod_flag": """
+    "@kong//:wasmx_dynamic_mod_flag": """
   if ! grep -q "ngx_wasm_module.so" kong/templates/nginx.lua; then
       WASM_LINE=$((`grep -n -m1 "error_log"  kong/templates/nginx.lua | cut -d: -f1` + 1))
       if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -109,16 +109,16 @@ wasmx_load_module = select({
       fi
   fi
 """,
-  "//conditions:default": "",
+    "//conditions:default": "",
 })
 
 kong_directory_genrule(
     name = "kong",
     srcs = [
-        "@openresty//:openresty",
-        "@openresty//:luajit",
         "@luarocks//:luarocks_make",
         "@luarocks//:luarocks_target",
+        "@openresty",
+        "@openresty//:luajit",
         "@protoc//:all_srcs",
     ] + lib_deps + lualib_deps + wasmx_deps,
     cmd =
