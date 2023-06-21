@@ -658,6 +658,9 @@ local function issuer_select(identifier)
     log.notice("unable to load discovery data (", err, ")")
   end
 
+  -- `kong.db.oic_issuers:select_by_issuer` may yield, and thus lets just
+  -- check again that no other light thread has already filled the discovery
+  -- cache.
   if kong.configuration.database == "off" and discovery_data[identifier] then
     return discovery_data[identifier]
   end
