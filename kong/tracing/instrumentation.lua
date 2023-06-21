@@ -14,7 +14,6 @@ local type = type
 local next = next
 local pack = utils.pack
 local unpack = utils.unpack
-local insert = table.insert
 local assert = assert
 local pairs = pairs
 local ipairs = ipairs
