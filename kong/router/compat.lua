@@ -136,13 +136,6 @@ local function get_expression(route)
                   hosts_buf:put(")"):get())
   end
 
-  -- resort `paths` to move regex routes to the front of the array
-  if not is_empty_field(paths) then
-    tb_sort(paths, function(a, b)
-      return is_regex_magic(a) and not is_regex_magic(b)
-    end)
-  end
-
   gen = gen_for_field("http.path", function(path)
     return is_regex_magic(path) and OP_REGEX or OP_PREFIX
   end, paths, function(op, p)
