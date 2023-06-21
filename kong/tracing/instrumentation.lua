@@ -1,5 +1,6 @@
 local pdk_tracer = require "kong.pdk.tracing".new()
 local propagation = require "kong.tracing.propagation"
+local buffer = require "string.buffer"
 local utils = require "kong.tools.utils"
 local tablepool = require "tablepool"
 local tablex = require "pl.tablex"
@@ -23,7 +24,6 @@ local tablepool_release = tablepool.release
 local get_method = ngx.req.get_method
 local ngx_log = ngx.log
 local ngx_DEBUG = ngx.DEBUG
-local concat = table.concat
 local tonumber = tonumber
 local setmetatable = setmetatable
 local cjson_encode = cjson.encode
@@ -316,20 +316,25 @@ local lazy_format_spans
 do
   local lazy_mt = {
     __tostring = function(spans)
-      local detail_logs = new_tab(#spans, 0)
+      local logs_buf = buffer.new(1024)
+
       for i, span in ipairs(spans) do
-        insert(detail_logs, "\nSpan #" .. i .. " name=" .. span.name)
+        logs_buf:putf("\nSpan #%d name=%s", i, span.name)
 
         if span.end_time_ns then
-          insert(detail_logs, " duration=" .. (span.end_time_ns - span.start_time_ns) / 1e6 .. "ms")
+          logs_buf:putf(" duration=%fms", (span.end_time_ns - span.start_time_ns) / 1e6)
         end
 
         if span.attributes then
-          insert(detail_logs, " attributes=" .. cjson_encode(span.attributes))
+          logs_buf:putf(" attributes=%s", cjson_encode(span.attributes))
         end
       end
 
-      return concat(detail_logs)
+      local str = logs_buf:get()
+
+      logs_buf:free()
+
+      return str
     end
   }
 
