@@ -15,7 +15,7 @@ qq {
     init_worker_by_lua_block {
         local client = require("kong.resty.dns.client")
         assert(client.init({
-            nameservers = { "8.8.8.8" },
+            nameservers = { "127.0.0.53" },
             hosts = {}, -- empty tables to parse to prevent defaulting to /etc/hosts
             resolvConf = {}, -- and resolv.conf files
             order = { "A" },
