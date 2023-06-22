@@ -202,7 +202,7 @@ describe('Mocking Plugin Tests', function () {
       200
     );
 
-    await wait(shortWait);
+    await wait(longWait);
 
     // send 5 requests and ensure each has expected delay
     for (let i = 0; i < 5; i++) {

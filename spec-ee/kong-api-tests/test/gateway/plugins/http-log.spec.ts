@@ -19,8 +19,6 @@ import {
 
 describe('Gateway Plugins: http-log', function () {
   const path = `/${randomString()}`;
-  const isHybrid = isGwHybrid();
-  const waitTime = 2000;
   const hybridWaitTime = 7000;
   let serviceId: string;
   let routeId: string;
@@ -199,7 +197,7 @@ describe('Gateway Plugins: http-log', function () {
         resp.data.config.method,
         'Should see correct patched method'
       ).to.eq(pluginConfigHeader);
-      await wait(isHybrid ? hybridWaitTime : waitTime);
+      await wait(hybridWaitTime);
     });
 
     it(`should see request logs in http_endpoint with the new ${pluginConfigHeader} method`, async function () {
@@ -241,7 +239,7 @@ describe('Gateway Plugins: http-log', function () {
       resp.data.config.custom_fields_by_lua.kong,
       'Should see correct patched method'
     ).to.eq(`return 'http-log plugin api test'`);
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+    await wait(hybridWaitTime);
 
     resp = await axios(`${proxyUrl}${path}`);
     logResponse(resp);

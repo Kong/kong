@@ -333,7 +333,7 @@ describe('Gateway Plugins: Request Validator Regression Tests', function () {
     logResponse(resp);
 
     expect(resp.status, 'Status should be 200').to.equal(200);
-    await wait(isHybrid ? 7000 : 1000);
+    await wait(7000);
 
     let response: any = execSync(
       `curl -v ${proxyUrl}${path} -H 'testHeader:www.example.com' -H 'testHeader:www.sample.com' -H 'myHeader:www.test.com'`,

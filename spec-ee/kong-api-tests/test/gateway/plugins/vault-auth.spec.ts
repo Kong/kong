@@ -43,7 +43,6 @@ kvEngineVersions.forEach((kvVersion) => {
     const vaultName = 'kong-auth';
     const waitTime = 5000;
     const hybridWaitTime = 8000;
-    const isHybrid = isGwHybrid();
     const path = `/${randomString()}`;
     const url = `${getBasePath({
       environment: Environment.gateway.admin,
@@ -238,7 +237,7 @@ kvEngineVersions.forEach((kvVersion) => {
     });
 
     it('should not proxy a request after secrets have been deleted', async function () {
-      await wait(isHybrid ? hybridWaitTime : 1000);
+      await wait(hybridWaitTime);
       const resp = await getNegative(
         `${proxyUrl}${path}?access_token=${credentials.access_token}&secret_token=${credentials.secret_token}`
       );
@@ -340,7 +339,7 @@ kvEngineVersions.forEach((kvVersion) => {
         'should see tokens_in_body enabled'
       ).to.be.true;
 
-      await wait(isHybrid ? waitTime : 2000);
+      await wait(waitTime);
 
       resp = await axios({
         method: 'get',
@@ -389,7 +388,7 @@ kvEngineVersions.forEach((kvVersion) => {
         'should see updated access_token_name'
       ).to.eq('test');
 
-      await wait(isHybrid ? waitTime : 1000);
+      await wait(waitTime);
 
       resp = await axios({
         method: 'get',
@@ -459,7 +458,7 @@ kvEngineVersions.forEach((kvVersion) => {
         '3f840fe4-583b-4747-8a90-adec2e2bbb22'
       );
 
-      await wait(isHybrid ? waitTime : 2000);
+      await wait(waitTime);
 
       resp = await getNegative(
         `${proxyUrl}${path}?access_token=${customCredentials.access_token}&secret_token=${customCredentials.secret_token}`
