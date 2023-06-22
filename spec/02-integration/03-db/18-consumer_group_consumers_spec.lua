@@ -11,7 +11,7 @@ local kong = kong
 -- Note: include "off" strategy here as well
 for _, strategy in helpers.each_strategy() do
   describe("db.consumer_group_consumers #" .. strategy, function()
-    local bp, db, consumer_group
+    local bp, db, consumer_group, consumer
 
     lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy, {
@@ -21,14 +21,14 @@ for _, strategy in helpers.each_strategy() do
       })
       _G.kong.db = db
 
-      local consumer = assert(bp.consumers:insert {
+      consumer = assert(bp.consumers:insert {
         username = "GRUCEO@kong.com",
         custom_id = "12345",
         created_at = 1000,
       })
 
       consumer_group = assert(bp.consumer_groups:insert {
-        name = "testGroup"  
+        name = "testGroup"
       })
 
       assert(bp.consumer_group_consumers:insert {
@@ -48,6 +48,6 @@ for _, strategy in helpers.each_strategy() do
       assert.is_nil(err)
       assert.equal(1, count)
     end)
+
   end)
 end
-

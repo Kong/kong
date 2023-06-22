@@ -36,6 +36,8 @@ end
 
 for _, strategy in helpers.each_strategy() do
   describe("Consumer Groups API #" .. strategy, function()
+
+
     lazy_setup(function()
       helpers.stop_kong()
 
@@ -43,7 +45,6 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         database  = strategy,
-
       }))
       client = assert(helpers.admin_client())
       assert(db.consumers)
@@ -101,8 +102,8 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(group.consumers_count)
         assert.same(name, group.name)
       end)
-     
-      it("The endpoint should list consumer groups has consumers_count as expected when counter is true", function()        
+
+      it("The endpoint should list consumer groups has consumers_count as expected when counter is true", function()
         local name = "counter_group_" .. utils.uuid()
         local consumer = assert(db.consumers:insert { username = 'username' .. utils.uuid() })
         local consumer_group = assert(db.consumer_groups:insert { name = name})
@@ -118,7 +119,7 @@ for _, strategy in helpers.each_strategy() do
             consumer_group = group
             break
           end
-        
+
         end
         assert.is_not_nil(consumer_group.consumers_count)
         assert.equal(1, consumer_group.consumers_count)
@@ -614,7 +615,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("The endpoint should return 404 if the consumer group is not found", function ()
-          local wrong_group_id = utils.uuid() 
+          local wrong_group_id = utils.uuid()
           local json = assert.res_status(404, assert(client:send {
             method = "DELETE",
             path = "/consumer_groups/" .. wrong_group_id .. "/overrides/plugins/rate-limiting-advanced" ,
@@ -718,4 +719,172 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
+  describe("Consumer Groups Plugin Scoping API #" .. strategy, function()
+    local allowed_plugins = {"request-transformer", "request-transformer-advanced", "response-transformer", "response-transformer-advanced", "rate-limiting-advanced"}
+    local enabled_plugins = "bundled, " .. table.concat(allowed_plugins, ", ")
+    lazy_setup(function()
+
+      _, db = helpers.get_db_utils(strategy, nil, allowed_plugins)
+
+      assert(helpers.start_kong({
+        database = strategy,
+        plugins = enabled_plugins,
+        license_path = "spec-ee/fixtures/mock_license.json",
+      }))
+      client = assert(helpers.admin_client())
+      assert(db.consumer_groups)
+      assert(db.consumer_group_consumers)
+      assert(db.consumer_group_plugins)
+    end)
+
+    after_each(function ()
+      truncate_tables(db)
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+      if client then
+        client:close()
+      end
+    end)
+
+    it("POST to setup a plugin scoped to a consumer group (request-size-limiting)", function()
+      assert(db.consumer_groups:insert { name = "testing-group" })
+      assert.res_status(201, assert(client:send {
+        method = "POST",
+        path = "/consumer_groups/testing-group/plugins",
+        body = {
+          name = "request-transformer-advanced",
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      }))
+    end)
+
+    it("POST to setup a plugin scoped to a consumer group (rate-limiting-advanced)", function()
+      assert(db.consumer_groups:insert { name = "testing-group" })
+      assert.res_status(201, assert(client:send {
+        method = "POST",
+        path = "/consumer_groups/testing-group/plugins",
+        body = {
+          name = "rate-limiting-advanced",
+          config = {
+            limit = {1},
+            window_size = {5},
+          }
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      }))
+    end)
+
+
+    it("POST to setup a plugin scoped to a consumer group (request-transformer)", function()
+      assert(db.consumer_groups:insert { name = "testing-group" })
+      assert.res_status(201, assert(client:send {
+        method = "POST",
+        path = "/consumer_groups/testing-group/plugins",
+        body = {
+          name = "request-transformer",
+          config = { }
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      }))
+    end)
+
+    it("POST to setup a plugin which prohibits the use of consumer-group", function()
+      assert(db.consumer_groups:insert { name = "testing-group" })
+      assert.res_status(400, assert(client:send {
+        method = "POST",
+        path = "/consumer_groups/testing-group/plugins",
+        body = {
+          name = "bot-detection"
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      }))
+    end)
+
+    it("GET to retrieve plugins scoped to :consumer_group", function()
+      -- create a consumer-group
+      local cg = assert(db.consumer_groups:insert { name = "testing-group" })
+      -- create a plugin scoped to this group
+      assert.res_status(201, assert(client:send {
+        method = "POST",
+        path = "/consumer_groups/testing-group/plugins",
+        body = {
+          name = "request-transformer"
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      }))
+      -- check if plugin was created
+      local plug = assert.res_status(200, assert(client:send {
+        method = "GET",
+        path = "/consumer_groups/testing-group/plugins",
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      }))
+      local res = cjson.decode(plug)
+      assert.is_table(res)
+      assert.is_same(res.data[1].consumer_group.id, cg.id)
+    end)
+
+  end)
+
+end
+
+for _, strategy in helpers.each_strategy() do
+  describe("Consumer Groups Level Plugins - Free License #" .. strategy, function()
+
+    lazy_setup(function()
+      helpers.stop_kong()
+
+      _, db = helpers.get_db_utils(strategy)
+
+      -- No license is present
+      helpers.unsetenv("KONG_LICENSE_DATA")
+
+      assert(helpers.start_kong({
+        database  = strategy,
+      }))
+      client = assert(helpers.admin_client())
+      assert(db.consumers)
+      assert(db.consumer_groups)
+      assert(db.consumer_group_consumers)
+      assert(db.consumer_group_plugins)
+    end)
+
+    lazy_teardown(function()
+      truncate_tables(db)
+
+      helpers.stop_kong()
+      if client then
+        client:close()
+      end
+    end)
+
+    it("POST to setup a plugin scoped to a consumer group but Kong is in free-mode", function()
+      assert(db.consumer_groups:insert { name = "testing-group" })
+      local res, _ = assert.res_status(400, assert(client:send {
+        method = "POST",
+        path = "/consumer_groups/testing-group/plugins",
+        body = {
+          name = "request-transformer",
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      }))
+      local dres = cjson.decode(res)
+      assert.same("schema violation (consumer-group scoping requires a license to be used)", dres.message)
+    end)
+  end)
 end
