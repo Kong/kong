@@ -14,27 +14,30 @@
 local luacov_stats = require "luacov.stats"
 local luacov_reporter = require "luacov.reporter"
 local luacov_runner = require "luacov.runner"
+local lfs = require "lfs"
 
 
 -- load parameters
 local params = {...}
-local base_path = params[1] or "./luacov-stats-out-"
-local file_name = params[2] or "luacov.stats.out"
-local path_prefix = params[3] or ""
+local stats_folders_prefix = params[1] or "luacov-stats-out-"
+local file_name            = params[2] or "luacov.stats.out"
+local strip_prefix         = params[3] or ""
+local base_path            = "."
 
 
--- load stats - appends incremental index to base_path to load all the artifacts
+-- load stats from different folders named using the format:
+-- luacov-stats-out-${timestamp}
 local loaded_stats = {}
-local index = 0
-repeat
-  index = index + 1
-  local stats_file = base_path .. index .. "/" .. file_name
-  local loaded = luacov_stats.load(stats_file)
-  if loaded then
-    loaded_stats[#loaded_stats + 1] = loaded
-    print("loading file: " .. stats_file)
+for folder in lfs.dir(base_path) do
+  if folder:find(stats_folders_prefix, 1, true) then
+    local stats_file = folder .. "/" .. file_name
+    local loaded = luacov_stats.load(stats_file)
+    if loaded then
+      loaded_stats[#loaded_stats + 1] = loaded
+      print("loading file: " .. stats_file)
+    end
   end
-until not loaded
+end
 
 
 -- aggregate
@@ -44,8 +47,8 @@ for _, stat_data in ipairs(loaded_stats) do
   -- and avoid having separate counters for the same file
   local rel_stat_data = {}
   for f_name, data in pairs(stat_data) do
-    if f_name:sub(0, #path_prefix) == path_prefix then
-      f_name = f_name:sub(#path_prefix + 1)
+    if f_name:sub(0, #strip_prefix) == strip_prefix then
+      f_name = f_name:sub(#strip_prefix + 1)
     end
     rel_stat_data[f_name] = data
   end
