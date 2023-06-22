@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local kong = kong
+local type = type
 
 
 local function debug(msg)
@@ -16,10 +17,8 @@ end
 
 local function process_decision(opa_decision)
   -- decision is absent from response
-  if not opa_decision or
-    not type(opa_decision) == "table" or
-    type(opa_decision.result) == "nil" then
-      return nil, nil, "invalid decision result from OPA server"
+  if type(opa_decision) ~= "table" or opa_decision.result == nil then
+    return nil, nil, "invalid decision result from OPA server"
   end
 
   local result = opa_decision.result
@@ -60,4 +59,3 @@ end
 return {
   process_decision = process_decision
 }
-
