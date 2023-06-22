@@ -536,6 +536,7 @@ local config = {
               values = { type = "string" },
               required = false,
               default = {},
+              description = "Add customized claims if they are not present yet.",
             },
           },
           {
@@ -545,6 +546,7 @@ local config = {
               values = { type = "string" },
               required = false,
               default = {},
+              description = "Set customized claims. If a claim is already present, it will be overwritten.",
             },
           },
         },
