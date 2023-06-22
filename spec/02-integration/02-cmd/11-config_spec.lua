@@ -153,6 +153,7 @@ describe("kong config", function()
       route = ngx.null,
       service = ngx.null,
       consumer = ngx.null,
+      consumer_group = ngx.null,
       enabled = true,
       config = {
         header_name = ngx.null,

@@ -624,13 +624,14 @@ for _, strategy in helpers.each_strategy() do
                   name = "unique constraint violation",
                   fields = {
                     consumer = ngx.null,
+                    consumer_group = ngx.null,
                     name = "basic-auth",
                     route = ngx.null,
                     service = {
                       id = service.id,
                     }
                   },
-                  message = [[UNIQUE violation detected on '{consumer=null,name="basic-auth",]] ..
+                  message = [[UNIQUE violation detected on '{consumer=null,consumer_group=null,name="basic-auth",]] ..
                             [[route=null,service={id="]] .. service.id ..
                             [["}}']],
                 }, json)

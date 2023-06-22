@@ -5,7 +5,15 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local Schema = require("kong.db.schema")
+local PLUGIN_NAME = "file-log"
+local plugin_schema = require("kong.plugins."..PLUGIN_NAME..".schema")
+local validate_entity = require("spec.helpers").validate_plugin_config_schema
+
+local validate do
+  function validate(data)
+    return validate_entity(data, plugin_schema)
+  end
+end
 
 describe("Plugin: file-log (schema)", function()
 
@@ -15,7 +23,6 @@ describe("Plugin: file-log (schema)", function()
       input = {
         reopen = true
       },
-      output = nil,
       error = {
         config = {
           path = "required field missing"
@@ -29,7 +36,6 @@ describe("Plugin: file-log (schema)", function()
         path = "/ovo*",
         reopen = true
       },
-      output = nil,
       error = {
         config = {
           path = "not a valid filename"
@@ -43,7 +49,6 @@ describe("Plugin: file-log (schema)", function()
         path = "/tmp/log.txt",
         reopen = true
       },
-      output = true,
       error = nil,
     },
     ----------------------------------------
@@ -55,31 +60,19 @@ describe("Plugin: file-log (schema)", function()
           foo = "return 'bar'",
         }
       },
-      output = true,
       error = nil,
     },
   }
 
-  local file_log_schema
-
-  lazy_setup(function()
-    _G.kong = {
-      configuration = {
-        untrusted_lua = "sandbox"
-      }
-    }
-
-    file_log_schema = Schema.new(require("kong.plugins.file-log.schema"))
-  end)
-
   for _, t in ipairs(tests) do
     it(t.name, function()
-      local output, err = file_log_schema:validate({
-        protocols = { "http" },
-        config = t.input
-      })
+      local output, err = validate(
+        t.input
+      )
       assert.same(t.error, err)
-      assert.same(t.output, output)
+      if not t.error then
+        assert.is_truthy(output)
+      end
     end)
   end
 end)

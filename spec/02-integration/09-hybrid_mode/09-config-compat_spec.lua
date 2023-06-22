@@ -84,8 +84,13 @@ end
 for _, strategy in helpers.each_strategy() do
 
 describe("CP/DP config compat transformations #" .. strategy, function()
+  local cg_id
   lazy_setup(function()
-    local bp = helpers.get_db_utils(strategy)
+    local bp = helpers.get_db_utils(strategy, {
+      "routes",
+      "services",
+      "consumer_groups"
+    })
 
     PLUGIN_LIST = helpers.get_plugins_list()
 
@@ -96,6 +101,11 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         name = "compat.test",
       }
     }
+
+    local cg = assert(bp.consumer_groups:insert {
+      name = "test_group"
+    })
+    cg_id = cg.id
 
     assert(helpers.start_kong({
       role = "control_plane",
@@ -114,7 +124,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
   end)
 
   describe("plugin config fields", function()
-    local rate_limit
+    local rate_limit, response_transformer
 
     lazy_setup(function()
       rate_limit = admin.plugins:insert {
@@ -129,6 +139,15 @@ describe("CP/DP config compat transformations #" .. strategy, function()
           error_message = "go away!",
           -- ]]
         },
+      }
+      response_transformer = admin.plugins:insert {
+        name = "response-transformer",
+        enabled = true,
+        -- This should not be present in 3.3
+        consumer_group = {
+          id = cg_id,
+        },
+        config = { },
       }
     end)
 
@@ -158,6 +177,14 @@ describe("CP/DP config compat transformations #" .. strategy, function()
       local id = utils.uuid()
       local plugin = get_plugin(id, "3.1.0", rate_limit.name)
       assert.same(rate_limit.config, plugin.config)
+      assert.equals(CLUSTERING_SYNC_STATUS.NORMAL, get_sync_status(id))
+    end)
+
+    it("consumer_group scoping should not be present in 3.3", function()
+      local id = utils.uuid()
+      local plugin = get_plugin(id, "3.3.0", response_transformer.name)
+      assert.same(response_transformer.config, plugin.config)
+      assert.same(plugin.consumer_groups, nil)
       assert.equals(CLUSTERING_SYNC_STATUS.NORMAL, get_sync_status(id))
     end)
   end)

@@ -705,12 +705,13 @@ describe("Admin API (#" .. strategy .. "): ", function()
               code = Errors.codes.UNIQUE_VIOLATION,
               name = "unique constraint violation",
               message = [[UNIQUE violation detected on '{consumer={id="]] .. consumer.id ..
-                        [["},name="rewriter",route=null,service=null}']],
+                        [["},consumer_group=null,name="rewriter",route=null,service=null}']],
               fields = {
                 name = "rewriter",
                 consumer = {
                   id = consumer.id,
                 },
+                consumer_group = ngx.null,
                 route = ngx.null,
                 service = ngx.null,
               },
