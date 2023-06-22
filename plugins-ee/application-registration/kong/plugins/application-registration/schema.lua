@@ -15,6 +15,7 @@ return {
     { service = { type = "foreign", reference = "services", ne = null, on_delete = "cascade" }, },
     { route = typedefs.no_route },
     { protocols = typedefs.protocols_http },
+    { consumer_group = typedefs.no_consumer_group },
     { config = {
         type = "record",
         fields = {

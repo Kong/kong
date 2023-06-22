@@ -156,6 +156,7 @@ return {
   name = "statsd-advanced",
   fields = {
     { protocols = typedefs.protocols },
+    { consumer_group = typedefs.no_consumer_group },
     { config = {
         type = "record",
         fields = {

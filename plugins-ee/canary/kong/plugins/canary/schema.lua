@@ -30,6 +30,7 @@ return {
   name = "canary",
   fields = {
     { consumer = typedefs.no_consumer },
+    { consumer_group = typedefs.no_consumer_group },
     { protocols = typedefs.protocols_http },
     { config = {
         type = "record",

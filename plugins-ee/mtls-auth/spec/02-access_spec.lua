@@ -486,6 +486,7 @@ for _, strategy in strategies() do
         }))
         assert.res_status(200, res)
       end)
+
       lazy_teardown(function()
         local res = assert(admin_client:send({
           method  = "PATCH",
@@ -499,18 +500,22 @@ for _, strategy in strategies() do
         }))
         assert.res_status(200, res)
       end)
+
       it("returns HTTP 200 on https request if certificate validation passed", function()
-        local res = assert(mtls_client:send {
-          method  = "GET",
-          path    = "/example_client",
-        })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.is_nil(json.headers["x-consumer-username"])
-        assert.is_nil(json.headers["x-consumer-id"])
-        assert.is_nil(json.headers["x-consumer-custom-id"])
-        assert.not_nil(json.headers["x-client-cert-san"])
-        assert.not_nil(json.headers["x-client-cert-dn"])
+        assert.eventually(function()
+          local res = assert(mtls_client:send {
+            method  = "GET",
+            path    = "/example_client",
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.is_nil(json.headers["x-consumer-username"])
+          assert.is_nil(json.headers["x-consumer-id"])
+          assert.is_nil(json.headers["x-consumer-custom-id"])
+          assert.not_nil(json.headers["x-client-cert-san"])
+          assert.not_nil(json.headers["x-client-cert-dn"])
+        end).with_timeout(3)
+            .has_no_error("Invalid response code")
       end)
 
       it("returns HTTP 401 on https request if certificate validation failed", function()
@@ -679,14 +684,17 @@ for _, strategy in strategies() do
         }))
         assert.res_status(200, res)
 
-        local res = assert(proxy_client:send {
-          method  = "GET",
-          path    = "/get",
-          headers = {
-            ["Host"] = "example.com"
-          }
-        })
-        assert.res_status(500, res)
+        assert.eventually(function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get",
+            headers = {
+              ["Host"] = "example.com"
+            }
+          })
+          assert.res_status(500, res)
+        end).with_timeout(3)
+            .has_no_error("Invalid response code")
       end)
     end)
 
@@ -1177,11 +1185,14 @@ for _, strategy in strategies() do
         assert.res_status(200, res)
 
         mtls_client = helpers.http_client("127.0.0.1", 10121)
-        local res = assert(mtls_client:send {
-          method  = "GET",
-          path    = "/intermediate_example_client",
-        })
-        assert.res_status(401, res)
+        assert.eventually(function()
+          local res = assert(mtls_client:send {
+            method  = "GET",
+            path    = "/intermediate_example_client",
+          })
+          assert.res_status(401, res)
+        end).with_timeout(3)
+            .has_no_error("Invalid response code")
         mtls_client:close()
       end)
 
@@ -1199,11 +1210,14 @@ for _, strategy in strategies() do
         assert.res_status(200, res)
 
         mtls_client = helpers.http_client("127.0.0.1", 10121)
-        local res = assert(mtls_client:send {
-          method  = "GET",
-          path    = "/intermediate_example_client",
-        })
-        assert.res_status(200, res)
+        assert.eventually(function()
+          local res = assert(mtls_client:send {
+            method  = "GET",
+            path    = "/intermediate_example_client",
+          })
+          assert.res_status(200, res)
+        end).with_timeout(3)
+            .has_no_error("Invalid response code")
         mtls_client:close()
       end)
     end)

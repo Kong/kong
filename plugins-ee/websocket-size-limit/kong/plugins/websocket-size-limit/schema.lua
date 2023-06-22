@@ -25,6 +25,7 @@ return {
   name = "websocket-size-limit",
   fields = {
     { protocols = typedefs.protocols_ws },
+    { consumer_group = typedefs.no_consumer_group },
     { config = {
         type = "record",
         fields = {

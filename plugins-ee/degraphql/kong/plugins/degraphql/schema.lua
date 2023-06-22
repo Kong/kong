@@ -12,6 +12,7 @@ return {
   fields = {
     { consumer = typedefs.no_consumer },  -- this plugin cannot be configured on a consumer (typical for auth plugins)
     { protocols = typedefs.protocols_http },
+    { consumer_group = typedefs.no_consumer_group },
     { config = {
       type = "record",
       fields = {

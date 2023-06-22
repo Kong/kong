@@ -35,7 +35,6 @@ local workspace_name_pattern = "default"
 
 -- All tests that test the extra metrics and feature of statsd-advanced compared to statsd CE go here
 
-
 local function get_shdicts()
   local prefix = helpers.test_conf.prefix
   local ngxconf = helpers.utils.readfile(prefix .. "/nginx.conf")
@@ -48,13 +47,12 @@ local function get_shdicts()
   return shdicts
 end
 
-
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: statsd-advanced (log) [#" .. strategy .. "]", function()
     local proxy_client
     local shdict_count
 
-    setup(function()
+    lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, nil, { "statsd-advanced" })
       local consumer = bp.consumers:insert {
         username  = "bob",
@@ -471,6 +469,26 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("metrics", function()
+
+      before_each(function()
+        -- it's important to restart kong between each test
+        -- to prevent flaky tests caused by periodic
+        -- sending of metrics by statsd.
+        if proxy_client then
+          proxy_client:close()
+        end
+
+        assert(helpers.restart_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          plugins = "bundled,statsd-advanced",
+          vitals = "on"
+        }))
+
+        proxy_client = helpers.proxy_client()
+        shdict_count = #get_shdicts()
+      end)
+
       it("logs over UDP with default metrics with vitals on", function()
         local metrics_count = 12
         -- shdict_usage metrics
@@ -522,18 +540,19 @@ for _, strategy in helpers.each_strategy() do
           end
         end
       end)
-      it("logs over UDP with default metrics and new prefix with vitals on", function()
+
+      it("logs over UDP with default metrics and new prefix with vitals on #XX", function()
         local metrics_count = 12
         -- shdict_usage metrics, can't test again in 1 minutes
-        -- metrics_count = metrics_count + shdict_count * 2
         -- vitals metrics
+        metrics_count = metrics_count + shdict_count * 2
         for _, group in pairs(vitals.logging_metrics) do
           for _, _ in pairs(group) do
             metrics_count = metrics_count + 1
           end
         end
 
-        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count + shdict_count * 2, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -545,7 +564,6 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, metrics, err = thread:join()
         assert(ok, metrics)
-        assert(#metrics == metrics_count, err)
         assert.contains("prefix.service.statsdadvanced2.request.count:1|c", metrics)
         assert.contains("prefix.service.statsdadvanced2.latency:%d+|ms", metrics, true)
         assert.contains("prefix.service.statsdadvanced2.request.size:%d+|ms", metrics, true)
@@ -561,8 +579,6 @@ for _, strategy in helpers.each_strategy() do
                         metrics, true)
         assert.contains("prefix.route." .. uuid_pattern .. ".user.robert.status.200:1|c", metrics, true)
 
-        -- shdict_usage metrics, can't test again in 1 minutes
-
         -- vitals metrics
         for _, group in pairs(vitals.logging_metrics) do
           for metric, metric_type in pairs(group) do
@@ -570,7 +586,9 @@ for _, strategy in helpers.each_strategy() do
                 metrics, true)
           end
         end
+        assert(#metrics == metrics_count, err)
       end)
+
       it("status_count_per_user_per_route", function()
         local thread = helpers.udp_server(UDP_PORT, 1, 2)
         local response = assert(proxy_client:send {

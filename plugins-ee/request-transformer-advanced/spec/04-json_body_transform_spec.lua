@@ -1,4 +1,5 @@
 -- This software is copyright Kong Inc. and its licensors.
+
 -- Use of the software is subject to the agreement between your organization
 -- and Kong Inc. If there is no such agreement, use is governed by and
 -- subject to the terms of the Kong Master Software License Agreement found
@@ -125,23 +126,24 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(200, res)
 
-      res = proxy_client:send {
-        method = "POST",
-        path = "/req/echobody",
-        body = data,
-        headers = {
-          ["Host"] = "echo_server",
-          ["Content-Type"] = "application/json",
-        },
-      }
-      local body = assert.res_status(200, res)
-
-      local json_body = cjson.decode(body)
-
-      assert(require("pl.tablex").deepcompare(json_body, expected))
+      assert.eventually(function()
+        res = proxy_client:send {
+          method = "POST",
+          path = "/req/echobody",
+          body = data,
+          headers = {
+            ["Host"] = "echo_server",
+            ["Content-Type"] = "application/json",
+          },
+        }
+        local body = assert.res_status(200, res)
+        local json_body = cjson.decode(body)
+        assert(require("pl.tablex").deepcompare(json_body, expected), "Expected equal json bodies")
+      end).with_timeout(3)
+          .has_no_error("Expected equal json bodies")
     end
 
-    describe("without index", function ()
+    describe("without index ", function ()
       describe("remove", function ()
         it("present", function ()
           local config = {

@@ -11,6 +11,7 @@ return {
   name = "jwe-decrypt",
   fields = {
     { protocols = typedefs.protocols_http },
+    { consumer_group = typedefs.no_consumer_group },
     { consumer = typedefs.no_consumer },
     { config = {
       type = "record",
