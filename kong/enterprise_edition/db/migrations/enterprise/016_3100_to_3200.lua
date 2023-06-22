@@ -12,7 +12,7 @@ return {
       DO $$
         BEGIN
         ALTER TABLE IF EXISTS ONLY "audit_requests" ADD COLUMN "rbac_user_name" TEXT;
-        ALTER TABLE IF EXISTS ONLY "audit_requests" ADD COLUMN "request_source" TEXT; 
+        ALTER TABLE IF EXISTS ONLY "audit_requests" ADD COLUMN "request_source" TEXT;
         EXCEPTION WHEN duplicate_column THEN
           -- Do nothing, accept existing state
         END;
