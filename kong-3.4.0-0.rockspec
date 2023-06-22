@@ -42,7 +42,7 @@ dependencies = {
   "lua-resty-cookie == 0.1.0",
   "lua-resty-healthcheck == 1.6.2",
   "lua-messagepack == 0.5.2",
-  "lua-resty-openssl == 0.8.22",
+  "lua-resty-openssl == 0.8.23",
   "lua-resty-counter == 0.2.1",
   "lua-resty-template == 1.9",
   "lua-resty-passwdqc == 1.1",
