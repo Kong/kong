@@ -11,6 +11,7 @@ return {
   name = "aws-lambda",
   fields = {
     { protocols = typedefs.protocols_http },
+    { consumer_group = typedefs.no_consumer_group },
     { config = {
       type = "record",
       fields = {

@@ -78,8 +78,8 @@ return {
   name = "datadog",
   fields = {
     { protocols = typedefs.protocols },
-    {
-      config = {
+    { consumer_group = typedefs.no_consumer_group },
+    { config = {
         type = "record",
         fields = {
           { host = typedefs.host({ referenceable = true, default = "localhost" }), },

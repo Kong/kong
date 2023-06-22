@@ -39,6 +39,7 @@ return {
   name = "opentelemetry",
   fields = {
     { protocols = typedefs.protocols_http }, -- TODO: support stream mode
+    { consumer_group = typedefs.no_consumer_group },
     { config = {
       type = "record",
       fields = {

@@ -97,6 +97,7 @@ local schema = {
     { consumer = typedefs.no_consumer },
     { service = typedefs.no_service },
     { route = typedefs.no_route },
+    { consumer_group = typedefs.no_consumer_group },
     { protocols = typedefs.protocols_http },
     {
       config = {

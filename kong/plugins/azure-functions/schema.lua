@@ -10,8 +10,8 @@ return {
   name = "azure-functions",
   fields = {
     { protocols = typedefs.protocols },
-    {
-      config = {
+    { consumer_group = typedefs.no_consumer_group },
+    { config = {
         type = "record",
         fields = {
           -- connection basics
