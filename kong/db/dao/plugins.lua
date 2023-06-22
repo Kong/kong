@@ -32,7 +32,6 @@ local ngx_WARN = ngx.WARN
 local ngx_DEBUG = ngx.DEBUG
 
 
-
 local function has_a_common_protocol_with_route(plugin, route)
   local plugin_prot = plugin.protocols
   local route_prot = route.protocols
@@ -323,6 +322,10 @@ local function load_plugin(self, plugin)
   for _, field in ipairs(schema.fields) do
     if field.consumer and field.consumer.eq == null then
       handler.no_consumer = true
+    end
+
+    if field.consumer_group and field.consumer_group.eq == null then
+      handler.no_consumer_group = true
     end
 
     if field.route and field.route.eq == null then

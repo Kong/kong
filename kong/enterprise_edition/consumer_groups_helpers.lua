@@ -18,7 +18,7 @@ end
 
 local function get_consumer_group(consumer_group_pk)
   local cache_key = kong.db.consumer_groups:cache_key(consumer_group_pk)
-  return kong.cache:get(cache_key, nil, _select_consumer_group,consumer_group_pk)
+  return kong.cache:get(cache_key, nil, _select_consumer_group, consumer_group_pk)
 end
 
 local function _find_consumer_group_config(consumer_group_pk, plugin_name)
@@ -114,15 +114,19 @@ local function select_by_username_or_id(db, key)
 end
 
 local function get_groups_by_consumer(consumer_pk)
+
   local groups = {}
   local len = 0
+
   for row, err in kong.db.consumer_group_consumers:each_for_consumer({ id = consumer_pk }) do
-    len = len + 1
-    local group = get_consumer_group(row.consumer_group.id)
-    group["consumers_count"] = kong.db.consumer_group_consumers:count_consumers_in_group(group.id)
-    groups[len] = group
     if err then
       return nil, err
+    end
+    len = len + 1
+    local group = get_consumer_group(row.consumer_group.id)
+    if group then
+      group["consumers_count"] = kong.db.consumer_group_consumers:count_consumers_in_group(group.id)
+      groups[len] = group
     end
   end
   if len == 0 then

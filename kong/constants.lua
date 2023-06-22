@@ -174,6 +174,11 @@ local constants = {
     "snis",
     "upstreams",
     "targets",
+    -- XXX: ee only
+    -- when a non-core entity is being referenced by a core entity, the schema validation fails
+    -- even when it's loaded later (as part of the EE only entities)
+    "consumer_groups",
+    -- XXX: ee only end
     "plugins",
     "tags",
     "ca_certificates",
@@ -197,6 +202,7 @@ local constants = {
     vaults = "core_cache",
     key_sets = "core_cache",
     keys = "core_cache",
+    consumers_groups = "core_cache",
   }, {
     __index = function()
       return "cache"

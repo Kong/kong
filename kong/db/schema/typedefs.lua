@@ -411,6 +411,12 @@ typedefs.no_consumer = Schema.define {
   description = "Custom type for representing a foreign key with a null value allowed."
 }
 
+typedefs.no_consumer_group = Schema.define {
+  type = "foreign",
+  reference = "consumer_groups",
+  description = "Custom type for representing a foreign key with a null value allowed.",
+  eq = null,
+}
 
 typedefs.name = Schema.define {
   type = "string",
