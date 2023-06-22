@@ -8,6 +8,7 @@
 local ipairs = ipairs
 local table_remove = table.remove
 local type = type
+local cjson = require "cjson"
 
 
 local null = ngx.null
@@ -37,7 +38,6 @@ end
 local compatible_checkers = {
   { 3004000000, --[[ 3.4.0.0 ]]
     function(config_table, dp_version, log_suffix)
-      -- remove consumer_group field for core entity 'plugins'
       local entity_names = {
         "plugins"
         }
@@ -46,16 +46,20 @@ local compatible_checkers = {
       local updated_entities = {}
 
       for _, name in ipairs(entity_names) do
-        for _, config_entity in ipairs(config_table[name] or {}) do
-          if config_entity["consumer_group"] then
-            -- FIXME: This should remove the entire plugin when a consumer-group scoping is detected.
-            config_entity["consumer_group"] = nil
+        for i, config_entity in ipairs(config_table[name] or {}) do
+          -- Deactivate consumer_group-based plugins
+          -- This step is crucial because older data planes lack the understanding of consumer-group-specific scope.
+          -- Following the traditional method of "removing a field" could potentially disrupt the plugin's scope,
+          -- subsequently leading to inconsistent and unpredictable user experiences.
+          local consumer_group_scope = config_entity["consumer_group"]
+          if consumer_group_scope ~= cjson.null and consumer_group_scope ~= nil then
+            table.remove(config_table[name], i)
 
             has_update = true
 
             if not updated_entities[name] then
               log_warn_message("contains configuration '" .. name .. ".consumer_group'",
-                               "be removed",
+                               "the entire plugin will be disabled on this dataplane node",
                                dp_version,
                                log_suffix)
 

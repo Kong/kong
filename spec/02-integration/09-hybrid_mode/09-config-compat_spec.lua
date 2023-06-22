@@ -38,7 +38,8 @@ local function cluster_client(opts)
   return res
 end
 
-local function get_plugin(node_id, node_version, name)
+local function get_plugin(node_id, node_version, name, allow_nil)
+  allow_nil = allow_nil or false
   local res, err = cluster_client({ id = node_id, version = node_version })
   assert.is_nil(err)
   assert.is_table(res and res.config and res.config.plugins,
@@ -52,7 +53,9 @@ local function get_plugin(node_id, node_version, name)
     end
   end
 
-  assert.not_nil(plugin, "plugin " .. name .. " not found in config")
+  if not allow_nil then
+    assert.not_nil(plugin, "plugin " .. name .. " not found in config")
+  end
   return plugin
 end
 
@@ -180,11 +183,26 @@ describe("CP/DP config compat transformations #" .. strategy, function()
       assert.equals(CLUSTERING_SYNC_STATUS.NORMAL, get_sync_status(id))
     end)
 
-    it("consumer_group scoping should not be present in 3.3", function()
+    it("consumer_group scoped plugins should not be present in 3.3 dataplanes", function()
       local id = utils.uuid()
-      local plugin = get_plugin(id, "3.3.0", response_transformer.name)
+      local plugin = get_plugin(id, "3.3.0", response_transformer.name, true)
+      assert.is_nil(plugin)
+      assert.equals(CLUSTERING_SYNC_STATUS.NORMAL, get_sync_status(id))
+    end)
+
+    it("consumer_group scoped plugins should be present in 3.4 dataplanes", function()
+      local id = utils.uuid()
+      local plugin = get_plugin(id, "3.4.0", response_transformer.name, true)
+      assert.is_not_nil(plugin)
       assert.same(response_transformer.config, plugin.config)
-      assert.same(plugin.consumer_groups, nil)
+      assert.equals(CLUSTERING_SYNC_STATUS.NORMAL, get_sync_status(id))
+    end)
+
+    it("plugins with inherit `nil` consumer-group should be present in 3.4 dataplanes", function()
+      local id = utils.uuid()
+      local plugin = get_plugin(id, "3.3.0", rate_limit.name, true)
+      assert.is_not_nil(plugin)
+      assert.same(rate_limit.config, plugin.config)
       assert.equals(CLUSTERING_SYNC_STATUS.NORMAL, get_sync_status(id))
     end)
   end)
