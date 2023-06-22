@@ -49,7 +49,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- scoped to route
       insert(must_not_have_headers, (pf:route()))
-      -- scoped to serive
+      -- scoped to service
       insert(must_not_have_headers, (pf:service()))
       -- scoped to consumer
       insert(must_not_have_headers, (pf:consumer()))
@@ -112,7 +112,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- scoped to route
       insert(must_not_have_headers, (pf:route()))
-      -- scoped to serive
+      -- scoped to service
       insert(must_not_have_headers, (pf:service()))
       -- scoped to consumer
       insert(must_not_have_headers, (pf:consumer()))
@@ -173,7 +173,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- scoped to route
       insert(must_not_have_headers, (pf:route()))
-      -- scoped to serive
+      -- scoped to service
       insert(must_not_have_headers, (pf:service()))
       -- scoped to consumer
       insert(must_not_have_headers, (pf:consumer()))
@@ -231,7 +231,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- scoped to route
       insert(must_not_have_headers, (pf:route()))
-      -- scoped to serive
+      -- scoped to service
       insert(must_not_have_headers, (pf:service()))
       -- scoped to consumer
       insert(must_not_have_headers, (pf:consumer()))
@@ -264,7 +264,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  describe("Plugins Iterator - Single coping - #Consumer on #" .. strategy, function()
+  describe("Plugins Iterator - Single scoping - #Consumer on #" .. strategy, function()
     local proxy_client, expected_header, must_not_have_headers
 
     lazy_teardown(function()
@@ -289,7 +289,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- scoped to route
       insert(must_not_have_headers, (pf:route()))
-      -- scoped to serive
+      -- scoped to service
       insert(must_not_have_headers, (pf:service()))
       -- scoped to global
       insert(must_not_have_headers, (pf:global()))
@@ -343,7 +343,7 @@ for _, strategy in helpers.each_strategy() do
       -- this assits with tracking if a plugin was executed or not
       must_not_have_headers = {}
 
-      -- scoped to serive
+      -- scoped to service
       insert(must_not_have_headers, (pf:service()))
       -- scoped to global
       insert(must_not_have_headers, (pf:global()))
@@ -374,7 +374,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  describe("Plugins Iterator - Single scoping - #single #Service on #" .. strategy, function()
+  describe("Plugins Iterator - Single scoping - #Service on #" .. strategy, function()
     local proxy_client, expected_header, must_not_have_headers
 
     lazy_teardown(function()
