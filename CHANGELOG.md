@@ -105,8 +105,9 @@
 
 ### Dependencies
 
-- Bumped lua-resty-openssl from 0.8.20 to 0.8.22
+- Bumped lua-resty-openssl from 0.8.20 to 0.8.23
   [#10837](https://github.com/Kong/kong/pull/10837)
+  [#11099](https://github.com/Kong/kong/pull/11099)
 - Bumped kong-lapis from 1.8.3.1 to 1.14.0.2
   [#10841](https://github.com/Kong/kong/pull/10841)
 - Bumped lua-resty-events from 0.1.4 to 0.1.6
