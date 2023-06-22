@@ -389,7 +389,8 @@ function _M.new(db)
 
   res.consumer_groups = new_blueprint(db.consumer_groups, function(overrides)
     return {
-      name = overrides.name or consumer_group_name_seq:next()
+      name = overrides.name or consumer_group_name_seq:next(),
+      id = overrides.id or utils.uuid()
     }
   end)
 
