@@ -379,10 +379,10 @@
                                  # which configuration updates will be fetched,
                                  # in `host:port` format.
 
-#cluster_max_payload = 4194304
-                                 # This sets the maximum payload size allowed
+#cluster_max_payload = 16777216
+                                 # This sets the maximum compressed payload size allowed
                                  # to be sent across from CP to DP in Hybrid mode
-                                 # Default is 4Mb - 4 * 1024 * 1024 due to historical reasons
+                                 # Default is 16MB - 16 * 1024 * 1024.
 
 #cluster_dp_labels =             # Comma separated list of Labels for the data plane.
                                  # Labels are key-value pairs that provide additional
