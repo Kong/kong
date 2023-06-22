@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local typedefs = require "kong.db.schema.typedefs"
+local deprecation = require "kong.deprecation"
 
 return {
   name = "consumer_group_plugins",
@@ -22,7 +23,7 @@ return {
     { updated_at = typedefs.auto_timestamp_s },
     { consumer_group = { description = "The consumer group to which the plugin is associated.", type = "foreign", required = true, reference = "consumer_groups", on_delete = "cascade" } },
     { name = { description = "The name of the plugin.", type = "string", required = true } },
-    { config = { type = "record", 
+    { config = { type = "record",
     fields = {
       { window_size = {
         description = "The window size for rate limiting.",
@@ -60,6 +61,7 @@ return {
     { custom_entity_check = {
       field_sources = { "config" },
       fn = function(entity)
+        deprecation("The method of configuring plugins through this entity is now deprecated. We've introduced a more efficient way to scope plugins to Consumer Groups that follows the familiar process used with Services, Routes, and Consumers.", { after = "3.4", })
         local config = entity.config
 
         if not config.limit or not config.window_size then
