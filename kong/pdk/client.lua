@@ -17,6 +17,8 @@
 
 local utils = require "kong.tools.utils"
 local phase_checker = require "kong.pdk.private.phases"
+local consumer_group_helpers = require "kong.enterprise_edition.consumer_groups_helpers"
+local get_groups_by_consumer = consumer_group_helpers.get_groups_by_consumer
 
 
 local ngx = ngx
@@ -39,6 +41,7 @@ local AUTH_AND_LATER = phase_checker.new(PHASES.access,
                                          PHASES.ws_close)
 
 local TABLE_OR_NIL = { ["table"] = true, ["nil"] = true }
+local STRING_OR_NIL = { ["string"] = true, ["nil"] = true }
 
 local stream_subsystem = ngx.config.subsystem == "stream"
 
@@ -247,7 +250,8 @@ local function new(self)
 
 
   ---
-  -- Sets the authenticated consumer and/or credential for the current request.
+  -- Sets the authenticated consumer and/or credential as well
+  -- as the authenticated consumer-group for the current request.
   -- While both `consumer` and `credential` can be `nil`,
   -- at least one of them must exist. Otherwise, this function will throw an
   -- error.
@@ -272,10 +276,92 @@ local function new(self)
     end
 
     local ctx = ngx.ctx
+    -- When authenticating, we assign `authenticated_consumer_group`
+    -- based on `consumer` affiliation.
+    self.client.authenticate_consumer_group_by_consumer_id(consumer and consumer.id)
     ctx.authenticated_consumer = consumer
     ctx.authenticated_credential = credential
   end
 
+--- Sets the consumer group for the current request based on the provided consumer id.
+-- If the consumer_id is neither a string nor nil, it throws an error.
+-- If the consumer group has already been authenticated, it doesn't override the group.
+-- The function performs a redis-SCAN-like lookup using a subset of the cache_key.
+-- The consumer_group_mapping is sorted by group name for deterministic behavior,
+-- but this might be changed in future releases.
+--
+-- @function _CLIENT.authenticate_consumer_group_by_consumer_id
+-- @phases access
+-- @tparam string|nil consumer_id The consumer id to use for setting the consumer group.
+-- If no value is provided, the current consumer group is not changed.
+-- @usage
+-- -- assuming `consumer_id` is provided by some code
+-- _CLIENT.authenticate_consumer_group_by_consumer_id(consumer_id)
+  function _CLIENT.authenticate_consumer_group_by_consumer_id(consumer_id)
+    check_phase(ACCESS_AND_WS_HANDSHAKE)
+
+    if not STRING_OR_NIL[type(consumer_id)] then
+      error("consumer_id must be a sting or nil", 2)
+    end
+
+    local ctx = ngx.ctx
+    -- do not override any authenticated group when alreaedy set. a previous plugin
+    -- might have set this explicity.
+    if ctx.authenticated_consumer_group then
+     return nil
+    end
+
+    -- Use a subset of the `cache_key` like `"":consumer-x` to do a `redis-SCAN` like lookup.
+    local cache_key = kong.db.consumer_group_consumers:cache_key("", consumer_id)
+    local consumer_group_mapping, err = kong.cache:get(cache_key, nil, get_groups_by_consumer, consumer_id)
+
+    -- This is a preliminary measure to ensure deterministic behavior when dealing with multiple consumer-groups
+    -- per consumer. For now, we sort by consumer-group name but this is subject to change in future releases.
+    table.sort(consumer_group_mapping or {}, function (a, b)
+      return a.name < b.name
+    end)
+
+    if not err and consumer_group_mapping then
+      ctx.authenticated_consumer_group = consumer_group_mapping[1] or nil
+    end
+  end
+
+  ---
+  -- Explicitly sets the authenticated consumer group for the current request.
+  -- Throws an error if the `group` is neither a table nor `nil`.
+  -- @function _CLIENT.set_authenticated_consumer_group
+  -- @phases auth_and_later
+  -- @tparam table|nil group The consumer group to set. If no
+  -- value is provided, then any existing value will be cleared.
+  -- @usage
+  -- -- assuming `group` is provided by some code
+  -- _CLIENT.set_authenticated_consumer_group(group)
+  function _CLIENT.set_authenticated_consumer_group(group)
+    -- This is the counterpart for `authenticate_consumer_group_by_consumer_id`
+    -- This method allows to explicitly set a group. This allows a plugin to set groups
+    -- based on any other affiliations rather than a consumer <-> consumer_group mapping.
+    check_phase(AUTH_AND_LATER)
+
+    if not TABLE_OR_NIL[type(group)] then
+      error("consumer group must be a table or nil", 2)
+    end
+
+    ngx.ctx.authenticated_consumer_group = group
+  end
+
+  ---
+  -- Retrieves the authenticated consumer group for the current request.
+  -- @function _CLIENT.get_consumer_group
+  -- @phases auth_and_later
+  -- @treturn table|nil The authenticated consumer group. Returns `nil` if no
+  -- consumer group has been authenticated for the current request.
+  -- @usage
+  -- local group = _CLIENT.get_consumer_group()
+  function _CLIENT.get_consumer_group()
+    check_phase(AUTH_AND_LATER)
+
+    return ngx.ctx.authenticated_consumer_group
+  end
 
   ---
   -- Returns the protocol matched by the current route (`"http"`, `"https"`, `"tcp"` or
