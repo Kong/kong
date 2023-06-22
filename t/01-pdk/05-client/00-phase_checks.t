@@ -26,6 +26,11 @@ qq{
 
     init_worker_by_lua_block {
         _G.kong = {
+          cache = {
+            get = function(...)
+              return { consumer_id = 1, consumer_group = 1 }
+            end
+          },
           db = {
             consumers = {
               select = function(self, query)
@@ -35,6 +40,11 @@ qq{
                 return { username = "bob" }, nil
               end,
             },
+              consumer_group_consumers = {
+                cache_key = function(self, foo)
+                  return "foo:bar"
+                end
+              }
           },
         }
         phases = require("kong.pdk.private.phases").phases
@@ -149,15 +159,48 @@ qq{
                 body_filter   = true,
                 log           = true,
                 admin_api     = "forced false",
+            }, {
+                method        = "authenticate_consumer_group_by_consumer_id",
+                args          = { "1" },
+                init_worker   = "forced false",
+                certificate   = "pending",
+                rewrite       = "forced false",
+                access        = true,
+                header_filter = "forced false",
+                response      = "forced false",
+                body_filter   = "forced false",
+                log           = "forced false",
+                admin_api     = "forced false",
+            }, {
+                method        = "set_authenticated_consumer_group",
+                args          = { {} },
+                init_worker   = "forced false",
+                certificate   = "pending",
+                rewrite       = "forced false",
+                access        = true,
+                header_filter = true,
+                response      = true,
+                body_filter   = true,
+                log           = true,
+                admin_api     = "forced false",
+            }, {
+                method        = "get_consumer_group",
+                args          = { },
+                init_worker   = "forced false",
+                certificate   = "pending",
+                rewrite       = "forced false",
+                access        = true,
+                header_filter = true,
+                response      = true,
+                body_filter   = true,
+                log           = true,
+                admin_api     = "forced false",
             },
         }
 
         phase_check_functions(phases.init_worker)
     }
 
-    #ssl_certificate_by_lua_block {
-    #    phase_check_functions(phases.certificate)
-    #}
 }
 --- config
     location /t {

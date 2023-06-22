@@ -19,6 +19,10 @@ __DATA__
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
+            -- monkeypatching the consumergroup lookup function as it involves database lookups
+            pdk.client.authenticate_consumer_group_by_consumer_id = function(consumer_id)
+            end
+
             pdk.client.authenticate(setmetatable({},{
                 __tostring = function() return "this consumer" end,
             }),
@@ -27,13 +31,13 @@ __DATA__
             }))
 
 
-            ngx.say("consumer: ", tostring(pdk.client.get_consumer()), ", credential: ", tostring(pdk.client.get_credential()))
+            ngx.say("consumer: ", tostring(pdk.client.get_consumer()), ", credential: ", tostring(pdk.client.get_credential()), ", consumer_group: ", tostring(pdk.client.get_consumer_group()))
         }
     }
 --- request
 GET /t
 --- response_body
-consumer: this consumer, credential: this credential
+consumer: this consumer, credential: this credential, consumer_group: nil
 --- no_error_log
 [error]
 
@@ -62,6 +66,7 @@ either credential or consumer must be provided
 
 
 === TEST 3: client.authenticate() only accepts table as consumer
+
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
