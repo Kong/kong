@@ -43,7 +43,7 @@ return {
             one_of = {"CN", "DN"},
             default = "CN"
           }, },
-          { revocation_check_mode = { description = ">**Known Issue:** The default value `IGNORE_CA_ERROR` has a known issue in versions 1.5.0.0 and later.m As a workaround, manually set the value to `SKIP`.  Controls client certificate revocation check behavior. Valid values are `SKIP`, `IGNORE_CA_ERROR`, or `STRICT`. If set to `SKIP`, no revocation check is performed. If set to `IGNORE_CA_ERROR`, the plugin respects the revocation status when either OCSP or CRL URL is set, and doesn't fail on network issues. If set to `STRICT`, the plugin only treats the certificate as valid when it's able to verify the revocation status, and a missing OCSP or CRL URL in the certificate or a failure to connect to the server results in a revoked status.", required = false,
+          { revocation_check_mode = { description = "Controls client certificate revocation check behavior. If set to `SKIP`, no revocation check is performed. If set to `IGNORE_CA_ERROR`, the plugin respects the revocation status when either OCSP or CRL URL is set, and doesn't fail on network issues. If set to `STRICT`, the plugin only treats the certificate as valid when it's able to verify the revocation status.", required = false,
             type = "string",
             one_of = {"SKIP", "IGNORE_CA_ERROR", "STRICT"},
             default = "IGNORE_CA_ERROR"

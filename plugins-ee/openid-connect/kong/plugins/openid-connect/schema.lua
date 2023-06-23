@@ -106,7 +106,7 @@ local config = {
             },
           },
           {
-            auth_methods = { description = "Types of credentials/grants to enable: - `password`: OAuth legacy password grant - `client_credentials`: OAuth client credentials grant - `authorization_code`: authorization code flow - `bearer`: JWT access token verification - `introspection`: OAuth introspection - `userinfo`: OpenID Connect user info endpoint authentication - `kong_oauth2`: Kong OAuth plugin issued tokens verification - `refresh_token`: OAuth refresh token grant - `session`: session cookie authentication", required = false,
+            auth_methods = { description = "Types of credentials/grants to enable.", required = false,
               type     = "array",
               default  = {
                 "password",
@@ -136,7 +136,7 @@ local config = {
             },
           },
           {
-            client_id = { description = "The client id(s) that the plugin uses when it calls authenticated endpoints on the identity provider. Other settings that are associated with the client are: - `config.client_secret` - `config.client_auth` - `config.client_jwk` - `config.client_alg` - `config.redirect_uri` - `config.login_redirect_uri` - `config.logout_redirect_uri` - `config.unauthorized_redirect_uri` - `config.forbidden_redirect_uri` - `config.unexpected_redirect_uri`  Use the same array index when configuring related settings for the client.", required  = false,
+            client_id = { description = "The client id(s) that the plugin uses when it calls authenticated endpoints on the identity provider.", required  = false,
               type      = "array",
               encrypted = true,
               elements  = {
@@ -202,7 +202,7 @@ local config = {
             },
           },
           {
-            client_arg = { description = "The client to use for this request (the selection is made with a request parameter with the same name). For example, setting this value to `Client`, and sending the request header `Client: 1` will cause the plugin to use the first client (see: `config.client_id`) from the client array.", required = false,
+            client_arg = { description = "The client to use for this request (the selection is made with a request parameter with the same name).", required = false,
               type     = "string",
               default  = "client_id",
             },
@@ -311,7 +311,7 @@ local config = {
             },
           },
           {
-            scopes_required = { description = "The scopes (`scopes_claim` claim) required to be present in the access token (or introspection results) for successful authorization. This config parameter works in both **AND** / **OR** cases. - When `[\"scope1 scope2\"]` are in the same array indices, both `scope1` AND `scope2` need to be present in access token (or introspection results). - When `[\"scope1\", \"scope2\"]` are in different array indices, either `scope1` OR `scope2` need to be present in access token (or introspection results).",
+            scopes_required = { description = "The scopes (`scopes_claim` claim) required to be present in the access token (or introspection results) for successful authorization. This config parameter works in both **AND** / **OR** cases.",
               required = false,
               type     = "array",
               elements = {
@@ -329,7 +329,7 @@ local config = {
             },
           },
           {
-            audience_required = { description = "The audiences (`audience_claim` claim) required to be present in the access token (or introspection results) for successful authorization. This config parameter works in both **AND** / **OR** cases. - When `[\"audience1 audience2\"]` are in the same array indices, both `audience1` AND `audience2` need to be present in access token (or introspection results). - When `[\"audience1\", \"audience2\"]` are in different array indices, either `audience1` OR `audience2` need to be present in access token (or introspection results).",
+            audience_required = { description = "The audiences (`audience_claim` claim) required to be present in the access token (or introspection results) for successful authorization. This config parameter works in both **AND** / **OR** cases.",
               required = false,
               type     = "array",
               elements = {
@@ -347,7 +347,7 @@ local config = {
             },
           },
           {
-            groups_required = { description = "The groups (`groups_claim` claim) required to be present in the access token (or introspection results) for successful authorization. This config parameter works in both **AND** / **OR** cases. - When `[\"group1 group2\"]` are in the same array indices, both `group1` AND `group2` need to be present in access token (or introspection results). - When `[\"group1\", \"group2\"]` are in different array indices, either `group1` OR `group2` need to be present in access token (or introspection results).",
+            groups_required = { description = "The groups (`groups_claim` claim) required to be present in the access token (or introspection results) for successful authorization. This config parameter works in both **AND** / **OR** cases.",
               required = false,
               type     = "array",
               elements = {
@@ -365,7 +365,7 @@ local config = {
             },
           },
           {
-            roles_required = { description = "The roles (`roles_claim` claim) required to be present in the access token (or introspection results) for successful authorization. This config parameter works in both **AND** / **OR** cases. - When `[\"role1 role2\"]` are in the same array indices, both `role1` AND `role2` need to be present in access token (or introspection results). - When `[\"role1\", \"role2\"]` are in different array indices, either `role1` OR `role2` need to be present in access token (or introspection results).",
+            roles_required = { description = "The roles (`roles_claim` claim) required to be present in the access token (or introspection results) for successful authorization. This config parameter works in both **AND** / **OR** cases.",
               required = false,
               type     = "array",
               elements = {
@@ -396,7 +396,7 @@ local config = {
             },
           },
           {
-            authenticated_groups_claim = { description = "The claim that contains authenticated groups. This setting can be used together with ACL plugin, but it also enables IdP managed groups with other applications and integrations (for example, Kong Manager and Dev Portal). The OpenID Connect plugin itself does not do anything other than set the context value.", required = false,
+            authenticated_groups_claim = { description = "The claim that contains authenticated groups. This setting can be used together with ACL plugin, but it also enables IdP managed groups with other applications and integrations.", required = false,
               type     = "array",
               elements = {
                 type = "string",
@@ -456,7 +456,7 @@ local config = {
             },
           },
           {
-            authorization_cookie_same_site = { description = "Controls whether a cookie is sent with cross-origin requests, providing some protection against cross-site request forgery attacks: - `Strict`: Cookies will only be sent in a first-party context and not be sent along with requests initiated by third party websites. - `Lax`: Cookies are not sent on normal cross-site subrequests (for example to load images or frames into a third party site), but are sent when a user is navigating to the origin site (for instance, when following a link). - `None`: Cookies will be sent in all contexts, for example in responses to both first-party and cross-origin requests. If `SameSite=None` is set, the cookie Secure attribute must also be set (or the cookie will be blocked). - `Default`: Do not explicitly specify a SameSite attribute.", required = false,
+            authorization_cookie_same_site = { description = "Controls whether a cookie is sent with cross-origin requests, providing some protection against cross-site request forgery attacks.", required = false,
               type     = "string",
               default  = "Default",
               one_of   = {
@@ -833,7 +833,7 @@ local config = {
             },
           },
           {
-            session_cookie_same_site = { description = "Controls whether a cookie is sent with cross-origin requests, providing some protection against cross-site request forgery attacks: - `Strict`: Cookies will only be sent in a first-party context and aren't sent along with requests initiated by third party websites. - `Lax`: Cookies are not sent on normal cross-site subrequests (for example to load images or frames into a third party site), but are sent when a user is navigating to the origin site (for example, when following a link). - `None`: Cookies will be sent in all contexts, for example in responses to both first party and cross-origin requests. If `SameSite=None` is set, the cookie `Secure` attribute must also be set, or the cookie will be blocked. - `Default`: Do not explicitly specify a `SameSite` attribute.", required = false,
+            session_cookie_same_site = { description = "Controls whether a cookie is sent with cross-origin requests, providing some protection against cross-site request forgery attacks.", required = false,
               type     = "string",
               default  = "Lax",
               one_of   = {
@@ -1279,7 +1279,7 @@ local config = {
             },
           },
           {
-            login_methods = { description = "Enable login functionality with specified grants: - `password`: enable for OAuth password grant - `client_credentials`: enable OAuth client credentials grant - `authorization_code`: enable for authorization code flow - `bearer`: enable for JWT access token authentication - `introspection`: enable for OAuth introspection authentication - `userinfo`: enable for OpenID Connect user info endpoint authentication - `kong_oauth2`: enable for Kong OAuth Plugin authentication - `refresh_token`: enable for OAuth refresh token grant - `session`: enable for session cookie authentication", required = false,
+            login_methods = { description = "Enable login functionality with specified grants.", required = false,
               type     = "array",
               default  = {
                 "authorization_code",
@@ -1498,7 +1498,7 @@ local config = {
             },
           },
           {
-            disable_session = { description = "Disable issuing the session cookie with the specified grants: - `password`: do not start a session with the password grant - `client_credentials`: do not start a session with the client credentials grant - `authorization_code`: do not start a session after authorization code flow - `bearer`: do not start session with JWT access token authentication - `introspection`: do not start session with introspection authentication - `userinfo`: do not start session with user info authentication - `kong_oauth2`: do not start session with Kong OAuth authentication - `refresh_token` do not start session with refresh token grant - `session`: do not renew the session with session cookie authentication", required = false,
+            disable_session = { description = "Disable issuing the session cookie with the specified grants.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
