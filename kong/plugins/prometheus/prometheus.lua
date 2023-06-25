@@ -805,9 +805,10 @@ local function register(self, name, help, label_names, buckets, typ, local_stora
     return
   end
 
-  local name_maybe_historgram = name:gsub("_bucket$", "")
-                                    :gsub("_count$", "")
-                                    :gsub("_sum$", "")
+  local gsub_a = ngx_re_gsub(name, "_bucket$", "", "jo")
+  local gsub_b = ngx_re_gsub(gsub_a, "_count$", "", "jo")
+  local name_maybe_historgram = ngx_re_gsub(gsub_b, "_sum$", "", "jo")
+
   if (typ ~= TYPE_HISTOGRAM and (
       self.registry[name] or self.registry[name_maybe_historgram]
     )) or
