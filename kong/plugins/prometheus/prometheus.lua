@@ -312,8 +312,7 @@ local function construct_bucket_format(buckets)
     assert(type(bucket) == "number", "bucket boundaries should be numeric")
 
     -- floating point number with all trailing zeros removed
-    local bucket_str = string.format("%f", bucket)
-    local as_string = ngx_re_gsub(bucket_str, "0*$", "", "jo")
+    local as_string = ngx_re_gsub(string.format("%f", bucket), "0*$", "", "jo")
 
     local dot_idx = as_string:find(".", 1, true)
     max_order = math.max(max_order, dot_idx - 1)
