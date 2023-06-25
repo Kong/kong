@@ -306,6 +306,7 @@ end
 local function construct_bucket_format(buckets)
   local max_order = 1
   local max_precision = 1
+
   for i = 1, #buckets do
     local bucket = buckets[i]
     assert(type(bucket) == "number", "bucket boundaries should be numeric")
@@ -318,6 +319,7 @@ local function construct_bucket_format(buckets)
     max_order = math.max(max_order, dot_idx - 1)
     max_precision = math.max(max_precision, as_string:len() - dot_idx)
   end
+
   return "%0" .. (max_order + max_precision + 1) .. "." .. max_precision .. "f"
 end
 
@@ -820,7 +822,7 @@ local function register(self, name, help, label_names, buckets, typ, local_stora
   if string.find(name_maybe_historgram, "_count", 1, true) then
     name_maybe_historgram = ngx_re_gsub(name_maybe_historgram, "_count$", "", "jo")
   end
-  if string.find(name_maybe_historgram, ""_sum, 1, true) then
+  if string.find(name_maybe_historgram, "_sum", 1, true) then
     name_maybe_historgram = ngx_re_gsub(name_maybe_historgram, "_sum$", "", "jo")
   end
 
