@@ -273,6 +273,10 @@ local function check_metric_and_label_names(metric_name, label_names)
   if not metric_name:match("^[a-zA-Z_:][a-zA-Z0-9_:]*$") then
     return "Metric name '" .. metric_name .. "' is invalid"
   end
+  if not label_names then
+    return
+  end
+
   for i = 1, #label_names do
     local label_name = label_names[i]
     if label_name == "le" then
