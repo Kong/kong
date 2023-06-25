@@ -64,7 +64,6 @@ local ngx_re_gsub = ngx.re.gsub
 local ngx_print = ngx.print
 local error = error
 local type = type
-local ipairs = ipairs
 local pairs = pairs
 local tostring = tostring
 local tonumber = tonumber
@@ -189,7 +188,8 @@ local function full_metric_name(name, label_names, label_values)
   -- format "name{k1=v1,k2=v2}"
   buf:put(name):put("{")
 
-  for idx, key in ipairs(label_names) do
+  for idx = 1, #label_names do
+    local key = label_names[idx]
     local label_value = label_values[idx]
 
     -- we only check string value for '\\' and '"'
@@ -273,7 +273,8 @@ local function check_metric_and_label_names(metric_name, label_names)
   if not metric_name:match("^[a-zA-Z_:][a-zA-Z0-9_:]*$") then
     return "Metric name '" .. metric_name .. "' is invalid"
   end
-  for _, label_name in ipairs(label_names or {}) do
+  for i = 1, #label_names do
+    local label_name = label_names[i]
     if label_name == "le" then
       return "Invalid label name 'le' in " .. metric_name
     end
@@ -410,7 +411,8 @@ local function lookup_or_create(self, label_values)
       bucket_pref = self.name .. "_bucket{"
     end
 
-    for i, buc in ipairs(self.buckets) do
+    for i = 1, #self.buckets do
+      local buc = self.buckets[i]
       full_name[i+2] = string.format("%sle=\"%s\"}", bucket_pref, self.bucket_format:format(buc))
     end
     -- Last bucket. Note, that the label value is "Inf" rather than "+Inf"
@@ -642,7 +644,8 @@ local function reset(self)
     name_prefixes[self.name .. "{"] = name_prefix_length_base + 1
   end
 
-  for _, key in ipairs(keys) do
+  for i = 1, #keys do
+    local key = keys[i]
     local value, err = self._dict:get(key)
     if value then
       -- For a metric to be deleted its name should either match exactly, or
