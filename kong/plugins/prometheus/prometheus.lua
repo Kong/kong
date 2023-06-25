@@ -75,9 +75,8 @@ local ipairs = ipairs
 local pairs = pairs
 local tostring = tostring
 local tonumber = tonumber
-local st_format = string.format
 local table_sort = table.sort
-local tb_clear = require("table.clear")
+local tb_new = require("table.new")
 local yield = require("kong.tools.utils").yield
 
 
@@ -96,6 +95,9 @@ local TYPE_LITERAL = {
 
 -- Default metric name size for string.buffer.new()
 local NAME_BUFFER_SIZE_HINT = 256
+
+-- Default metric data size for string.buffer.new()
+local DATA_BUFFER_SIZE_HINT = 4096
 
 -- Default name for error metric incremented by this library.
 local DEFAULT_ERROR_METRIC_NAME = "nginx_metric_errors_total"
@@ -406,7 +408,7 @@ local function lookup_or_create(self, label_values)
     local bucket_pref
     if self.label_count > 0 then
       -- strip last }
-      bucket_pref = self.name .. "_bucket" .. string.sub(labels, 1, #labels-1) .. ","
+      bucket_pref = self.name .. "_bucket" .. string.sub(labels, 1, -2) .. ","
     else
       bucket_pref = self.name .. "_bucket{"
     end
@@ -708,8 +710,9 @@ end
 -- Returns:
 --   an object that should be used to register metrics.
 function Prometheus.init(dict_name, options_or_prefix)
-  if ngx.get_phase() ~= 'init' and ngx.get_phase() ~= 'init_worker' and
-      ngx.get_phase() ~= 'timer' then
+  local phase = ngx.get_phase()
+  if phase ~= 'init' and phase ~= 'init_worker' and
+     phase ~= 'timer' then
     error('Prometheus.init can only be called from ' ..
       'init_by_lua_block, init_worker_by_lua_block or timer' , 2)
   end
@@ -919,25 +922,28 @@ function Prometheus:metric_data(write_fn, local_only)
   -- numerical order of their label values.
   table_sort(keys)
 
-  local seen_metrics = {}
-  local output = {}
+  local seen_metrics = tb_new(0, count)
+
+  -- the output is an integral string, not an array any more
+  local output = buffer.new(DATA_BUFFER_SIZE_HINT)
   local output_count = 0
 
-  local function buffered_print(data)
-    if data then
+  local function buffered_print(fmt, ...)
+    if fmt then
       output_count = output_count + 1
-      output[output_count] = data
+      output:putf(fmt, ...)
     end
 
-    if output_count >= 100 or not data then
-      write_fn(output)
+    if output_count >= 100 or not fmt then
+      write_fn(output:get())  -- consume the whole buffer
       output_count = 0
-      tb_clear(output)
     end
   end
 
-  for _, key in ipairs(keys) do
+  for i = 1, count do
     yield()
+
+    local key = keys[i]
 
     local value, err
     local is_local_metrics = true
@@ -957,12 +963,12 @@ function Prometheus:metric_data(write_fn, local_only)
       local m = self.registry[short_name]
       if m then
         if m.help then
-          buffered_print(st_format("# HELP %s%s %s\n",
-            self.prefix, short_name, m.help))
+          buffered_print("# HELP %s%s %s\n",
+            self.prefix, short_name, m.help)
         end
         if m.typ then
-          buffered_print(st_format("# TYPE %s%s %s\n",
-            self.prefix, short_name, TYPE_LITERAL[m.typ]))
+          buffered_print("# TYPE %s%s %s\n",
+            self.prefix, short_name, TYPE_LITERAL[m.typ])
         end
       end
       seen_metrics[short_name] = true
@@ -970,13 +976,15 @@ function Prometheus:metric_data(write_fn, local_only)
     if not is_local_metrics then -- local metrics is always a gauge
       key = fix_histogram_bucket_labels(key)
     end
-    buffered_print(st_format("%s%s %s\n", self.prefix, key, value))
+    buffered_print("%s%s %s\n", self.prefix, key, value)
 
     ::continue::
 
   end
 
   buffered_print(nil)
+
+  output:free()
 end
 
 -- Present all metrics in a text format compatible with Prometheus.
