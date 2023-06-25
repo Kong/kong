@@ -301,10 +301,14 @@ end
 local function construct_bucket_format(buckets)
   local max_order = 1
   local max_precision = 1
-  for _, bucket in ipairs(buckets) do
+  for i = 1, #buckets do
+    local bucket = buckets[i]
     assert(type(bucket) == "number", "bucket boundaries should be numeric")
+
     -- floating point number with all trailing zeros removed
-    local as_string = string.format("%f", bucket):gsub("0*$", "")
+    local bucket_str = string.format("%f", bucket)
+    local as_string = ngx_re_gsub(bucket_str, "0*$", "", "jo")
+
     local dot_idx = as_string:find(".", 1, true)
     max_order = math.max(max_order, dot_idx - 1)
     max_precision = math.max(max_precision, as_string:len() - dot_idx)
