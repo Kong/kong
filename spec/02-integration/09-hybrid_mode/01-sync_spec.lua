@@ -490,7 +490,8 @@ describe("CP/DP #version check #" .. strategy, function()
           node_id = uuid,
           node_version = harness.dp_version,
           node_plugins_list = harness.plugins_list,
-          node_labels = harness.labels
+          node_labels = harness.labels,
+          node_process_conf = harness.process_conf,
         }))
 
         assert.equals("reconfigure", res.type)
