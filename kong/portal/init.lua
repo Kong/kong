@@ -175,7 +175,6 @@ app:before_filter(function(self)
   ctx.workspace = nil
   ctx.rbac = nil
 
-  local invoke_plugin = kong.invoke_plugin
   local ws_name = workspaces.DEFAULT_WORKSPACE
   if self.params.workspace_name then
     ws_name = unescape_uri(self.params.workspace_name)
@@ -199,19 +198,9 @@ app:before_filter(function(self)
   -- if portal is not enabled in both kong.conf and workspace, return 404
   crud_helpers.exit_if_portal_disabled()
 
-  local cors_conf = {
-    origins = workspace_config.build_ws_portal_cors_origins(ws),
-    methods = { "GET", "PUT", "PATCH", "DELETE", "POST" },
-    credentials = true,
-  }
-
-  local ok, err = invoke_plugin({
-    name = "cors",
-    config = cors_conf,
-    phases = { "access", "header_filter"},
-    api_type = ee_api.apis.PORTAL,
-    db = kong.db,
-  })
+  local ok, err = ee_api.set_cors_headers(
+    workspace_config.build_ws_portal_cors_origins(ws),
+    ee_api.apis.PORTAL)
 
   if not ok then
     log(ERR, err)

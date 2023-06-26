@@ -36,6 +36,7 @@
 * Update the datafile library to make the SAML plugin work again when
   Kong is controlled by systemd [KAG-1832](https://konghq.atlassian.net/browse/KAG-1832)
 * Fix an issue that sometimes can't attach workspace with the cache's consumer well. [FTI-4564](https://konghq.atlassian.net/browse/FTI-4564)
+* Fix CORS incorrect behavior when KM integrated with Portal GUI. [FTI-1437](https://konghq.atlassian.net/browse/FTI-1437)
 
 ## Plugins
 

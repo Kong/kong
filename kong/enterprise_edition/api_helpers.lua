@@ -524,9 +524,26 @@ local function validate_workspace_name(name)
   })
 end
 
+function _M.set_cors_headers(origins, api_type)
+  local invoke_plugin = kong.invoke_plugin
+
+  local cors_conf = {
+    origins = origins,
+    methods = { "GET", "PUT", "PATCH", "DELETE", "POST" },
+    credentials = true,
+  }
+
+  return invoke_plugin({
+    name = "cors",
+    config = cors_conf,
+    phases = { "access", "header_filter" },
+    api_type = api_type,
+    db = kong.db,
+  })
+end
+
 function _M.before_filter(self)
   local req_id = utils.random_string()
-  local invoke_plugin = kong.invoke_plugin
 
   ngx.ctx.admin_api = {
     req_id = req_id,
@@ -582,21 +599,9 @@ function _M.before_filter(self)
     workspaces.set_workspace(workspace)
     self.params.workspace_name = nil
 
-    local origin = kong.configuration.admin_gui_origin or "*"
-
-    local cors_conf = {
-      origins = { origin },
-      methods = { "GET", "PUT", "PATCH", "DELETE", "POST" },
-      credentials = true,
-    }
-
-    local ok, err = invoke_plugin({
-      name = "cors",
-      config = cors_conf,
-      phases = { "access", "header_filter" },
-      api_type = _M.apis.ADMIN,
-      db = kong.db,
-    })
+    local ok, err = _M.set_cors_headers({
+      kong.configuration.admin_gui_origin or "*",
+    }, _M.apis.ADMIN)
 
     if not ok then
       return app_helpers.yield_error(err)
