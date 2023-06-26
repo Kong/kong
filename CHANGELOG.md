@@ -57,8 +57,8 @@
   [#10896](https://github.com/Kong/kong/pull/10896)
 - Fix a bug when worker consuming dynamic log level setting event and using a wrong reference for notice logging
   [#10897](https://github.com/Kong/kong/pull/10897)
-- **worker-events**: The payload of events to be sent with worker-events will be transformed to an error hint plusing a truncated body if the size of the payload exceeds the limit in lua-resty-events lib. 
-  [#10862](https://github.com/Kong/kong/pull/10862)
+- **worker-events**: Fix the bug that event payload which are over 65K can't be delivered. 
+  [#11117](https://github.com/Kong/kong/pull/11117)
 
 #### Admin API
 
