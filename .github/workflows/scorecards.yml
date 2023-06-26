@@ -34,7 +34,7 @@ jobs:
 
       - name: "Run analysis"
         continue-on-error: true
-        uses: ossf/scorecard-action@e38b1902ae4f44df626f11ba0734b14fb91f8f86 # v2.1.2
+        uses: ossf/scorecard-action@08b4669551908b1024bb425080c797723083c031 # v2.2.0
         with:
           results_file: results.sarif
           results_format: sarif
