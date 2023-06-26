@@ -184,15 +184,15 @@ local function full_metric_name(name, label_names, label_values)
     return name
   end
 
+  local slash, double_slash, reg_slash = [[\]], [[\\]], [[\\]]
+  local quote, slash_quote,  reg_quote = [["]], [[\"]], [["]]
+
   local buf = buffer.new(NAME_BUFFER_SIZE_HINT)
 
   -- format "name{k1=v1,k2=v2}"
   buf:put(name):put("{")
 
   for idx, key in ipairs(label_names) do
-    local slash, double_slash, reg_slash = [[\]], [[\\]], [[\\]]
-    local quote, slash_quote,  reg_quote = [["]], [[\"]], [["]]
-
     local label_value = label_values[idx]
 
     -- we only check string value for '\\' and '"'
