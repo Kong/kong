@@ -62,7 +62,7 @@ return {
               type = "string",
               required = false,
               default = "preserve",
-              one_of = { "preserve", "ignore", "b3", "b3-single", "w3c", "jaeger", "ot", "aws", "gcp" } } },
+              one_of = { "preserve", "ignore", "b3", "b3-single", "w3c", "jaeger", "ot", "aws", "gcp", "datadog" } } },
         { sampling_rate = {
           description = "Tracing sampling rate for configuring the probability-based sampler. When set, this value supersedes the global `tracing_sampling_rate` setting from kong.conf.",
           type = "number",
@@ -70,10 +70,15 @@ return {
           required = false,
           default = nil,
         } },
+        { propagation = typedefs.propagation {
+          default = {
+            default_format = "w3c",
+          },
+        } },
       },
       entity_checks = {
         { custom_entity_check = {
-          field_sources = { "batch_span_count", "batch_flush_delay" },
+          field_sources = { "batch_span_count", "batch_flush_delay", "header_type" },
           fn = function(entity)
             if (entity.batch_span_count or ngx.null) ~= ngx.null and entity.batch_span_count ~= 200 then
               deprecation("opentelemetry: config.batch_span_count is deprecated, please use config.queue.max_batch_size instead",
@@ -81,6 +86,10 @@ return {
             end
             if (entity.batch_flush_delay or ngx.null) ~= ngx.null and entity.batch_flush_delay ~= 3 then
               deprecation("opentelemetry: config.batch_flush_delay is deprecated, please use config.queue.max_coalescing_delay instead",
+                          { after = "4.0", })
+            end
+            if (entity.header_type or ngx.null) ~= ngx.null and entity.header_type ~= "preserve" then
+              deprecation("opentelemetry: config.header_type is deprecated, please use config.propagation options instead",
                           { after = "4.0", })
             end
             return true
