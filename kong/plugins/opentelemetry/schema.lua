@@ -74,14 +74,26 @@ return {
         { send_timeout = typedefs.timeout { default = 5000 } },
         { read_timeout = typedefs.timeout { default = 5000 } },
         { http_response_header_for_traceid = { type = "string", default = nil }},
-        { header_type = { type = "string", required = false, default = "preserve",
-                          one_of = { "preserve", "ignore", "b3", "b3-single", "w3c", "jaeger", "ot", "aws", "gcp", "datadog" } } },
+        { header_type = {
+              type = "string",
+              deprecation = {
+                message = "opentelemetry: config.header_type is deprecated, please use config.propagation options instead",
+                removal_in_version = "4.0",
+                old_default = "preserve" },
+              required = false,
+              default = "preserve",
+              one_of = { "preserve", "ignore", "b3", "b3-single", "w3c", "jaeger", "ot", "aws", "gcp", "datadog" } } },
         { sampling_rate = {
           description = "Tracing sampling rate for configuring the probability-based sampler. When set, this value supersedes the global `tracing_sampling_rate` setting from kong.conf.",
           type = "number",
           between = {0, 1},
           required = false,
           default = nil,
+        } },
+        { propagation = typedefs.propagation {
+          default = {
+            default_format = "w3c",
+          },
         } },
       },
     }, },

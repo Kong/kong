@@ -65,10 +65,13 @@ return {
           { traceid_byte_count = { description = "The length in bytes of each request's Trace ID.", type = "integer", required = true, default = 16, one_of = { 8, 16 } } },
           -- "datadog" is EE exclusive
           { header_type = { description = "All HTTP requests going through the plugin are tagged with a tracing HTTP request. This property codifies what kind of tracing header the plugin expects on incoming requests", type = "string", required = true, default = "preserve",
-                            one_of = { "preserve", "ignore", "b3", "b3-single", "w3c", "jaeger", "ot", "aws", "datadog", "gcp" } } },
-          -- "datadog" is EE exclusive
+                            one_of = { "preserve", "ignore", "b3", "b3-single", "w3c", "jaeger", "ot", "aws", "datadog", "gcp" },
+                            deprecation = { message = "zipkin: config.header_type is deprecated, please use config.propagation options instead", removal_in_version = "4.0", old_default = "preserve" }
+                          } },
           { default_header_type = { description = "Allows specifying the type of header to be added to requests with no pre-existing tracing headers and when `config.header_type` is set to `\"preserve\"`. When `header_type` is set to any other value, `default_header_type` is ignored.", type = "string", required = true, default = "b3",
-                            one_of = { "b3", "b3-single", "w3c", "jaeger", "ot", "aws", "datadog", "gcp" } } },
+                            one_of = { "b3", "b3-single", "w3c", "jaeger", "ot", "aws", "datadog", "gcp" },
+                            deprecation = { message = "zipkin: config.default_header_type is deprecated, please use config.propagation.default_format instead", removal_in_version = "4.0", old_default = "b3" }
+                          } },
           { tags_header = { description = "The Zipkin plugin will add extra headers to the tags associated with any HTTP requests that come with a header named as configured by this property.", type = "string", required = true, default = "Zipkin-Tags" } },
           { static_tags = {  description = "The tags specified on this property will be added to the generated request traces.", type = "array", elements = static_tag,
                             custom_validator = validate_static_tags } },
@@ -80,6 +83,11 @@ return {
           { phase_duration_flavor = { description = "Specify whether to include the duration of each phase as an annotation or a tag.", type = "string", required = true, default = "annotations",
                                       one_of = { "annotations", "tags" } } },
           { queue = typedefs.queue },
+          { propagation = typedefs.propagation {
+            default = {
+              default_format = "b3",
+            },
+          } },
         },
     }, },
   },
