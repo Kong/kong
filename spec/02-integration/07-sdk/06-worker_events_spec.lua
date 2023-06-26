@@ -17,10 +17,10 @@ describe("worker_events", function()
             location = /test_too_big_string {
               content_by_lua_block {
                 local PAYLOAD_TOO_BIG_ERR = "failed to publish event: payload too big"
-                local SOURCE, EVENT = "foo", "string"
-                local payload_received = ""
-                local worker_events = kong.worker_events
-                local cjson = require "cjson.safe"
+                local SOURCE, EVENT       = "foo", "string"
+                local worker_events       = kong.worker_events
+                local cjson               = require "cjson.safe"
+                local payload_received
 
                 local function generate_data()
                   return string.rep("X", 70000)
@@ -40,9 +40,6 @@ describe("worker_events", function()
                 local ok, err = worker_events.register(function(data)
                   payload_received = data
                 end, SOURCE, EVENT)
-
-                -- we look forward to receiving the payload even if 
-                -- the size of the payload exceeds the limit
 
                 -- when payload is a string
                 local PAYLOAD = generate_data()
@@ -54,7 +51,7 @@ describe("worker_events", function()
                 end
 
                 assert(wait_until(function()
-                  return #payload_received > 60000 and #payload_received < 65535
+                  return PAYLOAD == payload_received
                 end, 1))
 
                 ngx.status = ngx.HTTP_OK
@@ -65,12 +62,13 @@ describe("worker_events", function()
 
             location = /test_too_big_table {
               content_by_lua_block {
-                local PAYLOAD_TOO_BIG_ERR = "failed to publish event: payload too big"
+                local PAYLOAD_TOO_BIG_ERR       = "failed to publish event: payload too big"
                 local DEFAULT_TRUNCATED_PAYLOAD = ", truncated payload: not a serialized object"
-                local SOURCE, EVENT = "foo", "table"
-                local payload_received = ""
-                local worker_events = kong.worker_events
-                local cjson = require "cjson.safe"
+                local SOURCE, EVENT             = "foo", "table"
+                local worker_events             = kong.worker_events
+                local cjson                     = require "cjson.safe"
+                local deepcompare               = require("pl.tablex").deepcompare
+                local payload_received
 
                 local function generate_data()
                   return string.rep("X", 70000)
@@ -91,12 +89,10 @@ describe("worker_events", function()
                   payload_received = data
                 end, SOURCE, EVENT)
 
-                -- we look forward to receiving the payload even if 
-                -- the size of the payload exceeds the limit
-
                 -- when payload is a table
                 PAYLOAD = {
-                  ['data'] = generate_data()
+                  foo = 'bar',
+                  data = generate_data()
                 }
                 local ok, err = worker_events.post(SOURCE, EVENT, PAYLOAD)
                 if not ok then
@@ -105,8 +101,8 @@ describe("worker_events", function()
                   ngx.exit(ngx.OK)
                 end
 
-                assert(wait_until(function()
-                  return payload_received == PAYLOAD_TOO_BIG_ERR .. DEFAULT_TRUNCATED_PAYLOAD
+                assert(wait_until(function()                 
+                  return deepcompare(PAYLOAD, payload_received)
                 end, 1))
 
                 ngx.status = ngx.HTTP_OK

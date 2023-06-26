@@ -6,6 +6,10 @@ local kong_cache = require "kong.cache"
 local kong_cluster_events = require "kong.cluster_events"
 local private_node = require "kong.pdk.private.node"
 
+local cjson = require "cjson"
+local string_buffer = require "string.buffer"
+local uuid = require("kong.tools.utils").uuid
+
 local ngx = ngx
 local type = type
 local error = error
@@ -201,32 +205,125 @@ function _GLOBAL.init_worker_events()
     return nil, err
   end
 
-  local PAYLOAD_MAX_LEN, PAYLOAD_TOO_BIG_ERR = 65535, "failed to publish event: payload too big"
-  local TRUNCATED_PREFIX = ", truncated payload: "
-  local DEFAULT_TRUNCATED_PAYLOAD = TRUNCATED_PREFIX .. "not a serialized object"
-  local TRUNCATED_LEN = (#PAYLOAD_TOO_BIG_ERR + #DEFAULT_TRUNCATED_PAYLOAD) * 2
+  local PAYLOAD_MAX_LEN, PAYLOAD_TOO_BIG_ERR = 65000, "failed to publish event: payload too big"
 
   -- There is a limit for the payload size that events lib allows to send,
-  -- we overwrite `post` method to truncate the payload and send it again
-  -- when we get error message: "payload too big"
+  -- we overwrite `post` and `register` method to support sending large payloads
   local native_post = worker_events.post
-  worker_events.post = function(source, event, data, unique)
-    local ok, err = native_post(source, event, data, unique)
-    -- exceeds the upper limit for the size of the payload
-    if err == PAYLOAD_TOO_BIG_ERR then
-      if type(data) == "string" then
-        -- truncate the payload and send it again  
-        data = PAYLOAD_TOO_BIG_ERR .. TRUNCATED_PREFIX .. 
-                    string.sub(data, 1, PAYLOAD_MAX_LEN - TRUNCATED_LEN)
+  local function large_payload_post(source, event, data, unique)
+    local serialized = 0
+    if type(data) == "table" then
+      data = cjson.encode(data)
+      serialized = 1
+    end
 
+    local len_data = #data
+    local len_sent = len_data
+    local pt = 1
+    local eid = uuid()
+    while len_sent > 0 do
+      local partial
+      local packet = {}
+      if len_sent <= PAYLOAD_MAX_LEN then
+        partial = data:sub(pt, pt + len_sent - 1)
+        packet["uuid"] = eid
+        packet["length"] = len_data
+        packet["serialized"] = serialized
       else
-        data = PAYLOAD_TOO_BIG_ERR .. DEFAULT_TRUNCATED_PAYLOAD
+        partial = data:sub(pt, pt + PAYLOAD_MAX_LEN - 1)
       end
 
-      return native_post(source, event, data, unique)
+      packet["uuid"] = eid
+      packet["data"] = partial
+      packet["partial"] = 1
+      ngx.log(ngx.ERR, "gonna send partial")
+      local ok, err = native_post(source, event, packet, unique)
+      if not ok then
+        ngx.log(ngx.ERR, "error to send via native_post: ", err)
+        -- explicitly reset the event buffer
+        native_post(source, event, { uuid = eid, reset = 1 }, unique)
+        return ok, err
+      end
+
+      pt = pt + PAYLOAD_MAX_LEN
+      len_sent = len_sent - PAYLOAD_MAX_LEN
+    end
+
+    return true
+  end
+
+  worker_events.post = function(source, event, data, unique)
+    local ok, err = native_post(source, event, data, unique)
+    if err == PAYLOAD_TOO_BIG_ERR then
+      return large_payload_post(source, event, data, unique)
     end
 
     return ok, err
+  end
+
+  local TTL = 10 * 60 -- 10 minutes
+  local native_register = worker_events.register
+  worker_events.register = function(callback, source, event, ...)
+    local buffer_dict = {}
+
+    local function recycle_buffer()
+      ngx.log(ngx.DEBUG, "recycle buffer")
+      if ngx.worker.exiting() then
+        return
+      end
+
+      for eid, buffer in pairs(buffer_dict) do
+        if ngx.now() - buffer.ts > TTL then
+          buffer.buffer:reset()
+          buffer_dict[eid] = nil
+          ngx.log(ngx.DEBUG, eid, " in event buffer is recycled")
+        end
+      end
+
+      ngx.timer.at(TTL, recycle_buffer)
+    end
+
+    ngx.timer.at(TTL, recycle_buffer)
+
+    local function cb(data, ...)
+      if data.partial == nil then
+        return callback(data, ...)
+      end
+
+      local buffer = buffer_dict[data.uuid]
+      local buf = buffer ~= nil and buffer.buffer
+      if data.reset then
+        if buffer ~= nil then
+          buffer.buffer:reset()
+          buffer_dict[data.uuid] = nil
+        end
+
+        ngx.log(ngx.DEBUG, "buffer reset")
+        return
+      end
+
+      if buffer == nil then
+        buf = string_buffer.new(PAYLOAD_MAX_LEN * 2)
+        buffer_dict[data.uuid] = { buffer = buf, ts = nil }
+      end
+
+      buf:put(data.data)
+      buffer.ts = ngx.now()
+      if data.length ~= nil then
+        assert(#buf == data.length, "failed to decode event payload: length mismatch")
+        local d = buf:get(data.length)
+        if data.serialized == 1 then
+          d = cjson.decode(d)
+        end
+
+        buf:reset()
+        buffer_dict[data.uuid] = nil
+        assert(d, "failed to decode event payload")
+        return callback(d, ...)
+      end
+    end
+
+    return native_register(cb, source, event, ...)
   end
 
   return worker_events
