@@ -79,7 +79,9 @@ local function gen_for_nets(ip_field, port_field, vals)
 
   local nets_buf = buffer.new(64):put("(")
 
-  for i, v in ipairs(vals) do
+  for i = 1, #vals do
+    local v = vals[i]
+
     if type(v) ~= "table" then
       return nil, "sources/destinations elements must be a table"
     end
@@ -154,7 +156,7 @@ local function get_expression(route)
       gen = "(net.protocol != \"https\"" .. LOGICAL_OR .. gen .. ")"
 
     else
-      gen = "net.protocol != \"tls\"" .. LOGICAL_OR .. gen
+      gen = "(net.protocol != \"tls\"" .. LOGICAL_OR .. gen .. ")"
     end
 
     buffer_append(expr_buf, LOGICAL_AND, gen)
