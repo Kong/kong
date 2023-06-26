@@ -2,6 +2,7 @@
 -- @module kong.db.schema.typedefs
 local utils = require "kong.tools.utils"
 local queue_schema = require "kong.tools.queue_schema"
+local propagation_schema = require "kong.tracing.propagation.schema"
 local openssl_pkey = require "resty.openssl.pkey"
 local openssl_x509 = require "resty.openssl.x509"
 local Schema = require "kong.db.schema"
@@ -881,6 +882,8 @@ typedefs.jwk = Schema.define {
 }
 
 typedefs.queue = queue_schema
+
+typedefs.propagation = propagation_schema
 
 local function validate_lua_expression(expression)
   local sandbox = require "kong.tools.sandbox"

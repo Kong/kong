@@ -14,10 +14,6 @@ local ngx_ERR = ngx.ERR
 local ngx_DEBUG = ngx.DEBUG
 local ngx_now = ngx.now
 local ngx_update_time = ngx.update_time
-local ngx_req = ngx.req
-local ngx_get_headers = ngx_req.get_headers
-local propagation_parse = propagation.parse
-local propagation_set = propagation.set
 local null = ngx.null
 local encode_traces = otlp.encode_traces
 local encode_span = otlp.transform_span
@@ -91,8 +87,8 @@ local function http_export(conf, spans)
   return ok, err
 end
 
-function OpenTelemetryHandler:access(conf)
-  local headers = ngx_get_headers()
+
+local function get_inject_ctx(extracted_ctx, conf)
   local root_span = ngx.ctx.KONG_SPANS and ngx.ctx.KONG_SPANS[1]
 
   -- get the global tracer when available, or instantiate a new one
@@ -109,17 +105,21 @@ function OpenTelemetryHandler:access(conf)
   end
 
   local injected_parent_span = tracing_context.get_unlinked_span("balancer") or root_span
-  local header_type, trace_id, span_id, parent_id, parent_sampled, _ = propagation_parse(headers, conf.header_type)
+  local trace_id = extracted_ctx.trace_id
+  local span_id = extracted_ctx.span_id
+  local parent_id = extracted_ctx.parent_id
+  local parent_sampled = extracted_ctx.should_sample
 
   -- Overwrite trace ids
   -- with the value extracted from incoming tracing headers
   if trace_id then
     -- to propagate the correct trace ID we have to set it here
-    -- before passing this span to propagation.set()
+    -- before passing this span to propagation
     injected_parent_span.trace_id = trace_id
     -- update the Tracing Context with the trace ID extracted from headers
     tracing_context.set_raw_trace_id(trace_id)
   end
+
   -- overwrite root span's parent_id
   if span_id then
     root_span.parent_id = span_id
@@ -147,7 +147,22 @@ function OpenTelemetryHandler:access(conf)
   -- Set the sampled flag for the outgoing header's span
   injected_parent_span.should_sample = sampled
 
-  propagation_set(conf.header_type, header_type, injected_parent_span, "w3c")
+  extracted_ctx.trace_id      = injected_parent_span.trace_id
+  extracted_ctx.span_id       = injected_parent_span.span_id
+  extracted_ctx.should_sample = injected_parent_span.should_sample
+  extracted_ctx.parent_id     = injected_parent_span.parent_id
+
+  -- return the injected ctx (data to be injected with outgoing tracing headers)
+  return extracted_ctx
+end
+
+
+function OpenTelemetryHandler:access(conf)
+  propagation.propagate(
+    propagation.get_plugin_params(conf),
+    get_inject_ctx,
+    conf
+  )
 end
 
 
