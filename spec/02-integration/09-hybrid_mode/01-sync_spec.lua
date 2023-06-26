@@ -421,6 +421,10 @@ describe("CP/DP #version check #" .. strategy, function()
         dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
         labels = { some_key = "some_value", b = "aA090).zZ", ["a-._123z"] = "Zz1.-_aA" }
       },
+      ["DP sends process conf"] = {
+        dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
+        process_conf = { foo = "bar" },
+      },
     }
 
     local pl1 = utils.cycle_aware_deep_copy(helpers.get_plugins_list())

@@ -137,6 +137,8 @@ function _M:communicate(premature)
     end
   end
 
+  local configuration = kong.configuration.remove_sensitive()
+
   -- connection established
   -- first, send out the plugin list and DP labels to CP
   -- The CP will make the decision on whether sync will be allowed
@@ -144,6 +146,7 @@ function _M:communicate(premature)
   local _
   _, err = c:send_binary(cjson_encode({ type = "basic_info",
                                         plugins = self.plugins_list,
+                                        process_conf = configuration,
                                         labels = labels, }))
   if err then
     ngx_log(ngx_ERR, _log_prefix, "unable to send basic information to control plane: ", uri,
