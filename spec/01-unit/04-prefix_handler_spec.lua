@@ -1092,7 +1092,7 @@ describe("NGINX conf compiler", function()
       }))
       local main_inject_conf = prefix_handler.compile_nginx_main_inject_conf(conf)
       assert.matches("lmdb_environment_path%s+dbless.lmdb;", main_inject_conf)
-      assert.matches("lmdb_map_size%s+128m;", main_inject_conf)
+      assert.matches("lmdb_map_size%s+2048m;", main_inject_conf)
     end)
   end)
 
