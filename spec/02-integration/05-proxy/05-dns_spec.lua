@@ -148,7 +148,7 @@ for _, strategy in helpers.each_strategy() do
 
     -- lua-resty-dns is used for DNS query. It will create some UDP sockets
     -- during initialization. These sockets should be released after Query finish.
-    -- The release is done by explicitly calling a destory method that we patch.
+    -- The release is done by explicitly calling a destroy method that we patch.
     -- This test case is to check the UDP sockets are released after the DNS query
     -- is done.
     describe("udp sockets", function()
