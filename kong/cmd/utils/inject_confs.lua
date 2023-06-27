@@ -1,7 +1,6 @@
 local conf_loader = require "kong.conf_loader"
 local pl_path = require "pl.path"
 local pl_stringx = require "pl.stringx"
-local pl_utils = require "pl.utils"
 local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local log = require "kong.cmd.utils.log"
 local fmt = string.format
@@ -82,23 +81,6 @@ end
 
 local function compile_stream_inject(conf)
   return compile_nginx_stream_inject_conf(conf)
-end
-
-local function construct_cmd(conf)
-  local main_conf, err = compile_main_inject(conf)
-  if err then
-    return nil, err
-  end
-
-  local http_conf, err = compile_http_inject(conf)
-  if err then
-    return nil, err
-  end
-
-  local stream_conf, err = compile_stream_inject(conf)
-  if err then
-    return nil, err
-  end
 end
 
 local function compile_confs(args)

@@ -1,6 +1,5 @@
 local pl_path = require "pl.path"
 local helpers = require "spec.helpers"
-local conf_loader = require "kong.conf_loader"
 local inject_confs = require "kong.cmd.utils.inject_confs"
 local compile_confs = inject_confs.compile_confs
 local currentdir = pl_path.currentdir
@@ -27,7 +26,7 @@ lua_ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 ]]
 
       local args = {}
-      local confs, err = compile_confs(args)
+      local confs = compile_confs(args)
       assert(confs)
       local expected_main_conf = main_conf
       if strategy == "off" then
@@ -58,7 +57,7 @@ lua_ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 ]], cwd)
 
       local args = {prefix = helpers.test_conf.prefix}
-      local confs, err = compile_confs(args)
+      local confs = compile_confs(args)
       assert(confs)
       local expected_main_conf = main_conf
       if strategy == "off" then
