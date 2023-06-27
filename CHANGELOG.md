@@ -71,6 +71,8 @@
   [#11066](https://github.com/Kong/kong/pull/11066)
 - Remove kong branding from kong HTML error template.
   [#11150](https://github.com/Kong/kong/pull/11150)
+- Fix a bug that caused sampling rate to be applied to individual spans producing split traces.
+  [#11135](https://github.com/Kong/kong/pull/11135)
 
 #### Admin API
 
