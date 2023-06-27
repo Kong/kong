@@ -71,7 +71,6 @@ local ngx_re_gsub = ngx.re.gsub
 local ngx_print = ngx.print
 local error = error
 local type = type
-local ipairs = ipairs
 local pairs = pairs
 local tostring = tostring
 local tonumber = tonumber
@@ -196,7 +195,8 @@ local function full_metric_name(name, label_names, label_values)
   -- format "name{k1=v1,k2=v2}"
   buf:put(name):put("{")
 
-  for idx, key in ipairs(label_names) do
+  for idx = 1, #label_names do
+    local key = label_names[idx]
     local label_value = label_values[idx]
 
     -- we only check string value for '\\' and '"'
@@ -280,7 +280,12 @@ local function check_metric_and_label_names(metric_name, label_names)
   if not metric_name:match("^[a-zA-Z_:][a-zA-Z0-9_:]*$") then
     return "Metric name '" .. metric_name .. "' is invalid"
   end
-  for _, label_name in ipairs(label_names or {}) do
+  if not label_names then
+    return
+  end
+
+  for i = 1, #label_names do
+    local label_name = label_names[i]
     if label_name == "le" then
       return "Invalid label name 'le' in " .. metric_name
     end
@@ -308,14 +313,19 @@ end
 local function construct_bucket_format(buckets)
   local max_order = 1
   local max_precision = 1
-  for _, bucket in ipairs(buckets) do
+
+  for i = 1, #buckets do
+    local bucket = buckets[i]
     assert(type(bucket) == "number", "bucket boundaries should be numeric")
+
     -- floating point number with all trailing zeros removed
-    local as_string = string.format("%f", bucket):gsub("0*$", "")
+    local as_string = ngx_re_gsub(string.format("%f", bucket), "0*$", "", "jo")
+
     local dot_idx = as_string:find(".", 1, true)
     max_order = math.max(max_order, dot_idx - 1)
     max_precision = math.max(max_precision, as_string:len() - dot_idx)
   end
+
   return "%0" .. (max_order + max_precision + 1) .. "." .. max_precision .. "f"
 end
 
@@ -413,7 +423,8 @@ local function lookup_or_create(self, label_values)
       bucket_pref = self.name .. "_bucket{"
     end
 
-    for i, buc in ipairs(self.buckets) do
+    for i = 1, #self.buckets do
+      local buc = self.buckets[i]
       full_name[i+2] = string.format("%sle=\"%s\"}", bucket_pref, self.bucket_format:format(buc))
     end
     -- Last bucket. Note, that the label value is "Inf" rather than "+Inf"
@@ -645,7 +656,8 @@ local function reset(self)
     name_prefixes[self.name .. "{"] = name_prefix_length_base + 1
   end
 
-  for _, key in ipairs(keys) do
+  for i = 1, #keys do
+    local key = keys[i]
     local value, err = self._dict:get(key)
     if value then
       -- For a metric to be deleted its name should either match exactly, or
@@ -808,9 +820,18 @@ local function register(self, name, help, label_names, buckets, typ, local_stora
     return
   end
 
-  local name_maybe_historgram = name:gsub("_bucket$", "")
-                                    :gsub("_count$", "")
-                                    :gsub("_sum$", "")
+  local name_maybe_historgram = name
+
+  if string.find(name_maybe_historgram, "_bucket", 1, true) then
+    name_maybe_historgram = ngx_re_gsub(name_maybe_historgram, "_bucket$", "", "jo")
+  end
+  if string.find(name_maybe_historgram, "_count", 1, true) then
+    name_maybe_historgram = ngx_re_gsub(name_maybe_historgram, "_count$", "", "jo")
+  end
+  if string.find(name_maybe_historgram, "_sum", 1, true) then
+    name_maybe_historgram = ngx_re_gsub(name_maybe_historgram, "_sum$", "", "jo")
+  end
+
   if (typ ~= TYPE_HISTOGRAM and (
       self.registry[name] or self.registry[name_maybe_historgram]
     )) or
