@@ -5,7 +5,9 @@ local kong_meta = require "kong.meta"
 
 local error = error
 local kong = kong
+local ngx_exit = ngx.exit
 local ngx_var = ngx.var
+local ngx_req = ngx.req
 
 
 local IPMATCHER_COUNT = 512
@@ -29,10 +31,27 @@ do
 end
 
 
-local do_exit = function(status, message)
-  return kong.response.error(status, message)
-end
+local is_http_subsystem = ngx.config.subsystem == "http"
 
+
+local do_exit
+if is_http_subsystem then
+  do_exit = function(status, message)
+    return kong.response.error(status, message)
+  end
+
+else
+  do_exit = function(status, message)
+    local tcpsock, err = ngx_req.socket(true)
+    if err then
+      error(err)
+    end
+
+    tcpsock:send(message)
+
+    return ngx_exit(status)
+  end
+end
 
 local function match_bin(list, binary_remote_addr)
   local matcher, err
