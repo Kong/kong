@@ -347,9 +347,7 @@ jobs:
   build-images:
     name: Build Images - ${{ matrix.label }}
     needs: [metadata, build-packages]
-    # TODO: this workflow requires the binfmt_misc kernel module
-    # which is not available on self-hosted-runner (kvm kernel) yet
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RELEASE_RUNS_ON }} 
     strategy:
       fail-fast: false
       matrix:
