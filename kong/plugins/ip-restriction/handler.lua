@@ -5,9 +5,7 @@ local kong_meta = require "kong.meta"
 
 local error = error
 local kong = kong
-local ngx_exit = ngx.exit
 local ngx_var = ngx.var
-local ngx_req = ngx.req
 
 
 local IPMATCHER_COUNT = 512
@@ -29,9 +27,6 @@ do
     return t == nil or tb_isempty(t)
   end
 end
-
-
-local is_http_subsystem = ngx.config.subsystem == "http"
 
 
 local do_exit = function(status, message)
