@@ -61,6 +61,9 @@ local RECONFIGURE_TYPE = "RECONFIGURE"
 local _log_prefix = "[clustering] "
 
 
+local no_connected_clients_logged
+
+
 local function handle_export_deflated_reconfigure_payload(self)
   ngx_log(ngx_DEBUG, _log_prefix, "exporting config")
 
@@ -485,7 +488,10 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
     end
 
     if isempty(self.clients) then
-      ngx_log(ngx_DEBUG, _log_prefix, "skipping config push (no connected clients)")
+      if not no_connected_clients_logged then
+        ngx_log(ngx_DEBUG, _log_prefix, "skipping config push (no connected clients)")
+        no_connected_clients_logged = true
+      end
       sleep(1)
       -- re-queue the task. wait until we have clients connected
       if push_config_semaphore:count() <= 0 then
@@ -494,6 +500,8 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
 
       goto continue
     end
+
+    no_connected_clients_logged = nil
 
     ok, err = pcall(self.push_config, self)
     if not ok then

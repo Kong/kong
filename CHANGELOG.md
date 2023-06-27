@@ -54,6 +54,7 @@
 - The Prometheus plugin has been optimized to reduce proxy latency impacts during scraping.
   [#10949](https://github.com/Kong/kong/pull/10949)
   [#11040](https://github.com/Kong/kong/pull/11040)
+  [#11065](https://github.com/Kong/kong/pull/11065)
 
 ### Fixes
 
@@ -65,8 +66,15 @@
   [#10896](https://github.com/Kong/kong/pull/10896)
 - Fix a bug when worker consuming dynamic log level setting event and using a wrong reference for notice logging
   [#10897](https://github.com/Kong/kong/pull/10897)
+- Added a `User=` specification to the systemd unit definition so that
+  Kong can be controlled by systemd again.
+  [#11066](https://github.com/Kong/kong/pull/11066)
 
 #### Admin API
+
+- Fix an issue where `/schemas/plugins/validate` endpoint fails to validate valid plugin configuration
+  when the key of `custom_fields_by_lua` contains dot character(s).
+  [#11091](https://github.com/Kong/kong/pull/11091)
 
 #### Plugins
 
