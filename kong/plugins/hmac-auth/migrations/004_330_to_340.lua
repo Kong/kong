@@ -10,9 +10,4 @@ return {
 
     ]],
   },
-  cassandra = {
-    up = [[
-      ALTER TABLE hmacauth_credentials ADD public_key text;
-    ]],
-  }
 }

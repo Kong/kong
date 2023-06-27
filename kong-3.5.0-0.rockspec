@@ -404,6 +404,7 @@ build = {
     ["kong.plugins.hmac-auth.migrations.000_base_hmac_auth"] = "kong/plugins/hmac-auth/migrations/000_base_hmac_auth.lua",
     ["kong.plugins.hmac-auth.migrations.002_130_to_140"] = "kong/plugins/hmac-auth/migrations/002_130_to_140.lua",
     ["kong.plugins.hmac-auth.migrations.003_200_to_210"] = "kong/plugins/hmac-auth/migrations/003_200_to_210.lua",
+    ["kong.plugins.hmac-auth.migrations.004_330_to_340"] = "kong/plugins/hmac-auth/migrations/004_330_to_340.lua",
     ["kong.plugins.hmac-auth.handler"] = "kong/plugins/hmac-auth/handler.lua",
     ["kong.plugins.hmac-auth.access"] = "kong/plugins/hmac-auth/access.lua",
     ["kong.plugins.hmac-auth.schema"] = "kong/plugins/hmac-auth/schema.lua",

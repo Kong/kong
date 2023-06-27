@@ -2,5 +2,5 @@ return {
   "000_base_hmac_auth",
   "002_130_to_140",
   "003_200_to_210",
-  "004_add_public_key",
+  "004_330_to_340",
 }
