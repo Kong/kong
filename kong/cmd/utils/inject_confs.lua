@@ -9,6 +9,7 @@ local fmt = string.format
 local compile_nginx_main_inject_conf = prefix_handler.compile_nginx_main_inject_conf
 local compile_nginx_http_inject_conf = prefix_handler.compile_nginx_http_inject_conf
 local compile_nginx_stream_inject_conf = prefix_handler.compile_nginx_stream_inject_conf
+local prepare_prefix = prefix_handler.prepare_prefix
 
 local function load_conf(args)
   -- retrieve default prefix or use given one
@@ -26,7 +27,7 @@ local function load_conf(args)
   -- make sure necessary files like `.ca_combined` exist
   -- but skip_write to avoid overwriting the existing nginx configurations
   if not pl_path.exists(conf.lua_ssl_trusted_certificate_combined) then
-    assert(prefix_handler.prepare_prefix(conf, nil, true))
+    assert(prepare_prefix(conf, nil, true))
   end
 
   return conf
@@ -98,43 +99,28 @@ local function construct_cmd(conf)
   if err then
     return nil, err
   end
-
-  -- terminate the recursion
-  local cmd = {"KONG_CLI_RESPAWNED=1"}
-  -- resty isn't necessarily in the position -1
-  table.insert(cmd, "resty")
-  for i = 0, #_G.cli_args do
-    table.insert(cmd, _G.cli_args[i])
-  end
-
-  table.insert(cmd, 3, fmt("--main-conf \"%s\"", main_conf))
-  table.insert(cmd, 4, fmt("--http-conf \"%s\"", http_conf))
-  table.insert(cmd, 5, fmt("--stream-conf \"%s\"", stream_conf))
-
-  return table.concat(cmd, " ")
 end
 
-local function run_command_with_injection(args)
-  if os.getenv("KONG_CLI_RESPAWNED") then
-    return
-  end
-
+local function compile_confs(args)
   local conf = load_conf(args)
-  local cmd, err = construct_cmd(conf)
-
+  local main_conf, err = compile_main_inject(conf)
   if err then
-    error(err)
+    return nil, err
   end
 
-  log.verbose("run_command_with_injection: %s", cmd)
+  local http_conf, err = compile_http_inject(conf)
+  if err then
+    return nil, err
+  end
 
-  local _, code = pl_utils.execute(cmd)
-  os.exit(code)
+  local stream_conf, err = compile_stream_inject(conf)
+  if err then
+    return nil, err
+  end
+
+  return { main_conf = main_conf, http_conf = http_conf, stream_conf = stream_conf, }, nil
 end
 
 return {
-  run_command_with_injection = run_command_with_injection,
-
-  -- for test purpose
-  _construct_cmd = construct_cmd,
+  compile_confs = compile_confs,
 }

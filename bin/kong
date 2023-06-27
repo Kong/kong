@@ -1,11 +1,134 @@
 #!/usr/bin/env resty
 
 setmetatable(_G, nil)
+pcall(require, "luarocks.loader")
+package.path = (os.getenv("KONG_LUA_PATH_OVERRIDE") or "") .. "./?.lua;./?/init.lua;" .. package.path
+
+local pl_app = require "pl.lapp"
+local pl_utils = require "pl.utils"
+local pl_tablex = require "pl.tablex"
+local inject_confs = require "kong.cmd.utils.inject_confs"
+
+local options = [[
+ --v              verbose
+ --vv             debug
+]]
+
+local cmds_arr = {}
+local cmds = {
+  start = true,
+  stop = true,
+  quit = true,
+  restart = true,
+  reload = true,
+  health = true,
+  check = true,
+  prepare = true,
+  migrations = true,
+  version = true,
+  config = true,
+  roar = true,
+  hybrid = true,
+  vault = true,
+}
+
+-- unnecessary to inject nginx directives for these simple cmds
+local skip_inject_cmds = {
+  version = true,
+  roar = true,
+}
+
+for k in pairs(cmds) do
+  cmds_arr[#cmds_arr+1] = k
+end
+
+table.sort(cmds_arr)
+
+local help = string.format([[
+Usage: kong COMMAND [OPTIONS]
+
+The available commands are:
+ %s
+
+Options:
+%s]], table.concat(cmds_arr, "\n "), options)
+
+local cmd_name = table.remove(arg, 1)
+if not cmd_name then
+  pl_app(help)
+  pl_app.quit()
+elseif not cmds[cmd_name] then
+  pl_app(help)
+  pl_app.quit("No such command: " .. cmd_name)
+end
+
+local cmd = require("kong.cmd." .. cmd_name)
+local cmd_lapp = cmd.lapp
+
+if cmd_lapp then
+  cmd_lapp = cmd_lapp .. options -- append universal options
+  arg = pl_app(cmd_lapp)
+end
+
+-- check sub-commands
+if cmd.sub_commands then
+  local sub_cmd = table.remove(arg, 1)
+  if not sub_cmd then
+    pl_app.quit()
+  elseif not cmd.sub_commands[sub_cmd] then
+    pl_app.quit("No such command for " .. cmd_name .. ": " .. sub_cmd)
+  else
+    arg.command = sub_cmd
+  end
+end
+
+-- inject necessary nginx directives (e.g. lmdb_*, lua_ssl_*)
+-- into the temporary nginx.conf that `resty` will create
+local main_conf = ""
+local http_conf = ""
+local stream_conf = ""
+
+if not skip_inject_cmds[cmd_name] then
+  local confs, err = inject_confs.compile_confs(arg)
+  if not confs then
+    error(err)
+  end
+
+  main_conf = confs.main_conf
+  http_conf = confs.http_conf
+  stream_conf = confs.stream_conf
+end
+
+-- construct the args table
+local args_table = { "{" }
+for k, v in pairs(arg) do
+  if type(k) == "string" then
+    k = "\"" .. k .. "\""
+  end
+  if type(v) == "string" then
+    v = "\"" .. v .. "\""
+  end
+
+  table.insert(args_table, string.format("[%s] = %s,", k, v))
+end
+table.insert(args_table, "}")
+
+local args_str = table.concat(args_table, " ")
+
+local inline_code = string.format([[
+setmetatable(_G, nil)
 
 pcall(require, "luarocks.loader")
 
 package.path = (os.getenv("KONG_LUA_PATH_OVERRIDE") or "") .. "./?.lua;./?/init.lua;" .. package.path
 
-require("kong.cmd.init")(arg)
+require("kong.cmd.init")("%s", %s)
+]], cmd_name, args_str)
 
+local resty_cmd = string.format(
+  "resty --main-conf \"%s\" --http-conf \"%s\" --stream-conf \"%s\" -e '%s'",
+  main_conf, http_conf, stream_conf, inline_code)
+
+local _, code = pl_utils.execute(resty_cmd)
+os.exit(code)
 -- vim: set ft=lua ts=2 sw=2 sts=2 et :
