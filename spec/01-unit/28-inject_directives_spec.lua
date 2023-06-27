@@ -14,7 +14,7 @@ describe("construct_cmd", function()
 ]]
       local main_conf_off = [[
 lmdb_environment_path /usr/local/kong/dbless.lmdb;
-lmdb_map_size         128m;
+lmdb_map_size         2048m;
 ]]
       local http_conf = [[
 lua_ssl_verify_depth   1;
@@ -55,7 +55,7 @@ lua_ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 ]]
       local main_conf_off = fmt([[
 lmdb_environment_path %s/servroot/dbless.lmdb;
-lmdb_map_size         128m;
+lmdb_map_size         2048m;
 ]], cwd)
       local http_conf = fmt([[
 lua_ssl_verify_depth   1;
