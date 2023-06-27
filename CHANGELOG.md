@@ -277,8 +277,10 @@
   [#10620](https://github.com/Kong/kong/pull/10620)
 - **Prometheus**: add `lmdb_usage` related metrics in Prometheus plugin.
   [#10301](https://github.com/Kong/kong/pull/10301)
+  [#11032](https://github.com/Kong/kong/pull/11032)
 - **Statsd**: add `lmdb_usage` related metrics in Statsd plugin.
   [#10301](https://github.com/Kong/kong/pull/10301)
+  [#11032](https://github.com/Kong/kong/pull/11032)
 
 #### PDK
 
@@ -286,6 +288,7 @@
   [#9903](https://github.com/Kong/kong/pull/9903)
 - PDK now supports getting lmdb environment information with `kong.node.get_memory_stats`.
   [#10301](https://github.com/Kong/kong/pull/10301)
+  [#11032](https://github.com/Kong/kong/pull/11032)
 
 ### Fixes
 
