@@ -164,12 +164,10 @@ return {
     },
   },
   [3004000000] = {
+    -- Enterprise plugins
     openid_connect = {
       "expose_error_code",
     },
-  },
-  [3004000000] = {
-    -- Enterprise plugins
     kafka_log = {
       "custom_fields_by_lua",
     },
