@@ -2,7 +2,7 @@
 
 set cwd (dirname (status --current-filename))
 
-set -xg KONG_SERVICE_ENV_FILE $(mktemp)
+set -xg KONG_SERVICE_ENV_FILE (mktemp)
 
 bash "$cwd/common.sh" $KONG_SERVICE_ENV_FILE up
 
