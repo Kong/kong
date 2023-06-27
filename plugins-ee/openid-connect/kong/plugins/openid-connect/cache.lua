@@ -435,7 +435,7 @@ end
 local function decode_previous_configuration(issuer_entity, issuer)
   local configuration_decoded, err = json.decode(issuer_entity.configuration)
   if type(configuration_decoded) ~= "table" then
-    log.notice("decoding previous discovery document failed: ", err or "unknown error",
+    log.err("decoding previous discovery document failed: ", err or "unknown error",
                " (falling back to empty configuration)")
     return {
       issuer = issuer,
@@ -480,7 +480,7 @@ local function discover(issuer, opts, issuer_entity)
       configuration_decoded = decode_previous_configuration(issuer_entity, issuer)
 
     else
-      log.notice("loading configuration for ", issuer, " using discovery failed: ", err or "unknown error",
+      log.err("loading configuration for ", issuer, " using discovery failed: ", err or "unknown error",
                  " (falling back to empty configuration)")
       configuration_decoded = {
         issuer = issuer,
@@ -491,13 +491,13 @@ local function discover(issuer, opts, issuer_entity)
     configuration_decoded, err = json.decode(conf)
     if type(configuration_decoded) ~= "table" then
       if issuer_entity then
-        log.notice("decoding discovery document failed: ", err or "unknown error",
+        log.err("decoding discovery document failed: ", err or "unknown error",
                    " (falling back to previous configuration)")
 
         configuration_decoded = decode_previous_configuration(issuer_entity, issuer)
 
       else
-        log.notice("decoding discovery document failed: ", err or "unknown error",
+        log.err("decoding discovery document failed: ", err or "unknown error",
                    " (falling back to empty configuration)")
         configuration_decoded = {
           issuer = issuer,
@@ -604,7 +604,7 @@ local function discover(issuer, opts, issuer_entity)
         jwks = issuer_entity.keys
 
       else
-        log.notice("encoding jwks keys failed: ", err or "unknown error",
+        log.err("encoding jwks keys failed: ", err or "unknown error",
                    " (falling back to empty keys)")
         jwks = "[]"
       end
@@ -616,7 +616,7 @@ local function discover(issuer, opts, issuer_entity)
       jwks = issuer_entity.keys
 
     else
-      log.notice("no keys found (falling back to empty keys)")
+      log.warn("no keys found (falling back to empty keys)")
       jwks = "[]"
     end
   end
@@ -632,7 +632,7 @@ local function discover(issuer, opts, issuer_entity)
       conf = issuer_entity.configuration
 
     else
-      log.notice("encoding discovery document failed: ", err or "unknown error",
+      log.err("encoding discovery document failed: ", err or "unknown error",
                  " (falling back to empty configuration)")
 
       conf = json.encode({
@@ -655,7 +655,7 @@ local function issuer_select(identifier)
 
   local issuer_entity, err = kong.db.oic_issuers:select_by_issuer(identifier)
   if err then
-    log.notice("unable to load discovery data (", err, ")")
+    log.err("unable to load discovery data (", err, ")")
   end
 
   -- `kong.db.oic_issuers:select_by_issuer` may yield, and thus lets just

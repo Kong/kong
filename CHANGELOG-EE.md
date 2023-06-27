@@ -63,9 +63,11 @@
   [FTI-5074](https://konghq.atlassian.net/browse/FTI-5074)
 * **Mtls-auth**: Fix a bug that would cause an unexpected error when `skip_consumer_lookup` is enabled and `authenticated_group_by` is set to `null`.
   [FTI-5101](https://konghq.atlassian.net/browse/FTI-5101)
-- Fix an issue that Request-Transformer-Advanced does not transform the response body while upstream returns a Content-Type with +json suffix at subtype.
+* Fix an issue that Request-Transformer-Advanced does not transform the response body while upstream returns a Content-Type with +json suffix at subtype.
   [FTI-4959](https://konghq.atlassian.net/browse/FTI-4959)
-
+* **OpenID-Connect**: Log levels of many error message of OIDC are increased.
+* **OpenID-Connect**: Changes some log's level from `notice` to `error` for better visibility.
+  [FTI-2884](https://konghq.atlassian.net/browse/FTI-2884)
 
 
 # 3.3.0.0
