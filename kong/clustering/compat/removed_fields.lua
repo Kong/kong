@@ -166,4 +166,10 @@ return {
       "expose_error_code",
     },
   },
+  [3004000000] = {
+    -- Enterprise plugins
+    kafka_log = {
+      "custom_fields_by_lua",
+    },
+  },
 }

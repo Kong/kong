@@ -34,6 +34,22 @@ describe("Plugin: kafka-log (schema)", function()
     assert.is_nil(err)
     assert.is_truthy(ok)
   end)
+
+  it("accepts custom fields by lua", function()
+    -- add custom_fields_by_lua
+    local ok, err = v({
+      bootstrap_servers = {
+        { host = "foo", port = 8080 }
+      },
+      topic = "test-topic",
+      custom_fields_by_lua = {
+        foo = "return 'bar'",
+      }
+    }, schema_def)
+    assert.is_nil(err)
+    assert.is_truthy(ok)
+  end)
+
   describe("Auth schema:", function()
     it("validates authentication SASL/PLAIN", function()
       -- authentication requires 4 entries. constraints apply

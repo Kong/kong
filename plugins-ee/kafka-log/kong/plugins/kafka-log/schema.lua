@@ -64,6 +64,7 @@ return {
           { producer_async = { description = "Flag to enable asynchronous mode.", type = "boolean", default = true }, },
           { producer_async_flush_timeout = { description = "Maximum time interval in milliseconds between buffer flushes in asynchronous mode.", type = "integer", default = 1000 }, },
           { producer_async_buffering_limits_messages_in_memory = { description = "Maximum number of messages that can be buffered in memory in asynchronous mode.", type = "integer", default = 50000 }, },
+          { custom_fields_by_lua = typedefs.lua_code },
         },
 
         entity_checks = {

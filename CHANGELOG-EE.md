@@ -50,6 +50,8 @@
 
 - OpenID-Connect now support error reason header, and it can be turned off with `expose_error_code` set to false.
   [FTI-1882](https://konghq.atlassian.net/browse/FTI-1882)
+- Kafka-Log now supports the `custom_fields_by_lua` configuration for dynamic modification of log fields using lua code just like other log plugins.
+  [FTI-5127](https://konghq.atlassian.net/browse/FTI-5127)
 
 ### Fixes
 

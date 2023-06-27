@@ -37,9 +37,10 @@ services:
     image: confluentinc/cp-kafka:${PONGO_KAFKA_VERSION:-6.2.0}
     hostname: broker
     depends_on:
-      - zookeeper
-      - rest-proxy
-      - add-kafka-users
+      zookeeper:
+        condition: service_healthy
+      add-kafka-users:
+        condition: service_started
     healthcheck:
       test: nc -z broker 9092
     ports:
@@ -109,6 +110,9 @@ services:
     ports:
       - 8082:8082
     hostname: rest-proxy
+    depends_on:
+      kafka:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl" ,"http://0.0.0.0:8082/topics"]
       interval: 10s

@@ -10,8 +10,11 @@ local cert_utils = require "kong.enterprise_edition.cert_utils"
 local producers = require "kong.enterprise_edition.kafka.plugins.producers"
 local meta = require "kong.meta"
 local cjson_encode = require("cjson").encode
+local sandbox = require "kong.tools.sandbox".sandbox
 
 local KafkaLogHandler = {}
+
+local sandbox_opts = { env = { kong = kong, ngx = ngx } }
 
 KafkaLogHandler.PRIORITY = 5
 KafkaLogHandler.VERSION = meta.core_version
@@ -22,6 +25,8 @@ local function timer_log(premature, conf, message)
   if premature then
     return
   end
+
+  kong.log.debug("start to send a message on topic ", conf.topic)
 
   -- fetch certificate from the store
   if conf.security.certificate_id then
@@ -49,6 +54,13 @@ end
 
 
 function KafkaLogHandler:log(conf, other)
+  if conf.custom_fields_by_lua then
+    local set_serialize_value = kong.log.set_serialize_value
+    for key, expression in pairs(conf.custom_fields_by_lua) do
+      set_serialize_value(key, sandbox(expression, sandbox_opts)())
+    end
+  end  
+
   kong.log.notice("Creating timer")
   local message = kong.log.serialize({ngx = ngx, kong = kong, })
   local ok, err = ngx.timer.at(0, timer_log, conf, message)
