@@ -531,10 +531,9 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
       end
 
       goto continue
-
-    else
-      no_connected_clients_logged = nil
     end
+
+    no_connected_clients_logged = nil
 
     ok, err = pcall(self.push_config, self)
     if not ok then
