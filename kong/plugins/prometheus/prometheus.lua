@@ -184,6 +184,9 @@ local function full_metric_name(name, label_names, label_values)
     return name
   end
 
+  local slash, double_slash, reg_slash = [[\]], [[\\]], [[\\]]
+  local quote, slash_quote,  reg_quote = [["]], [[\"]], [["]]
+
   local buf = buffer.new(NAME_BUFFER_SIZE_HINT)
 
   -- format "name{k1=v1,k2=v2}"
@@ -200,12 +203,12 @@ local function full_metric_name(name, label_names, label_values)
         label_value = string.sub(label_value, 1, pos - 1)
       end
 
-      if string.find(label_value, "\\", 1, true) then
-        label_value = ngx_re_gsub(label_value, "\\", "\\\\", "jo")
+      if string.find(label_value, slash, 1, true) then
+        label_value = ngx_re_gsub(label_value, reg_slash, double_slash, "jo")
       end
 
-      if string.find(label_value, '"', 1, true) then
-        label_value = ngx_re_gsub(label_value, '"', '\\"', "jo")
+      if string.find(label_value, quote, 1, true) then
+        label_value = ngx_re_gsub(label_value, reg_quote, slash_quote, "jo")
       end
     end
 
