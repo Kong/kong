@@ -1117,9 +1117,8 @@ validate_fields = function(self, input)
         errors[k] = validation_errors.SCHEMA_CANNOT_VALIDATE
         kong.log.debug(errors[k], ": ", err)
       end
-    elseif self.unvalidated_fields[k]() then
-      kong.log.debug("ignoring validation on ", k, " field")
-    else
+
+    elseif not self.unvalidated_fields[k]() then
       field, err = resolve_field(self, k, field, subschema)
       if field then
         _, errors[k] = self:validate_field(field, v)
