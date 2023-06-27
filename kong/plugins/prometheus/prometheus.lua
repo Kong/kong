@@ -102,6 +102,8 @@ local DEFAULT_BUCKETS = {0.005, 0.01, 0.02, 0.03, 0.05, 0.075, 0.1, 0.2, 0.3,
                          0.4, 0.5, 0.75, 1, 1.5, 2, 3, 4, 5, 10}
 
 local METRICS_KEY_REGEX = [[(.*[,{]le=")(.*)(".*)]]
+local METRIC_NAME_REGEX = [[^[a-zA-Z_:][a-zA-Z0-9_:]*"]]
+local LABEL_NAME_REGEX  = [[^[a-zA-Z_][a-zA-Z0-9_]*$]]
 
 -- Accepted range of byte values for tailing bytes of utf8 strings.
 -- This is defined outside of the validate_utf8_string function as a const
@@ -273,7 +275,7 @@ end
 -- Returns:
 --   Either an error string, or nil of no errors were found.
 local function check_metric_and_label_names(metric_name, label_names)
-  if not metric_name:match("^[a-zA-Z_:][a-zA-Z0-9_:]*$") then
+  if not ngx_re_match(metric_name, METRIC_NAME_REGEX, "jo") then
     return "Metric name '" .. metric_name .. "' is invalid"
   end
   if not label_names then
@@ -285,7 +287,7 @@ local function check_metric_and_label_names(metric_name, label_names)
     if label_name == "le" then
       return "Invalid label name 'le' in " .. metric_name
     end
-    if not label_name:match("^[a-zA-Z_][a-zA-Z0-9_]*$") then
+    if not ngx_re_match(label_name, LABEL_NAME_REGEX, "jo") then
       return "Metric '" .. metric_name .. "' label name '" .. label_name ..
              "' is invalid"
     end
