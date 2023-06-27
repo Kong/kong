@@ -34,24 +34,10 @@ end
 local is_http_subsystem = ngx.config.subsystem == "http"
 
 
-local do_exit
-if is_http_subsystem then
-  do_exit = function(status, message)
-    return kong.response.error(status, message)
-  end
-
-else
-  do_exit = function(status, message)
-    local tcpsock, err = ngx_req.socket(true)
-    if err then
-      error(err)
-    end
-
-    tcpsock:send(message)
-
-    return ngx_exit(status)
-  end
+local do_exit = function(status, message)
+  return kong.response.error(status, message)
 end
+
 
 local function match_bin(list, binary_remote_addr)
   local matcher, err
