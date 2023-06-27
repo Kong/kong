@@ -84,6 +84,7 @@ build = {
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
+    ["kong.templates.nginx_kong_gui_include"] = "kong/templates/nginx_kong_gui_include.lua",
     ["kong.templates.nginx_kong_stream"] = "kong/templates/nginx_kong_stream.lua",
     ["kong.templates.kong_defaults"] = "kong/templates/kong_defaults.lua",
     ["kong.templates.kong_yml"] = "kong/templates/kong_yml.lua",
@@ -136,6 +137,8 @@ build = {
     ["kong.api.routes.tags"] = "kong/api/routes/tags.lua",
     ["kong.api.routes.clustering"] = "kong/api/routes/clustering.lua",
     ["kong.api.routes.debug"] = "kong/api/routes/debug.lua",
+
+    ["kong.admin_gui"] = "kong/admin_gui/init.lua",
 
     ["kong.status"] = "kong/status/init.lua",
     ["kong.status.ready"] = "kong/status/ready.lua",

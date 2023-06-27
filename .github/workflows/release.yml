@@ -216,6 +216,8 @@ jobs:
 
     - name: Build Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: |
         bazel build --config release //build:kong --verbose_failures ${{ matrix.bazel-args }}
 

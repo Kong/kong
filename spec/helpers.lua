@@ -994,6 +994,57 @@ local function admin_ssl_client(timeout)
   return client
 end
 
+--- returns a pre-configured `http_client` for the Kong Admin GUI.
+-- @function admin_gui_client
+-- @tparam[opt=60000] number timeout the timeout to use
+-- @tparam[opt] number forced_port if provided will override the port in
+-- the Kong configuration with this port
+-- @return http-client, see `spec.helpers.http_client`.
+local function admin_gui_client(timeout, forced_port)
+  local admin_ip = "127.0.0.1"
+  local admin_port
+  for _, entry in ipairs(conf.admin_gui_listeners) do
+    if entry.ssl == false then
+      admin_ip = entry.ip
+      admin_port = entry.port
+    end
+  end
+  admin_port = forced_port or admin_port
+  assert(admin_port, "No http-admin found in the configuration")
+  return http_client_opts({
+    scheme = "http",
+    host = admin_ip,
+    port = admin_port,
+    timeout = timeout or 60000,
+    reopen = true,
+  })
+end
+
+--- returns a pre-configured `http_client` for the Kong admin GUI SSL port.
+-- @function admin_gui_ssl_client
+-- @tparam[opt=60000] number timeout the timeout to use
+-- @tparam[opt] number forced_port if provided will override the port in
+-- the Kong configuration with this port
+-- @return http-client, see `spec.helpers.http_client`.
+local function admin_gui_ssl_client(timeout, forced_port)
+  local admin_ip = "127.0.0.1"
+  local admin_port
+  for _, entry in ipairs(conf.admin_gui_listeners) do
+    if entry.ssl == true then
+      admin_ip = entry.ip
+      admin_port = entry.port
+    end
+  end
+  admin_port = forced_port or admin_port
+  assert(admin_port, "No https-admin found in the configuration")
+  return http_client_opts({
+    scheme = "https",
+    host = admin_ip,
+    port = admin_port,
+    timeout = timeout or 60000,
+    reopen = true,
+  })
+end
 
 ----------------
 -- HTTP2 and GRPC clients
@@ -3905,8 +3956,10 @@ end
   proxy_client_h2c = proxy_client_h2c,
   proxy_client_h2 = proxy_client_h2,
   admin_client = admin_client,
+  admin_gui_client = admin_gui_client,
   proxy_ssl_client = proxy_ssl_client,
   admin_ssl_client = admin_ssl_client,
+  admin_gui_ssl_client = admin_gui_ssl_client,
   prepare_prefix = prepare_prefix,
   clean_prefix = clean_prefix,
   clean_logfile = clean_logfile,

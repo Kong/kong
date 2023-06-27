@@ -38,6 +38,10 @@
 
 #### Admin API
 
+#### Kong Manager
+- First release of the Kong Manager Open Source Edition.
+  [#11131](https://github.com/Kong/kong/pull/11131)
+
 #### Status API
 
 #### Plugins

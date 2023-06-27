@@ -1,5 +1,6 @@
 local default_nginx_template = require "kong.templates.nginx"
 local kong_nginx_template = require "kong.templates.nginx_kong"
+local kong_nginx_gui_include_template = require "kong.templates.nginx_kong_gui_include"
 local kong_nginx_stream_template = require "kong.templates.nginx_kong_stream"
 local system_constants = require "lua_system_constants"
 local process_secrets = require "kong.cmd.utils.process_secrets"
@@ -102,6 +103,10 @@ local function gen_default_ssl_cert(kong_config, target)
     if target == "admin" then
       ssl_cert = kong_config["admin_ssl_cert_default" .. suffix]
       ssl_cert_key = kong_config["admin_ssl_cert_key_default" .. suffix]
+
+    elseif target == "admin_gui" then
+      ssl_cert = kong_config["admin_gui_ssl_cert_default" .. suffix]
+      ssl_cert_key = kong_config["admin_gui_ssl_cert_key_default" .. suffix]
 
     elseif target == "status" then
       ssl_cert = kong_config["status_ssl_cert_default" .. suffix]
@@ -383,6 +388,10 @@ local function compile_kong_conf(kong_config)
   return compile_conf(kong_config, kong_nginx_template)
 end
 
+local function compile_kong_gui_include_conf(kong_config)
+  return compile_conf(kong_config, kong_nginx_gui_include_template)
+end
+
 local function compile_kong_stream_conf(kong_config)
   return compile_conf(kong_config, kong_nginx_stream_template)
 end
@@ -390,6 +399,25 @@ end
 local function compile_nginx_conf(kong_config, template)
   template = template or default_nginx_template
   return compile_conf(kong_config, template)
+end
+
+local function prepare_prefixed_interface_dir(usr_path, interface_dir, kong_config)
+  local usr_interface_path = usr_path .. "/" .. interface_dir
+  local interface_path = kong_config.prefix .. "/" .. interface_dir
+
+  -- if the interface directory is not exist in custom prefix directory
+  -- try symlinking to the default prefix location
+  -- ensure user can access the interface appliation
+  if not pl_path.exists(interface_path)
+     and pl_path.exists(usr_interface_path) then
+
+    local ln_cmd = "ln -s " .. usr_interface_path .. " " .. interface_path
+    local ok, _, _, err_t = pl_utils.executeex(ln_cmd)
+
+    if not ok then
+      log.warn(err_t)
+    end
+  end
 end
 
 local function prepare_prefix(kong_config, nginx_custom_template_path, skip_write, write_process_secrets)
@@ -435,7 +463,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
 
   -- generate default SSL certs if needed
   do
-    for _, target in ipairs({ "proxy", "admin", "status" }) do
+    for _, target in ipairs({ "proxy", "admin", "admin_gui", "status" }) do
       local ssl_enabled = kong_config[target .. "_ssl_enabled"]
       if not ssl_enabled and target == "proxy" then
         ssl_enabled = kong_config.stream_proxy_ssl_enabled
@@ -543,6 +571,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
     for _, target in ipairs({
       "proxy",
       "admin",
+      "admin_gui",
       "status",
       "client",
       "cluster",
@@ -627,6 +656,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
   if kong_config.proxy_ssl_enabled or
      kong_config.stream_proxy_ssl_enabled or
      kong_config.admin_ssl_enabled or
+     kong_config.admin_gui_ssl_enabled or
      kong_config.status_ssl_enabled
   then
     gen_default_dhparams(kong_config)
@@ -638,6 +668,13 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
     return nil, err
   end
   pl_file.write(kong_config.nginx_conf, nginx_conf)
+
+  -- write Kong's GUI include NGINX conf
+  local nginx_kong_gui_include_conf, err = compile_kong_gui_include_conf(kong_config)
+  if not nginx_kong_gui_include_conf then
+    return nil, err
+  end
+  pl_file.write(kong_config.nginx_kong_gui_include_conf, nginx_kong_gui_include_conf)
 
   -- write Kong's HTTP NGINX conf
   local nginx_kong_conf, err = compile_kong_conf(kong_config)
@@ -707,6 +744,10 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
     return nil, err
   end
 
+  if kong_config.admin_gui_listeners then
+    prepare_prefixed_interface_dir("/usr/local/kong", "gui", kong_config)
+  end
+
   if secrets then
     secrets, err = process_secrets.serialize(secrets, kong_config.kong_env)
     if not secrets then
@@ -728,8 +769,10 @@ end
 return {
   get_ulimit = get_ulimit,
   prepare_prefix = prepare_prefix,
+  prepare_prefixed_interface_dir = prepare_prefixed_interface_dir,
   compile_conf = compile_conf,
   compile_kong_conf = compile_kong_conf,
+  compile_kong_gui_include_conf = compile_kong_gui_include_conf,
   compile_kong_stream_conf = compile_kong_stream_conf,
   compile_nginx_conf = compile_nginx_conf,
   gen_default_ssl_cert = gen_default_ssl_cert,

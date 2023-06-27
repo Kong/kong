@@ -38,6 +38,13 @@ install_lualib_deps_cmd = "\n".join([
     for dep in lualib_deps
 ])
 
+install_webui_cmd = select({
+    "//conditions:default": """
+        cp -r $(location @kong_admin_gui//:dist_files) ${BUILD_DESTDIR}/kong/gui
+    """,
+    "@kong//:skip_webui_flags": "\n",
+})
+
 kong_directory_genrule(
     name = "kong",
     srcs = [
@@ -46,7 +53,12 @@ kong_directory_genrule(
         "@luarocks//:luarocks_make",
         "@luarocks//:luarocks_target",
         "@protoc//:all_srcs",
-    ] + lib_deps + lualib_deps,
+    ] + select({
+        "@kong//:skip_webui_flags": [],
+        "//conditions:default": [
+            "@kong_admin_gui//:dist_files",
+        ],
+    }) + lib_deps + lualib_deps,
     cmd =
         """ set -e
         function copy_with_filter {
@@ -93,7 +105,7 @@ kong_directory_genrule(
 
         cp -r $(locations @protoc//:all_srcs) ${BUILD_DESTDIR}/kong/.
 
-    """ + install_lib_deps_cmd + install_lualib_deps_cmd +
+    """ + install_lib_deps_cmd + install_lualib_deps_cmd + install_webui_cmd +
         """
         mkdir -p ${BUILD_DESTDIR}/etc/kong
         cp kong.conf.default ${BUILD_DESTDIR}/etc/kong/kong.conf.default

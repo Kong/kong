@@ -34,6 +34,8 @@ describe("NGINX conf compiler", function()
       ssl_cert_key = "spec/fixtures/kong_spec.key",
       admin_ssl_cert = "spec/fixtures/kong_spec.crt",
       admin_ssl_cert_key = "spec/fixtures/kong_spec.key",
+      admin_gui_cert = "spec/fixtures/kong_spec.crt",
+      admin_gui_cert_key = "spec/fixtures/kong_spec.key",
       status_cert = "spec/fixtures/kong_spec.crt",
       status_cert_key = "spec/fixtures/kong_spec.key",
     }))
@@ -81,6 +83,25 @@ describe("NGINX conf compiler", function()
         end
       end)
     end)
+    describe("admin_gui", function()
+      it("auto-generates SSL certificate and key", function()
+        assert(prefix_handler.gen_default_ssl_cert(conf, "admin_gui"))
+        for _, suffix in ipairs({ "", "_ecdsa" }) do
+          assert(exists(conf["admin_gui_ssl_cert_default" .. suffix]))
+          assert(exists(conf["admin_gui_ssl_cert_key_default" .. suffix]))
+        end
+      end)
+      it("does not re-generate if they already exist", function()
+        assert(prefix_handler.gen_default_ssl_cert(conf, "admin_gui"))
+        for _, suffix in ipairs({ "", "_ecdsa" }) do
+          local cer = helpers.file.read(conf["admin_gui_ssl_cert_default" .. suffix])
+          local key = helpers.file.read(conf["admin_gui_ssl_cert_key_default" .. suffix])
+          assert(prefix_handler.gen_default_ssl_cert(conf, "admin_gui"))
+          assert.equal(cer, helpers.file.read(conf["admin_gui_ssl_cert_default" .. suffix]))
+          assert.equal(key, helpers.file.read(conf["admin_gui_ssl_cert_key_default" .. suffix]))
+        end
+      end)
+    end)
     describe("status", function()
       it("auto-generates SSL certificate and key", function()
         assert(prefix_handler.gen_default_ssl_cert(conf, "status"))
@@ -116,43 +137,63 @@ describe("NGINX conf compiler", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
         mem_cache_size = "128k",
         proxy_listen = "0.0.0.0:80",
-        admin_listen = "127.0.0.1:8001"
+        admin_listen = "127.0.0.1:8001",
+        admin_gui_listen = "127.0.0.1:8002",
       }))
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.matches("lua_shared_dict%s+kong_db_cache%s+128k;", kong_nginx_conf)
       assert.matches("listen%s+0%.0%.0%.0:80;", kong_nginx_conf)
       assert.matches("listen%s+127%.0%.0%.1:8001;", kong_nginx_conf)
+      assert.matches("listen%s+127%.0%.0%.1:8002;", kong_nginx_conf)
     end)
     it("enables HTTP/2", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
         proxy_listen = "0.0.0.0:9000, 0.0.0.0:9443 http2 ssl",
         admin_listen = "127.0.0.1:9001, 127.0.0.1:9444 http2 ssl",
+        admin_gui_listen = "127.0.0.1:9002, 127.0.0.1:9445 http2 ssl",
       }))
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.matches("listen%s+0%.0%.0%.0:9000;", kong_nginx_conf)
       assert.matches("listen%s+0%.0%.0%.0:9443 ssl http2;", kong_nginx_conf)
       assert.matches("listen%s+127%.0%.0%.1:9001;", kong_nginx_conf)
       assert.matches("listen%s+127%.0%.0%.1:9444 ssl http2;", kong_nginx_conf)
+      assert.matches("listen%s+127%.0%.0%.1:9445 ssl http2;", kong_nginx_conf)
 
       conf = assert(conf_loader(helpers.test_conf_path, {
         proxy_listen = "0.0.0.0:9000, 0.0.0.0:9443 http2 ssl",
         admin_listen = "127.0.0.1:9001, 127.0.0.1:8444 ssl",
+        admin_gui_listen = "127.0.0.1:9002, 127.0.0.1:8445 ssl",
       }))
       kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.matches("listen%s+0%.0%.0%.0:9000;", kong_nginx_conf)
       assert.matches("listen%s+0%.0%.0%.0:9443 ssl http2;", kong_nginx_conf)
       assert.matches("listen%s+127%.0%.0%.1:9001;", kong_nginx_conf)
       assert.matches("listen%s+127%.0%.0%.1:8444 ssl;", kong_nginx_conf)
+      assert.matches("listen%s+127%.0%.0%.1:8445 ssl;", kong_nginx_conf)
 
       conf = assert(conf_loader(helpers.test_conf_path, {
         proxy_listen = "0.0.0.0:9000, 0.0.0.0:9443 ssl",
         admin_listen = "127.0.0.1:9001, 127.0.0.1:8444 http2 ssl",
+        admin_gui_listen = "127.0.0.1:9002, 127.0.0.1:8445 ssl",
       }))
       kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.matches("listen%s+0%.0%.0%.0:9000;", kong_nginx_conf)
       assert.matches("listen%s+0%.0%.0%.0:9443 ssl;", kong_nginx_conf)
       assert.matches("listen%s+127%.0%.0%.1:9001;", kong_nginx_conf)
       assert.matches("listen%s+127%.0%.0%.1:8444 ssl http2;", kong_nginx_conf)
+      assert.matches("listen%s+127%.0%.0%.1:8445 ssl;", kong_nginx_conf)
+
+      conf = assert(conf_loader(helpers.test_conf_path, {
+        proxy_listen = "0.0.0.0:9000, 0.0.0.0:9443 ssl",
+        admin_listen = "127.0.0.1:9001, 127.0.0.1:8444 ssl",
+        admin_gui_listen = "127.0.0.1:9002, 127.0.0.1:8445 http2 ssl",
+      }))
+      kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("listen%s+0%.0%.0%.0:9000;", kong_nginx_conf)
+      assert.matches("listen%s+0%.0%.0%.0:9443 ssl;", kong_nginx_conf)
+      assert.matches("listen%s+127%.0%.0%.1:9001;", kong_nginx_conf)
+      assert.matches("listen%s+127%.0%.0%.1:8444 ssl;", kong_nginx_conf)
+      assert.matches("listen%s+127%.0%.0%.1:8445 ssl http2;", kong_nginx_conf)
     end)
     it("enables proxy_protocol", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
@@ -232,6 +273,7 @@ describe("NGINX conf compiler", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
         proxy_listen = "127.0.0.1:8000",
         admin_listen = "127.0.0.1:8001",
+        admin_gui_listen = "127.0.0.1:8002",
       }))
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.not_matches("listen%s+%d+%.%d+%.%d+%.%d+:%d+ ssl;", kong_nginx_conf)
@@ -433,6 +475,7 @@ describe("NGINX conf compiler", function()
           stream_listen = "127.0.0.1:8888",
           proxy_listen = "off",
           admin_listen = "off",
+          admin_gui_listen = "off",
           status_listen = "off",
         }))
         local nginx_conf = prefix_handler.compile_kong_stream_conf(conf)
@@ -695,6 +738,28 @@ describe("NGINX conf compiler", function()
     end)
   end)
 
+  describe("compile_kong_gui_include_conf()", function ()
+    describe("admin_gui_path", function ()
+      it("set admin_gui_path to /", function ()
+        local conf = assert(conf_loader(nil, {
+          admin_gui_path = "/",
+        }))
+        local kong_gui_include_conf = prefix_handler.compile_kong_gui_include_conf(conf)
+        assert.matches("location%s+~%*%s+%^%(%?<path>/%.%*%)%?%$", kong_gui_include_conf)   -- location ~* ^(?<path>/.**)?$
+        assert.matches("sub_filter '/__km_base__/' '/';", kong_gui_include_conf)
+      end)
+      it("set admin_gui_path to /manager", function ()
+        local conf = assert(conf_loader(nil, {
+          admin_gui_path = "/manager",
+        }))
+        local kong_gui_include_conf = prefix_handler.compile_kong_gui_include_conf(conf)
+        assert.matches("location%s+=%s+/manager/kconfig%.js", kong_gui_include_conf)                 -- location = /manager/kconfig.js
+        assert.matches("location%s+~%*%s+%^/manager%(%?<path>/%.%*%)%?%$", kong_gui_include_conf)    -- location ~* ^/manager(?<path>/.**)?$
+        assert.matches("sub_filter%s+'/__km_base__/'%s+'/manager/';", kong_gui_include_conf)  -- sub_filter '/__km_base__/' '/manager/';
+      end)
+    end)
+  end)
+
   describe("compile_nginx_conf()", function()
     it("compiles a main NGINX conf", function()
       local nginx_conf = prefix_handler.compile_nginx_conf(helpers.test_conf)
@@ -873,6 +938,7 @@ describe("NGINX conf compiler", function()
           prefix = tmp_config.prefix,
           proxy_listen = "127.0.0.1:8000",
           admin_listen = "127.0.0.1:8001",
+          admin_gui_listen = "127.0.0.1:8002",
         })
 
         assert(prefix_handler.prepare_prefix(conf))
@@ -884,11 +950,14 @@ describe("NGINX conf compiler", function()
           proxy_listen = "127.0.0.1:8000 ssl",
           admin_listen = "127.0.0.1:8001 ssl",
           status_listen = "127.0.0.1:8002 ssl",
+          admin_gui_listen = "127.0.0.1:8003 ssl",
           ssl_cipher_suite = "custom",
           ssl_cert = "spec/fixtures/kong_spec.crt",
           ssl_cert_key = "spec/fixtures/kong_spec.key",
           admin_ssl_cert = "spec/fixtures/kong_spec.crt",
           admin_ssl_cert_key = "spec/fixtures/kong_spec.key",
+          admin_gui_ssl_cert = "spec/fixtures/kong_spec.crt",
+          admin_gui_ssl_cert_key = "spec/fixtures/kong_spec.key",
           status_ssl_cert = "spec/fixtures/kong_spec.crt",
           status_ssl_cert_key = "spec/fixtures/kong_spec.key",
         })
@@ -902,6 +971,7 @@ describe("NGINX conf compiler", function()
           proxy_listen  = "127.0.0.1:8000 ssl",
           admin_listen  = "127.0.0.1:8001 ssl",
           status_listen = "127.0.0.1:8002 ssl",
+          admin_gui_listen = "127.0.0.1:8003 ssl",
         })
 
         assert(prefix_handler.prepare_prefix(conf))
@@ -911,6 +981,8 @@ describe("NGINX conf compiler", function()
           assert.truthy(exists(conf["ssl_cert_key_default" .. suffix]))
           assert.truthy(exists(conf["admin_ssl_cert_default" .. suffix]))
           assert.truthy(exists(conf["admin_ssl_cert_key_default" .. suffix]))
+          assert.truthy(exists(conf["admin_gui_ssl_cert_default" .. suffix]))
+          assert.truthy(exists(conf["admin_gui_ssl_cert_key_default" .. suffix]))
           assert.truthy(exists(conf["status_ssl_cert_default" .. suffix]))
           assert.truthy(exists(conf["status_ssl_cert_key_default" .. suffix]))
         end
@@ -921,10 +993,11 @@ describe("NGINX conf compiler", function()
           proxy_listen  = "127.0.0.1:8000 ssl",
           admin_listen  = "127.0.0.1:8001 ssl",
           status_listen = "127.0.0.1:8002 ssl",
+          admin_gui_listen = "127.0.0.1:8003 ssl",
         })
 
         assert(prefix_handler.prepare_prefix(conf))
-        for _, prefix in ipairs({ "", "status_", "admin_" }) do
+        for _, prefix in ipairs({ "", "status_", "admin_", "admin_gui_" }) do
           for _, suffix in ipairs({ "", "_ecdsa" }) do
             local handle = io.popen("ls -l " .. conf[prefix .. "ssl_cert_default" .. suffix])
             local result = handle:read("*a")
@@ -944,6 +1017,7 @@ describe("NGINX conf compiler", function()
           proxy_listen  = "127.0.0.1:8000 ssl",
           admin_listen  = "127.0.0.1:8001 ssl",
           status_listen = "127.0.0.1:8002 ssl",
+          admin_gui_listen = "127.0.0.1:8003 ssl",
           stream_listen = "127.0.0.1:7000 ssl",
         })
 
@@ -969,6 +1043,8 @@ describe("NGINX conf compiler", function()
             ssl_cert_key = key,
             admin_ssl_cert = cert,
             admin_ssl_cert_key = key,
+            admin_gui_ssl_cert = cert,
+            admin_gui_ssl_cert_key = key,
             status_ssl_cert = cert,
             status_ssl_cert_key = key,
             client_ssl_cert = cert,

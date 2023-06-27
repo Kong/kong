@@ -161,6 +161,20 @@ config_setting(
     visibility = ["//visibility:public"],
 )
 
+# --//:skip_webui=false
+bool_flag(
+    name = "skip_webui",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "skip_webui_flags",
+    flag_values = {
+        ":skip_webui": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
 ##### constraints, platforms and config_settings for cross-compile
 
 constraint_setting(name = "libc_version")

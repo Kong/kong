@@ -1843,3 +1843,111 @@
                                   # in a Kong cluster must have a unique and
                                   # valid UUID. When empty, node ID is
                                   # automatically generated.
+
+#------------------------------------------------------------------------------
+# KONG MANAGER
+#------------------------------------------------------------------------------
+#
+# The Admin GUI for Kong Gateway.
+#
+#admin_gui_listen = 0.0.0.0:8002, 0.0.0.0:8445 ssl
+                        # Kong Manager Listeners
+                        #
+                        # Comma-separated list of addresses and ports on which
+                        # Kong will expose Kong Manager. This web application
+                        # lets you configure and manage Kong, and therefore
+                        # should be kept secured.
+                        #
+                        # Suffixes can be specified for each pair, similarly to
+                        # the `admin_listen` directive.
+
+#admin_gui_url =
+                        # Kong Manager URL
+                        #
+                        # The lookup, or balancer, address for Kong Manager.
+                        #
+                        # When set, the CORS headers in the Admin API response
+                        # will also change to the corresponding origin
+                        #
+                        # Accepted format (items in parentheses are optional):
+                        #
+                        #   `<scheme>://<IP / HOSTNAME>(:<PORT>)`
+                        #
+                        # Examples:
+                        #
+                        # - `http://127.0.0.1:8003`
+                        # - `https://kong-manager.test`
+                        # - `http://dev-machine`
+
+#admin_gui_path = /
+                        # Kong Manager base path
+                        #
+                        # This configuration parameter allows the user to customize
+                        # the path prefix where Kong Manager is served. When updating
+                        # this parameter, it's recommended to update the path in
+                        # `admin_gui_url` as well.
+                        #
+                        # Accepted format:
+                        #
+                        # - Path must start with a `/`
+                        # - Path must not end with a `/` (except for the `/`)
+                        # - Path can only contain letters, digits, hyphens (`-`),
+                        # underscores (`_`), and slashes (`/`)
+                        # - Path must not contain continuous slashes (e.g., `//` and `///`)
+                        #
+                        # Examples:
+                        #
+                        # - `/`
+                        # - `/manager`
+                        # - `/kong-manager`
+                        # - `/kong/manager`
+
+#admin_gui_api_url =
+                        # Hierarchical part of a URL which is composed
+                        # optionally of a host, port, and path at which the
+                        # Admin API accepts HTTP or HTTPS traffic. When
+                        # this config is not provided, Kong Manager will
+                        # use the window protocol + host and append the
+                        # resolved admin_listen HTTP/HTTPS port.
+
+#admin_gui_ssl_cert =
+                        # The SSL certificate for `admin_gui_listen` values
+                        # with SSL enabled.
+                        #
+                        # values:
+                        # * absolute path to the certificate
+                        # * certificate content
+                        # * base64 encoded certificate content
+
+#admin_gui_ssl_cert_key =
+                        # The SSL key for `admin_gui_listen` values with SSL
+                        # enabled.
+                        #
+                        # values:
+                        # * absolute path to the certificate key
+                        # * certificate key content
+                        # * base64 encoded certificate key content
+
+#admin_gui_access_log = logs/admin_gui_access.log
+                        # Kong Manager Access Logs
+                        #
+                        # Here you can set an absolute or relative path for
+                        # Kong Manager access logs. When the path is relative,
+                        # logs are placed in the `prefix` location.
+                        #
+                        # Setting this value to `off` disables access logs
+                        # for Kong Manager.
+
+
+#admin_gui_error_log = logs/admin_gui_error.log
+                        # Kong Manager Error Logs
+                        #
+                        # Here you can set an absolute or relative path for
+                        # Kong Manager access logs. When the path is relative,
+                        # logs are placed in the `prefix` location.
+                        #
+                        # Setting this value to `off` disables error logs for
+                        # Kong Manager.
+                        #
+                        # Granularity can be adjusted through the `log_level`
+                        # directive.
