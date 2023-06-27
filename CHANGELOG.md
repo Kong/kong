@@ -201,6 +201,8 @@
 - Tracing: tracing_sampling_rate defaults to 0.01 (trace one of every 100 requests) instead of the previous 1
   (trace all requests). Tracing all requests is inappropriate for most production systems
   [#10774](https://github.com/Kong/kong/pull/10774)
+- **Proxy Cache**: Add option to remove the proxy cache headers from the response
+  [#10445](https://github.com/Kong/kong/pull/10445)
 
 ### Additions
 
