@@ -3936,6 +3936,7 @@ local function clustering_client(opts)
                                         plugins = opts.node_plugins_list or
                                                   PLUGINS_LIST,
                                         labels = opts.node_labels,
+                                        process_conf = opts.node_process_conf,
                                       }))
   assert(c:send_binary(payload))
 
