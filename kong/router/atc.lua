@@ -188,7 +188,9 @@ local function new_from_scratch(routes, get_exp_and_priority)
 
   local new_updated_at = 0
 
-  for _, r in ipairs(routes) do
+  for i = 1, routes_n do
+    local r = routes[i]
+
     local route = r.route
     local route_id = route.id
 
@@ -247,7 +249,9 @@ local function new_from_previous(routes, get_exp_and_priority, old_router)
   local new_updated_at = 0
 
   -- create or update routes
-  for _, r in ipairs(routes) do
+  for i = 1, #routes do
+    local r = routes[i]
+
     local route = r.route
     local route_id = route.id
 

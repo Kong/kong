@@ -299,8 +299,8 @@ do
     local v0              = 0
     local v1              = 0
 
-    for _, route in ipairs(routes) do
-      local r = route.route
+    for i = 1, #routes do
+      local r = routes[i].route
 
       local paths_t     = r.paths or empty_table
       local headers_t   = r.headers or empty_table
