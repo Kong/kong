@@ -409,6 +409,7 @@ describe("kong.clustering.compat", function()
         "plugins",
         "consumers",
         "upstreams",
+        "hmacauth_credentials",
       })
       _G.kong.db = db
 
@@ -427,10 +428,18 @@ describe("kong.clustering.compat", function()
         cert  = ssl_fixtures.cert_ca,
       }
 
+      local consumer_def = {
+        _tags = ngx.null,
+        created_at = 1687800000,
+        id = "f6c12564-47c8-48b4-b171-0a0d9dbf7cb2",
+        username = "gruceo",
+        custom_id = "201710",
+      }
 
       assert(declarative.load_into_db({
         ca_certificates = { [ca_certificate_def.id] = ca_certificate_def },
         certificates = { [certificate_def.id] = certificate_def },
+        consumers = { [consumer_def.id] = consumer_def },
         upstreams = {
           upstreams1 = {
             id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6",
@@ -557,10 +566,19 @@ describe("kong.clustering.compat", function()
             enabled = true,
           },
         },
+        hmacauth_credentials = {
+          hmacauth_credential1 = {
+            id = "1aeb7ca9-3317-49c2-a607-6a8759c27318",
+            username = "gruceo",
+            consumer = { id = consumer_def.id },
+            public_key = "notakeytbh",
+          },
+        },
       }, { _transform = true }))
 
       config = { config_table = declarative.export_config() }
     end)
+
     it(function()
       local has_update, result = compat.update_compatible_payload(config, "3.0.0", "test_")
       assert.truthy(has_update)
@@ -628,6 +646,16 @@ describe("kong.clustering.compat", function()
       assert.is_nil(assert(services[3]).tls_verify)
       assert.is_nil(assert(services[3]).tls_verify_depth)
       assert.is_nil(assert(services[3]).ca_certificates)
+    end)
+
+    it("hmacauth_credentials.public_key", function()
+      local has_update, result = compat.update_compatible_payload(config, "3.3.0", "test_")
+      assert.truthy(has_update)
+      result = cjson_decode(inflate_gzip(result)).config_table
+
+      local credentials = assert(assert(assert(result).hmacauth_credentials))
+      assert.equals(assert(credentials[1]).username, "gruceo")
+      assert.is_nil(assert(credentials[1]).public_key)
     end)
 
   end)
