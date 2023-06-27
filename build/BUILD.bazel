@@ -65,7 +65,9 @@ wasm_libs_cmd = select({
         cp -v "$fname" "$dest"
     done
 
-    copy_with_filter ${BUILD_DESTDIR}/openresty/nginx/lib ${BUILD_DESTDIR}/kong/lib
+    if [ -d $(BUILD_DESTDIR)/openresty/nginx/lib ]; then
+        copy_with_filter ${BUILD_DESTDIR}/openresty/nginx/lib ${BUILD_DESTDIR}/kong/lib
+    fi
 """,
     "//conditions:default": "\n",
 })
