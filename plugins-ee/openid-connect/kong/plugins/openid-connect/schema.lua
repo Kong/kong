@@ -1549,7 +1549,7 @@ local config = {
             },
           },
           {
-            cache_tokens_salt = { description = "Salt used for generating the cache key that us used for caching the token endpoint requests.", required = false,
+            cache_tokens_salt = { description = "Salt used for generating the cache key that is used for caching the token endpoint requests.", required = false,
               type     = "string",
               auto     = true,
             },
