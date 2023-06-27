@@ -264,6 +264,32 @@ local compatible_checkers = {
       return has_update
     end
   },
+
+  { 3004000000, --[[ 3.4.0.0 ]]
+    function(config_table, dp_version, log_suffix)
+      local config_hmacauth_credentials = config_table["hmacauth_credentials"]
+      if not config_hmacauth_credentials then
+        return nil
+      end
+
+      local has_update
+      for _, t in ipairs(config_hmacauth_credentials) do
+        if t["public_key"] ~= nil then
+          t["public_key"] = nil
+          has_update = true
+        end
+      end
+
+      if has_update then
+        log_warn_message("contains configuration 'hmacauth_credentials.public_key'",
+                         "be removed",
+                         dp_version,
+                         log_suffix)
+      end
+
+      return has_update
+    end
+  },
 }
 
 
