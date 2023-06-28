@@ -92,10 +92,19 @@ local http_conf = ""
 local stream_conf = ""
 
 if not skip_inject_cmds[cmd_name] then
-  local confs, err = inject_confs.compile_confs(arg)
-  if not confs then
-    error(err)
-  end
+  local pok, confs = xpcall(inject_confs.compile_confs, function(err)
+    if not (arg.v or arg.vv) then
+      err = err:match "^.-:.-:.(.*)$"
+      io.stderr:write("Error: " .. err .. "\n")
+      io.stderr:write("\n  Run with --v (verbose) or --vv (debug) for more details\n")
+    else
+      local trace = debug.traceback(err, 2)
+      io.stderr:write("Error: \n")
+      io.stderr:write(trace .. "\n")
+    end
+
+    pl_app.quit(nil, true)
+  end, arg)
 
   main_conf = confs.main_conf
   http_conf = confs.http_conf

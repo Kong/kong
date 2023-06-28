@@ -85,22 +85,11 @@ end
 
 local function compile_confs(args)
   local conf = load_conf(args)
-  local main_conf, err = compile_main_inject(conf)
-  if err then
-    return nil, err
-  end
+  local main_conf = assert(compile_main_inject(conf))
+  local http_conf = assert(compile_http_inject(conf))
+  local stream_conf = assert(compile_stream_inject(conf))
 
-  local http_conf, err = compile_http_inject(conf)
-  if err then
-    return nil, err
-  end
-
-  local stream_conf, err = compile_stream_inject(conf)
-  if err then
-    return nil, err
-  end
-
-  return { main_conf = main_conf, http_conf = http_conf, stream_conf = stream_conf, }, nil
+  return { main_conf = main_conf, http_conf = http_conf, stream_conf = stream_conf, }
 end
 
 return {
