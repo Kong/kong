@@ -137,3 +137,34 @@ true
 1
 
 
+=== TEST 4: emit metric data
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+          local m
+
+          m = _G.prom:counter("mem", nil, {"lua"})
+          m:inc(1, {"2.1"})
+
+          m = _G.prom:counter("file", nil, {"path"})
+          m:inc(1, {"\\root"})
+
+          m = _G.prom:counter("user", nil, {"name"})
+          m:inc(1, {"\"quote"})
+
+          _G.prom:collect()
+        }
+    }
+--- request
+GET /t
+--- response_body
+# TYPE kong_file counter
+kong_file{path="\\root"} 1
+# TYPE kong_mem counter
+kong_mem{lua="2.1"} 1
+# HELP kong_nginx_metric_errors_total Number of nginx-lua-prometheus errors
+# TYPE kong_nginx_metric_errors_total counter
+kong_nginx_metric_errors_total 0
+# TYPE kong_user counter
+kong_user{name="\"quote"} 1
