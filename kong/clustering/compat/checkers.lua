@@ -40,7 +40,7 @@ local compatible_checkers = {
     function(config_table, dp_version, log_suffix)
       local entity_names = {
         "plugins"
-        }
+      }
 
       local has_update
       local updated_entities = {}
@@ -64,6 +64,18 @@ local compatible_checkers = {
                                log_suffix)
 
               updated_entities[name] = true
+            end
+          end
+        end
+      end
+
+      for _, config_entity in ipairs(config_table.vaults or {}) do
+        local name = config_entity.name
+        if name == "aws" or name == "gcp" or name == "hcv" then
+          for _, parameter in ipairs({ "ttl", "neg_ttl", "resurrect_ttl" }) do
+            if config_entity[parameter] then
+              config_entity[parameter] = nil
+              has_update = true
             end
           end
         end

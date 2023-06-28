@@ -1674,7 +1674,57 @@
 
 #vault_aws_region =              # The AWS region your vault is located in.
 
+#vault_aws_ttl = 0               # Time-to-live (in seconds) of a secret from
+                                 # the AWS vault when cached by this node.
+                                 #
+                                 # AWS vault misses (no secret) are also cached
+                                 # according to this setting if you do not
+                                 # configure `vault_aws_neg_ttl`.
+                                 #
+                                 # If set to 0 (default), such cached secrets
+                                 # or misses never expire.
+
+#vault_aws_neg_ttl =             # Time-to-live (in seconds) of a AWS vault
+                                 # miss (no secret).
+                                 #
+                                 # If not specified (default), `vault_aws_ttl`
+                                 # value will be used instead.
+                                 #
+                                 # If set to 0, misses will never expire.
+
+#vault_aws_resurrect_ttl =       # Time (in seconds) for which stale secrets
+                                 # from the AWS vault should be resurrected for
+                                 # when they cannot be refreshed (e.g., the
+                                 # AWS vault is unreachable). When this TTL
+                                 # expires, a new attempt to refresh the stale
+                                 # secrets will be made.
+
 #vault_gcp_project_id =          # The project ID from your Google API Console.
+
+#vault_gcp_ttl = 0               # Time-to-live (in seconds) of a secret from
+                                 # the GCP vault when cached by this node.
+                                 #
+                                 # GCP vault misses (no secret) are also cached
+                                 # according to this setting if you do not
+                                 # configure `vault_gcp_neg_ttl`.
+                                 #
+                                 # If set to 0 (default), such cached secrets
+                                 # or misses never expire.
+
+#vault_gcp_neg_ttl =             # Time-to-live (in seconds) of a AWS vault
+                                 # miss (no secret).
+                                 #
+                                 # If not specified (default), `vault_gcp_ttl`
+                                 # value will be used instead.
+                                 #
+                                 # If set to 0, misses will never expire.
+
+#vault_gcp_resurrect_ttl =       # Time (in seconds) for which stale secrets
+                                 # from the GCP vault should be resurrected for
+                                 # when they cannot be refreshed (e.g., the
+                                 # GCP vault is unreachable). When this TTL
+                                 # expires, a new attempt to refresh the stale
+                                 # secrets will be made.
 
 #vault_hcv_protocol = http       # The protocol to connect with. Accepts one of
                                  # `http` or `https`.
@@ -1708,6 +1758,31 @@
                                  # token should be read from the pod's
                                  # filesystem, if using a non-standard
                                  # container platform setup.
+
+#vault_hcv_ttl = 0               # Time-to-live (in seconds) of a secret from
+                                 # the HashiCorp vault when cached by this node.
+                                 #
+                                 # HashiCorp vault misses (no secret) are also
+                                 # cached according to this setting if you do not
+                                 # configure `vault_hcv_neg_ttl`.
+                                 #
+                                 # If set to 0 (default), such cached secrets
+                                 # or misses never expire.
+
+#vault_hcv_neg_ttl =             # Time-to-live (in seconds) of a HashiCorp vault
+                                 # miss (no secret).
+                                 #
+                                 # If not specified (default), `vault_hcv_ttl`
+                                 # value will be used instead.
+                                 #
+                                 # If set to 0, misses will never expire.
+
+#vault_hcv_resurrect_ttl =       # Time (in seconds) for which stale secrets
+                                 # from the HashiCorp vault should be resurrected
+                                 # for when they cannot be refreshed (e.g., the
+                                 # HashiCorp vault is unreachable). When this TTL
+                                 # expires, a new attempt to refresh the stale
+                                 # secrets will be made.
 
 #------------------------------------------------------------------------------
 # TUNING & BEHAVIOR

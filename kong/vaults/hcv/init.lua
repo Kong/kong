@@ -10,26 +10,13 @@ local meta = require "kong.meta"
 local kube = require "kong.vaults.hcv.kube"
 local cjson = require("cjson.safe").new()
 local http = require "resty.luasocket.http"
+local tablex = require "pl.tablex"
 
 
 local decode_json = cjson.decode
 local encode_json = cjson.encode
 local type = type
-local byte = string.byte
-local sub = string.sub
 local fmt = string.format
-
-
-local SLASH = byte("/")
-
-
-local REQUEST_OPTS = {
-  headers = {
-    ["X-Vault-Token"] = ""
-  },
-  -- TODO: turned off because CLI does not currently support trusted certificates
-  ssl_verify = false,
-}
 
 
 local function kube_vault_token_exchange(config)
@@ -60,7 +47,7 @@ local function kube_vault_token_exchange(config)
   })
 
   if err then
-    ngx.log(ngx.ERR, "failure when exchanging kube serviceaccount jwt for vault token: ", err)
+    ngx.log(ngx.ERR, "failure when exchanging kube service account jwt for vault token: ", err)
     return nil, nil, nil
   end
 
@@ -103,29 +90,29 @@ local function get_vault_token(config)
 end
 
 
-local function request(conf, resource, version)
+local function request(conf, resource, version, request_conf)
   local client, err = http.new()
   if not client then
     return nil, err
   end
 
-  local mount = conf.mount
-  if mount then
-    if byte(mount, 1, 1) == SLASH then
-      if byte(mount, -1) == SLASH then
-        mount = sub(mount, 2, -2)
-      else
-        mount = sub(mount, 2)
-      end
+  local request_opts = {
+    headers = {
+      ["X-Vault-Namespace"] = conf.namespace,
+    },
+    -- TODO: turned off because CLI does not currently support trusted certificates
+    ssl_verify = false,
+  }
 
-    elseif byte(mount, -1) == SLASH then
-      mount = sub(mount, 1, -2)
+  for k, v in pairs(request_conf or {}) do
+    if type(v) == "table" then
+      request[v] = tablex.deepcopy(v)
+    else
+      request_opts[k] = v
     end
-
-  else
-    mount = "secret"
   end
 
+  local mount = (conf.mount or "secret"):gsub("^/", ""):gsub("/$", "")
   local protocol = conf.protocol or "http"
   local host = conf.host or "127.0.0.1"
   local port = conf.port or 8200
@@ -142,8 +129,6 @@ local function request(conf, resource, version)
     path = fmt("%s://%s:%d/v1/%s/%s", protocol, host, port, mount, resource)
   end
 
-  REQUEST_OPTS.headers["X-Vault-Namespace"] = conf.namespace
-
   local token_params = {
     ["token"]               = conf.token, -- pass this even though we know it already, for future compatibility
     ["auth_method"]         = conf.auth_method or "token",
@@ -158,12 +143,11 @@ local function request(conf, resource, version)
     return false, "no authentication mechanism worked for vault"
   end
 
-
-  REQUEST_OPTS.headers["X-Vault-Token"] = token
+  request_opts.headers["X-Vault-Token"] = token
 
   local res
 
-  res, err = client:request_uri(path, REQUEST_OPTS)
+  res, err = client:request_uri(path, request_opts)
   if err then
     return nil, err
   end
@@ -171,8 +155,8 @@ local function request(conf, resource, version)
   local status = res.status
   if status == 404 then
     return nil, "not found"
-  elseif status ~= 200 then
-    return nil, fmt("invalid status code (%d), 200 was expected", res.status)
+  elseif status < 200 or status >= 300 then
+    return nil, res.body
   else
     return res.body
   end
@@ -221,5 +205,6 @@ return {
   VERSION = meta.core_version,
   get = get,
   get_vault_token = get_vault_token,
+  _request = request,
   license_required = true,
 }

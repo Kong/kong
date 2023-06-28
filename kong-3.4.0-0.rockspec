@@ -50,7 +50,7 @@ dependencies = {
   "lua-resty-websocket-proxy == 0.0.1",
   "lua-resty-ljsonschema == 1.1.4",
   "lua-resty-luasocket == 1.1.1",
-  "lua-resty-gcp == 0.0.12",
+  "lua-resty-gcp == 0.0.13",
   "lua-resty-aws == 1.2.2",
   "lua-resty-acme == 0.11.0",
   "lua-resty-session == 4.0.4",

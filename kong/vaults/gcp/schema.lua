@@ -6,6 +6,9 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 
+local typedefs = require "kong.db.schema.typedefs"
+
+
 return {
   name = "gcp",
   fields = {
@@ -13,7 +16,10 @@ return {
       config = {
         type = "record",
         fields = {
-          { project_id = { type = "string", required = true } },
+          { project_id    = { type = "string", required = true } },
+          { ttl           = typedefs.ttl },
+          { neg_ttl       = typedefs.ttl },
+          { resurrect_ttl = typedefs.ttl },
         },
       },
     },

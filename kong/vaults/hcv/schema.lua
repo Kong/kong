@@ -5,6 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+
 local typedefs = require "kong.db.schema.typedefs"
 
 
@@ -25,6 +26,9 @@ return {
           { auth_method         = { type = "string", one_of  = {"token", "kubernetes"}, default = "token" }},
           { kube_role           = { type = "string", required = false }},
           { kube_api_token_file = { type = "string", required = false }},
+          { ttl                 = typedefs.ttl },
+          { neg_ttl             = typedefs.ttl },
+          { resurrect_ttl       = typedefs.ttl },
         },
         entity_checks = {
           {

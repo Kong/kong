@@ -132,11 +132,11 @@ local function new(self)
     if type(json) ~= "table" then
       if err then
         return nil, fmt("unable to json decode value (%s) received from vault (%s): %s [%s]",
-                        resource, vault, err, reference)
+                        value, vault, err, reference)
       end
 
       return nil, fmt("unable to json decode value (%s) received from vault (%s): invalid type (%s), table expected [%s]",
-                      resource, vault, type(json), reference)
+                      value, vault, type(json), reference)
     end
 
     value = json[key]

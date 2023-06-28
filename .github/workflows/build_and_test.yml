@@ -320,6 +320,13 @@ jobs:
         ports:
           - 9411:9411
 
+      hcv:
+        image: hashicorp/vault:latest
+        env:
+          VAULT_DEV_ROOT_TOKEN_ID: vault-plaintext-root-token
+        ports:
+          - 8200:8200
+
     steps:
     - name: Install packages
       run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev
@@ -391,6 +398,9 @@ jobs:
     - name: Tests
       env:
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
+        AWS_ACCESS_KEY_ID: ${{ secrets.TEST_API_AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.TEST_API_AWS_SECRET_ACCESS_KEY }}
+        GCP_SERVICE_ACCOUNT: ${{ secrets.TEST_API_GCP_SERVICE_ACCOUNT }}
         KONG_TEST_PG_DATABASE: kong
         KONG_TEST_PG_USER: kong
         KONG_TEST_DATABASE: postgres

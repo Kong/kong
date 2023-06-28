@@ -182,7 +182,8 @@ describe("cp outage handling storage support: #gcp", function()
       req = {
         body = test_config,
         headers = {
-          Authorization = "Bearer 2l4IQtZXbn5WBJdL6EF7uenOWRsi"
+          Authorization = "Bearer 2l4IQtZXbn5WBJdL6EF7uenOWRsi",
+          ["Content-Type"] = "application/json",
         },
         method = "POST",
         ssl_verify = true
@@ -210,7 +211,8 @@ describe("cp outage handling storage support: #gcp", function()
     assert.same({
       req = {
         headers = {
-          Authorization = "Bearer 2l4IQtZXbn5WBJdL6EF7uenOWRsi"
+          Authorization = "Bearer 2l4IQtZXbn5WBJdL6EF7uenOWRsi",
+          ["Content-Type"] = "application/json",
         },
         method = "GET",
         ssl_verify = true
