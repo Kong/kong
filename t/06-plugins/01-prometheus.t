@@ -62,19 +62,19 @@ false
         content_by_lua_block {
           local m
 
-          m = _G.prom:counter("mem1", "h", {"lua"})
+          m = _G.prom:counter("mem1", nil, {"lua"})
           ngx.say(not not m)
 
-          m = _G.prom:counter("mem2", "h", {"_lua_"})
+          m = _G.prom:counter("mem2", nil, {"_lua_"})
           ngx.say(not not m)
 
-          m = _G.prom:counter("mem3", "h", {":lua"})
+          m = _G.prom:counter("mem3", nil, {":lua"})
           ngx.say(not not m)
 
-          m = _G.prom:counter("mem4", "h", {"0lua"})
+          m = _G.prom:counter("mem4", nil, {"0lua"})
           ngx.say(not not m)
 
-          m = _G.prom:counter("mem5", "h", {"lua*"})
+          m = _G.prom:counter("mem5", nil, {"lua*"})
           ngx.say(not not m)
         }
     }
@@ -86,5 +86,29 @@ true
 false
 false
 false
+
+
+=== TEST 3: check metric full name
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+          local shm = ngx.shared["prometheus_metrics"]
+          local m
+
+          m = _G.prom:counter("mem", nil, {"lua"})
+          ngx.say(not not m)
+
+          m:inc(1, {"2.1"})
+          ngx.sleep(1.05)
+
+          ngx.say(shm:get([[mem{lua="2.1"}]]))
+        }
+    }
+--- request
+GET /t
+--- response_body
+true
+1
 
 
