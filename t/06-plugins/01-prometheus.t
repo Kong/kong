@@ -108,20 +108,18 @@ false
 
           m = _G.prom:counter("mem", nil, {"lua"})
           ngx.say(not not m)
-
           m:inc(1, {"2.1"})
 
           m = _G.prom:counter("file", nil, {"path"})
           ngx.say(not not m)
-
           m:inc(1, {"\\root"})
 
           m = _G.prom:counter("user", nil, {"name"})
           ngx.say(not not m)
-
           --m:inc(1, {"\"quote"})
 
-          ngx.sleep(1.05)
+          -- sync to shdict
+          _G.prom._counter:sync()
 
           ngx.say(shm:get([[mem{lua="2.1"}]]))
           ngx.say(shm:get([[file{path="\\root"}]]))
