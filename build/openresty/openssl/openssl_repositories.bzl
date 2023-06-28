@@ -5,7 +5,7 @@ load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 
 def openssl_repositories():
-    version = KONG_VAR["RESTY_OPENSSL_VERSION"]
+    version = KONG_VAR["OPENSSL"]
     version_github = version.replace(".", "_")
 
     maybe(
