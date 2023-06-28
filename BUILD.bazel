@@ -94,7 +94,7 @@ nfpm_pkg(
 )
 
 nfpm_pkg(
-    name = "kong_aws2022",
+    name = "kong_aws2023",
     config = "//build:package/nfpm.yaml",
     env = nfpm_env,
     extra_env = {
@@ -103,7 +103,7 @@ nfpm_pkg(
         "RPM_EXTRA_DEPS_3": "libxcrypt-compat",
     },
     packager = "rpm",
-    pkg_name = "kong.aws2022",
+    pkg_name = "kong.aws2023",
     visibility = ["//visibility:public"],
 )
 

@@ -242,7 +242,7 @@ jobs:
         yum groupinstall -y 'Development Tools'
         dnf config-manager --set-enabled powertools || true # enable devel packages on rockylinux:8
         yum install -y libyaml-devel zlib-devel
-        yum install -y cpanminus || (yum install -y perl && curl -L https://raw.githubusercontent.com/miyagawa/cpanminus/master/cpanm | perl - App::cpanminus) # amazonlinux2022 removed cpanminus
+        yum install -y cpanminus || (yum install -y perl && curl -L https://raw.githubusercontent.com/miyagawa/cpanminus/master/cpanm | perl - App::cpanminus) # amazonlinux2023 removed cpanminus
         # required for openssl 3.x config
         cpanm IPC/Cmd.pm
 
@@ -280,8 +280,25 @@ jobs:
         # TODO: only build the specific type matching it's own label
         bazel build --config release :kong_el8 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
         bazel build --config release :kong_el7 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
-        bazel build --config release :kong_aws2022 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
-        bazel build --config release :kong_aws2 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
+
+    - name: Package Amazon Linux
+      if: |
+        (
+          matrix.package == 'rpm' &&
+          startsWith(matrix.label, 'amazonlinux')
+        ) && steps.cache-deps.outputs.cache-hit != 'true'
+      env:
+        RELEASE_SIGNING_GPG_KEY: ${{ secrets.RELEASE_SIGNING_GPG_KEY }}
+        NFPM_RPM_PASSPHRASE: ${{ secrets.RELEASE_SIGNING_GPG_KEY_PASSPHRASE }}
+      run: |
+        if [ -n "${RELEASE_SIGNING_GPG_KEY:-}" ]; then
+          RPM_SIGNING_KEY_FILE=$(mktemp)
+          echo "$RELEASE_SIGNING_GPG_KEY" > $RPM_SIGNING_KEY_FILE
+          export RPM_SIGNING_KEY_FILE=$RPM_SIGNING_KEY_FILE
+        fi
+
+        bazel build --config release :kong_aws2    --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
+        bazel build --config release :kong_aws2023 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
 
     - name: Bazel Debug Outputs
       if: failure()

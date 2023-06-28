@@ -93,7 +93,7 @@ build-packages:
 - label: amazonlinux-2-arm64
   os: ubuntu-22.04-arm64
   package: rpm
-  package-distro: aws2022
+  package-distro: aws2023
   image: amazonlinux:2
   check-manifest-suite: amazonlinux-2-arm64
 
@@ -144,10 +144,10 @@ build-images:
   artifact-from: amazonlinux-2
   artifact-from-alt: amazonlinux-2-arm64
   docker_platforms: linux/amd64,linux/arm64
-- label: amazonlinux-2022
-  base-image: amazonlinux:2022
+- label: amazonlinux-2023
+  base-image: amazonlinux:2023
   package: rpm
-  package-distro: aws2022
+  package-distro: aws2023
   artifact-from: amazonlinux-2
   artifact-from-alt: amazonlinux-2-arm64
   docker_platforms: linux/amd64,linux/arm64
@@ -161,7 +161,7 @@ test-images:
 - label: rhel
 - label: amazonlinux-2
   multiarch: true
-- label: amazonlinux-2022
+- label: amazonlinux-2023
   multiarch: true
 
 smoke-tests:
@@ -170,7 +170,7 @@ smoke-tests:
 - label: debian
 - label: rhel
 - label: amazonlinux-2
-- label: amazonlinux-2022
+- label: amazonlinux-2023
 
 scan-vulnerabilities:
 - label: ubuntu
@@ -178,7 +178,7 @@ scan-vulnerabilities:
 - label: debian
 - label: rhel
 - label: amazonlinux-2
-- label: amazonlinux-2022
+- label: amazonlinux-2023
 
 release-packages:
 # Ubuntu
@@ -267,7 +267,7 @@ release-packages:
   artifact-type: rhel
   artifact: kong.el8.amd64.rpm
 
-  # Amazon Linux
+# Amazon Linux
 - label: amazonlinux-2
   package: rpm
   artifact-from: amazonlinux-2
@@ -280,23 +280,23 @@ release-packages:
   artifact-version: 2
   artifact-type: amazonlinux
   artifact: kong.aws2.arm64.rpm
-- label: amazonlinux-2022
+- label: amazonlinux-2023
   package: rpm
   artifact-from: amazonlinux-2
-  artifact-version: 2022
+  artifact-version: 2023
   artifact-type: amazonlinux
-  artifact: kong.aws2022.amd64.rpm
-- label: amazonlinux-2022-arm64
+  artifact: kong.aws2023.amd64.rpm
+- label: amazonlinux-2023-arm64
   package: rpm
   artifact-from: amazonlinux-2-arm64
-  artifact-version: 2022
+  artifact-version: 2023
   artifact-type: amazonlinux
-  artifact: kong.aws2022.arm64.rpm
+  artifact: kong.aws2023.amd64.rpm
 
 release-images:
 - label: ubuntu
 - label: ubuntu-fips
 - label: amazonlinux-2
-- label: amazonlinux-2022
+- label: amazonlinux-2023
 - label: debian
 - label: rhel
