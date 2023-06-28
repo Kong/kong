@@ -145,12 +145,13 @@ true
           local m
 
           m = _G.prom:counter("mem", nil, {"lua"})
-          m:inc(1, {"2.1"})
+          m:inc(2, {"2.1"})
 
           m = _G.prom:counter("file", nil, {"path"})
-          m:inc(1, {"\\root"})
+          m:inc(3, {"\\root"})
 
           m = _G.prom:counter("user", nil, {"name"})
+          m:inc(5, {"\"quote"})
           m:inc(1, {"\"quote"})
 
           _G.prom:collect()
@@ -160,13 +161,13 @@ true
 GET /t
 --- response_body
 # TYPE kong_file counter
-kong_file{path="\\root"} 1
+kong_file{path="\\root"} 3
 # TYPE kong_mem counter
-kong_mem{lua="2.1"} 1
+kong_mem{lua="2.1"} 2
 # HELP kong_nginx_metric_errors_total Number of nginx-lua-prometheus errors
 # TYPE kong_nginx_metric_errors_total counter
 kong_nginx_metric_errors_total 0
 # TYPE kong_user counter
-kong_user{name="\"quote"} 1
+kong_user{name="\"quote"} 6
 
 
