@@ -30,6 +30,9 @@ __DATA__
           m = _G.prom:counter("mem_used")
           ngx.say(not not m)
 
+          m = _G.prom:counter("Mem_Used")
+          ngx.say(not not m)
+
           m = _G.prom:counter(":mem_used")
           ngx.say(not not m)
 
@@ -53,6 +56,7 @@ true
 true
 true
 true
+true
 false
 false
 
@@ -63,6 +67,9 @@ false
     location /t {
         content_by_lua_block {
           local m
+
+          m = _G.prom:counter("MEM", nil, {"lua"})
+          ngx.say(not not m)
 
           m = _G.prom:counter("mem1", nil, {"lua"})
           ngx.say(not not m)
@@ -89,6 +96,7 @@ false
 --- request
 GET /t
 --- response_body
+true
 true
 true
 false
