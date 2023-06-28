@@ -116,14 +116,14 @@ false
 
           m = _G.prom:counter("user", nil, {"name"})
           ngx.say(not not m)
-          --m:inc(1, {"\"quote"})
+          m:inc(1, {"\"quote"})
 
           -- sync to shdict
           _G.prom._counter:sync()
 
           ngx.say(shm:get([[mem{lua="2.1"}]]))
           ngx.say(shm:get([[file{path="\\root"}]]))
-          --ngx.say(shm:get([[user{name="\"quote"}]]))
+          ngx.say(shm:get([[user{name="\"quote"}]]))
         }
     }
 --- request
@@ -132,6 +132,7 @@ GET /t
 true
 true
 true
+1
 1
 1
 
