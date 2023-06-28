@@ -16,6 +16,8 @@
   [#10926](https://github.com/Kong/kong/pull/10926)
 - :warning: Cassandra as a datastore for Kong is no longer supported
   [#10931](https://github.com/Kong/kong/pull/10931)
+- Ubuntu 18.04 artifacts are no longer supported as it's EOL
+- AmazonLinux 2022 artifacts are renamed to AmazonLinux 2023 according to AWS's decision
 
 #### Core
 
