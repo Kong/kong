@@ -110,15 +110,31 @@ false
           ngx.say(not not m)
 
           m:inc(1, {"2.1"})
+
+          m = _G.prom:counter("file", nil, {"path"})
+          ngx.say(not not m)
+
+          m:inc(1, {"\\root"})
+
+          m = _G.prom:counter("user", nil, {"name"})
+          ngx.say(not not m)
+
+          --m:inc(1, {"\"quote"})
+
           ngx.sleep(1.05)
 
           ngx.say(shm:get([[mem{lua="2.1"}]]))
+          ngx.say(shm:get([[file{path="\\root"}]]))
+          --ngx.say(shm:get([[user{name="\"quote"}]]))
         }
     }
 --- request
 GET /t
 --- response_body
 true
+true
+true
+1
 1
 
 
