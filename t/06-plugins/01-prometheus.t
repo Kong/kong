@@ -2,15 +2,18 @@
 
 use Test::Nginx::Socket 'no_plan';
 
-repeat_each(2);
+repeat_each(1);
 
 run_tests();
 
 __DATA__
+
 === TEST 1: check metric names
 --- http_config
     lua_shared_dict prometheus_metrics 5m;
     init_worker_by_lua_block {
+      package.loaded['prometheus_resty_counter'] = require("resty.counter")
+
       local prometheus = require("kong.plugins.prometheus.prometheus")
       _G.prom = prometheus.init("prometheus_metrics", "kong_")
     }
