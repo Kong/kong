@@ -42,6 +42,9 @@ __DATA__
           m = _G.prom:counter("_mem_used_")
           ngx.say(not not m)
 
+          m = _G.prom:counter("mem-used")
+          ngx.say(not not m)
+
           m = _G.prom:counter("0name")
           ngx.say(not not m)
 
@@ -59,6 +62,7 @@ true
 true
 false
 false
+false
 
 
 === TEST 2: check metric label names
@@ -68,7 +72,7 @@ false
         content_by_lua_block {
           local m
 
-          m = _G.prom:counter("MEM", nil, {"lua"})
+          m = _G.prom:counter("mem0", nil, {"LUA"})
           ngx.say(not not m)
 
           m = _G.prom:counter("mem1", nil, {"lua"})
@@ -91,6 +95,9 @@ false
 
           m = _G.prom:counter("mem7", nil, {"lua\"5.1\""})
           ngx.say(not not m)
+
+          m = _G.prom:counter("mem8", nil, {"lua-vm"})
+          ngx.say(not not m)
         }
     }
 --- request
@@ -99,6 +106,7 @@ GET /t
 true
 true
 true
+false
 false
 false
 false
