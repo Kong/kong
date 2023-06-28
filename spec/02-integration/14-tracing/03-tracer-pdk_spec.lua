@@ -3,7 +3,7 @@ local cjson   = require "cjson"
 local join    = require "pl.stringx".join
 
 
-local TCP_PORT = 35001
+local TCP_PORT = helpers.get_available_port()
 local tcp_trace_plugin_name = "tcp-trace-exporter"
 
 

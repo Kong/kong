@@ -195,10 +195,6 @@ local function create_span(tracer, options)
     sampled = tracer and tracer.sampler(trace_id)
   end
 
-  if not sampled then
-    span.is_recording = false
-  end
-
   span.parent_id = span.parent and span.parent.span_id
       or options.parent_id
   span.tracer = span.tracer or tracer
@@ -275,7 +271,7 @@ end
 -- local time = ngx.now()
 -- span:finish(time * 100000000)
 function span_mt:finish(end_time_ns)
-  if self.end_time_ns ~= nil or  not self.should_sample then
+  if self.end_time_ns ~= nil or not self.should_sample then
     -- span is finished, and already processed or not sampled
     return
   end
