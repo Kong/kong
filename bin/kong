@@ -36,6 +36,9 @@ local cmds = {
 local skip_inject_cmds = {
   version = true,
   roar = true,
+  check = true,
+  stop = true,
+  quit = true,
 }
 
 for k in pairs(cmds) do

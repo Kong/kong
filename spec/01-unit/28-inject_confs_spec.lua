@@ -7,37 +7,7 @@ local fmt = string.format
 
 describe("compile_confs", function()
   for _, strategy in helpers.all_strategies() do
-    it("default prefix, database = " .. strategy, function()
-      local main_conf = [[
-]]
-      local main_conf_off = [[
-lmdb_environment_path /usr/local/kong/dbless.lmdb;
-lmdb_map_size         2048m;
-]]
-      local http_conf = [[
-lua_ssl_verify_depth   1;
-lua_ssl_trusted_certificate '/usr/local/kong/.ca_combined';
-lua_ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
-]]
-      local stream_conf = [[
-lua_ssl_verify_depth   1;
-lua_ssl_trusted_certificate '/usr/local/kong/.ca_combined';
-lua_ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
-]]
-
-      local args = {}
-      local confs = compile_confs(args)
-      assert(confs)
-      local expected_main_conf = main_conf
-      if strategy == "off" then
-        expected_main_conf = main_conf_off
-      end
-      assert.matches(expected_main_conf, confs.main_conf, nil, true)
-      assert.matches(http_conf, confs.http_conf, nil, true)
-      assert.matches(stream_conf, confs.stream_conf, nil, true)
-    end)
-
-    it("specified prefix, database = " .. strategy, function()
+    it("database = " .. strategy, function()
       local cwd = currentdir()
       local main_conf = [[
 ]]
@@ -56,7 +26,10 @@ lua_ssl_trusted_certificate '%s/servroot/.ca_combined';
 lua_ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 ]], cwd)
 
-      local args = {prefix = helpers.test_conf.prefix}
+      local args = {
+        prefix = helpers.test_conf.prefix,
+        database = strategy,
+      }
       local confs = compile_confs(args)
       assert(confs)
       local expected_main_conf = main_conf
