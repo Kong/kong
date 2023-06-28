@@ -1,8 +1,10 @@
 # vim:set ft= ts=4 sw=4 et fdm=marker:
 
-use Test::Nginx::Socket 'no_plan';
+use Test::Nginx::Socket;
 
 repeat_each(1);
+
+plan tests => repeat_each() * (blocks() * 2);
 
 our $HttpConfig = qq{
     lua_shared_dict prometheus_metrics 5m;
