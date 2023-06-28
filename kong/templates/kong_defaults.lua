@@ -150,7 +150,7 @@ cluster_server_name = NONE
 cluster_data_plane_purge_delay = 1209600
 cluster_ocsp = off
 cluster_allowed_common_names = NONE
-cluster_max_payload = 4194304
+cluster_max_payload = 16777216
 cluster_use_proxy = off
 cluster_dp_labels = NONE
 
