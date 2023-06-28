@@ -152,7 +152,7 @@ jobs:
 
     - name: Cache Git
       id: cache-git
-      if: matrix.package == 'rpm' || matrix.image == 'ubuntu:18.04' || matrix.image == 'debian:10'
+      if: matrix.package == 'rpm' || matrix.image == 'debian:10'
       uses: actions/cache@v3
       with:
         path: /usr/local/git
@@ -160,7 +160,7 @@ jobs:
 
     # el-7,8, amazonlinux-2,2022, ubuntu-18.04, debian-10 doesn't have git 2.18+, so we need to install it manually
     - name: Install newer Git
-      if: (matrix.package == 'rpm' || matrix.image == 'ubuntu:18.04' || matrix.image == 'debian:10') && steps.cache-git.outputs.cache-hit != 'true'
+      if: (matrix.package == 'rpm' || matrix.image == 'debian:10') && steps.cache-git.outputs.cache-hit != 'true'
       run: |
         if which apt 2>/dev/null; then
           apt update
@@ -179,12 +179,12 @@ jobs:
         make install
 
     - name: Add Git to PATH
-      if: matrix.package == 'rpm' || matrix.image == 'ubuntu:18.04' || matrix.image == 'debian:10'
+      if: matrix.package == 'rpm' || matrix.image == 'debian:10'
       run: |
         echo "/usr/local/git/bin" >> $GITHUB_PATH
 
     - name: Debian Git dependencies
-      if: matrix.image == 'ubuntu:18.04' || matrix.image == 'debian:10'
+      if: matrix.image == 'debian:10'
       run: |
         apt update
         # dependencies for git

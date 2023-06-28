@@ -83,14 +83,6 @@ targets = {
         libcxx_max_version="3.4.25",
         cxxabi_max_version="1.3.11",
     ),
-    "ubuntu-18.04-amd64": ExpectSuite(
-        name="Ubuntu 18.04 (amd64)",
-        manifest="fixtures/ubuntu-18.04-amd64.txt",
-        libc_max_version="2.27",
-        # gcc 7.4.0
-        libcxx_max_version="3.4.24",
-        cxxabi_max_version="1.3.11",
-    ),
     "ubuntu-20.04-amd64": ExpectSuite(
         name="Ubuntu 20.04 (amd64)",
         manifest="fixtures/ubuntu-20.04-amd64.txt",

@@ -13,11 +13,6 @@ build-packages:
 # check-manifest-suite: the check manifest suite as defined in scripts/explain_manifest/config.py
 
 # Ubuntu
-- label: ubuntu-18.04
-  os: vars.RELEASE_RUNS_ON
-  image: ubuntu:18.04
-  package: deb
-  check-manifest-suite: ubuntu-18.04-amd64
 - label: ubuntu-20.04
   os: ubuntu-20.04
   package: deb
@@ -182,12 +177,6 @@ scan-vulnerabilities:
 
 release-packages:
 # Ubuntu
-- label: ubuntu-18.04
-  package: deb
-  artifact-from: ubuntu-18.04
-  artifact-version: 18.04
-  artifact-type: ubuntu
-  artifact: kong.amd64.deb
 - label: ubuntu-20.04
   package: deb
   artifact-from: ubuntu-20.04
