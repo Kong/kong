@@ -38,6 +38,9 @@
 * Fix an issue that sometimes can't attach workspace with the cache's consumer well. [FTI-4564](https://konghq.atlassian.net/browse/FTI-4564)
 * Fix CORS incorrect behavior when KM integrated with Portal GUI. [FTI-1437](https://konghq.atlassian.net/browse/FTI-1437)
 
+### Kong Manager
+
+
 ## Plugins
 
 ### Breaking Changes
@@ -204,6 +207,8 @@ a copy. [KAG-739](https://konghq.atlassian.net/browse/KAG-739)
 ### Features
 
 ### Fixes
+
+### Kong Manager
 
 ## Plugins
 
