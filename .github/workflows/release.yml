@@ -158,7 +158,7 @@ jobs:
         path: /usr/local/git
         key: ${{ matrix.label }}-git-2.30.0
 
-    # el-7,8, amazonlinux-2,2022, ubuntu-18.04, debian-10 doesn't have git 2.18+, so we need to install it manually
+    # el-7,8, amazonlinux-2,2022, debian-10 doesn't have git 2.18+, so we need to install it manually
     - name: Install newer Git
       if: (matrix.package == 'rpm' || matrix.image == 'debian:10') && steps.cache-git.outputs.cache-hit != 'true'
       run: |
