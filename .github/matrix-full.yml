@@ -28,13 +28,14 @@ build-packages:
 # Debian
 - label: debian-10
   os: ubuntu-22.04
-  image: ubuntu:18.04
+  image: debian:10
   package: deb
-  check-manifest-suite: ubuntu-18.04-amd64
+  check-manifest-suite: debian-10-amd64
 - label: debian-11
-  os: ubuntu-20.04
+  os: ubuntu-22.04
+  image: debian:11
   package: deb
-  check-manifest-suite: ubuntu-20.04-amd64
+  check-manifest-suite: debian-11-amd64
 
 # CentOS
 - label: centos-7
