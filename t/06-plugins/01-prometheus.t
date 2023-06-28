@@ -2,6 +2,7 @@
 
 use Test::Nginx::Socket;
 
+# only test once
 repeat_each(1);
 
 plan tests => repeat_each() * (blocks() * 2);
@@ -28,41 +29,36 @@ __DATA__
           local m
 
           m = _G.prom:counter("mem_used")
-          ngx.say(not not m)
+          assert(m)
 
           m = _G.prom:counter("Mem_Used")
-          ngx.say(not not m)
+          assert(m)
 
           m = _G.prom:counter(":mem_used")
-          ngx.say(not not m)
+          assert(m)
 
           m = _G.prom:counter("mem_used:")
-          ngx.say(not not m)
+          assert(m)
 
           m = _G.prom:counter("_mem_used_")
-          ngx.say(not not m)
+          assert(m)
 
           m = _G.prom:counter("mem-used")
-          ngx.say(not not m)
+          assert(not m)
 
           m = _G.prom:counter("0name")
-          ngx.say(not not m)
+          assert(not m)
 
           m = _G.prom:counter("name$")
-          ngx.say(not not m)
+          assert(not m)
+
+          ngx.say("ok")
         }
     }
 --- request
 GET /t
 --- response_body
-true
-true
-true
-true
-true
-false
-false
-false
+ok
 
 
 === TEST 2: check metric label names
@@ -73,45 +69,39 @@ false
           local m
 
           m = _G.prom:counter("mem0", nil, {"LUA"})
-          ngx.say(not not m)
+          assert(m)
 
           m = _G.prom:counter("mem1", nil, {"lua"})
-          ngx.say(not not m)
+          assert(m)
 
           m = _G.prom:counter("mem2", nil, {"_lua_"})
-          ngx.say(not not m)
+          assert(m)
 
           m = _G.prom:counter("mem3", nil, {":lua"})
-          ngx.say(not not m)
+          assert(not m)
 
           m = _G.prom:counter("mem4", nil, {"0lua"})
-          ngx.say(not not m)
+          assert(not m)
 
           m = _G.prom:counter("mem5", nil, {"lua*"})
-          ngx.say(not not m)
+          assert(not m)
 
           m = _G.prom:counter("mem6", nil, {"lua\\5.1"})
-          ngx.say(not not m)
+          assert(not m)
 
           m = _G.prom:counter("mem7", nil, {"lua\"5.1\""})
-          ngx.say(not not m)
+          assert(not m)
 
           m = _G.prom:counter("mem8", nil, {"lua-vm"})
-          ngx.say(not not m)
+          assert(not m)
+
+          ngx.say("ok")
         }
     }
 --- request
 GET /t
 --- response_body
-true
-true
-true
-false
-false
-false
-false
-false
-false
+ok
 
 
 === TEST 3: check metric full name
@@ -123,15 +113,15 @@ false
           local m
 
           m = _G.prom:counter("mem", nil, {"lua"})
-          ngx.say(not not m)
+          assert(m)
           m:inc(1, {"2.1"})
 
           m = _G.prom:counter("file", nil, {"path"})
-          ngx.say(not not m)
+          assert(m)
           m:inc(1, {"\\root"})
 
           m = _G.prom:counter("user", nil, {"name"})
-          ngx.say(not not m)
+          assert(m)
           m:inc(1, {"\"quote"})
 
           -- sync to shdict
@@ -145,9 +135,6 @@ false
 --- request
 GET /t
 --- response_body
-true
-true
-true
 1
 1
 1
