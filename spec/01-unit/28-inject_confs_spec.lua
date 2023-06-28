@@ -28,9 +28,10 @@ lua_ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 
       local args = {
         prefix = helpers.test_conf.prefix,
-        database = strategy,
       }
+      helpers.setenv("KONG_DATABASE", strategy)
       local confs = compile_confs(args)
+      helpers.unsetenv("KONG_DATABASE")
       assert(confs)
       local expected_main_conf = main_conf
       if strategy == "off" then
