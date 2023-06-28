@@ -7,7 +7,7 @@ repeat_each(1);
 plan tests => repeat_each() * (blocks() * 2);
 
 our $HttpConfig = qq{
-    lua_shared_dict prometheus_metrics 5m;
+    lua_shared_dict prometheus_metrics 1m;
     init_worker_by_lua_block {
       package.loaded['prometheus_resty_counter'] = require("resty.counter")
 
@@ -78,6 +78,12 @@ false
 
           m = _G.prom:counter("mem5", nil, {"lua*"})
           ngx.say(not not m)
+
+          m = _G.prom:counter("mem6", nil, {"lua\\5.1"})
+          ngx.say(not not m)
+
+          m = _G.prom:counter("mem7", nil, {"lua\"5.1\""})
+          ngx.say(not not m)
         }
     }
 --- request
@@ -85,6 +91,8 @@ GET /t
 --- response_body
 true
 true
+false
+false
 false
 false
 false
