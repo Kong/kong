@@ -168,3 +168,5 @@ kong_mem{lua="2.1"} 1
 kong_nginx_metric_errors_total 0
 # TYPE kong_user counter
 kong_user{name="\"quote"} 1
+
+
