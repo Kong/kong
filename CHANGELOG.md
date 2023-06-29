@@ -154,6 +154,8 @@
   [#11066](https://github.com/Kong/kong/pull/11066)
 - Fix a bug that caused sampling rate to be applied to individual spans producing split traces.
   [#11135](https://github.com/Kong/kong/pull/11135)
+- Fix a bug that caused spans to not be instrumented with http.status_code when the request was not proxied upstream.
+  [#11152](https://github.com/Kong/kong/pull/11152)
 - Fix a bug that caused the router to fail in `traditional_compatible` mode when a route with multiple paths and no service was created.
   [#11158](https://github.com/Kong/kong/pull/11158)
 - Fix an issue where the router of flavor `expressions` can not work correctly
