@@ -1413,6 +1413,7 @@ return {
   header_filter = {
     before = function(ctx)
       if not ctx.KONG_PROXIED then
+        instrumentation.runloop_before_header_filter(ngx.status)
         return
       end
 
