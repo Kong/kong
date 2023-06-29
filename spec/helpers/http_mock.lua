@@ -83,7 +83,7 @@ end
 -- client:send({})
 -- local logs = mock:retrieve_mocking_logs() -- get all the logs of HTTP sessions
 -- mock:stop()
--- 
+--
 -- listens can be a number, which will be used as the port of the mock server;
 -- or a string, which will be used as the param of listen directive of the mock server;
 -- or a table represents multiple listen ports.
@@ -143,7 +143,7 @@ function http_mock.new(listens, routes, opts)
       }
     }
   end
-  
+
   opts.log_opts = opts.log_opts or {}
   local log_opts = opts.log_opts
   default_field(log_opts, "req", true)

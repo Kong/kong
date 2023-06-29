@@ -113,7 +113,7 @@ function http_mock:get_all_logs(timeout)
 end
 
 function http_mock:clean(timeout)
-  -- if we wait, the http_client may timeout and cause error 
+  -- if we wait, the http_client may timeout and cause error
   -- self:wait_until_no_request(timeout)
 
   -- clean unwanted logs

@@ -10,8 +10,10 @@ local http = require "resty.http"
 local clone = require "table.clone"
 local otlp = require "kong.plugins.opentelemetry.otlp"
 local propagation = require "kong.tracing.propagation"
-local kong_meta = require "kong.meta"
 
+--[= xxx EE
+local kong_meta = require "kong.meta"
+--]=]
 
 local ngx = ngx
 local kong = kong

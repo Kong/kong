@@ -434,7 +434,6 @@ typedefs.rbac_user_token = Schema.define {
   custom_validator = validate_utf8_string
 }
 
-
 typedefs.utf8_name = Schema.define {
   type = "string",
   unique = true,
@@ -541,6 +540,7 @@ typedefs.protocols_ws = Schema.define {
   default = ws_protocols,
   elements = { type = "string", one_of = ws_protocols },
 }
+
 
 
 -- routes typedefs

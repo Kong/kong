@@ -1159,11 +1159,12 @@ end
 function Kong.balancer()
   local trace = tracing.trace("balancer")
 
-  local ctx = ngx.ctx
-  ctx.KONG_PHASE = PHASES.balancer
   -- This may be called multiple times, and no yielding here!
   local now_ms = now() * 1000
   local now_ns = time_ns()
+
+  local ctx = ngx.ctx
+  ctx.KONG_PHASE = PHASES.balancer
 
   if not ctx.KONG_BALANCER_START then
     ctx.KONG_BALANCER_START = now_ms

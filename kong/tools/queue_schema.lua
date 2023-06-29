@@ -47,14 +47,24 @@ return Schema.define {
         type = "number",
         default = 0.01,
         between = { 0.001, 1000000 }, -- effectively unlimited maximum
+<<<<<<< HEAD
         -- For each subsequent retry, the previous retry time is doubled up to `max_retry_delay`
         description = "Time in seconds before the initial retry is made for a failing batch."
+=======
+        description = "Time in seconds before the initial retry is made for a failing batch."
+        -- For each subsequent retry, the previous retry time is doubled up to `max_retry_delay`
+>>>>>>> ce/master
     } },
     { max_retry_delay = {
       type = "number",
       default = 60,
+<<<<<<< HEAD
       description = "Maximum time in seconds between retries, caps exponential backoff.",
       between = { 0.001, 1000000 }, -- effectively unlimited maximum
+=======
+      between = { 0.001, 1000000 }, -- effectively unlimited maximum
+      description = "Maximum time in seconds between retries, caps exponential backoff."
+>>>>>>> ce/master
     } },
   }
 }

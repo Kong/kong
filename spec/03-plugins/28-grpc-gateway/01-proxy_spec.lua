@@ -217,13 +217,14 @@ for _, strategy in helpers.each_strategy() do
           body = req_body,
         })
         assert.equal(200, res.status)
-  
+
         local body = res:read_body()
         assert.same(req_body, cjson.decode(body))
         -- it should be encoded as empty array in json instead of `null` or `{}`
         assert.matches("[]", body, nil, true)
       end)
-  
+
+      -- Bug found when test FTI-5002's fix. It will be fixed in another PR.
       test("empty message #10802", function()
         local req_body = { array = {}, nullable = "" }
         local res, _ = proxy_client:post("/v1/echo", {
@@ -231,13 +232,13 @@ for _, strategy in helpers.each_strategy() do
           body = req_body,
         })
         assert.equal(200, res.status)
-  
+
         local body = res:read_body()
         assert.same(req_body, cjson.decode(body))
         -- it should be encoded as empty array in json instead of `null` or `{}`
         assert.matches("[]", body, nil, true)
       end)
-  
+
       test("1 element array", function()
         local req_body = { array = { "test" }, nullable = "" }
         local res, _ = proxy_client:post("/v1/echo", {
@@ -245,11 +246,11 @@ for _, strategy in helpers.each_strategy() do
           body = req_body,
         })
         assert.equal(200, res.status)
-  
+
         local body = res:read_body()
         assert.same(req_body, cjson.decode(body))
       end)
-  
+
       test("non-repeatable array", function()
         local req_body = { array = { "test" }, nullable = { "a", "b" } }
         local res, _ = proxy_client:post("/v1/echo", {

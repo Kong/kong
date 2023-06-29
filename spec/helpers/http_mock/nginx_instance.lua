@@ -32,7 +32,7 @@ function http_mock:start(error_on_exist)
     and (pl_path.mkdir(self.prefix .. "/logs"))
     and (pl_path.mkdir(self.prefix .. "/conf"))
   if error_on_exist then assert(ok, "failed to create directory " .. self.prefix) end
-  
+
   local render = assert(template:render(shallow_copy(self), render_env))
   local conf_path = self.prefix .. "/conf/nginx.conf"
   local conf_file = assert(io.open(conf_path, "w"))

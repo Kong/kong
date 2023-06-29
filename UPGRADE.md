@@ -133,7 +133,7 @@ Data Planes (DPs) are capable of serving traffic normally during the entire migr
    as your old one. Run `kong migrations up` and `kong migrations finish`.
 3. Start the newly installed 3.0.x CP. Old DPs are expected to complain
 about connection failure to the CP in the log, for example:
-`connection to Control Plane ... broken: failed to connect: connection refused` but this is perfectly okay during the upgrade ad does not affect normal proxy traffic.
+`connection to Control Plane ... broken: failed to connect: connection refused` but this is perfectly okay during the upgrade and does not affect normal proxy traffic.
 4. Start provisioning 3.0.x DPs.
 5. Gradually shift traffic from your old 2.8.x DPs to
    your 3.0.x DPs. Monitor your traffic to make sure everything
@@ -1455,7 +1455,7 @@ previous release, so you will need to rebuild them with the latest patches.
 
 In order to use all Kong features, including the new
 dynamic upstream keepalive behavior, the required OpenResty version is
-[1.15.8.3](http://openresty.org/en/changelog-1015008.html) and the
+[1.15.8.3](http://openresty.org/en/changelog-1015008.html) and 
 the set of [OpenResty
 patches](https://github.com/Kong/kong-build-tools/tree/master/openresty-build-tools/openresty-patches)
 included has changed, including the latest release of
@@ -1601,8 +1601,7 @@ If you are building your dependencies by hand, there are changes since the
 previous release, so you will need to rebuild them with the latest patches.
 
 The required OpenResty version is
-[1.15.8.2](http://openresty.org/en/changelog-1015008.html), and the
-the set of [OpenResty
+[1.15.8.2](http://openresty.org/en/changelog-1015008.html), and the set of [OpenResty
 patches](https://github.com/Kong/kong-build-tools/tree/master/openresty-build-tools/openresty-patches)
 included has changed, including the latest release of
 [lua-kong-nginx-module](https://github.com/Kong/lua-kong-nginx-module).
@@ -2692,7 +2691,7 @@ detailed migration instructions.
 
 ## Upgrade from `0.x` to `1.0.x`
 
-Kong 1.0 is a major upgrade, and includes a number of new features
+Kong 1.0 is a major upgrade, and includes several new features
 as well as breaking changes.
 
 This version introduces **a new schema format for plugins**, **changes in
@@ -3187,7 +3186,7 @@ complete list of changes and new features.
 - The required OpenResty version has been bumped to 1.13.6.2. If you
   are installing Kong from one of our distribution packages, you are not
   affected by this change.
-- Support for PostreSQL 9.4 (deprecated in 0.12.0) is now dropped.
+- Support for PostgreSQL 9.4 (deprecated in 0.12.0) is now dropped.
 - Support for Cassandra 2.1 (deprecated in 0.12.0) is now dropped.
 
 ##### Configuration
@@ -3825,7 +3824,7 @@ database") for more details about this process.
   SSL termination somewhere before your requests hit Kong, and if you have
   configured `https_only` on the API, or if you use a plugin that requires
   HTTPS traffic (e.g. OAuth2).
-- The internal DNS resolver now honours the `search` and `ndots` configuration
+- The internal DNS resolver now honors the `search` and `ndots` configuration
   options of your `resolv.conf` file. Make sure that DNS resolution is still
   consistent in your environment, and consider eventually not using FQDNs
   anymore.
