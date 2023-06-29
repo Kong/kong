@@ -254,7 +254,7 @@ local function short_metric_name(full_name)
   -- `_bucket` suffix here, since it alphabetically goes before other
   -- histogram suffixes (`_count` and `_sum`).
   local suffix_idx, _ = full_name:find("_bucket{", 1, true)
-  if suffix_idx and full_name:find("le=", suffix_idx + 1, true) then
+  if suffix_idx and full_name:find("le=", labels_start + 1, true) then
     -- this is a histogram metric
     return full_name:sub(1, suffix_idx - 1)
   end
