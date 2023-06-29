@@ -1,12 +1,13 @@
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
 local pl_file = require "pl.file"
+local pl_template = require ('pl.text').Template
 
 
 local XML_TEMPLATE = [[
 <?xml version="1.0" encoding="UTF-8"?>
 <error>
-  <message>%s</message>
+  <message>$message</message>
 </error>]]
 
 
@@ -15,11 +16,11 @@ local HTML_TEMPLATE = [[
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Kong Error</title>
+    <title>$status</title>
   </head>
   <body>
-    <h1>Kong Error</h1>
-    <p>%s.</p>
+    <h1>$status</h1>
+    <p>$message</p>
   </body>
 </html>]]
 
@@ -84,7 +85,11 @@ for _, strategy in helpers.each_strategy() do
         })
 
         local body = assert.res_status(RESPONSE_CODE, res)
-        local html_message = string.format(HTML_TEMPLATE, RESPONSE_MESSAGE)
+        local template = pl_template(HTML_TEMPLATE)
+        local html_message = template:safe_substitute({
+          message = RESPONSE_MESSAGE,
+          status = RESPONSE_CODE,
+        })
         assert.equal(html_message, body)
       end)
 
@@ -164,7 +169,12 @@ for _, strategy in helpers.each_strategy() do
           })
 
           local body = assert.res_status(RESPONSE_CODE, res)
-          local html_message = string.format(HTML_TEMPLATE, RESPONSE_MESSAGE)
+          local template = pl_template(HTML_TEMPLATE)
+          local html_message = template:safe_substitute({
+            message = RESPONSE_MESSAGE,
+            status = RESPONSE_CODE,
+          })
+
           assert.equal(html_message, body)
         end)
 
@@ -192,7 +202,11 @@ for _, strategy in helpers.each_strategy() do
           })
 
           local body = assert.res_status(RESPONSE_CODE, res)
-          local xml_message = string.format(XML_TEMPLATE, RESPONSE_MESSAGE)
+          local template = pl_template(template)
+          local xml_message = template:safe_substitute({
+            message = RESPONSE_MESSAGE,
+            status = RESPONSE_CODE,
+          })
           assert.equal(xml_message, body)
         end)
       end)
@@ -260,7 +274,11 @@ for _, strategy in helpers.each_strategy() do
 
           local body = assert.res_status(RESPONSE_CODE, res)
           local custom_template = pl_file.read(html_template_path)
-          local html_message = string.format(custom_template, RESPONSE_MESSAGE)
+          local template = pl_template(custom_template)
+          local html_message = template:safe_substitute({
+            message = RESPONSE_MESSAGE,
+            status = RESPONSE_CODE,
+          })
           assert.equal(html_message, body)
         end)
 
@@ -275,7 +293,11 @@ for _, strategy in helpers.each_strategy() do
 
           local body = assert.res_status(RESPONSE_CODE, res)
           local custom_template = pl_file.read(plain_template_path)
-          local html_message = string.format(custom_template, RESPONSE_MESSAGE)
+          local template = pl_template(custom_template)
+          local html_message = template:safe_substitute({
+            message = RESPONSE_MESSAGE,
+            status = RESPONSE_CODE,
+          })
           assert.equal(html_message, body)
         end)
 
@@ -304,7 +326,11 @@ for _, strategy in helpers.each_strategy() do
 
           local body = assert.res_status(RESPONSE_CODE, res)
           local custom_template = pl_file.read(xml_template_path)
-          local xml_message = string.format(custom_template, RESPONSE_MESSAGE)
+          local template = pl_template(custom_template)
+          local html_message = template:safe_substitute({
+            message = RESPONSE_MESSAGE,
+            status = RESPONSE_CODE,
+          })
           assert.equal(xml_message, body)
         end)
 
@@ -320,7 +346,11 @@ for _, strategy in helpers.each_strategy() do
 
             local body = assert.res_status(RESPONSE_CODE, res)
             local custom_template = pl_file.read(html_template_path)
-            local html_message = string.format(custom_template, RESPONSE_MESSAGE)
+            local template = pl_template(custom_template)
+            local html_message = template:safe_substitute({
+              message = RESPONSE_MESSAGE,
+              status = RESPONSE_CODE,
+            })
             assert.equal(html_message, body)
           end)
 
