@@ -79,7 +79,7 @@ local field_schema = {
   { type = { type = "string", one_of = keys(Schema.valid_types), required = true }, },
   { required = { type = "boolean" }, },
   { reference = { type = "string" }, },
-  { description = { type = "string", len_min = 1, len_max = 5000}, },
+  { description = { type = "string", len_min = 10, len_max = 500}, },
   { auto = { type = "boolean" }, },
   { unique = { type = "boolean" }, },
   { unique_across_ws = { type = "boolean" }, },
