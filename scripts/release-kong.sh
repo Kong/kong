@@ -123,6 +123,12 @@ function push_package () {
     -e PULP_HOST="$PULP_HOST" \
     -e PULP_USERNAME="$PULP_USERNAME" \
     -e PULP_PASSWORD="$PULP_PASSWORD" \
+    -e VERBOSE \
+    -e CLOUDSMITH_API_KEY \
+    -e CLOUDSMITH_DRY_RUN \
+    -e IGNORE_CLOUDSMITH_FAILURES \
+    -e USE_CLOUDSMITH \
+    -e USE_PULP \
     -v "$(pwd)/$KONG_ARTIFACT:/files/$DIST_FILE" \
     -i $PULP_DOCKER_IMAGE \
           --file "/files/$DIST_FILE" \
