@@ -61,7 +61,6 @@ local ngx_log = ngx.log
 local ngx_sleep = ngx.sleep
 local ngx_re_match = ngx.re.match
 local ngx_re_gsub = ngx.re.gsub
-local ngx_print = ngx.print
 local error = error
 local type = type
 local pairs = pairs
@@ -919,7 +918,7 @@ function Prometheus:metric_data(write_fn, local_only)
     ngx_log(ngx.ERR, "Prometheus module has not been initialized")
     return
   end
-  write_fn = write_fn or ngx_print
+  write_fn = write_fn or ngx.print
 
   -- Force a manual sync of counter local state (mostly to make tests work).
   self._counter:sync()
