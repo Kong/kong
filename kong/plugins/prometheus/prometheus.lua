@@ -321,7 +321,7 @@ local function construct_bucket_format(buckets)
 
     local dot_idx = as_string:find(".", 1, true)
     max_order = math.max(max_order, dot_idx - 1)
-    max_precision = math.max(max_precision, as_string:len() - dot_idx)
+    max_precision = math.max(max_precision, #as_string - dot_idx)
   end
 
   return "%0" .. (max_order + max_precision + 1) .. "." .. max_precision .. "f"
