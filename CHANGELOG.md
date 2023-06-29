@@ -69,6 +69,8 @@
 - Added a `User=` specification to the systemd unit definition so that
   Kong can be controlled by systemd again.
   [#11066](https://github.com/Kong/kong/pull/11066)
+- Remove kong branding from kong HTML error template.
+  [#11150](https://github.com/Kong/kong/pull/11150)
 
 #### Admin API
 
