@@ -16,7 +16,6 @@ local ipairs = ipairs
 local table_insert = table.insert
 local table_remove = table.remove
 local table_sort = table.sort
-local table_remove = table.remove
 local gsub = string.gsub
 local split = utils.split
 local deflate_gzip = utils.deflate_gzip
