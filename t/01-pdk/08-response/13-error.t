@@ -165,10 +165,10 @@ Content-Type: text/html; charset=utf-8
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Kong Error</title>
+    <title>Error</title>
   </head>
   <body>
-    <h1>Kong Error</h1>
+    <h1>Error</h1>
     <p>An invalid response was received from the upstream server.</p>
   </body>
 </html>
@@ -475,10 +475,10 @@ Content-Type: text/html; charset=utf-8
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Kong Error</title>
+    <title>Error</title>
   </head>
   <body>
-    <h1>Kong Error</h1>
+    <h1>Error</h1>
     <p>An invalid response was received from the upstream server.</p>
   </body>
 </html>
