@@ -125,7 +125,7 @@ filegroup(
 def kong_resty_websocket_repositories():
     new_git_repository(
         name = "lua-resty-websocket",
-        commit = KONG_VAR["LUA_RESTY_WEBSOCKET"],
+        branch = KONG_VAR["LUA_RESTY_WEBSOCKET"],
         remote = "https://github.com/Kong/lua-resty-websocket",
         build_file_content = _SRCS_BUILD_FILE_CONTENT,
     )
