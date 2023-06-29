@@ -39,6 +39,7 @@ local skip_inject_cmds = {
   check = true,
   stop = true,
   quit = true,
+  health = true,
 }
 
 for k in pairs(cmds) do
