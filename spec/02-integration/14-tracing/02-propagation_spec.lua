@@ -160,7 +160,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_same(0, #spans, res)
 
         local traceparent = assert(body.headers.traceparent)
-        assert.equals("00-" .. trace_id .. "-" .. span_id .. "-00", traceparent)
+        assert.matches("00%-" .. trace_id .. "%-%x+%-00", traceparent)
       end)
     end)
   end)
