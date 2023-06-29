@@ -166,7 +166,7 @@ config_setting(
     visibility = ["//visibility:public"],
 )
 
-# --//:wasm_runtime=wasmer
+# --//:wasm_runtime=wasmtime
 string_flag(
     name = "wasm_runtime",
     build_setting_default = "wasmtime",
