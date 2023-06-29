@@ -757,7 +757,7 @@ function Prometheus.init(dict_name, options_or_prefix)
   self:counter(self.error_metric_name, "Number of nginx-lua-prometheus errors")
   self.dict:set(self.error_metric_name, 0)
 
-  if ngx.get_phase() == 'init_worker' then
+  if phase == 'init_worker' then
     self:init_worker(self.sync_interval)
   end
   return self
