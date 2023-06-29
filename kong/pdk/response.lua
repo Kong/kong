@@ -34,6 +34,7 @@ local normalize_multi_header = checks.normalize_multi_header
 local validate_header = checks.validate_header
 local validate_headers = checks.validate_headers
 local check_phase = phase_checker.check
+local pl_template = require ('pl.text').Template
 local add_header
 local is_http_subsystem = ngx and ngx.config.subsystem == "http"
 if is_http_subsystem then
@@ -1169,7 +1170,12 @@ local function new(self, major_version)
     local body
     if content_type ~= CONTENT_TYPE_GRPC then
       local actual_message = message or get_http_error_message(status)
-      body = fmt(utils.get_error_template(content_type), actual_message)
+      local template = utils.get_error_template(content_type)
+      template = pl_template(template)
+      body = template:safe_substitute({
+        message = actual_message,
+        status = status,
+      })
     end
 
     local ctx = ngx.ctx

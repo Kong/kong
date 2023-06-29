@@ -1422,23 +1422,23 @@ do
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Kong Error</title>
+    <title>$status</title>
   </head>
   <body>
-    <h1>Kong Error</h1>
-    <p>%s.</p>
+    <h1>$status</h1>
+    <p>$message</p>
   </body>
 </html>
 ]],
     [CONTENT_TYPE_JSON]   = [[
 {
-  "message":"%s"
+  "message":"$message"
 }]],
-    [CONTENT_TYPE_PLAIN]  = "%s\n",
+    [CONTENT_TYPE_PLAIN]  = "$message\n",
     [CONTENT_TYPE_XML]    = [[
 <?xml version="1.0" encoding="UTF-8"?>
 <error>
-  <message>%s</message>
+  <message>$message</message>
 </error>
 ]],
   }
