@@ -60,7 +60,7 @@ filegroup(
 
 filegroup(
     name = "lib",
-    srcs = glob(["**/*.a", "**/*.dylib"]),
+    srcs = glob(["**/*.a"]),
     visibility = ["//visibility:public"]
 )
 """,
