@@ -339,8 +339,9 @@ for _, strategy in helpers.each_strategy() do
         assert(tcp:sslhandshake(nil, nil, false))
         assert(tcp:send(MESSAGE))
         local body = assert(tcp:receive("*a"))
-        assert.matches("IP address not allowed", body)
         tcp:close()
+
+        assert.logfile().has.line("IP address not allowed", true)
       end)
 
       it("allows a request when the IP is not denied", function()
