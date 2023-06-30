@@ -8,7 +8,7 @@
 local meta = require "kong.meta"
 local mime_parse = require "kong.plugins.mocking.mime_parse"
 local mocker = require "kong.plugins.mocking.jsonschema-mocker.mocker"
-local swagger_parser = require "kong.plugins.mocking.swagger-parser.swagger_parser"
+local swagger_parser = require "kong.enterprise_edition.openapi.plugins.swagger-parser.parser"
 local constants = require "kong.plugins.mocking.constants"
 
 local ngx = ngx

@@ -32,10 +32,5 @@ build = {
     ["kong.plugins."..pluginName..".jsonschema-mocker.type.string"] = "kong/plugins/"..pluginName.."/jsonschema-mocker/type/string.lua",
     ["kong.plugins."..pluginName..".jsonschema-mocker.constants"] = "kong/plugins/"..pluginName.."/jsonschema-mocker/constants.lua",
     ["kong.plugins."..pluginName..".jsonschema-mocker.mocker"] = "kong/plugins/"..pluginName.."/jsonschema-mocker/mocker.lua",
-
-    ["kong.plugins."..pluginName..".swagger-parser.swagger_parser"] = "kong/plugins/"..pluginName.."/swagger-parser/swagger_parser.lua",
-    ["kong.plugins."..pluginName..".swagger-parser.dereference"] = "kong/plugins/"..pluginName.."/swagger-parser/dereference.lua",
-
-
   }
 }
