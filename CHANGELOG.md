@@ -97,9 +97,9 @@
 ### Changed
 
 #### Core
+
 - Tracing: new attribute `http.route` added to http request spans.
   [#10981](https://github.com/Kong/kong/pull/10981)
-
 - The default value of `lmdb_map_size` config has been bumped to `2048m`
   from `128m` to accommodate most commonly deployed config sizes in DB-less
   and Hybrid mode.
