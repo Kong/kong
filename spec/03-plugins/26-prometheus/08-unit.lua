@@ -3,13 +3,12 @@ describe("Plugin: prometheus (unit)",function()
   local prometheus
 
   setup(function()
-    package.loaded['prometheus_resty_counter'] = require("resty.counter")
-
     ngx.shared = require("spec.fixtures.shm-stub")
     ngx.get_phase = function()
       return "init_worker"
     end
 
+    package.loaded['prometheus_resty_counter'] = require("resty.counter")
     prometheus = require("kong.plugins.prometheus.prometheus")
   end)
 
@@ -72,6 +71,30 @@ describe("Plugin: prometheus (unit)",function()
 
     m = prom:counter("mem8", nil, {"lua-vm"})
     assert.falsy(m)
+  end)
+
+  pending("check metric full name", function()
+    local prom = prometheus.init("prometheus_metrics", "kong_")
+    local shm = ngx.shared["prometheus_metrics"]
+    local m
+
+    m = prom:counter("mem", nil, {"lua"})
+    assert.truthy(m)
+    m:inc(1, {"2.1"})
+
+    --[==[
+    m = prom:counter("file", nil, {"path"})
+    assert.truthy(m)
+    m:inc(1, {"\\root"})
+
+    m = prom:counter("user", nil, {"name"})
+    assert.truthy(m)
+    m:inc(1, {"\"quote"})
+
+    assert.equal(shm:get([[mem{lua="2.1"}]]), "1")
+    assert.equal(shm:get([[file{path="\\root"}]]), "1")
+    assert.equal(shm:get([[user{name="\"quote"}]]), "1")
+    --]==]
   end)
 
 end)
