@@ -18,5 +18,26 @@ describe("Plugin: prometheus (unit)",function()
 
     local m = prom:counter("mem_used")
     assert.truthy(m)
+
+    m = prom:counter("Mem_Used")
+    assert.truthy(m)
+
+    m = prom:counter(":mem_used")
+    assert.truthy(m)
+
+    m = prom:counter("mem_used:")
+    assert.truthy(m)
+
+    m = prom:counter("_mem_used_")
+    assert.truthy(m)
+
+    m = prom:counter("mem-used")
+    assert.falsy(m)
+
+    m = prom:counter("0name")
+    assert.falsy(m)
+
+    m = prom:counter("name$")
+    assert.falsy(m)
   end)
 end)
