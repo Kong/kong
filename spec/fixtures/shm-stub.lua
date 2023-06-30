@@ -54,8 +54,10 @@ function SharedDict:incr(key, value, init)
     if not init then
       return nil, "not found"
     else
-      self.data[key] = {}
-      self.data[key].value = init
+      self.data[key] = {
+        value = init,
+        info = {expired = false}
+      }
     end
   elseif type(self.data[key]) ~= "table" then
     return nil, "not a table"
@@ -98,4 +100,5 @@ local shared_mt = {
     return self[key]
   end
 }
+
 return setmetatable({}, shared_mt)
