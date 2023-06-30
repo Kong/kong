@@ -346,7 +346,6 @@ for _, strategy in helpers.each_strategy() do
 
       lazy_teardown(function()
         helpers.stop_kong()
-        helpers.kill_http_server(HTTP_SERVER_PORT)
       end)
 
       it("send enough spans", function ()
