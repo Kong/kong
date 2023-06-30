@@ -1,5 +1,5 @@
 
-describe("Plugin: prometheus (unit)",function()
+describe("Plugin: prometheus (unit)", function()
   local prometheus
 
   setup(function()
@@ -99,6 +99,35 @@ describe("Plugin: prometheus (unit)",function()
     assert.equal(shm:get([[mem{lua="2.1"}]]), 1)
     assert.equal(shm:get([[file{path="\\root"}]]), 1)
     assert.equal(shm:get([[user{name="\"quote"}]]), 1)
+  end)
+
+  it("emit metric data", function()
+    local shm = ngx.shared["metrics"]
+
+    local prom = prometheus.init("metrics", "kong_")
+    local m
+
+    m = prom:counter("mem", nil, {"lua"})
+    assert.truthy(m)
+    m:inc(2, {"2.1"})
+
+    m = prom:counter("file", nil, {"path"})
+    assert.truthy(m)
+    m:inc(3, {"\\root"})
+
+    m = prom:counter("user", nil, {"name"})
+    assert.truthy(m)
+    m:inc(5, {"\"quote"})
+    m:inc(1, {"\"quote"})
+
+    local str = ""
+    prom:metric_data(function(d)
+      str = str .. d
+    end)
+
+    assert.truthy(str:find([[kong_mem{lua="2.1"} 2]], 1, true))
+    assert.truthy(str:find([[kong_file{path="\\root"} 3]], 1, true))
+    assert.truthy(str:find([[kong_user{name="\"quote"} 6]], 1, true))
   end)
 
 end)

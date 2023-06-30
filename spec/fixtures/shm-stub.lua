@@ -92,6 +92,15 @@ function SharedDict:flush_expired(n)
   return flushed
 end
 
+function SharedDict:get_keys()
+  local keys = {}
+  for k, _ in pairs(self.data) do
+    table.insert(keys, k)
+  end
+
+  return keys
+end
+
 local shared_mt = {
   __index = function(self, key)
     if rawget(self, key) == nil then
