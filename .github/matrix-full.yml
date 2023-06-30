@@ -56,6 +56,12 @@ build-packages:
   package: rpm
   package-type: el8
   check-manifest-suite: el8-amd64
+- label: rhel-9
+  os: ubuntu-22.04
+  image: rockylinux:9
+  package: rpm
+  package-distro: el9
+  check-manifest-suite: el9-amd64
 
 # Amazon Linux
 - label: amazonlinux-2
@@ -97,9 +103,11 @@ build-images:
 
 # RHEL
 - label: rhel
-  base-image: registry.access.redhat.com/ubi8
+  base-image: registry.access.redhat.com/ubi9
   package: rpm
-  artifact-from: rhel-8
+  artifact-from: rhel-9
+  package-distro: el9
+  artifact-from: rhel-9
 
 smoke-tests:
 - label: ubuntu
@@ -167,6 +175,12 @@ release-packages:
   artifact-version: 8
   artifact-type: rhel
   artifact: kong.el8.amd64.rpm
+- label: rhel-9
+  package: rpm
+  artifact-from: rhel-9
+  artifact-version: 9
+  artifact-type: rhel
+  artifact: kong.el9.amd64.rpm
 
 # Amazon Linux
 - label: amazonlinux-2
