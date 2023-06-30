@@ -338,7 +338,7 @@ for _, strategy in helpers.each_strategy() do
         assert(tcp:connect(helpers.get_proxy_ip(true), 19443))
         assert(tcp:sslhandshake(nil, nil, false))
         assert(tcp:send(MESSAGE))
-        local body = assert(tcp:receive("*a"))
+        assert(tcp:receive("*a"))
         tcp:close()
 
         assert.logfile().has.line("IP address not allowed", true)
