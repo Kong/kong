@@ -73,28 +73,30 @@ wasm_libs_cmd = select({
         mkdir -p "$(dirname "$dest")"
         cp -v "$fname" "$dest"
     done
-
-    copy_with_filter ${BUILD_DESTDIR}/openresty/nginx/lib ${BUILD_DESTDIR}/kong/lib
 """,
     "//conditions:default": "\n",
 })
 
 wasmx_vm_cmd = select({
     "@kong//:wasmx_v8": """
-    for fname in $(locations @v8//:lib); do
-        cp -v "$fname" "${BUILD_DESTDIR}/kong/lib"
-    done
-
+    if [[ -d ${BUILD_DESTDIR}/openresty/nginx/lib ]]; then
+        copy_with_filter ${BUILD_DESTDIR}/openresty/nginx/lib ${BUILD_DESTDIR}/kong/lib
+        rm -rf ${BUILD_DESTDIR}/openresty/nginx/lib
+    fi
 """,
     "@kong//:wasmx_wasmer": """
-    for fname in $(locations @wasmer//:lib); do
-        cp -v "$fname" "${BUILD_DESTDIR}/kong/lib"
-    done
+    if [[ -d ${BUILD_DESTDIR}/openresty/nginx/lib ]]; then
+        copy_with_filter ${BUILD_DESTDIR}/openresty/nginx/lib ${BUILD_DESTDIR}/kong/lib
+        rm -rf ${BUILD_DESTDIR}/openresty/nginx/lib
+    fi
 """,
+    # both v8 and wasmer currently depend on openresty/nginx/lib/libngx_wasm_rs.so,
+    # but in the case of wasmtime it is statically linked and thus not needed in
+    # the final package
     "@kong//:wasmx_wasmtime": """
-    for fname in $(locations @wasmtime//:lib); do
-        cp -v "$fname" "${BUILD_DESTDIR}/kong/lib"
-    done
+    if [[ -d ${BUILD_DESTDIR}/openresty/nginx/lib ]]; then
+        rm -rf ${BUILD_DESTDIR}/openresty/nginx/lib
+    fi
 """,
     "//conditions:default": "",
 })

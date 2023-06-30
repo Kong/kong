@@ -47,8 +47,9 @@ filegroup(
         http_archive,
         name = "v8",
         urls = [
-            "https://github.com/Kong/ngx_wasm_runtimes/releases/download/latest/ngx_wasm_runtime-v8-" +
-            v8_version + "-" + v8_os + "-" + v8_arch + ".tar.gz",
+            "https://github.com/Kong/ngx_wasm_runtimes/releases/download/v8-" +
+            v8_version + "/ngx_wasm_runtime-v8-" + v8_version + "-" + v8_os + "-" +
+            v8_arch + ".tar.gz",
         ],
         strip_prefix = "v8-" + v8_version + "-" + v8_os + "-" + v8_arch,
         build_file_content = """
@@ -60,7 +61,7 @@ filegroup(
 
 filegroup(
     name = "lib",
-    srcs = glob(["**/*.so", "**/*.dylib"]),
+    srcs = glob(["**/*.a"]),
     visibility = ["//visibility:public"]
 )
 """,
