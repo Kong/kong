@@ -7,6 +7,9 @@ describe("Plugin: prometheus (unit)",function()
     ngx.get_phase = function()
       return "init_worker"
     end
+    ngx.timer = {
+      every = function() end,
+    }
 
     package.loaded['prometheus_resty_counter'] = require("resty.counter")
     prometheus = require("kong.plugins.prometheus.prometheus")
@@ -73,7 +76,7 @@ describe("Plugin: prometheus (unit)",function()
     assert.falsy(m)
   end)
 
-  pending("check metric full name", function()
+  it("check metric full name", function()
     local prom = prometheus.init("prometheus_metrics", "kong_")
     local shm = ngx.shared["prometheus_metrics"]
     local m
@@ -82,7 +85,6 @@ describe("Plugin: prometheus (unit)",function()
     assert.truthy(m)
     m:inc(1, {"2.1"})
 
-    --[==[
     m = prom:counter("file", nil, {"path"})
     assert.truthy(m)
     m:inc(1, {"\\root"})
@@ -91,10 +93,12 @@ describe("Plugin: prometheus (unit)",function()
     assert.truthy(m)
     m:inc(1, {"\"quote"})
 
-    assert.equal(shm:get([[mem{lua="2.1"}]]), "1")
-    assert.equal(shm:get([[file{path="\\root"}]]), "1")
-    assert.equal(shm:get([[user{name="\"quote"}]]), "1")
-    --]==]
+    -- sync to shdict
+    prom._counter:sync()
+
+    assert.equal(shm:get([[mem{lua="2.1"}]]), 1)
+    assert.equal(shm:get([[file{path="\\root"}]]), 1)
+    assert.equal(shm:get([[user{name="\"quote"}]]), 1)
   end)
 
 end)

@@ -54,10 +54,11 @@ function SharedDict:incr(key, value, init)
     if not init then
       return nil, "not found"
     else
+      self.data[key] = {}
       self.data[key].value = init
     end
-  elseif type(self.data[key]) ~= "number" then
-    return nil, "not a number"
+  elseif type(self.data[key]) ~= "table" then
+    return nil, "not a table"
   end
 
   self.data[key].value = self.data[key].value + value
