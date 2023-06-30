@@ -4,10 +4,10 @@ describe("Plugin: prometheus (unit)", function()
 
   setup(function()
     ngx.shared = require("spec.fixtures.shm-stub")
-    ngx.get_phase = function()
+    ngx.get_phase = function()  -- luacheck: ignore
       return "init_worker"
     end
-    ngx.timer = {
+    ngx.timer = {               -- luacheck: ignore
       every = function() end,
     }
 
@@ -102,8 +102,6 @@ describe("Plugin: prometheus (unit)", function()
   end)
 
   it("emit metric data", function()
-    local shm = ngx.shared["metrics"]
-
     local prom = prometheus.init("metrics", "kong_")
     local m
 
