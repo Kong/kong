@@ -54,10 +54,7 @@ function SharedDict:incr(key, value, init)
     if not init then
       return nil, "not found"
     else
-      self.data[key] = {
-        value = init,
-        info = {expired = false}
-      }
+      set(self.data, key, init)
     end
   elseif type(self.data[key]) ~= "table" then
     return nil, "not a table"
