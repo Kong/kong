@@ -14,6 +14,8 @@
 - Fixed a bug that causes `POST /config?flatten_errors=1` to throw an exception
   and return a 500 error under certain circumstances.
   [#10896](https://github.com/Kong/kong/pull/10896)
+- Fix a bug that caused the router to fail in `traditional_compatible` mode when a route with multiple paths and no service was created.
+  [#11158](https://github.com/Kong/kong/pull/11158)
 
 ## 3.3.0
 
@@ -21,10 +23,10 @@
 
 #### Core
 
-- The `traditional_compat` router mode has been made more compatible with the
+- The `traditional_compatible` router mode has been made more compatible with the
   behavior of `traditional` mode by splitting routes with multiple paths into
   multiple atc routes with separate priorities.  Since the introduction of the new
-  router in Kong Gateway 3.0, `traditional_compat` mode assigned only one priority
+  router in Kong Gateway 3.0, `traditional_compatible` mode assigned only one priority
   to each route, even if different prefix path lengths and regular expressions
   were mixed in a route. This was not how multiple paths were handled in the
   `traditional` router and the behavior has now been changed so that a separate
