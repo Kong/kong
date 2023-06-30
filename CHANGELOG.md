@@ -58,7 +58,6 @@
 
 ### Fixes
 
-
 #### Core
 
 - Fixed a bug that causes `POST /config?flatten_errors=1` to throw an exception
@@ -73,6 +72,8 @@
   [#11150](https://github.com/Kong/kong/pull/11150)
 - Fix a bug that caused sampling rate to be applied to individual spans producing split traces.
   [#11135](https://github.com/Kong/kong/pull/11135)
+- Fix a bug that caused the router to fail in `traditional_compatible` mode when a route with multiple paths and no service was created.
+  [#11158](https://github.com/Kong/kong/pull/11158)
 
 #### Admin API
 
@@ -135,17 +136,17 @@
 - Bumped OpenSSL from 1.1.1t to 3.1.1
   [#10180](https://github.com/Kong/kong/pull/10180)
   [#11140](https://github.com/Kong/kong/pull/11140)
-  
+
 ## 3.3.0
 
 ### Breaking Changes
 
 #### Core
 
-- The `traditional_compat` router mode has been made more compatible with the
+- The `traditional_compatible` router mode has been made more compatible with the
   behavior of `traditional` mode by splitting routes with multiple paths into
   multiple atc routes with separate priorities.  Since the introduction of the new
-  router in Kong Gateway 3.0, `traditional_compat` mode assigned only one priority
+  router in Kong Gateway 3.0, `traditional_compatible` mode assigned only one priority
   to each route, even if different prefix path lengths and regular expressions
   were mixed in a route. This was not how multiple paths were handled in the
   `traditional` router and the behavior has now been changed so that a separate
