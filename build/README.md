@@ -56,7 +56,7 @@ This operation primarily accomplishes the following:
 
 1. Add the Bazel build output folder containing `resty`, `luarocks` and other commands to `$PATH` so that the commands in the build output can be used directly.
 2. Set and specify the runtime path for Kong.
-3. Provide Bash functions to start and stop the database and other third-party dependency services required for Kong development environment using Docker, read more: [Start Kong](../DEVELOPER#start-kong).
+3. Provide Bash functions to start and stop the database and other third-party dependency services required for Kong development environment using Docker, read more: [Start Kong](../DEVELOPER.md#start-kong).
 
 ### Debugging
 
