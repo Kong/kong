@@ -5,6 +5,7 @@ local bit = require("bit")
 local buffer = require("string.buffer")
 local atc = require("kong.router.atc")
 local tb_new = require("table.new")
+local tb_clear = require("table.clear")
 local tb_nkeys = require("table.nkeys")
 local uuid = require("resty.jit-uuid")
 local utils = require("kong.tools.utils")
@@ -315,18 +316,24 @@ local function get_exp_and_priority(route)
 end
 
 
+local GROUPED_PATHS = {}
+
 -- group array-like table t by the function f, returning a table mapping from
 -- the result of invoking f on one of the elements to the actual elements.
 local function group_by(t, f)
-  local result = {}
-  for _, value in ipairs(t) do
+  local result = GROUPED_PATHS
+  tb_clear(result)
+
+  for i = 1, #t do
+    local value = t[i]
     local key = f(value)
-    if result[key] then
-      tb_insert(result[key], value)
-    else
-      result[key] = { value }
+
+    if not result[key] then
+      result[key] = {}
     end
+    tb_insert(result[key], value)
   end
+
   return result
 end
 
