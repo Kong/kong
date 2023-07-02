@@ -1,6 +1,6 @@
 if ngx.config.subsystem ~= "http" then
   return {
-    init_worker = function() end;
+    init_worker = function() end,
   }
 end
 
@@ -56,7 +56,7 @@ local function cluster_handler(data)
 end
 
 
-local function worker_handler(data)
+local function node_handler(data)
   local worker = ngx.worker.id()
 
   log(NOTICE, "log level worker event received for worker ", worker)
@@ -77,10 +77,10 @@ local function init_worker()
 
   kong.cluster_events:subscribe("log_level", cluster_handler)
 
-  kong.worker_events.register(worker_handler, "debug", "log_level")
+  kong.worker_events.register(node_handler, "debug", "log_level")
 end
 
 
 return {
-  init_worker = init_worker;
+  init_worker = init_worker,
 }
