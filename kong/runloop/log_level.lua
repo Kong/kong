@@ -30,6 +30,7 @@ local function set_log_level(worker, level, timeout)
 end
 
 
+-- if worker has outdated log level (e.g. newly spawned), updated it
 local function init_handler()
   local shm_log_level = ngx.shared.kong:get(constants.DYN_LOG_LEVEL_KEY)
 
@@ -45,6 +46,7 @@ local function init_handler()
 end
 
 
+-- log level cluster event updates
 local function cluster_handler(data)
   log(NOTICE, "log level cluster event received")
 
@@ -64,6 +66,7 @@ local function cluster_handler(data)
 end
 
 
+-- log level worker event updates
 local function worker_handler(data)
   local worker = ngx.worker.id()
 
