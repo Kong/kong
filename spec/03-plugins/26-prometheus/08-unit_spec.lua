@@ -2,6 +2,10 @@
 describe("Plugin: prometheus (unit)", function()
   local prometheus
 
+  local orig_ngx_shared    = ngx.shared
+  local orig_ngx_get_phase = ngx.get_phase
+  local orig_ngx_timer     = ngx.timer
+
   setup(function()
     ngx.shared = require("spec.fixtures.shm-stub")
     ngx.get_phase = function()  -- luacheck: ignore
@@ -13,6 +17,12 @@ describe("Plugin: prometheus (unit)", function()
 
     package.loaded['prometheus_resty_counter'] = require("resty.counter")
     prometheus = require("kong.plugins.prometheus.prometheus")
+  end)
+
+  teardown(function()
+    ngx.shared    = orig_ngx_shared
+    ngx.get_phase = orig_ngx_get_phase  -- luacheck: ignore
+    ngx.timer     = orig_ngx_timer      -- luacheck: ignore
   end)
 
   it("check metric names", function()
