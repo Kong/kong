@@ -61,7 +61,6 @@ local ngx_log = ngx.log
 local ngx_sleep = ngx.sleep
 local ngx_re_match = ngx.re.match
 local ngx_re_gsub = ngx.re.gsub
-local ngx_print = ngx.print
 local error = error
 local type = type
 local pairs = pairs
@@ -255,7 +254,7 @@ local function short_metric_name(full_name)
   -- `_bucket` suffix here, since it alphabetically goes before other
   -- histogram suffixes (`_count` and `_sum`).
   local suffix_idx, _ = full_name:find("_bucket{", 1, true)
-  if suffix_idx and full_name:find("le=", 1, true) then
+  if suffix_idx and full_name:find("le=", labels_start + 1, true) then
     -- this is a histogram metric
     return full_name:sub(1, suffix_idx - 1)
   end
@@ -321,7 +320,7 @@ local function construct_bucket_format(buckets)
 
     local dot_idx = as_string:find(".", 1, true)
     max_order = math.max(max_order, dot_idx - 1)
-    max_precision = math.max(max_precision, as_string:len() - dot_idx)
+    max_precision = math.max(max_precision, #as_string - dot_idx)
   end
 
   return "%0" .. (max_order + max_precision + 1) .. "." .. max_precision .. "f"
@@ -757,7 +756,7 @@ function Prometheus.init(dict_name, options_or_prefix)
   self:counter(self.error_metric_name, "Number of nginx-lua-prometheus errors")
   self.dict:set(self.error_metric_name, 0)
 
-  if ngx.get_phase() == 'init_worker' then
+  if phase == 'init_worker' then
     self:init_worker(self.sync_interval)
   end
   return self
@@ -919,7 +918,7 @@ function Prometheus:metric_data(write_fn, local_only)
     ngx_log(ngx.ERR, "Prometheus module has not been initialized")
     return
   end
-  write_fn = write_fn or ngx_print
+  write_fn = write_fn or ngx.print
 
   -- Force a manual sync of counter local state (mostly to make tests work).
   self._counter:sync()
