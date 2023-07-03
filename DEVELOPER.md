@@ -96,6 +96,7 @@ sudo apt update \
     file \
     git \
     libyaml-dev \
+    libcurl4-openssl-dev \
     libprotobuf-dev \
     m4 \
     perl \
@@ -116,6 +117,7 @@ dnf install \
     gcc-c++ \
     git \
     libyaml-devel \
+    curl-devel \
     make \
     patch \
     perl \
@@ -136,6 +138,7 @@ macOS
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 # Build dependencies
 brew install libyaml
+brew install curl
 ```
 
 Finally, we start the build process:
