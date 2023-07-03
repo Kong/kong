@@ -63,9 +63,10 @@ local PluginsIterator = {}
 -- @tparam string|nil consumer_id The consumer identifier. If `nil`, an empty string is used.
 -- @treturn string The compound key, in the format `route_id:service_id:consumer_id`.
 ---
-function PluginsIterator.build_compound_key(route_id, service_id, consumer_id)
+local function build_compound_key(route_id, service_id, consumer_id)
   return format("%s:%s:%s", route_id or "", service_id or "", consumer_id or "")
 end
+PluginsIterator.build_compound_key = build_compound_key
 
 local function get_table_for_ctx(ws)
   local tbl = fetch_table(PLUGINS_NS, 0, DOWNSTREAM_PHASES_COUNT + 2)
@@ -170,19 +171,16 @@ end
 -- @return any|nil The configuration corresponding to the best matching combination, or 'nil' if no configuration is found.
 ---
 function PluginsIterator.lookup_cfg(combos, route_id, service_id, consumer_id)
-  -- Use the build_compound_key function to create an index for the 'combos' table
-  local build_compound_key = PluginsIterator.build_compound_key
-
   local ids = { route_id, service_id, consumer_id, }
 
   local orders = {
-    { true , true , true  },  -- Route, Service, Consumer
-    { true , false, true  },  -- Route,        , Consumer
-    { false, true , true  },  --      , Service, Consumer
-    { true , true , false },  -- Route, Service,
-    { false, false, true  },  --      ,        , Consumer
-    { true , false, false },  -- Route,        ,
-    { false, true , false },  --      , Service,
+    { true , true , true , },  -- Route, Service, Consumer
+    { true , false, true , },  -- Route,        , Consumer
+    { false, true , true , },  --      , Service, Consumer
+    { true , true , false, },  -- Route, Service,
+    { false, false, true , },  --      ,        , Consumer
+    { true , false, false, },  -- Route,        ,
+    { false, true , false, },  --      , Service,
   }
 
   for i = 1, #orders do
@@ -198,6 +196,7 @@ function PluginsIterator.lookup_cfg(combos, route_id, service_id, consumer_id)
     local sid = p[2] and ids[2]
     local cid = p[3] and ids[3]
 
+    -- Use the build_compound_key function to create an index for the 'combos' table
     local cfg = combos[build_compound_key(rid, sid, cid)]
     if cfg then
       return cfg
@@ -455,7 +454,7 @@ function PluginsIterator.new(version)
         combos[name] = combos[name] or {}
 
         -- Build a compound key using the route_id, service_id, and consumer_id
-        local compound_key = PluginsIterator.build_compound_key(route_id, service_id, consumer_id)
+        local compound_key = build_compound_key(route_id, service_id, consumer_id)
 
         -- Store the plugin configuration in the 'combos' table using the compound key
         combos[name][compound_key] = cfg
