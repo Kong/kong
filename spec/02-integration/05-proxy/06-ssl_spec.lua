@@ -17,7 +17,6 @@ end
 local mock_tls_server_port = helpers.get_available_port()
 
 local fixtures = {
-  --dns_mock = helpers.dns_mock.new({ mocks_only = true }),
   http_mock = {
     test_upstream_tls_server = fmt([[
       server {
@@ -595,7 +594,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  -- XXX: now flavor "expressions" do not support tcp/tls
+  -- XXX: now flavor "expressions" does not support tcp/tls
   if flavor ~= "expressions" then
   describe("TLS proxy [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
     lazy_setup(function()
