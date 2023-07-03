@@ -192,7 +192,6 @@ jobs:
                 curl \
                 file \
                 libyaml-dev \
-                libcurl4-openssl-dev \
                 m4 \
                 perl \
                 pkg-config \
@@ -209,7 +208,7 @@ jobs:
       run: |
         yum groupinstall -y 'Development Tools'
         dnf config-manager --set-enabled powertools || true # enable devel packages on rockylinux:8
-        yum install -y libyaml-devel curl-devel
+        yum install -y libyaml-devel
         yum install -y cpanminus || (yum install -y perl && curl -L https://raw.githubusercontent.com/miyagawa/cpanminus/master/cpanm | perl - App::cpanminus) # amazonlinux2023 removed cpanminus
         # required for openssl 3.x config
         cpanm IPC/Cmd.pm

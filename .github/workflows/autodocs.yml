@@ -62,7 +62,7 @@ jobs:
 
       - name: Install packages
         if: steps.cache-deps.outputs.cache-hit != 'true' || github.event.inputs.force_build == 'true'
-        run: sudo apt update && sudo apt install libyaml-dev valgrind libcurl4-openssl-dev
+        run: sudo apt update && sudo apt install libyaml-dev valgrind
 
       - name: Build Kong dependencies
         if: steps.cache-deps.outputs.cache-hit != 'true' || github.event.inputs.force_build == 'true'
