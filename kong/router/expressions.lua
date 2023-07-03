@@ -16,7 +16,7 @@ local ngx_ERR = ngx.ERR
 
 
 -- map to normal protocol
-local protocols_mapping = {
+local PROTOCOLS_OVERRIDE = {
   tls_passthrough = "tcp",
   grpc            = "http",
   grpcs           = "https",
@@ -33,7 +33,7 @@ local function get_exp_and_priority(route)
 
   local gen = gen_for_field("net.protocol", OP_EQUAL, route.protocols,
                             function(_, p)
-                              return protocols_mapping[p] or p
+                              return PROTOCOLS_OVERRIDE[p] or p
                             end)
   if gen then
     exp = exp .. LOGICAL_AND .. gen
