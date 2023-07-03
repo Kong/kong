@@ -186,7 +186,7 @@ jobs:
     - name: Install Deb Dependencies
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true'
       run: |
-        sudo apt-get update && sudo apt-get install -y \
+        sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
                 automake \
                 build-essential \
                 curl \
