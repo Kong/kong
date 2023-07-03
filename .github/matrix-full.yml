@@ -1,9 +1,4 @@
 build-packages:
-# As a general rule, binaries built on one Linux distro will only
-# work on other Linux distros that are the same age or newer.
-# Therefore, if we want to make binaries that run on most Linux distros,
-# we have to use an old enough distro.
-
 # label: used to distinguish artifacts for later use; make sure its value ends with -arm64 if
 #         it's a cross-compiled for ARM64 target
 # os: the github actions runner label to pick from
@@ -14,7 +9,8 @@ build-packages:
 
 # Ubuntu
 - label: ubuntu-20.04
-  os: ubuntu-20.04
+  os: ubuntu-22.04
+  image: ubuntu:20.04
   package: deb
   check-manifest-suite: ubuntu-20.04-amd64
 - label: ubuntu-20.04-fips
@@ -62,6 +58,11 @@ build-packages:
   package: rpm
   package-distro: el7
   check-manifest-suite: el7-amd64
+- label: rhel-8
+  os: ubuntu-22.04
+  image: rockylinux:8
+  package: rpm
+  check-manifest-suite: el8-amd64
 - label: rhel-8-fips
   os: vars.RELEASE_RUNS_ON
   image: rockylinux:8 # note we are not using ubi8 here as some packages needs subscription
@@ -85,10 +86,23 @@ build-packages:
   check-manifest-suite: amazonlinux-2-amd64
 - label: amazonlinux-2-arm64
   os: ubuntu-22.04-arm64
+  image: amazonlinux:2
+  package: rpm
+  package-distro: aws2
+  check-manifest-suite: amazonlinux-2-arm64
+- label: amazonlinux-2023
+  os: ubuntu-22.04
+  image: amazonlinux:2023
   package: rpm
   package-distro: aws2023
-  image: amazonlinux:2
-  check-manifest-suite: amazonlinux-2-arm64
+  check-manifest-suite: amazonlinux-2023-amd64
+- label: amazonlinux-2023-arm64
+  os: ubuntu-22.04-arm64
+  image: amazonlinux:2023
+  package: rpm
+  package-distro: aws2023
+  check-manifest-suite: amazonlinux-2023-arm64
+
 
 build-images:
 # Only build images for the latest version of each major release.
@@ -141,8 +155,8 @@ build-images:
   base-image: amazonlinux:2023
   package: rpm
   package-distro: aws2023
-  artifact-from: amazonlinux-2
-  artifact-from-alt: amazonlinux-2-arm64
+  artifact-from: amazonlinux-2023
+  artifact-from-alt: amazonlinux-2023-arm64
   docker_platforms: linux/amd64,linux/arm64
 
 test-images:
@@ -236,7 +250,7 @@ release-packages:
   artifact: kong.el7.amd64.rpm
 - label: rhel-8
   package: rpm
-  artifact-from: rhel-7
+  artifact-from: rhel-8
   artifact-version: 8
   artifact-type: rhel
   artifact: kong.el8.amd64.rpm
@@ -268,7 +282,7 @@ release-packages:
   artifact: kong.aws2.arm64.rpm
 - label: amazonlinux-2023
   package: rpm
-  artifact-from: amazonlinux-2
+  artifact-from: amazonlinux-2023
   artifact-version: 2023
   artifact-type: amazonlinux
   artifact: kong.aws2023.amd64.rpm
