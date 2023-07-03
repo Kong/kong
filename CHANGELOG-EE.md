@@ -1,3 +1,7 @@
+# Table of Contents
+
+- [3.3.0.0](#3300)
+
 # Unreleased
 
 ## Enterprise
@@ -38,8 +42,6 @@
 * Fix an issue that sometimes can't attach workspace with the cache's consumer well. [FTI-4564](https://konghq.atlassian.net/browse/FTI-4564)
 * Fix CORS incorrect behavior when KM integrated with Portal GUI. [FTI-1437](https://konghq.atlassian.net/browse/FTI-1437)
 
-### Kong Manager
-
 
 ## Plugins
 
@@ -72,6 +74,17 @@
 * **OpenID-Connect**: Changes some log's level from `notice` to `error` for better visibility.
   [FTI-2884](https://konghq.atlassian.net/browse/FTI-2884)
 
+## Kong Manager
+
+### Breaking Changes
+
+### Deprecations
+
+### Dependencies
+
+### Features
+
+### Fixes
 
 # 3.3.0.0
 
@@ -208,9 +221,19 @@ a copy. [KAG-739](https://konghq.atlassian.net/browse/KAG-739)
 
 ### Fixes
 
-### Kong Manager
-
 ## Plugins
+
+### Breaking Changes
+
+### Deprecations
+
+### Dependencies
+
+### Features
+
+### Fixes
+
+## Kong Manager
 
 ### Breaking Changes
 
