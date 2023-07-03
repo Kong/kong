@@ -34,7 +34,7 @@ local function get_exp_and_priority(route)
   local protocols = route.protocols
 
   -- give the chance for http redirection (301/302/307/308/426)
-  if #protocols == 1 and protocols[1] == "https" then
+  if protocols and #protocols == 1 and protocols[1] == "https" then
     return exp, route.priority
   end
 
