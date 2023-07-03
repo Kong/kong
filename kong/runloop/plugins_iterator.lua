@@ -158,7 +158,8 @@ local PLUGIN_ORDERS = {
   { true, nil , nil , },  -- Route,        ,
   { nil , true, nil , },  --      , Service,
 }
-local PLUGIN_ORDER_N = #PLUGIN_ORDERS[1]
+local PLUGIN_ORDERS_N = #PLUGIN_ORDERS
+local PLUGIN_ORDER_N  = #PLUGIN_ORDERS[1]
 
 ---
 -- Lookup a configuration for a given combination of route_id, service_id, consumer_id
@@ -189,7 +190,7 @@ local function lookup_cfg(combos, route_id, service_id, consumer_id)
   ids[2] = service_id
   ids[3] = consumer_id
 
-  for i = 1, #PLUGIN_ORDERS do
+  for i = 1, PLUGIN_ORDERS_N do
     local p = PLUGIN_ORDERS[i]
 
     for idx = 1, PLUGIN_ORDER_N do
@@ -198,12 +199,11 @@ local function lookup_cfg(combos, route_id, service_id, consumer_id)
       end
     end
 
-    local rid = p[1] and ids[1]
-    local sid = p[2] and ids[2]
-    local cid = p[3] and ids[3]
-
     -- Use the build_compound_key function to create an index for the 'combos' table
-    local cfg = combos[build_compound_key(rid, sid, cid)]
+    local cfg = combos[build_compound_key(p[1] and ids[1],
+                                          p[2] and ids[2],
+                                          p[3] and ids[3]
+                                         )]
     if cfg then
       return cfg
     end
