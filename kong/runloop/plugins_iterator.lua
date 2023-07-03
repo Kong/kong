@@ -66,7 +66,6 @@ local PluginsIterator = {}
 local function build_compound_key(route_id, service_id, consumer_id)
   return format("%s:%s:%s", route_id or "", service_id or "", consumer_id or "")
 end
-PluginsIterator.build_compound_key = build_compound_key
 
 local function get_table_for_ctx(ws)
   local tbl = fetch_table(PLUGINS_NS, 0, DOWNSTREAM_PHASES_COUNT + 2)
@@ -170,7 +169,7 @@ end
 -- @tparam string|nil consumer_id The consumer identifier.
 -- @return any|nil The configuration corresponding to the best matching combination, or 'nil' if no configuration is found.
 ---
-function PluginsIterator.lookup_cfg(combos, route_id, service_id, consumer_id)
+local function lookup_cfg(combos, route_id, service_id, consumer_id)
   local ids = { route_id, service_id, consumer_id, }
 
   local orders = {
@@ -231,7 +230,7 @@ local function load_configuration_through_combos(ctx, combos, plugin)
   local consumer_id = (ctx.authenticated_consumer and not plugin.handler.no_consumer) and ctx.authenticated_consumer.id or nil
 
   -- Call the lookup_cfg function to get the best matching plugin configuration
-  return PluginsIterator.lookup_cfg(combos, route_id, service_id, consumer_id)
+  return lookup_cfg(combos, route_id, service_id, consumer_id)
 end
 
 local function get_workspace(self, ctx)
@@ -502,5 +501,9 @@ function PluginsIterator.new(version)
     release = release,
   }
 end
+
+-- for testing
+PluginsIterator.lookup_cfg = lookup_cfg
+PluginsIterator.build_compound_key = build_compound_key
 
 return PluginsIterator
