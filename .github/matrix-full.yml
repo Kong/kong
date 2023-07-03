@@ -3,7 +3,7 @@ build-packages:
 #         it's a cross-compiled for ARM64 target
 # os: the github actions runner label to pick from
 # package: package type
-# package-distro: the distro name to use in package name, for example el7, aws2; only applicable to rpm
+# package-type: the nfpm packaging target, //:kong_{package} target; only used when package is rpm
 # bazel_args: additional bazel build flags 
 # check-manifest-suite: the check manifest suite as defined in scripts/explain_manifest/config.py
 
@@ -56,12 +56,13 @@ build-packages:
   os: vars.RELEASE_RUNS_ON
   image: centos:7
   package: rpm
-  package-distro: el7
+  package-type: el7
   check-manifest-suite: el7-amd64
 - label: rhel-8
   os: ubuntu-22.04
   image: rockylinux:8
   package: rpm
+  package-type: el8
   check-manifest-suite: el8-amd64
 - label: rhel-8-fips
   os: vars.RELEASE_RUNS_ON
@@ -74,7 +75,7 @@ build-packages:
   os: vars.RELEASE_RUNS_ON
   image: rockylinux:9
   package: rpm
-  package-distro: el9
+  package-type: el9
   check-manifest-suite: el9-amd64
 
 # Amazon Linux
@@ -82,7 +83,7 @@ build-packages:
   os: vars.RELEASE_RUNS_ON
   image: amazonlinux:2
   package: rpm
-  package-distro: aws2
+  package-type: aws2
   check-manifest-suite: amazonlinux-2-amd64
 - label: amazonlinux-2-arm64
   os: ubuntu-22.04-arm64
@@ -94,7 +95,7 @@ build-packages:
   os: ubuntu-22.04
   image: amazonlinux:2023
   package: rpm
-  package-distro: aws2023
+  package-type: aws2023
   check-manifest-suite: amazonlinux-2023-amd64
 - label: amazonlinux-2023-arm64
   os: ubuntu-22.04-arm64
