@@ -174,13 +174,13 @@ function PluginsIterator.lookup_cfg(combos, route_id, service_id, consumer_id)
   local ids = { route_id, service_id, consumer_id, }
 
   local orders = {
-    { true , true , true , },  -- Route, Service, Consumer
-    { true , false, true , },  -- Route,        , Consumer
-    { false, true , true , },  --      , Service, Consumer
-    { true , true , false, },  -- Route, Service,
-    { false, false, true , },  --      ,        , Consumer
-    { true , false, false, },  -- Route,        ,
-    { false, true , false, },  --      , Service,
+    { true, true, true, },  -- Route, Service, Consumer
+    { true, nil , true, },  -- Route,        , Consumer
+    { nil , true, true, },  --      , Service, Consumer
+    { true, true, nil , },  -- Route, Service,
+    { nil , nil , true, },  --      ,        , Consumer
+    { true, nil , nil , },  -- Route,        ,
+    { nil , true, nil , },  --      , Service,
   }
 
   for i = 1, #orders do
