@@ -77,8 +77,7 @@ local function gen_route(flavor, r)
 end
 
 
---for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
-for _, flavor in ipairs({ "traditional", "traditional_compatible",  }) do
+for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
 for _, strategy in helpers.each_strategy() do
   describe("SSL [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
     local proxy_client
@@ -596,6 +595,8 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
+  -- XXX: now flavor "expressions" do not support tcp/tls
+  if flavor ~= "expressions" then
   describe("TLS proxy [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -690,8 +691,11 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
+  end   -- if flavor ~= "expressions" then
 
   describe("SSL [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
+
+    reload_router(flavor)
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -744,6 +748,8 @@ for _, strategy in helpers.each_strategy() do
   end)
 
   describe("kong.runloop.certificate invalid SNI [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
+    reload_router(flavor)
+
     lazy_setup(function()
       assert(helpers.start_kong {
         router_flavor = flavor,
@@ -809,4 +815,4 @@ for _, strategy in helpers.each_strategy() do
 
   end)
 end
-end
+end   -- for flavor
