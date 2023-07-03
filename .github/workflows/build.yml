@@ -28,7 +28,7 @@ jobs:
 
     - name: Install packages
       if: steps.cache-deps.outputs.cache-hit != 'true'
-      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libcurl4-openssl-dev
+      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev
 
     - name: Build Kong
       if: steps.cache-deps.outputs.cache-hit != 'true'
