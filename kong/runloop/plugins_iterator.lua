@@ -147,6 +147,18 @@ local function get_plugin_config(plugin, name, ws_id)
   return cfg
 end
 
+
+local PLUGIN_IDS    = { }
+local PLUGIN_ORDERS = {
+  { true, true, true, },  -- Route, Service, Consumer
+  { true, nil , true, },  -- Route,        , Consumer
+  { nil , true, true, },  --      , Service, Consumer
+  { true, true, nil , },  -- Route, Service,
+  { nil , nil , true, },  --      ,        , Consumer
+  { true, nil , nil , },  -- Route,        ,
+  { nil , true, nil , },  --      , Service,
+}
+
 ---
 -- Lookup a configuration for a given combination of route_id, service_id, consumer_id
 --
@@ -170,20 +182,14 @@ end
 -- @return any|nil The configuration corresponding to the best matching combination, or 'nil' if no configuration is found.
 ---
 local function lookup_cfg(combos, route_id, service_id, consumer_id)
-  local ids = { route_id, service_id, consumer_id, }
+  local ids = PLUGIN_IDS
 
-  local orders = {
-    { true, true, true, },  -- Route, Service, Consumer
-    { true, nil , true, },  -- Route,        , Consumer
-    { nil , true, true, },  --      , Service, Consumer
-    { true, true, nil , },  -- Route, Service,
-    { nil , nil , true, },  --      ,        , Consumer
-    { true, nil , nil , },  -- Route,        ,
-    { nil , true, nil , },  --      , Service,
-  }
+  ids[1] = route_id
+  ids[2] = service_id
+  ids[3] = consumer_id
 
-  for i = 1, #orders do
-    local p = orders[i]
+  for i = 1, #PLUGIN_ORDERS do
+    local p = PLUGIN_ORDERS[i]
 
     for idx = 1, 3 do
       if p[idx] and not ids[idx] then
