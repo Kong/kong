@@ -216,12 +216,12 @@ jobs:
     - name: Build Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
-        bazel build --config release //build:kong --verbose_failures ${{ matrix.bazel_args }}
+        bazel build --config release //build:kong --verbose_failures ${{ matrix.bazel-args }}
 
     - name: Package Kong - ${{ matrix.package }}
       if: matrix.package != 'rpm' && steps.cache-deps.outputs.cache-hit != 'true'
       run: |
-        bazel build --config release :kong_${{ matrix.package }} --verbose_failures ${{ matrix.bazel_args }}
+        bazel build --config release :kong_${{ matrix.package }} --verbose_failures ${{ matrix.bazel-args }}
 
     - name: Package Kong - rpm
       if: matrix.package == 'rpm' && steps.cache-deps.outputs.cache-hit != 'true'
@@ -235,7 +235,7 @@ jobs:
           export RPM_SIGNING_KEY_FILE=$RPM_SIGNING_KEY_FILE
         fi
 
-        bazel build --config release :kong_${{ matrix.package-type }} --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
+        bazel build --config release :kong_${{ matrix.package-type }} --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel-args }}
 
     - name: Bazel Debug Outputs
       if: failure()
@@ -326,7 +326,7 @@ jobs:
           type=raw,enable=${{ matrix.label == 'ubuntu' }},${{ github.sha }}
 
     - name: Set up QEMU
-      if: matrix.docker_platforms != ''
+      if: matrix.docker-platforms != ''
       uses: docker/setup-qemu-action@v2
 
     - name: Set up Docker Buildx
@@ -335,7 +335,7 @@ jobs:
     - name: Set platforms
       id: docker_platforms_arg
       run: |
-        platforms="${{ matrix.docker_platforms }}"
+        platforms="${{ matrix.docker-platforms }}"
         if [[ -z "$platforms" ]]; then
           platforms="linux/amd64"
         fi
