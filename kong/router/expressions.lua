@@ -31,7 +31,14 @@ local function get_exp_and_priority(route)
     return
   end
 
-  local gen = gen_for_field("net.protocol", OP_EQUAL, route.protocols,
+  local protocols = route.protocols
+
+  -- give the chance for http redirection (301/302/307/308/426)
+  if #protocols == 1 and protocols[1] == "https" then
+    return exp, route.priority
+  end
+
+  local gen = gen_for_field("net.protocol", OP_EQUAL, protocols,
                             function(_, p)
                               return PROTOCOLS_OVERRIDE[p] or p
                             end)
