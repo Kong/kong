@@ -11,11 +11,6 @@ build-packages:
 # check-manifest-suite: the check manifest suite as defined in scripts/explain_manifest/config.py
 
 # Ubuntu
-- label: ubuntu-18.04
-  os: ubuntu-22.04
-  image: ubuntu:18.04
-  package: deb
-  check-manifest-suite: ubuntu-18.04-amd64
 - label: ubuntu-20.04
   os: ubuntu-20.04
   package: deb
@@ -33,13 +28,14 @@ build-packages:
 # Debian
 - label: debian-10
   os: ubuntu-22.04
-  image: ubuntu:18.04
+  image: debian:10
   package: deb
-  check-manifest-suite: ubuntu-18.04-amd64
+  check-manifest-suite: debian-10-amd64
 - label: debian-11
-  os: ubuntu-20.04
+  os: ubuntu-22.04
+  image: debian:11
   package: deb
-  check-manifest-suite: ubuntu-20.04-amd64
+  check-manifest-suite: debian-11-amd64
 
 # CentOS
 - label: centos-7
@@ -104,12 +100,6 @@ scan-vulnerabilities:
 
 release-packages:
 # Ubuntu
-- label: ubuntu-18.04
-  package: deb
-  artifact-from: ubuntu-18.04
-  artifact-version: 18.04
-  artifact-type: ubuntu
-  artifact: kong.amd64.deb
 - label: ubuntu-20.04
   package: deb
   artifact-from: ubuntu-20.04
@@ -165,19 +155,19 @@ release-packages:
   artifact-type: rhel
   artifact: kong.el8.amd64.rpm
 
-  # Amazon Linux
+# Amazon Linux
 - label: amazonlinux-2
   package: rpm
   artifact-from: amazonlinux-2
   artifact-version: 2
   artifact-type: amazonlinux
   artifact: kong.aws2.amd64.rpm
-- label: amazonlinux-2022
+- label: amazonlinux-2023
   package: rpm
   artifact-from: amazonlinux-2
-  artifact-version: 2022
+  artifact-version: 2023
   artifact-type: amazonlinux
-  artifact: kong.aws2022.amd64.rpm
+  artifact: kong.aws2023.amd64.rpm
 
 release-images:
 - label: ubuntu

@@ -87,6 +87,8 @@
   Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/lua_system_constants.so
+  Needed    :
+  - libc.so.6
   Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/mime/core.so
@@ -142,6 +144,8 @@
   - libstdc++.so.6
 
 - Path      : /usr/local/openresty/lualib/librestysignal.so
+  Needed    :
+  - libc.so.6
 
 - Path      : /usr/local/openresty/lualib/rds/parser.so
   Needed    :
@@ -157,6 +161,7 @@
   - libpthread.so.0
   - libcrypt.so.1
   - libluajit-5.1.so.2
+  - libm.so.6
   - libssl.so.3
   - libcrypto.so.3
   - libz.so.1

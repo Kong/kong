@@ -16,6 +16,8 @@
   [#10926](https://github.com/Kong/kong/pull/10926)
 - :warning: Cassandra as a datastore for Kong is no longer supported
   [#10931](https://github.com/Kong/kong/pull/10931)
+- Ubuntu 18.04 artifacts are no longer supported as it's EOL
+- AmazonLinux 2022 artifacts are renamed to AmazonLinux 2023 according to AWS's decision
 
 #### Core
 
@@ -68,12 +70,13 @@
 - Added a `User=` specification to the systemd unit definition so that
   Kong can be controlled by systemd again.
   [#11066](https://github.com/Kong/kong/pull/11066)
-- Remove kong branding from kong HTML error template.
-  [#11150](https://github.com/Kong/kong/pull/11150)
 - Fix a bug that caused sampling rate to be applied to individual spans producing split traces.
   [#11135](https://github.com/Kong/kong/pull/11135)
 - Fix a bug that caused the router to fail in `traditional_compatible` mode when a route with multiple paths and no service was created.
   [#11158](https://github.com/Kong/kong/pull/11158)
+- Fix an issue where the router of flavor `expressions` can not work correctly
+  when `route.protocols` is set to `grpc` or `grpcs`.
+  [#11082](https://github.com/Kong/kong/pull/11082)
 
 #### Admin API
 
@@ -100,9 +103,9 @@
 ### Changed
 
 #### Core
+
 - Tracing: new attribute `http.route` added to http request spans.
   [#10981](https://github.com/Kong/kong/pull/10981)
-
 - The default value of `lmdb_map_size` config has been bumped to `2048m`
   from `128m` to accommodate most commonly deployed config sizes in DB-less
   and Hybrid mode.
@@ -110,6 +113,8 @@
 - The default value of `cluster_max_payload` config has been bumped to `16m`
   from `4m` to accommodate most commonly deployed config sizes in Hybrid mode.
   [#11090](https://github.com/Kong/kong/pull/11090)
+- Remove kong branding from kong HTML error template.
+  [#11150](https://github.com/Kong/kong/pull/11150)
 
 #### Status API
 

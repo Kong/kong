@@ -114,17 +114,24 @@ jobs:
         # tar/gzip is needed to restore git cache (if available)
         yum install -y tar gzip which file zlib-devel
 
+    - name: Early Deb in Container Setup
+      if: matrix.package == 'deb' && matrix.image != ''
+      run: |
+        # tar/gzip is needed to restore git cache (if available)
+        apt-get update
+        apt-get install -y git tar gzip file sudo
+
     - name: Cache Git
       id: cache-git
-      if: matrix.package == 'rpm' || matrix.image == 'ubuntu:18.04'
+      if: matrix.package == 'rpm' || matrix.image == 'debian:10'
       uses: actions/cache@v3
       with:
         path: /usr/local/git
         key: ${{ matrix.label }}-git-2.30.0
 
-    # el-7 doesn't have git 2.18+, so we need to install it manually
+    # el-7,8, amazonlinux-2,2022, debian-10 doesn't have git 2.18+, so we need to install it manually
     - name: Install newer Git
-      if: (matrix.package == 'rpm' || matrix.image == 'ubuntu:18.04') && steps.cache-git.outputs.cache-hit != 'true'
+      if: (matrix.package == 'rpm' || matrix.image == 'debian:10') && steps.cache-git.outputs.cache-hit != 'true'
       run: |
         if which apt 2>/dev/null; then
           apt update
@@ -143,12 +150,12 @@ jobs:
         make install
 
     - name: Add Git to PATH
-      if: matrix.package == 'rpm' || matrix.image == 'ubuntu:18.04'
+      if: matrix.package == 'rpm' || matrix.image == 'debian:10'
       run: |
         echo "/usr/local/git/bin" >> $GITHUB_PATH
 
-    - name: Debian dependencies
-      if: matrix.image == 'ubuntu:18.04'
+    - name: Debian Git dependencies
+      if: matrix.image == 'debian:10'
       run: |
         apt update
         # dependencies for git
@@ -202,7 +209,7 @@ jobs:
         yum groupinstall -y 'Development Tools'
         dnf config-manager --set-enabled powertools || true # enable devel packages on rockylinux:8
         yum install -y libyaml-devel
-        yum install -y cpanminus || (yum install -y perl && curl -L https://raw.githubusercontent.com/miyagawa/cpanminus/master/cpanm | perl - App::cpanminus) # amazonlinux2022 removed cpanminus
+        yum install -y cpanminus || (yum install -y perl && curl -L https://raw.githubusercontent.com/miyagawa/cpanminus/master/cpanm | perl - App::cpanminus) # amazonlinux2023 removed cpanminus
         # required for openssl 3.x config
         cpanm IPC/Cmd.pm
 
@@ -253,7 +260,7 @@ jobs:
         fi
 
         bazel build --config release :kong_aws2    --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
-        bazel build --config release :kong_aws2022 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
+        bazel build --config release :kong_aws2023 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
 
     - name: Bazel Debug Outputs
       if: failure()

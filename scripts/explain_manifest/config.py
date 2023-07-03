@@ -60,14 +60,6 @@ targets = {
         libcxx_max_version="3.4.19",
         cxxabi_max_version="1.3.7",
     ),
-    "ubuntu-18.04-amd64": ExpectSuite(
-        name="Ubuntu 18.04 (amd64)",
-        manifest="fixtures/ubuntu-18.04-amd64.txt",
-        libc_max_version="2.27",
-        # gcc 7.4.0
-        libcxx_max_version="3.4.24",
-        cxxabi_max_version="1.3.11",
-    ),
     "ubuntu-20.04-amd64": ExpectSuite(
         name="Ubuntu 20.04 (amd64)",
         manifest="fixtures/ubuntu-20.04-amd64.txt",
@@ -92,5 +84,21 @@ targets = {
         libcxx_max_version="3.4.29",
         cxxabi_max_version="1.3.13",
         extra_tests=[arm64_suites],
+    ),
+    "debian-10-amd64": ExpectSuite(
+        name="Debian 10 (amd64)",
+        manifest="fixtures/debian-10-amd64.txt",
+        libc_max_version="2.28",
+        # gcc 8.3.0
+        libcxx_max_version="3.4.25",
+        cxxabi_max_version="1.3.11",
+    ),
+    "debian-11-amd64": ExpectSuite(
+        name="Debian 11 (amd64)",
+        manifest="fixtures/debian-11-amd64.txt",
+        libc_max_version="2.31",
+        # gcc 10.2.1
+        libcxx_max_version="3.4.28",
+        cxxabi_max_version="1.3.12",
     ),
 }
