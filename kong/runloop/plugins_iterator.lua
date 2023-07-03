@@ -173,51 +173,40 @@ function PluginsIterator.lookup_cfg(combos, route_id, service_id, consumer_id)
   -- Use the build_compound_key function to create an index for the 'combos' table
   local build_compound_key = PluginsIterator.build_compound_key
 
-    local key
-    if route_id and service_id and consumer_id then
-        key = build_compound_key(route_id, service_id, consumer_id)
-        if combos[key] then
-            return combos[key]
-        end
-    end
-    if route_id and consumer_id then
-        key = build_compound_key(route_id, nil, consumer_id)
-        if combos[key] then
-            return combos[key]
-        end
-    end
-    if service_id and consumer_id then
-        key = build_compound_key(nil, service_id, consumer_id)
-        if combos[key] then
-            return combos[key]
-        end
-    end
-    if route_id and service_id then
-        key = build_compound_key(route_id, service_id, nil)
-        if combos[key] then
-            return combos[key]
-        end
-    end
-    if consumer_id then
-        key = build_compound_key(nil, nil, consumer_id)
-        if combos[key] then
-            return combos[key]
-        end
-    end
-    if route_id then
-        key = build_compound_key(route_id, nil, nil)
-        if combos[key] then
-            return combos[key]
-        end
-    end
-    if service_id then
-        key = build_compound_key(nil, service_id, nil)
-        if combos[key] then
-            return combos[key]
-        end
-    end
-    return combos[build_compound_key(nil, nil, nil)]
+  local ids = { route_id, service_id, consumer_id, }
 
+  local orders = {
+    { true , true , true  },  -- Route, Service, Consumer
+    { true , false, true  },  -- Route,        , Consumer
+    { false, true , true  },  --      , Service, Consumer
+    { true , true , false },  -- Route, Service,
+    { false, false, true  },  --      ,        , Consumer
+    { true , false, false },  -- Route,        ,
+    { false, true , false },  --      , Service,
+  }
+
+  for i = 1, #orders do
+    local p = orders[i]
+
+    for idx = 1, 3 do
+      if p[idx] and not ids[idx] then
+        goto continue
+      end
+    end
+
+    local rid = p[1] and ids[1]
+    local sid = p[2] and ids[2]
+    local cid = p[3] and ids[3]
+
+    local cfg = combos[build_compound_key(rid, sid, cid)]
+    if cfg then
+      return cfg
+    end
+
+    ::continue::
+  end
+
+  return combos[build_compound_key(nil, nil, nil)]
 end
 
 
