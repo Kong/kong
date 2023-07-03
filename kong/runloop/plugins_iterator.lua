@@ -158,6 +158,7 @@ local PLUGIN_ORDERS = {
   { true, nil , nil , },  -- Route,        ,
   { nil , true, nil , },  --      , Service,
 }
+local PLUGIN_ORDER_N = #PLUGIN_ORDERS[1]
 
 ---
 -- Lookup a configuration for a given combination of route_id, service_id, consumer_id
@@ -191,7 +192,7 @@ local function lookup_cfg(combos, route_id, service_id, consumer_id)
   for i = 1, #PLUGIN_ORDERS do
     local p = PLUGIN_ORDERS[i]
 
-    for idx = 1, 3 do
+    for idx = 1, PLUGIN_ORDER_N do
       if p[idx] and not ids[idx] then
         goto continue
       end
