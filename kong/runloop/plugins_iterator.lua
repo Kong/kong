@@ -148,7 +148,7 @@ local function get_plugin_config(plugin, name, ws_id)
 end
 
 
-local PLUGIN_IDS    = { }
+local PLUGIN_IDS    = {}
 local PLUGIN_ORDERS = {
   { true, true, true, },  -- Route, Service, Consumer
   { true, nil , true, },  -- Route,        , Consumer
@@ -158,8 +158,9 @@ local PLUGIN_ORDERS = {
   { true, nil , nil , },  -- Route,        ,
   { nil , true, nil , },  --      , Service,
 }
-local PLUGIN_ORDERS_N = #PLUGIN_ORDERS
-local PLUGIN_ORDER_N  = #PLUGIN_ORDERS[1]
+local PLUGIN_ORDERS_N     = #PLUGIN_ORDERS
+local PLUGIN_ORDER_N      = #PLUGIN_ORDERS[1]
+local PLUGIN_GLOBAL_KEY   = build_compound_key()  -- all nil
 
 ---
 -- Lookup a configuration for a given combination of route_id, service_id, consumer_id
@@ -211,7 +212,7 @@ local function lookup_cfg(combos, route_id, service_id, consumer_id)
     ::continue::
   end
 
-  return combos[build_compound_key(nil, nil, nil)]
+  return combos[PLUGIN_GLOBAL_KEY]
 end
 
 
