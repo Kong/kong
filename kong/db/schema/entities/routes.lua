@@ -98,7 +98,7 @@ else
   elseif kong_router_flavor == "traditional_compatible" then
     PATH_V1_DEPRECATION_MSG =
       "path_handling='v1' is deprecated and " ..
-      "will not work under traditional_compatible router_flavor, " ..
+      "will not work under 'traditional_compatible' router_flavor, " ..
       "please use path_handling='v0' instead"
   end
 
