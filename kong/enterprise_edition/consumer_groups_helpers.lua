@@ -81,6 +81,12 @@ local function delete_consumer_in_group(consumer_pk, consumer_group_pk)
         consumer = { id = consumer_pk,},
       }
     )
+    -- invalidate a cache_key used for looking up consumer<->group mappings
+    local cache_key_scan = kong.db.consumer_group_consumers:cache_key("", consumer_pk)
+    kong.cache:invalidate(cache_key_scan)
+    -- also remove the explicit mapping cache
+    local cache_key = kong.db.consumer_group_consumers:cache_key(consumer_group_pk, consumer_pk)
+    kong.cache:invalidate(cache_key)
     return true
   else
     return false
