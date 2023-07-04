@@ -1,3 +1,7 @@
+# Table of Contents
+
+- [3.3.0.0](#3300)
+
 # Unreleased
 
 ## Enterprise
@@ -18,7 +22,7 @@
 
 ### Dependencies
 
-* `lua-resty-ljsonschema` is bumped from 1.1.3 to 1.14
+* `lua-resty-ljsonschema` is bumped from 1.1.3 to 1.15
 * `lua-resty-kafka` is bumped from 0.15 to 0.16
 * `OpenSSL` is bumped from 1.1.1t to 3.0.8
 
@@ -37,8 +41,6 @@
   Kong is controlled by systemd [KAG-1832](https://konghq.atlassian.net/browse/KAG-1832)
 * Fix an issue that sometimes can't attach workspace with the cache's consumer well. [FTI-4564](https://konghq.atlassian.net/browse/FTI-4564)
 * Fix CORS incorrect behavior when KM integrated with Portal GUI. [FTI-1437](https://konghq.atlassian.net/browse/FTI-1437)
-
-### Kong Manager
 
 
 ## Plugins
@@ -72,6 +74,17 @@
 * **OpenID-Connect**: Changes some log's level from `notice` to `error` for better visibility.
   [FTI-2884](https://konghq.atlassian.net/browse/FTI-2884)
 
+## Kong Manager
+
+### Breaking Changes
+
+### Deprecations
+
+### Dependencies
+
+### Features
+
+### Fixes
 
 # 3.3.0.0
 
@@ -146,6 +159,7 @@ a copy. [KAG-739](https://konghq.atlassian.net/browse/KAG-739)
 * Fixed an issue where the `/register` route jumps to `/login` occasionally. [KAG-1282](https://konghq.atlassian.net/browse/KAG-1282)
 * Fixed an issue where the statsD plugin has custom identifier field under metric which does not exist in schema. [KAG-1138](https://konghq.atlassian.net/browse/KAG-1138)
 * Endpoint to list consumer groups under a consumer now reflects latest changes on consumer groups. [KAG-1378](https://konghq.atlassian.net/browse/KAG-1378)
+* Fix the cache issue of route-by-header plugin, where config change does not take effect. [FTI-5017](https://konghq.atlassian.net/browse/FTI-5017)
 
 ## Plugins
 
@@ -208,9 +222,19 @@ a copy. [KAG-739](https://konghq.atlassian.net/browse/KAG-739)
 
 ### Fixes
 
-### Kong Manager
-
 ## Plugins
+
+### Breaking Changes
+
+### Deprecations
+
+### Dependencies
+
+### Features
+
+### Fixes
+
+## Kong Manager
 
 ### Breaking Changes
 

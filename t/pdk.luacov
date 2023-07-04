@@ -1,4 +1,5 @@
 runreport = true
+includeuntestedfiles = true
 
 modules = {
    ["kong.pdk.*"] = ".",

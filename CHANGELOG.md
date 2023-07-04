@@ -69,6 +69,8 @@
 - Added a `User=` specification to the systemd unit definition so that
   Kong can be controlled by systemd again.
   [#11066](https://github.com/Kong/kong/pull/11066)
+- Fix a bug that caused sampling rate to be applied to individual spans producing split traces.
+  [#11135](https://github.com/Kong/kong/pull/11135)
 
 #### Admin API
 

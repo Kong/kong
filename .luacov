@@ -1,5 +1,8 @@
 return {
 
+  includeuntestedfiles = {
+    "kong/",
+  },
   runreport = true,
 
   include = {
@@ -9,7 +12,8 @@ return {
 
   exclude = {
     "bazel%-bin/build",
-    "^spec/"
+    "^spec/",
+    "^spec%-ee/",
   }
 
 }

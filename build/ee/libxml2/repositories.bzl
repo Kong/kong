@@ -7,8 +7,8 @@ load("@kong_bindings//:variables.bzl", "KONG_VAR")
 def libxml2_repositories():
     """Defines the libxml2 repository"""
 
-    version = KONG_VAR["KONG_DEP_LIBXML2_VERSION"]
-    version_major_minor = ".".join(KONG_VAR["KONG_DEP_LIBXML2_VERSION"].split(".")[:2])
+    version = KONG_VAR["LIBXML2"]
+    version_major_minor = ".".join(KONG_VAR["LIBXML2"].split(".")[:2])
 
     maybe(
         http_archive,

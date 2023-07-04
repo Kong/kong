@@ -48,7 +48,7 @@ dependencies = {
   "lua-resty-passwdqc == 1.1",
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-websocket-proxy == 0.0.1",
-  "lua-resty-ljsonschema == 1.1.4",
+  "lua-resty-ljsonschema == 1.1.5",
   "lua-resty-luasocket == 1.1.1",
   "lua-resty-gcp == 0.0.13",
   "lua-resty-aws == 1.2.2",
@@ -167,6 +167,8 @@ build = {
     ["kong.enterprise_edition.profiling.gc_snapshot"] = "kong/enterprise_edition/profiling/gc_snapshot.lua",
     ["kong.enterprise_edition.oauth.error_codes"] = "kong/enterprise_edition/oauth/error_codes.lua",
     ["kong.enterprise_edition.transformations.plugins.json_navigator"] = "kong/enterprise_edition/transformations/plugins/json_navigator.lua",
+    ["kong.enterprise_edition.openapi.plugins.swagger-parser.parser"] = "kong/enterprise_edition/openapi/plugins/swagger-parser/parser.lua",
+    ["kong.enterprise_edition.openapi.plugins.swagger-parser.dereference"] = "kong/enterprise_edition/openapi/plugins/swagger-parser/dereference.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
@@ -297,6 +299,7 @@ build = {
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.events"] = "kong/runloop/events.lua",
+    ["kong.runloop.log_level"] = "kong/runloop/log_level.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",
     ["kong.runloop.plugins_iterator"] = "kong/runloop/plugins_iterator.lua",
     ["kong.runloop.balancer"] = "kong/runloop/balancer/init.lua",

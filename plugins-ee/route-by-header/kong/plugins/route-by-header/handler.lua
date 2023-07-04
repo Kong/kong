@@ -20,9 +20,6 @@ local RouteByHeaderHandler = {
 }
 
 
-local conf_cache = setmetatable({}, {__mod = "k"})
-
-
 local function update_balancer_address(target, type)
   local ba = ngx.ctx.balancer_data
   ba.host = target
@@ -58,16 +55,22 @@ local function apply_rules(conf)
 end
 
 
-function RouteByHeaderHandler:access(conf)
-  local config = conf_cache[conf]
-  if not config then
-    for _, rule in ipairs(conf.rules) do
-      rule.upstream_type = hostname_type(rule.upstream_name)
-    end
-    config = conf
-    conf_cache[conf] = conf
+local function fillin_upstream_type(conf)
+  if conf.upstream_type_filled then
+    return
   end
-  apply_rules(config)
+
+  for _, rule in ipairs(conf.rules) do
+    rule.upstream_type = hostname_type(rule.upstream_name)
+  end
+
+  conf.upstream_type_filled = true
+end
+
+
+function RouteByHeaderHandler:access(conf)
+  fillin_upstream_type(conf)
+  apply_rules(conf)
 end
 
 

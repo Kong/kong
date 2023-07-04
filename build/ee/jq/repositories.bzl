@@ -7,7 +7,7 @@ load("@kong_bindings//:variables.bzl", "KONG_VAR")
 def jq_repositories():
     """Defines the jq repository"""
 
-    version = KONG_VAR["KONG_DEP_LIBJQ_VERSION"]
+    version = KONG_VAR["LIBJQ"]
 
     maybe(
         http_archive,

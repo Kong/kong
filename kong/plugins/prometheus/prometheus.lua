@@ -68,7 +68,6 @@ local ngx_log = ngx.log
 local ngx_sleep = ngx.sleep
 local ngx_re_match = ngx.re.match
 local ngx_re_gsub = ngx.re.gsub
-local ngx_print = ngx.print
 local error = error
 local type = type
 local pairs = pairs
@@ -109,6 +108,8 @@ local DEFAULT_BUCKETS = {0.005, 0.01, 0.02, 0.03, 0.05, 0.075, 0.1, 0.2, 0.3,
                          0.4, 0.5, 0.75, 1, 1.5, 2, 3, 4, 5, 10}
 
 local METRICS_KEY_REGEX = [[(.*[,{]le=")(.*)(".*)]]
+local METRIC_NAME_REGEX = [[^[a-z_:][a-z0-9_:]*$]]
+local LABEL_NAME_REGEX  = [[^[a-z_][a-z0-9_]*$]]
 
 -- Accepted range of byte values for tailing bytes of utf8 strings.
 -- This is defined outside of the validate_utf8_string function as a const
@@ -260,7 +261,7 @@ local function short_metric_name(full_name)
   -- `_bucket` suffix here, since it alphabetically goes before other
   -- histogram suffixes (`_count` and `_sum`).
   local suffix_idx, _ = full_name:find("_bucket{", 1, true)
-  if suffix_idx and full_name:find("le=", 1, true) then
+  if suffix_idx and full_name:find("le=", labels_start + 1, true) then
     -- this is a histogram metric
     return full_name:sub(1, suffix_idx - 1)
   end
@@ -280,7 +281,7 @@ end
 -- Returns:
 --   Either an error string, or nil of no errors were found.
 local function check_metric_and_label_names(metric_name, label_names)
-  if not metric_name:match("^[a-zA-Z_:][a-zA-Z0-9_:]*$") then
+  if not ngx_re_match(metric_name, METRIC_NAME_REGEX, "ijo") then
     return "Metric name '" .. metric_name .. "' is invalid"
   end
   if not label_names then
@@ -292,7 +293,7 @@ local function check_metric_and_label_names(metric_name, label_names)
     if label_name == "le" then
       return "Invalid label name 'le' in " .. metric_name
     end
-    if not label_name:match("^[a-zA-Z_][a-zA-Z0-9_]*$") then
+    if not ngx_re_match(label_name, LABEL_NAME_REGEX, "ijo") then
       return "Metric '" .. metric_name .. "' label name '" .. label_name ..
              "' is invalid"
     end
@@ -326,7 +327,7 @@ local function construct_bucket_format(buckets)
 
     local dot_idx = as_string:find(".", 1, true)
     max_order = math.max(max_order, dot_idx - 1)
-    max_precision = math.max(max_precision, as_string:len() - dot_idx)
+    max_precision = math.max(max_precision, #as_string - dot_idx)
   end
 
   return "%0" .. (max_order + max_precision + 1) .. "." .. max_precision .. "f"
@@ -762,7 +763,7 @@ function Prometheus.init(dict_name, options_or_prefix)
   self:counter(self.error_metric_name, "Number of nginx-lua-prometheus errors")
   self.dict:set(self.error_metric_name, 0)
 
-  if ngx.get_phase() == 'init_worker' then
+  if phase == 'init_worker' then
     self:init_worker(self.sync_interval)
   end
   return self
@@ -924,7 +925,7 @@ function Prometheus:metric_data(write_fn, local_only)
     ngx_log(ngx.ERR, "Prometheus module has not been initialized")
     return
   end
-  write_fn = write_fn or ngx_print
+  write_fn = write_fn or ngx.print
 
   -- Force a manual sync of counter local state (mostly to make tests work).
   self._counter:sync()

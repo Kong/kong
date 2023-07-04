@@ -781,4 +781,8 @@ jobs:
       shell: bash
       run: |
         lua .ci/luacov-stats-aggregator.lua "luacov-stats-out-" "luacov.stats.out" ${{ github.workspace }}/
-        awk -v RS='Summary\n=+\n' 'NR>1{print $0}' luacov.report.out
+        # The following prints a report with each file sorted by coverage percentage, and the total coverage
+        printf "\n\nCoverage   File\n\n"
+        awk -v RS='Coverage\n-+\n' 'NR>1{print $0}' luacov.report.out | grep -vE "^-|^$" > summary.out
+        cat summary.out | grep -v "^Total" | awk '{printf "%7d%%   %s\n", $4, $1}' | sort -n
+        cat summary.out | grep "^Total" | awk '{printf "%7d%%   %s\n", $4, $1}'

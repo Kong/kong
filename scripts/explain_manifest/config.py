@@ -59,7 +59,6 @@ targets = {
     "amazonlinux-2022-amd64": ExpectSuite(
         name="Amazon Linux 2022 (amd64)",
         manifest="fixtures/amazonlinux-2022-amd64.txt",
-        use_rpath=True,
         libc_max_version="2.34",
         # gcc 11.2.1
         libcxx_max_version="3.4.29",

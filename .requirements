@@ -1,79 +1,27 @@
-# these are set by kong core, some used in setup_env.sh and kong-build-tools
-# kong-distributions also uses them, and translates them into the naming
-# convention over there
-
 KONG_PACKAGE_NAME=kong-enterprise-edition
-PACKAGE_CONFLICTS=kong-community-edition
-PACKAGE_PROVIDES=kong-enterprise-edition
-PACKAGE_REPLACES=kong-community-edition
-DOCKER_RELEASE_REPOSITORY=kong/kong-gateway
-# EE do not change
-KONG_LICENSE="Proprietary"
-
 EDITION=enterprise
 
-RESTY_VERSION=1.21.4.1
-RESTY_LUAROCKS_VERSION=3.9.2
-RESTY_OPENSSL_VERSION=3.1.1
-RESTY_PCRE_VERSION=8.45
-RESTY_LMDB_VERSION=1.1.0
-RESTY_EVENTS_VERSION=0.1.6
-RESTY_WEBSOCKET_VERSION=0.4.0
-KONG_GO_PLUGINSERVER_VERSION=v0.6.1
-ATC_ROUTER_VERSION=1.0.5
-LIBYAML_VERSION=0.2.5
-KONG_BUILD_TOOLS_VERSION=4.42.0
-KONG_NGINX_MODULE_BRANCH=0.6.0
-DOCKER_KONG_VERSION=3.0.0
+OPENRESTY=1.21.4.1
+LUAROCKS=3.9.2
+OPENSSL=3.1.1
+PCRE=8.45
 
-KONG_ADMIN_VERSION=nightly
+LUA_KONG_NGINX_MODULE=4d19e8d19c6dbc07eba5cf6f5ebacad95266f928 # 0.6.0
+LUA_RESTY_LMDB=222546680e9c31a9b97733b5db595688a521cd1a # 1.1.0
+LUA_RESTY_EVENTS=2f6fa23eb3d0b76a3b35fd915711200e90bc6732 # 0.1.6
+LUA_RESTY_WEBSOCKET=60eafc3d7153bceb16e6327074e0afc3d94b1316 # 0.4.0
+ATC_ROUTER=fb82fdd3a4c111e24e2b0044ee151e50fb37499f # 1.0.5
 
-## XXX EE
+# EE dependencies
 
-# here go enterprise build specific ones which might or might not have the
-# same names as core for building the final package.
+KONG_ADMIN=nightly
+KONG_PORTAL=v1.3.0-1
 
-KONG_DISTRIBUTIONS_VERSION=master
+PASSWDQC=1_3_1
+LIBJQ=1.6
+LIBEXPAT=2.5.0
+LIBXML2=2.10.3
+LIBXSLT=1.1.37
+MSGPACK_C=c-4.0.0
+OPENSSL_FIPS_PROVIDER=3.0.8
 
-KONG_DEP_LIBYAML_VERSION=0.2.5
-KONG_DEP_LICENSING_VERSION=0.3.0
-KONG_DEP_LUA_RESTY_OPENSSL_AUX_MODULE_VERSION=0.2.0
-KONG_DEP_PASSWDQC_VERSION=1_3_1
-
-# opentracing stuff
-KONG_DEP_OPENTRACING_CPP_VERSION=v1.6.0
-KONG_DEP_DATADOG_VERSION=v1.3.0
-KONG_DEP_NGINX_OPENTRACING_VERSION=v0.14.0
-KONG_DEP_JAEGER_VERSION=v0.7.0
-
-LYAML_VERSION=6.2.8
-
-KONG_DEP_LIBJQ_VERSION=1.6
-
-KONG_PORTAL_VERSION=v1.3.0-1
-
-## EE
-
-# whether to enable bytecompilation of kong lua files or not
-# leave blank or set to empty string to avoid bytecompilation
-ENABLE_LJBC=true
-
-# whether a patch to kong.conf.default disabling anonymous reports is applied
-# leave blank or set to empty string to avoid applying patch
-ENABLE_ANONYMOUS_REPORTS=
-
-# whether a patch to LICENSE for government contract purposes is applied
-# leave blank or set to empty string to avoid applying patch
-ENABLE_GDIT_PATCH=
-
-# whether to install the external C kong-licensing library
-# this should always be set to true when building distribution artifacts
-ENABLE_KONG_LICENSING=true
-
-KONG_DEP_EXPAT_VERSION=2.5.0
-KONG_DEP_LIBXML2_VERSION=2.10.3
-KONG_DEP_LIBXSLT_VERSION=1.1.37
-
-LUAJIT_DEP_MSGPACK_C_VERSION=c-4.0.0
-
-KONG_DEP_OPENSSL_FIPS_PROVIDER_VERSION=3.0.8

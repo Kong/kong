@@ -24,7 +24,7 @@ def openresty_repositories():
     atc_router_repositories()
     msgpack_c_repositories()
 
-    openresty_version = KONG_VAR["RESTY_VERSION"]
+    openresty_version = KONG_VAR["OPENRESTY"]
 
     maybe(
         openresty_http_archive_wrapper,
@@ -42,7 +42,7 @@ def openresty_repositories():
     maybe(
         new_git_repository,
         name = "lua-kong-nginx-module",
-        branch = KONG_VAR["KONG_NGINX_MODULE_BRANCH"],
+        branch = KONG_VAR["LUA_KONG_NGINX_MODULE"],
         remote = "https://github.com/Kong/lua-kong-nginx-module",
         build_file_content = _NGINX_MODULE_DUMMY_FILE,
         recursive_init_submodules = True,
@@ -51,7 +51,7 @@ def openresty_repositories():
     maybe(
         new_git_repository,
         name = "lua-resty-lmdb",
-        branch = KONG_VAR["RESTY_LMDB_VERSION"],
+        branch = KONG_VAR["LUA_RESTY_LMDB"],
         remote = "https://github.com/Kong/lua-resty-lmdb",
         build_file_content = _NGINX_MODULE_DUMMY_FILE,
         recursive_init_submodules = True,
@@ -62,7 +62,7 @@ def openresty_repositories():
     maybe(
         new_git_repository,
         name = "lua-resty-events",
-        branch = KONG_VAR["RESTY_EVENTS_VERSION"],
+        branch = KONG_VAR["LUA_RESTY_EVENTS"],
         remote = "https://github.com/Kong/lua-resty-events",
         build_file_content = _NGINX_MODULE_DUMMY_FILE,
         recursive_init_submodules = True,

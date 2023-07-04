@@ -7,7 +7,7 @@ load("@kong_bindings//:variables.bzl", "KONG_VAR")
 def libexpat_repositories():
     """Defines the libexpat repository"""
 
-    version = KONG_VAR["KONG_DEP_EXPAT_VERSION"]
+    version = KONG_VAR["LIBEXPAT"]
     tag = "R_" + version.replace(".", "_")
 
     maybe(

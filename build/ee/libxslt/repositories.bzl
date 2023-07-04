@@ -7,8 +7,8 @@ load("@kong_bindings//:variables.bzl", "KONG_VAR")
 def libxslt_repositories():
     """Defines the libxslt repository"""
 
-    version = KONG_VAR["KONG_DEP_LIBXSLT_VERSION"]
-    version_major_minor = ".".join(KONG_VAR["KONG_DEP_LIBXSLT_VERSION"].split(".")[:2])
+    version = KONG_VAR["LIBXSLT"]
+    version_major_minor = ".".join(KONG_VAR["LIBXSLT"].split(".")[:2])
 
     maybe(
         http_archive,

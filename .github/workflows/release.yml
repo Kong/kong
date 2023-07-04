@@ -38,8 +38,8 @@ on:  # yamllint disable-line rule:truthy
 env:
   # official release repo
   DOCKER_REPOSITORY: kong/kong-gateway
-  PRERELEASE_DOCKER_REPOSITORY: kong/kong-gateway-internal
-  DOCKER_NIGHTLY_REPOSITORY: kong/kong-gateway-dev
+  PRERELEASE_DOCKER_REPOSITORY: kong/kong-gateway-dev
+  LEGACY_PRERELEASE_DOCKER_REPOSITORY: kong/kong-gateway-internal
   FULL_RELEASE: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
 
   # only for pr
@@ -54,7 +54,6 @@ jobs:
     outputs:
       kong-version: ${{ steps.build-info.outputs.kong-version }}
       prerelease-docker-repository: ${{ env.PRERELEASE_DOCKER_REPOSITORY }}
-      docker-nightly-repository: ${{ env.DOCKER_NIGHTLY_REPOSITORY }}
       docker-repository: ${{ steps.build-info.outputs.docker-repository }}
       release-desc: ${{ steps.build-info.outputs.release-desc }}
       release-label: ${{ steps.build-info.outputs.release-label || '' }}
@@ -242,7 +241,8 @@ jobs:
       run: |
         yum groupinstall -y 'Development Tools'
         dnf config-manager --set-enabled powertools || true # enable devel packages on rockylinux:8
-        yum install -y libyaml-devel zlib-devel cpanminus
+        yum install -y libyaml-devel zlib-devel
+        yum install -y cpanminus || (yum install -y perl && curl -L https://raw.githubusercontent.com/miyagawa/cpanminus/master/cpanm | perl - App::cpanminus) # amazonlinux2022 removed cpanminus
         # required for openssl 3.x config
         cpanm IPC/Cmd.pm
 
@@ -389,7 +389,7 @@ jobs:
       id: meta
       uses: docker/metadata-action@v4
       with:
-        images: ${{ needs.metadata.outputs.prerelease-docker-repository }}
+        images: ${{ env.PRERELEASE_DOCKER_REPOSITORY }}
         tags: |
           type=raw,${{ github.sha }}-${{ matrix.label }}
           type=raw,enable=${{ matrix.label == 'ubuntu' }},${{ github.sha }}
@@ -433,7 +433,7 @@ jobs:
         token: ${{ secrets.GHA_COMMENT_TOKEN }}
         body: |
           ### Bazel Build
-          Docker image available `${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}`
+          Docker image available `${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}`
           Artifacts available https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
   scan-images:
@@ -445,8 +445,6 @@ jobs:
       fail-fast: false
       matrix:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['scan-vulnerabilities'] }}"
-    env:
-      IMAGE: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}
     steps:
     - name: Install regctl
       uses: regclient/actions/regctl-installer@main
@@ -463,6 +461,8 @@ jobs:
     - name: Parse Architecture Specific Image Manifest Digests
       id: image_manifest_metadata
       run: |
+        IMAGE=${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}-${{ matrix.label }}
+
         manifest_list_exists="$(
           if regctl manifest get "${IMAGE}" --format raw-body --require-list -v panic &> /dev/null; then
             echo true
@@ -475,10 +475,10 @@ jobs:
 
         amd64_sha="$(regctl image digest "${IMAGE}" --platform linux/amd64 || echo '')"
         arm64_sha="$(regctl image digest "${IMAGE}" --platform linux/arm64 || echo '')"
-        echo "amd64_sha=$amd64_sha"
-        echo "amd64_sha=$amd64_sha" >> $GITHUB_OUTPUT
-        echo "arm64_sha=$arm64_sha"
-        echo "arm64_sha=$arm64_sha" >> $GITHUB_OUTPUT
+        echo "amd64_image_sha=${IMAGE}@${amd64_sha}"
+        echo "amd64_image_sha=${IMAGE}@${amd64_sha}" >> $GITHUB_OUTPUT
+        echo "arm64_image_sha=${IMAGE}@${arm64_sha}"
+        echo "arm64_image_sha=${IMAGE}@${arm64_sha}" >> $GITHUB_OUTPUT
 
     - name: Scan AMD64 Image digest
       id: sbom_action_amd64
@@ -486,7 +486,7 @@ jobs:
       uses: Kong/public-shared-actions/security-actions/scan-docker-image@v1.8.0
       with:
         asset_prefix: kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-amd64
-        image: ${{env.IMAGE}}@${{ steps.image_manifest_metadata.outputs.amd64_sha }}
+        image: ${{ steps.image_manifest_metadata.outputs.amd64_image_sha }}
 
     - name: Scan ARM64 Image digest
       if: steps.image_manifest_metadata.outputs.manifest_list_exists == 'true' && steps.image_manifest_metadata.outputs.arm64_sha != ''
@@ -494,7 +494,7 @@ jobs:
       uses: Kong/public-shared-actions/security-actions/scan-docker-image@v1.8.0
       with:
         asset_prefix: kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-arm64
-        image: ${{env.IMAGE}}@${{ steps.image_manifest_metadata.outputs.arm64_sha }}
+        image: ${{ steps.image_manifest_metadata.outputs.arm64_image_sha }}
 
     - name: Upload SBOM assets
       # ensure that this does not run twice (once for the scheduled job,
@@ -745,7 +745,7 @@ jobs:
       with:
         images: |
           ${{ needs.metadata.outputs.docker-repository }}
-          ${{ needs.metadata.outputs.docker-nightly-repository }}
+          ${{ env.LEGACY_PRERELEASE_DOCKER_REPOSITORY }}
         sep-tags: " "
         # Following tags are selected:
         # latest, latest-{distro} (master only)

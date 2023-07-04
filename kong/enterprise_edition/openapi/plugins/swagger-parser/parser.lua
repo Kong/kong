@@ -5,9 +5,13 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local dereference = require "kong.plugins.mocking.swagger-parser.dereference"
+local dereference = require "kong.enterprise_edition.openapi.plugins.swagger-parser.dereference"
 local cjson = require("cjson.safe").new()
 local lyaml = require "lyaml"
+
+local type = type
+local pcall = pcall
+local fmt = string.format
 
 local _M = {}
 
@@ -22,7 +26,7 @@ _M.parse = function(spec_content)
     local pok
     pok, parsed_spec = pcall(lyaml.load, spec_content)
     if not pok or type(parsed_spec) ~= "table" then
-      return nil, string.format("Spec is neither valid json ('%s') nor valid yaml ('%s')",
+      return nil, fmt("Spec is neither valid json ('%s') nor valid yaml ('%s')",
         decode_err, parsed_spec)
     end
   end
