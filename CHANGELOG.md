@@ -66,8 +66,6 @@
   [#11066](https://github.com/Kong/kong/pull/11066)
 - Fix a bug that caused sampling rate to be applied to individual spans producing split traces.
   [#11135](https://github.com/Kong/kong/pull/11135)
-- Remove kong branding from kong HTML error template.
-  [#11150](https://github.com/Kong/kong/pull/11150)
 
 #### Admin API
 
@@ -102,6 +100,8 @@
 - The default value of `cluster_max_payload` config has been bumped to `16m`
   from `4m` to accommodate most commonly deployed config sizes in Hybrid mode.
   [#11090](https://github.com/Kong/kong/pull/11090)
+- Remove kong branding from kong HTML error template.
+  [#11150](https://github.com/Kong/kong/pull/11150)
 
 #### Status API
 
