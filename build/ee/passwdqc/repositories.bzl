@@ -7,7 +7,7 @@ load("@kong_bindings//:variables.bzl", "KONG_VAR")
 def passwdqc_repositories():
     """Defines the passedqc repository"""
 
-    version = KONG_VAR["KONG_DEP_PASSWDQC_VERSION"]
+    version = KONG_VAR["PASSWDQC"]
 
     maybe(
         http_archive,

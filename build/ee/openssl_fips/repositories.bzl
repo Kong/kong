@@ -5,7 +5,7 @@ load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 
 def openssl_fips_repositories():
-    version = KONG_VAR["KONG_DEP_OPENSSL_FIPS_PROVIDER_VERSION"]
+    version = KONG_VAR["OPENSSL_FIPS_PROVIDER"]
     version_github = version.replace(".", "_")
 
     maybe(

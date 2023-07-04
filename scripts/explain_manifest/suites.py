@@ -1,11 +1,13 @@
 import os
+import re
 
 def read_requirements(path=None):
     if not path:
         path = os.path.join(os.path.dirname(__file__), "..", "..", ".requirements")
 
     with open(path, "r") as f:
-        return {x.split("=")[0].strip():x.split("=")[1].strip() for x in f.readlines() if len(x.split("=")) == 2}
+        lines = [re.findall("(.+)=([^# ]+)", d) for d in f.readlines()]
+        return {l[0][0]: l[0][1].strip() for l in lines if l}
 
 def common_suites(expect, fips: bool = False):
     # file existence
@@ -89,7 +91,7 @@ def ee_suites(expect, fips: bool = False):
     expect("**/*.so", "zlib version is less than %s" % ZLIB_VERSION) \
         .version_requirement.key("libz.so.1").is_not().greater_than("ZLIB_%s" % ZLIB_VERSION)
 
-    LIBXML2_VERSION = read_requirements()["KONG_DEP_LIBXML2_VERSION"]
+    LIBXML2_VERSION = read_requirements()["LIBXML2"]
     expect("**/*.so", "libxml2 version is less than %s" % LIBXML2_VERSION) \
         .version_requirement.key("libxml2.so.2").is_not().greater_than("LIBXML2_%s" % LIBXML2_VERSION) \
         .version_requirement.key("libxslt.so.1").is_not().greater_than("LIBXML2_%s" % LIBXML2_VERSION)

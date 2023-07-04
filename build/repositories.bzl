@@ -46,7 +46,7 @@ def kong_github_repositories():
         github_release,
         name = "kong_admin",
         repo = "kong/kong-admin",
-        tag = KONG_VAR["KONG_ADMIN_VERSION"],
+        tag = KONG_VAR["KONG_ADMIN"],
         pattern = "release.tar.gz",
         build_file_content = _DIST_BUILD_FILE_CONTENT,
     )
@@ -55,7 +55,7 @@ def kong_github_repositories():
         github_release,
         name = "kong_portal",
         repo = "kong/kong-portal",
-        tag = KONG_VAR["KONG_PORTAL_VERSION"],
+        tag = KONG_VAR["KONG_PORTAL"],
         pattern = "release.tar.gz",
         build_file_content = _DIST_BUILD_FILE_CONTENT,
     )
@@ -144,7 +144,7 @@ filegroup(
 def kong_resty_websocket_repositories():
     new_git_repository(
         name = "lua-resty-websocket",
-        branch = KONG_VAR["RESTY_WEBSOCKET_VERSION"],
+        branch = KONG_VAR["LUA_RESTY_WEBSOCKET"],
         remote = "https://github.com/Kong/lua-resty-websocket",
         build_file_content = _SRCS_BUILD_FILE_CONTENT,
     )

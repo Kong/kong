@@ -6,7 +6,7 @@ def _load_vars(ctx):
     # Read env from .requirements
     requirements = ctx.read(Label("@kong//:.requirements"))
     content = ctx.execute(["bash", "-c", "echo '%s' | " % requirements +
-                                         """grep -E '^(\\w*)=(.+)$' | sed -E 's/^(.*)=(.*)$/"\\1": "\\2",/'"""]).stdout
+                                         """grep -E '^(\\w*)=(.+)$' | sed -E 's/^(.*)=([^# ]+).*$/"\\1": "\\2",/'"""]).stdout
     content = content.replace('""', '"')
 
     # Workspace path
