@@ -109,15 +109,6 @@ function PluginFactory:consumer_group_service_route()
 	return header_name
 end
 
-function PluginFactory:consumer_group_consumer()
-	local header_name = "x-consumer-group-and-consumer"
-	self:produce(header_name, {
-		consumer_group = { id = self.consumer_group_platinum_id },
-		consumer = { id = self.alice_id },
-	})
-	return header_name
-end
-
 function PluginFactory:consumer_group_route()
 	local header_name = "x-consumer-group-and-route"
 	self:produce(header_name, {
