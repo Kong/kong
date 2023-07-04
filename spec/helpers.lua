@@ -1118,57 +1118,81 @@ local function gen_grpcurl_opts(opts_t)
 end
 
 
---- Creates an HTTP/2 client, based on the lua-http library.
+--- Creates an HTTP/2 client using golang's http2 package.
+--- Sets `KONG_TEST_DEBUG_HTTP2=1` env var to print debug messages.
 -- @function http2_client
 -- @param host hostname to connect to
 -- @param port port to connect to
--- @param tls boolean indicating whether to establish a tls session
--- @return http2 client
 local function http2_client(host, port, tls)
-  local host = assert(host)
   local port = assert(port)
   tls = tls or false
 
-  -- if Kong/lua-pack is loaded, unload it first
-  -- so lua-http can use implementation from compat53.string
-  package.loaded.string.unpack = nil
-  package.loaded.string.pack = nil
-
-  local request = require "http.request"
-  local req = request.new_from_uri({
-    scheme = tls and "https" or "http",
-    host = host,
-    port = port,
-  })
-  req.version = 2
-  req.tls = tls
-
-  if tls then
-    local http_tls = require "http.tls"
-    local openssl_ctx = require "openssl.ssl.context"
-    local n_ctx = http_tls.new_client_context()
-    n_ctx:setVerify(openssl_ctx.VERIFY_NONE)
-    req.ctx = n_ctx
+  -- Note: set `GODEBUG=http2debug=1` is helpful if you are debugging this go program
+  local tool_path = "bin/h2client"
+  local http2_debug
+  -- note: set env var "KONG_TEST_DEBUG_HTTP2" !! the "_TEST" will be dropped
+  if os.getenv("KONG_DEBUG_HTTP2") then
+    http2_debug = true
+    tool_path = "GODEBUG=http2debug=1 bin/h2client"
   end
 
-  local meta = getmetatable(req) or {}
+  local url = (tls and "https" or "http") .. "://" .. host .. ":" .. port
 
-  meta.__call = function(req, opts)
+  local meta = {}
+  meta.__call = function(_, opts)
     local headers = opts and opts.headers
     local timeout = opts and opts.timeout
 
-    for k, v in pairs(headers or {}) do
-      req.headers:upsert(k, v)
+    local cmd = string.format("%s -url %s -skip-verify", tool_path, url)
+    if headers then
+      local h = {}
+      for k, v in pairs(headers) do
+        table.insert(h, string.format("%s=%s", k, v))
+      end
+      cmd = cmd .. " -headers " .. table.concat(h, ",")
+    end
+    if timeout then
+      cmd = cmd .. " -timeout " .. timeout
     end
 
-    local headers, stream = req:go(timeout)
-    local body = stream:get_body_as_string()
-    return body, headers
+    if http2_debug then
+        print("HTTP/2 cmd:\n" .. cmd)
+    end
+
+    local ok, _, stdout, stderr = pl_utils.executeex(cmd)
+    assert(ok, stderr)
+
+    if http2_debug then
+      print("HTTP/2 debug:\n")
+      print(stderr)
+    end
+
+    local stdout_decoded = cjson.decode(stdout)
+    if not stdout_decoded then
+      error("Failed to decode h2client output: " .. stdout)
+    end
+
+    local headers = stdout_decoded.headers
+    headers.get = function(_, key)
+      if string.sub(key, 1, 1) == ":" then
+        key = string.sub(key, 2)
+      end
+      return headers[key]
+    end
+    setmetatable(headers, {
+      __index = function(headers, key)
+        for k, v in pairs(headers) do
+          if key:lower() == k:lower() then
+            return v
+          end
+        end
+      end
+    })
+    return stdout_decoded.body, headers
   end
 
-  return setmetatable(req, meta)
+  return setmetatable({}, meta)
 end
-
 
 --- returns a pre-configured cleartext `http2_client` for the Kong proxy port.
 -- @function proxy_client_h2c
