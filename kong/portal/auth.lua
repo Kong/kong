@@ -366,8 +366,8 @@ function _M.login(self, db, helpers)
 
   local _, err = get_authenticated_developer(self)
   if err then
-    if ngx.ctx.authenticated_session then
-      ngx.ctx.authenticated_session:destroy()
+    if kong.ctx.shared.authenticated_session then
+      kong.ctx.shared.authenticated_session:destroy()
     end
 
     -- oidc auth error redirects
@@ -450,8 +450,8 @@ function _M.authenticate_api_session(self, db, helpers)
 
   local developer, err = get_authenticated_developer(self)
   if err then
-    if ngx.ctx.authenticated_session then
-      ngx.ctx.authenticated_session:destroy()
+    if kong.ctx.shared.authenticated_session then
+      kong.ctx.shared.authenticated_session:destroy()
     end
 
     return kong.response.exit(401, { message = err })
@@ -564,8 +564,8 @@ function _M.authenticate_gui_session(self, db, helpers)
 
   local developer = get_authenticated_developer(self)
   if not developer then
-    if ngx.ctx.authenticated_session then
-      ngx.ctx.authenticated_session:destroy()
+    if kong.ctx.shared.authenticated_session then
+      kong.ctx.shared.authenticated_session:destroy()
     end
     return
   end
