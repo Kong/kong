@@ -722,6 +722,7 @@ describe("propagation.parse", function()
       assert.spy(warn).not_called()
     end)
   end)
+
   describe("aws single header parsing", function()
     local warn, debug
     setup(function()
@@ -958,6 +959,8 @@ describe("propagation.set", function()
         set("preserve", "datadog", proxy_span)
         assert.same(datadog_headers, headers)
 
+        headers = {}
+
         set("preserve", "aws", proxy_span)
         assert.same(aws_headers, headers)
 
@@ -997,6 +1000,8 @@ describe("propagation.set", function()
 
         set("preserve", nil, proxy_span, "datadog")
         assert.same(datadog_headers, headers)
+
+        headers = {}
 
         set("preserve", "aws", proxy_span, "aws")
         assert.same(aws_headers, headers)
