@@ -72,6 +72,7 @@ return {
       "escape_path",
     },
   },
+
   -- Any dataplane older than 3.2.0
   [3002000000] = {
     -- OSS
@@ -164,6 +165,8 @@ return {
       "set_claims",
     },
   },
+
+  -- Any dataplane older than 3.4.0
   [3004000000] = {
     -- Enterprise plugins
     openid_connect = {
@@ -172,10 +175,6 @@ return {
     kafka_log = {
       "custom_fields_by_lua",
     },
-  },
-
-  -- Any dataplane older than 3.4.0
-  [3004000000] = {
     rate_limiting = {
       "sync_rate",
     },
