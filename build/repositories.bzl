@@ -27,16 +27,16 @@ def github_cli_repositories():
     """Defines the github cli repositories"""
 
     gh_matrix = [
-        ["linux", "amd64", "a3e2987e49ede4e90e0192f64c5e1480d6a1ee3196d51a4fcfbe0ccd0a627747"],
-        ["linux", "arm64", "75e9049bd5cea8084095b381bf21103bf8b609f989caeee20a47023b2fa1cbe9"],
-        ["macOS", "amd64", "de452c922f166f89f4c23908782c6fc5d3219bb118fdc4cccea7eed907733196"],
-        ["macOS", "arm64", "5a3754c34da645b61d58d38315206607182395d1ce3cca3114068d61441303bd"],
+        ["linux", "amd64", "tar.gz", "5aee45bd42a27f5be309373c326e45cbcc7f04591b1798581a3094af767225b7"],
+        ["linux", "arm64", "tar.gz", "3ef741bcc1ae8bb975adb79a78e26ab7f18a246197f193aaa8cb5c3bdc373a3f"],
+        ["macOS", "amd64", "zip", "6b91c446586935de0e9df82da58309b2d1b83061cfcd4cc173124270f1277ca7"],
+        ["macOS", "arm64", "zip", "32a71652367f3cf664894456e4c4f655faa95964d71cc3a449fbf64bdce1fff1"],
     ]
-    for name, arch, sha in gh_matrix:
+    for name, arch, type, sha in gh_matrix:
         http_archive(
             name = "gh_%s_%s" % (name, arch),
-            url = "https://github.com/cli/cli/releases/download/v2.27.0/gh_2.27.0_%s_%s.tar.gz" % (name, arch),
-            strip_prefix = "gh_2.27.0_%s_%s" % (name, arch),
+            url = "https://github.com/cli/cli/releases/download/v2.30.0/gh_2.30.0_%s_%s.%s" % (name, arch, type),
+            strip_prefix = "gh_2.30.0_%s_%s" % (name, arch),
             sha256 = sha,
             build_file_content = _SRCS_BUILD_FILE_CONTENT,
         )
