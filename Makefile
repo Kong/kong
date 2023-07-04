@@ -144,6 +144,12 @@ test-plugins: dev
 test-all: dev
 	@$(VENV) $(TEST_CMD) spec/
 
+test-custom: dev
+ifndef test_spec
+	$(error test_spec variable needs to be set, i.e. make test-custom test_spec=foo/bar/baz_spec.lua)
+endif
+	@$(VENV) $(TEST_CMD) $(test_spec)
+
 pdk-phase-checks: dev
 	rm -f t/phase_checks.stats
 	rm -f t/phase_checks.report
