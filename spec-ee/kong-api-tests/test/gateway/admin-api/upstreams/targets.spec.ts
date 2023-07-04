@@ -368,7 +368,7 @@ describe('Gateway Admin API: Targets', function () {
       this.skip();
     }
     const resp = await axios({
-      url: `${url}/${upstreamData.id}/targets/${targetData.target}/unhealthy`,
+      url: `${url}/${upstreamData.id}/targets/${targetData.id}/unhealthy`,
       method: 'put',
     });
     logResponse(resp);
