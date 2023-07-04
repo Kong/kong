@@ -186,7 +186,7 @@ genrule(
     """.format(
               build_destdir = KONG_VAR["BUILD_DESTDIR"],
               install_destdir = KONG_VAR["INSTALL_DESTDIR"],
-              luarocks_version = KONG_VAR["RESTY_LUAROCKS_VERSION"],
+              luarocks_version = KONG_VAR["LUAROCKS"],
               workspace_path = KONG_VAR["WORKSPACE_PATH"],
           ) +
           """
