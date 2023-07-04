@@ -22,10 +22,10 @@ local HTML_TEMPLATE = [[
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Kong Error</title>
+    <title>Error</title>
   </head>
   <body>
-    <h1>Kong Error</h1>
+    <h1>Error</h1>
     <p>%s.</p>
   </body>
 </html>]]
