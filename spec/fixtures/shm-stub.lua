@@ -62,10 +62,10 @@ function SharedDict:incr(key, value, init)
     if not init then
       return nil, "not found"
     else
-      self.data[key].value = init
+      set(self.data, key, init)
     end
-  elseif type(self.data[key]) ~= "number" then
-    return nil, "not a number"
+  elseif type(self.data[key]) ~= "table" then
+    return nil, "not a table"
   end
 
   self.data[key].value = self.data[key].value + value
@@ -97,6 +97,15 @@ function SharedDict:flush_expired(n)
   return flushed
 end
 
+function SharedDict:get_keys()
+  local keys = {}
+  for k, _ in pairs(self.data) do
+    table.insert(keys, k)
+  end
+
+  return keys
+end
+
 local shared_mt = {
   __index = function(self, key)
     if rawget(self, key) == nil then
@@ -105,4 +114,5 @@ local shared_mt = {
     return self[key]
   end
 }
+
 return setmetatable({}, shared_mt)
