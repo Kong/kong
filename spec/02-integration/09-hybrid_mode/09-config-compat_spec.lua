@@ -226,7 +226,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
     it("plugins with inherit `nil` consumer-group should be present in 3.4 dataplanes", function()
       local id = utils.uuid()
-      local plugin = get_plugin(id, "3.3.0", rate_limit.name, true)
+      local plugin = get_plugin(id, "3.4.0", rate_limit.name, true)
       assert.is_not_nil(plugin)
       assert.same(rate_limit.config, plugin.config)
       assert.equals(CLUSTERING_SYNC_STATUS.NORMAL, get_sync_status(id))
