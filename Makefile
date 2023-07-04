@@ -20,8 +20,10 @@ endif
 
 ifeq ($(MACHINE), aarch64)
 GRPCURL_MACHINE ?= arm64
+H2CLIENT_MACHINE ?= arm64
 else
 GRPCURL_MACHINE ?= $(MACHINE)
+H2CLIENT_MACHINE ?= $(MACHINE)
 endif
 
 ifeq ($(MACHINE), aarch64)
@@ -41,6 +43,7 @@ ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 KONG_SOURCE_LOCATION ?= $(ROOT_DIR)
 GRPCURL_VERSION ?= 1.8.5
 BAZLISK_VERSION ?= 1.17.0
+H2CLIENT_VERSION ?= 0.2.0
 BAZEL := $(shell command -v bazel 2> /dev/null)
 VENV = /dev/null # backward compatibility when no venv is built
 
@@ -60,6 +63,11 @@ bin/grpcurl:
 	@curl -s -S -L \
 		https://github.com/fullstorydev/grpcurl/releases/download/v$(GRPCURL_VERSION)/grpcurl_$(GRPCURL_VERSION)_$(GRPCURL_OS)_$(GRPCURL_MACHINE).tar.gz | tar xz -C bin;
 	@$(RM) bin/LICENSE
+
+bin/h2client:
+	@curl -s -S -L \
+		https://github.com/Kong/h2client/releases/download/v$(H2CLIENT_VERSION)/h2client_$(H2CLIENT_VERSION)_$(OS)_$(H2CLIENT_MACHINE).tar.gz | tar xz -C bin;
+
 
 check-bazel: bin/bazel
 ifndef BAZEL
@@ -88,7 +96,7 @@ install-dev-rocks: build-venv
 	  fi \
 	done;
 
-dev: build-venv install-dev-rocks bin/grpcurl
+dev: build-venv install-dev-rocks bin/grpcurl bin/h2client
 
 build-release: check-bazel
 	$(BAZEL) clean --expunge
@@ -113,11 +121,11 @@ install: dev
 
 clean: check-bazel
 	$(BAZEL) clean
-	$(RM) bin/bazel bin/grpcurl
+	$(RM) bin/bazel bin/grpcurl bin/h2client
 
 expunge: check-bazel
 	$(BAZEL) clean --expunge
-	$(RM) bin/bazel bin/grpcurl
+	$(RM) bin/bazel bin/grpcurl bin/h2client
 
 lint: dev
 	@$(VENV) luacheck -q .
@@ -159,7 +167,7 @@ remove:
 	$(warning 'remove' target is deprecated, please use `make dev` instead)
 	-@luarocks remove kong
 
-dependencies: bin/grpcurl
+dependencies: bin/grpcurl bin/h2client
 	$(warning 'dependencies' target is deprecated, this is now not needed when using `make dev`, but are kept for installation that are not built by Bazel)
 
 	for rock in $(DEV_ROCKS) ; do \
