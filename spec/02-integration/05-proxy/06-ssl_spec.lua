@@ -9,6 +9,7 @@ local ssl_fixtures = require "spec.fixtures.ssl"
 local helpers      = require "spec.helpers"
 local cjson        = require "cjson"
 local fmt          = string.format
+local atc_compat = require "kong.router.compat"
 
 
 local function get_cert(server_name)
@@ -23,7 +24,6 @@ end
 local mock_tls_server_port = helpers.get_available_port()
 
 local fixtures = {
-  dns_mock = helpers.dns_mock.new({ mocks_only = true }),
   http_mock = {
     test_upstream_tls_server = fmt([[
       server {
@@ -41,16 +41,57 @@ local fixtures = {
   },
 }
 
-fixtures.dns_mock:A {
-  name = "example2.com",
-  address = "127.0.0.1",
-}
+local function reload_router(flavor)
+  _G.kong = {
+    configuration = {
+      router_flavor = flavor,
+    },
+  }
 
-for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
+  helpers.setenv("KONG_ROUTER_FLAVOR", flavor)
+
+  package.loaded["spec.helpers"] = nil
+  package.loaded["kong.global"] = nil
+  package.loaded["kong.cache"] = nil
+  package.loaded["kong.db"] = nil
+  package.loaded["kong.db.schema.entities.routes"] = nil
+  package.loaded["kong.db.schema.entities.routes_subschemas"] = nil
+
+  helpers = require "spec.helpers"
+
+  helpers.unsetenv("KONG_ROUTER_FLAVOR")
+
+  fixtures.dns_mock = helpers.dns_mock.new({ mocks_only = true })
+  fixtures.dns_mock:A {
+    name = "example2.com",
+    address = "127.0.0.1",
+  }
+end
+
+
+local function gen_route(flavor, r)
+  if flavor ~= "expressions" then
+    return r
+  end
+
+  r.expression = atc_compat.get_expression(r)
+  r.priority = tonumber(atc_compat._get_priority(r))
+
+  r.hosts = nil
+  r.paths = nil
+  r.snis  = nil
+
+  return r
+end
+
+
+for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
 for _, strategy in helpers.each_strategy() do
   describe("SSL [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
     local proxy_client
     local https_client
+
+    reload_router(flavor)
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -64,28 +105,28 @@ for _, strategy in helpers.each_strategy() do
         name = "global-cert",
       }
 
-      bp.routes:insert {
+      bp.routes:insert(gen_route(flavor, {
         protocols = { "https" },
         hosts     = { "global.com" },
         service   = service,
-      }
+      }))
 
       local service2 = bp.services:insert {
         name = "api-1",
       }
 
-      bp.routes:insert {
+      bp.routes:insert(gen_route(flavor, {
         protocols = { "https" },
         hosts     = { "example.com", "ssl1.com" },
         service   = service2,
-      }
+      }))
 
-      bp.routes:insert {
+      bp.routes:insert(gen_route(flavor, {
         protocols = { "https" },
         hosts     = { "sni.example.com" },
         snis      = { "sni.example.com" },
         service   = service2,
-      }
+      }))
 
       local service4 = bp.services:insert {
         name     = "api-3",
@@ -94,12 +135,12 @@ for _, strategy in helpers.each_strategy() do
         port     = helpers.mock_upstream_ssl_port,
       }
 
-      bp.routes:insert {
+      bp.routes:insert(gen_route(flavor, {
         protocols     = { "https" },
         hosts         = { "ssl3.com" },
         service       = service4,
         preserve_host = true,
-      }
+      }))
 
       local service5 = bp.services:insert {
         name     = "api-4",
@@ -108,12 +149,12 @@ for _, strategy in helpers.each_strategy() do
         port     = helpers.mock_upstream_ssl_port,
       }
 
-      bp.routes:insert {
+      bp.routes:insert(gen_route(flavor, {
         protocols     = { "https" },
         hosts         = { "no-sni.com" },
         service       = service5,
         preserve_host = false,
-      }
+      }))
 
       local service6 = bp.services:insert {
         name     = "api-5",
@@ -122,12 +163,12 @@ for _, strategy in helpers.each_strategy() do
         port     = helpers.mock_upstream_ssl_port,
       }
 
-      bp.routes:insert {
+      bp.routes:insert(gen_route(flavor, {
         protocols     = { "https" },
         hosts         = { "nil-sni.com" },
         service       = service6,
         preserve_host = false,
-      }
+      }))
 
       local service7 = bp.services:insert {
         name     = "service-7",
@@ -136,14 +177,14 @@ for _, strategy in helpers.each_strategy() do
         port     = helpers.mock_upstream_ssl_port,
       }
 
-      bp.routes:insert {
+      bp.routes:insert(gen_route(flavor, {
         protocols     = { "https" },
         hosts         = { "example.com" },
         paths         = { "/redirect-301" },
         https_redirect_status_code = 301,
         service       = service7,
         preserve_host = false,
-      }
+      }))
 
       local service8 = bp.services:insert {
         name     = "service-8",
@@ -152,14 +193,14 @@ for _, strategy in helpers.each_strategy() do
         port     = helpers.mock_upstream_ssl_port,
       }
 
-      bp.routes:insert {
+      bp.routes:insert(gen_route(flavor, {
         protocols     = { "https" },
         hosts         = { "example.com" },
         paths         = { "/redirect-302" },
         https_redirect_status_code = 302,
         service       = service8,
         preserve_host = false,
-      }
+      }))
 
       local service_example2 = assert(bp.services:insert {
         name     = "service-example2",
@@ -168,19 +209,19 @@ for _, strategy in helpers.each_strategy() do
         port     = mock_tls_server_port,
       })
 
-      assert(bp.routes:insert {
+      assert(bp.routes:insert(gen_route(flavor, {
         protocols     = { "http" },
         hosts         = { "example2.com" },
         paths         = { "/" },
         service       = service_example2,
-      })
+      })))
 
-      assert(bp.routes:insert {
+      assert(bp.routes:insert(gen_route(flavor, {
         protocols     = { "http" },
         hosts         = { "example-clear.com" },
         paths         = { "/" },
         service       = service8,
-      })
+      })))
 
       local cert = bp.certificates:insert {
         cert     = ssl_fixtures.cert,
@@ -562,6 +603,8 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
+  -- XXX: now flavor "expressions" does not support tcp/tls
+  if flavor ~= "expressions" then
   describe("TLS proxy [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -578,17 +621,17 @@ for _, strategy in helpers.each_strategy() do
         port = helpers.get_proxy_port(),
       }
 
-      bp.routes:insert {
+      bp.routes:insert(gen_route(flavor, {
         protocols = { "tls" },
         snis     = { "example.com" },
         service   = service,
-      }
+      }))
 
-      bp.routes:insert {
+      bp.routes:insert(gen_route(flavor, {
         protocols = { "tls" },
         snis      = { "foobar.example.com." },
         service   = service,
-      }
+      }))
 
       local cert = bp.certificates:insert {
         cert     = ssl_fixtures.cert,
@@ -656,8 +699,11 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
+  end   -- if flavor ~= "expressions" then
 
   describe("SSL [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
+
+    reload_router(flavor)
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -671,11 +717,11 @@ for _, strategy in helpers.each_strategy() do
         name = "default-cert",
       }
 
-      bp.routes:insert {
+      bp.routes:insert(gen_route(flavor, {
         protocols = { "https" },
         hosts     = { "example.com" },
         service   = service,
-      }
+      }))
 
       local cert = bp.certificates:insert {
         cert     = ssl_fixtures.cert,
@@ -710,6 +756,8 @@ for _, strategy in helpers.each_strategy() do
   end)
 
   describe("kong.runloop.certificate invalid SNI [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
+    reload_router(flavor)
+
     lazy_setup(function()
       assert(helpers.start_kong {
         router_flavor = flavor,
@@ -775,4 +823,4 @@ for _, strategy in helpers.each_strategy() do
 
   end)
 end
-end
+end   -- for flavor
