@@ -570,7 +570,7 @@ qq{
             local res = pdk.node.get_memory_stats()
 
             ngx.say(" lmdb map size: ", res.lmdb.map_size)
-            ngx.say(" lmdb map used pages: ", res.lmdb.used_pages)
+            ngx.say(" lmdb map used pages: ", res.lmdb.in_use_pages)
             ngx.say(" lmdb map allocate pages: ", res.lmdb.alocated_pages)
         }
     }

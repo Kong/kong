@@ -292,7 +292,7 @@ if ngx.config.ngx_lua_version >= 10011 then
     if lmdb_metrics_last_sent + LMDB_METRICS_SEND_THRESHOLD < now then
       lmdb_metrics_last_sent = now
       local lmdb_info, err = lmdb_get_env_info()
-      local lmdb_used_size = lmdb_info.lmdb.used_pages * lmdb_info.lmdb.page_size
+      local lmdb_used_size = lmdb_info.lmdb.in_use_pages * lmdb_info.lmdb.page_size
       local lmdb_capacity = lmdb_info.lmdb.map_size
       if err then
         kong.log.err("failed to get lmdb info: ", err)

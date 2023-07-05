@@ -466,7 +466,7 @@ local function metric_data(write_fn)
   end
 
   if kong.configuration.database == "off" then
-    local lmdb_used_size = res.lmdb.used_pages * res.lmdb.page_size
+    local lmdb_used_size = res.lmdb.in_use_pages * res.lmdb.page_size
     local lmdb_capacity = res.lmdb.map_size
 
     metrics.memory_stats.lmdb_capacity:set(lmdb_capacity, { node_id })
