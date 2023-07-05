@@ -8,18 +8,61 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local pl_path = require "pl.path"
+local atc_compat = require "kong.router.compat"
 
 local FILE_LOG_PATH = os.tmpname()
 
+
+local function reload_router(flavor)
+  _G.kong = {
+    configuration = {
+      router_flavor = flavor,
+    },
+  }
+
+  helpers.setenv("KONG_ROUTER_FLAVOR", flavor)
+
+  package.loaded["spec.helpers"] = nil
+  package.loaded["kong.global"] = nil
+  package.loaded["kong.cache"] = nil
+  package.loaded["kong.db"] = nil
+  package.loaded["kong.db.schema.entities.routes"] = nil
+  package.loaded["kong.db.schema.entities.routes_subschemas"] = nil
+
+  helpers = require "spec.helpers"
+
+  helpers.unsetenv("KONG_ROUTER_FLAVOR")
+end
+
+
+local function gen_route(flavor, r)
+  if flavor ~= "expressions" then
+    return r
+  end
+
+  r.expression = atc_compat.get_expression(r)
+  r.priority = tonumber(atc_compat._get_priority(r))
+
+  r.hosts = nil
+  r.paths = nil
+  r.snis  = nil
+
+  return r
+end
+
+
+for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
 for _, strategy in helpers.each_strategy() do
 
-  describe("#grpc Proxying [#" .. strategy .. "]", function()
+  describe("gRPC Proxying [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
     local proxy_client_grpc
     local proxy_client_grpcs
     local proxy_client
     local proxy_client_ssl
     local proxy_client_h2c
     local proxy_client_h2
+
+    reload_router(flavor)
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -61,38 +104,38 @@ for _, strategy in helpers.each_strategy() do
         target = "127.0.0.1:8765",
       })
 
-      assert(bp.routes:insert {
+      assert(bp.routes:insert(gen_route(flavor, {
         protocols = { "grpc" },
         hosts = { "grpc" },
         service = service1,
-      })
+      })))
 
-      assert(bp.routes:insert {
+      assert(bp.routes:insert(gen_route(flavor, {
         protocols = { "grpcs" },
         hosts = { "grpcs" },
         service = service2,
-      })
+      })))
 
-      assert(bp.routes:insert {
+      assert(bp.routes:insert(gen_route(flavor, {
         protocols = { "grpc" },
         hosts = { "grpc_authority_1.example" },
         service = mock_grpc_service,
         preserve_host = true,
-      })
+      })))
 
-      assert(bp.routes:insert {
+      assert(bp.routes:insert(gen_route(flavor, {
         protocols = { "grpc" },
         hosts = { "grpc_authority_2.example" },
         service = mock_grpc_service,
         preserve_host = false,
-      })
+      })))
 
-      assert(bp.routes:insert {
+      assert(bp.routes:insert(gen_route(flavor, {
         protocols = { "grpc" },
         hosts = { "grpc_authority_retry.example" },
         service = mock_grpc_service_retry,
         preserve_host = false,
-      })
+      })))
 
       assert(bp.plugins:insert {
         service = mock_grpc_service_retry,
@@ -122,6 +165,7 @@ for _, strategy in helpers.each_strategy() do
       ]]
 
       assert(helpers.start_kong({
+        router_flavor = flavor,
         database = strategy,
         nginx_conf       = "spec/fixtures/custom_nginx.template",
       }, nil, nil, fixtures))
@@ -364,9 +408,17 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.falsy(ok)
-        assert.matches("Code: Canceled", resp, nil, true)
-        assert.matches("Message: gRPC request matched gRPCs route", resp, nil, true)
+
+        if flavor == "expressions" then
+          assert.matches("Code: NotFound", resp, nil, true)
+          assert.matches("Message: NotFound", resp, nil, true)
+
+        else
+          assert.matches("Code: Canceled", resp, nil, true)
+          assert.matches("Message: gRPC request matched gRPCs route", resp, nil, true)
+        end
       end)
     end)
   end)
 end
+end   -- flavor
