@@ -7,4 +7,4 @@ Run postgres locally.
 
     KONG_SPEC_TEST_GRPCBIN_PORT=15002 \
     KONG_SPEC_TEST_GRPCBIN_SSL_PORT=15003 \
-    bin/busted -o gtest spec/03-plugins/34-zipkin/
+    bin/busted spec/03-plugins/34-zipkin/

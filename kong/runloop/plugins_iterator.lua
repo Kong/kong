@@ -128,7 +128,6 @@ local function get_table_for_ctx(ws, websocket)
   return tbl
 end
 
-
 local function release(ctx)
   local plugins = ctx.plugins
   if plugins then

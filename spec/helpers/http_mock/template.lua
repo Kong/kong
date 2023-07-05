@@ -150,7 +150,7 @@ http {
         local method = ngx.req.get_method()
         local uri = ngx.var.request_uri
         local headers = ngx.req.get_headers(nil, true)
-        
+
 
         ngx.req.read_body()
         local body

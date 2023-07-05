@@ -379,6 +379,15 @@ local function invalidate_keys_from_config(config_plugins, keys, log_suffix, dp_
           end
         end
 
+        if dp_version_num < 3003000000 then
+          -- OSS
+          if name == "statsd" then
+            if utils.table_contains(config.metrics, "lmdb_usage") then
+              has_update = remove_field_array_value(config.metrics, "lmdb_usage", has_update)
+            end
+          end
+        end
+
         for _, key in ipairs(keys[name]) do
           if delete_at(config, key) then
             ngx_log(ngx_WARN, _log_prefix, name, " plugin contains configuration '", key,

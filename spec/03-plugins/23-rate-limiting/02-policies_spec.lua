@@ -9,13 +9,36 @@ local uuid      = require("kong.tools.utils").uuid
 local helpers   = require "spec.helpers"
 local timestamp = require "kong.tools.timestamp"
 
+local SYNC_RATE_REALTIME = -1
+
 --[[
-  basically a copy of `get_local_key()` 
+  basically a copy of `get_local_key()`
   in `kong/plugins/rate-limiting/policies/init.lua`
 --]]
-local get_local_key = function(conf, identifier, period, period_date)
-  return string.format("ratelimit:%s:%s:%s:%s:%s",
-    conf.route_id, conf.service_id, identifier, period_date, period)
+local EMPTY_UUID = "00000000-0000-0000-0000-000000000000"
+local null = ngx.null
+local function get_service_and_route_ids(conf)
+  conf             = conf or {}
+
+  local service_id = conf.service_id
+  local route_id   = conf.route_id
+
+  if not service_id or service_id == null then
+    service_id = EMPTY_UUID
+  end
+
+  if not route_id or route_id == null then
+    route_id = EMPTY_UUID
+  end
+
+  return service_id, route_id
+end
+
+local function get_local_key(conf, identifier, period, period_date)
+  local service_id, route_id = get_service_and_route_ids(conf)
+
+  return string.format("ratelimit:%s:%s:%s:%s:%s", route_id, service_id, identifier,
+    period_date, period)
 end
 
 describe("Plugin: rate-limiting (policies)", function()
@@ -25,11 +48,18 @@ describe("Plugin: rate-limiting (policies)", function()
   lazy_setup(function()
     package.loaded["kong.plugins.rate-limiting.policies"] = nil
     policies = require "kong.plugins.rate-limiting.policies"
+
+    if not _G.kong then
+      _G.kong.db = {}
+    end
+
+    _G.kong.timer = require("resty.timerng").new()
+    _G.kong.timer:start()
   end)
 
   describe("local", function()
     local identifier = uuid()
-    local conf       = { route_id = uuid(), service_id = uuid() }
+    local conf       = { route_id = uuid(), service_id = uuid(), sync_rate = SYNC_RATE_REALTIME }
 
     local shm = ngx.shared.kong_rate_limiting_counters
 
@@ -60,8 +90,8 @@ describe("Plugin: rate-limiting (policies)", function()
       local timestamp = 569000048000
 
       assert(policies['local'].increment(conf, {second=100}, identifier, timestamp+20, 1))
-      local v = shm:ttl(get_local_key(conf, identifier, 'second', timestamp))
-      assert(v and v > 0, "wrong value")
+      local v = assert(shm:ttl(get_local_key(conf, identifier, 'second', timestamp)))
+      assert(v > 0, "wrong value")
       ngx.sleep(1.020)
 
       v = shm:ttl(get_local_key(conf, identifier, 'second', timestamp))
@@ -153,51 +183,53 @@ describe("Plugin: rate-limiting (policies)", function()
     end)
   end
 
-  describe("redis", function()
-    local identifier = uuid()
-    local conf       = {
-      route_id = uuid(),
-      service_id = uuid(),
-      redis_host = helpers.redis_host,
-      redis_port = helpers.redis_port,
-      redis_database = 0,
-    }
+  for _, sync_rate in ipairs{1, SYNC_RATE_REALTIME} do
+    describe("redis with sync rate: " .. sync_rate, function()
+      local identifier = uuid()
+      local conf       = {
+        route_id = uuid(),
+        service_id = uuid(),
+        redis_host = helpers.redis_host,
+        redis_port = helpers.redis_port,
+        redis_database = 0,
+        sync_rate = sync_rate,
+      }
 
-    before_each(function()
-      local red = require "resty.redis"
-      local redis = assert(red:new())
-      redis:set_timeout(1000)
-      assert(redis:connect(conf.redis_host, conf.redis_port))
-      redis:flushall()
-      redis:close()
-    end)
+      before_each(function()
+        local red = require "resty.redis"
+        local redis = assert(red:new())
+        redis:set_timeout(1000)
+        assert(redis:connect(conf.redis_host, conf.redis_port))
+        redis:flushall()
+        redis:close()
+      end)
 
-    it("increase & usage", function()
-      --[[
-        Just a simple test:
-        - increase 1
-        - check usage == 1
-        - increase 1
-        - check usage == 2
-        - increase 1 (beyond the limit)
-        - check usage == 3
-      --]]
+      it("increase & usage", function()
+        --[[
+          Just a simple test:
+          - increase 1
+          - check usage == 1
+          - increase 1
+          - check usage == 2
+          - increase 1 (beyond the limit)
+          - check usage == 3
+        --]]
 
-      local current_timestamp = 1424217600
-      local periods = timestamp.get_timestamps(current_timestamp)
+        local current_timestamp = 1424217600
+        local periods = timestamp.get_timestamps(current_timestamp)
 
-      for period in pairs(periods) do
+        for period in pairs(periods) do
 
-        local metric = assert(policies.redis.usage(conf, identifier, period, current_timestamp))
-        assert.equal(0, metric)
+          local metric = assert(policies.redis.usage(conf, identifier, period, current_timestamp))
+          assert.equal(0, metric)
 
-        for i = 1, 3 do
-          assert(policies.redis.increment(conf, { [period] = 2 }, identifier, current_timestamp, 1))
-          metric = assert(policies.redis.usage(conf, identifier, period, current_timestamp))
-          assert.equal(i, metric)
+          for i = 1, 3 do
+            assert(policies.redis.increment(conf, { [period] = 2 }, identifier, current_timestamp, 1))
+            metric = assert(policies.redis.usage(conf, identifier, period, current_timestamp))
+            assert.equal(i, metric)
+          end
         end
-      end
+      end)
     end)
-  end)
-
+  end
 end)

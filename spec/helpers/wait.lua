@@ -13,6 +13,17 @@ local pretty = require "pl.pretty"
 local fmt = string.format
 local insert = table.insert
 
+---@param v any
+---@return string
+local function pretty_print(v)
+  local s, err = pretty.write(v)
+  if not s then
+    s = "ERROR: failed to pretty-print value: " .. tostring(err)
+  end
+  return s
+end
+
+
 local E_ARG_COUNT = "assertion.internal.argtolittle"
 local E_ARG_TYPE = "assertion.internal.badargtype"
 
@@ -142,15 +153,15 @@ local wait_ctx = {
   result              = "timeout",
   step                = nil,
   timeout             = nil,
+  traceback           = nil,
   tries               = 0,
 }
-
 
 local wait_ctx_mt = { __index = wait_ctx }
 
 function wait_ctx:dd(msg)
   if self.debug then
-    print(fmt("\n\n%s\n\n", pretty.write(msg)))
+    print(fmt("\n\n%s\n\n", pretty_print(msg)))
   end
 end
 
@@ -172,8 +183,23 @@ function wait_ctx:wait()
 
   local f = self.fn
 
+  local handle_error = function(e)
+    self.traceback = debug.traceback("", 2)
+    return e
+  end
+
   while true do
-    ok, res, err = pcall(f)
+    ok, res, err = xpcall(f, handle_error)
+
+    if ok then
+      self.last_returned_value = first_non_nil(res, self.last_returned_value)
+      self.last_returned_error = first_non_nil(err, self.last_returned_error)
+      self.last_error = first_non_nil(err, self.last_error)
+    else
+      self.error_raised = true
+      self.last_raised_error = first_non_nil(res, self.last_raised_error)
+      self.last_error = first_non_nil(res, self.last_error)
+    end
 
     self.tries = self.tries + 1
     tries_remain = tries_remain - 1
@@ -182,37 +208,22 @@ function wait_ctx:wait()
 
     self:dd(self)
 
+    ngx.update_time()
+
     -- yay!
     if self.condition_met then
-      self.last_returned_value = res
       self.result = SUCCESS
       break
 
-      -- non-truthy return value
-    elseif ok and not res then
-      self.last_returned_error = first_non_nil(err, self.last_returned_error)
-      self.last_error = self.last_returned_error
+    elseif self.error_raised and not self.ignore_exceptions then
+      self.result = ERROR
+      break
 
-      -- error()
-    else
-      self.error_raised = true
-      self.last_raised_error = first_non_nil(res, "UNKNOWN")
-      self.last_error = self.last_raised_error
-
-      if not self.ignore_exceptions then
-        self.result = ERROR
-        break
-      end
-    end
-
-    if tries_remain == 0 then
+    elseif tries_remain == 0 then
       self.result = MAX_TRIES
       break
-    end
 
-    ngx.update_time()
-
-    if ngx.now() >= texp then
+    elseif ngx.now() >= texp then
       self.result = TIMEOUT
       break
     end
@@ -224,11 +235,6 @@ function wait_ctx:wait()
   self.elapsed = ngx.now() - tstart
 
   self:dd(self)
-
-  -- re-raise
-  if self.error_raised and not self.ignore_exceptions then
-    error(self.last_raised_error, 2)
-  end
 end
 
 
@@ -332,17 +338,29 @@ local function wait_until(state, arguments, level)
     result = ("timed out after %ss"):format(ctx.elapsed)
   end
 
-  if ctx.last_raised_error then
-    insert(errors, "Last raised error:")
+  if ctx.last_returned_value ~= nil then
+    insert(errors, "Last returned value:")
     insert(errors, "")
-    insert(errors, pretty.write(ctx.last_raised_error))
+    insert(errors, pretty_print(ctx.last_returned_value))
     insert(errors, "")
   end
 
-  if ctx.last_returned_error then
+  if ctx.last_raised_error ~= nil then
+    insert(errors, "Last raised error:")
+    insert(errors, "")
+    insert(errors, pretty_print(ctx.last_raised_error))
+    insert(errors, "")
+
+    if ctx.traceback then
+      insert(errors, ctx.traceback)
+      insert(errors, "")
+    end
+  end
+
+  if ctx.last_returned_error ~= nil then
     insert(errors, "Last returned error:")
     insert(errors, "")
-    insert(errors, pretty.write(ctx.last_returned_error))
+    insert(errors, pretty_print(ctx.last_returned_error))
     insert(errors, "")
   end
 
@@ -408,6 +426,9 @@ luassert:register("modifier", "with_max_tries",
 luassert:register("modifier", "ignore_exceptions",
                   wait_until_modifier("ignore_exceptions"))
 
+luassert:register("modifier", "with_debug",
+                  wait_until_modifier("debug"))
+
 
 ---
 -- @param ctx spec.helpers.wait.ctx
@@ -428,6 +449,7 @@ local function ctx_builder(ctx)
   self.with_timeout = with("timeout")
   self.with_step = with("step")
   self.with_max_tries = with("max_tries")
+  self.with_debug = with("debug")
 
   self.ignore_exceptions = function(ignore)
     ctx.ignore_exceptions = ctx:validate("ignore_exceptions", ignore,

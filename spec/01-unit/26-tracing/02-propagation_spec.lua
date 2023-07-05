@@ -722,6 +722,126 @@ describe("propagation.parse", function()
       assert.spy(warn).not_called()
     end)
   end)
+
+  describe("aws single header parsing", function()
+    local warn, debug
+    setup(function()
+      warn = spy.on(kong.log, "warn")
+      debug = spy.on(kong.log, "debug")
+    end)
+    before_each(function()
+      warn:clear()
+      debug:clear()
+    end)
+    teardown(function()
+      warn:revert()
+      debug:clear()
+    end)
+
+    it("valid aws with sampling", function()
+      local aws = fmt("Root=1-%s-%s;Parent=%s;Sampled=%s", string.sub(trace_id_32, 1, 8), string.sub(trace_id_32, 9, #trace_id_32), span_id, "1")
+      local t = { parse({["x-amzn-trace-id"] = aws}) }
+      assert.spy(warn).not_called()
+      assert.same({ "aws", trace_id_32, span_id, nil, true }, to_hex_ids(t))
+    end)
+    it("valid aws with spaces", function()
+      local aws = fmt("    Root =    1-%s-%s   ;   Parent= %s;  Sampled   =%s", string.sub(trace_id_32, 1, 8), string.sub(trace_id_32, 9, #trace_id_32), span_id, "1")
+      local t = { parse({["x-amzn-trace-id"] = aws}) }
+      assert.spy(warn).not_called()
+      assert.same({ "aws", trace_id_32, span_id, nil, true }, to_hex_ids(t))
+    end)
+    it("valid aws with parent first", function()
+      local aws = fmt("Parent=%s;Root=1-%s-%s;Sampled=%s", span_id, string.sub(trace_id_32, 1, 8), string.sub(trace_id_32, 9, #trace_id_32), "1")
+      local t = { parse({["x-amzn-trace-id"] = aws}) }
+      assert.spy(warn).not_called()
+      assert.same({ "aws", trace_id_32, span_id, nil, true }, to_hex_ids(t))
+    end)
+    it("valid aws with extra fields", function()
+      local aws = fmt("Foo=bar;Root=1-%s-%s;Parent=%s;Sampled=%s", string.sub(trace_id_32, 1, 8), string.sub(trace_id_32, 9, #trace_id_32), span_id, "1")
+      local t = { parse({["x-amzn-trace-id"] = aws}) }
+      assert.spy(warn).not_called()
+      assert.same({ "aws", trace_id_32, span_id, nil, true }, to_hex_ids(t))
+    end)
+    it("valid aws without sampling", function()
+      local aws = fmt("Root=1-%s-%s;Parent=%s;Sampled=%s", string.sub(trace_id_32, 1, 8), string.sub(trace_id_32, 9, #trace_id_32), span_id, "0")
+      local t = { parse({["x-amzn-trace-id"] = aws}) }
+      assert.spy(warn).not_called()
+      assert.same({ "aws", trace_id_32, span_id, nil, false }, to_hex_ids(t))
+    end)
+    it("valid aws with sampling big", function()
+      local aws = fmt("Root=1-%s-%s;Parent=%s;Sampled=%s", string.sub(big_trace_id_32, 1, 8), string.sub(big_trace_id_32, 9, #big_trace_id_32), big_span_id, "0")
+      local t = { parse({["x-amzn-trace-id"] = aws}) }
+      assert.spy(warn).not_called()
+      assert.same({ "aws", big_trace_id_32, big_span_id, nil, false }, to_hex_ids(t))
+    end)
+    describe("errors", function()
+      it("rejects invalid trace IDs", function()
+        local aws = fmt("Root=0-%s-%s;Parent=%s;Sampled=%s", string.sub(trace_id_32, 1, 8), string.sub(trace_id_32, 9, #trace_id_32), big_span_id, "0")
+        local t = { parse({["x-amzn-trace-id"] = aws}) }
+        assert.same({ "aws" }, t)
+        assert.spy(warn).was_called_with("invalid aws header trace id; ignoring.")
+
+        aws = fmt("Root=1-vv-%s;Parent=%s;Sampled=%s", string.sub(trace_id_32, 9, #trace_id_32), span_id, "0")
+        t = { parse({["x-amzn-trace-id"] = aws}) }
+        assert.same({ "aws" }, t)
+        assert.spy(warn).was_called_with("invalid aws header trace id; ignoring.")
+
+        aws = fmt("Root=1-%s-vv;Parent=%s;Sampled=%s", string.sub(trace_id_32, 1, 8), span_id, "0")
+        t = { parse({["x-amzn-trace-id"] = aws}) }
+        assert.same({ "aws" }, t)
+        assert.spy(warn).was_called_with("invalid aws header trace id; ignoring.")
+
+        aws = fmt("Root=1-%s-%s;Parent=%s;Sampled=%s", string.sub(too_long_id, 1, 8), string.sub(too_long_id, 9, #too_long_id), big_span_id, "0")
+        t = { parse({["x-amzn-trace-id"] = aws}) }
+        assert.same({ "aws" }, t)
+        assert.spy(warn).was_called_with("invalid aws header trace id; ignoring.")
+
+        aws = fmt("Root=1-%s-%s;Parent=%s;Sampled=%s", string.sub(too_short_id, 1, 1), string.sub(too_short_id, 2, #too_short_id), big_span_id, "0")
+        t = { parse({["x-amzn-trace-id"] = aws}) }
+        assert.same({ "aws" }, t)
+        assert.spy(warn).was_called_with("invalid aws header trace id; ignoring.")
+
+        aws = fmt("Root=;Parent=%s;Sampled=%s", big_span_id, "0")
+        t = { parse({["x-amzn-trace-id"] = aws}) }
+        assert.same({ "aws" }, t)
+        assert.spy(warn).was_called_with("invalid aws header trace id; ignoring.")
+      end)
+
+      it("rejects invalid parent IDs", function()
+        local aws = fmt("Root=1-%s-%s;Parent=vv;Sampled=%s", string.sub(trace_id_32, 1, 8), string.sub(trace_id_32, 9, #trace_id_32), "0")
+        local t = { parse({["x-amzn-trace-id"] = aws}) }
+        assert.same({ "aws" }, t)
+        assert.spy(warn).was_called_with("invalid aws header parent id; ignoring.")
+
+        aws = fmt("Root=1-%s-%s;Parent=%s;Sampled=%s", string.sub(trace_id_32, 1, 8), string.sub(trace_id_32, 9, #trace_id_32), too_long_id, "0")
+        t = { parse({["x-amzn-trace-id"] = aws}) }
+        assert.same({ "aws" }, t)
+        assert.spy(warn).was_called_with("invalid aws header parent id; ignoring.")
+
+        aws = fmt("Root=1-%s-%s;Parent=%s;Sampled=%s", string.sub(trace_id_32, 1, 8), string.sub(trace_id_32, 2, #trace_id_32), too_short_id, "0")
+        t = { parse({["x-amzn-trace-id"] = aws}) }
+        assert.same({ "aws" }, t)
+        assert.spy(warn).was_called_with("invalid aws header parent id; ignoring.")
+
+        aws = fmt("Root=1-%s-%s;Parent=;Sampled=%s", string.sub(trace_id_32, 1, 8), string.sub(trace_id_32, 2, #trace_id_32), "0")
+        t = { parse({["x-amzn-trace-id"] = aws}) }
+        assert.same({ "aws" }, t)
+        assert.spy(warn).was_called_with("invalid aws header parent id; ignoring.")
+      end)
+
+      it("rejects invalid sample flag", function()
+        local aws = fmt("Root=1-%s-%s;Parent=%s;Sampled=2", string.sub(trace_id_32, 1, 8), string.sub(trace_id_32, 9, #trace_id_32), span_id)
+        local t = { parse({["x-amzn-trace-id"] = aws}) }
+        assert.same({ "aws" }, t)
+        assert.spy(warn).was_called_with("invalid aws header sampled flag; ignoring.")
+
+        aws = fmt("Root=1-%s-%s;Parent=%s;Sampled=", string.sub(trace_id_32, 1, 8), string.sub(trace_id_32, 9, #trace_id_32), span_id)
+        t = { parse({["x-amzn-trace-id"] = aws}) }
+        assert.same({ "aws" }, t)
+        assert.spy(warn).was_called_with("invalid aws header sampled flag; ignoring.")
+      end)
+    end)
+  end)
 end)
 
 
@@ -800,6 +920,15 @@ describe("propagation.set", function()
       ["x-datadog-sampling-priority"] = "1"
     }
 
+    local aws_headers = {
+      ["x-amzn-trace-id"] = fmt("Root=1-%s-%s;Parent=%s;Sampled=%s",
+        string.sub(trace_id, 1, 8),
+        string.sub(trace_id, 9, #trace_id),
+        span_id,
+        "1"
+      )
+    }
+
     before_each(function()
       headers = {}
       warnings = {}
@@ -829,6 +958,11 @@ describe("propagation.set", function()
 
         set("preserve", "datadog", proxy_span)
         assert.same(datadog_headers, headers)
+
+        headers = {}
+
+        set("preserve", "aws", proxy_span)
+        assert.same(aws_headers, headers)
 
         assert.same({}, warnings)
       end)
@@ -866,6 +1000,11 @@ describe("propagation.set", function()
 
         set("preserve", nil, proxy_span, "datadog")
         assert.same(datadog_headers, headers)
+
+        headers = {}
+
+        set("preserve", "aws", proxy_span, "aws")
+        assert.same(aws_headers, headers)
       end)
     end)
 
@@ -1058,6 +1197,15 @@ describe("propagation.set", function()
         assert.equals(1, #warnings)
         assert.matches("Mismatched header types", warnings[1])
       end)
+
+      it("sets both the jaeger and aws headers when an aws header is encountered.", function()
+        set("jaeger", "aws", proxy_span)
+        assert.same(table_merge(jaeger_headers, aws_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
     end)
 
     describe("conf.header_type = 'ot', ids group #", function()
@@ -1111,6 +1259,15 @@ describe("propagation.set", function()
         assert.equals(1, #warnings)
         assert.matches("Mismatched header types", warnings[1])
       end)
+
+      it("sets both the ot and aws headers when a aws header is encountered.", function()
+        set("ot", "aws", proxy_span)
+        assert.same(table_merge(ot_headers, aws_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
     end)
 
     describe("conf.header_type = 'datadog'", function()
@@ -1150,6 +1307,50 @@ describe("propagation.set", function()
       it("sets both the datadog and jaeger headers when a jaeger header is encountered.", function()
         set("datadog", "jaeger", proxy_span)
         assert.same(table_merge(datadog_headers, jaeger_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
+    end)
+
+    describe("conf.header_type = 'aws', ids group #", function()
+      it("sets headers to ot when conf.header_type = aws", function()
+        set("aws", "aws", proxy_span)
+        assert.same(aws_headers, headers)
+        assert.same({}, warnings)
+      end)
+
+      it("sets both the b3 and aws headers when a b3 header is encountered.", function()
+        set("aws", "b3", proxy_span)
+        assert.same(table_merge(b3_headers, aws_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
+
+      it("sets both the b3-single and aws headers when a b3-single header is encountered.", function()
+        set("aws", "b3-single", proxy_span)
+        assert.same(table_merge(b3_single_headers, aws_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
+
+      it("sets both the w3c and aws headers when a w3c header is encountered.", function()
+        set("aws", "w3c", proxy_span)
+        assert.same(table_merge(w3c_headers, aws_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
+
+      it("sets both the aws and jaeger headers when a jaeger header is encountered.", function()
+        set("aws", "jaeger", proxy_span)
+        assert.same(table_merge(aws_headers, jaeger_headers), headers)
 
         -- but it generates a warning
         assert.equals(1, #warnings)

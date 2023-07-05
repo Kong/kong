@@ -33,7 +33,7 @@ for _, tls in ipairs {true, false} do
           resp_body = true
         }
       }))
-      
+
       assert(mock:start())
     end)
 

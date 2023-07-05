@@ -20,6 +20,7 @@ local pairs = pairs
 local error = error
 local tostring = tostring
 local timer_at = ngx.timer.at
+local SYNC_RATE_REALTIME = -1
 
 
 local EMPTY = {}
@@ -205,9 +206,14 @@ function RateLimitingHandler:access(conf)
     end
   end
 
-  local ok, err = timer_at(0, increment, conf, limits, identifier, current_timestamp, 1)
-  if not ok then
-    kong.log.err("failed to create timer: ", err)
+  if conf.sync_rate ~= SYNC_RATE_REALTIME and conf.policy == "redis" then
+    increment(false, conf, limits, identifier, current_timestamp, 1)
+
+  else
+    local ok, err = timer_at(0, increment, conf, limits, identifier, current_timestamp, 1)
+    if not ok then
+      kong.log.err("failed to create timer: ", err)
+    end
   end
 end
 

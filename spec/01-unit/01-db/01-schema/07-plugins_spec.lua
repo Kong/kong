@@ -16,7 +16,10 @@ local plugins_definition = require "kong.db.schema.entities.plugins"
 local dao_plugins = require "kong.db.dao.plugins"
 local certificates_definition = require "kong.db.schema.entities.certificates"
 local constants = require "kong.constants"
+
+--[= XXX EE
 local kong_meta = require "kong.meta"
+--]=]
 
 describe("plugins", function()
   local Plugins

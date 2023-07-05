@@ -38,6 +38,11 @@
 
 #### Plugins
 
+- **OpenTelemetry**: Support AWS X-Ray propagation header
+  The field `header_type`now accepts the `aws` value to handle this specific
+  propagation header.
+  [11075](https://github.com/Kong/kong/pull/11075)
+
 #### PDK
 
 #### Performance
@@ -93,6 +98,8 @@
 ### Changed
 
 #### Core
+- Tracing: new attribute `http.route` added to http request spans.
+  [#10981](https://github.com/Kong/kong/pull/10981)
 
 - The default value of `lmdb_map_size` config has been bumped to `2048m`
   from `128m` to accommodate most commonly deployed config sizes in DB-less
@@ -200,8 +207,8 @@
   [#10385](https://github.com/Kong/kong/pull/10385)
 - Request and response buffering options are now enabled for incoming HTTP 2.0 requests too.
   Thanks [@PidgeyBE](https://github.com/PidgeyBE) for contributing this change.
-  [#10204](https://github.com/Kong/kong/pull/10204)
   [#10595](https://github.com/Kong/kong/pull/10595)
+  [#10204](https://github.com/Kong/kong/pull/10204)
 - Add `KONG_UPSTREAM_DNS_TIME` to `kong.ctx` so that we can record the time it takes for DNS
   resolution when Kong proxies to upstream.
   [#10355](https://github.com/Kong/kong/pull/10355)
@@ -210,11 +217,8 @@
 - Support timeout for dynamic log level
   [#10288](https://github.com/Kong/kong/pull/10288)
 - Added new span attribute `http.client_ip` to capture the client IP when behind a proxy.
+  Thanks [@backjo](https://github.com/backjo) for this contribution!
   [#10723](https://github.com/Kong/kong/pull/10723)
-- Backported the openresty `ngx.print` chunk encoding buffer double free bug fix that
-  leads to the corruption of chunk-encoded response data.
-  [#10816](https://github.com/Kong/kong/pull/10816)
-  [#10824](https://github.com/Kong/kong/pull/10824)
 
 #### Admin API
 
@@ -300,8 +304,6 @@
   [#10514](https://github.com/Kong/kong/pull/10514)
 - Fix the UDP socket leak caused by frequent DNS queries.
   [#10691](https://github.com/Kong/kong/pull/10691)
-- Reports: fix a potential issue that could cause socket leaks.
-  [#10783](https://github.com/Kong/kong/pull/10783)
 - Fix a typo of mlcache option `shm_set_tries`.
   [#10712](https://github.com/Kong/kong/pull/10712)
 - Fix an issue where slow start up of Go plugin server causes dead lock.
@@ -320,6 +322,10 @@
   [#10775](https://github.com/Kong/kong/pull/10775)
 - Fix issue where Vault configuration stayed sticky and cached even when configurations were changed.
   [#10776](https://github.com/Kong/kong/pull/10776)
+- Backported the openresty `ngx.print` chunk encoding buffer double free bug fix that
+  leads to the corruption of chunk-encoded response data.
+  [#10816](https://github.com/Kong/kong/pull/10816)
+  [#10824](https://github.com/Kong/kong/pull/10824)
 
 
 #### Admin API
@@ -345,10 +351,9 @@
   [#10687](https://github.com/Kong/kong/pull/10687)
 - **Oauth2**: prevent an authorization code created by one plugin instance to be exchanged for an access token by a different plugin instance.
   [#10011](https://github.com/Kong/kong/pull/10011)
-- **gRPC gateway**: fixed an issue that empty arrays in JSON are incorrectly encoded as `"{}"`; they are now encoded as `"[]"` to comply with standard.
+- **gRPC gateway**: fixed an issue that empty arrays in JSON are incorrectly encoded as `"{}"`; they are
+now encoded as `"[]"` to comply with standard.
   [#10790](https://github.com/Kong/kong/pull/10790)
-- **loggly & tcp-log & udp-log**: fix a potential issue that could cause socket leaks.
-  [#10783](https://github.com/Kong/kong/pull/10783)
 
 #### PDK
 
@@ -638,6 +643,9 @@
   [#9611](https://github.com/Kong/kong/pull/9611)
 - **HTTP-Log**: Support `http_endpoint` field to be referenceable
   [#9714](https://github.com/Kong/kong/pull/9714)
+- **rate-limiting**: Add a new configuration `sync_rate` to the `redis` policy,
+  which synchronizes metrics to redis periodically instead of on every request.
+  [#9538](https://github.com/Kong/kong/pull/9538)
 
 
 #### Hybrid Mode

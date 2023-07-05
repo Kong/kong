@@ -1,5 +1,5 @@
 """
-Global varibles
+Global variables
 """
 
 def _load_vars(ctx):

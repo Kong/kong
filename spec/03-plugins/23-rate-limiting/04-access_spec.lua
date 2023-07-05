@@ -7,6 +7,8 @@
 
 local helpers           = require "spec.helpers"
 local cjson             = require "cjson"
+local redis             = require "resty.redis"
+local version           = require "version"
 
 
 local REDIS_HOST        = helpers.redis_host
@@ -58,6 +60,15 @@ local function GET(url, opt)
   client:close()
 
   return res
+end
+
+
+local function redis_connect()
+  local red = assert(redis:new())
+  red:set_timeout(2000)
+  assert(red:connect(REDIS_HOST, REDIS_PORT))
+  local red_version = string.match(red:info(), 'redis_version:([%g]+)\r\n')
+  return red, assert(version(red_version))
 end
 
 
@@ -1225,6 +1236,111 @@ if policy == "redis" then
 end     -- if policy == "redis" then
 
 end)
+
+if policy == "redis" then
+
+desc = fmt("Plugin: rate-limiting with sync_rate #db (access) [strategy: %s]", strategy)
+
+describe(desc, function ()
+  local https_server, admin_client
+
+  lazy_setup(function()
+    helpers.get_db_utils(strategy, nil, {
+      "rate-limiting",
+    })
+
+    https_server = helpers.https_server.new(UPSTREAM_PORT)
+    https_server:start()
+
+    assert(helpers.start_kong({
+      database   = strategy,
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      plugins = "bundled,rate-limiting,key-auth",
+      trusted_ips = "0.0.0.0/0,::/0",
+      lua_ssl_trusted_certificate = "spec/fixtures/redis/ca.crt",
+      log_level = "error"
+    }))
+
+  end)
+
+  lazy_teardown(function()
+    https_server:shutdown()
+    assert(helpers.stop_kong())
+  end)
+
+  before_each(function()
+    flush_redis()
+    admin_client = helpers.admin_client()
+  end)
+
+  after_each(function()
+    admin_client:close()
+  end)
+
+  it("blocks if exceeding limit", function ()
+    local test_path = "/test"
+
+    local service = setup_service(admin_client, UPSTREAM_URL)
+    local route = setup_route(admin_client, service, { test_path })
+    local rl_plugin = setup_rl_plugin(admin_client, {
+      minute              = 6,
+      policy              = "redis",
+      limit_by            = "ip",
+      redis_host          = REDIS_HOST,
+      redis_port          = REDIS_PORT,
+      redis_password      = REDIS_PASSWORD,
+      redis_database      = REDIS_DATABASE,
+      redis_ssl           = false,
+      sync_rate           = 10,
+    }, service)
+    local red = redis_connect()
+    local ok, err = red:select(REDIS_DATABASE)
+    if not ok then
+      error("failed to change Redis database: " .. err)
+    end
+
+    finally(function()
+      delete_plugin(admin_client, rl_plugin)
+      delete_route(admin_client, route)
+      delete_service(admin_client, service)
+      red:close()
+      os.execute("cat servroot/logs/error.log")
+    end)
+
+    helpers.wait_for_all_config_update({
+      override_global_rate_limiting_plugin = true,
+    })
+
+    -- initially, the metrics are not written to the redis
+    assert(red:dbsize() == 0, "redis db should be empty, but got " .. red:dbsize())
+
+    retry(function ()
+      -- exceed the limit
+      for _i = 0, 7 do
+        GET(test_path)
+      end
+
+      -- exceed the limit locally
+      assert.res_status(429, GET(test_path))
+
+      -- wait for the metrics to be written to the redis
+      helpers.pwait_until(function()
+        GET(test_path)
+        assert(red:dbsize() == 1, "redis db should have 1 key, but got " .. red:dbsize())
+      end, 15)
+
+      -- wait for the metrics expire
+      helpers.pwait_until(function()
+        assert.res_status(200, GET(test_path))
+      end, 61)
+
+    end)
+
+  end)  -- it("blocks if exceeding limit", function ()
+
+end)
+
+end     -- if policy == "redis" then
 
 end     -- for __, policy in ipairs({ "local", "cluster", "redis" }) do
 

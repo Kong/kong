@@ -63,7 +63,7 @@ def common_suites(expect, fips: bool = False):
             .nginx_compiled_openssl.matches("OpenSSL 3.1.\d") \
             .version_requirement.key("libssl.so.3").less_than("OPENSSL_3.2.0") \
             .version_requirement.key("libcrypto.so.3").less_than("OPENSSL_3.2.0") \
-  
+
         expect("**/*.so", "dynamic libraries are compiled with OpenSSL 3.1.x") \
             .version_requirement.key("libssl.so.3").less_than("OPENSSL_3.2.0") \
             .version_requirement.key("libcrypto.so.3").less_than("OPENSSL_3.2.0") \

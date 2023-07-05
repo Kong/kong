@@ -17,7 +17,7 @@ function http_mock:get_client()
   if not client then
       client = http_client({
         scheme = self.client_opts.tls and "https" or "http",
-        host = "localhost", 
+        host = "localhost",
         port = self.client_opts.port,
       })
 

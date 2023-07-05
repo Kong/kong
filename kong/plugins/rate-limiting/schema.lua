@@ -8,6 +8,9 @@
 local typedefs = require "kong.db.schema.typedefs"
 
 
+local SYNC_RATE_REALTIME = -1
+
+
 local ORDERED_PERIODS = { "second", "minute", "hour", "day", "month", "year"}
 
 
@@ -23,6 +26,16 @@ local function validate_periods_order(config)
                                     upper_period, v2, lower_period, v1)
         end
       end
+    end
+  end
+
+  if config.policy ~= "redis" and config.sync_rate ~= SYNC_RATE_REALTIME then
+    return nil, "sync_rate can only be used with the redis policy"
+  end
+
+  if config.policy == "redis" then
+    if config.sync_rate ~= SYNC_RATE_REALTIME and config.sync_rate < 0.02 then
+      return nil, "sync_rate must be greater than 0.02, or -1 to disable"
     end
   end
 
@@ -98,6 +111,7 @@ return {
           { hide_client_headers = { description = "Optionally hide informative response headers.", type = "boolean", required = true, default = false }, },
           { error_code = { description = "Set a custom error code to return when the rate limit is exceeded.", type = "number", default = 429, gt = 0 }, },
           { error_message = { description = "Set a custom error message to return when the rate limit is exceeded.", type = "string", default = "API rate limit exceeded" }, },
+          { sync_rate = { description = "How often to sync counter data to the central data store. A value of -1 results in synchronous behavior.", type = "number", required = true, default = -1 }, },
         },
         custom_validator = validate_periods_order,
       },

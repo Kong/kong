@@ -107,7 +107,7 @@ install-dev-rocks: build-venv
 dev: build-venv install-dev-rocks bin/grpcurl bin/h2client
 
 build-release: check-bazel
-	$(BAZEL) build clean --expunge
+	$(BAZEL) clean --expunge
 	$(BAZEL) build //build:kong --verbose_failures --config release
 
 package/deb: check-bazel build-release

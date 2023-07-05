@@ -299,6 +299,8 @@ function _M.runloop_before_header_filter()
   local root_span = ngx.ctx.KONG_SPANS and ngx.ctx.KONG_SPANS[1]
   if root_span then
     root_span:set_attribute("http.status_code", ngx.status)
+    local r = ngx.ctx.route
+    root_span:set_attribute("http.route", r and r.paths and r.paths[1] or "")
   end
 end
 

@@ -119,6 +119,7 @@ dnf install \
     make \
     patch \
     perl \
+    perl-IPC-Cmd \
     protobuf-devel \
     unzip \
     valgrind \

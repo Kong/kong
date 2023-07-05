@@ -72,6 +72,7 @@ return {
       "escape_path",
     },
   },
+
   -- Any dataplane older than 3.2.0
   [3002000000] = {
     -- OSS
@@ -123,6 +124,7 @@ return {
       "phase_duration_flavor",
     }
   },
+
   -- Any dataplane older than 3.3.0
   [3003000000] = {
     acme = {
@@ -163,6 +165,8 @@ return {
       "set_claims",
     },
   },
+
+  -- Any dataplane older than 3.4.0
   [3004000000] = {
     -- Enterprise plugins
     openid_connect = {
@@ -170,6 +174,9 @@ return {
     },
     kafka_log = {
       "custom_fields_by_lua",
+    },
+    rate_limiting = {
+      "sync_rate",
     },
   },
 }

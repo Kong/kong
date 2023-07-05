@@ -7,12 +7,16 @@
 
 local to_hex = require "resty.string".to_hex
 local table_merge = require "kong.tools.utils".table_merge
+local split = require "kong.tools.utils".split
+local strip = require "kong.tools.utils".strip
 local unescape_uri = ngx.unescape_uri
 local char = string.char
 local match = string.match
+local sub = string.sub
 local gsub = string.gsub
 local fmt = string.format
 local concat = table.concat
+local ipairs = ipairs
 local to_ot_trace_id
 
 -- [[ EE
@@ -35,6 +39,18 @@ local JAEGER_TRACECONTEXT_PATTERN = "^(%x+):(%x+):(%x+):(%x+)$"
 local JAEGER_BAGGAGE_PATTERN = "^uberctx%-(.*)$"
 local OT_BAGGAGE_PATTERN = "^ot%-baggage%-(.*)$"
 local W3C_TRACEID_LEN = 16
+
+local AWS_KV_PAIR_DELIM = ";"
+local AWS_KV_DELIM = "="
+local AWS_TRACE_ID_KEY = "Root"
+local AWS_TRACE_ID_LEN = 35
+local AWS_TRACE_ID_PATTERN = "^(%x+)%-(%x+)%-(%x+)$"
+local AWS_TRACE_ID_VERSION = "1"
+local AWS_TRACE_ID_TIMESTAMP_LEN = 8
+local AWS_TRACE_ID_UNIQUE_ID_LEN = 24
+local AWS_PARENT_ID_KEY = "Parent"
+local AWS_PARENT_ID_LEN = 16
+local AWS_SAMPLED_FLAG_KEY = "Sampled"
 
 local function hex_to_char(c)
   return char(tonumber(c, 16))
@@ -341,6 +357,58 @@ local function parse_jaeger_trace_context_headers(jaeger_header)
   return trace_id, span_id, parent_id, should_sample
 end
 
+local function parse_aws_headers(aws_header)
+  -- allow testing to spy on this.
+  local warn = kong.log.warn
+
+  if type(aws_header) ~= "string" then
+    return nil, nil, nil
+  end
+
+  local trace_id = nil
+  local span_id = nil
+  local should_sample = nil
+
+  -- The AWS trace header consists of multiple `key=value` separated by a delimiter `;`
+  -- We can retrieve the trace id with the `Root` key, the span id with the `Parent`
+  -- key and the sampling parameter with the `Sampled` flag. Extra information should be ignored.
+  --
+  -- The trace id has a custom format: `version-timestamp-uniqueid` and an opentelemetry compatible
+  -- id can be deduced by concatenating the timestamp and uniqueid.
+  --
+  -- https://docs.aws.amazon.com/xray/latest/devguide/xray-concepts.html#xray-concepts-tracingheader
+  for _, key_pair in ipairs(split(aws_header, AWS_KV_PAIR_DELIM)) do
+    local key_pair_list = split(key_pair, AWS_KV_DELIM)
+    local key = strip(key_pair_list[1])
+    local value = strip(key_pair_list[2])
+
+    if key == AWS_TRACE_ID_KEY then
+      local version, timestamp_subset, unique_id_subset = match(value, AWS_TRACE_ID_PATTERN)
+
+      if #value ~= AWS_TRACE_ID_LEN or version ~= AWS_TRACE_ID_VERSION
+      or #timestamp_subset ~= AWS_TRACE_ID_TIMESTAMP_LEN
+      or #unique_id_subset ~= AWS_TRACE_ID_UNIQUE_ID_LEN then
+        warn("invalid aws header trace id; ignoring.")
+        return nil, nil, nil
+      end
+
+      trace_id = from_hex(timestamp_subset .. unique_id_subset)
+    elseif key == AWS_PARENT_ID_KEY then
+      if #value ~= AWS_PARENT_ID_LEN then
+        warn("invalid aws header parent id; ignoring.")
+        return nil, nil, nil
+      end
+      span_id = from_hex(value)
+    elseif key == AWS_SAMPLED_FLAG_KEY then
+      if value ~= "0" and value ~= "1" then
+        warn("invalid aws header sampled flag; ignoring.")
+        return nil, nil, nil
+      end
+      should_sample = value == "1"
+    end
+  end
+  return trace_id, span_id, should_sample
+end
 
 -- [[ EE
 local function parse_datadog_headers(headers)
@@ -459,6 +527,11 @@ local function find_header_type(headers)
   if datadog_header then
     return "datadog", datadog_header
   end
+
+  local aws_header = headers["x-amzn-trace-id"]
+  if aws_header then
+    return "aws", aws_header
+  end
 end
 
 
@@ -481,6 +554,8 @@ local function parse(headers, conf_header_type)
     trace_id, parent_id, should_sample = parse_ot_headers(headers)
   elseif header_type == "datadog" then
     trace_id, parent_id, should_sample = parse_datadog_headers(headers)
+  elseif header_type == "aws" then
+    trace_id, span_id, should_sample = parse_aws_headers(composed_header)
   end
 
   if not trace_id then
@@ -605,6 +680,17 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
     -- XXX: https://github.com/opentracing/specification/issues/117
     set_header("uberctx-"..key, ngx.escape_uri(value))
   end
+
+  if conf_header_type == "aws" or found_header_type == "aws" then
+    local trace_id = to_hex(proxy_span.trace_id)
+    set_header("x-amzn-trace-id", "Root=" .. AWS_TRACE_ID_VERSION .. "-" ..
+        sub(trace_id, 1, AWS_TRACE_ID_TIMESTAMP_LEN) .. "-" ..
+        sub(trace_id, AWS_TRACE_ID_TIMESTAMP_LEN + 1, #trace_id) ..
+        ";Parent=" .. to_hex(proxy_span.span_id) .. ";Sampled=" ..
+        (proxy_span.should_sample and "1" or "0")
+    )
+  end
+
 end
 
 

@@ -112,14 +112,14 @@ jobs:
         cat $GITHUB_OUTPUT
 
         echo "### :package: Building and packaging for $release_desc" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "- event_name: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
-        echo "- ref_name: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
-        echo "- inputs.version: ${{ github.event.inputs.version }}" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "```" >> $GITHUB_STEP_SUMMARY
+        echo >> $GITHUB_STEP_SUMMARY
+        echo '- event_name: ${{ github.event_name }}' >> $GITHUB_STEP_SUMMARY
+        echo '- ref_name: ${{ github.ref_name }}' >> $GITHUB_STEP_SUMMARY
+        echo '- inputs.version: ${{ github.event.inputs.version }}' >> $GITHUB_STEP_SUMMARY
+        echo >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
         cat $GITHUB_OUTPUT >> $GITHUB_STEP_SUMMARY
-        echo "```" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
 
   build-packages:
     needs: metadata
@@ -374,7 +374,7 @@ jobs:
   build-images:
     name: Build Images - ${{ matrix.label }}
     needs: [metadata, build-packages]
-    runs-on: ${{ vars.RELEASE_RUNS_ON }} 
+    runs-on: ${{ vars.RELEASE_RUNS_ON }}
     strategy:
       fail-fast: false
       matrix:
