@@ -5,9 +5,10 @@ build-packages:
 # we have to use an old enough distro.
 
 # label: used to distinguish artifacts for later use
-# os: docker image if not ubuntu/debian, otherwise ignored
+# os: the github actions runner label to pick from
+# image: docker image name if the build is running in side a container 
 # package: package type
-# bazel_args: if set, turn on cross-compilation; make sure its value is a bazel platform
+# bazel_args: additional bazel build flags 
 # check-manifest-suite: the check manifest suite as defined in scripts/explain_manifest/config.py
 
 # Ubuntu
