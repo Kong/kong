@@ -20,6 +20,10 @@ local log_level       = require "kong.runloop.log_level"
 local instrumentation = require "kong.tracing.instrumentation"
 
 
+local lmdb_get = require("resty.lmdb").get
+local unmarshall = require("kong.db.declarative.marshaller").unmarshall
+
+
 local kong              = kong
 local type              = type
 local ipairs            = ipairs
@@ -337,56 +341,119 @@ local function new_router(version)
   local routes, i = {}, 0
 
   local err
+
   -- The router is initially created on init phase, where kong.core_cache is
   -- still not ready. For those cases, use a plain Lua table as a cache
   -- instead
   local services_init_cache = {}
-  if not kong.core_cache and db.strategy ~= "off" then
-    services_init_cache, err = build_services_init_cache(db)
+  if db.strategy == "off" then
+    local key = "routes|*|@list"
+    local list, err = unmarshall(lmdb_get(key))
     if err then
-      services_init_cache = {}
-      log(WARN, "could not build services init cache: ", err)
-    end
-  end
-
-  local detect_changes = db.strategy ~= "off" and kong.core_cache
-  local counter = 0
-  local page_size = db.routes.pagination.max_page_size
-  for route, err in db.routes:each(page_size, GLOBAL_QUERY_OPTS) do
-    if err then
-      return nil, "could not load routes: " .. err
+      return nil, err
     end
 
-    if detect_changes then
-      if counter > 0 and counter % page_size == 0 then
-        local new_version, err = get_router_version()
-        if err then
-          return nil, "failed to retrieve router version: " .. err
-        end
+    list = list or {}
 
-        if new_version ~= version then
-          return nil, "router was changed while rebuilding it"
-        end
-      end
-      counter = counter + 1
-    end
+    utils.yield()
 
-    if should_process_route(route) then
-      local service, err = get_service_for_route(db, route, services_init_cache)
+    local routes_schema = db.routes.schema
+    local services_schema = db.services.schema
+
+    for j = 1, #list do
+      local route, err = unmarshall(lmdb_get(list[j]))
       if err then
         return nil, err
       end
+      if not route then
+        return nil, "stale data detected looping routes"
+      end
+      if should_process_route(route) then
+        route, err = routes_schema:process_auto_fields(route, "select", nil, GLOBAL_QUERY_OPTS)
+        if not route then
+          return nil, err
+        end
 
-      -- routes with no services are added to router
-      -- but routes where the services.enabled == false are not put in router
-      if service == nil or service.enabled ~= false then
-        local r = {
-          route   = route,
-          service = service,
-        }
+        local service_id = route.service and route.service.id
+        local service
+        if service_id then
+          service = services_init_cache[service_id]
+          if not service then
+            service, err = unmarshall(lmdb_get("services:" .. service_id .. ":::::" .. route.ws_id))
+            if not service then
+              return nil, err or "service not found"
+            end
+            if service.enabled then
+              service, err = services_schema:process_auto_fields(service, "select", nil, GLOBAL_QUERY_OPTS)
+              if not service then
+                return nil, err
+              end
+            end
+            services_init_cache[service_id] = service
+          end
+        end
+        -- routes with no services are added to router
+        -- but routes where the services.enabled == false are not put in router
+        if service == nil or service.enabled ~= false then
+          local r = {
+            route   = route,
+            service = service,
+          }
 
-        i = i + 1
-        routes[i] = r
+          i = i + 1
+          routes[i] = r
+        end
+      end
+    end
+
+  else
+    if not kong.core_cache then
+      services_init_cache, err = build_services_init_cache(db)
+      if err then
+        services_init_cache = {}
+        log(WARN, "could not build services init cache: ", err)
+      end
+    end
+
+    local counter = 0
+    local page_size = db.routes.pagination.max_page_size
+
+    for route, err in db.routes:each(page_size, GLOBAL_QUERY_OPTS) do
+      if err then
+        return nil, "could not load routes: " .. err
+      end
+
+      if kong.core_cache then
+        if counter > 0 and counter % page_size == 0 then
+          local new_version, err = get_router_version()
+          if err then
+            return nil, "failed to retrieve router version: " .. err
+          end
+
+          if new_version ~= version then
+            return nil, "router was changed while rebuilding it"
+          end
+        end
+        counter = counter + 1
+      end
+
+      if should_process_route(route) then
+        local service, err = get_service_for_route(db, route, services_init_cache)
+        if err then
+          return nil, err
+        end
+
+        -- routes with no services are added to router
+        -- but routes where the services.enabled == false are not put in router
+        if service == nil or service.enabled ~= false then
+          local r = {
+            route   = route,
+            service = service,
+          }
+
+          i = i + 1
+          routes[i] = r
+        end
       end
     end
   end
