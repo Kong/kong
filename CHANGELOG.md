@@ -99,8 +99,14 @@
   [#10559](https://github.com/Kong/kong/pull/10559)
 - **Zipkin**: Fixed an issue that traces not being generated correctly when instrumentations are enabled.
   [#10983](https://github.com/Kong/kong/pull/10983)
+- **Prometheus**: rework `lmdb_usage` related metrics in Prometheus plugin.
+  [#11032](https://github.com/Kong/kong/pull/11032)
+- **Statsd**: rework `lmdb_usage` related metrics in Statsd plugin.
+  [#11032](https://github.com/Kong/kong/pull/11032)
 
 #### PDK
+- Rework pdk lmdb environment information with `kong.node.get_memory_stats`.
+  [#11032](https://github.com/Kong/kong/pull/11032)
 
 ### Changed
 
@@ -277,10 +283,8 @@
   [#10620](https://github.com/Kong/kong/pull/10620)
 - **Prometheus**: add `lmdb_usage` related metrics in Prometheus plugin.
   [#10301](https://github.com/Kong/kong/pull/10301)
-  [#11032](https://github.com/Kong/kong/pull/11032)
 - **Statsd**: add `lmdb_usage` related metrics in Statsd plugin.
   [#10301](https://github.com/Kong/kong/pull/10301)
-  [#11032](https://github.com/Kong/kong/pull/11032)
 
 #### PDK
 
