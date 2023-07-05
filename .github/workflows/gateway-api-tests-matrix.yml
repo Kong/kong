@@ -100,15 +100,15 @@ jobs:
       - name: Construct Docker Images
         id: construct_docker_images
         run: |
-          default_image_matrix="[\"kong/kong-gateway-internal:nightly-ubuntu\", \"kong/kong-gateway-internal:nightly-debian\", \"kong/kong-gateway-internal:nightly-rhel\", \"kong/kong-gateway-internal:nightly-ubuntu-fips\", \"kong/kong-gateway-internal:nightly-amazonlinux-2022\", \"kong/kong-gateway-internal:nightly-amazonlinux-2\"]"
+          default_image_matrix="[\"kong/kong-gateway-internal:nightly-ubuntu\", \"kong/kong-gateway-internal:nightly-debian\", \"kong/kong-gateway-internal:nightly-rhel\", \"kong/kong-gateway-internal:nightly-ubuntu-fips\", \"kong/kong-gateway-internal:nightly-amazonlinux-2023\", \"kong/kong-gateway-internal:nightly-amazonlinux-2\"]"
 
           # include arm64 os to the matrix for ubuntu and amazonlinux images
           default_arm64_matrix="[{\"os\": \"ubuntu-22.04-arm64\", \"gateway_image\": \"kong/kong-gateway-internal:nightly-ubuntu\", \"gateway_mode\": \"classic\"}, \
           {\"os\":\"ubuntu-22.04-arm64\",\"gateway_image\":\"kong/kong-gateway-internal:nightly-ubuntu\",\"gateway_mode\":\"hybrid\"}, \
           {\"os\":\"ubuntu-22.04-arm64\",\"gateway_image\":\"kong/kong-gateway-internal:nightly-amazonlinux-2\",\"gateway_mode\":\"classic\"}, \
           {\"os\":\"ubuntu-22.04-arm64\",\"gateway_image\":\"kong/kong-gateway-internal:nightly-amazonlinux-2\",\"gateway_mode\":\"hybrid\"}, \
-          {\"os\":\"ubuntu-22.04-arm64\",\"gateway_image\":\"kong/kong-gateway-internal:nightly-amazonlinux-2022\",\"gateway_mode\":\"classic\"}, \
-          {\"os\":\"ubuntu-22.04-arm64\",\"gateway_image\":\"kong/kong-gateway-internal:nightly-amazonlinux-2022\",\"gateway_mode\":\"hybrid\"}]"
+          {\"os\":\"ubuntu-22.04-arm64\",\"gateway_image\":\"kong/kong-gateway-internal:nightly-amazonlinux-2023\",\"gateway_mode\":\"classic\"}, \
+          {\"os\":\"ubuntu-22.04-arm64\",\"gateway_image\":\"kong/kong-gateway-internal:nightly-amazonlinux-2023\",\"gateway_mode\":\"hybrid\"}]"
 
           IFS='-' read -ra parts <<< "$GW_INPUT_IMAGE"
           current_image_tag=${parts[-1]}
@@ -125,7 +125,7 @@ jobs:
           docker_images=(\"$GW_INPUT_IMAGE\")
 
           # generate images based on the given tags
-          for tag in rhel ubuntu ubuntu-fips debian amazonlinux-2022 amazonlinux-2; do
+          for tag in rhel ubuntu ubuntu-fips debian amazonlinux-2023 amazonlinux-2; do
               # skip image for current tag
               if [[ $tag == $current_image_tag ]]; then continue; fi
 

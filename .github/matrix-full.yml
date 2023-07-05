@@ -9,14 +9,15 @@ build-packages:
 
 # Ubuntu
 - label: ubuntu-20.04
-  os: ubuntu-22.04
+  os: vars.RELEASE_RUNS_ON
   image: ubuntu:20.04
   package: deb
   check-manifest-suite: ubuntu-20.04-amd64
 - label: ubuntu-20.04-fips
-  os: ubuntu-20.04
+  os: vars.RELEASE_RUNS_ON
+  image: ubuntu:20.04
   package: deb
-  bazel_args: --//:fips=true
+  bazel-args: --//:fips=true
   check-manifest-suite: ubuntu-20.04-amd64-fips
 - label: ubuntu-22.04
   os: vars.RELEASE_RUNS_ON
@@ -30,7 +31,7 @@ build-packages:
 - label: ubuntu-22.04-fips
   os: vars.RELEASE_RUNS_ON
   package: deb
-  bazel_args: --//:fips=true
+  bazel-args: --//:fips=true
   check-manifest-suite: ubuntu-22.04-amd64-fips
 
 # Debian
@@ -40,7 +41,7 @@ build-packages:
   package: deb
   check-manifest-suite: debian-10-amd64
 - label: debian-11
-  os: ubuntu-22.04
+  os: vars.RELEASE_RUNS_ON
   image: debian:11
   package: deb
   check-manifest-suite: debian-11-amd64
@@ -48,7 +49,7 @@ build-packages:
   os: vars.RELEASE_RUNS_ON
   image: debian:11
   package: deb
-  bazel_args: --platforms=//:generic-crossbuild-aarch64
+  bazel-args: --platforms=//:generic-crossbuild-aarch64
   check-manifest-suite: debian-11-arm64
 
 # RHEL
@@ -59,7 +60,7 @@ build-packages:
   package-type: el7
   check-manifest-suite: el7-amd64
 - label: rhel-8
-  os: ubuntu-22.04
+  os: vars.RELEASE_RUNS_ON
   image: rockylinux:8
   package: rpm
   package-type: el8
@@ -68,8 +69,8 @@ build-packages:
   os: vars.RELEASE_RUNS_ON
   image: rockylinux:8 # note we are not using ubi8 here as some packages needs subscription
   package: rpm
-  package-distro: el8
-  bazel_args: --//:fips=true
+  package-type: el8
+  bazel-args: --//:fips=true
   check-manifest-suite: el8-amd64-fips
 - label: rhel-9
   os: vars.RELEASE_RUNS_ON
@@ -89,10 +90,10 @@ build-packages:
   os: ubuntu-22.04-arm64
   image: amazonlinux:2
   package: rpm
-  package-distro: aws2
+  package-type: aws2
   check-manifest-suite: amazonlinux-2-arm64
 - label: amazonlinux-2023
-  os: ubuntu-22.04
+  os: vars.RELEASE_RUNS_ON
   image: amazonlinux:2023
   package: rpm
   package-type: aws2023
@@ -101,7 +102,7 @@ build-packages:
   os: ubuntu-22.04-arm64
   image: amazonlinux:2023
   package: rpm
-  package-distro: aws2023
+  package-type: aws2023
   check-manifest-suite: amazonlinux-2023-arm64
 
 
@@ -122,7 +123,7 @@ build-images:
   package: deb
   artifact-from: ubuntu-22.04
   artifact-from-alt: ubuntu-22.04-arm64
-  docker_platforms: linux/amd64, linux/arm64
+  docker-platforms: linux/amd64, linux/arm64
 - label: ubuntu-fips
   base-image: ubuntu:22.04
   package: deb
@@ -134,7 +135,7 @@ build-images:
   package: deb
   artifact-from: debian-11
   artifact-from-alt: debian-11-arm64
-  docker_platforms: linux/amd64, linux/arm64
+  docker-platforms: linux/amd64, linux/arm64
 
 # RHEL
 - label: rhel
@@ -150,14 +151,14 @@ build-images:
   package-distro: aws2
   artifact-from: amazonlinux-2
   artifact-from-alt: amazonlinux-2-arm64
-  docker_platforms: linux/amd64,linux/arm64
+  docker-platforms: linux/amd64,linux/arm64
 - label: amazonlinux-2023
   base-image: amazonlinux:2023
   package: rpm
   package-distro: aws2023
   artifact-from: amazonlinux-2023
   artifact-from-alt: amazonlinux-2023-arm64
-  docker_platforms: linux/amd64,linux/arm64
+  docker-platforms: linux/amd64,linux/arm64
 
 test-images:
 - label: ubuntu
@@ -288,7 +289,7 @@ release-packages:
   artifact: kong.aws2023.amd64.rpm
 - label: amazonlinux-2023-arm64
   package: rpm
-  artifact-from: amazonlinux-2-arm64
+  artifact-from: amazonlinux-2023-arm64
   artifact-version: 2023
   artifact-type: amazonlinux
   artifact: kong.aws2023.arm64.rpm

@@ -15,47 +15,54 @@
 - Path      : /usr/local/kong/include/kong
   Type      : directory
 
-- Path      : /usr/local/kong/lib/engines-1.1/afalg.so
+- Path      : /usr/local/kong/lib/engines-3/afalg.so
   Needed    :
   - libstdc++.so.6
   - libm.so.6
-  - libcrypto.so.1.1
-  - libdl.so.2
+  - libcrypto.so.3
+  - libc.so.6
+  - ld-linux-aarch64.so.1
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/kong/lib/engines-3/capi.so
+  Needed    :
+  - libstdc++.so.6
+  - libm.so.6
+  - libcrypto.so.3
   - libc.so.6
   Runpath   : /usr/local/kong/lib
 
-- Path      : /usr/local/kong/lib/engines-1.1/capi.so
+- Path      : /usr/local/kong/lib/engines-3/loader_attic.so
   Needed    :
   - libstdc++.so.6
   - libm.so.6
-  - libcrypto.so.1.1
-  - libdl.so.2
+  - libcrypto.so.3
+  - libc.so.6
+  - ld-linux-aarch64.so.1
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/kong/lib/engines-3/padlock.so
+  Needed    :
+  - libstdc++.so.6
+  - libm.so.6
+  - libcrypto.so.3
   - libc.so.6
   Runpath   : /usr/local/kong/lib
 
-- Path      : /usr/local/kong/lib/engines-1.1/padlock.so
+- Path      : /usr/local/kong/lib/libcrypto.so.3
   Needed    :
   - libstdc++.so.6
   - libm.so.6
-  - libcrypto.so.1.1
-  - libdl.so.2
   - libc.so.6
-  Runpath   : /usr/local/kong/lib
-
-- Path      : /usr/local/kong/lib/libcrypto.so.1.1
-  Needed    :
-  - libstdc++.so.6
-  - libm.so.6
-  - libdl.so.2
-  - libc.so.6
+  - ld-linux-aarch64.so.1
   Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/kong/lib/libexpat.so.1.8.10
   Needed    :
   - libstdc++.so.6
   - libm.so.6
-  - libgcc_s.so.1
   - libc.so.6
+  - ld-linux-aarch64.so.1
 
 - Path      : /usr/local/kong/lib/libexslt.so.0.8.20
   Needed    :
@@ -64,42 +71,53 @@
   - libxml2.so.2
   - libm.so.6
   - libc.so.6
+  - ld-linux-aarch64.so.1
   Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/kong/lib/libjq.so.1.0.4
   Needed    :
+  - libonig.so.4
   - libstdc++.so.6
   - libm.so.6
   - libc.so.6
-  - ld-linux-x86-64.so.2
+  - ld-linux-aarch64.so.1
+  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/kong/lib/liblicense_utils.so
   Needed    :
-  - libcrypto.so.1.1
-  - libpthread.so.0
+  - libcrypto.so.3
   - libc.so.6
-  Rpath     : /usr/local/kong/lib
+  - ld-linux-aarch64.so.1
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/kong/lib/libonig.so.4.0.0
+  Needed    :
+  - libstdc++.so.6
+  - libm.so.6
+  - libc.so.6
+  - ld-linux-aarch64.so.1
+  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/kong/lib/libpasswdqc.so.0
   Needed    :
   - libc.so.6
 
-- Path      : /usr/local/kong/lib/libssl.so.1.1
+- Path      : /usr/local/kong/lib/libssl.so.3
   Needed    :
   - libstdc++.so.6
   - libm.so.6
-  - libcrypto.so.1.1
-  - libdl.so.2
+  - libcrypto.so.3
   - libc.so.6
+  - ld-linux-aarch64.so.1
   Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/kong/lib/libxml2.so.2.10.3
   Needed    :
-  - libdl.so.2
   - libstdc++.so.6
   - libz.so.1
   - libm.so.6
   - libc.so.6
+  - ld-linux-aarch64.so.1
 
 - Path      : /usr/local/kong/lib/libxslt.so.1.1.37
   Needed    :
@@ -107,6 +125,16 @@
   - libxml2.so.2
   - libm.so.6
   - libc.so.6
+  - ld-linux-aarch64.so.1
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/kong/lib/ossl-modules/legacy.so
+  Needed    :
+  - libstdc++.so.6
+  - libm.so.6
+  - libcrypto.so.3
+  - libc.so.6
+  - ld-linux-aarch64.so.1
   Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/kong/portal
@@ -115,75 +143,75 @@
 - Path      : /usr/local/lib/lua/5.1/bcrypt.so
   Needed    :
   - libc.so.6
-  Rpath     : /usr/local/kong/lib
+  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/lfs.so
   Needed    :
   - libc.so.6
-  Rpath     : /usr/local/kong/lib
+  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/lpeg.so
   Needed    :
   - libc.so.6
-  Rpath     : /usr/local/kong/lib
+  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/lsyslog.so
   Needed    :
   - libc.so.6
-  Rpath     : /usr/local/kong/lib
+  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/lua-utf8.so
   Needed    :
   - libc.so.6
-  Rpath     : /usr/local/kong/lib
+  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/lua_pack.so
   Needed    :
   - libc.so.6
-  Rpath     : /usr/local/kong/lib
+  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/lua_system_constants.so
   Needed    :
   - libc.so.6
-  Rpath     : /usr/local/kong/lib
+  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/lxp.so
   Needed    :
   - libexpat.so.1
   - libc.so.6
-  Rpath     : /usr/local/kong/lib
+  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/mime/core.so
   Needed    :
   - libc.so.6
-  Rpath     : /usr/local/kong/lib
+  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/pb.so
   Needed    :
   - libc.so.6
-  Rpath     : /usr/local/kong/lib
+  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/socket/core.so
   Needed    :
   - libc.so.6
-  Rpath     : /usr/local/kong/lib
+  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/socket/serial.so
   Needed    :
   - libc.so.6
-  Rpath     : /usr/local/kong/lib
+  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/socket/unix.so
   Needed    :
   - libc.so.6
-  Rpath     : /usr/local/kong/lib
+  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/ssl.so
   Needed    :
-  - libssl.so.1.1
-  - libcrypto.so.1.1
+  - libssl.so.3
+  - libcrypto.so.3
   - libc.so.6
-  Rpath     : /usr/local/kong/lib
+  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/yaml.so
   Needed    :
@@ -197,13 +225,9 @@
 - Path      : /usr/local/openresty/lualib/libatc_router.so
   Needed    :
   - libgcc_s.so.1
-  - librt.so.1
-  - libpthread.so.0
-  - libm.so.6
-  - libdl.so.2
   - libc.so.6
-  - ld-linux-x86-64.so.2
   - libstdc++.so.6
+  - libm.so.6
 
 - Path      : /usr/local/openresty/lualib/librestysignal.so
   Needed    :
@@ -219,16 +243,15 @@
 
 - Path      : /usr/local/openresty/nginx/sbin/nginx
   Needed    :
-  - libdl.so.2
-  - libpthread.so.0
-  - libcrypt.so.1
+  - libcrypt.so.2
   - libluajit-5.1.so.2
   - libm.so.6
-  - libssl.so.1.1
-  - libcrypto.so.1.1
+  - libssl.so.3
+  - libcrypto.so.3
   - libz.so.1
   - libc.so.6
-  Rpath     : /usr/local/openresty/luajit/lib:/usr/local/kong/lib
+  - ld-linux-aarch64.so.1
+  Runpath   : /usr/local/openresty/luajit/lib:/usr/local/kong/lib
   Modules   :
   - lua-kong-nginx-module
   - lua-kong-nginx-module/stream
@@ -236,7 +259,7 @@
   - lua-resty-lmdb
   - lua-resty-openssl-aux-module
   - lua-resty-openssl-aux-module/stream
-  OpenSSL   : OpenSSL 1.1.1t  7 Feb 2023
+  OpenSSL   : OpenSSL 3.1.1 30 May 2023
   DWARF     : True
   DWARF - ngx_http_request_t related DWARF DIEs: True
 
