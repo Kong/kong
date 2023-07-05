@@ -259,6 +259,7 @@ local function new(self)
       else
         local info = self.table.new(0, 6)
         info.map_size = convert_bytes(lmdb_info.map_size, unit, scale)
+        info.page_size = lmdb_info.page_size
         info.allocated_pages = lmdb_info.allocated_pages
         info.in_use_pages = lmdb_info.in_use_pages
         info.entries = lmdb_info.entries
