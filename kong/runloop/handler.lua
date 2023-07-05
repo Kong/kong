@@ -588,7 +588,7 @@ end
 
 
 local function rebuild_wasm_state(opts)
-  return rebuild("wasm_filter_chains", build_wasm_state,
+  return rebuild("filter_chains", build_wasm_state,
                  WASM_STATE_VERSION, opts)
 end
 
@@ -911,7 +911,7 @@ local function set_init_versions_in_cache()
     return nil, "failed to set initial plugins iterator version in cache: " .. tostring(err)
   end
 
-  ok, err = core_cache_shm:safe_set("kong_core_db_cachewasm_filter_chains:version", marshalled_value)
+  ok, err = core_cache_shm:safe_set("kong_core_db_cachefilter_chains:version", marshalled_value)
   if not ok then
     return nil, "failed to set initial wasm filter chains version in cache: " .. tostring(err)
   end
