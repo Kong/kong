@@ -130,7 +130,7 @@ local function new(self)
   --    max_readers: 126,
   --    num_readers: 16,
   --    in_use_pages: 2,
-  --    alocated_pages: 6,
+  --    allocated_pages: 6,
   --    entries: 6,
   --   },
   --}
@@ -165,7 +165,7 @@ local function new(self)
   --    max_readers: 126,
   --    num_readers: 16,
   --    in_use_pages: 2,
-  --    alocated_pages: 6,
+  --    allocated_pages: 6,
   --    entries: 6,
   --   },
   -- }
@@ -259,7 +259,7 @@ local function new(self)
       else
         local info = self.table.new(0, 6)
         info.map_size = convert_bytes(lmdb_info.map_size, unit, scale)
-        info.alocated_pages = lmdb_info.alocated_pages
+        info.allocated_pages = lmdb_info.allocated_pages
         info.in_use_pages = lmdb_info.in_use_pages
         info.entries = lmdb_info.entries
         info.max_readers = lmdb_info.max_readers

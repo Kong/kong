@@ -571,7 +571,7 @@ qq{
 
             ngx.say(" lmdb map size: ", res.lmdb.map_size)
             ngx.say(" lmdb map used pages: ", res.lmdb.in_use_pages)
-            ngx.say(" lmdb map allocate pages: ", res.lmdb.alocated_pages)
+            ngx.say(" lmdb map allocate pages: ", res.lmdb.allocated_pages)
         }
     }
 --- request
