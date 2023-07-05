@@ -1033,14 +1033,19 @@ local function http2_client(host, port, tls)
     tool_path = "GODEBUG=http2debug=1 bin/h2client"
   end
 
-  local url = (tls and "https" or "http") .. "://" .. host .. ":" .. port
 
   local meta = {}
   meta.__call = function(_, opts)
     local headers = opts and opts.headers
     local timeout = opts and opts.timeout
+    local body = opts and opts.body
+    local path = opts and opts.path or ""
+    local http1 = opts and opts.http_version == "HTTP/1.1"
+
+    local url = (tls and "https" or "http") .. "://" .. host .. ":" .. port .. path
 
     local cmd = string.format("%s -url %s -skip-verify", tool_path, url)
+
     if headers then
       local h = {}
       for k, v in pairs(headers) do
@@ -1048,16 +1053,32 @@ local function http2_client(host, port, tls)
       end
       cmd = cmd .. " -headers " .. table.concat(h, ",")
     end
+
     if timeout then
       cmd = cmd .. " -timeout " .. timeout
     end
 
+    if http1 then
+      cmd = cmd .. " -http1"
+    end
+
+    local body_filename
+    if body then
+      body_filename = pl_path.tmpname()
+      pl_file.write(body_filename, body)
+      cmd = cmd .. " -post < " .. body_filename
+    end
+
     if http2_debug then
-        print("HTTP/2 cmd:\n" .. cmd)
+      print("HTTP/2 cmd:\n" .. cmd)
     end
 
     local ok, _, stdout, stderr = pl_utils.executeex(cmd)
     assert(ok, stderr)
+
+    if body_filename then
+      pl_file.delete(body_filename)
+    end
 
     if http2_debug then
       print("HTTP/2 debug:\n")
