@@ -6,10 +6,10 @@ build-packages:
 
 # label: used to distinguish artifacts for later use; make sure its value ends with -arm64 if
 #         it's a cross-compiled for ARM64 target
-# os: docker image if not ubuntu/debian, otherwise ignored
+# os: the github actions runner label to pick from
 # package: package type
 # package-distro: the distro name to use in package name, for example el7, aws2; only applicable to rpm
-# bazel_args: additional bazel build flags
+# bazel_args: additional bazel build flags 
 # check-manifest-suite: the check manifest suite as defined in scripts/explain_manifest/config.py
 
 # Ubuntu
