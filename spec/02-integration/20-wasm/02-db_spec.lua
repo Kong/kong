@@ -9,8 +9,8 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
 
   local function reset_db()
     if not db then return end
-    db.wasm_filter_chains:truncate()
-    db.wasm_filter_chains:load_filters({})
+    db.filter_chains:truncate()
+    db.filter_chains:load_filters({})
     db.routes:truncate()
     db.services:truncate()
     db.workspaces:truncate()
@@ -23,10 +23,10 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
       "workspaces",
       "routes",
       "services",
-      "wasm_filter_chains",
+      "filter_chains",
     })
 
-    dao = db.wasm_filter_chains
+    dao = db.filter_chains
     dao:load_filters({
       { name = "test", },
       { name = "other", },
@@ -35,7 +35,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
 
   lazy_teardown(reset_db)
 
-  describe("wasm_filter_chains", function()
+  describe("filter_chains", function()
     local function make_service()
       local service = assert(db.services:insert({
         url = "http://wasm.test/",
@@ -81,6 +81,41 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
 
         assert.same({ id = "expected a valid UUID" }, err_t.fields)
         assert.equals("schema violation", err_t.name)
+      end)
+    end)
+
+    describe(".name", function()
+      it("is optional", function()
+        local chain = assert(dao:insert({
+          name = nil,
+          service = make_service(),
+          filters = { { name = "test" } },
+        }))
+
+        assert.is_nil(chain.name)
+      end)
+
+      it("must be unique", function()
+        local name = "my-unique-filter"
+
+        assert(dao:insert({
+          name = name,
+          service = make_service(),
+          filters = { { name = "test" } },
+        }))
+
+        local other, err, err_t = dao:insert({
+          name = name,
+          service = make_service(),
+          filters = { { name = "test" } },
+        })
+
+        assert.is_string(err)
+        assert.is_table(err_t)
+        assert.is_nil(other)
+
+        assert.equals("unique constraint violation", err_t.name)
+        assert.same({ name = name }, err_t.fields)
       end)
     end)
 
