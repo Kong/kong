@@ -43,3 +43,4 @@ bazel-*
 
 worktree/
 bin/bazel
+bin/h2client
