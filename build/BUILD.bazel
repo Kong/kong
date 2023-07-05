@@ -101,11 +101,14 @@ wasmx_vm_cmd = select({
 wasmx_load_module = select({
     "@kong//:wasmx_dynamic_mod_flag": """
   if ! grep -q "ngx_wasm_module.so" kong/templates/nginx.lua; then
-      WASM_LINE=$((`grep -n -m1 "error_log"  kong/templates/nginx.lua | cut -d: -f1` + 1))
+      WASM_LINE_TPL=$((`grep -n -m1 "error_log"  kong/templates/nginx.lua | cut -d: -f1` + 1))
+      WASM_LINE_FXT=$((`grep -n -m1 "error_log"  spec/fixtures/custom_nginx.template | cut -d: -f1` + 1))
       if [[ "$OSTYPE" == "darwin"* ]]; then
-          gsed -i "$WASM_LINE a load_module ${BUILD_DESTDIR}/openresty/nginx/modules/ngx_wasm_module.so;" kong/templates/nginx.lua
+          gsed -i "$WASM_LINE_TPL a load_module ${BUILD_DESTDIR}/openresty/nginx/modules/ngx_wasm_module.so;" kong/templates/nginx.lua
+          gsed -i "$WASM_LINE_FXT a load_module ${BUILD_DESTDIR}/openresty/nginx/modules/ngx_wasm_module.so;" spec/fixtures/custom_nginx.template
       else
-          sed -i "$WASM_LINE a load_module ${BUILD_DESTDIR}/openresty/nginx/modules/ngx_wasm_module.so;" kong/templates/nginx.lua
+          sed -i "$WASM_LINE_TPL a load_module ${BUILD_DESTDIR}/openresty/nginx/modules/ngx_wasm_module.so;" kong/templates/nginx.lua
+          sed -i "$WASM_LINE_FXT a load_module ${BUILD_DESTDIR}/openresty/nginx/modules/ngx_wasm_module.so;" spec/fixtures/custom_nginx.template
       fi
   fi
 """,
