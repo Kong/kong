@@ -16,7 +16,7 @@ local insert = table.insert
 local sha256 = utils.sha256_bin
 
 
-local VERSION_KEY = "wasm_filter_chains:version"
+local VERSION_KEY = "filter_chains:version"
 local TTL_ZERO = { ttl = 0 }
 local ATTACH_OPTS = {}
 
@@ -49,7 +49,7 @@ do
 
   local buf = {}
 
-  ---@param chain kong.db.schema.entities.wasm_filter_chain
+  ---@param chain kong.db.schema.entities.filter_chain
   ---@return string
   local function hash_chain_entity(chain)
     if not chain then
@@ -80,8 +80,8 @@ do
   -- The result of this is used to invalidate cached filter chain
   -- plans.
   --
-  ---@param service? kong.db.schema.entities.wasm_filter_chain
-  ---@param route?   kong.db.schema.entities.wasm_filter_chain
+  ---@param service? kong.db.schema.entities.filter_chain
+  ---@param route?   kong.db.schema.entities.filter_chain
   ---@return string
   function hash_chain(service, route)
     assert(service ~= nil or route ~= nil,
@@ -99,10 +99,10 @@ end
 ---@field hash          string
 ---@field c_plan        ffi.cdata*|nil
 ---
----@field service_chain kong.db.schema.entities.wasm_filter_chain|nil
+---@field service_chain kong.db.schema.entities.filter_chain|nil
 ---@field service_id    string|nil
 ---
----@field route_chain   kong.db.schema.entities.wasm_filter_chain|nil
+---@field route_chain   kong.db.schema.entities.filter_chain|nil
 ---@field route_id      string|nil
 
 
@@ -262,8 +262,8 @@ end
 --
 -- Returns `nil` if no enabled filters are found.
 --
----@param service_chain? kong.db.schema.entities.wasm_filter_chain
----@param route_chain?   kong.db.schema.entities.wasm_filter_chain
+---@param service_chain? kong.db.schema.entities.filter_chain
+---@param route_chain?   kong.db.schema.entities.filter_chain
 ---
 ---@return kong.db.schema.entities.wasm_filter[]?
 local function build_filter_list(service_chain, route_chain)
@@ -304,10 +304,10 @@ end
 ---@return kong.runloop.wasm.state? new_state
 ---@return string?                  err
 local function rebuild_state(db, version, old_state)
-  ---@type kong.db.schema.entities.wasm_filter_chain[]
+  ---@type kong.db.schema.entities.filter_chain[]
   local route_chains = {}
 
-  ---@type table<string, kong.db.schema.entities.wasm_filter_chain>
+  ---@type table<string, kong.db.schema.entities.filter_chain>
   local service_chains_by_id = {}
 
   ---@type kong.runloop.wasm.state
@@ -321,9 +321,9 @@ local function rebuild_state(db, version, old_state)
   ---@type kong.runloop.wasm.filter_chain_reference[]
   local all_chain_refs = {}
 
-  local page_size = db.wasm_filter_chains.max_page_size
+  local page_size = db.filter_chains.max_page_size
 
-  for chain, err in db.wasm_filter_chains:each(page_size) do
+  for chain, err in db.filter_chains:each(page_size) do
     if err then
       return nil, "failed iterating filter chains: " .. tostring(err)
     end

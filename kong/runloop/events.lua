@@ -310,11 +310,11 @@ local function crud_wasm_handler(data, schema_name)
                and (schema_name == "services"
                     or schema_name == "routes")
 
-  local updated = schema_name == "wasm_filter_chains" or is_delete
+  local updated = schema_name == "filter_chains" or is_delete
 
   if updated then
     log(DEBUG, "[events] wasm filter chains updated, invalidating cache")
-    core_cache:invalidate("wasm_filter_chains:version")
+    core_cache:invalidate("filter_chains:version")
   end
 end
 
@@ -335,9 +335,9 @@ local LOCAL_HANDLERS = {
   -- so add an event handler to invalidate the extra cache in case of data inconsistency
   { "crud"    , "consumers" , crud_consumers_handler },
 
-  { "crud"    , "wasm_filter_chains" , crud_wasm_handler },
-  { "crud"    , "services"           , crud_wasm_handler },
-  { "crud"    , "routes"             , crud_wasm_handler },
+  { "crud"    , "filter_chains"  , crud_wasm_handler },
+  { "crud"    , "services"       , crud_wasm_handler },
+  { "crud"    , "routes"         , crud_wasm_handler },
 }
 
 

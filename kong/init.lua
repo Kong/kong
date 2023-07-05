@@ -626,7 +626,7 @@ function Kong.init()
   -- Load plugins as late as possible so that everything is set up
   assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
 
-  assert(db.wasm_filter_chains:load_filters(config.wasm_modules_parsed))
+  assert(db.filter_chains:load_filters(config.wasm_modules_parsed))
 
   if is_stream_module then
     stream_api.load_handlers()
