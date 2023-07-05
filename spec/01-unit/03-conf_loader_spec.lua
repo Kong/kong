@@ -1543,7 +1543,7 @@ describe("Configuration loader", function()
           assert.equal("TLSv1.1 TLSv1.2 TLSv1.3", conf.lua_ssl_protocols)
         end)
 
-        it("sets lua_ssl_protocls to user specified value", function()
+        it("sets lua_ssl_protocols to user specified value", function()
           local conf, err = conf_loader(nil, {
             lua_ssl_protocols = "TLSv1.1"
           })
