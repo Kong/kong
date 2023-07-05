@@ -348,7 +348,7 @@ local function split_route_by_path_into(route_and_service, routes_and_services_s
   end
 
   -- make sure that route_and_service contains only the two expected entries, route and service
-  assert(tb_nkeys(route_and_service) == 2)
+  assert(tb_nkeys(route_and_service) == 1 or tb_nkeys(route_and_service) == 2)
 
   local grouped_paths = group_by(
     original_route.paths,

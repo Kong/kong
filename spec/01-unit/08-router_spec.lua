@@ -4735,5 +4735,20 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
       end)
 
     end)
+
+    it("[can create route with multiple paths and no service]", function()
+      local use_case = {
+        -- regex + prefix
+        {
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+            paths = {
+              "/foo",
+              "/foo/bar/baz"
+            },
+          },
+        }}
+      assert(new_router(use_case))
+    end)
   end)
 end
