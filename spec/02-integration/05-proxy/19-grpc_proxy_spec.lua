@@ -16,6 +16,8 @@ local function reload_router(flavor)
   helpers.setenv("KONG_ROUTER_FLAVOR", flavor)
 
   package.loaded["spec.helpers"] = nil
+  package.loaded["kong.global"] = nil
+  package.loaded["kong.cache"] = nil
   package.loaded["kong.db"] = nil
   package.loaded["kong.db.schema.entities.routes"] = nil
   package.loaded["kong.db.schema.entities.routes_subschemas"] = nil

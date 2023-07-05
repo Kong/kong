@@ -304,8 +304,8 @@ end
 
 local function get_exp_and_priority(route)
   if route.expression then
-    ngx_log(ngx_ERR, "expecting a traditional route while expression is given. ",
-                 "Likely it's a misconfiguration. Please check router_flavor")
+    ngx_log(ngx_ERR, "expecting a traditional route while it's not (probably an expressions route). ",
+                     "Likely it's a misconfiguration. Please check the 'router_flavor' config in kong.conf")
   end
 
   local exp      = get_expression(route)

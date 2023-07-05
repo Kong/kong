@@ -77,6 +77,8 @@
 - Fix an issue where the router of flavor `expressions` can not work correctly
   when `route.protocols` is set to `grpc` or `grpcs`.
   [#11082](https://github.com/Kong/kong/pull/11082)
+- Fix an issue where the router of flavor `expressions` can not configure https redirection.
+  [#11166](https://github.com/Kong/kong/pull/11166)
 
 #### Admin API
 
