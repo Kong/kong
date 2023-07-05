@@ -1151,16 +1151,33 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
       end)
 
       it("refuses to delete a non empty workspace", function()
-        local ws = assert(bp.workspaces:insert {
+        assert(bp.workspaces:insert {
           name = "footos",
         })
-        bp.services:insert_ws({}, ws)
+
+        local res = assert(client:send {
+          method = "post",
+          path   = "/footos/consumers",
+          body = {
+            username = "footos"
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        assert.res_status(201, res)
 
         local res = assert(client:send {
           method = "delete",
           path   = "/workspaces/footos",
         })
-        assert.res_status(400, res)
+
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({ message = {
+          entities = { consumers = 1 },
+          message = "Workspace is not empty",
+        }}, json)
       end)
     end)
   end)

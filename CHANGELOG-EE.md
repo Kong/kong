@@ -31,6 +31,7 @@
 ### Features
 
 * The Redis strategy of Rate Limiting catches strategy connection failure. [#4810](https://github.com/Kong/kong-ee/pull/4810)
+* Introduces a new parameter `cascade` to support workspace cascade delete. [FTI-4731](https://konghq.atlassian.net/browse/FTI-4731)
 
 ### Fixes
 

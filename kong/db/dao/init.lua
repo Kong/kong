@@ -671,10 +671,39 @@ local function recursion_over_constraints(self, entity, show_ws_id, entries, c)
 end
 
 
+local function find_workspace_cascade_delete_entities(self, entity, show_ws_id, entries)
+  local constraints = self.schema:get_constraints()
+
+  if #constraints == 0 then
+    return
+  end
+
+  local pk = self.schema:extract_pk_values(entity)
+  local query_opts = { workspace = pk.id, show_ws_id = false }
+  for i = 1, #constraints do
+    local constraint = constraints[i]
+    local dao = self.db.daos[constraint.schema.name]
+    for row, err in dao:each(nil, query_opts) do
+      if not row then
+        log(ERR, "[db] failed to traverse entities for cascade-delete: ", err)
+        break
+      end
+
+      insert(entries, { dao = dao, entity = row })
+    end
+  end
+
+  return entries
+end
+
+
 local function find_cascade_delete_entities(self, entity, show_ws_id)
   local entries = {}
-
-  recursion_over_constraints(self, entity, show_ws_id, entries)
+  if self.schema.name == "workspaces" then
+    find_workspace_cascade_delete_entities(self, entity, show_ws_id, entries)
+  else
+    recursion_over_constraints(self, entity, show_ws_id, entries)
+  end
 
   return entries
 end
@@ -953,6 +982,9 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
+        if self.schema.name == "workspaces" and options then
+          options.explicit_workspace = entity
+        end
         self:post_crud_event("delete", entity, nil, options)
         propagate_cascade_delete_events(cascade_entries, options)
 
@@ -1343,6 +1375,9 @@ function DAO:delete(primary_key, options)
     return nil, tostring(err_t), err_t
   end
 
+  if self.schema.name == "workspaces" and options then
+    options.explicit_workspace = entity
+  end
   self:post_crud_event("delete", entity, nil, options)
   propagate_cascade_delete_events(cascade_entries, options)
 
@@ -1485,8 +1520,13 @@ function DAO:post_crud_event(operation, entity, old_entity, options)
       old_entity_without_nulls = remove_nulls(utils.cycle_aware_deep_copy(old_entity, true))
     end
 
+    -- When deleting a workspace, `options.explicit_workspace` will be used as `workspaces.get_workspace()`
+    -- will return `nil` once the deletion has started.
+    local workspace = options and options.explicit_workspace or
+      workspaces.get_workspace()
+
     local ok, err = self.events.post_local("dao:crud", operation, {
-      workspace     = workspaces.get_workspace(),
+      workspace     = workspace,
       request_id    = utils.get_request_id(),
       operation     = operation,
       schema        = self.schema,

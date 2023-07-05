@@ -517,21 +517,27 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("errors on invalid workspace", function()
+          local service = assert(db.services:insert({ host = "service.com" }))
           local route, err, err_t = db.routes:insert({
             protocols = { "http" },
             hosts = { "example.com" },
-            service = assert(db.services:insert({ host = "service.com" })),
+            service = service,
             path_handling = "v0",
           }, { nulls = true, workspace = "8a139c70-49a1-4ba2-98a6-bb36f534269d", })
           assert.is_nil(route)
           assert.is_string(err)
           assert.is_table(err_t)
           assert.same({
-            code     = Errors.codes.INVALID_WORKSPACE,
-            name     = "invalid workspace",
+            code     = Errors.codes.FOREIGN_KEY_VIOLATION,
+            name     = "foreign key violation",
             strategy = strategy,
+            fields   = {
+              ["service"] = {
+                id = service.id
+              }
+            },
             message  = unindent([[
-              invalid workspace '8a139c70-49a1-4ba2-98a6-bb36f534269d'
+              the foreign key '{id="]] .. service.id .. [["}' does not reference an existing 'services' entity.
             ]], true, true),
           }, err_t)
         end)

@@ -141,6 +141,10 @@ return {
         return kong.response.exit(400, {message = "Cannot delete default workspace"})
       end
 
+      if self.params.cascade == "true" then
+        return parent()
+      end
+
       local counts, err = counters.entity_counts(self.workspace.id)
       local empty = true
       local not_empty_message = {message = "Workspace is not empty"}
