@@ -304,8 +304,8 @@ end
 
 local function get_exp_and_priority(route)
   if route.expression then
-    ngx_log(ngx_ERR, "expecting a traditional route while expression is given. ",
-                 "Likely it's a misconfiguration. Please check router_flavor")
+    ngx_log(ngx_ERR, "expecting a traditional route while it's not (probably an expressions route). ",
+                     "Likely it's a misconfiguration. Please check the 'router_flavor' config in kong.conf")
   end
 
   local exp      = get_expression(route)
@@ -341,7 +341,7 @@ local function split_route_by_path_into(route_and_service, routes_and_services_s
   end
 
   -- make sure that route_and_service contains only the two expected entries, route and service
-  assert(tb_nkeys(route_and_service) == 2)
+  assert(tb_nkeys(route_and_service) == 1 or tb_nkeys(route_and_service) == 2)
 
   local grouped_paths = group_by(
     original_route.paths,

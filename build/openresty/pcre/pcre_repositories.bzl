@@ -5,7 +5,7 @@ load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 
 def pcre_repositories():
-    version = KONG_VAR["RESTY_PCRE_VERSION"]
+    version = KONG_VAR["PCRE"]
 
     maybe(
         http_archive,

@@ -524,7 +524,7 @@ local function new_tracer(name, options)
 
   --- Update the value of should_sample for all spans
   --
-  -- @function span:set_should_sample
+  -- @function kong.tracing:set_should_sample
   -- @tparam bool should_sample value for the sample parameter
   function self:set_should_sample(should_sample)
     local ctx = ngx.ctx

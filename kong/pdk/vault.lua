@@ -153,7 +153,7 @@ local function new(self)
     end
 
     if ttl <= 0 then
-      return 0
+      return ttl
     end
 
     local max_ttl = config and config.max_ttl
@@ -188,27 +188,21 @@ local function new(self)
     elseif rotation then
       value = rotation[cache_key]
       if not value then
-        if cache and rotation.probe then
-          ttl, err, value = cache:probe(cache_key)
-          if ttl and ttl < 0 then
-            ttl = nil
-            err = nil
-            value = nil
-          end
-        end
+        if cache then
+          value, err, ttl = cache:renew(cache_key, config, function()
+            value, err, ttl = strategy.get(config, resource, version)
+            if value then
+              ttl = adjust_ttl(ttl, config)
+              rotation[cache_key] = value
+            end
+            return value, err, ttl
+          end)
 
-        if not ttl or ttl < ROTATION_INTERVAL then
+        else
           value, err, ttl = strategy.get(config, resource, version)
           if value then
             ttl = adjust_ttl(ttl, config)
             rotation[cache_key] = value
-            if cache then
-              -- Warmup cache just in case the value is needed elsewhere.
-              cache:invalidate_local(cache_key)
-              cache:get(cache_key, config, function()
-                return value, err, ttl
-              end)
-            end
           end
         end
       end
@@ -582,7 +576,7 @@ local function new(self)
       LRU:set(reference, value, ttl)
       REFERENCES[reference] = time() + ttl - ROTATION_INTERVAL
 
-    else
+    elseif ttl == 0 then
       LRU:set(reference, value)
     end
 
@@ -789,7 +783,7 @@ local function new(self)
       return true
     end
 
-    local rotation = { probe = true }
+    local rotation = {}
     local current_time = time()
 
     local removals

@@ -8,7 +8,7 @@ def atc_router_repositories():
     maybe(
         git_repository,
         name = "atc_router",
-        branch = KONG_VAR["ATC_ROUTER_VERSION"],
+        branch = KONG_VAR["ATC_ROUTER"],
         remote = "https://github.com/Kong/atc-router",
         visibility = ["//visibility:public"],  # let this to be referenced by openresty build
     )
