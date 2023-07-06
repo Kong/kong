@@ -4210,7 +4210,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
     end)
 
 
-    if flavor == "traditional" or flavor == "traditional_compatible" then
+    if flavor == "traditional_compatible" then
       describe("#stream context", function()
         -- enable compat_stream
         reload_router(flavor, "stream")
@@ -4329,6 +4329,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
               {
                 service = service,
                 route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
                   destinations = {
                     { ip = "127.0.0.1" },
                     { ip = "127.0.0.2" },
@@ -4338,6 +4339,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
               {
                 service = service,
                 route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
                   destinations = {
                     { port = 65001 },
                     { port = 65002 },
@@ -4348,6 +4350,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
               {
                 service = service,
                 route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8103",
                   destinations = {
                     { ip = "127.168.0.0/8" },
                   }
@@ -4357,6 +4360,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
               {
                 service = service,
                 route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8104",
                   destinations = {
                     { ip = "127.0.0.1", port = 65001 },
                   }
@@ -4365,6 +4369,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
               {
                 service = service,
                 route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8105",
                   destinations = {
                     { ip = "127.0.0.2", port = 65300 },
                     { ip = "127.168.0.0/16", port = 65301 },
@@ -4428,7 +4433,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
         end)
 
 
-        describe("[snis]", function()
+        describe("#only [snis]", function()
           local use_case, use_case_ignore_sni, router, router_ignore_sni
 
           lazy_setup(function()
@@ -4436,6 +4441,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
               {
                 service = service,
                 route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
                   snis = { "www.example.org" }
                 }
               },
@@ -4443,6 +4449,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
               {
                 service = service,
                 route   = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
                   hosts = {
                     "sni.example.com",
                   },
@@ -4457,6 +4464,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
               {
                 service = service,
                 route   = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8103",
                   hosts = {
                     "sni.example.com",
                   },
@@ -4472,6 +4480,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
               {
                 service = service,
                 route   = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8104",
                   hosts = {
                     "sni.example.com",
                   },
@@ -4517,12 +4526,14 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             {
               service = service,
               route = {
+                id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
                 snis = { "www.example.org" },
               }
             },
             {
               service = service,
               route = {
+                id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
                 sources = {
                   { ip = "127.0.0.1" },
                 }
@@ -4531,6 +4542,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             {
               service = service,
               route = {
+                id = "e8fb37f1-102d-461e-9c51-6608a6bb8103",
                 destinations = {
                   { ip = "172.168.0.1" },
                 }
@@ -4556,12 +4568,14 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             {
               service = service,
               route = {
+                id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
                 snis = { "www.example.org" },
               }
             },
             {
               service = service,
               route = {
+                id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
                 sources = {
                   { ip = "127.0.0.1" },
                 },

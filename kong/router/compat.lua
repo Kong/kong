@@ -417,7 +417,15 @@ get_priority = function(route)
 
   local match_weight = 0
 
+  -- [sni] has higher priority than [src] or [dst]
   if not is_empty_field(snis) then
+    match_weight = STREAM_SNI_BIT
+  end
+
+  -- [src] + [dst] has higher priority than [sni]
+  if not is_empty_field(srcs) and
+     not is_empty_field(dsts)
+  then
     match_weight = STREAM_SNI_BIT
   end
 
