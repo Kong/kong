@@ -400,16 +400,20 @@ local function get_priority(route)
 end
 
 
-local function stream_get_priority(route)
-  local snis          = route.snis
-  local sources       = route.sources
-  local destinations  = route.destinations
+if not is_http then
+
+get_priority = function(route)
+  local snis = route.snis
+  local srcs = route.sources
+  local dsts = route.destinations
 
   local STREAM_SNI_BIT = lshift(0x01ULL, 7)
   local SRC_IP_BIT     = lshift(0x01ULL, 6)
   local SRC_PORT_BIT   = lshift(0x01ULL, 5)
+  local SRC_CIDR_BIT   = lshift(0x01ULL, 4)
   local DST_IP_BIT     = lshift(0x01ULL, 3)
   local DST_PORT_BIT   = lshift(0x01ULL, 2)
+  local DST_CIDR_BIT   = lshift(0x01ULL, 1)
 
   local match_weight = 0
 
@@ -417,13 +421,17 @@ local function stream_get_priority(route)
     match_weight = STREAM_SNI_BIT
   end
 
-  if not is_empty_field(sources) then
-    for i = 1, #sources do
-      local ip = sources[i].ip
-      local port = sources[i].port
+  if not is_empty_field(srcs) then
+    for i = 1, #srcs do
+      local ip = srcs[i].ip
+      local port = srcs[i].port
 
-      if not ip:find("/", 1, true) then
-        match_weight = bor(match_weight, SRC_IP_BIT)
+      if ip then
+        if ip:find("/", 1, true) then
+          match_weight = bor(match_weight, SRC_CIDR_BIT)
+        else
+          match_weight = bor(match_weight, SRC_IP_BIT)
+        end
       end
       if port then
         match_weight = bor(match_weight, SRC_PORT_BIT)
@@ -431,11 +439,27 @@ local function stream_get_priority(route)
     end
   end
 
-  if not is_empty_field(route.destinations) then
-    match_weight = match_weight + 1
+  if not is_empty_field(dsts) then
+    for i = 1, #dsts do
+      local ip = dsts[i].ip
+      local port = dsts[i].port
+
+      if ip then
+        if ip:find("/", 1, true) then
+          match_weight = bor(match_weight, DST_CIDR_BIT)
+        else
+          match_weight = bor(match_weight, DST_IP_BIT)
+        end
+      end
+      if port then
+        match_weight = bor(match_weight, SRC_PORT_BIT)
+      end
+    end
   end
 
   return match_weight
+end
+
 end
 
 
