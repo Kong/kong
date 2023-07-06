@@ -14,14 +14,18 @@ import {
   deletePlugin,
   randomString,
   isGwHybrid,
+  isLocalDatabase,
   wait,
   logResponse,
+  waitForConfigRebuild,
 } from '@support';
 
 describe('Gateway Plugins: Request Validator Regression Tests', function () {
   const path = `/${randomString()}`;
   const isHybrid = isGwHybrid();
+  const isLocalDb = isLocalDatabase();
   const waitTime = 5000;
+  const hybridWaitTime = 7000;
   let serviceId: string;
   let routeId: string;
 
@@ -216,7 +220,7 @@ describe('Gateway Plugins: Request Validator Regression Tests', function () {
   });
 
   it('should validate invalid date format', async function () {
-    await wait(waitTime);
+    await wait(waitTime + (isLocalDb ? 0 : hybridWaitTime));
 
     const resp = await getNegative(
       `${proxyUrl}${path}`,
@@ -333,7 +337,8 @@ describe('Gateway Plugins: Request Validator Regression Tests', function () {
     logResponse(resp);
 
     expect(resp.status, 'Status should be 200').to.equal(200);
-    await wait(7000);
+
+    await waitForConfigRebuild();
 
     let response: any = execSync(
       `curl -v ${proxyUrl}${path} -H 'testHeader:www.example.com' -H 'testHeader:www.sample.com' -H 'myHeader:www.test.com'`,

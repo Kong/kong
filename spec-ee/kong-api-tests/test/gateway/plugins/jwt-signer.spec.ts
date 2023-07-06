@@ -5,6 +5,7 @@ import {
   Environment,
   getBasePath,
   isGwHybrid,
+  isLocalDatabase,
   createGatewayService,
   deleteGatewayService,
   createRouteForService,
@@ -25,6 +26,7 @@ describe('Gateway Plugins: jwt-signer', function () {
   const upstreamConsumerHeaderName = 'X-Consumer-Username';
   const upstreamConsumerHeaderId = 'X-Consumer-Id';
   const isHybrid = isGwHybrid();
+  const islocalDb = isLocalDatabase();
   const waitTime = 5000;
   const hybridWaitTime = 10000;
   const expiredTokenHeaders = {
@@ -192,7 +194,7 @@ describe('Gateway Plugins: jwt-signer', function () {
     expect(resp.data.config.access_token_optional, 'Should be true').to.be.true;
     expect(resp.data.config.channel_token_optional, 'Should be true').to.be
       .true;
-    await wait(waitTime);
+    await wait(waitTime + (islocalDb ? 0 : waitTime));
   });
 
   it('should proxy request without token', async function () {

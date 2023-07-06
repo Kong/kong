@@ -9,21 +9,25 @@ import {
   deleteGatewayRoute,
   randomString,
   isGwHybrid,
+  isLocalDatabase,
   wait,
+  waitForConfigRebuild,
   logResponse,
   deletePlugin,
   createRouteForService,
   setGatewayContainerEnvVariable,
   getKongContainerName,
+  logDebug,
 } from '@support';
 
 describe('Gateway Plugins: OpenTelemetry', function () {
   this.timeout(50000);
 
   const isHybrid = isGwHybrid();
+  const isLocalDb = isLocalDatabase();
   const waitTime = 5000;
   const hybridWaitTime = 8000;
-  const jaegerWait = 10000;
+  const jaegerWait = 20000;
   const configEndpoint = 'http://jaeger:4318/v1/traces';
   const paths = ['/jaegertest1', '/jaegertest2', '/jaegertest3'];
 
@@ -73,6 +77,8 @@ describe('Gateway Plugins: OpenTelemetry', function () {
     serviceId = service.id;
     const route = await createRouteForService(serviceId, ['/']);
     routeId = route.id;
+
+    await wait(jaegerWait);
   });
 
   it('should not create opel plugin with invalid config.endpoint', async function () {
@@ -110,7 +116,7 @@ describe('Gateway Plugins: OpenTelemetry', function () {
     pluginId = resp.data.id;
     expect(resp.status, 'Status should be 201').to.equal(201);
 
-    await wait(hybridWaitTime);
+    await wait(hybridWaitTime + (isLocalDb ? 0 : hybridWaitTime));
   });
 
   it('should send proxy request traces to jaeger', async function () {
@@ -118,7 +124,7 @@ describe('Gateway Plugins: OpenTelemetry', function () {
     let urlObj;
     let resp = await axios(`${proxyUrl}${paths[0]}`);
     logResponse(resp);
-    await wait(jaegerWait);
+    await wait(jaegerWait + (isLocalDb ? 0 : 10000));
 
     resp = await axios(jaegerTracesEndpoint);
     logResponse(resp);
@@ -133,7 +139,7 @@ describe('Gateway Plugins: OpenTelemetry', function () {
     for (const data of resp.data.data) {
       // find the http.url object which value is 'http://localhost/jaegertest1''
       urlObj = data.spans[0].tags.find((obj) => obj.key === 'http.url');
-
+      logDebug('urlObj.value: ' + urlObj.value);
       if (urlObj.value.includes(paths[0])) {
         isFound = true;
         targetDataset = data;
@@ -197,13 +203,17 @@ describe('Gateway Plugins: OpenTelemetry', function () {
       'Should see updated instance id'
     ).to.equal('kongtest');
 
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+    await wait(
+      isHybrid
+        ? hybridWaitTime + (isLocalDb ? 0 : hybridWaitTime)
+        : waitTime + (isLocalDb ? 0 : waitTime)
+    );
   });
 
   it('should send updated service instance.id and version metadata to jaeger', async function () {
     let resp = await axios(`${proxyUrl}${paths[1]}`);
     logResponse(resp);
-    await wait(jaegerWait);
+    await wait(jaegerWait + (isLocalDb ? 0 : hybridWaitTime));
 
     resp = await axios(jaegerTracesEndpoint);
     logResponse(resp);

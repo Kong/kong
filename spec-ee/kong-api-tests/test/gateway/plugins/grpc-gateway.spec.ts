@@ -11,6 +11,7 @@ import {
   wait,
   updateGatewayService,
   logResponse,
+  isLocalDatabase,
 } from '@support';
 
 describe('Gateway Plugins: gRPC-gateway', function () {
@@ -27,6 +28,10 @@ describe('Gateway Plugins: gRPC-gateway', function () {
   const grpcMessage = 'Kong3.0.x.x.x';
   const protocols = ['grpc', 'grpcs', 'http', 'https'];
   const serviceName = 'grpcbin-gateway-service';
+
+  const isLocalDb = isLocalDatabase();
+  const shortWait = 5000;
+  const longWait = 10000;
 
   let serviceId: string;
   let routeId: string;
@@ -84,7 +89,7 @@ describe('Gateway Plugins: gRPC-gateway', function () {
       protocols
     );
     pluginId = resp.data.id;
-    await wait(7000);
+    await wait(isLocalDb ? 7000 : longWait);
   });
 
   it('should validate mapping rule 1', async function () {
@@ -172,7 +177,7 @@ describe('Gateway Plugins: gRPC-gateway', function () {
       protocols
     );
     expect(resp.status, 'Status should be 200').to.equal(200);
-    await wait(5000);
+    await wait(isLocalDb ? shortWait : longWait);
   });
 
   it('should validate new proto POST bindings', async function () {

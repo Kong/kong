@@ -7,10 +7,12 @@ import {
   expect,
   getBasePath,
   isGwHybrid,
+  isLocalDatabase,
   postNegative,
   randomString,
   wait,
   logResponse,
+  waitForConfigRebuild,
 } from '@support';
 import axios from 'axios';
 import WebSocket from 'promise-ws';
@@ -20,6 +22,7 @@ describe('Websocket Validator Plugin Tests', function () {
   const classicTimeout = 5000;
   const waitTime = 20;
   const isHybrid = isGwHybrid();
+  const isLocalDb = isLocalDatabase();
   const wsEchoServer = `${getBasePath({
     environment: Environment.gateway.ec2TestServer,
   })}`;
@@ -74,7 +77,7 @@ describe('Websocket Validator Plugin Tests', function () {
         },
       };
 
-      await wait(isHybrid ? hybridTimeout : classicTimeout);
+      await waitForConfigRebuild();
     });
 
     it('should send message via ws websocket connection before adding plugin', async function () {
@@ -118,7 +121,7 @@ describe('Websocket Validator Plugin Tests', function () {
 
       expect(resp.status, 'Status should be 201').to.equal(201);
       pluginId = resp.data.id;
-      await wait(isHybrid ? hybridTimeout : classicTimeout);
+      await waitForConfigRebuild();
     });
 
     it('should send string ', async function () {
@@ -218,7 +221,7 @@ describe('Websocket Validator Plugin Tests', function () {
       logResponse(resp);
 
       expect(resp.status, 'Status should be 200').to.equal(200);
-      await wait(isHybrid ? hybridTimeout : classicTimeout);
+      await waitForConfigRebuild();
     });
 
     it('should be able to send number', async function () {
@@ -298,7 +301,7 @@ describe('Websocket Validator Plugin Tests', function () {
       logResponse(resp);
 
       expect(resp.status, 'Status should be 200').to.equal(200);
-      await wait(isHybrid ? hybridTimeout : classicTimeout);
+      await waitForConfigRebuild();
     });
 
     it('should send boolean', async function () {
@@ -377,7 +380,7 @@ describe('Websocket Validator Plugin Tests', function () {
       logResponse(resp);
 
       expect(resp.status, 'Status should be 200').to.equal(200);
-      await wait(isHybrid ? hybridTimeout : classicTimeout);
+      await waitForConfigRebuild();
     });
 
     it('should send object', async function () {
@@ -491,7 +494,7 @@ describe('Websocket Validator Plugin Tests', function () {
         },
       };
 
-      await wait(isHybrid ? hybridTimeout : classicTimeout);
+      await waitForConfigRebuild();
     });
 
     it('should send message via wss websocket connection before adding plugin', async function () {
@@ -537,7 +540,8 @@ describe('Websocket Validator Plugin Tests', function () {
 
       expect(resp.status, 'Status should be 201').to.equal(201);
       pluginId = resp.data.id;
-      await wait(isHybrid ? hybridTimeout : classicTimeout);
+
+      await waitForConfigRebuild();
     });
 
     it('should send string for wss ', async function () {
@@ -614,7 +618,8 @@ describe('Websocket Validator Plugin Tests', function () {
       logResponse(resp);
 
       expect(resp.status, 'Status should be 200').to.equal(200);
-      await wait(isHybrid ? hybridTimeout : classicTimeout);
+
+      await waitForConfigRebuild();
     });
 
     it('should be able to send number for wss', async function () {
@@ -700,7 +705,8 @@ describe('Websocket Validator Plugin Tests', function () {
       logResponse(resp);
 
       expect(resp.status, 'Status should be 200').to.equal(200);
-      await wait(isHybrid ? hybridTimeout : classicTimeout);
+
+      await waitForConfigRebuild();
     });
 
     it('should send boolean for wss', async function () {
@@ -785,7 +791,8 @@ describe('Websocket Validator Plugin Tests', function () {
       logResponse(resp);
 
       expect(resp.status, 'Status should be 200').to.equal(200);
-      await wait(isHybrid ? hybridTimeout : classicTimeout);
+
+      await waitForConfigRebuild();
     });
 
     it('should send object for wss', async function () {

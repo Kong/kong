@@ -10,6 +10,7 @@ import {
   getBasePath,
   getNegative,
   isGwHybrid,
+  isLocalDatabase,
   logResponse,
   wait,
   retryRequest,
@@ -21,6 +22,7 @@ describe('Gateway Plugins: key-auth-enc', function () {
   const serviceName = 'key-auth-enc-service';
   const isHybrid = isGwHybrid();
   const hybridWaitTime = 10000;
+  const isLocalDb = isLocalDatabase();
   const waitTime = 5000;
   const consumerName = 'ted';
   const key = 'apiKey';
@@ -204,7 +206,9 @@ describe('Gateway Plugins: key-auth-enc', function () {
 
     expect(resp.status, 'Status should be 200').to.equal(200);
     expect(resp.data.enabled, 'Should be false').to.be.false;
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+    await wait(
+      isHybrid ? hybridWaitTime + (isLocalDb ? 0 : waitTime) : waitTime
+    );
   });
 
   it('key-auth-enc: should proxy request without supplying apiKey after disabling plugin', async function () {

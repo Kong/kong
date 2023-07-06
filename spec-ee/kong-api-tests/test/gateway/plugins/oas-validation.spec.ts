@@ -13,6 +13,7 @@ import {
   postNegative,
   isGwHybrid,
   randomString,
+  waitForConfigRebuild,
 } from '@support';
 
 describe('Gateway Plugins: oas-validation', function () {
@@ -163,7 +164,8 @@ describe('Gateway Plugins: oas-validation', function () {
       resp.data.config.verbose_response,
       'Should have correct response body validation'
     ).to.be.true;
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+
+    await waitForConfigRebuild();
   });
 
   it('should not POST new item when required name field is missing when request validation is enforced', async function () {
@@ -289,7 +291,8 @@ describe('Gateway Plugins: oas-validation', function () {
       resp.data.config.verbose_response,
       'Should have correct response body validation'
     ).to.be.true;
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+
+    await waitForConfigRebuild();
   });
 
   it('should enforce response validation when parameter enabled', async function () {
@@ -337,7 +340,8 @@ describe('Gateway Plugins: oas-validation', function () {
       resp.data.config.verbose_response,
       'Should have correct response body validation'
     ).to.be.true;
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+
+    await waitForConfigRebuild();
   });
 
   it('should POST new item without required name field when validation is skipped', async function () {

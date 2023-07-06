@@ -22,6 +22,7 @@ export {
   getGatewayHost,
   getGatewayMode,
   isGwHybrid,
+  isLocalDatabase,
   vars,
   isGwNative,
   getKongContainerName,

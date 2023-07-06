@@ -1,6 +1,7 @@
 import {
   expect,
   isGwHybrid,
+  isLocalDatabase,
   expectStatusReadyEndpointOk,
   expectStatusReadyEndpoint503,
   waitForTargetStatus,
@@ -8,10 +9,17 @@ import {
 } from '@support';
 
 const isHybrid = isGwHybrid();
+const isLocalDb = isLocalDatabase();
 const databaseContainerName = 'kong-ee-database';
 const dpPortNumber = 8101;
 
 describe('/status Endpoint tests', function () {
+  before(async function () {
+    if (!isLocalDb) {
+      this.skip();
+    }
+  });
+
   it('should return 200 OK for CP status when Kong is loaded and ready', async function () {
     await expectStatusReadyEndpointOk();
   });

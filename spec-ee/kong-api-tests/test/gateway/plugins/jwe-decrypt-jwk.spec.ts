@@ -13,9 +13,11 @@ import {
   getBasePath,
   getNegative,
   isGwHybrid,
+  isLocalDatabase,
   logResponse,
   postNegative,
   wait,
+  waitForConfigRebuild,
 } from '@support';
 import axios from 'axios';
 
@@ -24,6 +26,7 @@ describe('Gateway Plugins: jwe-decrypt JWK', function () {
   const serviceName = 'jwe-decrypt-service';
   const jwkKeySetsName = 'jwk-key-sets';
   const isHybrid = isGwHybrid();
+  const isLocalDb = isLocalDatabase();
   const hybridWaitTime = 8000;
   const waitTime = 5000;
   const invalidTokenHeaders = {
@@ -115,7 +118,8 @@ describe('Gateway Plugins: jwe-decrypt JWK', function () {
     );
 
     pluginId = resp.data.id;
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+
+    await waitForConfigRebuild();
   });
 
   it('JWK: should not proxy request without a token', async function () {
@@ -181,7 +185,8 @@ describe('Gateway Plugins: jwe-decrypt JWK', function () {
     logResponse(resp);
 
     expect(resp.status, 'Status should be 200').to.equal(200);
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+
+    await waitForConfigRebuild();
   });
 
   it('JWK: should proxy request without supplying a token', async function () {

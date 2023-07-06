@@ -13,6 +13,7 @@ import {
   getBasePath,
   getNegative,
   isGwHybrid,
+  isLocalDatabase,
   logResponse,
   postNegative,
   wait,
@@ -24,6 +25,7 @@ describe('Gateway Plugins: jwe-decrypt PEM', function () {
   const serviceName = 'jwe-decrypt-service';
   const pemKeySetsName = 'pem-key-sets';
   const isHybrid = isGwHybrid();
+  const isLocalDb = isLocalDatabase();
   const hybridWaitTime = 8000;
   const waitTime = 5000;
   const invalidTokenHeaders = {
@@ -117,7 +119,9 @@ describe('Gateway Plugins: jwe-decrypt PEM', function () {
     );
 
     pluginId = resp.data.id;
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+    await wait(
+      isHybrid ? hybridWaitTime + (isLocalDb ? 0 : hybridWaitTime) : waitTime
+    );
   });
 
   it('PEM: should not proxy request without a token', async function () {

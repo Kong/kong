@@ -12,12 +12,14 @@ import {
   deleteGatewayService,
   logResponse,
   isGwHybrid,
+  isLocalDatabase,
   wait,
   getGatewayHost,
   getGatewayContainerLogs,
   findRegex,
   retryRequest,
   getKongContainerName,
+  waitForConfigRebuild,
 } from '@support';
 
 const agent = new https.Agent({
@@ -40,6 +42,8 @@ const regexWrongPatterns = ['/5555-helo', '/heo-world', '/wrong-test'];
 const regexCorrectPatterns = ['/helo-test', '/hello-auto', '/world-te'];
 const currentHost = getGatewayHost();
 
+const isLocalDb = isLocalDatabase();
+
 describe('@smoke: Router Functionality Tests', function () {
   const routesUrl = `${getBasePath({
     environment: Environment.gateway.adminSec,
@@ -58,6 +62,8 @@ describe('@smoke: Router Functionality Tests', function () {
   const kongContainerName = getKongContainerName();
   const regexPath = '~/(hell?o|world)-(?<user>\\S+)';
   const waitTime = 5000;
+  const longWaitTime = 10000;
+  const hybridWaitTime = 6000;
 
   let serviceDetails: any;
   let routeId: string;
@@ -104,7 +110,10 @@ describe('@smoke: Router Functionality Tests', function () {
       resp.data.headers,
       'Should have correct route header key'
     ).to.have.property('testHeader');
-    await wait(isHybrid ? 6000 : waitTime);
+
+    await wait(
+      isHybrid ? hybridWaitTime + (isLocalDb ? 0 : hybridWaitTime) : waitTime
+    );
   });
 
   it('should not create a route with duplicate name', async function () {
@@ -237,7 +246,7 @@ describe('@smoke: Router Functionality Tests', function () {
     expect(resp.status, 'Status should be 200').equal(200);
     expect(resp.data.headers, 'Should have empty headers').to.be.empty;
     expect(resp.data.paths[0], 'Should have correct path').to.equal(regexPath);
-    await wait(waitTime);
+    await wait(isLocalDb ? waitTime : longWaitTime);
   });
 
   regexWrongPatterns.forEach((wrongPattern) => {
@@ -314,7 +323,8 @@ describe('@smoke: Router Functionality Tests', function () {
     expect(resp.data.hosts[0], 'Should have correct host').to.equal(
       currentHost
     );
-    await wait(waitTime);
+
+    await waitForConfigRebuild();
 
     resp = await axios(`${proxyUrl}${routePayload.paths[0]}`);
     expect(resp.status, 'Status should be 200').equal(200);

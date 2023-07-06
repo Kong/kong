@@ -30,6 +30,14 @@ export const getGatewayHost = (): string => {
 };
 
 /**
+ * Check if current database is running in local mode
+ * @returns {boolean} - true if the database is running in local mode else false
+ */
+export const isLocalDatabase = (): boolean => {
+  return process.env.PG_IAM_AUTH == 'true' ? false : true;
+};
+
+/**
  * Get current gateway mode
  * @returns {string} - current gateway mode
  */

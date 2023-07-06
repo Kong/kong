@@ -8,6 +8,7 @@ import {
   expect,
   getBasePath,
   getNegative,
+  isLocalDatabase,
   isGwHybrid,
   logResponse,
   postNegative,
@@ -18,6 +19,7 @@ import axios from 'axios';
 describe('Mocking Plugin Tests', function () {
   this.timeout(25000);
   const isHybrid = isGwHybrid();
+  const isLocalDb = isLocalDatabase();
 
   const url = `${getBasePath({
     environment: Environment.gateway.admin,
@@ -25,7 +27,7 @@ describe('Mocking Plugin Tests', function () {
   const proxyUrl = getBasePath({
     environment: Environment.gateway.proxy,
   });
-  const longWait = 6000;
+  const longWait = 8000;
   const shortWait = isHybrid ? 3000 : 1000;
 
   const validSpec = JSON.stringify(spaceApi);
@@ -137,6 +139,7 @@ describe('Mocking Plugin Tests', function () {
   });
 
   it('should return expected mock response', async function () {
+    await wait(isLocalDb ? shortWait : longWait);
     const resp = await axios(`${proxyUrl}/planets`);
     logResponse(resp);
 

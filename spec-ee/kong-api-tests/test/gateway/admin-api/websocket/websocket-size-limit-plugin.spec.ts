@@ -7,6 +7,7 @@ import {
   expect,
   getBasePath,
   isGwHybrid,
+  isLocalDatabase,
   randomString,
   wait,
   logResponse,
@@ -18,6 +19,7 @@ describe('Websocket Size Limit Plugin Tests', function () {
   const hybridTimeout = 8000; //confirm timeout when hybrid is functioning
   const classicTimeout = 5000;
   const waitTime = 20;
+  const isLocalDb = isLocalDatabase();
   const isHybrid = isGwHybrid();
   const baseUrl = getBasePath({
     environment: Environment.gateway.admin,
@@ -138,6 +140,7 @@ describe('Websocket Size Limit Plugin Tests', function () {
     });
 
     it('should not send data when size is limited', async function () {
+      await wait(isLocalDb ? 0 : hybridTimeout);
       ws = await WebSocket.create(wsProxyUrl);
       ws.send('12345');
       await wait(waitTime);
@@ -274,6 +277,8 @@ describe('Websocket Size Limit Plugin Tests', function () {
     });
 
     it('should not send data when size is limited for wss', async function () {
+      await wait(isHybrid ? hybridTimeout : classicTimeout);
+
       wss = await WebSocket.create(wssProxyUrl, {
         rejectUnauthorized: false,
       });

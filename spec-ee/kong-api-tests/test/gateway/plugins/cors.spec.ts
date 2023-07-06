@@ -10,6 +10,7 @@ import {
   createRouteForService,
   logResponse,
   isGwHybrid,
+  waitForConfigRebuild,
   wait,
   postNegative,
 } from '@support';
@@ -75,7 +76,8 @@ describe('Gateway Plugins: CORS', function () {
     logResponse(resp);
     expect(resp.status).to.equal(201);
     pluginId = resp.data.id;
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+
+    await waitForConfigRebuild();
   });
 
   it('should send request with appropriate CORS headers', async function () {
@@ -118,7 +120,7 @@ describe('Gateway Plugins: CORS', function () {
       .and.contain('x-private-header');
     expect(resp.data.config.exposed_headers).to.contain('x-public-header');
 
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+    await waitForConfigRebuild();
 
     const proxyResp = await axios({
       url: `${proxyUrl}${path}`,
@@ -175,7 +177,7 @@ describe('Gateway Plugins: CORS', function () {
     expect(resp.status).to.equal(200);
     expect(resp.data.config.credentials).to.equal(true);
 
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+    await waitForConfigRebuild();
 
     const proxyResp = await axios({
       url: `${proxyUrl}${path}`,
@@ -213,7 +215,7 @@ describe('Gateway Plugins: CORS', function () {
     expect(resp2.status).to.equal(200);
     expect(resp2.data.config.credentials).to.equal(false);
 
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+    await waitForConfigRebuild();
 
     const proxyResp2 = await axios({
       url: `${proxyUrl}${path}`,
@@ -251,7 +253,7 @@ describe('Gateway Plugins: CORS', function () {
     logResponse(resp);
     expect(resp.status).to.equal(200);
 
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+    await waitForConfigRebuild();
 
     const proxyResp = await axios({
       url: `${proxyUrl}${path}`,

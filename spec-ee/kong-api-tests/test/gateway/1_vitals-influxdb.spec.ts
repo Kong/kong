@@ -16,6 +16,7 @@ import {
   getWorkspaces,
   isGwHybrid,
   retryRequest,
+  isLocalDatabase,
   wait,
 } from '@support';
 import axios from 'axios';
@@ -27,6 +28,7 @@ describe('Vitals with InfluxDB Tests', function () {
   const proxyUrl = getBasePath({ environment: Environment.gateway.proxy });
   // isHybrid is being used across the test to control test flow for hybrid mode run
   const isHybrid = isGwHybrid();
+  const isLocalDb = isLocalDatabase();
   const classicWait = 5000;
   const longWait = 7000;
 
@@ -70,6 +72,8 @@ describe('Vitals with InfluxDB Tests', function () {
         console.log("Couldn't find default workspace id");
       }
     }
+
+    await wait(isLocalDb ? classicWait : longWait);
   });
 
   const assertKongRequestDetails = (response: any) => {

@@ -130,6 +130,8 @@ describe('Gateway /licenses API tests', function () {
 
   if (isCIrun) {
     it('should enable key-auth-enc ee plugin with license', async function () {
+      await wait(waitTime);
+
       const pluginPayload = {
         ...basePayload,
         config: { key_names: ['apiKey'] },

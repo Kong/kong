@@ -7,6 +7,7 @@ import {
   expect,
   getBasePath,
   isGwHybrid,
+  waitForConfigRebuild,
   postNegative,
   randomString,
   wait,
@@ -54,7 +55,7 @@ describe('Gateway Websocket Tests', function () {
       );
       wsRouteId = wsRoute.id;
 
-      await wait(isHybrid ? hybridTimeout : classicTimeout);
+      await waitForConfigRebuild();
     });
 
     it('should send text message via ws websocket connection', async function () {
@@ -138,7 +139,7 @@ describe('Gateway Websocket Tests', function () {
       );
       wssRouteId = wssRoute.id;
 
-      await wait(isHybrid ? hybridTimeout : classicTimeout);
+      await waitForConfigRebuild();
     });
 
     it('should send text message via wss websocket connection', async function () {

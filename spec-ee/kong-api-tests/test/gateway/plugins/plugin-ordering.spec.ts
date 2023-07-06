@@ -175,6 +175,7 @@ describe('Plugin Ordering: featuring RTA,basic-auth,RV plugins', function () {
   });
 
   it('should apply plugin ordering RTA > basic-auth > RV', async function () {
+    await waitForConfigRebuild();
     // Current plugin ordering is: RTA > basic-auth > RV
     const req = () => getNegative(`${proxyUrl}${path}`);
     const assertions = (resp) => {
@@ -255,7 +256,7 @@ describe('Plugin Ordering: featuring RTA,basic-auth,RV plugins', function () {
 
   it('should get 400 error as RTA now runs after basic-auth', async function () {
     // Current plugin ordering is: RTA > RV > basic-auth
-    await wait(waitTime);
+    await waitForConfigRebuild();
     const resp = await getNegative(`${proxyUrl}${path}`);
     logResponse(resp);
 
