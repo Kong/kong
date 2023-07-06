@@ -280,7 +280,7 @@ release-packages:
   artifact-from: amazonlinux-2-arm64
   artifact-version: 2023
   artifact-type: amazonlinux
-  artifact: kong.aws2023.amd64.rpm
+  artifact: kong.aws2023.arm64.rpm
 
 release-images:
 - label: ubuntu
