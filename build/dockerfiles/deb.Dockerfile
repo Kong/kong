@@ -18,6 +18,8 @@ ARG KONG_ARTIFACT_PATH=
 COPY ${KONG_ARTIFACT_PATH}${KONG_ARTIFACT} /tmp/kong.deb
 
 RUN apt-get update \
+    && apt-get -y upgrade \
+    && apt-get -y autoremove \
     && apt-get install -y --no-install-recommends /tmp/kong.deb \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /tmp/kong.deb \
