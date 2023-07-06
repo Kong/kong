@@ -145,6 +145,8 @@
   [#11140](https://github.com/Kong/kong/pull/11140)
 - Bumped pgmoon from 1.16.0 to 1.16.1 (Kong's fork)
   [#11181](https://github.com/Kong/kong/pull/11181)
+- Bumped atc-router from 1.0.5 to 1.1.0
+  [#10100](https://github.com/Kong/kong/pull/10100)
 
 ## 3.3.0
 

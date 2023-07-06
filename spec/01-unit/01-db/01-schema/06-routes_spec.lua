@@ -1356,14 +1356,31 @@ describe("routes schema (flavor = traditional_compatible)", function()
       id             = a_valid_uuid,
       name           = "my_route",
       protocols      = { "http" },
-      paths          = { "~/\\/*/user$" },
+      paths          = { "~/[abc/*/user$" },
       service        = { id = another_uuid },
     }
     route = Routes:process_auto_fields(route, "insert")
     local ok, errs = Routes:validate_insert(route)
     assert.falsy(ok)
-    assert.truthy(errs["@entity"])
-    assert.matches("Router Expression failed validation", errs["@entity"][1],
+    assert.truthy(errs["paths"])
+    assert.matches("invalid regex:", errs["paths"][1],
                    nil, true)
+
+    -- verified by `schema/typedefs.lua`
+    assert.falsy(errs["@entity"])
+  end)
+
+  it("won't fail when rust.regex update to 1.8", function()
+    local route = {
+      id             = a_valid_uuid,
+      name           = "my_route",
+      protocols      = { "http" },
+      paths          = { "~/\\/*/user$" },
+      service        = { id = another_uuid },
+    }
+    route = Routes:process_auto_fields(route, "insert")
+    local ok, errs = Routes:validate_insert(route)
+    assert.truthy(ok)
+    assert.is_nil(errs)
   end)
 end)
