@@ -2,6 +2,10 @@ return [[
 pid pids/nginx.pid;
 error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
+> if wasm and wasm_dynamic_module then
+load_module $(wasm_dynamic_module);
+> end
+
 # injected nginx_main_* directives
 > for _, el in ipairs(nginx_main_directives) do
 $(el.name) $(el.value);
@@ -19,7 +23,7 @@ events {
 > end
 }
 
-> if wasm_modules_parsed and #wasm_modules_parsed > 0 then
+> if wasm and wasm_modules_parsed and #wasm_modules_parsed > 0 then
 wasm {
   shm_kv kong_wasm_rate_limiting_counters 12m;
 
