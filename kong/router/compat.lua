@@ -306,22 +306,6 @@ local function get_priority(route)
     match_weight = match_weight + 1
   end
 
-  -- stream subsystem
-
-  if not is_http then
-    if not is_empty_field(route.sources) then
-      match_weight = match_weight + 1
-    end
-
-    if not is_empty_field(route.destinations) then
-      match_weight = match_weight + 1
-    end
-
-    return match_weight
-  end
-
-  -- http subsystem
-
   if not is_empty_field(methods) then
     match_weight = match_weight + 1
   end
