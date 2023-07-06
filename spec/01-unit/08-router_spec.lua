@@ -4211,7 +4211,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
 
 
     if flavor == "traditional" or flavor == "traditional_compatible" then
-      describe("#stream context", function()
+      describe("#only #stream context", function()
         -- enable compat_stream
         reload_router(flavor, "stream")
 
@@ -4505,7 +4505,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             assert.same(use_case[1].route, match_t.route)
           end)
 
-          it("[sni] is ignored for http request without shadowing routes with `protocols={'http'}`. Fixes #6425", function()
+          it_trad_only("[sni] is ignored for http request without shadowing routes with `protocols={'http'}`. Fixes #6425", function()
             local match_t = router_ignore_sni:select(nil, nil, "sni.example.com",
                                                      "http", nil, nil, nil, nil,
                                                      nil)

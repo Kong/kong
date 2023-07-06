@@ -278,12 +278,13 @@ end
 local function stream_get_priority(snis, srcs, dsts)
   local STREAM_SNI_BIT = lshift_uint64(0x01ULL, 61)
 
-  local SRC_IP_BIT     = lshift(0x01ULL, 6)
-  local SRC_PORT_BIT   = lshift(0x01ULL, 5)
+  local SRC_IP_BIT     = lshift(0x01ULL, 7)
+  local SRC_PORT_BIT   = lshift(0x01ULL, 6)
   local SRC_CIDR_BIT   = lshift(0x01ULL, 4)
+
   local DST_IP_BIT     = lshift(0x01ULL, 3)
   local DST_PORT_BIT   = lshift(0x01ULL, 2)
-  local DST_CIDR_BIT   = lshift(0x01ULL, 1)
+  local DST_CIDR_BIT   = lshift(0x01ULL, 0)
 
   local match_weight = 0
 
@@ -330,7 +331,7 @@ local function stream_get_priority(snis, srcs, dsts)
         end
       end
       if port then
-        match_weight = bor(match_weight, SRC_PORT_BIT)
+        match_weight = bor(match_weight, DST_PORT_BIT)
       end
     end
   end
@@ -467,10 +468,7 @@ local function get_exp_and_priority(route)
   end
 
   local exp      = get_expression(route)
-  print("xxx ", exp)
   local priority = get_priority(route)
-  --print("xxx t=", type(priority))
-  print("xxx ", string.format("%x",priority))
 
   return exp, priority
 end
