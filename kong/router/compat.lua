@@ -159,23 +159,27 @@ local function get_expression(route)
     buffer_append(expr_buf, LOGICAL_AND, gen)
   end
 
-  -- stream subsystem
+  -- stream expression
 
-  if not is_http then
-    local gen = gen_for_nets("net.src.ip", "net.src.port", route.sources)
-    if gen then
-      buffer_append(expr_buf, LOGICAL_AND, gen)
+  do
+    local src_gen = gen_for_nets("net.src.ip", "net.src.port", route.sources)
+    local dst_gen = gen_for_nets("net.dst.ip", "net.dst.port", route.destinations)
+
+    if src_gen then
+      buffer_append(expr_buf, LOGICAL_AND, src_gen)
     end
 
-    local gen = gen_for_nets("net.dst.ip", "net.dst.port", route.destinations)
-    if gen then
-      buffer_append(expr_buf, LOGICAL_AND, gen)
+    if dst_gen then
+      buffer_append(expr_buf, LOGICAL_AND, dst_gen)
     end
 
-    return expr_buf:get()
+    if src_gen or dst_gen then
+      --print("gen stream exp", expr_buf:tostring())
+      return expr_buf:get()
+    end
   end
 
-  -- http subsystem
+  -- http sexpression
 
   local gen = gen_for_field("http.method", OP_EQUAL, methods)
   if gen then
