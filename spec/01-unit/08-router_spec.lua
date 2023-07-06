@@ -4210,7 +4210,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
     end)
 
 
-    if flavor == "traditional_compatible" then
+    if flavor == "traditional" or flavor == "traditional_compatible" then
       describe("#stream context", function()
         -- enable compat_stream
         reload_router(flavor, "stream")
@@ -4433,7 +4433,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
         end)
 
 
-        describe("#only [snis]", function()
+        describe("[snis]", function()
           local use_case, use_case_ignore_sni, router, router_ignore_sni
 
           lazy_setup(function()

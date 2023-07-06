@@ -154,12 +154,7 @@ local function get_expression(route)
   if gen then
     -- See #6425, if `net.protocol` is not `https`
     -- then SNI matching should simply not be considered
-    if is_http then
-      gen = "(net.protocol != \"https\"" .. LOGICAL_OR .. gen .. ")"
-
-    else
-      gen = "(net.protocol != \"tls\"" .. LOGICAL_OR .. gen .. ")"
-    end
+    gen = "((net.protocol != \"https\" && net.protocol != \"tls\")" .. LOGICAL_OR .. gen .. ")"
 
     buffer_append(expr_buf, LOGICAL_AND, gen)
   end
