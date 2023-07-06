@@ -275,6 +275,70 @@ do
 end
 
 
+local function stream_get_priority(snis, srcs, dsts)
+  local STREAM_SNI_BIT = lshift_uint64(0x01ULL, 61)
+
+  local SRC_IP_BIT     = lshift(0x01ULL, 6)
+  local SRC_PORT_BIT   = lshift(0x01ULL, 5)
+  local SRC_CIDR_BIT   = lshift(0x01ULL, 4)
+  local DST_IP_BIT     = lshift(0x01ULL, 3)
+  local DST_PORT_BIT   = lshift(0x01ULL, 2)
+  local DST_CIDR_BIT   = lshift(0x01ULL, 1)
+
+  local match_weight = 0
+
+  -- [sni] has higher priority than [src] or [dst]
+  if not is_empty_field(snis) then
+    match_weight = STREAM_SNI_BIT
+  end
+
+  -- [src] + [dst] has higher priority than [sni]
+  if not is_empty_field(srcs) and
+     not is_empty_field(dsts)
+  then
+    match_weight = STREAM_SNI_BIT
+  end
+
+  if not is_empty_field(srcs) then
+    for i = 1, #srcs do
+      local ip = srcs[i].ip
+      local port = srcs[i].port
+
+      if ip then
+        if ip:find("/", 1, true) then
+          match_weight = bor(match_weight, SRC_CIDR_BIT)
+        else
+          match_weight = bor(match_weight, SRC_IP_BIT)
+        end
+      end
+      if port then
+        match_weight = bor(match_weight, SRC_PORT_BIT)
+      end
+    end
+  end
+
+  if not is_empty_field(dsts) then
+    for i = 1, #dsts do
+      local ip = dsts[i].ip
+      local port = dsts[i].port
+
+      if ip then
+        if ip:find("/", 1, true) then
+          match_weight = bor(match_weight, DST_CIDR_BIT)
+        else
+          match_weight = bor(match_weight, DST_IP_BIT)
+        end
+      end
+      if port then
+        match_weight = bor(match_weight, SRC_PORT_BIT)
+      end
+    end
+  end
+
+  return match_weight
+end
+
+
 local PLAIN_HOST_ONLY_BIT = lshift(0x01ULL, 60)
 local REGEX_URL_BIT       = lshift(0x01ULL, 51)
 
@@ -294,13 +358,26 @@ local REGEX_URL_BIT       = lshift(0x01ULL, 51)
 -- |                         |                                     |
 -- +-------------------------+-------------------------------------+
 local function get_priority(route)
+  local snis = route.snis
+  local srcs = route.sources
+  local dsts = route.destinations
+
+  -- stream expression
+
+  if not is_empty_field(srcs) or
+     not is_empty_field(dsts)
+  then
+    return stream_get_priority(snis, srcs, dsts)
+  end
+
+  -- http expression
+
   local methods = route.methods
   local hosts   = route.hosts
   local paths   = route.paths
   local headers = route.headers
-  local snis    = route.snis
 
-  local match_weight = 0
+  local match_weight = 0x0ULL
 
   if not is_empty_field(snis) then
     match_weight = match_weight + 1
@@ -383,77 +460,6 @@ local function get_priority(route)
 end
 
 
-if not is_http then
-
-get_priority = function(route)
-  local snis = route.snis
-  local srcs = route.sources
-  local dsts = route.destinations
-
-  local STREAM_SNI_BIT = lshift(0x01ULL, 7)
-  local SRC_IP_BIT     = lshift(0x01ULL, 6)
-  local SRC_PORT_BIT   = lshift(0x01ULL, 5)
-  local SRC_CIDR_BIT   = lshift(0x01ULL, 4)
-  local DST_IP_BIT     = lshift(0x01ULL, 3)
-  local DST_PORT_BIT   = lshift(0x01ULL, 2)
-  local DST_CIDR_BIT   = lshift(0x01ULL, 1)
-
-  local match_weight = 0
-
-  -- [sni] has higher priority than [src] or [dst]
-  if not is_empty_field(snis) then
-    match_weight = STREAM_SNI_BIT
-  end
-
-  -- [src] + [dst] has higher priority than [sni]
-  if not is_empty_field(srcs) and
-     not is_empty_field(dsts)
-  then
-    match_weight = STREAM_SNI_BIT
-  end
-
-  if not is_empty_field(srcs) then
-    for i = 1, #srcs do
-      local ip = srcs[i].ip
-      local port = srcs[i].port
-
-      if ip then
-        if ip:find("/", 1, true) then
-          match_weight = bor(match_weight, SRC_CIDR_BIT)
-        else
-          match_weight = bor(match_weight, SRC_IP_BIT)
-        end
-      end
-      if port then
-        match_weight = bor(match_weight, SRC_PORT_BIT)
-      end
-    end
-  end
-
-  if not is_empty_field(dsts) then
-    for i = 1, #dsts do
-      local ip = dsts[i].ip
-      local port = dsts[i].port
-
-      if ip then
-        if ip:find("/", 1, true) then
-          match_weight = bor(match_weight, DST_CIDR_BIT)
-        else
-          match_weight = bor(match_weight, DST_IP_BIT)
-        end
-      end
-      if port then
-        match_weight = bor(match_weight, SRC_PORT_BIT)
-      end
-    end
-  end
-
-  return match_weight
-end
-
-end
-
-
 local function get_exp_and_priority(route)
   if route.expression then
     ngx.log(ngx.ERR, "expecting a traditional route while it's not (probably an expressions route). ",
@@ -461,7 +467,10 @@ local function get_exp_and_priority(route)
   end
 
   local exp      = get_expression(route)
+  print("xxx ", exp)
   local priority = get_priority(route)
+  --print("xxx t=", type(priority))
+  print("xxx ", string.format("%x",priority))
 
   return exp, priority
 end
