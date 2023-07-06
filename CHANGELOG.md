@@ -143,6 +143,8 @@
 - Bumped OpenSSL from 1.1.1t to 3.1.1
   [#10180](https://github.com/Kong/kong/pull/10180)
   [#11140](https://github.com/Kong/kong/pull/11140)
+- Bumped pgmoon from 1.16.0 to 1.16.1 (Kong's fork)
+  [#11181](https://github.com/Kong/kong/pull/11181)
 
 ## 3.3.0
 
