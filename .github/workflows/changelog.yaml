@@ -1,0 +1,43 @@
+name: Changelog
+
+on:
+  pull_request:
+    types: [ "opened", "synchronize", "labeled", "unlabeled" ]
+
+jobs:
+  require-changelog:
+    name: Is changelog required?
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+
+      - name: Retrives changed files in CHANGELOG/unreleased/**/*.yaml
+        id: changelog-check
+        uses: tj-actions/changed-files@v37
+        with:
+          files: 'CHANGELOG/unreleased/**/*.yaml'
+
+      - name: Requires a changelog file if 'skip-changelog' label is not added
+        if: ${{ !contains(github.event.*.labels.*.name, 'skip-changelog') }}
+        run: >
+          if [ "${{ steps.changelog-check.outputs.added_files_count }}" = "0" ]; then
+            echo "PR should contain a changelog file"
+            exit 1
+          fi
+
+  validate-changelog:
+    name: Validate changelog
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Validate changelogs
+        uses: thiagodnf/yaml-schema-checker@v0.0.8
+        with:
+          jsonSchemaFile: CHANGELOG/schema.json
+          yamlFiles: |
+            CHANGELOG/unreleased/*/*.yaml

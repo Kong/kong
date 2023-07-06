@@ -1,0 +1,7 @@
+message: ${message}
+type: ${type}
+prs:
+jiras:
+issues:
+metadata:
+
