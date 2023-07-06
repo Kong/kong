@@ -15,6 +15,7 @@ local ngx = ngx
 local kong = kong
 local gsub = string.gsub
 local match = string.match
+local lower = string.lower
 local random = math.random
 local table_sort = table.sort
 local table_insert = table.insert
@@ -24,6 +25,18 @@ local type = type
 local tonumber = tonumber
 
 local EMPTY = {}
+
+local METHODS = {
+  get = true,
+  post = true,
+  put = true,
+  patch = true,
+  delete = true,
+  head = true,
+  options = true,
+  trace = true,
+}
+
 
 local MockingHandler = {}
 
@@ -213,7 +226,10 @@ end
 
 local function normalize_spec(version, spec, conf)
   for _, path in pairs(spec.paths or EMPTY) do -- iterate paths
-    for _, method in pairs(path or EMPTY) do -- iterate method
+    for key, method in pairs(path or EMPTY) do -- iterate method
+      if not METHODS[lower(key)] then
+        goto continue
+      end
       method.responses = normalize_key(method.responses) -- normalize the codes
       method._sorted_response_codes = get_sorted_codes(method.responses, conf.included_status_codes)
       for code, response in pairs(method.responses or EMPTY) do -- iterate responses
@@ -233,6 +249,7 @@ local function normalize_spec(version, spec, conf)
           response._mime_types = mime_types -- makes a cached array
         end
       end
+      ::continue::
     end
   end
   return spec

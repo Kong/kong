@@ -12,6 +12,10 @@ servers:
 
 paths:
   /inventory:
+    summary: inventory API
+    description: >
+        One line
+        Two line
     get:
       summary: searches inventory
       description: |

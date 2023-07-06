@@ -76,6 +76,7 @@
 * **OpenID-Connect**: Log levels of many error message of OIDC are increased.
 * **OpenID-Connect**: Changes some log's level from `notice` to `error` for better visibility.
   [FTI-2884](https://konghq.atlassian.net/browse/FTI-2884)
+* **Mocking**: Fix a bug that the plugin throws an error when the arbitrary elements are defined in the path node.
 
 ## Kong Manager
 

@@ -18,6 +18,8 @@
   ],
   "paths": {
     "/inventory": {
+      "summary": "inventory API",
+      "description": "One line Two line\n",
       "get": {
         "summary": "searches inventory",
         "description": "By passing in the appropriate options, you can search for\navailable inventory in the system\n",
