@@ -146,6 +146,8 @@
 - Bumped OpenSSL from 1.1.1t to 3.1.1
   [#10180](https://github.com/Kong/kong/pull/10180)
   [#11140](https://github.com/Kong/kong/pull/11140)
+- Bumped atc-router from 1.0.5 to 1.1.0
+  [#10100](https://github.com/Kong/kong/pull/10100)
 
 ## 3.3.0
 
