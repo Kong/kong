@@ -16,6 +16,7 @@ local shallow_copy = require "kong.tools.utils".shallow_copy
 local template = assert(pl_template.compile(template_str))
 local render_env = {ipairs = ipairs, pairs = pairs, error = error, }
 
+---@class http_mock
 local http_mock = {}
 
 -- start a dedicate nginx instance for this mock

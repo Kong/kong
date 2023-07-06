@@ -6,6 +6,7 @@ local ipairs = ipairs
 local insert = table.insert
 local assert = assert
 
+---@class http_mock
 local http_mock = {}
 
 -- POST as it's not idempotent
@@ -36,7 +37,7 @@ local get_status_param = {
 -- internal API
 function http_mock:_setup_debug(debug_param)
   local debug_port = helpers.get_available_port()
-  local debug_client = http.new()
+  local debug_client = assert(http.new())
   local debug_connect = {
     scheme = "http",
     host = "localhost",

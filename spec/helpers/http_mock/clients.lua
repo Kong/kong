@@ -1,6 +1,7 @@
 local helpers = require "spec.helpers"
 local http_client = helpers.http_client
 
+---@class http_mock
 local http_mock = {}
 
 -- we need to get rid of dependence to the "helpers"
