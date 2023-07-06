@@ -223,6 +223,31 @@ local DYNAMIC_KEY_NAMESPACES = {
     prefix = "vault_",
     ignore = EMPTY,
   },
+  {
+    injected_conf_name = "nginx_wasm_wasmtime_directives",
+    prefix = "nginx_wasm_wasmtime_",
+    ignore = EMPTY,
+  },
+  {
+    injected_conf_name = "nginx_wasm_v8_directives",
+    prefix = "nginx_wasm_v8_",
+    ignore = EMPTY,
+  },
+  {
+    injected_conf_name = "nginx_wasm_wasmer_directives",
+    prefix = "nginx_wasm_wasmer_",
+    ignore = EMPTY,
+  },
+  {
+    injected_conf_name = "nginx_wasm_main_shm_directives",
+    prefix = "nginx_wasm_shm_",
+    ignore = EMPTY,
+  },
+  {
+    injected_conf_name = "nginx_wasm_main_directives",
+    prefix = "nginx_wasm_",
+    ignore = EMPTY,
+  },
 }
 
 
@@ -666,10 +691,21 @@ end
 
 
 -- Validate Wasm properties
-local function validate_wasm(wasm_enabled, filters_path)
-  if wasm_enabled and filters_path then
-    if not exists(filters_path) or not isdir(filters_path) then
+local function validate_wasm(conf)
+  local wasm_enabled = conf.wasm
+  local filters_path = conf.wasm_filters_path
+
+  if wasm_enabled then
+    if filters_path and not exists(filters_path) and not isdir(filters_path) then
       return nil, fmt("wasm_filters_path '%s' is not a valid directory", filters_path)
+    end
+  else
+    for cfg in pairs(conf) do
+      local wasm_cfg = match(cfg, "wasm_(.+)")
+      if wasm_cfg then
+        log.warn("Wasm is disabled but ", wasm_cfg, 
+          " property is used, please check your configuration.")
+      end
     end
   end
 
@@ -1268,7 +1304,7 @@ local function check_and_parse(conf, opts)
     end
   end
 
-  local ok, err = validate_wasm(conf.wasm, conf.wasm_filters_path)
+  local ok, err = validate_wasm(conf)
   if not ok then
     errors[#errors + 1] = err
   end
@@ -1902,6 +1938,68 @@ local function load(path, custom_conf, opts)
     end
   end
 
+  -- WebAssembly module support
+  if conf.wasm then
+
+    local wasm_directives = conf["nginx_wasm_main_directives"]
+
+    local wasm_filters = get_wasm_filters(conf.wasm_filters_path)
+    conf.wasm_modules_parsed = setmetatable(wasm_filters, _nop_tostring_mt)
+
+    -- wasm vm properties are inherited from previously set directives
+    if conf.lua_ssl_trusted_certificate then
+      if #conf.lua_ssl_trusted_certificate >= 1 then
+        insert(wasm_directives, {
+          name  = "tls_trusted_certificate",
+          value = conf.lua_ssl_trusted_certificate[1],
+        })
+      end
+    end
+    if conf.lua_ssl_verify_depth and conf.lua_ssl_verify_depth > 0 then
+      insert(wasm_directives, {
+        name  = "tls_verify_cert",
+        value = "on",
+      })
+      insert(wasm_directives, {
+        name  = "tls_verify_host",
+        value = "on",
+      })
+      insert(wasm_directives, {
+        name  = "tls_no_verify_warn",
+        value = "on",
+      })
+    end
+
+    for _, directive in ipairs(conf["nginx_http_directives"]) do
+      if directive.name == "proxy_connect_timeout" then
+        insert(wasm_directives, {
+          name  = "socket_connect_timeout",
+          value = directive.value,
+        })
+      elseif directive.name == "proxy_read_timeout" then
+        insert(wasm_directives, {
+          name  = "socket_read_timeout",
+          value = directive.value,
+        })
+      elseif directive.name == "proxy_send_timeout" then
+        insert(wasm_directives, {
+          name  = "socket_send_timeout",
+          value = directive.value,
+        })
+      elseif directive.name == "proxy_buffer_size" then
+        insert(wasm_directives, {
+          name  = "socket_buffer_size",
+          value = directive.value,
+        })
+      elseif directive.name == "large_client_header_buffers" then
+        insert(wasm_directives, {
+          name  = "socket_large_buffers",
+          value = directive.value,
+        })
+      end
+    end
+  end
+
   for _, dyn_namespace in ipairs(DYNAMIC_KEY_NAMESPACES) do
     if dyn_namespace.injected_conf_name then
       sort(conf[dyn_namespace.injected_conf_name], function(a, b)
@@ -2049,12 +2147,6 @@ local function load(path, custom_conf, opts)
   -- initialize the dns client, so the globally patched tcp.connect method
   -- will work from here onwards.
   assert(require("kong.tools.dns")(conf))
-
-  -- WebAssembly module support
-  if conf.wasm then
-    local wasm_filters = get_wasm_filters(conf.wasm_filters_path)
-    conf.wasm_modules_parsed = setmetatable(wasm_filters, _nop_tostring_mt)
-  end
 
   return setmetatable(conf, nil) -- remove Map mt
 end
