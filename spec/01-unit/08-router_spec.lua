@@ -4637,14 +4637,14 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             it("empty sources", function()
               use_case[1].route.sources = v
 
-              assert.equal(get_expression(use_case[1].route), [[(tls.sni == "www.example.org")]])
+              assert.equal(get_expression(use_case[1].route), [[(net.protocol != "tls" || (tls.sni == "www.example.org"))]])
               --assert(new_router(use_case))
             end)
 
             it("empty destinations", function()
               use_case[1].route.destinations = v
 
-              assert.equal(get_expression(use_case[1].route), [[(tls.sni == "www.example.org") && (net.src.ip == 127.0.0.1)]])
+              assert.equal(get_expression(use_case[1].route), [[(net.protocol != "tls" || (tls.sni == "www.example.org")) && (net.src.ip == 127.0.0.1)]])
               --assert(new_router(use_case))
             end)
           end

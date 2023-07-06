@@ -70,8 +70,7 @@ do
                   "net.src.port", "net.dst.port",
                  },
 
-    --["IpAddr"] = { "net.src.ip", "net.dst.ip", },
-    ["IpCidr"] = { "net.src.ip", "net.dst.ip", },
+    ["IpAddr"] = { "net.src.ip", "net.dst.ip", },
   }
 
   CACHED_SCHEMA = schema.new()
