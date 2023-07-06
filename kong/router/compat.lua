@@ -99,8 +99,10 @@ local function gen_for_nets(ip_field, port_field, vals)
       local addr, mask = parse_ip_addr(ip)
 
       if not mask then
-        exp_ip = ip_field .. " " ..  OP_EQUAL .. " " ..
+        exp_ip = ip_field .. " " ..  OP_IN .. " " ..
                  addr
+        --exp_ip = ip_field .. " " ..  OP_EQUAL .. " " ..
+        --         addr
 
       else
         exp_ip = ip_field .. " " .. OP_IN ..  " " ..
@@ -395,6 +397,45 @@ local function get_priority(route)
                        max_length)
 
   return priority
+end
+
+
+local function stream_get_priority(route)
+  local snis          = route.snis
+  local sources       = route.sources
+  local destinations  = route.destinations
+
+  local STREAM_SNI_BIT = lshift(0x01ULL, 7)
+  local SRC_IP_BIT     = lshift(0x01ULL, 6)
+  local SRC_PORT_BIT   = lshift(0x01ULL, 5)
+  local DST_IP_BIT     = lshift(0x01ULL, 3)
+  local DST_PORT_BIT   = lshift(0x01ULL, 2)
+
+  local match_weight = 0
+
+  if not is_empty_field(snis) then
+    match_weight = STREAM_SNI_BIT
+  end
+
+  if not is_empty_field(sources) then
+    for i = 1, #sources do
+      local ip = sources[i].ip
+      local port = sources[i].port
+
+      if not ip:find("/", 1, true) then
+        match_weight = bor(match_weight, SRC_IP_BIT)
+      end
+      if port then
+        match_weight = bor(match_weight, SRC_PORT_BIT)
+      end
+    end
+  end
+
+  if not is_empty_field(route.destinations) then
+    match_weight = match_weight + 1
+  end
+
+  return match_weight
 end
 
 
