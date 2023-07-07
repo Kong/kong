@@ -78,7 +78,7 @@ assert_exec 0 'root' "for f in /usr/local/kong/include/openssl/*.h; do test -s \
 ###
 
 msg_test 'openresty binary is expected version'
-assert_exec 0 'root' "/usr/local/openresty/bin/openresty -v 2>&1 | grep '${RESTY_VERSION}'"
+assert_exec 0 'root' "/usr/local/openresty/bin/openresty -v 2>&1 | grep '${OPENRESTY}'"
 
 # linking to a non-kong-provided luajit library can indicate the package was
 # created on a dev workstation where luajit/openresty was installed manually
@@ -112,7 +112,7 @@ if docker_exec root '/usr/local/openresty/bin/openresty -V 2>&1' | grep 'BoringS
     assert_exec 0 'root' "/usr/local/openresty/bin/openresty -V 2>&1 | grep '1.1.0'"
 else
     msg_test 'openresty binary uses expected openssl version'
-    assert_exec 0 'root' "/usr/local/openresty/bin/openresty -V 2>&1 | grep '${RESTY_OPENSSL_VERSION}'"
+    assert_exec 0 'root' "/usr/local/openresty/bin/openresty -V 2>&1 | grep '${OPENSSL}'"
 fi
 
 msg_test 'openresty binary is linked to kong-provided ssl libraries'
