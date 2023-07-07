@@ -83,11 +83,13 @@ local function gen_for_nets(ip_field, port_field, vals)
     local v = vals[i]
 
     if type(v) ~= "table" then
-      return nil, "sources/destinations elements must be a table"
+      ngx.log(ngx.ERR, "sources/destinations elements must be a table")
+      return nil
     end
 
     if is_empty_field(v) then
-      return nil, "sources/destinations elements must not be empty"
+      ngx.log(ngx.ERR, "sources/destinations elements must not be empty")
+      return nil
     end
 
     local ip = v.ip

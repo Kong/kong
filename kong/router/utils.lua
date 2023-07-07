@@ -406,8 +406,8 @@ do
 
     local cidr = lshift(rshift(ipv4, 32 - mask), 32 - mask)
 
-    local n1 = band(cidr, 0xff)
-    local n2 = band(rshift(cidr, 8) , 0xff)
+    local n1 = band(       cidr     , 0xff)
+    local n2 = band(rshift(cidr,  8), 0xff)
     local n3 = band(rshift(cidr, 16), 0xff)
     local n4 = band(rshift(cidr, 24), 0xff)
 

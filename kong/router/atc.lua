@@ -18,6 +18,7 @@ local assert = assert
 local setmetatable = setmetatable
 local pairs = pairs
 local ipairs = ipairs
+local tonumber = tonumber
 
 
 local max = math.max
@@ -348,7 +349,6 @@ end
 -- example.*:123 => example.*, 123
 local split_host_port
 do
-  local tonumber = tonumber
   local DEFAULT_HOSTS_LRUCACHE_SIZE = DEFAULT_MATCH_LRUCACHE_SIZE
 
   local memo_hp = lrucache.new(DEFAULT_HOSTS_LRUCACHE_SIZE)
