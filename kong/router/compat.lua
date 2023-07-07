@@ -172,12 +172,11 @@ local function get_expression(route)
     end
 
     if src_gen or dst_gen then
-      --print("gen stream exp", expr_buf:tostring())
       return expr_buf:get()
     end
   end
 
-  -- http sexpression
+  -- http expression
 
   local gen = gen_for_field("http.method", OP_EQUAL, methods)
   if gen then
@@ -378,10 +377,6 @@ local function get_priority(route)
 
   local match_weight = 0x0ULL
 
-  if not is_empty_field(snis) then
-    match_weight = match_weight + 1
-  end
-
   if not is_empty_field(methods) then
     match_weight = match_weight + 1
   end
@@ -400,6 +395,10 @@ local function get_priority(route)
                         " headers count capped at 255 when sorting")
       headers_count = MAX_HEADER_COUNT
     end
+  end
+
+  if not is_empty_field(snis) then
+    match_weight = match_weight + 1
   end
 
   local plain_host_only = type(hosts) == "table"
