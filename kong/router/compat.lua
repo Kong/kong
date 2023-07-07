@@ -6,7 +6,6 @@ local atc = require("kong.router.atc")
 local tb_new = require("table.new")
 local tb_clear = require("table.clear")
 local tb_nkeys = require("table.nkeys")
-local tablex = require("pl.tablex")
 local uuid = require("resty.jit-uuid")
 local utils = require("kong.tools.utils")
 
