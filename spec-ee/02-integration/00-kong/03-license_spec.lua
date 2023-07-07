@@ -24,7 +24,7 @@ describe("Admin API - Kong routes", function()
   describe("/", function()
     local client
 
-    setup(function()
+    lazy_setup(function()
       helpers.get_db_utils()
       helpers.unsetenv("KONG_LICENSE_DATA")
       helpers.unsetenv("KONG_TEST_LICENSE_DATA")
@@ -34,7 +34,7 @@ describe("Admin API - Kong routes", function()
       client = helpers.admin_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if client then
         client:close()
       end
@@ -56,7 +56,7 @@ describe("Admin API - Kong routes", function()
   describe("/", function()
     local client
 
-    setup(function()
+    lazy_setup(function()
       helpers.get_db_utils()
       assert(helpers.start_kong({
         license_data = valid_license,
@@ -64,7 +64,7 @@ describe("Admin API - Kong routes", function()
       client = helpers.admin_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if client then
         client:close()
       end
@@ -86,7 +86,7 @@ describe("Admin API - Kong routes", function()
   describe("/", function()
     local client
 
-    setup(function()
+    lazy_setup(function()
       helpers.get_db_utils()
       assert(helpers.start_kong({
         license_data = ngx.encode_base64(valid_license),
@@ -94,7 +94,7 @@ describe("Admin API - Kong routes", function()
       client = helpers.admin_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if client then
         client:close()
       end
@@ -116,10 +116,10 @@ describe("Admin API - Kong routes", function()
   describe("/", function()
     local client
 
-    setup(function()
+    lazy_setup(function()
       helpers.get_db_utils()
 
-      helpers.setenv("MY_LICENSE", valid_license)
+      helpers.setenv("MY_LICENSE", assert(valid_license))
 
       assert(helpers.start_kong({
         license_data = "{vault://env/my-license}",
@@ -127,7 +127,7 @@ describe("Admin API - Kong routes", function()
       client = helpers.admin_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if client then
         client:close()
       end
@@ -150,13 +150,13 @@ describe("Admin API - Kong routes", function()
   describe("/", function()
     local client
 
-    setup(function()
+    lazy_setup(function()
       helpers.get_db_utils()
       assert(helpers.start_kong())
       client = helpers.admin_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if client then
         client:close()
       end
@@ -177,7 +177,7 @@ describe("Admin API - Kong routes", function()
   describe("/event-hooks", function()
     local client
 
-    setup(function()
+    lazy_setup(function()
       helpers.get_db_utils()
       helpers.unsetenv("KONG_LICENSE_DATA")
       helpers.unsetenv("KONG_TEST_LICENSE_DATA")
@@ -185,7 +185,7 @@ describe("Admin API - Kong routes", function()
       client = helpers.admin_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if client then
         client:close()
       end
@@ -225,7 +225,7 @@ describe("Admin API - Kong routes", function()
   describe("/", function()
     local client
 
-    setup(function()
+    lazy_setup(function()
       helpers.get_db_utils()
       helpers.unsetenv("KONG_LICENSE_DATA")
       helpers.unsetenv("KONG_TEST_LICENSE_DATA")
@@ -246,7 +246,7 @@ describe("Admin API - Kong routes", function()
       client = helpers.admin_client(nil, 8001)
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if client then
         client:close()
       end
@@ -290,7 +290,7 @@ describe("Admin API - Kong routes", function()
   describe("/", function()
     local client
 
-    setup(function()
+    lazy_setup(function()
       helpers.get_db_utils()
       helpers.unsetenv("KONG_LICENSE_DATA")
       helpers.unsetenv("KONG_TEST_LICENSE_DATA")
@@ -311,7 +311,7 @@ describe("Admin API - Kong routes", function()
       client = helpers.admin_client(nil, 8001)
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if client then
         client:close()
       end
