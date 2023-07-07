@@ -34,11 +34,11 @@ on:
       gateway_version:
         description: 'Kong Version'
         required: false
-        default: '3.3.0.0'
-      pulp_repository:
-        description: 'Pulp repository, either internal or prod, default is internal'
+        default: '3.4.0.0'
+      repo_visibility:
+        description: 'Cloudsmith repo visibility, either private or public, default is private'
         required: false
-        default: 'internal'
+        default: 'private'
 
   workflow_call:
     inputs:
@@ -74,8 +74,8 @@ on:
         description: 'Kong Version'
         required: false
         type: 'string'
-      pulp_repository:
-        description: 'Pulp repository, either internal or prod, default is internal'
+      repo_visibility:
+        description: 'Cloudsmith repo visibility, either private or public, default is private'
         required: false
         type: 'string'
 
@@ -160,6 +160,10 @@ jobs:
       package_install_method_matrix: ${{ steps.define-package-matrix.outputs.package_install_method_matrix }}
       original_package: ${{ steps.define-package-matrix.outputs.original_package }}
     steps:
+
+    - name: Checkout Source Code
+      uses: actions/checkout@v3
+
     - name: Define Package Test Matrix
       id: define-package-matrix
       env:
@@ -442,7 +446,7 @@ jobs:
           retention-days: 31
 
   gateway_tests_for_release_packages:
-    name: Package API Tests - using ${{ matrix.install_method }}, ${{ matrix.gateway_mode }} mode
+    name: Package API Tests - using ${{ matrix.package_name }} ${{ matrix.install_method }}, ${{ matrix.gateway_mode }} mode
     needs: define_package_matrix
     # using if condition to skip arm64 and alpine runs because gh matrix exclude somehow is not working
     if: (inputs.target_matrix  == 'all' || inputs.target_matrix  == 'package')
@@ -470,22 +474,13 @@ jobs:
             install_method: 'repository'
           - package_name: 'alpine'
             install_method: 'repository'
-          # remove when alpine build issue is resolved
-          - package_name: 'alpine'
-            install_method: 'package'
-          # exclude internal repositories with known issues
-          - package_name: 'rhel-8'
-            install_method: 'repository'
-          - package_name: 'rhel-7'
-            install_method: 'repository'
-          - package_name: 'amazonlinux-2'
-            install_method: 'repository'
-          - package_name: 'amazonlinux-2-arm64'
-            install_method: 'repository'
-          - package_name: 'amazonlinux-2022'
-            install_method: 'repository'
+          # skip centos package test runs untill it is removed from matrix-full.yml
           - package_name: 'centos-7'
             install_method: 'repository'
+          - package_name: 'centos-7'
+            install_method: 'package'
+
+
 
     steps:
       - name: Checkout Source Code
@@ -519,8 +514,8 @@ jobs:
       - name: Start Gateway
         run: cd gateway-docker-compose-generator && make generate_package && make start_package
         env:
-          PULP_REPOSITORY: ${{ inputs.pulp_repository || 'internal' }}
-          PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
+          REPO_VISIBILITY: ${{ inputs.repo_visibility || 'private' }}
+          CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
           FIPS_MODE: ${{ endsWith( matrix.package_name, 'fips' ) && 'on' || 'off' }}
           INSTALL_METHOD: ${{ matrix.install_method }}
           EE_LICENSE: false
