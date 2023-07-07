@@ -3,6 +3,15 @@ local utils = require "kong.tools.utils"
 
 local fmt = string.format
 
+
+local function json(body)
+  return {
+    headers = { ["Content-Type"] = "application/json" },
+    body = body,
+  }
+end
+
+
 -- no cassandra support
 for _, strategy in helpers.each_strategy({ "postgres" }) do
 
@@ -65,14 +74,6 @@ describe("WASMX admin API [#" .. strategy .. "]", function()
         assert.response(res).has.status(405)
       end)
     end)
-  end
-
-
-  local function json(body)
-    return {
-      headers = { ["Content-Type"] = "application/json" },
-      body = body,
-    }
   end
 
 
@@ -384,6 +385,164 @@ describe("WASMX admin API [#" .. strategy .. "]", function()
 
   end -- each relation (service, route)
 
+
+end)
+
+describe("WASMX admin API - wasm = off [#" .. strategy .. "]", function()
+  local admin
+  local bp, db
+  local service
+
+  lazy_setup(function()
+    bp, db = helpers.get_db_utils(strategy, {
+      "routes",
+      "services",
+    })
+
+    service = assert(db.services:insert {
+      name = "wasm-test",
+      url = "http://wasm.test",
+    })
+
+    assert(helpers.start_kong({
+      database = strategy,
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      wasm = "off",
+    }))
+
+    admin = helpers.admin_client()
+  end)
+
+  describe("/filter-chains", function()
+
+    describe("POST", function()
+      it("returns 400", function()
+        local res = admin:post("/filter-chains", {
+          headers = { ["Content-Type"] = "application/json" },
+          body = {
+            filters = { { name = "tests" } },
+            service = { id = service.id },
+          },
+        })
+
+        assert.response(res).has.status(400)
+      end)
+    end)
+
+    describe("GET", function()
+      it("returns 400", function()
+        local res = admin:get("/filter-chains")
+        assert.response(res).has.status(400)
+      end)
+    end)
+
+    describe("PATCH", function()
+      it("returns 400", function()
+        local res = admin:patch("/filter-chains/a-name", json {
+          tags = { "foo", "bar" },
+          enabled = false,
+          filters = {
+            { name = "tests", config = "123", enabled = true },
+            { name = "tests", config = "456", enabled = false },
+          },
+        })
+        assert.response(res).has.status(400)
+      end)
+    end)
+
+    describe("PUT", function()
+      it("returns 400", function()
+        local res = admin:put("/filter-chains/another-name", json {
+          tags = { "foo", "bar" },
+          enabled = false,
+          filters = {
+            { name = "tests", config = "123", enabled = true },
+            { name = "tests", config = "456", enabled = false },
+          },
+        })
+        assert.response(res).has.status(400)
+      end)
+    end)
+
+    describe("DELETE", function()
+      it("returns 400", function()
+        local res = admin:delete("/filter-chains/even-another-name")
+        assert.response(res).has.status(400)
+      end)
+    end)
+
+  end)
+
+  -- * /services/:service/filter-chains
+  -- * /services/:service/filter-chains/:chain
+  -- * /routes/:route/filter-chains
+  -- * /routes/:route/filter-chains/:chain
+  for _, rel in ipairs({ "service", "route" }) do
+
+  describe(fmt("/%ss/:%s/filter-chains", rel, rel), function()
+    local path, entity
+
+    before_each(function()
+      if rel == "service" then
+        entity = assert(bp.services:insert({}))
+      else
+        entity = assert(bp.routes:insert({ hosts = { "wasm.test" } }))
+      end
+
+      path = fmt("/%ss/%s/filter-chains", rel, entity.id)
+    end)
+
+    it("GET returns 400", function()
+      assert.response(
+        admin:get(path)
+      ).has.status(400)
+    end)
+
+    it("POST returns 400", function()
+      assert.response(
+        admin:post(path), {
+          headers = { ["Content-Type"] = "application/json" },
+          body = {
+            filters = { { name = "tests" } },
+            service = { id = service.id },
+          },
+        }
+      ).has.status(400)
+    end)
+
+    it("PATCH returns 400", function()
+      assert.response(
+        admin:patch(path .. "/" .. utils.uuid()), {
+          headers = { ["Content-Type"] = "application/json" },
+          body = {
+            filters = { { name = "tests" } },
+            service = { id = service.id },
+          },
+        }
+      ).has.status(400)
+    end)
+
+    it("PUT returns 400", function()
+      assert.response(
+        admin:put(path .. "/" .. utils.uuid()), {
+          headers = { ["Content-Type"] = "application/json" },
+          body = {
+            filters = { { name = "tests" } },
+            service = { id = service.id },
+          },
+        }
+      ).has.status(400)
+    end)
+
+    it("DELETE returns 400", function()
+      assert.response(
+        admin:delete(path .. "/" .. utils.uuid())
+      ).has.status(400)
+    end)
+
+  end)
+
+  end -- each relation (service, route)
 
 end)
 
