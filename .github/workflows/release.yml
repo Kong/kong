@@ -350,7 +350,7 @@ jobs:
       run: |
         rpm_platform="${{ matrix.rpm_platform }}"
         if [[ -z "$rpm_platform" ]]; then
-          rpm_platform="el8"
+          rpm_platform="el9"
         fi
 
         echo "rpm_platform=$rpm_platform"

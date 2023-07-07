@@ -105,6 +105,7 @@ build-images:
 - label: rhel
   base-image: registry.access.redhat.com/ubi9
   package: rpm
+  rpm_platform: el9
   artifact-from: rhel-9
 
 smoke-tests:
