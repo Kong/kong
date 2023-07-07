@@ -108,9 +108,6 @@ end
 
 
 for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
-  --- XXX fixme
-  local it_not_expressions = (flavor ~= "expressions") and it or pending
-
 for _, strategy in helpers.each_strategy() do
   describe("#stream Proxying [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
     reload_router(flavor)
@@ -195,7 +192,7 @@ for _, strategy in helpers.each_strategy() do
       assert_phases(phases)
     end)
 
-    it_not_expressions("tls", function()
+    it("tls", function()
       local tcp = ngx.socket.tcp()
       assert(tcp:connect(helpers.get_proxy_ip(true), 19443))
       assert(tcp:sslhandshake(nil, nil, false))
@@ -306,7 +303,7 @@ for _, strategy in helpers.each_strategy() do
       assert_phases(phases_2)
     end)
 
-    it_not_expressions("tls (short-circuited)", function()
+    it("tls (short-circuited)", function()
       local tcp = ngx.socket.tcp()
       assert(tcp:connect(helpers.get_proxy_ip(true), 19443))
       assert(tcp:sslhandshake(nil, nil, false))
