@@ -41,8 +41,7 @@ local function gen_route(flavor, r)
 end
 
 
---for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
-for _, flavor in ipairs({ "traditional" }) do
+for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
 for _, strategy in helpers.each_strategy() do
 
   describe("UDP Proxying [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
@@ -66,6 +65,7 @@ for _, strategy in helpers.each_strategy() do
       })))
 
       assert(helpers.start_kong {
+        router_flavor = flavor,
         database = strategy,
         nginx_conf  = "spec/fixtures/custom_nginx.template",
         stream_listen = "127.0.0.1:" .. UDP_PROXY_PORT .. " udp",
