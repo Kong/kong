@@ -11,10 +11,6 @@ local OP_EQUAL    = "=="
 local LOGICAL_AND = atc.LOGICAL_AND
 
 
-local ngx_log = ngx.log
-local ngx_ERR = ngx.ERR
-
-
 -- map to normal protocol
 local PROTOCOLS_OVERRIDE = {
   tls_passthrough = "tcp",
@@ -26,7 +22,7 @@ local PROTOCOLS_OVERRIDE = {
 local function get_exp_and_priority(route)
   local exp = route.expression
   if not exp then
-    ngx_log(ngx_ERR, "expecting an expression route while it's not (probably a traditional route). ",
+    ngx.log(ngx.ERR, "expecting an expression route while it's not (probably a traditional route). ",
                      "Likely it's a misconfiguration. Please check the 'router_flavor' config in kong.conf")
     return
   end
