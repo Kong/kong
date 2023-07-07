@@ -53,7 +53,7 @@
 
 #### PDK
 
-- PDK now supports getting lmdb environment information with `kong.node.get_memory_stats`.
+- PDK now supports getting LMDB environment information with `kong.node.get_memory_stats`.
   [#10301](https://github.com/Kong/kong/pull/10301)
   [#11032](https://github.com/Kong/kong/pull/11032)
 
@@ -111,7 +111,7 @@
   [#10983](https://github.com/Kong/kong/pull/10983)
 
 #### PDK
-- Rework pdk lmdb environment information with `kong.node.get_memory_stats`.
+- Rework pdk LMDB environment information with `kong.node.get_memory_stats`.
   [#11032](https://github.com/Kong/kong/pull/11032)
 
 ### Changed
