@@ -14,6 +14,7 @@ local function reload_router(flavor, subsystem)
 
   package.loaded["kong.router.atc"] = nil
   package.loaded["kong.router.compat"] = nil
+  package.loaded["kong.router.expressions"] = nil
   package.loaded["kong.router"] = nil
 
   Router = require "kong.router"
@@ -4210,7 +4211,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
     end)
 
 
-    if flavor == "traditional" or flavor == "traditional_compatible" then
+    --flavor == "traditional"/"traditional_compatible"/"expressions"
       describe("#stream context", function()
         -- enable compat_stream
         reload_router(flavor, "stream")
@@ -4594,7 +4595,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           assert.same(use_case[2].route, match_t.route)
         end)
       end)
-    end
+    --flavor == "traditional"/"traditional_compatible"/"expressions"
 
     if flavor == "traditional_compatible" or flavor == "expressions"then
       describe("#stream context", function()
