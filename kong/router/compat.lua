@@ -6,7 +6,6 @@ local atc = require("kong.router.atc")
 local tb_new = require("table.new")
 local tb_clear = require("table.clear")
 local tb_nkeys = require("table.nkeys")
-local tablex = require("pl.tablex")
 local uuid = require("resty.jit-uuid")
 local utils = require("kong.tools.utils")
 
@@ -336,7 +335,7 @@ local function split_route_by_path_into(route_and_service, routes_and_services_s
   end
 
   -- make sure that route_and_service contains only the two expected entries, route and service
-  assert(tablex.size(route_and_service) == 2)
+  assert(tb_nkeys(route_and_service) == 1 or tb_nkeys(route_and_service) == 2)
 
   local grouped_paths = group_by(
     route_and_service.route.paths,
