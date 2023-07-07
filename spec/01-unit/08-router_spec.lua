@@ -4211,7 +4211,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
 
 
     if flavor == "traditional" or flavor == "traditional_compatible" then
-      describe("#only #stream context", function()
+      describe("#stream context", function()
         -- enable compat_stream
         reload_router(flavor, "stream")
 
@@ -4629,7 +4629,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
               use_case[1].route.snis = v
 
               assert.equal(get_expression(use_case[1].route), [[(net.src.ip == 127.0.0.1)]])
-              --assert(new_router(use_case))
+              assert(new_router(use_case))
             end)
 
             it("empty snis and src cidr", function()
@@ -4637,29 +4637,32 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
               use_case[1].route.sources = {{ ip = "127.168.0.1/8" },}
 
               assert.equal(get_expression(use_case[1].route), [[(net.src.ip in 127.0.0.0/8)]])
-              --assert(new_router(use_case))
+              assert(new_router(use_case))
             end)
 
             it("empty snis and dst cidr", function()
               use_case[1].route.snis = v
               use_case[1].route.destinations = {{ ip = "192.168.0.1/16" },}
 
-              assert.equal(get_expression(use_case[1].route), [[(net.src.ip == 127.0.0.1) && (net.dst.ip in 192.168.0.0/16)]])
-              --assert(new_router(use_case))
+              assert.equal(get_expression(use_case[1].route),
+                [[(net.src.ip == 127.0.0.1) && (net.dst.ip in 192.168.0.0/16)]])
+              assert(new_router(use_case))
             end)
 
             it("empty sources", function()
               use_case[1].route.sources = v
 
-              assert.equal(get_expression(use_case[1].route), [[(net.protocol != "tls" || (tls.sni == "www.example.org"))]])
-              --assert(new_router(use_case))
+              assert.equal(get_expression(use_case[1].route),
+                [[((net.protocol != "https" && net.protocol != "tls") || (tls.sni == "www.example.org"))]])
+              assert(new_router(use_case))
             end)
 
             it("empty destinations", function()
               use_case[1].route.destinations = v
 
-              assert.equal(get_expression(use_case[1].route), [[(net.protocol != "tls" || (tls.sni == "www.example.org")) && (net.src.ip == 127.0.0.1)]])
-              --assert(new_router(use_case))
+              assert.equal(get_expression(use_case[1].route),
+                [[((net.protocol != "https" && net.protocol != "tls") || (tls.sni == "www.example.org")) && (net.src.ip == 127.0.0.1)]])
+              assert(new_router(use_case))
             end)
           end
         end)
