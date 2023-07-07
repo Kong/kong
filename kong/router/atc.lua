@@ -71,7 +71,8 @@ do
                   "net.src.port", "net.dst.port",
                  },
 
-    ["IpAddr"] = { "net.src.ip", "net.dst.ip", },
+    ["IpAddr"] = {"net.src.ip", "net.dst.ip",
+                 },
   }
 
   CACHED_SCHEMA = schema.new()
@@ -662,11 +663,12 @@ end
 
 
 function _M:exec(ctx)
-  local src_ip = var.remote_addr
-  local dst_ip = var.server_addr
+  local src_ip   = var.remote_addr
+  local dst_ip   = var.server_addr
+
   local src_port = tonumber(var.remote_port, 10)
-  local dst_port = tonumber((ctx or ngx.ctx).host_port, 10)
-                or tonumber(var.server_port, 10)
+  local dst_port = tonumber((ctx or ngx.ctx).host_port, 10) or
+                   tonumber(var.server_port, 10)
 
   -- error value for non-TLS connections ignored intentionally
   local sni = server_name()
