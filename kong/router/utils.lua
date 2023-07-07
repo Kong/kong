@@ -246,6 +246,7 @@ local function route_match_stat(ctx, tag)
 end
 
 
+local is_regex_magic
 local phonehome_statistics
 do
   local reports = require("kong.reports")
@@ -253,7 +254,7 @@ do
   local worker_id = ngx.worker.id
 
   local TILDE = byte("~")
-  local function is_regex_magic(path)
+  is_regex_magic = function(path)
     return byte(path) == TILDE
   end
 
@@ -393,5 +394,6 @@ return {
   get_upstream_uri_v0  = get_upstream_uri_v0,
 
   route_match_stat     = route_match_stat,
+  is_regex_magic       = is_regex_magic,
   phonehome_statistics = phonehome_statistics,
 }

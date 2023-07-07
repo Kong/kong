@@ -51,6 +51,14 @@ targets = {
         libcxx_max_version="3.4.24",
         cxxabi_max_version="1.3.11",
     ),
+    "amazonlinux-2023-amd64": ExpectSuite(
+        name="Amazon Linux 2023 (amd64)",
+        manifest="fixtures/amazonlinux-2023-amd64.txt",
+        libc_max_version="2.34",
+        # gcc 11.2.1
+        libcxx_max_version="3.4.29",
+        cxxabi_max_version="1.3.13",
+    ),
     "el7-amd64": ExpectSuite(
         name="Redhat 7 (amd64)",
         manifest="fixtures/el7-amd64.txt",
@@ -59,6 +67,15 @@ targets = {
         # gcc 4.8.5
         libcxx_max_version="3.4.19",
         cxxabi_max_version="1.3.7",
+    ),
+    "el8-amd64": ExpectSuite(
+        name="Redhat 8 (amd64)",
+        manifest="fixtures/el8-amd64.txt",
+        use_rpath=True,
+        libc_max_version="2.28",
+        # gcc 8.5.0
+        libcxx_max_version="3.4.25",
+        cxxabi_max_version="1.3.11",
     ),
     "ubuntu-20.04-amd64": ExpectSuite(
         name="Ubuntu 20.04 (amd64)",

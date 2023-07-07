@@ -1,54 +1,35 @@
 -- vim: ts=4 sts=4 sw=4 et:
 
+local bit        = require "bit"
 local new_tab    = require "table.new"
 local lrucache   = require "resty.lrucache"
 local resty_lock = require "resty.lock"
-local tablepool
-do
-    local pok
-    pok, tablepool = pcall(require, "tablepool")
-    if not pok then
-        -- fallback for OpenResty < 1.15.8.1
-        tablepool = {
-            fetch = function(_, narr, nrec)
-                return new_tab(narr, nrec)
-            end,
-            release = function(_, _, _)
-                -- nop (obj will be subject to GC)
-            end,
-        }
-    end
-end
-local codec
-do
-    local pok
-    pok, codec = pcall(require, "string.buffer")
-    if not pok then
-        codec = require "cjson"
-    end
-end
+local tablepool  = require "tablepool"
+local buffer     = require "string.buffer"
 
 
-local now          = ngx.now
+local bor          = bit.bor
+local band         = bit.band
+local lshift       = bit.lshift
+local rshift       = bit.rshift
 local min          = math.min
 local ceil         = math.ceil
 local fmt          = string.format
-local sub          = string.sub
-local find         = string.find
 local type         = type
 local pcall        = pcall
 local xpcall       = xpcall
 local traceback    = debug.traceback
 local error        = error
+local pairs        = pairs
 local tostring     = tostring
-local tonumber     = tonumber
-local encode       = codec.encode
-local decode       = codec.decode
+local encode       = buffer.encode
+local decode       = buffer.decode
 local thread_spawn = ngx.thread.spawn
 local thread_wait  = ngx.thread.wait
 local setmetatable = setmetatable
 local shared       = ngx.shared
 local ngx_log      = ngx.log
+local DEBUG        = ngx.DEBUG
 local WARN         = ngx.WARN
 local ERR          = ngx.ERR
 
@@ -60,104 +41,48 @@ local SHM_SET_DEFAULT_TRIES = 3
 local BULK_DEFAULT_CONCURRENCY = 3
 
 
-local TYPES_LOOKUP = {
-    number  = 1,
-    boolean = 2,
-    string  = 3,
-    table   = 4,
+local TYPES_SUPPORTED = {
+    ["nil"] = true,
+    number  = true,
+    boolean = true,
+    string  = true,
+    table   = true,
 }
 
 
-local SHM_FLAGS = {
-    stale = 0x00000001,
-}
+-- The low bytes are used for flags,
+-- e.g. high / low: 0xVersFlgs
+local STALE_FLAG  = 0x00000001
+local NO_TTL_FLAG = 0x00000002
 
 
-local marshallers = {
-    shm_value = function(str_value, value_type, at, ttl)
-        return fmt("%d:%f:%f:%s", value_type, at, ttl, str_value)
-    end,
-
-    shm_nil = function(at, ttl)
-        return fmt("0:%f:%f:", at, ttl)
-    end,
-
-    [1] = function(number) -- number
-        return tostring(number)
-    end,
-
-    [2] = function(bool)   -- boolean
-        return bool and "true" or "false"
-    end,
-
-    [3] = function(str)    -- string
-        return str
-    end,
-
-    [4] = function(t)      -- table
-        local pok, str = pcall(encode, t)
-        if not pok then
-            return nil, "could not encode table value: " .. str
-        end
-
-        return str
-    end,
-}
+local function set_flag(flags, flag)
+    local low = band(flags, 0xffff)
+    local high = band(rshift(flags, 16), 0xffff)
+    return bor(bor(low, flag), lshift(high, 16))
+end
 
 
-local unmarshallers = {
-    shm_value = function(marshalled)
-        -- split our shm marshalled value by the hard-coded ":" tokens
-        -- "type:at:ttl:value"
-        -- 1:1501831735.052000:0.500000:123
-        local ttl_last = find(marshalled, ":", 21, true) - 1
+local function has_flag(flags, flag)
+    return band(band(flags, 0xffff), flag) ~= 0
+end
 
-        local value_type = sub(marshalled, 1, 1)         -- n:...
-        local at         = sub(marshalled, 3, 19)        -- n:1501831160
-        local ttl        = sub(marshalled, 21, ttl_last)
-        local str_value  = sub(marshalled, ttl_last + 2)
 
-        return str_value, tonumber(value_type), tonumber(at), tonumber(ttl)
-    end,
+local function get_version(flags)
+    return band(rshift(flags, 16), 0xffff)
+end
 
-    [0] = function() -- nil
-        return nil
-    end,
 
-    [1] = function(str) -- number
-        return tonumber(str)
-    end,
-
-    [2] = function(str) -- boolean
-        return str == "true"
-    end,
-
-    [3] = function(str) -- string
-        return str
-    end,
-
-    [4] = function(str) -- table
-        local pok, t = pcall(decode, str)
-        if not pok then
-            return nil, "could not decode table value: " .. t
-        end
-
-        return t
-    end,
-}
+local function set_version(flags, version)
+    local low = band(flags, 0xffff)
+    return bor(low, lshift(version, 16))
+end
 
 
 local function rebuild_lru(self)
     if self.lru then
-        if self.lru.flush_all then
-            self.lru:flush_all()
-            return
-        end
-
-        -- fallback for OpenResty < 1.13.6.2
-        -- Invalidate the entire LRU by GC-ing it.
-        LRU_INSTANCES[self.name] = nil
-        self.lru = nil
+        self.lru:flush_all()
+        return
     end
 
     -- Several mlcache instances can have the same name and hence, the same
@@ -426,46 +351,15 @@ local function set_lru(self, key, value, ttl, neg_ttl, l1_serializer)
 end
 
 
-local function marshall_for_shm(value, ttl, neg_ttl)
-    local at = now()
-
-    if value == nil then
-        return marshallers.shm_nil(at, neg_ttl), nil, true -- is_nil
-    end
-
-    -- serialize insertion time + Lua types for shm storage
-
-    local value_type = TYPES_LOOKUP[type(value)]
-
-    if not marshallers[value_type] then
-        error("cannot cache value of type " .. type(value))
-    end
-
-    local str_marshalled, err = marshallers[value_type](value)
-    if not str_marshalled then
-        return nil, "could not serialize value for lua_shared_dict insertion: "
-                    .. err
-    end
-
-    return marshallers.shm_value(str_marshalled, value_type, at, ttl)
-end
-
-
-local function unmarshall_from_shm(shm_v)
-    local str_serialized, value_type, at, ttl = unmarshallers.shm_value(shm_v)
-
-    local value, err = unmarshallers[value_type](str_serialized)
-    if err then
-        return nil, err
-    end
-
-    return value, nil, at, ttl
-end
-
-
 local function set_shm(self, shm_key, value, ttl, neg_ttl, flags, shm_set_tries,
                        throw_no_mem)
-    local shm_value, err, is_nil = marshall_for_shm(value, ttl, neg_ttl)
+    local t = type(value)
+    if not TYPES_SUPPORTED[t] then
+        -- string buffer supports many types, but let's keep the original restrictions
+        error("cannot cache value of type " .. t)
+    end
+
+    local shm_value, err = encode(value)
     if not shm_value then
         return nil, err
     end
@@ -473,9 +367,8 @@ local function set_shm(self, shm_key, value, ttl, neg_ttl, flags, shm_set_tries,
     local shm = self.shm
     local dict = self.dict
 
-    if is_nil then
+    if value == nil then
         ttl = neg_ttl
-
         if self.dict_miss then
             shm = self.shm_miss
             dict = self.dict_miss
@@ -491,9 +384,12 @@ local function set_shm(self, shm_key, value, ttl, neg_ttl, flags, shm_set_tries,
     local tries = 0
     local ok, err
 
+    if ttl == 0 then
+        flags = set_flag(flags or 0, NO_TTL_FLAG)
+    end
+
     while tries < shm_set_tries do
         tries = tries + 1
-
         ok, err = dict:set(shm_key, shm_value, ttl, flags or 0)
         if ok or err and err ~= "no memory" then
             break
@@ -530,16 +426,18 @@ end
 
 
 local function get_shm_set_lru(self, key, shm_key, l1_serializer)
-    local v, shmerr, went_stale = self.dict:get_stale(shm_key)
+    local dict = self.dict
+    local v, shmerr, went_stale = dict:get_stale(shm_key)
     if v == nil and shmerr then
         -- shmerr can be 'flags' upon successful get_stale() calls, so we
         -- also check v == nil
         return nil, "could not read from lua_shared_dict: " .. shmerr
     end
 
-    if self.shm_miss and v == nil then
+    if v == nil and self.dict_miss then
+        dict = self.dict_miss
         -- if we cache misses in another shm, maybe it is there
-        v, shmerr, went_stale = self.dict_miss:get_stale(shm_key)
+        v, shmerr, went_stale = dict:get_stale(shm_key)
         if v == nil and shmerr then
             -- shmerr can be 'flags' upon successful get_stale() calls, so we
             -- also check v == nil
@@ -547,45 +445,41 @@ local function get_shm_set_lru(self, key, shm_key, l1_serializer)
         end
     end
 
-    if v ~= nil then
-        local value, err, at, ttl = unmarshall_from_shm(v)
-        if err then
-            return nil, "could not deserialize value after lua_shared_dict " ..
-                        "retrieval: " .. err
-        end
-
-        if went_stale then
-            return value, nil, went_stale
-        end
-
-        -- 'shmerr' is 'flags' on :get_stale() success
-        local is_stale = shmerr == SHM_FLAGS.stale
-
-        local remaining_ttl
-        if ttl == 0 then
-            -- indefinite ttl, keep '0' as it means 'forever'
-            remaining_ttl = 0
-
-        else
-            -- compute elapsed time to get remaining ttl for LRU caching
-            remaining_ttl = ttl - (now() - at)
-
-            if remaining_ttl <= 0 then
-                -- value has less than 1ms of lifetime in the shm, avoid
-                -- setting it in LRU which would be wasteful and could
-                -- indefinitely cache the value when ttl == 0
-                return value, nil, nil, is_stale
-            end
-        end
-
-        value, err = set_lru(self, key, value, remaining_ttl, remaining_ttl,
-                             l1_serializer)
-        if err then
-            return nil, err
-        end
-
-        return value, nil, nil, is_stale
+    if v == nil then
+        return
     end
+
+    local value, err = decode(v)
+    if err then
+        return nil, "could not deserialize value after lua_shared_dict " ..
+                    "retrieval: " .. err
+    end
+
+    if went_stale then
+        return value, nil, went_stale
+    end
+
+    -- 'shmerr' is 'flags' on :get_stale() success
+    local flags = shmerr or 0
+    local is_stale = has_flag(flags, STALE_FLAG)
+
+    local ttl
+    if has_flag(flags, NO_TTL_FLAG) then
+        ttl = 0
+
+    else
+        ttl = dict:ttl(shm_key)
+        if not ttl or ttl <= 0 then
+            return value, nil, nil, is_stale
+        end
+    end
+
+    value, err = set_lru(self, key, value, ttl, ttl, l1_serializer)
+    if err then
+        return nil, err
+    end
+
+    return value, nil, nil, is_stale
 end
 
 
@@ -675,13 +569,13 @@ local function check_opts(self, opts)
 end
 
 
-local function unlock_and_ret(lock, res, err, hit_lvl)
+local function unlock_and_ret(lock, res, err, hit_lvl_or_ttl)
     local ok, lerr = lock:unlock()
     if not ok and lerr ~= "unlocked" then
         return nil, "could not unlock callback: " .. lerr
     end
 
-    return res, err, hit_lvl
+    return res, err, hit_lvl_or_ttl
 end
 
 
@@ -705,7 +599,8 @@ local function run_callback(self, key, shm_key, data, ttl, neg_ttl,
 
         local data2, err, went_stale2, stale2 = get_shm_set_lru(self, key,
                                                                 shm_key,
-                                                                l1_serializer)
+                                                                l1_serializer,
+                                                                ttl, neg_ttl)
         if err then
             return unlock_and_ret(lock, nil, err)
         end
@@ -777,7 +672,7 @@ local function run_callback(self, key, shm_key, data, ttl, neg_ttl,
         local res_data, res_err = set_shm_set_lru(self, key, shm_key,
                                                   data, resurrect_ttl,
                                                   resurrect_ttl,
-                                                  SHM_FLAGS.stale,
+                                                  STALE_FLAG,
                                                   shm_set_tries, l1_serializer)
         if res_err then
             ngx_log(WARN, "could not resurrect stale data (", res_err, ")")
@@ -886,6 +781,186 @@ function _M:get(key, opts, cb, ...)
                         went_stale, l1_serializer, resurrect_ttl,
                         shm_set_tries, cb, ...)
 end
+
+
+function _M:renew(key, opts, cb, ...)
+    if not self.broadcast then
+        error("no ipc to propagate renew, specify opts.ipc_shm or opts.ipc", 2)
+    end
+
+    if type(key) ~= "string" then
+        error("key must be a string", 2)
+    end
+
+    -- opts validation
+    local ttl, neg_ttl, _, l1_serializer, shm_set_tries = check_opts(self, opts)
+
+    if type(cb) ~= "function" then
+        error("callback must be a function", 2)
+    end
+
+    -- restrict this key to the current namespace, so we isolate this
+    -- mlcache instance from potential other instances using the same
+    -- shm
+    local namespaced_key = self.name .. key
+
+    local v, shmerr = self.dict:get_stale(namespaced_key)
+    if v == nil then
+        if shmerr then
+            -- shmerr can be 'flags' upon successful get_stale() calls, so we
+            -- also check v == nil
+            return nil, "could not read from lua_shared_dict: " .. shmerr
+        end
+
+        -- if we specified shm_miss, it might be a negative hit cached
+        -- there
+        if self.dict_miss then
+            v, shmerr = self.dict_miss:get_stale(namespaced_key)
+            if v == nil and shmerr then
+                -- shmerr can be 'flags' upon successful get_stale() calls, so we
+                -- also check v == nil
+                return nil, "could not read from lua_shared_dict (miss): " .. shmerr
+            end
+        end
+    end
+
+    local version_before = get_version(shmerr or 0)
+
+    local lock, err = resty_lock:new(self.shm_locks, self.resty_lock_opts)
+    if not lock then
+        return nil, "could not create lock: " .. err
+    end
+
+    local elapsed, err = lock:lock(LOCK_KEY_PREFIX .. namespaced_key)
+    if not elapsed and err ~= "timeout"  then
+        return nil, "could not acquire callback lock: " .. err
+    end
+
+    local is_hit
+    local is_miss
+
+    v, shmerr = self.dict:get_stale(namespaced_key)
+    if v ~= nil then
+        is_hit = true
+
+    else
+        if shmerr then
+            -- shmerr can be 'flags' upon successful get_stale() calls, so we
+            -- also check v == nil
+            return nil, "could not read from lua_shared_dict: " .. shmerr
+        end
+
+        -- if we specified shm_miss, it might be a negative hit cached
+        -- there
+        if self.dict_miss then
+            v, shmerr = self.dict_miss:get_stale(namespaced_key)
+            if v ~= nil then
+                is_miss = true
+
+            elseif shmerr then
+                -- shmerr can be 'flags' upon successful get_stale() calls, so we
+                -- also check v == nil
+                return nil, "could not read from lua_shared_dict (miss): " .. shmerr
+            end
+        end
+    end
+
+    local version_after
+    if not shmerr then
+        version_after = 0
+
+    else
+        version_after = get_version(shmerr or 0)
+        if version_before ~= version_after then
+            local ttl_left
+            if is_miss then
+                ttl_left = self.dict_miss:ttl(namespaced_key)
+            else
+                ttl_left = self.dict:ttl(namespaced_key)
+            end
+
+            if ttl_left then
+                v = decode(v)
+                if not err then
+                    return unlock_and_ret(lock, v, nil, ttl_left)
+                end
+                return v, nil, ttl_left
+            end
+        end
+    end
+
+    if err == "timeout" then
+        return nil, "could not acquire callback lock: timeout"
+    end
+
+    local ok, data, new_ttl
+    ok, data, err, new_ttl = xpcall(cb, traceback, ...)
+    if not ok then
+        return unlock_and_ret(lock, nil, "callback threw an error: " .. tostring(data))
+    end
+
+    if err then
+        return unlock_and_ret(lock, data, tostring(err))
+    end
+
+    if type(new_ttl) == "number" then
+        if new_ttl < 0 then
+            -- bypass cache
+            return unlock_and_ret(lock, data, nil, new_ttl)
+        end
+
+        if data == nil then
+            neg_ttl = new_ttl
+
+        else
+            ttl = new_ttl
+        end
+    end
+
+    local version
+    if data == nil then
+        version = 0
+    elseif version_after >= 65535 then
+        version = 1
+    else
+        version = version_after + 1
+    end
+
+    local flags = set_version(0, version)
+
+    data, err = set_shm_set_lru(self, key, namespaced_key, data, ttl, neg_ttl, flags,
+                                shm_set_tries, l1_serializer)
+    if err then
+        return unlock_and_ret(lock, nil, err)
+    end
+
+    if data == CACHE_MISS_SENTINEL_LRU then
+        data = nil
+        if is_hit then
+            ok, err = self.dict:delete(namespaced_key)
+            if not ok then
+                return unlock_and_ret(lock, nil, "could not delete from shm: " .. err)
+            end
+        end
+
+
+    elseif is_miss then
+        ok, err = self.dict_miss:delete(namespaced_key)
+        if not ok then
+            return unlock_and_ret(lock, nil, "could not delete from shm (miss): " .. err)
+        end
+    end
+
+    _, err = self.broadcast(self.events.invalidation.channel, key)
+    if err then
+        return unlock_and_ret(lock, nil, "could not broadcast renew: " .. err)
+    end
+
+    -- unlock and return
+
+    return unlock_and_ret(lock, data, nil, data == nil and neg_ttl or ttl)
+end
+
 
 
 do
@@ -1118,8 +1193,7 @@ function _M:get_bulk(bulk, opts)
         end
 
         if self.debug then
-            ngx.log(ngx.DEBUG, "spawning ", n_threads, " threads to run ",
-                               n_cbs, " callbacks")
+            ngx_log(DEBUG, "spawning ", n_threads, " threads to run ", n_cbs, " callbacks")
         end
 
         local from = 1
@@ -1136,8 +1210,7 @@ function _M:get_bulk(bulk, opts)
             end
 
             if self.debug then
-                ngx.log(ngx.DEBUG, "thread ", i, " running callbacks ", from,
-                                   " to ", to)
+                ngx_log(DEBUG, "thread ", i, " running callbacks ", from, " to ", to)
             end
 
             threads_idx = threads_idx + 1
@@ -1155,8 +1228,7 @@ function _M:get_bulk(bulk, opts)
             local to = from + rest - 1
 
             if self.debug then
-                ngx.log(ngx.DEBUG, "main thread running callbacks ", from,
-                                   " to ", to)
+                ngx_log(DEBUG, "main thread running callbacks ", from, " to ", to)
             end
 
             run_thread(self, cb_ctxs, from, to)
@@ -1211,39 +1283,40 @@ function _M:peek(key, stale)
     -- shm
     local namespaced_key = self.name .. key
 
-    local v, err, went_stale = self.dict:get_stale(namespaced_key)
-    if v == nil and err then
-        -- err can be 'flags' upon successful get_stale() calls, so we
+    local dict = self.dict
+    local v, shmerr, went_stale = dict:get_stale(namespaced_key)
+    if v == nil and shmerr then
+        -- shmerr can be 'flags' upon successful get_stale() calls, so we
         -- also check v == nil
-        return nil, "could not read from lua_shared_dict: " .. err
+        return nil, "could not read from lua_shared_dict: " .. shmerr
     end
 
     -- if we specified shm_miss, it might be a negative hit cached
     -- there
-    if self.dict_miss and v == nil then
-        v, err, went_stale = self.dict_miss:get_stale(namespaced_key)
-        if v == nil and err then
-            -- err can be 'flags' upon successful get_stale() calls, so we
+    if v == nil and self.dict_miss then
+        dict = self.dict_miss
+        v, shmerr, went_stale = dict:get_stale(namespaced_key)
+        if v == nil and shmerr then
+            -- shmerr can be 'flags' upon successful get_stale() calls, so we
             -- also check v == nil
-            return nil, "could not read from lua_shared_dict: " .. err
+            return nil, "could not read from lua_shared_dict: " .. shmerr
         end
     end
 
-    if went_stale and not stale then
-        return nil
+    if v == nil or (went_stale and not stale) then
+        return
     end
 
-    if v ~= nil then
-        local value, err, at, ttl = unmarshall_from_shm(v)
-        if err then
-            return nil, "could not deserialize value after lua_shared_dict " ..
-                        "retrieval: " .. err
-        end
-
-        local remaining_ttl = ttl - (now() - at)
-
-        return remaining_ttl, nil, value, went_stale
+    local value, err = decode(v)
+    if err then
+        return nil, "could not deserialize value after lua_shared_dict " ..
+                    "retrieval: " .. err
     end
+
+    local flags = shmerr or 0
+    local no_ttl = has_flag(flags, NO_TTL_FLAG)
+    local ttl = dict:ttl(namespaced_key)
+    return ttl, nil, value, went_stale, no_ttl
 end
 
 
@@ -1345,11 +1418,6 @@ function _M:purge(flush_expired)
         error("no ipc to propagate purge, specify opts.ipc_shm or opts.ipc", 2)
     end
 
-    if not self.lru.flush_all and LRU_INSTANCES[self.name] ~= self.lru then
-        error("cannot purge when using custom LRU cache with " ..
-              "OpenResty < 1.13.6.2", 2)
-    end
-
     -- clear shm first
     self.dict:flush_all()
 
@@ -1390,6 +1458,9 @@ function _M:update(timeout)
 
     return true
 end
+
+
+_M.NO_TTL_FLAG = NO_TTL_FLAG
 
 
 return _M

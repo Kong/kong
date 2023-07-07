@@ -186,7 +186,7 @@ jobs:
     - name: Install Deb Dependencies
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true'
       run: |
-        sudo apt-get update && sudo apt-get install -y \
+        sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
                 automake \
                 build-essential \
                 curl \
@@ -216,39 +216,15 @@ jobs:
     - name: Build Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
-        bazel build --config release //build:kong --verbose_failures ${{ matrix.bazel_args }}
+        bazel build --config release //build:kong --verbose_failures ${{ matrix.bazel-args }}
 
     - name: Package Kong - ${{ matrix.package }}
       if: matrix.package != 'rpm' && steps.cache-deps.outputs.cache-hit != 'true'
       run: |
-        bazel build --config release :kong_${{ matrix.package }} --verbose_failures ${{ matrix.bazel_args }}
+        bazel build --config release :kong_${{ matrix.package }} --verbose_failures ${{ matrix.bazel-args }}
 
     - name: Package Kong - rpm
-      if: |
-        (
-          matrix.package == 'rpm' &&
-          ! startsWith(matrix.label, 'amazonlinux')
-        ) && steps.cache-deps.outputs.cache-hit != 'true'
-      env:
-        RELEASE_SIGNING_GPG_KEY: ${{ secrets.RELEASE_SIGNING_GPG_KEY }}
-        NFPM_RPM_PASSPHRASE: ${{ secrets.RELEASE_SIGNING_GPG_KEY_PASSPHRASE }}
-      # TODO: use separate build targets for each OS
-      run: |
-        if [ -n "${RELEASE_SIGNING_GPG_KEY:-}" ]; then
-          RPM_SIGNING_KEY_FILE=$(mktemp)
-          echo "$RELEASE_SIGNING_GPG_KEY" > $RPM_SIGNING_KEY_FILE
-          export RPM_SIGNING_KEY_FILE=$RPM_SIGNING_KEY_FILE
-        fi
-
-        bazel build --config release :kong_el8 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
-        bazel build --config release :kong_el7 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
-
-    - name: Package Amazon Linux
-      if: |
-        (
-          matrix.package == 'rpm' &&
-          startsWith(matrix.label, 'amazonlinux')
-        ) && steps.cache-deps.outputs.cache-hit != 'true'
+      if: matrix.package == 'rpm' && steps.cache-deps.outputs.cache-hit != 'true'
       env:
         RELEASE_SIGNING_GPG_KEY: ${{ secrets.RELEASE_SIGNING_GPG_KEY }}
         NFPM_RPM_PASSPHRASE: ${{ secrets.RELEASE_SIGNING_GPG_KEY_PASSPHRASE }}
@@ -259,8 +235,7 @@ jobs:
           export RPM_SIGNING_KEY_FILE=$RPM_SIGNING_KEY_FILE
         fi
 
-        bazel build --config release :kong_aws2    --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
-        bazel build --config release :kong_aws2023 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
+        bazel build --config release :kong_${{ matrix.package-type }} --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel-args }}
 
     - name: Bazel Debug Outputs
       if: failure()
@@ -351,7 +326,7 @@ jobs:
           type=raw,enable=${{ matrix.label == 'ubuntu' }},${{ github.sha }}
 
     - name: Set up QEMU
-      if: matrix.docker_platforms != ''
+      if: matrix.docker-platforms != ''
       uses: docker/setup-qemu-action@v2
 
     - name: Set up Docker Buildx
@@ -360,7 +335,7 @@ jobs:
     - name: Set platforms
       id: docker_platforms_arg
       run: |
-        platforms="${{ matrix.docker_platforms }}"
+        platforms="${{ matrix.docker-platforms }}"
         if [[ -z "$platforms" ]]; then
           platforms="linux/amd64"
         fi

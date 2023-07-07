@@ -77,6 +77,8 @@
 - Fix an issue where the router of flavor `expressions` can not work correctly
   when `route.protocols` is set to `grpc` or `grpcs`.
   [#11082](https://github.com/Kong/kong/pull/11082)
+- Fix an issue where the router of flavor `expressions` can not configure https redirection.
+  [#11166](https://github.com/Kong/kong/pull/11166)
 
 #### Admin API
 
@@ -141,6 +143,10 @@
 - Bumped OpenSSL from 1.1.1t to 3.1.1
   [#10180](https://github.com/Kong/kong/pull/10180)
   [#11140](https://github.com/Kong/kong/pull/11140)
+- Bumped pgmoon from 1.16.0 to 1.16.1 (Kong's fork)
+  [#11181](https://github.com/Kong/kong/pull/11181)
+- Bumped atc-router from 1.0.5 to 1.1.0
+  [#10100](https://github.com/Kong/kong/pull/10100)
 
 ## 3.3.0
 
