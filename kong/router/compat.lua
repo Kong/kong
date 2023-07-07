@@ -7,7 +7,10 @@ local atc = require("kong.router.atc")
 local tb_new = require("table.new")
 local tb_nkeys = require("table.nkeys")
 local uuid = require("resty.jit-uuid")
-local utils = require("kong.tools.utils")
+
+
+local shallow_copy    = require("kong.tools.utils").shallow_copy
+local is_regex_magic  = require("kong.router.utils").is_regex_magic
 
 
 local escape_str      = atc.escape_str
@@ -45,11 +48,6 @@ local function buffer_append(buf, sep, str, idx)
     buf:put(sep)
   end
   buf:put(str)
-end
-
-
-local function is_regex_magic(path)
-  return byte(path) == TILDE
 end
 
 
@@ -345,7 +343,7 @@ local function split_route_by_path_into(route_and_service, routes_and_services_s
   )
   for index, paths in pairs(grouped_paths) do
     local cloned_route = {
-      route = utils.shallow_copy(original_route),
+      route = shallow_copy(original_route),
       service = route_and_service.service,
     }
 
