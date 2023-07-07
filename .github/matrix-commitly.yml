@@ -8,7 +8,7 @@ build-packages:
   os: ubuntu-22.04
   image: rockylinux:9
   package: rpm
-  package-distro: el9
+  package-type: el9
   check-manifest-suite: el9-amd64
 
 build-images:
@@ -19,9 +19,7 @@ build-images:
 - label: rhel
   base-image: registry.access.redhat.com/ubi9
   package: rpm
-  package-distro: el9
   artifact-from: rhel-9
-
 
 smoke-tests:
 - label: ubuntu
