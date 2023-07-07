@@ -274,68 +274,67 @@ do
 end
 
 
-local function stream_get_priority(snis, srcs, dsts)
+local stream_get_priority
+do
+  -- compatible with http priority
   local STREAM_SNI_BIT = lshift_uint64(0x01ULL, 61)
 
-  local SRC_IP_BIT     = lshift(0x01ULL, 7)
-  local SRC_PORT_BIT   = lshift(0x01ULL, 6)
-  local SRC_CIDR_BIT   = lshift(0x01ULL, 4)
+  -- IP > PORT > CIDR
+  local IP_BIT     = lshift(0x01ULL, 3)
+  local PORT_BIT   = lshift(0x01ULL, 2)
+  local CIDR_BIT   = lshift(0x01ULL, 0)
 
-  local DST_IP_BIT     = lshift(0x01ULL, 3)
-  local DST_PORT_BIT   = lshift(0x01ULL, 2)
-  local DST_CIDR_BIT   = lshift(0x01ULL, 0)
+  local function calc_ip_weight(ips)
+    local weight = 0x0ULL
 
-  local match_weight = 0
-
-  -- [sni] has higher priority than [src] or [dst]
-  if not is_empty_field(snis) then
-    match_weight = STREAM_SNI_BIT
-  end
-
-  -- [src] + [dst] has higher priority than [sni]
-  if not is_empty_field(srcs) and
-     not is_empty_field(dsts)
-  then
-    match_weight = STREAM_SNI_BIT
-  end
-
-  if not is_empty_field(srcs) then
-    for i = 1, #srcs do
-      local ip = srcs[i].ip
-      local port = srcs[i].port
+    for i = 1, #ips do
+      local ip   = ips[i].ip
+      local port = ips[i].port
 
       if ip then
         if ip:find("/", 1, true) then
-          match_weight = bor(match_weight, SRC_CIDR_BIT)
+          weight = bor(weight, CIDR_BIT)
+
         else
-          match_weight = bor(match_weight, SRC_IP_BIT)
+          weight = bor(weight, IP_BIT)
         end
       end
+
       if port then
-        match_weight = bor(match_weight, SRC_PORT_BIT)
+        weight = bor(weight, PORT_BIT)
       end
     end
+
+    return weight
   end
 
-  if not is_empty_field(dsts) then
-    for i = 1, #dsts do
-      local ip = dsts[i].ip
-      local port = dsts[i].port
+  stream_get_priority = function(snis, srcs, dsts)
+    local match_weight = 0x0ULL
 
-      if ip then
-        if ip:find("/", 1, true) then
-          match_weight = bor(match_weight, DST_CIDR_BIT)
-        else
-          match_weight = bor(match_weight, DST_IP_BIT)
-        end
-      end
-      if port then
-        match_weight = bor(match_weight, DST_PORT_BIT)
-      end
+    -- [sni] has higher priority than [src] or [dst]
+    if not is_empty_field(snis) then
+      match_weight = STREAM_SNI_BIT
     end
-  end
 
-  return match_weight
+    -- [src] + [dst] has higher priority than [sni]
+    if not is_empty_field(srcs) and
+       not is_empty_field(dsts)
+    then
+      match_weight = STREAM_SNI_BIT
+    end
+
+    local src_bits = is_empty_field(srcs) and 0x0ULL or
+                     calc_ip_weight(srcs)
+
+    local dst_bits = is_empty_field(dsts) and 0x0ULL or
+                     calc_ip_weight(dsts)
+
+    local priority = bor(match_weight,
+                         lshift(src_bits, 4),
+                         dst_bits)
+
+    return priority
+  end
 end
 
 
