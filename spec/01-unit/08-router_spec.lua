@@ -4596,7 +4596,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
       end)
     end
 
-    if flavor == "traditional_compatible" then
+    if flavor == "traditional_compatible" or flavor == "expressions"then
       describe("#stream context", function()
         -- enable compat_stream
         reload_router(flavor, "stream")
