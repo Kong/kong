@@ -127,11 +127,12 @@ local function new(self)
   --   -- if the `kong` uses dbless mode, the following will be present:
   --  lmdb = {
   --    map_size: "128.00 MiB",
-  --    used_size: "0.02 MiB",
-  --    last_used_page: 6,
-  --    last_txnid: 2,
+  --    page_size: "0.004 MiB",
   --    max_readers: 126,
-  --    current_readers: 16
+  --    num_readers: 16,
+  --    used_pages: 2,
+  --    alocated_pages: 6,
+  --    entries: 6,
   --   },
   --}
   -- }
@@ -162,11 +163,12 @@ local function new(self)
   --   -- if the `kong` uses dbless mode, the following will be present:
   --  lmdb = {
   --    map_size: "131072 KB",
-  --    used_size: "20.48 KB",
-  --    last_used_page: 6,
-  --    last_txnid: 2,
+  --    page_size: "4 KB",
   --    max_readers: 126,
-  --    current_readers: 16
+  --    num_readers: 16,
+  --    used_pages: 2,
+  --    alocated_pages: 6,
+  --    entries: 6,
   --   },
   -- }
   function _NODE.get_memory_stats(unit, scale)
@@ -259,11 +261,12 @@ local function new(self)
       else
         local info = self.table.new(0, 6)
         info.map_size = convert_bytes(lmdb_info.map_size, unit, scale)
-        info.used_size = convert_bytes(lmdb_info.last_used_page * lmdb_info.page_size, unit, scale)
-        info.last_used_page = lmdb_info.last_used_page
-        info.last_txnid = lmdb_info.last_txnid
+        info.page_size = convert_bytes(lmdb_info.page_size, unit, scale)
+        info.alocated_pages = lmdb_info.alocated_pages
+        info.used_pages = lmdb_info.used_pages
+        info.entries = lmdb_info.entries
         info.max_readers = lmdb_info.max_readers
-        info.current_readers = lmdb_info.num_readers
+        info.num_readers = lmdb_info.num_readers
         res.lmdb = info
       end
     end

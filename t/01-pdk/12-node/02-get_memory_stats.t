@@ -570,13 +570,15 @@ qq{
             local res = pdk.node.get_memory_stats()
 
             ngx.say(" lmdb map size: ", res.lmdb.map_size)
-            ngx.say(" lmdb map used size: ", res.lmdb.used_size)
+            ngx.say(" lmdb map used pages: ", res.lmdb.used_pages)
+            ngx.say(" lmdb map allocate pages: ", res.lmdb.alocated_pages)
         }
     }
 --- request
 GET /t
 --- response_body_like chomp
  lmdb map size: 134217728
- lmdb map used size: \d+
+ lmdb map used pages: \d+
+ lmdb map allocate pages: \d+
 --- no_error_log
 [error]
