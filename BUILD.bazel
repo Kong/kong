@@ -169,6 +169,14 @@ string_flag(
 )
 
 config_setting(
+    name = "wasmx_flag",
+    flag_values = {
+        ":wasmx": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
     name = "wasmx_static_mod_flag",
     flag_values = {
         ":wasmx": "true",

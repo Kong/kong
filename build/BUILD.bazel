@@ -50,27 +50,21 @@ wasmx_vm_deps = select({
 })
 
 wasmx_deps = select({
-    "@kong//:wasmx_static_mod_flag": [
-        "@ngx_wasm_module//:lua_libs",
-    ],
-    "@kong//:wasmx_dynamic_mod_flag": [
+    "@kong//:wasmx_flag": [
         "@ngx_wasm_module//:lua_libs",
     ],
     "//conditions:default": [],
 }) + wasmx_vm_deps
 
-wasm_libs_install = """
+wasm_libs_install = select({
+    "@kong//:wasmx_flag": """
     for fname in $(locations @ngx_wasm_module//:lua_libs); do
         base=${fname##*/ngx_wasm_module/lib/}
         dest="${BUILD_DESTDIR}/openresty/lualib/$base"
         mkdir -p "$(dirname "$dest")"
         cp -v "$fname" "$dest"
     done
-"""
-
-wasm_libs_cmd = select({
-    "@kong//:wasmx_static_mod_flag": wasm_libs_install,
-    "@kong//:wasmx_dynamic_mod_flag": wasm_libs_install,
+""",
     "//conditions:default": "\n",
 })
 
@@ -150,9 +144,10 @@ kong_directory_genrule(
 
         ATC_ROUTER=${WORKSPACE_PATH}/$(location @atc_router)
         cp $ATC_ROUTER ${BUILD_DESTDIR}/openresty/lualib/.
+
         cp -r $(locations @protoc//:all_srcs) ${BUILD_DESTDIR}/kong/.
 
-    """ + install_lib_deps_cmd + install_lualib_deps_cmd + wasm_libs_cmd + wasmx_vm_cmd +
+    """ + install_lib_deps_cmd + install_lualib_deps_cmd + wasm_libs_install + wasmx_vm_cmd +
         """
         mkdir -p ${BUILD_DESTDIR}/etc/kong
         cp kong.conf.default ${BUILD_DESTDIR}/etc/kong/kong.conf.default
