@@ -4673,7 +4673,10 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
 end     -- for _, flavor
 
 
+for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
 describe("[both regex and prefix with regex_priority]", function()
+  reload_router(flavor)
+
   local use_case, router
 
   lazy_setup(function()
@@ -4729,6 +4732,7 @@ describe("[both regex and prefix with regex_priority]", function()
   end)
 
 end)
+end -- for
 
 
 for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
