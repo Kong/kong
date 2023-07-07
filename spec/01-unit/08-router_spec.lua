@@ -4211,9 +4211,9 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
     end)
 
 
-    --flavor == "traditional"/"traditional_compatible"/"expressions"
+    -- flavor == "traditional"/"traditional_compatible"/"expressions"
       describe("#stream context", function()
-        -- enable compat_stream
+        -- enable stream subsystem
         reload_router(flavor, "stream")
 
         describe("[sources]", function()
@@ -4595,11 +4595,11 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           assert.same(use_case[2].route, match_t.route)
         end)
       end)
-    --flavor == "traditional"/"traditional_compatible"/"expressions"
+    -- flavor == "traditional"/"traditional_compatible"/"expressions"
 
     if flavor == "traditional_compatible" or flavor == "expressions"then
       describe("#stream context", function()
-        -- enable compat_stream
+        -- enable stream subsystem
         reload_router(flavor, "stream")
 
         local get_expression = require("kong.router.compat").get_expression

@@ -667,8 +667,10 @@ function _M:exec(ctx)
   local src_port = tonumber(var.remote_port, 10)
   local dst_port = tonumber((ctx or ngx.ctx).host_port, 10)
                 or tonumber(var.server_port, 10)
+
   -- error value for non-TLS connections ignored intentionally
   local sni = server_name()
+
   -- fallback to preread SNI if current connection doesn't terminate TLS
   if not sni then
     sni = var.ssl_preread_server_name
