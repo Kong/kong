@@ -2965,6 +2965,74 @@ describe("Admin API #off with Unique Foreign #unique", function()
   end)
 end)
 
+describe("Admin API #off with cache key vs endpoint key #unique", function()
+  local client
+
+  lazy_setup(function()
+    assert(helpers.start_kong({
+      database = "off",
+      plugins = "cache-key-vs-endpoint-key",
+      nginx_worker_processes = 1,
+      lmdb_map_size = LMDB_MAP_SIZE,
+    }))
+  end)
+
+  lazy_teardown(function()
+    helpers.stop_kong(nil, true)
+  end)
+
+  before_each(function()
+    client = assert(helpers.admin_client())
+  end)
+
+  after_each(function()
+    if client then
+      client:close()
+    end
+  end)
+
+  it("prefers cache key rather than endpoint key from primary key uniqueness", function()
+    local res = assert(client:send {
+      method = "POST",
+      path = "/config",
+      body = {
+        config = [[
+        _format_version: "1.1"
+        ck_vs_ek_testcase:
+        - name: foo
+          service: my_service
+        - name: bar
+          service: my_service
+
+        services:
+        - name: my_service
+          url: http://example.com
+          path: /
+        ]],
+      },
+      headers = {
+        ["Content-Type"] = "application/json"
+      }
+    })
+
+    local body = assert.response(res).has.status(400)
+    local json = cjson.decode(body)
+    assert.same({
+      code = 14,
+      fields = {
+        ck_vs_ek_testcase = {
+          cjson.null,
+          "uniqueness violation: 'ck_vs_ek_testcase' entity with primary key set to 'd091e0c1-8e3b-5dc9-97bf-35b5bcf9d184' already declared",
+        }
+      },
+      message = [[declarative config is invalid: ]] ..
+                [[{ck_vs_ek_testcase={[2]="uniqueness violation: 'ck_vs_ek_testcase' entity with primary key set to 'd091e0c1-8e3b-5dc9-97bf-35b5bcf9d184' already declared"}}]],
+      name = "invalid declarative configuration",
+    }, json)
+  end)
+
+end)
+
 describe("Admin API #off worker_consistency=eventual", function()
 
   local client

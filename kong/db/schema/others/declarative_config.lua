@@ -504,6 +504,11 @@ local function get_key_for_uuid_gen(entity, item, schema, parent_fk, child_key)
     return
   end
 
+  if schema.cache_key then
+    local key = build_cache_key(entity, item, schema, parent_fk, child_key)
+    return pk_name, key
+  end
+
   if schema.endpoint_key and item[schema.endpoint_key] ~= nil then
     local key = item[schema.endpoint_key]
 
@@ -530,10 +535,6 @@ local function get_key_for_uuid_gen(entity, item, schema, parent_fk, child_key)
 
     -- generate a PK based on the endpoint_key
     return pk_name, key
-  end
-
-  if schema.cache_key then
-    return pk_name, build_cache_key(entity, item, schema, parent_fk, child_key)
   end
 
   return pk_name
