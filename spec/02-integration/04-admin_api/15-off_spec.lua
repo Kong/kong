@@ -599,6 +599,118 @@ describe("Admin API #off", function()
         }, json)
       end)
 
+      it("returns 400 on an primary key uniqueness error", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = [[
+            _format_version: "1.1"
+            services:
+            - id: 0855b320-0dd2-547d-891d-601e9b38647f
+              name: foo
+              host: example.com
+              protocol: https
+              routes:
+              - name: foo
+                methods: ["GET"]
+                plugins:
+                  - name: key-auth
+                  - name: http-log
+                    config:
+                      http_endpoint: https://example.com
+            - id: 0855b320-0dd2-547d-891d-601e9b38647f
+              name: bar
+              host: example.test
+              port: 3000
+              routes:
+              - name: bar
+                paths:
+                - /
+                plugins:
+                - name: basic-auth
+                - name: tcp-log
+                  config:
+                    host: 127.0.0.1
+                    port: 10000
+            ]],
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+
+        local body = assert.response(res).has.status(400)
+        local json = cjson.decode(body)
+        assert.same({
+          code = 14,
+          fields = {
+            services = {
+              cjson.null,
+              "uniqueness violation: 'services' entity with primary key set to '0855b320-0dd2-547d-891d-601e9b38647f' already declared",
+            }
+          },
+          message = [[declarative config is invalid: ]] ..
+                    [[{services={[2]="uniqueness violation: 'services' entity with primary key set to '0855b320-0dd2-547d-891d-601e9b38647f' already declared"}}]],
+          name = "invalid declarative configuration",
+        }, json)
+      end)
+
+      it("returns 400 on an endpoint key uniqueness error", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = [[
+            _format_version: "1.1"
+            services:
+            - name: foo
+              host: example.com
+              protocol: https
+              routes:
+              - name: foo
+                methods: ["GET"]
+                plugins:
+                  - name: key-auth
+                  - name: http-log
+                    config:
+                      http_endpoint: https://example.com
+            - name: foo
+              host: example.test
+              port: 3000
+              routes:
+              - name: bar
+                paths:
+                - /
+                plugins:
+                - name: basic-auth
+                - name: tcp-log
+                  config:
+                    host: 127.0.0.1
+                    port: 10000
+            ]],
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+
+        local body = assert.response(res).has.status(400)
+        local json = cjson.decode(body)
+        assert.same({
+          code = 14,
+          fields = {
+            services = {
+              cjson.null,
+              "uniqueness violation: 'services' entity with name set to 'foo' already declared",
+            }
+          },
+          message = [[declarative config is invalid: ]] ..
+                    [[{services={[2]="uniqueness violation: 'services' entity with name set to 'foo' already declared"}}]],
+          name = "invalid declarative configuration",
+        }, json)
+      end)
+
       it("returns 400 when given no input", function()
         local res = assert(client:send {
           method = "POST",

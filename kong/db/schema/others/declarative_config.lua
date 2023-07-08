@@ -302,7 +302,13 @@ local function load_vault_subschemas(fields, vault_set)
 end
 
 
-local function populate_references(input, known_entities, by_id, by_key, expected, parent_entity)
+local function uniqueness_error_msg(entity, key, value)
+  return "uniqueness violation: '" .. entity .. "' entity " ..
+         "with " .. key .. " set to '" .. value .. "' already declared"
+end
+
+
+local function populate_references(input, known_entities, by_id, by_key, expected, errs, parent_entity)
   for _, entity in ipairs(known_entities) do
     yield(true)
 
@@ -324,21 +330,36 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
     end
 
     local entity_schema = all_schemas[entity]
+    local endpoint_key = entity_schema.endpoint_key
+    local use_key = endpoint_key and entity_schema.fields[endpoint_key].unique
+
     for i, item in ipairs(input[entity]) do
       yield(true)
 
-      populate_references(item, known_entities, by_id, by_key, expected, entity)
+      populate_references(item, known_entities, by_id, by_key, expected, errs, entity)
 
       local item_id = DeclarativeConfig.pk_string(entity_schema, item)
-      by_id[entity] = by_id[entity] or {}
-      by_id[entity][item_id] = item
+      local key = use_key and item[endpoint_key]
 
-      local key
-      if entity_schema.endpoint_key then
-        key = item[entity_schema.endpoint_key]
-        if key then
-          by_key[entity] = by_key[entity] or {}
+      local failed = false
+      if key and key ~= ngx.null then
+        by_key[entity] = by_key[entity] or {}
+        if by_key[entity][key] then
+          errs[entity] = errs[entity] or {}
+          errs[entity][i] = uniqueness_error_msg(entity, endpoint_key, key)
+          failed = true
+        else
           by_key[entity][key] = item
+        end
+      end
+
+      if item_id then
+        by_id[entity] = by_id[entity] or {}
+        if (not failed) and by_id[entity][item_id] then
+          errs[entity] = errs[entity] or {}
+          errs[entity][i] = uniqueness_error_msg(entity, "primary key", item_id)
+        else
+          by_id[entity][item_id] = item
         end
       end
 
@@ -379,7 +400,7 @@ local function validate_references(self, input)
   local expected = {}
   local errs = {}
 
-  populate_references(input, self.known_entities, by_id, by_key, expected)
+  populate_references(input, self.known_entities, by_id, by_key, expected, errs)
 
   for a, as in pairs(expected) do
     yield(true)
