@@ -822,10 +822,21 @@ describe("Admin API #off", function()
 
       assert.response(res).has.status(201)
 
+
+      res = client:get("/upstreams/foo/targets")
+      assert.response(res).has.status(200)
+
+      local json = assert.response(res).has.jsonbody()
+      assert.is_table(json.data)
+      assert.same(1, #json.data)
+      assert.is_table(json.data[1])
+
+      local id = assert.is_string(json.data[1].id)
+
       helpers.wait_until(function()
         local res = assert(client:send {
           method = "PUT",
-          path = "/upstreams/foo/targets/c830b59e-59cc-5392-adfd-b414d13adfc4/10.20.30.40/unhealthy",
+          path = "/upstreams/foo/targets/" .. id .. "/10.20.30.40/unhealthy",
         })
 
         return pcall(function()
