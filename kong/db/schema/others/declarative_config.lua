@@ -748,9 +748,11 @@ local function flatten(self, input)
   end
 
   local entities = {}
+  local errs
   for entity, entries in pairs(by_id) do
     yield(true)
 
+    local uniques = {}
     local schema = all_schemas[entity]
     entities[entity] = {}
 
@@ -768,10 +770,30 @@ local function flatten(self, input)
         else
           flat_entry[name] = entry[name]
         end
+
+        if field.unique then
+          local flat_value = flat_entry[name]
+          if flat_value and flat_value ~= ngx.null then
+            uniques[name] = uniques[name] or {}
+            if uniques[name][flat_value] then
+              errs = errs or {}
+              errs[entity] = errors[entity] or {}
+              local key = schema.endpoint_key
+                          and flat_entry[schema.endpoint_key] or id
+              errs[entity][key] = uniqueness_error_msg(entity, name, flat_value)
+            else
+              uniques[name][flat_value] = true
+            end
+          end
+        end
       end
 
       entities[entity][id] = flat_entry
     end
+  end
+
+  if errs then
+    return nil, errs
   end
 
   return entities, nil, meta

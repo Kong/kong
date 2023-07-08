@@ -711,6 +711,40 @@ describe("Admin API #off", function()
         }, json)
       end)
 
+      it("returns 400 on a regular key uniqueness error", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = [[
+            _format_version: "1.1"
+            consumers:
+            - username: foo
+              custom_id: conflict
+            - username: bar
+              custom_id: conflict
+            ]],
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+
+        local body = assert.response(res).has.status(400)
+        local json = cjson.decode(body)
+        assert.same({
+          code = 14,
+          fields = {
+            consumers = {
+              bar = "uniqueness violation: 'consumers' entity with custom_id set to 'conflict' already declared",
+            }
+          },
+          message = [[declarative config is invalid: ]] ..
+                    [[{consumers={bar="uniqueness violation: 'consumers' entity with custom_id set to 'conflict' already declared"}}]],
+          name = "invalid declarative configuration",
+        }, json)
+      end)
+
       it("returns 400 when given no input", function()
         local res = assert(client:send {
           method = "POST",
