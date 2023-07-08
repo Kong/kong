@@ -360,6 +360,7 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
           errs[entity][i] = uniqueness_error_msg(entity, "primary key", item_id)
         else
           by_id[entity][item_id] = item
+          table.insert(by_id[entity], item_id)
         end
       end
 
@@ -752,7 +753,10 @@ local function flatten(self, input)
 
     local schema = all_schemas[entity]
     entities[entity] = {}
-    for id, entry in pairs(entries) do
+
+    for _, id in ipairs(entries) do
+      local entry = entries[id]
+
       local flat_entry = {}
       for name, field in schema:each_field(entry) do
         if field.type == "foreign" and type(entry[name]) == "string" then
