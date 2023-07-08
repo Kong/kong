@@ -377,10 +377,9 @@ local function validate_references(self, input)
   local by_id = {}
   local by_key = {}
   local expected = {}
+  local errs = {}
 
   populate_references(input, self.known_entities, by_id, by_key, expected)
-
-  local errors = {}
 
   for a, as in pairs(expected) do
     yield(true)
@@ -394,20 +393,20 @@ local function validate_references(self, input)
         local found = find_entity(key, b, by_key, by_id)
 
         if not found then
-          errors[a] = errors[a] or {}
-          errors[a][k.at] = errors[a][k.at] or {}
+          errs[a] = errs[a] or {}
+          errs[a][k.at] = errs[a][k.at] or {}
           local msg = "invalid reference '" .. k.key .. ": " ..
                       (type(k.value) == "string"
                       and k.value or cjson_encode(k.value)) ..
                       "' (no such entry in '" .. b .. "')"
-          insert(errors[a][k.at], msg)
+          insert(errs[a][k.at], msg)
         end
       end
     end
   end
 
-  if next(errors) then
-    return nil, errors
+  if next(errs) then
+    return nil, errs
   end
 
   return by_id, by_key
