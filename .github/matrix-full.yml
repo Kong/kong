@@ -69,6 +69,12 @@ build-packages:
   package-distro: el8
   bazel_args: --//:fips=true
   check-manifest-suite: el8-amd64-fips
+- label: rhel-9
+  os: vars.RELEASE_RUNS_ON
+  image: rockylinux:9
+  package: rpm
+  package-distro: el9
+  check-manifest-suite: el9-amd64
 
 # Amazon Linux
 - label: amazonlinux-2
@@ -118,10 +124,10 @@ build-images:
 
 # RHEL
 - label: rhel
-  base-image: registry.access.redhat.com/ubi8
+  base-image: registry.access.redhat.com/ubi9
   package: rpm
-  package-distro: el7
-  artifact-from: rhel-7
+  package-distro: el9
+  artifact-from: rhel-9
 
 # Amazon Linux
 - label: amazonlinux-2
@@ -240,6 +246,12 @@ release-packages:
   artifact-version: 8
   artifact-type: rhel
   artifact: kong.el8.amd64.rpm
+- label: rhel-9
+  package: rpm
+  artifact-from: rhel-9
+  artifact-version: 9
+  artifact-type: rhel
+  artifact: kong.el9.amd64.rpm
 
 # Amazon Linux
 - label: amazonlinux-2
