@@ -70,21 +70,20 @@ local function do_restrict(conf)
   end
 
   local deny = conf.deny
-  local allow = conf.allow
-  local status = conf.status
-  local message = conf.message
 
   if not isempty(deny) then
     local blocked = match_bin(deny, binary_remote_addr)
     if blocked then
-      return do_exit(status, message)
+      return do_exit(conf.status, conf.message)
     end
   end
+
+  local allow = conf.allow
 
   if not isempty(allow) then
     local allowed = match_bin(allow, binary_remote_addr)
     if not allowed then
-      return do_exit(status, message)
+      return do_exit(conf.status, conf.message)
     end
   end
 end
