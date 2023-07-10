@@ -449,7 +449,8 @@ jobs:
     name: Package API Tests - using ${{ matrix.package_name }} ${{ matrix.install_method }}, ${{ matrix.gateway_mode }} mode
     needs: define_package_matrix
     # using if condition to skip arm64 and alpine runs because gh matrix exclude somehow is not working
-    if: (inputs.target_matrix  == 'all' || inputs.target_matrix  == 'package')
+    # skip centos package test runs untill it is removed from matrix-full.yml
+    if: (inputs.target_matrix == 'all' || inputs.target_matrix == 'package')
     runs-on: ${{ endsWith(matrix.package_name, '-arm64') && 'ubuntu-22.04-arm64' || vars.RUNS_ON }}
     timeout-minutes: 50
     env:
