@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [3.3.1](#331)
 - [3.3.0](#330)
 - [3.2.0](#320)
 - [3.1.0](#310)
@@ -7,9 +8,13 @@
 - [3.0.0](#300)
 - [Previous releases](#previous-releases)
 
-## Unreleased
+## Unreleased 3.3
+
+## 3.3.1
 
 ### Fixes
+
+#### Core
 
 - Fixed a bug that causes `POST /config?flatten_errors=1` to throw an exception
   and return a 500 error under certain circumstances.
