@@ -180,71 +180,61 @@ function http_mock.new(listens, routes, opts)
   return _self, port
 end
 
----@type http_mock
----@field eventually http_mock.eventually contains eventually assertions
-
---- start a dedicate nginx instance for this mock
----@function http_mock:start
---- @tparam[opt=true,default=false] bool error_on_exist whether to throw error if the directory already exists
-
---- stop a dedicate nginx instance for this mock
----@function http_mock:stop
---- @tparam[opt=true,default=false] bool no_clean whether to preserve the logs
---- @tparam[opt=true,default="TERM"] string signal the signal to send to the nginx process
---- @tparam[opt=true,default=10] number timeout the timeout to wait for the nginx process to exit
-
---- get a http_client to access the mock server
----@function http_mock:get_client
---- @treturn http_client a http_client instance
+--- @type http_mock
 
 --- returns the default port of the mock server.
----@function http_mock:get_default_port
---- @treturn string the port of the mock server (from the first listen directive)
+-- @function http_mock:get_default_port
+-- @treturn string the port of the mock server (from the first listen directive)
 function http_mock:get_default_port()
   return self.listens[1]:match(":(%d+)")
 end
 
 --- retrieve the logs of HTTP sessions
----@function http_mock:retrieve_mocking_logs
---- @treturn table the logs of HTTP sessions
+-- @function http_mock:retrieve_mocking_logs
+-- @treturn table the logs of HTTP sessions
 
 --- purge the logs of HTTP sessions
----@function http_mock:purge_mocking_logs
+-- @function http_mock:purge_mocking_logs
 
 --- clean the logs of HTTP sessions
----@function http_mock:clean
+-- @function http_mock:clean
 
 --- wait until all the requests are finished
----@function http_mock:wait_until_no_request
---- @tparam[opt=true,default=5] number timeout the timeout to wait for the nginx process to exit
+-- @function http_mock:wait_until_no_request
+-- @tparam[opt=true,default=5] number timeout the timeout to wait for the nginx process to exit
 
---- make assertions on HTTP requests
---- with a timeout to wait for the requests to arrive
----@class http_mock.eventually
+--- make assertions on HTTP requests.
+-- with a timeout to wait for the requests to arrive
+-- @class http_mock.eventually
 
---- assert if the condition is true for one of the logs. Replace "session" in the name of the function to assert on fields of the log.
---- The field can be one of "session", "request", "response", "error".
----@function http_mock.eventually:has_session_satisfy
---- @tparam function check the check function, accept a log and throw error if the condition is not satisfied
+--- assert if the condition is true for one of the logs.
+-- Replace "session" in the name of the function to assert on fields of the log.
+-- The field can be one of "session", "request", "response", "error".
+-- @function http_mock.eventually:has_session_satisfy
+-- @tparam function check the check function, accept a log and throw error if the condition is not satisfied
 
---- assert if the condition is true for all the logs. Replace "session" in the name of the function to assert on fields of the log.
---- The field can be one of "session", "request", "response", "error".
----@function http_mock.eventually:all_session_satisfy
---- @tparam function check the check function, accept a log and throw error if the condition is not satisfied
+--- assert if the condition is true for all the logs.
+-- Replace "session" in the name of the function to assert on fields of the log.
+-- The field can be one of "session", "request", "response", "error".
+-- @function http_mock.eventually:all_session_satisfy
+-- @tparam function check the check function, accept a log and throw error if the condition is not satisfied
 
---- assert if none of the logs satisfy the condition. Replace "session" in the name of the function to assert on fields of the log.
---- The field can be one of "session", "request", "response", "error".
----@function http_mock.eventually:has_no_session_satisfy
---- @tparam function check the check function, accept a log and throw error if the condition is not satisfied
+--- assert if none of the logs satisfy the condition.
+-- Replace "session" in the name of the function to assert on fields of the log.
+-- The field can be one of "session", "request", "response", "error".
+-- @function http_mock.eventually:has_no_session_satisfy
+-- @tparam function check the check function, accept a log and throw error if the condition is not satisfied
 
---- assert if not all the logs satisfy the condition. Replace "session" in the name of the function to assert on fields of the log.
---- The field can be one of "session", "request", "response", "error".
----@function http_mock.eventually:not_all_session_satisfy
---- @tparam function check the check function, accept a log and throw error if the condition is not satisfied
+--- assert if not all the logs satisfy the condition.
+-- Replace "session" in the name of the function to assert on fields of the log.
+-- The field can be one of "session", "request", "response", "error".
+-- @function http_mock.eventually:not_all_session_satisfy
+-- @tparam function check the check function, accept a log and throw error if the condition is not satisfied
 
---- alias for eventually:not_all_{session,request,response,error}_satisfy. Replace "session" in the name of the function to assert on fields of the log.
---- The field can be one of "session", "request", "response", "error".
----@function http_mock.eventually:has_one_without_session_satisfy
---- @tparam function check the check function, accept a log and throw error if the condition is not satisfied
+--- alias for eventually:not_all_{session,request,response,error}_satisfy.
+-- Replace "session" in the name of the function to assert on fields of the log.
+-- The field can be one of "session", "request", "response", "error".
+-- @function http_mock.eventually:has_one_without_session_satisfy
+-- @tparam function check the check function, accept a log and throw error if the condition is not satisfied
 
 return http_mock
