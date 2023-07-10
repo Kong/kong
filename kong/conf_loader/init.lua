@@ -3,6 +3,7 @@ local require = require
 
 local kong_default_conf = require "kong.templates.kong_defaults"
 local process_secrets = require "kong.cmd.utils.process_secrets"
+local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local openssl_pkey = require "resty.openssl.pkey"
 local openssl_x509 = require "resty.openssl.x509"
 local pl_stringio = require "pl.stringio"
@@ -621,6 +622,34 @@ local function parse_value(value, typ)
 end
 
 
+-- Check if module is dynamic
+local function check_dynamic_module(mod_name)
+  local configure_line = ngx.config.nginx_configure()
+  local mod_re = [[^.*--add-dynamic-module=(.+\/]] .. mod_name .. [[(\s|$)).*$]]
+  return ngx.re.match(configure_line, mod_re, "oi") ~= nil
+end
+
+
+-- Lookup dynamic module object
+-- this function will lookup for the `mod_name` dynamic module in the following
+-- paths:
+--  - path defined in KONG_DYNAMIC_MODULES_PATH environment variable
+--  - <nginx build prefix>/modules
+--  - /usr/local/openresty/nginx/modules
+-- @param[type=string] mod_name The module name to lookup, without file extension
+local function lookup_dynamic_module_so(mod_name, kong_conf)
+  log.debug("looking up dynamic module %s", mod_name)
+  local nginx_bin = nginx_signals.find_nginx_bin(kong_conf)
+  local mod_file = fmt("%s/../modules/%s.so", pl_path.dirname(nginx_bin), mod_name)
+  if exists(mod_file) then
+    log.debug("Module '%s' found at '%s'", mod_name, mod_file)
+    return mod_file
+  end
+
+  return nil, fmt("%s dynamic module shared object not found", mod_name)
+end
+
+
 -- Validate Wasm properties
 local function validate_wasm(wasm_enabled, filters_path)
   if wasm_enabled and filters_path then
@@ -1227,6 +1256,14 @@ local function check_and_parse(conf, opts)
   local ok, err = validate_wasm(conf.wasm, conf.wasm_filters_path)
   if not ok then
     errors[#errors + 1] = err
+  end
+
+  if conf.wasm and check_dynamic_module("ngx_wasm_module") then
+    local err
+    conf.wasm_dynamic_module, err = lookup_dynamic_module_so("ngx_wasm_module", conf)
+    if err then
+      errors[#errors + 1] = err
+    end
   end
 
   return #errors == 0, errors[1], errors
