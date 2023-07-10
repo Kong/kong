@@ -43,6 +43,9 @@ local function search_directive(tbl, directive_name, directive_value)
 end
 
 
+local DATABASE = os.getenv("KONG_DATABASE") or "postgres"
+
+
 describe("Configuration loader", function()
   it("loads the defaults", function()
     local conf = assert(conf_loader())
@@ -289,7 +292,7 @@ describe("Configuration loader", function()
 
     local conf = assert(conf_loader("spec/fixtures/to-strip.conf"))
 
-    assert.equal("postgres", conf.database)
+    assert.equal(DATABASE, conf.database)
     assert.equal("debug", conf.log_level)
   end)
   it("overcomes penlight's list_delim option", function()
@@ -750,6 +753,7 @@ describe("Configuration loader", function()
           ssl_cipher_suite = "old",
           client_ssl = "on",
           role = "control_plane",
+          database = "postgres",
           status_listen = "127.0.0.1:123 ssl",
           proxy_listen = "127.0.0.1:456 ssl",
           admin_listen = "127.0.0.1:789 ssl"
@@ -1068,6 +1072,7 @@ describe("Configuration loader", function()
         it("doesn't load cluster_cert or cluster_ca_cert for control plane", function()
           local conf, _, errors = conf_loader(nil, {
             role = "control_plane",
+            database = "postgres",
             cluster_cert = "spec/fixtures/kong_clustering.crt",
             cluster_cert_key = "spec/fixtures/kong_clustering.key",
             cluster_ca_cert = "spec/fixtures/kong_clustering_ca.crt",
@@ -1650,7 +1655,7 @@ describe("Configuration loader", function()
       os.getenv = function() end -- luacheck: ignore
 
       local conf = assert(conf_loader(helpers.test_conf_path))
-      assert.equal("postgres", conf.database)
+      assert.equal(DATABASE, conf.database)
     end)
     it("honors path if provided even if a default file exists", function()
       conf_loader.add_default_path("spec/fixtures/to-strip.conf")
@@ -1664,7 +1669,7 @@ describe("Configuration loader", function()
       os.getenv = function() end -- luacheck: ignore
 
       local conf = assert(conf_loader(helpers.test_conf_path))
-      assert.equal("postgres", conf.database)
+      assert.equal(DATABASE, conf.database)
     end)
   end)
 
