@@ -21,6 +21,8 @@
   Contact the Kong team for further details.
   [#5752](https://github.com/Kong/kong-ee/pull/5752)
   [KAG-1657](https://konghq.atlassian.net/browse/KAG-1657)
+- The `/consumer_groups/:id/overrides` feature is deprecated in favor of the more generic plugin scoping mechanism.
+  [KAG-666](https://konghq.atlassian.net/browse/KAG-666)
 - **CentOS packages are now removed from the release and are no longer supported in future versions.**
 
 ### Dependencies
@@ -33,6 +35,7 @@
 
 * The Redis strategy of Rate Limiting catches strategy connection failure. [#4810](https://github.com/Kong/kong-ee/pull/4810)
 * Introduces a new parameter `cascade` to support workspace cascade delete. [FTI-4731](https://konghq.atlassian.net/browse/FTI-4731)
+* Plugins can now be scoped to `Consumer Groups`. [KAG-666](https://konghq.atlassian.net/browse/KAG-666)
 
 ### Fixes
 
