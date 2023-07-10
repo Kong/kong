@@ -34,7 +34,7 @@ function get_current_version() {
     fi
 }
 
-export OLD_KONG_VERSION=2.8.2.3
+export OLD_KONG_VERSION=next/2.8.x.x
 export OLD_KONG_IMAGE=kong/kong-gateway:2.8-ubuntu
 export NEW_KONG_IMAGE=kong/kong-gateway:$(get_current_version kong)
 
