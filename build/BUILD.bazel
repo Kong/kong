@@ -58,7 +58,7 @@ wasmx_deps = select({
     "//conditions:default": [],
 }) + wasmx_vm_deps
 
-wasm_libs_cmd = select({
+wasm_libs_install = select({
     "@kong//:wasmx_flag": """
     for fname in $(locations @ngx_wasm_module//:lua_libs); do
         base=${fname##*/ngx_wasm_module/lib/}
@@ -97,10 +97,10 @@ wasmx_vm_cmd = select({
 kong_directory_genrule(
     name = "kong",
     srcs = [
-        "@openresty//:openresty",
-        "@openresty//:luajit",
         "@luarocks//:luarocks_make",
         "@luarocks//:luarocks_target",
+        "@openresty",
+        "@openresty//:luajit",
         "@protoc//:all_srcs",
     ] + lib_deps + lualib_deps + wasmx_deps,
     cmd =
@@ -149,7 +149,7 @@ kong_directory_genrule(
 
         cp -r $(locations @protoc//:all_srcs) ${BUILD_DESTDIR}/kong/.
 
-    """ + install_lib_deps_cmd + install_lualib_deps_cmd + wasm_libs_cmd + wasmx_vm_cmd +
+    """ + install_lib_deps_cmd + install_lualib_deps_cmd + wasm_libs_install + wasmx_vm_cmd +
         """
         mkdir -p ${BUILD_DESTDIR}/etc/kong
         cp kong.conf.default ${BUILD_DESTDIR}/etc/kong/kong.conf.default
