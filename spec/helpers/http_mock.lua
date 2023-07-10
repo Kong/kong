@@ -46,8 +46,10 @@ local function default_field(tbl, key, default)
 end
 
 --- create a mock instance which represents a HTTP mocking server
--- @tparam[opt] table|string|number listens the listen directive of the mock server, defaults to a random available port
--- @tparam[opt] table|string routes the code of the mock server, defaults to a simple response.
+-- @tparam[opt] table|string|number listens the listen directive of the mock server. This can be
+-- a single directive (string), or a list of directives (table), or a number which will be used as the port.
+-- Defaults to a random available port
+-- @tparam[opt] table|string routes the code of the mock server, defaults to a simple response. See Examples.
 -- @tparam[opt={}] table opts options for the mock server, supporting fields:
 -- @tparam[opt="servroot_tapping"] string opts.prefix the prefix of the mock server
 -- @tparam[opt="_"] string opts.hostname the hostname of the mock server
@@ -89,15 +91,8 @@ end
 -- client:send({})
 -- local logs = mock:retrieve_mocking_logs() -- get all the logs of HTTP sessions
 -- mock:stop()
---
--- listens can be a number, which will be used as the port of the mock server;
--- or a string, which will be used as the param of listen directive of the mock server;
--- or a table represents multiple listen ports.
--- if the port is not specified, a random port will be used.
--- call mock:get_default_port() to get the first port the mock server listens to.
--- if the port is a number and opts.tls is set to ture, ssl will be appended.
---
--- routes can be a table like this:
+-- @usage
+-- -- routes can be a table like this:
 -- routes = {
 --   ["/"] = {
 --     access = [[
@@ -112,7 +107,15 @@ end
 --     },
 --   },
 -- }
--- or a string, which will be used as the access phase handler.
+--
+-- -- or single a string, which will be used as the access phase handler.
+-- routes = [[ ngx.print("hello world") ]]
+-- -- which is equivalent to:
+-- routes = {
+--   ["/"] = {
+--     access = [[ ngx.print("hello world") ]],
+--   },
+-- }
 function http_mock.new(listens, routes, opts)
   opts = opts or {}
 
