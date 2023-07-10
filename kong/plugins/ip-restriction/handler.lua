@@ -31,9 +31,12 @@ end
 
 
 local function do_exit(status, message)
-    log.warn(message)
+  status = status or 403
+  message = message or string.format("IP address not allowed: %s", ngx_var.remote_addr)
 
-    return kong.response.error(status, message)
+  log.warn(message)
+
+  return kong.response.error(status, message)
 end
 
 
@@ -60,15 +63,6 @@ local function match_bin(list, binary_remote_addr)
 end
 
 
-local function not_allowed(message)
-  if message then
-    return message
-  end
-
-  return string.format("IP address not allowed: %s", ngx_var.remote_addr)
-end
-
-
 local function do_restrict(conf)
   local binary_remote_addr = ngx_var.binary_remote_addr
   if not binary_remote_addr then
@@ -77,19 +71,20 @@ local function do_restrict(conf)
 
   local deny = conf.deny
   local allow = conf.allow
-  local status = conf.status or 403
+  local status = conf.status
+  local message = conf.message
 
   if not isempty(deny) then
     local blocked = match_bin(deny, binary_remote_addr)
     if blocked then
-      return do_exit(status, not_allowed(conf.message))
+      return do_exit(status, message)
     end
   end
 
   if not isempty(allow) then
     local allowed = match_bin(allow, binary_remote_addr)
     if not allowed then
-      return do_exit(status, not_allowed(conf.message))
+      return do_exit(status, message)
     end
   end
 end
