@@ -185,7 +185,7 @@ CONFIGURE_OPTIONS = [
     "@kong//:debug_flag": [
         "--with-debug",
         "--with-no-pool-patch",
-        "--with-cc-opt=\"-DNGX_LUA_USE_ASSERT -DNGX_LUA_ABORT_AT_PANIC\"",
+        "--with-cc-opt=\"-DNGX_LUA_USE_ASSERT -DNGX_LUA_ABORT_AT_PANIC -g -O0\"",
     ],
     "//conditions:default": [],
 }) + select({
