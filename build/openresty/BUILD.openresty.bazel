@@ -186,14 +186,12 @@ CONFIGURE_OPTIONS = [
         "--with-debug",
         "--with-no-pool-patch",
         "--with-cc-opt=\"-DNGX_LUA_USE_ASSERT -DNGX_LUA_ABORT_AT_PANIC -g -O0\"",
-
     ],
     "//conditions:default": [],
 }) + select({
     "@kong//:fips_flag": [
         "--with-cc-opt=\"-I$$EXT_BUILD_DEPS$$/include\"",
         "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/lib -Wl,-Bsymbolic-functions -Wl,-z,relro\"",
-
     ],
     "//conditions:default": [],
 })
