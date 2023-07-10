@@ -101,7 +101,7 @@ local function gen_for_nets(ip_field, port_field, vals)
       local addr, mask = parse_ip_addr(ip)
 
       if not mask then
-        exp_ip = ip_field .. " " ..  OP_EQUAL .. " " ..
+        exp_ip = ip_field .. " " .. OP_EQUAL .. " " ..
                  addr
 
       else
@@ -111,7 +111,7 @@ local function gen_for_nets(ip_field, port_field, vals)
     end
 
     if port then
-      exp_port = port_field .. " " ..  OP_EQUAL .. " " .. port
+      exp_port = port_field .. " " .. OP_EQUAL .. " " .. port
     end
 
     if not ip then
