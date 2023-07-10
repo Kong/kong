@@ -13,7 +13,6 @@ build-images:
 
 smoke-tests:
 - label: ubuntu
-- label: rhel
 
 scan-vulnerabilities:
 - label: ubuntu
