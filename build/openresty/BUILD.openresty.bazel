@@ -193,6 +193,7 @@ CONFIGURE_OPTIONS = [
     "@kong//:fips_flag": [
         "--with-cc-opt=\"-I$$EXT_BUILD_DEPS$$/include\"",
         "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/lib -Wl,-Bsymbolic-functions -Wl,-z,relro\"",
+
     ],
     "//conditions:default": [],
 })
