@@ -16,7 +16,6 @@ local pack = utils.pack
 local unpack = utils.unpack
 local assert = assert
 local pairs = pairs
-local ipairs = ipairs
 local new_tab = base.new_tab
 local time_ns = utils.time_ns
 local tablepool_release = tablepool.release
@@ -293,6 +292,8 @@ function _M.runloop_before_header_filter()
   local root_span = ngx.ctx.KONG_SPANS and ngx.ctx.KONG_SPANS[1]
   if root_span then
     root_span:set_attribute("http.status_code", ngx.status)
+    local r = ngx.ctx.route
+    root_span:set_attribute("http.route", r and r.paths and r.paths[1] or "")
   end
 end
 
@@ -317,7 +318,9 @@ do
     __tostring = function(spans)
       local logs_buf = buffer.new(1024)
 
-      for i, span in ipairs(spans) do
+      for i = 1, #spans do
+        local span = spans[i]
+
         logs_buf:putf("\nSpan #%d name=%s", i, span.name)
 
         if span.end_time_ns then
@@ -350,7 +353,8 @@ function _M.runloop_log_after(ctx)
   if type(ctx.KONG_SPANS) == "table" then
     ngx_log(ngx_DEBUG, _log_prefix, "collected " .. #ctx.KONG_SPANS .. " spans: ", lazy_format_spans(ctx.KONG_SPANS))
 
-    for _, span in ipairs(ctx.KONG_SPANS) do
+    for i = 1, #ctx.KONG_SPANS do
+      local span = ctx.KONG_SPANS[i]
       if type(span) == "table" and type(span.release) == "function" then
         span:release()
       end

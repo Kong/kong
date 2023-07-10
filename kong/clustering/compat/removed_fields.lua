@@ -85,6 +85,10 @@ return {
     zipkin = {
       "queue",
     },
+  },
+
+  -- Any dataplane older than 3.4.0
+  [3004000000] = {
     rate_limiting = {
       "sync_rate",
     },

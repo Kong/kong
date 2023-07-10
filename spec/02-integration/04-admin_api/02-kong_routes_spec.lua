@@ -524,6 +524,24 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       local json = cjson.decode(body)
       assert.equal("schema violation", json.name)
     end)
+    it("returns 200 on a valid plugin schema which contains dot in the key of custom_fields_by_lua", function()
+      local res = assert(client:post("/schemas/plugins/validate", {
+        body = {
+          name = "file-log",
+          config = {
+            path = "tmp/test",
+            custom_fields_by_lua = {
+              new_field = "return 123",
+              ["request.headers.myheader"] = "return nil",
+            },
+          },
+        },
+        headers = {["Content-Type"] = "application/json"}
+      }))
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.equal("schema validation successful", json.message)
+    end)
   end)
 
   describe("/non-existing", function()

@@ -1015,57 +1015,102 @@ local function gen_grpcurl_opts(opts_t)
 end
 
 
---- Creates an HTTP/2 client, based on the lua-http library.
+--- Creates an HTTP/2 client using golang's http2 package.
+--- Sets `KONG_TEST_DEBUG_HTTP2=1` env var to print debug messages.
 -- @function http2_client
 -- @param host hostname to connect to
 -- @param port port to connect to
--- @param tls boolean indicating whether to establish a tls session
--- @return http2 client
 local function http2_client(host, port, tls)
-  local host = assert(host)
   local port = assert(port)
   tls = tls or false
 
-  -- if Kong/lua-pack is loaded, unload it first
-  -- so lua-http can use implementation from compat53.string
-  package.loaded.string.unpack = nil
-  package.loaded.string.pack = nil
-
-  local request = require "http.request"
-  local req = request.new_from_uri({
-    scheme = tls and "https" or "http",
-    host = host,
-    port = port,
-  })
-  req.version = 2
-  req.tls = tls
-
-  if tls then
-    local http_tls = require "http.tls"
-    local openssl_ctx = require "openssl.ssl.context"
-    local n_ctx = http_tls.new_client_context()
-    n_ctx:setVerify(openssl_ctx.VERIFY_NONE)
-    req.ctx = n_ctx
+  -- Note: set `GODEBUG=http2debug=1` is helpful if you are debugging this go program
+  local tool_path = "bin/h2client"
+  local http2_debug
+  -- note: set env var "KONG_TEST_DEBUG_HTTP2" !! the "_TEST" will be dropped
+  if os.getenv("KONG_DEBUG_HTTP2") then
+    http2_debug = true
+    tool_path = "GODEBUG=http2debug=1 bin/h2client"
   end
 
-  local meta = getmetatable(req) or {}
 
-  meta.__call = function(req, opts)
+  local meta = {}
+  meta.__call = function(_, opts)
     local headers = opts and opts.headers
     local timeout = opts and opts.timeout
+    local body = opts and opts.body
+    local path = opts and opts.path or ""
+    local http1 = opts and opts.http_version == "HTTP/1.1"
 
-    for k, v in pairs(headers or {}) do
-      req.headers:upsert(k, v)
+    local url = (tls and "https" or "http") .. "://" .. host .. ":" .. port .. path
+
+    local cmd = string.format("%s -url %s -skip-verify", tool_path, url)
+
+    if headers then
+      local h = {}
+      for k, v in pairs(headers) do
+        table.insert(h, string.format("%s=%s", k, v))
+      end
+      cmd = cmd .. " -headers " .. table.concat(h, ",")
     end
 
-    local headers, stream = req:go(timeout)
-    local body = stream:get_body_as_string()
-    return body, headers
+    if timeout then
+      cmd = cmd .. " -timeout " .. timeout
+    end
+
+    if http1 then
+      cmd = cmd .. " -http1"
+    end
+
+    local body_filename
+    if body then
+      body_filename = pl_path.tmpname()
+      pl_file.write(body_filename, body)
+      cmd = cmd .. " -post < " .. body_filename
+    end
+
+    if http2_debug then
+      print("HTTP/2 cmd:\n" .. cmd)
+    end
+
+    local ok, _, stdout, stderr = pl_utils.executeex(cmd)
+    assert(ok, stderr)
+
+    if body_filename then
+      pl_file.delete(body_filename)
+    end
+
+    if http2_debug then
+      print("HTTP/2 debug:\n")
+      print(stderr)
+    end
+
+    local stdout_decoded = cjson.decode(stdout)
+    if not stdout_decoded then
+      error("Failed to decode h2client output: " .. stdout)
+    end
+
+    local headers = stdout_decoded.headers
+    headers.get = function(_, key)
+      if string.sub(key, 1, 1) == ":" then
+        key = string.sub(key, 2)
+      end
+      return headers[key]
+    end
+    setmetatable(headers, {
+      __index = function(headers, key)
+        for k, v in pairs(headers) do
+          if key:lower() == k:lower() then
+            return v
+          end
+        end
+      end
+    })
+    return stdout_decoded.body, headers
   end
 
-  return setmetatable(req, meta)
+  return setmetatable({}, meta)
 end
-
 
 --- returns a pre-configured cleartext `http2_client` for the Kong proxy port.
 -- @function proxy_client_h2c
@@ -1301,75 +1346,6 @@ local function kill_tcp_server(port)
 end
 
 
---- Starts a local HTTP server.
---
--- **DEPRECATED**: please use `spec.helpers.http_mock` instead. `http_server` has very poor
--- support to anything other then a single shot simple request.
---
--- Accepts a single connection and then closes. Sends a 200 ok, 'Connection:
--- close' response.
--- If the request received has path `/delay` then the response will be delayed
--- by 2 seconds.
--- @function http_server
--- @tparam number port The port the server will be listening on
--- @tparam[opt] table opts options defining the server's behavior with the following fields:
--- @tparam[opt=60] number opts.timeout time (in seconds) after which the server exits
--- @return A thread object (from the `llthreads2` Lua package)
--- @see kill_http_server
-local function http_server(port, opts)
-  print(debug.traceback("[warning] http_server is deprecated, " ..
-                        "use helpers.start_kong's fixture parameter " ..
-                        "or helpers.http_mock instead.", 2))
-  local threads = require "llthreads2.ex"
-  opts = opts or {}
-  if TEST_COVERAGE_MODE == "true" then
-    opts.timeout = TEST_COVERAGE_TIMEOUT
-  end
-  local thread = threads.new({
-    function(port, opts)
-      local socket = require "socket"
-      local server = assert(socket.tcp())
-      server:settimeout(opts.timeout or 60)
-      assert(server:setoption('reuseaddr', true))
-      assert(server:bind("*", port))
-      assert(server:listen())
-      local client = assert(server:accept())
-
-      local content_length
-      local lines = {}
-      local line, err
-      repeat
-        line, err = client:receive("*l")
-        if err then
-          break
-        end
-        table.insert(lines, line)
-        content_length = tonumber(line:lower():match("^content%-length:%s*(%d+)$")) or content_length
-      until line == ""
-
-      if #lines > 0 and lines[1] == "GET /delay HTTP/1.0" then
-        ngx.sleep(2)
-      end
-
-      if err then
-        server:close()
-        error(err)
-      end
-
-      local body, _ = client:receive(content_length or "*a")
-
-      client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
-      client:close()
-      server:close()
-
-      return lines, body
-    end
-  }, port, opts)
-
-  return thread:start()
-end
-
-
 local code_status = {
   [200] = "OK",
   [201] = "Created",
@@ -1550,17 +1526,6 @@ local function http_mock(port, opts)
     server:close()
     return true
   end)
-end
-
-
---- Stops a local HTTP server.
--- A server previously created with `http_server` can be stopped prematurely by
--- calling this function.
--- @function kill_http_server
--- @param port the port the HTTP server is listening on.
--- @see http_server
-local function kill_http_server(port)
-  os.execute("fuser -n tcp -k " .. port)
 end
 
 
@@ -3767,6 +3732,7 @@ local function clustering_client(opts)
                                         plugins = opts.node_plugins_list or
                                                   PLUGINS_LIST,
                                         labels = opts.node_labels,
+                                        process_conf = opts.node_process_conf,
                                       }))
   assert(c:send_binary(payload))
 
@@ -3930,9 +3896,7 @@ end
   tcp_server = tcp_server,
   udp_server = udp_server,
   kill_tcp_server = kill_tcp_server,
-  http_server = http_server,
   http_mock = http_mock,
-  kill_http_server = kill_http_server,
   get_proxy_ip = get_proxy_ip,
   get_proxy_port = get_proxy_port,
   proxy_client = proxy_client,

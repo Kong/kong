@@ -1,9 +1,47 @@
 local helpers = require "spec.helpers"
 local pl_file = require "pl.file"
+local atc_compat = require "kong.router.compat"
 
 
 local TEST_CONF = helpers.test_conf
 
+
+local function reload_router(flavor)
+  _G.kong = {
+    configuration = {
+      router_flavor = flavor,
+    },
+  }
+
+  helpers.setenv("KONG_ROUTER_FLAVOR", flavor)
+
+  package.loaded["spec.helpers"] = nil
+  package.loaded["kong.global"] = nil
+  package.loaded["kong.cache"] = nil
+  package.loaded["kong.db"] = nil
+  package.loaded["kong.db.schema.entities.routes"] = nil
+  package.loaded["kong.db.schema.entities.routes_subschemas"] = nil
+
+  helpers = require "spec.helpers"
+
+  helpers.unsetenv("KONG_ROUTER_FLAVOR")
+end
+
+
+local function gen_route(flavor, r)
+  if flavor ~= "expressions" then
+    return r
+  end
+
+  r.expression = atc_compat.get_expression(r)
+  r.priority = tonumber(atc_compat._get_priority(r))
+
+  r.hosts = nil
+  r.paths = nil
+  r.snis  = nil
+
+  return r
+end
 
 
 local function find_in_file(pat, cnt)
@@ -94,12 +132,15 @@ local function assert_phases(phrases)
   end
 end
 
+for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
 for _, strategy in helpers.each_strategy() do
 
-  describe("gRPC Proxying [#" .. strategy .. "]", function()
+  describe("gRPC Proxying [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
     local grpc_client
     local grpcs_client
     local bp
+
+    reload_router(flavor)
 
     before_each(function()
       bp = helpers.get_db_utils(strategy, {
@@ -120,23 +161,24 @@ for _, strategy in helpers.each_strategy() do
         url = helpers.grpcbin_ssl_url,
       })
 
-      assert(bp.routes:insert {
+      assert(bp.routes:insert(gen_route(flavor, {
         protocols = { "grpc" },
         hosts = { "grpc" },
         service = service1,
-      })
+      })))
 
-      assert(bp.routes:insert {
+      assert(bp.routes:insert(gen_route(flavor, {
         protocols = { "grpcs" },
         hosts = { "grpcs" },
         service = service2,
-      })
+      })))
 
       assert(bp.plugins:insert {
         name = "logger",
       })
 
       assert(helpers.start_kong {
+        router_flavor = flavor,
         database = strategy,
         plugins = "logger",
       })
@@ -209,3 +251,4 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 end
+end   -- flavor

@@ -16,6 +16,8 @@
   [#10926](https://github.com/Kong/kong/pull/10926)
 - :warning: Cassandra as a datastore for Kong is no longer supported
   [#10931](https://github.com/Kong/kong/pull/10931)
+- Ubuntu 18.04 artifacts are no longer supported as it's EOL
+- AmazonLinux 2022 artifacts are renamed to AmazonLinux 2023 according to AWS's decision
 
 #### Core
 
@@ -56,9 +58,9 @@
 - The Prometheus plugin has been optimized to reduce proxy latency impacts during scraping.
   [#10949](https://github.com/Kong/kong/pull/10949)
   [#11040](https://github.com/Kong/kong/pull/11040)
+  [#11065](https://github.com/Kong/kong/pull/11065)
 
 ### Fixes
-
 
 #### Core
 
@@ -67,8 +69,24 @@
   [#10896](https://github.com/Kong/kong/pull/10896)
 - Fix a bug when worker consuming dynamic log level setting event and using a wrong reference for notice logging
   [#10897](https://github.com/Kong/kong/pull/10897)
+- Added a `User=` specification to the systemd unit definition so that
+  Kong can be controlled by systemd again.
+  [#11066](https://github.com/Kong/kong/pull/11066)
+- Fix a bug that caused sampling rate to be applied to individual spans producing split traces.
+  [#11135](https://github.com/Kong/kong/pull/11135)
+- Fix a bug that caused the router to fail in `traditional_compatible` mode when a route with multiple paths and no service was created.
+  [#11158](https://github.com/Kong/kong/pull/11158)
+- Fix an issue where the router of flavor `expressions` can not work correctly
+  when `route.protocols` is set to `grpc` or `grpcs`.
+  [#11082](https://github.com/Kong/kong/pull/11082)
+- Fix an issue where the router of flavor `expressions` can not configure https redirection.
+  [#11166](https://github.com/Kong/kong/pull/11166)
 
 #### Admin API
+
+- Fix an issue where `/schemas/plugins/validate` endpoint fails to validate valid plugin configuration
+  when the key of `custom_fields_by_lua` contains dot character(s).
+  [#11091](https://github.com/Kong/kong/pull/11091)
 
 #### Plugins
 
@@ -90,6 +108,8 @@
 
 #### Core
 
+- Tracing: new attribute `http.route` added to http request spans.
+  [#10981](https://github.com/Kong/kong/pull/10981)
 - The default value of `lmdb_map_size` config has been bumped to `2048m`
   from `128m` to accommodate most commonly deployed config sizes in DB-less
   and Hybrid mode.
@@ -97,6 +117,8 @@
 - The default value of `cluster_max_payload` config has been bumped to `16m`
   from `4m` to accommodate most commonly deployed config sizes in Hybrid mode.
   [#11090](https://github.com/Kong/kong/pull/11090)
+- Remove kong branding from kong HTML error template.
+  [#11150](https://github.com/Kong/kong/pull/11150)
 
 #### Status API
 
@@ -120,6 +142,13 @@
   [#11083](https://github.com/Kong/kong/pull/11083)
 - Bumped lua-resty-session from 4.0.3 to 4.0.4
   [#11011](https://github.com/Kong/kong/pull/11011)
+- Bumped OpenSSL from 1.1.1t to 3.1.1
+  [#10180](https://github.com/Kong/kong/pull/10180)
+  [#11140](https://github.com/Kong/kong/pull/11140)
+- Bumped pgmoon from 1.16.0 to 1.16.1 (Kong's fork)
+  [#11181](https://github.com/Kong/kong/pull/11181)
+- Bumped atc-router from 1.0.5 to 1.1.0
+  [#10100](https://github.com/Kong/kong/pull/10100)
 
 ## 3.3.0
 
@@ -127,10 +156,10 @@
 
 #### Core
 
-- The `traditional_compat` router mode has been made more compatible with the
+- The `traditional_compatible` router mode has been made more compatible with the
   behavior of `traditional` mode by splitting routes with multiple paths into
   multiple atc routes with separate priorities.  Since the introduction of the new
-  router in Kong Gateway 3.0, `traditional_compat` mode assigned only one priority
+  router in Kong Gateway 3.0, `traditional_compatible` mode assigned only one priority
   to each route, even if different prefix path lengths and regular expressions
   were mixed in a route. This was not how multiple paths were handled in the
   `traditional` router and the behavior has now been changed so that a separate

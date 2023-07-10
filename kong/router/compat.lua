@@ -7,7 +7,10 @@ local atc = require("kong.router.atc")
 local tb_new = require("table.new")
 local tb_nkeys = require("table.nkeys")
 local uuid = require("resty.jit-uuid")
-local utils = require("kong.tools.utils")
+
+
+local shallow_copy    = require("kong.tools.utils").shallow_copy
+local is_regex_magic  = require("kong.router.utils").is_regex_magic
 
 
 local escape_str      = atc.escape_str
@@ -23,12 +26,6 @@ local assert = assert
 local tb_insert = table.insert
 local byte = string.byte
 local bor, band, lshift = bit.bor, bit.band, bit.lshift
-
-
-local ngx       = ngx
-local ngx_log   = ngx.log
-local ngx_WARN  = ngx.WARN
-local ngx_ERR   = ngx.ERR
 
 
 local DOT              = byte(".")
@@ -51,11 +48,6 @@ local function buffer_append(buf, sep, str, idx)
     buf:put(sep)
   end
   buf:put(str)
-end
-
-
-local function is_regex_magic(path)
-  return byte(path) == TILDE
 end
 
 
@@ -100,7 +92,7 @@ local function get_expression(route)
   if gen then
     -- See #6425, if `net.protocol` is not `https`
     -- then SNI matching should simply not be considered
-    gen = "net.protocol != \"https\"" .. LOGICAL_OR .. gen
+    gen = "(net.protocol != \"https\"" .. LOGICAL_OR .. gen .. ")"
 
     buffer_append(expr_buf, LOGICAL_AND, gen)
   end
@@ -235,7 +227,7 @@ local function get_priority(route)
     match_weight = match_weight + 1
 
     if headers_count > MAX_HEADER_COUNT then
-      ngx_log(ngx_WARN, "too many headers in route ", route.id,
+      ngx.log(ngx.WARN, "too many headers in route ", route.id,
                         " headers count capped at 255 when sorting")
       headers_count = MAX_HEADER_COUNT
     end
@@ -304,8 +296,8 @@ end
 
 local function get_exp_and_priority(route)
   if route.expression then
-    ngx_log(ngx_ERR, "expecting a traditional route while expression is given. ",
-                 "Likely it's a misconfiguration. Please check router_flavor")
+    ngx.log(ngx.ERR, "expecting a traditional route while it's not (probably an expressions route). ",
+                     "Likely it's a misconfiguration. Please check the 'router_flavor' config in kong.conf")
   end
 
   local exp      = get_expression(route)
@@ -341,7 +333,7 @@ local function split_route_by_path_into(route_and_service, routes_and_services_s
   end
 
   -- make sure that route_and_service contains only the two expected entries, route and service
-  assert(tb_nkeys(route_and_service) == 2)
+  assert(tb_nkeys(route_and_service) == 1 or tb_nkeys(route_and_service) == 2)
 
   local grouped_paths = group_by(
     original_route.paths,
@@ -351,7 +343,7 @@ local function split_route_by_path_into(route_and_service, routes_and_services_s
   )
   for index, paths in pairs(grouped_paths) do
     local cloned_route = {
-      route = utils.shallow_copy(original_route),
+      route = shallow_copy(original_route),
       service = route_and_service.service,
     }
 

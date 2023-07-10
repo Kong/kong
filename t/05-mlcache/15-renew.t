@@ -11,7 +11,7 @@ workers(2);
 
 #repeat_each(2);
 
-plan tests => repeat_each() * (blocks() * 3) + 9;
+plan tests => repeat_each() * (blocks() * 3) + 3;
 
 my $pwd = cwd();
 
@@ -19,6 +19,7 @@ our $HttpConfig = qq{
     lua_package_path "$pwd/lib/?.lua;;";
     lua_shared_dict  cache_shm      1m;
     lua_shared_dict  cache_shm_miss 1m;
+    lua_shared_dict  ipc_shm        1m;
 
     init_by_lua_block {
         -- local verbose = true
@@ -44,20 +45,44 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: get() validates key
+=== TEST 1: renew() errors if no ipc
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache, err = mlcache.new("my_mlcache", "cache_shm")
+            local cache = assert(mlcache.new("my_mlcache", "cache_shm"))
+
+            local ok, err = pcall(cache.renew, cache)
+            ngx.say(err)
+        }
+    }
+--- request
+GET /t
+--- response_body
+no ipc to propagate renew, specify opts.ipc_shm or opts.ipc
+--- no_error_log
+[error]
+
+
+
+=== TEST 2: renew() validates key
+--- http_config eval: $::HttpConfig
+--- config
+    location = /t {
+        content_by_lua_block {
+            local mlcache = require "kong.resty.mlcache"
+
+            local cache, err = mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            })
             if not cache then
                 ngx.log(ngx.ERR, err)
                 return
             end
 
-            local ok, err = pcall(cache.get, cache)
+            local ok, err = pcall(cache.renew, cache)
             if not ok then
                 ngx.say(err)
             end
@@ -72,25 +97,22 @@ key must be a string
 
 
 
-=== TEST 2: get() accepts callback as nil or function
+=== TEST 3: renew() accepts callback as function
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache, err = mlcache.new("my_mlcache", "cache_shm")
+            local cache, err = mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            })
             if not cache then
                 ngx.log(ngx.ERR, err)
                 return
             end
 
-            local ok, err = pcall(cache.get, cache, "key", nil, nil)
-            if not ok then
-                ngx.say(err)
-            end
-
-            local ok, err = pcall(cache.get, cache, "key", nil, function() end)
+            local ok, err = pcall(cache.renew, cache, "key", nil, function() end)
             if not ok then
                 ngx.say(err)
             end
@@ -105,25 +127,27 @@ GET /t
 
 
 
-=== TEST 3: get() rejects callbacks not nil or function
+=== TEST 4: renew() rejects callbacks not nil or function
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache, err = mlcache.new("my_mlcache", "cache_shm")
+            local cache, err = mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            })
             if not cache then
                 ngx.log(ngx.ERR, err)
                 return
             end
 
-            local ok, err = pcall(cache.get, cache, "key", nil, "not a function")
+            local ok, err = pcall(cache.renew, cache, "key", nil, "not a function")
             if not ok then
                 ngx.say(err)
             end
 
-            local ok, err = pcall(cache.get, cache, "key", nil, false)
+            local ok, err = pcall(cache.renew, cache, "key", nil, false)
             if not ok then
                 ngx.say(err)
             end
@@ -132,27 +156,29 @@ GET /t
 --- request
 GET /t
 --- response_body
-callback must be nil or a function
-callback must be nil or a function
+callback must be a function
+callback must be a function
 --- no_error_log
 [error]
 
 
 
-=== TEST 4: get() validates opts
+=== TEST 5: renew() validates opts
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache, err = mlcache.new("my_mlcache", "cache_shm")
+            local cache, err = mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            })
             if not cache then
                 ngx.log(ngx.ERR, err)
                 return
             end
 
-            local ok, err = pcall(cache.get, cache, "key", "opts")
+            local ok, err = pcall(cache.renew, cache, "key", "opts")
             if not ok then
                 ngx.say(err)
             end
@@ -167,14 +193,16 @@ opts must be a table
 
 
 
-=== TEST 5: get() calls callback in protected mode with stack traceback
+=== TEST 6: renew() calls callback in protected mode with stack traceback
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache, err = mlcache.new("my_mlcache", "cache_shm")
+            local cache, err = mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            })
             if not cache then
                 ngx.log(ngx.ERR, err)
                 return
@@ -184,7 +212,7 @@ opts must be a table
                 error("oops")
             end
 
-            local data, err = cache:get("key", nil, cb)
+            local data, err = cache:renew("key", nil, cb)
             if err then
                 ngx.say(err)
             end
@@ -202,25 +230,27 @@ stack traceback:
 
 
 
-=== TEST 6: get() is resilient to callback runtime errors with non-string arguments
+=== TEST 7: renew() is resilient to callback runtime errors with non-string arguments
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache, err = mlcache.new("my_mlcache", "cache_shm")
+            local cache, err = mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            })
             if not cache then
                 ngx.log(ngx.ERR, err)
                 return
             end
 
-            local data, err = cache:get("key", nil, function() error(ngx.null) end)
+            local data, err = cache:renew("key", nil, function() error(ngx.null) end)
             if err then
                 ngx.say(err)
             end
 
-            local data, err = cache:get("key", nil, function() error({}) end)
+            local data, err = cache:renew("key", nil, function() error({}) end)
             if err then
                 ngx.say(err)
             end
@@ -236,14 +266,16 @@ callback threw an error: table: 0x[0-9a-fA-F]+
 
 
 
-=== TEST 7: get() caches a number
+=== TEST 8: renew() caches a number
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache, err = mlcache.new("my_mlcache", "cache_shm")
+            local cache, err = mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            })
             if not cache then
                 ngx.log(ngx.ERR, err)
                 return
@@ -255,7 +287,7 @@ callback threw an error: table: 0x[0-9a-fA-F]+
 
             -- from callback
 
-            local data, err = cache:get("key", nil, cb)
+            local data, err = cache:renew("key", nil, cb)
             if err then
                 ngx.log(ngx.ERR, err)
                 return
@@ -265,7 +297,7 @@ callback threw an error: table: 0x[0-9a-fA-F]+
 
             -- from lru
 
-            local data, err = cache:get("key", nil, cb)
+            local data, err = cache:get("key")
             if err then
                 ngx.log(ngx.ERR, err)
                 return
@@ -277,7 +309,7 @@ callback threw an error: table: 0x[0-9a-fA-F]+
 
             cache.lru:delete("key")
 
-            local data, err = cache:get("key", nil, cb)
+            local data, err = cache:get("key")
             if err then
                 ngx.log(ngx.ERR, err)
                 return
@@ -297,14 +329,16 @@ from shm: number 123
 
 
 
-=== TEST 8: get() caches a boolean (true)
+=== TEST 9: renew() caches a boolean (true)
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache, err = mlcache.new("my_mlcache", "cache_shm")
+            local cache, err = mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            })
             if not cache then
                 ngx.log(ngx.ERR, err)
                 return
@@ -316,7 +350,7 @@ from shm: number 123
 
             -- from callback
 
-            local data, err = cache:get("key", nil, cb)
+            local data, err = cache:renew("key", nil, cb)
             if err then
                 ngx.log(ngx.ERR, err)
                 return
@@ -326,7 +360,7 @@ from shm: number 123
 
             -- from lru
 
-            local data, err = cache:get("key", nil, cb)
+            local data, err = cache:get("key")
             if err then
                 ngx.log(ngx.ERR, err)
                 return
@@ -338,7 +372,7 @@ from shm: number 123
 
             cache.lru:delete("key")
 
-            local data, err = cache:get("key", nil, cb)
+            local data, err = cache:get("key")
             if err then
                 ngx.log(ngx.ERR, err)
                 return
@@ -358,14 +392,16 @@ from shm: boolean true
 
 
 
-=== TEST 9: get() caches a boolean (false)
+=== TEST 10: renew() caches a boolean (false)
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache, err = mlcache.new("my_mlcache", "cache_shm")
+            local cache, err = mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            })
             if not cache then
                 ngx.log(ngx.ERR, err)
                 return
@@ -377,7 +413,7 @@ from shm: boolean true
 
             -- from callback
 
-            local data, err = cache:get("key", nil, cb)
+            local data, err = cache:renew("key", nil, cb)
             if err then
                 ngx.log(ngx.ERR, err)
                 return
@@ -387,7 +423,7 @@ from shm: boolean true
 
             -- from lru
 
-            local data, err = cache:get("key", nil, cb)
+            local data, err = cache:get("key")
             if err then
                 ngx.log(ngx.ERR, err)
                 return
@@ -399,7 +435,7 @@ from shm: boolean true
 
             cache.lru:delete("key")
 
-            local data, err = cache:get("key", nil, cb)
+            local data, err = cache:get("key")
             if err then
                 ngx.log(ngx.ERR, err)
                 return
@@ -419,14 +455,16 @@ from shm: boolean false
 
 
 
-=== TEST 10: get() caches nil
+=== TEST 11: renew() caches nil
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache, err = mlcache.new("my_mlcache", "cache_shm")
+            local cache, err = mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            })
             if not cache then
                 ngx.log(ngx.ERR, err)
                 return
@@ -438,7 +476,7 @@ from shm: boolean false
 
             -- from callback
 
-            local data, err = cache:get("key", nil, cb)
+            local data, err = cache:renew("key", nil, cb)
             if err then
                 ngx.log(ngx.ERR, err)
                 return
@@ -448,7 +486,7 @@ from shm: boolean false
 
             -- from lru
 
-            local data, err = cache:get("key", nil, cb)
+            local data, err = cache:get("key")
             if err then
                 ngx.log(ngx.ERR, err)
                 return
@@ -460,7 +498,7 @@ from shm: boolean false
 
             cache.lru:delete("key")
 
-            local data, err = cache:get("key", nil, cb)
+            local data, err = cache:get("key")
             if err then
                 ngx.log(ngx.ERR, err)
                 return
@@ -480,7 +518,7 @@ from shm: nil nil
 
 
 
-=== TEST 11: get() caches nil in 'shm_miss' if specified
+=== TEST 12: renew() caches nil in 'shm_miss' if specified
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
@@ -490,7 +528,8 @@ from shm: nil nil
             local mlcache = require "kong.resty.mlcache"
 
             local cache, err = mlcache.new("my_mlcache", "cache_shm", {
-                shm_miss = "cache_shm_miss"
+                ipc_shm = "ipc_shm",
+                shm_miss = "cache_shm_miss",
             })
             if not cache then
                 ngx.log(ngx.ERR, err)
@@ -499,7 +538,7 @@ from shm: nil nil
 
             -- from callback
 
-            local data, err = cache:get("key", nil, function() return nil end)
+            local data, err = cache:renew("key", nil, function() return nil end)
             if err then
                 ngx.log(ngx.ERR, err)
                 return
@@ -561,14 +600,16 @@ value in lru is a sentinel nil value: true
 
 
 
-=== TEST 12: get() caches a string
+=== TEST 13: renew() caches a string
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache, err = mlcache.new("my_mlcache", "cache_shm")
+            local cache, err = mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            })
             if not cache then
                 ngx.log(ngx.ERR, err)
                 return
@@ -580,7 +621,7 @@ value in lru is a sentinel nil value: true
 
             -- from callback
 
-            local data, err = cache:get("key", nil, cb)
+            local data, err = cache:renew("key", nil, cb)
             if err then
                 ngx.log(ngx.ERR, err)
                 return
@@ -590,7 +631,7 @@ value in lru is a sentinel nil value: true
 
             -- from lru
 
-            local data, err = cache:get("key", nil, cb)
+            local data, err = cache:get("key")
             if err then
                 ngx.log(ngx.ERR, err)
                 return
@@ -602,7 +643,7 @@ value in lru is a sentinel nil value: true
 
             cache.lru:delete("key")
 
-            local data, err = cache:get("key", nil, cb)
+            local data, err = cache:get("key")
             if err then
                 ngx.log(ngx.ERR, err)
                 return
@@ -622,7 +663,7 @@ from shm: string hello world
 
 
 
-=== TEST 13: get() caches a table
+=== TEST 14: renew() caches a table
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
@@ -630,7 +671,9 @@ from shm: string hello world
             local cjson = require "cjson"
             local mlcache = require "kong.resty.mlcache"
 
-            local cache, err = mlcache.new("my_mlcache", "cache_shm")
+            local cache, err = mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            })
             if not cache then
                 ngx.log(ngx.ERR, err)
                 return
@@ -645,7 +688,7 @@ from shm: string hello world
 
             -- from callback
 
-            local data, err = cache:get("key", nil, cb)
+            local data, err = cache:renew("key", nil, cb)
             if err then
                 ngx.log(ngx.ERR, err)
                 return
@@ -655,7 +698,7 @@ from shm: string hello world
 
             -- from lru
 
-            local data, err = cache:get("key", nil, cb)
+            local data, err = cache:get("key")
             if err then
                 ngx.log(ngx.ERR, err)
                 return
@@ -667,7 +710,7 @@ from shm: string hello world
 
             cache.lru:delete("key")
 
-            local data, err = cache:get("key", nil, cb)
+            local data, err = cache:get("key")
             if err then
                 ngx.log(ngx.ERR, err)
                 return
@@ -687,7 +730,7 @@ from shm: table world bar
 
 
 
-=== TEST 14: get() errors when caching an unsupported type
+=== TEST 15: renew() errors when caching an unsupported type
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
@@ -695,7 +738,9 @@ from shm: table world bar
             local cjson = require "cjson"
             local mlcache = require "kong.resty.mlcache"
 
-            local cache, err = mlcache.new("my_mlcache", "cache_shm")
+            local cache, err = mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            })
             if not cache then
                 ngx.log(ngx.ERR, err)
                 return
@@ -705,7 +750,7 @@ from shm: table world bar
                 return ngx.null
             end
 
-            local data, err = cache:get("key", nil, cb)
+            local data, err = cache:renew("key", nil, cb)
             if err then
                 ngx.log(ngx.ERR, err)
                 return
@@ -720,14 +765,16 @@ qr/\[error\] .*?init\.lua:\d+: cannot cache value of type userdata/
 
 
 
-=== TEST 15: get() calls callback with args
+=== TEST 16: renew() calls callback with args
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache, err = mlcache.new("my_mlcache", "cache_shm")
+            local cache, err = mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            })
             if not cache then
                 ngx.log(ngx.ERR, err)
                 return
@@ -737,7 +784,7 @@ qr/\[error\] .*?init\.lua:\d+: cannot cache value of type userdata/
                 return a + b
             end
 
-            local data, err = cache:get("key", nil, cb, 1, 2)
+            local data, err = cache:renew("key", nil, cb, 1, 2)
             if err then
                 ngx.log(ngx.ERR, err)
                 return
@@ -755,21 +802,24 @@ GET /t
 
 
 
-=== TEST 16: get() caches hit for 'ttl' from LRU (in ms)
+=== TEST 17: renew() caches hit for 'ttl' from LRU (in ms)
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache = assert(mlcache.new("my_mlcache", "cache_shm", { ttl = 0.3 }))
+            local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+                ttl = 0.3,
+            }))
 
             local function cb()
                 ngx.say("in callback")
                 return 123
             end
 
-            local data = assert(cache:get("key", nil, cb))
+            local data = assert(cache:renew("key", nil, cb))
             assert(data == 123)
 
             ngx.sleep(0.2)
@@ -793,7 +843,7 @@ in callback
 
 
 
-=== TEST 17: get() caches miss (nil) for 'neg_ttl' from LRU (in ms)
+=== TEST 18: renew() caches miss (nil) for 'neg_ttl' from LRU (in ms)
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
@@ -801,6 +851,7 @@ in callback
             local mlcache = require "kong.resty.mlcache"
 
             local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
                 ttl     = 10,
                 neg_ttl = 0.3
             }))
@@ -810,7 +861,7 @@ in callback
                 return nil
             end
 
-            local data, err = cache:get("key", nil, cb)
+            local data, err = cache:renew("key", nil, cb)
             assert(err == nil, err)
             assert(data == nil)
 
@@ -837,21 +888,24 @@ in callback
 
 
 
-=== TEST 18: get() caches for 'opts.ttl' from LRU (in ms)
+=== TEST 19: renew() caches for 'opts.ttl' from LRU (in ms)
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache = assert(mlcache.new("my_mlcache", "cache_shm", { ttl = 10 }))
+            local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+                ttl = 10,
+            }))
 
             local function cb()
                 ngx.say("in callback")
                 return 123
             end
 
-            local data = assert(cache:get("key", { ttl = 0.3 }, cb))
+            local data = assert(cache:renew("key", { ttl = 0.3 }, cb))
             assert(data == 123)
 
             ngx.sleep(0.2)
@@ -875,21 +929,24 @@ in callback
 
 
 
-=== TEST 19: get() caches for 'opts.neg_ttl' from LRU (in ms)
+=== TEST 20: renew() caches for 'opts.neg_ttl' from LRU (in ms)
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache = assert(mlcache.new("my_mlcache", "cache_shm", { neg_ttl = 2 }))
+            local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+                neg_ttl = 2,
+            }))
 
             local function cb()
                 ngx.say("in callback")
                 return nil
             end
 
-            local data, err = cache:get("key", { neg_ttl = 0.3 }, cb)
+            local data, err = cache:renew("key", { neg_ttl = 0.3 }, cb)
             assert(err == nil, err)
             assert(data == nil)
 
@@ -916,21 +973,24 @@ in callback
 
 
 
-=== TEST 20: get() with ttl of 0 means indefinite caching
+=== TEST 21: renew() with ttl of 0 means indefinite caching
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache = assert(mlcache.new("my_mlcache", "cache_shm", { ttl = 0.3 }))
+            local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+                ttl = 0.3,
+            }))
 
             local function cb()
                 ngx.say("in callback")
                 return 123
             end
 
-            local data = assert(cache:get("key", { ttl = 0 }, cb))
+            local data = assert(cache:renew("key", { ttl = 0 }, cb))
             assert(data == 123)
 
             ngx.sleep(0.4)
@@ -947,7 +1007,7 @@ in callback
             cache.lru:delete("key")
 
             -- still in shm
-            data = assert(cache:get("key", nil, cb))
+            data = assert(cache:get("key"))
 
             ngx.say("in shm after exp: ", data)
         }
@@ -963,21 +1023,24 @@ in shm after exp: 123
 
 
 
-=== TEST 21: get() with neg_ttl of 0 means indefinite caching for nil values
+=== TEST 22: renew() with neg_ttl of 0 means indefinite caching for nil values
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache, err = assert(mlcache.new("my_mlcache", "cache_shm", { ttl = 0.3 }))
+            local cache, err = assert(mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+                ttl = 0.3,
+            }))
 
             local function cb()
                 ngx.say("in callback")
                 return nil
             end
 
-            local data, err = cache:get("key", { neg_ttl = 0 }, cb)
+            local data, err = cache:renew("key", { neg_ttl = 0 }, cb)
             assert(err == nil, err)
             assert(data == nil)
 
@@ -995,7 +1058,7 @@ in shm after exp: 123
             cache.lru:delete("key")
 
             -- still in shm
-            data, err = cache:get("key", nil, cb)
+            data, err = cache:get("key")
             assert(err == nil, err)
 
             ngx.say("in shm after exp: ", tostring(data))
@@ -1012,14 +1075,16 @@ in shm after exp: nil
 
 
 
-=== TEST 22: get() errors when ttl < 0
+=== TEST 23: renew() errors when ttl < 0
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache, err = mlcache.new("my_mlcache", "cache_shm")
+            local cache, err = mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            })
             if not cache then
                 ngx.log(ngx.ERR, err)
                 return
@@ -1030,7 +1095,7 @@ in shm after exp: nil
                 return 123
             end
 
-            local ok, err = pcall(cache.get, cache, "key", { ttl = -1 }, cb)
+            local ok, err = pcall(cache.renew, cache, "key", { ttl = -1 }, cb)
             if not ok then
                 ngx.say(err)
             end
@@ -1045,14 +1110,16 @@ opts.ttl must be >= 0
 
 
 
-=== TEST 23: get() errors when neg_ttl < 0
+=== TEST 24: renew() errors when neg_ttl < 0
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache, err = mlcache.new("my_mlcache", "cache_shm")
+            local cache, err = mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            })
             if not cache then
                 ngx.log(ngx.ERR, err)
                 return
@@ -1063,7 +1130,7 @@ opts.ttl must be >= 0
                 return 123
             end
 
-            local ok, err = pcall(cache.get, cache, "key", { neg_ttl = -1 }, cb)
+            local ok, err = pcall(cache.renew, cache, "key", { neg_ttl = -1 }, cb)
             if not ok then
                 ngx.say(err)
             end
@@ -1078,20 +1145,22 @@ opts.neg_ttl must be >= 0
 
 
 
-=== TEST 24: get() shm -> LRU caches for 'opts.ttl - since' in ms
+=== TEST 25: renew() shm -> LRU caches for 'opts.ttl - since' in ms
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache = assert(mlcache.new("my_mlcache", "cache_shm"))
+            local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            }))
 
             local function cb()
                 return 123
             end
 
-            local data = assert(cache:get("key", { ttl = 0.5 }, cb))
+            local data = assert(cache:renew("key", { ttl = 0.5 }, cb))
             assert(data == 123)
 
             ngx.sleep(0.2)
@@ -1100,7 +1169,7 @@ opts.neg_ttl must be >= 0
             cache.lru:delete("key")
 
             -- from shm, setting LRU with smaller ttl
-            data, err = assert(cache:get("key", nil, cb))
+            data, err = assert(cache:get("key"))
             assert(data == 123)
 
             ngx.sleep(0.2)
@@ -1136,20 +1205,22 @@ is stale in LRU: 123
 
 
 
-=== TEST 25: get() shm -> LRU caches non-nil for 'indefinite' if ttl is 0
+=== TEST 26: renew() shm -> LRU caches non-nil for 'indefinite' if ttl is 0
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache = assert(mlcache.new("my_mlcache", "cache_shm"))
+            local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            }))
 
             local function cb()
                 return 123
             end
 
-            local data = assert(cache:get("key", { ttl = 0 }, cb))
+            local data = assert(cache:renew("key", { ttl = 0 }, cb))
             assert(data == 123)
 
             ngx.sleep(0.2)
@@ -1158,7 +1229,7 @@ is stale in LRU: 123
             cache.lru:delete("key")
 
             -- from shm, setting LRU with indefinite ttl too
-            data, err = assert(cache:get("key", nil, cb))
+            data, err = assert(cache:get("key"))
             assert(data == 123)
 
             -- still in LRU
@@ -1180,20 +1251,22 @@ is not expired in LRU: 123
 
 
 
-=== TEST 26: get() shm -> LRU caches for 'opts.neg_ttl - since' in ms
+=== TEST 27: renew() shm -> LRU caches for 'opts.neg_ttl - since' in ms
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache = assert(mlcache.new("my_mlcache", "cache_shm"))
+            local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            }))
 
             local function cb()
                 return nil
             end
 
-            local data, err = cache:get("key", { neg_ttl = 0.5 }, cb)
+            local data, err = cache:renew("key", { neg_ttl = 0.5 }, cb)
             assert(err == nil, err)
             assert(data == nil)
 
@@ -1203,7 +1276,7 @@ is not expired in LRU: 123
             cache.lru:delete("key")
 
             -- from shm, setting LRU with smaller ttl
-            data, err = cache:get("key", nil, cb)
+            data, err = cache:get("key")
             assert(err == nil, err)
             assert(data == nil)
 
@@ -1240,20 +1313,22 @@ is stale in LRU: table: \S+
 
 
 
-=== TEST 27: get() shm -> LRU caches nil for 'indefinite' if neg_ttl is 0
+=== TEST 28: renew() shm -> LRU caches nil for 'indefinite' if neg_ttl is 0
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache = assert(mlcache.new("my_mlcache", "cache_shm"))
+            local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            }))
 
             local function cb()
                 return nil
             end
 
-            local data, err =cache:get("key", { neg_ttl = 0 }, cb)
+            local data, err = cache:renew("key", { neg_ttl = 0 }, cb)
             assert(err == nil)
             assert(data == nil)
 
@@ -1263,7 +1338,7 @@ is stale in LRU: table: \S+
             cache.lru:delete("key")
 
             -- from shm, setting LRU with indefinite ttl too
-            data, err = cache:get("key", nil, cb)
+            data, err = cache:get("key")
             assert(err == nil)
             assert(data == nil)
 
@@ -1283,37 +1358,39 @@ is stale in LRU: nil
 
 
 
-=== TEST 28: get() returns hit level
+=== TEST 29: renew() returns ttl
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache = assert(mlcache.new("my_mlcache", "cache_shm"))
+            local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            }))
 
             local function cb()
                 return 123
             end
 
-            local _, _, hit_lvl = assert(cache:get("key", nil, cb))
-            ngx.say("hit level from callback: ", hit_lvl)
+            local _, _, ttl = assert(cache:renew("key", nil, cb))
+            ngx.say("ttl from callback: ", ttl)
 
-            _, _, hit_lvl = assert(cache:get("key", nil, cb))
+            _, _, hit_lvl = assert(cache:get("key"))
             ngx.say("hit level from LRU: ", hit_lvl)
 
             -- delete from LRU
 
             cache.lru:delete("key")
 
-            _, _, hit_lvl = assert(cache:get("key", nil, cb))
+            _, _, hit_lvl = assert(cache:get("key"))
             ngx.say("hit level from shm: ", hit_lvl)
         }
     }
 --- request
 GET /t
 --- response_body
-hit level from callback: 3
+ttl from callback: 30
 hit level from LRU: 1
 hit level from shm: 2
 --- no_error_log
@@ -1321,37 +1398,79 @@ hit level from shm: 2
 
 
 
-=== TEST 29: get() returns hit level for nil hits
+=== TEST 30: renew() returns infinite ttl as zero
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache = assert(mlcache.new("my_mlcache", "cache_shm"))
+            local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            }))
+
+            local function cb()
+                return 123
+            end
+
+            local _, _, ttl = assert(cache:renew("key", { ttl = 0 }, cb))
+            ngx.say("ttl from callback: ", ttl)
+
+            _, _, hit_lvl = assert(cache:get("key"))
+            ngx.say("hit level from LRU: ", hit_lvl)
+
+            -- delete from LRU
+
+            cache.lru:delete("key")
+
+            _, _, hit_lvl = assert(cache:get("key"))
+            ngx.say("hit level from shm: ", hit_lvl)
+        }
+    }
+--- request
+GET /t
+--- response_body
+ttl from callback: 0
+hit level from LRU: 1
+hit level from shm: 2
+--- no_error_log
+[error]
+
+
+
+=== TEST 31: renew() returns ttl for nil hits
+--- http_config eval: $::HttpConfig
+--- config
+    location = /t {
+        content_by_lua_block {
+            local mlcache = require "kong.resty.mlcache"
+
+            local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            }))
 
             local function cb()
                 return nil
             end
 
-            local _, _, hit_lvl = cache:get("key", nil, cb)
-            ngx.say("hit level from callback: ", hit_lvl)
+            local _, _, ttl = cache:renew("key", nil, cb)
+            ngx.say("ttl from callback: ", ttl)
 
-            _, _, hit_lvl = cache:get("key", nil, cb)
+            _, _, hit_lvl = cache:get("key")
             ngx.say("hit level from LRU: ", hit_lvl)
 
             -- delete from LRU
 
             cache.lru:delete("key")
 
-            _, _, hit_lvl = cache:get("key", nil, cb)
+            _, _, hit_lvl = cache:get("key")
             ngx.say("hit level from shm: ", hit_lvl)
         }
     }
 --- request
 GET /t
 --- response_body
-hit level from callback: 3
+ttl from callback: 5
 hit level from LRU: 1
 hit level from shm: 2
 --- no_error_log
@@ -1359,37 +1478,79 @@ hit level from shm: 2
 
 
 
-=== TEST 30: get() returns hit level for boolean false hits
+=== TEST 32: renew() returns infinite ttl as zero for nil hits
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache = assert(mlcache.new("my_mlcache", "cache_shm"))
+            local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            }))
+
+            local function cb()
+                return nil
+            end
+
+            local _, _, ttl = cache:renew("key", { neg_ttl = 0 }, cb)
+            ngx.say("ttl from callback: ", ttl)
+
+            _, _, hit_lvl = cache:get("key")
+            ngx.say("hit level from LRU: ", hit_lvl)
+
+            -- delete from LRU
+
+            cache.lru:delete("key")
+
+            _, _, hit_lvl = cache:get("key")
+            ngx.say("hit level from shm: ", hit_lvl)
+        }
+    }
+--- request
+GET /t
+--- response_body
+ttl from callback: 0
+hit level from LRU: 1
+hit level from shm: 2
+--- no_error_log
+[error]
+
+
+
+=== TEST 33: renew() returns ttl for boolean false hits
+--- http_config eval: $::HttpConfig
+--- config
+    location = /t {
+        content_by_lua_block {
+            local mlcache = require "kong.resty.mlcache"
+
+            local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            }))
 
             local function cb()
                 return false
             end
 
-            local _, _, hit_lvl = cache:get("key", nil, cb)
-            ngx.say("hit level from callback: ", hit_lvl)
+            local _, _, ttl = cache:renew("key", nil, cb)
+            ngx.say("ttl from callback: ", ttl)
 
-            _, _, hit_lvl = cache:get("key", nil, cb)
+            _, _, hit_lvl = cache:get("key")
             ngx.say("hit level from LRU: ", hit_lvl)
 
             -- delete from LRU
 
             cache.lru:delete("key")
 
-            _, _, hit_lvl = cache:get("key", nil, cb)
+            _, _, hit_lvl = cache:get("key")
             ngx.say("hit level from shm: ", hit_lvl)
         }
     }
 --- request
 GET /t
 --- response_body
-hit level from callback: 3
+ttl from callback: 30
 hit level from LRU: 1
 hit level from shm: 2
 --- no_error_log
@@ -1397,212 +1558,22 @@ hit level from shm: 2
 
 
 
-=== TEST 31: get() JITs when hit coming from LRU
+=== TEST 34: renew() callback can return nil + err (string)
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache = assert(mlcache.new("my_mlcache", "cache_shm"))
-
-            local function cb()
-                return 123456
-            end
-
-            for i = 1, 10e3 do
-                local data = assert(cache:get("key", nil, cb))
-                assert(data == 123456)
-            end
-        }
-    }
---- request
-GET /t
---- response_body
-
---- error_log eval
-qr/\[TRACE\s+\d+ content_by_lua\(nginx\.conf:\d+\):10 loop\]/
---- no_error_log
-[error]
-
-
-
-=== TEST 32: get() JITs when hit of scalar value coming from shm
---- http_config eval: $::HttpConfig
---- config
-    location = /t {
-        content_by_lua_block {
-            local mlcache = require "kong.resty.mlcache"
-
-            local cache = assert(mlcache.new("my_mlcache", "cache_shm"))
-
-            local function cb_number()
-                return 123456
-            end
-
-            local function cb_string()
-                return "hello"
-            end
-
-            local function cb_bool()
-                return false
-            end
-
-            for i = 1, 10e2 do
-                local data, err, hit_lvl = assert(cache:get("number", nil, cb_number))
-                assert(err == nil)
-                assert(data == 123456)
-                assert(hit_lvl == (i == 1 and 3 or 2))
-
-                cache.lru:delete("number")
-            end
-
-            for i = 1, 10e2 do
-                local data, err, hit_lvl = assert(cache:get("string", nil, cb_string))
-                assert(err == nil)
-                assert(data == "hello")
-                assert(hit_lvl == (i == 1 and 3 or 2))
-
-                cache.lru:delete("string")
-            end
-
-            for i = 1, 10e2 do
-                local data, err, hit_lvl = cache:get("bool", nil, cb_bool)
-                assert(err == nil)
-                assert(data == false)
-                assert(hit_lvl == (i == 1 and 3 or 2))
-
-                cache.lru:delete("bool")
-            end
-        }
-    }
---- request
-GET /t
---- response_body
-
---- error_log eval
-[
-    qr/\[TRACE\s+\d+ content_by_lua\(nginx\.conf:\d+\):18 loop\]/,
-    qr/\[TRACE\s+\d+ content_by_lua\(nginx\.conf:\d+\):27 loop\]/,
-    qr/\[TRACE\s+\d+ content_by_lua\(nginx\.conf:\d+\):36 loop\]/,
-]
---- no_error_log
-[error]
-
-
-
-=== TEST 33: get() JITs when hit of table value coming from shm
---- SKIP: blocked until l2_serializer
---- http_config eval: $::HttpConfig
---- config
-    location = /t {
-        content_by_lua_block {
-            local mlcache = require "kong.resty.mlcache"
-
-            local cache = assert(mlcache.new("my_mlcache", "cache_shm"))
-
-            local function cb_table()
-                return { hello = "world" }
-            end
-
-            for i = 1, 10e2 do
-                local data = assert(cache:get("table", nil, cb_table))
-                assert(type(data) == "table")
-                assert(data.hello == "world")
-
-                cache.lru:delete("table")
-            end
-        }
-    }
---- request
-GET /t
---- response_body
-
---- error_log eval
-qr/\[TRACE\s+\d+ content_by_lua\(nginx\.conf:\d+\):18 loop\]/
---- no_error_log
-[error]
-
-
-
-=== TEST 34: get() JITs when miss coming from LRU
---- http_config eval: $::HttpConfig
---- config
-    location = /t {
-        content_by_lua_block {
-            local mlcache = require "kong.resty.mlcache"
-
-            local cache = assert(mlcache.new("my_mlcache", "cache_shm"))
-
-            local function cb()
-                return nil
-            end
-
-            for i = 1, 10e3 do
-                local data, err = cache:get("key", nil, cb)
-                assert(err == nil)
-                assert(data == nil)
-            end
-        }
-    }
---- request
-GET /t
---- response_body
-
---- error_log eval
-qr/\[TRACE\s+\d+ content_by_lua\(nginx\.conf:\d+\):10 loop\]/
---- no_error_log
-[error]
-
-
-
-=== TEST 35: get() JITs when miss coming from shm
---- http_config eval: $::HttpConfig
---- config
-    location = /t {
-        content_by_lua_block {
-            local mlcache = require "kong.resty.mlcache"
-
-            local cache = assert(mlcache.new("my_mlcache", "cache_shm"))
-
-            local function cb()
-                return nil
-            end
-
-            for i = 1, 10e3 do
-                local data, err = cache:get("key", nil, cb)
-                assert(err == nil)
-                assert(data == nil)
-
-                cache.lru:delete("key")
-            end
-        }
-    }
---- request
-GET /t
---- response_body
-
---- error_log eval
-qr/\[TRACE\s+\d+ content_by_lua\(nginx\.conf:\d+\):10 loop\]/
---- no_error_log
-[error]
-
-
-
-=== TEST 36: get() callback can return nil + err (string)
---- http_config eval: $::HttpConfig
---- config
-    location = /t {
-        content_by_lua_block {
-            local mlcache = require "kong.resty.mlcache"
-
-            local cache = assert(mlcache.new("my_mlcache", "cache_shm"))
+            local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            }))
 
             local function cb()
                 return nil, "an error occurred"
             end
 
-            local data, err = cache:get("1", nil, cb)
+            local data, err = cache:renew("1", nil, cb)
             if err then
                 ngx.say("cb return values: ", data, " ", err)
             end
@@ -1613,7 +1584,7 @@ qr/\[TRACE\s+\d+ content_by_lua\(nginx\.conf:\d+\):10 loop\]/
                 return "foo", "an error occurred again"
             end
 
-            data, err = cache:get("2", nil, cb2)
+            data, err = cache:renew("2", nil, cb2)
             if err then
                 ngx.say("cb2 return values: ", data, " ", err)
             end
@@ -1629,19 +1600,21 @@ cb2 return values: foo an error occurred again
 
 
 
-=== TEST 37: get() callback can return nil + err (non-string) safely
+=== TEST 35: renew() callback can return nil + err (non-string) safely
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
-            local cache = assert(mlcache.new("my_mlcache", "cache_shm"))
+            local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            }))
 
             local function cb()
                 return nil, { err = "an error occurred" } -- invalid usage
             end
 
-            local data, err = cache:get("1", nil, cb)
+            local data, err = cache:renew("1", nil, cb)
             if err then
                 ngx.say("cb return values: ", data, " ", err)
             end
@@ -1652,7 +1625,7 @@ cb2 return values: foo an error occurred again
                 return "foo", { err = "an error occurred again" } -- invalid usage
             end
 
-            data, err = cache:get("2", nil, cb2)
+            data, err = cache:renew("2", nil, cb2)
             if err then
                 ngx.say("cb2 return values: ", data, " ", err)
             end
@@ -1668,13 +1641,15 @@ cb2 return values: foo table: 0x[[:xdigit:]]+
 
 
 
-=== TEST 38: get() callback can return nil + err (table) and will call __tostring
+=== TEST 36: renew() callback can return nil + err (table) and will call __tostring
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
-            local cache = assert(mlcache.new("my_mlcache", "cache_shm"))
+            local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            }))
 
             local mt = {
                 __tostring = function()
@@ -1686,7 +1661,7 @@ cb2 return values: foo table: 0x[[:xdigit:]]+
                 return nil, setmetatable({}, mt)
             end
 
-            local data, err = cache:get("1", nil, cb)
+            local data, err = cache:renew("1", nil, cb)
             if err then
                 ngx.say("cb return values: ", data, " ", err)
             end
@@ -1701,14 +1676,17 @@ cb return values: nil hello from __tostring
 
 
 
-=== TEST 39: get() callback's 3th return value can override the ttl
+=== TEST 37: renew() callback's 3th return value can override the ttl
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local opts  = { ttl = 10 }
+            local opts  = {
+                ipc_shm = "ipc_shm",
+                ttl = 10,
+            }
             local cache = assert(mlcache.new("my_mlcache", "cache_shm", opts))
 
             local function cb()
@@ -1723,7 +1701,7 @@ cb return values: nil hello from __tostring
 
             -- cache our value (runs cb)
 
-            local data, err = cache:get("key", opts, cb)
+            local data, err = cache:renew("key", opts, cb)
             assert(err == nil, err)
             assert(data == 1)
 
@@ -1752,14 +1730,18 @@ in callback 2
 
 
 
-=== TEST 40: get() callback's 3th return value can override the neg_ttl
+=== TEST 38: renew() callback's 3th return value can override the neg_ttl
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local opts  = { ttl = 10, neg_ttl = 10 }
+            local opts  = {
+                ipc_shm = "ipc_shm",
+                ttl = 10,
+                neg_ttl = 10,
+            }
             local cache = assert(mlcache.new("my_mlcache", "cache_shm", opts))
 
             local function cb()
@@ -1774,7 +1756,7 @@ in callback 2
 
             -- cache our value (runs cb)
 
-            local data, err = cache:get("key", opts, cb)
+            local data, err = cache:renew("key", opts, cb)
             assert(err == nil, err)
             assert(data == nil)
 
@@ -1803,14 +1785,18 @@ in callback 2
 
 
 
-=== TEST 41: get() ignores invalid callback 3rd return value (not number)
+=== TEST 39: renew() ignores invalid callback 3rd return value (not number)
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local opts  = { ttl = 0.1, neg_ttl = 0.1 }
+            local opts  = {
+                ipc_shm = "ipc_shm",
+                ttl = 0.1,
+                neg_ttl = 0.1,
+            }
             local cache = assert(mlcache.new("my_mlcache", "cache_shm", opts))
 
             local function pos_cb()
@@ -1827,7 +1813,7 @@ in callback 2
 
             -- cache our value (runs pos_cb)
 
-            local data, err = cache:get("pos_key", opts, pos_cb)
+            local data, err = cache:renew("pos_key", opts, pos_cb)
             assert(err == nil, err)
             assert(data == 1)
 
@@ -1849,7 +1835,7 @@ in callback 2
 
             -- cache our value (runs neg_cb)
 
-            data, err = cache:get("neg_key", opts, neg_cb)
+            data, err = cache:renew("neg_key", opts, neg_cb)
             assert(err == nil, err)
             assert(data == nil)
 
@@ -1882,7 +1868,7 @@ in positive callback
 
 
 
-=== TEST 42: get() passes 'resty_lock_opts' for L3 calls
+=== TEST 40: renew() passes 'resty_lock_opts' for L3 calls
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
@@ -1902,6 +1888,7 @@ in positive callback
             end
 
             local cache, err = mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
                 resty_lock_opts = resty_lock_opts,
             })
             if not cache then
@@ -1909,7 +1896,7 @@ in positive callback
                 return
             end
 
-            local data, err = cache:get("key", nil, function() return nil end)
+            local data, err = cache:renew("key", nil, function() return nil end)
             if err then
                 ngx.log(ngx.ERR, err)
                 return
@@ -1925,7 +1912,7 @@ was given 'opts.resty_lock_opts': true
 
 
 
-=== TEST 43: get() errors on lock timeout
+=== TEST 41: renew() errors on lock timeout
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
@@ -1937,9 +1924,11 @@ was given 'opts.resty_lock_opts': true
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
             local cache_1 = assert(mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
                 ttl = 0.3
             }))
             local cache_2 = assert(mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
                 ttl = 0.3,
                 resty_lock_opts = {
                     timeout = 0.2
@@ -1956,10 +1945,10 @@ was given 'opts.resty_lock_opts': true
 
             -- cache in shm
 
-            local data, err, hit_lvl = cache_1:get("my_key", nil, cb)
+            local data, err, ttl = cache_1:renew("my_key", nil, cb)
             assert(data == 123)
             assert(err == nil)
-            assert(hit_lvl == 3)
+            assert(ttl == 0.3)
 
             -- make shm + LRU expire
 
@@ -1972,10 +1961,10 @@ was given 'opts.resty_lock_opts': true
 
             local t2 = ngx.thread.spawn(function()
                 -- make this mlcache wait on other's callback, and timeout
-                local data, err, hit_lvl = cache_2:get("my_key", nil, cb)
+                local data, err, ttl = cache_2:renew("my_key", nil, cb)
                 ngx.say("data: ", data)
                 ngx.say("err: ", err)
-                ngx.say("hit_lvl: ", hit_lvl)
+                ngx.say("ttl: ", ttl)
             end)
 
             assert(ngx.thread.wait(t1))
@@ -1994,7 +1983,7 @@ GET /t
 --- response_body
 data: nil
 err: could not acquire callback lock: timeout
-hit_lvl: nil
+ttl: nil
 
 -> subsequent get()
 data: 456
@@ -2005,7 +1994,7 @@ hit_lvl: 1
 
 
 
-=== TEST 44: get() returns data even if failed to set in shm
+=== TEST 42: renew() returns data even if failed to set in shm
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
@@ -2033,9 +2022,11 @@ hit_lvl: 1
 
             -- now, trigger a hit with a value many times as large
 
-            local cache = assert(mlcache.new("my_mlcache", "cache_shm"))
+            local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            }))
 
-            local data, err = cache:get("key", nil, function()
+            local data, err = cache:renew("key", nil, function()
                 return string.rep("a", 2^20)
             end)
             if err then
@@ -2057,14 +2048,16 @@ qr/\[warn\] .*? could not write to lua_shared_dict 'cache_shm' after 3 tries \(n
 
 
 
-=== TEST 45: get() errors on invalid opts.shm_set_tries
+=== TEST 43: renew() errors on invalid opts.shm_set_tries
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local cache, err = mlcache.new("my_mlcache", "cache_shm")
+            local cache, err = mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            })
             if not cache then
                 ngx.log(ngx.ERR, err)
                 return
@@ -2077,7 +2070,7 @@ qr/\[warn\] .*? could not write to lua_shared_dict 'cache_shm' after 3 tries \(n
             }
 
             for _, v in ipairs(values) do
-                local ok, err = pcall(cache.get, cache, "key", {
+                local ok, err = pcall(cache.renew, cache, "key", {
                     shm_set_tries = v
                 }, function() end)
                 if not ok then
@@ -2097,78 +2090,7 @@ opts.shm_set_tries must be >= 1
 
 
 
-=== TEST 46: get() with default shm_set_tries to LRU evict items when a large value is being cached
---- http_config eval: $::HttpConfig
---- config
-    location = /t {
-        content_by_lua_block {
-            local dict = ngx.shared.cache_shm
-            dict:flush_all()
-            dict:flush_expired()
-            local mlcache = require "kong.resty.mlcache"
-
-            -- fill up shm
-
-            local idx = 0
-
-            while true do
-                local ok, err, forcible = dict:set(idx, string.rep("a", 2^2))
-                if not ok then
-                    ngx.log(ngx.ERR, err)
-                    return
-                end
-
-                if forcible then
-                    break
-                end
-
-                idx = idx + 1
-            end
-
-            -- shm:set() will evict up to 30 items when the shm is full
-            -- now, trigger a hit with a larger value which should trigger LRU
-            -- eviction and force the slab allocator to free pages
-
-            local cache = assert(mlcache.new("my_mlcache", "cache_shm"))
-
-            local cb_calls = 0
-            local function cb()
-                cb_calls = cb_calls + 1
-                return string.rep("a", 2^5)
-            end
-
-            local data, err = cache:get("key", nil, cb)
-            if err then
-                ngx.log(ngx.ERR, err)
-                return
-            end
-
-            -- from shm
-
-            cache.lru:delete("key")
-
-            local data, err = cache:get("key", nil, cb)
-            if err then
-                ngx.log(ngx.ERR, err)
-                return
-            end
-
-            ngx.say("type of data in shm: ", type(data))
-            ngx.say("callback was called: ", cb_calls, " times")
-        }
-    }
---- request
-GET /t
---- response_body
-type of data in shm: string
-callback was called: 1 times
---- no_error_log
-[warn]
-[error]
-
-
-
-=== TEST 47: get() respects instance opts.shm_set_tries to LRU evict items when a large value is being cached
+=== TEST 44: renew() with default shm_set_tries to LRU evict items when a large value is being cached
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
@@ -2201,16 +2123,16 @@ callback was called: 1 times
             -- eviction and force the slab allocator to free pages
 
             local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
-                shm_set_tries = 5
+                ipc_shm = "ipc_shm",
             }))
 
             local cb_calls = 0
             local function cb()
                 cb_calls = cb_calls + 1
-                return string.rep("a", 2^12)
+                return string.rep("a", 2^5)
             end
 
-            local data, err = cache:get("key", nil, cb)
+            local data, err = cache:renew("key", nil, cb)
             if err then
                 ngx.log(ngx.ERR, err)
                 return
@@ -2241,7 +2163,81 @@ callback was called: 1 times
 
 
 
-=== TEST 48: get() accepts opts.shm_set_tries to LRU evict items when a large value is being cached
+=== TEST 45: renew() respects instance opts.shm_set_tries to LRU evict items when a large value is being cached
+--- http_config eval: $::HttpConfig
+--- config
+    location = /t {
+        content_by_lua_block {
+            local dict = ngx.shared.cache_shm
+            dict:flush_all()
+            dict:flush_expired()
+            local mlcache = require "kong.resty.mlcache"
+
+            -- fill up shm
+
+            local idx = 0
+
+            while true do
+                local ok, err, forcible = dict:set(idx, string.rep("a", 2^2))
+                if not ok then
+                    ngx.log(ngx.ERR, err)
+                    return
+                end
+
+                if forcible then
+                    break
+                end
+
+                idx = idx + 1
+            end
+
+            -- shm:set() will evict up to 30 items when the shm is full
+            -- now, trigger a hit with a larger value which should trigger LRU
+            -- eviction and force the slab allocator to free pages
+
+            local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+                shm_set_tries = 5,
+            }))
+
+            local cb_calls = 0
+            local function cb()
+                cb_calls = cb_calls + 1
+                return string.rep("a", 2^12)
+            end
+
+            local data, err = cache:renew("key", nil, cb)
+            if err then
+                ngx.log(ngx.ERR, err)
+                return
+            end
+
+            -- from shm
+
+            cache.lru:delete("key")
+
+            local data, err = cache:get("key", nil, cb)
+            if err then
+                ngx.log(ngx.ERR, err)
+                return
+            end
+
+            ngx.say("type of data in shm: ", type(data))
+            ngx.say("callback was called: ", cb_calls, " times")
+        }
+    }
+--- request
+GET /t
+--- response_body
+type of data in shm: string
+callback was called: 1 times
+--- no_error_log
+[warn]
+[error]
+
+
+
+=== TEST 46: renew() accepts opts.shm_set_tries to LRU evict items when a large value is being cached
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
@@ -2273,7 +2269,9 @@ callback was called: 1 times
             -- which should trigger retries and eventually remove 9 other
             -- cached items
 
-            local cache = assert(mlcache.new("my_mlcache", "cache_shm"))
+            local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
+            }))
 
             local cb_calls = 0
             local function cb()
@@ -2281,7 +2279,7 @@ callback was called: 1 times
                 return string.rep("a", 2^12)
             end
 
-            local data, err = cache:get("key", {
+            local data, err = cache:renew("key", {
                 shm_set_tries = 5
             }, cb)
             if err then
@@ -2314,7 +2312,7 @@ callback was called: 1 times
 
 
 
-=== TEST 49: get() caches data in L1 LRU even if failed to set in shm
+=== TEST 47: renew() caches data in L1 LRU even if failed to set in shm
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
@@ -2345,11 +2343,12 @@ callback was called: 1 times
             -- now, trigger a hit with a value many times as large
 
             local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
                 ttl = 0.3,
                 shm_set_tries = 1,
             }))
 
-            local data, err = cache:get("key", nil, function()
+            local data, err = cache:renew("key", nil, function()
                 return string.rep("a", 2^20)
             end)
             if err then
@@ -2378,13 +2377,14 @@ is stale: true
 
 
 
-=== TEST 50: get() does not cache value in LRU indefinitely when retrieved from shm on last ms (see GH PR #58)
+=== TEST 48: renew() does not cache value in LRU indefinitely when retrieved from shm on last ms (see GH PR #58)
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
             local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
+                ipc_shm = "ipc_shm",
                 ttl = 0.2,
             }))
 
@@ -2394,11 +2394,11 @@ is stale: true
                 return v or 42
             end
 
-            local data, err, hit_lvl = cache:get("key", nil, cb)
+            local data, err, ttl = cache:renew("key", nil, cb)
             assert(data == 42, err or "invalid data value: " .. data)
-            ngx.say("hit_lvl: ", hit_lvl)
+            ngx.say("ttl: ", ttl)
 
-            data, err, hit_lvl = cache:get("key", nil, cb)
+            local data, err, hit_lvl = cache:get("key", nil, cb)
             assert(data == 42, err or "invalid data value: " .. data)
             ngx.say("hit_lvl: ", hit_lvl)
 
@@ -2448,7 +2448,7 @@ is stale: true
 --- request
 GET /t
 --- response_body
-hit_lvl: 3
+ttl: 0.2
 hit_lvl: 1
 hit_lvl: 2
 hit_lvl: 1
@@ -2461,14 +2461,18 @@ hit_lvl: 3
 
 
 
-=== TEST 51: get() bypass cache for negative callback TTL
+=== TEST 49: renew() bypass cache for negative callback TTL
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
 
-            local opts  = { ttl = 0.1, neg_ttl = 0.1 }
+            local opts  = {
+                ipc_shm = "ipc_shm",
+                ttl = 0.1,
+                neg_ttl = 0.1,
+            }
             local cache = assert(mlcache.new("my_mlcache", "cache_shm", opts))
 
             local function pos_cb()
@@ -2485,14 +2489,14 @@ hit_lvl: 3
 
             -- don't cache our value (runs pos_cb)
 
-            local data, err, hit_level = cache:get("pos_key", opts, pos_cb)
+            local data, err, ttl = cache:renew("pos_key", opts, pos_cb)
             assert(err == nil, err)
             assert(data == 1)
-            assert(hit_level == 3)
+            assert(ttl == -1)
 
             -- pos_cb should run again
 
-            data, err, hit_level = cache:get("pos_key", opts, pos_cb)
+            local data, err, hit_level = cache:get("pos_key", opts, pos_cb)
             assert(err == nil, err)
             assert(data == 1)
             assert(hit_level == 3)
@@ -2501,10 +2505,10 @@ hit_lvl: 3
 
             -- don't cache our value (runs neg_cb)
 
-            data, err, hit_level = cache:get("neg_key", opts, neg_cb)
+            data, err, ttl = cache:renew("neg_key", opts, neg_cb)
             assert(err == nil, err)
             assert(data == nil)
-            assert(hit_level == 3)
+            assert(ttl == -1)
 
             -- neg_cb should run again
 
@@ -2528,192 +2532,57 @@ in negative callback
 
 
 
-=== TEST 52: get() nil callback returns positive cached items from L1/L2
+=== TEST 50: renew() always calls the callback when no errors have occurred prior
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
             local mlcache = require "kong.resty.mlcache"
+            local cache = assert(mlcache.new("my_mlcache", "cache_shm", {
+                ipc = {
+                    register_listeners = function()
+                    end,
+                    broadcast = function(channel, data)
+                        ngx.say("called ipc.broadcast() with args: ", channel, ":", data)
+                    end,
+                    poll = function(...)
+                        return true
+                    end,
+                }
+            }))
 
-            local cache = assert(mlcache.new("my_mlcache", "cache_shm"))
+            local i = 0
 
-            -- miss lookup
-
-            local data, err, hit_lvl = cache:get("key")
-            if err then
-                ngx.log(ngx.ERR, err)
+            local function cb()
+                i = i + 1
+                ngx.say("in callback ", i)
+                return i
             end
-            ngx.say("-> miss")
-            ngx.say("data: ", data)
-            ngx.say("err: ", err)
-            ngx.say("hit_lvl: ", hit_lvl)
 
-            -- cache an item
+            local data, err, ttl = cache:renew("key", opts, cb)
+            assert(err == nil, err)
+            assert(data == 1)
+            assert(ttl == 30)
 
-            local _, err = cache:get("key", nil, function() return 123 end)
-            if err then
-                ngx.log(ngx.ERR, err)
-            end
+            data, err, ttl = cache:renew("key", opts, cb)
+            assert(err == nil, err)
+            assert(data == 2)
+            assert(ttl == 30)
 
-            -- hit from lru
-
-            data, err, hit_lvl = cache:get("key")
-            ngx.say()
-            ngx.say("-> from LRU")
-            ngx.say("data: ", data)
-            ngx.say("err: ", err)
-            ngx.say("hit_lvl: ", hit_lvl)
-
-            -- hit from shm
-
-            cache.lru:delete("key")
-
-            data, err, hit_lvl = cache:get("key")
-            ngx.say()
-            ngx.say("-> from shm")
-            ngx.say("data: ", data)
-            ngx.say("err: ", err)
-            ngx.say("hit_lvl: ", hit_lvl)
-
-            -- promoted to lru again
-
-            data, err, hit_lvl = cache:get("key")
-            ngx.say()
-            ngx.say("-> promoted to LRU")
-            ngx.say("data: ", data)
-            ngx.say("err: ", err)
-            ngx.say("hit_lvl: ", hit_lvl)
+            data, err, ttl = cache:renew("key", opts, cb)
+            assert(err == nil, err)
+            assert(data == 3)
+            assert(ttl == 30)
         }
     }
 --- request
 GET /t
 --- response_body
--> miss
-data: nil
-err: nil
-hit_lvl: -1
-
--> from LRU
-data: 123
-err: nil
-hit_lvl: 1
-
--> from shm
-data: 123
-err: nil
-hit_lvl: 2
-
--> promoted to LRU
-data: 123
-err: nil
-hit_lvl: 1
---- no_error_log
-[error]
-
-
-
-=== TEST 53: get() nil callback returns negative cached items from L1/L2
---- http_config eval: $::HttpConfig
---- config
-    location = /t {
-        content_by_lua_block {
-            local mlcache = require "kong.resty.mlcache"
-
-            local cache = assert(mlcache.new("my_mlcache", "cache_shm"))
-
-            -- miss lookup
-
-            local data, err, hit_lvl = cache:get("key")
-            if err then
-                ngx.log(ngx.ERR, err)
-            end
-            ngx.say("-> miss")
-            ngx.say("data: ", data)
-            ngx.say("err: ", err)
-            ngx.say("hit_lvl: ", hit_lvl)
-
-            -- cache an item
-
-            local _, err = cache:get("key", nil, function() return nil end)
-            if err then
-                ngx.log(ngx.ERR, err)
-            end
-
-            -- hit from lru
-
-            data, err, hit_lvl = cache:get("key")
-            ngx.say()
-            ngx.say("-> from LRU")
-            ngx.say("data: ", data)
-            ngx.say("err: ", err)
-            ngx.say("hit_lvl: ", hit_lvl)
-
-            -- hit from shm
-
-            cache.lru:delete("key")
-
-            data, err, hit_lvl = cache:get("key")
-            ngx.say()
-            ngx.say("-> from shm")
-            ngx.say("data: ", data)
-            ngx.say("err: ", err)
-            ngx.say("hit_lvl: ", hit_lvl)
-
-            -- promoted to lru again
-
-            data, err, hit_lvl = cache:get("key")
-            ngx.say()
-            ngx.say("-> promoted to LRU")
-            ngx.say("data: ", data)
-            ngx.say("err: ", err)
-            ngx.say("hit_lvl: ", hit_lvl)
-        }
-    }
---- request
-GET /t
---- response_body
--> miss
-data: nil
-err: nil
-hit_lvl: -1
-
--> from LRU
-data: nil
-err: nil
-hit_lvl: 1
-
--> from shm
-data: nil
-err: nil
-hit_lvl: 2
-
--> promoted to LRU
-data: nil
-err: nil
-hit_lvl: 1
---- no_error_log
-[error]
-
-
-
-=== TEST 54: get() JITs on misses without a callback
---- http_config eval: $::HttpConfig
---- config
-    location = /t {
-        content_by_lua_block {
-            local mlcache = require "kong.resty.mlcache"
-
-            local cache = assert(mlcache.new("my_mlcache", "cache_shm"))
-
-            for i = 1, 10e3 do
-                cache:get("key")
-            end
-        }
-    }
---- request
-GET /t
---- ignore_response_body
---- error_log eval
-qr/\[TRACE\s+\d+ content_by_lua\(nginx\.conf:\d+\):6 loop\]/
+in callback 1
+called ipc.broadcast() with args: mlcache:invalidations:my_mlcache:key
+in callback 2
+called ipc.broadcast() with args: mlcache:invalidations:my_mlcache:key
+in callback 3
+called ipc.broadcast() with args: mlcache:invalidations:my_mlcache:key
 --- no_error_log
 [error]

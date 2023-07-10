@@ -10,7 +10,7 @@ If you are planning on developing on Kong, you'll need a development
 installation. The `master` branch holds the latest unreleased source code.
 
 You can read more about writing your own plugins in the [Plugin Development
-Guide](https://docs.konghq.com/latest/plugin-development/), or browse an
+Guide](https://docs.konghq.com/gateway/latest/plugin-development/), or browse an
 online version of Kong's source code documentation in the [Plugin Development
 Kit (PDK) Reference](https://docs.konghq.com/latest/pdk/).
 

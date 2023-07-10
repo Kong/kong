@@ -166,7 +166,7 @@
   - lua-kong-nginx-module/stream
   - lua-resty-events
   - lua-resty-lmdb
-  OpenSSL   : OpenSSL 3.0.8 7 Feb 2023
+  OpenSSL   : OpenSSL 3.1.1 30 May 2023
   DWARF     : True
   DWARF - ngx_http_request_t related DWARF DIEs: True
 
