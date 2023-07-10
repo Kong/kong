@@ -167,10 +167,38 @@ bool_flag(
     build_setting_default = True,
 )
 
+# --//:wasmx_module=dynamic
+string_flag(
+    name = "wasmx_module_flag",
+    build_setting_default = "dynamic",
+    values = [
+        "dynamic",
+        "static",
+    ],
+)
+
 config_setting(
     name = "wasmx_flag",
     flag_values = {
         ":wasmx": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "wasmx_static_mod",
+    flag_values = {
+        ":wasmx": "true",
+        ":wasmx_module_flag": "static",
+    },
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "wasmx_dynamic_mod",
+    flag_values = {
+        ":wasmx": "true",
+        ":wasmx_module_flag": "dynamic",
     },
     visibility = ["//visibility:public"],
 )
@@ -187,52 +215,30 @@ string_flag(
 )
 
 config_setting(
-    name = "wasmx_v8_flag",
+    name = "wasmx_v8",
     flag_values = {
+        ":wasmx": "true",
         ":wasm_runtime": "v8",
     },
     visibility = ["//visibility:public"],
 )
 
 config_setting(
-    name = "wasmx_wasmer_flag",
+    name = "wasmx_wasmer",
     flag_values = {
+        ":wasmx": "true",
         ":wasm_runtime": "wasmer",
     },
     visibility = ["//visibility:public"],
 )
 
 config_setting(
-    name = "wasmx_wasmtime_flag",
+    name = "wasmx_wasmtime",
     flag_values = {
+        ":wasmx": "true",
         ":wasm_runtime": "wasmtime",
     },
     visibility = ["//visibility:public"],
-)
-
-# wasm runtime settings should only be set when wasm is enabled
-selects.config_setting_group(
-    name = "wasmx_v8",
-    match_all = [
-        ":wasmx_v8_flag",
-        ":wasmx_flag",
-    ],
-)
-
-selects.config_setting_group(
-    name = "wasmx_wasmer",
-    match_all = [
-        ":wasmx_wasmer_flag",
-        ":wasmx_flag",
-    ],
-)
-
-selects.config_setting_group(
-    name = "wasmx_wasmtime",
-    match_all = [
-        ":wasmx_wasmtime_flag",
-        ":wasmx_flag",
-    ],
 )
 
 ##### constraints, platforms and config_settings for cross-compile

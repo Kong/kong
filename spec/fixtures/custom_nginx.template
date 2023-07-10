@@ -3,6 +3,10 @@
 pid pids/nginx.pid; # mandatory even for custom config templates
 error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
+> if wasm and wasm_dynamic_module then
+load_module $(wasm_dynamic_module);
+> end
+
 # injected nginx_main_* directives
 > for _, el in ipairs(nginx_main_directives) do
 $(el.name) $(el.value);
