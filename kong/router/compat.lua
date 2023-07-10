@@ -280,9 +280,9 @@ do
   local STREAM_SNI_BIT = lshift_uint64(0x01ULL, 61)
 
   -- IP > PORT > CIDR
-  local IP_BIT     = lshift(0x01ULL, 3)
-  local PORT_BIT   = lshift(0x01ULL, 2)
-  local CIDR_BIT   = lshift(0x01ULL, 0)
+  local IP_BIT     = lshift_uint64(0x01ULL, 3)
+  local PORT_BIT   = lshift_uint64(0x01ULL, 2)
+  local CIDR_BIT   = lshift_uint64(0x01ULL, 0)
 
   local function calc_ip_weight(ips)
     local weight = 0x0ULL
