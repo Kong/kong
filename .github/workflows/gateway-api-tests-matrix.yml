@@ -474,13 +474,6 @@ jobs:
             install_method: 'repository'
           - package_name: 'alpine'
             install_method: 'repository'
-          # skip centos package test runs untill it is removed from matrix-full.yml
-          - package_name: 'centos-7'
-            install_method: 'repository'
-          - package_name: 'centos-7'
-            install_method: 'package'
-
-
 
     steps:
       - name: Checkout Source Code

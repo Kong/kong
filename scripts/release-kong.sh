@@ -72,9 +72,6 @@ case "$ARTIFACT_TYPE" in
   debian|ubuntu)
     OUTPUT_FILE_SUFFIX=".$ARTIFACT_VERSION.$ARCHITECTURE.deb"
     ;;
-  centos)
-    OUTPUT_FILE_SUFFIX=".el$ARTIFACT_VERSION.$ARCHITECTURE.rpm"
-    ;;
   rhel)
     OUTPUT_FILE_SUFFIX=".rhel$ARTIFACT_VERSION.$ARCHITECTURE.rpm"
     ;;

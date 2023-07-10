@@ -55,14 +55,6 @@ build-packages:
   bazel_args: --platforms=//:generic-crossbuild-aarch64
   check-manifest-suite: debian-11-arm64
 
-# CentOS
-- label: centos-7
-  os: vars.RELEASE_RUNS_ON
-  image: centos:7
-  package: rpm
-  package-distro: el7
-  check-manifest-suite: el7-amd64
-
 # RHEL
 - label: rhel-7
   os: vars.RELEASE_RUNS_ON
@@ -228,13 +220,6 @@ release-packages:
   artifact-type: debian
   artifact: kong.arm64.deb
 
-# CentOS
-- label: centos-7
-  package: rpm
-  artifact-from: centos-7
-  artifact-version: 7
-  artifact-type: centos
-  artifact: kong.el7.amd64.rpm
 
 # RHEL
 - label: rhel-7

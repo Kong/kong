@@ -21,6 +21,7 @@
   Contact the Kong team for further details.
   [#5752](https://github.com/Kong/kong-ee/pull/5752)
   [KAG-1657](https://konghq.atlassian.net/browse/KAG-1657)
+- **CentOS packages are now removed from the release and are no longer supported in future versions.**
 
 ### Dependencies
 
