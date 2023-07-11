@@ -94,14 +94,6 @@ wasmx_vm_cmd = select({
 
 link_modules_dir = select({
     "@kong//:nginx_dynamic_module_support": """
-    function LN {
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            # TODO: support relative path links once we start to cross compile on macOS
-            ln -sf $@
-        else
-            ln -srf $@
-        fi
-    }
     LN ${BUILD_DESTDIR}/openresty/nginx/modules ${BUILD_DESTDIR}/kong/modules
 """,
     "//conditions:default": "",
