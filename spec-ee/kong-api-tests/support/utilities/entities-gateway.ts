@@ -4,7 +4,7 @@ import { Environment, getBasePath, isGateway } from '../config/environment';
 import { logResponse } from './logging';
 import { randomString, wait } from './random';
 import { retryRequest } from './retry-axios';
-import { getNegative } from './negative-axios';
+import { getNegative, postNegative } from './negative-axios';
 
 export const getUrl = (endpoint: string) => {
   const basePath = getBasePath({
@@ -194,6 +194,172 @@ export const deleteConsumer = async (usernameOrId: string) => {
 };
 
 /**
+ * Create a consumer group
+ * @param {string} consumerGroupName - optional consumer group name
+ * @param {object} payload - optional payload
+ * @returns {AxiosResponse}
+ */
+export const createConsumerGroup = async (
+  consumerGroupName?: string,
+  payload?: object
+) => {
+  const resp = await axios({
+    method: 'post',
+    url: getUrl('consumer_groups'),
+    data: payload || {
+      name: consumerGroupName ? consumerGroupName : randomString(),
+    },
+  });
+
+  logResponse(resp);
+
+  expect(resp.status, 'Status should be 201').to.equal(201);
+
+  return resp.data;
+};
+
+/**
+ * Delete a consumer group
+ * @param {string} consumerGroupName - consumer group name
+ * @returns {AxiosResponse}
+ */
+export const deleteConsumerGroup = async (consumerGroupNameOrId: string) => {
+  const resp = await axios({
+    method: 'delete',
+    url: `${getUrl('consumer_groups')}/${consumerGroupNameOrId}`,
+  });
+  logResponse(resp);
+
+  expect(resp.status, 'Status should be 204').to.equal(204);
+
+  return resp;
+};
+
+/**
+ * Create a consumer group scoped plugin
+ * @param {string} consumerGroupNameOrId - consumer group name or id
+ * @param {object} payload - payload
+ * @returns {AxiosResponse}
+ */
+export const createConsumerGroupScopedPlugin = async (
+  consumerGroupNameOrId: string,
+  payload: object
+) => {
+  const resp = await axios({
+    method: 'post',
+    url: `${getUrl('consumer_groups')}/${consumerGroupNameOrId}/plugins`,
+    data: payload,
+  });
+
+  logResponse(resp);
+
+  expect(resp.status, 'Status should be 201').to.equal(201);
+
+  return resp.data;
+};
+
+/**
+ * Add the given consumer to the given consumer group
+ * @param {object} consumerNameOrId - consumer name or id
+ * @param {string} consumerGroupNameOrId - consumer group name or id
+ * @returns {AxiosResponse}
+ */
+export const addConsumerToConsumerGroup = async (
+  consumerNameOrId: object,
+  consumerGroupNameOrId: string
+) => {
+  const resp = await axios({
+    method: 'post',
+    url: `${getUrl('consumer_groups')}/${consumerGroupNameOrId}/consumers`,
+    data: {
+      consumer: consumerNameOrId,
+    },
+  });
+
+  logResponse(resp);
+
+  expect(resp.status, 'Status should be 201').to.equal(201);
+
+  return resp;
+};
+
+/**
+ * Remove the given consumer from the given consumer group
+ * @param {object} consumerNameOrId - consumer name or id
+ * @param {string} consumerGroupNameOrId - consumer group name or id
+ * @returns {AxiosResponse}
+ */
+export const removeConsumerFromConsumerGroup = async (
+  consumerNameOrId: object,
+  consumerGroupNameOrId: string
+) => {
+  const resp = await axios({
+    method: 'delete',
+    url: `${getUrl(
+      'consumer_groups'
+    )}/${consumerGroupNameOrId}/consumers/${consumerNameOrId}`,
+  });
+
+  logResponse(resp);
+
+  expect(resp.status, 'Status should be 204').to.equal(204);
+
+  return resp.data;
+};
+
+/**
+ * Create a consumer group setting
+ * @param {string} consumerGroupNameOrId - consumer group name or id
+ * @param {string} pluginName - plugin name
+ * @param {string} pluginId - id
+ * @param {object} settings - settings
+ * @returns {AxiosResponse}
+ */
+export const createConsumerGroupSettings = async (
+  consumerGroupNameOrId: string,
+  pluginName: string,
+  pluginId: string,
+  settings: object
+) => {
+  const resp = await axios({
+    method: 'put',
+    url: `${getUrl(
+      'consumer_groups'
+    )}/${consumerGroupNameOrId}/plugins/${pluginId}`,
+    data: {
+      name: pluginName,
+      config: settings,
+    },
+  });
+
+  logResponse(resp);
+
+  expect(resp.status, 'Status should be 200').to.equal(200);
+
+  return resp.data;
+};
+
+/**
+ * Create key-auth credentials for a consumer
+ * @param {string} consumerNameOrId- consumer name or id
+ * @returns {AxiosResponse}
+ */
+export const createKeyAuthCredentialsForConsumer = async (
+  consumerNameOrId: string
+) => {
+  const resp = await axios({
+    method: 'post',
+    url: `${getUrl('consumers')}/${consumerNameOrId}/key-auth-enc`,
+  });
+
+  logResponse(resp);
+
+  expect(resp.status, 'Status should be 201').to.equal(201);
+
+  return resp.data;
+};
+
+/**
  * Create basic-auth plugin credentials for a given consumer
  * @param consumerNameOrId name or id of the target consumer
  * @param username optional basic-auth username
@@ -323,6 +489,7 @@ export const deleteCache = async () => {
  * @param {object} options
  * @property {number} timeout - retryRequest timeout
  * @property {number} interval - retryRequest interval
+ * @property {object} proxyReqHeader - custom proxy request header e.g. key-auth key
  */
 export const waitForConfigRebuild = async (options: any = {}) => {
   // create a service
@@ -336,7 +503,7 @@ export const waitForConfigRebuild = async (options: any = {}) => {
   const routeId = route.id;
 
   // send request to route until response is 200
-  const reqSuccess = () => getNegative(`${proxyUrl}${routePath}`);
+  const reqSuccess = () => getNegative(`${proxyUrl}${routePath}`, options?.proxyReqHeader);
   const assertionsSuccess = (resp) => {
     expect(
       resp.status,
@@ -357,7 +524,7 @@ export const waitForConfigRebuild = async (options: any = {}) => {
   await deleteGatewayService(serviceId);
 
   // send request to route until response is 404
-  const reqFail = () => getNegative(`${proxyUrl}${routePath}`);
+  const reqFail = () => getNegative(`${proxyUrl}${routePath}`, options?.proxyReqHeader);
   const assertionsFail = (resp) => {
     expect(
       resp.status,

@@ -2,7 +2,6 @@ import axios from 'axios';
 import https from 'https';
 import {
   logResponse,
-  execCustomCommand,
   getNegative,
   getGatewayHost,
   wait,
