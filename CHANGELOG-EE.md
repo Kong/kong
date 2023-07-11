@@ -1,3 +1,5 @@
+**Note:** This file is for changes that only affects EE. For OSS changes, they should go into `CHANGELOG.md` in the OSS repo and be cherry-picked to the `CHANGELOG.md` file inside EE instead.
+
 # Table of Contents
 
 - [3.3.0.0](#3300)
