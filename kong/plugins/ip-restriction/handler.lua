@@ -38,9 +38,13 @@ end
 
 
 local function do_exit(status, message)
-    log.warn(message)
-    
-    return kong.response.error(status, message)
+  status = status or 403
+  message = message or
+            string.format("IP address not allowed: %s", ngx_var.remote_addr)
+
+  log.warn(message)
+
+  return kong.response.error(status, message)
 end
 
 
@@ -70,25 +74,26 @@ end
 local function do_restrict(conf)
   local binary_remote_addr = ngx_var.binary_remote_addr
   if not binary_remote_addr then
-    return do_exit(403, "Cannot identify the client IP address, unix domain sockets are not supported.")
+    return do_exit(403,
+                   "Cannot identify the client IP address, " ..
+                   "unix domain sockets are not supported.")
   end
 
   local deny = conf.deny
-  local allow = conf.allow
-  local status = conf.status or 403
-  local message = conf.message or string.format("IP address not allowed: %s", ngx_var.remote_addr)
 
   if not isempty(deny) then
     local blocked = match_bin(deny, binary_remote_addr)
     if blocked then
-      return do_exit(status, message)
+      return do_exit(conf.status, conf.message)
     end
   end
+
+  local allow = conf.allow
 
   if not isempty(allow) then
     local allowed = match_bin(allow, binary_remote_addr)
     if not allowed then
-      return do_exit(status, message)
+      return do_exit(conf.status, conf.message)
     end
   end
 end
