@@ -32,7 +32,8 @@ end
 
 local function do_exit(status, message)
   status = status or 403
-  message = message or string.format("IP address not allowed: %s", ngx_var.remote_addr)
+  message = message or
+            string.format("IP address not allowed: %s", ngx_var.remote_addr)
 
   log.warn(message)
 
@@ -66,7 +67,9 @@ end
 local function do_restrict(conf)
   local binary_remote_addr = ngx_var.binary_remote_addr
   if not binary_remote_addr then
-    return do_exit(403, "Cannot identify the client IP address, unix domain sockets are not supported.")
+    return do_exit(403,
+                   "Cannot identify the client IP address, " ..
+                   "unix domain sockets are not supported.")
   end
 
   local deny = conf.deny
