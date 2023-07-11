@@ -232,6 +232,12 @@ config_setting(
     visibility = ["//visibility:public"],
 )
 
+##### dynamic modules
+selects.config_setting_group(
+    name = "nginx_dynamic_module_support",
+    match_any = [":wasmx_dynamic_mod"],
+)
+
 ##### constraints, platforms and config_settings for cross-compile
 
 constraint_setting(name = "libc_version")

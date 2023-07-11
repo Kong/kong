@@ -31,8 +31,11 @@ RUN apk add --virtual .build-deps tar gzip \
     && ln -sf /usr/local/openresty/luajit/bin/luajit /usr/local/bin/luajit \
     && ln -sf /usr/local/openresty/luajit/bin/luajit /usr/local/bin/lua \
     && ln -sf /usr/local/openresty/nginx/sbin/nginx /usr/local/bin/nginx \
+    && if [ -d /usr/local/openresty/nginx/modules ]; then \
+        ln -sf /usr/local/openresty/nginx/modules /usr/local/kong/modules ; \
+       fi; \
     && apk del .build-deps \
-    && kong version
+    kong version
 
 COPY build/dockerfiles/entrypoint.sh /entrypoint.sh
 

@@ -633,14 +633,20 @@ end
 -- Lookup dynamic module object
 -- this function will lookup for the `mod_name` dynamic module in the following
 -- paths:
---  - path defined in KONG_DYNAMIC_MODULES_PATH environment variable
---  - <nginx build prefix>/modules
---  - /usr/local/openresty/nginx/modules
+--  - /usr/local/kong/modules -- default path for modules in container images
+--  - <nginx binary path>/../modules
 -- @param[type=string] mod_name The module name to lookup, without file extension
 local function lookup_dynamic_module_so(mod_name, kong_conf)
   log.debug("looking up dynamic module %s", mod_name)
+
+  local mod_file = fmt("/usr/local/kong/modules/%s.so", mod_name)
+  if exists(mod_file) then
+    log.debug("Module '%s' found at '%s'", mod_name, mod_file)
+    return mod_file
+  end
+
   local nginx_bin = nginx_signals.find_nginx_bin(kong_conf)
-  local mod_file = fmt("%s/../modules/%s.so", pl_path.dirname(nginx_bin), mod_name)
+  mod_file = fmt("%s/../modules/%s.so", pl_path.dirname(nginx_bin), mod_name)
   if exists(mod_file) then
     log.debug("Module '%s' found at '%s'", mod_name, mod_file)
     return mod_file
