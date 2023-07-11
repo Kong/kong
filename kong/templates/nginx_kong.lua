@@ -23,6 +23,8 @@ lua_shared_dict kong_core_db_cache          ${{MEM_CACHE_SIZE}};
 lua_shared_dict kong_core_db_cache_miss     12m;
 lua_shared_dict kong_db_cache               ${{MEM_CACHE_SIZE}};
 lua_shared_dict kong_db_cache_miss          12m;
+lua_shared_dict kong_vault_cache            200k;
+lua_shared_dict kong_vault_cache_miss       200k;
 
 underscores_in_headers on;
 > if ssl_ciphers then

@@ -227,7 +227,7 @@ local function get_lru_size(kong_config)
 end
 
 
-function _GLOBAL.init_cache(kong_config, cluster_events, worker_events)
+function _GLOBAL.init_cache(shm_name, kong_config, cluster_events, worker_events, lru_size)
   local db_cache_ttl = kong_config.db_cache_ttl
   local db_cache_neg_ttl = kong_config.db_cache_neg_ttl
   local page = 1
@@ -239,7 +239,7 @@ function _GLOBAL.init_cache(kong_config, cluster_events, worker_events)
    end
 
   return kong_cache.new({
-    shm_name        = "kong_db_cache",
+    shm_name        = shm_name,
     cluster_events  = cluster_events,
     worker_events   = worker_events,
     ttl             = db_cache_ttl,
@@ -248,33 +248,7 @@ function _GLOBAL.init_cache(kong_config, cluster_events, worker_events)
     page            = page,
     cache_pages     = cache_pages,
     resty_lock_opts = LOCK_OPTS,
-    lru_size        = get_lru_size(kong_config),
-  })
-end
-
-
-function _GLOBAL.init_core_cache(kong_config, cluster_events, worker_events)
-  local db_cache_ttl = kong_config.db_cache_ttl
-  local db_cache_neg_ttl = kong_config.db_cache_neg_ttl
-  local page = 1
-  local cache_pages = 1
-
-  if kong_config.database == "off" then
-    db_cache_ttl = 0
-    db_cache_neg_ttl = 0
-  end
-
-  return kong_cache.new({
-    shm_name        = "kong_core_db_cache",
-    cluster_events  = cluster_events,
-    worker_events   = worker_events,
-    ttl             = db_cache_ttl,
-    neg_ttl         = db_cache_neg_ttl or db_cache_ttl,
-    resurrect_ttl   = kong_config.resurrect_ttl,
-    page            = page,
-    cache_pages     = cache_pages,
-    resty_lock_opts = LOCK_OPTS,
-    lru_size        = get_lru_size(kong_config),
+    lru_size        = lru_size or get_lru_size(kong_config),
   })
 end
 

@@ -409,7 +409,7 @@ local function new(self)
     local config, hash = get_config(base_config, opts.config, schema)
 
     return retrieve_value(strategy, config, hash, reference, opts.resource, name,
-                          opts.version, opts.key, self and self.core_cache,
+                          opts.version, opts.key, self and self.vault_cache,
                           rotation, cache_only)
   end
 
@@ -417,7 +417,7 @@ local function new(self)
   local function config_secret(reference, opts, rotation, cache_only)
     local prefix = opts.name
     local vaults = self.db.vaults
-    local cache = self.core_cache
+    local cache = self.vault_cache
     local vault
     local err
     if cache then
@@ -852,7 +852,7 @@ local function new(self)
 
 
   local function flush_config_cache(data)
-    local cache = self.core_cache
+    local cache = self.vault_cache
     if cache then
       local vaults = self.db.vaults
       local old_entity = data.old_entity

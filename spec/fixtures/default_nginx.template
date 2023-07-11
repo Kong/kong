@@ -52,6 +52,9 @@ http {
 > if role == "control_plane" then
     lua_shared_dict kong_clustering             5m;
 > end
+    lua_shared_dict kong_vault_cache            200k;
+    lua_shared_dict kong_vault_cache_miss       200k;
+
     lua_shared_dict kong_mock_upstream_loggers  10m;
 
     underscores_in_headers on;

@@ -45,6 +45,9 @@ http {
 > if database == "off" then
     lua_shared_dict kong_db_cache_miss_2 12m;
 > end
+    lua_shared_dict kong_vault_cache      200k;
+    lua_shared_dict kong_vault_cache_miss 200k;
+
     lua_shared_dict kong_locks          8m;
     lua_shared_dict kong_cluster_events 5m;
     lua_shared_dict kong_healthchecks   5m;
