@@ -282,17 +282,11 @@
   Previously, the `header_type` was hardcoded to `preserve`, now it can be set to one of the
   following values: `preserve`, `ignore`, `b3`, `b3-single`, `w3c`, `jaeger`, `ot`.
   [#10620](https://github.com/Kong/kong/pull/10620)
-- **Prometheus**: add `lmdb_usage` related metrics in Prometheus plugin.
-  [#10301](https://github.com/Kong/kong/pull/10301)
-- **Statsd**: add `lmdb_usage` related metrics in Statsd plugin.
-  [#10301](https://github.com/Kong/kong/pull/10301)
 
 #### PDK
 
 - PDK now supports getting plugins' ID with `kong.plugin.get_id`.
   [#9903](https://github.com/Kong/kong/pull/9903)
-- PDK now supports getting lmdb environment information with `kong.node.get_memory_stats`.
-  [#10301](https://github.com/Kong/kong/pull/10301)
 
 ### Fixes
 
