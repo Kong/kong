@@ -96,7 +96,7 @@ local function ws_event_loop(ws, on_connection, on_error, on_message, cbs_args)
     while not exiting() do
       local data, typ, err = ws:recv_frame()
       if err then
-        ngx.log(ngx.ERR, "error while receiving frame from peer: ", err)
+        ngx.log(ngx.INFO, "error while receiving frame from peer: ", err)
         if ws.close then
           ws:close()
         end
