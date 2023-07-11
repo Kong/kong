@@ -1819,6 +1819,15 @@ function Kong.admin_header_filter()
 end
 
 
+function Kong.admin_gui_kconfig_content()
+  local kconfig_content, err = kong.cache:get(constants.ADMIN_GUI_KCONFIG_CACHE_KEY, nil, ee.prepare_admin, kong.configuration)
+  if err then
+    kong.log.err('retrieve admin gui config `kconfig.js` from cache error occurred', err)
+    kong.response.exit(500, { message = "An unexpected error occurred" })
+  end
+  ngx.print(kconfig_content)
+end
+
 function Kong.serve_portal_api()
   ngx.ctx.KONG_PHASE = PHASES.admin_api
   return lapis.serve("kong.portal")

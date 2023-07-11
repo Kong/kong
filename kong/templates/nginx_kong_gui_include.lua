@@ -19,9 +19,10 @@ location = $(admin_gui_path_prefix)/robots.txt {
 }
 
 location = $(admin_gui_path_prefix)/kconfig.js {
-    root gui_config;
-
-    try_files /kconfig.js =404;
+    content_by_lua_block {
+      Kong.admin_gui_kconfig_content()
+    }
+    
 
     gzip on;
     gzip_types text/plain text/css application/json application/javascript;

@@ -33,31 +33,19 @@ describe("Admin GUI - admin_gui_path", function()
       admin_gui_listen = "127.0.0.1:9002",
     }))
 
-    local err, gui_dir_path, gui_index_file_path, gui_config_dir_path, gui_config_file_path
+    local err, gui_dir_path, gui_index_file_path
     gui_dir_path = pl_path.join(test_prefix, "gui")
     os.execute("rm -rf " .. gui_dir_path)
     _, err = lfs.mkdir(gui_dir_path)
     assert.is_nil(err)
 
-    gui_config_dir_path = pl_path.join(test_prefix, "gui_config")
-    os.execute("rm -rf " .. gui_config_dir_path)
-    _, err = lfs.mkdir(gui_config_dir_path)
-    assert.is_nil(err)
-
     gui_index_file_path = pl_path.join(gui_dir_path, "index.html")
-    gui_config_file_path = pl_path.join(gui_config_dir_path, "kconfig.js")
 
     local gui_index_file
     gui_index_file, err = io.open(gui_index_file_path, "w+")
     assert.is_nil(err)
     gui_index_file:write("TEST INDEX.HTML = /__km_base__/assets/image.png")
     gui_index_file:close()
-
-    local gui_config_file
-    gui_config_file, err = io.open(gui_config_file_path, "w+")
-    assert.is_nil(err)
-    gui_config_file:write("TEST KCONFIG.JS")
-    gui_config_file:close()
 
     client = assert(ee_helpers.admin_gui_client(nil, 9002))
     local res = assert(client:send {
@@ -74,7 +62,11 @@ describe("Admin GUI - admin_gui_path", function()
       path = "/kconfig.js",
     })
     res = assert.res_status(200, res)
-    assert.matches("TEST KCONFIG%.JS", res)
+    assert.matches("'RBAC_ENFORCED': 'false'", res, nil, true)
+    assert.matches("'RBAC_HEADER': 'Kong-Admin-Token'", res, nil, true)
+    assert.matches("'RBAC_USER_HEADER': 'Kong-Admin-User'", res, nil, true)
+    assert.matches("'RBAC': 'off'", res, nil, true)
+    assert.matches("'ADMIN_GUI_PATH': '/'", res, nil, true)
   end)
 
   it("should serve Admin GUI correctly when admin_gui_path is set", function()
@@ -84,31 +76,19 @@ describe("Admin GUI - admin_gui_path", function()
       admin_gui_path = "/manager",
     }))
 
-    local err, gui_dir_path, gui_index_file_path, gui_config_dir_path, gui_config_file_path
+    local err, gui_dir_path, gui_index_file_path
     gui_dir_path = pl_path.join(test_prefix, "gui")
     os.execute("rm -rf " .. gui_dir_path)
     _, err = lfs.mkdir(gui_dir_path)
     assert.is_nil(err)
 
-    gui_config_dir_path = pl_path.join(test_prefix, "gui_config")
-    os.execute("rm -rf " .. gui_config_dir_path)
-    _, err = lfs.mkdir(gui_config_dir_path)
-    assert.is_nil(err)
-
     gui_index_file_path = pl_path.join(gui_dir_path, "index.html")
-    gui_config_file_path = pl_path.join(gui_config_dir_path, "kconfig.js")
 
     local gui_index_file
     gui_index_file, err = io.open(gui_index_file_path, "w+")
     assert.is_nil(err)
     gui_index_file:write("TEST INDEX.HTML = /__km_base__/assets/image.png")
     gui_index_file:close()
-
-    local gui_config_file
-    gui_config_file, err = io.open(gui_config_file_path, "w+")
-    assert.is_nil(err)
-    gui_config_file:write("TEST KCONFIG.JS")
-    gui_config_file:close()
 
     client = assert(ee_helpers.admin_gui_client(nil, 9002))
     local res = assert(client:send {
@@ -141,6 +121,10 @@ describe("Admin GUI - admin_gui_path", function()
       path = "/manager/kconfig.js",
     })
     res = assert.res_status(200, res)
-    assert.matches("TEST KCONFIG%.JS", res)
+    assert.matches("'RBAC_ENFORCED': 'false'", res, nil, true)
+    assert.matches("'RBAC_HEADER': 'Kong-Admin-Token'", res, nil, true)
+    assert.matches("'RBAC_USER_HEADER': 'Kong-Admin-User'", res, nil, true)
+    assert.matches("'RBAC': 'off'", res, nil, true)
+    assert.matches("'ADMIN_GUI_PATH': '/manager'", res, nil, true)
   end)
 end)

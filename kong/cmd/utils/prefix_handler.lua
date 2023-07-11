@@ -25,7 +25,6 @@ local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local pl_dir = require "pl.dir"
 local log = require "kong.cmd.utils.log"
-local ee = require "kong.enterprise_edition"
 local ffi = require "ffi"
 local bit = require "bit"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
@@ -792,11 +791,6 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
   local ok, err = write_env_file(kong_config.kong_env, env)
   if not ok then
     return nil, err
-  end
-
-  -- setup Kong Enterprise interfaces based on current configuration
-  if kong_config.admin_gui_listeners then
-    ee.prepare_admin(kong_config)
   end
 
   if secrets then

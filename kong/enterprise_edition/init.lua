@@ -5,11 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local pl_file    = require "pl.file"
-local pl_utils   = require "pl.utils"
-local pl_path    = require "pl.path"
-
-local log        = require "kong.cmd.utils.log"
 local meta       = require "kong.enterprise_edition.meta"
 local constants  = require "kong.constants"
 local workspaces = require "kong.workspaces"
@@ -33,6 +28,7 @@ local cjson = require "cjson.safe"
 local fmt = string.format
 
 local kong = kong
+local ngx  = ngx
 local ws_constants  = constants.WORKSPACE_CONFIG
 local _M = {}
 
@@ -41,14 +37,6 @@ require "kong.enterprise_edition.debug_info_patch"
 _M.handlers = {
   init = {
     after = function()
-
-      -- XXX not ideal: re-prepare manager after license load
-      -- ask devx if we really need to `prepare_admin` so early on
-      -- cmd/utils/prefix_handler or just here would be fine
-      -- setup Kong Enterprise interfaces based on current configuration
-      if kong.configuration.admin_gui_listeners then
-        _M.prepare_admin(kong.configuration)
-      end
 
       rbac.register_dao_hooks(kong.db)
       counters.register_dao_hooks()
@@ -140,14 +128,7 @@ _M.handlers = {
       --   * things that check for settings only on init won't work unless
       --     we handle the change (see vitals on kong/init.lua)
       kong.worker_events.register(function(data, event, source, pid)
-
-        -- XXX won't work since worker process has no permissions over static
-        -- file `kconfig.js` that this generates for admin
-        -- if kong.configuration.admin_gui_listeners then
-        --   _M.prepare_admin(kong.configuration)
-        -- end
-
-        -- anything else?
+        kong.cache:invalidate_local(constants.ADMIN_GUI_KCONFIG_CACHE_KEY)
       end, "kong:configuration", "change")
 
       -- register event_hooks hooks
@@ -190,7 +171,7 @@ function _M.feature_flags_init(config)
 end
 
 
-local function write_kconfig(configs, filename)
+local function render_kconfig(configs)
   local kconfig_str = "window.K_CONFIG = {\n"
   for config, value in pairs(configs) do
     kconfig_str = kconfig_str .. "  '" .. config .. "': '" .. value .. "',\n"
@@ -198,46 +179,11 @@ local function write_kconfig(configs, filename)
 
   -- remove trailing comma
   kconfig_str = kconfig_str:sub(1, -3)
-
-  if not pl_file.write(filename, kconfig_str .. "\n}\n") then
-    log.warn("Could not write file ".. filename .. ". Ensure that the Kong " ..
-             "CLI user has permissions to write to this directory")
-  end
+  kconfig_str = kconfig_str .. "\n}\n"
+  return kconfig_str
 end
 
-
-local function prepare_interface(usr_path, interface_dir, interface_conf_dir, interface_env, kong_config)
-  local usr_interface_path = usr_path .. "/" .. interface_dir
-  local interface_path = kong_config.prefix .. "/" .. interface_dir
-  local interface_conf_path = kong_config.prefix .. "/" .. interface_conf_dir
-  local compile_env = interface_env
-  local config_filename = interface_conf_path .. "/kconfig.js"
-
-  if not pl_path.exists(interface_conf_path) then
-      if not pl_path.mkdir(interface_conf_path) then
-        log.warn("Could not create directory " .. interface_conf_path .. ". " ..
-                 "Ensure that the Kong CLI user has permissions to create " ..
-                 "this directory.")
-      end
-  end
-
-  -- if the interface directory is not exist in custom prefix directory
-  -- try symlinking to the default prefix location
-  -- ensure user can access the interface appliation
-  if not pl_path.exists(interface_path)
-     and pl_path.exists(usr_interface_path) then
-
-    local ln_cmd = "ln -s " .. usr_interface_path .. " " .. interface_path
-    local ok, _, _, err_t = pl_utils.executeex(ln_cmd)
-
-    if not ok then
-      log.warn(err_t)
-    end
-  end
-
-  write_kconfig(compile_env, config_filename)
-end
-_M.prepare_interface = prepare_interface
+_M.render_kconfig = render_kconfig
 
 -- return first listener matching filters
 local function select_listener(listeners, filters)
@@ -289,7 +235,7 @@ function _M.prepare_admin(kong_config)
   -- because we don't currently support entity-level
   local rbac_enforced = kong_config.rbac == "both" or kong_config.rbac == "on"
 
-  return prepare_interface("/usr/local/kong", "gui", "gui_config", {
+  return render_kconfig({
     ADMIN_GUI_AUTH = prepare_variable(kong_config.admin_gui_auth),
     ADMIN_GUI_URL = prepare_variable(kong_config.admin_gui_url),
     ADMIN_GUI_PATH = prepare_variable(kong_config.admin_gui_path),
@@ -317,7 +263,7 @@ function _M.prepare_admin(kong_config)
     PORTAL_GUI_HOST = prepare_variable(kong_config.portal_gui_host),
     PORTAL_GUI_USE_SUBDOMAINS = prepare_variable(kong_config.portal_gui_use_subdomains),
     ANONYMOUS_REPORTS = prepare_variable(kong_config.anonymous_reports),
-  }, kong_config)
+  })
 end
 
 
