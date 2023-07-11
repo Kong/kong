@@ -11,24 +11,24 @@ local v = require("spec.helpers").validate_plugin_config_schema
 
 describe("Plugin: ip-restriction (schema)", function()
   it("should accept a valid allow", function()
-    assert(v({ allow = { "127.0.0.1", "127.0.0.2" } }, schema_def))
+    assert(v({ allow = { "127.0.0.1/32", "127.0.0.2/32" } }, schema_def))
   end)
   it("should accept a valid allow and status/message", function()
-    assert(v({ allow = { "127.0.0.1", "127.0.0.2" }, status = 403, message = "Forbidden" }, schema_def))
+    assert(v({ allow = { "127.0.0.1/32", "127.0.0.2/32" }, status = 403, message = "Forbidden" }, schema_def))
   end)
   it("should accept a valid cidr range", function()
     assert(v({ allow = { "127.0.0.1/8" } }, schema_def))
   end)
   it("should accept a valid deny", function()
-    assert(v({ deny = { "127.0.0.1", "127.0.0.2" } }, schema_def))
+    assert(v({ deny = { "127.0.0.1/32", "127.0.0.2/32" } }, schema_def))
   end)
   it("should accept both non-empty allow and deny", function()
     local schema = {
       deny = {
-        "127.0.0.2"
+        "127.0.0.2/32"
       },
       allow = {
-        "127.0.0.1"
+        "127.0.0.1/32"
       },
     }
     assert(v(schema, schema_def))
@@ -47,7 +47,7 @@ describe("Plugin: ip-restriction (schema)", function()
         allow = { "invalid ip or cidr range: 'hello'" }
       }, err.config)
 
-      ok, err = v({ allow = { "127.0.0.1", "127.0.0.2", "hello" } }, schema_def)
+      ok, err = v({ allow = { "127.0.0.1/32", "127.0.0.2/32", "hello" } }, schema_def)
       assert.falsy(ok)
       assert.same({
         allow = { [3] = "invalid ip or cidr range: 'hello'" }
@@ -65,7 +65,7 @@ describe("Plugin: ip-restriction (schema)", function()
         deny = { "invalid ip or cidr range: 'hello'" }
       }, err.config)
 
-      ok, err = v({ deny = { "127.0.0.1", "127.0.0.2", "hello" } }, schema_def)
+      ok, err = v({ deny = { "127.0.0.1/32", "127.0.0.2/32", "hello" } }, schema_def)
       assert.falsy(ok)
       assert.same({
         deny = { [3] = "invalid ip or cidr range: 'hello'" }

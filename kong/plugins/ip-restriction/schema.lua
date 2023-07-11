@@ -11,7 +11,7 @@ local typedefs = require "kong.db.schema.typedefs"
 return {
   name = "ip-restriction",
   fields = {
-    { protocols = typedefs.protocols_http },
+    { protocols = typedefs.protocols { default = { "http", "https", "tcp", "tls", "grpc", "grpcs" } }, },
     { consumer_group = typedefs.no_consumer_group },
     { config = {
         type = "record",
