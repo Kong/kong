@@ -11,6 +11,7 @@ on:  # yamllint disable-line rule:truthy
     - '**'
     branches:
     - master
+    - feat/wasmx # remove me before merge to master!
   workflow_dispatch:
     inputs:
       official:
