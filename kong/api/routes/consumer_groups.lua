@@ -68,7 +68,7 @@ return {
           offset = offset,
           next   = next_page
         })
-      end  
+      end
     }
   },
   ["/consumer_groups/:consumer_groups"] = {
@@ -127,7 +127,7 @@ return {
         end
 
         --filter the list before processing
-        for _, request_consumer in ipairs(request_consumers) do
+        for _, request_consumer in pairs(request_consumers) do
           local consumer = consumer_group_helpers.select_by_username_or_id(kong.db.consumers, request_consumer)
           if not consumer then
             return kong.response.error(404, "Consumer '" .. request_consumer .. "' not found")
@@ -150,6 +150,10 @@ return {
           if err_t then
             return endpoints.handle_error(err_t)
           end
+          local cache_key_scan = kong.db.consumer_group_consumers:cache_key("", consumer.id)
+          kong.cache:invalidate(cache_key_scan)
+          local cache_key = kong.db.consumer_group_consumers:cache_key(self.consumer_group.id, consumer.id)
+          kong.cache:invalidate(cache_key)
         end
 
         return kong.response.exit(201, {

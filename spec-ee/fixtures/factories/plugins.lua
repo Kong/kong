@@ -26,18 +26,18 @@ function EntitiesFactory:setup(strategy)
   local ef = BaseEntitiesFactory:setup(strategy)
 
 	local consumer_group_plat = assert(bp.consumer_groups:insert {
-    -- define IDs as this is the basis for sorting
-    -- not defining these upfront makes some tests flaky
-    id = "20000000-0000-0000-0000-000000000000",
-		name = "Platinum",
+    -- prefix names with A, B and C to ensure their ordering
+    -- as we sort by name in this iteration.
+    id = "00000000-0000-0000-0000-000000000000",
+		name = "A_Platinum",
 	})
 	local consumer_group_gold = assert(bp.consumer_groups:insert {
     id = "10000000-0000-0000-0000-000000000000",
-		name = "Gold",
+		name = "B_Gold",
 	})
 	local consumer_group_silver = assert(bp.consumer_groups:insert {
-    id = "00000000-0000-0000-0000-000000000000",
-		name = "Silver",
+    id = "20000000-0000-0000-0000-000000000000",
+		name = "C_Silver",
 	})
 
   assert(bp.consumer_group_consumers:insert({
