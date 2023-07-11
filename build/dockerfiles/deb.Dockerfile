@@ -29,7 +29,10 @@ RUN apt-get update \
     && ln -sf /usr/local/openresty/luajit/bin/luajit /usr/local/bin/luajit \
     && ln -sf /usr/local/openresty/luajit/bin/luajit /usr/local/bin/lua \
     && ln -sf /usr/local/openresty/nginx/sbin/nginx /usr/local/bin/nginx \
-    && kong version
+    && if [ -d /usr/local/openresty/nginx/modules ]; then \
+        ln -sf /usr/local/openresty/nginx/modules /usr/local/kong/modules ; \
+       fi; \
+    kong version
 
 COPY build/dockerfiles/entrypoint.sh /entrypoint.sh
 
