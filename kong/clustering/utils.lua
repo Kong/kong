@@ -2,6 +2,7 @@ local constants = require("kong.constants")
 local ws_client = require("resty.websocket.client")
 local ws_server = require("resty.websocket.server")
 local parse_url = require("socket.url").parse
+local process_type = require("ngx.process").type
 
 local type = type
 local table_insert = table.insert
@@ -156,6 +157,10 @@ end
 
 
 function _M.is_dp_worker_process()
+  if kong.configuration.privileged_agent then
+    return process_type() == "privileged agent"
+  end
+
   return worker_id() == 0
 end
 
