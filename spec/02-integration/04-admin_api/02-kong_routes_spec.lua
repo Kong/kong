@@ -447,6 +447,7 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.is_table(json.fields)
+        assert.is_table(json.entity_checks)
       end
     end)
     it("returns 404 on a missing entity", function()

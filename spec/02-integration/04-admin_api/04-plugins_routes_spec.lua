@@ -449,6 +449,7 @@ for _, strategy in helpers.each_strategy() do
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
             assert.is_table(json.fields)
+            assert.is_table(json.entity_checks)
           end
         end)
         it("returns nested records and empty array defaults as arrays", function()
@@ -457,11 +458,12 @@ for _, strategy in helpers.each_strategy() do
             path = "/schemas/plugins/request-transformer",
           })
           local body = assert.res_status(200, res)
-          assert.match('{"fields":[{', body, 1, true)
+          assert.not_match('"entity_checks":{', body, 1, true)
           assert.not_match('"fields":{', body, 1, true)
           assert.match('"default":[]', body, 1, true)
           assert.not_match('"default":{}', body, 1, true)
         end)
+
         it("returns 404 on invalid plugin", function()
           local res = assert(client:send {
             method = "GET",

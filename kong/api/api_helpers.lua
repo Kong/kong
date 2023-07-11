@@ -231,7 +231,8 @@ do
 
   schema_to_jsonable = function(schema)
     local fields = fields_to_jsonable(schema.fields)
-    return { fields = fields }
+    local entity_checks = fields_to_jsonable(schema.entity_checks or {})
+    return { entity_checks = entity_checks, fields = fields,  }
   end
   _M.schema_to_jsonable = schema_to_jsonable
 end
