@@ -36,20 +36,6 @@ local pcall = pcall
 
 pcall(require, "luarocks.loader")
 
---
--- There are known issues with JIT and Apple Silicon processors
--- This is a temporary workaround, until more is known about the issue
--- and a proper fix is created. Note that disabling JIT has considerable
--- performance penalty, as LuaJIT will run in interpreted mode only. We
--- deem such performance impact to be acceptable in principle since
--- Silicon-based machines are used mostly in development and local
--- testing / playground mode.
---
-local M1 = jit and jit.os == "OSX" and jit.arch == "arm64"
-if M1 then
-  jit.off()
-end
-
 assert(package.loaded["resty.core"], "lua-resty-core must be loaded; make " ..
                                      "sure 'lua_load_resty_core' is not "..
                                      "disabled.")
