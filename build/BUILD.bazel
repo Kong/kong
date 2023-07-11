@@ -92,6 +92,21 @@ wasmx_vm_cmd = select({
     "//conditions:default": "",
 })
 
+link_modules_dir = select({
+    "@kong//:nginx_dynamic_module_support": """
+    function LN {
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            # TODO: support relative path links once we start to cross compile on macOS
+            ln -sf $@
+        else
+            ln -srf $@
+        fi
+    }
+    LN ${BUILD_DESTDIR}/openresty/nginx/modules ${BUILD_DESTDIR}/kong/modules
+""",
+   "//conditions:default": "",
+})
+
 kong_directory_genrule(
     name = "kong",
     srcs = [
@@ -147,7 +162,7 @@ kong_directory_genrule(
 
         cp -r $(locations @protoc//:all_srcs) ${BUILD_DESTDIR}/kong/.
 
-    """ + install_lib_deps_cmd + install_lualib_deps_cmd + wasm_libs_install + wasmx_vm_cmd +
+    """ + install_lib_deps_cmd + install_lualib_deps_cmd + link_modules_dir + wasm_libs_install + wasmx_vm_cmd +
         """
         mkdir -p ${BUILD_DESTDIR}/etc/kong
         cp kong.conf.default ${BUILD_DESTDIR}/etc/kong/kong.conf.default
