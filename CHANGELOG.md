@@ -88,6 +88,8 @@
   [#11082](https://github.com/Kong/kong/pull/11082)
 - Fix an issue where the router of flavor `expressions` can not configure https redirection.
   [#11166](https://github.com/Kong/kong/pull/11166)
+- Added new span attribute `net.peer.name` if balancer_data.hostname is available.
+  [#10723](https://github.com/Kong/kong/pull/10729)
 
 #### Admin API
 
