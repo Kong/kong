@@ -27,6 +27,12 @@
   [KAG-666](https://konghq.atlassian.net/browse/KAG-666)
 - **CentOS packages are now removed from the release and are no longer supported in future versions.**
 
+- Renamed configuration property `admin_api_uri` to `admin_gui_api_url`.
+  The old `admin_api_uri` property is considered deprecated and will be
+  fully removed in a future version of Kong.
+  [#5984](https://github.com/Kong/kong-ee/pull/5984)
+  [KAG-2037](https://konghq.atlassian.net/browse/KAG-2037)
+
 ### Dependencies
 
 * `lua-resty-ljsonschema` is bumped from 1.1.3 to 1.15

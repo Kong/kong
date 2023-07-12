@@ -120,6 +120,7 @@ proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 http2 ssl reus
 stream_listen = off
 
 admin_api_uri = NONE
+admin_gui_api_url = NONE
 admin_gui_listen = 0.0.0.0:8002, 0.0.0.0:8445 ssl
 admin_gui_url =
 admin_gui_path = /

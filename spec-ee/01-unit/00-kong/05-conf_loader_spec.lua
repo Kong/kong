@@ -828,3 +828,22 @@ describe("ee conf loader", function()
     end)
   end)
 end)
+
+describe("deprecated properties", function()
+  it("admin_api_uri should map to admin_gui_api_url", function()
+    local conf, err = assert(conf_loader(nil, {
+      admin_api_uri = "http://localhost:8001/admin/api",
+    }))
+
+    assert.equal("http://localhost:8001/admin/api", conf.admin_gui_api_url)
+    assert.equal(nil, err)
+
+    conf, err = assert(conf_loader(nil, {
+      admin_api_uri = "https://localhost:8001/",
+      admin_gui_api_url = "http://admin.api:8001/api",
+    }))
+
+    assert.equal("http://admin.api:8001/api", conf.admin_gui_api_url)
+    assert.equal(nil, err)
+  end)
+end)

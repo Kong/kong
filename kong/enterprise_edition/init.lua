@@ -216,7 +216,6 @@ function _M.prepare_admin(kong_config)
   local gui_ssl_listen = select_listener(kong_config.admin_gui_listeners, {ssl = true})
   local gui_ssl_port = gui_ssl_listen and gui_ssl_listen.port
 
-  local api_url
   local api_listen
   local api_port
   local api_ssl_listen
@@ -227,9 +226,6 @@ function _M.prepare_admin(kong_config)
   api_port = api_listen and api_listen.port
   api_ssl_listen = select_listener(kong_config.admin_listeners, {ssl = true})
   api_ssl_port = api_ssl_listen and api_ssl_listen.port
-  -- TODO: stop using this property, and introduce admin_api_url so that
-  -- api_url always includes the protocol
-  api_url = kong_config.admin_api_uri
 
   -- we will consider rbac to be on if it is set to "both" or "on",
   -- because we don't currently support entity-level
@@ -241,7 +237,7 @@ function _M.prepare_admin(kong_config)
     ADMIN_GUI_PATH = prepare_variable(kong_config.admin_gui_path),
     ADMIN_GUI_PORT = prepare_variable(gui_port),
     ADMIN_GUI_SSL_PORT = prepare_variable(gui_ssl_port),
-    ADMIN_API_URL = prepare_variable(api_url),
+    ADMIN_API_URL = prepare_variable(kong_config.admin_gui_api_url),
     ADMIN_API_PORT = prepare_variable(api_port),
     ADMIN_API_SSL_PORT = prepare_variable(api_ssl_port),
     ADMIN_GUI_HEADER_TXT = prepare_variable(kong_config.admin_gui_header_txt),

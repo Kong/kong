@@ -85,9 +85,9 @@ local EE_CONF_INFERENCES = {
   audit_log_signing_key = {typ = "string"},
   audit_log_payload_exclude = {typ = "array"},
 
-  admin_api_uri = {typ = "string"},
   admin_gui_listen = {typ = "array"},
   admin_gui_path = {typ = "string"},
+  admin_gui_api_url = {typ = "string"},
   admin_gui_error_log = {typ = "string"},
   admin_gui_access_log = {typ = "string"},
   admin_gui_flags = {typ = "string"},
@@ -102,6 +102,16 @@ local EE_CONF_INFERENCES = {
   admin_invitation_expiry = {typ = "number"},
   admin_gui_ssl_cert = { typ = "array" },
   admin_gui_ssl_cert_key = { typ = "array" },
+
+  admin_api_uri = {
+    typ = "string",
+    alias = {
+      replacement = "admin_gui_api_url",
+    },
+    deprecated = {
+      replacement = "admin_gui_api_url",
+    },
+  },
 
   portal = {typ = "boolean"},
   portal_is_legacy = {typ = "boolean"},

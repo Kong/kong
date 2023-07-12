@@ -660,12 +660,7 @@
 # See http://nginx.org/en/docs/stream/ngx_stream_core_module.html#listen
 # for a description of the formats that Kong might accept in stream_listen.
 
-#admin_api_uri =         # Hierarchical part of a URI which is composed
-                         # optionally of a host, port, and path at which the
-                         # Admin API accepts HTTP or HTTPS traffic. When
-                         # this config is disabled, Kong Manager will
-                         # use the window protocol + host and append the
-                         # resolved admin_listen HTTP/HTTPS port.
+#admin_api_uri =         # Deprecated: Use admin_gui_api_url instead
 
 #admin_listen = 127.0.0.1:8001 reuseport backlog=16384, 127.0.0.1:8444 http2 ssl reuseport backlog=16384
                          # Comma-separated list of addresses and ports on
@@ -2082,6 +2077,13 @@
                         # - `/manager`
                         # - `/kong-manager`
                         # - `/kong/manager`
+
+#admin_gui_api_url =    # Hierarchical part of a URI which is composed
+                        # optionally of a host, port, and path at which the
+                        # Admin API accepts HTTP or HTTPS traffic. When
+                        # this config is disabled, Kong Manager will
+                        # use the window protocol + host and append the
+                        # resolved admin_listen HTTP/HTTPS port.
 
 #admin_gui_ssl_cert =   # The SSL certificate for `admin_gui_listen` values
                         # with SSL enabled.

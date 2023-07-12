@@ -49,7 +49,7 @@ describe("admin_gui template", function()
       prefix = mock_prefix,
       admin_gui_auth = 'basic-auth',
       admin_gui_url = "http://0.0.0.0:8002",
-      admin_api_uri = "https://admin-reference.kong-cloud.com",
+      admin_gui_api_url = "https://admin-reference.kong-cloud.com",
       admin_gui_header_txt = "header_text",
       admin_gui_header_bg_color = "white",
       admin_gui_header_txt_color = "black",
@@ -131,7 +131,7 @@ describe("admin_gui template", function()
       -- change configuration values
       new_conf.admin_gui_url = 'http://admin-test.example.com'
       new_conf.admin_gui_path = '/kong-manager'
-      new_conf.admin_api_uri = 'http://localhost:8001'
+      new_conf.admin_gui_api_url = 'http://localhost:8001'
       new_conf.proxy_url = 'http://127.0.0.1:8000'
       new_conf.admin_gui_flags = "{ HIDE_VITALS: true }"
       new_conf.admin_gui_auth_header = 'Kong-Admin-Userz'
@@ -178,7 +178,7 @@ describe("admin_gui template", function()
       admin_gui_auth = nil,
       admin_gui_url = "http://0.0.0.0:8002",
       proxy_url = "http://0.0.0.0:8000",
-      admin_api_uri = "0.0.0.0:8001",
+      admin_gui_api_url = "0.0.0.0:8001",
       admin_gui_header_txt = "header_text",
       admin_gui_header_bg_color = "white",
       admin_gui_header_txt_color = "black",
