@@ -45,7 +45,7 @@ local encode_base64url = require("ngx.base64").encode_base64url
 local decode_json = cjson.decode
 
 local ROTATION_INTERVAL = tonumber(os.getenv("KONG_VAULT_ROTATION_INTERVAL") or 60)
-
+local RETRIEVE_RETRIES = tonumber(os.getenv("KONG_VAULT_RETRIEVE_RETRIES") or 5)
 
 local function new(self)
   local ROTATION_SEMAPHORE = semaphore.new(1)
@@ -71,7 +71,6 @@ local function new(self)
   local STRATEGIES = {}
   local SCHEMAS = {}
   local CONFIGS = {}
-  local CONFIG_HASHES = {}
 
 
   local BRACE_START = byte("{")
@@ -82,16 +81,18 @@ local function new(self)
 
   local BUNDLED_VAULTS = constants.BUNDLED_VAULTS
   local VAULT_NAMES
-  local vaults = self and self.configuration and self.configuration.loaded_vaults
-  if vaults then
-    VAULT_NAMES = {}
+  do
+    local vaults = self and self.configuration and self.configuration.loaded_vaults
+    if vaults then
+      VAULT_NAMES = {}
 
-    for name in pairs(vaults) do
-      VAULT_NAMES[name] = true
+      for name in pairs(vaults) do
+        VAULT_NAMES[name] = true
+      end
+
+    else
+      VAULT_NAMES = BUNDLED_VAULTS and clone(BUNDLED_VAULTS) or {}
     end
-
-  else
-    VAULT_NAMES = BUNDLED_VAULTS and clone(BUNDLED_VAULTS) or {}
   end
 
 
@@ -170,6 +171,152 @@ local function new(self)
   end
 
 
+  local function get_vault(prefix)
+    -- find a vault - it can be either a named vault that needs to be loaded from the cache, or the
+    -- vault type accessed by name
+    local cache = self.core_cache
+    local vaults = self.db.vaults
+    if cache then
+      local vault_cache_key = vaults:cache_key(prefix)
+      return cache:get(vault_cache_key, nil, vaults.select_by_prefix, vaults, prefix)
+
+    else
+      return vaults:select_by_prefix(prefix)
+    end
+  end
+
+
+  local function get_vault_config_from_kong_conf(name)
+    -- base config stays the same so we can cache it
+    local base_config = CONFIGS[name]
+    if not base_config then
+      base_config = {}
+      if self and self.configuration then
+        local configuration = self.configuration
+        local env_name = gsub(name, "-", "_")
+        local schema = assert(SCHEMAS[name])
+        for k, f in schema:each_field() do
+          -- n is the entry in the kong.configuration table, for example
+          -- KONG_VAULT_ENV_PREFIX will be found in kong.configuration
+          -- with a key "vault_env_prefix". Environment variables are
+          -- thus turned to lowercase and we just treat any "-" in them
+          -- as "_". For example if your custom vault was called "my-vault"
+          -- then you would configure it with KONG_VAULT_MY_VAULT_<setting>
+          -- or in kong.conf, where it would be called
+          -- "vault_my_vault_<setting>".
+          local n = lower(fmt("vault_%s_%s", env_name, gsub(k, "-", "_")))
+          local v = configuration[n]
+          v = arguments.infer_value(v, f)
+          -- TODO: should we be more visible with validation errors?
+          -- In general it would be better to check the references
+          -- and not just a format when they are stored with admin
+          -- API, or in case of process secrets, when the kong is
+          -- started. So this is a note to remind future us.
+          -- Because current validations are less strict, it is fine
+          -- to ignore it here.
+          if v ~= nil and schema:validate_field(f, v) then
+            base_config[k] = v
+          elseif f.required and f.default ~= nil then
+            base_config[k] = f.default
+          end
+        end
+        CONFIGS[name] = base_config
+      end
+    end
+    return base_config
+  end
+
+
+  local function get_vault_strategy_and_schema_during_init(name)
+    if not VAULT_NAMES[name] then
+      return nil, nil, fmt("vault not found (%s)", name)
+    end
+
+    local strategy = STRATEGIES[name]
+    local schema = SCHEMAS[name]
+    if not strategy then
+      local vaults = self and (self.db and self.db.vaults)
+      if vaults and vaults.strategies then
+        strategy = vaults.strategies[name]
+        if not strategy then
+          return nil, nil, fmt("could not find vault (%s)", name)
+        end
+
+        schema = vaults.schema.subschemas[name]
+        if not schema then
+          return nil, nil, fmt("could not find vault schema (%s): %s", name, strategy)
+        end
+
+        schema = require("kong.db.schema").new(schema.fields.config)
+
+      else
+        local ok
+        ok, strategy = pcall(require, fmt("kong.vaults.%s", name))
+        if not ok then
+          return nil, nil, fmt("could not find vault (%s): %s", name, strategy)
+        end
+
+        local def
+        ok, def = pcall(require, fmt("kong.vaults.%s.schema", name))
+        if not ok then
+          return nil, nil, fmt("could not find vault schema (%s): %s", name, def)
+        end
+
+        local Schema = require("kong.db.schema")
+
+        schema = Schema.new(require("kong.db.schema.entities.vaults"))
+
+        local err
+        ok, err = schema:new_subschema(name, def)
+        if not ok then
+          return nil, nil, fmt("could not load vault sub-schema (%s): %s", name, err)
+        end
+
+        schema = schema.subschemas[name]
+        if not schema then
+          return nil, nil, fmt("could not find vault sub-schema (%s)", name)
+        end
+
+        if type(strategy.init) == "function" then
+          strategy.init()
+        end
+
+        schema = Schema.new(schema.fields.config)
+      end
+
+      STRATEGIES[name] = strategy
+      SCHEMAS[name] = schema
+    end
+
+    return strategy, schema
+  end
+
+
+  local function get_vault_strategy_and_schema(name)
+    local vaults = self.db.vaults
+    local strategy = STRATEGIES[name]
+    local schema = SCHEMAS[name]
+    if not strategy then
+      strategy = vaults.strategies[name]
+      if not strategy then
+        return nil, nil, fmt("vault not installed (%s)", name)
+      end
+
+      schema = vaults.schema.subschemas[name]
+      if not schema then
+        return nil, nil, fmt("could not find vault sub-schema (%s)", name)
+      end
+
+      schema = require("kong.db.schema").new(schema.fields.config)
+
+      STRATEGIES[name] = strategy
+      SCHEMAS[name] = schema
+    end
+
+    return strategy, schema
+  end
+
+
   local function retrieve_value(strategy, config, hash, reference, resource, name,
                                 version, key, cache, rotation, cache_only)
     local cache_key
@@ -227,186 +374,37 @@ local function new(self)
   end
 
 
-  local function calculate_config_hash(config, schema)
-    local hash
-    for k in schema:each_field() do
-      local v = config[k]
-      if v ~= nil then
-        if not hash then
-          hash = true
-          KEY_BUFFER:reset()
-        end
-        KEY_BUFFER:putf("%s=%s;", k, v)
-      end
+  local function get_config_and_hash(base_config, config_overrides, schema, prefix)
+    local config = {}
+    config_overrides = config_overrides or {}
+    KEY_BUFFER:reset()
+    if prefix then
+      KEY_BUFFER:putf("%s;", prefix)
     end
-
-    if hash then
-      return encode_base64url(md5_bin(KEY_BUFFER:get()))
-    end
-
-    -- nothing configured, so hash can be nil
-    return nil
-  end
-
-
-  local function calculate_config_hash_for_prefix(config, schema, prefix)
-    local hash = CONFIG_HASHES[prefix]
-    if hash then
-      return hash ~= true and hash or nil
-    end
-
-    local hash = calculate_config_hash(config, schema)
-
-    -- true is used as to store `nil` hash
-    CONFIG_HASHES[prefix] = hash or true
-
-    return hash
-  end
-
-
-  local function get_config_with_overrides(base_config, config_overrides, schema, prefix)
-    local config
     for k, f in schema:each_field() do
-      local v = config_overrides[k]
+      local v = config_overrides[k] or base_config[k]
       v = arguments.infer_value(v, f)
       -- TODO: should we be more visible with validation errors?
       if v ~= nil and schema:validate_field(f, v) then
-        if not config then
-          config = clone(base_config)
-          KEY_BUFFER:reset()
-          if prefix then
-            local hash = calculate_config_hash_for_prefix(config, schema, prefix)
-            if hash then
-              KEY_BUFFER:putf("%s;", hash)
-            end
-          end
-        end
         config[k] = v
         KEY_BUFFER:putf("%s=%s;", k, v)
       end
     end
-
-    local hash
-    if config then
-      hash = encode_base64url(md5_bin(KEY_BUFFER:get()))
-    end
-
-    return config or base_config, hash
-  end
-
-
-  local function get_config(base_config, config_overrides, schema, prefix)
-    if not config_overrides or isempty(config_overrides) then
-      if not prefix then
-        return base_config
-      end
-
-      local hash = calculate_config_hash_for_prefix(base_config, schema, prefix)
-      return base_config, hash
-    end
-
-    return get_config_with_overrides(base_config, config_overrides, schema, prefix)
+    return config, encode_base64url(md5_bin(KEY_BUFFER:get()))
   end
 
 
   local function process_secret(reference, opts, rotation, cache_only)
     local name = opts.name
-    if not VAULT_NAMES[name] then
-      return nil, fmt("vault not found (%s) [%s]", name, reference)
-    end
-    local strategy = STRATEGIES[name]
-    local schema = SCHEMAS[name]
+
+    local strategy, schema, err = get_vault_strategy_and_schema_during_init(name)
     if not strategy then
-      local vaults = self and (self.db and self.db.vaults)
-      if vaults and vaults.strategies then
-        strategy = vaults.strategies[name]
-        if not strategy then
-          return nil, fmt("could not find vault (%s) [%s]", name, reference)
-        end
-
-        schema = vaults.schema.subschemas[name]
-        if not schema then
-          return nil, fmt("could not find vault schema (%s): %s [%s]", name, strategy, reference)
-        end
-
-        schema = require("kong.db.schema").new(schema.fields.config)
-
-      else
-        local ok
-        ok, strategy = pcall(require, fmt("kong.vaults.%s", name))
-        if not ok then
-          return nil, fmt("could not find vault (%s): %s [%s]", name, strategy, reference)
-        end
-
-        local def
-        ok, def = pcall(require, fmt("kong.vaults.%s.schema", name))
-        if not ok then
-          return nil, fmt("could not find vault schema (%s): %s [%s]", name, def, reference)
-        end
-
-        local Schema = require("kong.db.schema")
-
-        schema = Schema.new(require("kong.db.schema.entities.vaults"))
-
-        local err
-        ok, err = schema:new_subschema(name, def)
-        if not ok then
-          return nil, fmt("could not load vault sub-schema (%s): %s [%s]", name, err, reference)
-        end
-
-        schema = schema.subschemas[name]
-        if not schema then
-          return nil, fmt("could not find vault sub-schema (%s) [%s]", name, reference)
-        end
-
-        if type(strategy.init) == "function" then
-          strategy.init()
-        end
-
-        schema = Schema.new(schema.fields.config)
-      end
-
-      STRATEGIES[name] = strategy
-      SCHEMAS[name] = schema
+      return nil, err
     end
 
-    -- base config stays the same so we can cache it
-    local base_config = CONFIGS[name]
-    if not base_config then
-      base_config = {}
-      if self and self.configuration then
-        local configuration = self.configuration
-        local env_name = gsub(name, "-", "_")
-        for k, f in schema:each_field() do
-          -- n is the entry in the kong.configuration table, for example
-          -- KONG_VAULT_ENV_PREFIX will be found in kong.configuration
-          -- with a key "vault_env_prefix". Environment variables are
-          -- thus turned to lowercase and we just treat any "-" in them
-          -- as "_". For example if your custom vault was called "my-vault"
-          -- then you would configure it with KONG_VAULT_MY_VAULT_<setting>
-          -- or in kong.conf, where it would be called
-          -- "vault_my_vault_<setting>".
-          local n = lower(fmt("vault_%s_%s", env_name, gsub(k, "-", "_")))
-          local v = configuration[n]
-          v = arguments.infer_value(v, f)
-          -- TODO: should we be more visible with validation errors?
-          -- In general it would be better to check the references
-          -- and not just a format when they are stored with admin
-          -- API, or in case of process secrets, when the kong is
-          -- started. So this is a note to remind future us.
-          -- Because current validations are less strict, it is fine
-          -- to ignore it here.
-          if v ~= nil and schema:validate_field(f, v) then
-            base_config[k] = v
-          elseif f.required and f.default ~= nil then
-            base_config[k] = f.default
-          end
-        end
-        CONFIGS[name] = base_config
-      end
-    end
+    local base_config = get_vault_config_from_kong_conf(name)
 
-    local config, hash = get_config(base_config, opts.config, schema)
+    local config, hash = get_config_and_hash(base_config, opts.config, schema)
 
     return retrieve_value(strategy, config, hash, reference, opts.resource, name,
                           opts.version, opts.key, self and self.core_cache,
@@ -416,50 +414,21 @@ local function new(self)
 
   local function config_secret(reference, opts, rotation, cache_only)
     local prefix = opts.name
-    local vaults = self.db.vaults
-    local cache = self.core_cache
-    local vault
-    local err
-    if cache then
-      local cache_key = vaults:cache_key(prefix)
-      vault, err = cache:get(cache_key, nil, vaults.select_by_prefix, vaults, prefix)
 
-    else
-      vault, err = vaults:select_by_prefix(prefix)
-    end
-
+    local vault, err = get_vault(prefix)
     if not vault then
-      if err then
-        return nil, fmt("vault not found (%s): %s [%s]", prefix, err, reference)
-      end
-
-      return nil, fmt("vault not found (%s) [%s]", prefix, reference)
+      return nil, fmt("vault not found (%s) [%s]: ", prefix, reference, err or "no further error information available")
     end
 
-    local name = vault.name
-    local strategy = STRATEGIES[name]
-    local schema = SCHEMAS[name]
+    local strategy, schema, err = get_vault_strategy_and_schema(vault.name)
     if not strategy then
-      strategy = vaults.strategies[name]
-      if not strategy then
-        return nil, fmt("vault not installed (%s) [%s]", name, reference)
-      end
-
-      schema = vaults.schema.subschemas[name]
-      if not schema then
-        return nil, fmt("could not find vault sub-schema (%s) [%s]", name, reference)
-      end
-
-      schema = require("kong.db.schema").new(schema.fields.config)
-
-      STRATEGIES[name] = strategy
-      SCHEMAS[name] = schema
+      return nil, err
     end
 
-    local config, hash = get_config(vault.config, opts.config, schema, prefix)
+    local config, hash = get_config_and_hash(vault.config, opts.config, schema, prefix)
 
     return retrieve_value(strategy, config, hash, reference, opts.resource, prefix,
-                          opts.version, opts.key, cache, rotation, cache_only)
+                          opts.version, opts.key, self.core_cache, rotation, cache_only)
   end
 
 
@@ -540,18 +509,41 @@ local function new(self)
   end
 
 
-  local function get(reference, rotation, cache_only)
+  local function make_cache_key(reference)
     local opts, err = parse_reference(reference)
     if err then
       return nil, err
     end
 
+    local vault, err = get_vault(opts.name)
+    if not vault then
+      return nil, fmt("vault not found by prefix: %s (%s)", opts.name, err or "no further error information available")
+    end
+
+    local strategy, schema, err = get_vault_strategy_and_schema(vault.name)
+    if not strategy then
+      return nil, err
+    end
+
+    local _, hash = get_config_and_hash(vault.config, opts.config, schema, opts.name)
+
+    local cache_key = build_cache_key(opts.name, opts.resource, opts.version, hash)
+    return cache_key
+  end
+
+
+  local function get(reference, rotation, cache_only)
     local value, stale_value
     if not rotation then
       value, stale_value = LRU:get(reference)
       if value then
         return value
       end
+    end
+
+    local opts, err = parse_reference(reference)
+    if err then
+      return nil, err
     end
 
     local ttl
@@ -604,8 +596,11 @@ local function new(self)
     end
 
     for field_name, reference in pairs(refs) do
-      local value = get(reference, nil, true) -- TODO: ignoring errors?
-      if value ~= nil then
+      if type(reference) == "string" and is_reference(reference) then
+        local value, err = get(reference, nil, true)
+        if err then
+          self.log.notice("error updating secret reference ", reference, ": ", err)
+        end
         options[field_name] = value
       end
     end
@@ -778,17 +773,32 @@ local function new(self)
   end
 
 
+  local function remove_reference_from_cache(reference)
+    REFERENCES[reference] = nil
+    FAILED[reference] = nil
+    LRU:delete(reference)
+    local cache_key, err = make_cache_key(reference)
+    if not cache_key then
+      self.log.err("could not create cache key for reference ", reference, ": ", err)
+      return
+    end
+    self.core_cache:invalidate(cache_key)
+  end
+
+
   local function rotate_secrets()
     if isempty(REFERENCES) then
       return true
     end
 
+    -- each item that is rotated gets entered into the `rotation` table so that if the same reference
+    -- is present in REFERENCES more than once, it is only rotated once.  Why do we end up with duplicates
+    -- in the REFERENCES table, though?
     local rotation = {}
     local current_time = time()
 
-    local removals
-    local removal_count = 0
-
+    -- fixme: previously, references were first scanned and then removed.  Is it safe to change REFERENCES
+    -- inside the loop?
     for reference, expiry in pairs(REFERENCES) do
       if exiting() then
         return true
@@ -798,28 +808,15 @@ local function new(self)
         local value, err = get(reference, rotation)
         if not value then
           local fail_count = (FAILED[reference] or 0) + 1
-          if fail_count < 5 then
+          if fail_count < RETRIEVE_RETRIES then
             self.log.notice("rotating reference ", reference, " failed: ", err or "unknown")
             FAILED[reference] = fail_count
 
           else
             self.log.warn("rotating reference ", reference, " failed (removed from rotation): ", err or "unknown")
-            if not removals then
-              removals = { reference }
-            else
-              removals[removal_count] = reference
-            end
+            remove_reference_from_cache(reference)
           end
         end
-      end
-    end
-
-    if removal_count > 0 then
-      for i = 1, removal_count do
-        local reference = removals[i]
-        REFERENCES[reference] = nil
-        FAILED[reference] = nil
-        LRU:delete(reference)
       end
     end
 
@@ -860,7 +857,6 @@ local function new(self)
       if old_entity then
         old_prefix = old_entity.prefix
         if old_prefix and old_prefix ~= ngx.null then
-          CONFIG_HASHES[old_prefix] = nil
           cache:invalidate(vaults:cache_key(old_prefix))
         end
       end
@@ -869,7 +865,6 @@ local function new(self)
       if entity then
         local prefix = entity.prefix
         if prefix and prefix ~= ngx.null and prefix ~= old_prefix then
-          CONFIG_HASHES[prefix] = nil
           cache:invalidate(vaults:cache_key(prefix))
         end
       end
@@ -906,7 +901,6 @@ local function new(self)
   -- @usage
   -- kong.vault.flush()
   function _VAULT.flush()
-    CONFIG_HASHES = {}
     LRU:flush_all()
   end
 
