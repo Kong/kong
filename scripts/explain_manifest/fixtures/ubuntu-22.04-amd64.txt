@@ -62,6 +62,14 @@
   - libc.so.6
   Runpath   : /usr/local/kong/lib
 
+- Path      : /usr/local/kong/modules/ngx_wasm_module.so
+  Needed    :
+  - libm.so.6
+  - libgcc_s.so.1
+  - libc.so.6
+  - ld-linux-x86-64.so.2
+  Runpath   : /usr/local/openresty/luajit/lib:/usr/local/kong/lib
+
 - Path      : /usr/local/lib/lua/5.1/lfs.so
   Needed    :
   - libc.so.6
