@@ -17,6 +17,7 @@ contents:
   dst: /usr/local/bin
 - src: nfpm-prefix/kong
   dst: /usr/local/kong
+  type: tree
 - src: nfpm-prefix/lib
   dst: /usr/local/lib
 - src: nfpm-prefix/etc/luarocks
