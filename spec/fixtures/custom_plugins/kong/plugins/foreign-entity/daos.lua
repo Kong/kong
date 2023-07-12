@@ -6,6 +6,7 @@ return {
     name = "foreign_entities",
     primary_key = { "id" },
     endpoint_key = "name",
+    cache_key = { "name" },
     admin_api_name = "foreign-entities",
     fields = {
       { id = typedefs.uuid },
