@@ -6,13 +6,14 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local typedefs = require "kong.plugins.jq.typedefs"
+local common_typedefs = require "kong.db.schema.typedefs"
 
 return {
   name = "jq",
   fields = {
-    typedefs.protocols,
-    {
-      config = {
+    { consumer_group = common_typedefs.no_consumer_group },
+    { protocols = common_typedefs.protocols_http },
+    { config = {
         type = "record",
         fields = {
           { request_jq_program = typedefs.jq_program },

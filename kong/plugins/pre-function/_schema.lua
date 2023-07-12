@@ -40,6 +40,7 @@ return function(plugin_name)
     fields = {
       { protocols = typedefs.protocols_http_and_ws { required = false } },
       { consumer = typedefs.no_consumer },
+      { consumer_group = typedefs.no_consumer_group },
       { protocols = typedefs.protocols },
       {
         config = {
