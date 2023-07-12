@@ -79,13 +79,13 @@ wasm-test-filters:
 	./scripts/build-wasm-test-filters.sh
 
 build-kong: check-bazel
-	$(BAZEL) build //build:kong --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME) --//:wasmx=true
+	$(BAZEL) build //build:kong --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME)
 
 build-venv: check-bazel
 	$(eval VENV := bazel-bin/build/$(BUILD_NAME)-venv.sh)
 
 	@if [ ! -e bazel-bin/build/$(BUILD_NAME)-venv.sh ]; then \
-		$(BAZEL) build //build:venv --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME) --//:wasmx=true; \
+		$(BAZEL) build //build:venv --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME)
 	fi
 
 install-dev-rocks: build-venv
@@ -104,7 +104,7 @@ dev: build-venv install-dev-rocks bin/grpcurl bin/h2client wasm-test-filters
 
 build-release: check-bazel
 	$(BAZEL) clean --expunge
-	$(BAZEL) build //build:kong --verbose_failures --config release --//:wasmx=true
+	$(BAZEL) build //build:kong --verbose_failures --config release
 
 package/deb: check-bazel build-release
 	$(BAZEL) build --config release :kong_deb
