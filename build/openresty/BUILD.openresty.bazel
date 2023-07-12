@@ -232,15 +232,16 @@ CONFIGURE_OPTIONS = [
     ],
     "//conditions:default": [],
 }) + select({
+    "@platforms//os:linux": [
+        # neded for wasmx module
+        # although this is centos7 specific, the flag will work on any GNU linker
+        # we place it here to skip macos, which uses darwin ld
+        # https://github.com/Kong/ngx_wasm_module/commit/e70a19f53e1dda99d016c5cfa393652720959afd
+        "--with-ld-opt=\"-Wl,--allow-multiple-definition\"",
+    ],
+}) + select({
     "@kong//:wasmx_static_mod": [
         "--add-module=$$EXT_BUILD_ROOT$$/external/ngx_wasm_module",
-        # FIXME: this is a workaround for rhel/centos builds, when enabled breaks
-        #        the build for macos
-        #
-        # see:
-        # * https://github.com/Kong/ngx_wasm_module/commit/e70a19f53e1dda99d016c5cfa393652720959afd
-        # * https://github.com/Kong/ngx_wasm_module/blob/e70a19f53e1dda99d016c5cfa393652720959afd/util/Dockerfiles/Dockerfile.amd64.centos7#L9-L11
-        #"--with-ld-opt=\"-Wl,--allow-multiple-definition\"",
     ],
     "@kong//:wasmx_dynamic_mod": [
         "--with-compat",
