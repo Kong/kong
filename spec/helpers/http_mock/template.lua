@@ -51,7 +51,7 @@ http {
 
     function assert(truthy, err) -- luacheck: ignore
       if truthy then
-        return
+        return truthy
       end
 
       if ngx.ctx then

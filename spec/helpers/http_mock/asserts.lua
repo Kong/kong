@@ -118,6 +118,8 @@ local function register_assert(name, impl)
   eventually_MT["not_all_" .. name] = function(self, ...)
     return eventually_has(reverse_impl, self.__mock, ...)
   end
+
+  eventually_MT["has_one_without_" .. name] = eventually_MT["not_all_" .. name]
 end
 
 for name, impl in pairs(build_in_checks) do
