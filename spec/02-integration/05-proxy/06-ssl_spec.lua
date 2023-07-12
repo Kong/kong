@@ -597,6 +597,8 @@ for _, strategy in helpers.each_strategy() do
   end)
 
   describe("TLS proxy [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
+    reload_router(flavor)
+
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
         "routes",
