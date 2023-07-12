@@ -182,6 +182,9 @@ function _GLOBAL.init_worker_events()
                  and configuration.prefix
                  or require("pl.path").abspath(ngx.config.prefix())
 
+  local max_payload_len = configuration
+                           and configuration.worker_events_max_payload
+
   local sock = ngx.config.subsystem == "stream"
                and "stream_worker_events.sock"
                or "worker_events.sock"
@@ -189,10 +192,11 @@ function _GLOBAL.init_worker_events()
   local listening = "unix:" .. prefix .. "/" .. sock
 
   opts = {
-    unique_timeout = 5,     -- life time of unique event data in lrucache
-    broker_id = 0,          -- broker server runs in nginx worker #0
-    listening = listening,  -- unix socket for broker listening
-    max_queue_len = 1024 * 50,  -- max queue len for events buffering
+    unique_timeout = 5,                   -- life time of unique event data in lrucache
+    broker_id = 0,                        -- broker server runs in nginx worker #0
+    listening = listening,                -- unix socket for broker listening
+    max_payload_len = max_payload_len,    -- max payload size in bytes
+    max_queue_len = 1024 * 50,            -- max queue len for events buffering
   }
 
   worker_events = require "resty.events.compat"

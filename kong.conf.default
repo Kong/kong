@@ -269,6 +269,11 @@
                                  # Similarly to `error_template_html`, the template
                                  # is required to contain one single `%s` placeholder for
                                  # the error message.
+
+#worker_events_max_payload =     # Specifies the max payload size the `worker_events` can
+                                 # accept.
+                                 # Default is 64k - 1024 * 64. The max allowed is 16M Bytes.
+
 #------------------------------------------------------------------------------
 # HYBRID MODE
 #------------------------------------------------------------------------------
