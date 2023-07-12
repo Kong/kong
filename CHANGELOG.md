@@ -21,6 +21,8 @@
 
 #### Core
 
+- '/schemas' endpoint returns additional information about cross-field validation as part of the schema. This should help tools that use the Admin API to perform better client-side validation.
+
 #### Plugins
 
 - Validation for queue related parameters has been
@@ -44,6 +46,9 @@
   The field `header_type`now accepts the `aws` value to handle this specific
   propagation header.
   [11075](https://github.com/Kong/kong/pull/11075)
+- **Ip-Restriction**: Add TCP support to the plugin.
+  Thanks [@scrudge](https://github.com/scrudge) for contributing this change.
+  [#10245](https://github.com/Kong/kong/pull/10245)
 
 #### PDK
 

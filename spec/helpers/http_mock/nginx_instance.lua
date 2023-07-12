@@ -1,3 +1,6 @@
+--- part of http_mock
+-- @submodule spec.helpers.http_mock
+
 local template_str = require "spec.helpers.http_mock.template"
 local pl_template = require "pl.template"
 local pl_path = require "pl.path"
@@ -15,16 +18,18 @@ local shallow_copy = require "kong.tools.utils".shallow_copy
 
 local template = assert(pl_template.compile(template_str))
 local render_env = {ipairs = ipairs, pairs = pairs, error = error, }
-
 local http_mock = {}
 
--- start a dedicate nginx instance for this mock
+--- start a dedicate nginx instance for this mock
+-- @tparam[opt=false] bool error_on_exist whether to throw error if the directory already exists
+-- @within http_mock
+-- @usage http_mock:start(true)
 function http_mock:start(error_on_exist)
   local ok = (pl_path.mkdir(self.prefix))
     and (pl_path.mkdir(self.prefix .. "/logs"))
     and (pl_path.mkdir(self.prefix .. "/conf"))
   if error_on_exist then assert(ok, "failed to create directory " .. self.prefix) end
-  
+
   local render = assert(template:render(shallow_copy(self), render_env))
   local conf_path = self.prefix .. "/conf/nginx.conf"
   local conf_file = assert(io.open(conf_path, "w"))
@@ -39,7 +44,13 @@ end
 
 local sleep_step = 0.01
 
--- stop a dedicate nginx instance for this mock
+--- stop a dedicate nginx instance for this mock
+-- @function http_mock:stop
+-- @tparam[opt=false] bool no_clean whether to preserve the logs
+-- @tparam[opt="TERM"] string signal the signal name to send to the nginx process
+-- @tparam[opt=10] number timeout the timeout to wait for the nginx process to exit
+-- @within http_mock
+-- @usage http_mock:stop(false, "TERM", 10)
 function http_mock:stop(no_clean, signal, timeout)
   signal = signal or "TERM"
   timeout = timeout or 10
