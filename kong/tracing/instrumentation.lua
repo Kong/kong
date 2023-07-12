@@ -1,5 +1,6 @@
 local pdk_tracer = require "kong.pdk.tracing".new()
 local propagation = require "kong.tracing.propagation"
+local buffer = require "string.buffer"
 local utils = require "kong.tools.utils"
 local tablepool = require "tablepool"
 local tablex = require "pl.tablex"
@@ -13,17 +14,14 @@ local type = type
 local next = next
 local pack = utils.pack
 local unpack = utils.unpack
-local insert = table.insert
 local assert = assert
 local pairs = pairs
-local ipairs = ipairs
 local new_tab = base.new_tab
 local time_ns = utils.time_ns
 local tablepool_release = tablepool.release
 local get_method = ngx.req.get_method
 local ngx_log = ngx.log
 local ngx_DEBUG = ngx.DEBUG
-local concat = table.concat
 local tonumber = tonumber
 local setmetatable = setmetatable
 local cjson_encode = cjson.encode
@@ -139,7 +137,7 @@ function _M.balancer(ctx)
         span:set_attribute("net.peer.name", balancer_data.hostname)
       end
 
-      local upstream_finish_time = ctx.KONG_BODY_FILTER_ENDED_AT and ctx.KONG_BODY_FILTER_ENDED_AT * 1e6
+      local upstream_finish_time = ctx.KONG_BODY_FILTER_ENDED_AT_NS
       span:finish(upstream_finish_time)
     end
   end
@@ -244,6 +242,7 @@ function _M.request(ctx)
       ["http.host"] = host,
       ["http.scheme"] = scheme,
       ["http.flavor"] = http_flavor,
+      ["http.client_ip"] = client.get_forwarded_ip(),
       ["net.peer.ip"] = client.get_ip(),
     },
   })
@@ -301,6 +300,8 @@ function _M.runloop_before_header_filter()
   local root_span = ngx.ctx.KONG_SPANS and ngx.ctx.KONG_SPANS[1]
   if root_span then
     root_span:set_attribute("http.status_code", ngx.status)
+    local r = ngx.ctx.route
+    root_span:set_attribute("http.route", r and r.paths and r.paths[1] or "")
   end
 end
 
@@ -323,20 +324,27 @@ local lazy_format_spans
 do
   local lazy_mt = {
     __tostring = function(spans)
-      local detail_logs = new_tab(#spans, 0)
-      for i, span in ipairs(spans) do
-        insert(detail_logs, "\nSpan #" .. i .. " name=" .. span.name)
+      local logs_buf = buffer.new(1024)
+
+      for i = 1, #spans do
+        local span = spans[i]
+
+        logs_buf:putf("\nSpan #%d name=%s", i, span.name)
 
         if span.end_time_ns then
-          insert(detail_logs, " duration=" .. (span.end_time_ns - span.start_time_ns) / 1e6 .. "ms")
+          logs_buf:putf(" duration=%fms", (span.end_time_ns - span.start_time_ns) / 1e6)
         end
 
         if span.attributes then
-          insert(detail_logs, " attributes=" .. cjson_encode(span.attributes))
+          logs_buf:putf(" attributes=%s", cjson_encode(span.attributes))
         end
       end
 
-      return concat(detail_logs)
+      local str = logs_buf:get()
+
+      logs_buf:free()
+
+      return str
     end
   }
 
@@ -353,7 +361,8 @@ function _M.runloop_log_after(ctx)
   if type(ctx.KONG_SPANS) == "table" then
     ngx_log(ngx_DEBUG, _log_prefix, "collected " .. #ctx.KONG_SPANS .. " spans: ", lazy_format_spans(ctx.KONG_SPANS))
 
-    for _, span in ipairs(ctx.KONG_SPANS) do
+    for i = 1, #ctx.KONG_SPANS do
+      local span = ctx.KONG_SPANS[i]
       if type(span) == "table" and type(span.release) == "function" then
         span:release()
       end

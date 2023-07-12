@@ -626,8 +626,7 @@ for _, strategy in helpers.each_strategy() do
               end
             end)
 
-            -- Cassandra doesn't fail on this because its insert is an upsert
-            pending("returns 409 on id conflict (same plugin id)", function(content_type)
+            it("returns 409 on id conflict (same plugin id)", function(content_type)
               return function()
                 local service = bp.services:insert()
                 -- insert initial plugin

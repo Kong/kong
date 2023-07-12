@@ -223,7 +223,8 @@ do
 
   schema_to_jsonable = function(schema)
     local fields = fields_to_jsonable(schema.fields)
-    return { fields = fields }
+    local entity_checks = fields_to_jsonable(schema.entity_checks or {})
+    return { entity_checks = entity_checks, fields = fields,  }
   end
   _M.schema_to_jsonable = schema_to_jsonable
 end
@@ -268,12 +269,15 @@ end
 
 local function parse_params(fn)
   return app_helpers.json_params(function(self, ...)
+    local content_type = self.req.headers["content-type"]
+    local is_json
+
     if NEEDS_BODY[get_method()] then
-      local content_type = self.req.headers["content-type"]
       if content_type then
         content_type = content_type:lower()
+        is_json = find(content_type, "application/json", 1, true)
 
-        if find(content_type, "application/json", 1, true) and not self.json then
+        if is_json and not self.json then
           return kong.response.exit(400, { message = "Cannot parse JSON body" })
 
         elseif find(content_type, "application/x-www-form-urlencode", 1, true) then
@@ -282,7 +286,9 @@ local function parse_params(fn)
       end
     end
 
-    self.params = _M.normalize_nested_params(self.params)
+    if not is_json then
+      self.params = _M.normalize_nested_params(self.params)
+    end
 
     local res, err = fn(self, ...)
 

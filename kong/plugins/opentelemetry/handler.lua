@@ -3,7 +3,6 @@ local http = require "resty.http"
 local clone = require "table.clone"
 local otlp = require "kong.plugins.opentelemetry.otlp"
 local propagation = require "kong.tracing.propagation"
-local kong_meta = require "kong.meta"
 
 
 local ngx = ngx
@@ -28,7 +27,7 @@ local _log_prefix = "[otel] "
 
 
 local OpenTelemetryHandler = {
-  VERSION = kong_meta.version,
+  VERSION = "0.1.0",
   PRIORITY = 14,
 }
 
@@ -164,7 +163,7 @@ function OpenTelemetryHandler:log(conf)
     end
 
     local ok, err = Queue.enqueue(
-      Queue.get_params(conf),
+      Queue.get_plugin_params("opentelemetry", conf),
       http_export,
       conf,
       encode_span(span)

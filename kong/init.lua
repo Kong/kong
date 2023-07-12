@@ -82,20 +82,20 @@ local concurrency = require "kong.concurrency"
 local cache_warmup = require "kong.cache.warmup"
 local balancer = require "kong.runloop.balancer"
 local kong_error_handlers = require "kong.error_handlers"
-local migrations_utils = require "kong.cmd.utils.migrations"
 local plugin_servers = require "kong.runloop.plugin_servers"
 local lmdb_txn = require "resty.lmdb.transaction"
 local instrumentation = require "kong.tracing.instrumentation"
+local process = require "ngx.process"
 local tablepool = require "tablepool"
 local table_new = require "table.new"
+local utils = require "kong.tools.utils"
+local constants = require "kong.constants"
 local get_ctx_table = require("resty.core.ctx").get_ctx_table
-local time_ns = require "kong.tools.utils".time_ns
 
 
 local kong             = kong
 local ngx              = ngx
 local now              = ngx.now
-local update_time      = ngx.update_time
 local var              = ngx.var
 local arg              = ngx.arg
 local header           = ngx.header
@@ -124,6 +124,8 @@ local set_current_peer = ngx_balancer.set_current_peer
 local set_timeouts     = ngx_balancer.set_timeouts
 local set_more_tries   = ngx_balancer.set_more_tries
 local enable_keepalive = ngx_balancer.enable_keepalive
+local time_ns          = utils.time_ns
+local get_updated_now_ms = utils.get_updated_now_ms
 
 
 local DECLARATIVE_LOAD_KEY = constants.DECLARATIVE_LOAD_KEY
@@ -205,7 +207,8 @@ local reset_kong_shm
 do
   local preserve_keys = {
     "kong:node_id",
-    "kong:log_level",
+    constants.DYN_LOG_LEVEL_KEY,
+    constants.DYN_LOG_LEVEL_TIMEOUT_AT_KEY,
     "events:requests",
     "events:requests:http",
     "events:requests:https",
@@ -420,12 +423,6 @@ local function execute_cache_warmup(kong_config)
 end
 
 
-local function get_updated_now_ms()
-  update_time()
-  return now() * 1000 -- time is kept in seconds with millisecond resolution.
-end
-
-
 local function flush_delayed_response(ctx)
   ctx.delay_response = nil
   ctx.buffered_proxying = nil
@@ -451,9 +448,7 @@ local function has_declarative_config(kong_config)
 end
 
 
-local function parse_declarative_config(kong_config)
-  local dc = declarative.new_config(kong_config)
-
+local function parse_declarative_config(kong_config, dc)
   local declarative_config, is_file, is_string = has_declarative_config(kong_config)
 
   local entities, err, _, meta, hash
@@ -589,18 +584,23 @@ function Kong.init()
   instrumentation.db_query(db.connector)
   assert(db:init_connector())
 
-  schema_state = assert(db:schema_state())
-  migrations_utils.check_state(schema_state)
+  -- check state of migration only if there is an external database
+  if not is_dbless(config) then
+    ngx_log(ngx_DEBUG, "checking database schema state")
+    local migrations_utils = require "kong.cmd.utils.migrations"
+    schema_state = assert(db:schema_state())
+    migrations_utils.check_state(schema_state)
 
-  if schema_state.missing_migrations or schema_state.pending_migrations then
-    if schema_state.missing_migrations then
-      ngx_log(ngx_WARN, "database is missing some migrations:\n",
-                        schema_state.missing_migrations)
-    end
+    if schema_state.missing_migrations or schema_state.pending_migrations then
+      if schema_state.missing_migrations then
+        ngx_log(ngx_WARN, "database is missing some migrations:\n",
+                          schema_state.missing_migrations)
+      end
 
-    if schema_state.pending_migrations then
-      ngx_log(ngx_WARN, "database has pending migrations:\n",
-                        schema_state.pending_migrations)
+      if schema_state.pending_migrations then
+        ngx_log(ngx_WARN, "database has pending migrations:\n",
+                          schema_state.pending_migrations)
+      end
     end
   end
 
@@ -628,13 +628,21 @@ function Kong.init()
   end
 
   if is_dbless(config) then
+    local dc, err = declarative.new_config(config)
+    if not dc then
+      error(err)
+    end
+
+    kong.db.declarative_config = dc
+
     if is_http_module or
        (#config.proxy_listeners == 0 and
         #config.admin_listeners == 0 and
         #config.status_listeners == 0)
     then
-      local err
-      declarative_entities, err, declarative_meta, declarative_hash = parse_declarative_config(kong.configuration)
+      declarative_entities, err, declarative_meta, declarative_hash =
+        parse_declarative_config(kong.configuration, dc)
+
       if not declarative_entities then
         error(err)
       end
@@ -663,6 +671,14 @@ function Kong.init()
   db:close()
 
   require("resty.kong.var").patch_metatable()
+
+  if config.privileged_agent and is_data_plane(config) then
+    -- TODO: figure out if there is better value than 2048
+    local ok, err = process.enable_privileged_agent(2048)
+    if not ok then
+      error(err)
+    end
+  end
 end
 
 
@@ -692,7 +708,7 @@ function Kong.init_worker()
     return
   end
 
-  if worker_id() == 0 then
+  if worker_id() == 0 and not is_dbless(kong.configuration) then
     if schema_state.missing_migrations then
       ngx_log(ngx_WARN, "missing migrations: ",
               list_migrations(schema_state.missing_migrations))
@@ -703,6 +719,8 @@ function Kong.init_worker()
               list_migrations(schema_state.pending_migrations))
     end
   end
+
+  schema_state = nil
 
   local worker_events, err = kong_global.init_worker_events()
   if not worker_events then
@@ -738,6 +756,15 @@ function Kong.init_worker()
 
   kong.db:set_events_handler(worker_events)
 
+  if process.type() == "privileged agent" then
+    if kong.clustering then
+      kong.clustering:init_worker()
+    end
+    return
+  end
+
+  kong.vault.init_worker()
+
   if is_dbless(kong.configuration) then
     -- databases in LMDB need to be explicitly created, otherwise `get`
     -- operations will return error instead of `nil`. This ensures the default
@@ -766,6 +793,11 @@ function Kong.init_worker()
                                         declarative_entities,
                                         declarative_meta,
                                         declarative_hash)
+
+      declarative_entities = nil
+      declarative_meta = nil
+      declarative_hash = nil
+
       if not ok then
         stash_init_worker_error("failed to load declarative config file: " .. err)
         return
@@ -817,8 +849,6 @@ function Kong.init_worker()
     end
   end
 
-  runloop.init_worker.after()
-
   if is_not_control_plane then
     plugin_servers.start()
   end
@@ -830,7 +860,7 @@ end
 
 
 function Kong.exit_worker()
-  if not is_control_plane(kong.configuration) then
+  if process.type() ~= "privileged agent" and not is_control_plane(kong.configuration) then
     plugin_servers.stop()
   end
 end
@@ -847,10 +877,9 @@ function Kong.ssl_certificate()
   -- this is the first phase to run on an HTTPS request
   ctx.workspace = kong.default_workspace
 
-  runloop.certificate.before(ctx)
+  certificate.execute()
   local plugins_iterator = runloop.get_updated_plugins_iterator()
   execute_global_plugins_iterator(plugins_iterator, "certificate", ctx)
-  runloop.certificate.after(ctx)
 
   -- TODO: do we want to keep connection context?
   kong.table.clear(ngx.ctx)
@@ -964,8 +993,6 @@ function Kong.rewrite()
 
   execute_global_plugins_iterator(plugins_iterator, "rewrite", ctx)
 
-  runloop.rewrite.after(ctx)
-
   ctx.KONG_REWRITE_ENDED_AT = get_updated_now_ms()
   ctx.KONG_REWRITE_TIME = ctx.KONG_REWRITE_ENDED_AT - ctx.KONG_REWRITE_START
 end
@@ -1040,6 +1067,7 @@ end
 function Kong.balancer()
   -- This may be called multiple times, and no yielding here!
   local now_ms = now() * 1000
+  local now_ns = time_ns()
 
   local ctx = ngx.ctx
   if not ctx.KONG_BALANCER_START then
@@ -1080,7 +1108,7 @@ function Kong.balancer()
   tries[try_count] = current_try
 
   current_try.balancer_start = now_ms
-  current_try.balancer_start_ns = time_ns()
+  current_try.balancer_start_ns = now_ns
 
   if try_count > 1 then
     -- only call balancer on retry, first one is done in `runloop.access.after`
@@ -1283,12 +1311,16 @@ do
       ctx.KONG_PROXY_LATENCY = ctx.KONG_RESPONSE_START - ctx.KONG_PROCESSING_START
     end
 
+    if not ctx.KONG_UPSTREAM_DNS_TIME and ctx.KONG_UPSTREAM_DNS_END_AT and ctx.KONG_UPSTREAM_DNS_START then
+      ctx.KONG_UPSTREAM_DNS_TIME = ctx.KONG_UPSTREAM_DNS_END_AT - ctx.KONG_UPSTREAM_DNS_START
+    else
+      ctx.KONG_UPSTREAM_DNS_TIME = 0
+    end
+
     kong.response.set_status(status)
     kong.response.set_headers(headers)
 
-    runloop.response.before(ctx)
     execute_collected_plugins_iterator(plugins_iterator, "response", ctx)
-    runloop.response.after(ctx)
 
     ctx.KONG_RESPONSE_ENDED_AT = get_updated_now_ms()
     ctx.KONG_RESPONSE_TIME = ctx.KONG_RESPONSE_ENDED_AT - ctx.KONG_RESPONSE_START
@@ -1434,6 +1466,7 @@ function Kong.body_filter()
   end
 
   ctx.KONG_BODY_FILTER_ENDED_AT = get_updated_now_ms()
+  ctx.KONG_BODY_FILTER_ENDED_AT_NS = time_ns()
   ctx.KONG_BODY_FILTER_TIME = ctx.KONG_BODY_FILTER_ENDED_AT - ctx.KONG_BODY_FILTER_START
 
   if ctx.KONG_PROXIED then

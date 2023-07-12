@@ -4,23 +4,91 @@ return {
   name = "azure-functions",
   fields = {
     { protocols = typedefs.protocols },
-    { config = {
+    {
+      config = {
         type = "record",
         fields = {
           -- connection basics
-          { timeout       = { type = "number",  default  = 600000}, },
-          { keepalive     = { type = "number",  default  = 60000 }, },
-          { https         = { type = "boolean", default  = true  }, },
-          { https_verify  = { type = "boolean", default  = false }, },
+          {
+            timeout = {
+              description = "Timeout in milliseconds before closing a connection to the Azure Functions server.",
+              type = "number",
+              default = 600000,
+            },
+          },
+          {
+            keepalive = {
+              description =
+              "Time in milliseconds during which an idle connection to the Azure Functions server lives before being closed.",
+              type = "number",
+              default = 60000
+            },
+          },
+          {
+            https = {
+              type = "boolean",
+              default = true,
+              description = "Use of HTTPS to connect with the Azure Functions server."
+            },
+          },
+          {
+            https_verify = {
+              description = "Set to `true` to authenticate the Azure Functions server.",
+              type = "boolean",
+              default = false,
+            },
+          },
           -- authorization
-          { apikey        = { type = "string", encrypted = true, referenceable = true }, }, -- encrypted = true is a Kong Enterprise Exclusive feature. It does nothing in Kong CE
-          { clientid      = { type = "string", encrypted = true, referenceable = true }, }, -- encrypted = true is a Kong Enterprise Exclusive feature. It does nothing in Kong CE
+          {
+            apikey = {
+              description =
+              "The apikey to access the Azure resources. If provided, it is injected as the `x-functions-key` header.",
+              type = "string",
+              encrypted = true,
+              referenceable = true
+            },
+          }, -- encrypted = true is a Kong Enterprise Exclusive feature. It does nothing in Kong CE
+          {
+            clientid = {
+              description =
+              "The `clientid` to access the Azure resources. If provided, it is injected as the `x-functions-clientid` header.",
+              type = "string",
+              encrypted = true,
+              referenceable = true,
+            },
+          }, -- encrypted = true is a Kong Enterprise Exclusive feature. It does nothing in Kong CE
           -- target/location
-          { appname       = { type = "string",  required = true  }, },
-          { hostdomain    = { type = "string",  required = true, default = "azurewebsites.net" }, },
-          { routeprefix   = { type = "string",  default = "api"  }, },
-          { functionname  = { type = "string",  required = true  }, },
+          {
+            appname = {
+              description = "The Azure app name.",
+              type = "string",
+              required = true
+            },
+          },
+          {
+            hostdomain = {
+              description = "The domain where the function resides.",
+              type = "string",
+              required = true,
+              default = "azurewebsites.net",
+            },
+          },
+          {
+            routeprefix = {
+              description = "Route prefix to use.",
+              type = "string",
+              default = "api",
+            },
+          },
+          {
+            functionname = {
+              description = "Name of the Azure function to invoke.",
+              type = "string",
+              required = true,
+            },
+          },
         },
-    }, },
-  },
+      },
+    },
+  }
 }

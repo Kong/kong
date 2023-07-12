@@ -50,6 +50,15 @@ nfpm_pkg(
 )
 
 nfpm_pkg(
+    name = "kong_el9",
+    config = "//build:package/nfpm.yaml",
+    env = nfpm_env,
+    packager = "rpm",
+    pkg_name = "kong.el9",
+    visibility = ["//visibility:public"],
+)
+
+nfpm_pkg(
     name = "kong_el8",
     config = "//build:package/nfpm.yaml",
     env = nfpm_env,
@@ -84,7 +93,7 @@ nfpm_pkg(
 )
 
 nfpm_pkg(
-    name = "kong_aws2022",
+    name = "kong_aws2023",
     config = "//build:package/nfpm.yaml",
     env = nfpm_env,
     extra_env = {
@@ -93,7 +102,7 @@ nfpm_pkg(
         "RPM_EXTRA_DEPS_3": "libxcrypt-compat",
     },
     packager = "rpm",
-    pkg_name = "kong.aws2022",
+    pkg_name = "kong.aws2023",
     visibility = ["//visibility:public"],
 )
 
@@ -157,8 +166,10 @@ config_setting(
 constraint_setting(name = "libc_version")
 
 constraint_value(
-    name = "glibc_2_35",
+    # use whatever glibc version provided by the system installed cross toolchain
+    name = "glibc_system",
     constraint_setting = ":libc_version",
+    visibility = ["//visibility:public"],
 )
 
 constraint_value(
@@ -176,27 +187,33 @@ constraint_value(
 
 # platform sets the constraint values based on user input (--platform=//:PLATFOTM)
 platform(
-    name = "ubuntu-22.04-x86_64",
+    name = "generic-crossbuild-x86_64",
     constraint_values = [
         "@platforms//os:linux",
         "@platforms//cpu:x86_64",
-        ":glibc_2_35",
+        ":glibc_system",
         ":cross_build",
     ],
 )
 
 platform(
-    name = "ubuntu-22.04-arm64",
+    name = "generic-crossbuild-aarch64",
     constraint_values = [
         "@platforms//os:linux",
-        "@platforms//cpu:arm64",
-        ":glibc_2_35",
+        "@platforms//cpu:aarch64",
+        ":glibc_system",
         ":cross_build",
     ],
 )
 
+# backward compatibility
+alias(
+    name = "ubuntu-22.04-arm64",
+    actual = ":generic-crossbuild-aarch64",
+)
+
 platform(
-    name = "alpine-x86_64",
+    name = "alpine-crossbuild-x86_64",
     constraint_values = [
         "@platforms//os:linux",
         "@platforms//cpu:x86_64",
@@ -205,13 +222,29 @@ platform(
     ],
 )
 
+# backward compatibility
+alias(
+    name = "alpine-x86_64",
+    actual = ":alpine-crossbuild-x86_64",
+)
+
+platform(
+    name = "alpine-crossbuild-aarch64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:aarch64",
+        ":musl",
+        ":cross_build",
+    ],
+)
+
 # config_settings define a select() condition based on user-set constraint_values
 # see https://bazel.build/docs/configurable-attributes
 config_setting(
-    name = "arm64-linux-gnu-cross",
+    name = "aarch64-linux-anylibc-cross",
     constraint_values = [
         "@platforms//os:linux",
-        "@platforms//cpu:arm64",
+        "@platforms//cpu:aarch64",
         ":cross_build",
     ],
     visibility = ["//visibility:public"],
@@ -232,7 +265,7 @@ selects.config_setting_group(
     # matches all cross build platforms
     name = "any-cross",
     match_any = [
-        ":arm64-linux-gnu-cross",
+        ":aarch64-linux-anylibc-cross",
         ":x86_64-linux-musl-cross",
     ],
     visibility = ["//visibility:public"],

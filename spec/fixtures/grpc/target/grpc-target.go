@@ -49,6 +49,10 @@ func (s *server) GrowTail(ctx context.Context, in *pb.Body) (*pb.Body, error) {
 	return in, nil
 }
 
+func (s *server) Echo(ctx context.Context, in *pb.EchoMsg) (*pb.EchoMsg, error) {
+	return in, nil
+}
+
 func main() {
 	lis, err := net.Listen("tcp", port)
 	if err != nil {

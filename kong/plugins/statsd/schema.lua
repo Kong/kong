@@ -8,7 +8,7 @@ local METRIC_NAMES = {
   "request_size", "response_size", "status_count", "status_count_per_user",
   "unique_users", "upstream_latency",
   "status_count_per_workspace", "status_count_per_user_per_route",
-  "shdict_usage",
+  "shdict_usage", "lmdb_usage",
 }
 
 
@@ -28,7 +28,6 @@ local SERVICE_IDENTIFIERS = {
 local WORKSPACE_IDENTIFIERS = {
   "workspace_id", "workspace_name",
 }
-
 
 local DEFAULT_METRICS = {
   {
@@ -121,7 +120,14 @@ local DEFAULT_METRICS = {
     sample_rate        = 1,
     service_identifier = nil,
   },
+  {
+    name               = "lmdb_usage",
+    stat_type          = "gauge",
+    sample_rate        = 1,
+    service_identifier = nil,
+  },  
 }
+
 
 local TAG_TYPE = {
   "dogstatsd", "influxdb",
@@ -149,21 +155,28 @@ return {
     { config = {
         type = "record",
         fields = {
-          { host = typedefs.host({ default = "localhost" }), },
-          { port = typedefs.port({ default = 8125 }), },
-          { prefix = { type = "string", default = "kong" }, },
-          { metrics = {
-              type = "array",
+          { host = typedefs.host({
+              default = "localhost",
+              description = "The IP address or hostname of StatsD server to send data to."
+            })
+          },
+          { port = typedefs.port({
+              default = 8125,
+              description = "The port of StatsD server to send data to."
+            })
+          },
+          { prefix = { description = "String to prefix to each metric's name.", type = "string", default = "kong" }, },
+          { metrics = { description = "List of metrics to be logged.", type = "array",
               default = DEFAULT_METRICS,
               elements = {
                 type = "record",
                 fields = {
-                  { name = { type = "string", required = true, one_of = METRIC_NAMES }, },
-                  { stat_type = { type = "string", required = true, one_of = STAT_TYPES }, },
-                  { sample_rate = { type = "number", gt = 0 }, },
-                  { consumer_identifier = { type = "string", one_of = CONSUMER_IDENTIFIERS }, },
-                  { service_identifier = { type = "string", one_of = SERVICE_IDENTIFIERS }, },
-                  { workspace_identifier = { type = "string", one_of = WORKSPACE_IDENTIFIERS }, },
+                  { name = { description = "StatsD metric’s name.", type = "string", required = true, one_of = METRIC_NAMES }, },
+                  { stat_type = { description = "Determines what sort of event a metric represents.", type = "string", required = true, one_of = STAT_TYPES }, },
+                  { sample_rate = { description = "Sampling rate", type = "number", gt = 0 }, },
+                  { consumer_identifier = { description = "Authenticated user detail.", type = "string", one_of = CONSUMER_IDENTIFIERS }, },
+                  { service_identifier = { description = "Service detail.", type = "string", one_of = SERVICE_IDENTIFIERS }, },
+                  { workspace_identifier = { description = "Workspace detail.", type = "string", one_of = WORKSPACE_IDENTIFIERS }, },
                 },
                 entity_checks = {
                   { conditional = {
@@ -175,8 +188,7 @@ return {
                 },
               },
           }, },
-          { allow_status_codes = {
-            type = "array",
+          { allow_status_codes = { description = "List of status code ranges that are allowed to be logged in metrics.", type = "array",
             elements = {
               type = "string",
               match = constants.REGEX_STATUS_CODE_RANGE,
@@ -205,11 +217,11 @@ return {
                             { after = "4.0", })
               end
               if (entity.queue_size or ngx.null) ~= ngx.null and entity.queue_size ~= 1 then
-                deprecation("statsd: config.queue_size no longer works, please use config.queue.max_batch_size instead",
+                deprecation("statsd: config.queue_size is deprecated, please use config.queue.max_batch_size instead",
                             { after = "4.0", })
               end
               if (entity.flush_timeout or ngx.null) ~= ngx.null and entity.flush_timeout ~= 2 then
-                deprecation("statsd: config.flush_timeout no longer works, please use config.queue.max_coalescing_delay instead",
+                deprecation("statsd: config.flush_timeout is deprecated, please use config.queue.max_coalescing_delay instead",
                             { after = "4.0", })
               end
               return true

@@ -180,7 +180,6 @@ local constants = {
     "kong_locks",
     "kong_db_cache",
     "kong_db_cache_miss",
-    "kong_process_events",
     "kong_cluster_events",
     "kong_healthchecks",
     "kong_rate_limiting_counters",
@@ -188,10 +187,6 @@ local constants = {
   DATABASE = {
     POSTGRES = {
       MIN = "9.5",
-    },
-    CASSANDRA = {
-      MIN = "3.0",
-      DEPRECATED = "2.2",
     },
     -- a bit over three years maximum to make it more safe against
     -- integer overflow (time() + ttl)
@@ -202,6 +197,8 @@ local constants = {
 
   DECLARATIVE_LOAD_KEY = "declarative_config:loaded",
   DECLARATIVE_HASH_KEY = "declarative_config:hash",
+  PLUGINS_REBUILD_COUNTER_KEY = "readiness_probe_config:plugins_rebuild_counter",
+  ROUTERS_REBUILD_COUNTER_KEY = "readiness_probe_config:routers_rebuild_counter",
   DECLARATIVE_EMPTY_CONFIG_HASH = string.rep("0", 32),
 
   CLUSTER_ID_PARAM_KEY = "cluster_id",
@@ -240,6 +237,9 @@ local constants = {
     [ngx.ALERT] = "alert",
     [ngx.EMERG] = "emerg",
   },
+
+  DYN_LOG_LEVEL_KEY = "kong:dyn_log_level",
+  DYN_LOG_LEVEL_TIMEOUT_AT_KEY = "kong:dyn_log_level_timeout_at",
 }
 
 for _, v in ipairs(constants.CLUSTERING_SYNC_STATUS) do

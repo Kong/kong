@@ -2,7 +2,7 @@
 
 # This script runs the database upgrade tests from the
 # spec/05-migration directory.  It uses docker compose to stand up a
-# simple environment with cassandra and postgres database servers and
+# simple environment with postgres database server and
 # two Kong nodes.  One node contains the oldest supported version, the
 # other has the current version of Kong.  The testing is then done as
 # described in https://docs.google.com/document/d/1Df-iq5tNyuPj1UNG7bkhecisJFPswOfFqlOS3V4wXSc/edit?usp=sharing
@@ -150,12 +150,14 @@ function initialize_test_list() {
     docker exec ${OLD_CONTAINER} ln -sf /kong/bin/kong /upgrade-test/bin
     docker exec ${OLD_CONTAINER} bash -c "ln -sf /kong/spec/* /upgrade-test/spec"
     docker exec ${OLD_CONTAINER} tar -xf ${TESTS_TAR} -C /upgrade-test
+    docker cp spec/helpers/http_mock ${OLD_CONTAINER}:/upgrade-test/spec/helpers
+    docker cp spec/helpers/http_mock.lua ${OLD_CONTAINER}:/upgrade-test/spec/helpers
     rm ${TESTS_TAR}
 }
 
 function run_tests() {
     # Run the tests
-    BUSTED="env KONG_DATABASE=$1 KONG_DNS_RESOLVER= KONG_TEST_CASSANDRA_KEYSPACE=kong KONG_TEST_PG_DATABASE=kong /kong/bin/busted -o gtest"
+    BUSTED="env KONG_DATABASE=$1 KONG_DNS_RESOLVER= KONG_TEST_PG_DATABASE=kong /kong/bin/busted"
     shift
 
     set $TESTS
@@ -185,14 +187,13 @@ function run_tests() {
 }
 
 function cleanup() {
-    git worktree remove worktree/$OLD_KONG_VERSION
+    git worktree remove worktree/$OLD_KONG_VERSION --force
     $COMPOSE down
 }
 
 build_containers
 initialize_test_list
 run_tests postgres
-run_tests cassandra
 [ -z "$UPGRADE_ENV_PREFIX" ] && cleanup
 
 trap "" 0

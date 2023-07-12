@@ -22,7 +22,7 @@ def _fmt_flags(flags, toolchain_path_prefix):
 
 # Macro for calling cc_toolchain_config from @bazel_tools with setting the
 # right paths and flags for the tools.
-def _impl(ctx):
+def _cc_toolchain_config_impl(ctx):
     target_cpu = ctx.attr.target_cpu
     toolchain_path_prefix = ctx.attr.toolchain_path_prefix
     tools_path_prefix = ctx.attr.tools_path_prefix
@@ -200,7 +200,7 @@ def _impl(ctx):
     )
 
 cc_toolchain_config = rule(
-    implementation = _impl,
+    implementation = _cc_toolchain_config_impl,
     attrs = {
         "target_cpu": attr.string(),
         "toolchain_path_prefix": attr.string(),

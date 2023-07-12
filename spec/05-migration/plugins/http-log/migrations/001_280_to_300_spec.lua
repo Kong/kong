@@ -1,68 +1,21 @@
 
 local cjson = require "cjson"
-local tablex = require "pl.tablex"
+local http_mock = require "spec.helpers.http_mock"
 
-local uh = require "spec/upgrade_helpers"
+local uh = require "spec.upgrade_helpers"
 
+-- we intentionally use a fixed port as this file may be loaded multiple times
+-- to test the migration process. do not change it to use dynamic port.
 local HTTP_PORT = 29100
 
--- Copied from 3.x helpers.lua
-
-local function http_server(port, opts)
-  local threads = require "llthreads2.ex"
-  opts = opts or {}
-  local thread = threads.new(
-    {
-      function(port, opts)
-        local socket = require "socket"
-        local server = assert(socket.tcp())
-        server:settimeout(opts.timeout or 60)
-        assert(server:setoption('reuseaddr', true))
-        assert(server:bind("*", port))
-        assert(server:listen())
-        local client = assert(server:accept())
-
-        local lines = {}
-        local line, err
-        repeat
-          line, err = client:receive("*l")
-          if err then
-            break
-          else
-            table.insert(lines, line)
-          end
-        until line == ""
-
-        if #lines > 0 and lines[1] == "GET /delay HTTP/1.0" then
-          ngx.sleep(2)
-        end
-
-        if err then
-          server:close()
-          error(err)
-        end
-
-        local body, _ = client:receive("*a")
-
-        client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
-        client:close()
-        server:close()
-
-        return lines, body
-      end
-    },
-    port, opts)
-  return thread:start()
-end
-
 describe("http-log plugin migration", function()
-
+    local mock
     lazy_setup(function()
       assert(uh.start_kong())
     end)
 
     lazy_teardown(function ()
-      assert(uh.stop_kong())
+      assert(uh.stop_kong(nil, true))
     end)
 
     local log_server_url = "http://localhost:" .. HTTP_PORT .. "/"
@@ -92,17 +45,26 @@ describe("http-log plugin migration", function()
         uh.create_example_service()
     end)
 
-    uh.all_phases("expected log header is added", function ()
-        local thread = http_server(HTTP_PORT, { timeout = 10 })
+    before_each(function ()
+        mock = http_mock.new(HTTP_PORT)
+        mock:start()
+    end)
 
+    after_each(function ()
+        mock:stop(true)
+    end)
+
+    uh.all_phases("expected log header is added", function ()
         uh.send_proxy_get_request()
 
-        local ok, headers = thread:join()
-        assert.truthy(ok)
-
-        -- verify that the log HTTP request had the configured header
-        local idx = tablex.find(headers, custom_header_name .. ": " .. custom_header_content)
-        assert.not_nil(idx, headers)
+        mock.eventually:has_request_satisfy(function(request)
+            local headers = request.headers
+            assert.not_nil(headers, "headers do not exist")
+            -- verify that the log HTTP request had the configured header
+            -- somehow ngx.req.get_headers() wants to return a table for a single value header
+            -- I don't know why but it's not relevant to this test
+            assert(custom_header_content == headers[custom_header_name] or custom_header_content == headers[custom_header_name][1])
+        end)
     end)
 
     uh.new_after_finish("has updated http-log configuration", function ()

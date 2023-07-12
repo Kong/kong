@@ -14,7 +14,7 @@ return {
     { created_at   = typedefs.auto_timestamp_s },
     { updated_at   = typedefs.auto_timestamp_s },
     { tags         = typedefs.tags },
-    { certificate  = { type = "foreign", reference = "certificates", required = true }, },
+    { certificate  = { description = "The id (a UUID) of the certificate with which to associate the SNI hostname.", type = "foreign", reference = "certificates", required = true }, },
   },
 
 }

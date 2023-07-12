@@ -13,7 +13,7 @@ local PLUGIN_LIST
 
 local function cluster_client(opts)
   opts = opts or {}
-  local res = helpers.clustering_client({
+  local res, err = helpers.clustering_client({
     host = CP_HOST,
     port = CP_PORT,
     cert = "spec/fixtures/kong_clustering.crt",
@@ -24,6 +24,7 @@ local function cluster_client(opts)
     node_plugins_list = PLUGIN_LIST,
   })
 
+  assert.is_nil(err)
   if res and res.config_table then
     res.config = res.config_table
   end
@@ -120,6 +121,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
           -- [[ new fields
           error_code = 403,
           error_message = "go away!",
+          sync_rate = -1,
           -- ]]
         },
       }
@@ -133,23 +135,47 @@ describe("CP/DP config compat transformations #" .. strategy, function()
       local id = utils.uuid()
       local plugin = get_plugin(id, "3.0.0", rate_limit.name)
 
-      local expected = utils.deep_copy(rate_limit.config)
+      --[[
+        For 3.0.x
+        should not have: error_code, error_message, sync_rate
+      --]]
+      local expected = utils.cycle_aware_deep_copy(rate_limit.config)
       expected.error_code = nil
       expected.error_message = nil
-
+      expected.sync_rate = nil
       assert.same(expected, plugin.config)
       assert.equals(CLUSTERING_SYNC_STATUS.NORMAL, get_sync_status(id))
 
 
+      --[[
+        For 3.2.x
+        should have: error_code, error_message
+        should not have: sync_rate
+      --]]
       id = utils.uuid()
-      plugin = get_plugin(id, "3.1.0", rate_limit.name)
-      assert.same(rate_limit.config, plugin.config)
+      plugin = get_plugin(id, "3.2.0", rate_limit.name)
+      expected = utils.cycle_aware_deep_copy(rate_limit.config)
+      expected.sync_rate = nil
+      assert.same(expected, plugin.config)
+      assert.equals(CLUSTERING_SYNC_STATUS.NORMAL, get_sync_status(id))
+
+
+      --[[
+        For 3.3.x,
+        should have: error_code, error_message
+        should not have: sync_rate
+      --]]
+      id = utils.uuid()
+      plugin = get_plugin(id, "3.3.0", rate_limit.name)
+      expected = utils.cycle_aware_deep_copy(rate_limit.config)
+      expected.sync_rate = nil
+      assert.same(expected, plugin.config)
       assert.equals(CLUSTERING_SYNC_STATUS.NORMAL, get_sync_status(id))
     end)
 
     it("does not remove fields from DP nodes that are already compatible", function()
       local id = utils.uuid()
-      local plugin = get_plugin(id, "3.1.0", rate_limit.name)
+      local plugin = get_plugin(id, "3.4.0", rate_limit.name)
       assert.same(rate_limit.config, plugin.config)
       assert.equals(CLUSTERING_SYNC_STATUS.NORMAL, get_sync_status(id))
     end)

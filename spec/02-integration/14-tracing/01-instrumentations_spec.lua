@@ -1,5 +1,39 @@
 local helpers = require "spec.helpers"
-local cjson = require "cjson"
+local cjson   = require "cjson"
+local pretty  = require "pl.pretty"
+
+local fmt = string.format
+
+local function get_span(name, spans)
+  for _, span in ipairs(spans) do
+    if span.name == name then
+      return span
+    end
+  end
+end
+
+local function assert_has_span(name, spans)
+  local span = get_span(name, spans)
+  assert.is_truthy(span, fmt("\nExpected to find %q span in:\n%s\n",
+                             name, pretty.write(spans)))
+  return span
+end
+
+local function assert_has_no_span(name, spans)
+  local found = get_span(name, spans)
+  assert.is_falsy(found, fmt("\nExpected not to find %q span in:\n%s\n",
+                             name, pretty.write(spans)))
+end
+
+local function assert_has_attributes(span, attributes)
+  for k, v in pairs(attributes) do
+    assert.is_not_nil(span.attributes[k], fmt(
+          "Expected span to have attribute %s, but got %s\n", k, pretty.write(span.attributes)))
+    assert.matches(v, span.attributes[k], fmt(
+          "Expected span to have attribute %s with value matching %s, but got %s\n",
+          k, v, span.attributes[k]))
+  end
+end
 
 local TCP_PORT = 35001
 local tcp_trace_plugin_name = "tcp-trace-exporter"
@@ -25,6 +59,12 @@ for _, strategy in helpers.each_strategy() do
                          protocols = { "http" },
                          paths = { "/" }})
 
+      bp.routes:insert({ service = http_srv,
+                         protocols = { "http" },
+                         paths = { "/status" },
+                         hosts = { "status" },
+                         strip_path = false })
+
       bp.plugins:insert({
         name = tcp_trace_plugin_name,
         config = {
@@ -39,6 +79,7 @@ for _, strategy in helpers.each_strategy() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "tcp-trace-exporter",
         tracing_instrumentations = types,
+        tracing_sampling_rate = 1,
       })
 
       proxy_client = helpers.proxy_client()
@@ -53,7 +94,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
       end)
 
-      it("works", function ()
+      it("contains no spans", function ()
         local thread = helpers.tcp_server(TCP_PORT)
         local r = assert(proxy_client:send {
           method  = "GET",
@@ -81,7 +122,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
       end)
 
-      it("works", function ()
+      it("contains the expected database span", function ()
         local thread = helpers.tcp_server(TCP_PORT)
         local r = assert(proxy_client:send {
           method  = "GET",
@@ -94,15 +135,15 @@ for _, strategy in helpers.each_strategy() do
         assert.True(ok)
         assert.is_string(res)
 
-        -- Making sure it's alright
         local spans = cjson.decode(res)
-        local expected_span_num = 2
-        -- cassandra has different db query implementation
-        if strategy == "cassandra" then
-          expected_span_num = 4
-        end
-        assert.is_same(expected_span_num, #spans, res)
-        assert.is_same("kong.database.query", spans[2].name)
+        assert_has_span("kong", spans)
+        assert_has_span("kong.database.query", spans)
+
+        assert_has_no_span("kong.balancer", spans)
+        assert_has_no_span("kong.dns", spans)
+        assert_has_no_span("kong.router", spans)
+        assert_has_no_span("kong.rewrite.plugin." .. tcp_trace_plugin_name, spans)
+        assert_has_no_span("kong.header_filter.plugin." .. tcp_trace_plugin_name, spans)
       end)
     end)
 
@@ -115,7 +156,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
       end)
 
-      it("works", function ()
+      it("contains the expected router span", function ()
         local thread = helpers.tcp_server(TCP_PORT)
         local r = assert(proxy_client:send {
           method  = "GET",
@@ -128,10 +169,15 @@ for _, strategy in helpers.each_strategy() do
         assert.True(ok)
         assert.is_string(res)
 
-        -- Making sure it's alright
         local spans = cjson.decode(res)
-        assert.is_same(2, #spans, res)
-        assert.is_same("kong.router", spans[2].name)
+        assert_has_span("kong", spans)
+        assert_has_span("kong.router", spans)
+
+        assert_has_no_span("kong.balancer", spans)
+        assert_has_no_span("kong.database.query", spans)
+        assert_has_no_span("kong.dns", spans)
+        assert_has_no_span("kong.rewrite.plugin." .. tcp_trace_plugin_name, spans)
+        assert_has_no_span("kong.header_filter.plugin." .. tcp_trace_plugin_name, spans)
       end)
     end)
 
@@ -144,7 +190,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
       end)
 
-      it("works", function ()
+      it("contains the expected kong.internal.request span", function ()
         local thread = helpers.tcp_server(TCP_PORT)
         local r = assert(proxy_client:send {
           method  = "GET",
@@ -157,10 +203,15 @@ for _, strategy in helpers.each_strategy() do
         assert.True(ok)
         assert.is_string(res)
 
-        -- Making sure it's alright
         local spans = cjson.decode(res)
-        assert.is_same(5, #spans, res)
-        assert.matches("kong.internal.request", spans[3].name)
+        assert_has_span("kong", spans)
+        assert_has_span("kong.internal.request", spans)
+
+        assert_has_no_span("kong.balancer", spans)
+        assert_has_no_span("kong.database.query", spans)
+        assert_has_no_span("kong.dns", spans)
+        assert_has_no_span("kong.rewrite.plugin." .. tcp_trace_plugin_name, spans)
+        assert_has_no_span("kong.header_filter.plugin." .. tcp_trace_plugin_name, spans)
       end)
     end)
 
@@ -173,7 +224,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
       end)
 
-      it("works", function ()
+      it("contains the expected balancer span", function ()
         local thread = helpers.tcp_server(TCP_PORT)
         local r = assert(proxy_client:send {
           method  = "GET",
@@ -186,10 +237,15 @@ for _, strategy in helpers.each_strategy() do
         assert.True(ok)
         assert.is_string(res)
 
-        -- Making sure it's alright
         local spans = cjson.decode(res)
-        assert.is_same(2, #spans, res)
-        assert.is_same("kong.balancer", spans[2].name)
+        assert_has_span("kong", spans)
+        assert_has_span("kong.balancer", spans)
+
+        assert_has_no_span("kong.database.query", spans)
+        assert_has_no_span("kong.dns", spans)
+        assert_has_no_span("kong.router", spans)
+        assert_has_no_span("kong.rewrite.plugin." .. tcp_trace_plugin_name, spans)
+        assert_has_no_span("kong.header_filter.plugin." .. tcp_trace_plugin_name, spans)
       end)
     end)
 
@@ -202,7 +258,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
       end)
 
-      it("works", function ()
+      it("contains the expected kong.rewrite.plugin span", function ()
         local thread = helpers.tcp_server(TCP_PORT)
         local r = assert(proxy_client:send {
           method  = "GET",
@@ -215,10 +271,15 @@ for _, strategy in helpers.each_strategy() do
         assert.True(ok)
         assert.is_string(res)
 
-        -- Making sure it's alright
         local spans = cjson.decode(res)
-        assert.is_same(2, #spans, res)
-        assert.is_same("kong.rewrite.plugin." .. tcp_trace_plugin_name, spans[2].name)
+        assert_has_span("kong", spans)
+        assert_has_span("kong.rewrite.plugin." .. tcp_trace_plugin_name, spans)
+
+        assert_has_no_span("kong.balancer", spans)
+        assert_has_no_span("kong.database.query", spans)
+        assert_has_no_span("kong.router", spans)
+        assert_has_no_span("kong.dns", spans)
+        assert_has_no_span("kong.header_filter.plugin." .. tcp_trace_plugin_name, spans)
       end)
     end)
 
@@ -231,7 +292,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
       end)
 
-      it("works", function ()
+      it("contains the expected kong.header_filter.plugin span", function ()
         local thread = helpers.tcp_server(TCP_PORT)
         local r = assert(proxy_client:send {
           method  = "GET",
@@ -246,8 +307,14 @@ for _, strategy in helpers.each_strategy() do
 
         -- Making sure it's alright
         local spans = cjson.decode(res)
-        assert.is_same(2, #spans, res)
-        assert.is_same("kong.header_filter.plugin." .. tcp_trace_plugin_name, spans[2].name)
+        assert_has_span("kong", spans)
+        assert_has_span("kong.header_filter.plugin." .. tcp_trace_plugin_name, spans)
+
+        assert_has_no_span("kong.balancer", spans)
+        assert_has_no_span("kong.database.query", spans)
+        assert_has_no_span("kong.router", spans)
+        assert_has_no_span("kong.dns", spans)
+        assert_has_no_span("kong.rewrite.plugin." .. tcp_trace_plugin_name, spans)
       end)
     end)
 
@@ -261,7 +328,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
       end)
 
-      it("works", function ()
+      it("contains the expected kong.dns span", function ()
         local thread = helpers.tcp_server(TCP_PORT)
         local r = assert(proxy_client:send {
           method  = "GET",
@@ -274,19 +341,15 @@ for _, strategy in helpers.each_strategy() do
         assert.True(ok)
         assert.is_string(res)
 
-        -- Making sure it's alright
         local spans = cjson.decode(res)
-        -- If the db host if a domain, it creates extra db query
-        assert.is_true(#spans >= 4, res)
+        assert_has_span("kong", spans)
+        assert_has_span("kong.dns", spans)
 
-        local found
-        for _, span in ipairs(spans) do
-          if span.name == "kong.dns" then
-            found = true
-          end
-        end
-
-        assert.is_true(found, res)
+        assert_has_no_span("kong.balancer", spans)
+        assert_has_no_span("kong.database.query", spans)
+        assert_has_no_span("kong.router", spans)
+        assert_has_no_span("kong.rewrite.plugin." .. tcp_trace_plugin_name, spans)
+        assert_has_no_span("kong.header_filter.plugin." .. tcp_trace_plugin_name, spans)
       end)
     end)
 
@@ -299,11 +362,14 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
       end)
 
-      it("works", function ()
+      it("contains all spans", function ()
         local thread = helpers.tcp_server(TCP_PORT)
         local r = assert(proxy_client:send {
           method  = "GET",
-          path    = "/",
+          path    = "/status/200",
+          headers = {
+            host = "status",
+          }
         })
         assert.res_status(200, r)
 
@@ -312,15 +378,51 @@ for _, strategy in helpers.each_strategy() do
         assert.True(ok)
         assert.is_string(res)
 
-        -- Making sure it's alright
         local spans = cjson.decode(res)
-        local expected_span_num = 13
-        -- cassandra has different db query implementation
-        if strategy == "cassandra" then
-          expected_span_num = expected_span_num + 4
-        end
+        local kong_span = assert_has_span("kong", spans)
+        local dns_span = assert_has_span("kong.dns", spans)
+        local balancer_span = assert_has_span("kong.balancer", spans)
+        local db_span = assert_has_span("kong.database.query", spans)
+        local int_req_span = assert_has_span("kong.internal.request", spans)
+        assert_has_span("kong.router", spans)
+        assert_has_span("kong.rewrite.plugin." .. tcp_trace_plugin_name, spans)
+        assert_has_span("kong.header_filter.plugin." .. tcp_trace_plugin_name, spans)
 
-        assert.is_same(expected_span_num, #spans, res)
+        -- span attributes check
+        assert_has_attributes(kong_span, {
+          ["http.method"]    = "GET",
+          ["http.url"]       = "http://status/status/200",
+          ["http.route"]     = "/status",
+          ["http.host"]      = "status",
+          ["http.scheme"]    = "http",
+          ["http.flavor"]    = "1.1",
+          ["http.client_ip"] = "127.0.0.1",
+          ["net.peer.ip"]    = "127.0.0.1",
+        })
+
+        assert_has_attributes(dns_span, {
+          ["dns.record.domain"] = "[%w\\.]+",
+          ["dns.record.ip"] = "[%d\\.]+",
+          ["dns.record.port"] = "%d+"
+        })
+
+        assert_has_attributes(balancer_span, {
+          ["net.peer.ip"] = "127.0.0.1",
+          ["net.peer.port"] = "%d+",
+        })
+
+        assert_has_attributes(db_span, {
+          ["db.statement"] = ".*",
+          ["db.system"] = "%w+",
+        })
+
+        assert_has_attributes(int_req_span, {
+          ["http.method"]    = "GET",
+          ["http.flavor"]    = "1.1",
+          ["http.status_code"] = "200",
+          ["http.url"] = "http[s]?://.*",
+          ["http.user_agent"] = "[%w%s\\.]+"
+        })
       end)
     end)
 
@@ -333,7 +435,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
       end)
 
-      it("works", function ()
+      it("contains the expected kong span", function ()
         local thread = helpers.tcp_server(TCP_PORT)
         local r = assert(proxy_client:send {
           method  = "GET",
@@ -346,9 +448,8 @@ for _, strategy in helpers.each_strategy() do
         assert.True(ok)
         assert.is_string(res)
 
-        -- Making sure it's alright
         local spans = cjson.decode(res)
-        assert.is_same(1, #spans, res)
+        assert_has_span("kong", spans)
       end)
     end)
   end)

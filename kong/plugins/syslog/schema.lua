@@ -5,11 +5,10 @@ local severity = {
   default = "info",
   required = true,
   one_of = { "debug", "info", "notice", "warning",
-             "err", "crit", "alert", "emerg" },
+             "err", "crit", "alert", "emerg" }
 }
 
-local facility = {
-  type = "string",
+local facility = { description = "The facility is used by the operating system to decide how to handle each log message.", type = "string",
   default = "user",
   required = true,
   one_of = { "auth", "authpriv", "cron", "daemon",

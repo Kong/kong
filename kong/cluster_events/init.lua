@@ -87,10 +87,7 @@ function _M.new(opts)
   do
     local db_strategy
 
-    if opts.db.strategy == "cassandra" then
-      db_strategy = require "kong.cluster_events.strategies.cassandra"
-
-    elseif opts.db.strategy == "postgres" then
+    if opts.db.strategy == "postgres" then
       db_strategy = require "kong.cluster_events.strategies.postgres"
 
     elseif opts.db.strategy == "off" then

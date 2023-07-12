@@ -18,7 +18,7 @@ function _M.rt_rename(_, _, dao)
       api_id = plugin.api_id,
       consumer_id = plugin.consumer_id,
       enabled = plugin.enabled,
-      config = utils.deep_copy(plugin.config),
+      config = utils.cycle_aware_deep_copy(plugin.config),
     })
     if err then
       return err
@@ -34,4 +34,3 @@ end
 
 
 return _M
-

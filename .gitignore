@@ -8,6 +8,7 @@
 .VSCodeCounter
 
 servroot*
+mockserver
 
 # kong
 nginx_tmp/
@@ -34,3 +35,4 @@ bazel-*
 
 worktree/
 bin/bazel
+bin/h2client

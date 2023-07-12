@@ -82,16 +82,15 @@ local function wait_for_spans(zipkin_client, number_of_spans, remoteServiceName,
     end
   end)
 
-  return utils.unpack(spans)
+  return spans
 end
 
 
 -- the following assertions should be true on any span list, even in error mode
-local function assert_span_invariants(request_span, proxy_span, expected_name, traceid_len, start_s, service_name, phase_duration_flavor)
+local function assert_span_invariants(request_span, proxy_span, traceid_len, start_s, service_name, phase_duration_flavor)
   -- request_span
   assert.same("table", type(request_span))
   assert.same("string", type(request_span.id))
-  assert.same(expected_name, request_span.name)
   assert.same(request_span.id, proxy_span.parentId)
 
   assert.same("SERVER", request_span.kind)
@@ -158,6 +157,15 @@ local function assert_span_invariants(request_span, proxy_span, expected_name, t
     assert.truthy(tonumber(ptags["kong.header_filter.duration_ms"]) >= 0)
     assert.truthy(tonumber(ptags["kong.body_filter.duration_ms"]) >= 0)
   end
+end
+
+local function get_span(name, spans)
+  for _, span in ipairs(spans) do
+    if span.name == name then
+      return span
+    end
+  end
+  return nil
 end
 
 
@@ -228,10 +236,12 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.response(r).has.status(200)
 
-      local _, proxy_span, request_span =
-        wait_for_spans(zipkin_client, 3, service.name)
+      local spans = wait_for_spans(zipkin_client, 3, service.name)
+      local request_span = assert(get_span("get", spans), "request span missing")
+      local proxy_span = assert(get_span("get (proxy)", spans), "proxy span missing")
+
       -- common assertions for request_span and proxy_span
-      assert_span_invariants(request_span, proxy_span, "get", 16 * 2, start_s, "kong")
+      assert_span_invariants(request_span, proxy_span, 16 * 2, start_s, "kong")
     end)
   end)
 end
@@ -293,10 +303,12 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.response(r).has.status(200)
 
-      local _, proxy_span, request_span =
-        wait_for_spans(zipkin_client, 3, service.name)
+      local spans = wait_for_spans(zipkin_client, 3, service.name)
+      local request_span = assert(get_span("get", spans), "request span missing")
+      local proxy_span = assert(get_span("get (proxy)", spans), "proxy span missing")
+
       -- common assertions for request_span and proxy_span
-      assert_span_invariants(request_span, proxy_span, "get", 16 * 2, start_s, "custom-service-name")
+      assert_span_invariants(request_span, proxy_span, 16 * 2, start_s, "custom-service-name")
     end)
   end)
 end
@@ -410,7 +422,7 @@ for _, strategy in helpers.each_strategy() do
       -- wait for zero-delay timer
       helpers.wait_timer("zipkin", true, "any-finish")
 
-      assert.logfile().has.line("[zipkin] reporter flush failed to request: timeout", true, 2)
+      assert.logfile().has.line("zipkin request failed: timeout", true, 10)
     end)
 
     it("times out if upstream zipkin server takes too long to respond", function()
@@ -426,7 +438,7 @@ for _, strategy in helpers.each_strategy() do
       -- wait for zero-delay timer
       helpers.wait_timer("zipkin", true, "any-finish")
 
-      assert.logfile().has.line("[zipkin] reporter flush failed to request: timeout", true, 2)
+      assert.logfile().has.line("zipkin request failed: timeout", true, 10)
     end)
 
     it("connection refused if upstream zipkin server is not listening", function()
@@ -442,7 +454,7 @@ for _, strategy in helpers.each_strategy() do
       -- wait for zero-delay timer
       helpers.wait_timer("zipkin", true, "any-finish")
 
-      assert.logfile().has.line("[zipkin] reporter flush failed to request: connection refused", true, 2)
+      assert.logfile().has.line("zipkin request failed: connection refused", true, 10)
     end)
   end)
 end
@@ -565,10 +577,12 @@ for _, strategy in helpers.each_strategy() do
 
       assert.response(r).has.status(200)
 
-      local _, proxy_span, request_span =
-        wait_for_spans(zipkin_client, 3, service.name)
+      local spans = wait_for_spans(zipkin_client, 3, service.name)
+      local request_span = assert(get_span("get /", spans), "request span missing")
+      local proxy_span = assert(get_span("get / (proxy)", spans), "proxy span missing")
+
       -- common assertions for request_span and proxy_span
-      assert_span_invariants(request_span, proxy_span, "get /", 16 * 2, start_s, "kong")
+      assert_span_invariants(request_span, proxy_span, 16 * 2, start_s, "kong")
     end)
   end)
 end
@@ -673,10 +687,13 @@ describe("http integration tests with zipkin server [#"
     })
     assert.response(r).has.status(200)
 
-    local balancer_span, proxy_span, request_span =
-      wait_for_spans(zipkin_client, 3, service.name)
+    local spans = wait_for_spans(zipkin_client, 3, service.name)
+    local balancer_span = assert(get_span("get (balancer try 1)", spans), "balancer span missing")
+    local request_span = assert(get_span("get", spans), "request span missing")
+    local proxy_span = assert(get_span("get (proxy)", spans), "proxy span missing")
+
     -- common assertions for request_span and proxy_span
-    assert_span_invariants(request_span, proxy_span, "get", traceid_byte_count * 2, start_s, "kong")
+    assert_span_invariants(request_span, proxy_span, traceid_byte_count * 2, start_s, "kong")
 
     -- specific assertions for request_span
     local request_tags = request_span.tags
@@ -753,10 +770,13 @@ describe("http integration tests with zipkin server [#"
     assert(ok, resp)
     assert.truthy(resp)
 
-    local balancer_span, proxy_span, request_span =
-      wait_for_spans(zipkin_client, 3, grpc_service.name)
+    local spans = wait_for_spans(zipkin_client, 3, grpc_service.name)
+    local balancer_span = assert(get_span("post (balancer try 1)", spans), "balancer span missing")
+    local request_span = assert(get_span("post", spans), "request span missing")
+    local proxy_span = assert(get_span("post (proxy)", spans), "proxy span missing")
+
     -- common assertions for request_span and proxy_span
-    assert_span_invariants(request_span, proxy_span, "post", traceid_byte_count * 2, start_s, "kong")
+    assert_span_invariants(request_span, proxy_span, traceid_byte_count * 2, start_s, "kong")
 
     -- specific assertions for request_span
     local request_tags = request_span.tags
@@ -830,8 +850,10 @@ describe("http integration tests with zipkin server [#"
 
     assert(tcp:close())
 
-    local balancer_span, proxy_span, request_span =
-      wait_for_spans(zipkin_client, 3, tcp_service.name)
+    local spans = wait_for_spans(zipkin_client, 3, tcp_service.name)
+    local balancer_span = assert(get_span("stream (balancer try 1)", spans), "balancer span missing")
+    local request_span = assert(get_span("stream", spans), "request span missing")
+    local proxy_span = assert(get_span("stream (proxy)", spans), "proxy span missing")
 
     -- request span
     assert.same("table", type(request_span))
@@ -939,11 +961,13 @@ describe("http integration tests with zipkin server [#"
     })
     assert.response(r).has.status(404)
 
-    local proxy_span, request_span =
-      wait_for_spans(zipkin_client, 2, nil, trace_id)
+    local spans = wait_for_spans(zipkin_client, 2, nil, trace_id)
+    assert.is_nil(get_span("get (balancer try 1)", spans), "balancer span found")
+    local request_span = assert(get_span("get", spans), "request span missing")
+    local proxy_span = assert(get_span("get (proxy)", spans), "proxy span missing")
 
     -- common assertions for request_span and proxy_span
-    assert_span_invariants(request_span, proxy_span, "get", #trace_id, start_s, "kong")
+    assert_span_invariants(request_span, proxy_span, #trace_id, start_s, "kong")
 
     -- specific assertions for request_span
     local request_tags = request_span.tags
@@ -982,8 +1006,10 @@ describe("http integration tests with zipkin server [#"
     })
     assert.response(r).has.status(404)
 
-    local proxy_span, request_span =
-      wait_for_spans(zipkin_client, 2, nil, trace_id)
+    local spans = wait_for_spans(zipkin_client, 2, nil, trace_id)
+    assert.is_nil(get_span("get (balancer try 1)", spans), "balancer span found")
+    local request_span = assert(get_span("get", spans), "request span missing")
+    local proxy_span = assert(get_span("get (proxy)", spans), "proxy span missing")
 
     assert.equals(trace_id, proxy_span.traceId)
     assert.equals(trace_id, request_span.traceId)
@@ -1006,8 +1032,10 @@ describe("http integration tests with zipkin server [#"
       local json = cjson.decode(body)
       assert.matches(trace_id .. "%-%x+%-1%-%x+", json.headers.b3)
 
-      local balancer_span, proxy_span, request_span =
-        wait_for_spans(zipkin_client, 3, nil, trace_id)
+      local spans = wait_for_spans(zipkin_client, 3, nil, trace_id)
+      local balancer_span = assert(get_span("get (balancer try 1)", spans), "balancer span missing")
+      local request_span = assert(get_span("get", spans), "request span missing")
+      local proxy_span = assert(get_span("get (proxy)", spans), "proxy span missing")
 
       assert.equals(trace_id, request_span.traceId)
       assert.equals(span_id, request_span.id)
@@ -1036,8 +1064,10 @@ describe("http integration tests with zipkin server [#"
       local json = cjson.decode(body)
       assert.matches(trace_id .. "%-%x+%-1%-%x+", json.headers.b3)
 
-      local balancer_span, proxy_span, request_span =
-        wait_for_spans(zipkin_client, 3, nil, trace_id)
+      local spans = wait_for_spans(zipkin_client, 3, nil, trace_id)
+      local balancer_span = assert(get_span("get (balancer try 1)", spans), "balancer span missing")
+      local request_span = assert(get_span("get", spans), "request span missing")
+      local proxy_span = assert(get_span("get (proxy)", spans), "proxy span missing")
 
       assert.equals(trace_id, request_span.traceId)
       assert.equals(span_id, request_span.id)
@@ -1066,8 +1096,10 @@ describe("http integration tests with zipkin server [#"
       local json = cjson.decode(body)
       assert.matches(trace_id .. "%-%x+%-1%-%x+", json.headers.b3)
 
-      local balancer_span, proxy_span, request_span =
-        wait_for_spans(zipkin_client, 3, nil, trace_id)
+      local spans = wait_for_spans(zipkin_client, 3, nil, trace_id)
+      local balancer_span = assert(get_span("get (balancer try 1)", spans), "balancer span missing")
+      local request_span = assert(get_span("get", spans), "request span missing")
+      local proxy_span = assert(get_span("get (proxy)", spans), "proxy span missing")
 
       assert.equals(trace_id, request_span.traceId)
       assert.equals(span_id, request_span.id)
@@ -1092,8 +1124,10 @@ describe("http integration tests with zipkin server [#"
       })
       assert.response(r).has.status(404)
 
-      local proxy_span, request_span =
-        wait_for_spans(zipkin_client, 2, nil, trace_id)
+      local spans = wait_for_spans(zipkin_client, 2, nil, trace_id)
+      assert.is_nil(get_span("get (balancer try 1)", spans), "balancer span found")
+      local request_span = assert(get_span("get", spans), "request span missing")
+      local proxy_span = assert(get_span("get (proxy)", spans), "proxy span missing")
 
       assert.equals(trace_id, request_span.traceId)
       assert.equals(span_id, request_span.id)
@@ -1120,8 +1154,10 @@ describe("http integration tests with zipkin server [#"
       local json = cjson.decode(body)
       assert.matches("00%-" .. trace_id .. "%-%x+-01", json.headers.traceparent)
 
-      local balancer_span, proxy_span, request_span =
-      wait_for_spans(zipkin_client, 3, nil, trace_id)
+      local spans = wait_for_spans(zipkin_client, 3, nil, trace_id)
+      local balancer_span = assert(get_span("get (balancer try 1)", spans), "balancer span missing")
+      local request_span = assert(get_span("get", spans), "request span missing")
+      local proxy_span = assert(get_span("get (proxy)", spans), "proxy span missing")
 
       assert.equals(trace_id, request_span.traceId)
       assert.equals(parent_id, request_span.parentId)
@@ -1141,8 +1177,10 @@ describe("http integration tests with zipkin server [#"
       })
       assert.response(r).has.status(404)
 
-      local proxy_span, request_span =
-      wait_for_spans(zipkin_client, 2, nil, trace_id)
+      local spans = wait_for_spans(zipkin_client, 2, nil, trace_id)
+      assert.is_nil(get_span("get (balancer try 1)", spans), "balancer span found")
+      local request_span = assert(get_span("get", spans), "request span missing")
+      local proxy_span = assert(get_span("get (proxy)", spans), "proxy span missing")
 
       assert.equals(trace_id, request_span.traceId)
       assert.equals(parent_id, request_span.parentId)
@@ -1167,8 +1205,10 @@ describe("http integration tests with zipkin server [#"
       local json = cjson.decode(body)
       assert.matches(('0'):rep(32-#trace_id) .. trace_id .. ":%x+:" .. span_id .. ":01", json.headers["uber-trace-id"])
 
-      local balancer_span, proxy_span, request_span =
-      wait_for_spans(zipkin_client, 3, nil, trace_id)
+      local spans = wait_for_spans(zipkin_client, 3, nil, trace_id)
+      local balancer_span = assert(get_span("get (balancer try 1)", spans), "balancer span missing")
+      local request_span = assert(get_span("get", spans), "request span missing")
+      local proxy_span = assert(get_span("get (proxy)", spans), "proxy span missing")
 
       assert.equals(trace_id, request_span.traceId)
       assert.equals(span_id, request_span.id)
@@ -1195,8 +1235,10 @@ describe("http integration tests with zipkin server [#"
       })
       assert.response(r).has.status(404)
 
-      local proxy_span, request_span =
-      wait_for_spans(zipkin_client, 2, nil, trace_id)
+      local spans = wait_for_spans(zipkin_client, 2, nil, trace_id)
+      assert.is_nil(get_span("get (balancer try 1)", spans), "balancer span found")
+      local request_span = assert(get_span("get", spans), "request span missing")
+      local proxy_span = assert(get_span("get (proxy)", spans), "proxy span missing")
 
       assert.equals(trace_id, request_span.traceId)
       assert.equals(span_id, request_span.id)
@@ -1226,8 +1268,10 @@ describe("http integration tests with zipkin server [#"
       local json = cjson.decode(body)
       assert.equals(to_id_len(trace_id, OT_TRACE_ID_HEX_LEN), json.headers["ot-tracer-traceid"])
 
-      local balancer_span, proxy_span, request_span =
-        wait_for_spans(zipkin_client, 3, nil, trace_id)
+      local spans = wait_for_spans(zipkin_client, 3, nil, trace_id)
+      local balancer_span = assert(get_span("get (balancer try 1)", spans), "balancer span missing")
+      local request_span = assert(get_span("get", spans), "request span missing")
+      local proxy_span = assert(get_span("get (proxy)", spans), "proxy span missing")
 
       assert.equals(trace_id, request_span.traceId)
 
@@ -1248,8 +1292,10 @@ describe("http integration tests with zipkin server [#"
       })
       assert.response(r).has.status(404)
 
-      local proxy_span, request_span =
-        wait_for_spans(zipkin_client, 2, nil, trace_id)
+      local spans = wait_for_spans(zipkin_client, 2, nil, trace_id)
+      assert.is_nil(get_span("get (balancer try 1)", spans), "balancer span found")
+      local request_span = assert(get_span("get", spans), "request span missing")
+      local proxy_span = assert(get_span("get (proxy)", spans), "proxy span missing")
 
       assert.equals(trace_id, request_span.traceId)
       assert.equals(trace_id, proxy_span.traceId)
@@ -1369,10 +1415,12 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.response(r).has.status(200)
 
-      local _, proxy_span, request_span =
-        wait_for_spans(zipkin_client, 3, service.name)
+      local spans = wait_for_spans(zipkin_client, 3, service.name)
+      local request_span = assert(get_span("get", spans), "request span missing")
+      local proxy_span = assert(get_span("get (proxy)", spans), "proxy span missing")
+
       -- common assertions for request_span and proxy_span
-      assert_span_invariants(request_span, proxy_span, "get", traceid_byte_count * 2, start_s, "kong", "tags")
+      assert_span_invariants(request_span, proxy_span, traceid_byte_count * 2, start_s, "kong", "tags")
     end)
 
     it("generates spans, tags and annotations for regular requests (#grpc)", function()
@@ -1391,10 +1439,12 @@ for _, strategy in helpers.each_strategy() do
       assert(ok, resp)
       assert.truthy(resp)
 
-      local _, proxy_span, request_span =
-        wait_for_spans(zipkin_client, 3, grpc_service.name)
+      local spans = wait_for_spans(zipkin_client, 3, grpc_service.name)
+      local request_span = assert(get_span("post", spans), "request span missing")
+      local proxy_span = assert(get_span("post (proxy)", spans), "proxy span missing")
+
       -- common assertions for request_span and proxy_span
-      assert_span_invariants(request_span, proxy_span, "post", traceid_byte_count * 2, start_s, "kong", "tags")
+      assert_span_invariants(request_span, proxy_span, traceid_byte_count * 2, start_s, "kong", "tags")
     end)
 
     it("generates spans, tags and annotations for regular #stream requests", function()
@@ -1408,8 +1458,9 @@ for _, strategy in helpers.each_strategy() do
 
       assert(tcp:close())
 
-      local _, proxy_span, request_span =
-        wait_for_spans(zipkin_client, 3, tcp_service.name)
+      local spans = wait_for_spans(zipkin_client, 3, tcp_service.name)
+      local request_span = assert(get_span("stream", spans), "request span missing")
+      local proxy_span = assert(get_span("stream (proxy)", spans), "proxy span missing")
 
       -- request span
       assert.same("table", type(request_span))
@@ -1421,5 +1472,71 @@ for _, strategy in helpers.each_strategy() do
       assert.truthy(tonumber(proxy_span.tags["kong.preread.duration_ms"]) >= 0)
     end)
 
+  end)
+end
+
+for _, strategy in helpers.each_strategy() do
+  describe("Integration tests with instrumentations enabled", function()
+    local proxy_client, zipkin_client, service
+
+    setup(function()
+      local bp = helpers.get_db_utils(strategy, { "services", "routes", "plugins" })
+
+      service = bp.services:insert {
+        name = string.lower("http-" .. utils.random_string()),
+      }
+
+      -- kong (http) mock upstream
+      bp.routes:insert({
+        name = string.lower("route-" .. utils.random_string()),
+        service = service,
+        hosts = { "http-route" },
+        preserve_host = true,
+      })
+
+      -- enable zipkin plugin globally, with sample_ratio = 0
+      bp.plugins:insert({
+        name = "zipkin",
+        config = {
+          sample_ratio = 0,
+          http_endpoint = fmt("http://%s:%d/api/v2/spans", ZIPKIN_HOST, ZIPKIN_PORT),
+          default_header_type = "b3-single",
+        }
+      })
+
+      helpers.start_kong({
+        database = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        tracing_instrumentations = "all",
+        tracing_sampling_rate = 1,
+      })
+
+      proxy_client = helpers.proxy_client()
+      zipkin_client = helpers.http_client(ZIPKIN_HOST, ZIPKIN_PORT)
+    end)
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("generates spans for regular requests", function()
+      local start_s = ngx.now()
+
+      local r = proxy_client:get("/", {
+        headers = {
+          ["x-b3-sampled"] = "1",
+          host  = "http-route",
+          ["zipkin-tags"] = "foo=bar; baz=qux"
+        },
+      })
+      assert.response(r).has.status(200)
+
+      local spans = wait_for_spans(zipkin_client, 3, service.name)
+      local request_span = assert(get_span("get", spans), "request span missing")
+      local proxy_span = assert(get_span("get (proxy)", spans), "proxy span missing")
+
+      -- common assertions for request_span and proxy_span
+      assert_span_invariants(request_span, proxy_span, 16 * 2, start_s, "kong")
+    end)
   end)
 end

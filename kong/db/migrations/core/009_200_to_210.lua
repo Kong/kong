@@ -46,38 +46,6 @@ local function pg_ca_certificates_migration(connector)
 end
 
 
-local function c_ca_certificates_migration(coordinator)
-  local cassandra = require "cassandra"
-  for rows, err in coordinator:iterate("SELECT id, cert, cert_digest FROM ca_certificates") do
-    if err then
-      return nil, err
-    end
-
-    for i = 1, #rows do
-      local ca_cert = rows[i]
-      local digest = str.to_hex(openssl_x509.new(ca_cert.cert):digest("sha256"))
-      if not digest then
-        return nil, "cannot create digest value of certificate with id: " .. ca_cert.id
-      end
-
-      if digest ~= ca_cert.cert_digest then
-        local _, err = coordinator:execute(
-          "UPDATE ca_certificates SET cert_digest = ? WHERE partition = 'ca_certificates' AND id = ?", {
-            cassandra.text(digest),
-            cassandra.uuid(ca_cert.id)
-          }
-        )
-        if err then
-          return nil, err
-        end
-      end
-    end
-  end
-
-  return true
-end
-
-
 local core_entities = {
   {
     name = "upstreams",
@@ -224,45 +192,4 @@ return {
       return true
     end
   },
-  cassandra = {
-    up = [[
-      -- ca_certificates
-      ALTER TABLE ca_certificates ADD cert_digest text;
-
-      DROP INDEX IF EXISTS ca_certificates_cert_idx;
-      CREATE INDEX IF NOT EXISTS ca_certificates_cert_digest_idx ON ca_certificates(cert_digest);
-
-      ALTER TABLE services ADD tls_verify boolean;
-      ALTER TABLE services ADD tls_verify_depth int;
-      ALTER TABLE services ADD ca_certificates set<uuid>;
-
-      -- add certificates reference to upstreams table
-      ALTER TABLE upstreams ADD client_certificate_id uuid;
-      CREATE INDEX IF NOT EXISTS upstreams_client_certificate_id_idx ON upstreams(client_certificate_id);
-    ]] .. ws_migration_up(operations.cassandra.up),
-    teardown = function(connector)
-      local coordinator = assert(connector:get_stored_connection())
-      local default_ws, err = operations.cassandra_ensure_default_ws(coordinator)
-      if err then
-        return nil, err
-      end
-
-      if not default_ws then
-        return nil, "unable to find a default workspace"
-      end
-
-      local _, err = ws_migration_teardown(operations.cassandra.teardown)(connector)
-      if err then
-        return nil, err
-      end
-
-      -- add `cert_digest` field for `ca_certificates` table
-      _, err = c_ca_certificates_migration(coordinator)
-      if err then
-        return nil, err
-      end
-
-      return true
-    end
-  }
 }

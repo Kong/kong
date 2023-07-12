@@ -5,7 +5,4 @@ return {
       DROP INDEX IF EXISTS "workspaces_name_idx";
     ]],
   },
-  cassandra = {
-    up = [[]],
-  }
 }

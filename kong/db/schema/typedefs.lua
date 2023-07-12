@@ -244,47 +244,62 @@ local typedefs = {}
 typedefs.http_method = Schema.define {
   type = "string",
   match = "^%u+$",
+  description = "A string representing an HTTP method, such as GET, POST, PUT, or DELETE. The string must contain only uppercase letters."
 }
 
 
 typedefs.protocol = Schema.define {
   type = "string",
   one_of = constants.PROTOCOLS,
+  description = "A string representing a protocol, such as HTTP or HTTPS."
+
 }
 
 
 typedefs.host = Schema.define {
   type = "string",
   custom_validator = validate_host,
+  description = "A string representing a host name, such as example.com."
+}
+
+typedefs.redis_host = Schema.define {
+  type = "string",
+  custom_validator = validate_host,
+  description = "When using the `redis` policy, this property specifies the address to the Redis server."
 }
 
 
 typedefs.host_with_optional_port = Schema.define {
   type = "string",
   custom_validator = validate_host_with_optional_port,
+  description = "A string representing a host name with an optional port number, such as example.com or example.com:8080."
 }
 
 
 typedefs.wildcard_host = Schema.define {
   type = "string",
   custom_validator = validate_wildcard_host,
+  description = "A string representing a wildcard host name, such as *.example.com."
 }
 
 
 typedefs.ip = Schema.define {
   type = "string",
   custom_validator = validate_ip,
+  description = "A string representing an IP address, such as 192.168.1.1."
 }
 
 typedefs.ip_or_cidr = Schema.define {
   type = "string",
   custom_validator = validate_ip_or_cidr,
+  description = "A string representing an IP address or CIDR block, such as 192.168.1.1 or 192.168.0.0/16."
 }
 
 -- TODO: this seems to allow ipv4s too, should it?
 typedefs.cidr_v4 = Schema.define {
   type = "string",
   custom_validator = validate_ip_or_cidr_v4,
+  description = "A string representing a CIDR block for IPv4 addresses, such as 192.168.0.0/16."
 }
 
 -- deprecated alias
@@ -292,7 +307,8 @@ typedefs.cidr = typedefs.cidr_v4
 
 typedefs.port = Schema.define {
   type = "integer",
-  between = { 0, 65535 }
+  between = { 0, 65535 },
+  description = "An integer representing a port number between 0 and 65535, inclusive."
 }
 
 
@@ -305,23 +321,27 @@ typedefs.path = Schema.define {
     },
   },
   custom_validator = validate_path,
+  description = "A string representing a URL path, such as /path/to/resource. Must start with a forward slash (/) and must not contain empty segments (i.e., two consecutive forward slashes)."
 }
 
 
 typedefs.url = Schema.define {
   type = "string",
   custom_validator = validate_url,
+  description = "A string representing a URL, such as https://example.com/path/to/resource?q=search."
 }
 
 typedefs.header_name = Schema.define {
   type = "string",
   custom_validator = utils.validate_header_name,
+  description = "A string representing an HTTP header name."
 }
 
 
 typedefs.timeout = Schema.define {
   type = "integer",
   between = { 0, math.pow(2, 31) - 2 },
+  description = "An integer representing a timeout in milliseconds. Must be between 0 and 2^31-2."
 }
 
 
@@ -329,20 +349,23 @@ typedefs.uuid = Schema.define {
   type = "string",
   uuid = true,
   auto = true,
+  description = "A string representing a UUID (universally unique identifier)."
 }
 
 
 typedefs.auto_timestamp_s = Schema.define {
   type = "integer",
   timestamp = true,
-  auto = true
+  auto = true,
+  description = "An integer representing an automatic Unix timestamp in seconds."
 }
 
 
 typedefs.auto_timestamp_ms = Schema.define {
   type = "number",
   timestamp = true,
-  auto = true
+  auto = true,
+  description = "A number representing an automatic Unix timestamp in milliseconds."
 }
 
 
@@ -350,6 +373,7 @@ typedefs.no_route = Schema.define {
   type = "foreign",
   reference = "routes",
   eq = null,
+  description = "A reference to the 'routes' table with a null value allowed."
 }
 
 
@@ -357,58 +381,70 @@ typedefs.no_service = Schema.define {
   type = "foreign",
   reference = "services",
   eq = null,
+  description = "A reference to the 'services' table with a null value allowed."
 }
+
 
 
 typedefs.no_consumer = Schema.define {
   type = "foreign",
   reference = "consumers",
   eq = null,
+  description = "Custom type for representing a foreign key with a null value allowed."
 }
 
 
 typedefs.name = Schema.define {
   type = "string",
   unique = true,
-  custom_validator = validate_name
+  custom_validator = validate_name,
+  description = "A unique string representing a name."
 }
-
 
 typedefs.utf8_name = Schema.define {
   type = "string",
   unique = true,
-  custom_validator = validate_utf8_name
+  custom_validator = validate_utf8_name,
+  description = "A unique string representing a UTF-8 encoded name."
 }
-
 
 typedefs.sni = Schema.define {
   type = "string",
   custom_validator = validate_sni,
+  description = "A string representing an SNI (server name indication) value for TLS."
+}
+
+typedefs.redis_server_name = Schema.define {
+  type = "string",
+  custom_validator = validate_sni,
+  description = "When using the `redis` policy with `redis_ssl` set to `true`, this property specifies the server name for the TLS extension Server Name Indication (SNI)."
 }
 
 
 typedefs.certificate = Schema.define {
   type = "string",
   custom_validator = validate_certificate,
+  description = "A string representing a certificate."
 }
 
 
 typedefs.key = Schema.define {
   type = "string",
   custom_validator = validate_key,
+  description = "A string representing a key."
 }
-
 
 typedefs.tag = Schema.define {
   type = "string",
   required = true,
   custom_validator = validate_tag,
+  description = "A string representing a tag."
 }
-
 
 typedefs.tags = Schema.define {
   type = "set",
   elements = typedefs.tag,
+  description = "A set of strings representing tags."
 }
 
 local http_protocols = {}
@@ -424,6 +460,7 @@ typedefs.protocols = Schema.define {
   required = true,
   default = http_protocols,
   elements = typedefs.protocol,
+  description = "A set of strings representing protocols."
 }
 
 typedefs.protocols_http = Schema.define {
@@ -431,7 +468,9 @@ typedefs.protocols_http = Schema.define {
   required = true,
   default = http_protocols,
   elements = { type = "string", one_of = http_protocols },
+  description = "A set of strings representing HTTP protocols."
 }
+
 
 
 -- routes typedefs
@@ -487,9 +526,10 @@ typedefs.sources = Schema.define {
       { at_least_one_of = { "ip", "port" } }
     },
   },
+  description = "A set of sources, each of which is a record with at least one of 'ip' or 'port'."
 }
 
-typedefs.no_sources = Schema.define(typedefs.sources { eq = null })
+typedefs.no_sources = Schema.define(typedefs.sources { eq = null, description = "A null value representing no sources." })
 
 typedefs.destinations = Schema.define {
   type = "set",
@@ -503,16 +543,18 @@ typedefs.destinations = Schema.define {
       { at_least_one_of = { "ip", "port" } }
     },
   },
+  description = "A set of destinations, each of which is a record with at least one of 'ip' or 'port'."
 }
 
-typedefs.no_destinations = Schema.define(typedefs.destinations { eq = null })
+typedefs.no_destinations = Schema.define(typedefs.destinations { eq = null, description = "A null value representing no destinations." })
 
 typedefs.methods = Schema.define {
   type = "set",
   elements = typedefs.http_method,
+  description = "A set of strings representing HTTP methods. Each method must be a valid HTTP method."
 }
 
-typedefs.no_methods = Schema.define(typedefs.methods { eq = null })
+typedefs.no_methods = Schema.define(typedefs.methods { eq = null, description = "A null value representing no methods." })
 
 typedefs.hosts = Schema.define {
   type = "array",
@@ -529,10 +571,11 @@ typedefs.hosts = Schema.define {
       err = "invalid wildcard: must be placed at leftmost or rightmost label",
     },
     custom_validator = validate_host_with_wildcards,
-  }
+  },
+  description = "An array of strings representing hosts. A valid host is a string containing one or more labels separated by periods, with at most one wildcard label ('*')"
 }
 
-typedefs.no_hosts = Schema.define(typedefs.hosts { eq = null })
+typedefs.no_hosts = Schema.define(typedefs.hosts { eq = null, description = "A null value representing no hosts." })
 
 typedefs.router_path = Schema.define {
   type = "string",
@@ -546,14 +589,16 @@ typedefs.router_path = Schema.define {
     },
   },
   custom_validator = validate_path_with_regexes,
+  description = "A string representing a router path. It must start with a forward slash ('/') for a fixed path, or the sequence '~/' for a regex path. It must not have empty segments."
 }
 
 typedefs.router_paths = Schema.define {
   type = "array",
-  elements = typedefs.router_path
+  elements = typedefs.router_path,
+  description = "An array of strings representing router paths."
 }
 
-typedefs.no_paths = Schema.define(typedefs.router_paths { eq = null })
+typedefs.no_paths = Schema.define(typedefs.router_paths { eq = null, description = "A null value representing no router paths." })
 
 typedefs.headers = Schema.define {
   type = "map",
@@ -564,9 +609,10 @@ typedefs.headers = Schema.define {
       type = "string",
     },
   },
+  description = "A map of header names to arrays of header values."
 }
 
-typedefs.no_headers = Schema.define(typedefs.headers { eq = null } )
+typedefs.no_headers = Schema.define(typedefs.headers { eq = null, description = "A null value representing no headers." })
 
 typedefs.semantic_version = Schema.define {
   type = "string",
@@ -580,8 +626,8 @@ typedefs.semantic_version = Schema.define {
       err = "must not have empty version segments"
     },
   },
+  description = "A string representing a semantic version number in the format X.Y.Z(-build), where X, Y, and Z are integers, plus an optional hyphen-separated build identifier."
 }
-
 local function validate_jwk(key)
   -- unless it's a reference
   if kong.vault.is_reference(key) then
@@ -638,10 +684,13 @@ typedefs.pem = Schema.define {
     },
   },
   custom_validator = validate_pem_keys,
+  description = "A pair of PEM-encoded public and private keys, which can be either a string or a reference to a credential in Kong Vault. If provided as strings, they must be valid PEM-encoded keys."
+
 }
 
 typedefs.jwk = Schema.define {
   type = "record",
+  description = "Custom type for representing a JSON Web Key (JWK).",
   required = false,
   fields = {
     {
@@ -817,6 +866,7 @@ typedefs.lua_code = Schema.define {
   type = "map",
   keys = { type = "string", len_min = 1, },
   values = { type = "string", len_min = 1, custom_validator = validate_lua_expression },
+  description = "Lua code as a key-value map"
 }
 
 setmetatable(typedefs, {
@@ -829,6 +879,7 @@ setmetatable(typedefs, {
 typedefs.ttl = Schema.define {
   type = "number",
   between = { 0, DAO_MAX_TTL },
+  description = "Time-to-live value for data"
 }
 
 return typedefs

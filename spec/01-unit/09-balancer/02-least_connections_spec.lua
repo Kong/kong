@@ -172,14 +172,10 @@ describe("[least-connections]", function()
 
     _G.kong = kong
 
-    kong.worker_events = require "resty.worker.events"
+    kong.worker_events = require "resty.events.compat"
     kong.worker_events.configure({
-      shm = "kong_process_events", -- defined by "lua_shared_dict"
-      timeout = 5,            -- life time of event data in shm
-      interval = 1,           -- poll interval (seconds)
-
-      wait_interval = 0.010,  -- wait before retry fetching event data
-      wait_max = 0.5,         -- max wait time before discarding event
+      listening = "unix:",
+      testing = true,
     })
 
     local function empty_each()

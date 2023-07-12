@@ -1,14 +1,15 @@
 local Queue = require "kong.tools.queue"
+local utils = require "kong.tools.utils"
 local helpers = require "spec.helpers"
+local mocker = require "spec.fixtures.mocker"
 local timerng = require "resty.timerng"
 local queue_schema = require "kong.tools.queue_schema"
 local queue_num = 1
 
+
 local function queue_conf(conf)
-  local defaulted_conf = {}
-  if conf.name then
-    defaulted_conf.name = conf.name
-  else
+  local defaulted_conf = utils.cycle_aware_deep_copy(conf)
+  if not conf.name then
     defaulted_conf.name = "test-" .. tostring(queue_num)
     queue_num = queue_num + 1
   end
@@ -27,40 +28,72 @@ local function wait_until_queue_done(name)
   end, 10)
 end
 
-
 describe("plugin queue", function()
-  local old_log
-  local log_messages
 
   lazy_setup(function()
     kong.timer = timerng.new()
     kong.timer:start()
-    -- make sure our workspace is nil to begin with to prevent leakage from
-    -- other tests
-    ngx.ctx.workspace = nil
+    -- make sure our workspace is explicitly set so that we test behavior in the presence of workspaces
+    ngx.ctx.workspace = "queue-tests"
   end)
 
   lazy_teardown(function()
     kong.timer:destroy()
+    ngx.ctx.workspace = nil
   end)
 
+  local unmock
+  local now_offset
+  local log_messages
+
+  local function count_matching_log_messages(s)
+    return select(2, string.gsub(log_messages, s, ""))
+  end
+
   before_each(function()
-    old_log = kong.log
+    local real_now = ngx.now
+    now_offset = 0
+
     log_messages = ""
     local function log(level, message) -- luacheck: ignore
       log_messages = log_messages .. level .. " " .. message .. "\n"
     end
-    kong.log = {
-      debug = function(message) return log('DEBUG', message) end,
-      info = function(message) return log('INFO', message) end,
-      warn = function(message) return log('WARN', message) end,
-      err = function(message) return log('ERR', message) end,
-    }
+
+    mocker.setup(function(f)
+      unmock = f
+    end, {
+      kong = {
+        log = {
+          debug = function(message) return log('DEBUG', message) end,
+          info = function(message) return log('INFO', message) end,
+          warn = function(message) return log('WARN', message) end,
+          err = function(message) return log('ERR', message) end,
+        },
+        plugin = {
+          get_id = function () return utils.uuid() end,
+        },
+      },
+      ngx = {
+        ctx = {
+          -- make sure our workspace is nil to begin with to prevent leakage from
+          -- other tests
+          workspace = nil
+        },
+        -- We want to be able to fake the time returned by ngx.now() only in the queue module and leave everything
+        -- else alone so that we can see what effects changing the system time has on queues.
+        now = function()
+          local called_from = debug.getinfo(2, "nSl")
+          if string.match(called_from.short_src, "/queue.lua$") then
+            return real_now() + now_offset
+          else
+            return real_now()
+          end
+        end
+      }
+    })
   end)
 
-  after_each(function()
-    kong.log = old_log -- luacheck: ignore
-  end)
+  after_each(unmock)
 
   it("passes configuration to handler", function ()
     local handler_invoked
@@ -85,6 +118,29 @@ describe("plugin queue", function()
         end
       end,
       10)
+  end)
+
+  it("displays log_tag in log entries", function ()
+    local handler_invoked
+    local log_tag = utils.uuid()
+    Queue.enqueue(
+      queue_conf({ name = "log-tag", log_tag = log_tag }),
+      function ()
+        handler_invoked = true
+        return true
+      end,
+      nil,
+      "ENTRY"
+    )
+    wait_until_queue_done("handler-configuration")
+    helpers.wait_until(
+      function ()
+        if handler_invoked then
+          return true
+        end
+      end,
+      10)
+    assert.match_re(log_messages, "" .. log_tag .. ".*done processing queue")
   end)
 
   it("configuration changes are observed for older entries", function ()
@@ -244,6 +300,39 @@ describe("plugin queue", function()
     assert.match_re(log_messages, 'ERR .*1 queue entries were lost')
   end)
 
+  it("warns when queue reaches its capacity limit", function()
+    local capacity = 100
+    local function enqueue(entry)
+      Queue.enqueue(
+        queue_conf({
+          name = "capacity-warning",
+          max_batch_size = 1,
+          max_entries = capacity,
+          max_coalescing_delay = 0.1,
+        }),
+        function()
+          return false
+        end,
+        nil,
+        entry
+      )
+    end
+    for _ = 1, math.floor(capacity * Queue._CAPACITY_WARNING_THRESHOLD) - 1 do
+      enqueue("something")
+    end
+    assert.has.no.match_re(log_messages, "WARN .*queue at \\d*% capacity")
+    enqueue("something")
+    enqueue("something")
+    assert.match_re(log_messages, "WARN .*queue at \\d*% capacity")
+    log_messages = ""
+    enqueue("something")
+    assert.has.no.match_re(
+      log_messages,
+      "WARN .*queue at \\d*% capacity",
+      "the capacity warning should not be logged more than once"
+    )
+  end)
+
   it("drops entries when queue reaches its capacity", function()
     local processed
     local function enqueue(entry)
@@ -392,25 +481,184 @@ describe("plugin queue", function()
     )
   end)
 
+  it("works when time is moved forward while items are being queued", function()
+    local number_of_entries = 1000
+    local number_of_entries_processed = 0
+    now_offset = 1
+    for i = 1, number_of_entries do
+      Queue.enqueue(
+        queue_conf({
+          name = "time-forwards-adjust",
+          max_batch_size = 10,
+          max_coalescing_delay = 10,
+        }),
+        function(_, entries)
+          number_of_entries_processed = number_of_entries_processed + #entries
+          return true
+        end,
+        nil,
+        i
+      )
+      -- manipulate the current time forwards to simulate multiple time changes while entries are added to the queue
+      now_offset = now_offset + now_offset
+    end
+    helpers.wait_until(
+      function ()
+        return number_of_entries_processed == number_of_entries
+      end,
+      10
+    )
+  end)
+
+  it("works when time is moved backward while items are being queued", function()
+    -- In this test, we move the time forward while we're sending out items.  The parameters are chosen so that
+    -- time changes are likely to occur while enqueuing and while sending.
+    local number_of_entries = 100
+    local number_of_entries_processed = 0
+    now_offset = -1
+    for i = 1, number_of_entries do
+      Queue.enqueue(
+        queue_conf({
+          name = "time-backwards-adjust",
+          max_batch_size = 10,
+          max_coalescing_delay = 10,
+        }),
+        function(_, entries)
+          number_of_entries_processed = number_of_entries_processed + #entries
+          ngx.sleep(0.2)
+          return true
+        end,
+        nil,
+        i
+      )
+      ngx.sleep(0.01)
+      now_offset = now_offset + now_offset
+    end
+    helpers.wait_until(
+      function ()
+        return number_of_entries_processed == number_of_entries
+      end,
+      10
+    )
+  end)
+
+  it("works when time is moved backward while items are on the queue and not yet processed", function()
+    -- In this test, we manipulate the time backwards while we're sending out items.  The parameters are chosen so that
+    -- time changes are likely to occur while enqueuing and while sending.
+    local number_of_entries = 100
+    local last
+    local qconf = queue_conf({
+      name = "time-backwards-blocked-adjust",
+      max_batch_size = 10,
+      max_coalescing_delay = 0.1,
+    })
+    local handler = function(_, entries)
+      last = entries[#entries]
+      ngx.sleep(0.2)
+      return true
+    end
+    now_offset = -1
+    for i = 1, number_of_entries do
+      Queue.enqueue(qconf, handler, nil, i)
+      ngx.sleep(0.01)
+      now_offset = now_offset - 1000
+    end
+    helpers.wait_until(
+      function()
+        return not Queue._exists(qconf.name)
+      end,
+      10
+    )
+    Queue.enqueue(qconf, handler, nil, "last")
+    helpers.wait_until(
+      function()
+        return last == "last"
+      end,
+      10
+    )
+  end)
+
+  it("works when time is moved forward while items are on the queue and not yet processed", function()
+    local number_of_entries = 100
+    local last
+    local qconf = queue_conf({
+      name = "time-forwards-blocked-adjust",
+      max_batch_size = 10,
+      max_coalescing_delay = 0.1,
+    })
+    local handler = function(_, entries)
+      last = entries[#entries]
+      ngx.sleep(0.2)
+      return true
+    end
+    now_offset = 1
+    for i = 1, number_of_entries do
+      Queue.enqueue(qconf, handler, nil, i)
+      now_offset = now_offset + 1000
+    end
+    helpers.wait_until(
+      function()
+        return not Queue._exists(qconf.name)
+      end,
+      10
+    )
+    Queue.enqueue(qconf, handler, nil, "last")
+    helpers.wait_until(
+      function()
+        return last == "last"
+      end,
+      10
+    )
+  end)
+
   it("converts common legacy queue parameters", function()
     local legacy_parameters = {
       retry_count = 123,
       queue_size = 234,
       flush_timeout = 345,
+      queue = {
+        name = "common-legacy-conversion-test",
+      },
     }
-    local converted_parameters = Queue.get_params(legacy_parameters)
+    local converted_parameters = Queue.get_plugin_params("someplugin", legacy_parameters)
+    assert.match_re(log_messages, 'the retry_count parameter no longer works, please update your configuration to use initial_retry_delay and max_retry_time instead')
     assert.equals(legacy_parameters.queue_size, converted_parameters.max_batch_size)
+    assert.match_re(log_messages, 'the queue_size parameter is deprecated, please update your configuration to use queue.max_batch_size instead')
     assert.equals(legacy_parameters.flush_timeout, converted_parameters.max_coalescing_delay)
+    assert.match_re(log_messages, 'the flush_timeout parameter is deprecated, please update your configuration to use queue.max_coalescing_delay instead')
   end)
 
   it("converts opentelemetry plugin legacy queue parameters", function()
     local legacy_parameters = {
       batch_span_count = 234,
       batch_flush_delay = 345,
+      queue = {
+        name = "opentelemetry-legacy-conversion-test",
+      },
     }
-    local converted_parameters = Queue.get_params(legacy_parameters)
+    local converted_parameters = Queue.get_plugin_params("someplugin", legacy_parameters)
     assert.equals(legacy_parameters.batch_span_count, converted_parameters.max_batch_size)
+    assert.match_re(log_messages, 'the batch_span_count parameter is deprecated, please update your configuration to use queue.max_batch_size instead')
     assert.equals(legacy_parameters.batch_flush_delay, converted_parameters.max_coalescing_delay)
+    assert.match_re(log_messages, 'the batch_flush_delay parameter is deprecated, please update your configuration to use queue.max_coalescing_delay instead')
+  end)
+
+  it("logs deprecation messages only every so often", function()
+    local legacy_parameters = {
+      retry_count = 123,
+      queue = {
+        name = "legacy-warning-suppression",
+      },
+    }
+    for _ = 1,10 do
+      Queue.get_plugin_params("someplugin", legacy_parameters)
+    end
+    assert.equals(1, count_matching_log_messages('the retry_count parameter no longer works'))
+    now_offset = 1000
+    for _ = 1,10 do
+      Queue.get_plugin_params("someplugin", legacy_parameters)
+    end
+    assert.equals(2, count_matching_log_messages('the retry_count parameter no longer works'))
   end)
 
   it("defaulted legacy parameters are ignored when converting", function()
@@ -424,7 +672,7 @@ describe("plugin queue", function()
         max_coalescing_delay = 234,
       }
     }
-    local converted_parameters = Queue.get_params(legacy_parameters)
+    local converted_parameters = Queue.get_plugin_params("someplugin", legacy_parameters)
     assert.equals(123, converted_parameters.max_batch_size)
     assert.equals(234, converted_parameters.max_coalescing_delay)
   end)

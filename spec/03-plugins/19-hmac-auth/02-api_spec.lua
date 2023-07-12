@@ -348,10 +348,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(1, #json_2.data)
 
           assert.not_same(json_1.data, json_2.data)
-          -- Disabled: on Cassandra, the last page still returns a
-          -- next_page token, and thus, an offset proprty in the
-          -- response of the Admin API.
-          --assert.is_nil(json_2.offset) -- last page
+          assert.is_nil(json_2.offset) -- last page
         end)
       end)
 

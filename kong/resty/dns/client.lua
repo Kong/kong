@@ -25,7 +25,7 @@ local fileexists = require("pl.path").exists
 local semaphore = require("ngx.semaphore").new
 local lrucache = require("resty.lrucache")
 local resolver = require("resty.dns.resolver")
-local deepcopy = require("pl.tablex").deepcopy
+local cycle_aware_deep_copy = require("kong.tools.utils").cycle_aware_deep_copy
 local time = ngx.now
 local log = ngx.log
 local ERR = ngx.ERR
@@ -702,7 +702,6 @@ local function parseAnswer(qname, qtype, answers, try_list)
   return true
 end
 
-
 -- executes 1 individual query.
 -- This query will not be synchronized, every call will be 1 query.
 -- @param qname the name to query for
@@ -719,6 +718,13 @@ local function individualQuery(qname, r_opts, try_list)
 
   local result
   result, err = r:query(qname, r_opts)
+  -- Manually destroy the resolver.
+  -- When resovler is initialized, some socket resources are also created inside
+  -- resolver. As the resolver is created in timer-ng, the socket resources are
+  -- not released automatically, we have to destroy the resolver manually.
+  -- resolver:destroy is patched in build phase, more information can be found in
+  -- build/openresty/patches/lua-resty-dns-0.22_01-destroy_resolver.patch
+  r:destroy()
   if not result then
     return result, err, try_list
   end
@@ -727,7 +733,6 @@ local function individualQuery(qname, r_opts, try_list)
 
   return result, nil, try_list
 end
-
 
 local queue = setmetatable({}, {__mode = "v"})
 -- to be called as a timer-callback, performs a query and returns the results
@@ -766,6 +771,8 @@ local function executeQuery(premature, item)
   item.semaphore:post(math_max(item.semaphore:count() * -1, 1))
   item.semaphore = nil
   ngx.sleep(0)
+  -- 3) destroy the resolver -- ditto in individualQuery
+  r:destroy()
 end
 
 
@@ -792,7 +799,7 @@ local function asyncQuery(qname, r_opts, try_list)
     key = key,
     semaphore = semaphore(),
     qname = qname,
-    r_opts = deepcopy(r_opts),
+    r_opts = cycle_aware_deep_copy(r_opts),
     try_list = try_list,
   }
   queue[key] = item

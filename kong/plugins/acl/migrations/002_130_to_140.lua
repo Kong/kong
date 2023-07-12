@@ -29,9 +29,4 @@ return {
 
     ]],
   },
-  cassandra = {
-    up = [[
-      ALTER TABLE acls ADD tags set<text>;
-    ]],
-  }
 }

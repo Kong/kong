@@ -79,6 +79,7 @@ local oauth2_authorization_codes = {
     { scope = { type = "string" }, },
     { challenge = { type = "string", required = false }},
     { challenge_method = { type = "string", required = false, one_of = { "S256" } }},
+    { plugin = { type = "foreign", reference = "plugins", default = ngx.null, on_delete = "cascade", }, },
   },
 }
 

@@ -34,6 +34,8 @@ local REDIS_HOST = os.getenv("KONG_SPEC_TEST_REDIS_HOST") or "localhost"
 local REDIS_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_PORT") or 6379)
 local REDIS_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_SSL_PORT") or 6380)
 local REDIS_SSL_SNI = os.getenv("KONG_SPEC_TEST_REDIS_SSL_SNI") or "test-redis.example.com"
+local TEST_COVERAGE_MODE = os.getenv("KONG_COVERAGE")
+local TEST_COVERAGE_TIMEOUT = 30
 local BLACKHOLE_HOST = "10.255.255.255"
 local KONG_VERSION = require("kong.meta")._VERSION
 local PLUGINS_LIST
@@ -78,7 +80,6 @@ ffi.cdef [[
   int setenv(const char *name, const char *value, int overwrite);
   int unsetenv(const char *name);
 ]]
-
 
 local kong_exec   -- forward declaration
 
@@ -248,7 +249,7 @@ local config_yml
 --- Iterator over DB strategies.
 -- @function each_strategy
 -- @param strategies (optional string array) explicit list of strategies to use,
--- defaults to `{ "postgres", "cassandra" }`.
+-- defaults to `{ "postgres", }`.
 -- @see all_strategies
 -- @usage
 -- -- repeat all tests for each strategy
@@ -266,13 +267,13 @@ end
 -- To test with DB-less, check the example.
 -- @function all_strategies
 -- @param strategies (optional string array) explicit list of strategies to use,
--- defaults to `{ "postgres", "cassandra", "off" }`.
+-- defaults to `{ "postgres", "off" }`.
 -- @see each_strategy
 -- @see make_yaml_file
 -- @usage
 -- -- example of using DB-less testing
 --
--- -- use "all_strategies" to iterate over; "postgres", "cassandra", "off"
+-- -- use "all_strategies" to iterate over; "postgres", "off"
 -- for _, strategy in helpers.all_strategies() do
 --   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
 --
@@ -306,7 +307,6 @@ end
 --         -- really runs DB-less despite that Postgres was used as intermediary
 --         -- storage.
 --         pg_host = strategy == "off" and "unknownhost.konghq.com" or nil,
---         cassandra_contact_points = strategy == "off" and "unknownhost.konghq.com" or nil,
 --       }))
 --     end)
 --
@@ -315,8 +315,8 @@ local function all_strategies() -- luacheck: ignore   -- required to trick ldoc 
 end
 
 do
-  local def_db_strategies = {"postgres", "cassandra"}
-  local def_all_strategies = {"postgres", "cassandra", "off"}
+  local def_db_strategies = {"postgres"}
+  local def_all_strategies = {"postgres", "off"}
   local env_var = os.getenv("KONG_DATABASE")
   if env_var then
     def_db_strategies = { env_var }
@@ -481,8 +481,6 @@ local function get_db_utils(strategy, tables, plugins, vaults, skip_migrations)
   assert(db.plugins:load_plugin_schemas(conf.loaded_plugins))
   assert(db.vaults:load_vault_schemas(conf.loaded_vaults))
 
-  -- cleanup the tags table, since it will be hacky and
-  -- not necessary to implement "truncate trigger" in Cassandra
   db:truncate("tags")
 
   _G.kong.db = db
@@ -774,6 +772,12 @@ end
 function resty_http_proxy_mt:_connect()
   local opts = self.options
 
+  if TEST_COVERAGE_MODE == "true" then
+    opts.connect_timeout = TEST_COVERAGE_TIMEOUT * 1000
+    opts.send_timeout    = TEST_COVERAGE_TIMEOUT * 1000
+    opts.read_timeout    = TEST_COVERAGE_TIMEOUT * 1000
+  end
+
   local _, err = self:connect(opts)
   if err then
     error("Could not connect to " ..
@@ -818,7 +822,7 @@ end
 -- @see admin_ssl_client
 local function http_client_opts(options)
   if not options.scheme then
-    options = utils.deep_copy(options)
+    options = utils.cycle_aware_deep_copy(options)
     options.scheme = "http"
     if options.port == 443 then
       options.scheme = "https"
@@ -859,6 +863,10 @@ end
 local function http_client(host, port, timeout)
   if type(host) == "table" then
     return http_client_opts(host)
+  end
+
+  if TEST_COVERAGE_MODE == "true" then
+    timeout = TEST_COVERAGE_TIMEOUT * 1000
   end
 
   return http_client_opts({
@@ -964,6 +972,10 @@ end
 -- @function admin_ssl_client
 -- @param timeout (optional, number) the timeout to use
 local function admin_ssl_client(timeout)
+  if TEST_COVERAGE_MODE == "true" then
+    timeout = TEST_COVERAGE_TIMEOUT * 1000
+  end
+
   local admin_ip, admin_port
   for _, entry in ipairs(conf.proxy_listeners) do
     if entry.ssl == true then
@@ -1003,57 +1015,102 @@ local function gen_grpcurl_opts(opts_t)
 end
 
 
---- Creates an HTTP/2 client, based on the lua-http library.
+--- Creates an HTTP/2 client using golang's http2 package.
+--- Sets `KONG_TEST_DEBUG_HTTP2=1` env var to print debug messages.
 -- @function http2_client
 -- @param host hostname to connect to
 -- @param port port to connect to
--- @param tls boolean indicating whether to establish a tls session
--- @return http2 client
 local function http2_client(host, port, tls)
-  local host = assert(host)
   local port = assert(port)
   tls = tls or false
 
-  -- if Kong/lua-pack is loaded, unload it first
-  -- so lua-http can use implementation from compat53.string
-  package.loaded.string.unpack = nil
-  package.loaded.string.pack = nil
-
-  local request = require "http.request"
-  local req = request.new_from_uri({
-    scheme = tls and "https" or "http",
-    host = host,
-    port = port,
-  })
-  req.version = 2
-  req.tls = tls
-
-  if tls then
-    local http_tls = require "http.tls"
-    local openssl_ctx = require "openssl.ssl.context"
-    local n_ctx = http_tls.new_client_context()
-    n_ctx:setVerify(openssl_ctx.VERIFY_NONE)
-    req.ctx = n_ctx
+  -- Note: set `GODEBUG=http2debug=1` is helpful if you are debugging this go program
+  local tool_path = "bin/h2client"
+  local http2_debug
+  -- note: set env var "KONG_TEST_DEBUG_HTTP2" !! the "_TEST" will be dropped
+  if os.getenv("KONG_DEBUG_HTTP2") then
+    http2_debug = true
+    tool_path = "GODEBUG=http2debug=1 bin/h2client"
   end
 
-  local meta = getmetatable(req) or {}
 
-  meta.__call = function(req, opts)
+  local meta = {}
+  meta.__call = function(_, opts)
     local headers = opts and opts.headers
     local timeout = opts and opts.timeout
+    local body = opts and opts.body
+    local path = opts and opts.path or ""
+    local http1 = opts and opts.http_version == "HTTP/1.1"
 
-    for k, v in pairs(headers or {}) do
-      req.headers:upsert(k, v)
+    local url = (tls and "https" or "http") .. "://" .. host .. ":" .. port .. path
+
+    local cmd = string.format("%s -url %s -skip-verify", tool_path, url)
+
+    if headers then
+      local h = {}
+      for k, v in pairs(headers) do
+        table.insert(h, string.format("%s=%s", k, v))
+      end
+      cmd = cmd .. " -headers " .. table.concat(h, ",")
     end
 
-    local headers, stream = req:go(timeout)
-    local body = stream:get_body_as_string()
-    return body, headers
+    if timeout then
+      cmd = cmd .. " -timeout " .. timeout
+    end
+
+    if http1 then
+      cmd = cmd .. " -http1"
+    end
+
+    local body_filename
+    if body then
+      body_filename = pl_path.tmpname()
+      pl_file.write(body_filename, body)
+      cmd = cmd .. " -post < " .. body_filename
+    end
+
+    if http2_debug then
+      print("HTTP/2 cmd:\n" .. cmd)
+    end
+
+    local ok, _, stdout, stderr = pl_utils.executeex(cmd)
+    assert(ok, stderr)
+
+    if body_filename then
+      pl_file.delete(body_filename)
+    end
+
+    if http2_debug then
+      print("HTTP/2 debug:\n")
+      print(stderr)
+    end
+
+    local stdout_decoded = cjson.decode(stdout)
+    if not stdout_decoded then
+      error("Failed to decode h2client output: " .. stdout)
+    end
+
+    local headers = stdout_decoded.headers
+    headers.get = function(_, key)
+      if string.sub(key, 1, 1) == ":" then
+        key = string.sub(key, 2)
+      end
+      return headers[key]
+    end
+    setmetatable(headers, {
+      __index = function(headers, key)
+        for k, v in pairs(headers) do
+          if key:lower() == k:lower() then
+            return v
+          end
+        end
+      end
+    })
+    return stdout_decoded.body, headers
   end
 
-  return setmetatable(req, meta)
+  return setmetatable({}, meta)
 end
-
 
 --- returns a pre-configured cleartext `http2_client` for the Kong proxy port.
 -- @function proxy_client_h2c
@@ -1171,6 +1228,9 @@ end
 local function tcp_server(port, opts)
   local threads = require "llthreads2.ex"
   opts = opts or {}
+  if TEST_COVERAGE_MODE == "true" then
+    opts.timeout = TEST_COVERAGE_TIMEOUT
+  end
   local thread = threads.new({
     function(port, opts)
       local socket = require "socket"
@@ -1283,67 +1343,6 @@ local function kill_tcp_server(port)
   assert(sock:close())
   local oks, fails = str:match("(%d+):(%d+)")
   return tonumber(oks), tonumber(fails)
-end
-
-
--- If it applies, please use `http_mock`, the coroutine variant of `http_server`, which is
--- more determinative and less flaky.
---- Starts a local HTTP server.
--- Accepts a single connection and then closes. Sends a 200 ok, 'Connection:
--- close' response.
--- If the request received has path `/delay` then the response will be delayed
--- by 2 seconds.
--- @function http_server
--- @tparam number port The port the server will be listening on
--- @tparam[opt] table opts options defining the server's behavior with the following fields:
--- @tparam[opt=60] number opts.timeout time (in seconds) after which the server exits
--- @return A thread object (from the `llthreads2` Lua package)
--- @see kill_http_server
-local function http_server(port, opts)
-  local threads = require "llthreads2.ex"
-  opts = opts or {}
-  local thread = threads.new({
-    function(port, opts)
-      local socket = require "socket"
-      local server = assert(socket.tcp())
-      server:settimeout(opts.timeout or 60)
-      assert(server:setoption('reuseaddr', true))
-      assert(server:bind("*", port))
-      assert(server:listen())
-      local client = assert(server:accept())
-
-      local content_length
-      local lines = {}
-      local line, err
-      repeat
-        line, err = client:receive("*l")
-        if err then
-          break
-        end
-        table.insert(lines, line)
-        content_length = tonumber(line:lower():match("^content%-length:%s*(%d+)$")) or content_length
-      until line == ""
-
-      if #lines > 0 and lines[1] == "GET /delay HTTP/1.0" then
-        ngx.sleep(2)
-      end
-
-      if err then
-        server:close()
-        error(err)
-      end
-
-      local body, _ = client:receive(content_length or "*a")
-
-      client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
-      client:close()
-      server:close()
-
-      return lines, body
-    end
-  }, port, opts)
-
-  return thread:start()
 end
 
 
@@ -1488,6 +1487,9 @@ end
 
 
 --- Start a local HTTP server with coroutine.
+--
+-- **DEPRECATED**: please use `spec.helpers.http_mock` instead.
+--
 -- local mock = helpers.http_mock(1234, { timeout = 0.1 })
 -- wait for a request, and respond with the custom response
 -- the request is returned as the function's return values
@@ -1498,6 +1500,9 @@ end
 local function http_mock(port, opts)
   local socket = require "socket"
   local server = assert(socket.tcp())
+  if TEST_COVERAGE_MODE == "true" then
+    opts.timeout = TEST_COVERAGE_TIMEOUT
+  end
   server:settimeout(opts and opts.timeout or 60)
   assert(server:setoption('reuseaddr', true))
   assert(server:bind("*", port))
@@ -1524,17 +1529,6 @@ local function http_mock(port, opts)
 end
 
 
---- Stops a local HTTP server.
--- A server previously created with `http_server` can be stopped prematurely by
--- calling this function.
--- @function kill_http_server
--- @param port the port the HTTP server is listening on.
--- @see http_server
-local function kill_http_server(port)
-  os.execute("fuser -n tcp -k " .. port)
-end
-
-
 --- Starts a local UDP server.
 -- Reads the specified number of packets and then closes.
 -- The server-thread return values depend on `n`:
@@ -1550,6 +1544,10 @@ end
 -- @return A thread object (from the `llthreads2` Lua package)
 local function udp_server(port, n, timeout)
   local threads = require "llthreads2.ex"
+
+  if TEST_COVERAGE_MODE == "true" then
+    timeout = TEST_COVERAGE_TIMEOUT
+  end
 
   local thread = threads.new({
     function(port, n, timeout)
@@ -1627,6 +1625,10 @@ require("spec.helpers.wait")
 -- -- wait 10 seconds for a file "myfilename" to appear
 -- helpers.wait_until(function() return file_exist("myfilename") end, 10)
 local function wait_until(f, timeout, step)
+  if TEST_COVERAGE_MODE == "true" then
+    timeout = TEST_COVERAGE_TIMEOUT
+  end
+
   luassert.wait_until({
     condition = "truthy",
     fn = f,
@@ -1649,6 +1651,10 @@ end
 -- @return nothing. It returns when the condition is met, or throws an error
 -- when it times out.
 local function pwait_until(f, timeout, step)
+  if TEST_COVERAGE_MODE == "true" then
+    timeout = TEST_COVERAGE_TIMEOUT
+  end
+
   luassert.wait_until({
     condition = "no_error",
     fn = f,
@@ -1837,6 +1843,9 @@ end
 -- @tparam[opt=false] boolean opts.override_global_key_auth_plugin to override the global key-auth plugin in waiting
 local function wait_for_all_config_update(opts)
   opts = opts or {}
+  if TEST_COVERAGE_MODE == "true" then
+    opts.timeout = TEST_COVERAGE_TIMEOUT
+  end
   local timeout = opts.timeout or 30
   local admin_client_timeout = opts.admin_client_timeout
   local forced_admin_port = opts.forced_admin_port
@@ -2011,7 +2020,7 @@ local function wait_for_all_config_update(opts)
     if stream_enabled then
       pwait_until(function ()
         local proxy = proxy_client(proxy_client_timeout, stream_port, stream_ip)
-  
+
         res = proxy:get("/always_200")
         local ok, err = pcall(assert, res.status == 200)
         proxy:close()
@@ -2698,6 +2707,40 @@ do
   luassert:register("modifier", "errlog", modifier_errlog) -- backward compat
   luassert:register("modifier", "logfile", modifier_errlog)
 
+  local function substr(subject, pattern)
+    if subject:find(pattern, nil, true) ~= nil then
+      return subject
+    end
+  end
+
+  local function re_match(subject, pattern)
+    local pos, _, err = ngx.re.find(subject, pattern, "oj")
+    if err then
+      error(("invalid regex provided to logfile assertion %q: %s")
+            :format(pattern, err), 5)
+    end
+
+    if pos then
+      return subject
+    end
+  end
+
+  local function find_in_file(fpath, pattern, matcher)
+    local fh = assert(io.open(fpath, "r"))
+    local found
+
+    for line in fh:lines() do
+      if matcher(line, pattern) then
+        found = line
+        break
+      end
+    end
+
+    fh:close()
+
+    return found
+  end
+
 
   --- Assertion checking if any line from a file matches the given regex or
   -- substring.
@@ -2727,37 +2770,30 @@ do
            "Expected the regex argument to be a string")
     assert(type(fpath) == "string",
            "Expected the file path argument to be a string")
-    assert(type(timeout) == "number" and timeout > 0,
-           "Expected the timeout argument to be a positive number")
+    assert(type(timeout) == "number" and timeout >= 0,
+           "Expected the timeout argument to be a number >= 0")
 
-    local pok = pcall(wait_until, function()
-      local logs = pl_file.read(fpath)
-      local from, _, err
 
-      for line in logs:gmatch("[^\r\n]+") do
-        if plain then
-          from = string.find(line, regex, nil, true)
+    local matcher = plain and substr or re_match
 
-        else
-          from, _, err = ngx.re.find(line, regex)
-          if err then
-            error(err)
-          end
-        end
+    local found = find_in_file(fpath, regex, matcher)
+    local deadline = ngx.now() + timeout
 
-        if from then
-          table.insert(args, 1, line)
-          table.insert(args, 1, regex)
-          args.n = 2
-          return true
-        end
-      end
-    end, timeout)
+    while not found and ngx.now() <= deadline do
+      ngx.sleep(0.05)
+      found = find_in_file(fpath, regex, matcher)
+    end
 
-    table.insert(args, 1, fpath)
-    args.n = args.n + 1
+    args[1] = fpath
+    args[2] = regex
+    args.n = 2
 
-    return pok
+    if found then
+      args[3] = found
+      args.n = 3
+    end
+
+    return found
   end
 
   say:set("assertion.match_line.negative", unindent [[
@@ -3185,6 +3221,10 @@ end
 local function wait_pid(pid_path, timeout, is_retry)
   local pid = get_pid_from_file(pid_path)
 
+  if TEST_COVERAGE_MODE == "true" then
+    timeout = TEST_COVERAGE_TIMEOUT
+  end
+
   if pid then
     if pid_dead(pid, timeout) then
       return
@@ -3409,6 +3449,8 @@ end
 --   dns_mock = helpers.dns_mock.new()
 -- }
 --
+-- **DEPRECATED**: http_mock fixture is deprecated. Please use `spec.helpers.http_mock` instead.
+--
 -- fixtures.dns_mock:A {
 --   name = "a.my.srv.test.com",
 --   address = "127.0.0.1",
@@ -3471,10 +3513,8 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
 
   truncate_tables(db, tables)
 
-  local nginx_conf = ""
-  if env.nginx_conf then
-    nginx_conf = " --nginx-conf " .. env.nginx_conf
-  end
+  env.nginx_conf = env.nginx_conf or "spec/fixtures/default_nginx.template"
+  local nginx_conf = " --nginx-conf " .. env.nginx_conf
 
   if dcbp and not env.declarative_config and not env.declarative_config_string then
     if not config_yml then
@@ -3486,7 +3526,7 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
         return nil, err
       end
     end
-    env = utils.deep_copy(env)
+    env = utils.cycle_aware_deep_copy(env)
     env.declarative_config = config_yml
   end
 
@@ -3502,6 +3542,12 @@ end
 -- @param preserve_prefix (boolean) if truthy, the prefix will not be deleted after stopping
 -- @param preserve_dc ???
 local function cleanup_kong(prefix, preserve_prefix, preserve_dc)
+  -- remove socket files to ensure `pl.dir.rmtree()` ok
+  local socks = { "/worker_events.sock", "/stream_worker_events.sock", }
+  for _, name in ipairs(socks) do
+    local sock_file = (prefix or conf.prefix) .. name
+    os.remove(sock_file)
+  end
 
   -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped
   if not (preserve_prefix or os.getenv("KONG_DONT_CLEAN")) then
@@ -3566,9 +3612,6 @@ end
 
 
 local function wait_until_no_common_workers(workers, expected_total, strategy)
-  if strategy == "cassandra" then
-    ngx.sleep(0.5)
-  end
   wait_until(function()
     local pok, admin_client = pcall(admin_client)
     if not pok then
@@ -3601,8 +3644,9 @@ local function wait_until_no_common_workers(workers, expected_total, strategy)
 end
 
 
-local function get_kong_workers()
+local function get_kong_workers(expected_total)
   local workers
+
   wait_until(function()
     local pok, admin_client = pcall(admin_client)
     if not pok then
@@ -3619,7 +3663,23 @@ local function get_kong_workers()
     local json = cjson.decode(body)
 
     admin_client:close()
-    workers = json.pids.workers
+
+    workers = {}
+
+    for _, item in ipairs(json.pids.workers) do
+      if item ~= ngx.null then
+        table.insert(workers, item)
+      end
+    end
+
+    if expected_total and #workers ~= expected_total then
+      return nil, ("expected %s worker pids, got %s"):format(expected_total,
+                                                             #workers)
+
+    elseif #workers == 0 then
+      return nil, "GET / returned no worker pids"
+    end
+
     return true
   end, 10)
   return workers
@@ -3672,6 +3732,7 @@ local function clustering_client(opts)
                                         plugins = opts.node_plugins_list or
                                                   PLUGINS_LIST,
                                         labels = opts.node_labels,
+                                        process_conf = opts.node_process_conf,
                                       }))
   assert(c:send_binary(payload))
 
@@ -3835,9 +3896,7 @@ end
   tcp_server = tcp_server,
   udp_server = udp_server,
   kill_tcp_server = kill_tcp_server,
-  http_server = http_server,
   http_mock = http_mock,
-  kill_http_server = kill_http_server,
   get_proxy_ip = get_proxy_ip,
   get_proxy_port = get_proxy_port,
   proxy_client = proxy_client,

@@ -552,7 +552,6 @@ describe("kong reload #" .. strategy, function()
         local ok = helpers.kong_exec("reload --conf " .. helpers.test_conf_path, {
           database = strategy,
           pg_port = 1234,
-          cassandra_port = 1234,
         })
 
         assert.False(ok)

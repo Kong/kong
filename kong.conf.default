@@ -114,8 +114,7 @@
                                             # - `off`: do not enable instrumentations.
                                             # - `request`: only enable request-level instrumentations.
                                             # - `all`: enable all the following instrumentations.
-                                            # - `db_query`: trace database query, including
-                                            #   Postgres and Cassandra.
+                                            # - `db_query`: trace database query
                                             # - `dns_query`: trace DNS query.
                                             # - `router`: trace router execution, including
                                             #   router rebuilding.
@@ -133,7 +132,7 @@
                                             # stream mode.
 
 #opentelemetry_tracing_sampling_rate = 1.0  # Deprecated: use tracing_sampling_rate instead
-#tracing_sampling_rate = 1.0                # Tracing instrumentation sampling rate.
+#tracing_sampling_rate = 0.01               # Tracing instrumentation sampling rate.
                                             # Tracer samples a fixed percentage of all spans
                                             # following the sampling rate.
                                             #
@@ -380,10 +379,10 @@
                                  # which configuration updates will be fetched,
                                  # in `host:port` format.
 
-#cluster_max_payload = 4194304
-                                 # This sets the maximum payload size allowed
+#cluster_max_payload = 16777216
+                                 # This sets the maximum compressed payload size allowed
                                  # to be sent across from CP to DP in Hybrid mode
-                                 # Default is 4Mb - 4 * 1024 * 1024 due to historical reasons
+                                 # Default is 16MB - 16 * 1024 * 1024.
 
 #cluster_dp_labels =             # Comma separated list of Labels for the data plane.
                                  # Labels are key-value pairs that provide additional
@@ -707,14 +706,18 @@
                                  #
                                  # See http://nginx.org/en/docs/ngx_core_module.html#daemon.
 
-#mem_cache_size = 128m           # Size of each of the two in-memory caches
-                                 # for database entities. The accepted units are
-                                 # `k` and `m`, with a minimum recommended value of
-                                 # a few MBs.
+#mem_cache_size = 128m           # Size of each of the two shared memory caches
+                                 # for traditional mode database entities
+                                 # and runtime data.
+                                 # The accepted units are `k` and `m`, with a minimum
+                                 # recommended value of a few MBs.
                                  #
                                  # **Note**: As this option controls the size of two
-                                 # different cache entries, the total memory Kong
+                                 # different cache zones, the total memory Kong
                                  # uses to cache entities might be double this value.
+                                 # The created zones are shared by all worker
+                                 # processes and do not become larger when more
+                                 # worker is used.
 
 #ssl_cipher_suite = intermediate # Defines the TLS ciphers served by Nginx.
                                  # Accepted values are `modern`,
@@ -1146,13 +1149,11 @@
 # independently in memory.
 #
 # When using a database, Kong will store data for all its entities (such as
-# Routes, Services, Consumers, and Plugins) in either Cassandra or PostgreSQL,
+# Routes, Services, Consumers, and Plugins) in PostgreSQL,
 # and all Kong nodes belonging to the same cluster must connect themselves
 # to the same database.
 #
-# Kong supports the following database versions:
-# - **PostgreSQL**: 9.5 and above.
-# - **Cassandra**: 2.2 and above.
+# Kong supports PostgreSQL versions 9.5 and above.
 #
 # When not using a database, Kong is said to be in "DB-less mode": it will keep
 # its entities in memory, and each node needs to have this data entered via a
@@ -1177,10 +1178,9 @@
 # inherited from the corresponding main connection config described above but
 # may be optionally overwritten explicitly using the `pg_ro_*` config below.
 
-#database = postgres             # Determines which of PostgreSQL or Cassandra
-                                 # this node will use as its datastore.
-                                 # Accepted values are `postgres`,
-                                 # `cassandra`, and `off`.
+#database = postgres             # Determines the database (or no database) for
+                                 # this node
+                                 # Accepted values are `postgres` and `off`.
 
 #pg_host = 127.0.0.1             # Host of the Postgres server.
 #pg_port = 5432                  # Port of the Postgres server.
@@ -1307,114 +1307,16 @@
                                  # Same as `pg_backlog`, but for the
                                  # read-only connection.
 
-#cassandra_contact_points = 127.0.0.1  # A comma-separated list of contact
-                                       # points to your cluster.
-                                       # You may specify IP addresses or
-                                       # hostnames. Note that the port
-                                       # component of SRV records will be
-                                       # ignored in favor of `cassandra_port`.
-                                       # When connecting to a multi-DC cluster,
-                                       # ensure that contact points from the
-                                       # local datacenter are specified first
-                                       # in this list.
-
-#cassandra_port = 9042           # The port on which your nodes are listening
-                                 # on. All your nodes and contact points must
-                                 # listen on the same port. Will be created if
-                                 # it doesn't exist.
-
-#cassandra_keyspace = kong       # The keyspace to use in your cluster.
-
-#cassandra_write_consistency = ONE  # Consistency setting to use when
-                                    # writing to the Cassandra cluster.
-
-#cassandra_read_consistency = ONE   # Consistency setting to use when
-                                    # reading from the Cassandra cluster.
-
-#cassandra_timeout = 5000        # Defines the timeout (in ms) for reading
-                                 # and writing.
-
-#cassandra_ssl = off             # Toggles client-to-node TLS connections
-                                 # between Kong and Cassandra.
-
-#cassandra_ssl_verify = off      # Toggles server certificate verification if
-                                 # `cassandra_ssl` is enabled.
-                                 # See the `lua_ssl_trusted_certificate`
-                                 # setting to specify a certificate authority.
-
-#cassandra_username = kong       # Username when using the
-                                 # `PasswordAuthenticator` scheme.
-
-#cassandra_password =            # Password when using the
-                                 # `PasswordAuthenticator` scheme.
-
-#cassandra_lb_policy = RequestRoundRobin  # Load balancing policy to use when
-                                          # distributing queries across your
-                                          # Cassandra cluster.
-                                          # Accepted values are:
-                                          # `RoundRobin`, `RequestRoundRobin`,
-                                          # `DCAwareRoundRobin`, and
-                                          # `RequestDCAwareRoundRobin`.
-                                          # Policies prefixed with "Request"
-                                          # make efficient use of established
-                                          # connections throughout the same
-                                          # request.
-                                          # Prefer "DCAware" policies if and
-                                          # only if you are using a
-                                          # multi-datacenter cluster.
-
-#cassandra_local_datacenter =    # When using the `DCAwareRoundRobin`
-                                 # or `RequestDCAwareRoundRobin` load
-                                 # balancing policy, you must specify the name
-                                 # of the local (closest) datacenter for this
-                                 # Kong node.
-
-#cassandra_refresh_frequency = 60          # Frequency (in seconds) at which
-                                           # the cluster topology will be
-                                           # checked for new or decommissioned
-                                           # nodes.
-                                           # A value of `0` will disable this
-                                           # check, and the cluster topology
-                                           # will never be refreshed.
-
-#cassandra_repl_strategy = SimpleStrategy  # When migrating for the first time,
-                                           # Kong will use this setting to
-                                           # create your keyspace.
-                                           # Accepted values are
-                                           # `SimpleStrategy` and
-                                           # `NetworkTopologyStrategy`.
-
-#cassandra_repl_factor = 1       # When migrating for the first time, Kong
-                                 # will create the keyspace with this
-                                 # replication factor when using the
-                                 # `SimpleStrategy`.
-
-#cassandra_data_centers = dc1:2,dc2:3  # When migrating for the first time,
-                                       # will use this setting when using the
-                                       # `NetworkTopologyStrategy`.
-                                       # The format is a comma-separated list
-                                       # made of `<dc_name>:<repl_factor>`.
-
-#cassandra_schema_consensus_timeout = 10000  # Defines the timeout (in ms) for
-                                             # the waiting period to reach a
-                                             # schema consensus between your
-                                             # Cassandra nodes.
-                                             # This value is only used during
-                                             # migrations.
-
 #declarative_config =           # The path to the declarative configuration
                                 # file which holds the specification of all
                                 # entities (Routes, Services, Consumers, etc.)
                                 # to be used when the `database` is set to
                                 # `off`.
                                 #
-                                # Entities are stored in Kong's in-memory cache,
-                                # so you must ensure that enough memory is
-                                # allocated to it via the `mem_cache_size`
-                                # property. You must also ensure that items
-                                # in the cache never expire, which means that
-                                # `db_cache_ttl` should preserve its default
-                                # value of 0.
+                                # Entities are stored in Kong's LMDB cache,
+                                # so you must ensure that enough headroom is
+                                # allocated to it via the `lmdb_map_size`
+                                # property.
                                 #
                                 # If the Hybrid mode `role` is set to `data_plane`
                                 # and there's no configuration cache file,
@@ -1430,8 +1332,21 @@
                                       #
                                       # This path is relative under the Kong `prefix`.
 
-#lmdb_map_size = 128m                 # Maximum size of the LMDB memory map, used to store the
-                                      # DB-less and Hybird mode configurations. Default is 128m.
+#lmdb_map_size = 2048m                # Maximum size of the LMDB memory map, used to store the
+                                      # DB-less and Hybird mode configurations. Default is 2048m.
+                                      #
+                                      # This config defines the limit of LMDB file size, the
+                                      # actual file size growth will be on-demand and
+                                      # proportional to the actual config size.
+                                      #
+                                      # Note this value can be set very large, say a couple of GBs
+                                      # to accommodate future database growth and
+                                      # Multi Version Concurrency Control (MVCC) headroom needs.
+                                      # The file size of the LMDB database file should stabilize
+                                      # after a few config reload/Hybrid mode syncs and the actual
+                                      # memory used by the LMDB database will be smaller than
+                                      # the file size due to dynamic swapping of database pages by
+                                      # the OS.
 
 #------------------------------------------------------------------------------
 # DATASTORE CACHE
@@ -1457,12 +1372,6 @@
                                  # datastore to be propagated to replica nodes
                                  # of another datacenter.
                                  #
-                                 # When in a distributed environment such as
-                                 # a multi-datacenter Cassandra cluster, this
-                                 # value should be the maximum number of
-                                 # seconds taken by Cassandra to propagate a
-                                 # row to other datacenters.
-                                 #
                                  # When set, this property will increase the
                                  # time taken by Kong to propagate the change
                                  # of an entity.
@@ -1470,6 +1379,9 @@
                                  # Single-datacenter setups or PostgreSQL
                                  # servers should suffer no such delays, and
                                  # this value can be safely set to 0.
+                                 # Postgres setups with read replicas should
+                                 # set this value to maximum expected replication
+                                 # lag between the writer and reader instances.
 
 #db_cache_ttl = 0                # Time-to-live (in seconds) of an entity from
                                  # the datastore when cached by this node.
@@ -1586,6 +1498,33 @@
                                  # When disabled multiple requests for the
                                  # same name/type will be synchronised to a
                                  # single query.
+
+#------------------------------------------------------------------------------
+# VAULTS
+#------------------------------------------------------------------------------
+
+# A secret is any sensitive piece of information required for API gateway
+# operations. Secrets may be part of the core Kong Gateway configuration,
+# used in plugins, or part of the configuration associated with APIs serviced
+# by the gateway.
+#
+# Some of the most common types of secrets used by Kong Gateway include:
+#
+# - Data store usernames and passwords, used with PostgreSQL and Redis
+# - Private X.509 certificates
+# - API keys
+#
+# Sensitive plugin configuration fields are generally used for authentication,
+# hashing, signing, or encryption. Kong Gateway lets you store certain values
+# in a vault. Here are the vault specific configuration options.
+
+#vault_env_prefix =              # Defines the environment variable vault's
+                                 # default prefix. For example if you have
+                                 # all your secrets stored in environment
+                                 # variables prefixed with `SECRETS_`, it
+                                 # can be configured here so that it isn't
+                                 # necessary to repeat them in Vault
+                                 # references.
 
 #------------------------------------------------------------------------------
 # TUNING & BEHAVIOR
@@ -1738,8 +1677,8 @@
                                         # `system` can be used by itself or in conjunction with other
                                         # CA filepaths.
                                         #
-                                        # When `pg_ssl_verify` or `cassandra_ssl_verify`
-                                        # are enabled, these certificate authority files will be
+                                        # When `pg_ssl_verify` is enabled, these
+                                        # certificate authority files will be
                                         # used for verifying Kong's database connections.
                                         #
                                         # Certificates can be configured on this property

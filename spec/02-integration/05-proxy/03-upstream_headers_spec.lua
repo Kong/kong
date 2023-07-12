@@ -1,4 +1,5 @@
 local helpers   = require "spec.helpers"
+local http_mock = require "spec.helpers.http_mock"
 local cjson     = require "cjson"
 
 
@@ -243,14 +244,36 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("(response from upstream)", function()
+      local mock
       lazy_setup(function()
         assert(db:truncate("routes"))
         assert(db:truncate("services"))
+        local port = helpers.get_available_port()
+        mock = http_mock.new("localhost:" .. port, {
+          ["/nocharset"] = {
+            content = [[
+              ngx.header.content_type = "text/plain"
+              ngx.say("Hello World!")
+            ]]
+          },
+          ["/charset"] = {
+            content = [[
+              ngx.header.content_type = "text/plain; charset=utf-8"
+              ngx.say("Hello World!")
+            ]]
+          }
+        }, {
+          record_opts = {
+            req = false,
+          }
+        })
+
+        assert(mock:start())
 
         local service = assert(bp.services:insert {
           protocol = "http",
           host = "127.0.0.1",
-          port = 12345,
+          port = port,
         })
 
         assert(bp.routes:insert {
@@ -258,40 +281,16 @@ for _, strategy in helpers.each_strategy() do
           service = service,
         })
 
-        local fixtures = {
-          http_mock = {}
-        }
-
-        fixtures.http_mock.my_server_block = [[
-          server {
-            server_name myserver;
-            listen localhost:12345;
-
-            location = /nocharset {
-              content_by_lua_block {
-                ngx.header.content_type = "text/plain"
-                ngx.say("Hello World!")
-              }
-            }
-
-            location = /charset {
-              content_by_lua_block {
-                ngx.header.content_type = "text/plain; charset=utf-8"
-                ngx.say("Hello World!")
-              }
-            }
-          }
-        ]]
-
         assert(helpers.start_kong({
           database           = strategy,
-          nginx_conf         = "spec/fixtures/custom_nginx.template",
-          lua_package_path   = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua",
           nginx_http_charset = "off",
-        }, nil, nil, fixtures))
+        }))
       end)
 
-      lazy_teardown(stop_kong)
+      lazy_teardown(function()
+        stop_kong()
+        mock:stop()
+      end)
 
       describe("Content-Type", function()
         it("does not add charset if the response from upstream contains no charset when charset is turned off", function()

@@ -307,28 +307,4 @@ return {
 
     ]],
   },
-
-  cassandra = {
-    up = [[
-      ALTER TABLE plugins ADD protocols set<text>;
-
-      ALTER TABLE services ADD tags set<text>;
-      ALTER TABLE routes ADD tags set<text>;
-      ALTER TABLE certificates ADD tags set<text>;
-      ALTER TABLE snis ADD tags set<text>;
-      ALTER TABLE consumers ADD tags set<text>;
-      ALTER TABLE plugins ADD tags set<text>;
-      ALTER TABLE upstreams ADD tags set<text>;
-      ALTER TABLE targets ADD tags set<text>;
-
-      CREATE TABLE IF NOT EXISTS tags (
-        tag               text,
-        entity_name       text,
-        entity_id         text,
-        other_tags        set<text>,
-        PRIMARY KEY       ((tag), entity_name, entity_id)
-      );
-
-    ]],
-  },
 }

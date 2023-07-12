@@ -4,26 +4,46 @@ This directory contains the build system for the project.
 The build system is designed to be used with the [Bazel](https://bazel.build/).
 It is designed to be running on Linux without root privileges, and no virtualization technology is required.
 
-The build system is tested on Linux (x86_64 and arm64) and macOS (Intel chip and AppleSilicon Chip).
+The build system is tested on Linux (x86_64 and aarch64) and macOS (Intel chip and AppleSilicon Chip).
 
 ## Prerequisites
+
+The following examples should be performed under the Kong source codebase.
 
 The build system requires the following tools to be installed:
 
 - [Bazel/Bazelisk](https://bazel.build/install/bazelisk), Bazelisk is recommended to ensure the correct version of Bazel is used.
-    - Use `make check-bazel` to install Bazelisk into `bin/bazel`, then use `export PATH=bin:$PATH` to add it into your `PATH`.
-- [Build dependencies](https://github.com/Kong/kong/blob/master/DEVELOPER.md#build-and-install-from-source)
 
+  We can install Bazelisk by running the following command:
+
+  ```bash
+    # install Bazelisk into $PWD/bin/bazel
+    make check-bazel
+    # add Bazelisk into your $PATH
+    export PATH=bin:$PATH
+    # check bazel version
+    bazel version
+  ```
+
+- [Build dependencies](https://github.com/Kong/kong/blob/master/DEVELOPER.md#build-and-install-from-source)
 
 ## Building
 
-To build Kong and all its dependencies, run the following command:
+### Build dependencies
+
+Run the following command to build dependencies of Kong:
 
 ```bash
 bazel build //build:kong --verbose_failures
 ```
 
-The build output is in `bazel-bin/build/kong-dev`.
+This will build luarocks, the OpenResty distribution of Kong, and the `lua-resty-*` libs required by Kong.
+
+During the first run, it will take some time to perform a complete build, which includes downloading dependent files and compiling.
+
+Once the build is complete, you will see four `bazel-*` folders in the current directory. Refer to the [workspace layout diagram](https://bazel.build/remote/output-directories?hl=en#layout-diagram) for their respective definitions.
+
+### Development environment
 
 To use the build as a virtual development environment, run:
 
@@ -32,33 +52,89 @@ bazel build //build:venv --verbose_failures
 . ./bazel-bin/build/kong-dev-venv.sh
 ```
 
-Some other targets one might find useful for debugging are:
+This operation primarily accomplishes the following:
 
-- `@openresty//:openresty`: builds openresty
-- `@luarocks//:luarocks_make`: builds luarocks for Kong dependencies
+1. Add the Bazel build output folder containing `resty`, `luarocks` and other commands to `$PATH` so that the commands in the build output can be used directly.
+2. Set and specify the runtime path for Kong.
+3. Provide Bash functions to start and stop the database and other third-party dependency services required for Kong development environment using Docker, read more: [Start Kong](../DEVELOPER#start-kong).
+
+### Debugging
+
+Query list all direct dependencies of the `kong` target
+
+```bash
+bazel query 'deps(//build:kong, 1)'
+
+# output
+@openresty//:luajit
+@openresty//:openresty
+...
+```
+
+We can use the target labels to build the dependency directly, for example:
+
+- `bazel build @openresty//:openresty`: builds openresty
+- `bazel build @luarocks//:luarocks_make`: builds luarocks for Kong dependencies
+
+#### Debugging variables in *.bzl files
+
+Use `print` function to print the value of the variable in the `*.bzl` file. For example, we can print the value of the `WORKSPACE_PATH` variable in the `_load_bindings_impl` function in [kong_bindings.bzl](../build/kong_bindings.bzl) by adding the following code:
+
+```python
+content += '"WORKSPACE_PATH": "%s",\n' % workspace_path
+# add the following line
+print("WORKSPACE_PATH: %s" % workspace_path)
+```
+
+Since `load_bindings` is called in the `WORKSPACE` file, and `_load_bindings_impl` is the implementation of `load_bindings`, we can just run the following command to print the value of the `WORKSPACE_PATH` variable:
+
+```bash
+bazel build //build:kong
+
+# output
+DEBUG: path/to/kong-dev/kong/build/kong_bindings.bzl:16:10: WORKSPACE_PATH: path/to/kong-dev/kong
+```
+
+### Some useful Bazel query commands
+
+- `bazel query 'deps(//build:kong)'`: list all dependencies of the `kong` target.
+- `bazel query 'kind("cc_library", deps(//build:kong))'`: list all C/C++ dependencies of the `kong` target.
+- `bin/bazel query 'deps(//build:kong)' --output graph` > kong_dependency_graph.dot: generate a dependency graph of the `kong` target in the DOT format, we can use [Graphviz](https://graphviz.org/) to visualize the graph.
+
+We can learn more about Bazel query from [Bazel query](https://bazel.build/versions/6.0.0/query/quickstart).
 
 ### Build Options
 
 Following build options can be used to set specific features:
 
-- **--//:debug=true** turn on debug options for OpenResty and LuaJIT, default to true.
-- **--action_env=BUILD_NAME=** set the `build_name`, multiple build can exist at same time to allow you
-switch between different Kong versions or branches. Default to `kong-dev`; don't set this when you are
+- **`--//:debug=true`**
+  - Default to true.
+  - Turn on debug options and debugging symbols for OpenResty, LuaJIT and OpenSSL, which useful for debug with GDB and SystemTap.
+
+- **`--action_env=BUILD_NAME=`**
+  - Default to `kong-dev`.
+  - Set the `build_name`, multiple build can exist at same time to allow you
+switch between different Kong versions or branches. Don't set this when you are
 building a building an binary package.
-- **--action_env=INSTALL_DESTDIR=** set the directory when the build is intended to be installed. Bazel won't
-actually install files into this directory, but this will make sure certain hard coded paths and RPATH is
-correctly set when building a package. Default to `bazel-bin/build/<BUILD_NAME>`.
 
+- **`--action_env=INSTALL_DESTDIR=`**
+  - Default to `bazel-bin/build/<BUILD_NAME>`.
+  - Set the directory when the build is intended to be installed. Bazel won't
+actually install files into this directory, but this will make sure certain hard coded paths and RPATH is correctly set when building a package.
 
-### Official build
+Command example:
 
-`--config release` specifies the build configuration to use for release, it sets following build options:
-
-```
+```bash
 build:release --//:debug=false
 build:release --action_env=BUILD_NAME=kong-dev
 build:release --action_env=INSTALL_DESTDIR=/usr/local
 ```
+
+### Official build
+
+`--config release` specifies the build configuration to use for release.
+
+For the official release behavior, some build options are fixed, so they are defined in the `Release flags` in [.bazelrc](../.bazelrc). Read [bazlerc](https://bazel.build/run/bazelrc) for more information.
 
 To build an official release, use:
 
@@ -67,21 +143,21 @@ bazel build --config release //build:kong --verbose_failures
 ```
 
 Supported build targets for binary packages:
+
 - `:kong_deb`
 - `:kong_el7`
 - `:kong_el8`
 - `:kong_aws2`
-- `:kong_aws2022`
+- `:kong_aws2023`
 - `:kong_apk`
 
 For example, to build the deb package:
 
 ```bash
 bazel build --verbose_failures --config release :kong_deb
-
 ```
 
-Run `bazel clean` to clean the bazel build cache.
+and we can find the package which named `kong.amd64.deb` in `bazel-bin/pkg`.
 
 #### GPG Signing
 
@@ -91,19 +167,23 @@ GPG singing is supported for the rpm packages (`el*` and `aws*`).
 bazel build //:kong_el8 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE
 ```
 
+- `RPM_SIGNING_KEY_FILE`: the path to the GPG private key file.
+- `NFPM_RPM_PASSPHRASE`: the passphrase of the GPG private key.
+
 ## Cross compiling
 
 Cross compiling is currently only tested on Ubuntu 22.04 x86_64 with following targeting platforms:
 
-- **//:ubuntu-22.04-arm64** Ubuntu 22.04 ARM64
-    - Requires user to manually install `crossbuild-essential-arm64`.
-- **//:alpine-x86_64** Alpine Linux x86_64; bazel manages the build toolchain.
+- **//:generic-crossbuild-aarch64** Use the system installed aarch64 toolchain.
+  - Requires user to manually install `crossbuild-essential-arm64` on Debian/Ubuntu.
+- **//:alpine-crossbuild-x86_64** Alpine Linux x86_64; bazel manages the build toolchain.
+- **//:alpine-crossbuild-aarch64** Alpine Linux aarch64; bazel manages the build toolchain.
 
 Make sure platforms are selected both in building Kong and packaging kong:
 
 ```bash
-bazel build --config release //build:kong --platforms=//:ubuntu-2204-arm64
-bazel build --config release :kong_deb --platforms=//:ubuntu-2204-arm64
+bazel build --config release //build:kong --platforms=//:generic-crossbuild-aarch64
+bazel build --config release :kong_deb --platforms=//:generic-crossbuild-aarch64
 ```
 
 ## Troubleshooting
@@ -114,27 +194,36 @@ The `.log` files in `bazel-bin` contain the build logs.
 
 ## FAQ
 
-### Caching
+### Cleanup
+
+In some cases where the build fails or the build is interrupted, the build system may leave behind some temporary files. To clean up the build system, run the following command or simply rerun the build:
+
+```bash
+bazel clean
+```
 
 Bazel utilizes a cache to speed up the build process. You might want to clear the cache actively
 if you recently changed `BUILD_NAME` or `INSTALL_DESTDIR`.
 
 To completely remove the entire working tree created by a Bazel instance, run:
 
-```shell
+```bash
 bazel clean --expunge
 ```
 
-### Cleanup
+### Bazel Loading Order
 
-In some cases where the build fails or the build is interrupted, the build system may leave behind some temporary files. To clean up the build system, run the following command or simply rerun the build:
+Bazel's file loading order primarily depends on the order of `load()` statements in the `WORKSPACE` and `BUILD` files.
 
-```shell
-bazel clean
-```
+1. Bazel first loads the `WORKSPACE` file. In the `WORKSPACE` file, `load()` statements are executed in order from top to bottom. These `load()` statements load external dependencies and other `.bzl` files.
+2. Next, when building a target, Bazel loads the corresponding BUILD file according to the package where the target is located. In the `BUILD` file, `load()` statements are also executed in order from top to bottom. These `load()` statements are usually used to import macro and rule definitions.
+
+Note:
+
+1. In Bazel's dependency tree, the parent target's `BUILD` file is loaded before the child target's `BUILD` file.
+2. Bazel caches loaded files during the build process. This means that when multiple targets reference the same file, that file is only loaded once.
 
 ### Known Issues
 
 - On macOS, the build may not work with only Command Line Tools installed, you will typically see errors like `../libtool: line 154: -s: command not found`. In such case, installing Xcode should fix the issue.
 - If you have configure `git` to use SSH protocol to replace HTTPS protocol, but haven't setup SSH agent, you might see errors like `error: Unable to update registry crates-io`. In such case, set `export CARGO_NET_GIT_FETCH_WITH_CLI=true` to use `git` command line to fetch the repository.
-

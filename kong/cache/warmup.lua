@@ -1,11 +1,12 @@
 local utils = require "kong.tools.utils"
 local constants = require "kong.constants"
-local marshall = require "kong.cache.marshall"
+local buffer = require "string.buffer"
 
 
 local cache_warmup = {}
 
 
+local encode = buffer.encode
 local tostring = tostring
 local ipairs = ipairs
 local math = math
@@ -18,6 +19,8 @@ local now = ngx.now
 local log = ngx.log
 local NOTICE  = ngx.NOTICE
 
+
+local NO_TTL_FLAG = require("kong.resty.mlcache").NO_TTL_FLAG
 
 
 local GLOBAL_QUERY_OPTS = { workspace = ngx.null, show_ws_id = true }
@@ -84,9 +87,8 @@ function cache_warmup.single_entity(dao, entity)
   else
     cache_key = "kong_core_db_cache" .. cache_key
     local ttl = max(kong.configuration.db_cache_ttl or 3600, 0)
-    local neg_ttl = max(kong.configuration.db_cache_neg_ttl or 300, 0)
-    local value = marshall(entity, ttl, neg_ttl)
-    ok, err =  ngx.shared.kong_core_db_cache:safe_set(cache_key, value)
+    local value = encode(entity)
+    ok, err =  ngx.shared.kong_core_db_cache:safe_set(cache_key, value, ttl, ttl == 0 and NO_TTL_FLAG or 0)
   end
 
   if not ok then

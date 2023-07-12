@@ -10,6 +10,7 @@ local dns_client = require "kong.resty.dns.client"
 local upstreams = require "kong.runloop.balancer.upstreams"
 local balancers = require "kong.runloop.balancer.balancers"
 local dns_utils = require "kong.resty.dns.utils"
+local utils = require "kong.tools.utils"
 
 local ngx = ngx
 local null = ngx.null
@@ -22,6 +23,7 @@ local tonumber = tonumber
 local table_sort = table.sort
 local assert = assert
 local exiting = ngx.worker.exiting
+local get_updated_now_ms = utils.get_updated_now_ms
 
 local CRIT = ngx.CRIT
 local DEBUG = ngx.DEBUG
@@ -527,9 +529,11 @@ function targets_M.getAddressPeer(address, cacheOnly)
     return nil, balancers.errors.ERR_ADDRESS_UNAVAILABLE
   end
 
+  local ctx = ngx.ctx
   local target = address.target
   if targetExpired(target) and not cacheOnly then
     queryDns(target, cacheOnly)
+    ctx.KONG_UPSTREAM_DNS_END_AT = get_updated_now_ms()
     if address.target ~= target then
       return nil, balancers.errors.ERR_DNS_UPDATED
     end

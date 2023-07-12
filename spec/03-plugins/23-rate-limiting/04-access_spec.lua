@@ -1,5 +1,7 @@
 local helpers           = require "spec.helpers"
 local cjson             = require "cjson"
+local redis             = require "resty.redis"
+local version           = require "version"
 
 
 local REDIS_HOST        = helpers.redis_host
@@ -15,7 +17,10 @@ local UPSTREAM_URL      = string.format("http://%s:%d/always_200", UPSTREAM_HOST
 local fmt               = string.format
 local proxy_client      = helpers.proxy_client
 local table_insert      = table.insert
+local tonumber          = tonumber
 
+local ngx_sleep         = ngx.sleep
+local ngx_now           = ngx.now
 
 
 -- This performs the test up to two times (and no more than two).
@@ -29,7 +34,7 @@ local table_insert      = table.insert
 -- was an actual problem detected by the test.
 local function retry(fn)
   if not pcall(fn) then
-    ngx.sleep(61 - (ngx.now() % 60))  -- Wait for minute to expire
+    ngx_sleep(61 - (ngx_now() % 60))  -- Wait for minute to expire
     fn()
   end
 end
@@ -48,6 +53,15 @@ local function GET(url, opt)
   client:close()
 
   return res
+end
+
+
+local function redis_connect()
+  local red = assert(redis:new())
+  red:set_timeout(2000)
+  assert(red:connect(REDIS_HOST, REDIS_PORT))
+  local red_version = string.match(red:info(), 'redis_version:([%g]+)\r\n')
+  return red, assert(version(red_version))
 end
 
 
@@ -722,10 +736,9 @@ if limit_by == "ip" then
     local service = setup_service(admin_client, UPSTREAM_URL)
     local route = setup_route(admin_client, service, { test_path })
     local rl_plugin = setup_rl_plugin(admin_client, {
-      minute              = 6,
+      second              = 1,
       policy              = policy,
-      limit_by            = limit_by,
-      path                = test_path,
+      limit_by            = "ip",
       redis_host          = REDIS_HOST,
       redis_port          = ssl_conf.redis_port,
       redis_password      = REDIS_PASSWORD,
@@ -746,21 +759,29 @@ if limit_by == "ip" then
       override_global_key_auth_plugin = true,
     })
 
-    local function proxy_fn()
-      return GET(test_path)
-    end
+    assert
+      .with_timeout(15)
+      .with_max_tries(10)
+      .ignore_exceptions(false)
+      .eventually(function()
+        local res1 = GET(test_path, { headers = { ["X-Real-IP"] = "127.0.0.3" }})
+        assert.res_status(200, res1)
+        assert.are.same(1, tonumber(res1.headers["RateLimit-Limit"]))
+        assert.are.same(0, tonumber(res1.headers["RateLimit-Remaining"]))
+        assert.is_true(tonumber(res1.headers["ratelimit-reset"]) >= 0)
+        assert.are.same(1, tonumber(res1.headers["X-RateLimit-Limit-Second"]))
+        assert.are.same(0, tonumber(res1.headers["X-RateLimit-Remaining-Second"]))
 
-    local t = 61 - (ngx.now() % 60)
+        local res2 = GET(test_path, { headers = { ["X-Real-IP"] = "127.0.0.3" }})
+        local body2 = assert.res_status(429, res2)
+        local json2 = cjson.decode(body2)
+        assert.same({ message = "API rate limit exceeded" }, json2)
 
-    retry(function ()
-      validate_headers(client_requests(7, proxy_fn), true, true)
-      t = 61 - (ngx.now() % 60)
-    end)
-
-    -- wait for the counter to expire
-    ngx.sleep(t)
-
-    validate_headers(client_requests(7, proxy_fn), true, true)
+        ngx_sleep(1)
+        local res3 = GET(test_path, { headers = { ["X-Real-IP"] = "127.0.0.3" }})
+        assert.res_status(200, res3)
+      end)
+      .has_no_error("counter should have been cleared after current window")
   end)
 
   it("blocks with a custom error code and message", function()
@@ -1208,6 +1229,111 @@ if policy == "redis" then
 end     -- if policy == "redis" then
 
 end)
+
+if policy == "redis" then
+
+desc = fmt("Plugin: rate-limiting with sync_rate #db (access) [strategy: %s]", strategy)
+
+describe(desc, function ()
+  local https_server, admin_client
+
+  lazy_setup(function()
+    helpers.get_db_utils(strategy, nil, {
+      "rate-limiting",
+    })
+
+    https_server = helpers.https_server.new(UPSTREAM_PORT)
+    https_server:start()
+
+    assert(helpers.start_kong({
+      database   = strategy,
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      plugins = "bundled,rate-limiting,key-auth",
+      trusted_ips = "0.0.0.0/0,::/0",
+      lua_ssl_trusted_certificate = "spec/fixtures/redis/ca.crt",
+      log_level = "error"
+    }))
+
+  end)
+
+  lazy_teardown(function()
+    https_server:shutdown()
+    assert(helpers.stop_kong())
+  end)
+
+  before_each(function()
+    flush_redis()
+    admin_client = helpers.admin_client()
+  end)
+
+  after_each(function()
+    admin_client:close()
+  end)
+
+  it("blocks if exceeding limit", function ()
+    local test_path = "/test"
+
+    local service = setup_service(admin_client, UPSTREAM_URL)
+    local route = setup_route(admin_client, service, { test_path })
+    local rl_plugin = setup_rl_plugin(admin_client, {
+      minute              = 6,
+      policy              = "redis",
+      limit_by            = "ip",
+      redis_host          = REDIS_HOST,
+      redis_port          = REDIS_PORT,
+      redis_password      = REDIS_PASSWORD,
+      redis_database      = REDIS_DATABASE,
+      redis_ssl           = false,
+      sync_rate           = 10,
+    }, service)
+    local red = redis_connect()
+    local ok, err = red:select(REDIS_DATABASE)
+    if not ok then
+      error("failed to change Redis database: " .. err)
+    end
+
+    finally(function()
+      delete_plugin(admin_client, rl_plugin)
+      delete_route(admin_client, route)
+      delete_service(admin_client, service)
+      red:close()
+      os.execute("cat servroot/logs/error.log")
+    end)
+
+    helpers.wait_for_all_config_update({
+      override_global_rate_limiting_plugin = true,
+    })
+
+    -- initially, the metrics are not written to the redis
+    assert(red:dbsize() == 0, "redis db should be empty, but got " .. red:dbsize())
+
+    retry(function ()
+      -- exceed the limit
+      for _i = 0, 7 do
+        GET(test_path)
+      end
+
+      -- exceed the limit locally
+      assert.res_status(429, GET(test_path))
+
+      -- wait for the metrics to be written to the redis
+      helpers.pwait_until(function()
+        GET(test_path)
+        assert(red:dbsize() == 1, "redis db should have 1 key, but got " .. red:dbsize())
+      end, 15)
+
+      -- wait for the metrics expire
+      helpers.pwait_until(function()
+        assert.res_status(200, GET(test_path))
+      end, 61)
+
+    end)
+
+  end)  -- it("blocks if exceeding limit", function ()
+
+end)
+
+end     -- if policy == "redis" then
 
 end     -- for __, policy in ipairs({ "local", "cluster", "redis" }) do
 

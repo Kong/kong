@@ -202,5 +202,35 @@ for _, strategy in helpers.each_strategy() do
       assert.equal(400, res.status)
     end)
 
+    describe("regression", function()
+      test("empty array in json #10801", function()
+        local req_body = { array = {}, nullable = "ahaha" }
+        local res, _ = proxy_client:post("/v1/echo", {
+          headers = { ["Content-Type"] = "application/json" },
+          body = req_body,
+        })
+        assert.equal(200, res.status)
+  
+        local body = res:read_body()
+        assert.same(req_body, cjson.decode(body))
+        -- it should be encoded as empty array in json instead of `null` or `{}`
+        assert.matches("[]", body, nil, true)
+      end)
+  
+      -- Bug found when test FTI-5002's fix. It will be fixed in another PR.
+      test("empty message #10802", function()
+        local req_body = { array = {}, nullable = "" }
+        local res, _ = proxy_client:post("/v1/echo", {
+          headers = { ["Content-Type"] = "application/json" },
+          body = req_body,
+        })
+        assert.equal(200, res.status)
+  
+        local body = res:read_body()
+        assert.same(req_body, cjson.decode(body))
+        -- it should be encoded as empty array in json instead of `null` or `{}`
+        assert.matches("[]", body, nil, true)
+      end)
+    end)
   end)
 end

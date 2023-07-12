@@ -1001,7 +1001,7 @@ end
 local function handle_missing_field(field, value, opts)
   local no_defaults = opts and opts.no_defaults
   if field.default ~= nil and not no_defaults then
-    local copy = tablex.deepcopy(field.default)
+    local copy = utils.cycle_aware_deep_copy(field.default)
     if (field.type == "array" or field.type == "set")
       and type(copy) == "table"
       and not getmetatable(copy)
@@ -1117,9 +1117,8 @@ validate_fields = function(self, input)
         errors[k] = validation_errors.SCHEMA_CANNOT_VALIDATE
         kong.log.debug(errors[k], ": ", err)
       end
-    elseif self.unvalidated_fields[k]() then
-      kong.log.debug("ignoring validation on ", k, " field")
-    else
+
+    elseif not self.unvalidated_fields[k]() then
       field, err = resolve_field(self, k, field, subschema)
       if field then
         _, errors[k] = self:validate_field(field, v)
@@ -1615,7 +1614,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
 
   local is_select = context == "select"
   if not is_select then
-    data = tablex.deepcopy(data)
+    data = utils.cycle_aware_deep_copy(data)
   end
 
   local shorthand_fields = self.shorthand_fields
@@ -2187,27 +2186,6 @@ local function get_foreign_schema_for_field(field)
 end
 
 
---- Cycle-aware table copy.
--- To be replaced by tablex.deepcopy() when it supports cycles.
-local function copy(t, cache)
-  if type(t) ~= "table" then
-    return t
-  end
-  cache = cache or {}
-  if cache[t] then
-    return cache[t]
-  end
-  local c = {}
-  cache[t] = c
-  for k, v in pairs(t) do
-    local kk = copy(k, cache)
-    local vv = copy(v, cache)
-    c[kk] = vv
-  end
-  return c
-end
-
-
 function Schema:get_constraints()
   if self.name == "workspaces" then
     -- merge explicit and implicit constraints for workspaces
@@ -2366,7 +2344,7 @@ function Schema.new(definition, is_subschema)
     return nil, validation_errors.SCHEMA_NO_FIELDS
   end
 
-  local self = copy(definition)
+  local self = utils.cycle_aware_deep_copy(definition)
   setmetatable(self, Schema)
 
   local cache_key = self.cache_key

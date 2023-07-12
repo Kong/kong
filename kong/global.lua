@@ -1,6 +1,7 @@
 -- TODO: get rid of 'kong.meta'; this module is king
 local meta = require "kong.meta"
 local PDK = require "kong.pdk"
+local process = require "ngx.process"
 local phase_checker = require "kong.pdk.private.phases"
 local kong_cache = require "kong.cache"
 local kong_cluster_events = require "kong.cluster_events"
@@ -175,41 +176,26 @@ function _GLOBAL.init_worker_events()
 
   local configuration = kong.configuration
 
-  if configuration and configuration.legacy_worker_events then
+  -- `kong.configuration.prefix` is already normalized to an absolute path,
+  -- but `ngx.config.prefix()` is not
+  local prefix = configuration
+                 and configuration.prefix
+                 or require("pl.path").abspath(ngx.config.prefix())
 
-    opts = {
-      shm = "kong_process_events", -- defined by "lua_shared_dict"
-      timeout = 5,            -- life time of event data in shm
-      interval = 1,           -- poll interval (seconds)
+  local sock = ngx.config.subsystem == "stream"
+               and "stream_worker_events.sock"
+               or "worker_events.sock"
 
-      wait_interval = 0.010,  -- wait before retry fetching event data
-      wait_max = 0.5,         -- max wait time before discarding event
-    }
+  local listening = "unix:" .. prefix .. "/" .. sock
 
-    worker_events = require "resty.worker.events"
+  opts = {
+    unique_timeout = 5,     -- life time of unique event data in lrucache
+    broker_id = 0,          -- broker server runs in nginx worker #0
+    listening = listening,  -- unix socket for broker listening
+    max_queue_len = 1024 * 50,  -- max queue len for events buffering
+  }
 
-  else
-    -- `kong.configuration.prefix` is already normalized to an absolute path,
-    -- but `ngx.config.prefix()` is not
-    local prefix = configuration
-                   and configuration.prefix
-                   or require("pl.path").abspath(ngx.config.prefix())
-
-    local sock = ngx.config.subsystem == "stream"
-                 and "stream_worker_events.sock"
-                 or "worker_events.sock"
-
-    local listening = "unix:" .. prefix .. "/" .. sock
-
-    opts = {
-      unique_timeout = 5,     -- life time of unique event data in lrucache
-      broker_id = 0,          -- broker server runs in nginx worker #0
-      listening = listening,  -- unix socket for broker listening
-      max_queue_len = 1024 * 50,  -- max queue len for events buffering
-    }
-
-    worker_events = require "resty.events.compat"
-  end
+  worker_events = require "resty.events.compat"
 
   local ok, err = worker_events.configure(opts)
   if not ok then
@@ -230,6 +216,17 @@ function _GLOBAL.init_cluster_events(kong_config, db)
 end
 
 
+local function get_lru_size(kong_config)
+  if (process.type() == "privileged agent")
+  or (kong_config.role == "control_plane")
+  or (kong_config.role == "traditional" and #kong_config.proxy_listeners  == 0
+                                        and #kong_config.stream_listeners == 0)
+  then
+    return 1000
+  end
+end
+
+
 function _GLOBAL.init_cache(kong_config, cluster_events, worker_events)
   local db_cache_ttl = kong_config.db_cache_ttl
   local db_cache_neg_ttl = kong_config.db_cache_neg_ttl
@@ -241,7 +238,7 @@ function _GLOBAL.init_cache(kong_config, cluster_events, worker_events)
     db_cache_neg_ttl = 0
    end
 
-  return kong_cache.new {
+  return kong_cache.new({
     shm_name        = "kong_db_cache",
     cluster_events  = cluster_events,
     worker_events   = worker_events,
@@ -251,7 +248,8 @@ function _GLOBAL.init_cache(kong_config, cluster_events, worker_events)
     page            = page,
     cache_pages     = cache_pages,
     resty_lock_opts = LOCK_OPTS,
-  }
+    lru_size        = get_lru_size(kong_config),
+  })
 end
 
 
@@ -266,7 +264,7 @@ function _GLOBAL.init_core_cache(kong_config, cluster_events, worker_events)
     db_cache_neg_ttl = 0
   end
 
-  return kong_cache.new {
+  return kong_cache.new({
     shm_name        = "kong_core_db_cache",
     cluster_events  = cluster_events,
     worker_events   = worker_events,
@@ -276,7 +274,8 @@ function _GLOBAL.init_core_cache(kong_config, cluster_events, worker_events)
     page            = page,
     cache_pages     = cache_pages,
     resty_lock_opts = LOCK_OPTS,
-  }
+    lru_size        = get_lru_size(kong_config),
+  })
 end
 
 

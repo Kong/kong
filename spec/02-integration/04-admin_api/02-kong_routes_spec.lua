@@ -198,10 +198,7 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       })
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      assert.is_table(json.database)
       assert.is_table(json.server)
-
-      assert.is_boolean(json.database.reachable)
 
       assert.is_number(json.server.connections_accepted)
       assert.is_number(json.server.connections_active)
@@ -212,8 +209,12 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       assert.is_number(json.server.total_requests)
       if strategy == "off" then
         assert.is_equal(empty_config_hash, json.configuration_hash) -- all 0 in DBLESS mode until configuration is applied
+        assert.is_nil(json.database)
+
       else
         assert.is_nil(json.configuration_hash) -- not present in DB mode
+        assert.is_table(json.database)
+        assert.is_boolean(json.database.reachable)
       end
     end)
 
@@ -242,9 +243,16 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       })
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      assert.is_table(json.database)
+
+      if strategy == "off" then
+        assert.is_nil(json.database)
+
+      else
+        assert.is_table(json.database)
+        assert.is_boolean(json.database.reachable)
+      end
+
       assert.is_table(json.server)
-      assert.is_boolean(json.database.reachable)
       assert.is_number(json.server.connections_accepted)
       assert.is_number(json.server.connections_active)
       assert.is_number(json.server.connections_handled)
@@ -272,7 +280,11 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
 
-      assert.is_true(json.database.reachable)
+      if strategy == "off" then
+        assert.is_nil(json.database)
+      else
+        assert.is_true(json.database.reachable)
+      end
     end)
 
     describe("memory stats", function()
@@ -422,6 +434,7 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.is_table(json.fields)
+        assert.is_table(json.entity_checks)
       end
     end)
     it("returns 404 on a missing entity", function()
@@ -510,6 +523,24 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       local body = assert.res_status(400, res)
       local json = cjson.decode(body)
       assert.equal("schema violation", json.name)
+    end)
+    it("returns 200 on a valid plugin schema which contains dot in the key of custom_fields_by_lua", function()
+      local res = assert(client:post("/schemas/plugins/validate", {
+        body = {
+          name = "file-log",
+          config = {
+            path = "tmp/test",
+            custom_fields_by_lua = {
+              new_field = "return 123",
+              ["request.headers.myheader"] = "return nil",
+            },
+          },
+        },
+        headers = {["Content-Type"] = "application/json"}
+      }))
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.equal("schema validation successful", json.message)
     end)
   end)
 

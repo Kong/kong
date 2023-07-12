@@ -32,7 +32,7 @@ local function validate_shared_cert(cert, cert_digest)
 
   if digest ~= cert_digest then
     return nil, "data plane presented incorrect client certificate during " ..
-                "handshake (digest does not match the control plane certifiate)"
+                "handshake (digest does not match the control plane certificate)"
   end
 
   return true
@@ -57,7 +57,7 @@ do
     ocsp_url, err = ocsp.get_ocsp_responder_from_der_chain(der_cert)
     if not ocsp_url then
       return nil, err or ("OCSP responder endpoint can not be determined, " ..
-                          "maybe the client certificate is missing the " ..
+                          "the client certificate may be missing the " ..
                           "required extensions")
     end
 
@@ -79,7 +79,7 @@ do
     })
 
     if not res then
-      return nil, "failed sending request to OCSP responder: " .. tostring(err)
+      return nil, "failed to send request to OCSP responder: " .. tostring(err)
     end
     if res.status ~= 200 then
       return nil, "OCSP responder returns bad HTTP status code: " .. res.status
@@ -205,17 +205,18 @@ function tls.validate_client_cert(kong_config, cp_cert, dp_cert_pem)
   if kong_config.cluster_mtls == "shared" then
     _, err = validate_shared_cert(cert, cp_cert.digest)
 
+  -- "on" or "optional"
   elseif kong_config.cluster_ocsp ~= "off" then
     ok, err = check_for_revocation_status()
     if ok == false then
       err = "data plane client certificate was revoked: " ..  err
 
     elseif not ok then
-      if kong_config.cluster_ocsp == "on" then
-        err = "data plane client certificate revocation check failed: " .. err
+      err = "data plane client certificate revocation check failed: " .. err
 
-      else
-        log(WARN, "data plane client certificate revocation check failed: ", err)
+      -- "optional"
+      if kong_config.cluster_ocsp ~= "on" then
+        log(WARN, err)
         err = nil
       end
     end

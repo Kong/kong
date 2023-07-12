@@ -1,4 +1,5 @@
 local ipairs = ipairs
+local type = type
 
 
 local log_warn_message
@@ -24,11 +25,103 @@ end
 local compatible_checkers = {
   { 3003000000, --[[ 3.3.0.0 ]]
     function(config_table, dp_version, log_suffix)
+      local has_update
+
+      -- Support legacy queueing parameters for plugins that used queues prior to 3.3.  `retry_count` has been
+      -- completely removed, so we always supply the default of 10 as that provides the same behavior as with a
+      -- pre 3.3 CP.  The other queueing related legacy parameters can be determined from the new queue
+      -- configuration table.
+      for _, plugin in ipairs(config_table.plugins or {}) do
+        local config = plugin.config
+
+        if plugin.name == 'statsd' or plugin.name == 'datadog' then
+          if type(config.retry_count) ~= "number" then
+            config.retry_count = 10
+            has_update = true
+          end
+
+          if type(config.queue_size) ~= "number" then
+            if config.queue and type(config.queue.max_batch_size) == "number" then
+              config.queue_size = config.queue.max_batch_size
+              has_update = true
+
+            else
+              config.queue_size = 1
+              has_update = true
+            end
+          end
+
+          if type(config.flush_timeout) ~= "number" then
+            if config.queue and type(config.queue.max_coalescing_delay) == "number" then
+              config.flush_timeout = config.queue.max_coalescing_delay
+              has_update = true
+
+            else
+              config.flush_timeout = 2
+              has_update = true
+            end
+          end
+
+        elseif plugin.name == 'opentelemetry' then
+
+          if type(config.batch_span_count) ~= "number" then
+            if config.queue and type(config.queue.max_batch_size) == "number" then
+              config.batch_span_count = config.queue.max_batch_size
+              has_update = true
+
+            else
+              config.batch_span_count = 200
+              has_update = true
+            end
+          end
+
+          if type(config.batch_flush_delay) ~= "number" then
+            if config.queue and type(config.queue.max_coalescing_delay) == "number" then
+              config.batch_flush_delay = config.queue.max_coalescing_delay
+              has_update = true
+
+            else
+              config.batch_flush_delay = 3
+              has_update = true
+            end
+          end
+        end -- if plugin.name
+      end   -- for
+
+      return has_update
+    end,
+  },
+
+  { 3003000000, --[[ 3.3.0.0 ]]
+    function(config_table, dp_version, log_suffix)
+      local has_update
+
+      for _, config_entity in ipairs(config_table.vaults or {}) do
+        if config_entity.name == "env" and type(config_entity.config) == "table" then
+          local config = config_entity.config
+          local prefix = config.prefix
+
+          if type(prefix) == "string" then
+            local new_prefix = prefix:gsub("-", "_")
+            if new_prefix ~= prefix then
+              config.prefix = new_prefix
+              has_update = true
+            end
+          end
+        end
+      end   -- for
+
+      return has_update
+    end,
+  },
+
+  { 3003000000, --[[ 3.3.0.0 ]]
+    function(config_table, dp_version, log_suffix)
       -- remove updated_at field for core entities ca_certificates, certificates, consumers,
       -- targets, upstreams, plugins, workspaces, clustering_data_planes and snis
       local entity_names = {
         "ca_certificates", "certificates", "consumers", "targets", "upstreams",
-        "plugins", "workspaces", "clustering_data_planes", "snis",
+        "plugins", "workspaces", "snis",
         }
 
       local has_update

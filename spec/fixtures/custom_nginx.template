@@ -40,16 +40,12 @@ http {
     lua_shared_dict kong                        5m;
     lua_shared_dict kong_locks                  8m;
     lua_shared_dict kong_healthchecks           5m;
-    lua_shared_dict kong_process_events         5m;
     lua_shared_dict kong_cluster_events         5m;
     lua_shared_dict kong_rate_limiting_counters 12m;
     lua_shared_dict kong_core_db_cache          ${{MEM_CACHE_SIZE}};
     lua_shared_dict kong_core_db_cache_miss     12m;
     lua_shared_dict kong_db_cache               ${{MEM_CACHE_SIZE}};
     lua_shared_dict kong_db_cache_miss          12m;
-> if database == "cassandra" then
-    lua_shared_dict kong_cassandra              5m;
-> end
 > if role == "control_plane" then
     lua_shared_dict kong_clustering             5m;
 > end
@@ -66,6 +62,10 @@ http {
 > end
 
     init_by_lua_block {
+> if os.getenv("KONG_COVERAGE") == "true" then
+        require 'luacov'
+        jit.off()
+> end
         Kong = require 'kong'
         Kong.init()
     }
@@ -710,7 +710,6 @@ http {
 
     include '*.http_mock';
 
-> if not legacy_worker_events then
     server {
         charset UTF-8;
         server_name kong_worker_events;
@@ -722,7 +721,6 @@ http {
             }
         }
     }
-> end -- not legacy_worker_events
 }
 > end
 
@@ -746,16 +744,12 @@ stream {
     lua_shared_dict stream_kong                        5m;
     lua_shared_dict stream_kong_locks                  8m;
     lua_shared_dict stream_kong_healthchecks           5m;
-    lua_shared_dict stream_kong_process_events         5m;
     lua_shared_dict stream_kong_cluster_events         5m;
     lua_shared_dict stream_kong_rate_limiting_counters 12m;
     lua_shared_dict stream_kong_core_db_cache          ${{MEM_CACHE_SIZE}};
     lua_shared_dict stream_kong_core_db_cache_miss     12m;
     lua_shared_dict stream_kong_db_cache               ${{MEM_CACHE_SIZE}};
     lua_shared_dict stream_kong_db_cache_miss          12m;
-> if database == "cassandra" then
-    lua_shared_dict stream_kong_cassandra              5m;
-> end
 
 > if ssl_ciphers then
     ssl_ciphers ${{SSL_CIPHERS}};
@@ -767,6 +761,10 @@ stream {
 > end
 
     init_by_lua_block {
+> if os.getenv("KONG_COVERAGE") == "true" then
+        require 'luacov'
+        jit.off()
+> end
         -- shared dictionaries conflict between stream/http modules. use a prefix.
         local shared = ngx.shared
         ngx.shared = setmetatable({}, {
@@ -962,7 +960,6 @@ server {
         }
     }
 
-> if not legacy_worker_events then
     server {
         listen unix:${{PREFIX}}/stream_worker_events.sock;
         access_log off;
@@ -970,7 +967,6 @@ server {
           require("resty.events.compat").run()
         }
     }
-> end -- not legacy_worker_events
 
 > if cluster_ssl_tunnel then
     server {

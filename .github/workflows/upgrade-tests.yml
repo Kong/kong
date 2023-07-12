@@ -5,6 +5,10 @@ on:
     paths:
     - 'kong/db/migrations/**'
     - 'spec/05-migration/**'
+    - 'kong/enterprise_edition/db/migrations/**'
+    - '.github/workflows/upgrade-tests.yml'
+    - 'kong/plugins/*/migrations/**'
+    - 'plugins-ee/**/migrations/**'
   push:
     paths-ignore:
     # ignore markdown files (CHANGELOG.md, README.md, etc.)

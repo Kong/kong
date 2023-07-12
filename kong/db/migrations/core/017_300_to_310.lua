@@ -81,43 +81,4 @@ return {
         END$$;
       ]]
     },
-
-    cassandra = {
-      up = [[
-        ALTER TABLE upstreams ADD use_srv_name boolean;
-        create table if not exists keys (
-          id           uuid,
-          name         text,
-          cache_key    text,
-          ws_id        uuid,
-          kid          text,
-          jwk          text,
-          pem          text,
-          tags         set<text>,
-          set_id       uuid,
-          created_at   timestamp,
-          updated_at   timestamp,
-          PRIMARY KEY (id)
-        );
-        -- creating indexes for all queryable fields
-        -- to avoid ALLOW_FILTERING requirements.
-        create index if not exists keys_ws_id_idx on keys (ws_id);
-        create index if not exists keys_set_id_idx on keys (set_id);
-        create index if not exists keys_kid_idx on keys (kid);
-        create index if not exists keys_name_idx on keys (name);
-        create index if not exists keys_cache_key_idx on keys (cache_key);
-
-        create table if not exists key_sets (
-          id           uuid,
-          name         text,
-          ws_id        uuid,
-          tags         set<text>,
-          created_at   timestamp,
-          updated_at   timestamp,
-          PRIMARY KEY (id)
-        );
-        create index if not exists key_sets_ws_id_idx on key_sets (ws_id);
-        create index if not exists key_sets_name_idx on key_sets (name);
-      ]]
-    },
   }

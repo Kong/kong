@@ -1,0 +1,39 @@
+diff --git a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_bodyfilterby.c b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_bodyfilterby.c
+index 9024889..604702c 100644
+--- a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_bodyfilterby.c
++++ b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_bodyfilterby.c
+@@ -298,7 +298,7 @@ ngx_http_lua_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
+         out = NULL;
+         ngx_chain_update_chains(r->pool,
+                                 &ctx->free_bufs, &ctx->filter_busy_bufs, &out,
+-                                (ngx_buf_tag_t) &ngx_http_lua_module);
++                                (ngx_buf_tag_t) &ngx_http_lua_body_filter);
+         if (rc != NGX_OK
+             && ctx->filter_busy_bufs != NULL
+             && (r->connection->buffered
+@@ -377,7 +377,7 @@ ngx_http_lua_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
+ 
+     ngx_chain_update_chains(r->pool,
+                             &ctx->free_bufs, &ctx->filter_busy_bufs, &out,
+-                            (ngx_buf_tag_t) &ngx_http_lua_module);
++                            (ngx_buf_tag_t) &ngx_http_lua_body_filter);
+ 
+     return rc;
+ }
+@@ -640,6 +640,7 @@ ngx_http_lua_body_filter_param_set(lua_State *L, ngx_http_request_t *r,
+         return luaL_error(L, "no memory");
+     }
+ 
++    cl->buf->tag = (ngx_buf_tag_t) &ngx_http_lua_body_filter;
+     if (type == LUA_TTABLE) {
+         cl->buf->last = ngx_http_lua_copy_str_in_table(L, 3, cl->buf->last);
+ 
+@@ -657,6 +658,8 @@ done:
+             if (cl == NULL) {
+                 return luaL_error(L, "no memory");
+             }
++
++            cl->buf->tag = (ngx_buf_tag_t) &ngx_http_lua_body_filter;
+         }
+ 
+         if (last) {

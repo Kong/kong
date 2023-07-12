@@ -35,12 +35,12 @@ cluster_ca_cert = NONE
 cluster_server_name = NONE
 cluster_data_plane_purge_delay = 1209600
 cluster_ocsp = off
-cluster_max_payload = 4194304
+cluster_max_payload = 16777216
 cluster_use_proxy = off
 cluster_dp_labels = NONE
 
 lmdb_environment_path = dbless.lmdb
-lmdb_map_size = 128m
+lmdb_map_size = 2048m
 mem_cache_size = 128m
 ssl_cert = NONE
 ssl_cert_key = NONE
@@ -133,24 +133,6 @@ pg_ro_keepalive_timeout = NONE
 pg_ro_pool_size = NONE
 pg_ro_backlog = NONE
 
-cassandra_contact_points = 127.0.0.1
-cassandra_port = 9042
-cassandra_keyspace = kong
-cassandra_timeout = 5000
-cassandra_ssl = off
-cassandra_ssl_verify = off
-cassandra_username = kong
-cassandra_password = NONE
-cassandra_write_consistency = ONE
-cassandra_read_consistency = ONE
-cassandra_lb_policy = RequestRoundRobin
-cassandra_local_datacenter = NONE
-cassandra_refresh_frequency = 60
-cassandra_repl_strategy = SimpleStrategy
-cassandra_repl_factor = 1
-cassandra_data_centers = dc1:2,dc2:3
-cassandra_schema_consensus_timeout = 10000
-
 declarative_config = NONE
 declarative_config_string = NONE
 
@@ -171,6 +153,7 @@ dns_not_found_ttl = 30
 dns_error_ttl = 1
 dns_no_sync = off
 
+privileged_agent = off
 worker_consistency = eventual
 worker_state_update_frequency = 5
 
@@ -196,12 +179,10 @@ untrusted_lua = sandbox
 untrusted_lua_sandbox_requires =
 untrusted_lua_sandbox_environment =
 
-legacy_worker_events = off
-
 openresty_path =
 
 opentelemetry_tracing = off
-opentelemetry_tracing_sampling_rate = 1.0
+opentelemetry_tracing_sampling_rate = 0.01
 tracing_instrumentations = off
-tracing_sampling_rate = 1.0
+tracing_sampling_rate = 0.01
 ]]

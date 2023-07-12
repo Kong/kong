@@ -27,9 +27,9 @@ return {
     { id = typedefs.uuid },
     { created_at = typedefs.auto_timestamp_ms },
     { updated_at = typedefs.auto_timestamp_ms },
-    { upstream   = { type = "foreign", reference = "upstreams", required = true, on_delete = "cascade" }, },
-    { target     = { type = "string", required = true, custom_validator = validate_target, }, },
-    { weight     = { type = "integer", default = 100, between = { 0, 65535 }, }, },
+    { upstream   = { description = "The unique identifier or the name of the upstream for which to update the target.", type = "foreign", reference = "upstreams", required = true, on_delete = "cascade" }, },
+    { target     = { description = "The target address (ip or hostname) and port.", type = "string", required = true, custom_validator = validate_target, }, },
+    { weight     = { description = "The weight this target gets within the upstream loadbalancer (0-65535).", type = "integer", default = 100, between = { 0, 65535 }, }, },
     { tags       = typedefs.tags },
   },
 }

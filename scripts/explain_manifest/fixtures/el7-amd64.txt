@@ -4,156 +4,133 @@
 - Path      : /usr/local/kong/include/kong
   Type      : directory
 
-- Path      : /usr/local/kong/lib/engines-1.1/afalg.so
+- Path      : /usr/local/kong/lib/engines-3/afalg.so
   Needed    :
   - libstdc++.so.6
   - libm.so.6
-  - libcrypto.so.1.1
+  - libcrypto.so.3
   - libdl.so.2
   - libc.so.6
   Runpath   : /usr/local/kong/lib
-  Version Requirement:
-  - libc.so.6 (GLIBC_2.2.5)
 
-- Path      : /usr/local/kong/lib/engines-1.1/capi.so
+- Path      : /usr/local/kong/lib/engines-3/capi.so
   Needed    :
   - libstdc++.so.6
   - libm.so.6
-  - libcrypto.so.1.1
+  - libcrypto.so.3
   - libdl.so.2
   - libc.so.6
   Runpath   : /usr/local/kong/lib
-  Version Requirement:
-  - libc.so.6 (GLIBC_2.2.5)
 
-- Path      : /usr/local/kong/lib/engines-1.1/padlock.so
+- Path      : /usr/local/kong/lib/engines-3/loader_attic.so
   Needed    :
   - libstdc++.so.6
   - libm.so.6
-  - libcrypto.so.1.1
+  - libcrypto.so.3
   - libdl.so.2
   - libc.so.6
   Runpath   : /usr/local/kong/lib
-  Version Requirement:
-  - libc.so.6 (GLIBC_2.2.5)
-  - libcrypto.so.1.1 (OPENSSL_1_1_0)
 
-- Path      : /usr/local/kong/lib/libcrypto.so.1.1
+- Path      : /usr/local/kong/lib/engines-3/padlock.so
   Needed    :
   - libstdc++.so.6
   - libm.so.6
+  - libcrypto.so.3
   - libdl.so.2
   - libc.so.6
   Runpath   : /usr/local/kong/lib
-  Version Requirement:
-  - libc.so.6 (GLIBC_2.14, GLIBC_2.15, GLIBC_2.16, GLIBC_2.17, GLIBC_2.2.5, GLIBC_2.3, GLIBC_2.3.4, GLIBC_2.4, GLIBC_2.7)
-  - libdl.so.2 (GLIBC_2.2.5)
 
-- Path      : /usr/local/kong/lib/libssl.so.1.1
+- Path      : /usr/local/kong/lib/libcrypto.so.3
   Needed    :
   - libstdc++.so.6
   - libm.so.6
-  - libcrypto.so.1.1
   - libdl.so.2
   - libc.so.6
   Runpath   : /usr/local/kong/lib
-  Version Requirement:
-  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.3.4, GLIBC_2.4)
-  - libcrypto.so.1.1 (OPENSSL_1_1_0, OPENSSL_1_1_0d, OPENSSL_1_1_0f, OPENSSL_1_1_0i, OPENSSL_1_1_1)
+
+- Path      : /usr/local/kong/lib/libssl.so.3
+  Needed    :
+  - libstdc++.so.6
+  - libm.so.6
+  - libcrypto.so.3
+  - libdl.so.2
+  - libc.so.6
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/kong/lib/ossl-modules/legacy.so
+  Needed    :
+  - libstdc++.so.6
+  - libm.so.6
+  - libcrypto.so.3
+  - libdl.so.2
+  - libc.so.6
+  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/lfs.so
   Needed    :
   - libc.so.6
   Rpath     : /usr/local/kong/lib
-  Version Requirement:
-  - libc.so.6 (GLIBC_2.2.5)
 
 - Path      : /usr/local/lib/lua/5.1/lpeg.so
   Needed    :
   - libc.so.6
   Rpath     : /usr/local/kong/lib
-  Version Requirement:
-  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5)
 
 - Path      : /usr/local/lib/lua/5.1/lsyslog.so
   Needed    :
   - libc.so.6
   Rpath     : /usr/local/kong/lib
-  Version Requirement:
-  - libc.so.6 (GLIBC_2.2.5)
 
 - Path      : /usr/local/lib/lua/5.1/lua_pack.so
   Needed    :
   - libc.so.6
   Rpath     : /usr/local/kong/lib
-  Version Requirement:
-  - libc.so.6 (GLIBC_2.2.5, GLIBC_2.3)
 
 - Path      : /usr/local/lib/lua/5.1/lua_system_constants.so
   Needed    :
   - libc.so.6
   Rpath     : /usr/local/kong/lib
-  Version Requirement:
-  - libc.so.6 (GLIBC_2.2.5)
 
 - Path      : /usr/local/lib/lua/5.1/mime/core.so
   Needed    :
   - libc.so.6
   Rpath     : /usr/local/kong/lib
-  Version Requirement:
-  - libc.so.6 (GLIBC_2.2.5)
 
 - Path      : /usr/local/lib/lua/5.1/pb.so
   Needed    :
   - libc.so.6
   Rpath     : /usr/local/kong/lib
-  Version Requirement:
-  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5)
 
 - Path      : /usr/local/lib/lua/5.1/socket/core.so
   Needed    :
   - libc.so.6
   Rpath     : /usr/local/kong/lib
-  Version Requirement:
-  - libc.so.6 (GLIBC_2.2.5)
 
 - Path      : /usr/local/lib/lua/5.1/socket/serial.so
   Needed    :
   - libc.so.6
   Rpath     : /usr/local/kong/lib
-  Version Requirement:
-  - libc.so.6 (GLIBC_2.2.5)
 
 - Path      : /usr/local/lib/lua/5.1/socket/unix.so
   Needed    :
   - libc.so.6
   Rpath     : /usr/local/kong/lib
-  Version Requirement:
-  - libc.so.6 (GLIBC_2.2.5)
 
 - Path      : /usr/local/lib/lua/5.1/ssl.so
   Needed    :
-  - libssl.so.1.1
-  - libcrypto.so.1.1
+  - libssl.so.3
+  - libcrypto.so.3
   - libc.so.6
   Rpath     : /usr/local/kong/lib
-  Version Requirement:
-  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5)
-  - libcrypto.so.1.1 (OPENSSL_1_1_0)
-  - libssl.so.1.1 (OPENSSL_1_1_0, OPENSSL_1_1_1)
 
 - Path      : /usr/local/lib/lua/5.1/yaml.so
   Needed    :
   - libyaml-0.so.2
   - libc.so.6
-  Version Requirement:
-  - libc.so.6 (GLIBC_2.2.5, GLIBC_2.3.4)
 
 - Path      : /usr/local/openresty/lualib/cjson.so
   Needed    :
   - libc.so.6
-  Version Requirement:
-  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5)
 
 - Path      : /usr/local/openresty/lualib/libatc_router.so
   Needed    :
@@ -165,31 +142,18 @@
   - libc.so.6
   - ld-linux-x86-64.so.2
   - libstdc++.so.6
-  Version Requirement:
-  - ld-linux-x86-64.so.2 (GLIBC_2.3)
-  - libc.so.6 (GLIBC_2.10, GLIBC_2.14, GLIBC_2.15, GLIBC_2.2.5, GLIBC_2.3, GLIBC_2.3.4, GLIBC_2.4, GLIBC_2.5, GLIBC_2.6, GLIBC_2.9)
-  - libdl.so.2 (GLIBC_2.2.5)
-  - libgcc_s.so.1 (GCC_3.0, GCC_3.3, GCC_4.2.0)
-  - libpthread.so.0 (GLIBC_2.12, GLIBC_2.2.5)
-  - librt.so.1 (GLIBC_2.2.5)
 
 - Path      : /usr/local/openresty/lualib/librestysignal.so
   Needed    :
   - libc.so.6
-  Version Requirement:
-  - libc.so.6 (GLIBC_2.2.5)
 
 - Path      : /usr/local/openresty/lualib/rds/parser.so
   Needed    :
   - libc.so.6
-  Version Requirement:
-  - libc.so.6 (GLIBC_2.2.5)
 
 - Path      : /usr/local/openresty/lualib/redis/parser.so
   Needed    :
   - libc.so.6
-  Version Requirement:
-  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5)
 
 - Path      : /usr/local/openresty/nginx/sbin/nginx
   Needed    :
@@ -198,25 +162,17 @@
   - libcrypt.so.1
   - libluajit-5.1.so.2
   - libm.so.6
-  - libssl.so.1.1
-  - libcrypto.so.1.1
+  - libssl.so.3
+  - libcrypto.so.3
   - libz.so.1
   - libc.so.6
   Rpath     : /usr/local/openresty/luajit/lib:/usr/local/kong/lib
-  Version Requirement:
-  - libc.so.6 (GLIBC_2.10, GLIBC_2.11, GLIBC_2.14, GLIBC_2.17, GLIBC_2.2.5, GLIBC_2.3, GLIBC_2.3.2, GLIBC_2.3.4, GLIBC_2.4, GLIBC_2.7)
-  - libcrypt.so.1 (GLIBC_2.2.5)
-  - libcrypto.so.1.1 (OPENSSL_1_1_0)
-  - libdl.so.2 (GLIBC_2.2.5)
-  - libm.so.6 (GLIBC_2.2.5)
-  - libpthread.so.0 (GLIBC_2.12, GLIBC_2.2.5, GLIBC_2.3.2)
-  - libssl.so.1.1 (OPENSSL_1_1_0, OPENSSL_1_1_1)
   Modules   :
   - lua-kong-nginx-module
   - lua-kong-nginx-module/stream
   - lua-resty-events
   - lua-resty-lmdb
-  OpenSSL   : OpenSSL 1.1.1t  7 Feb 2023
+  OpenSSL   : OpenSSL 3.1.1 30 May 2023
   DWARF     : True
   DWARF - ngx_http_request_t related DWARF DIEs: True
 

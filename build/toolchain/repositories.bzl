@@ -2,13 +2,7 @@
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-def toolchain_repositories():
-    http_archive(
-        name = "gcc-11-x86_64-linux-musl-cross",
-        url = "https://more.musl.cc/11/x86_64-linux-musl/x86_64-linux-musl-cross.tgz",
-        sha256 = "c6226824d6b7214ce974344b186179c9fa89be3c33dd7431c4b6585649ce840b",
-        strip_prefix = "x86_64-linux-musl-cross",
-        build_file_content = """
+musl_build_file_content = """
 filegroup(
     name = "toolchain",
     srcs = glob(
@@ -18,11 +12,27 @@ filegroup(
             "lib/**",
             "libexec/**",
             "share/**",
-            "x86_64-linux-musl/**",
+            "*-linux-musl/**",
         ],
         exclude = ["usr"],
     ),
     visibility = ["//visibility:public"],
 )
-        """,
+"""
+
+def toolchain_repositories():
+    http_archive(
+        name = "x86_64-alpine-linux-musl-gcc-11",
+        url = "https://github.com/Kong/crosstool-ng-actions/releases/download/0.4.0/x86_64-alpine-linux-musl-gcc-11.tar.gz",
+        sha256 = "4fbc9a48f1f7ace6d2a19a1feeac1f69cf86ce8ece40b101e351d1f703b3560c",
+        strip_prefix = "x86_64-alpine-linux-musl",
+        build_file_content = musl_build_file_content,
+    )
+
+    http_archive(
+        name = "aarch64-alpine-linux-musl-gcc-11",
+        url = "https://github.com/Kong/crosstool-ng-actions/releases/download/0.4.0/aarch64-alpine-linux-musl-gcc-11.tar.gz",
+        sha256 = "abd7003fc4aa6d533c5aad97a5726040137f580026b1db78d3a8059a69c3d45b",
+        strip_prefix = "aarch64-alpine-linux-musl",
+        build_file_content = musl_build_file_content,
     )

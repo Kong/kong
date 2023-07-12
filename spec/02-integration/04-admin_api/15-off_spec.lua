@@ -599,6 +599,152 @@ describe("Admin API #off", function()
         }, json)
       end)
 
+      it("returns 400 on an primary key uniqueness error", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = [[
+            _format_version: "1.1"
+            services:
+            - id: 0855b320-0dd2-547d-891d-601e9b38647f
+              name: foo
+              host: example.com
+              protocol: https
+              routes:
+              - name: foo
+                methods: ["GET"]
+                plugins:
+                  - name: key-auth
+                  - name: http-log
+                    config:
+                      http_endpoint: https://example.com
+            - id: 0855b320-0dd2-547d-891d-601e9b38647f
+              name: bar
+              host: example.test
+              port: 3000
+              routes:
+              - name: bar
+                paths:
+                - /
+                plugins:
+                - name: basic-auth
+                - name: tcp-log
+                  config:
+                    host: 127.0.0.1
+                    port: 10000
+            ]],
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+
+        local body = assert.response(res).has.status(400)
+        local json = cjson.decode(body)
+        assert.same({
+          code = 14,
+          fields = {
+            services = {
+              cjson.null,
+              "uniqueness violation: 'services' entity with primary key set to '0855b320-0dd2-547d-891d-601e9b38647f' already declared",
+            }
+          },
+          message = [[declarative config is invalid: ]] ..
+                    [[{services={[2]="uniqueness violation: 'services' entity with primary key set to '0855b320-0dd2-547d-891d-601e9b38647f' already declared"}}]],
+          name = "invalid declarative configuration",
+        }, json)
+      end)
+
+      it("returns 400 on an endpoint key uniqueness error", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = [[
+            _format_version: "1.1"
+            services:
+            - name: foo
+              host: example.com
+              protocol: https
+              routes:
+              - name: foo
+                methods: ["GET"]
+                plugins:
+                  - name: key-auth
+                  - name: http-log
+                    config:
+                      http_endpoint: https://example.com
+            - name: foo
+              host: example.test
+              port: 3000
+              routes:
+              - name: bar
+                paths:
+                - /
+                plugins:
+                - name: basic-auth
+                - name: tcp-log
+                  config:
+                    host: 127.0.0.1
+                    port: 10000
+            ]],
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+
+        local body = assert.response(res).has.status(400)
+        local json = cjson.decode(body)
+        assert.same({
+          code = 14,
+          fields = {
+            services = {
+              cjson.null,
+              "uniqueness violation: 'services' entity with name set to 'foo' already declared",
+            }
+          },
+          message = [[declarative config is invalid: ]] ..
+                    [[{services={[2]="uniqueness violation: 'services' entity with name set to 'foo' already declared"}}]],
+          name = "invalid declarative configuration",
+        }, json)
+      end)
+
+      it("returns 400 on a regular key uniqueness error", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = [[
+            _format_version: "1.1"
+            consumers:
+            - username: foo
+              custom_id: conflict
+            - username: bar
+              custom_id: conflict
+            ]],
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+
+        local body = assert.response(res).has.status(400)
+        local json = cjson.decode(body)
+        assert.same({
+          code = 14,
+          fields = {
+            consumers = {
+              bar = "uniqueness violation: 'consumers' entity with custom_id set to 'conflict' already declared",
+            }
+          },
+          message = [[declarative config is invalid: ]] ..
+                    [[{consumers={bar="uniqueness violation: 'consumers' entity with custom_id set to 'conflict' already declared"}}]],
+          name = "invalid declarative configuration",
+        }, json)
+      end)
+
       it("returns 400 when given no input", function()
         local res = assert(client:send {
           method = "POST",
@@ -822,10 +968,21 @@ describe("Admin API #off", function()
 
       assert.response(res).has.status(201)
 
+
+      res = client:get("/upstreams/foo/targets")
+      assert.response(res).has.status(200)
+
+      local json = assert.response(res).has.jsonbody()
+      assert.is_table(json.data)
+      assert.same(1, #json.data)
+      assert.is_table(json.data[1])
+
+      local id = assert.is_string(json.data[1].id)
+
       helpers.wait_until(function()
         local res = assert(client:send {
           method = "PUT",
-          path = "/upstreams/foo/targets/c830b59e-59cc-5392-adfd-b414d13adfc4/10.20.30.40/unhealthy",
+          path = "/upstreams/foo/targets/" .. id .. "/10.20.30.40/unhealthy",
         })
 
         return pcall(function()
@@ -1095,6 +1252,13 @@ describe("Admin API #off /config [flattened errors]", function()
     if debug then
       helpers.intercept(body)
     end
+
+    assert.logfile().has.no.line("[emerg]", true, 0)
+    assert.logfile().has.no.line("[crit]",  true, 0)
+    assert.logfile().has.no.line("[alert]", true, 0)
+    assert.logfile().has.no.line("[error]", true, 0)
+    assert.logfile().has.no.line("[warn]",  true, 0)
+
     return errors
   end
 
@@ -1588,7 +1752,7 @@ R6InCcH2Wh8wSeY5AuDXvu2tv9g/PW9wIJmPuKSHMA==
         entity_type = "certificate",
         errors = { {
             field = "cert",
-            message = "invalid certificate: x509.new: asn1/tasn_dec.c:309:error:0D07803A:asn1 encoding routines:asn1_item_embed_d2i:nested asn1 error",
+            message = "invalid certificate: x509.new: asn1/tasn_dec.c:349:error:0688010A:asn1 encoding routines::nested asn1 error",
             type = "field"
           } }
       },
@@ -2273,6 +2437,266 @@ R6InCcH2Wh8wSeY5AuDXvu2tv9g/PW9wIJmPuKSHMA==
     assert.equals(4, #flattened.flattened_errors,
                   "unexpected number of flattened errors")
   end)
+
+  it("does not throw for invalid input - (#10767)", function()
+    -- The problem with this input is that the user has attempted to associate
+    -- two different plugin instances with the same `consumer.username`. The
+    -- final error that is returned ("consumer.id / missing primary key") is
+    -- somewhat nonsensical. That is okay, because the purpose of this test is
+    -- really just to ensure that we don't throw a 500 error for this kind of
+    -- input.
+    --
+    -- If at some later date we improve the flattening logic of the
+    -- declarative config parser, this test may fail and require an update,
+    -- as the "shape" of the error will likely be changed--hopefully to
+    -- something that is more helpful to the end user.
+
+
+    -- NOTE: the fact that the username is a UUID *should not* be assumed to
+    -- have any real significance here. It was chosen to keep the test input
+    -- 1-1 with the github issue that resulted this test. As of this writing,
+    -- the test behaves exactly the same with any random string as it does
+    -- with a UUID.
+    local username      = "774f8446-6427-43f9-9962-ce7ab8097fe4"
+    local consumer_id   = "68d5de9f-2211-5ed8-b827-22f57a492d0f"
+    local service_name  = "default.nginx-sample-1.nginx-sample-1.80"
+    local upstream_name = "nginx-sample-1.default.80.svc"
+
+    local plugin = {
+      name = "rate-limiting",
+      consumer = username,
+      config = {
+        error_code = 429,
+        error_message = "API rate limit exceeded",
+        fault_tolerant = true,
+        hide_client_headers = false,
+        limit_by = "consumer",
+        policy = "local",
+        redis_database = 0,
+        redis_port = 6379,
+        redis_ssl = false,
+        redis_ssl_verify = false,
+        redis_timeout = 2000,
+        second = 2000,
+      },
+      enabled = true,
+      protocols = {
+        "grpc",
+        "grpcs",
+        "http",
+        "https",
+      },
+      tags = {
+        "k8s-name:nginx-sample-1-rate",
+        "k8s-namespace:default",
+        "k8s-kind:KongPlugin",
+        "k8s-uid:5163972c-543d-48ae-b0f6-21701c43c1ff",
+        "k8s-group:configuration.konghq.com",
+        "k8s-version:v1",
+      },
+    }
+
+    local input = {
+      _format_version = "3.0",
+      consumers = {
+        {
+          acls = {
+            {
+              group = "app",
+              tags = {
+                "k8s-name:app-acl",
+                "k8s-namespace:default",
+                "k8s-kind:Secret",
+                "k8s-uid:f1c5661c-a087-4c4b-b545-2d8b3870d661",
+                "k8s-version:v1",
+              },
+            },
+          },
+
+          basicauth_credentials = {
+            {
+              password = "6ef728de-ba68-4e59-acb9-6e502c28ae0b",
+              tags = {
+                "k8s-name:app-cred",
+                "k8s-namespace:default",
+                "k8s-kind:Secret",
+                "k8s-uid:aadd4598-2969-49ea-82ac-6ab5159e2f2e",
+                "k8s-version:v1",
+              },
+              username = username,
+            },
+          },
+
+          id = consumer_id,
+          tags = {
+            "k8s-name:app",
+            "k8s-namespace:default",
+            "k8s-kind:KongConsumer",
+            "k8s-uid:7ee19bea-72d5-402b-bf0f-f57bf81032bf",
+            "k8s-group:configuration.konghq.com",
+            "k8s-version:v1",
+          },
+          username = username,
+        },
+      },
+
+      plugins = {
+        plugin,
+
+        {
+          config = {
+            error_code = 429,
+            error_message = "API rate limit exceeded",
+            fault_tolerant = true,
+            hide_client_headers = false,
+            limit_by = "consumer",
+            policy = "local",
+            redis_database = 0,
+            redis_port = 6379,
+            redis_ssl = false,
+            redis_ssl_verify = false,
+            redis_timeout = 2000,
+            second = 2000,
+          },
+          consumer = username,
+          enabled = true,
+          name = "rate-limiting",
+          protocols = {
+            "grpc",
+            "grpcs",
+            "http",
+            "https",
+          },
+          tags = {
+            "k8s-name:nginx-sample-2-rate",
+            "k8s-namespace:default",
+            "k8s-kind:KongPlugin",
+            "k8s-uid:89fa1cd1-78da-4c3e-8c3b-32be1811535a",
+            "k8s-group:configuration.konghq.com",
+            "k8s-version:v1",
+          },
+        },
+
+        {
+          config = {
+            allow = {
+              "nginx-sample-1",
+              "app",
+            },
+            hide_groups_header = false,
+          },
+          enabled = true,
+          name = "acl",
+          protocols = {
+            "grpc",
+            "grpcs",
+            "http",
+            "https",
+          },
+          service = service_name,
+          tags = {
+            "k8s-name:nginx-sample-1",
+            "k8s-namespace:default",
+            "k8s-kind:KongPlugin",
+            "k8s-uid:b9373482-32e1-4ac3-bd2a-8926ab728700",
+            "k8s-group:configuration.konghq.com",
+            "k8s-version:v1",
+          },
+        },
+      },
+
+      services = {
+        {
+          connect_timeout = 60000,
+          host = upstream_name,
+          id = "8c17ab3e-b6bd-51b2-b5ec-878b4d608b9d",
+          name = service_name,
+          path = "/",
+          port = 80,
+          protocol = "http",
+          read_timeout = 60000,
+          retries = 5,
+
+          routes = {
+            {
+              https_redirect_status_code = 426,
+              id = "84d45463-1faa-55cf-8ef6-4285007b715e",
+              methods = {
+                "GET",
+              },
+              name = "default.nginx-sample-1.nginx-sample-1..80",
+              path_handling = "v0",
+              paths = {
+                "/sample/1",
+              },
+              preserve_host = true,
+              protocols = {
+                "http",
+                "https",
+              },
+              regex_priority = 0,
+              request_buffering = true,
+              response_buffering = true,
+              strip_path = false,
+              tags = {
+                "k8s-name:nginx-sample-1",
+                "k8s-namespace:default",
+                "k8s-kind:Ingress",
+                "k8s-uid:916a6e5a-eebe-4527-a78d-81963eb3e043",
+                "k8s-group:networking.k8s.io",
+                "k8s-version:v1",
+              },
+            },
+          },
+          tags = {
+            "k8s-name:nginx-sample-1",
+            "k8s-namespace:default",
+            "k8s-kind:Service",
+            "k8s-uid:f7cc87f4-d5f7-41f8-b4e3-70608017e588",
+            "k8s-version:v1",
+          },
+          write_timeout = 60000,
+        },
+      },
+
+      upstreams = {
+        {
+          algorithm = "round-robin",
+          name = upstream_name,
+          tags = {
+            "k8s-name:nginx-sample-1",
+            "k8s-namespace:default",
+            "k8s-kind:Service",
+            "k8s-uid:f7cc87f4-d5f7-41f8-b4e3-70608017e588",
+            "k8s-version:v1",
+          },
+          targets = {
+            {
+              target = "nginx-sample-1.default.svc:80",
+            },
+          },
+        },
+      },
+    }
+
+    local flattened = post_config(input)
+    validate({
+      {
+        entity_type = "plugin",
+        entity_name = plugin.name,
+        entity_tags = plugin.tags,
+        entity      = plugin,
+
+        errors = {
+          {
+            field   = "consumer.id",
+            message = "missing primary key",
+            type    = "field",
+          }
+        },
+      },
+    }, flattened)
+  end)
 end)
 
 
@@ -2539,6 +2963,74 @@ describe("Admin API #off with Unique Foreign #unique", function()
     -- assert.equal(references.data[1].note, unique_reference.note)
     -- assert.equal(references.data[1].unique_foreign.id, unique_reference.unique_foreign.id)
   end)
+end)
+
+describe("Admin API #off with cache key vs endpoint key #unique", function()
+  local client
+
+  lazy_setup(function()
+    assert(helpers.start_kong({
+      database = "off",
+      plugins = "cache-key-vs-endpoint-key",
+      nginx_worker_processes = 1,
+      lmdb_map_size = LMDB_MAP_SIZE,
+    }))
+  end)
+
+  lazy_teardown(function()
+    helpers.stop_kong(nil, true)
+  end)
+
+  before_each(function()
+    client = assert(helpers.admin_client())
+  end)
+
+  after_each(function()
+    if client then
+      client:close()
+    end
+  end)
+
+  it("prefers cache key rather than endpoint key from primary key uniqueness", function()
+    local res = assert(client:send {
+      method = "POST",
+      path = "/config",
+      body = {
+        config = [[
+        _format_version: "1.1"
+        ck_vs_ek_testcase:
+        - name: foo
+          service: my_service
+        - name: bar
+          service: my_service
+
+        services:
+        - name: my_service
+          url: http://example.com
+          path: /
+        ]],
+      },
+      headers = {
+        ["Content-Type"] = "application/json"
+      }
+    })
+
+    local body = assert.response(res).has.status(400)
+    local json = cjson.decode(body)
+    assert.same({
+      code = 14,
+      fields = {
+        ck_vs_ek_testcase = {
+          cjson.null,
+          "uniqueness violation: 'ck_vs_ek_testcase' entity with primary key set to 'd091e0c1-8e3b-5dc9-97bf-35b5bcf9d184' already declared",
+        }
+      },
+      message = [[declarative config is invalid: ]] ..
+                [[{ck_vs_ek_testcase={[2]="uniqueness violation: 'ck_vs_ek_testcase' entity with primary key set to 'd091e0c1-8e3b-5dc9-97bf-35b5bcf9d184' already declared"}}]],
+      name = "invalid declarative configuration",
+    }, json)
+  end)
+
 end)
 
 describe("Admin API #off worker_consistency=eventual", function()

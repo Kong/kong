@@ -15,8 +15,6 @@ cd kong-root-repo
 You can then copy the generated files to the docs.konghq.com repo manually, as follows:
 
 ```
-cp autodoc/output/admin-api/admin-api.md         ../docs.konghq.com/app/$xyxversion/admin-api.md
-cp autodoc/output/admin-api/db-less-admin-api.md ../docs.konghq.com/app/$xyxversion/db-less-admin-api.md
 cp autodoc/output/nav/docs_nav.yml.admin-api.in  ../docs.konghq.com/autodoc-nav/docs_nav_$xyxversion.yml.admin-api.in
 
 cp autodoc/output/cli.md ../docs.konghq.com/app/$xyxversion/cli.md

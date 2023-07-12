@@ -27,6 +27,7 @@ local function log(premature, conf, message)
   local ok, err = sock:connect(host, port)
   if not ok then
     kong.log.err("failed to connect to ", host, ":", tostring(port), ": ", err)
+    sock:close()
     return
   end
 
@@ -34,6 +35,7 @@ local function log(premature, conf, message)
     ok, err = sock:sslhandshake(true, conf.tls_sni, false)
     if not ok then
       kong.log.err("failed to perform TLS handshake to ", host, ":", port, ": ", err)
+      sock:close()
       return
     end
   end
@@ -46,6 +48,7 @@ local function log(premature, conf, message)
   ok, err = sock:setkeepalive(keepalive)
   if not ok then
     kong.log.err("failed to keepalive to ", host, ":", tostring(port), ": ", err)
+    sock:close()
     return
   end
 end

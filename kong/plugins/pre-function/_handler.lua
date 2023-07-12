@@ -1,4 +1,4 @@
-local resty_mlcache = require "resty.mlcache"
+local resty_mlcache = require "kong.resty.mlcache"
 local sandbox = require "kong.tools.sandbox"
 local kong_meta = require "kong.meta"
 

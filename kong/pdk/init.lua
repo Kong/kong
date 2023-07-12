@@ -132,7 +132,7 @@
 
 ---
 -- Instance of Kong's IPC module for inter-workers communication from the
--- [lua-resty-worker-events](https://github.com/Kong/lua-resty-worker-events)
+-- [lua-resty-events](https://github.com/Kong/lua-resty-events)
 -- module.
 --
 -- **Note:** Usage of this module is currently reserved to the core or to

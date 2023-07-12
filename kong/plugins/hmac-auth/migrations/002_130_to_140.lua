@@ -29,9 +29,4 @@ return {
 
     ]],
   },
-  cassandra = {
-    up = [[
-      ALTER TABLE hmacauth_credentials ADD tags set<text>;
-    ]],
-  }
 }

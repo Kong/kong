@@ -1,12 +1,12 @@
 """
-Global varibles
+Global variables
 """
 
 def _load_vars(ctx):
     # Read env from .requirements
     requirements = ctx.read(Label("@kong//:.requirements"))
     content = ctx.execute(["bash", "-c", "echo '%s' | " % requirements +
-                                         """grep -E '^(\\w*)=(.+)$' | sed -E 's/^(.*)=(.*)$/"\\1": "\\2",/'"""]).stdout
+                                         """grep -E '^(\\w*)=(.+)$' | sed -E 's/^(.*)=([^# ]+).*$/"\\1": "\\2",/'"""]).stdout
     content = content.replace('""', '"')
 
     # Workspace path
@@ -16,8 +16,6 @@ def _load_vars(ctx):
     # Local env
     # Temporarily fix for https://github.com/bazelbuild/bazel/issues/14693#issuecomment-1079006291
     for key in [
-        "PATH",
-        # above should not be needed
         "GITHUB_TOKEN",
         "RPM_SIGNING_KEY_FILE",
         "NFPM_RPM_PASSPHRASE",

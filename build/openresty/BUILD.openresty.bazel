@@ -17,7 +17,7 @@ genrule(
               "//conditions:default": "0",
           }) + "\n" +
           "aarch64=" + select({
-              "@platforms//cpu:arm64": "1",
+              "@platforms//cpu:aarch64": "1",
               "//conditions:default": "0",
           }) + "\n" +
           "debug=" + select({
@@ -61,6 +61,9 @@ make(
     ] + select({
         "@kong//:any-cross": [
             "HOST_CC=cc",
+        ],
+        "@platforms//os:macos": [
+            "AR=/usr/bin/ar",
         ],
         "//conditions:default": [
         ],
@@ -137,7 +140,7 @@ CONFIGURE_OPTIONS = [
     "--add-module=$$EXT_BUILD_ROOT$$/external/lua-resty-lmdb",
     "--add-module=$$EXT_BUILD_ROOT$$/external/lua-resty-events",
 ] + select({
-    "@kong//:arm64-linux-gnu-cross": [
+    "@kong//:aarch64-linux-anylibc-cross": [
         "--crossbuild=Linux:aarch64",
         "--with-endian=little",
         "--with-int=4",
@@ -173,7 +176,7 @@ CONFIGURE_OPTIONS = [
 }) + select({
     # any cross build that migrated to use libxcrypt needs those flags
     # alpine uses different libc so doesn't need it
-    "@kong//:arm64-linux-gnu-cross": [
+    "@kong//:aarch64-linux-anylibc-cross": [
         "--with-cc-opt=\"-I$$EXT_BUILD_DEPS$$/libxcrypt/include\"",
         "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/libxcrypt/lib\"",
     ],
@@ -182,7 +185,7 @@ CONFIGURE_OPTIONS = [
     "@kong//:debug_flag": [
         "--with-debug",
         "--with-no-pool-patch",
-        "--with-cc-opt=\"-DNGX_LUA_USE_ASSERT -DNGX_LUA_ABORT_AT_PANIC\"",
+        "--with-cc-opt=\"-DNGX_LUA_USE_ASSERT -DNGX_LUA_ABORT_AT_PANIC -g -O0\"",
     ],
     "//conditions:default": [],
 }) + select({
@@ -241,7 +244,7 @@ configure_make(
     }) + select({
         # any cross build that migrated to use libxcrypt needs those flags
         # alpine uses different libc so doesn't need it
-        "@kong//:arm64-linux-gnu-cross": [
+        "@kong//:aarch64-linux-anylibc-cross": [
             "@cross_deps_libxcrypt//:libxcrypt",
         ],
         "//conditions:default": [],

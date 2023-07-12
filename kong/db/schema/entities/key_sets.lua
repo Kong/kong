@@ -15,6 +15,7 @@ return {
     {
       name = {
         type     = "string",
+        description = "The name to associate with the given key-set.",
         required = false,
         unique   = true,
       },

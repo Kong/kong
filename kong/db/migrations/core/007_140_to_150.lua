@@ -12,35 +12,4 @@ return {
       $$;
     ]],
   },
-
-  cassandra = {
-    up = [[
-      ALTER TABLE routes ADD path_handling text;
-    ]],
-
-    teardown = function(connector)
-      local coordinator = assert(connector:get_stored_connection())
-      local cassandra = require "cassandra"
-      for rows, err in coordinator:iterate("SELECT id, path_handling FROM routes") do
-        if err then
-          return nil, err
-        end
-
-        for i = 1, #rows do
-          local route = rows[i]
-          if route.path_handling ~= "v0" and route.path_handling ~= "v1" then
-            local _, err = coordinator:execute(
-              "UPDATE routes SET path_handling = 'v1' WHERE partition = 'routes' AND id = ?",
-              { cassandra.uuid(route.id) }
-            )
-            if err then
-              return nil, err
-            end
-          end
-        end
-      end
-
-      return true
-    end,
-  },
 }

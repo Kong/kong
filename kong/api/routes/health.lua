@@ -51,6 +51,8 @@ return {
       -- has been reset to empty).
       if dbless or data_plane_role then
         status_response.configuration_hash = declarative.get_current_hash()
+        -- remove the meanless database entry when in dbless mode or data plane
+        status_response.database = nil
       end
 
       -- TODO: no way to bypass connection pool

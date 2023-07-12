@@ -9,7 +9,7 @@ return {
 
   fields = {
     { tag          = typedefs.tag, },
-    { entity_name  = { type = "string", required = true }, },
+    { entity_name  = { description = "The name of the Kong Gateway entity being tagged.", type = "string", required = true }, },
     { entity_id    = typedefs.uuid { required = true }, },
   }
 }

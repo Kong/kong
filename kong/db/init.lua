@@ -136,7 +136,6 @@ function DB:init_connector()
   -- I/O with the DB connector singleton
   -- Implementation up to the strategy's connector. A place for:
   --   - connection check
-  --   - cluster retrieval (cassandra)
   --   - prepare statements
   --   - nop (default)
 
@@ -583,16 +582,6 @@ do
                               skip_teardown_migrations[t.subsystem][mig.name]
 
         if not skip_teardown and run_teardown and strategy_migration.teardown then
-          if run_up then
-            -- ensure schema consensus is reached before running DML queries
-            -- that could span all peers
-            ok, err = self.connector:wait_for_schema_consensus()
-            if not ok then
-              self.connector:close()
-              return nil, prefix_err(self, err)
-            end
-          end
-
           -- kong migrations teardown
           local f = strategy_migration.teardown
 
@@ -612,19 +601,6 @@ do
           end
 
           n_pending = math.max(n_pending - 1, 0)
-
-          if not run_up then
-            -- ensure schema consensus is reached when the next migration to
-            -- run will execute its teardown step, since it may make further
-            -- DML queries; if the next migration runs its up step, it will
-            -- run DDL queries against the same node, so no need to reach
-            -- schema consensus
-            ok, err = self.connector:wait_for_schema_consensus()
-            if not ok then
-              self.connector:close()
-              return nil, prefix_err(self, err)
-            end
-          end
         end
 
         log("%s migrated up to: %s %s", t.subsystem, mig.name,
@@ -632,17 +608,6 @@ do
                                                               or "(executed)")
 
         n_migrations = n_migrations + 1
-      end
-
-      if run_up and i == #migrations then
-        -- wait for schema consensus after the last migration has run
-        -- (only if `run_up`, since if not, we just called it from the
-        -- teardown step)
-        ok, err = self.connector:wait_for_schema_consensus()
-        if not ok then
-          self.connector:close()
-          return nil, prefix_err(self, err)
-        end
       end
     end
 

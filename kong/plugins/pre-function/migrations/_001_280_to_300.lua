@@ -30,11 +30,5 @@ return function(plugin_name)
       up_f = migration_up_f(operations.postgres.teardown, plugin_name),
       teardown = migration_teardown(operations.postgres.teardown, plugin_name),
     },
-  
-    cassandra = {
-      up = "",
-      up_f = migration_up_f(operations.cassandra.teardown, plugin_name),
-      teardown = migration_teardown(operations.cassandra.teardown, plugin_name),
-    },
   }
 end

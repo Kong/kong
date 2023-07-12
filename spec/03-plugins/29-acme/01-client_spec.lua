@@ -6,7 +6,7 @@ local cjson = require "cjson"
 local pkey = require("resty.openssl.pkey")
 local x509 = require("resty.openssl.x509")
 
-local tablex = require "pl.tablex"
+local utils = require "kong.tools.utils"
 
 local client
 
@@ -110,7 +110,7 @@ for _, strategy in ipairs(strategies) do
     describe("create with preconfigured account_key with key_set", function()
       lazy_setup(function()
         account_key = {key_id = KEY_ID, key_set = KEY_SET_NAME}
-        config = tablex.deepcopy(proper_config)
+        config = utils.cycle_aware_deep_copy(proper_config)
         config.account_key = account_key
         c = client.new(config)
 
@@ -167,7 +167,7 @@ for _, strategy in ipairs(strategies) do
     describe("create with preconfigured account_key without key_set", function()
       lazy_setup(function()
         account_key = {key_id = KEY_ID}
-        config = tablex.deepcopy(proper_config)
+        config = utils.cycle_aware_deep_copy(proper_config)
         config.account_key = account_key
         c = client.new(config)
 
@@ -208,7 +208,7 @@ for _, strategy in ipairs(strategies) do
       local account_keys = {}
 
       lazy_setup(function()
-        config = tablex.deepcopy(proper_config)
+        config = utils.cycle_aware_deep_copy(proper_config)
         c = client.new(config)
 
         account_keys[1] = util.create_pkey()

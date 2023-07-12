@@ -75,15 +75,4 @@ return {
 
     teardown = ws_migration_teardown(operations.postgres.teardown),
   },
-
-  cassandra = {
-    up = [[
-      ALTER TABLE oauth2_authorization_codes ADD challenge text;
-      ALTER TABLE oauth2_authorization_codes ADD challenge_method text;
-      ALTER TABLE oauth2_credentials ADD client_type text;
-      ALTER TABLE oauth2_credentials ADD hash_secret boolean;
-    ]] .. assert(ws_migration_up(operations.cassandra.up)),
-
-    teardown = ws_migration_teardown(operations.cassandra.teardown),
-  },
 }

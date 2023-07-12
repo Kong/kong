@@ -18,7 +18,7 @@ for _, strategy in helpers.each_strategy() do
 
       local mock1, mock2
       local mock_port1, mock_port2
-      setup(function()  
+      setup(function()
         mock_port1 = helpers.get_available_port()
         mock_port2 = helpers.get_available_port()
 
@@ -27,7 +27,7 @@ for _, strategy in helpers.each_strategy() do
           host = helpers.mock_upstream_host,
           port = helpers.mock_upstream_port,
         })
-  
+
         local route = assert(bp.routes:insert({ service = http_srv,
                                                 protocols = { "http" },
                                                 paths = { "/" }}))
@@ -41,12 +41,13 @@ for _, strategy in helpers.each_strategy() do
             batch_flush_delay = 0, -- report immediately
           }
         })
-  
+
         assert(helpers.start_kong({
           database = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
           plugins = "opentelemetry",
           tracing_instrumentations = "all",
+          tracing_sampling_rate = 1,
         }))
         -- we do not wait too long for the mock to receive the request
         mock1 = helpers.http_mock(mock_port1, {
@@ -56,11 +57,11 @@ for _, strategy in helpers.each_strategy() do
           timeout = 5,
         })
       end)
-  
+
       teardown(function()
         helpers.stop_kong()
       end)
-      
+
       it("test", function ()
         local client = assert(helpers.proxy_client())
         local res = assert(client:send {
@@ -106,7 +107,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert(mock2())
         done = true
-      end) 
+      end)
     end)
   end)
 end

@@ -19,7 +19,7 @@ build --show_progress_rate_limit=0
 build --show_timestamps
 build --worker_verbose
 
-# build --incompatible_strict_action_env
+build --incompatible_strict_action_env
 
 # Enable --platforms API based cpu,compiler,crosstool_top selection; remove this in 7.0.0 as it's enabled by default
 build --incompatible_enable_cc_toolchain_resolution
@@ -37,6 +37,7 @@ build --features=-debug_prefix_map_pwd_is_dot
 # Build flags.
 build --action_env=BUILD_NAME=kong-dev
 build --action_env=INSTALL_DESTDIR=MANAGED
+build --strip=never
 
 # Release flags
 build:release --//:debug=false

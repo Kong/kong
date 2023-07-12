@@ -151,11 +151,6 @@ function Connector:run_up_migration()
 end
 
 
-function Connector:wait_for_schema_consensus()
-  return true
-end
-
-
 function Connector:record_migration()
   error(fmt("record_migration() not implemented for '%s' strategy",
             self.database))

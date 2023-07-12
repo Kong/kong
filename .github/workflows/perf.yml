@@ -63,6 +63,7 @@ jobs:
         name: bazel-outputs
         path: |
           bazel-out/_tmp/actions
+        retention-days: 3
 
     - name: Build Dev Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
@@ -212,7 +213,7 @@ jobs:
           # Run each test individually, ngx.pipe doesn't like to be imported twice
           # maybe bin/busted --no-auto-insulate
           for f in $(find "spec/04-perf/$suite/" -type f); do
-            bin/busted -o gtest "$f" \
+            bin/busted "$f" \
               -t "${{ steps.choose_perf.outputs.tags }}"
           done
         done
@@ -234,7 +235,7 @@ jobs:
 
         make dev # required to install other dependencies like bin/grpcurl
         source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
-        bin/busted -o gtest spec/04-perf/99-teardown/
+        bin/busted spec/04-perf/99-teardown/
 
         rm -f ${PERF_TEST_BYO_SSH_KEY_PATH}
 

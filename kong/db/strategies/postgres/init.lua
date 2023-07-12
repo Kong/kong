@@ -2,7 +2,7 @@ local arrays        = require "pgmoon.arrays"
 local json          = require "pgmoon.json"
 local cjson         = require "cjson"
 local cjson_safe    = require "cjson.safe"
-local pl_tablex     = require "pl.tablex"
+local utils         = require "kong.tools.utils"
 local new_tab       = require "table.new"
 local clear_tab     = require "table.clear"
 
@@ -1081,7 +1081,7 @@ function _M.new(connector, schema, errors)
   do
     local function add(name, opts, add_ws)
       local orig_argn = opts.argn
-      opts = pl_tablex.deepcopy(opts)
+      opts = utils.cycle_aware_deep_copy(opts)
 
       -- ensure LIMIT table is the same
       for i, n in ipairs(orig_argn) do

@@ -11,11 +11,4 @@ return {
         $$;
       ]]
     },
-
-    cassandra = {
-      up = [[
-        ALTER TABLE plugins ADD instance_name text;
-        CREATE INDEX IF NOT EXISTS plugins_ws_id_instance_name_idx ON plugins(instance_name);
-      ]]
-    },
   }

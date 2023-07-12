@@ -95,7 +95,7 @@ describe("kong vault", function()
     end)
   end)
 
-  for _, strategy in helpers.each_strategy({ "postgres", "cassandra "}) do
+  for _, strategy in helpers.each_strategy({ "postgres"}) do
     describe("[env] instantiated #" .. strategy, function()
       local admin_client
       lazy_setup(function()

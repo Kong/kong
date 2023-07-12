@@ -36,6 +36,9 @@ local function search_directive(tbl, directive_name, directive_value)
 end
 
 
+local DATABASE = os.getenv("KONG_DATABASE") or "postgres"
+
+
 describe("Configuration loader", function()
   it("loads the defaults", function()
     local conf = assert(conf_loader())
@@ -261,7 +264,7 @@ describe("Configuration loader", function()
 
     local conf = assert(conf_loader("spec/fixtures/to-strip.conf"))
 
-    assert.equal("cassandra", conf.database)
+    assert.equal(DATABASE, conf.database)
     assert.equal("debug", conf.log_level)
   end)
   it("overcomes penlight's list_delim option", function()
@@ -516,6 +519,13 @@ describe("Configuration loader", function()
       })
       assert.equal("invalid port mapping (`port_maps`): src:dst", err)
     end)
+    it("errors with a helpful error message if cassandra is used", function()
+      local _, err = conf_loader(nil, {
+        database = "cassandra"
+      })
+      assert.equal("Cassandra as a datastore for Kong is not supported in" ..
+        " versions 3.4 and above. Please use Postgres.", err)
+    end)
   end)
 
   describe("inferences", function()
@@ -524,42 +534,34 @@ describe("Configuration loader", function()
       assert.equal("on", conf.nginx_main_daemon)
       assert.equal(30, conf.lua_socket_pool_size)
       assert.True(conf.anonymous_reports)
-      assert.False(conf.cassandra_ssl)
-      assert.False(conf.cassandra_ssl_verify)
       assert.False(conf.pg_ssl)
       assert.False(conf.pg_ssl_verify)
 
       conf = assert(conf_loader(nil, {
-        cassandra_ssl = true,
         pg_ssl = true
       }))
-      assert.True(conf.cassandra_ssl)
       assert.True(conf.pg_ssl)
 
       conf = assert(conf_loader(nil, {
-        cassandra_ssl = "on",
         pg_ssl = "on"
       }))
-      assert.True(conf.cassandra_ssl)
       assert.True(conf.pg_ssl)
 
       conf = assert(conf_loader(nil, {
-        cassandra_ssl = "true",
         pg_ssl = "true"
       }))
-      assert.True(conf.cassandra_ssl)
       assert.True(conf.pg_ssl)
     end)
     it("infer arrays (comma-separated strings)", function()
       local conf = assert(conf_loader())
-      assert.same({"127.0.0.1"}, conf.cassandra_contact_points)
-      assert.same({"dc1:2", "dc2:3"}, conf.cassandra_data_centers)
-      assert.is_nil(getmetatable(conf.cassandra_contact_points))
-      assert.is_nil(getmetatable(conf.cassandra_data_centers))
+      assert.same({"bundled"}, conf.plugins)
+      assert.same({"LAST", "SRV", "A", "CNAME"}, conf.dns_order)
+      assert.is_nil(getmetatable(conf.plugins))
+      assert.is_nil(getmetatable(conf.dns_order))
     end)
     it("trims array values", function()
       local conf = assert(conf_loader("spec/fixtures/to-strip.conf"))
-      assert.same({"dc1:2", "dc2:3", "dc3:4"}, conf.cassandra_data_centers)
+      assert.same({"foobar", "hello-world", "bundled"}, conf.plugins)
     end)
     it("infer ngx_boolean", function()
       local conf = assert(conf_loader(nil, {
@@ -598,22 +600,6 @@ describe("Configuration loader", function()
         worker_consistency = "magical"
       })
       assert.equal("worker_consistency has an invalid value: 'magical' (strict, eventual)", err)
-      assert.is_nil(conf)
-
-      conf, err = conf_loader(nil, {
-        cassandra_write_consistency = "FOUR"
-      })
-      assert.equal("cassandra_write_consistency has an invalid value: 'FOUR'" ..
-                   " (ALL, EACH_QUORUM, QUORUM, LOCAL_QUORUM, ONE, TWO," ..
-                   " THREE, LOCAL_ONE)", err)
-      assert.is_nil(conf)
-
-      conf, err = conf_loader(nil, {
-        cassandra_read_consistency = "FOUR"
-      })
-      assert.equal("cassandra_read_consistency has an invalid value: 'FOUR'" ..
-                   " (ALL, EACH_QUORUM, QUORUM, LOCAL_QUORUM, ONE, TWO," ..
-                   " THREE, LOCAL_ONE)", err)
       assert.is_nil(conf)
     end)
     it("enforces listen addresses format", function()
@@ -712,30 +698,6 @@ describe("Configuration loader", function()
       assert.is_nil(conf)
       assert.equal([[headers: invalid entry 'Foo-Bar']], err)
     end)
-    it("errors when hosts have a bad format in cassandra_contact_points", function()
-      local conf, err = conf_loader(nil, {
-          database                 = "cassandra",
-          cassandra_contact_points = [[some/really\bad/host\name,addr2]]
-      })
-      assert.equal([[bad cassandra contact point 'some/really\bad/host\name': invalid hostname: some/really\bad/host\name]], err)
-      assert.is_nil(conf)
-    end)
-    it("errors cassandra_refresh_frequency is < 0", function()
-      local conf, err = conf_loader(nil, {
-          database                    = "cassandra",
-          cassandra_refresh_frequency = -1,
-      })
-      assert.equal("cassandra_refresh_frequency must be 0 or greater", err)
-      assert.is_nil(conf)
-    end)
-    it("errors when specifying a port in cassandra_contact_points", function()
-      local conf, err = conf_loader(nil, {
-          database                 = "cassandra",
-          cassandra_contact_points = "addr1:9042,addr2"
-      })
-      assert.equal("bad cassandra contact point 'addr1:9042': port must be specified in cassandra_port", err)
-      assert.is_nil(conf)
-    end)
     describe("SSL", function()
       it("accepts and decodes valid base64 values", function()
         local ssl_fixtures = require "spec.fixtures.ssl"
@@ -763,6 +725,7 @@ describe("Configuration loader", function()
           ssl_cipher_suite = "old",
           client_ssl = "on",
           role = "control_plane",
+          database = "postgres",
           status_listen = "127.0.0.1:123 ssl",
           proxy_listen = "127.0.0.1:456 ssl",
           admin_listen = "127.0.0.1:789 ssl"
@@ -1081,6 +1044,7 @@ describe("Configuration loader", function()
         it("doesn't load cluster_cert or cluster_ca_cert for control plane", function()
           local conf, _, errors = conf_loader(nil, {
             role = "control_plane",
+            database = "postgres",
             cluster_cert = "spec/fixtures/kong_clustering.crt",
             cluster_cert_key = "spec/fixtures/kong_clustering.key",
             cluster_ca_cert = "spec/fixtures/kong_clustering_ca.crt",
@@ -1409,18 +1373,7 @@ describe("Configuration loader", function()
       os.getenv = function() end -- luacheck: ignore
 
       local conf = assert(conf_loader(helpers.test_conf_path))
-      assert.equal("postgres", conf.database)
-    end)
-    it("requires cassandra_local_datacenter if DCAware LB policy is in use", function()
-      for _, policy in ipairs({ "DCAwareRoundRobin", "RequestDCAwareRoundRobin" }) do
-        local conf, err = conf_loader(nil, {
-          database            = "cassandra",
-          cassandra_lb_policy = policy,
-        })
-        assert.is_nil(conf)
-        assert.equal("must specify 'cassandra_local_datacenter' when " ..
-                     policy .. " policy is in use", err)
-      end
+      assert.equal(DATABASE, conf.database)
     end)
     it("honors path if provided even if a default file exists", function()
       conf_loader.add_default_path("spec/fixtures/to-strip.conf")
@@ -1434,7 +1387,7 @@ describe("Configuration loader", function()
       os.getenv = function() end -- luacheck: ignore
 
       local conf = assert(conf_loader(helpers.test_conf_path))
-      assert.equal("postgres", conf.database)
+      assert.equal(DATABASE, conf.database)
     end)
   end)
 
@@ -1700,12 +1653,14 @@ describe("Configuration loader", function()
     end)
     it("returns all errors in ret value #3", function()
       local conf, _, errors = conf_loader(nil, {
-        cassandra_repl_strategy = "foo",
-        ssl_cert_key = "spec/fixtures/kong_spec.key"
+        worker_consistency = "magical",
+        ssl_cert_key = "spec/fixtures/kong_spec.key",
       })
+
       assert.equal(2, #errors)
       assert.is_nil(conf)
-      assert.contains("cassandra_repl_strategy has", errors, true)
+      assert.contains("worker_consistency has an invalid value: 'magical' (strict, eventual)",
+        errors, true)
       assert.contains("ssl_cert must be specified", errors)
     end)
   end)
@@ -1714,39 +1669,29 @@ describe("Configuration loader", function()
     it("replaces sensitive settings", function()
       local conf = assert(conf_loader(nil, {
         pg_password = "hide_me",
-        cassandra_password = "hide_me",
       }))
 
       local purged_conf = conf_loader.remove_sensitive(conf)
       assert.not_equal("hide_me", purged_conf.pg_password)
-      assert.not_equal("hide_me", purged_conf.cassandra_password)
     end)
 
     it("replaces sensitive vault resolved settings", function()
       finally(function()
         helpers.unsetenv("PG_PASSWORD")
         helpers.unsetenv("PG_DATABASE")
-        helpers.unsetenv("CASSANDRA_PASSWORD")
-        helpers.unsetenv("CASSANDRA_KEYSPACE")
       end)
 
       helpers.setenv("PG_PASSWORD", "pg-password")
       helpers.setenv("PG_DATABASE", "pg-database")
-      helpers.setenv("CASSANDRA_PASSWORD", "cassandra-password")
-      helpers.setenv("CASSANDRA_KEYSPACE", "cassandra-keyspace")
 
       local conf = assert(conf_loader(nil, {
         pg_password = "{vault://env/pg-password}",
         pg_database = "{vault://env/pg-database}",
-        cassandra_password = "{vault://env/cassandra-password}",
-        cassandra_keyspace = "{vault://env/cassandra-keyspace}",
       }))
 
       local purged_conf = conf_loader.remove_sensitive(conf)
       assert.equal("******", purged_conf.pg_password)
       assert.equal("{vault://env/pg-database}", purged_conf.pg_database)
-      assert.equal("******", purged_conf.cassandra_password)
-      assert.equal("{vault://env/cassandra-keyspace}", purged_conf.cassandra_keyspace)
       assert.is_nil(purged_conf["$refs"])
     end)
 
@@ -1754,19 +1699,16 @@ describe("Configuration loader", function()
       local conf = assert(conf_loader())
       local purged_conf = conf_loader.remove_sensitive(conf)
       assert.is_nil(purged_conf.pg_password)
-      assert.is_nil(purged_conf.cassandra_password)
     end)
   end)
 
   describe("number as string", function()
-    it("force the numeric pg_password/cassandra_password to a string", function()
+    it("force the numeric pg_password to a string", function()
       local conf = assert(conf_loader(nil, {
         pg_password = 123456,
-        cassandra_password = 123456
       }))
 
       assert.equal("123456", conf.pg_password)
-      assert.equal("123456", conf.cassandra_password)
     end)
   end)
 

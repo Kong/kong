@@ -245,7 +245,7 @@ function https_server.shutdown(self)
   return count
 end
 
-
+-- **DEPRECATED**: please use `spec.helpers.http_mock` instead.
 function https_server.new(port, hostname, protocol, check_hostname, workers, delay)
   local self = setmetatable({}, https_server)
   local host

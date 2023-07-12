@@ -46,6 +46,7 @@ for _, strategy in helpers.each_strategy() do
           nginx_conf = "spec/fixtures/custom_nginx.template",
           plugins = "tcp-trace-exporter,trace-propagator",
           tracing_instrumentations = "balancer",
+          tracing_sampling_rate = 1,
         })
         proxy_client = helpers.proxy_client()
       end)
@@ -98,6 +99,7 @@ for _, strategy in helpers.each_strategy() do
           nginx_conf = "spec/fixtures/custom_nginx.template",
           plugins = "tcp-trace-exporter,trace-propagator",
           tracing_instrumentations = "request,router,balancer,plugin_access,plugin_header_filter",
+          tracing_sampling_rate = 1,
         })
         proxy_client = helpers.proxy_client()
       end)
@@ -158,7 +160,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_same(0, #spans, res)
 
         local traceparent = assert(body.headers.traceparent)
-        assert.equals("00-" .. trace_id .. "-" .. span_id .. "-00", traceparent)
+        assert.matches("00%-" .. trace_id .. "%-%x+%-00", traceparent)
       end)
     end)
   end)

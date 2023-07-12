@@ -373,52 +373,6 @@ local CONF_PARSERS = {
   pg_ro_pool_size = { typ = "number" },
   pg_ro_backlog = { typ = "number" },
 
-  cassandra_contact_points = { typ = "array" },
-  cassandra_port = { typ = "number" },
-  cassandra_password = { typ = "string" },
-  cassandra_timeout = { typ = "number" },
-  cassandra_ssl = { typ = "boolean" },
-  cassandra_ssl_verify = { typ = "boolean" },
-  cassandra_write_consistency = { enum = {
-                                  "ALL",
-                                  "EACH_QUORUM",
-                                  "QUORUM",
-                                  "LOCAL_QUORUM",
-                                  "ONE",
-                                  "TWO",
-                                  "THREE",
-                                  "LOCAL_ONE",
-                                }
-                              },
-  cassandra_read_consistency = { enum = {
-                                  "ALL",
-                                  "EACH_QUORUM",
-                                  "QUORUM",
-                                  "LOCAL_QUORUM",
-                                  "ONE",
-                                  "TWO",
-                                  "THREE",
-                                  "LOCAL_ONE",
-                                }
-                              },
-  cassandra_lb_policy = { enum = {
-                            "RoundRobin",
-                            "RequestRoundRobin",
-                            "DCAwareRoundRobin",
-                            "RequestDCAwareRoundRobin",
-                          }
-                        },
-  cassandra_local_datacenter = { typ = "string" },
-  cassandra_refresh_frequency = { typ = "number" },
-  cassandra_repl_strategy = { enum = {
-                                "SimpleStrategy",
-                                "NetworkTopologyStrategy",
-                              }
-                            },
-  cassandra_repl_factor = { typ = "number" },
-  cassandra_data_centers = { typ = "array" },
-  cassandra_schema_consensus_timeout = { typ = "number" },
-
   dns_resolver = { typ = "array" },
   dns_hostsfile = { typ = "string" },
   dns_order = { typ = "array" },
@@ -428,6 +382,7 @@ local CONF_PARSERS = {
   dns_not_found_ttl = { typ = "number" },
   dns_error_ttl = { typ = "number" },
   dns_no_sync = { typ = "boolean" },
+  privileged_agent = { typ = "boolean" },
   worker_consistency = { enum = { "strict", "eventual" },
     -- deprecating values for enums
     deprecated = {
@@ -549,8 +504,6 @@ local CONF_PARSERS = {
   untrusted_lua_sandbox_requires = { typ = "array" },
   untrusted_lua_sandbox_environment = { typ = "array" },
 
-  legacy_worker_events = { typ = "boolean" },
-
   lmdb_environment_path = { typ = "string" },
   lmdb_map_size = { typ = "string" },
 
@@ -598,8 +551,15 @@ local CONF_SENSITIVE_PLACEHOLDER = "******"
 local CONF_SENSITIVE = {
   pg_password = true,
   pg_ro_password = true,
-  cassandra_password = true,
   proxy_server = true, -- hide proxy server URL as it may contain credentials
+  declarative_config_string = true, -- config may contain sensitive info
+  -- may contain absolute or base64 value of the the key
+  cluster_cert_key = true,
+  ssl_cert_key = true,
+  client_ssl_cert_key = true,
+  admin_ssl_cert_key = true,
+  status_ssl_cert_key = true,
+  debug_ssl_cert_key = true,
 }
 
 
@@ -719,46 +679,6 @@ local function check_and_parse(conf, opts)
           errors[#errors + 1] = "invalid port mapping (`port_maps`): " .. port_map
         end
       end
-    end
-  end
-
-  if conf.database == "cassandra" then
-    log.deprecation("Support for Cassandra is deprecated. Please refer to " ..
-                    "https://konghq.com/blog/cassandra-support-deprecated", {
-      after   = "2.7",
-      removal = "4.0"
-    })
-
-    if find(conf.cassandra_lb_policy, "DCAware", nil, true)
-       and not conf.cassandra_local_datacenter
-    then
-      errors[#errors + 1] = "must specify 'cassandra_local_datacenter' when " ..
-                            conf.cassandra_lb_policy .. " policy is in use"
-    end
-
-    if conf.cassandra_refresh_frequency < 0 then
-      errors[#errors + 1] = "cassandra_refresh_frequency must be 0 or greater"
-    end
-
-    for _, contact_point in ipairs(conf.cassandra_contact_points) do
-      local endpoint, err = utils.normalize_ip(contact_point)
-      if not endpoint then
-        errors[#errors + 1] = fmt("bad cassandra contact point '%s': %s",
-                                  contact_point, err)
-
-      elseif endpoint.port then
-        errors[#errors + 1] = fmt("bad cassandra contact point '%s': %s",
-                                  contact_point,
-                                  "port must be specified in cassandra_port")
-      end
-    end
-
-    -- cache settings check
-
-    if conf.db_update_propagation == 0 then
-      log.warn("You are using Cassandra but your 'db_update_propagation' " ..
-               "setting is set to '0' (default). Due to the distributed "  ..
-               "nature of Cassandra, you should increase this value.")
     end
   end
 
@@ -1229,7 +1149,7 @@ local function check_and_parse(conf, opts)
 
   if conf.tracing_instrumentations and #conf.tracing_instrumentations > 0 then
     local instrumentation = require "kong.tracing.instrumentation"
-    local available_types_map = tablex.deepcopy(instrumentation.available_types)
+    local available_types_map = utils.cycle_aware_deep_copy(instrumentation.available_types)
     available_types_map["all"] = true
     available_types_map["off"] = true
     available_types_map["request"] = true
@@ -1277,6 +1197,10 @@ local function check_and_parse(conf, opts)
 
   if conf.node_id and not utils.is_valid_uuid(conf.node_id) then
     errors[#errors + 1] = "node_id must be a valid UUID"
+  end
+
+  if conf.database == "cassandra" then
+    errors[#errors + 1] = "Cassandra as a datastore for Kong is not supported in versions 3.4 and above. Please use Postgres."
   end
 
   return #errors == 0, errors[1], errors
@@ -1704,10 +1628,11 @@ local function load(path, custom_conf, opts)
 
           local deref, deref_err = vault.get(v)
           if deref == nil or deref_err then
-            return nil, fmt("failed to dereference '%s': %s for config option '%s'", v, deref_err, k)
-          end
+            if opts.starting then
+              return nil, fmt("failed to dereference '%s': %s for config option '%s'", v, deref_err, k)
+            end
 
-          if deref ~= nil then
+          else
             conf[k] = deref
           end
         end
@@ -2033,7 +1958,7 @@ return setmetatable({
   end,
 
   remove_sensitive = function(conf)
-    local purged_conf = tablex.deepcopy(conf)
+    local purged_conf = utils.cycle_aware_deep_copy(conf)
 
     local refs = purged_conf["$refs"]
     if type(refs) == "table" then

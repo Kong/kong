@@ -3,6 +3,7 @@ local utils         = require "kong.tools.utils"
 local helpers       = require "spec.helpers"
 local pl_file       = require "pl.file"
 local pl_stringx    = require "pl.stringx"
+local pl_path       = require "pl.path"
 local fmt           = string.format
 
 
@@ -14,7 +15,7 @@ local function substr(needle, haystack)
 end
 
 
-local function check_log(contains, not_contains)
+local function check_log(contains, not_contains, file)
   if type(contains) ~= "table" then
     contains = { contains }
   end
@@ -28,7 +29,7 @@ local function check_log(contains, not_contains)
   end
 
 
-  local fh = assert(io.open(FILE_LOG_PATH, "r"))
+  local fh = assert(io.open(file or FILE_LOG_PATH, "r"))
 
   local should_find = {}
   local should_not_find = {}
@@ -65,11 +66,11 @@ local function check_log(contains, not_contains)
 end
 
 
-local function wait_for_log_content(contains, not_contains, msg)
+local function wait_for_log_content(contains, not_contains, msg, file)
   assert
     .with_timeout(10)
     .ignore_exceptions(true)
-    .eventually(function() return check_log(contains, not_contains) end)
+    .eventually(function() return check_log(contains, not_contains, file) end)
     .is_truthy(msg or "log file contains expected content")
 end
 
@@ -177,6 +178,71 @@ for _, strategy in helpers.each_strategy() do
             new_field = "return 123",
             route = "return nil", -- unset route field
           },
+        },
+      }
+
+      local route5 = bp.routes:insert {
+        hosts = { "file_logging2.com" },
+      }
+
+      bp.plugins:insert {
+        route = { id = route5.id },
+        name     = "file-log",
+        config   = {
+          path   = helpers.test_conf.prefix .. "/dir/file",
+          reopen = true,
+        },
+      }
+
+      local route6 = bp.routes:insert {
+        hosts = { "file_logging3.com" },
+      }
+
+      bp.plugins:insert {
+        route = { id = route6.id },
+        name     = "file-log",
+        config   = {
+          path   = helpers.test_conf.prefix .. "/dir/",
+          reopen = true,
+        },
+      }
+
+      local route7 = bp.routes:insert {
+        hosts = { "file_logging4.com" },
+      }
+
+      bp.plugins:insert {
+        route = { id = route7.id },
+        name     = "file-log",
+        config   = {
+          path   = FILE_LOG_PATH,
+          reopen = false,
+        },
+      }
+
+      local route8 = bp.routes:insert {
+        hosts = { "file_logging5.com" },
+      }
+
+      bp.plugins:insert {
+        route = { id = route8.id },
+        name     = "file-log",
+        config   = {
+          path   = "/etc/shadow",
+          reopen = true,
+        },
+      }
+
+      local route9 = bp.routes:insert {
+        hosts = { "file_logging6.com" },
+      }
+
+      bp.plugins:insert {
+        route = { id = route9.id },
+        name     = "file-log",
+        config   = {
+          path   = "/dev/null",
+          reopen = true,
         },
       }
 
@@ -363,6 +429,108 @@ for _, strategy in helpers.each_strategy() do
         { uuid1 },
         "log file contains 2nd and 3rd request IDs but not the 1st"
       )
+    end)
+
+    it("does not create log file if directory doesn't exist", function()
+      local uuid = utils.random_string()
+
+      helpers.clean_logfile()
+
+      -- Making the request
+      local res = assert(proxy_client:send({
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["file-log-uuid"] = uuid,
+          ["Host"] = "file_logging2.com"
+        }
+      }))
+      assert.res_status(200, res)
+
+      assert.logfile().has.line("[file-log] failed to open the file: " ..
+      "No such file or directory while logging request", true, 30)
+    end)
+
+    it("the given path is not a file but a directory", function()
+      local uuid = utils.random_string()
+
+      helpers.clean_logfile()
+
+      -- Making the request
+      local res = assert(proxy_client:send({
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["file-log-uuid"] = uuid,
+          ["Host"] = "file_logging3.com"
+        }
+      }))
+      assert.res_status(200, res)
+
+      assert.logfile().has.line("[file-log] failed to open the file: " ..
+      "Is a directory while logging request", true, 30)
+    end)
+
+    it("logs are lost if reopen = false and file doesn't exist", function()
+      local uuid1 = utils.uuid()
+
+      os.remove(FILE_LOG_PATH)
+
+      -- Making the request
+      local res = assert(proxy_client:send({
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["file-log-uuid"] = uuid1,
+          ["Host"] = "file_logging4.com"
+        }
+      }))
+      assert.res_status(200, res)
+
+      assert.is_false(pl_path.exists(FILE_LOG_PATH))
+    end)
+
+    it("does not log if Kong has no write permissions to the file", function()
+      local uuid = utils.random_string()
+
+      helpers.clean_logfile()
+
+      -- Making the request
+      local res = assert(proxy_client:send({
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["file-log-uuid"] = uuid,
+          ["Host"] = "file_logging5.com"
+        }
+      }))
+      assert.res_status(200, res)
+
+      assert.logfile().has.line("[file-log] failed to open the file: " ..
+      "Permission denied while logging request", true, 30)
+    end)
+
+    it("the given path is a character device file", function()
+      local uuid = utils.random_string()
+
+      helpers.clean_logfile()
+
+      -- Making the request
+      local res = assert(proxy_client:send({
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["file-log-uuid"] = uuid,
+          ["Host"] = "file_logging6.com"
+        }
+      }))
+      assert.res_status(200, res)
+
+      -- file can be opened and written to without errors
+      assert.logfile().has.no.line("[file-log] failed to open the file", true, 7)
+
+      -- but no actual content is written to the file
+      wait_for_log_content(nil, uuid, "no content", "/dev/null")
     end)
   end)
 end

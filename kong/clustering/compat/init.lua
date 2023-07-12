@@ -8,8 +8,8 @@ local type = type
 local ipairs = ipairs
 local table_insert = table.insert
 local table_sort = table.sort
+local table_remove = table.remove
 local gsub = string.gsub
-local deep_copy = utils.deep_copy
 local split = utils.split
 local deflate_gzip = utils.deflate_gzip
 local cjson_encode = cjson.encode
@@ -245,6 +245,20 @@ local function rename_field(config, name_from, name_to, has_update)
   return has_update
 end
 
+local function remove_field_array_value(config, remove_val, has_update)
+  if config then
+    local iterate_table = config
+    for i, v in ipairs(iterate_table) do
+      if v == remove_val then
+        table_remove(config, i)
+        has_update = true
+      end
+    end
+  end
+
+  return has_update
+end
+
 
 local function invalidate_keys_from_config(config_plugins, keys, log_suffix, dp_version_num)
   if not config_plugins then
@@ -271,6 +285,15 @@ local function invalidate_keys_from_config(config_plugins, keys, log_suffix, dp_
 
             if config["cookie_samesite"] == "Default" then
               config["cookie_samesite"] = "Lax"
+            end
+          end
+        end
+
+        if dp_version_num < 3003000000 then
+          -- OSS
+          if name == "statsd" then
+            if utils.table_contains(config.metrics, "lmdb_usage") then
+              has_update = remove_field_array_value(config.metrics, "lmdb_usage", has_update)
             end
           end
         end
@@ -351,20 +374,20 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix)
   end
 
   local has_update
-  payload = deep_copy(payload, false)
+  payload = utils.cycle_aware_deep_copy(payload, true)
   local config_table = payload["config_table"]
-
-  local fields = get_removed_fields(dp_version_num)
-  if fields then
-    if invalidate_keys_from_config(config_table["plugins"], fields, log_suffix, dp_version_num) then
-      has_update = true
-    end
-  end
 
   for _, checker in ipairs(COMPATIBILITY_CHECKERS) do
     local ver = checker[1]
     local fn  = checker[2]
     if dp_version_num < ver and fn(config_table, dp_version, log_suffix) then
+      has_update = true
+    end
+  end
+
+  local fields = get_removed_fields(dp_version_num)
+  if fields then
+    if invalidate_keys_from_config(config_table["plugins"], fields, log_suffix, dp_version_num) then
       has_update = true
     end
   end

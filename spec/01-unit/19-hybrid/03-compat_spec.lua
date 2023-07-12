@@ -160,6 +160,9 @@ describe("kong.clustering.compat", function()
           session = {
             "anything",
           },
+          statsd = {
+            "anything",
+          },
         },
       })
     end)
@@ -309,6 +312,29 @@ describe("kong.clustering.compat", function()
           },
         },
       },
+      {
+        name = "statsd lmdb metrics",
+        version = "1.0.0",
+        plugins = {
+          {
+            name = "statsd",
+            config = {
+              metrics = {"lmdb_usage", "shdict_usage", "status_count_per_user_per_route"}
+            },
+          },
+        },
+        expect = {
+          {
+            name = "statsd",
+            config = {
+              metrics = { "shdict_usage", "status_count_per_user_per_route", },
+              flush_timeout = 2,
+              queue_size = 1,
+              retry_count = 10,
+            },
+          },
+        },
+      },
     }
 
     for _, case in ipairs(cases) do
@@ -341,6 +367,62 @@ describe("kong.clustering.compat", function()
       assert.falsy(check("1.0.0", "1.1.0"))
     end)
   end)
+
+
+  for _, strategy in helpers.each_strategy() do
+
+    describe("[#" .. strategy .. "]: check compat for entities those have `updated_at` field", function()
+      local bp, db, entity_names
+
+      setup(function()
+        -- excludes entities not exportable: clustering_data_planes,
+        entity_names = {
+          "services",
+          "routes",
+          "ca_certificates",
+          "certificates",
+          "consumers",
+          "targets",
+          "upstreams",
+          "plugins",
+          "workspaces",
+          "snis",
+        }
+
+        local plugins_enabled = { "key-auth" }
+        bp, db = helpers.get_db_utils(strategy, entity_names, plugins_enabled)
+
+        for _, name in ipairs(entity_names) do
+          if name == "plugins" then
+            local plugin = {
+              name = "key-auth",
+              config = {
+                -- key_names has default value so we don't have to provide it
+                -- key_names = {}
+              }
+            }
+            bp[name]:insert(plugin)
+          elseif name == "routes" then
+            bp[name]:insert({ hosts = { "test1.test" }, })
+          else
+            bp[name]:insert()
+          end
+        end
+      end)
+
+      teardown(function()
+        for _, entity_name in ipairs(entity_names) do
+          db[entity_name]:truncate()
+        end
+      end)
+
+      it(function()
+        local config = { config_table = declarative.export_config() }
+        local has_update = compat.update_compatible_payload(config, "3.0.0", "test_")
+        assert.truthy(has_update)
+      end)
+  end)
+  end
 
   describe("core entities compatible changes", function()
     local config, db
@@ -417,8 +499,39 @@ describe("kong.clustering.compat", function()
             name = "correlation-id",
             instance_name = "my-correlation-id"
           },
+          plugin3 = {
+            id = "00000000-0000-0000-0000-000000000003",
+            name = "statsd",
+            config = {
+              queue = {
+                max_batch_size = 9,
+                max_coalescing_delay = 9,
+              },
+            },
+          },
+          plugin4 = {
+            id = "00000000-0000-0000-0000-000000000004",
+            name = "datadog",
+            config = {
+              queue = {
+                max_batch_size = 9,
+                max_coalescing_delay = 9,
+              },
+            },
+          },
+          plugin5 = {
+            id = "00000000-0000-0000-0000-000000000005",
+            name = "opentelemetry",
+            config = {
+              endpoint = "http://example.com",
+              queue = {
+                max_batch_size = 9,
+                max_coalescing_delay = 9,
+              },
+            },
+          },
         },
-        services = { 
+        services = {
           service1 = {
             connect_timeout = 60000,
             created_at = 1234567890,
@@ -436,7 +549,7 @@ describe("kong.clustering.compat", function()
             tls_verify = true,
             ca_certificates = { ca_certificate_def.id },
             enabled = true,
-          }, 
+          },
           service2 = {
             connect_timeout = 60000,
             created_at = 1234567890,
@@ -492,6 +605,27 @@ describe("kong.clustering.compat", function()
       local plugins = assert(assert(assert(result).plugins))
       assert.is_nil(assert(plugins[1]).instance_name)
       assert.is_nil(assert(plugins[2]).instance_name)
+    end)
+
+    it("plugin.queue_parameters", function()
+      local has_update, result = compat.update_compatible_payload(config, "3.2.0", "test_")
+      assert.truthy(has_update)
+      result = cjson_decode(inflate_gzip(result)).config_table
+      local plugins = assert(assert(assert(result).plugins))
+      for _, plugin in ipairs(plugins) do
+        if plugin.name == "statsd" then
+          assert.equals(10, plugin.config.retry_count)
+          assert.equals(9, plugin.config.queue_size)
+          assert.equals(9, plugin.config.flush_timeout)
+        elseif plugin.name == "datadog" then
+          assert.equals(10, plugin.config.retry_count)
+          assert.equals(9, plugin.config.queue_size)
+          assert.equals(9, plugin.config.flush_timeout)
+        elseif plugin.name == "opentelemetry" then
+          assert.equals(9, plugin.config.batch_span_count)
+          assert.equals(9, plugin.config.batch_flush_delay)
+        end
+      end
     end)
 
     it("upstream.algorithm", function()

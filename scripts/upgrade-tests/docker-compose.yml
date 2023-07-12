@@ -7,7 +7,6 @@ services:
     user: root
     depends_on:
       - db_postgres
-      - db_cassandra
     healthcheck:
       test: ["CMD", "true"]
       interval: 1s
@@ -15,9 +14,7 @@ services:
       retries: 10
     environment:
       KONG_PG_HOST: db_postgres
-      KONG_CASSANDRA_CONTACT_POINTS: db_cassandra
       KONG_TEST_PG_HOST: db_postgres
-      KONG_TEST_CASSANDRA_CONTACT_POINTS: db_cassandra
     volumes:
       - ../../worktree/${OLD_KONG_VERSION}:/kong
     restart: on-failure
@@ -30,7 +27,6 @@ services:
     user: root
     depends_on:
       - db_postgres
-      - db_cassandra
     healthcheck:
       test: ["CMD", "true"]
       interval: 1s
@@ -38,9 +34,7 @@ services:
       retries: 10
     environment:
       KONG_PG_HOST: db_postgres
-      KONG_CASSANDRA_CONTACT_POINTS: db_cassandra
       KONG_TEST_PG_HOST: db_postgres
-      KONG_TEST_CASSANDRA_CONTACT_POINTS: db_cassandra
     volumes:
       - ../..:/kong
     restart: on-failure
@@ -61,20 +55,6 @@ services:
     restart: on-failure
     stdin_open: true
     tty: true
-    networks:
-      upgrade_tests:
-
-  db_cassandra:
-    image: cassandra:3.11
-    environment:
-      MAX_HEAP_SIZE: 256M
-      HEAP_NEWSIZE: 128M
-    healthcheck:
-      test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
-      interval: 5s
-      timeout: 10s
-      retries: 10
-    restart: on-failure
     networks:
       upgrade_tests:
 

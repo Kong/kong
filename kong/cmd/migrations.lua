@@ -38,8 +38,8 @@ Options:
                                     as already executed.
 
  --db-timeout     (default 60)      Timeout, in seconds, for all database
-                                    operations (including schema consensus for
-                                    Cassandra).
+                                    operations.
+
 
  --lock-timeout   (default 60)      Timeout, in seconds, for nodes waiting on
                                     the leader node to finish running
@@ -91,9 +91,6 @@ local function execute(args)
   package.path = conf.lua_package_path .. ";" .. package.path
 
   conf.pg_timeout = args.db_timeout -- connect + send + read
-
-  conf.cassandra_timeout = args.db_timeout -- connect + send + read
-  conf.cassandra_schema_consensus_timeout = args.db_timeout
 
   assert(prefix_handler.prepare_prefix(conf, args.nginx_conf, true))
 

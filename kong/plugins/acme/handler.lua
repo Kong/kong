@@ -221,6 +221,11 @@ function ACMEHandler:access(conf)
     end
 
     if captures then
+      -- if this is just a sanity test, we always return 404 status
+      if captures[1] == "x" then
+        return kong.response.exit(404, "Not found\n")
+      end
+
       -- TODO: race condition creating account?
       local err = client.create_account(conf)
       if err then

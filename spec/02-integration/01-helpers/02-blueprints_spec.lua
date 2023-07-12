@@ -80,10 +80,6 @@ for _, strategy in helpers.each_strategy() do
     bp  = assert(Blueprints.new(db))
   end)
 
-  lazy_teardown(function()
-    ngx.shared.kong_cassandra:flush_expired()
-  end)
-
   describe(string.format("blueprints for #%s", strategy), function()
     it("inserts oauth2 plugins", function()
       local s = bp.services:insert()

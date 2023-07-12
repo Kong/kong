@@ -36,8 +36,7 @@ return {
       type = "record",
       fields = {
         { endpoint = typedefs.url { required = true } }, -- OTLP/HTTP
-        { headers = {
-          type = "map",
+        { headers = { description = "The custom headers to be added in the HTTP request sent to the OTLP server. This setting is useful for adding the authentication headers (token) for the APM backend.", type = "map",
           keys = typedefs.header_name,
           values = {
             type = "string",
@@ -45,26 +44,26 @@ return {
           },
         } },
         { resource_attributes = resource_attributes },
-        { batch_span_count = { type = "integer" } },
-        { batch_flush_delay = { type = "integer" } },
         { queue = typedefs.queue },
+        { batch_span_count = { description = "The number of spans to be sent in a single batch.", type = "integer" } },
+        { batch_flush_delay = { description = "The delay, in seconds, between two consecutive batches.", type = "integer" } },
         { connect_timeout = typedefs.timeout { default = 1000 } },
         { send_timeout = typedefs.timeout { default = 5000 } },
         { read_timeout = typedefs.timeout { default = 5000 } },
         { http_response_header_for_traceid = { type = "string", default = nil }},
         { header_type = { type = "string", required = false, default = "preserve",
-                          one_of = { "preserve", "ignore", "b3", "b3-single", "w3c", "jaeger", "ot" } } },
+                          one_of = { "preserve", "ignore", "b3", "b3-single", "w3c", "jaeger", "ot", "aws" } } },
       },
       entity_checks = {
         { custom_entity_check = {
           field_sources = { "batch_span_count", "batch_flush_delay" },
           fn = function(entity)
             if (entity.batch_span_count or ngx.null) ~= ngx.null and entity.batch_span_count ~= 200 then
-              deprecation("opentelemetry: batch_span_count no longer works, please use config.queue.max_batch_size instead",
+              deprecation("opentelemetry: config.batch_span_count is deprecated, please use config.queue.max_batch_size instead",
                           { after = "4.0", })
             end
             if (entity.batch_flush_delay or ngx.null) ~= ngx.null and entity.batch_flush_delay ~= 3 then
-              deprecation("opentelemetry: batch_flush_delay no longer works, please use config.queue.max_coalescing_delay instead",
+              deprecation("opentelemetry: config.batch_flush_delay is deprecated, please use config.queue.max_coalescing_delay instead",
                           { after = "4.0", })
             end
             return true

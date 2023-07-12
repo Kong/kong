@@ -145,5 +145,66 @@ for _, strategy in helpers.each_strategy() do
         assert.response(r).has.status(503)
       end)
     end)
+
+    -- lua-resty-dns is used for DNS query. It will create some UDP sockets
+    -- during initialization. These sockets should be released after Query finish.
+    -- The release is done by explicitly calling a destroy method that we patch.
+    -- This test case is to check the UDP sockets are released after the DNS query
+    -- is done.
+    describe("udp sockets", function()
+      local domain_name = "www.example.test"
+      local address = "127.0.0.10"
+      local proxy_client
+
+      lazy_setup(function()
+        local bp = helpers.get_db_utils(strategy, {
+          "routes",
+          "services",
+        })
+
+        local fixtures = {
+          dns_mock = helpers.dns_mock.new()
+        }
+        fixtures.dns_mock:A({
+          name = domain_name,
+          address = address,
+        })
+
+        local service = bp.services:insert {
+          name     = "foo",
+          host     = domain_name,
+        }
+
+        bp.routes:insert {
+          name = "foo",
+          paths = { "/foo" },
+          service = service,
+        }
+
+        assert(helpers.start_kong({ database = strategy }, nil, nil, fixtures))
+      end)
+
+      lazy_teardown(function()
+        if proxy_client then
+          proxy_client:close()
+        end
+        assert(helpers.stop_kong())
+      end)
+
+      it("release", function()
+        proxy_client = helpers.proxy_client()
+        proxy_client:send {
+          method = "GET",
+          path = "/foo",
+          headers = {
+            host = domain_name
+          }
+        }
+        assert.logfile().has.line("serving '".. domain_name .. "' from mocks", true, 30)
+        local ok, stderr, stdout = helpers.execute("netstat -n | grep 53 | grep udp | wc -l")
+        assert.truthy(ok, stderr)
+        assert.equals(0, assert(tonumber(stdout)))
+      end)
+    end)
   end)
 end

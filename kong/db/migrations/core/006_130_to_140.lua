@@ -14,10 +14,4 @@ return {
       DROP FUNCTION IF EXISTS "delete_expired_cluster_events" ();
     ]],
   },
-
-  cassandra = {
-    up = [[
-      ALTER TABLE upstreams ADD host_header text;
-    ]],
-  },
 }

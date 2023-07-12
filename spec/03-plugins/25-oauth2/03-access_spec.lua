@@ -261,6 +261,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       local service14   = admin_api.services:insert()
       local service15   = admin_api.services:insert()
       local service16   = admin_api.services:insert()
+      local service17   = admin_api.services:insert()
 
       local route1 = assert(admin_api.routes:insert({
         hosts     = { "oauth2.com" },
@@ -370,6 +371,11 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         service     = service16,
       }))
 
+      local route17 = assert(admin_api.routes:insert({
+        hosts       = { "oauth2_17.com" },
+        protocols   = { "http", "https" },
+        service     = service17,
+      }))
 
       local service_grpc = assert(admin_api.services:insert {
           name = "grpc",
@@ -540,6 +546,14 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           scopes                   = { "email", "profile", "user.email" },
           global_credentials       = true,
           pkce = "lax",
+        }
+      })
+
+      admin_api.oauth2_plugins:insert({
+        route = { id = route17.id },
+        config   = {
+          scopes                   = { "email", "profile", "user.email" },
+          global_credentials       = true,
         }
       })
     end)
@@ -2360,7 +2374,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         assert.same({ error_description = "code_verifier is required for PKCE authorization requests", error = "invalid_request" }, json)
       end)
       it("success when no code_verifier provided for public app without pkce when conf.pkce is none", function()
-        local code = provision_code()
+        local code = provision_code("oauth2_14.com")
         local res = assert(proxy_ssl_client:send {
           method  = "POST",
           path    = "/oauth2/token",
@@ -2587,7 +2601,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       end)
       it("fails when code verifier does not match challenge for confidential app when conf.pkce is strict", function()
         local challenge, _ = get_pkce_tokens()
-        local code = provision_code(nil, nil, nil, challenge)
+        local code = provision_code("oauth2_15.com", nil, nil, challenge)
         local res = assert(proxy_ssl_client:send {
           method  = "POST",
           path    = "/oauth2/token",
@@ -2666,7 +2680,8 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         assert.same({ error_description = "Invalid client authentication", error = "invalid_client" }, json)
       end)
       it("fails when no code verifier provided for confidential app when conf.pkce is strict", function()
-        local code = provision_code()
+        local challenge, _ = get_pkce_tokens()
+        local code = provision_code("oauth2_15.com", nil, nil, challenge)
         local res = assert(proxy_ssl_client:send {
           method  = "POST",
           path    = "/oauth2/token",
@@ -2687,7 +2702,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       end)
       it("fails when no code verifier provided for confidential app with pkce when conf.pkce is lax", function()
         local challenge, _ = get_pkce_tokens()
-        local code = provision_code(nil, nil, nil, challenge)
+        local code = provision_code("oauth2_16.com", nil, nil, challenge)
         local res = assert(proxy_ssl_client:send {
           method  = "POST",
           path    = "/oauth2/token",
@@ -2708,7 +2723,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       end)
       it("fails when no code verifier provided for confidential app with pkce when conf.pkce is none", function()
         local challenge, _ = get_pkce_tokens()
-        local code = provision_code(nil, nil, nil, challenge)
+        local code = provision_code("oauth2_14.com", nil, nil, challenge)
         local res = assert(proxy_ssl_client:send {
           method  = "POST",
           path    = "/oauth2/token",
@@ -2728,7 +2743,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         assert.same({ error_description = "code_verifier is required for PKCE authorization requests", error = "invalid_request" }, json)
       end)
       it("suceeds when no code verifier provided for confidential app without pkce when conf.pkce is none", function()
-        local code = provision_code()
+        local code = provision_code("oauth2_14.com")
         local res = assert(proxy_ssl_client:send {
           method  = "POST",
           path    = "/oauth2/token",
@@ -2753,7 +2768,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         assert.matches("%w+", json.refresh_token)
       end)
       it("suceeds when no code verifier provided for confidential app without pkce when conf.pkce is lax", function()
-        local code = provision_code()
+        local code = provision_code("oauth2_16.com")
         local res = assert(proxy_ssl_client:send {
           method  = "POST",
           path    = "/oauth2/token",
@@ -2776,6 +2791,54 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         assert.matches("%w+", json.access_token)
         assert.equal(32, #json.refresh_token)
         assert.matches("%w+", json.refresh_token)
+      end)
+
+      it("fails when exchanging a code created by a different plugin instance when both plugin instances set global_credentials to true", function()
+        local code = provision_code("oauth2_16.com") -- obtain a code from plugin oauth2_16.com
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/oauth2/token",
+          body    = {
+            code             = code,
+            client_id        = "clientid123",
+            client_secret    = "secret123",
+            grant_type       = "authorization_code",
+          },
+          headers = {
+            ["Host"]         = "oauth2_17.com", -- exchange the code from plugin oauth2_17.com
+            ["Content-Type"] = "application/json",
+          }
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({
+          error = "invalid_request",
+          error_description = "Invalid code",
+        }, json)
+      end)
+
+      it("should not fail when plugin_id is not present which indicates it's an old code", function()
+        local code = provision_code("oauth2_16.com")
+        local db_code, err = db.oauth2_authorization_codes:select_by_code(code)
+        assert.is_nil(err)
+        db_code.plugin = ngx.null
+        local _, _, err = db.oauth2_authorization_codes:update({ id = db_code.id }, db_code)
+        assert.is_nil(err)
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/oauth2/token",
+          body    = {
+            code             = code,
+            client_id        = "clientid123",
+            client_secret    = "secret123",
+            grant_type       = "authorization_code",
+          },
+          headers = {
+            ["Host"]         = "oauth2_16.com",
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(200, res)
       end)
     end)
 

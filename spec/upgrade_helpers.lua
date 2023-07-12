@@ -19,17 +19,38 @@ local function get_database()
   return db
 end
 
+
+local function database_has_relation(state, arguments)
+  local table_name = arguments[1]
+  local schema = arguments[2] or "public"
+  local db = get_database()
+  local res, err
+  if database_type() == 'postgres' then
+    res, err = db.connector:query(string.format(
+        "select true"
+        .. " from pg_tables"
+        .. " where tablename = '%s'"
+        .. " and schemaname = '%s'",
+        table_name, schema))
+  else
+    return false
+  end
+  if err then
+    return false
+  end
+  return not(not(res[1]))
+end
+
+say:set("assertion.database_has_relation.positive", "Expected schema to have table %s")
+say:set("assertion.database_has_relation.negative", "Expected schema not to have table %s")
+assert:register("assertion", "database_has_relation", database_has_relation, "assertion.database_has_relation.positive", "assertion.database_has_relation.negative")
+
+
 local function database_has_trigger(state, arguments)
   local trigger_name = arguments[1]
   local db = get_database()
   local res, err
-  if database_type() == 'cassandra' then
-    res, err = db.connector:query(string.format(
-        "select *"
-        .. " from system_schema.triggers"
-        .. " where trigger_name = '%s'",
-        trigger_name))
-  elseif database_type() == 'postgres' then
+  if database_type() == 'postgres' then
     res, err = db.connector:query(string.format(
         "select true"
         .. " from pg_trigger"
@@ -48,23 +69,14 @@ say:set("assertion.database_has_trigger.positive", "Expected database to have tr
 say:set("assertion.database_has_trigger.negative", "Expected database not to have trigger %s")
 assert:register("assertion", "database_has_trigger", database_has_trigger, "assertion.database_has_trigger.positive", "assertion.database_has_trigger.negative")
 
+
 local function table_has_column(state, arguments)
   local table = arguments[1]
   local column_name = arguments[2]
   local postgres_type = arguments[3]
-  local cassandra_type = arguments[4] or postgres_type
   local db = get_database()
   local res, err
-  if database_type() == 'cassandra' then
-    res, err = db.connector:query(string.format(
-        "select *"
-        .. " from system_schema.columns"
-        .. " where table_name = '%s'"
-        .. "   and column_name = '%s'"
-        .. "   and type = '%s'"
-        .. " allow filtering",
-        table, column_name, cassandra_type))
-  elseif database_type() == 'postgres' then
+  if database_type() == 'postgres' then
     res, err = db.connector:query(string.format(
         "select true"
         .. " from information_schema.columns"

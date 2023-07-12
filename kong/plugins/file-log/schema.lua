@@ -8,12 +8,12 @@ return {
     { config = {
         type = "record",
         fields = {
-          { path = { type = "string",
+          { path = { description = "The file path of the output log file. The plugin creates the log file if it doesn't exist yet.", type = "string",
                      required = true,
                      match = [[^[^*&%%\`]+$]],
                      err = "not a valid filename",
           }, },
-          { reopen = { type = "boolean", required = true, default = false }, },
+          { reopen = { description = "Determines whether the log file is closed and reopened on every request.", type = "boolean", required = true, default = false }, },
           { custom_fields_by_lua = typedefs.lua_code },
         },
     }, },

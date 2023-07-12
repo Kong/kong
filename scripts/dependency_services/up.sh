@@ -1,43 +1,38 @@
-#!/bin/bash
-
-export KONG_ENV_FILE=$(mktemp) || exit 1
-export KONG_ENV_DOWN_FILE=$(mktemp) || exit 1
+#!/usr/bin/env bash
 
 if [ "${BASH_SOURCE-}" = "$0" ]; then
     echo "You must source this script: \$ source $0" >&2
     exit 33
 fi
 
+export KONG_SERVICE_ENV_FILE=$(mktemp)
+
 if [ -n "$ZSH_VERSION" ]; then
-    cwd=$(realpath $(dirname $(readlink -f ${(%):-%N})))
+    cwd=$(dirname $(readlink -f ${(%):-%N}))
 else
-    cwd=$(realpath $(dirname $(readlink -f ${BASH_SOURCE[0]})))
+    cwd=$(dirname $(readlink -f ${BASH_SOURCE[0]}))
 fi
 
-docker_compose_file=${cwd}/docker-compose-test-services.yml
-docker_compose_project=kong
-
-
-bash "$cwd/common.sh" $KONG_ENV_FILE $KONG_ENV_DOWN_FILE
+/usr/bin/env bash "$cwd/common.sh" $KONG_SERVICE_ENV_FILE up
 if [ $? -ne 0 ]; then
     echo "Something goes wrong, please check common.sh output"
-    return
+    exit 1
 fi
 
-source $KONG_ENV_FILE
+. $KONG_SERVICE_ENV_FILE
 
 stop_services () {
-    for i in $(cat $KONG_ENV_DOWN_FILE); do
+    if test -n "$COMPOSE_FILE" && test -n "$COMPOSE_PROJECT_NAME"; then
+        bash "$cwd/common.sh" $KONG_SERVICE_ENV_FILE down
+    fi
+
+    for i in $(cat $KONG_SERVICE_ENV_FILE | cut -f2 | cut -d '=' -f1); do
       unset $i
     done
 
-    rm -rf $KONG_ENV_FILE $KONG_ENV_DOWN_FILE
-    unset KONG_ENV_FILE KONG_ENV_DOWN_FILE
+    rm -rf $KONG_SERVICE_ENV_FILE
+    unset KONG_SERVICE_ENV_FILE
 
-    if test -n "$docker_compose_file" && test -n "$docker_compose_project"; then
-        docker-compose -f "$docker_compose_file" -p "$docker_compose_project" down
-        unset docker_compose_file docker_compose_project cwd
-    fi
     unset -f stop_services
 }
 

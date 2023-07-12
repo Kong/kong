@@ -1,4 +1,4 @@
-local pl_tablex = require "pl.tablex"
+local utils = require "kong.tools.utils"
 local get_certificate = require "kong.runloop.certificate".get_certificate
 
 local balancers = require "kong.runloop.balancer.balancers"
@@ -245,7 +245,7 @@ function healthcheckers_M.create_healthchecker(balancer, upstream)
   if (ngx.config.subsystem == "stream" and checks.active.type ~= "tcp")
     or (ngx.config.subsystem == "http" and checks.active.type == "tcp")
   then
-    checks = pl_tablex.deepcopy(checks)
+    checks = utils.cycle_aware_deep_copy(checks)
     checks.active.healthy.interval = 0
     checks.active.unhealthy.interval = 0
   end
@@ -270,8 +270,7 @@ function healthcheckers_M.create_healthchecker(balancer, upstream)
     ssl_cert, ssl_key = parse_global_cert_and_key()
   end
 
-  local events_module = kong.configuration.legacy_worker_events
-                        and "resty.worker.events" or "resty.events"
+  local events_module = "resty.events"
   local healthchecker, err = healthcheck.new({
     name = assert(upstream.ws_id) .. ":" .. upstream.name,
     shm_name = "kong_healthchecks",

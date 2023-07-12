@@ -37,7 +37,6 @@ describe("kong restart", function()
   it("restarts if already running from --prefix", function()
     local env = {
       pg_database = helpers.test_conf.pg_database,
-      cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
     }
 
     assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path, env))
@@ -50,7 +49,6 @@ describe("kong restart", function()
   it("accepts a custom nginx template", function()
     local env = {
       pg_database = helpers.test_conf.pg_database,
-      cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
     }
 
     assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path, env))
@@ -77,7 +75,6 @@ describe("kong restart", function()
       prefix = helpers.test_conf.prefix,
       database = helpers.test_conf.database,
       pg_database = helpers.test_conf.pg_database,
-      cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
       dns_resolver = ""
     }
 

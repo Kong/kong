@@ -601,13 +601,27 @@ describe("declarative config: validate", function()
     end)
 
     describe("vaults", function()
-      it("accepts vaults", function()
+      it("accepts vaults (underscore)", function()
         local config = assert(lyaml.load([[
           _format_version: "1.1"
           vaults:
           - prefix: aba
             config:
               prefix: "BANANA_"
+            description: "Banana vault"
+            tags: ~
+            name: env
+        ]]))
+        assert(DeclarativeConfig:validate(config))
+      end)
+
+      it("accepts vaults (dash)", function()
+        local config = assert(lyaml.load([[
+          _format_version: "1.1"
+          vaults:
+          - prefix: aba
+            config:
+              prefix: "BANANA-"
             description: "Banana vault"
             tags: ~
             name: env

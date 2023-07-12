@@ -53,13 +53,15 @@ local ngx_ERR = ngx.ERR
 local ngx_OK = ngx.OK
 local ngx_ERROR = ngx.ERROR
 local ngx_CLOSE = ngx.HTTP_CLOSE
-local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
-local PING_WAIT = PING_INTERVAL * 1.5
+local PING_WAIT = constants.CLUSTERING_PING_INTERVAL * 1.5
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local PONG_TYPE = "PONG"
 local RECONFIGURE_TYPE = "RECONFIGURE"
 local _log_prefix = "[clustering] "
+
+
+local no_connected_clients_logged
 
 
 local function handle_export_deflated_reconfigure_payload(self)
@@ -196,19 +198,16 @@ function _M:handle_cp_websocket()
     else
       data, err = cjson_decode(data)
       if type(data) ~= "table" then
-        if err then
-          err = "failed to decode websocket basic info data: " .. err
-        else
-          err = "failed to decode websocket basic info data"
-        end
+          err = "failed to decode websocket basic info data" ..
+                (err and ": " .. err or "")
 
       else
         if data.type ~= "basic_info" then
-          err =  "invalid basic info data type: " .. (data.type  or "unknown")
+          err = "invalid basic info data type: " .. (data.type or "unknown")
 
         else
           if type(data.plugins) ~= "table" then
-            err =  "missing plugins in basic info data"
+            err = "missing plugins in basic info data"
           end
         end
       end
@@ -279,7 +278,6 @@ function _M:handle_cp_websocket()
   self.clients[wb] = queue
 
   if self.deflated_reconfigure_payload then
-    local _
     -- initial configuration compatibility for sync status variable
     _, _, sync_status = self:check_configuration_compatibility(
                               { dp_plugins_map = dp_plugins_map, })
@@ -324,97 +322,117 @@ function _M:handle_cp_websocket()
                       PING_WAIT .. " seconds"
         end
 
-      else
-        if typ == "close" then
-          ngx_log(ngx_DEBUG, _log_prefix, "received close frame from data plane", log_suffix)
-          return
-        end
-
-        if not data then
-          return nil, "did not receive ping frame from data plane"
-        end
-
-        -- dps only send pings
-        if typ ~= "ping" then
-          return nil, "invalid websocket frame received from data plane: " .. typ
-        end
-
-        ngx_log(ngx_DEBUG, _log_prefix, "received ping frame from data plane", log_suffix)
-
-        config_hash = data
-        last_seen = ngx_time()
-        update_sync_status()
-
-        -- queue PONG to avoid races
-        table_insert(queue, PONG_TYPE)
-        queue.post()
+        -- timeout
+        goto continue
       end
+
+      if typ == "close" then
+        ngx_log(ngx_DEBUG, _log_prefix, "received close frame from data plane", log_suffix)
+        return
+      end
+
+      if not data then
+        return nil, "did not receive ping frame from data plane"
+      end
+
+      -- dps only send pings
+      if typ ~= "ping" then
+        return nil, "invalid websocket frame received from data plane: " .. typ
+      end
+
+      ngx_log(ngx_DEBUG, _log_prefix, "received ping frame from data plane", log_suffix)
+
+      config_hash = data
+      last_seen = ngx_time()
+      update_sync_status()
+
+      -- queue PONG to avoid races
+      table_insert(queue, PONG_TYPE)
+      queue.post()
+
+      ::continue::
     end
   end)
 
   local write_thread = ngx.thread.spawn(function()
     while not exiting() do
       local ok, err = queue.wait(5)
+
       if exiting() then
         return
       end
-      if ok then
-        local payload = table_remove(queue, 1)
-        if not payload then
-          return nil, "config queue can not be empty after semaphore returns"
+
+      if not ok then
+        if err ~= "timeout" then
+          return nil, "semaphore wait error: " .. err
         end
 
-        if payload == PONG_TYPE then
-          local _, err = wb:send_pong()
-          if err then
-            if not is_timeout(err) then
-              return nil, "failed to send pong frame to data plane: " .. err
-            end
-
-            ngx_log(ngx_NOTICE, _log_prefix, "failed to send pong frame to data plane: ", err, log_suffix)
-
-          else
-            ngx_log(ngx_DEBUG, _log_prefix, "sent pong frame to data plane", log_suffix)
-          end
-
-        else -- is reconfigure
-          local previous_sync_status = sync_status
-          ok, err, sync_status = self:check_configuration_compatibility(
-                                    { dp_plugins_map = dp_plugins_map, })
-          if ok then
-            local has_update, deflated_payload, err = update_compatible_payload(self.reconfigure_payload, dp_version, log_suffix)
-            if not has_update then -- no modification, use the cached payload
-              deflated_payload = self.deflated_reconfigure_payload
-            elseif err then
-              ngx_log(ngx_WARN, "unable to update compatible payload: ", err, ", the unmodified config ",
-                                "is returned", log_suffix)
-              deflated_payload = self.deflated_reconfigure_payload
-            end
-
-            -- config update
-            local _, err = wb:send_binary(deflated_payload)
-            if err then
-              if not is_timeout(err) then
-                return nil, "unable to send updated configuration to data plane: " .. err
-              end
-
-              ngx_log(ngx_NOTICE, _log_prefix, "unable to send updated configuration to data plane: ", err, log_suffix)
-
-            else
-              ngx_log(ngx_DEBUG, _log_prefix, "sent config update to data plane", log_suffix)
-            end
-
-          else
-            ngx_log(ngx_WARN, _log_prefix, "unable to send updated configuration to data plane: ", err, log_suffix)
-            if sync_status ~= previous_sync_status then
-              update_sync_status()
-            end
-          end
-        end
-
-      elseif err ~= "timeout" then
-        return nil, "semaphore wait error: " .. err
+        -- timeout
+        goto continue
       end
+
+      local payload = table_remove(queue, 1)
+      if not payload then
+        return nil, "config queue can not be empty after semaphore returns"
+      end
+
+      if payload == PONG_TYPE then
+        local _, err = wb:send_pong()
+        if err then
+          if not is_timeout(err) then
+            return nil, "failed to send pong frame to data plane: " .. err
+          end
+
+          ngx_log(ngx_NOTICE, _log_prefix, "failed to send pong frame to data plane: ", err, log_suffix)
+
+        else
+          ngx_log(ngx_DEBUG, _log_prefix, "sent pong frame to data plane", log_suffix)
+        end
+
+        -- pong ok
+        goto continue
+      end
+
+      -- is reconfigure
+      assert(payload == RECONFIGURE_TYPE)
+
+      local previous_sync_status = sync_status
+      ok, err, sync_status = self:check_configuration_compatibility(
+                                { dp_plugins_map = dp_plugins_map, })
+      if not ok then
+        ngx_log(ngx_WARN, _log_prefix, "unable to send updated configuration to data plane: ", err, log_suffix)
+        if sync_status ~= previous_sync_status then
+          update_sync_status()
+        end
+
+        goto continue
+      end
+
+      local _, deflated_payload, err = update_compatible_payload(self.reconfigure_payload, dp_version, log_suffix)
+
+      if not deflated_payload then -- no modification or err, use the cached payload
+        deflated_payload = self.deflated_reconfigure_payload
+      end
+
+      if err then
+        ngx_log(ngx_WARN, "unable to update compatible payload: ", err, ", the unmodified config ",
+                          "is returned", log_suffix)
+      end
+
+      -- config update
+      local _, err = wb:send_binary(deflated_payload)
+      if err then
+        if not is_timeout(err) then
+          return nil, "unable to send updated configuration to data plane: " .. err
+        end
+
+        ngx_log(ngx_NOTICE, _log_prefix, "unable to send updated configuration to data plane: ", err, log_suffix)
+
+      else
+        ngx_log(ngx_DEBUG, _log_prefix, "sent config update to data plane", log_suffix)
+      end
+
+      ::continue::
     end
   end)
 
@@ -461,42 +479,55 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
       return
     end
 
-    if ok then
-      if isempty(self.clients) then
-        ngx_log(ngx_DEBUG, _log_prefix, "skipping config push (no connected clients)")
-        sleep(1)
-        -- re-queue the task. wait until we have clients connected
-        if push_config_semaphore:count() <= 0 then
-          push_config_semaphore:post()
-        end
-
-      else
-        ok, err = pcall(self.push_config, self)
-        if ok then
-          local sleep_left = delay
-          while sleep_left > 0 do
-            if sleep_left <= 1 then
-              ngx.sleep(sleep_left)
-              break
-            end
-
-            ngx.sleep(1)
-
-            if exiting() then
-              return
-            end
-
-            sleep_left = sleep_left - 1
-          end
-
-        else
-          ngx_log(ngx_ERR, _log_prefix, "export and pushing config failed: ", err)
-        end
+    if not ok then
+      if err ~= "timeout" then
+        ngx_log(ngx_ERR, _log_prefix, "semaphore wait error: ", err)
       end
 
-    elseif err ~= "timeout" then
-      ngx_log(ngx_ERR, _log_prefix, "semaphore wait error: ", err)
+      goto continue
     end
+
+    if isempty(self.clients) then
+      if not no_connected_clients_logged then
+        ngx_log(ngx_DEBUG, _log_prefix, "skipping config push (no connected clients)")
+        no_connected_clients_logged = true
+      end
+      sleep(1)
+      -- re-queue the task. wait until we have clients connected
+      if push_config_semaphore:count() <= 0 then
+        push_config_semaphore:post()
+      end
+
+      goto continue
+    end
+
+    no_connected_clients_logged = nil
+
+    ok, err = pcall(self.push_config, self)
+    if not ok then
+      ngx_log(ngx_ERR, _log_prefix, "export and pushing config failed: ", err)
+      goto continue
+    end
+
+    -- push_config ok, waiting for a while
+
+    local sleep_left = delay
+    while sleep_left > 0 do
+      if sleep_left <= 1 then
+        sleep(sleep_left)
+        break
+      end
+
+      sleep(1)
+
+      if exiting() then
+        return
+      end
+
+      sleep_left = sleep_left - 1
+    end
+
+    ::continue::
   end
 end
 

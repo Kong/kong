@@ -33,16 +33,16 @@ local service = {
   protocol = "http",
 }
 
-  local headers_mt = {
-    __index = function(t, k)
-      local u = rawget(t, string.upper(k))
-      if u then
-        return u
-      end
-
-      return rawget(t, string.lower(k))
+local headers_mt = {
+  __index = function(t, k)
+    local u = rawget(t, string.upper(k))
+    if u then
+      return u
     end
-  }
+
+    return rawget(t, string.lower(k))
+  end
+}
 
 for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
   describe("Router (flavor = " .. flavor .. ")", function()
@@ -2181,14 +2181,23 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
 
         lazy_setup(function()
           use_case = {
-            -- percent encoding with unreserved char, route should be plain text
+            -- plain
+            {
+              service = service,
+              route   = {
+                id = "e8fb37f1-102d-461e-9c51-6608a6bb8100",
+                paths = {
+                  "/plain/a.b.c", -- /plain/a.b.c
+                },
+              },
+            },
+            -- percent encoding with unreserved char, route should not be normalized
             {
               service = service,
               route   = {
                 id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
                 paths = {
-                  "/plain/a.b.c", -- /plain/a.b.c
-                  "/plain/a.b%25c", -- /plain/a.b.c
+                  "/plain/a.b%58c", -- /plain/a.bXc
                 },
               },
             },
@@ -2230,11 +2239,11 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           assert.same(use_case[1].route, match_t.route)
 
           -- route no longer normalize user configured path
-          match_t = router:select("GET", "/plain/a.b c", "example.com")
+          match_t = router:select("GET", "/plain/a.bXc", "example.com")
           assert.falsy(match_t)
-          match_t = router:select("GET", "/plain/a.b%25c", "example.com")
+          match_t = router:select("GET", "/plain/a.b%58c", "example.com")
           assert.truthy(match_t)
-          assert.same(use_case[1].route, match_t.route)
+          assert.same(use_case[2].route, match_t.route)
 
           match_t = router:select("GET", "/plain/aab.c", "example.com")
           assert.falsy(match_t)
@@ -2246,7 +2255,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
 
           match_t = router:select("GET", "/reg%65x/123", "example.com")
           assert.truthy(match_t)
-          assert.same(use_case[2].route, match_t.route)
+          assert.same(use_case[3].route, match_t.route)
 
           match_t = router:select("GET", "/regex/\\d+", "example.com")
           assert.falsy(match_t)
@@ -2261,7 +2270,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
 
           match_t = router:select("GET", "/regex-meta/%5Cd+%2E", "example.com")
           assert.truthy(match_t)
-          assert.same(use_case[3].route, match_t.route)
+          assert.same(use_case[4].route, match_t.route)
         end)
 
         it("leave reserved characters alone in regex paths", function()
@@ -2270,7 +2279,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
 
           match_t = router:select("GET", "/regex-reserved%2Fabc", "example.com")
           assert.truthy(match_t)
-          assert.same(use_case[4].route, match_t.route)
+          assert.same(use_case[5].route, match_t.route)
         end)
       end)
 
@@ -3524,7 +3533,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             service      = service,
             route        = {
               id         = uuid(),
-              paths      = { "/my-route", "/this-route" },
+              paths      = { "/my-route", "/xx-route" }, -- need to have same length for get_priority to work
               strip_path = true
             }
           },
@@ -3534,7 +3543,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             route        = {
               id         = uuid(),
               methods    = { "POST" },
-              paths      = { "/my-route", "/this-route" },
+              paths      = { "/my-route", "/xx-route" }, -- need to have same length for get_priority to work
               strip_path = false,
             },
           },
@@ -3630,11 +3639,11 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           assert.equal("/my-route", match_t.prefix)
           assert.equal("/", match_t.upstream_uri)
 
-          _ngx = mock_ngx("GET", "/this-route", { host = "domain.org" })
+          _ngx = mock_ngx("GET", "/xx-route", { host = "domain.org" })
           router._set_ngx(_ngx)
           match_t = router:exec()
           assert.same(use_case_routes[1].route, match_t.route)
-          assert.equal("/this-route", match_t.prefix)
+          assert.equal("/xx-route", match_t.prefix)
           assert.equal("/", match_t.upstream_uri)
 
           _ngx = mock_ngx("GET", "/my-route", { host = "domain.org" })
@@ -3644,11 +3653,11 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           assert.equal("/my-route", match_t.prefix)
           assert.equal("/", match_t.upstream_uri)
 
-          _ngx = mock_ngx("GET", "/this-route", { host = "domain.org" })
+          _ngx = mock_ngx("GET", "/xx-route", { host = "domain.org" })
           router._set_ngx(_ngx)
           match_t = router:exec()
           assert.same(use_case_routes[1].route, match_t.route)
-          assert.equal("/this-route", match_t.prefix)
+          assert.equal("/xx-route", match_t.prefix)
           assert.equal("/", match_t.upstream_uri)
         end)
 
@@ -4619,3 +4628,121 @@ describe("[both regex and prefix with regex_priority]", function()
   end)
 
 end)
+
+
+for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
+  describe("Router (flavor = " .. flavor .. ")", function()
+    reload_router(flavor)
+
+    describe("[both regex and prefix]", function()
+      local use_case, router
+
+      lazy_setup(function()
+        use_case = {
+          -- regex + prefix
+          {
+            service = service,
+            route   = {
+              id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+              paths = {
+                "~/some/thing/else",
+                "/foo",
+              },
+              hosts = {
+                "domain-1.org",
+              },
+            },
+          },
+          -- prefix
+          {
+            service = service,
+            route   = {
+              id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+              paths = {
+                "/foo/bar"
+              },
+              hosts = {
+                "domain-1.org",
+              },
+            },
+          },
+        }
+
+        router = assert(new_router(use_case))
+      end)
+
+      it("[assigns different priorities to regex and non-regex path]", function()
+        local match_t = router:select("GET", "/some/thing/else", "domain-1.org")
+        assert.truthy(match_t)
+        assert.same(use_case[1].route, match_t.route)
+        local match_t = router:select("GET", "/foo/bar", "domain-1.org")
+        assert.truthy(match_t)
+        assert.same(use_case[2].route, match_t.route)
+      end)
+
+    end)
+
+    describe("[overlapping prefixes]", function()
+      local use_case, router
+
+      lazy_setup(function()
+        use_case = {
+          -- regex + prefix
+          {
+            service = service,
+            route   = {
+              id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+              paths = {
+                "/foo",
+                "/foo/bar/baz"
+              },
+              hosts = {
+                "domain-1.org",
+              },
+            },
+          },
+          -- prefix
+          {
+            service = service,
+            route   = {
+              id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+              paths = {
+                "/foo/bar"
+              },
+              hosts = {
+                "domain-1.org",
+              },
+            },
+          },
+        }
+
+        router = assert(new_router(use_case))
+      end)
+
+      it("[assigns different priorities to each path]", function()
+        local match_t = router:select("GET", "/foo", "domain-1.org")
+        assert.truthy(match_t)
+        assert.same(use_case[1].route, match_t.route)
+        local match_t = router:select("GET", "/foo/bar", "domain-1.org")
+        assert.truthy(match_t)
+        assert.same(use_case[2].route, match_t.route)
+      end)
+
+    end)
+
+    it("[can create route with multiple paths and no service]", function()
+      local use_case = {
+        -- regex + prefix
+        {
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+            paths = {
+              "/foo",
+              "/foo/bar/baz"
+            },
+          },
+        }}
+      assert(new_router(use_case))
+    end)
+  end)
+end

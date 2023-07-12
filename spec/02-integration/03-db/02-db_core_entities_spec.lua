@@ -303,12 +303,6 @@ for _, strategy in helpers.each_strategy() do
             assert.is_string(offset)
 
             local page_size = 5
-            if strategy == "cassandra" then
-              -- 5 + 1: cassandra only detects the end of a pagination when
-              -- we go past the number of rows in the iteration - it doesn't
-              -- seem to detect the pages ending at the limit
-              page_size = page_size + 1
-            end
 
             local rows_2, err, err_t, offset = db.routes:page(page_size, offset)
             assert.is_nil(err_t)
@@ -2318,12 +2312,6 @@ for _, strategy in helpers.each_strategy() do
               assert.is_string(offset)
 
               local page_size = 5
-              if strategy == "cassandra" then
-                -- 5 + 1: cassandra only detects the end of a pagination when
-                -- we go past the number of rows in the iteration - it doesn't
-                -- seem to detect the pages ending at the limit
-                page_size = page_size + 1
-              end
 
               local rows_2, err, err_t, offset = db.routes:page_for_service({
                 id = service.id,

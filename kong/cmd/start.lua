@@ -53,9 +53,6 @@ local function execute(args)
 
   conf.pg_timeout = args.db_timeout -- connect + send + read
 
-  conf.cassandra_timeout = args.db_timeout -- connect + send + read
-  conf.cassandra_schema_consensus_timeout = args.db_timeout
-
   assert(not kill.is_running(conf.nginx_pid),
          "Kong is already running in " .. conf.prefix)
 
@@ -129,8 +126,7 @@ Options:
  --run-migrations (optional boolean)  Run migrations before starting.
 
  --db-timeout     (default 60)        Timeout, in seconds, for all database
-                                      operations (including schema consensus for
-                                      Cassandra).
+                                      operations.
 
  --lock-timeout   (default 60)        When --run-migrations is enabled, timeout,
                                       in seconds, for nodes waiting on the

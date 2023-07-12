@@ -87,7 +87,6 @@ for _, strategy in helpers.each_strategy() do
         cluster_cert = "spec/fixtures/ocsp_certs/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/ocsp_certs/kong_clustering.key",
         status_listen = "0.0.0.0:" .. tcp_status_port,
-        db_update_propagation = 0.01, -- otherwise cassandra would complain
         proxy_listen = "0.0.0.0:8000",
         db_cache_ttl = 100, -- so the cache won't expire while we wait for the admin API
       })

@@ -303,64 +303,6 @@ for _, strategy in helpers.each_strategy() do
         end
       end
 
-      local func = pending
-      if strategy == "cassandra" then
-        func = describe
-      end
-
-      func("limits maximum queries in single request", function()
-        local match = require("luassert.match")
-        -- Might be flaky because it depends on how cassandra partition/order row
-        it("and exits early if PAGING_MAX_QUERY_ROUNDS exceeded", function()
-          stub(ngx, "log")
-
-          local rows, err, err_t, offset = db.services:page(2, nil,
-            { tags = { "paging", "tag_notexist" }, tags_cond = 'and' })
-          assert(is_valid_page(rows, err, err_t))
-          assert.is_not_nil(offset)
-          -- actually #rows will be 0 in this certain test case,
-          -- but put as < 2(size) as it's what logically expected
-          assert.is_true(#rows < 2)
-
-          assert.stub(ngx.log).was_called()
-          assert.stub(ngx.log).was_called_with(ngx.WARN, match.is_same("maximum "),  match.is_same(20),
-                                        match.is_same(" rounds exceeded "),
-                                        match.is_same("without retrieving required size of rows, "),
-                                        match.is_same("consider lower the sparsity of tags, or increase the paging size per request"))
-        end)
-
-        local enough_page_size = total_entities_count/single_tag_count
-        it("and doesn't throw warning if page size is large enough", function()
-          stub(ngx, "log")
-
-          local rows, err, err_t, offset = db.services:page(enough_page_size, nil,
-            { tags = { "paging", "tag_notexist" }, tags_cond = 'and' })
-          assert(is_valid_page(rows, err, err_t))
-          assert.equal(0, #rows)
-          assert.is_nil(offset)
-
-          assert.stub(ngx.log).was_not_called()
-        end)
-
-        it("#flaky and returns as normal if page size is large enough", function()
-          stub(ngx, "log")
-
-          local rows, err, err_t, offset = db.services:page(enough_page_size, nil,
-          { tags = { "paging", "team_paging_1" }, tags_cond = 'and' })
-          assert(is_valid_page(rows, err, err_t))
-          assert.equal(enough_page_size, #rows)
-          if offset then
-            rows, err, err_t, offset = db.services:page(enough_page_size, offset,
-            { tags = { "paging", "team_paging_1" }, tags_cond = 'and' })
-            assert(is_valid_page(rows, err, err_t))
-            assert.equal(0, #rows)
-            assert.is_nil(offset)
-          end
-
-          assert.stub(ngx.log).was_not_called()
-        end)
-      end)
-
       it("allow tags_cond omitted if there's only one tag", function()
         local rows, err, err_t, _ = db.services:page(nil, nil, { tags = { "foo" } })
         assert(is_valid_page(rows, err, err_t))

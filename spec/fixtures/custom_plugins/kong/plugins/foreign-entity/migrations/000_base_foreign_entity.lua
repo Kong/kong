@@ -21,25 +21,4 @@ return {
       END$$;
     ]],
   },
-
-  cassandra = {
-    up = [[
-      CREATE TABLE IF NOT EXISTS foreign_entities (
-        id    uuid   PRIMARY KEY,
-        name  text,
-        same  uuid
-      );
-
-      CREATE INDEX IF NOT EXISTS ON foreign_entities(name);
-
-      CREATE TABLE IF NOT EXISTS foreign_references (
-        id       uuid   PRIMARY KEY,
-        name     text,
-        same_id  uuid
-      );
-
-      CREATE INDEX IF NOT EXISTS ON foreign_references (name);
-      CREATE INDEX IF NOT EXISTS ON foreign_references (same_id);
-    ]],
-  },
 }

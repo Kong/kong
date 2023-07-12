@@ -1,0 +1,56 @@
+name: Build
+on:
+  workflow_call:
+    inputs:
+      relative-build-root:
+        required: true
+        type: string
+
+env:
+  BUILD_ROOT: ${{ github.workspace }}/${{ inputs.relative-build-root }}
+
+jobs:
+  build:
+    name: Build dependencies
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout Kong source code
+      uses: actions/checkout@v3
+
+    - name: Lookup build cache
+      id: cache-deps
+      uses: actions/cache@v3
+      with:
+        path: |
+          ${{ env.BUILD_ROOT }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+
+    - name: Install packages
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev
+
+    - name: Build Kong
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      run: |
+        make build-kong
+        BUILD_PREFIX=$BUILD_ROOT/kong-dev
+        export PATH="$BUILD_PREFIX/bin:$BUILD_PREFIX/openresty/nginx/sbin:$BUILD_PREFIX/openresty/bin:$PATH"
+        chmod +rw -R $BUILD_PREFIX
+        nginx -V
+        ldd $(which nginx)
+        luarocks
+
+    - name: Bazel Outputs
+      uses: actions/upload-artifact@v3
+      if: failure()
+      with:
+        name: bazel-outputs
+        path: |
+          bazel-out/_tmp/actions
+        retention-days: 3
+
+    - name: Build Dev Kong dependencies
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      run: |
+        make install-dev-rocks

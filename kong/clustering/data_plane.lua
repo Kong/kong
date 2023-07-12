@@ -59,8 +59,11 @@ function _M.new(clustering)
   assert(type(clustering.cert_key) == "cdata",
          "kong.clustering did not provide the cluster certificate private key")
 
+  assert(kong.db.declarative_config,
+         "kong.db.declarative_config was not initialized")
+
   local self = {
-    declarative_config = assert(declarative.new_config(clustering.conf)),
+    declarative_config = kong.db.declarative_config,
     conf = clustering.conf,
     cert = clustering.cert,
     cert_key = clustering.cert_key,
@@ -134,6 +137,8 @@ function _M:communicate(premature)
     end
   end
 
+  local configuration = kong.configuration.remove_sensitive()
+
   -- connection established
   -- first, send out the plugin list and DP labels to CP
   -- The CP will make the decision on whether sync will be allowed
@@ -141,6 +146,7 @@ function _M:communicate(premature)
   local _
   _, err = c:send_binary(cjson_encode({ type = "basic_info",
                                         plugins = self.plugins_list,
+                                        process_conf = configuration,
                                         labels = labels, }))
   if err then
     ngx_log(ngx_ERR, _log_prefix, "unable to send basic information to control plane: ", uri,
@@ -178,69 +184,73 @@ function _M:communicate(premature)
   local config_thread = ngx.thread.spawn(function()
     while not exiting() and not config_exit do
       local ok, err = config_semaphore:wait(1)
-      if ok then
-        local data = next_data
-        if data then
-          local msg = assert(inflate_gzip(data))
-          yield()
-          msg = assert(cjson_decode(msg))
-          yield()
 
-          if msg.type == "reconfigure" then
-            if msg.timestamp then
-              ngx_log(ngx_DEBUG, _log_prefix, "received reconfigure frame from control plane with timestamp: ",
-                                 msg.timestamp, log_suffix)
-
-            else
-              ngx_log(ngx_DEBUG, _log_prefix, "received reconfigure frame from control plane", log_suffix)
-            end
-
-            local config_table = assert(msg.config_table)
-            local pok, res
-            pok, res, err = pcall(config_helper.update, self.declarative_config,
-                                  config_table, msg.config_hash, msg.hashes)
-            if pok then
-              if not res then
-                ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
-              end
-
-              ping_immediately = true
-
-            else
-              ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", res)
-            end
-
-            if next_data == data then
-              next_data = nil
-            end
-          end
+      if not ok then
+        if err ~= "timeout" then
+          ngx_log(ngx_ERR, _log_prefix, "semaphore wait error: ", err)
         end
 
-      elseif err ~= "timeout" then
-        ngx_log(ngx_ERR, _log_prefix, "semaphore wait error: ", err)
+        goto continue
       end
+
+      local data = next_data
+      if not data then
+        goto continue
+      end
+
+      local msg = assert(inflate_gzip(data))
+      yield()
+      msg = assert(cjson_decode(msg))
+      yield()
+
+      if msg.type ~= "reconfigure" then
+        goto continue
+      end
+
+      ngx_log(ngx_DEBUG, _log_prefix, "received reconfigure frame from control plane",
+                         msg.timestamp and " with timestamp: " .. msg.timestamp or "",
+                         log_suffix)
+
+      local config_table = assert(msg.config_table)
+
+      local pok, res, err = pcall(config_helper.update, self.declarative_config,
+                                  config_table, msg.config_hash, msg.hashes)
+      if pok then
+        ping_immediately = true
+      end
+
+      if not pok or not res then
+        ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
+      end
+
+      if next_data == data then
+        next_data = nil
+      end
+
+      ::continue::
     end
   end)
 
   local write_thread = ngx.thread.spawn(function()
-    while not exiting() do
-      send_ping(c, log_suffix)
+    local counter = 0   -- count down to ping
 
-      for _ = 1, PING_INTERVAL do
-        ngx_sleep(1)
-        if exiting() then
-          return
-        end
-        if ping_immediately then
-          ping_immediately = nil
-          break
-        end
+    while not exiting() do
+      if ping_immediately or counter <= 0 then
+        ping_immediately = nil
+        counter = PING_INTERVAL
+
+        send_ping(c, log_suffix)
       end
+
+      counter = counter - 1
+
+      ngx_sleep(1)
     end
   end)
 
   local read_thread = ngx.thread.spawn(function()
     local last_seen = ngx_time()
+
     while not exiting() do
       local data, typ, err = c:recv_frame()
       if err then
@@ -253,31 +263,42 @@ function _M:communicate(premature)
           return nil, "did not receive pong frame from control plane within " .. PING_WAIT .. " seconds"
         end
 
-      else
-        if typ == "close" then
-          ngx_log(ngx_DEBUG, _log_prefix, "received close frame from control plane", log_suffix)
-          return
-        end
-
-        last_seen = ngx_time()
-
-        if typ == "binary" then
-          next_data = data
-          if config_semaphore:count() <= 0 then
-            -- the following line always executes immediately after the `if` check
-            -- because `:count` will never yield, end result is that the semaphore
-            -- count is guaranteed to not exceed 1
-            config_semaphore:post()
-          end
-
-        elseif typ == "pong" then
-          ngx_log(ngx_DEBUG, _log_prefix, "received pong frame from control plane", log_suffix)
-
-        else
-          ngx_log(ngx_NOTICE, _log_prefix, "received unknown (", tostring(typ), ") frame from control plane",
-                              log_suffix)
-        end
+        goto continue
       end
+
+      if typ == "close" then
+        ngx_log(ngx_DEBUG, _log_prefix, "received close frame from control plane", log_suffix)
+        return nil
+      end
+
+      last_seen = ngx_time()
+
+      if typ == "binary" then
+        next_data = data
+        if config_semaphore:count() <= 0 then
+          -- the following line always executes immediately after the `if` check
+          -- because `:count` will never yield, end result is that the semaphore
+          -- count is guaranteed to not exceed 1
+          config_semaphore:post()
+        end
+
+        goto continue
+      end
+
+      if typ == "pong" then
+        ngx_log(ngx_DEBUG, _log_prefix,
+                "received pong frame from control plane",
+                log_suffix)
+
+        goto continue
+      end
+
+      -- unknown websocket frame
+      ngx_log(ngx_NOTICE, _log_prefix,
+              "received unknown (", tostring(typ), ") frame from control plane",
+              log_suffix)
+
+      ::continue::
     end
   end)
 
