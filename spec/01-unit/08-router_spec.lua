@@ -4597,7 +4597,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
       end)
     -- flavor == "traditional"/"traditional_compatible"/"expressions"
 
-    if flavor == "traditional_compatible" or flavor == "expressions"then
+    if flavor == "traditional_compatible" or flavor == "expressions" then
       describe("#stream context", function()
         -- enable stream subsystem
         reload_router(flavor, "stream")
@@ -4732,7 +4732,7 @@ describe("[both regex and prefix with regex_priority]", function()
   end)
 
 end)
-end -- for
+end -- for flavor
 
 
 for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do

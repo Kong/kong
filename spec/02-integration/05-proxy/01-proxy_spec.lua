@@ -139,6 +139,7 @@ describe("#stream proxy interface listeners", function()
   end)
 end)
 
+
 local function reload_router(flavor)
   _G.kong = {
     configuration = {

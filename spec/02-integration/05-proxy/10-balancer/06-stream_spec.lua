@@ -39,7 +39,6 @@ end
 
 
 for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
---for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
 for _, strategy in helpers.each_strategy() do
   describe("Balancer: least-connections [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
     reload_router(flavor)
