@@ -97,6 +97,8 @@
 - Added new span attribute `net.peer.name` if balancer_data.hostname is available.
   Thanks [@backjo](https://github.com/backjo) for contributing this change.
   [#10723](https://github.com/Kong/kong/pull/10729)
+- Make `kong vault get` CLI command work in dbless mode by injecting the necessary directives into the kong cli nginx.conf
+  [#10675](https://github.com/Kong/kong/pull/10675)
 
 #### Admin API
 
@@ -353,8 +355,6 @@
   leads to the corruption of chunk-encoded response data.
   [#10816](https://github.com/Kong/kong/pull/10816)
   [#10824](https://github.com/Kong/kong/pull/10824)
-- Make `kong vault get` CLI command work in dbless mode
-  [#10675](https://github.com/Kong/kong/pull/10675)
 
 
 #### Admin API
