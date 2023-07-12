@@ -136,6 +136,14 @@
   - libc.so.6
   - ld-linux-aarch64.so.1
 
+- Path      : /usr/local/openresty/nginx/modules/ngx_wasm_module.so
+  Needed    :
+  - libm.so.6
+  - libgcc_s.so.1
+  - libc.so.6
+  - ld-linux-x86-64.so.2
+  Runpath   : /usr/local/openresty/luajit/lib:/usr/local/kong/lib
+
 - Path      : /usr/local/openresty/nginx/sbin/nginx
   Needed    :
   - libcrypt.so.1
