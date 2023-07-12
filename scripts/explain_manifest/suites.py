@@ -82,7 +82,7 @@ def ee_suites(expect, fips: bool = False):
     # binary correctness
 
     # LuaJIT profiling patch
-    expect("/usr/local/openresty/luajit/lib/libluajit-5.1.so",
+    expect("/usr/local/openresty/luajit/lib/libluajit-5.1.so*",
            "LuaJIT should include Kong profiling extension patch") \
         .functions \
         .contain("luaopen_kprof")

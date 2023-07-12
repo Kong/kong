@@ -116,7 +116,7 @@ class ExpectChain():
     @write_color("red")
     def _print_fail(self, msg):
         self._log("[FAIL] %s" % msg)
-        self._all_failures.append("%s: %s" % (self._ctx_info(), msg))
+        self._all_failures.append("%s:\n\t%s" % (self._msg, msg))
         self._failures_count += 1
 
     @write_color("green")
@@ -252,6 +252,10 @@ class ExpectChain():
         for f in self._infos:
             if glob_match_ignore_slash(f.relpath, [path_glob]):
                 self._files.append(f)
+
+        if not self._files:
+            self._print_fail("no file matching \"%s\"" % path_glob)
+
         return self
 
     def do_not(self):
@@ -313,6 +317,7 @@ class ExpectChain():
     @write_block_desc("compare manifest")
     def compare_manifest(self, suite: ExpectSuite, manifest: str):
         self._current_suite = suite
+        self._msg = "Compare manifest"
 
         if not suite.manifest:
             self._print_error("manifest is not set for suite %s" % suite.name)
