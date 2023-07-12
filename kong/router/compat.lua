@@ -45,6 +45,9 @@ local headers_buf       = buffer.new(128)
 local single_header_buf = buffer.new(64)
 
 
+-- sep: a seperator of expressions, like '&&'
+-- idx: indicate whether or not to add 'sep'
+--      for example, we should not add 'sep' for the first element in array
 local function buffer_append(buf, sep, str, idx)
   if #buf > 0 and
      (idx == nil or idx > 1)
