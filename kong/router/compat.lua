@@ -287,6 +287,10 @@ do
   local function calc_ip_weight(ips)
     local weight = 0x0ULL
 
+    if is_empty_field(ips) then
+      return weight
+    end
+
     for i = 1, #ips do
       local ip   = ips[i].ip
       local port = ips[i].port
@@ -323,11 +327,8 @@ do
       match_weight = STREAM_SNI_BIT
     end
 
-    local src_bits = is_empty_field(srcs) and 0x0ULL or
-                     calc_ip_weight(srcs)
-
-    local dst_bits = is_empty_field(dsts) and 0x0ULL or
-                     calc_ip_weight(dsts)
+    local src_bits = calc_ip_weight(srcs)
+    local dst_bits = calc_ip_weight(dsts)
 
     local priority = bor(match_weight,
                          lshift(src_bits, 4),
