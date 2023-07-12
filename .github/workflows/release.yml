@@ -63,10 +63,8 @@ jobs:
           echo "release-label=$(date -u +'%Y%m%d')" >> $GITHUB_OUTPUT
         fi
 
-        matrix_file=".github/matrix-commitly.yml"
-        if [ "$FULL_RELEASE" == "true" ]; then
-          matrix_file=".github/matrix-full.yml"
-        fi
+        # XXX revert before merging feat/wasmx!
+        matrix_file=".github/matrix-full.yml"
 
         if [ "${{ github.event.inputs.official }}" == "true" ]; then
           release_desc="$KONG_VERSION (official)"
