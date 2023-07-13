@@ -12,6 +12,7 @@ local HEADER_NAME_ADD_RESP_HEADER = "X-PW-Add-Resp-Header"
 
 
 describe("proxy-wasm filters (#wasm)", function()
+  local r_single, mock_service
   lazy_setup(function()
     local bp, db = helpers.get_db_utils(DATABASE, {
       "routes",
@@ -21,12 +22,12 @@ describe("proxy-wasm filters (#wasm)", function()
 
     db.filter_chains:load_filters({ { name = "tests" } })
 
-    local mock_service = assert(bp.services:insert {
+    mock_service = assert(bp.services:insert {
       host = helpers.mock_upstream_host,
       port = helpers.mock_upstream_port,
     })
 
-    local r_single = assert(bp.routes:insert {
+    r_single = assert(bp.routes:insert {
       paths = { "/single" },
       strip_path = true,
       service = mock_service,
@@ -235,6 +236,46 @@ describe("proxy-wasm filters (#wasm)", function()
 
       local body = assert.res_status(200, res)
       assert.equal("Hello from proxy-wasm", body)
+      assert.logfile().has.no.line("[error]", true, 0)
+      assert.logfile().has.no.line("[crit]",  true, 0)
+    end)
+
+    it("read kong.route_id", function()
+      local client = helpers.proxy_client()
+      finally(function() client:close() end)
+
+      local res = assert(client:send {
+        method = "GET",
+        path = "/single/status/201",
+        headers = {
+          [HEADER_NAME_TEST] = "get_kong_property",
+          [HEADER_NAME_INPUT] = "route_id",
+          [HEADER_NAME_DISPATCH_ECHO] = "on",
+        }
+      })
+
+      local body = assert.res_status(200, res)
+      assert.equal(r_single.id, body)
+      assert.logfile().has.no.line("[error]", true, 0)
+      assert.logfile().has.no.line("[crit]",  true, 0)
+    end)
+
+    it("read kong.service_id", function()
+      local client = helpers.proxy_client()
+      finally(function() client:close() end)
+
+      local res = assert(client:send {
+        method = "GET",
+        path = "/single/status/201",
+        headers = {
+          [HEADER_NAME_TEST] = "get_kong_property",
+          [HEADER_NAME_INPUT] = "service_id",
+          [HEADER_NAME_DISPATCH_ECHO] = "on",
+        }
+      })
+
+      local body = assert.res_status(200, res)
+      assert.equal(mock_service.id, body)
       assert.logfile().has.no.line("[error]", true, 0)
       assert.logfile().has.no.line("[crit]",  true, 0)
     end)
