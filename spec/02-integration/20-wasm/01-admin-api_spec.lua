@@ -83,13 +83,11 @@ describe("WASMX admin API [#" .. strategy .. "]", function()
       lazy_setup(reset_filter_chains)
 
       it("creates a filter chain", function()
-        local res = admin:post("/filter-chains", {
-          headers = { ["Content-Type"] = "application/json" },
-          body = {
+        local res = admin:post("/filter-chains", json({
             filters = { { name = "tests" } },
             service = { id = service.id },
-          },
-        })
+          })
+        )
 
         assert.response(res).has.status(201)
         local body = assert.response(res).has.jsonbody()
@@ -257,12 +255,10 @@ describe("WASMX admin API [#" .. strategy .. "]", function()
 
     describe("POST", function()
       it("creates a " .. rel .. " filter chain", function()
-        local res = admin:post(path, {
-          headers = { ["Content-Type"] = "application/json" },
-          body = {
+        local res = admin:post(path, json({
             filters = { { name = "tests" } },
-          },
-        })
+          })
+        )
 
         assert.response(res).has.status(201)
         local body = assert.response(res).has.jsonbody()
@@ -413,17 +409,20 @@ describe("WASMX admin API - wasm = off [#" .. strategy .. "]", function()
     admin = helpers.admin_client()
   end)
 
+  lazy_teardown(function()
+    if admin then admin:close() end
+    helpers.stop_kong(nil, true)
+  end)
+
   describe("/filter-chains", function()
 
     describe("POST", function()
       it("returns 400", function()
-        local res = admin:post("/filter-chains", {
-          headers = { ["Content-Type"] = "application/json" },
-          body = {
+        local res = admin:post("/filter-chains", json({
             filters = { { name = "tests" } },
             service = { id = service.id },
-          },
-        })
+          })
+        )
 
         assert.response(res).has.status(400)
       end)
@@ -500,37 +499,29 @@ describe("WASMX admin API - wasm = off [#" .. strategy .. "]", function()
 
     it("POST returns 400", function()
       assert.response(
-        admin:post(path), {
-          headers = { ["Content-Type"] = "application/json" },
-          body = {
+        admin:post(path, json({
             filters = { { name = "tests" } },
             service = { id = service.id },
-          },
-        }
+          })
+        )
       ).has.status(400)
     end)
 
     it("PATCH returns 400", function()
       assert.response(
-        admin:patch(path .. "/" .. utils.uuid()), {
-          headers = { ["Content-Type"] = "application/json" },
-          body = {
-            filters = { { name = "tests" } },
-            service = { id = service.id },
-          },
-        }
+        admin:patch(path .. "/" .. utils.uuid()), json({
+          filters = { { name = "tests" } },
+          service = { id = service.id },
+        })
       ).has.status(400)
     end)
 
     it("PUT returns 400", function()
       assert.response(
-        admin:put(path .. "/" .. utils.uuid()), {
-          headers = { ["Content-Type"] = "application/json" },
-          body = {
-            filters = { { name = "tests" } },
-            service = { id = service.id },
-          },
-        }
+        admin:put(path .. "/" .. utils.uuid()), json({
+          filters = { { name = "tests" } },
+          service = { id = service.id },
+        })
       ).has.status(400)
     end)
 
