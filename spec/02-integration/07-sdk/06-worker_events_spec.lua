@@ -86,7 +86,7 @@ local fixtures = {
             end, SOURCE, EVENT)
 
             -- when payload is a table
-            PAYLOAD = {
+            local PAYLOAD = {
               foo = 'bar',
               data = generate_data()
             }
