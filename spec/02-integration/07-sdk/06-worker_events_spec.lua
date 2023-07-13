@@ -114,7 +114,8 @@ local fixtures = {
 for _, max_payload in ipairs(max_payloads) do
   local allowed_size = max_payload > payload_size
   local less_or_greater = allowed_size and ">" or "<"
-  describe("when max_payload " .. less_or_greater .. " payload_size, ", function()
+
+  describe("worker_events [when max_payload " .. less_or_greater .. " payload_size] ", function()
     lazy_setup(function()
       fixtures.http_mock.worker_events = string.format(fixtures.http_mock.worker_events, business_port, payload_size, payload_size)
 
