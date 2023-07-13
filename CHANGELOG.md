@@ -130,6 +130,8 @@
   [#11090](https://github.com/Kong/kong/pull/11090)
 - Remove kong branding from kong HTML error template.
   [#11150](https://github.com/Kong/kong/pull/11150)
+- `lua-resty-events` has been bumped to version 0.2.0.
+  [#11214](https://github.com/Kong/kong/pull/11214)
 
 #### Status API
 
