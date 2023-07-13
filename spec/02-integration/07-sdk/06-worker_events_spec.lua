@@ -17,7 +17,6 @@ local fixtures = {
           content_by_lua_block {
             local SOURCE, EVENT       = "foo", "string"
             local worker_events       = kong.worker_events
-            local cjson               = require "cjson.safe"
             local payload_received
 
             local function generate_data()
@@ -44,7 +43,7 @@ local fixtures = {
             local ok, err = worker_events.post(SOURCE, EVENT, PAYLOAD)
             if not ok then
               ngx.status = ngx.HTTP_INTERNAL_SERVER_ERROR
-              ngx.say("post string failed, err: " .. cjson.encode(err))
+              ngx.say("post string failed, err: " .. err)
               ngx.exit(ngx.OK)
             end
 
@@ -62,7 +61,6 @@ local fixtures = {
           content_by_lua_block {
             local SOURCE, EVENT             = "foo", "table"
             local worker_events             = kong.worker_events
-            local cjson                     = require "cjson.safe"
             local deepcompare               = require("pl.tablex").deepcompare
             local payload_received
 
@@ -93,7 +91,7 @@ local fixtures = {
             local ok, err = worker_events.post(SOURCE, EVENT, PAYLOAD)
             if not ok then
               ngx.status = ngx.HTTP_INTERNAL_SERVER_ERROR
-              ngx.say("post table failed, err: " .. cjson.encode(err))
+              ngx.say("post table failed, err: " .. err)
               ngx.exit(ngx.OK)
             end
 
@@ -142,7 +140,7 @@ for _, max_payload in ipairs(max_payloads) do
         })
         local status_code = allowed_size and 200 or 500
         local msg = allowed_size and "ok" or "post " .. payload_type .. 
-          " failed, err: \"failed to publish event: payload exceeds the limitation (".. max_payload .. ")\""
+          " failed, err: failed to publish event: payload exceeds the limitation (".. max_payload .. ")"
         local body = assert.res_status(status_code, res)
         assert.equal(body, msg)
       end)
