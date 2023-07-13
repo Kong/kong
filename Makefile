@@ -85,7 +85,7 @@ build-venv: check-bazel
 	$(eval VENV := bazel-bin/build/$(BUILD_NAME)-venv.sh)
 
 	@if [ ! -e bazel-bin/build/$(BUILD_NAME)-venv.sh ]; then \
-		$(BAZEL) build //build:venv --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME)
+		$(BAZEL) build //build:venv --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME); \
 	fi
 
 install-dev-rocks: build-venv
