@@ -26,7 +26,7 @@ runs:
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
           ${{ env.WASM_FILTER_PATH }}/target
-        key: ${{ env.WASM_FILTER_CACHE_PREFIX }}::${{ hashFiles(env.WASM_FILTER_CARGO_LOCK) }}
+        key: ${{ env.WASM_FILTER_CACHE_PREFIX }}::${{ hashFiles(env.WASM_FILTER_CARGO_LOCK, format('{0}/**/*.rs', env.WASM_FILTER_PATH)) }}
         restore-keys: ${{ env.WASM_FILTER_CACHE_PREFIX }}
 
     - name: Install Rust Toolchain
@@ -64,7 +64,7 @@ runs:
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
           ${{ env.WASM_FILTER_PATH }}/target
-        key: ${{ env.WASM_FILTER_CACHE_PREFIX }}::${{ hashFiles(env.WASM_FILTER_CARGO_LOCK) }}
+        key: ${{ env.WASM_FILTER_CACHE_PREFIX }}::${{ hashFiles(env.WASM_FILTER_CARGO_LOCK, format('{0}/**/*.rs', env.WASM_FILTER_PATH)) }}
 
     - name: Create a symlink to the target directory
       shell: bash
