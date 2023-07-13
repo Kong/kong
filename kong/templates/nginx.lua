@@ -38,7 +38,6 @@ env WASMTIME_BACKTRACE_DETAILS=1;
 
 > if role == "control_plane" or #proxy_listeners > 0 or #admin_listeners > 0 or #status_listeners > 0 then
 http {
-    resolver 1.1.1.1;
     include 'nginx-kong.conf';
 }
 > end
