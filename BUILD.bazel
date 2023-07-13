@@ -167,7 +167,7 @@ bool_flag(
     build_setting_default = True,
 )
 
-# --//:wasmx_module=dynamic
+# --//:wasmx_module_flag=dynamic
 string_flag(
     name = "wasmx_module_flag",
     build_setting_default = "dynamic",
