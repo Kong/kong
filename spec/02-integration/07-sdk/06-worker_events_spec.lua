@@ -16,7 +16,6 @@ describe("worker_events, ", function()
 
           location = /payload_string {
             content_by_lua_block {
-              local PAYLOAD_TOO_BIG_ERR = "failed to publish event: payload too big"
               local SOURCE, EVENT       = "foo", "string"
               local worker_events       = kong.worker_events
               local cjson               = require "cjson.safe"
@@ -62,8 +61,6 @@ describe("worker_events, ", function()
 
           location = /payload_table {
             content_by_lua_block {
-              local PAYLOAD_TOO_BIG_ERR       = "failed to publish event: payload too big"
-              local DEFAULT_TRUNCATED_PAYLOAD = ", truncated payload: not a serialized object"
               local SOURCE, EVENT             = "foo", "table"
               local worker_events             = kong.worker_events
               local cjson                     = require "cjson.safe"
@@ -71,7 +68,7 @@ describe("worker_events, ", function()
               local payload_received
 
               local function generate_data()
-                return string.rep("X", 70000)
+                return string.rep("X", %s)
               end
 
               local function wait_until(validator, timeout)
