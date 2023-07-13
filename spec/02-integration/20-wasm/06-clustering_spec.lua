@@ -41,6 +41,7 @@ local function expect_status(prefix, exp)
       end
 
       assert.is_table(body.data)
+      local found
       for _, dp in ipairs(body.data) do
         if dp.id == id then
           found = dp
