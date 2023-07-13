@@ -321,6 +321,7 @@ local CONF_PARSERS = {
       replacement = "nginx_main_worker_processes",
     },
   },
+  worker_events_max_payload = { typ = "number" },
 
   upstream_keepalive_pool_size = { typ = "number" },
   upstream_keepalive_max_requests = { typ = "number" },
