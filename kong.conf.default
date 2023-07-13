@@ -272,7 +272,9 @@
 
 #worker_events_max_payload =     # Specifies the max payload size the `worker_events` can
                                  # accept.
-                                 # Default is 64k - 1024 * 64. The max allowed is 16M Bytes.
+                                 # Default is 64KB. The max allowed is 16MB.
+                                 # **Note:** increasing this value has potential
+                                 # negative impact on Kong's response latency and memory usage.
 
 #------------------------------------------------------------------------------
 # HYBRID MODE
