@@ -547,6 +547,18 @@ function _M.init_worker()
 end
 
 
+local function set_proxy_wasm_property(property, value)
+  if not value then
+    return
+  end
+
+  local ok, err = proxy_wasm.set_property(property, value)
+  if not ok then
+    log(ERR, "failed to set ", property, " property: ", err)
+  end
+end
+
+
 ---
 -- Lookup and execute the filter chain that applies to the current request
 -- (if any).
@@ -574,6 +586,9 @@ function _M.attach(ctx)
     log(ERR, "failed attaching ", chain.label, " filter chain to request: ", err)
     error(err)
   end
+
+  set_proxy_wasm_property("kong.route_id", ctx.route and ctx.route.id)
+  set_proxy_wasm_property("kong.service_id", ctx.service and ctx.service.id)
 
   local ok, err = proxy_wasm.start()
   if not ok then
