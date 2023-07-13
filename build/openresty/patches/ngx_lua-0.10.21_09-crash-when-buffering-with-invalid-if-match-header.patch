@@ -1,0 +1,261 @@
+diff --git a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_accessby.c b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_accessby.c
+index 58c2514..d40eab1 100644
+--- a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_accessby.c
++++ b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_accessby.c
+@@ -240,7 +240,7 @@ ngx_http_lua_access_by_chunk(lua_State *L, ngx_http_request_t *r)
+     ngx_event_t         *rev;
+     ngx_connection_t    *c;
+     ngx_http_lua_ctx_t  *ctx;
+-    ngx_http_cleanup_t  *cln;
++    ngx_pool_cleanup_t  *cln;
+ 
+     ngx_http_lua_loc_conf_t     *llcf;
+ 
+@@ -291,9 +291,9 @@ ngx_http_lua_access_by_chunk(lua_State *L, ngx_http_request_t *r)
+ 
+     /*  }}} */
+ 
+-    /*  {{{ register request cleanup hooks */
++    /*  {{{ register nginx pool cleanup hooks */
+     if (ctx->cleanup == NULL) {
+-        cln = ngx_http_cleanup_add(r, 0);
++        cln = ngx_pool_cleanup_add(r->pool, 0);
+         if (cln == NULL) {
+             return NGX_HTTP_INTERNAL_SERVER_ERROR;
+         }
+diff --git a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_bodyfilterby.c b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_bodyfilterby.c
+index 604702c..d6fe248 100644
+--- a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_bodyfilterby.c
++++ b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_bodyfilterby.c
+@@ -233,7 +233,7 @@ ngx_http_lua_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
+     ngx_http_lua_ctx_t          *ctx;
+     ngx_int_t                    rc;
+     uint16_t                     old_context;
+-    ngx_http_cleanup_t          *cln;
++    ngx_pool_cleanup_t          *cln;
+     ngx_chain_t                 *out;
+     ngx_chain_t                 *cl, *ln;
+     ngx_http_lua_main_conf_t    *lmcf;
+@@ -313,7 +313,7 @@ ngx_http_lua_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
+     }
+ 
+     if (ctx->cleanup == NULL) {
+-        cln = ngx_http_cleanup_add(r, 0);
++        cln = ngx_pool_cleanup_add(r->pool, 0);
+         if (cln == NULL) {
+             return NGX_ERROR;
+         }
+diff --git a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_common.h b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_common.h
+index 97d1942..958c906 100644
+--- a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_common.h
++++ b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_common.h
+@@ -554,7 +554,7 @@ typedef struct ngx_http_lua_ctx_s {
+     ngx_chain_t             *filter_in_bufs;  /* for the body filter */
+     ngx_chain_t             *filter_busy_bufs;  /* for the body filter */
+ 
+-    ngx_http_cleanup_pt     *cleanup;
++    ngx_pool_cleanup_pt     *cleanup;
+ 
+     ngx_http_cleanup_t      *free_cleanup; /* free list of cleanup records */
+ 
+diff --git a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_contentby.c b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_contentby.c
+index 76e6a07..5e2ae55 100644
+--- a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_contentby.c
++++ b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_contentby.c
+@@ -29,7 +29,7 @@ ngx_http_lua_content_by_chunk(lua_State *L, ngx_http_request_t *r)
+     lua_State               *co;
+     ngx_event_t             *rev;
+     ngx_http_lua_ctx_t      *ctx;
+-    ngx_http_cleanup_t      *cln;
++    ngx_pool_cleanup_t      *cln;
+ 
+     ngx_http_lua_loc_conf_t      *llcf;
+ 
+@@ -83,7 +83,7 @@ ngx_http_lua_content_by_chunk(lua_State *L, ngx_http_request_t *r)
+ 
+     /*  {{{ register request cleanup hooks */
+     if (ctx->cleanup == NULL) {
+-        cln = ngx_http_cleanup_add(r, 0);
++        cln = ngx_pool_cleanup_add(r->pool, 0);
+         if (cln == NULL) {
+             return NGX_HTTP_INTERNAL_SERVER_ERROR;
+         }
+diff --git a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_directive.c b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_directive.c
+index 831132f..6fda61b 100644
+--- a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_directive.c
++++ b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_directive.c
+@@ -1265,7 +1265,7 @@ ngx_http_lua_set_by_lua_init(ngx_http_request_t *r)
+ {
+     lua_State                   *L;
+     ngx_http_lua_ctx_t          *ctx;
+-    ngx_http_cleanup_t          *cln;
++    ngx_pool_cleanup_t          *cln;
+ 
+     ctx = ngx_http_get_module_ctx(r, ngx_http_lua_module);
+     if (ctx == NULL) {
+@@ -1280,7 +1280,7 @@ ngx_http_lua_set_by_lua_init(ngx_http_request_t *r)
+     }
+ 
+     if (ctx->cleanup == NULL) {
+-        cln = ngx_http_cleanup_add(r, 0);
++        cln = ngx_pool_cleanup_add(r->pool, 0);
+         if (cln == NULL) {
+             return NGX_ERROR;
+         }
+diff --git a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_headerfilterby.c b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_headerfilterby.c
+index 4741c72..9f49a8e 100644
+--- a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_headerfilterby.c
++++ b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_headerfilterby.c
+@@ -230,7 +230,7 @@ ngx_http_lua_header_filter(ngx_http_request_t *r)
+     ngx_http_lua_loc_conf_t     *llcf;
+     ngx_http_lua_ctx_t          *ctx;
+     ngx_int_t                    rc;
+-    ngx_http_cleanup_t          *cln;
++    ngx_pool_cleanup_t          *cln;
+     uint16_t                     old_context;
+ 
+     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+@@ -259,7 +259,7 @@ ngx_http_lua_header_filter(ngx_http_request_t *r)
+     }
+ 
+     if (ctx->cleanup == NULL) {
+-        cln = ngx_http_cleanup_add(r, 0);
++        cln = ngx_pool_cleanup_add(r->pool, 0);
+         if (cln == NULL) {
+             return NGX_ERROR;
+         }
+diff --git a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_rewriteby.c b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_rewriteby.c
+index d1eabec..4109f28 100644
+--- a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_rewriteby.c
++++ b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_rewriteby.c
+@@ -241,7 +241,7 @@ ngx_http_lua_rewrite_by_chunk(lua_State *L, ngx_http_request_t *r)
+     ngx_event_t             *rev;
+     ngx_connection_t        *c;
+     ngx_http_lua_ctx_t      *ctx;
+-    ngx_http_cleanup_t      *cln;
++    ngx_pool_cleanup_t      *cln;
+ 
+     ngx_http_lua_loc_conf_t     *llcf;
+ 
+@@ -291,9 +291,9 @@ ngx_http_lua_rewrite_by_chunk(lua_State *L, ngx_http_request_t *r)
+ 
+     /*  }}} */
+ 
+-    /*  {{{ register request cleanup hooks */
++    /*  {{{ register nginx pool cleanup hooks */
+     if (ctx->cleanup == NULL) {
+-        cln = ngx_http_cleanup_add(r, 0);
++        cln = ngx_pool_cleanup_add(r->pool, 0);
+         if (cln == NULL) {
+             return NGX_HTTP_INTERNAL_SERVER_ERROR;
+         }
+diff --git a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_socket_udp.c b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_socket_udp.c
+index 4f970e6..f939b40 100644
+--- a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_socket_udp.c
++++ b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_socket_udp.c
+@@ -591,7 +591,7 @@ ngx_http_lua_socket_resolve_retval_handler(ngx_http_request_t *r,
+     ngx_http_lua_ctx_t              *ctx;
+     ngx_http_lua_co_ctx_t           *coctx;
+     ngx_connection_t                *c;
+-    ngx_http_cleanup_t              *cln;
++    ngx_pool_cleanup_t              *cln;
+     ngx_http_upstream_resolved_t    *ur;
+     ngx_int_t                        rc;
+     ngx_http_lua_udp_connection_t   *uc;
+@@ -625,7 +625,7 @@ ngx_http_lua_socket_resolve_retval_handler(ngx_http_request_t *r,
+     }
+ 
+     if (u->cleanup == NULL) {
+-        cln = ngx_http_cleanup_add(r, 0);
++        cln = ngx_pool_cleanup_add(r->pool, 0);
+         if (cln == NULL) {
+             u->ft_type |= NGX_HTTP_LUA_SOCKET_FT_ERROR;
+             lua_pushnil(L);
+diff --git a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_ssl_certby.c b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_ssl_certby.c
+index b561122..339fde2 100644
+--- a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_ssl_certby.c
++++ b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_ssl_certby.c
+@@ -443,7 +443,7 @@ ngx_http_lua_ssl_cert_by_chunk(lua_State *L, ngx_http_request_t *r)
+     ngx_int_t                rc;
+     lua_State               *co;
+     ngx_http_lua_ctx_t      *ctx;
+-    ngx_http_cleanup_t      *cln;
++    ngx_pool_cleanup_t      *cln;
+ 
+     ctx = ngx_http_get_module_ctx(r, ngx_http_lua_module);
+ 
+@@ -497,7 +497,7 @@ ngx_http_lua_ssl_cert_by_chunk(lua_State *L, ngx_http_request_t *r)
+ 
+     /* register request cleanup hooks */
+     if (ctx->cleanup == NULL) {
+-        cln = ngx_http_cleanup_add(r, 0);
++        cln = ngx_pool_cleanup_add(r->pool, 0);
+         if (cln == NULL) {
+             rc = NGX_ERROR;
+             ngx_http_lua_finalize_request(r, rc);
+diff --git a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_ssl_client_helloby.c b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_ssl_client_helloby.c
+index a65b6e8..c128bb3 100644
+--- a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_ssl_client_helloby.c
++++ b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_ssl_client_helloby.c
+@@ -438,7 +438,7 @@ ngx_http_lua_ssl_client_hello_by_chunk(lua_State *L, ngx_http_request_t *r)
+     ngx_int_t                rc;
+     lua_State               *co;
+     ngx_http_lua_ctx_t      *ctx;
+-    ngx_http_cleanup_t      *cln;
++    ngx_pool_cleanup_t      *cln;
+ 
+     ctx = ngx_http_get_module_ctx(r, ngx_http_lua_module);
+ 
+@@ -492,7 +492,7 @@ ngx_http_lua_ssl_client_hello_by_chunk(lua_State *L, ngx_http_request_t *r)
+ 
+     /* register request cleanup hooks */
+     if (ctx->cleanup == NULL) {
+-        cln = ngx_http_cleanup_add(r, 0);
++        cln = ngx_pool_cleanup_add(r->pool, 0);
+         if (cln == NULL) {
+             rc = NGX_ERROR;
+             ngx_http_lua_finalize_request(r, rc);
+diff --git a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_ssl_session_fetchby.c b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_ssl_session_fetchby.c
+index 6584e6a..2107917 100644
+--- a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_ssl_session_fetchby.c
++++ b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_ssl_session_fetchby.c
+@@ -468,7 +468,7 @@ ngx_http_lua_ssl_sess_fetch_by_chunk(lua_State *L, ngx_http_request_t *r)
+     ngx_int_t                rc;
+     lua_State               *co;
+     ngx_http_lua_ctx_t      *ctx;
+-    ngx_http_cleanup_t      *cln;
++    ngx_pool_cleanup_t      *cln;
+ 
+     ctx = ngx_http_get_module_ctx(r, ngx_http_lua_module);
+ 
+@@ -522,7 +522,7 @@ ngx_http_lua_ssl_sess_fetch_by_chunk(lua_State *L, ngx_http_request_t *r)
+ 
+     /* register request cleanup hooks */
+     if (ctx->cleanup == NULL) {
+-        cln = ngx_http_cleanup_add(r, 0);
++        cln = ngx_pool_cleanup_add(r->pool, 0);
+         if (cln == NULL) {
+             rc = NGX_ERROR;
+             ngx_http_lua_finalize_request(r, rc);
+diff --git a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_timer.c b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_timer.c
+index e82e340..6e670cb 100644
+--- a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_timer.c
++++ b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_timer.c
+@@ -519,7 +519,7 @@ ngx_http_lua_timer_handler(ngx_event_t *ev)
+     ngx_connection_t        *c = NULL;
+     ngx_http_request_t      *r = NULL;
+     ngx_http_lua_ctx_t      *ctx;
+-    ngx_http_cleanup_t      *cln;
++    ngx_pool_cleanup_t      *cln;
+     ngx_pool_cleanup_t      *pcln;
+ 
+     ngx_http_lua_timer_ctx_t         tctx;
+@@ -618,7 +618,7 @@ ngx_http_lua_timer_handler(ngx_event_t *ev)
+ 
+     L = ngx_http_lua_get_lua_vm(r, ctx);
+ 
+-    cln = ngx_http_cleanup_add(r, 0);
++    cln = ngx_pool_cleanup_add(r->pool, 0);
+     if (cln == NULL) {
+         errmsg = "could not add request cleanup";
+         goto failed;
