@@ -240,6 +240,11 @@ CONFIGURE_OPTIONS = [
         "--with-ld-opt=\"-Wl,--allow-multiple-definition\"",
     ],
 }) + select({
+    "@kong//:wasmx_flag": [
+        "--with-cc-opt=\"-DNGX_WASM_HOST_PROPERTY_NAMESPACE=kong\"",
+    ],
+    "//conditions:default": [],
+}) + select({
     "@kong//:wasmx_static_mod": [
         "--add-module=$$EXT_BUILD_ROOT$$/external/ngx_wasm_module",
     ],
