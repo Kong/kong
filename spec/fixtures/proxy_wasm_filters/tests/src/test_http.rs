@@ -9,6 +9,17 @@ impl TestHttp {
         self.send_http_response(status.as_u16() as u32, vec![], body.map(|b| b.as_bytes()))
     }
 
+    fn get_prop(&self, ns: &str, prop: &str) -> String {
+        if let Some(addr) = self.get_property(vec![ns, prop]) {
+            match std::str::from_utf8(&addr) {
+                Ok(value) => value.to_string(),
+                Err(_) => "".to_string(),
+            }
+        } else {
+            "".to_string()
+        }
+    }
+
     fn send_http_dispatch(&mut self, config: TestConfig) -> Action {
         let mut timeout = Duration::from_secs(0);
         let mut headers = Vec::new();
@@ -94,6 +105,12 @@ impl TestHttp {
                     "trap" => panic!("trap msg"),
                     "local_response" => {
                         self.send_plain_response(StatusCode::OK, opt_input.as_deref())
+                    }
+                    "get_kong_property" => {
+                        let name = &opt_input.unwrap_or("".to_string());
+                        let value = self.get_prop("kong", name);
+                        info!("[proxy-wasm] kong.{}: \"{:?}\"", name, value);
+                        self.send_plain_response(StatusCode::OK, Some(&value))
                     }
                     "echo_http_dispatch" => {
                         let config = TestConfig::from_str(&opt_input.unwrap_or("".to_string()))
