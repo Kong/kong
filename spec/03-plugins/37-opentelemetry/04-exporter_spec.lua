@@ -466,6 +466,7 @@ for _, strategy in helpers.each_strategy() do
     describe("#referenceable fields", function ()
       local mock
       lazy_setup(function()
+        helpers.setenv("TEST_OTEL_ENDPOINT", "http://127.0.0.1:" .. HTTP_SERVER_PORT)
         helpers.setenv("TEST_OTEL_ACCESS_KEY", "secret-1")
         helpers.setenv("TEST_OTEL_ACCESS_SECRET", "secret-2")
 
@@ -476,6 +477,7 @@ for _, strategy in helpers.each_strategy() do
         }, { "opentelemetry" }))
 
         setup_instrumentations("all", {
+          endpoint = "{vault://env/test_otel_endpoint}",
           headers = {
             ["X-Access-Key"] = "{vault://env/test_otel_access_key}",
             ["X-Access-Secret"] = "{vault://env/test_otel_access_secret}",
@@ -485,6 +487,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       lazy_teardown(function()
+        helpers.unsetenv("TEST_OTEL_ENDPOINT")
         helpers.unsetenv("TEST_OTEL_ACCESS_KEY")
         helpers.unsetenv("TEST_OTEL_ACCESS_SECRET")
         helpers.stop_kong()
