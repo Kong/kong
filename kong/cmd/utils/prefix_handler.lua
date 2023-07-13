@@ -292,7 +292,7 @@ local function compile_conf(kong_config, conf_template)
   end
 
   compile_env = pl_tablex.merge(compile_env, kong_config, true) -- union
-  compile_env.dns_resolver = table.concat(compile_env.dns_resolver, " ")
+  compile_env.dns_resolver = table.concat(compile_env.dns_resolver or {}, " ")
   compile_env.lua_package_path = (compile_env.lua_package_path or "") .. ";" ..
                                  (os.getenv("LUA_PATH") or "")
   compile_env.lua_package_cpath = (compile_env.lua_package_cpath or "") .. ";" ..

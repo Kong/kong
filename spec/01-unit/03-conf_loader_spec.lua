@@ -2029,6 +2029,75 @@ describe("Configuration loader", function()
       assert.equal(5000, conf.pg_port)
       assert.equal("{vault://env/pg-port#0}", conf["$refs"].pg_port)
     end)
+    it("fields that can't reference vault", function()
+      local CONF_NO_VAULTS = {
+        prefix = true,
+        vaults = true,
+        lmdb_environment_path = true,
+        lmdb_map_size = true,
+        lua_ssl_trusted_certificate = true,
+        lua_ssl_verify_depth = true,
+        lua_ssl_protocols = true,
+        vault_env_prefix = true,
+      }
+      for k, _ in pairs(CONF_NO_VAULTS) do
+        local conf, err = conf_loader(nil, {
+          [k] = "{vault://env/test}",
+        })
+
+        assert.equal(nil, conf)
+        assert.equal("the value of " .. k .. " can't reference vault", err)
+      end
+    end)
+    it("only load a subset of fields when opts.pre_cmd=true", function()
+      local FIELDS = {
+        -- CONF_NO_VAULTS
+        prefix = true,
+        vaults = true,
+        lmdb_environment_path = true,
+        lmdb_map_size = true,
+        lua_ssl_trusted_certificate = true,
+        lua_ssl_verify_depth = true,
+        lua_ssl_protocols = true,
+        vault_env_prefix = true,
+
+        loaded_vaults = true,
+        lua_ssl_trusted_certificate_combined = true,
+
+        -- PREFIX_PATHS
+        nginx_pid = true,
+        nginx_err_logs = true,
+        nginx_acc_logs = true,
+        admin_acc_logs = true,
+        nginx_conf = true,
+        nginx_kong_conf = true,
+        nginx_kong_stream_conf = true,
+        nginx_inject_conf = true,
+        nginx_kong_inject_conf = true,
+        nginx_kong_stream_inject_conf = true,
+        kong_env = true,
+        kong_process_secrets = true,
+        ssl_cert_csr_default = true,
+        ssl_cert_default = true,
+        ssl_cert_key_default = true,
+        ssl_cert_default_ecdsa = true,
+        ssl_cert_key_default_ecdsa = true,
+        client_ssl_cert_default = true,
+        client_ssl_cert_key_default = true,
+        admin_ssl_cert_default = true,
+        admin_ssl_cert_key_default = true,
+        admin_ssl_cert_default_ecdsa = true,
+        admin_ssl_cert_key_default_ecdsa = true,
+        status_ssl_cert_default = true,
+        status_ssl_cert_key_default = true,
+        status_ssl_cert_default_ecdsa = true,
+        status_ssl_cert_key_default_ecdsa = true,
+      }
+      local conf = assert(conf_loader(nil, nil, { pre_cmd = true }))
+      for k, _ in pairs(conf) do
+        assert.equal(true, FIELDS[k])
+      end
+    end)
   end)
 
   describe("comments", function()

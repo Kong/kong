@@ -15,7 +15,7 @@ local function load_conf(args)
   log.disable()
   local conf = assert(conf_loader(args.conf, {
     prefix = args.prefix
-  }))
+  }, { pre_cmd = true }))
   log.enable()
 
   if pl_path.exists(conf.kong_env) then
