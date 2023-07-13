@@ -146,7 +146,7 @@ describe("worker_events, ", function()
           })
           local status_code = allowed_size and 200 or 500
           local msg = allowed_size and "ok" or "post " .. payload_type .. 
-            " failed, err: \"failed to publish event: payload exceeds the limitation (61440)\""
+            " failed, err: \"failed to publish event: payload exceeds the limitation (".. max_payload .. ")\""
           local body = assert.res_status(status_code, res)
           assert.equal(body, msg)
         end)
