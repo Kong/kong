@@ -5,14 +5,14 @@ describe("worker_events, ", function()
   local test_cases = {"string", "table", }
   local payload_size = 70 * 1024
   local max_payloads = { 60*1024, 130*1024 }
-  local business_port
+  local business_port = 34567
 
   local fixtures = {
     http_mock = {
       worker_events = [[
         server {
           server_name example.com;
-          listen %s;
+          listen %d;
 
           location = /payload_string {
             content_by_lua_block {
@@ -22,7 +22,7 @@ describe("worker_events, ", function()
               local payload_received
 
               local function generate_data()
-                return string.rep("X", %s)
+                return string.rep("X", %d)
               end
 
               local function wait_until(validator, timeout)
@@ -68,7 +68,7 @@ describe("worker_events, ", function()
               local payload_received
 
               local function generate_data()
-                return string.rep("X", %s)
+                return string.rep("X", %d)
               end
 
               local function wait_until(validator, timeout)
@@ -117,9 +117,7 @@ describe("worker_events, ", function()
     local less_or_greater = allowed_size and ">" or "<"
     describe("when max_payload " .. less_or_greater .. " payload_size, ", function()
       lazy_setup(function()
-        business_port = 34567
-
-        fixtures.http_mock.worker_events = string.format(fixtures.http_mock.worker_events, business_port, payload_size)
+        fixtures.http_mock.worker_events = string.format(fixtures.http_mock.worker_events, business_port, payload_size, payload_size)
 
         assert(helpers.start_kong({
           database   = strategy,
