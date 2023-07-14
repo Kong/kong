@@ -14,7 +14,6 @@ local ipairs = ipairs
 local insert = table.insert
 local assert = assert
 
----@class http_mock
 local http_mock = {}
 
 -- POST as it's not idempotent
