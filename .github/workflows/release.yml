@@ -642,7 +642,7 @@ jobs:
     runs-on: ${{ vars.RELEASE_RUNS_ON }}
     if: github.repository_owner == 'Kong' && fromJSON(needs.metadata.outputs.matrix)['release-packages'] != ''
     timeout-minutes: 5 # PULP takes a while to publish
-    environment: release
+    environment: ${{ needs.metadata.outputs.deploy-environment }}
 
     strategy:
       # limit to 3 jobs at a time
