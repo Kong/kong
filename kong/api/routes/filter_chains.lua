@@ -1,7 +1,9 @@
+local cjson = require "cjson"
+local endpoints = require "kong.api.endpoints"
+
+
 local kong = kong
 
-
-local api_routes = {}
 
 if kong.configuration.wasm == false then
 
@@ -11,7 +13,7 @@ if kong.configuration.wasm == false then
     })
   end
 
-  api_routes = {
+  return {
     ["/filter-chains"] = {
       before = wasm_disabled_error,
     },
@@ -28,6 +30,8 @@ if kong.configuration.wasm == false then
       before = wasm_disabled_error,
     },
 
+    -- foreign key endpoints:
+
     ["/routes/:routes/filter-chains"] = {
       before = wasm_disabled_error,
     },
@@ -43,11 +47,139 @@ if kong.configuration.wasm == false then
     ["/services/:services/filter-chains/:filter_chains"] = {
       before = wasm_disabled_error,
     },
+
+    -- custom endpoints (implemented below):
+
+    ["/routes/:routes/filters/enabled"] = {
+      GET = wasm_disabled_error,
+    },
+
+    ["/routes/:routes/filters/disabled"] = {
+      GET = wasm_disabled_error,
+    },
+
+    ["/routes/:routes/filters/all"] = {
+      GET = wasm_disabled_error,
+    },
   }
-
-  return api_routes
-
 end
 
-return api_routes
 
+local function add_filters(filters, chain, from)
+  if not chain then
+    return
+  end
+
+  for _, filter in ipairs(chain.filters) do
+    table.insert(filters, {
+      name = filter.name,
+      config = filter.config,
+      from = from,
+      enabled = (chain.enabled == true and filter.enabled == true),
+      filter_chain = {
+        name = chain.name,
+        id = chain.id,
+      }
+    })
+  end
+end
+
+
+local function get_filters(self, db)
+  local route, _, err_t = endpoints.select_entity(self, db, db.routes.schema)
+  if err_t then
+    return nil, endpoints.handle_error(err_t)
+  end
+
+  if not route then
+    return kong.response.exit(404, { message = "Not found" })
+  end
+
+  local route_chain
+  for chain, _, err_t in kong.db.filter_chains:each_for_route(route, nil, { nulls = true }) do
+    if not chain then
+      return nil, endpoints.handle_error(err_t)
+    end
+
+    route_chain = chain
+  end
+
+  local service
+  local service_chain
+
+  if route.service then
+    service , _, err_t = kong.db.services:select(route.service)
+    if err_t then
+      return nil, endpoints.handle_error(err_t)
+    end
+
+    for chain, _, err_t in kong.db.filter_chains:each_for_service(service, nil, { nulls = true }) do
+      if not chain then
+        return endpoints.handle_error(err_t)
+      end
+
+      service_chain = chain
+    end
+  end
+
+  local filters = setmetatable({}, cjson.array_mt)
+  add_filters(filters, service_chain, "service")
+  add_filters(filters, route_chain, "route")
+
+  return filters
+end
+
+
+return {
+  ["/routes/:routes/filters/all"] = {
+    GET = function(self, db)
+      local filters, err_r = get_filters(self, db)
+      if err_r then
+        return err_r
+      end
+
+      return kong.response.exit(200, {
+        filters = filters,
+      })
+    end
+  },
+
+  ["/routes/:routes/filters/enabled"] = {
+    GET = function(self, db)
+      local filters, err_r = get_filters(self, db)
+      if err_r then
+        return err_r
+      end
+
+      for i = #filters, 1, -1 do
+        if not filters[i].enabled then
+          table.remove(filters, i)
+        end
+      end
+
+      return kong.response.exit(200, {
+        filters = filters,
+      })
+    end
+  },
+
+  ["/routes/:routes/filters/disabled"] = {
+    GET = function(self, db)
+      local filters, err_r = get_filters(self, db)
+      if err_r then
+        return err_r
+      end
+
+      for i = #filters, 1, -1 do
+        if filters[i].enabled then
+          table.remove(filters, i)
+        end
+      end
+
+      return kong.response.exit(200, {
+        filters = filters,
+      })
+    end
+  },
+
+}
