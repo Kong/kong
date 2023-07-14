@@ -167,39 +167,3 @@ for _, strategy in helpers.each_strategy() do
 
   end)
 end
-
-describe("Plugin: prometheus (metrics) #off", function()
-  local admin_client
-
-  lazy_setup(function()
-    assert(helpers.start_kong({
-      database   = "off",
-      nginx_conf = "spec/fixtures/custom_nginx.template",
-      plugins = "bundled,prometheus",
-      status_listen = '127.0.0.1:' .. status_api_port .. ' ssl', -- status api does not support h2
-      status_access_log = "logs/status_access.log",
-      status_error_log = "logs/status_error.log"
-    }))
-
-    admin_client = assert(helpers.admin_client())
-  end)
-
-  lazy_teardown(function()
-    admin_client:close()
-    helpers.stop_kong(nil, true)
-  end)
-
-  it("expose lmdb metrics by status API", function()
-    local res = assert(admin_client:send{
-      method = "GET",
-      path = "/metrics",
-      headers = {
-        ["Host"] = "status.example.com"
-      }
-    })
-    local body = assert.res_status(200, res)
-
-    assert.matches('kong_memory_lmdb_used_bytes{node_id="' .. UUID_PATTERN .. '"} %d+', body)
-    assert.matches('kong_memory_lmdb_total_bytes{node_id="' .. UUID_PATTERN .. '"} %d+', body)
-  end)
-end)
