@@ -142,17 +142,6 @@ local function init()
                                                      {"node_id", "shared_dict", "kong_subsystem"},
                                                      prometheus.LOCAL_STORAGE)
 
-  if kong.configuration.database == "off" then
-    memory_stats.lmdb = prometheus:gauge("memory_lmdb_used_bytes",
-                                         "Used bytes in LMDB",
-                                         {"node_id"},
-                                         prometheus.LOCAL_STORAGE)
-    memory_stats.lmdb_capacity = prometheus:gauge("memory_lmdb_total_bytes",
-                                                  "Total capacity in bytes of LMDB",
-                                                  {"node_id"},
-                                                  prometheus.LOCAL_STORAGE)
-  end
-
   local res = kong.node.get_memory_stats()
   for shm_name, value in pairs(res.lua_shared_dicts) do
     memory_stats.shm_capacity:set(value.capacity, { node_id, shm_name, kong_subsystem })
@@ -463,11 +452,6 @@ local function metric_data(write_fn)
   for i = 1, #res.workers_lua_vms do
     metrics.memory_stats.worker_vms:set(res.workers_lua_vms[i].http_allocated_gc,
                                         { node_id, res.workers_lua_vms[i].pid, kong_subsystem })
-  end
-
-  if kong.configuration.database == "off" then
-    metrics.memory_stats.lmdb_capacity:set(res.lmdb.map_size, { node_id })
-    metrics.memory_stats.lmdb:set(res.lmdb.used_size, { node_id })
   end
 
   -- Hybrid mode status
