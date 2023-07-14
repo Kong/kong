@@ -1,10 +1,10 @@
 return [[
 pid pids/nginx.pid;
-error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
-
 > if wasm and wasm_dynamic_module then
 load_module $(wasm_dynamic_module);
 > end
+
+error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
 # injected nginx_main_* directives
 > for _, el in ipairs(nginx_main_directives) do
@@ -23,17 +23,45 @@ events {
 > end
 }
 
-> if wasm and wasm_modules_parsed and #wasm_modules_parsed > 0 then
+> if wasm then
 wasm {
-  shm_kv kong_wasm_rate_limiting_counters 12m;
+> for _, el in ipairs(nginx_wasm_main_shm_directives) do
+  shm_kv $(el.name) $(el.value);
+> end
 
 > for _, module in ipairs(wasm_modules_parsed) do
   module $(module.name) $(module.path);
 > end
-}
 
-env RUST_BACKTRACE=1;
-env WASMTIME_BACKTRACE_DETAILS=1;
+> for _, el in ipairs(nginx_wasm_main_directives) do
+  $(el.name) $(el.value);
+> end
+
+> if #nginx_wasm_wasmtime_directives > 0 then
+  wasmtime {
+> for _, el in ipairs(nginx_wasm_wasmtime_directives) do
+    flag $(el.name) $(el.value);
+> end
+  }
+> end -- wasmtime
+
+> if #nginx_wasm_v8_directives > 0 then
+  v8 {
+> for _, el in ipairs(nginx_wasm_v8_directives) do
+    flag $(el.name) $(el.value);
+> end
+  }
+> end -- v8
+
+> if #nginx_wasm_wasmer_directives > 0 then
+  wasmer {
+> for _, el in ipairs(nginx_wasm_wasmer_directives) do
+    flag $(el.name) $(el.value);
+> end
+  }
+> end -- wasmer
+
+}
 > end
 
 > if role == "control_plane" or #proxy_listeners > 0 or #admin_listeners > 0 or #status_listeners > 0 then
