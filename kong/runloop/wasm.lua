@@ -1,6 +1,7 @@
 local _M = {}
 
 local utils = require "kong.tools.utils"
+local dns = require "kong.tools.dns"
 local clear_tab = require("table.clear")
 
 ---@module 'resty.http.proxy_wasm'
@@ -523,6 +524,9 @@ function _M.init(kong_config)
   if not modules or #modules == 0 then
     return
   end
+
+  -- setup a DNS client for ngx_wasm_module
+  _G.dns_client = dns(kong_config)
 
   proxy_wasm = require "resty.http.proxy_wasm"
   ENABLED = true
