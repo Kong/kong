@@ -75,6 +75,7 @@ bin/grpcurl:
 bin/h2client:
 	@curl -s -S -L \
 		https://github.com/Kong/h2client/releases/download/v$(H2CLIENT_VERSION)/h2client_$(H2CLIENT_VERSION)_$(OS)_$(H2CLIENT_MACHINE).tar.gz | tar xz -C bin;
+	@$(RM) bin/README.md
 
 
 check-bazel: bin/bazel
