@@ -148,6 +148,8 @@
   [#11140](https://github.com/Kong/kong/pull/11140)
 - Bumped atc-router from 1.0.5 to 1.1.0
   [#10100](https://github.com/Kong/kong/pull/10100)
+- Bumped lua-resty-lmdb from 1.1.0 to 1.3.0
+  [#11227](https://github.com/Kong/kong/pull/11227)
 
 ## 3.3.0
 
