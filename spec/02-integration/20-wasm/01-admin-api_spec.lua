@@ -29,6 +29,7 @@ describe("WASMX admin API [#" .. strategy .. "]", function()
 
     db.filter_chains:load_filters({
       { name = "tests" },
+      { name = "response_transformer" },
     })
 
     service = assert(db.services:insert {
@@ -381,7 +382,158 @@ describe("WASMX admin API [#" .. strategy .. "]", function()
 
   end -- each relation (service, route)
 
+  local function build_filters_response_from_fixtures(mode, fcs)
+    local filters = {}
+    for _, fc in ipairs(fcs) do
+      for _, f in ipairs(fc.filters) do
+        if (mode == "all") or
+           (f.enabled == true and mode == "enabled") or
+           (f.enabled == false and mode == "disabled") then
 
+          table.insert(filters, {
+            config = f.config,
+            enabled = f.enabled,
+            filter_chain = {
+              id = fc.id,
+              name = fc.name,
+            },
+            from = (fc.service ~= ngx.null) and "service" or "route",
+            name = f.name,
+          })
+
+        end
+      end
+    end
+    return filters
+  end
+
+  describe("/routes/:routes/filters with chains from service and route", function()
+    local path, service, route, fcs
+
+    lazy_setup(function()
+      reset_filter_chains()
+
+      service = assert(bp.services:insert({}))
+      route = assert(bp.routes:insert({
+        hosts = { "wasm.test" },
+        service = { id = service.id },
+      }))
+
+      fcs = {
+        assert(bp.filter_chains:insert({
+          filters = {
+            { name = "tests", config = ngx.null, enabled = true },
+            { name = "response_transformer", config = "{}", enabled = false },
+          },
+          service = { id = service.id },
+          name = "fc1",
+        }, { nulls = true })),
+
+        assert(bp.filter_chains:insert({
+          filters = {
+            { name = "tests", config = ngx.null, enabled = false },
+            { name = "response_transformer", config = ngx.null, enabled = true }
+          },
+          route = { id = route.id },
+        }, { nulls = true })),
+      }
+
+      path = fmt("/routes/%s/filters", route.id)
+    end)
+
+    for _, mode in ipairs({"enabled", "disabled", "all"}) do
+      it(fmt("/routes/:routes/filters/%s GET returns 200", mode), function()
+        local filters = build_filters_response_from_fixtures(mode, fcs)
+        assert.equal(mode == "all" and 4 or 2, #filters)
+
+        local res = admin:get(fmt("%s/%s", path, mode))
+        assert.response(res).has.status(200)
+        local got = assert.response(res).has.jsonbody()
+        assert.same({ filters = filters }, got)
+      end)
+    end
+  end)
+
+  describe("/routes/:routes/filters with chains from service only", function()
+    local path, service, route, fcs
+
+    lazy_setup(function()
+      reset_filter_chains()
+
+      service = assert(bp.services:insert({}))
+      route = assert(bp.routes:insert({
+        hosts = { "wasm.test" },
+        service = { id = service.id },
+      }))
+
+      fcs = {
+        assert(bp.filter_chains:insert({
+          filters = {
+            { name = "tests", enabled = true },
+            { name = "response_transformer", config = "{}", enabled = false },
+          },
+          service = { id = service.id },
+          name = "fc1",
+        }, { nulls = true })),
+      }
+
+      path = fmt("/routes/%s/filters", route.id)
+    end)
+
+    for _, mode in ipairs({"enabled", "disabled", "all"}) do
+      it(fmt("/routes/:routes/filters/%s GET returns 200", mode), function()
+        local filters = build_filters_response_from_fixtures(mode, fcs)
+        assert.equal(mode == "all" and 2 or 1, #filters)
+
+        local res = admin:get(fmt("%s/%s", path, mode))
+        assert.response(res).has.status(200)
+        local got = assert.response(res).has.jsonbody()
+        assert.same({ filters = filters }, got)
+      end)
+    end
+  end)
+
+  describe("/routes/:routes/filters with chains from route only", function()
+    local path, service, route, fcs
+
+    lazy_setup(function()
+      reset_filter_chains()
+
+      service = assert(bp.services:insert({}))
+      route = assert(bp.routes:insert({
+        hosts = { "wasm.test" },
+        service = { id = service.id },
+      }))
+
+      fcs = {
+        assert(bp.filter_chains:insert({
+          filters = {
+            { name = "tests", enabled = true },
+            { name = "response_transformer", config = "{}", enabled = false },
+            { name = "tests", enabled = true },
+          },
+          route = { id = route.id },
+          name = "fc1",
+        }, { nulls = true })),
+      }
+
+      path = fmt("/routes/%s/filters", route.id)
+    end)
+
+    for _, mode in ipairs({"enabled", "disabled", "all"}) do
+      it(fmt("/routes/:routes/filters/%s GET returns 200", mode), function()
+        local filters = build_filters_response_from_fixtures(mode, fcs)
+        assert.equal(mode == "all" and 3
+                     or mode == "enabled" and 2
+                     or mode == "disabled" and 1, #filters)
+
+        local res = admin:get(fmt("%s/%s", path, mode))
+        assert.response(res).has.status(200)
+        local got = assert.response(res).has.jsonbody()
+        assert.same({ filters = filters }, got)
+      end)
+    end
+  end)
 end)
 
 describe("WASMX admin API - wasm = off [#" .. strategy .. "]", function()
@@ -534,6 +686,25 @@ describe("WASMX admin API - wasm = off [#" .. strategy .. "]", function()
   end)
 
   end -- each relation (service, route)
+
+  for _, mode in ipairs({"enabled", "disabled", "all"}) do
+
+  describe(fmt("/routes/:routes/filters/%s", mode), function()
+    local path, route
+
+    before_each(function()
+      route = assert(bp.routes:insert({ hosts = { "wasm.test" } }))
+      path = fmt("/routes/%s/filters/%s", route.id, mode)
+    end)
+
+    it("GET returns 400", function()
+      assert.response(
+        admin:get(path)
+      ).has.status(400)
+    end)
+  end)
+
+  end -- each mode (enabled, disabled, all)
 
 end)
 
