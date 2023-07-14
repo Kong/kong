@@ -1970,6 +1970,8 @@ local function load(path, custom_conf, opts)
       })
     end
 
+    local found_proxy_wasm_lua_resolver = false
+
     for _, directive in ipairs(conf["nginx_http_directives"]) do
       if directive.name == "proxy_connect_timeout" then
         insert(wasm_directives, {
@@ -1996,7 +1998,20 @@ local function load(path, custom_conf, opts)
           name  = "socket_large_buffers",
           value = directive.value,
         })
+      elseif directive.name == "proxy_wasm_lua_resolver" then
+        found_proxy_wasm_lua_resolver = true
       end
+    end
+
+    -- proxy_wasm_lua_resolver is intended to be 'on' by default, but we can't
+    -- set it as such in kong_defaults, because it can only be used if wasm is
+    -- _also_ enabled. We inject it here if the user has not opted to set it
+    -- themselves.
+    if not found_proxy_wasm_lua_resolver then
+      insert(conf["nginx_http_directives"], {
+        name = "proxy_wasm_lua_resolver",
+        value = "on",
+      })
     end
   end
 
