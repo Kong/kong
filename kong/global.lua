@@ -192,11 +192,11 @@ function _GLOBAL.init_worker_events()
                           configuration.worker_events_max_payload
 
   opts = {
-    unique_timeout = 5,                   -- life time of unique event data in lrucache
-    broker_id = 0,                        -- broker server runs in nginx worker #0
-    listening = listening,                -- unix socket for broker listening
-    max_queue_len = 1024 * 50,            -- max queue len for events buffering
-    max_payload_len = max_payload_len,    -- max payload size in bytes
+    unique_timeout = 5,     -- life time of unique event data in lrucache
+    broker_id = 0,          -- broker server runs in nginx worker #0
+    listening = listening,  -- unix socket for broker listening
+    max_queue_len = 1024 * 50,  -- max queue len for events buffering
+    max_payload_len = max_payload_len,  -- max payload size in bytes
   }
 
   worker_events = require "resty.events.compat"
