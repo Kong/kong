@@ -12,12 +12,10 @@ local pairs = pairs
 local pcall = pcall
 local error = error
 
----@class http_mock
 local http_mock = {}
 
 local build_in_checks = {}
 
----@class http_mock_asserts
 local eventually_MT = {}
 eventually_MT.__index = eventually_MT
 
