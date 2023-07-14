@@ -12,10 +12,12 @@ local pairs = pairs
 local pcall = pcall
 local error = error
 
+---@class http_mock
 local http_mock = {}
 
 local build_in_checks = {}
 
+---@class http_mock_asserts
 local eventually_MT = {}
 eventually_MT.__index = eventually_MT
 
@@ -49,7 +51,7 @@ local function eventually_has(check, mock, ...)
     time = time + step_time
   end
 
-  error(err or "assertion fail", 2)
+  error(err or "assertion fail. No request is sent and recorded.", 2)
 end
 
 -- wait until timeout to check if the assertion is true for all logs
@@ -79,6 +81,10 @@ end
 
 function build_in_checks.request_satisfy(session, f)
   return f(session.req) or "request satisfy"
+end
+
+function build_in_checks.request()
+  return "request exist"
 end
 
 function build_in_checks.response_satisfy(session, f)

@@ -16,6 +16,8 @@
   [#10926](https://github.com/Kong/kong/pull/10926)
 - :warning: Cassandra as a datastore for Kong is no longer supported
   [#10931](https://github.com/Kong/kong/pull/10931)
+- Ubuntu 18.04 artifacts are no longer supported as it's EOL
+- AmazonLinux 2022 artifacts are renamed to AmazonLinux 2023 according to AWS's decision
 
 #### Core
 
@@ -65,6 +67,10 @@
 
 #### Core
 
+- Declarative config now performs proper uniqueness checks against its inputs:
+  previously, it would silently drop entries with conflicting primary/endpoint
+  keys, or accept conflicting unique fields silently.
+  [#11199](https://github.com/Kong/kong/pull/11199)
 - Fixed a bug that causes `POST /config?flatten_errors=1` to throw an exception
   and return a 500 error under certain circumstances.
   [#10896](https://github.com/Kong/kong/pull/10896)
@@ -108,9 +114,9 @@
 ### Changed
 
 #### Core
+
 - Tracing: new attribute `http.route` added to http request spans.
   [#10981](https://github.com/Kong/kong/pull/10981)
-
 - The default value of `lmdb_map_size` config has been bumped to `2048m`
   from `128m` to accommodate most commonly deployed config sizes in DB-less
   and Hybrid mode.
@@ -146,6 +152,10 @@
 - Bumped OpenSSL from 1.1.1t to 3.1.1
   [#10180](https://github.com/Kong/kong/pull/10180)
   [#11140](https://github.com/Kong/kong/pull/11140)
+- Bumped pgmoon from 1.16.0 to 1.16.1 (Kong's fork)
+  [#11181](https://github.com/Kong/kong/pull/11181)
+- Bumped atc-router from 1.0.5 to 1.1.0
+  [#10100](https://github.com/Kong/kong/pull/10100)
 
 ## 3.3.0
 
@@ -274,17 +284,11 @@
   Previously, the `header_type` was hardcoded to `preserve`, now it can be set to one of the
   following values: `preserve`, `ignore`, `b3`, `b3-single`, `w3c`, `jaeger`, `ot`.
   [#10620](https://github.com/Kong/kong/pull/10620)
-- **Prometheus**: add `lmdb_usage` related metrics in Prometheus plugin.
-  [#10301](https://github.com/Kong/kong/pull/10301)
-- **Statsd**: add `lmdb_usage` related metrics in Statsd plugin.
-  [#10301](https://github.com/Kong/kong/pull/10301)
 
 #### PDK
 
 - PDK now supports getting plugins' ID with `kong.plugin.get_id`.
   [#9903](https://github.com/Kong/kong/pull/9903)
-- PDK now supports getting lmdb environment information with `kong.node.get_memory_stats`.
-  [#10301](https://github.com/Kong/kong/pull/10301)
 
 ### Fixes
 

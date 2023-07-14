@@ -23,6 +23,7 @@ dependencies = {
   "version == 1.0.1",
   "kong-lapis == 1.14.0.2",
   "kong-redis-cluster == 1.5.0",
+  -- CE and EE use diff version
   "kong-pgmoon == 2.3.2.0",
   "luatz == 0.4",
   "lua_system_constants == 0.1.4",

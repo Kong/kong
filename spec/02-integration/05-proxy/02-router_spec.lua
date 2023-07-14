@@ -2359,22 +2359,17 @@ for _, strategy in helpers.each_strategy() do
         end, update_frequency * 5, update_frequency)
       end)
 
-      it("#db rebuilds router correctly after passing invalid route", function()
+      it("#db rebuilds router correctly after passing route with special escape", function()
         local admin_client = helpers.admin_client()
 
         local res = assert(admin_client:post("/routes", {
           headers = { ["Content-Type"] = "application/json" },
           body = {
-            -- this is a invalid regex path
+            -- this is a valid regex path in Rust.regex 1.8
             paths = { "~/delay/(?<delay>[^\\/]+)$", },
           },
         }))
-        if flavor == "traditional" then
-          assert.res_status(201, res)
-
-        else
-          assert.res_status(400, res)
-        end
+        assert.res_status(201, res)
 
         helpers.wait_for_all_config_update()
 

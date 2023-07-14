@@ -12,7 +12,6 @@
 local utils = require "kong.tools.utils"
 local ffi = require "ffi"
 local private_node = require "kong.pdk.private.node"
-local lmdb = require "resty.lmdb"
 
 
 local floor = math.floor
@@ -26,7 +25,6 @@ local shared = ngx.shared
 local C             = ffi.C
 local ffi_new       = ffi.new
 local ffi_str       = ffi.string
-local lmdb_get_env_info = lmdb.get_env_info
 
 local NODE_ID_KEY = "kong:node_id"
 
@@ -130,17 +128,7 @@ local function new(self)
   --       http_allocated_gc = 1102,
   --       pid = 18005
   --     }
-  --   },
-  --   -- if the `kong` uses dbless mode, the following will be present:
-  --  lmdb = {
-  --    map_size: "128.00 MiB",
-  --    used_size: "0.02 MiB",
-  --    last_used_page: 6,
-  --    last_txnid: 2,
-  --    max_readers: 126,
-  --    current_readers: 16
-  --   },
-  --}
+  --   }
   -- }
   --
   -- local res = kong.node.get_memory_stats("k", 1)
@@ -166,15 +154,6 @@ local function new(self)
   --       pid = 18005
   --     }
   --   }
-  --   -- if the `kong` uses dbless mode, the following will be present:
-  --  lmdb = {
-  --    map_size: "131072 KB",
-  --    used_size: "20.48 KB",
-  --    last_used_page: 6,
-  --    last_txnid: 2,
-  --    max_readers: 126,
-  --    current_readers: 16
-  --   },
   -- }
   function _NODE.get_memory_stats(unit, scale)
     -- validate arguments
@@ -255,24 +234,6 @@ local function new(self)
         capacity = convert_bytes(shm.capacity, unit, scale),
         allocated_slabs = convert_bytes(allocated, unit, scale),
       }
-    end
-
-    if kong and kong.configuration and kong.configuration.database == "off" then
-      local lmdb_info, err = lmdb_get_env_info()
-      if err then
-        res.lmdb = self.table.new(0, 1)
-        res.lmdb.err = "could not get kong lmdb status: " .. err
-
-      else
-        local info = self.table.new(0, 6)
-        info.map_size = convert_bytes(lmdb_info.map_size, unit, scale)
-        info.used_size = convert_bytes(lmdb_info.last_used_page * lmdb_info.page_size, unit, scale)
-        info.last_used_page = lmdb_info.last_used_page
-        info.last_txnid = lmdb_info.last_txnid
-        info.max_readers = lmdb_info.max_readers
-        info.current_readers = lmdb_info.num_readers
-        res.lmdb = info
-      end
     end
 
     return res

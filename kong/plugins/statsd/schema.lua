@@ -15,7 +15,7 @@ local METRIC_NAMES = {
   "request_size", "response_size", "status_count", "status_count_per_user",
   "unique_users", "upstream_latency",
   "status_count_per_workspace", "status_count_per_user_per_route",
-  "shdict_usage", "lmdb_usage",
+  "shdict_usage",
   ---[[ EE only
   "cache_datastore_hits_total", "cache_datastore_misses_total",
   --]] EE
@@ -126,12 +126,6 @@ local DEFAULT_METRICS = {
   },
   {
     name               = "shdict_usage",
-    stat_type          = "gauge",
-    sample_rate        = 1,
-    service_identifier = nil,
-  },
-  {
-    name               = "lmdb_usage",
     stat_type          = "gauge",
     sample_rate        = 1,
     service_identifier = nil,

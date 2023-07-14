@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers    = require "spec.helpers"
-
+local http_mock = require "spec.helpers.http_mock"
 
 local HTTP_SERVER_PORT = helpers.get_available_port()
 
@@ -88,6 +88,11 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("queue is flushed before kong exits", function()
+      local mock = http_mock.new(HTTP_SERVER_PORT)
+      mock:start()
+      finally(function()
+        mock:stop()
+      end)
 
       local res = assert(proxy_client:send({
         method = "GET",
@@ -102,10 +107,7 @@ for _, strategy in helpers.each_strategy() do
       local pid_file, err = helpers.stop_kong(nil, nil, nil, "QUIT", true)
       assert(pid_file, err)
 
-      local thread = helpers.http_server(HTTP_SERVER_PORT, { timeout = 10 })
-      local ok, _, body = thread:join()
-      assert(ok)
-      assert(body)
+      mock.eventually:has_request()
 
       helpers.wait_pid(pid_file)
       helpers.cleanup_kong()
