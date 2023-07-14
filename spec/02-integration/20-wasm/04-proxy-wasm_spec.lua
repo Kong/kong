@@ -10,9 +10,14 @@ local HEADER_NAME_DISPATCH_ECHO = "X-PW-Dispatch-Echo"
 local HEADER_NAME_ADD_REQ_HEADER = "X-PW-Add-Header"
 local HEADER_NAME_ADD_RESP_HEADER = "X-PW-Add-Resp-Header"
 
+local DNS_HOSTNAME = "wasm.test"
+local MOCK_UPSTREAM_DNS_ADDR = DNS_HOSTNAME .. ":" .. helpers.mock_upstream_port
+
 
 describe("proxy-wasm filters (#wasm)", function()
   local r_single, mock_service
+  local hosts_file
+
   lazy_setup(function()
     local bp, db = helpers.get_db_utils(DATABASE, {
       "routes",
@@ -54,15 +59,22 @@ describe("proxy-wasm filters (#wasm)", function()
       },
     })
 
+    -- XXX our dns mock fixture doesn't work when called from wasm land
+    hosts_file = os.tmpname()
+    assert(helpers.file.write(hosts_file,
+                              "127.0.0.1 " .. DNS_HOSTNAME .. "\n"))
+
     assert(helpers.start_kong({
       database = DATABASE,
       nginx_conf = "spec/fixtures/custom_nginx.template",
       wasm = true,
+      dns_hostsfile = hosts_file,
     }))
   end)
 
   lazy_teardown(function()
     helpers.stop_kong(nil, true)
+    os.remove(hosts_file)
   end)
 
   before_each(function()
@@ -306,6 +318,37 @@ describe("proxy-wasm filters (#wasm)", function()
 
       assert.logfile().has.no.line("[error]", true, 0)
       assert.logfile().has.no.line("[crit]",  true, 0)
+    end)
+
+    it("resolves DNS hostnames to send an http dispatch, return its response body", function()
+      local client = helpers.proxy_client()
+      finally(function() client:close() end)
+
+      local res = assert(client:send {
+        method = "GET",
+        path = "/single/status/201",
+        headers = {
+          [HEADER_NAME_TEST] = "echo_http_dispatch",
+          [HEADER_NAME_INPUT] = "path=/headers host=" .. MOCK_UPSTREAM_DNS_ADDR,
+          [HEADER_NAME_DISPATCH_ECHO] = "on",
+        }
+      })
+
+      -- The dispatch went to the local mock upstream /headers endpoint
+      -- which itself sent back
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.equal(MOCK_UPSTREAM_DNS_ADDR, json.headers["host"])
+      assert.equal("http://" .. MOCK_UPSTREAM_DNS_ADDR .. "/headers",
+                   json.url)
+
+      assert.logfile().has.no.line("[error]", true, 0)
+      assert.logfile().has.no.line("[crit]",  true, 0)
+
+      assert.logfile().has.line("wasm lua resolver using existing dns_client")
+      assert.logfile().has.line([[wasm lua resolved "]]
+                                .. DNS_HOSTNAME ..
+                                [[" to "127.0.0.1"]])
     end)
 
     pending("start on_tick background timer", function()
