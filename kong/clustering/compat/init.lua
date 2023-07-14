@@ -29,6 +29,8 @@ local COMPATIBILITY_CHECKERS = require("kong.clustering.compat.checkers")
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local KONG_VERSION = meta.version
 
+local EMPTY = {}
+
 
 local _M = {}
 
@@ -175,6 +177,24 @@ function _M.check_configuration_compatibility(cp, dp)
       end
     end
   end
+
+  if cp.conf.wasm then
+    local dp_filters = dp.filters or EMPTY
+    local missing
+    for name in pairs(cp.filters or EMPTY) do
+      if not dp_filters[name] then
+        missing = missing or {}
+        table.insert(missing, name)
+      end
+    end
+
+    if missing then
+      local msg = "data plane is missing one or more wasm filters "
+                  .. "(" .. table.concat(missing, ", ") .. ")"
+      return nil, msg, CLUSTERING_SYNC_STATUS.FILTER_SET_INCOMPATIBLE
+    end
+  end
+
 
   return true, nil, CLUSTERING_SYNC_STATUS.NORMAL
 end
