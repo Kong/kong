@@ -74,6 +74,8 @@
   [FTI-1882](https://konghq.atlassian.net/browse/FTI-1882)
 - Kafka-Log now supports the `custom_fields_by_lua` configuration for dynamic modification of log fields using lua code just like other log plugins.
   [FTI-5127](https://konghq.atlassian.net/browse/FTI-5127)
+- OpenID-Connect now supports adding scope to the token cache key with `token_cache_key_include_scope` set to true.
+  [KAG-1439](https://konghq.atlassian.net/browse/KAG-1439)
 
 ### Fixes
 
