@@ -5,7 +5,7 @@ diff --git a/config b/config
 index 126c78c..1f0b2aa 100644
 --- a/config
 +++ b/config
-@@ -5,6 +5,8 @@ ngx_module_incs="$ngx_addon_dir/lmdb/libraries/liblmdb $ngx_addon_dir/src"
+@@ -7,6 +7,8 @@ ngx_module_incs="$ngx_addon_dir/lmdb/libraries/liblmdb $ngx_addon_dir/src"
 
  . auto/module
 
