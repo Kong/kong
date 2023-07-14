@@ -20,6 +20,7 @@ import {
   retryRequest,
   getKongContainerName,
   waitForConfigRebuild,
+  deleteGatewayRoute,
 } from '@support';
 
 const agent = new https.Agent({
@@ -341,7 +342,7 @@ describe('@smoke: Router Functionality Tests', function () {
     expect(resp.status, 'Status should be 204').to.equal(204);
   });
 
-  it('should not panic and create a route with long invalid regex path', async function () {
+  it('should not panic and create a route with long regex path', async function () {
     // generate string longer than 2048 bytes
     const path = 'x'.repeat(3 * 1024);
 
@@ -357,7 +358,9 @@ describe('@smoke: Router Functionality Tests', function () {
     );
     logResponse(resp);
 
-    expect(resp.status, 'Status should be 400').to.equal(400);
+    routeId = resp.data.id;
+
+    expect(resp.status, 'Status should be 201').to.equal(201);
 
     await wait(4000);
     const currentLogs = getGatewayContainerLogs(kongContainerName, 15);
@@ -369,6 +372,7 @@ describe('@smoke: Router Functionality Tests', function () {
   });
 
   after(async function () {
+    await deleteGatewayRoute(routeId);
     await deleteGatewayService(serviceName);
   });
 });

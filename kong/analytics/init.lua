@@ -33,12 +33,14 @@ local table_insert = table.insert
 local table_remove = table.remove
 local clear_tab = require "table.clear"
 
+
 local _M = {
 }
 
 local mt = { __index = _M }
 local pb = require "pb"
 local protoc = require "protoc"
+
 local p = protoc.new()
 p.include_imports = true
 -- the file is uploaded by the build job
@@ -46,6 +48,8 @@ p:addpath("/usr/local/kong/include")
 -- path for unit tests
 p:addpath("kong/include")
 p:loadfile("kong/model/analytics/payload.proto")
+
+local EMPTY_PAYLOAD = pb.encode("kong.model.analytics.Payload", {})
 
 function _M.new(config)
   assert(config, "conf can not be nil", 2)
@@ -196,16 +200,18 @@ function _M:flush_data()
   if not self.ws_send_func then
     return
   end
+
   if self.requests_count == 0 then
     -- send a dummy to keep the connection open.
-    self.ws_send_func({})
+    self.ws_send_func(EMPTY_PAYLOAD)
     return
   end
+
   log(DEBUG, _log_prefix, "flushing analytics request log data: " .. #self.requests_buffer .. ". worker id: " .. ngx.worker.id())
 
-  local payload = {}
-  payload.data = self.requests_buffer
-  local bytes = pb.encode("kong.model.analytics.Payload", payload)
+  local bytes = pb.encode("kong.model.analytics.Payload", {
+    data = self.requests_buffer,
+  })
   self.ws_send_func(bytes)
   clear_tab(self.requests_buffer)
   self.requests_count = 0
