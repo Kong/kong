@@ -27,6 +27,22 @@ if kong.configuration.wasm == false then
     ["/filter-chains/:filter_chains/service"] = {
       before = wasm_disabled_error,
     },
+
+    ["/routes/:routes/filter-chains"] = {
+      before = wasm_disabled_error,
+    },
+
+    ["/routes/:routes/filter-chains/:filter_chains"] = {
+      before = wasm_disabled_error,
+    },
+
+    ["/services/:services/filter-chains"] = {
+      before = wasm_disabled_error,
+    },
+
+    ["/services/:services/filter-chains/:filter_chains"] = {
+      before = wasm_disabled_error,
+    },
   }
 
   return api_routes
