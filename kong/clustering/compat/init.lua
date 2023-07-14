@@ -296,20 +296,6 @@ local function rename_field(config, name_from, name_to, has_update)
   return has_update
 end
 
-local function remove_field_array_value(config, remove_val, has_update)
-  if config then
-    local iterate_table = config
-    for i, v in ipairs(iterate_table) do
-      if v == remove_val then
-        table_remove(config, i)
-        has_update = true
-      end
-    end
-  end
-
-  return has_update
-end
-
 
 local function invalidate_keys_from_config(config_plugins, keys, log_suffix, dp_version_num)
   if not config_plugins then
@@ -366,24 +352,6 @@ local function invalidate_keys_from_config(config_plugins, keys, log_suffix, dp_
 
             if config["session_storage"] == "memcached" then
               config["session_storage"] = "memcache"
-            end
-          end
-        end
-
-        if dp_version_num < 3003000000 then
-          -- OSS
-          if name == "statsd" then
-            if utils.table_contains(config.metrics, "lmdb_usage") then
-              has_update = remove_field_array_value(config.metrics, "lmdb_usage", has_update)
-            end
-          end
-        end
-
-        if dp_version_num < 3003000000 then
-          -- OSS
-          if name == "statsd" then
-            if utils.table_contains(config.metrics, "lmdb_usage") then
-              has_update = remove_field_array_value(config.metrics, "lmdb_usage", has_update)
             end
           end
         end
