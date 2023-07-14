@@ -81,7 +81,11 @@ for _, mode in ipairs({"hybrid", "traditional"}) do
     end)
 
     it("analytics ws connection established", function()
-      assert.logfile().has.line("Got analytics connection from " .. node_id)
+      assert.logfile().has.line("Got analytics connection from " .. node_id, true, 10)
+    end)
+
+    it("no errors when flushing data", function()
+      assert.logfile().has.no.line("bad argument #1 to 'set' (string expected, got table", true, 3)
     end)
 
   end)
@@ -126,7 +130,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("analytics ws connection established", function()
-      assert.logfile().has.line("Got analytics connection from " .. node_id)
+      assert.logfile().has.line("Got analytics connection from " .. node_id, true, 10)
     end)
 
   end)

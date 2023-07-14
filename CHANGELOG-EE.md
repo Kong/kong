@@ -56,6 +56,7 @@
   Kong is controlled by systemd [KAG-1832](https://konghq.atlassian.net/browse/KAG-1832)
 * Fix an issue that sometimes can't attach workspace with the cache's consumer well. [FTI-4564](https://konghq.atlassian.net/browse/FTI-4564)
 * Fix CORS incorrect behavior when KM integrated with Portal GUI. [FTI-1437](https://konghq.atlassian.net/browse/FTI-1437)
+* Fix the bug that will cause the telemetry websocket in Konnect mode between CP and DP to be broken due to unexpected payloads when counter of request equals zero. [KAG-1900](https://konghq.atlassian.net/browse/KAG-1900)
 * Fix Kong Manger doesn't get the latest kconfig while the license posted via admin API. [FTI-5135](https://konghq.atlassian.net/browse/FTI-5135)
 * Fix LuaJIT crash on Arm64 and enable JIT on M1. [KAG-2028](https://konghq.atlassian.net/browse/KAG-2028)
 
