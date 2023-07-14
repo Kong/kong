@@ -543,7 +543,7 @@ for _, strategy in helpers.all_strategies() do
           name          = "demo",
           client_id     = "client",
           client_secret = "secret",
-          hash_secret   = true,
+          hash_secret   = not helpers.is_fips_build(), -- disable hash_secret in FIPS mode
           consumer      = jane
         }
 
@@ -555,7 +555,7 @@ for _, strategy in helpers.all_strategies() do
           name          = "demo-2",
           client_id     = "client-2",
           client_secret = "secret-2",
-          hash_secret   = true,
+          hash_secret   = not helpers.is_fips_build(), -- disable hash_secret in FIPS mode,
           consumer      = jack
         }
 

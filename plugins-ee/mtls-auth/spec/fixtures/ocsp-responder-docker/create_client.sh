@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #First generate the key for the client
 
 openssl genrsa \

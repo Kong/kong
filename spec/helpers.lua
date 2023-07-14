@@ -94,6 +94,8 @@ local dist_constants = require "kong.enterprise_edition.distributions_constants"
 local kong_vitals = require "kong.vitals"
 -- EE
 
+local http_new = http.new
+
 ffi.cdef [[
   int setenv(const char *name, const char *value, int overwrite);
   int unsetenv(const char *name);
@@ -937,7 +939,7 @@ local function http_client_opts(options)
     end
   end
 
-  local self = setmetatable(assert(http.new()), resty_http_proxy_mt)
+  local self = setmetatable(assert(http_new()), resty_http_proxy_mt)
 
   self.options = options
 
@@ -4287,7 +4289,10 @@ end
   end,
 
   is_fips_build = function()
-    return (require("resty.openssl.version").version_text):match("BoringSSL")
+    local pro = require "resty.openssl.provider"
+    local p = pro.load("fips")
+    if p then p:unload() end
+    return p ~= nil
   end,
   -- EE
 }

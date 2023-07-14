@@ -24,7 +24,7 @@ describe("Plugin: basic-auth (crypto)", function()
   end)
 end)
 
-describe("Plugin: basic-auth (crypto: FIPS)", function()
+describe("Plugin: basic-auth (crypto: #fips)", function()
   before_each(function()
     _G.kong = {
       configuration = {

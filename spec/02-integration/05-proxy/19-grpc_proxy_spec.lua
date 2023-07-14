@@ -347,7 +347,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("Please use HTTP2 protocol", json.message)
       end)
 
-      it("non-grpc request on grpc route (no content-type)", function()
+      it("non-grpc request on grpc route (no content-type) #h2_client", function()
         local body, headers = proxy_client_h2c({
           headers = {
             ["method"] = "POST",
@@ -359,7 +359,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same("Non-gRPC request matched gRPC route", json.message)
       end)
 
-      it("non-grpc request on grpcs route (no content-type)", function()
+      it("non-grpc request on grpcs route (no content-type) #h2_client", function()
         local body, headers = proxy_client_h2({
           headers = {
             ["method"] = "POST",
@@ -371,7 +371,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same("Non-gRPC request matched gRPC route", json.message)
       end)
 
-      it("non-grpc request on grpc route (non-grpc content-type)", function()
+      it("non-grpc request on grpc route (non-grpc content-type) #h2_client", function()
         local body, headers = proxy_client_h2c({
           headers = {
             ["method"] = "POST",
@@ -384,7 +384,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same("Non-gRPC request matched gRPC route", json.message)
       end)
 
-      it("non-grpc request on grpcs route (non-grpc content-type)", function()
+      it("non-grpc request on grpcs route (non-grpc content-type) #h2_client", function()
         local body, headers = proxy_client_h2({
           headers = {
             ["method"] = "POST",

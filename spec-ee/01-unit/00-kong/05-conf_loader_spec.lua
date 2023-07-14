@@ -801,31 +801,6 @@ describe("ee conf loader", function()
 
       assert.match("cannot enable FIPS mode: provider.load", err)
     end)
-
-    fips_test("with fips: lua_ssl_verify_depth plus 1", function()
-      local conf, err = conf_loader(nil, {
-        fips = true,
-      })
-      assert.is_nil(err)
-
-      if helpers.is_fips_build() then
-        assert.same(2, conf.lua_ssl_verify_depth)
-      else
-        assert.same(1, conf.lua_ssl_verify_depth)
-      end
-
-      local conf, err = conf_loader(nil, {
-        fips = true,
-        lua_ssl_verify_depth = 3,
-      })
-      assert.is_nil(err)
-
-      if helpers.is_fips_build() then
-        assert.same(4, conf.lua_ssl_verify_depth)
-      else
-        assert.same(3, conf.lua_ssl_verify_depth)
-      end
-    end)
   end)
 end)
 

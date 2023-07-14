@@ -1,4 +1,4 @@
-#!/bin/ash
+#!/bin/bash -x
 #This entrypoint is responsible for leaving the OSCP running to accept requests
 
 # Issue a valid certificate
@@ -22,8 +22,13 @@
 /get_key revoked > /data/revoked.pem.key
 /revoke_client revoked
 
+/get_crl > /data/kong.crl
+
 # Output the CA for tests
 /get_ca > /data/ca.pem
+
+# Start the nginx to serve CRL
+service nginx start
 
 # Boot OCSP server interactive
 openssl ocsp -port 2560 -text \

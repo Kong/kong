@@ -1,3 +1,5 @@
+#!/bin/bash
+
 cd /root/ca
 mkdir /root/ca/certs /root/ca/crl /root/ca/newcerts private
 #Read and write to root in private folder
@@ -45,7 +47,7 @@ openssl req -config intermediate/openssl.cnf \
 echo "Created Intermediate CSR"
 
 #Creating an intermediate certificate, by signing the previous csr with the CA key based on root ca config with the directive v3_intermediate_ca extension to sign the intermediate CSR
-echo -e "y\ny\n" | openssl ca -config openssl.cnf -extensions v3_intermediate_ca \
+echo -e "y\ny\n" | openssl ca -batch -config openssl.cnf -extensions v3_intermediate_ca \
       -days 3650 -notext -md sha256 \
       -in /root/ca/intermediate/csr/intermediate.csr.pem \
       -out /root/ca/intermediate/certs/intermediate.cert.pem
@@ -63,7 +65,7 @@ chmod 444 /root/ca/intermediate/certs/ca-chain.cert.pem
 
 
 #Create a Certificate revocation list of the intermediate CA
-openssl ca -config /root/ca/intermediate/openssl.cnf \
+openssl ca -batch -config /root/ca/intermediate/openssl.cnf \
       -gencrl -out /root/ca/intermediate/crl/intermediate.crl.pem
 
 #Create OSCP key pair
@@ -78,7 +80,7 @@ openssl req -config /root/ca/intermediate/openssl.cnf -new -sha256 \
       -subj "/C=US/ST=CA/L=SF/O=kong/OU=FTT/CN=www.ocsp.kong.com/EMAIL=ocsp@konghq.com"
 
 #Sign it
-echo -e "y\ny\n" | openssl ca -config /root/ca/intermediate/openssl.cnf \
+echo -e "y\ny\n" | openssl ca -batch -config /root/ca/intermediate/openssl.cnf \
       -extensions ocsp -days 375 -notext -md sha256 \
       -in /root/ca/intermediate/csr/oscp.csr.pem \
       -out /root/ca/intermediate/certs/oscp.cert.pem

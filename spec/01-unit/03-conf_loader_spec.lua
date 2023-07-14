@@ -1090,7 +1090,7 @@ describe("Configuration loader", function()
             assert.True(helpers.path.isabs(conf.ssl_cert_key[i]))
           end
         end)
-        it("defines ssl_ciphers by default", function()
+        it("defines ssl_ciphers by default #fips", function()
           local conf, err = conf_loader(nil, {})
           assert.is_nil(err)
           if not helpers.is_fips_build() then
@@ -1132,7 +1132,7 @@ describe("Configuration loader", function()
           assert.is_nil(err)
           assert.same(nil, conf.ssl_ciphers)
         end)
-        it("defines ssl_dhparam with default cipher suite", function()
+        it("defines ssl_dhparam with default cipher suite #fips", function()
           local conf, err = conf_loader()
           assert.is_nil(err)
           if not helpers.is_fips_build() then
@@ -1143,7 +1143,7 @@ describe("Configuration loader", function()
             assert.equal(nil, conf.nginx_stream_ssl_dhparam)
           end
         end)
-        it("defines ssl_dhparam with intermediate cipher suite", function()
+        it("defines ssl_dhparam with intermediate cipher suite #fips", function()
           if helpers.is_fips_build() then
             return
           end

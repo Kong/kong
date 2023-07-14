@@ -13,6 +13,15 @@ local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or h
 
 local CA = pl_file.read("/kong-plugin/spec/fixtures/ocsp-responder-docker/certificates/ca.pem")
 
+--[[
+What does pongo do in .pongo/ocspserver.yml:
+cd plugins-ee/mtls-auth/spec/fixtures/ocsp-responder-docker
+docker build -t ocsp-responder-docker .
+docker run -it -p2560:2560 -p8080:8080 --rm -v (pwd)/certificates:/data ocsp-responder-docker
+<Ctrl+C to stop the container>
+]]--
+
+
 local mtls_fixtures = { http_mock = {
   mtls_server_block = [[
     server {
