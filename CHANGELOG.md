@@ -36,8 +36,8 @@
 
 #### Core
 
-- **worker_events**: Support specifying the payload size the worker_events can accept. 
-  Default is 64KB, the max allowed size is 16MB.
+- **worker_events**: Support specifying the payload size the worker_events can accept.
+  Default is 65535, the max allowed size is 16777215.
   [#11214](https://github.com/Kong/kong/pull/11214)
 
 #### Admin API
