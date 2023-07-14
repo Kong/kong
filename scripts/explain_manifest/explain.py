@@ -62,10 +62,12 @@ class FileInfo():
         elif Path(path).is_dir():
             self.directory = True
 
+        # use lstat to get the mode, uid, gid of the symlink itself
+        self.mode = os.lstat(path).st_mode
+        self.uid = os.lstat(path).st_uid
+        self.gid = os.lstat(path).st_gid
+
         if not Path(path).is_symlink():
-            self.mode = os.stat(path).st_mode
-            self.uid = os.stat(path).st_uid
-            self.gid = os.stat(path).st_gid
             self.size = os.stat(path).st_size
         
         self._lazy_evaluate_attrs.update({

@@ -115,16 +115,6 @@
   - libc.so.6
   Rpath     : /usr/local/kong/lib
 
-- Path      : /usr/local/kong/modules/ngx_wasm_module.so
-  Needed    :
-  - libm.so.6
-  - libdl.so.2
-  - libpthread.so.0
-  - libgcc_s.so.1
-  - libc.so.6
-  - ld-linux-aarch64.so.1
-  Rpath     : /usr/local/openresty/luajit/lib:/usr/local/kong/lib
-
 - Path      : /usr/local/kong/portal
   Type      : directory
 

@@ -298,9 +298,9 @@ jobs:
         path: bazel-bin/pkg
         retention-days: 3
 
-  build-packages-verify-manifest:
+  verify-manifest-packages:
     needs: [metadata, build-packages]
-    name: Verify Manifest - ${{ matrix.label }}
+    name: Verify Manifest - Package ${{ matrix.label }}
     runs-on: ${{ vars.RELEASE_RUNS_ON }}
 
     strategy:
@@ -434,6 +434,39 @@ jobs:
           Docker image available `${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}`
           Artifacts available https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
+  verify-manifest-images:
+    needs: [metadata, build-images]
+    name: Verify Manifest - Image ${{ matrix.label }}
+    runs-on: ${{ vars.RELEASE_RUNS_ON }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-images'] }}"
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip' # caching pip dependencies
+
+    - name: Verify
+      run: |
+        cd scripts/explain_manifest
+        # docker image verify requires sudo to set correct permissions, so we
+        # also install deps for root
+        sudo -E pip install -r requirements.txt
+        IMAGE=${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}-${{ matrix.label }}
+
+        sudo -E python ./main.py --image $IMAGE -f docker_image_filelist.txt -s docker-image
+
+        if [[ ! -z "${{ matrix.docker-platforms }}" ]]; then
+          DOCKER_DEFAULT_PLATFORM=linux/arm64 sudo -E python ./main.py --image $IMAGE -f docker_image_filelist.txt -s docker-image
+        fi
+
   scan-images:
     name: Scan Images - ${{ matrix.label }}
     needs: [metadata, build-images]
@@ -478,7 +511,7 @@ jobs:
       uses: Kong/public-shared-actions/security-actions/scan-docker-image@v1.8.0
       with:
         asset_prefix: kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-amd64
-        image: ${{ steps.image_manifest_metadata.outputs.amd64_image_sha }}
+        image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}
 
     - name: Scan ARM64 Image digest
       if: ${{ steps.image_manifest_metadata.outputs.arm64_image_sha != '' }}
@@ -486,7 +519,7 @@ jobs:
       uses: Kong/public-shared-actions/security-actions/scan-docker-image@v1.8.0
       with:
         asset_prefix: kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-arm64
-        image: ${{ steps.image_manifest_metadata.outputs.arm64_image_sha }}
+        image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}
 
     - name: Upload SBOM assets
       # ensure that this does not run twice (once for the scheduled job,

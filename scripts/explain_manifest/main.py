@@ -3,8 +3,10 @@
 import os
 import sys
 import glob
+import time
 import atexit
 import difflib
+import pathlib
 import argparse
 import tempfile
 from io import StringIO
@@ -20,7 +22,9 @@ from expect import ExpectChain, glob_match_ignore_slash
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--path", "-p", help="Path to the directory to compare", required=True)
+        "--path", "-p", help="Path to the directory, binary package or docker image tag to compare")
+    parser.add_argument(
+        "--image", help="Docker image tag to compare")
     parser.add_argument(
         "--output", "-o", help="Path to output manifest, use - to write to stdout")
     parser.add_argument(
@@ -56,7 +60,21 @@ def read_glob(path: str):
     with open(path, "r") as f:
         return f.read().splitlines()
 
-def gather_files(path: str):
+def gather_files(path: str, image: str):
+    if image:
+        t = tempfile.TemporaryDirectory()
+        atexit.register(t.cleanup)
+
+        code = os.system("docker pull {img} && docker create --name={name} {img} && docker export {name} | tar xf - -C {tmp} && docker rm -f {name}".format(
+            img=image, 
+            name="explain_manifest_%d" % time.time(), 
+            tmp=t.name
+        ))
+
+        if code != 0:
+            raise Exception("Failed to extract image %s" % image)
+        return t.name
+    
     ext = os.path.splitext(path)[1]
     if ext in (".deb", ".rpm") or path.endswith(".apk.tar.gz"):
         t = tempfile.TemporaryDirectory()
@@ -82,15 +100,20 @@ def gather_files(path: str):
     return path
 
 
-def walk_files(path: str):
+def walk_files(path: str, globs: List[str]):
     results = []
-    for file in sorted(glob.glob("**", root_dir=path, recursive=True)):
-        full_path = os.path.join(path, file)
+    # use pathlib instead of glob.glob to avoid recurse into symlink dir
+    for file in sorted(pathlib.Path(path).rglob("*")):
+        full_path = str(file)
+        file = str(file.relative_to(path))
+
+        if globs and not glob_match_ignore_slash(file, globs):
+            continue
 
         if not file.startswith("/") and not file.startswith("./"):
             file = '/' + file  # prettifier
 
-        if os.path.basename(file) == "nginx":
+        if file.endswith("sbin/nginx"):
             f = NginxInfo(full_path, file)
         elif os.path.splitext(file)[1] == ".so" or os.path.basename(os.path.dirname(file)) in ("bin", "lib", "lib64", "sbin"):
             p = Path(full_path)
@@ -131,7 +154,7 @@ def write_manifest(title: str, results: List[FileInfo], globs: List[str], opts: 
 
     f.flush()
 
-    return f.getvalue().encode('utf-8')
+    return f.getvalue().encode("utf-8")
 
 
 if __name__ == "__main__":
@@ -140,20 +163,29 @@ if __name__ == "__main__":
     if not args.suite and not args.output:
         raise Exception("At least one of --suite or --output is required")
 
-    if args.suite and Path(args.path).is_dir():
+    if not args.path and not args.image:
+        raise Exception("At least one of --path or --image is required")
+
+    if args.image and os.getuid() != 0:
+        raise Exception("Running as root is required to explain an image")
+
+    if args.path and Path(args.path).is_dir():
         raise Exception(
             "suite mode only works with archive files (deb, rpm, apk.tar.gz, etc.")
 
-    directory = gather_files(args.path)
+    directory = gather_files(args.path, args.image)
 
-    infos = walk_files(directory)
+    globs = read_glob(args.file_list)
 
-    if Path(args.path).is_file():
+    # filter by filelist only when explaining an image to reduce time
+    infos = walk_files(directory, globs=globs if args.image else None)
+
+    if args.image:
+        title = "contents in image %s" % args.image
+    elif Path(args.path).is_file():
         title = "contents in archive %s" % args.path
     else:
         title = "contents in directory %s" % args.path
-
-    globs = read_glob(args.file_list)
 
     manifest = write_manifest(title, infos, globs, ExplainOpts.from_args(args))
 

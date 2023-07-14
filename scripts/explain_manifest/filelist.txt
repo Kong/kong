@@ -9,5 +9,3 @@
 /etc/kong/kong.logrotate
 /etc/logrotate.d/kong-enterprise-edition
 /lib/systemd/system/**
-
-
