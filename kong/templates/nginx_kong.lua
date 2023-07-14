@@ -3,10 +3,6 @@ server_tokens off;
 
 error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
-> if wasm then
-proxy_wasm_lua_resolver on;
-> end
-
 lua_package_path       '${{LUA_PACKAGE_PATH}};;';
 lua_package_cpath      '${{LUA_PACKAGE_CPATH}};;';
 lua_socket_pool_size   ${{LUA_SOCKET_POOL_SIZE}};
