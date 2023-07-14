@@ -473,6 +473,8 @@ jobs:
             install_method: 'repository'
           - package_name: 'rhel-8-fips'
             install_method: 'repository'
+          - package_name: 'rhel-9-fips'
+            install_method: 'repository'
           - package_name: 'alpine'
             install_method: 'repository'
 

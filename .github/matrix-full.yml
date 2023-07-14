@@ -78,6 +78,13 @@ build-packages:
   package: rpm
   package-type: el9
   check-manifest-suite: el9-amd64
+- label: rhel-9-fips
+  os: vars.RELEASE_RUNS_ON
+  image: rockylinux:9 # note we are not using ubi9 here as some packages needs subscription
+  package: rpm
+  package-type: el9
+  bazel-args: --//:fips=true
+  check-manifest-suite: el9-amd64-fips
 
 # Amazon Linux
 - label: amazonlinux-2
@@ -143,6 +150,11 @@ build-images:
   package: rpm
   package-distro: el9
   artifact-from: rhel-9
+- label: rhel-fips
+  base-image: registry.access.redhat.com/ubi9
+  package: rpm
+  package-distro: el9
+  artifact-from: rhel-9-fips
 
 # Amazon Linux
 - label: amazonlinux-2
@@ -167,6 +179,7 @@ test-images:
 - label: debian
   multiarch: true
 - label: rhel
+- label: rhel-fips
 - label: amazonlinux-2
   multiarch: true
 - label: amazonlinux-2023
@@ -177,6 +190,7 @@ smoke-tests:
 - label: ubuntu-fips
 - label: debian
 - label: rhel
+- label: rhel-fips
 - label: amazonlinux-2
 - label: amazonlinux-2023
 
@@ -185,6 +199,7 @@ scan-vulnerabilities:
 - label: ubuntu-fips
 - label: debian
 - label: rhel
+- label: rhel-fips
 - label: amazonlinux-2
 - label: amazonlinux-2023
 
@@ -267,6 +282,12 @@ release-packages:
   artifact-version: 9
   artifact-type: rhel
   artifact: kong.el9.amd64.rpm
+- label: rhel-9-fips
+  package: rpm
+  artifact-from: rhel-9-fips
+  artifact-version: 9
+  artifact-type: rhel
+  artifact: kong.el9.amd64.rpm
 
 # Amazon Linux
 - label: amazonlinux-2
@@ -301,3 +322,4 @@ release-images:
 - label: amazonlinux-2023
 - label: debian
 - label: rhel
+- label: rhel-fips
