@@ -191,6 +191,12 @@ function _GLOBAL.init_worker_events()
   local max_payload_len = configuration and
                           configuration.worker_events_max_payload
 
+  if max_payload_len and max_payload_len > 65535 then   -- default is 64KB
+    ngx.log(ngx.WARN,
+            "Increasing 'worker_events_max_payload' value has potential " ..
+            "negative impact on Kong's response latency and memory usage")
+  end
+
   opts = {
     unique_timeout = 5,     -- life time of unique event data in lrucache
     broker_id = 0,          -- broker server runs in nginx worker #0
