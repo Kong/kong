@@ -88,7 +88,7 @@ end
 local function get_filters(self, db)
   local route, _, err_t = endpoints.select_entity(self, db, db.routes.schema)
   if err_t then
-    return nil, endpoints.handle_error(err_t)
+    return nil, err_t
   end
 
   if not route then
@@ -98,7 +98,7 @@ local function get_filters(self, db)
   local route_chain
   for chain, _, err_t in kong.db.filter_chains:each_for_route(route, nil, { nulls = true }) do
     if not chain then
-      return nil, endpoints.handle_error(err_t)
+      return nil, err_t
     end
 
     route_chain = chain
@@ -110,12 +110,12 @@ local function get_filters(self, db)
   if route.service then
     service , _, err_t = kong.db.services:select(route.service)
     if err_t then
-      return nil, endpoints.handle_error(err_t)
+      return nil, err_t
     end
 
     for chain, _, err_t in kong.db.filter_chains:each_for_service(service, nil, { nulls = true }) do
       if not chain then
-        return endpoints.handle_error(err_t)
+        return nil, err_t
       end
 
       service_chain = chain
@@ -133,9 +133,9 @@ end
 return {
   ["/routes/:routes/filters/all"] = {
     GET = function(self, db)
-      local filters, err_r = get_filters(self, db)
-      if err_r then
-        return err_r
+      local filters, err_t = get_filters(self, db)
+      if err_t then
+        return endpoints.handle_error(err_t)
       end
 
       return kong.response.exit(200, {
@@ -146,9 +146,9 @@ return {
 
   ["/routes/:routes/filters/enabled"] = {
     GET = function(self, db)
-      local filters, err_r = get_filters(self, db)
-      if err_r then
-        return err_r
+      local filters, err_t = get_filters(self, db)
+      if err_t then
+        return endpoints.handle_error(err_t)
       end
 
       for i = #filters, 1, -1 do
@@ -165,9 +165,9 @@ return {
 
   ["/routes/:routes/filters/disabled"] = {
     GET = function(self, db)
-      local filters, err_r = get_filters(self, db)
-      if err_r then
-        return err_r
+      local filters, err_t = get_filters(self, db)
+      if err_t then
+        return endpoints.handle_error(err_t)
       end
 
       for i = #filters, 1, -1 do
