@@ -15,7 +15,7 @@ end
 -- no cassandra support
 for _, strategy in helpers.each_strategy({ "postgres" }) do
 
-describe("WASMX admin API [#" .. strategy .. "]", function()
+describe("wasm admin API [#" .. strategy .. "]", function()
   local admin
   local bp, db
   local service, route
@@ -536,7 +536,7 @@ describe("WASMX admin API [#" .. strategy .. "]", function()
   end)
 end)
 
-describe("WASMX admin API - wasm = off [#" .. strategy .. "]", function()
+describe("wasm admin API - wasm = off [#" .. strategy .. "]", function()
   local admin
   local bp, db
   local service

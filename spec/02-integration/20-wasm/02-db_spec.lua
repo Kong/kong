@@ -4,7 +4,7 @@ local utils = require "kong.tools.utils"
 -- no cassandra support
 for _, strategy in helpers.each_strategy({ "postgres" }) do
 
-describe("WASMX DB entities [#" .. strategy .. "]", function()
+describe("wasm DB entities [#" .. strategy .. "]", function()
   local db, dao
 
   local function reset_db()

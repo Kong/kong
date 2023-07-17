@@ -1081,7 +1081,7 @@ return {
 
             local _, err = rebuild_wasm_state(wasm_async_opts)
             if err then
-              log(ERR, "could not rebuild Wasm filter chains via timer: ", err)
+              log(ERR, "could not rebuild wasm filter chains via timer: ", err)
             end
           end
 
