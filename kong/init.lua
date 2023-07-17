@@ -864,6 +864,7 @@ function Kong.init_worker()
 
   ok, err = wasm.init_worker()
   if not ok then
+    err = "wasm nginx worker initialization failed: " .. tostring(err)
     stash_init_worker_error(err)
   end
 end
