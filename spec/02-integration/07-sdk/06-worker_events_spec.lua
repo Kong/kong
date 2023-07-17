@@ -1,11 +1,5 @@
 local helpers = require "spec.helpers"
 
-local strategy = "off"
-local test_cases = {"string", "table", }
-local payload_size = 70 * 1024
-local max_payloads = { 60 * 1024, 140 * 1024 }
-local business_port = 34567
-
 local worker_events_mock = [[
   server {
     server_name example.com;
@@ -13,8 +7,8 @@ local worker_events_mock = [[
 
     location = /payload_string {
       content_by_lua_block {
-        local SOURCE, EVENT       = "foo", "string"
-        local worker_events       = kong.worker_events
+        local SOURCE, EVENT    = "foo", "string"
+        local worker_events    = kong.worker_events
         local payload_received
 
         local function wait_until(validator, timeout)
@@ -53,9 +47,9 @@ local worker_events_mock = [[
 
     location = /payload_table {
       content_by_lua_block {
-        local SOURCE, EVENT             = "foo", "table"
-        local worker_events             = kong.worker_events
-        local deepcompare               = require("pl.tablex").deepcompare
+        local SOURCE, EVENT    = "foo", "table"
+        local worker_events    = kong.worker_events
+        local deepcompare      = require("pl.tablex").deepcompare
         local payload_received
 
         local function wait_until(validator, timeout)
@@ -98,13 +92,21 @@ local worker_events_mock = [[
   }
 ]]
 
+
+local strategy = "off"
+local test_cases = {"string", "table", }
+local payload_size = 70 * 1024
+local max_payloads = { 60 * 1024, 140 * 1024 }
+local business_port = 34567
+
+
 for _, max_payload in ipairs(max_payloads) do
   local fixtures = {
-    http_mock = {}
+    http_mock = {},
   }
 
-  local allowed_size = max_payload > payload_size
-  local less_or_greater = allowed_size and ">" or "<"
+  local size_allowed = max_payload > payload_size
+  local less_or_greater = size_allowed and ">" or "<"
 
   describe("worker_events [when max_payload " .. less_or_greater .. " payload_size] ", function()
 
@@ -124,17 +126,24 @@ for _, max_payload in ipairs(max_payloads) do
     end)
 
     for _, payload_type in ipairs(test_cases) do
-      it("max_payload = " .. max_payload .. ", type = " .. payload_type,
-      function()
+      it("max_payload = " .. max_payload .. ", type = " .. payload_type, function()
+
         local res = helpers.proxy_client(nil, business_port):get(
           "/payload_" .. payload_type, {
           headers = {
             host = "example.com",
           }
         })
-        local status_code = allowed_size and 200 or 500
-        local msg = allowed_size and "ok" or "post " .. payload_type .. 
-          " failed, err: failed to publish event: payload exceeds the limitation (".. max_payload .. ")"
+
+        local status_code = 200
+        local msg = "ok"
+
+        if not size_allowed then
+          status_code = 500
+          msg = "post " .. payload_type .." failed, err: " ..
+                "failed to publish event: payload exceeds the limitation (".. max_payload .. ")"
+        end
+
         local body = assert.res_status(status_code, res)
         assert.equal(body, msg)
       end)
