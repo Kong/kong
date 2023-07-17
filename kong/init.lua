@@ -91,6 +91,7 @@ local table_new = require "table.new"
 local utils = require "kong.tools.utils"
 local constants = require "kong.constants"
 local get_ctx_table = require("resty.core.ctx").get_ctx_table
+local admin_gui = require "kong.admin_gui"
 
 
 local kong             = kong
@@ -1594,7 +1595,7 @@ function Kong.handle_error()
 end
 
 
-local function serve_content(module, options)
+local function serve_content(module)
   local ctx = ngx.ctx
   ctx.KONG_PROCESSING_START = start_time() * 1000
   ctx.KONG_ADMIN_CONTENT_START = ctx.KONG_ADMIN_CONTENT_START or now() * 1000
@@ -1602,9 +1603,7 @@ local function serve_content(module, options)
 
   log_init_worker_errors(ctx)
 
-  options = options or {}
-
-  header["Access-Control-Allow-Origin"] = options.allow_origin or "*"
+  ngx.header["Access-Control-Allow-Origin"] = ngx.req.get_headers()["Origin"] or "*"
 
   lapis.serve(module)
 
@@ -1614,7 +1613,7 @@ local function serve_content(module, options)
 end
 
 
-function Kong.admin_content(options)
+function Kong.admin_content()
   kong.worker_events.poll()
 
   local ctx = ngx.ctx
@@ -1622,7 +1621,7 @@ function Kong.admin_content(options)
     ctx.workspace = kong.default_workspace
   end
 
-  return serve_content("kong.api", options)
+  return serve_content("kong.api")
 end
 
 
@@ -1665,6 +1664,20 @@ function Kong.admin_header_filter()
   --ctx.KONG_ADMIN_HEADER_FILTER_TIME = ctx.KONG_ADMIN_HEADER_FILTER_ENDED_AT - ctx.KONG_ADMIN_HEADER_FILTER_START
 end
 
+function Kong.admin_gui_kconfig_content()
+  local content, err = kong.cache:get(
+    constants.ADMIN_GUI_KCONFIG_CACHE_KEY,
+    nil,
+    admin_gui.generate_kconfig,
+    kong.configuration
+  )
+  if err then
+    kong.log.err("error occurred while retrieving admin gui config `kconfig.js` from cache", err)
+    kong.response.exit(500, { message = "An unexpected error occurred" })
+  else
+    ngx.say(content)
+  end
+end
 
 function Kong.status_content()
   return serve_content("kong.status")

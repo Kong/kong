@@ -47,6 +47,8 @@ jobs:
 
     - name: Build Kong
       if: steps.cache-deps.outputs.cache-hit != 'true'
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: |
         make build-kong
         BUILD_PREFIX=$BUILD_ROOT/kong-dev
@@ -69,7 +71,7 @@ jobs:
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
         make install-dev-rocks
-  
+
   # the above should be same as build_and_test.yml expect that perf.yml is used in cache_key
 
   perf:

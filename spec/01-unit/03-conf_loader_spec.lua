@@ -52,10 +52,16 @@ describe("Configuration loader", function()
     assert.equal("eventual", conf.worker_consistency)
     assert.same({"127.0.0.1:8001 reuseport backlog=16384", "127.0.0.1:8444 http2 ssl reuseport backlog=16384"}, conf.admin_listen)
     assert.same({"0.0.0.0:8000 reuseport backlog=16384", "0.0.0.0:8443 http2 ssl reuseport backlog=16384"}, conf.proxy_listen)
+    assert.same({"0.0.0.0:8002", "0.0.0.0:8445 ssl"}, conf.admin_gui_listen)
+    assert.equal("/", conf.admin_gui_path)
+    assert.equal("logs/admin_gui_access.log", conf.admin_gui_access_log)
+    assert.equal("logs/admin_gui_error.log", conf.admin_gui_error_log)
     assert.same({}, conf.ssl_cert) -- check placeholder value
     assert.same({}, conf.ssl_cert_key)
     assert.same({}, conf.admin_ssl_cert)
     assert.same({}, conf.admin_ssl_cert_key)
+    assert.same({}, conf.admin_gui_ssl_cert)
+    assert.same({}, conf.admin_gui_ssl_cert_key)
     assert.same({}, conf.status_ssl_cert)
     assert.same({}, conf.status_ssl_cert_key)
     assert.same(false, conf.allow_debug_header)
@@ -66,6 +72,7 @@ describe("Configuration loader", function()
     -- defaults
     assert.equal("on", conf.nginx_main_daemon)
     -- overrides
+    assert.same({"off"}, conf.admin_gui_listen)
     if kong_user_group_exists() == true then
       assert.equal("kong kong", conf.nginx_main_user)
     else
@@ -140,7 +147,7 @@ describe("Configuration loader", function()
     assert.True(conf.loaded_plugins["hello-world"])
     assert.True(conf.loaded_plugins["another-one"])
   end)
-  it("extracts flags, ports and listen ips from proxy_listen/admin_listen", function()
+  it("extracts flags, ports and listen ips from proxy_listen/admin_listen/admin_gui_listen", function()
     local conf = assert(conf_loader())
     assert.equal("127.0.0.1", conf.admin_listeners[1].ip)
     assert.equal(8001, conf.admin_listeners[1].port)
@@ -154,6 +161,18 @@ describe("Configuration loader", function()
     assert.equal(true, conf.admin_listeners[2].http2)
     assert.equal("127.0.0.1:8444 ssl http2 reuseport backlog=16384", conf.admin_listeners[2].listener)
 
+    assert.equal("0.0.0.0", conf.admin_gui_listeners[1].ip)
+    assert.equal(8002, conf.admin_gui_listeners[1].port)
+    assert.equal(false, conf.admin_gui_listeners[1].ssl)
+    assert.equal(false, conf.admin_gui_listeners[1].http2)
+    assert.equal("0.0.0.0:8002", conf.admin_gui_listeners[1].listener)
+
+    assert.equal("0.0.0.0", conf.admin_gui_listeners[2].ip)
+    assert.equal(8445, conf.admin_gui_listeners[2].port)
+    assert.equal(true, conf.admin_gui_listeners[2].ssl)
+    assert.equal(false, conf.admin_gui_listeners[2].http2)
+    assert.equal("0.0.0.0:8445 ssl", conf.admin_gui_listeners[2].listener)
+
     assert.equal("0.0.0.0", conf.proxy_listeners[1].ip)
     assert.equal(8000, conf.proxy_listeners[1].port)
     assert.equal(false, conf.proxy_listeners[1].ssl)
@@ -166,10 +185,11 @@ describe("Configuration loader", function()
     assert.equal(true, conf.proxy_listeners[2].http2)
     assert.equal("0.0.0.0:8443 ssl http2 reuseport backlog=16384", conf.proxy_listeners[2].listener)
   end)
-  it("parses IPv6 from proxy_listen/admin_listen", function()
+  it("parses IPv6 from proxy_listen/admin_listen/admin_gui_listen", function()
     local conf = assert(conf_loader(nil, {
       proxy_listen = "[::]:8000, [::]:8443 ssl",
       admin_listen = "[::1]:8001, [::1]:8444 ssl",
+      admin_gui_listen = "[::1]:8002, [::1]:8445 ssl",
     }))
     assert.equal("[0000:0000:0000:0000:0000:0000:0000:0001]", conf.admin_listeners[1].ip)
     assert.equal(8001, conf.admin_listeners[1].port)
@@ -182,6 +202,18 @@ describe("Configuration loader", function()
     assert.equal(true, conf.admin_listeners[2].ssl)
     assert.equal(false, conf.admin_listeners[2].http2)
     assert.equal("[0000:0000:0000:0000:0000:0000:0000:0001]:8444 ssl", conf.admin_listeners[2].listener)
+
+    assert.equal("[0000:0000:0000:0000:0000:0000:0000:0001]", conf.admin_gui_listeners[1].ip)
+    assert.equal(8002, conf.admin_gui_listeners[1].port)
+    assert.equal(false, conf.admin_gui_listeners[1].ssl)
+    assert.equal(false, conf.admin_gui_listeners[1].http2)
+    assert.equal("[0000:0000:0000:0000:0000:0000:0000:0001]:8002", conf.admin_gui_listeners[1].listener)
+
+    assert.equal("[0000:0000:0000:0000:0000:0000:0000:0001]", conf.admin_gui_listeners[2].ip)
+    assert.equal(8445, conf.admin_gui_listeners[2].port)
+    assert.equal(true, conf.admin_gui_listeners[2].ssl)
+    assert.equal(false, conf.admin_gui_listeners[2].http2)
+    assert.equal("[0000:0000:0000:0000:0000:0000:0000:0001]:8445 ssl", conf.admin_gui_listeners[2].listener)
 
     assert.equal("[0000:0000:0000:0000:0000:0000:0000:0000]", conf.proxy_listeners[1].ip)
     assert.equal(8000, conf.proxy_listeners[1].port)
@@ -200,43 +232,55 @@ describe("Configuration loader", function()
     conf = assert(conf_loader(nil, {
       proxy_listen = "ssl.myname.com:8000",
       admin_listen = "ssl.myname.com:8001",
+      admin_gui_listen = "ssl.myname.com:8002",
     }))
     assert.equal("ssl.myname.com", conf.proxy_listeners[1].ip)
     assert.equal(false, conf.proxy_listeners[1].ssl)
     assert.equal("ssl.myname.com", conf.admin_listeners[1].ip)
     assert.equal(false, conf.admin_listeners[1].ssl)
+    assert.equal("ssl.myname.com", conf.admin_gui_listeners[1].ip)
+    assert.equal(false, conf.admin_gui_listeners[1].ssl)
 
     conf = assert(conf_loader(nil, {
       proxy_listen = "ssl_myname.com:8000 ssl",
       admin_listen = "ssl_myname.com:8001 ssl",
+      admin_gui_listen = "ssl_myname.com:8002 ssl",
     }))
     assert.equal("ssl_myname.com", conf.proxy_listeners[1].ip)
     assert.equal(true, conf.proxy_listeners[1].ssl)
     assert.equal("ssl_myname.com", conf.admin_listeners[1].ip)
     assert.equal(true, conf.admin_listeners[1].ssl)
+    assert.equal("ssl_myname.com", conf.admin_gui_listeners[1].ip)
+    assert.equal(true, conf.admin_gui_listeners[1].ssl)
   end)
-  it("extracts 'off' from proxy_listen/admin_listen", function()
+  it("extracts 'off' from proxy_listen/admin_listen/admin_gui_listen", function()
     local conf
     conf = assert(conf_loader(nil, {
       proxy_listen = "off",
       admin_listen = "off",
+      admin_gui_listen = "off",
     }))
     assert.same({}, conf.proxy_listeners)
     assert.same({}, conf.admin_listeners)
+    assert.same({}, conf.admin_gui_listeners)
     -- off with multiple entries
     conf = assert(conf_loader(nil, {
       proxy_listen = "off, 0.0.0.0:9000",
       admin_listen = "off, 127.0.0.1:9001",
+      admin_gui_listen = "off, 127.0.0.1:9002",
     }))
     assert.same({}, conf.proxy_listeners)
     assert.same({}, conf.admin_listeners)
+    assert.same({}, conf.admin_gui_listeners)
     -- not off with names containing 'off'
     conf = assert(conf_loader(nil, {
       proxy_listen = "offshore.com:9000",
       admin_listen = "offshore.com:9001",
+      admin_gui_listen = "offshore.com:9002",
     }))
     assert.same("offshore.com", conf.proxy_listeners[1].ip)
     assert.same("offshore.com", conf.admin_listeners[1].ip)
+    assert.same("offshore.com", conf.admin_gui_listeners[1].ip)
   end)
   it("attaches prefix paths", function()
     local conf = assert(conf_loader())
@@ -252,8 +296,40 @@ describe("Configuration loader", function()
     assert.equal("/usr/local/kong/ssl/kong-default.key", conf.ssl_cert_key_default)
     assert.equal("/usr/local/kong/ssl/admin-kong-default.crt", conf.admin_ssl_cert_default)
     assert.equal("/usr/local/kong/ssl/admin-kong-default.key", conf.admin_ssl_cert_key_default)
+    assert.equal("/usr/local/kong/ssl/admin-gui-kong-default.crt", conf.admin_gui_ssl_cert_default)
+    assert.equal("/usr/local/kong/ssl/admin-gui-kong-default.key", conf.admin_gui_ssl_cert_key_default)
     assert.equal("/usr/local/kong/ssl/status-kong-default.crt", conf.status_ssl_cert_default)
     assert.equal("/usr/local/kong/ssl/status-kong-default.key", conf.status_ssl_cert_key_default)
+  end)
+  it("should populate correct admin_gui_origin", function()
+    local conf, _, errors = conf_loader(nil, {})
+    assert.is_nil(errors)
+    assert.is_not_nil(conf)
+    assert.is_nil(conf.admin_gui_origin)
+
+    local conf, _, errors = conf_loader(nil, {
+      admin_gui_url = "http://localhost:8002",
+    })
+    assert.is_nil(errors)
+    assert.is_not_nil(conf)
+    assert.is_not_nil(conf.admin_gui_origin)
+    assert.equal("http://localhost:8002", conf.admin_gui_origin)
+
+    conf, _, errors = conf_loader(nil, {
+      admin_gui_url = "https://localhost:8002",
+    })
+    assert.is_nil(errors)
+    assert.is_not_nil(conf)
+    assert.is_not_nil(conf.admin_gui_origin)
+    assert.equal("https://localhost:8002", conf.admin_gui_origin)
+
+    conf, _, errors = conf_loader(nil, {
+      admin_gui_url = "http://localhost:8002/manager",
+    })
+    assert.is_nil(errors)
+    assert.is_not_nil(conf)
+    assert.is_not_nil(conf.admin_gui_origin)
+    assert.equal("http://localhost:8002", conf.admin_gui_origin)
   end)
   it("strips comments ending settings", function()
     local _os_getenv = os.getenv
@@ -614,6 +690,12 @@ describe("Configuration loader", function()
       })
       assert.is_nil(conf)
       assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+] [ipv6only=on] [ipv6only=off] [so_keepalive=on] [so_keepalive=off] [so_keepalive=%w*:%w*:%d*], [... next entry ...]", err)
+
+      conf, err = conf_loader(nil, {
+        admin_gui_listen = "127.0.0.1"
+      })
+      assert.is_nil(conf)
+      assert.equal("admin_gui_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+] [ipv6only=on] [ipv6only=off] [so_keepalive=on] [so_keepalive=off] [so_keepalive=%w*:%w*:%d*], [... next entry ...]", err)
     end)
     it("rejects empty string in listen addresses", function()
       local conf, err = conf_loader(nil, {
@@ -627,6 +709,49 @@ describe("Configuration loader", function()
       })
       assert.is_nil(conf)
       assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+] [ipv6only=on] [ipv6only=off] [so_keepalive=on] [so_keepalive=off] [so_keepalive=%w*:%w*:%d*], [... next entry ...]", err)
+
+      conf, err = conf_loader(nil, {
+        admin_gui_listen = ""
+      })
+      assert.is_nil(conf)
+      assert.equal("admin_gui_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+] [ipv6only=on] [ipv6only=off] [so_keepalive=on] [so_keepalive=off] [so_keepalive=%w*:%w*:%d*], [... next entry ...]", err)
+    end)
+    it("enforces admin_gui_path values", function()
+      local conf, _, errors = conf_loader(nil, {
+        admin_gui_path = "without-leading-slash"
+      })
+      assert.equal(1, #errors)
+      assert.is_nil(conf)
+
+      conf, _, errors = conf_loader(nil, {
+        admin_gui_path = "/with-trailing-slash/"
+      })
+      assert.equal(1, #errors)
+      assert.is_nil(conf)
+
+      conf, _, errors = conf_loader(nil, {
+        admin_gui_path = "/with!invalid$characters"
+      })
+      assert.equal(1, #errors)
+      assert.is_nil(conf)
+
+      conf, _, errors = conf_loader(nil, {
+        admin_gui_path = "/with//many///continuous////slashes"
+      })
+      assert.equal(1, #errors)
+      assert.is_nil(conf)
+
+      conf, _, errors = conf_loader(nil, {
+        admin_gui_path = "with!invalid$characters-but-no-leading-slashes"
+      })
+      assert.equal(2, #errors)
+      assert.is_nil(conf)
+
+      conf, _, errors = conf_loader(nil, {
+        admin_gui_path = "/kong/manager"
+      })
+      assert.is_nil(errors)
+      assert.is_not_nil(conf)
     end)
     it("errors when dns_resolver is not a list in ipv4/6[:port] format", function()
       local conf, err = conf_loader(nil, {
@@ -711,6 +836,8 @@ describe("Configuration loader", function()
           ssl_cert_key = key,
           admin_ssl_cert = cert,
           admin_ssl_cert_key = key,
+          admin_gui_ssl_cert = cert,
+          admin_gui_ssl_cert_key = key,
           status_ssl_cert = cert,
           status_ssl_cert_key = key,
           client_ssl_cert = cert,
@@ -728,7 +855,8 @@ describe("Configuration loader", function()
           database = "postgres",
           status_listen = "127.0.0.1:123 ssl",
           proxy_listen = "127.0.0.1:456 ssl",
-          admin_listen = "127.0.0.1:789 ssl"
+          admin_listen = "127.0.0.1:789 ssl",
+          admin_gui_listen = "127.0.0.1:8445 ssl",
         }
 
         for n, v in pairs(properties) do
@@ -1254,6 +1382,73 @@ describe("Configuration loader", function()
           for i = 1, #conf.admin_ssl_cert do
             assert.True(helpers.path.isabs(conf.admin_ssl_cert[i]))
             assert.True(helpers.path.isabs(conf.admin_ssl_cert_key[i]))
+          end
+        end)
+      end)
+      describe("admin-gui", function()
+        it("does not check SSL cert and key if SSL is off", function()
+          local conf, err = conf_loader(nil, {
+            admin_gui_listen = "127.0.0.1:123",
+            admin_gui_ssl_cert = "/path/cert.pem"
+          })
+          assert.is_nil(err)
+          assert.is_table(conf)
+          -- specific case with 'ssl' in the name
+          local conf, err = conf_loader(nil, {
+            admin_gui_listen = "ssl:23",
+            admin_gui_ssl_cert = "/path/cert.pem"
+          })
+          assert.is_nil(err)
+          assert.is_table(conf)
+        end)
+        it("requires both SSL cert and key present", function()
+          local conf, err = conf_loader(nil, {
+            admin_gui_ssl_cert = "/path/cert.pem"
+          })
+          assert.equal("admin_gui_ssl_cert_key must be specified", err)
+          assert.is_nil(conf)
+
+          conf, err = conf_loader(nil, {
+            admin_gui_ssl_cert_key = "/path/key.pem"
+          })
+          assert.equal("admin_gui_ssl_cert must be specified", err)
+          assert.is_nil(conf)
+
+          conf, err = conf_loader(nil, {
+            admin_gui_ssl_cert = "spec/fixtures/kong_spec.crt",
+            admin_gui_ssl_cert_key = "spec/fixtures/kong_spec.key"
+          })
+          assert.is_nil(err)
+          assert.is_table(conf)
+        end)
+        it("requires SSL cert and key to exist", function()
+          local conf, _, errors = conf_loader(nil, {
+            admin_gui_ssl_cert = "/path/cert.pem",
+            admin_gui_ssl_cert_key = "/path/cert_key.pem"
+          })
+          assert.equal(2, #errors)
+          assert.contains("admin_gui_ssl_cert: failed loading certificate from /path/cert.pem", errors)
+          assert.contains("admin_gui_ssl_cert_key: failed loading key from /path/cert_key.pem", errors)
+          assert.is_nil(conf)
+
+          conf, _, errors = conf_loader(nil, {
+            admin_gui_ssl_cert = "spec/fixtures/kong_spec.crt",
+            admin_gui_ssl_cert_key = "/path/cert_key.pem"
+          })
+          assert.equal(1, #errors)
+          assert.contains("admin_gui_ssl_cert_key: failed loading key from /path/cert_key.pem", errors)
+          assert.is_nil(conf)
+        end)
+        it("resolves SSL cert/key to absolute path", function()
+          local conf, err = conf_loader(nil, {
+            admin_gui_ssl_cert = "spec/fixtures/kong_spec.crt",
+            admin_gui_ssl_cert_key = "spec/fixtures/kong_spec.key"
+          })
+          assert.is_nil(err)
+          assert.is_table(conf)
+          for i = 1, #conf.admin_gui_ssl_cert do
+            assert.True(helpers.path.isabs(conf.admin_gui_ssl_cert[i]))
+            assert.True(helpers.path.isabs(conf.admin_gui_ssl_cert_key[i]))
           end
         end)
       end)
