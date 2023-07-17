@@ -34,7 +34,7 @@ local worker_events_mock = [[
         -- when payload is a table
         if EVENT == "table" then
           PAYLOAD = {
-            foo = 'bar',
+            foo = "bar",
             data = PAYLOAD,
           }
         end
@@ -43,7 +43,7 @@ local worker_events_mock = [[
         if not ok then
           ngx.status = ngx.HTTP_INTERNAL_SERVER_ERROR
           ngx.say("post failed, err: " .. err)
-          ngx.exit(ngx.OK)
+          return
         end
 
         assert(wait_until(function()
@@ -56,7 +56,6 @@ local worker_events_mock = [[
 
         ngx.status = ngx.HTTP_OK
         ngx.say("ok")
-        ngx.exit(200)
       }
     }
   }
