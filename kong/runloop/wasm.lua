@@ -2,7 +2,7 @@ local _M = {}
 
 local utils = require "kong.tools.utils"
 local dns = require "kong.tools.dns"
-local clear_tab = require("table.clear")
+local clear_tab = require "table.clear"
 
 ---@module 'resty.http.proxy_wasm'
 local proxy_wasm
