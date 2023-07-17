@@ -93,27 +93,28 @@ local worker_events_mock = [[
 ]]
 
 
-local strategy = "off"
-local test_cases = {"string", "table", }
-local payload_size = 70 * 1024
-local max_payloads = { 60 * 1024, 140 * 1024 }
-local business_port = 34567
+local max_payloads = { 60 * 1024, 140 * 1024, }
 
 
 for _, max_payload in ipairs(max_payloads) do
+  local business_port = 34567
+  local payload_size = 70 * 1024
+
   local fixtures = {
-    http_mock = {},
+    http_mock = {
+      worker_events = string.format(worker_events_mock,
+                                    business_port, payload_size, payload_size)
+    },
   }
 
   local size_allowed = max_payload > payload_size
   local less_or_greater = size_allowed and ">" or "<"
 
-  describe("worker_events [when max_payload " .. less_or_greater .. " payload_size] ", function()
+  describe("worker_events [when max_payload " .. less_or_greater .. " payload_size]", function()
+    local strategy = "off"
+    local test_cases = {"string", "table", }
 
     lazy_setup(function()
-      fixtures.http_mock.worker_events = string.format(
-        worker_events_mock, business_port, payload_size, payload_size)
-
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
