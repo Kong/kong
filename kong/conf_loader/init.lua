@@ -1333,20 +1333,6 @@ local function check_and_parse(conf, opts)
     errors[#errors + 1] = "Cassandra as a datastore for Kong is not supported in versions 3.4 and above. Please use Postgres."
   end
 
-  if conf.wasm_modules then
-    for _, path in ipairs(conf.wasm_modules) do
-      local extension = pl_path.extension(path)
-
-      if not pl_path.isfile(path)
-         or not pl_path.exists(path)
-         or extension ~= ".wasm"
-      then
-        errors[#errors + 1] = fmt("wasm_module at '%s' not .wasm or " ..
-                                  "does not exists", path)
-      end
-    end
-  end
-
   local ok, err = validate_wasm(conf)
   if not ok then
     errors[#errors + 1] = err
