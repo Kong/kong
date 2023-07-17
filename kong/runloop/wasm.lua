@@ -598,7 +598,7 @@ function _M.attach(ctx)
   set_proxy_wasm_property("kong.route_id", ctx.route and ctx.route.id)
   set_proxy_wasm_property("kong.service_id", ctx.service and ctx.service.id)
 
-  local ok, err = proxy_wasm.start()
+  ok, err = proxy_wasm.start()
   if not ok then
     log(ERR, "failed to execute ", chain.label, " filter chain for request: ", err)
     error(err)
