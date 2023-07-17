@@ -45,7 +45,8 @@ describe("Plugin: key-auth-enc (access) [#off]", function()
     helpers.stop_kong()
   end)
 
-  it("should successful while using the same key across multiple workspaces in dbless mode", function()
+  -- add 'flaky' tag due to https://github.com/Kong/kong/pull/11199
+  it("#flaky should successful while using the same key across multiple workspaces in dbless mode", function()
     local apikey = "wcKDwkL3I5nOCDVd8qlMhWKSV69NE7uf"
     local consumer_1_id = "1bd69f90-741c-4e75-834e-94155d6e3f5d"
     local consumer_2_id = "8df2d29b-fb8f-45b2-b90d-4b7fdbaa92e7"
