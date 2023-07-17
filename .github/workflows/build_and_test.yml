@@ -47,8 +47,18 @@ jobs:
   build:
     uses: ./.github/workflows/build.yml
     secrets: inherit
+
+    strategy:
+      matrix:
+        include:
+        - label: normal
+        - label: fips
+          bazel_args: --//:fips=true
+
     with:
       relative-build-root: bazel-bin/build
+      label: ${{ matrix.label }}
+      bazel_args: ${{ matrix.bazel_args }}
 
   cp-dp-compatibility-test:
     name: CP/DP compatibility
@@ -81,7 +91,7 @@ jobs:
     - name: Download artifacts
       uses: actions/download-artifact@v3
       with:
-        name: build
+        name: build-normal
         path: .
 
     - name: Extract the artifact contents
@@ -195,7 +205,7 @@ jobs:
     - name: Download artifacts
       uses: actions/download-artifact@v3
       with:
-        name: build
+        name: build-normal
         path: .
 
     - name: Extract the artifact contents
@@ -282,13 +292,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [integration, plugins]
-        split: [first-CE, second-CE, first-EE, second-EE, third-EE]
+        suite: [integration, plugins, fips]
+        split: [first-CE, second-CE, first-EE, second-EE, third-EE, fips]
         exclude:
-          - suite: plugins
-            split: second-EE
-          - suite: plugins
-            split: third-EE
+        - suite: integration
+          split: fips
+        - suite: plugins
+          split: fips
+        - suite: plugins
+          split: second-EE
+        - suite: plugins
+          split: third-EE
+        - suite: fips
+          split: first-CE
+        - suite: fips
+          split: second-CE
+        - suite: fips
+          split: first-EE
+        - suite: fips
+          split: second-EE
+        - suite: fips
+          split: third-EE
 
     services:
       postgres:
@@ -340,7 +364,7 @@ jobs:
     - name: Download artifacts
       uses: actions/download-artifact@v3
       with:
-        name: build
+        name: build-${{ matrix.suite == 'fips' && 'fips' || 'normal' }}
         path: .
 
     - name: Extract the artifact contents
@@ -360,7 +384,7 @@ jobs:
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
 
     - name: Enable SSL for Redis
-      if: ${{ matrix.suite == 'plugins' }}
+      if: ${{ matrix.suite == 'plugins' || matrix.suite == 'fips' }}
       run: |
           docker cp ${{ github.workspace }} kong_redis:/workspace
           docker cp ${{ github.workspace }}/spec/fixtures/redis/docker-entrypoint.sh kong_redis:/usr/local/bin/docker-entrypoint.sh
@@ -374,7 +398,7 @@ jobs:
           docker compose -p redis-cluster logs
 
     - name: Run OpenTelemetry Collector
-      if: ${{ matrix.suite == 'plugins' }}
+      if: ${{ matrix.suite == 'plugins' || matrix.suite == 'fips'}}
       run: |
           mkdir -p ${{ github.workspace }}/tmp/otel
           touch ${{ github.workspace }}/tmp/otel/file_exporter.json
@@ -465,7 +489,7 @@ jobs:
     - name: Download artifacts
       uses: actions/download-artifact@v3
       with:
-        name: build
+        name: build-normal
         path: .
 
     - name: Extract the artifact contents
@@ -563,7 +587,7 @@ jobs:
     - name: Download artifacts
       uses: actions/download-artifact@v3
       with:
-        name: build
+        name: build-normal
         path: .
 
     - name: Extract the artifact contents
@@ -611,9 +635,13 @@ jobs:
           luacov.stats.out
 
   build-image:
-    name: Build Pongo Base Image
+    name: Build Pongo Base Image - ${{ matrix.label }}
     needs: build
     runs-on: ubuntu-latest-kong
+
+    strategy:
+      matrix:
+        label: [normal, fips]
 
     steps:
     - uses: actions/checkout@v3
@@ -621,7 +649,7 @@ jobs:
     - name: Download artifact
       uses: actions/download-artifact@v3
       with:
-        name: build
+        name: build-${{ matrix.label }}
         path: .
 
     - name: Commit SHA
@@ -646,7 +674,7 @@ jobs:
         file: build/dockerfiles/deb.Dockerfile
         context: .
         push: false
-        tags: "pongo-local/kong-ee:latest"
+        tags: "pongo-local/kong-ee:${{ matrix.label }}"
         labels: org.opencontainers.image.revision=${{ steps.commit-sha.outputs.sha }}
         build-args: |
           KONG_BASE_IMAGE=ubuntu:22.04
@@ -656,12 +684,12 @@ jobs:
     - name: Export Docker Image
       run: |
         mkdir docker-image
-        docker image save -o docker-image/image.tar pongo-local/kong-ee:latest
+        docker image save -o docker-image/image.tar pongo-local/kong-ee:${{ matrix.label }}
 
     - name: Upload artifact
       uses: actions/upload-artifact@v3
       with:
-        name: docker-image
+        name: docker-image-${{matrix.label}}
         path: docker-image/**
         retention-days: 3
 
@@ -684,14 +712,44 @@ jobs:
         - seventh
         - eighth
         - ninth
+        - fips-first
+        - fips-second
+        
+        label:
+        - normal
+        - fips
+
+        exclude:
+        - split: first
+          label: fips
+        - split: second
+          label: fips
+        - split: third
+          label: fips
+        - split: fourth
+          label: fips
+        - split: fifth
+          label: fips
+        - split: sixth
+          label: fips
+        - split: seventh
+          label: fips
+        - split: eighth
+          label: fips
+        - split: ninth
+          label: fips
+        - split: fips-first
+          label: normal
+        - split: fips-second
+          label: normal
 
     env:
       PONGO_EXTRA_ARG: -o hjtest -Xoutput=/kong-plugin/report.html
       # XXX: in scripts/enterprise_plugin.sh, KONG_IMAGE (where pongo consumes)
       # is hardcoded to use $DOCKER_IMAGE_NAME
       # The image name is a local only image that's built on CI, it doesn't belong to
-      # any public docker registry. It doesn't really mean the image is "latest".
-      DOCKER_IMAGE_NAME: pongo-local/kong-ee:latest
+      # any public docker registry.
+      DOCKER_IMAGE_NAME: pongo-local/kong-ee:${{ matrix.label }}
       # this is also required
       KONG_VERSION: dev-ee
 
@@ -725,7 +783,7 @@ jobs:
     - name: Download docker image
       uses: actions/download-artifact@v3
       with:
-        name: docker-image
+        name: docker-image-${{matrix.label}}
         path: docker-images
 
     - name: Import docker image

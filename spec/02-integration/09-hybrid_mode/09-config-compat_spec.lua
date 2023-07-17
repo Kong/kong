@@ -8,6 +8,8 @@
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
+local func = require "pl.func"
+local tablex = require "pl.tablex"
 local CLUSTERING_SYNC_STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 
 local admin = require "spec.fixtures.admin_api"
@@ -39,26 +41,30 @@ local function cluster_client(opts)
   return res
 end
 
-local function get_plugin(node_id, node_version, name, allow_nil)
+local function get_entity(entity_type, node_id, node_version, name, allow_nil)
   allow_nil = allow_nil or false
   local res, err = cluster_client({ id = node_id, version = node_version })
   assert.is_nil(err)
-  assert.is_table(res and res.config and res.config.plugins,
+  assert.is_table(res and res.config and res.config[entity_type .. 's'],
                   "invalid response from clustering client")
 
-  local plugin
-  for _, p in ipairs(res.config.plugins) do
-    if p.name == name then
-      plugin = p
+  local entity
+  for _, e in ipairs(res.config[entity_type .. 's']) do
+    if e.name == name then
+      entity = e
       break
     end
   end
 
   if not allow_nil then
-    assert.not_nil(plugin, "plugin " .. name .. " not found in config")
+    assert.not_nil(entity, entity_type .. " " .. name .. " not found in config")
   end
-  return plugin
+  return entity
 end
+
+
+local get_plugin = func.bind1(get_entity, "plugin")
+local get_vault = func.bind1(get_entity, "vault")
 
 
 local function get_sync_status(id)
@@ -93,7 +99,8 @@ describe("CP/DP config compat transformations #" .. strategy, function()
     local bp = helpers.get_db_utils(strategy, {
       "routes",
       "services",
-      "consumer_groups"
+      "consumer_groups",
+      "vaults",
     })
 
     PLUGIN_LIST = helpers.get_plugins_list()
@@ -120,6 +127,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
       cluster_listen = CP_HOST .. ":" .. CP_PORT,
       nginx_conf = "spec/fixtures/custom_nginx.template",
       plugins = "bundled",
+      vaults = "gcp,hcv,aws",
     }))
   end)
 
@@ -127,7 +135,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
     helpers.stop_kong()
   end)
 
-  describe("plugin config fields", function()
+  describe("plugin consumer group config fields", function()
     local rate_limit, response_transformer
 
     lazy_setup(function()
@@ -232,6 +240,45 @@ describe("CP/DP config compat transformations #" .. strategy, function()
       assert.equals(CLUSTERING_SYNC_STATUS.NORMAL, get_sync_status(id))
     end)
   end)
+
+  -- fixme: azure not tested (test needs to be added when it azure is added)
+  for _, vault_name in pairs({"gcp", "hcv", "aws"}) do
+    describe("vault #" .. vault_name, function()
+      local vault_configs = {
+        gcp = { project_id = "the-project-id" },
+        hcv = { token = "the-token" },
+        aws = { }
+      }
+
+      lazy_setup(function()
+        admin.vaults:insert {
+          name = vault_name,
+          prefix = "my-" .. vault_name .. "-vault",
+          config = tablex.merge(vault_configs[vault_name], { ttl = 1, resurrect_ttl = 1, neg_ttl = 1 }, true),
+        }
+      end)
+
+      it("ttl parameters should be present in 3.4 dataplanes", function()
+        local id = utils.uuid()
+        local transformed_vault = get_vault(id, "3.4.0", vault_name, true)
+        assert.is_not_nil(transformed_vault)
+        assert.is_not_nil(transformed_vault.config.ttl)
+        assert.is_not_nil(transformed_vault.config.neg_ttl)
+        assert.is_not_nil(transformed_vault.config.resurrect_ttl)
+        assert.equals(CLUSTERING_SYNC_STATUS.NORMAL, get_sync_status(id))
+      end)
+
+      it("ttl parameters should not be present in 3.3 dataplanes", function()
+        local id = utils.uuid()
+        local transformed_vault = get_vault(id, "3.3.0", vault_name, true)
+        assert.is_not_nil(transformed_vault)
+        assert.is_nil(transformed_vault.config.ttl)
+        assert.is_nil(transformed_vault.config.neg_ttl)
+        assert.is_nil(transformed_vault.config.resurrect_ttl)
+        assert.equals(CLUSTERING_SYNC_STATUS.NORMAL, get_sync_status(id))
+      end)
+    end)
+  end
 end)
 
 end -- each strategy

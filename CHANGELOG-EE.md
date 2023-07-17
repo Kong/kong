@@ -47,6 +47,7 @@
 
 ### Fixes
 
+* Fix a potential memory leak and reconnection problem which will probably occur when telemetry breaks down due to any exceptions in its `send` thread. [FTI-5225](https://konghq.atlassian.net/browse/FTI-5225)
 * Fix the bug that will cause the telemetry websocket to be broken when there is a bad latency in flushing vitals to database by decoupling the process of receving vitals data from DP and the process of flushing vitals to database in the side of CP with a queue as a buffer. [FTI-4386](https://konghq.atlassian.net/browse/FTI-4386)
 * Fix the bug of getting empty request_id when generating auditting data. [FTI-2438](https://konghq.atlassian.net/browse/FTI-2438)
 * Fix a bug that would cause an error when the header x-datadog-parent-id is not passed to Kong. [KAG-1642](https://konghq.atlassian.net/browse/KAG-1642)
@@ -74,6 +75,8 @@
   [FTI-1882](https://konghq.atlassian.net/browse/FTI-1882)
 - Kafka-Log now supports the `custom_fields_by_lua` configuration for dynamic modification of log fields using lua code just like other log plugins.
   [FTI-5127](https://konghq.atlassian.net/browse/FTI-5127)
+- OpenID-Connect now supports adding scope to the token cache key with `token_cache_key_include_scope` set to true.
+  [KAG-1439](https://konghq.atlassian.net/browse/KAG-1439)
 
 ### Fixes
 

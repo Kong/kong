@@ -456,6 +456,7 @@ jobs:
     env:
       KONG_VERSION: ${{ inputs.gateway_version || '3.3.0.0' }}
       GW_MODE: ${{ matrix.gateway_mode }}
+      PACKAGE_INSTALL_METHOD: ${{ inputs.package_install_method || 'all'}}
     defaults:
       run:
         working-directory: spec-ee/kong-api-tests
@@ -473,6 +474,8 @@ jobs:
             install_method: 'repository'
           - package_name: 'rhel-8-fips'
             install_method: 'repository'
+          - package_name: 'rhel-9-fips'
+            install_method: 'repository'
           - package_name: 'alpine'
             install_method: 'repository'
 
@@ -486,6 +489,13 @@ jobs:
           repository: Kong/gateway-docker-compose-generator
           path: spec-ee/kong-api-tests/gateway-docker-compose-generator
           token: ${{ secrets.TEST_API_GH_TOKEN }}
+
+      - name: Download artifact
+        if: env.PACKAGE_INSTALL_METHOD == 'artifact'
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ matrix.package_name }}-packages
+          path: spec-ee/kong-api-tests/gateway-docker-compose-generator
 
       - name: Login to Docker Hub
         uses: docker/login-action@v2
@@ -506,7 +516,7 @@ jobs:
           echo "KONG_PACKAGE is $suffix_excluded_name"
 
       - name: Start Gateway
-        run: cd gateway-docker-compose-generator && make generate_package && make start_package
+        run: cd gateway-docker-compose-generator && make generate_package && cat docker-compose-package.yml && make start_package
         env:
           REPO_VISIBILITY: ${{ inputs.repo_visibility || 'private' }}
           CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}

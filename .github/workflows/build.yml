@@ -5,6 +5,11 @@ on:
       relative-build-root:
         required: true
         type: string
+      label:
+        type: string
+        default: normal
+      bazel_args:
+        type: string
 
 env:
   BUILD_ROOT: ${{ github.workspace }}/${{ inputs.relative-build-root }}
@@ -12,7 +17,7 @@ env:
 
 jobs:
   build:
-    name: Build dependencies
+    name: Build dependencies - ${{ inputs.label }}
     runs-on: ${{ vars.RUNS_ON }}
 
     steps:
@@ -39,7 +44,7 @@ jobs:
           artifacts
           ${{ env.RELATIVE_BUILD_ROOT }}
           !${{ env.RELATIVE_BUILD_ROOT }}/kong-dev/**/*
-        key: ci-build-${{ hashFiles('.requirements', 'kong-*.rockspec', 'plugins-ee/**/*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+        key: ci-build-${{ hashFiles('.requirements', 'kong-*.rockspec', 'plugins-ee/**/*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}-${{ inputs.label }}
 
     - name: Set .requirements into environment variables
       run: |
@@ -57,10 +62,10 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: |
-        bazel build //build:kong --verbose_failures --action_env=INSTALL_DESTDIR=/usr/local
-        bazel build //build:venv --verbose_failures --action_env=INSTALL_DESTDIR=/usr/local
+        bazel build //build:kong --verbose_failures --action_env=INSTALL_DESTDIR=/usr/local ${{ inputs.bazel_args }}
+        bazel build //build:venv --verbose_failures --action_env=INSTALL_DESTDIR=/usr/local ${{ inputs.bazel_args }}
         # debian package for Pongo
-        bazel build :kong_deb --verbose_failures --action_env=INSTALL_DESTDIR=/usr/local
+        bazel build :kong_deb --verbose_failures --action_env=INSTALL_DESTDIR=/usr/local ${{ inputs.bazel_args }}
 
     - name: Bazel Outputs
       uses: actions/upload-artifact@v3
@@ -83,7 +88,7 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: build
+        name: build-${{ inputs.label }}
         path: |
           artifacts
           ${{ env.RELATIVE_BUILD_ROOT }}

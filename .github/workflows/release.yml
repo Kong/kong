@@ -341,6 +341,7 @@ jobs:
       gateway_version: ${{ needs.metadata.outputs.kong-version }}
       # if deploy-environment is release run all package tests else run only ubuntu-22.04 package tests
       target_package: ${{ matrix.label }}
+      package_install_method: artifact
       target_matrix: package
       target_test: smoke
       send_slack_results: 'false'
@@ -642,7 +643,7 @@ jobs:
     runs-on: ${{ vars.RELEASE_RUNS_ON }}
     if: github.repository_owner == 'Kong' && fromJSON(needs.metadata.outputs.matrix)['release-packages'] != ''
     timeout-minutes: 5 # PULP takes a while to publish
-    environment: release
+    environment: ${{ needs.metadata.outputs.deploy-environment }}
 
     strategy:
       # limit to 3 jobs at a time

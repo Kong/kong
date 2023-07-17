@@ -5,8 +5,11 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local schema_def = require "kong.plugins.hmac-auth.schema"
-local v = require("spec.helpers").validate_plugin_config_schema
+local helpers = require("spec.helpers")
+local v = helpers.validate_plugin_config_schema
+local schema_def
+
+local is_fips = helpers.is_fips_build()
 
 describe("Plugin: hmac-auth (schema)", function()
   local function setup_global_env()
@@ -22,6 +25,10 @@ describe("Plugin: hmac-auth (schema)", function()
         ngx.log(ngx.WARN, msg)
       end
     }
+    
+    _G.kong.configuration = {
+      fips = is_fips,
+    }
   end
 
   local previous_kong
@@ -29,6 +36,8 @@ describe("Plugin: hmac-auth (schema)", function()
   setup(function()
     previous_kong = _G.kong
     setup_global_env()
+    local schema_def_path = assert(package.searchpath("kong.plugins.hmac-auth.schema", package.path))
+    schema_def = loadfile(schema_def_path)() -- this way we can avoid conflicts with other tests
   end)
 
   teardown(function()
@@ -37,50 +46,35 @@ describe("Plugin: hmac-auth (schema)", function()
 
   it("accepts empty config", function()
     local ok, err = v({}, schema_def)
-    assert.is_truthy(ok)
+    assert.is_truthy(ok, err)
     assert.is_nil(err)
   end)
   it("accepts correct clock skew", function()
     local ok, err = v({ clock_skew = 10 }, schema_def)
-    assert.is_truthy(ok)
+    assert.is_truthy(ok, err)
     assert.is_nil(err)
   end)
   it("errors with negative clock skew", function()
     local ok, err = v({ clock_skew = -10 }, schema_def)
-    assert.is_falsy(ok)
+    assert.is_falsy(ok, err)
     assert.equal("value must be greater than 0", err.config.clock_skew)
   end)
   it("errors with wrong algorithm", function()
     local ok, err = v({ algorithms = { "sha1024" } }, schema_def)
-    assert.is_falsy(ok)
-    assert.equal("expected one of: hmac-sha1, hmac-sha256, hmac-sha384, hmac-sha512",
-                 err.config.algorithms[1])
+    assert.is_falsy(ok, err)
+      
+    assert.equal(helpers.is_fips_build() and
+      "expected one of: hmac-sha256, hmac-sha384, hmac-sha512" or
+      "expected one of: hmac-sha1, hmac-sha256, hmac-sha384, hmac-sha512",
+      err.config.algorithms[1])
   end)
+
   it("allows hmac-sha1 in non-FIPS mode but disallows in FIPS mode", function()
-    local ok = v({ algorithms = { "hmac-sha1" } }, schema_def)
-    assert.is_truthy(ok)
-
-    _G.kong = {
-      configuration = {
-        fips = true
-      },
-      log = {
-        debug = function(msg)
-          ngx.log(ngx.DEBUG, msg)
-        end,
-        error = function(msg)
-          ngx.log(ngx.ERR, msg)
-        end,
-        warn = function (msg)
-          ngx.log(ngx.WARN, msg)
-        end
-      }
-    }
-
     local ok, err = v({ algorithms = { "hmac-sha1" } }, schema_def)
-    assert.is_falsy(ok)
-    assert.equal('"hmac-sha1" is disabled in FIPS mode',
-                 err["@entity"][1])
-    _G.kong = nil
+    assert.same(is_fips, not ok)
+    if is_fips then
+      assert.equal('"hmac-sha1" is disabled in FIPS mode',
+                  assert(err)["@entity"][1])
+    end
   end)
 end)

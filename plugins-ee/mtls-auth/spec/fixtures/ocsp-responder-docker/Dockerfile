@@ -1,5 +1,6 @@
-FROM alpine:3.11
-RUN apk --update add openssl
+FROM ubuntu:jammy
+RUN apt update
+RUN apt install openssl nginx -y
 COPY create_ca.sh create_ca.sh
 COPY create_client.sh create_client
 COPY revoke_client.sh revoke_client
@@ -11,6 +12,7 @@ COPY get_ca.sh get_ca
 COPY get_crl.sh get_crl
 COPY root-openssl.conf /root/ca/openssl.cnf
 COPY intermediate-openssl.conf /root/ca/intermediate/openssl.cnf
+COPY crl_nginx.conf /etc/nginx/conf.d/crl_nginx.conf
 RUN chmod +x create_ca.sh && \
     chmod +x create_client && \
     chmod +x revoke_client && \
@@ -23,4 +25,5 @@ RUN chmod +x create_ca.sh && \
 RUN ./create_ca.sh
 COPY docker-entrypoint.sh docker-entrypoint.sh
 EXPOSE 2560
+EXPOSE 8080
 ENTRYPOINT [ "/bin/sh", "docker-entrypoint.sh" ]

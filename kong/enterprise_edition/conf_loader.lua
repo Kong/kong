@@ -824,11 +824,6 @@ local function validate_fips(conf, errors)
     if dcem ~= "off" then
       conf.declarative_config_encryption_mode = "aes-256-gcm"
     end
-
-    -- BoringSSL has an offset-by-1 difference
-    if openssl_version.BORINGSSL then
-      conf.lua_ssl_verify_depth = conf.lua_ssl_verify_depth + 1
-    end
   end
 
   return errors

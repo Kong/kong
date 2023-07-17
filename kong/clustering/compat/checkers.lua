@@ -69,12 +69,15 @@ local compatible_checkers = {
         end
       end
 
-      for _, config_entity in ipairs(config_table.vaults or {}) do
-        local name = config_entity.name
+      -- remove ttl related parameters from vault configurations
+      for _, vault in ipairs(config_table.vaults or {}) do
+        local name = vault.name
+        -- todo: once we do azure vault, we'll likely want to do the below in a better way, like
+        -- with blacklisting env instead.
         if name == "aws" or name == "gcp" or name == "hcv" then
           for _, parameter in ipairs({ "ttl", "neg_ttl", "resurrect_ttl" }) do
-            if config_entity[parameter] then
-              config_entity[parameter] = nil
+            if vault.config[parameter] then
+              vault.config[parameter] = nil
               has_update = true
             end
           end

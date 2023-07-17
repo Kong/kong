@@ -1087,7 +1087,7 @@ describe("NGINX conf compiler", function()
           end
         end
       end)
-      it("generates default SSL DH params", function()
+      it("generates default SSL DH params #fips", function()
         local conf = conf_loader(nil, {
           prefix = tmp_config.prefix,
           proxy_listen  = "127.0.0.1:8000 ssl",

@@ -36,6 +36,7 @@ local tonumber      = tonumber
 local spawn         = ngx.thread.spawn
 local wait          = ngx.thread.wait
 local kong          = kong
+local url_encode    = ngx.escape_uri
 
 
 local TOKEN_DECODE_OPTS = {
@@ -1264,6 +1265,13 @@ function tokens.load(oic, args, ttl, use_cache, flush, salt)
   local err
 
   if use_cache or flush then
+    local scope = args.args and args.args.scope
+    local scope_arg
+    if args.token_cache_key_include_scope and scope
+      and args.grant_type ~= "refresh_token" then
+      scope_arg = '&' .. url_encode(scope)
+    end
+    local extra_arg = (salt and "&" .. salt or "") .. (scope_arg or "")
     if args.grant_type == "refresh_token" then
       if not args.refresh_token then
         return nil, "no credentials given for refresh token grant"
@@ -1273,8 +1281,7 @@ function tokens.load(oic, args, ttl, use_cache, flush, salt)
         iss,
         "#grant_type=refresh_token&",
         args.refresh_token,
-        salt and "&",
-        salt,
+        extra_arg,
       }))
 
     elseif args.grant_type == "password" then
@@ -1288,8 +1295,7 @@ function tokens.load(oic, args, ttl, use_cache, flush, salt)
         args.username,
         "&",
         args.password,
-        salt and "&",
-        salt,
+        extra_arg,
       }))
 
     elseif args.grant_type == "client_credentials" then
@@ -1302,8 +1308,7 @@ function tokens.load(oic, args, ttl, use_cache, flush, salt)
           iss,
           "#grant_type=client_credentials&",
           args.assertion,
-          salt and "&",
-          salt,
+          extra_arg,
         }))
 
       else
@@ -1313,8 +1318,7 @@ function tokens.load(oic, args, ttl, use_cache, flush, salt)
           args.client_id,
           "&",
           args.client_secret,
-          salt and "&",
-          salt,
+          extra_arg,
         }))
       end
     end

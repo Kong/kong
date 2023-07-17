@@ -1672,6 +1672,12 @@ local config = {
               default = true,
             },
           },
+          {
+            token_cache_key_include_scope = {
+              type = "boolean",
+              default = false,
+            }
+          }
         },
         shorthand_fields = {
           -- TODO: deprecated forms, to be removed in Kong 4.0

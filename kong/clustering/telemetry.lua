@@ -97,23 +97,6 @@ local function ws_event_loop(ws, on_connection, on_error, on_message, cbs_args)
       local data, typ, err = ws:recv_frame()
       if err then
         ngx.log(ngx.INFO, "error while receiving frame from peer: ", err)
-        if ws.close then
-          ws:close()
-        end
-
-        if on_connection then
-          local _, err = on_connection(false)
-          if err then
-            ngx_log(ngx_ERR, "error when executing on_connection function: ", err)
-          end
-        end
-
-        if on_error then
-          local _, err = on_error(err)
-          if err then
-            ngx_log(ngx_ERR, "error when executing on_error function: ", err)
-          end
-        end
         return
       end
 
@@ -145,7 +128,7 @@ local function ws_event_loop(ws, on_connection, on_error, on_message, cbs_args)
         ngx_log(ngx_DEBUG, "received PONG frame from peer")
       end
     end
-    end)
+  end)
 
   local send = ngx.thread.spawn(function()
     while not exiting() do
@@ -243,13 +226,7 @@ local function telemetry_communicate(premature, self, uri, server_name, on_conne
     return
   end
 
-  local queued_send, wait = ws_event_loop(c,
-    on_connection,
-    function()
-      assert(reconnect(9 + math.random()))
-    end,
-    on_message)
-
+  local queued_send, wait = ws_event_loop(c, nil, nil, on_message)
 
   if on_connection then
     local _, err = on_connection(true, queued_send)
@@ -260,6 +237,19 @@ local function telemetry_communicate(premature, self, uri, server_name, on_conne
 
   wait()
 
+  if c.close and not c.closed then
+    c:close()
+  end
+
+  if on_connection then
+    local _, err = on_connection(false)
+    if err then
+      ngx_log(ngx_ERR, "error when executing on_connection function: ", err)
+    end
+  end
+
+  -- reconnect to the control plane in case of disconnection
+  assert(reconnect(9 + math.random()))
 end
 
 

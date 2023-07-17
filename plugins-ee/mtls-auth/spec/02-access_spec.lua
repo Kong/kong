@@ -175,6 +175,15 @@ local mtls_fixtures = { http_mock = {
   ]], }
 }
 
+-- FIXME: in case of FIPS build, the nginx refuses to send invalid client certificate to upstream
+-- thus we skip the test for now
+local bad_client_tests
+if helpers.is_fips_build() then
+  bad_client_tests = pending
+else
+  bad_client_tests = it
+end
+
 for _, strategy in strategies() do
   describe("Plugin: mtls-auth (access) [#" .. strategy .. "]", function()
     local proxy_client, admin_client, proxy_ssl_client, mtls_client
@@ -311,13 +320,14 @@ for _, strategy in strategies() do
         assert.same({ message = "No required TLS certificate was sent" }, json)
       end)
 
-      it("returns HTTP 401 on https request if certificate validation failed", function()
+      bad_client_tests("returns HTTP 401 on https request if certificate validation failed", function()
         local res = assert(mtls_client:send {
           method  = "GET",
           path    = "/bad_client",
         })
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
+
         assert.same({ message = "TLS certificate failed verification" }, json)
       end)
     end)
@@ -518,7 +528,7 @@ for _, strategy in strategies() do
             .has_no_error("Invalid response code")
       end)
 
-      it("returns HTTP 401 on https request if certificate validation failed", function()
+      bad_client_tests("returns HTTP 401 on https request if certificate validation failed", function()
         local res = assert(mtls_client:send {
           method  = "GET",
           path    = "/bad_client",
@@ -616,7 +626,7 @@ for _, strategy in strategies() do
         assert.is_nil(json.headers["x-anonymous-consumer"])
       end)
 
-      it("works with wrong credentials and anonymous", function()
+      bad_client_tests("works with wrong credentials and anonymous", function()
         local res = assert(mtls_client:send {
           method  = "GET",
           path    = "/bad_client",
@@ -629,7 +639,7 @@ for _, strategy in strategies() do
         assert.equal("true", json.headers["x-anonymous-consumer"])
       end)
 
-      it("logging with wrong credentials and anonymous", function()
+      bad_client_tests("logging with wrong credentials and anonymous", function()
         local res = assert(mtls_client:send {
           method  = "GET",
           path    = "/bad_client",

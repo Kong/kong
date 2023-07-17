@@ -11,7 +11,15 @@ local reserved_words = require "kong.plugins.acme.reserved_words"
 local helpers = require "spec.helpers"
 
 describe("Plugin: acme (storage.redis)", function()
-  it("should successfully connect to the Redis SSL port", function()
+  local ssl_pending
+  -- FIPS build refuse to connect with ssl_verify disabled
+  if helpers.is_fips_build() then
+    ssl_pending = pending
+  else
+    ssl_pending = it
+  end
+
+  ssl_pending("should successfully connect to the Redis SSL port", function()
     local config = {
       host = helpers.redis_host,
       port = helpers.redis_ssl_port,

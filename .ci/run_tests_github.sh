@@ -118,6 +118,20 @@ if [ "$TEST_SUITE" == "dbless" ]; then
                      spec/02-integration/11-dbless
 
 fi
+
+if [ "$TEST_SUITE" == "fips" ]; then
+    # run plugin tests
+    # we test 05-fips first as a sanity check
+    eval "$TEST_CMD" \
+                    spec-ee/05-fips \
+                    spec/03-plugins/16-jwt \
+                    spec/03-plugins/19-hmac-auth \
+                    spec/03-plugins/20-ldap-auth \
+                    spec/03-plugins/25-oauth2 \
+                    spec/03-plugins/29-acme
+    # FIXME: sable tests for spec-ee and spec/01-unit are disabled because of resty.http new() return nil problem.
+fi
+
 if [ "$TEST_SUITE" == "plugins" ]; then
     set +ex
     rm -f .failed
@@ -211,6 +225,8 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         ["seventh"]="rate-limiting-advanced exit-transformer route-transformer-advanced vault-auth"
         ["eighth"]="response-transformer-advanced oas-validation opa konnect-application-auth oauth2-introspection degraphql"
         ["ninth"]="ldap-auth-advanced"
+        ["fips-first"]="jwe-decrypt jwt-signer openid-connect saml"
+        ["fips-second"]="mtls-auth key-auth-enc oauth2-introspection"
     )
 
     plugins=${plugins_to_test["$TEST_SPLIT"]}
