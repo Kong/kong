@@ -167,7 +167,7 @@ targets = {
 
 for target in list(targets.keys()):
     # TODO: no dedicated for amazonlinux-2022 for now
-    if target.split("-")[0] not in ("alpine", "ubuntu", "debian", "amazonlinux") or \
+    if target.split("-")[0] not in ("alpine", "ubuntu", "debian", "amazonlinux", "el9") or \
         target == "amazonlinux-2022-amd64" or \
         target.endswith("-fips"):
         continue
