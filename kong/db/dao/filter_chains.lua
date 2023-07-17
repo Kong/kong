@@ -53,10 +53,10 @@ function filter_chains:load_filters(wasm_filters)
     insert(filters, filter)
 
     if type(filter.name) ~= "string" then
-      insert(errors, fmt("filter #%s name is not a string", i))
+      insert(errors, fmt("filter #%d name is not a string", i))
 
     elseif filters_by_name[filter.name] then
-      insert(errors, fmt("duplicate filter name (%s) at #%s", filter.name, i))
+      insert(errors, fmt("duplicate filter name (%s) at #%d", filter.name, i))
 
     else
       filters_by_name[filter.name] = filter
