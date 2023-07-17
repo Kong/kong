@@ -270,13 +270,6 @@
                                  # is required to contain one single `%s` placeholder for
                                  # the error message.
 
-#worker_events_max_payload = 65535  # Specifies the max payload size the
-                                    # `worker_events` can accept. The max allowed is
-                                    # 16777215.
-                                    # **Note:** Increasing this value has potential
-                                    # negative impact on Kong's response latency and
-                                    # memory usage.
-
 #------------------------------------------------------------------------------
 # HYBRID MODE
 #------------------------------------------------------------------------------
