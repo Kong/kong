@@ -4,13 +4,6 @@ on:
   repository_dispatch:
     types: [per-commit-test]
 
-# run this workflow whenever a PR is created from dependabot
-  pull_request:
-    paths:
-      - 'spec-ee/kong-api-tests/package*.json'
-    branches:
-      - master
-
   workflow_dispatch:
     inputs:
       enable_verbose_response_logging:
@@ -162,6 +155,14 @@ jobs:
             npm run test-spec --spec=$RUN_SPEC;
           fi
 
+      - uses: datadog/junit-upload-github-action@056dec14f19687cd7d1e97f2009df81f8e64d621 # v1.2.0
+        continue-on-error: true
+        if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }} # upload test results even if the job fails
+        with:
+          api-key: ${{ secrets.DATADOG_API_KEY }}
+          service: kong-ee-github-actions-ci
+          files: spec-ee/kong-api-tests/results/
+
       - name: Retry Gateway Failed API Tests
         if: steps.execute_tests.outcome == 'failure'
         run: npm run test-multiple -- --spec=$(cat failed-tests.txt)
@@ -185,14 +186,6 @@ jobs:
           job_status: ${{ job.status }}
           test_title: 'regular'
           slack_url: ${{ secrets.TEST_API_SLACK_WEBHOOK_URL }}
-
-      - uses: datadog/junit-upload-github-action@056dec14f19687cd7d1e97f2009df81f8e64d621 # v1.2.0
-        continue-on-error: true
-        if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }} # upload test results even if the job fails
-        with:
-          api-key: ${{ secrets.DATADOG_API_KEY }}
-          service: kong-ee-github-actions-ci
-          files: spec-ee/kong-api-tests/results/
 
       - name: Upload Test Results
         uses: actions/upload-artifact@v3
