@@ -5,10 +5,12 @@ local worker_events_mock = [[
     server_name example.com;
     listen %d;
 
-    location = /payload_string {
+    location = /payload {
       content_by_lua_block {
-        local SOURCE, EVENT    = "foo", "string"
-        local worker_events    = kong.worker_events
+        local SOURCE = "foo"
+        local EVENT  = ngx.var.http_payload_type
+
+        local worker_events = kong.worker_events
         local payload_received
 
         local function wait_until(validator, timeout)
@@ -28,60 +30,28 @@ local worker_events_mock = [[
 
         -- when payload is a string
         local PAYLOAD = string.rep("X", %d)
-        local ok, err = worker_events.post(SOURCE, EVENT, PAYLOAD)
-        if not ok then
-          ngx.status = ngx.HTTP_INTERNAL_SERVER_ERROR
-          ngx.say("post string failed, err: " .. err)
-          ngx.exit(ngx.OK)
-        end
-
-        assert(wait_until(function()
-          return PAYLOAD == payload_received
-        end, 1))
-
-        ngx.status = ngx.HTTP_OK
-        ngx.say("ok")
-        ngx.exit(200)
-      }
-    }
-
-    location = /payload_table {
-      content_by_lua_block {
-        local SOURCE, EVENT    = "foo", "table"
-        local worker_events    = kong.worker_events
-        local deepcompare      = require("pl.tablex").deepcompare
-        local payload_received
-
-        local function wait_until(validator, timeout)
-          local deadline = ngx.now() + (timeout or 5)
-          local res
-          repeat
-            worker_events.poll()
-            res = validator()
-          until res or ngx.now() >= deadline
-          return res
-        end
-
-        -- subscribe
-        local ok, err = worker_events.register(function(data)
-          payload_received = data
-        end, SOURCE, EVENT)
 
         -- when payload is a table
-        local PAYLOAD = {
-          foo = 'bar',
-          data = string.rep("X", %d)
-        }
+        if EVENT == "table" then
+          PAYLOAD = {
+            foo = 'bar',
+            data = PAYLOAD,
+          }
+        end
 
         local ok, err = worker_events.post(SOURCE, EVENT, PAYLOAD)
         if not ok then
           ngx.status = ngx.HTTP_INTERNAL_SERVER_ERROR
-          ngx.say("post table failed, err: " .. err)
+          ngx.say("post failed, err: " .. err)
           ngx.exit(ngx.OK)
         end
 
         assert(wait_until(function()
-          return deepcompare(PAYLOAD, payload_received)
+          if EVENT == "string" then
+            return PAYLOAD == payload_received
+          else
+            return require("pl.tablex").deepcompare(PAYLOAD, payload_received)
+          end
         end, 1))
 
         ngx.status = ngx.HTTP_OK
@@ -103,7 +73,7 @@ for _, max_payload in ipairs(max_payloads) do
   local fixtures = {
     http_mock = {
       worker_events = string.format(worker_events_mock,
-                                    business_port, payload_size, payload_size)
+                                    business_port, payload_size)
     },
   }
 
@@ -130,9 +100,10 @@ for _, max_payload in ipairs(max_payloads) do
       it("max_payload = " .. max_payload .. ", type = " .. payload_type, function()
 
         local res = helpers.proxy_client(nil, business_port):get(
-          "/payload_" .. payload_type, {
+          "/payload", {
           headers = {
             host = "example.com",
+            payload_type = payload_type,
           }
         })
 
@@ -141,7 +112,7 @@ for _, max_payload in ipairs(max_payloads) do
 
         if not size_allowed then
           status_code = 500
-          msg = "post " .. payload_type .." failed, err: " ..
+          msg = "post failed, err: " ..
                 "failed to publish event: payload exceeds the limitation (".. max_payload .. ")"
         end
 
