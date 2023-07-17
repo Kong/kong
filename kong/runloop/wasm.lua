@@ -562,7 +562,7 @@ local function set_proxy_wasm_property(property, value)
 
   local ok, err = proxy_wasm.set_property(property, value)
   if not ok then
-    log(ERR, "failed to set ", property, " property: ", err)
+    log(ERR, "failed to set proxy-wasm '", property, "' property: ", err)
   end
 end
 
