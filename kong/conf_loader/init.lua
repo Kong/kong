@@ -690,14 +690,14 @@ local function lookup_dynamic_module_so(mod_name, kong_conf)
 
   local mod_file = fmt("/usr/local/kong/modules/%s.so", mod_name)
   if exists(mod_file) then
-    log.debug("Module '%s' found at '%s'", mod_name, mod_file)
+    log.debug("module '%s' found at '%s'", mod_name, mod_file)
     return mod_file
   end
 
   local nginx_bin = nginx_signals.find_nginx_bin(kong_conf)
   mod_file = fmt("%s/../modules/%s.so", pl_path.dirname(nginx_bin), mod_name)
   if exists(mod_file) then
-    log.debug("Module '%s' found at '%s'", mod_name, mod_file)
+    log.debug("module '%s' found at '%s'", mod_name, mod_file)
     return mod_file
   end
 
@@ -718,7 +718,7 @@ local function validate_wasm(conf)
     for cfg in pairs(conf) do
       local wasm_cfg = match(cfg, "wasm_(.+)")
       if wasm_cfg then
-        log.warn("Wasm is disabled but ", wasm_cfg,
+        log.warn("wasm is disabled but ", wasm_cfg,
           " property is used, please check your configuration.")
       end
     end
