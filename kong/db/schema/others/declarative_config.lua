@@ -319,13 +319,7 @@ local function load_vault_subschemas(fields, vault_set)
 end
 
 
-local function uniqueness_error_msg(entity, key, value)
-  return "uniqueness violation: '" .. entity .. "' entity " ..
-         "with " .. key .. " set to '" .. value .. "' already declared"
-end
-
-
-local function populate_references(input, known_entities, by_id, by_key, expected, errs, parent_entity)
+local function populate_references(input, known_entities, by_id, by_key, expected, parent_entity)
   for _, entity in ipairs(known_entities) do
     yield(true)
 
@@ -347,37 +341,21 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
     end
 
     local entity_schema = all_schemas[entity]
-    local endpoint_key = entity_schema.endpoint_key
-    local use_key = endpoint_key and entity_schema.fields[endpoint_key].unique
-
     for i, item in ipairs(input[entity]) do
       yield(true)
 
-      populate_references(item, known_entities, by_id, by_key, expected, errs, entity)
+      populate_references(item, known_entities, by_id, by_key, expected, entity)
 
       local item_id = DeclarativeConfig.pk_string(entity_schema, item)
-      local key = use_key and item[endpoint_key]
+      by_id[entity] = by_id[entity] or {}
+      by_id[entity][item_id] = item
 
-      local failed = false
-      if key and key ~= ngx.null then
-        by_key[entity] = by_key[entity] or {}
-        if by_key[entity][key] then
-          errs[entity] = errs[entity] or {}
-          errs[entity][i] = uniqueness_error_msg(entity, endpoint_key, key)
-          failed = true
-        else
+      local key
+      if entity_schema.endpoint_key then
+        key = item[entity_schema.endpoint_key]
+        if key then
+          by_key[entity] = by_key[entity] or {}
           by_key[entity][key] = item
-        end
-      end
-
-      if item_id then
-        by_id[entity] = by_id[entity] or {}
-        if (not failed) and by_id[entity][item_id] then
-          errs[entity] = errs[entity] or {}
-          errs[entity][i] = uniqueness_error_msg(entity, "primary key", item_id)
-        else
-          by_id[entity][item_id] = item
-          table.insert(by_id[entity], item_id)
         end
       end
 
@@ -416,9 +394,10 @@ local function validate_references(self, input)
   local by_id = {}
   local by_key = {}
   local expected = {}
-  local errs = {}
 
-  populate_references(input, self.known_entities, by_id, by_key, expected, errs)
+  populate_references(input, self.known_entities, by_id, by_key, expected)
+
+  local errors = {}
 
   for a, as in pairs(expected) do
     yield(true)
@@ -432,20 +411,20 @@ local function validate_references(self, input)
         local found = find_entity(key, b, by_key, by_id)
 
         if not found then
-          errs[a] = errs[a] or {}
-          errs[a][k.at] = errs[a][k.at] or {}
+          errors[a] = errors[a] or {}
+          errors[a][k.at] = errors[a][k.at] or {}
           local msg = "invalid reference '" .. k.key .. ": " ..
                       (type(k.value) == "string"
                       and k.value or cjson_encode(k.value)) ..
                       "' (no such entry in '" .. b .. "')"
-          insert(errs[a][k.at], msg)
+          insert(errors[a][k.at], msg)
         end
       end
     end
   end
 
-  if next(errs) then
-    return nil, errs
+  if next(errors) then
+    return nil, errors
   end
 
   return by_id, by_key
@@ -521,11 +500,6 @@ local function get_key_for_uuid_gen(entity, item, schema, parent_fk, child_key)
     return
   end
 
-  if schema.cache_key then
-    local key = build_cache_key(entity, item, schema, parent_fk, child_key)
-    return pk_name, key
-  end
-
   if schema.endpoint_key and item[schema.endpoint_key] ~= nil then
     local key = item[schema.endpoint_key]
 
@@ -552,6 +526,10 @@ local function get_key_for_uuid_gen(entity, item, schema, parent_fk, child_key)
 
     -- generate a PK based on the endpoint_key
     return pk_name, key
+  end
+
+  if schema.cache_key then
+    return pk_name, build_cache_key(entity, item, schema, parent_fk, child_key)
   end
 
   return pk_name
@@ -766,17 +744,12 @@ local function flatten(self, input)
   end
 
   local entities = {}
-  local errs
   for entity, entries in pairs(by_id) do
     yield(true)
 
-    local uniques = {}
     local schema = all_schemas[entity]
     entities[entity] = {}
-
-    for _, id in ipairs(entries) do
-      local entry = entries[id]
-
+    for id, entry in pairs(entries) do
       local flat_entry = {}
       for name, field in schema:each_field(entry) do
         if field.type == "foreign" and type(entry[name]) == "string" then
@@ -788,30 +761,10 @@ local function flatten(self, input)
         else
           flat_entry[name] = entry[name]
         end
-
-        if field.unique then
-          local flat_value = flat_entry[name]
-          if flat_value and flat_value ~= ngx.null then
-            uniques[name] = uniques[name] or {}
-            if uniques[name][flat_value] then
-              errs = errs or {}
-              errs[entity] = errors[entity] or {}
-              local key = schema.endpoint_key
-                          and flat_entry[schema.endpoint_key] or id
-              errs[entity][key] = uniqueness_error_msg(entity, name, flat_value)
-            else
-              uniques[name][flat_value] = true
-            end
-          end
-        end
       end
 
       entities[entity][id] = flat_entry
     end
-  end
-
-  if errs then
-    return nil, errs
   end
 
   return entities, nil, meta

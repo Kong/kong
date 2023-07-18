@@ -493,8 +493,6 @@ describe("workspace-" .. workspace, function ()
       -- remove the upstream
       if strategy ~= "off" then
         bu.remove_upstream(bp, upstream_id)
-      else
-        bp.done()
       end
 
       -- add the upstream again
