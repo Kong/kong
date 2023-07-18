@@ -5,6 +5,10 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local pl_utils   = require "pl.utils"
+local pl_path    = require "pl.path"
+
+local log        = require "kong.cmd.utils.log"
 local meta       = require "kong.enterprise_edition.meta"
 local constants  = require "kong.constants"
 local workspaces = require "kong.workspaces"
@@ -183,6 +187,26 @@ local function render_kconfig(configs)
   return kconfig_str
 end
 
+local function prepare_interface(usr_path, interface_dir, kong_config)
+  local usr_interface_path = usr_path .. "/" .. interface_dir
+  local interface_path = kong_config.prefix .. "/" .. interface_dir
+
+  -- if the interface directory is not exist in custom prefix directory
+  -- try symlinking to the default prefix location
+  -- ensure user can access the interface appliation
+  if not pl_path.exists(interface_path)
+     and pl_path.exists(usr_interface_path) then
+
+    local ln_cmd = "ln -s " .. usr_interface_path .. " " .. interface_path
+    local ok, _, _, err_t = pl_utils.executeex(ln_cmd)
+
+    if not ok then
+      log.warn(err_t)
+    end
+  end
+end
+
+_M.prepare_interface = prepare_interface
 _M.render_kconfig = render_kconfig
 
 -- return first listener matching filters
