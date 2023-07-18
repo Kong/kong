@@ -45,7 +45,7 @@ describe("plugins", function()
     local ok, err = validate({ sync_status = "aaa", })
     assert.is_nil(ok)
 
-    assert.equal("expected one of: unknown, normal, kong_version_incompatible, plugin_set_incompatible, plugin_version_incompatible", err.sync_status)
+    assert.equal("expected one of: unknown, normal, kong_version_incompatible, plugin_set_incompatible, plugin_version_incompatible, filter_set_incompatible", err.sync_status)
   end)
 
   it("accepts correct value", function()

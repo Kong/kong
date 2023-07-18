@@ -195,4 +195,8 @@ admin_gui_url =
 admin_gui_origin =    # for internal use only, can not be configured manually
 admin_gui_path = /
 admin_gui_api_url =
+
+wasm = off
+wasm_filters_path = NONE
+wasm_dynamic_module = NONE
 ]]

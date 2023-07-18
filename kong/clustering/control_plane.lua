@@ -279,8 +279,10 @@ function _M:handle_cp_websocket()
 
   if self.deflated_reconfigure_payload then
     -- initial configuration compatibility for sync status variable
-    _, _, sync_status = self:check_configuration_compatibility(
-                              { dp_plugins_map = dp_plugins_map, })
+    _, _, sync_status = self:check_configuration_compatibility({
+      dp_plugins_map = dp_plugins_map,
+      filters = data.filters,
+    })
 
     table_insert(queue, RECONFIGURE_TYPE)
     queue.post()
@@ -397,8 +399,11 @@ function _M:handle_cp_websocket()
       assert(payload == RECONFIGURE_TYPE)
 
       local previous_sync_status = sync_status
-      ok, err, sync_status = self:check_configuration_compatibility(
-                                { dp_plugins_map = dp_plugins_map, })
+      ok, err, sync_status = self:check_configuration_compatibility({
+        dp_plugins_map = dp_plugins_map,
+        filters = data.filters,
+      })
+
       if not ok then
         ngx_log(ngx_WARN, _log_prefix, "unable to send updated configuration to data plane: ", err, log_suffix)
         if sync_status ~= previous_sync_status then
@@ -532,8 +537,9 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
 end
 
 
-function _M:init_worker(plugins_list)
+function _M:init_worker(basic_info)
   -- ROLE = "control_plane"
+  local plugins_list = basic_info.plugins
   self.plugins_list = plugins_list
   self.plugins_map = plugins_list_to_map(plugins_list)
 
@@ -546,6 +552,8 @@ function _M:init_worker(plugins_list)
     local plugin = plugins_list[i]
     self.plugin_versions[plugin.name] = plugin.version
   end
+
+  self.filters = basic_info.filters
 
   local push_config_semaphore = semaphore.new()
 
