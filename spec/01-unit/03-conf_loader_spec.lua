@@ -2072,6 +2072,7 @@ describe("Configuration loader", function()
         nginx_acc_logs = true,
         admin_acc_logs = true,
         nginx_conf = true,
+        nginx_kong_gui_include_conf= true,
         nginx_kong_conf = true,
         nginx_kong_stream_conf = true,
         nginx_inject_conf = true,
