@@ -2094,6 +2094,10 @@ describe("Configuration loader", function()
         status_ssl_cert_key_default = true,
         status_ssl_cert_default_ecdsa = true,
         status_ssl_cert_key_default_ecdsa = true,
+        admin_gui_ssl_cert_default = true,
+        admin_gui_ssl_cert_key_default = true,
+        admin_gui_ssl_cert_default_ecdsa = true,
+        admin_gui_ssl_cert_key_default_ecdsa = true,
       }
       local conf = assert(conf_loader(nil, nil, { pre_cmd = true }))
       for k, _ in pairs(conf) do
