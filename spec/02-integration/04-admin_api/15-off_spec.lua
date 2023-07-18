@@ -3066,16 +3066,18 @@ describe("Admin API #off with cache key vs endpoint key #unique", function()
 
     local body = assert.response(res).has.status(400)
     local json = cjson.decode(body)
-    assert.same(14, json.code)
-    assert.same("invalid declarative configuration", json.name)
-    assert.matches("uniqueness violation: 'ck_vs_ek_testcase' entity " ..
-                   "with primary key set to '.*' already declared",
-                   json.fields.ck_vs_ek_testcase[2])
-    assert.matches([[declarative config is invalid: ]] ..
-                   [[{ck_vs_ek_testcase={%[2%]="uniqueness violation: ]] ..
-                   [['ck_vs_ek_testcase' entity with primary key set to ]] ..
-                   [['.*' already declared"}}]],
-                   json.message)
+    assert.same({
+      code = 14,
+      fields = {
+        ck_vs_ek_testcase = {
+          cjson.null,
+          "uniqueness violation: 'ck_vs_ek_testcase' entity with primary key set to 'd091e0c1-8e3b-5dc9-97bf-35b5bcf9d184' already declared",
+        }
+      },
+      message = [[declarative config is invalid: ]] ..
+                [[{ck_vs_ek_testcase={[2]="uniqueness violation: 'ck_vs_ek_testcase' entity with primary key set to 'd091e0c1-8e3b-5dc9-97bf-35b5bcf9d184' already declared"}}]],
+      name = "invalid declarative configuration",
+    }, json)
   end)
 
 end)
