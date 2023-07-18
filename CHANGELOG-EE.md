@@ -95,6 +95,15 @@
 * **OpenID-Connect**: Changes some log's level from `notice` to `error` for better visibility.
   [FTI-2884](https://konghq.atlassian.net/browse/FTI-2884)
 * **Mocking**: Fix a bug that the plugin throws an error when the arbitrary elements are defined in the path node.
+* **Mtls-Auth**: Fix several revocation verification issues where
+  1. If `revocation_check_mode=IGNORE_CA_ERROR` then the crl revocation failure will be ignored.
+  2. Once a crl is added into the store, it will always do crl revocation check with this crl file.
+  3. OCSP verification fails with `no issuer certificate in chain` error if the client only sends a leaf certificate.
+  4. A optimization of crl revocation verification.
+  5. `http_timeout` is not correctly set
+  [FTI-5058](https://konghq.atlassian.net/browse/FTI-5058)
+  [FTI-3060](https://konghq.atlassian.net/browse/FTI-3060)
+  [FTI-5223](https://konghq.atlassian.net/browse/FTI-5223)
 
 ## Kong Manager
 

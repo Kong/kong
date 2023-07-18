@@ -317,8 +317,10 @@ local function set_cert_headers(names)
 end
 
 
-local function is_cert_revoked(conf, client_cert_chain, cert, intermidiate, store)
-  local ocsp_status, err = ocsp_client.validate_cert(conf, client_cert_chain)
+local function is_cert_revoked(conf, proof_chain, store)
+  kong.log.debug("cache miss for revocation status")
+
+  local ocsp_status, err = ocsp_client.validate_cert(conf, proof_chain)
   if err then
     kong.log.warn("OCSP verify: ", err)
   end
@@ -329,7 +331,7 @@ local function is_cert_revoked(conf, client_cert_chain, cert, intermidiate, stor
 
   -- no OCSP URI set, check for CRL
   local crl_status
-  crl_status, err = crl_client.validate_cert(conf, cert, intermidiate, store)
+  crl_status, err = crl_client.validate_cert(conf, proof_chain, store)
   if err then
     kong.log.warn("CRL verify: ", err)
   end
@@ -465,7 +467,7 @@ local function do_authentication(conf)
       local revoked
       revoked, err = kong.cache:get(ngx_var.ssl_client_s_dn,
         { ttl = conf.cert_cache_ttl }, is_cert_revoked,
-        conf, pem, chain[1], intermidiate, trust_table.store)
+        conf, proof_chain, trust_table.store)
       if err then
         kong.log.err(err)
       end

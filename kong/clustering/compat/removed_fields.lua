@@ -171,6 +171,7 @@ return {
     -- Enterprise plugins
     openid_connect = {
       "expose_error_code",
+      "token_cache_key_include_scope",
     },
     kafka_log = {
       "custom_fields_by_lua",

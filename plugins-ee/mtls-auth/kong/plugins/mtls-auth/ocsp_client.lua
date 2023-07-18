@@ -5,16 +5,16 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local ssl = require "ngx.ssl"
 local ocsp = require "ngx.ocsp"
 local http = require "resty.http"
 
 local _M = {}
 
-function _M.validate_cert(conf, cert_chain)
-  local der_cert_chain, err = ssl.cert_pem_to_der(cert_chain)
-  if not der_cert_chain then
-    return nil, "failed to convert certificate chain from PEM to DER: " .. err
+function _M.validate_cert(conf, proof_chain)
+  local der_cert_chain = ""
+  -- the client cert and its issuer are enough
+  for i = 1, 2 do
+    der_cert_chain = der_cert_chain .. proof_chain[i]:tostring("DER")
   end
 
   local ocsp_url, err = ocsp.get_ocsp_responder_from_der_chain(der_cert_chain)
@@ -38,11 +38,11 @@ function _M.validate_cert(conf, cert_chain)
   end
 
   local c = http.new()
+  c:set_timeout(conf.http_timeout)
   local res, err = c:request_uri(ocsp_url, {
     headers = {
       ["Content-Type"] = "application/ocsp-request"
     },
-    timeout = conf.http_timeout,
     method = "POST",
     body = ocsp_req,
     proxy_opts = proxy_opts,
