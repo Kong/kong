@@ -35,6 +35,7 @@
 
 ### Dependencies
 
+* `kong-redis-cluster` is bumped from 1.5.0 to 1.5.1
 * `lua-resty-ljsonschema` is bumped from 1.1.3 to 1.15
 * `lua-resty-kafka` is bumped from 0.15 to 0.16
 * `OpenSSL` is bumped from 1.1.1t to 3.0.8
