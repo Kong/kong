@@ -429,6 +429,9 @@ server {
     gzip on;
     gzip_types text/plain text/css application/json application/javascript;
 
+    access_log ${{ADMIN_GUI_ACCESS_LOG}};
+    error_log ${{ADMIN_GUI_ERROR_LOG}};
+
 > local admin_gui_rewrite = admin_gui_path ~= "/"
 > local admin_gui_path_prefix = admin_gui_path
 > if admin_gui_path == "/" then

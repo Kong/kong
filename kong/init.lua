@@ -757,6 +757,10 @@ function Kong.init_worker()
 
   kong.db:set_events_handler(worker_events)
 
+  if kong.configuration.admin_gui_listeners then
+    kong.cache:invalidate_local(constants.ADMIN_GUI_KCONFIG_CACHE_KEY)
+  end
+
   if process.type() == "privileged agent" then
     if kong.clustering then
       kong.clustering:init_worker()
