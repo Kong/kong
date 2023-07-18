@@ -10,6 +10,9 @@ local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local conf_loader    = require "kong.conf_loader"
 local ee             = require "kong.enterprise_edition"
 
+local pl_path = require "pl.path"
+local log     = require "kong.cmd.utils.log"
+
 local exists = helpers.path.exists
 
 describe("admin_gui template", function()
@@ -100,6 +103,11 @@ describe("admin_gui template", function()
       admin_gui_auth_header = 'Kong-Admin-User',
       admin_gui_path = '/manager'
     }
+
+    setup(function()
+      ee.prepare_interface("/usr/local/kong", "gui", conf)
+      assert(pl_path.isdir(mock_prefix))
+    end)
 
     it("inserts the appropriate values", function()
       local admin_idx = ee.prepare_admin(conf)
@@ -231,6 +239,11 @@ describe("admin_gui template", function()
       admin_gui_auth_header = 'Kong-Admin-User',
     }
 
+    setup(function()
+      ee.prepare_interface("/usr/local/kong", "gui", conf)
+      assert(pl_path.isdir(mock_prefix))
+    end)
+
     it("inserts the appropriate values", function()
       local admin_idx = ee.prepare_admin(conf)
 
@@ -297,6 +310,46 @@ describe("admin_gui template", function()
       assert.matches("'ADMIN_GUI_LOGIN_BANNER_TITLE': 'banner_title_2'", admin_idx, nil, true)
       assert.matches("'ADMIN_GUI_LOGIN_BANNER_BODY': 'banner_body_2'", admin_idx, nil, true)
       assert.matches("'KONG_EDITION': 'enterprise'", admin_idx, nil, true)
+    end)
+  end)
+
+  describe("prepare_admin() - message logs", function()
+    local default_prefix = conf.prefix
+    local mock_prefix  = "servroot_2"
+    local usr_path = "servroot"
+    local usr_interface_dir = "gui2"
+    local usr_interface_path = usr_path .. "/" .. usr_interface_dir
+
+    setup(function()
+      conf.prefix = mock_prefix
+
+      if not pl_path.exists(usr_interface_path) then
+        assert(pl_path.mkdir(usr_interface_path))
+      end
+    end)
+
+    teardown(function()
+      if pl_path.exists(usr_interface_path) then
+        assert(pl_path.rmdir(usr_interface_path))
+      end
+
+      -- reverts the spy stub & matcher
+      log.warn:revert()
+      assert:unregister("matcher", "correct")
+
+      -- reset prefix
+      conf.prefix = default_prefix
+    end)
+
+    it("symlink creation should log out error", function()
+      local spy_log = spy.on(log, "warn")
+
+      local err = "ln: failed to create symbolic link 'servroot_2/gui2': "
+                 .. "No such file or directory\n"
+
+      ee.prepare_interface(usr_path, usr_interface_dir, conf)
+      assert.spy(spy_log).was_called(1)
+      assert.spy(spy_log).was_called_with(err)
     end)
   end)
 end)
