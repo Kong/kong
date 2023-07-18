@@ -86,6 +86,16 @@ targets = {
         libcxx_max_version="3.4.29",
         cxxabi_max_version="1.3.13",
     ),
+    "el9-arm64": ExpectSuite(
+        name="Redhat 9 (arm64)",
+        manifest="fixtures/el9-arm64.txt",
+        use_rpath=True,
+        libc_max_version="2.34",
+        # gcc 11.3.1
+        libcxx_max_version="3.4.29",
+        cxxabi_max_version="1.3.13",
+        extra_tests=[arm64_suites],
+    ),
     "ubuntu-20.04-amd64": ExpectSuite(
         name="Ubuntu 20.04 (amd64)",
         manifest="fixtures/ubuntu-20.04-amd64.txt",
