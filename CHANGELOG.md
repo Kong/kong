@@ -38,6 +38,10 @@
 
 #### Admin API
 
+#### Kong Manager
+- First release of the Kong Manager Open Source Edition.
+  [#11131](https://github.com/Kong/kong/pull/11131)
+
 #### Status API
 
 #### Plugins
@@ -152,8 +156,9 @@
 - Bumped OpenSSL from 1.1.1t to 3.1.1
   [#10180](https://github.com/Kong/kong/pull/10180)
   [#11140](https://github.com/Kong/kong/pull/11140)
-- Bumped pgmoon from 1.16.0 to 1.16.1 (Kong's fork)
+- Bumped pgmoon from 1.16.0 to 1.16.2 (Kong's fork)
   [#11181](https://github.com/Kong/kong/pull/11181)
+  [#11229](https://github.com/Kong/kong/pull/11229)
 - Bumped atc-router from 1.0.5 to 1.1.0
   [#10100](https://github.com/Kong/kong/pull/10100)
 - Bumped lua-resty-lmdb from 1.1.0 to 1.3.0

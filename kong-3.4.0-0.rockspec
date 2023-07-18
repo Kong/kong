@@ -22,7 +22,6 @@ dependencies = {
   "multipart == 0.5.9",
   "version == 1.0.1",
   "kong-lapis == 1.14.0.2",
-  "kong-redis-cluster == 1.5.1",
   -- CE and EE use diff version
   "kong-pgmoon == 2.3.2.0",
   "luatz == 0.4",
@@ -40,6 +39,7 @@ dependencies = {
   "lua-resty-openssl == 0.8.23",
   "lua-resty-mail == 1.0.2",
   "lua-resty-redis-connector == 0.11.0",
+  "kong-redis-cluster == 1.5.1",
   "bcrypt == 2.3",
   "lpeg_patterns == 0.5",
   --"http == 0.3",
