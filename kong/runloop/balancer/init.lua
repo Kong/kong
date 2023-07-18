@@ -29,7 +29,6 @@ local run_hook = hooks.run_hook
 local var = ngx.var
 local get_updated_now_ms = utils.get_updated_now_ms
 local is_http_module   = ngx.config.subsystem == "http"
-local is_stream_module = ngx.config.subsystem == "stream"
 
 local CRIT = ngx.CRIT
 local ERR = ngx.ERR
