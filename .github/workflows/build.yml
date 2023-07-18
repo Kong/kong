@@ -30,6 +30,22 @@ jobs:
     - name: Swap git with https
       run: git config --global url."https://github".insteadOf git://github
 
+    - name: Set ngx_wasm_module path/branch vars
+      run: |
+        grep ^NGX_WASM_MODULE_BRANCH= .requirements >> $GITHUB_ENV || {
+          echo "ERROR: NGX_WASM_MODULE_BRANCH is not defined in .requirements"
+          exit 1
+        }
+        echo "NGX_WASM_MODULE_REMOTE=$PWD/ngx_wasm_module" >> $GITHUB_ENV
+
+    - name: Checkout ngx_wasm_module
+      uses: actions/checkout@v3
+      with:
+        repository: Kong/ngx_wasm_module
+        path: ${{ env.NGX_WASM_MODULE_REMOTE }}
+        ref: ${{ env.NGX_WASM_MODULE_BRANCH }}
+        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+
     - name: Cache Build Output
       id: cache-deps
       # Note we only use the artifact in build, which may actually contain
@@ -94,3 +110,23 @@ jobs:
           ${{ env.RELATIVE_BUILD_ROOT }}
           !${{ env.RELATIVE_BUILD_ROOT }}/kong-dev/**/*
         retention-days: 3
+
+    - name: Update PATH
+      run: |
+        echo "$BUILD_ROOT/kong-dev/bin" >> $GITHUB_PATH
+        echo "$BUILD_ROOT/kong-dev/openresty/nginx/sbin" >> $GITHUB_PATH
+        echo "$BUILD_ROOT/kong-dev/openresty/bin" >> $GITHUB_PATH
+
+    - name: Debug (nginx)
+      run: |
+        find -name libluajit-5.1.so.2
+        find -name luajit
+        echo nginx: $(which nginx)
+        nginx -V 2>&1 | sed -re 's/ --/\n--/g'
+        ldd $(which nginx)
+
+    - name: Debug (luarocks)
+      run: |
+        echo luarocks: $(which luarocks)
+        luarocks --version || true
+        luarocks config || true

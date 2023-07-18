@@ -72,10 +72,73 @@ install_webui_cmd = select({
     "@kong//:skip_webui_flags": "\n",
 })
 
+wasmx_vm_deps = select({
+    "@kong//:wasmx_v8": [
+        "@v8//:lib",
+    ],
+    "@kong//:wasmx_wasmer": [
+        "@wasmer//:lib",
+    ],
+    "@kong//:wasmx_wasmtime": [
+        "@wasmtime//:lib",
+    ],
+    "//conditions:default": [],
+})
+
+wasmx_deps = select({
+    "@kong//:wasmx_flag": [
+        "@ngx_wasm_module//:lua_libs",
+    ],
+    "//conditions:default": [],
+}) + wasmx_vm_deps
+
+wasm_libs_install = select({
+    "@kong//:wasmx_flag": """
+    for fname in $(locations @ngx_wasm_module//:lua_libs); do
+        base=${fname##*/ngx_wasm_module/lib/}
+        dest="${BUILD_DESTDIR}/openresty/lualib/$base"
+        mkdir -p "$(dirname "$dest")"
+        cp -v "$fname" "$dest"
+    done
+""",
+    "//conditions:default": "\n",
+})
+
+wasmx_vm_cmd = select({
+    "@kong//:wasmx_v8": """
+    if [[ -d ${BUILD_DESTDIR}/openresty/nginx/lib ]]; then
+        copy_with_filter ${BUILD_DESTDIR}/openresty/nginx/lib ${BUILD_DESTDIR}/kong/lib
+        rm -rf ${BUILD_DESTDIR}/openresty/nginx/lib
+    fi
+""",
+    "@kong//:wasmx_wasmer": """
+    if [[ -d ${BUILD_DESTDIR}/openresty/nginx/lib ]]; then
+        copy_with_filter ${BUILD_DESTDIR}/openresty/nginx/lib ${BUILD_DESTDIR}/kong/lib
+        rm -rf ${BUILD_DESTDIR}/openresty/nginx/lib
+    fi
+""",
+    # both v8 and wasmer currently depend on openresty/nginx/lib/libngx_wasm_rs.so,
+    # but in the case of wasmtime it is statically linked and thus not needed in
+    # the final package
+    "@kong//:wasmx_wasmtime": """
+    if [[ -d ${BUILD_DESTDIR}/openresty/nginx/lib ]]; then
+        rm -rf ${BUILD_DESTDIR}/openresty/nginx/lib
+    fi
+""",
+    "//conditions:default": "",
+})
+
+link_modules_dir = select({
+    "@kong//:nginx_dynamic_module_support": """
+    LN ${BUILD_DESTDIR}/openresty/nginx/modules ${BUILD_DESTDIR}/kong/modules
+""",
+    "//conditions:default": "",
+})
+
 kong_directory_genrule(
     name = "kong",
     srcs = [
-        "@openresty//:openresty",
+        "@openresty",
         "@openresty//:luajit",
         "@luarocks//:luarocks_make",
         "@luarocks//:luarocks_target",
@@ -103,8 +166,9 @@ kong_directory_genrule(
             "@kong_admin//:dist_files",
             "@kong_portal//:dist_files",
         ],
-    }) + lib_deps + lualib_deps,
-    cmd = """ set -e
+    }) + lib_deps + lualib_deps + wasmx_deps,
+    cmd =
+        """ set -e
         function copy_with_filter {
             mkdir -p $2
             tar -cC $1 --exclude="*.a" --exclude="*.la" \
@@ -161,9 +225,14 @@ kong_directory_genrule(
 
         cp $(location //build/ee:luarocks_license) ${BUILD_DESTDIR}/kong/manifest.json
 
-    """ + install_licensing_cmd + install_lib_deps_cmd + install_lualib_deps_cmd +
-          install_fips_cmd + install_webui_cmd +
-          """
+    """ + install_licensing_cmd +
+        install_lib_deps_cmd +
+        install_lualib_deps_cmd +
+        install_fips_cmd +
+        install_webui_cmd +
+        link_modules_dir +
+        wasm_libs_install +
+        wasmx_vm_cmd + """
         mkdir -p ${BUILD_DESTDIR}/etc/kong
         cp kong.conf.default ${BUILD_DESTDIR}/etc/kong/kong.conf.default
 

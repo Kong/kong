@@ -27,7 +27,7 @@ build-packages:
 - label: ubuntu-22.04-arm64
   os: vars.RELEASE_RUNS_ON
   package: deb
-  bazel-args: --platforms=//:generic-crossbuild-aarch64
+  bazel-args: --platforms=//:generic-crossbuild-aarch64 --//:wasmx=false
   check-manifest-suite: ubuntu-22.04-arm64
 - label: ubuntu-22.04-fips
   os: vars.RELEASE_RUNS_ON

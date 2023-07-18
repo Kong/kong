@@ -419,6 +419,24 @@ jobs:
           unzip -o /tmp/aws-sam-cli.zip -d /tmp/aws-sam-cli
           sudo /tmp/aws-sam-cli/install --update
 
+    - name: Update PATH
+      run: |
+        echo "$BUILD_ROOT/kong-dev/bin" >> $GITHUB_PATH
+        echo "$BUILD_ROOT/kong-dev/openresty/nginx/sbin" >> $GITHUB_PATH
+        echo "$BUILD_ROOT/kong-dev/openresty/bin" >> $GITHUB_PATH
+
+    - name: Debug (nginx)
+      run: |
+        echo nginx: $(which nginx)
+        nginx -V 2>&1 | sed -re 's/ --/\n--/g'
+        ldd $(which nginx)
+
+    - name: Debug (luarocks)
+      run: |
+        echo luarocks: $(which luarocks)
+        luarocks --version || true
+        luarocks config || true
+
     - name: Tests
       env:
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
@@ -714,7 +732,7 @@ jobs:
         - ninth
         - fips-first
         - fips-second
-        
+
         label:
         - normal
         - fips

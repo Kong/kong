@@ -61,6 +61,29 @@ def _load_vars(ctx):
 
     content += '"OPENRESTY_PATCHES": [%s],' % (", ".join(patches))
 
+    ngx_wasm_module_remote = ctx.os.environ.get("NGX_WASM_MODULE_REMOTE")
+    if ngx_wasm_module_remote:
+        content += '"NGX_WASM_MODULE_REMOTE": "%s",' % ngx_wasm_module_remote
+
+    # wasm runtime options
+    if ctx.os.name == "mac os x":
+        content += '"V8_OS": "darwin",'
+        content += '"WASMER_OS": "darwin",'
+        content += '"WASMTIME_OS": "macos",'
+    elif ctx.os.name == "linux":
+        content += '"V8_OS": "linux",'
+        content += '"WASMER_OS": "linux",'
+        content += '"WASMTIME_OS": "linux",'
+
+    if ctx.os.arch == "amd64" or ctx.os.arch == "x86_64":
+        content += '"V8_ARCH": "x86_64",'
+        content += '"WASMER_ARCH": "amd64",'
+        content += '"WASMTIME_ARCH": "x86_64",'
+    elif ctx.os.arch == "aarch64":
+        content += '"V8_ARCH": "FIXME",'  # no releases available atm
+        content += '"WASMER_ARCH": "aarch64",'
+        content += '"WASMTIME_ARCH": "aarch64",'
+
     ctx.file("BUILD.bazel", "")
     ctx.file("variables.bzl", "KONG_VAR = {\n" + content + "\n}")
 
