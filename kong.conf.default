@@ -3376,3 +3376,15 @@
                                               # If it's set to 60 and configuration A is exported
                                               # and there're new configurations B, C and D in the next 60 seconds,
                                               # it will wait until 60 seconds passed and export D, skipping B and C.
+
+
+#------------------------------------------------------------------------------
+# WASM
+#------------------------------------------------------------------------------
+#
+#
+#wasm = off                       # Use this setting to enable wasm, this allows running
+                                  # wasm filters to process request data.
+
+#wasm_filters_path =              # Path to the directory containing Wasm filters
+                                  # that Kong must load on startup.

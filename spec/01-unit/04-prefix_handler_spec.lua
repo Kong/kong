@@ -863,6 +863,171 @@ describe("NGINX conf compiler", function()
       ]])
       assert.matches("resolver%s+1%.2%.3%.4 5%.6%.7%.8 ipv6=off;", nginx_conf)
     end)
+
+    describe("#wasm subsystem", function()
+      local temp_dir, cleanup
+      local filter
+
+      lazy_setup(function()
+        temp_dir, cleanup = helpers.make_temp_dir()
+        filter = temp_dir .. "/empty-filter.wasm"
+        assert(helpers.file.write(filter, "testme"))
+      end)
+
+      lazy_teardown(function() cleanup() end)
+
+      local _compile = function(cfg, config_compiler, debug)
+        local ngx_conf = config_compiler(assert(conf_loader(nil, cfg)))
+        if debug then
+          print(ngx_conf)
+        end
+        return ngx_conf
+      end
+      local ngx_cfg = function(cfg, debug) return _compile(cfg, prefix_handler.compile_nginx_conf, debug) end
+
+      local debug = false
+      it("has no wasm{} block by default", function()
+        assert.not_matches("wasm {", ngx_cfg({ wasm = nil }, debug))
+      end)
+      it("injects global wasm{} block", function()
+        assert.matches("wasm {", ngx_cfg({ wasm = true }, debug))
+      end)
+      it("injects a filter", function()
+        assert.matches(("module empty-filter %s;"):format(filter), ngx_cfg({ wasm = true, wasm_filters_path = temp_dir }, debug), nil, true)
+      end)
+      it("injects a main block directive", function()
+        assert.matches("wasm {.+socket_connect_timeout 10s;.+}", ngx_cfg({ wasm = true, nginx_wasm_socket_connect_timeout="10s" }, debug))
+      end)
+      it("injects a shm_kv", function()
+        assert.matches("wasm {.+shm_kv counters 10m;.+}", ngx_cfg({ wasm = true, nginx_wasm_shm_counters="10m" }, debug))
+      end)
+      it("injects multiple shm_kvs", function()
+        assert.matches(
+          "wasm {.+shm_kv cache 10m.+shm_kv counters 10m;.+}",
+          ngx_cfg({ wasm = true, nginx_wasm_shm_cache="10m", nginx_wasm_shm_counters="10m"}, debug)
+        )
+      end)
+      it("injects runtime-specific directives (wasmtime)", function()
+        assert.matches(
+          "wasm {.+wasmtime {.+flag flag1 on;.+flag flag2 1m;.+}.+",
+          ngx_cfg({
+            wasm = true,
+            nginx_wasm_wasmtime_flag1=true,
+            nginx_wasm_wasmtime_flag2="1m",
+          }, debug)
+        )
+      end)
+      it("injects runtime-specific directives (v8)", function()
+        assert.matches(
+          "wasm {.+v8 {.+flag flag1 on;.+flag flag2 1m;.+}.+",
+          ngx_cfg({
+            wasm = true,
+            nginx_wasm_v8_flag1=true,
+            nginx_wasm_v8_flag2="1m",
+          }, debug)
+        )
+      end)
+      it("injects runtime-specific directives (wasmer)", function()
+        assert.matches(
+          "wasm {.+wasmer {.+flag flag1 on;.+flag flag2 1m;.+}.+",
+          ngx_cfg({
+            wasm = true,
+            nginx_wasm_wasmer_flag1=true,
+            nginx_wasm_wasmer_flag2="1m",
+          }, debug)
+        )
+      end)
+      describe("injects inherited directives", function()
+        describe("lua_ssl_trusted_certificate", function()
+          it("with one cert", function()
+            assert.matches(
+              "wasm {.+tls_trusted_certificate spec/fixtures/kong_clustering_ca.crt.+}",
+              ngx_cfg({
+                wasm = true,
+                lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering_ca.crt",
+              }, debug)
+            )
+          end)
+          it("with more than one cert, picks first", function()
+            assert.matches(
+            "wasm {.+tls_trusted_certificate spec/fixtures/kong_clustering_ca.crt.+}",
+            ngx_cfg({
+              wasm = true,
+              lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering_ca.crt,spec/fixtures/kong_clustering.crt",
+            }, debug)
+            )
+          end)
+        end)
+        it("lua_ssl_verify_depth", function()
+          assert.matches(
+            "wasm {.+tls_verify_cert on;.+}",
+            ngx_cfg({
+              wasm = true,
+              lua_ssl_verify_depth = 2,
+            }, debug)
+          )
+          assert.matches(
+            "wasm {.+tls_verify_host on;.+}",
+            ngx_cfg({
+              wasm = true,
+              lua_ssl_verify_depth = 2,
+            }, debug)
+          )
+          assert.matches(
+            "wasm {.+tls_no_verify_warn on;.+}",
+            ngx_cfg({
+              wasm = true,
+              lua_ssl_verify_depth = 2,
+            }, debug)
+          )
+        end)
+        it("proxy_connect_timeout", function()
+          assert.matches(
+            "wasm {.+socket_connect_timeout 1s;.+}",
+            ngx_cfg({
+              wasm = true,
+              nginx_http_proxy_connect_timeout = "1s",
+            }, debug)
+          )
+        end)
+        it("proxy_read_timeout", function()
+          assert.matches(
+            "wasm {.+socket_read_timeout 1s;.+}",
+            ngx_cfg({
+              wasm = true,
+              nginx_http_proxy_read_timeout = "1s",
+            }, debug)
+          )
+        end)
+        it("proxy_send_timeout", function()
+          assert.matches(
+            "wasm {.+socket_send_timeout 1s;.+}",
+            ngx_cfg({
+              wasm = true,
+              nginx_http_proxy_send_timeout = "1s",
+            }, debug)
+          )
+        end)
+        it("proxy_buffer_size", function()
+          assert.matches(
+            "wasm {.+socket_buffer_size 1m;.+}",
+            ngx_cfg({
+              wasm = true,
+              nginx_http_proxy_buffer_size = "1m",
+            }, debug)
+          )
+        end)
+        it("large_client_header_buffers", function()
+          assert.matches(
+            "wasm {.+socket_large_buffers 4 24k;.+}",
+            ngx_cfg({
+              wasm = true,
+              nginx_http_large_client_header_buffers = "4 24k",
+            }, debug)
+          )
+        end)
+      end)
+    end)
   end)
 
   describe("prepare_prefix()", function()

@@ -240,6 +240,7 @@ function _M:handle_cp_websocket()
     dp_plugins_map   = dp_plugins_map,
     dp_version       = dp_version,
     log_suffix       = log_suffix,
+    filters          = data.filters,
   }
 
   local config_hash = DECLARATIVE_EMPTY_CONFIG_HASH -- initial hash
@@ -564,8 +565,9 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
 end
 
 
-function _M:init_worker(plugins_list)
+function _M:init_worker(basic_info)
   -- ROLE = "control_plane"
+  local plugins_list = basic_info.plugins
   self.plugins_list = plugins_list
   self.plugins_map = plugins_list_to_map(plugins_list)
 
@@ -578,6 +580,8 @@ function _M:init_worker(plugins_list)
     local plugin = plugins_list[i]
     self.plugin_versions[plugin.name] = plugin.version
   end
+
+  self.filters = basic_info.filters
 
   self.is_exporter = self.conf.cluster_fallback_config_export
                      and worker_id() == 0

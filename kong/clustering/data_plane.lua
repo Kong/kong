@@ -83,10 +83,11 @@ function _M.new(clustering)
 end
 
 
-function _M:init_worker(plugins_list)
+function _M:init_worker(basic_info)
   -- ROLE = "data_plane"
 
-  self.plugins_list = plugins_list
+  self.plugins_list = basic_info.plugins
+  self.filters = basic_info.filters
 
   -- only run in process which worker_id() == 0 or privileged agent when that is turned on
   assert(ngx.timer.at(0, function(premature)
@@ -161,6 +162,7 @@ function _M:communicate(premature)
   _, err = c:send_binary(cjson_encode({ type = "basic_info",
                                         plugins = self.plugins_list,
                                         process_conf = configuration,
+                                        filters = self.filters,
                                         labels = labels, }))
   if err then
     ngx_log(ngx_ERR, _log_prefix, "unable to send basic information to control plane: ", uri,

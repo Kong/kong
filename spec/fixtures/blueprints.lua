@@ -658,6 +658,13 @@ function _M.new(db)
     return {}
   end)
 
+  local filter_chains_seq = new_sequence("filter-chains-%d")
+  res.filter_chains = new_blueprint(db.filter_chains, function()
+    return {
+      name = filter_chains_seq:next(),
+    }
+  end)
+
   return res
 end
 

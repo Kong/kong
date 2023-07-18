@@ -182,6 +182,7 @@ local constants = {
     "vaults",
     "key_sets",
     "keys",
+    "filter_chains",
   },
   ENTITY_CACHE_STORE = setmetatable({
     consumers = "cache",
@@ -252,6 +253,7 @@ local constants = {
     { KONG_VERSION_INCOMPATIBLE   = "kong_version_incompatible", },
     { PLUGIN_SET_INCOMPATIBLE     = "plugin_set_incompatible", },
     { PLUGIN_VERSION_INCOMPATIBLE = "plugin_version_incompatible", },
+    { FILTER_SET_INCOMPATIBLE     = "filter_set_incompatible", },
   },
   CLUSTERING_TIMEOUT = 5000, -- 5 seconds
   CLUSTERING_PING_INTERVAL = 30, -- 30 seconds

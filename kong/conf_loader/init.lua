@@ -9,6 +9,7 @@ local require = require
 
 local kong_default_conf = require "kong.templates.kong_defaults"
 local process_secrets = require "kong.cmd.utils.process_secrets"
+local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local openssl_pkey = require "resty.openssl.pkey"
 local openssl_x509 = require "resty.openssl.x509"
 local openssl_version = require "resty.openssl.version"
@@ -51,6 +52,7 @@ local concat = table.concat
 local getenv = os.getenv
 local exists = pl_path.exists
 local abspath = pl_path.abspath
+local isdir = pl_path.isdir
 local tostring = tostring
 local tonumber = tonumber
 local setmetatable = setmetatable
@@ -262,6 +264,31 @@ local DYNAMIC_KEY_NAMESPACES = {
   },
   {
     prefix = "vault_",
+    ignore = EMPTY,
+  },
+  {
+    injected_conf_name = "nginx_wasm_wasmtime_directives",
+    prefix = "nginx_wasm_wasmtime_",
+    ignore = EMPTY,
+  },
+  {
+    injected_conf_name = "nginx_wasm_v8_directives",
+    prefix = "nginx_wasm_v8_",
+    ignore = EMPTY,
+  },
+  {
+    injected_conf_name = "nginx_wasm_wasmer_directives",
+    prefix = "nginx_wasm_wasmer_",
+    ignore = EMPTY,
+  },
+  {
+    injected_conf_name = "nginx_wasm_main_shm_directives",
+    prefix = "nginx_wasm_shm_",
+    ignore = EMPTY,
+  },
+  {
+    injected_conf_name = "nginx_wasm_main_directives",
+    prefix = "nginx_wasm_",
     ignore = EMPTY,
   },
 }
@@ -604,6 +631,9 @@ local CONF_PARSERS = {
   proxy_server = { typ = "string" },
   proxy_server_ssl_verify = { typ = "boolean" },
 
+  wasm = { typ = "boolean" },
+  wasm_filters_path = { typ = "string" },
+
   error_template_html = { typ = "string" },
   error_template_json = { typ = "string" },
   error_template_xml = { typ = "string" },
@@ -704,6 +734,63 @@ local function parse_value(value, typ)
   end
 
   return value
+end
+
+
+-- Check if module is dynamic
+local function check_dynamic_module(mod_name)
+  local configure_line = ngx.config.nginx_configure()
+  local mod_re = [[^.*--add-dynamic-module=(.+\/]] .. mod_name .. [[(\s|$)).*$]]
+  return ngx.re.match(configure_line, mod_re, "oi") ~= nil
+end
+
+
+-- Lookup dynamic module object
+-- this function will lookup for the `mod_name` dynamic module in the following
+-- paths:
+--  - /usr/local/kong/modules -- default path for modules in container images
+--  - <nginx binary path>/../modules
+-- @param[type=string] mod_name The module name to lookup, without file extension
+local function lookup_dynamic_module_so(mod_name, kong_conf)
+  log.debug("looking up dynamic module %s", mod_name)
+
+  local mod_file = fmt("/usr/local/kong/modules/%s.so", mod_name)
+  if exists(mod_file) then
+    log.debug("module '%s' found at '%s'", mod_name, mod_file)
+    return mod_file
+  end
+
+  local nginx_bin = nginx_signals.find_nginx_bin(kong_conf)
+  mod_file = fmt("%s/../modules/%s.so", pl_path.dirname(nginx_bin), mod_name)
+  if exists(mod_file) then
+    log.debug("module '%s' found at '%s'", mod_name, mod_file)
+    return mod_file
+  end
+
+  return nil, fmt("%s dynamic module shared object not found", mod_name)
+end
+
+
+-- Validate Wasm properties
+local function validate_wasm(conf)
+  local wasm_enabled = conf.wasm
+  local filters_path = conf.wasm_filters_path
+
+  if wasm_enabled then
+    if filters_path and not exists(filters_path) and not isdir(filters_path) then
+      return nil, fmt("wasm_filters_path '%s' is not a valid directory", filters_path)
+    end
+  else
+    for cfg in pairs(conf) do
+      local wasm_cfg = match(cfg, "wasm_(.+)")
+      if wasm_cfg then
+        log.warn("wasm is disabled but ", wasm_cfg,
+          " property is used, please check your configuration.")
+      end
+    end
+  end
+
+  return true
 end
 
 
@@ -1368,6 +1455,19 @@ local function check_and_parse(conf, opts)
     errors[#errors + 1] = "Cassandra as a datastore for Kong is not supported in versions 3.4 and above. Please use Postgres."
   end
 
+  local ok, err = validate_wasm(conf)
+  if not ok then
+    errors[#errors + 1] = err
+  end
+
+  if conf.wasm and check_dynamic_module("ngx_wasm_module") then
+    local err
+    conf.wasm_dynamic_module, err = lookup_dynamic_module_so("ngx_wasm_module", conf)
+    if err then
+      errors[#errors + 1] = err
+    end
+  end
+
   return #errors == 0, errors[1], errors
 end
 
@@ -1547,6 +1647,34 @@ local function load_config_file(path)
   end
 
   return load_config(f)
+end
+
+--- Get available Wasm filters list
+-- @param[type=string] Path where Wasm filters are stored.
+local function get_wasm_filters(filters_path)
+  local wasm_filters = {}
+
+  if filters_path then
+    local filter_files = {}
+    for entry in pl_path.dir(filters_path) do
+      local pathname = pl_path.join(filters_path, entry)
+      if not filter_files[pathname] and pl_path.isfile(pathname) then
+        filter_files[pathname] = pathname
+
+        local extension = pl_path.extension(entry)
+        if string.lower(extension) == ".wasm" then
+          insert(wasm_filters, {
+            name = entry:sub(0, -#extension - 1),
+            path = pathname,
+          })
+        else
+          log.debug("ignoring file ", entry, " in ", filters_path, ": does not contain wasm suffix")
+        end
+      end
+    end
+  end
+
+  return wasm_filters
 end
 
 
@@ -1957,6 +2085,83 @@ local function load(path, custom_conf, opts)
       insert(stream_directives, {
         name  = "lua_shared_dict",
         value = "stream_prometheus_metrics 5m",
+      })
+    end
+  end
+
+  -- WebAssembly module support
+  if conf.wasm then
+
+    local wasm_directives = conf["nginx_wasm_main_directives"]
+
+    local wasm_filters = get_wasm_filters(conf.wasm_filters_path)
+    conf.wasm_modules_parsed = setmetatable(wasm_filters, _nop_tostring_mt)
+
+    -- wasm vm properties are inherited from previously set directives
+    if conf.lua_ssl_trusted_certificate then
+      if #conf.lua_ssl_trusted_certificate >= 1 then
+        insert(wasm_directives, {
+          name  = "tls_trusted_certificate",
+          value = conf.lua_ssl_trusted_certificate[1],
+        })
+      end
+    end
+    if conf.lua_ssl_verify_depth and conf.lua_ssl_verify_depth > 0 then
+      insert(wasm_directives, {
+        name  = "tls_verify_cert",
+        value = "on",
+      })
+      insert(wasm_directives, {
+        name  = "tls_verify_host",
+        value = "on",
+      })
+      insert(wasm_directives, {
+        name  = "tls_no_verify_warn",
+        value = "on",
+      })
+    end
+
+    local found_proxy_wasm_lua_resolver = false
+
+    for _, directive in ipairs(conf["nginx_http_directives"]) do
+      if directive.name == "proxy_connect_timeout" then
+        insert(wasm_directives, {
+          name  = "socket_connect_timeout",
+          value = directive.value,
+        })
+      elseif directive.name == "proxy_read_timeout" then
+        insert(wasm_directives, {
+          name  = "socket_read_timeout",
+          value = directive.value,
+        })
+      elseif directive.name == "proxy_send_timeout" then
+        insert(wasm_directives, {
+          name  = "socket_send_timeout",
+          value = directive.value,
+        })
+      elseif directive.name == "proxy_buffer_size" then
+        insert(wasm_directives, {
+          name  = "socket_buffer_size",
+          value = directive.value,
+        })
+      elseif directive.name == "large_client_header_buffers" then
+        insert(wasm_directives, {
+          name  = "socket_large_buffers",
+          value = directive.value,
+        })
+      elseif directive.name == "proxy_wasm_lua_resolver" then
+        found_proxy_wasm_lua_resolver = true
+      end
+    end
+
+    -- proxy_wasm_lua_resolver is intended to be 'on' by default, but we can't
+    -- set it as such in kong_defaults, because it can only be used if wasm is
+    -- _also_ enabled. We inject it here if the user has not opted to set it
+    -- themselves.
+    if not found_proxy_wasm_lua_resolver then
+      insert(conf["nginx_http_directives"], {
+        name = "proxy_wasm_lua_resolver",
+        value = "on",
       })
     end
   end

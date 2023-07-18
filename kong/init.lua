@@ -95,6 +95,7 @@ local tablepool = require "tablepool"
 local table_new = require "table.new"
 local get_ctx_table = require("resty.core.ctx").get_ctx_table
 local utils = require "kong.tools.utils"
+local wasm = require "kong.runloop.wasm"
 
 
 local internal_proxies = require "kong.enterprise_edition.proxies"
@@ -598,6 +599,7 @@ function Kong.init()
 
   kong_global.init_pdk(kong, config)
   instrumentation.init(config)
+  wasm.init(config)
 
   tracing.init(config)
 
@@ -691,6 +693,7 @@ function Kong.init()
   -- Load plugins as late as possible so that everything is set up
   assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
 
+  assert(db.filter_chains:load_filters(config.wasm_modules_parsed))
 
   kong.invoke_plugin = invoke_plugin.new {
     loaded_plugins = db.plugins:get_handlers(),
@@ -955,6 +958,12 @@ function Kong.init_worker()
   if kong.clustering then
     kong.clustering:init_worker()
   end
+
+  ok, err = wasm.init_worker()
+  if not ok then
+    err = "wasm nginx worker initialization failed: " .. tostring(err)
+    stash_init_worker_error(err)
+  end
 end
 
 
@@ -1137,6 +1146,7 @@ function Kong.access()
     return kong.response.error(503, "no Service found with those values")
   end
 
+  runloop.wasm_attach(ctx)
   runloop.access.after(ctx)
 
   ctx.KONG_ACCESS_ENDED_AT = get_updated_now_ms()

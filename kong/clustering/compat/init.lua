@@ -198,6 +198,23 @@ function _M.check_configuration_compatibility(cp, dp, conf)
     end
   end
 
+  if cp.conf.wasm then
+    local dp_filters = dp.filters or EMPTY
+    local missing
+    for name in pairs(cp.filters or EMPTY) do
+      if not dp_filters[name] then
+        missing = missing or {}
+        table.insert(missing, name)
+      end
+    end
+
+    if missing then
+      local msg = "data plane is missing one or more wasm filters "
+                  .. "(" .. table.concat(missing, ", ") .. ")"
+      return nil, msg, CLUSTERING_SYNC_STATUS.FILTER_SET_INCOMPATIBLE
+    end
+  end
+
   -- EE [[
   -- TODO: refactor me
   local dp_version_num = version_num(dp.dp_version)

@@ -10,6 +10,7 @@ local constants    = require "kong.constants"
 local certificate  = require "kong.runloop.certificate"
 local balancer     = require "kong.runloop.balancer"
 local workspaces   = require "kong.workspaces"
+local wasm         = require "kong.runloop.wasm"
 
 
 local kong         = kong
@@ -311,6 +312,26 @@ local function crud_consumers_handler(data)
 end
 
 
+local function crud_wasm_handler(data, schema_name)
+  if not wasm.enabled() then
+    return
+  end
+
+  -- cache is invalidated on service/route deletion to ensure we don't
+  -- have oprhaned filter chain data cached
+  local is_delete = data.operation == "delete"
+               and (schema_name == "services"
+                    or schema_name == "routes")
+
+  local updated = schema_name == "filter_chains" or is_delete
+
+  if updated then
+    log(DEBUG, "[events] wasm filter chains updated, invalidating cache")
+    core_cache:invalidate("filter_chains:version")
+  end
+end
+
+
 local LOCAL_HANDLERS = {
   { "dao:crud", nil         , dao_crud_handler },
 
@@ -326,6 +347,10 @@ local LOCAL_HANDLERS = {
   -- As we support conifg.anonymous to be configured as Consumer.username,
   -- so add an event handler to invalidate the extra cache in case of data inconsistency
   { "crud"    , "consumers" , crud_consumers_handler },
+
+  { "crud"    , "filter_chains"  , crud_wasm_handler },
+  { "crud"    , "services"       , crud_wasm_handler },
+  { "crud"    , "routes"         , crud_wasm_handler },
 }
 
 

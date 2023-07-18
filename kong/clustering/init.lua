@@ -128,6 +128,18 @@ function _M:init_worker()
     return { name = p.name, version = p.handler.VERSION, }
   end, plugins_list)
 
+  local filters = {}
+  if kong.db.filter_chains.filters then
+    for _, filter in ipairs(kong.db.filter_chains.filters) do
+      filters[filter.name] = { name = filter.name }
+    end
+  end
+
+  local basic_info = {
+    plugins = plugins_list,
+    filters = filters,
+  }
+
   -- This must be initialized before clustering config sync.
   -- Otherwise the import/export may be triggered before state is ready.
   if self.conf.cluster_fallback_config_export then
@@ -140,12 +152,12 @@ function _M:init_worker()
   --[= XXX EE
   local role = self.conf.role
   if role == "control_plane" then
-    self:init_cp_worker(plugins_list)
+    self:init_cp_worker(basic_info)
   end
   --]=]
 
   if role == "data_plane" then
-    self:init_dp_worker(plugins_list)
+    self:init_dp_worker(basic_info)
   end
 end
 

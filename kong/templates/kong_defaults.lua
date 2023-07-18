@@ -370,4 +370,8 @@ cluster_fallback_config_import = off
 cluster_fallback_config_storage =
 cluster_fallback_config_export = off
 cluster_fallback_config_export_delay = 60
+
+wasm = off
+wasm_filters_path = NONE
+wasm_dynamic_module = NONE
 ]]
