@@ -28,6 +28,8 @@ local table_concat = table.concat
 local run_hook = hooks.run_hook
 local var = ngx.var
 local get_updated_now_ms = utils.get_updated_now_ms
+local is_http_module   = ngx.config.subsystem == "http"
+local is_stream_module = ngx.config.subsystem == "stream"
 
 local CRIT = ngx.CRIT
 local ERR = ngx.ERR
@@ -472,7 +474,8 @@ local function set_host_header(balancer_data, upstream_scheme, upstream_host, is
 
     var.upstream_host = new_upstream_host
 
-    if is_balancer_phase then
+    -- stream module does not support ngx.balancer.recreate_request
+    if is_balancer_phase and is_http_module then
       return recreate_request()
     end
   end
