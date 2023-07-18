@@ -39,3 +39,5 @@ bin/h2client
 
 # wasm
 *.wasm
+spec/fixtures/proxy_wasm_filters/build
+spec/fixtures/proxy_wasm_filters/target

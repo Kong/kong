@@ -34,6 +34,12 @@ jobs:
         ref: ${{ env.NGX_WASM_MODULE_BRANCH }}
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
+    # these aren't necessarily used by all tests, but building them here will
+    # ensures that we have a warm cache when other tests _do_ need to build the
+    # filters
+    - name: Build WASM Test Filters
+      uses: ./.github/actions/build-wasm-test-filters
+
     - name: Lookup build cache
       id: cache-deps
       uses: actions/cache@v3
