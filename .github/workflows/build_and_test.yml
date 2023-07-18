@@ -168,6 +168,9 @@ jobs:
 
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
+    - name: Build WASM Test Filters
+      uses: ./.github/actions/build-wasm-test-filters
+
     - name: Add gRPC test host names
       run: |
           echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
@@ -269,6 +272,9 @@ jobs:
           ${{ env.BUILD_ROOT }}
 
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+
+    - name: Build WASM Test Filters
+      uses: ./.github/actions/build-wasm-test-filters
 
     - name: Add gRPC test host names
       run: |
