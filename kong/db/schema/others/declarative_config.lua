@@ -460,7 +460,7 @@ end
 -- ensure uniqueness, we bail out and return `nil` (instead of
 -- producing an incorrect identifier that may not be unique).
 local function build_cache_key(entity, item, schema, parent_fk, child_key)
-  local ck = { entity, item.ws_id or "*" }
+  local ck = { entity }
   for _, k in ipairs(schema.cache_key) do
     if schema.fields[k].auto then
       return nil
@@ -547,10 +547,6 @@ local function get_key_for_uuid_gen(entity, item, schema, parent_fk, child_key)
             key = key .. ":" .. item[fname]
           end
         end
-      end
-
-      if not schema.fields[schema.endpoint_key].unique_across_ws then
-        key = key .. ":" .. (item.ws_id or "*")
       end
     end
 
@@ -716,14 +712,6 @@ local function insert_default_workspace_if_not_given(_, entities)
 end
 
 
-local function get_unique_key(schema, entity, field, value)
-  if not entity.ws_id or not schema.workspaceable or field.unique_across_ws then
-    return value
-  end
-  return (entity.ws_id or "*") .. ":" .. value
-end
-
-
 local function flatten(self, input)
   -- manually set transform here
   -- we can't do this in the schema with a `default` because validate
@@ -804,16 +792,15 @@ local function flatten(self, input)
         if field.unique then
           local flat_value = flat_entry[name]
           if flat_value and flat_value ~= ngx.null then
-            local unique_key = get_unique_key(schema, entry, field, flat_value)
             uniques[name] = uniques[name] or {}
-            if uniques[name][unique_key] then
+            if uniques[name][flat_value] then
               errs = errs or {}
               errs[entity] = errors[entity] or {}
               local key = schema.endpoint_key
                           and flat_entry[schema.endpoint_key] or id
               errs[entity][key] = uniqueness_error_msg(entity, name, flat_value)
             else
-              uniques[name][unique_key] = true
+              uniques[name][flat_value] = true
             end
           end
         end
