@@ -10,10 +10,10 @@ workspaces:
 
 consumers:
   - id: 1bd69f90-741c-4e75-834e-94155d6e3f5d
-    username: bob1
+    username: bob
     ws_id: 213e4358-0611-4a0f-8b6a-e1a0df608a04
   - id: 8df2d29b-fb8f-45b2-b90d-4b7fdbaa92e7
-    username: bob2
+    username: bob
     ws_id: 84c4e4b7-a307-4478-8875-27a484599159
 
 keyauth_enc_credentials:

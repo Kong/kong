@@ -60,7 +60,7 @@ describe("Plugin: key-auth-enc (access) [#off]", function()
     local body = assert.res_status(200, res)
     local json = cjson.decode(body)
     assert.equal(consumer_1_id, json.headers["x-consumer-id"])
-    assert.equal("bob1", json.headers["x-consumer-username"])
+    assert.equal("bob", json.headers["x-consumer-username"])
     assert.equal(apikey, json.headers["apikey"])
 
     local res = assert(proxy_client:send {
@@ -73,7 +73,7 @@ describe("Plugin: key-auth-enc (access) [#off]", function()
     local body = assert.res_status(200, res)
     local json = cjson.decode(body)
     assert.equal(consumer_2_id, json.headers["x-consumer-id"])
-    assert.equal("bob2", json.headers["x-consumer-username"])
+    assert.equal("bob", json.headers["x-consumer-username"])
     assert.equal(apikey, json.headers["apikey"])
 
   end)
