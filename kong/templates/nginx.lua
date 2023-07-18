@@ -1,5 +1,9 @@
 return [[
 pid pids/nginx.pid;
+> if wasm and wasm_dynamic_module then
+load_module $(wasm_dynamic_module);
+> end
+
 error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
 # injected nginx_main_* directives
@@ -18,6 +22,47 @@ events {
     $(el.name) $(el.value);
 > end
 }
+
+> if wasm then
+wasm {
+> for _, el in ipairs(nginx_wasm_main_shm_directives) do
+  shm_kv $(el.name) $(el.value);
+> end
+
+> for _, module in ipairs(wasm_modules_parsed) do
+  module $(module.name) $(module.path);
+> end
+
+> for _, el in ipairs(nginx_wasm_main_directives) do
+  $(el.name) $(el.value);
+> end
+
+> if #nginx_wasm_wasmtime_directives > 0 then
+  wasmtime {
+> for _, el in ipairs(nginx_wasm_wasmtime_directives) do
+    flag $(el.name) $(el.value);
+> end
+  }
+> end -- wasmtime
+
+> if #nginx_wasm_v8_directives > 0 then
+  v8 {
+> for _, el in ipairs(nginx_wasm_v8_directives) do
+    flag $(el.name) $(el.value);
+> end
+  }
+> end -- v8
+
+> if #nginx_wasm_wasmer_directives > 0 then
+  wasmer {
+> for _, el in ipairs(nginx_wasm_wasmer_directives) do
+    flag $(el.name) $(el.value);
+> end
+  }
+> end -- wasmer
+
+}
+> end
 
 > if role == "control_plane" or #proxy_listeners > 0 or #admin_listeners > 0 or #status_listeners > 0 then
 http {
