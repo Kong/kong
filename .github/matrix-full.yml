@@ -86,6 +86,12 @@ build-packages:
   package-type: el9
   bazel-args: --//:fips=true
   check-manifest-suite: el9-amd64-fips
+- label: rhel-9-arm64
+  os: ubuntu-22.04-arm64
+  image: rockylinux:9
+  package: rpm
+  package-type: el9
+  check-manifest-suite: el9-arm64
 
 # Amazon Linux
 - label: amazonlinux-2
@@ -151,6 +157,8 @@ build-images:
   package: rpm
   package-distro: el9
   artifact-from: rhel-9
+  artifact-from-alt: rhel-9-arm64
+  docker-platforms: linux/amd64, linux/arm64
 - label: rhel-fips
   base-image: registry.access.redhat.com/ubi9
   package: rpm
@@ -180,6 +188,7 @@ test-images:
 - label: debian
   multiarch: true
 - label: rhel
+  multiarch: true
 - label: rhel-fips
 - label: amazonlinux-2
   multiarch: true
@@ -289,6 +298,12 @@ release-packages:
   artifact-version: 9
   artifact-type: rhel
   artifact: kong.el9.amd64.rpm
+- label: rhel-9-arm64
+  package: rpm
+  artifact-from: rhel-9-arm64
+  artifact-version: 9
+  artifact-type: rhel
+  artifact: kong.el9.arm64.rpm
 
 # Amazon Linux
 - label: amazonlinux-2

@@ -6,8 +6,6 @@ import {
   Environment,
   expect,
   getBasePath,
-  isGwHybrid,
-  isLocalDatabase,
   postNegative,
   randomString,
   wait,
@@ -18,11 +16,7 @@ import axios from 'axios';
 import WebSocket from 'promise-ws';
 
 describe('Websocket Validator Plugin Tests', function () {
-  const hybridTimeout = 8000; // confirm timeout when hybrid is functioning
-  const classicTimeout = 5000;
   const waitTime = 20;
-  const isHybrid = isGwHybrid();
-  const isLocalDb = isLocalDatabase();
   const wsEchoServer = `${getBasePath({
     environment: Environment.gateway.ec2TestServer,
   })}`;
