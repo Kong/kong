@@ -220,7 +220,8 @@ function _M:communicate(premature)
       end
 
       if not pok or not res then
-        ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
+        ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ",
+                         (not pok and res) or err)
       end
 
       if next_data == data then
