@@ -1957,8 +1957,34 @@
 # WASM
 #------------------------------------------------------------------------------
 
-#wasm = off                       # Use this setting to enable wasm, this allows running
-                                  # wasm filters to process request data.
+#wasm = off             # Enable/disable wasm support. This must be enabled in
+                        # order to use wasm filters and filter chains.
 
-#wasm_filters_path =              # Path to the directory containing Wasm filters
-                                  # that Kong must load on startup.
+#wasm_filters_path =    # Path to the directory containing wasm filter modules.
+                        #
+                        # At startup, Kong discovers available wasm filters by
+                        # scanning this directory for files with the `.wasm`
+                        # file extension.
+                        #
+                        # The name of a wasm filter module is derived from the
+                        # filename itself, with the .wasm extension removed. So,
+                        # given the following tree:
+                        #
+                        # ```
+                        # /path/to/wasm_filters
+                        # ├── my_module.wasm
+                        # ├── my_other_module.wasm
+                        # └── not_a_wasm_module.txt
+                        # ```
+                        #
+                        # The resulting filter modules available for use in Kong
+                        # will be:
+                        #
+                        # * `my_module`
+                        # * `my_other_module`
+                        #
+                        # Notes:
+                        #
+                        # * No recursion is performed. Only .wasm files at the
+                        #   top level are registered
+                        # * This path _may_ be a symlink to a directory.
