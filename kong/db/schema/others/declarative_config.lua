@@ -745,7 +745,10 @@ local function get_unique_key(schema, entity, field, value)
     return value
   end
   local ws_id = ws_id_for(entity)
-  return ws_id .. ":" .. value
+  if type(value) == "table" then
+    value = value.id
+  end
+  return ws_id .. ":" .. tostring(value)
 end
 
 
