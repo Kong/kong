@@ -123,6 +123,9 @@ _M.handlers = {
   },
   init_worker = {
     after = function(ctx)
+      if kong.configuration.admin_gui_listeners then
+        kong.cache:invalidate_local(constants.ADMIN_GUI_KCONFIG_CACHE_KEY)
+      end
 
       kong.licensing:init_worker()
 
