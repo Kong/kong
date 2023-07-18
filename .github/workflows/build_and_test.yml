@@ -378,6 +378,9 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: make dev LIBRARY_PREFIX=/usr/local/kong
 
+    - name: Build WASM Test Filters
+      uses: ./.github/actions/build-wasm-test-filters
+
     - name: Add gRPC test host names
       run: |
           echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
@@ -520,6 +523,9 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: make dev LIBRARY_PREFIX=/usr/local/kong
+
+    - name: Build WASM Test Filters
+      uses: ./.github/actions/build-wasm-test-filters
 
     - name: Add gRPC test host names
       run: |

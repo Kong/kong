@@ -45,7 +45,7 @@ endif
 .PHONY: install dev \
 	sca test test-integration test-plugins test-all \
 	pdk-phase-check functional-tests \
-	fix-windows release
+	fix-windows release wasm-test-filters
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 KONG_SOURCE_LOCATION ?= $(ROOT_DIR)
@@ -83,6 +83,9 @@ ifndef BAZEL
 	$(eval BAZEL := bin/bazel)
 endif
 
+wasm-test-filters:
+	./scripts/build-wasm-test-filters.sh
+
 build-kong: check-bazel
 	$(BAZEL) build //build:kong $(BAZEL_ARGS)
 
@@ -105,7 +108,7 @@ install-dev-rocks: build-venv
 	  fi \
 	done;
 
-dev: build-venv install-dev-rocks bin/grpcurl bin/h2client
+dev: build-venv install-dev-rocks bin/grpcurl bin/h2client wasm-test-filters
 
 build-release: check-bazel
 	$(BAZEL) clean --expunge
