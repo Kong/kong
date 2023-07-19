@@ -18,22 +18,6 @@ jobs:
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
-    - name: Set ngx_wasm_module path/branch vars
-      run: |
-        grep ^NGX_WASM_MODULE_BRANCH= .requirements >> $GITHUB_ENV || {
-          echo "ERROR: NGX_WASM_MODULE_BRANCH is not defined in .requirements"
-          exit 1
-        }
-        echo "NGX_WASM_MODULE_REMOTE=$PWD/ngx_wasm_module" >> $GITHUB_ENV
-
-    - name: Checkout ngx_wasm_module
-      uses: actions/checkout@v3
-      with:
-        repository: Kong/ngx_wasm_module
-        path: ${{ env.NGX_WASM_MODULE_REMOTE }}
-        ref: ${{ env.NGX_WASM_MODULE_BRANCH }}
-        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
-
     # these aren't necessarily used by all tests, but building them here will
     # ensures that we have a warm cache when other tests _do_ need to build the
     # filters

@@ -37,7 +37,6 @@ jobs:
     uses: ./.github/workflows/build.yml
     with:
       relative-build-root: bazel-bin/build
-    secrets: inherit
 
   lint-doc-and-unit-tests:
     name: Lint, Doc and Unit tests

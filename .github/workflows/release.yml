@@ -214,22 +214,6 @@ jobs:
         # required for openssl 3.x config
         cpanm IPC/Cmd.pm
 
-    - name: Set ngx_wasm_module path/branch vars
-      run: |
-        grep ^NGX_WASM_MODULE_BRANCH= .requirements >> $GITHUB_ENV || {
-          echo "ERROR: NGX_WASM_MODULE_BRANCH is not defined in .requirements"
-          exit 1
-        }
-        echo "NGX_WASM_MODULE_REMOTE=$PWD/ngx_wasm_module" >> $GITHUB_ENV
-
-    - name: Checkout ngx_wasm_module
-      uses: actions/checkout@v3
-      with:
-        repository: Kong/ngx_wasm_module
-        path: ${{ env.NGX_WASM_MODULE_REMOTE }}
-        ref: ${{ env.NGX_WASM_MODULE_BRANCH }}
-        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
-
     - name: Build Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
       env:

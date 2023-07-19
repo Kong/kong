@@ -21,7 +21,7 @@ def wasmx_repositories():
         new_git_repository,
         name = "ngx_wasm_module",
         branch = ngx_wasm_module_branch,
-        remote = KONG_VAR.get("NGX_WASM_MODULE_REMOTE", "git@github.com:Kong/ngx_wasm_module.git"),
+        remote = KONG_VAR.get("NGX_WASM_MODULE_REMOTE", "https://github.com/Kong/ngx_wasm_module.git"),
         build_file_content = """
 filegroup(
     name = "all_srcs",
