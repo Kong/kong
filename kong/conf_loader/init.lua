@@ -780,14 +780,6 @@ local function validate_wasm(conf)
     if filters_path and not exists(filters_path) and not isdir(filters_path) then
       return nil, fmt("wasm_filters_path '%s' is not a valid directory", filters_path)
     end
-  else
-    for cfg in pairs(conf) do
-      local wasm_cfg = match(cfg, "wasm_(.+)")
-      if wasm_cfg then
-        log.warn("wasm is disabled but ", wasm_cfg,
-          " property is used, please check your configuration.")
-      end
-    end
   end
 
   return true
