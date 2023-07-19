@@ -179,6 +179,9 @@ for _, strategy in helpers.each_strategy() do
       post(admin_client, "/ws1/consumers/u1/key-auth", { key = "u1" })
       -- post(admin_client, "/ws1/consumers/u1/key-auth", { key = "u2" })
 
+      post(admin_client, "/ws1/consumer_groups", { name = "cg1" })
+      post(admin_client, "/ws1/consumer_groups/cg1/consumers", { consumer = "u1" })
+
       -- route/consumer is ok
       delayed_get("/ws1-route", { apikey= 'u1' }, 200)
 

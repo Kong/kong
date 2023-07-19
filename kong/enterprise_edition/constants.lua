@@ -36,7 +36,7 @@ return {
     "keyring_keys",
     "event_hooks",
     "licenses",
-    "consumer_groups",
+    { "consumer_groups", ahead_of = "plugins" },
     "consumer_group_plugins",
     "consumer_group_consumers",
   },
