@@ -179,6 +179,9 @@ for _, strategy in helpers.each_strategy() do
       post(admin_client, "/ws1/consumers/u1/key-auth", { key = "u1" })
       -- post(admin_client, "/ws1/consumers/u1/key-auth", { key = "u2" })
 
+      post(admin_client, "/ws1/consumer_groups", { name = "cg1" })
+      post(admin_client, "/ws1/consumer_groups/cg1/consumers", { consumer = "u1" })
+
       -- route/consumer is ok
       delayed_get("/ws1-route", { apikey= 'u1' }, 200)
 
@@ -307,8 +310,10 @@ for _, strategy in helpers.each_strategy() do
         assert.equals(mock_license_key, list.data[1].payload.license_key)
         assert.equals(mock_license_signature, list.data[1].signature)
 
-        local report = get_license_report(client)
-        assert.equals(mock_license_key, report.license_key)
+        helpers.wait_until(function()
+          local report = get_license_report(client)
+          return report.license_key == mock_license_key
+        end, 10, 0.5)
       end
 
       local dp_admin_client = dp_admin()

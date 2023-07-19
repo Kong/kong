@@ -174,11 +174,6 @@ local constants = {
     "snis",
     "upstreams",
     "targets",
-    -- XXX: ee only
-    -- when a non-core entity is being referenced by a core entity, the schema validation fails
-    -- even when it's loaded later (as part of the EE only entities)
-    "consumer_groups",
-    -- XXX: ee only end
     "plugins",
     "tags",
     "ca_certificates",
@@ -316,7 +311,16 @@ end
 
 -- Add EE_ENTITIES to the CORE_ENTITIES list
 for _, v in ipairs(ee_constants.EE_ENTITIES) do
-  table.insert(constants.CORE_ENTITIES, v)
+  if type(v) == "table" then
+    for i, e in ipairs(constants.CORE_ENTITIES) do
+      if e == v.ahead_of then
+        table.insert(constants.CORE_ENTITIES, i, v[1])
+        break
+      end
+    end
+  else
+    table.insert(constants.CORE_ENTITIES, v)
+  end
 end
 
 -- Add EE_DICTS to DICTS list

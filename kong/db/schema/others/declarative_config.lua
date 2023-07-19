@@ -319,7 +319,39 @@ local function load_vault_subschemas(fields, vault_set)
 end
 
 
-local function populate_references(input, known_entities, by_id, by_key, expected, parent_entity)
+local function ws_id_for(item)
+  if item.ws_id == nil or item.ws_id == ngx.null then
+    return "*"
+  end
+  return item.ws_id
+end
+
+
+local function add_to_by_key(by_key, schema, item, entity, key)
+  local ws_id = ws_id_for(item)
+  if schema.fields[schema.endpoint_key].unique_across_ws then
+    ws_id = "*"
+  end
+  by_key[ws_id] = by_key[ws_id] or {}
+  local ws_keys = by_key[ws_id]
+  ws_keys[entity] = ws_keys[entity] or {}
+  local entity_keys = ws_keys[entity]
+  if entity_keys[key] then
+    return false
+  end
+
+  entity_keys[key] = item
+  return true
+end
+
+
+local function uniqueness_error_msg(entity, key, value)
+  return "uniqueness violation: '" .. entity .. "' entity " ..
+         "with " .. key .. " set to '" .. value .. "' already declared"
+end
+
+
+local function populate_references(input, known_entities, by_id, by_key, expected, errs, parent_entity)
   for _, entity in ipairs(known_entities) do
     yield(true)
 
@@ -341,21 +373,35 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
     end
 
     local entity_schema = all_schemas[entity]
+    local endpoint_key = entity_schema.endpoint_key
+    local use_key = endpoint_key and entity_schema.fields[endpoint_key].unique
+
     for i, item in ipairs(input[entity]) do
       yield(true)
 
-      populate_references(item, known_entities, by_id, by_key, expected, entity)
+      populate_references(item, known_entities, by_id, by_key, expected, errs, entity)
 
       local item_id = DeclarativeConfig.pk_string(entity_schema, item)
-      by_id[entity] = by_id[entity] or {}
-      by_id[entity][item_id] = item
+      local key = use_key and item[endpoint_key]
 
-      local key
-      if entity_schema.endpoint_key then
-        key = item[entity_schema.endpoint_key]
-        if key then
-          by_key[entity] = by_key[entity] or {}
-          by_key[entity][key] = item
+      local failed = false
+      if key and key ~= ngx.null then
+        local ok = add_to_by_key(by_key, entity_schema, item, entity, key)
+        if not ok then
+          errs[entity] = errs[entity] or {}
+          errs[entity][i] = uniqueness_error_msg(entity, endpoint_key, key)
+          failed = true
+        end
+      end
+
+      if item_id then
+        by_id[entity] = by_id[entity] or {}
+        if (not failed) and by_id[entity][item_id] then
+          errs[entity] = errs[entity] or {}
+          errs[entity][i] = uniqueness_error_msg(entity, "primary key", item_id)
+        else
+          by_id[entity][item_id] = item
+          table.insert(by_id[entity], item_id)
         end
       end
 
@@ -366,6 +412,7 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
             expected[entity] = expected[entity] or {}
             expected[entity][ref] = expected[entity][ref] or {}
             insert(expected[entity][ref], {
+              ws_id = ws_id_for(item),
               key = k,
               value = v,
               at = key or item_id or i
@@ -384,9 +431,9 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
 end
 
 
-local function find_entity(key, entity, by_key, by_id)
-  return (by_key[entity] and by_key[entity][key])
-      or (by_id[entity]  and by_id[entity][key])
+local function find_entity(ws_id, key, entity, by_key, by_id)
+  return (by_key[ws_id] and by_key[ws_id][entity] and by_key[ws_id][entity][key])
+      or (by_id[entity] and by_id[entity][key])
 end
 
 
@@ -394,10 +441,9 @@ local function validate_references(self, input)
   local by_id = {}
   local by_key = {}
   local expected = {}
+  local errs = {}
 
-  populate_references(input, self.known_entities, by_id, by_key, expected)
-
-  local errors = {}
+  populate_references(input, self.known_entities, by_id, by_key, expected, errs)
 
   for a, as in pairs(expected) do
     yield(true)
@@ -408,23 +454,23 @@ local function validate_references(self, input)
         if type(key) == "table" then
           key = key.id or key
         end
-        local found = find_entity(key, b, by_key, by_id)
+        local found = find_entity(k.ws_id, key, b, by_key, by_id)
 
         if not found then
-          errors[a] = errors[a] or {}
-          errors[a][k.at] = errors[a][k.at] or {}
+          errs[a] = errs[a] or {}
+          errs[a][k.at] = errs[a][k.at] or {}
           local msg = "invalid reference '" .. k.key .. ": " ..
                       (type(k.value) == "string"
                       and k.value or cjson_encode(k.value)) ..
                       "' (no such entry in '" .. b .. "')"
-          insert(errors[a][k.at], msg)
+          insert(errs[a][k.at], msg)
         end
       end
     end
   end
 
-  if next(errors) then
-    return nil, errors
+  if next(errs) then
+    return nil, errs
   end
 
   return by_id, by_key
@@ -439,7 +485,7 @@ end
 -- ensure uniqueness, we bail out and return `nil` (instead of
 -- producing an incorrect identifier that may not be unique).
 local function build_cache_key(entity, item, schema, parent_fk, child_key)
-  local ck = { entity }
+  local ck = { entity, ws_id_for(item) }
   for _, k in ipairs(schema.cache_key) do
     if schema.fields[k].auto then
       return nil
@@ -500,6 +546,11 @@ local function get_key_for_uuid_gen(entity, item, schema, parent_fk, child_key)
     return
   end
 
+  if schema.cache_key then
+    local key = build_cache_key(entity, item, schema, parent_fk, child_key)
+    return pk_name, key
+  end
+
   if schema.endpoint_key and item[schema.endpoint_key] ~= nil then
     local key = item[schema.endpoint_key]
 
@@ -522,14 +573,14 @@ local function get_key_for_uuid_gen(entity, item, schema, parent_fk, child_key)
           end
         end
       end
+
+      if not schema.fields[schema.endpoint_key].unique_across_ws then
+        key = key .. ":" .. ws_id_for(item)
+      end
     end
 
     -- generate a PK based on the endpoint_key
     return pk_name, key
-  end
-
-  if schema.cache_key then
-    return pk_name, build_cache_key(entity, item, schema, parent_fk, child_key)
   end
 
   return pk_name
@@ -612,8 +663,7 @@ local function populate_ids_for_validation(input, known_entities, parent_entity,
       if schema.endpoint_key then
         key = item[schema.endpoint_key]
         if key then
-          by_key[entity] = by_key[entity] or {}
-          by_key[entity][key] = item
+          add_to_by_key(by_key, schema, item, entity, key)
         end
       end
 
@@ -631,7 +681,7 @@ local function populate_ids_for_validation(input, known_entities, parent_entity,
       for _, entry in pairs(entries) do
         for name, field in schema:each_field(entry) do
           if field.type == "foreign" and type(entry[name]) == "string" then
-            local found = find_entity(entry[name], field.reference, by_key, by_id)
+            local found = find_entity(ws_id_for(entry), entry[name], field.reference, by_key, by_id)
             if found then
               entry[name] = all_schemas[field.reference]:extract_pk_values(found)
             end
@@ -690,6 +740,18 @@ local function insert_default_workspace_if_not_given(_, entities)
 end
 
 
+local function get_unique_key(schema, entity, field, value)
+  if not schema.workspaceable or field.unique_across_ws then
+    return value
+  end
+  local ws_id = ws_id_for(entity)
+  if type(value) == "table" then
+    value = value.id
+  end
+  return ws_id .. ":" .. tostring(value)
+end
+
+
 local function flatten(self, input)
   -- manually set transform here
   -- we can't do this in the schema with a `default` because validate
@@ -744,16 +806,21 @@ local function flatten(self, input)
   end
 
   local entities = {}
+  local errs
   for entity, entries in pairs(by_id) do
     yield(true)
 
+    local uniques = {}
     local schema = all_schemas[entity]
     entities[entity] = {}
-    for id, entry in pairs(entries) do
+
+    for _, id in ipairs(entries) do
+      local entry = entries[id]
+
       local flat_entry = {}
       for name, field in schema:each_field(entry) do
         if field.type == "foreign" and type(entry[name]) == "string" then
-          local found = find_entity(entry[name], field.reference, by_key, by_id)
+          local found = find_entity(ws_id_for(entry), entry[name], field.reference, by_key, by_id)
           if found then
             flat_entry[name] = all_schemas[field.reference]:extract_pk_values(found)
           end
@@ -761,10 +828,31 @@ local function flatten(self, input)
         else
           flat_entry[name] = entry[name]
         end
+
+        if field.unique then
+          local flat_value = flat_entry[name]
+          if flat_value and flat_value ~= ngx.null then
+            local unique_key = get_unique_key(schema, entry, field, flat_value)
+            uniques[name] = uniques[name] or {}
+            if uniques[name][unique_key] then
+              errs = errs or {}
+              errs[entity] = errors[entity] or {}
+              local key = schema.endpoint_key
+                          and flat_entry[schema.endpoint_key] or id
+              errs[entity][key] = uniqueness_error_msg(entity, name, flat_value)
+            else
+              uniques[name][unique_key] = true
+            end
+          end
+        end
       end
 
       entities[entity][id] = flat_entry
     end
+  end
+
+  if errs then
+    return nil, errs
   end
 
   return entities, nil, meta

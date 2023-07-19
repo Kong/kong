@@ -71,6 +71,10 @@
 
 #### Core
 
+- Declarative config now performs proper uniqueness checks against its inputs:
+  previously, it would silently drop entries with conflicting primary/endpoint
+  keys, or accept conflicting unique fields silently.
+  [#11199](https://github.com/Kong/kong/pull/11199)
 - Fixed a bug that causes `POST /config?flatten_errors=1` to throw an exception
   and return a 500 error under certain circumstances.
   [#10896](https://github.com/Kong/kong/pull/10896)
