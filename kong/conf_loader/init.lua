@@ -1978,6 +1978,55 @@ local function load(path, custom_conf, opts)
     end
   end
 
+  -- Wasm module support
+  if conf.wasm then
+    local wasm_filters = get_wasm_filters(conf.wasm_filters_path)
+    conf.wasm_modules_parsed = setmetatable(wasm_filters, _nop_tostring_mt)
+
+    local function add_wasm_directive(directive, value, prefix)
+      local directive_name = (prefix or "") .. directive
+      if conf[directive_name] == nil then
+        conf[directive_name] = value
+      end
+    end
+
+    local wasm_main_prefix = "nginx_wasm_"
+
+    -- proxy_wasm_lua_resolver is intended to be 'on' by default, but we can't
+    -- set it as such in kong_defaults, because it can only be used if wasm is
+    -- _also_ enabled. We inject it here if the user has not opted to set it
+    -- themselves.
+    add_wasm_directive("nginx_http_proxy_wasm_lua_resolver", "on")
+
+    -- wasm vm properties are inherited from previously set directives
+    if conf.lua_ssl_trusted_certificate and #conf.lua_ssl_trusted_certificate >= 1 then
+      add_wasm_directive("tls_trusted_certificate", conf.lua_ssl_trusted_certificate[1], wasm_main_prefix)
+    end
+
+    if conf.lua_ssl_verify_depth and conf.lua_ssl_verify_depth > 0 then
+      add_wasm_directive("tls_verify_cert", "on", wasm_main_prefix)
+      add_wasm_directive("tls_verify_host", "on", wasm_main_prefix)
+      add_wasm_directive("tls_no_verify_warn", "on", wasm_main_prefix)
+    end
+
+    local wasm_inherited_injections = {
+      nginx_http_lua_socket_connect_timeout = "nginx_http_wasm_socket_connect_timeout",
+      nginx_proxy_lua_socket_connect_timeout = "nginx_proxy_wasm_socket_connect_timeout",
+      nginx_http_lua_socket_read_timeout = "nginx_http_wasm_socket_read_timeout",
+      nginx_proxy_lua_socket_read_timeout = "nginx_proxy_wasm_socket_read_timeout",
+      nginx_http_lua_socket_send_timeout = "nginx_http_wasm_socket_send_timeout",
+      nginx_proxy_lua_socket_send_timeout = "nginx_proxy_wasm_socket_send_timeout",
+      nginx_http_lua_socket_buffer_size = "nginx_http_wasm_socket_buffer_size",
+      nginx_proxy_lua_socket_buffer_size = "nginx_proxy_wasm_socket_buffer_size",
+    }
+
+    for directive, wasm_directive in pairs(wasm_inherited_injections) do
+      if conf[directive] then
+        add_wasm_directive(wasm_directive, conf[directive])
+      end
+    end
+  end
+
   do
     local injected_in_namespace = {}
 
@@ -2085,83 +2134,6 @@ local function load(path, custom_conf, opts)
       insert(stream_directives, {
         name  = "lua_shared_dict",
         value = "stream_prometheus_metrics 5m",
-      })
-    end
-  end
-
-  -- WebAssembly module support
-  if conf.wasm then
-
-    local wasm_directives = conf["nginx_wasm_main_directives"]
-
-    local wasm_filters = get_wasm_filters(conf.wasm_filters_path)
-    conf.wasm_modules_parsed = setmetatable(wasm_filters, _nop_tostring_mt)
-
-    -- wasm vm properties are inherited from previously set directives
-    if conf.lua_ssl_trusted_certificate then
-      if #conf.lua_ssl_trusted_certificate >= 1 then
-        insert(wasm_directives, {
-          name  = "tls_trusted_certificate",
-          value = conf.lua_ssl_trusted_certificate[1],
-        })
-      end
-    end
-    if conf.lua_ssl_verify_depth and conf.lua_ssl_verify_depth > 0 then
-      insert(wasm_directives, {
-        name  = "tls_verify_cert",
-        value = "on",
-      })
-      insert(wasm_directives, {
-        name  = "tls_verify_host",
-        value = "on",
-      })
-      insert(wasm_directives, {
-        name  = "tls_no_verify_warn",
-        value = "on",
-      })
-    end
-
-    local found_proxy_wasm_lua_resolver = false
-
-    for _, directive in ipairs(conf["nginx_http_directives"]) do
-      if directive.name == "proxy_connect_timeout" then
-        insert(wasm_directives, {
-          name  = "socket_connect_timeout",
-          value = directive.value,
-        })
-      elseif directive.name == "proxy_read_timeout" then
-        insert(wasm_directives, {
-          name  = "socket_read_timeout",
-          value = directive.value,
-        })
-      elseif directive.name == "proxy_send_timeout" then
-        insert(wasm_directives, {
-          name  = "socket_send_timeout",
-          value = directive.value,
-        })
-      elseif directive.name == "proxy_buffer_size" then
-        insert(wasm_directives, {
-          name  = "socket_buffer_size",
-          value = directive.value,
-        })
-      elseif directive.name == "large_client_header_buffers" then
-        insert(wasm_directives, {
-          name  = "socket_large_buffers",
-          value = directive.value,
-        })
-      elseif directive.name == "proxy_wasm_lua_resolver" then
-        found_proxy_wasm_lua_resolver = true
-      end
-    end
-
-    -- proxy_wasm_lua_resolver is intended to be 'on' by default, but we can't
-    -- set it as such in kong_defaults, because it can only be used if wasm is
-    -- _also_ enabled. We inject it here if the user has not opted to set it
-    -- themselves.
-    if not found_proxy_wasm_lua_resolver then
-      insert(conf["nginx_http_directives"], {
-        name = "proxy_wasm_lua_resolver",
-        value = "on",
       })
     end
   end
