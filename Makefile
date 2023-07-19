@@ -1,7 +1,7 @@
 OS := $(shell uname | awk '{print tolower($$0)}')
 MACHINE := $(shell uname -m)
 
-# EE uses "busted-hjtest" while EE uses "busted-htest"
+# EE uses "busted-hjtest" while CE uses "busted-htest"
 DEV_ROCKS = "busted 2.1.2" "busted-hjtest 0.0.4" "luacheck 1.1.1" "lua-llthreads2 0.1.6" "ldoc 1.5.0" "luacov 0.15.0"
 WIN_SCRIPTS = "bin/busted" "bin/kong" "bin/kong-health"
 BUSTED_ARGS ?= -v
@@ -75,6 +75,7 @@ bin/grpcurl:
 bin/h2client:
 	@curl -s -S -L \
 		https://github.com/Kong/h2client/releases/download/v$(H2CLIENT_VERSION)/h2client_$(H2CLIENT_VERSION)_$(OS)_$(H2CLIENT_MACHINE).tar.gz | tar xz -C bin;
+	@$(RM) bin/README.md
 
 
 check-bazel: bin/bazel
@@ -175,6 +176,12 @@ test-plugins-spec-ee: dev
 
 test-all-ee: dev
 	@$(VENV) $(TEST_CMD) spec-ee/
+
+test-custom: dev
+ifndef test_spec
+	$(error test_spec variable needs to be set, i.e. make test-custom test_spec=foo/bar/baz_spec.lua)
+endif
+	@$(VENV) $(TEST_CMD) $(test_spec)
 
 pdk-phase-checks: dev
 	rm -f t/phase_checks.stats

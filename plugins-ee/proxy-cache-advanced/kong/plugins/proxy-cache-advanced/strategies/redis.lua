@@ -84,7 +84,10 @@ local function exec_redis_op(conf, op, args)
     res = red:array_to_hash(res)
   end
 
-  red:set_keepalive(DEFAULT_KEEPALIVE_TIMEOUT, DEFAULT_KEEPALIVE_CONS)
+  -- redis cluster library handles keepalive itself
+  if not redis.is_redis_cluster(conf) then
+    red:set_keepalive(DEFAULT_KEEPALIVE_TIMEOUT, DEFAULT_KEEPALIVE_CONS)
+  end
 
   return res
 end

@@ -14,12 +14,14 @@ local utils = require("kong.tools.utils")
 local type = type
 local ipairs = ipairs
 local table_insert = table.insert
-local table_remove = table.remove
 local table_sort = table.sort
 local gsub = string.gsub
 local split = utils.split
 local deflate_gzip = utils.deflate_gzip
 local cjson_encode = cjson.encode
+-- [=[ EE only
+local table_remove = table.remove
+--]=]
 
 local ngx = ngx
 local ngx_log = ngx.log

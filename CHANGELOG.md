@@ -16,6 +16,8 @@
   [#10926](https://github.com/Kong/kong/pull/10926)
 - :warning: Cassandra as a datastore for Kong is no longer supported
   [#10931](https://github.com/Kong/kong/pull/10931)
+- Ubuntu 18.04 artifacts are no longer supported as it's EOL
+- AmazonLinux 2022 artifacts are renamed to AmazonLinux 2023 according to AWS's decision
 
 #### Core
 
@@ -35,6 +37,10 @@
 #### Core
 
 #### Admin API
+
+#### Kong Manager
+- First release of the Kong Manager Open Source Edition.
+  [#11131](https://github.com/Kong/kong/pull/11131)
 
 #### Status API
 
@@ -112,9 +118,9 @@
 ### Changed
 
 #### Core
+
 - Tracing: new attribute `http.route` added to http request spans.
   [#10981](https://github.com/Kong/kong/pull/10981)
-
 - The default value of `lmdb_map_size` config has been bumped to `2048m`
   from `128m` to accommodate most commonly deployed config sizes in DB-less
   and Hybrid mode.
@@ -150,6 +156,9 @@
 - Bumped OpenSSL from 1.1.1t to 3.1.1
   [#10180](https://github.com/Kong/kong/pull/10180)
   [#11140](https://github.com/Kong/kong/pull/11140)
+- Bumped pgmoon from 1.16.0 to 1.16.2 (Kong's fork)
+  [#11181](https://github.com/Kong/kong/pull/11181)
+  [#11229](https://github.com/Kong/kong/pull/11229)
 - Bumped atc-router from 1.0.5 to 1.1.0
   [#10100](https://github.com/Kong/kong/pull/10100)
 - Bumped lua-resty-lmdb from 1.1.0 to 1.3.0
