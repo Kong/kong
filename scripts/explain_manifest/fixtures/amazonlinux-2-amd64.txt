@@ -1,3 +1,6 @@
+- Path      : /usr/local/kong/gui
+  Type      : directory
+
 - Path      : /usr/local/kong/include/google
   Type      : directory
 
