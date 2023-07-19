@@ -253,22 +253,6 @@ jobs:
       # the version of the actions is same as the cmake version to be installed
       uses: lukka/get-cmake@1a178d42f9f4f47310373da4f5ef02297ed5a6e8 # v3.25
 
-    - name: Set ngx_wasm_module path/branch vars
-      run: |
-        grep ^NGX_WASM_MODULE_BRANCH= .requirements >> $GITHUB_ENV || {
-          echo "ERROR: NGX_WASM_MODULE_BRANCH is not defined in .requirements"
-          exit 1
-        }
-        echo "NGX_WASM_MODULE_REMOTE=$PWD/ngx_wasm_module" >> $GITHUB_ENV
-
-    - name: Checkout ngx_wasm_module
-      uses: actions/checkout@v3
-      with:
-        repository: Kong/ngx_wasm_module
-        path: ${{ env.NGX_WASM_MODULE_REMOTE }}
-        ref: ${{ env.NGX_WASM_MODULE_BRANCH }}
-        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
-
     - name: Build Kong
       if: steps.cache-deps.outputs.cache-hit != 'true'
       env:
