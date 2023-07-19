@@ -310,8 +310,10 @@ for _, strategy in helpers.each_strategy() do
         assert.equals(mock_license_key, list.data[1].payload.license_key)
         assert.equals(mock_license_signature, list.data[1].signature)
 
-        local report = get_license_report(client)
-        assert.equals(mock_license_key, report.license_key)
+        helpers.wait_until(function()
+          local report = get_license_report(client)
+          return report.license_key == mock_license_key
+        end, 10, 0.5)
       end
 
       local dp_admin_client = dp_admin()
