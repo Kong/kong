@@ -178,6 +178,8 @@ local DYNAMIC_KEY_NAMESPACES = {
       upstream_keepalive          = true,
       upstream_keepalive_timeout  = true,
       upstream_keepalive_requests = true,
+      -- we already add it to nginx_kong_inject.lua explicitly
+      lua_ssl_protocols           = true,
     },
   },
   {
@@ -203,7 +205,10 @@ local DYNAMIC_KEY_NAMESPACES = {
   {
     injected_conf_name = "nginx_stream_directives",
     prefix = "nginx_stream_",
-    ignore = EMPTY,
+    ignore = {
+      -- we already add it to nginx_kong_stream_inject.lua explicitly
+      lua_ssl_protocols = true,
+    },
   },
   {
     injected_conf_name = "nginx_supstream_directives",
@@ -518,6 +523,13 @@ local CONF_PARSERS = {
 
   lua_ssl_trusted_certificate = { typ = "array" },
   lua_ssl_verify_depth = { typ = "number" },
+  lua_ssl_protocols = {
+    typ = "string",
+    directives = {
+      "nginx_http_lua_ssl_protocols",
+      "nginx_stream_lua_ssl_protocols",
+    },
+  },
   lua_ssl_protocols = { typ = "string" },
   lua_socket_pool_size = { typ = "number" },
 
@@ -796,6 +808,7 @@ local function check_and_parse(conf, opts)
     conf.lua_ssl_trusted_certificate = new_paths
   end
 
+  -- leave early if we're still at the stage before executing the main `resty` cmd
   if opts.pre_cmd then
     return #errors == 0, errors[1], errors
   end
@@ -1725,8 +1738,8 @@ local function load(path, custom_conf, opts)
                               tablex.union(opts, { defaults_only = true, }),
                               user_conf)
 
-  -- remove the unnecessary fields if we are at the very early stage
-  -- before executing the main `resty` cmd
+  -- remove the unnecessary fields if we are still at the very early stage
+  -- before executing the main `resty` cmd, i.e. still in `bin/kong`
   if opts.pre_cmd then
     for k, v in pairs(conf) do
       if not CONF_NO_VAULT[k] then
@@ -1877,6 +1890,8 @@ local function load(path, custom_conf, opts)
 
   log.verbose("prefix in use: %s", conf.prefix)
 
+  -- leave early if we're still at the very early stage before executing
+  -- the main `resty` cmd. The rest confs below are unused.
   if opts.pre_cmd then
     return setmetatable(conf, nil) -- remove Map mt
   end
