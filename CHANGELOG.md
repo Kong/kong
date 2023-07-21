@@ -50,6 +50,8 @@
   The field `header_type`now accepts the `aws` value to handle this specific
   propagation header.
   [11075](https://github.com/Kong/kong/pull/11075)
+- **Opentelemetry**: Support the `endpoint` parameter as referenceable.
+  [#11220](https://github.com/Kong/kong/pull/11220)
 - **Ip-Restriction**: Add TCP support to the plugin.
   Thanks [@scrudge](https://github.com/scrudge) for contributing this change.
   [#10245](https://github.com/Kong/kong/pull/10245)
