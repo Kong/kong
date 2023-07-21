@@ -52,7 +52,7 @@ dependencies = {
   "lua-resty-ljsonschema == 1.1.5",
   "lua-resty-luasocket == 1.1.1",
   "lua-resty-gcp == 0.0.13",
-  "lua-resty-aws == 1.2.2",
+  "lua-resty-aws == 1.2.3",
   "lua-resty-acme == 0.11.0",
   "lua-resty-session == 4.0.4",
   "lua-resty-timer-ng == 0.2.5",
