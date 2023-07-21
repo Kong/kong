@@ -136,7 +136,16 @@ function _M.start(opt)
 
     The memory tracing will be stopped automatically after the timeout (in seconds).
   --]]
-  return kprof.mem.start(opt.path, opt.block_size, opt.stack_depth, opt.timeout)
+  local ok, err = kprof.mem.start(opt.path, opt.block_size, opt.stack_depth, opt.timeout)
+
+  if not ok then
+    local shm = get_shdict()
+    shm:set(ERROR_KEY, err)
+    mark_inactive()
+    return nil, err
+  end
+
+  return true
 end
 
 
