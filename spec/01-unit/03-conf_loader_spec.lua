@@ -1557,7 +1557,6 @@ describe("Configuration loader", function()
 
         it("sets nginx_http_lua_ssl_protocols and nginx_stream_lua_ssl_protocols to different values", function()
           local conf, err = conf_loader(nil, {
-            lua_ssl_protocols = "TLSv1.1",
             nginx_http_lua_ssl_protocols = "TLSv1.2",
             nginx_stream_lua_ssl_protocols = "TLSv1.3",
           })
@@ -2064,7 +2063,11 @@ describe("Configuration loader", function()
         })
 
         assert.equal(nil, conf)
-        assert.equal("the value of " .. k .. " can't reference vault", err)
+        if k == "lua_ssl_protocols" then
+          assert.matches("the value of .*lua_ssl_protocols can't reference vault", err)
+        else
+          assert.equal("the value of " .. k .. " can't reference vault", err)
+        end
       end
     end)
     it("only load a subset of fields when opts.pre_cmd=true", function()
