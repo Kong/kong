@@ -6,14 +6,13 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 require("spec.helpers") -- for kong.log
-local declarative = require "kong.db.declarative"
-local conf_loader = require "kong.conf_loader"
+local declarative = require("kong.db.declarative")
+local conf_loader = require("kong.conf_loader")
 
 local to_hex = require("resty.string").to_hex
-local resty_sha256 = require "resty.sha256"
+local resty_sha256 = require("resty.sha256")
 
 local null = ngx.null
-
 
 local function sha256(s)
   local sha = resty_sha256:new()
@@ -25,16 +24,16 @@ describe("declarative", function()
   describe("parse_string", function()
     it("converts lyaml.null to ngx.null", function()
       local dc = declarative.new_config(conf_loader())
-      local entities, err = dc:parse_string [[
+      local entities, err = dc:parse_string([[
 _format_version: "1.1"
 routes:
   - name: null
     paths:
     - /
-]]
+]])
       assert.equal(nil, err)
       local _, route = next(entities.routes)
-      assert.equal(null,   route.name)
+      assert.equal(null, route.name)
       assert.same({ "/" }, route.paths)
     end)
   end)
@@ -59,7 +58,19 @@ keyauth_credentials:
 ]])
     assert.equal(nil, err)
 
-    assert.is_nil(entities.keyauth_credentials['3f9066ef-b91b-4d1d-a05a-28619401c1ad'].ttl)
+    assert.is_nil(entities.keyauth_credentials["3f9066ef-b91b-4d1d-a05a-28619401c1ad"].ttl)
+  end)
+
+  it("accepts consumer groups", function()
+    local dc = assert(declarative.new_config(conf_loader()))
+    local entities, err = dc:parse_string([[
+_format_version: "1.1"
+consumer_groups:
+  - name: test-group
+]])
+    assert.equal(nil, err)
+    local _, cg = next(entities.consumer_groups)
+    assert.equal("test-group", cg.name)
   end)
 
   describe("unique_field_key()", function()
@@ -76,5 +87,4 @@ keyauth_credentials:
       assert.equals("services||fieldname:" .. sha256("test"), key)
     end)
   end)
-
 end)
