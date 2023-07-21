@@ -535,11 +535,12 @@ function OASValidationPlugin:access(conf)
   end
 
   -- validate oas body if required
-  if conf.validate_request_body and parsed_spec.openapi and CONTENT_METHODS[request_method] then
-    local res_schema, errmsg = locate_request_body_schema(method_spec.requestBody, content_type)
+  local request_body = method_spec.requestBody
+  if conf.validate_request_body and parsed_spec.openapi and CONTENT_METHODS[request_method] and request_body then
+    local res_schema, err = locate_request_body_schema(request_body, content_type)
 
     if not res_schema then
-      return handle_validate_error(errmsg, DENY_PARAM_MESSAGE, 400, error_options)
+      return handle_validate_error(err, DENY_PARAM_MESSAGE, 400, error_options)
     end
 
     local parameter = {

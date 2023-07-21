@@ -1,0 +1,11 @@
+openapi: "3.0.0"
+info:
+  title: Sample API
+  description: A Sample OpenAPI Spec
+  version: 1.0.0
+paths:
+  /notify:
+    post:
+      responses:
+        200:
+          description: OK
