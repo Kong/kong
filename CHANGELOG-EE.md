@@ -104,6 +104,10 @@
   [FTI-5058](https://konghq.atlassian.net/browse/FTI-5058)
   [FTI-3060](https://konghq.atlassian.net/browse/FTI-3060)
   [FTI-5223](https://konghq.atlassian.net/browse/FTI-5223)
+* OAS Validation
+  * Fix a bug that the plugin is unable to pass the validation even if path parameter is valid. [FTI-4965](https://konghq.atlassian.net/browse/FTI-4965)
+  * Fix an issue that the plugin always validates the request body even if the method spec has no requestBody defined. [FTI-4967](https://konghq.atlassian.net/browse/FTI-4967)
+
 
 ## Kong Manager
 
