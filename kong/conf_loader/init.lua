@@ -629,6 +629,8 @@ local CONF_NO_VAULT = {
   lua_ssl_trusted_certificate = true,
   lua_ssl_verify_depth = true,
   lua_ssl_protocols = true,
+  nginx_http_lua_ssl_protocols = true,
+  nginx_stream_lua_ssl_protocols = true,
   vault_env_prefix = true,
 }
 

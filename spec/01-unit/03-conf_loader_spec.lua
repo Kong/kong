@@ -2054,6 +2054,8 @@ describe("Configuration loader", function()
         lua_ssl_trusted_certificate = true,
         lua_ssl_verify_depth = true,
         lua_ssl_protocols = true,
+        nginx_http_lua_ssl_protocols = true,
+        nginx_stream_lua_ssl_protocols = true,
         vault_env_prefix = true,
       }
       for k, _ in pairs(CONF_NO_VAULTS) do
@@ -2076,6 +2078,8 @@ describe("Configuration loader", function()
         lua_ssl_trusted_certificate = true,
         lua_ssl_verify_depth = true,
         lua_ssl_protocols = true,
+        nginx_http_lua_ssl_protocols = true,
+        nginx_stream_lua_ssl_protocols = true,
         vault_env_prefix = true,
 
         loaded_vaults = true,
