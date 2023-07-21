@@ -1,11 +1,7 @@
-From 207b6e0f12a634b2b63dba0fac74974873de83c4 Mon Sep 17 00:00:00 2001
+From c043a2f65e33d5c20a7ff2c5a750bd6cc539c998 Mon Sep 17 00:00:00 2001
 From: Qi <add_sp@outlook.com>
 Date: Sun, 27 Nov 2022 08:08:30 +0000
-Subject: [PATCH] feat(profiling): Kong Profiling extension library
-
-THIS PATCH IS FROM https://github.com/Kong/luajit2 .
-
-feat: new buit-in function `gcsnapshot()`
+Subject: [PATCH] feat: new buit-in function `gcsnapshot()`
 
 syntax: ok, err = gcsnapshot(filename[, timeout=120])
 context: any
@@ -74,7 +70,7 @@ Return a table like:
 
 Co-authored-by: Chrono <chrono_cpp@me.com>
 
-fix(tracing): fix compiler error
+fix(tracing): fix compiler error on legacy compilers on rhel7 (#3)
 
 lj_mem_tracing.c: In function '_write_trace_event':
 lj_mem_tracing.c:283:3: error: 'for' loop initial declarations are only allowed in C99 mode
@@ -84,7 +80,61 @@ lj_mem_tracing.c:283:3: note: use option -std=c99 or -std=gnu99 to compile your 
 lj_mem_tracing.c: In function 'lj_mem_tracing_stop':
 lj_mem_tracing.c:528:3: error: 'for' loop initial declarations are only allowed in C99 mode
    for (int i = 0; i < sizeof(g_mbufs) / sizeof(g_mbufs[0]); i++) {
+
+docs(README): add Kong's changes into the `README.md` (#4)
+
+Co-authored-by: Chrono <chrono_cpp@me.com>
+
+fix(profiling): fix tracer doesn't cover the alloc/free of function object (#6)
+
+The memory tracer should cover the alloc/free of the Lua function object, which means that we should insert probes where the function object alloc/free.
+
+feat(tracing): covers almost all memory operations
+
+Co-authored-by: Chrono <chrono_cpp@me.com>
+
+docs(README): add a guide on how to generate patch
+
+fix(profiling): fix assertion that doesn't cover the case that free a NULL pointer
+
+style(profiling): remove unused `#include "lj_mem_tracing.h"`
 ---
+ src/Makefile         |  12 +-
+ src/Makefile.dep     |  22 +-
+ src/lib_base.c       |   2 +
+ src/lib_init.c       |   5 +
+ src/lib_kprof.c      | 116 ++++++
+ src/lj_bcread.c      |   5 +
+ src/lj_cdata.c       |   1 +
+ src/lj_cdata.h       |   1 +
+ src/lj_debug.c       |   5 +
+ src/lj_debug.h       |   1 +
+ src/lj_dispatch.c    |  23 +-
+ src/lj_gc.c          |   7 +
+ src/lj_gc.h          |   2 +
+ src/lj_gcsnapshot.c  | 947 +++++++++++++++++++++++++++++++++++++++++++
+ src/lj_gcsnapshot.h  |  11 +
+ src/lj_ir.c          |  15 +-
+ src/lj_mbuf.h        | 170 ++++++++
+ src/lj_mcode.c       |   5 +
+ src/lj_mem_tracing.c | 888 ++++++++++++++++++++++++++++++++++++++++
+ src/lj_mem_tracing.h |  88 ++++
+ src/lj_parse.c       |   4 +
+ src/lj_profile.c     |  18 +-
+ src/lj_snap.c        |  10 +
+ src/lj_str.c         |   1 +
+ src/lj_tab.c         |  24 +-
+ src/lj_trace.c       |  22 +-
+ src/lj_udata.c       |   1 +
+ src/ljamalg.c        |   1 +
+ src/lualib.h         |   7 +
+ 29 files changed, 2382 insertions(+), 32 deletions(-)
+ create mode 100644 src/lib_kprof.c
+ create mode 100644 src/lj_gcsnapshot.c
+ create mode 100644 src/lj_gcsnapshot.h
+ create mode 100644 src/lj_mbuf.h
+ create mode 100644 src/lj_mem_tracing.c
+ create mode 100644 src/lj_mem_tracing.h
 
 diff --git a/bundle/LuaJIT-2.1-20220411/src/Makefile b/bundle/LuaJIT-2.1-20220411/src/Makefile
 index 68a9a7cd..a611aaef 100644
@@ -356,7 +406,7 @@ index 00000000..4b241b88
 +
 +#endif /* LUAJIT_DISABLE_KPROF */
 diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_bcread.c b/bundle/LuaJIT-2.1-20220411/src/lj_bcread.c
-index 2ce05707..f1b4c5ac 100644
+index 2ce05707..98df4fcd 100644
 --- a/bundle/LuaJIT-2.1-20220411/src/lj_bcread.c
 +++ b/bundle/LuaJIT-2.1-20220411/src/lj_bcread.c
 @@ -22,6 +22,8 @@
@@ -373,82 +423,35 @@ index 2ce05707..f1b4c5ac 100644
      setmref(pt->varinfo, NULL);
    }
 +
-+  lj_mem_tracing_append_proto(pt);
++  lj_mem_tracing_append_proto(G(ls->L), pt);
 +
    return pt;
  }
  
 diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_cdata.c b/bundle/LuaJIT-2.1-20220411/src/lj_cdata.c
-index 01a74f5d..d2ec7895 100644
+index 01a74f5d..cac740ce 100644
 --- a/bundle/LuaJIT-2.1-20220411/src/lj_cdata.c
 +++ b/bundle/LuaJIT-2.1-20220411/src/lj_cdata.c
-@@ -13,6 +13,8 @@
- #include "lj_ctype.h"
+@@ -14,6 +14,7 @@
  #include "lj_cconv.h"
  #include "lj_cdata.h"
-+#include "lj_mem_tracing.h"
-+
  
++
  /* -- C data allocation --------------------------------------------------- */
  
-@@ -32,6 +34,9 @@ GCcdata *lj_cdata_newv(lua_State *L, CTypeID id, CTSize sz, CTSize align)
-   MSize extra = sizeof(GCcdataVar) + sizeof(GCcdata) +
- 		(align > CT_MEMALIGN ? (1u<<align) - (1u<<CT_MEMALIGN) : 0);
-   char *p = lj_mem_newt(L, extra + sz, char);
-+
-+  lj_mem_tracing_probe(L, NULL, p, 0, (extra + sz) * sizeof(char));
-+
-   uintptr_t adata = (uintptr_t)p + sizeof(GCcdataVar) + sizeof(GCcdata);
-   uintptr_t almask = (1u << align) - 1u;
-   GCcdata *cd = (GCcdata *)(((adata + almask) & ~almask) - sizeof(GCcdata));
-@@ -78,8 +83,14 @@ void LJ_FASTCALL lj_cdata_free(global_State *g, GCcdata *cd)
-     CTSize sz = ctype_hassize(ct->info) ? ct->size : CTSIZE_PTR;
-     lj_assertG(ctype_hassize(ct->info) || ctype_isfunc(ct->info) ||
- 	       ctype_isextern(ct->info), "free of ctype without a size");
-+
-+    lj_mem_tracing_probe(gco2th(gcref(g->cur_L)), cd, NULL, sizeof(GCcdata) + sz, 0);
-+
-     lj_mem_free(g, cd, sizeof(GCcdata) + sz);
-   } else {
-+
-+    lj_mem_tracing_probe(gco2th(gcref(g->cur_L)), memcdatav(cd), NULL, sizecdatav(cd), 0);
-+
-     lj_mem_free(g, memcdatav(cd), sizecdatav(cd));
-   }
- }
+ /* Allocate a new C data object holding a reference to another object. */
 diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_cdata.h b/bundle/LuaJIT-2.1-20220411/src/lj_cdata.h
-index de52e8aa..b4258a22 100644
+index de52e8aa..e0d215ea 100644
 --- a/bundle/LuaJIT-2.1-20220411/src/lj_cdata.h
 +++ b/bundle/LuaJIT-2.1-20220411/src/lj_cdata.h
-@@ -9,6 +9,8 @@
- #include "lj_obj.h"
+@@ -10,6 +10,7 @@
  #include "lj_gc.h"
  #include "lj_ctype.h"
-+#include "lj_mem_tracing.h"
-+
  
++
  #if LJ_HASFFI
  
-@@ -44,6 +46,9 @@ static LJ_AINLINE GCcdata *lj_cdata_new(CTState *cts, CTypeID id, CTSize sz)
- 	       "inconsistent size of fixed-size cdata alloc");
- #endif
-   cd = (GCcdata *)lj_mem_newgco(cts->L, sizeof(GCcdata) + sz);
-+
-+  lj_mem_tracing_probe(cts->L, NULL, cd, 0, sizeof(GCcdata) + sz);
-+
-   cd->gct = ~LJ_TCDATA;
-   cd->ctypeid = ctype_check(cts, id);
-   return cd;
-@@ -53,6 +58,9 @@ static LJ_AINLINE GCcdata *lj_cdata_new(CTState *cts, CTypeID id, CTSize sz)
- static LJ_AINLINE GCcdata *lj_cdata_new_(lua_State *L, CTypeID id, CTSize sz)
- {
-   GCcdata *cd = (GCcdata *)lj_mem_newgco(L, sizeof(GCcdata) + sz);
-+
-+  lj_mem_tracing_probe(L, NULL, cd, 0, sizeof(GCcdata) + sz);
-+
-   cd->gct = ~LJ_TCDATA;
-   cd->ctypeid = id;
-   return cd;
+ /* Get C data pointer. */
 diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_debug.c b/bundle/LuaJIT-2.1-20220411/src/lj_debug.c
 index 65dc4ff0..0bee3489 100644
 --- a/bundle/LuaJIT-2.1-20220411/src/lj_debug.c
@@ -478,7 +481,7 @@ index 8e145d6a..acfb5eab 100644
  				int depth);
  #endif
 diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_dispatch.c b/bundle/LuaJIT-2.1-20220411/src/lj_dispatch.c
-index ded382aa..18c6f0f0 100644
+index ded382aa..ccdc75d6 100644
 --- a/bundle/LuaJIT-2.1-20220411/src/lj_dispatch.c
 +++ b/bundle/LuaJIT-2.1-20220411/src/lj_dispatch.c
 @@ -30,6 +30,9 @@
@@ -498,7 +501,7 @@ index ded382aa..18c6f0f0 100644
 -  if ((g->hookmask & LUA_MASKRET) && bc_isret(bc_op(pc[-1])))
 -    callhook(L, LUA_HOOKRET, -1);
 +  if ((g->hookmask & LUA_MASKRET) && bc_isret(bc_op(pc[-1]))) {
-+    if (lj_mem_tracing_is_enabled(L)) {
++    if (lj_mem_tracing_is_enabled(g)) {
 +      lj_mem_tracing_on_call_return(L);
 +
 +    } else {
@@ -515,7 +518,7 @@ index ded382aa..18c6f0f0 100644
        setnilV(L->top++);
 -    callhook(L, LUA_HOOKCALL, -1);
 +
-+    if (lj_mem_tracing_is_enabled(L)) {
++    if (lj_mem_tracing_is_enabled(g)) {
 +      lj_mem_tracing_on_call_return(L);
 +
 +    } else {
@@ -525,6 +528,58 @@ index ded382aa..18c6f0f0 100644
      /* Preserve modifications of missing parameters by lua_setlocal(). */
      while (missing-- > 0 && tvisnil(L->top - 1))
        L->top--;
+diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_gc.c b/bundle/LuaJIT-2.1-20220411/src/lj_gc.c
+index b35a0d44..fe7624bc 100644
+--- a/bundle/LuaJIT-2.1-20220411/src/lj_gc.c
++++ b/bundle/LuaJIT-2.1-20220411/src/lj_gc.c
+@@ -863,6 +863,7 @@ void lj_gc_barriertrace(global_State *g, uint32_t traceno)
+ /* Call pluggable memory allocator to allocate or resize a fragment. */
+ void *lj_mem_realloc(lua_State *L, void *p, GCSize osz, GCSize nsz)
+ {
++  void* op = p;
+   global_State *g = G(L);
+   lj_assertG((osz == 0) == (p == NULL), "realloc API violation");
+   p = g->allocf(g->allocd, p, osz, nsz);
+@@ -872,6 +873,9 @@ void *lj_mem_realloc(lua_State *L, void *p, GCSize osz, GCSize nsz)
+   lj_assertG(checkptrGC(p),
+ 	     "allocated memory address %p outside required range", p);
+   g->gc.total = (g->gc.total - osz) + nsz;
++
++  lj_mem_tracing_probe(G(L), op, p, osz, nsz);
++
+   return p;
+ }
+ 
+@@ -888,6 +892,9 @@ void * LJ_FASTCALL lj_mem_newgco(lua_State *L, GCSize size)
+   setgcrefr(o->gch.nextgc, g->gc.root);
+   setgcref(g->gc.root, o);
+   newwhite(g, o);
++
++  lj_mem_tracing_probe(G(L), NULL, o, 0, size);
++
+   return o;
+ }
+ 
+diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_gc.h b/bundle/LuaJIT-2.1-20220411/src/lj_gc.h
+index 0df7dee6..eccc3174 100644
+--- a/bundle/LuaJIT-2.1-20220411/src/lj_gc.h
++++ b/bundle/LuaJIT-2.1-20220411/src/lj_gc.h
+@@ -7,6 +7,7 @@
+ #define _LJ_GC_H
+ 
+ #include "lj_obj.h"
++#include "lj_mem_tracing.h"
+ 
+ /* Garbage collector states. Order matters. */
+ enum {
+@@ -120,6 +121,7 @@ static LJ_AINLINE void lj_mem_free(global_State *g, void *p, size_t osize)
+ {
+   g->gc.total -= (GCSize)osize;
+   g->allocf(g->allocd, p, osize, 0);
++  lj_mem_tracing_probe(g, p, NULL, osize, 0);
+ }
+ 
+ #define lj_mem_newvec(L, n, t)	((t *)lj_mem_new(L, (GCSize)((n)*sizeof(t))))
 diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_gcsnapshot.c b/bundle/LuaJIT-2.1-20220411/src/lj_gcsnapshot.c
 new file mode 100644
 index 00000000..d43136bd
@@ -1495,6 +1550,55 @@ index 00000000..03846eec
 +
 +#endif /* _LJ_GCSNAPSHOT_H */
 +#endif /* LUAJIT_DISABLE_KPROF */
+diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_ir.c b/bundle/LuaJIT-2.1-20220411/src/lj_ir.c
+index 65901510..f8dd9cf1 100644
+--- a/bundle/LuaJIT-2.1-20220411/src/lj_ir.c
++++ b/bundle/LuaJIT-2.1-20220411/src/lj_ir.c
+@@ -33,6 +33,7 @@
+ #include "lj_serialize.h"
+ #include "lj_strfmt.h"
+ #include "lj_prng.h"
++#include "lj_mem_tracing.h"
+ 
+ /* Some local macros to save typing. Undef'd at the end. */
+ #define IR(ref)			(&J->cur.ir[(ref)])
+@@ -75,11 +76,17 @@ void LJ_FASTCALL lj_ir_growtop(jit_State *J)
+   IRIns *baseir = J->irbuf + J->irbotlim;
+   MSize szins = J->irtoplim - J->irbotlim;
+   if (szins) {
++    lj_mem_tracing_skip_nprobes(J2G(J), 1);
+     baseir = (IRIns *)lj_mem_realloc(J->L, baseir, szins*sizeof(IRIns),
+ 				     2*szins*sizeof(IRIns));
++    lj_mem_tracing_ir_probe(J2G(J), szins*sizeof(IRIns), 2*szins*sizeof(IRIns));
++
+     J->irtoplim = J->irbotlim + 2*szins;
+   } else {
++    lj_mem_tracing_skip_nprobes(J2G(J), 1);
+     baseir = (IRIns *)lj_mem_realloc(J->L, NULL, 0, LJ_MIN_IRSZ*sizeof(IRIns));
++    lj_mem_tracing_ir_probe(J2G(J), 0, LJ_MIN_IRSZ*sizeof(IRIns));
++
+     J->irbotlim = REF_BASE - LJ_MIN_IRSZ/4;
+     J->irtoplim = J->irbotlim + LJ_MIN_IRSZ;
+   }
+@@ -102,11 +109,17 @@ static void lj_ir_growbot(jit_State *J)
+     J->irtoplim -= ofs;
+     J->cur.ir = J->irbuf = baseir - J->irbotlim;
+   } else {
++    lj_mem_tracing_skip_nprobes(J2G(J), 1);
+     /* Double the buffer size, but split the growth amongst top/bottom. */
+     IRIns *newbase = lj_mem_newt(J->L, 2*szins*sizeof(IRIns), IRIns);
++    lj_mem_tracing_ir_probe(J2G(J), 0,  2*szins*sizeof(IRIns));
++
+     MSize ofs = szins >= 256 ? 128 : (szins >> 1);  /* Limit bottom growth. */
+     memcpy(newbase + ofs, baseir, (J->cur.nins - J->irbotlim)*sizeof(IRIns));
+-    lj_mem_free(G(J->L), baseir, szins*sizeof(IRIns));
++    lj_mem_tracing_skip_nprobes(J2G(J), 1);
++    lj_mem_free(J2G(J), baseir, szins*sizeof(IRIns));
++    lj_mem_tracing_ir_probe(J2G(J), szins*sizeof(IRIns), 0);
++
+     J->irbotlim -= ofs;
+     J->irtoplim = J->irbotlim + 2*szins;
+     J->cur.ir = J->irbuf = newbase - J->irbotlim;
 diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_mbuf.h b/bundle/LuaJIT-2.1-20220411/src/lj_mbuf.h
 new file mode 100644
 index 00000000..e0317edf
@@ -1671,12 +1775,42 @@ index 00000000..e0317edf
 +
 +#endif /* _LJ_MBUF_H */
 +#endif /* LUAJIT_DISABLE_KPROF */
+diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_mcode.c b/bundle/LuaJIT-2.1-20220411/src/lj_mcode.c
+index 537c8333..0595ae0b 100644
+--- a/bundle/LuaJIT-2.1-20220411/src/lj_mcode.c
++++ b/bundle/LuaJIT-2.1-20220411/src/lj_mcode.c
+@@ -19,6 +19,7 @@
+ #if LJ_HASJIT || LJ_HASFFI
+ #include "lj_vm.h"
+ #endif
++#include "lj_mem_tracing.h"
+ 
+ /* -- OS-specific functions ----------------------------------------------- */
+ 
+@@ -110,6 +111,9 @@ static void *mcode_alloc_at(jit_State *J, uintptr_t hint, size_t sz, int prot)
+     if (!hint) lj_trace_err(J, LJ_TRERR_MCODEAL);
+     p = NULL;
+   }
++
++  lj_mem_tracing_mcode_probe(J2G(J), 0, sz);
++
+   return p;
+ }
+ 
+@@ -117,6 +121,7 @@ static void mcode_free(jit_State *J, void *p, size_t sz)
+ {
+   UNUSED(J);
+   munmap(p, sz);
++  lj_mem_tracing_mcode_probe(J2G(J), sz, 0);
+ }
+ 
+ static int mcode_setprot(void *p, size_t sz, int prot)
 diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_mem_tracing.c b/bundle/LuaJIT-2.1-20220411/src/lj_mem_tracing.c
 new file mode 100644
-index 00000000..e194fdae
+index 00000000..e47180af
 --- /dev/null
 +++ b/bundle/LuaJIT-2.1-20220411/src/lj_mem_tracing.c
-@@ -0,0 +1,714 @@
+@@ -0,0 +1,888 @@
 +#ifndef LUAJIT_DISABLE_KPROF
 +
 +#define lj_mem_tracing_c
@@ -1721,6 +1855,10 @@ index 00000000..e194fdae
 +#define MSGPACK_UINT16_SIZE         3
 +#define MSGPACK_UINT32_SIZE         5
 +#define MSGPACK_UINT64_SIZE         9
++#define MSGPACK_INT8_SIZE           2
++#define MSGPACK_INT16_SIZE          3
++#define MSGPACK_INT32_SIZE          5
++#define MSGPACK_INT64_SIZE          9
 +#define MSGPACK_STR_HEADER_MAX_SIZE 5
 +
 +/* -- marker of each event ------------------------------------------------ */
@@ -1731,26 +1869,61 @@ index 00000000..e194fdae
 +#define EVENT_SYMBOL                3
 +#define EVENT_TRACE                 4
 +#define EVENT_INIT                  5
-+#define EVENT_LAST                  EVENT_INIT
++#define EVENT_IR                    6
++#define EVENT_JIT_TRACE             7
++#define EVENT_SNAPSHOT              8
++#define EVENT_MCODE                 9
++#define EVENT_LAST                  EVENT_MCODE
 +
 +#if EVENT_LAST > UINT8_MAX
 +#error "event type is too large"
 +#endif
 +
++/* -- common macros ------------------------------------------------------- */
++
++#define PROBE_GUARD_ERROR() do {                        \
++  if (LJ_UNLIKELY(g_error)) {                           \
++    lj_mem_tracing_stop(NULL);                          \
++    return;                                             \
++  }                                                     \
++} while (0)
++
++#define PROBE_GUARD_TIMEOUT() do {                      \
++  if (LJ_UNLIKELY(time(NULL) > g_timeout_at)) {         \
++    lj_mem_tracing_stop(NULL);                          \
++    return;                                             \
++  }                                                     \
++} while (0)
++
++#define PROBE_GUARD_SKIP() do {                         \
++  if (LJ_UNLIKELY(g_skip_probes > 0)) {                 \
++    g_skip_probes--;                                    \
++    return;                                             \
++  }                                                     \
++} while (0)
++
++#define PROBE_GUARD_MEMORY_OPS() do {                   \
++  PROBE_GUARD_ERROR();                                  \
++  PROBE_GUARD_TIMEOUT();                                \
++  PROBE_GUARD_SKIP();                                   \
++} while (0)
++
++#define PROBE_GUARD_NON_MEMORY_OPS() do {               \
++  PROBE_GUARD_ERROR();                                  \
++  PROBE_GUARD_TIMEOUT();                                \
++} while (0)
++
 +
 +/* -- global states ------------------------------------------------------- */
 +
-+static int            g_enabled               = 0;
-+static time_t         g_timeout_at            = 0;
-+static size_t         g_block_size            = 0;    /* mmap-based buffer size */
-+static char*          g_filename              = NULL; /* mmap-based buffer filename pattern */
-+static uint32_t       g_max_stack_depth       = 0;    /* max stack depth */
-+static msgpack_packer g_packer;                       /* msgpack packer */
++int                   g_lj_mem_tracing_is_enabled = 0;
++global_State*         g_lj_mem_tracing_G          = NULL; /* the target Lua VM */
++static time_t         g_timeout_at                = 0;
++static size_t         g_block_size                = 0;    /* mmap-based buffer size */
++static char*          g_filename                  = NULL; /* mmap-based buffer filename pattern */
++static uint32_t       g_max_stack_depth           = 0;    /* max stack depth */
++static msgpack_packer g_packer;                           /* msgpack packer */
 +
-+/*
-+** g_G is the target Lua VM
-+*/
-+static global_State*  g_G                     = NULL;
 +
 +/*
 +** g_sbuf is a string buffer used to store the symbol name temporarily,
@@ -1795,7 +1968,28 @@ index 00000000..e194fdae
 +** it means there is an error when writing to the buffer,
 +** and the error string will be pushed into the top of the stack of `g_L`.
 +*/
-+static char*           g_error                 = NULL;
++static char*          g_error                 = NULL;
++
++
++/*
++** g_skip_probes is used to skip some n times of probes.
++** I insert `lj_mem_tracing_probe` into the following functions:
++** - lj_mem_realloc()
++** - lj_mem_free()
++** - lj_mem_newgco()
++** Those functions will not only be called when creating a new Lua object,
++** but also be called for some internal data structures,
++** like:
++** - IRIns
++** - SnapShot
++** - GCTrace
++** - MCode
++** I want to identify those internal memory operations for
++** those data structures, so I need to skip some probes
++** as those memory management functions likely calls the 
++** above functions to allocate/free memory for those data structures.
++*/
++static size_t         g_skip_probes            = 0;
 +
 +
 +/* -- helper functions ---------------------------------------------------- */
@@ -1816,6 +2010,13 @@ index 00000000..e194fdae
 +** respectively depending on the value of x.
 +*/
 +static void _msgpack_pack_uintx(uint64_t x);
++
++/*
++** msgpack packer for int8_t, int16_t, int32_t, and int64_t,
++** which will be packed as fixint8, fixint16, fixint32, and fixint64
++** respectively depending on the value of x.
++*/
++static void _msgpack_pack_intx(int64_t x);
 +
 +
 +/* -- event handlers ------------------------------------------------------ */
@@ -1864,6 +2065,38 @@ index 00000000..e194fdae
 +** the fifth element is the size of the new memory,
 +*/
 +static void _write_realloc_event(void* op, void* np, size_t oz, size_t nz);
++
++/*
++** write ir event to the buffer,
++** the ir event has 2 elements,
++** the first element is the EVENT_IR,
++** the second element is the delta of the memory usage of IRs.
++*/
++static void _write_ir_event(int64_t delta);
++
++/*
++** write jit trace event to the buffer,
++** the jit trace event has 2 elements,
++** the first element is the EVENT_JIT_TRACE,
++** the second element is the delta of the memory usage of JIT traces.
++*/
++static void _write_jit_trace_event(int64_t delta);
++
++/*
++** write jit snapshot event to the buffer,
++** the jit snapshot event has 2 elements,
++** the first element is the EVENT_JIT_SNAPSHOT,
++** the second element is the delta of the memory usage of snapshots.
++*/
++static void _write_snapshot_event(int64_t delta);
++
++/*
++** write jit mcode event to the buffer,
++** the jit mcode event has 2 elements,
++** the first element is the EVENT_JIT_MCODE,
++** the second element is the delta of the memory usage of machine code.
++*/
++static void _write_mcode_event(size_t delta);
 +
 +/*
 +** write init event to the buffer,
@@ -1945,6 +2178,21 @@ index 00000000..e194fdae
 +    msgpack_pack_fix_uint32(&g_packer, (uint32_t)x);
 +  } else {
 +    msgpack_pack_fix_uint64(&g_packer, (uint64_t)x);
++  }
++}
++
++
++static void _msgpack_pack_intx(int64_t x) {
++  if (x == 0) {
++    msgpack_pack_nil(&g_packer);
++  } else if (x <= INT8_MAX) {
++    msgpack_pack_fix_int8(&g_packer, (int8_t)x);
++  } else if (x <= INT16_MAX) {
++    msgpack_pack_fix_int16(&g_packer, (int16_t)x);
++  } else if (x <= INT32_MAX) {
++    msgpack_pack_fix_int32(&g_packer, (int32_t)x);
++  } else {
++    msgpack_pack_fix_int64(&g_packer, (int64_t)x);
 +  }
 +}
 +
@@ -2032,7 +2280,56 @@ index 00000000..e194fdae
 +}
 +
 +
-+static void _write_init_event(lua_State* L) {
++static void _write_ir_event(int64_t delta) {
++  size_t event_max_size = MSGPACK_UINT8_SIZE +
++                          MSGPACK_INT64_SIZE;
++  if (LJ_UNLIKELY(lj_mbuf_left(&g_mbufs[1]) < event_max_size)) {
++    _switch_buffer();
++  }
++
++  msgpack_pack_fix_uint8(&g_packer, EVENT_IR);
++  _msgpack_pack_intx(delta);
++}
++
++
++static void _write_jit_trace_event(int64_t delta) {
++  size_t event_max_size = MSGPACK_UINT8_SIZE +
++                          MSGPACK_INT64_SIZE;
++  if (LJ_UNLIKELY(lj_mbuf_left(&g_mbufs[1]) < event_max_size)) {
++    _switch_buffer();
++  }
++
++  msgpack_pack_fix_uint8(&g_packer, EVENT_JIT_TRACE);
++  _msgpack_pack_intx(delta);
++}
++
++
++void _write_snapshot_event(int64_t delta) {
++  size_t event_max_size = MSGPACK_UINT8_SIZE +
++                          MSGPACK_INT64_SIZE;
++  if (LJ_UNLIKELY(lj_mbuf_left(&g_mbufs[1]) < event_max_size)) {
++    _switch_buffer();
++  }
++
++  msgpack_pack_fix_uint8(&g_packer, EVENT_SNAPSHOT);
++  _msgpack_pack_intx(delta);
++}
++
++
++static void _write_mcode_event(size_t delta) {
++  size_t event_max_size = MSGPACK_UINT8_SIZE +
++                          MSGPACK_INT64_SIZE;
++  if (LJ_UNLIKELY(lj_mbuf_left(&g_mbufs[1]) < event_max_size)) {
++    _switch_buffer();
++  }
++
++  msgpack_pack_fix_uint8(&g_packer, EVENT_MCODE);
++  _msgpack_pack_intx(delta);
++}
++
++
++static void _write_init_event(lua_State *L)
++{
 +  size_t event_max_size = MSGPACK_UINT8_SIZE +
 +                          MSGPACK_UINT64_SIZE +
 +                          MSGPACK_UINT64_SIZE +
@@ -2101,9 +2398,9 @@ index 00000000..e194fdae
 +
 +
 +static void _disable_hook_for_call_return(lua_State* L) {
-+  g_G->hookmask = (uint8_t)((g_G->hookmask & ~HOOK_EVENTMASK) | 0);
-+  lj_trace_abort(g_G);
-+  lj_dispatch_update(g_G);
++  g_lj_mem_tracing_G->hookmask = (uint8_t)((g_lj_mem_tracing_G->hookmask & ~HOOK_EVENTMASK) | 0);
++  lj_trace_abort(g_lj_mem_tracing_G);
++  lj_dispatch_update(g_lj_mem_tracing_G);
 +}
 +
 +
@@ -2112,7 +2409,7 @@ index 00000000..e194fdae
 +                        size_t block_size,
 +                        uint32_t max_stack_depth,
 +                        unsigned int timeout) {
-+  if (g_enabled) {
++  if (g_lj_mem_tracing_is_enabled) {
 +    lua_pushstring(L, "tracing is already enabled for this Lua VM or another Lua VM");
 +    return 1;
 +  }
@@ -2157,22 +2454,23 @@ index 00000000..e194fdae
 +
 +  _enable_hook_for_call_return(L);
 +
-+  g_G = G(L);
++  g_lj_mem_tracing_G = G(L);
 +  g_timeout_at = time(NULL) + timeout;
 +  g_max_stack_depth = max_stack_depth;
 +  g_block_size = block_size;
 +  g_block_id = 1;
 +  g_error = NULL;
++  g_skip_probes = 0;
 +
 +  _write_init_event(L);
 +  _dump_symbol_table(L);
 +
 +  /*
-+  ** we must set g_enabled to 1 last,
++  ** we must set g_lj_mem_tracing_is_enabled to 1 last,
 +  ** because some Lua Objects will be
 +  ** allocated during the initialization.
 +  */
-+  g_enabled = 1;
++  g_lj_mem_tracing_is_enabled = 1;
 +  return 0;
 +
 +on_error:
@@ -2187,7 +2485,7 @@ index 00000000..e194fdae
 +int lj_mem_tracing_stop(lua_State *L) {
 +  int i;
 +
-+  if (!g_enabled) {
++  if (!g_lj_mem_tracing_is_enabled) {
 +    if (L && g_error) {
 +      lua_pushstring(L, g_error);
 +      return 1;
@@ -2199,7 +2497,7 @@ index 00000000..e194fdae
 +  /* number of error strings */
 +  int error_strs = 0;
 +
-+  g_enabled = 0;
++  g_lj_mem_tracing_is_enabled = 0;
 +  _disable_hook_for_call_return(L);
 +
 +  if (g_error && L) {
@@ -2234,10 +2532,11 @@ index 00000000..e194fdae
 +  free(g_protos);
 +  g_protos = NULL;
 +
-+  g_G = NULL;
++  g_lj_mem_tracing_G = NULL;
 +  g_timeout_at = 0;
 +  g_max_stack_depth = 0;
 +  g_block_size = 0;
++  g_skip_probes = 0;
 +
 +  return g_error ? 1 : 0;
 +}
@@ -2247,10 +2546,10 @@ index 00000000..e194fdae
 +  lua_createtable(L, 0, 6);
 +
 +  lua_pushstring(L, "enabled");
-+  lua_pushboolean(L, g_enabled);
++  lua_pushboolean(L, g_lj_mem_tracing_is_enabled);
 +  lua_rawset(L, -3);
 +
-+  if (g_enabled) {
++  if (g_lj_mem_tracing_is_enabled) {
 +    lj_assertL(g_filename != NULL, "filename is NULL");
 +    lj_assertL(g_block_size > 0, "block_size is not positive");
 +    lj_assertL(g_max_stack_depth > 0, "max_stack_depth is not positive");
@@ -2283,56 +2582,73 @@ index 00000000..e194fdae
 +}
 +
 +
-+int lj_mem_tracing_is_enabled(lua_State* L) {
-+  if (LJ_UNLIKELY(g_L == L)) return 0;
-+  if (LJ_UNLIKELY(g_G != G(L))) return 0;
-+  return g_enabled;
++int lj_mem_tracing_is_enabled_(lua_State* L) {
++  if (LJ_UNLIKELY(g_lj_mem_tracing_G != G(L))) return 0;
++  return g_lj_mem_tracing_is_enabled;
 +}
 +
 +
-+void lj_mem_tracing_probe(lua_State *L, void* op, void* np, size_t osize, size_t nsize) {
-+  if (LJ_LIKELY(!g_enabled)) return;
-+  if (LJ_UNLIKELY(g_L == L)) return;
-+  if (LJ_UNLIKELY(g_G != G(L))) return;
-+  if (LJ_UNLIKELY(g_error)) {
-+    lj_mem_tracing_stop(NULL);
-+    return;
-+  }
-+  if (LJ_UNLIKELY(time(NULL) > g_timeout_at)) {
-+    lj_mem_tracing_stop(NULL);
-+    return;
-+  }
++void lj_mem_tracing_probe_(global_State* g, void* op, void* np, size_t osize, size_t nsize) {
++  PROBE_GUARD_MEMORY_OPS();
 +  
 +  if (osize == 0 && nsize > 0) {
-+    lj_assertL(op == NULL && np != NULL, "invalid memory operation: osize=%zu, nsize=%zu", osize, nsize);
++    lj_assertX(op == NULL && np != NULL,
++               "expected alloc a new pointer: op=%p, np=%p, osize=%zu, nsize=%zu", op, np, osize, nsize);
 +    _write_alloc_event(np, nsize);
 +
 +  } else if (osize > 0 && nsize > 0) {
-+    lj_assertL(op != NULL && np != NULL, "invalid memory operation: osize=%zu, nsize=%zu", osize, nsize);
++    lj_assertX(op != NULL && np != NULL,
++               "expected realloc a pointer: op=%p, np=%p, osize=%zu, nsize=%zu", op, np, osize, nsize);
 +    _write_realloc_event(op, np, osize, nsize);
 +
 +  } else if (osize > 0 && nsize == 0) {
-+    lj_assertL(op != NULL && np == NULL, "invalid memory operation: osize=%zu, nsize=%zu", osize, nsize);
++    lj_assertX(op != NULL && np == NULL,
++               "expected free a pointer: op=%p, np=%p, osize=%zu, nsize=%zu", op, np, osize, nsize);
 +    _write_free_event(op, osize);
 +
++  } else if (osize == 0 && nsize == 0) {
++    /* free a NULL pointer is safe for `lj_mem_free()` and `lua_Alloc` */
++    lj_assertX(op == NULL && np == NULL,
++               "expected free a NULL pointer: op=%p, np=%p, osize=%zu, nsize=%zu", op, np, osize, nsize);
++
 +  } else {
-+    lj_assertL(0, "invalid memory operation: osize=%zu, nsize=%zu", osize, nsize);
++    lj_assertX(0, "invalid memory operation: osize=%zu, nsize=%zu", osize, nsize);
 +  }
 +}
 +
 +
-+void lj_mem_tracing_on_call_return(lua_State *L) {
-+  if (LJ_LIKELY(!g_enabled)) return;
-+  if (LJ_UNLIKELY(g_L == L)) return;
-+  if (LJ_UNLIKELY(g_G != G(L))) return;
-+  if (LJ_UNLIKELY(g_error)) {
-+    lj_mem_tracing_stop(NULL);
-+    return;
-+  }
-+  if (LJ_UNLIKELY(time(NULL) > g_timeout_at)) {
-+    lj_mem_tracing_stop(NULL);
-+    return;
-+  }
++void lj_mem_tracing_ir_probe_(global_State* g, size_t osize, size_t nsize) {
++  PROBE_GUARD_MEMORY_OPS();
++  _write_ir_event((int64_t)nsize - (int64_t)osize);
++}
++
++
++void lj_mem_tracing_jit_trace_probe_(global_State* g, size_t osize, size_t nsize) {
++  PROBE_GUARD_MEMORY_OPS();
++  _write_jit_trace_event((int64_t)nsize - (int64_t)osize);
++}
++
++
++void lj_mem_tracing_snapshot_probe_(global_State* g, size_t osize, size_t nsize) {
++  PROBE_GUARD_MEMORY_OPS();
++  _write_snapshot_event((int64_t)nsize - (int64_t)osize);
++}
++
++
++void lj_mem_tracing_mcode_probe_(global_State* g, size_t osize, size_t nsize) {
++  PROBE_GUARD_MEMORY_OPS();
++  _write_mcode_event((int64_t)nsize - (int64_t)osize);
++}
++
++
++void lj_mem_tracing_skip_nprobes_(global_State* g, size_t cnt) {
++  PROBE_GUARD_NON_MEMORY_OPS();
++  g_skip_probes += cnt;
++}
++
++
++void lj_mem_tracing_on_call_return_(lua_State *L) {
++  PROBE_GUARD_NON_MEMORY_OPS();
 +
 +  /* Basically a copy of `lj_debug_frame()` in `src/lj_debug.c` */
 +
@@ -2377,26 +2693,18 @@ index 00000000..e194fdae
 +}
 +
 +
-+void lj_mem_tracing_append_proto(GCproto *pt) {
-+  if (LJ_UNLIKELY(!g_enabled)) return;
-+  if (LJ_UNLIKELY(g_error)) {
-+    lj_mem_tracing_stop(NULL);
-+    return;
-+  }
-+  if (LJ_UNLIKELY(time(NULL) > g_timeout_at)) {
-+    lj_mem_tracing_stop(NULL);
-+    return;
-+  }
++void lj_mem_tracing_append_proto_(global_State* g, GCproto* pt) {
++  PROBE_GUARD_NON_MEMORY_OPS();
 +  _append_proto(pt);
 +}
 +
 +#endif /* LUAJIT_DISABLE_KPROF */
 diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_mem_tracing.h b/bundle/LuaJIT-2.1-20220411/src/lj_mem_tracing.h
 new file mode 100644
-index 00000000..2ba4e526
+index 00000000..2604f6f5
 --- /dev/null
 +++ b/bundle/LuaJIT-2.1-20220411/src/lj_mem_tracing.h
-@@ -0,0 +1,39 @@
+@@ -0,0 +1,88 @@
 +#ifndef _LJ_MEM_TRACING_H
 +#define _LJ_MEM_TRACING_H
 +
@@ -2405,6 +2713,19 @@ index 00000000..2ba4e526
 +#include "lj_def.h"
 +#include "lj_obj.h"
 +
++/*
++** 0: disabled, 1: enabled.
++** The reason I put this variable here is that I want to make it
++** accessible to the external C code,
++** which means that we can check if memory tracing is enabled
++** in the external C code wihout calling any uninlined function.
++** This is important because we want to make the overhead of
++** memory tracing as small as possible when it is disabled.
++** Avoiding calling is friendly to the CPU pipeline.
++*/
++extern int           g_lj_mem_tracing_is_enabled;
++extern global_State* g_lj_mem_tracing_G;
++
 +int lj_mem_tracing_start(lua_State *L,
 +                        const char* filename,
 +                        size_t block_size,
@@ -2412,10 +2733,41 @@ index 00000000..2ba4e526
 +                        unsigned int timeout);
 +LJ_FUNC int lj_mem_tracing_stop(lua_State *L);
 +LJ_FUNC int lj_mem_tracing_status(lua_State *L);
-+LJ_FUNC void lj_mem_tracing_probe(lua_State *L, void* op, void* np, size_t osize, size_t nsize);
-+LJ_FUNC int  lj_mem_tracing_is_enabled(lua_State* L);
-+LJ_FUNC void lj_mem_tracing_on_call_return(lua_State *L);
-+LJ_FUNC void lj_mem_tracing_append_proto(GCproto *pt);
++LJ_FUNC void lj_mem_tracing_probe_(global_State* g, void* op, void* np, size_t osize, size_t nsize);
++LJ_FUNC void lj_mem_tracing_ir_probe_(global_State* g, size_t osize, size_t nsize);
++LJ_FUNC void lj_mem_tracing_jit_trace_probe_(global_State* g, size_t osize, size_t nsize);
++LJ_FUNC void lj_mem_tracing_snapshot_probe_(global_State* g, size_t osize, size_t nsize);
++LJ_FUNC void lj_mem_tracing_mcode_probe_(global_State* g, size_t osize, size_t nsize);
++LJ_FUNC void lj_mem_tracing_skip_nprobes_(global_State* g, size_t cnt);
++LJ_FUNC void lj_mem_tracing_on_call_return_(lua_State* L);
++LJ_FUNC void lj_mem_tracing_append_proto_(global_State* g, GCproto* pt);
++
++#define lj_mem_tracing_is_enabled(g) (g_lj_mem_tracing_is_enabled != 0 && g_lj_mem_tracing_G == (g))
++
++#define lj_mem_tracing_probe(g, op, np, osz, nsz) \
++  (lj_mem_tracing_is_enabled(g) ? lj_mem_tracing_probe_(g, op, np, osz, nsz) : 0)
++
++#define lj_mem_tracing_ir_probe(g, osz, nsz) \
++  (lj_mem_tracing_is_enabled(g) ? lj_mem_tracing_ir_probe_(g, osz, nsz) : 0)
++
++#define lj_mem_tracing_jit_trace_probe(g, osz, nsz) \
++  (lj_mem_tracing_is_enabled(g) ? lj_mem_tracing_jit_trace_probe_(g, osz, nsz) : 0)
++
++#define lj_mem_tracing_snapshot_probe(g, osz, nsz) \
++  (lj_mem_tracing_is_enabled(g) ? lj_mem_tracing_snapshot_probe_(g, osz, nsz) : 0)
++
++#define lj_mem_tracing_mcode_probe(g, osz, nsz) \
++  (lj_mem_tracing_is_enabled(g) ? lj_mem_tracing_mcode_probe_(g, osz, nsz) : 0)
++
++#define lj_mem_tracing_skip_nprobes(g, cnt) \
++  (lj_mem_tracing_is_enabled(g) ? lj_mem_tracing_skip_nprobes_(g, cnt) : 0)
++
++#define lj_mem_tracing_on_call_return(L) \
++  (lj_mem_tracing_is_enabled(G(L)) ? lj_mem_tracing_on_call_return_(L) : 0)
++
++#define lj_mem_tracing_append_proto(g, pt) \
++  (lj_mem_tracing_is_enabled(g) ? lj_mem_tracing_append_proto_(g, pt) : 0)
++    
 +
 +#else
 +
@@ -2424,20 +2776,25 @@ index 00000000..2ba4e526
 +** This way, we don't have to add #ifdef/#ifndef to the code that calls them.
 +*/
 +
-+#define lj_mem_tracing_probe(L, op, np, osz, nsz) ()
++#define lj_mem_tracing_probe(g, op, np, osz, nsz) ()
++#define lj_mem_tracing_ir_probe(g, osz, nsz) ()
++#define lj_mem_tracing_jit_trace_probe(g, osz, nsz) ()
++#define lj_mem_tracing_snapshot_probe(g, osz, nsz) ()
++#define lj_mem_tracing_mcode_probe(g, osz, nsz) ()
++#define lj_mem_tracing_skip_nprobes(g, cnt) ()
 +
 +/* Always return false as memory tracing is disabled */
-+#define lj_mem_tracing_is_enabled(L) (0)
++#define lj_mem_tracing_is_enabled(g) (0)
 +
 +#define lj_mem_tracing_on_call_return(L) ()
-+#define lj_mem_tracing_append_proto(pt) ()
++#define lj_mem_tracing_append_proto(g, pt) ()
 +
 +#endif /* LUAJIT_DISABLE_KPROF */
 +
 +#endif /* _LJ_MEM_TRACING_H */
 +
 diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_parse.c b/bundle/LuaJIT-2.1-20220411/src/lj_parse.c
-index 9ddf60ed..23d64e02 100644
+index 9ddf60ed..f863482d 100644
 --- a/bundle/LuaJIT-2.1-20220411/src/lj_parse.c
 +++ b/bundle/LuaJIT-2.1-20220411/src/lj_parse.c
 @@ -27,6 +27,7 @@
@@ -2453,7 +2810,7 @@ index 9ddf60ed..23d64e02 100644
    ls->fs = fs->prev;
    lj_assertL(ls->fs != NULL || ls->tok == TK_eof, "bad parser state");
 +
-+  lj_mem_tracing_append_proto(pt);
++  lj_mem_tracing_append_proto(G(L), pt);
 +
    return pt;
  }
@@ -2521,58 +2878,61 @@ index f0af91cb..4a37b60d 100644
    while (*mode) {
      int m = *mode++;
      switch (m) {
-diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_str.c b/bundle/LuaJIT-2.1-20220411/src/lj_str.c
-index 723bfa63..3efd8fd5 100644
---- a/bundle/LuaJIT-2.1-20220411/src/lj_str.c
-+++ b/bundle/LuaJIT-2.1-20220411/src/lj_str.c
-@@ -12,6 +12,8 @@
- #include "lj_str.h"
- #include "lj_char.h"
- #include "lj_prng.h"
+diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_snap.c b/bundle/LuaJIT-2.1-20220411/src/lj_snap.c
+index 4140fdb7..3a10e0b4 100644
+--- a/bundle/LuaJIT-2.1-20220411/src/lj_snap.c
++++ b/bundle/LuaJIT-2.1-20220411/src/lj_snap.c
+@@ -25,6 +25,7 @@
+ #include "lj_ctype.h"
+ #include "lj_cdata.h"
+ #endif
 +#include "lj_mem_tracing.h"
-+
  
- /* -- String helpers ------------------------------------------------------ */
- 
-@@ -161,6 +163,9 @@ void lj_str_resize(lua_State *L, MSize newmask)
-     return;
- 
-   newtab = lj_mem_newvec(L, newmask+1, GCRef);
+ /* Pass IR on to next optimization in chain (FOLD). */
+ #define emitir(ot, a, b)	(lj_ir_set(J, (ot), (a), (b)), lj_opt_fold(J))
+@@ -40,7 +41,12 @@ void lj_snap_grow_buf_(jit_State *J, MSize need)
+   MSize maxsnap = (MSize)J->param[JIT_P_maxsnap];
+   if (need > maxsnap)
+     lj_trace_err(J, LJ_TRERR_SNAPOV);
 +
-+  lj_mem_tracing_probe(L, NULL, newtab, 0, (newmask + 1) * sizeof(GCRef));
++  MSize osz = J->sizesnap * sizeof(SnapShot);
++  lj_mem_tracing_skip_nprobes(J2G(J), 1);
+   lj_mem_growvec(J->L, J->snapbuf, J->sizesnap, maxsnap, SnapShot);
++  lj_mem_tracing_snapshot_probe(J2G(J), osz, J->sizesnap * sizeof(SnapShot));
 +
-   memset(newtab, 0, (newmask+1)*sizeof(GCRef));
- 
- #if LUAJIT_SECURITY_STRHASH
-@@ -300,6 +305,9 @@ static GCstr *lj_str_alloc(lua_State *L, const char *str, MSize len,
- 			   StrHash hash, int hashalg)
- {
-   GCstr *s = lj_mem_newt(L, lj_str_size(len), GCstr);
-+
-+  lj_mem_tracing_probe(L, NULL, s, 0, lj_str_size(len));
-+
-   global_State *g = G(L);
-   uintptr_t u;
-   newwhite(g, s);
-@@ -396,6 +404,9 @@ GCstr *lj_str_new(lua_State *L, const char *str, size_t lenx)
- void LJ_FASTCALL lj_str_free(global_State *g, GCstr *s)
- {
-   g->str.num--;
-+
-+  lj_mem_tracing_probe(gco2th(gcref(g->cur_L)), s, NULL, lj_str_size(s->len), 0);
-+
-   lj_mem_free(g, s, lj_str_size(s->len));
+   J->cur.snap = J->snapbuf;
  }
  
+@@ -51,8 +57,12 @@ void lj_snap_grow_map_(jit_State *J, MSize need)
+     need = 2*J->sizesnapmap;
+   else if (need < 64)
+     need = 64;
++  lj_mem_tracing_skip_nprobes(J2G(J), 1);
+   J->snapmapbuf = (SnapEntry *)lj_mem_realloc(J->L, J->snapmapbuf,
+ 		    J->sizesnapmap*sizeof(SnapEntry), need*sizeof(SnapEntry));
++  lj_mem_tracing_snapshot_probe(J2G(J), J->sizesnapmap*sizeof(SnapEntry),
++        need*sizeof(SnapEntry));
++  
+   J->cur.snapmap = J->snapmapbuf;
+   J->sizesnapmap = need;
+ }
+diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_str.c b/bundle/LuaJIT-2.1-20220411/src/lj_str.c
+index 723bfa63..a33857b8 100644
+--- a/bundle/LuaJIT-2.1-20220411/src/lj_str.c
++++ b/bundle/LuaJIT-2.1-20220411/src/lj_str.c
+@@ -13,6 +13,7 @@
+ #include "lj_char.h"
+ #include "lj_prng.h"
+ 
++
+ /* -- String helpers ------------------------------------------------------ */
+ 
+ /* Ordered compare of strings. Assumes string data is 4-byte aligned. */
 diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_tab.c b/bundle/LuaJIT-2.1-20220411/src/lj_tab.c
-index 9b93ffe1..95ca655e 100644
+index 9b93ffe1..d05ab22b 100644
 --- a/bundle/LuaJIT-2.1-20220411/src/lj_tab.c
 +++ b/bundle/LuaJIT-2.1-20220411/src/lj_tab.c
-@@ -13,9 +13,11 @@
- #include "lj_gc.h"
- #include "lj_err.h"
- #include "lj_tab.h"
-+#include "lj_mem_tracing.h"
+@@ -16,6 +16,7 @@
  
  #include <math.h>
  
@@ -2580,17 +2940,7 @@ index 9b93ffe1..95ca655e 100644
  /* -- Object hashing ------------------------------------------------------ */
  
  /* Hash an arbitrary key and return its anchor position in the hash table. */
-@@ -45,6 +47,9 @@ static LJ_AINLINE void newhpart(lua_State *L, GCtab *t, uint32_t hbits)
-     lj_err_msg(L, LJ_ERR_TABOV);
-   hsize = 1u << hbits;
-   node = lj_mem_newvec(L, hsize, Node);
-+
-+  lj_mem_tracing_probe(L, NULL, node, 0, hsize * sizeof(Node));
-+
-   setmref(t->node, node);
-   setfreetop(t, node, &node[hsize]);
-   t->hmask = hsize-1;
-@@ -82,12 +87,16 @@ static LJ_AINLINE void clearapart(GCtab *t)
+@@ -82,6 +83,7 @@ static LJ_AINLINE void clearapart(GCtab *t)
  /* Create a new table. Note: the slots are not initialized (yet). */
  static GCtab *newtab(lua_State *L, uint32_t asize, uint32_t hbits)
  {
@@ -2598,126 +2948,134 @@ index 9b93ffe1..95ca655e 100644
    GCtab *t;
    /* First try to colocate the array part. */
    if (LJ_MAX_COLOSIZE != 0 && asize > 0 && asize <= LJ_MAX_COLOSIZE) {
-     Node *nilnode;
-     lj_assertL((sizeof(GCtab) & 7) == 0, "bad GCtab size");
-     t = (GCtab *)lj_mem_newgco(L, sizetabcolo(asize));
-+
-+    lj_mem_tracing_probe(L, NULL, t, 0, sizetabcolo(asize));
-+
-     t->gct = ~LJ_TTAB;
-     t->nomm = (uint8_t)~0;
-     t->colo = (int8_t)asize;
-@@ -103,6 +112,9 @@ static GCtab *newtab(lua_State *L, uint32_t asize, uint32_t hbits)
-   } else {  /* Otherwise separately allocate the array part. */
-     Node *nilnode;
-     t = lj_mem_newobj(L, GCtab);
-+
-+    lj_mem_tracing_probe(L, NULL, t, 0, sizeof(GCtab));
-+
-     t->gct = ~LJ_TTAB;
-     t->nomm = (uint8_t)~0;
-     t->colo = 0;
-@@ -118,7 +130,11 @@ static GCtab *newtab(lua_State *L, uint32_t asize, uint32_t hbits)
+@@ -118,7 +120,8 @@ static GCtab *newtab(lua_State *L, uint32_t asize, uint32_t hbits)
      if (asize > 0) {
        if (asize > LJ_MAX_ASIZE)
  	lj_err_msg(L, LJ_ERR_TABOV);
 -      setmref(t->array, lj_mem_newvec(L, asize, TValue));
 +      tmp = lj_mem_newvec(L, asize, TValue);
-+
-+      lj_mem_tracing_probe(L, NULL, tmp, 0, asize * sizeof(TValue));
-+
 +      setmref(t->array, tmp);
        t->asize = asize;
      }
    }
-@@ -216,14 +232,32 @@ void LJ_FASTCALL lj_tab_clear(GCtab *t)
+@@ -216,14 +219,21 @@ void LJ_FASTCALL lj_tab_clear(GCtab *t)
  /* Free a table. */
  void LJ_FASTCALL lj_tab_free(global_State *g, GCtab *t)
  {
 -  if (t->hmask > 0)
 +  if (t->hmask > 0) {
-+    lj_mem_tracing_probe(gco2th(gcref(g->cur_L)), noderef(t->node), NULL,
-+                        (t->hmask + 1) * sizeof(Node), 0);
-+
      lj_mem_freevec(g, noderef(t->node), t->hmask+1, Node);
 -  if (t->asize > 0 && LJ_MAX_COLOSIZE != 0 && t->colo <= 0)
 +  }
 +    
 +  if (t->asize > 0 && LJ_MAX_COLOSIZE != 0 && t->colo <= 0) {
-+    lj_mem_tracing_probe(gco2th(gcref(g->cur_L)), tvref(t->array), NULL,
-+                        t->asize * sizeof(TValue), 0);
-+
      lj_mem_freevec(g, tvref(t->array), t->asize, TValue);
 -  if (LJ_MAX_COLOSIZE != 0 && t->colo)
 +  }
 +
 +  if (LJ_MAX_COLOSIZE != 0 && t->colo) {
-+    lj_mem_tracing_probe(gco2th(gcref(g->cur_L)), t, NULL,
-+                        sizetabcolo((uint32_t)t->colo & 0x7f), 0);
-+
      lj_mem_free(g, t, sizetabcolo((uint32_t)t->colo & 0x7f));
 -  else
 +
 +  } else {
-+    lj_mem_tracing_probe(gco2th(gcref(g->cur_L)), t, NULL, sizeof(*t), 0);
-+
      lj_mem_freet(g, t);
 +  }
 +    
  }
  
  /* -- Table resizing ------------------------------------------------------ */
-@@ -243,6 +277,10 @@ void lj_tab_resize(lua_State *L, GCtab *t, uint32_t asize, uint32_t hbits)
-       /* A colocated array must be separated and copied. */
-       TValue *oarray = tvref(t->array);
-       array = lj_mem_newvec(L, asize, TValue);
-+
-+      lj_mem_tracing_probe(gco2th(gcref(G(L)->cur_L)), NULL, array,
-+                           0, asize * sizeof(TValue));
-+
-       t->colo = (int8_t)(t->colo | 0x80);  /* Mark as separated (colo < 0). */
-       for (i = 0; i < oldasize; i++)
- 	copyTV(L, &array[i], &oarray[i]);
-@@ -288,6 +326,10 @@ void lj_tab_resize(lua_State *L, GCtab *t, uint32_t asize, uint32_t hbits)
- 	copyTV(L, lj_tab_set(L, t, &n->key), &n->val);
-     }
-     g = G(L);
-+
-+    lj_mem_tracing_probe(L, oldnode, NULL,
-+                        (oldhmask + 1) * sizeof(Node), 0);
-+
-     lj_mem_freevec(g, oldnode, oldhmask+1, Node);
+@@ -275,9 +285,11 @@ void lj_tab_resize(lua_State *L, GCtab *t, uint32_t asize, uint32_t hbits)
+       if (!tvisnil(&array[i]))
+ 	copyTV(L, lj_tab_setinth(L, t, (int32_t)i), &array[i]);
+     /* Physically shrink only separated arrays. */
+-    if (LJ_MAX_COLOSIZE != 0 && t->colo <= 0)
++    if (LJ_MAX_COLOSIZE != 0 && t->colo <= 0) {
+       setmref(t->array, lj_mem_realloc(L, array,
+ 	      oldasize*sizeof(TValue), asize*sizeof(TValue)));
++    }
++      
    }
+   if (oldhmask > 0) {  /* Reinsert pairs from old hash part. */
+     global_State *g;
+diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_trace.c b/bundle/LuaJIT-2.1-20220411/src/lj_trace.c
+index f816337c..face2389 100644
+--- a/bundle/LuaJIT-2.1-20220411/src/lj_trace.c
++++ b/bundle/LuaJIT-2.1-20220411/src/lj_trace.c
+@@ -31,6 +31,7 @@
+ #include "lj_vmevent.h"
+ #include "lj_target.h"
+ #include "lj_prng.h"
++#include "lj_mem_tracing.h"
+ 
+ /* -- Error handling ------------------------------------------------------ */
+ 
+@@ -72,7 +73,10 @@ static TraceNo trace_findfree(jit_State *J)
+   osz = J->sizetrace;
+   if (osz >= lim)
+     return 0;  /* Too many traces. */
++  lj_mem_tracing_skip_nprobes(J2G(J), 1);
+   lj_mem_growvec(J->L, J->trace, J->sizetrace, lim, GCRef);
++  lj_mem_tracing_jit_trace_probe(J2G(J), osz * sizeof(GCRef), J->sizetrace * sizeof(GCRef));
++
+   for (; osz < J->sizetrace; osz++)
+     setgcrefnull(J->trace[osz]);
+   return J->freetrace;
+@@ -127,7 +131,10 @@ GCtrace * LJ_FASTCALL lj_trace_alloc(lua_State *L, GCtrace *T)
+   size_t sz = sztr + szins +
+ 	      T->nsnap*sizeof(SnapShot) +
+ 	      T->nsnapmap*sizeof(SnapEntry);
++  lj_mem_tracing_skip_nprobes(G(L), 1);
+   GCtrace *T2 = lj_mem_newt(L, (MSize)sz, GCtrace);
++  lj_mem_tracing_jit_trace_probe(G(L), 0, sz);
++
+   char *p = (char *)T2 + sztr;
+   T2->gct = ~LJ_TTRACE;
+   T2->marked = 0;
+@@ -175,9 +182,12 @@ void LJ_FASTCALL lj_trace_free(global_State *g, GCtrace *T)
+       J->freetrace = T->traceno;
+     setgcrefnull(J->trace[T->traceno]);
+   }
+-  lj_mem_free(g, T,
+-    ((sizeof(GCtrace)+7)&~7) + (T->nins-T->nk)*sizeof(IRIns) +
+-    T->nsnap*sizeof(SnapShot) + T->nsnapmap*sizeof(SnapEntry));
++
++  size_t sz = ((sizeof(GCtrace)+7)&~7) + (T->nins-T->nk)*sizeof(IRIns) +
++              T->nsnap*sizeof(SnapShot) + T->nsnapmap*sizeof(SnapEntry);
++  lj_mem_tracing_skip_nprobes(g, 1);
++  lj_mem_free(g, T, sz);
++  lj_mem_tracing_jit_trace_probe(g, sz, 0);
  }
+ 
+ /* Re-enable compiling a prototype by unpatching any modified bytecode. */
+@@ -364,10 +374,16 @@ void lj_trace_freestate(global_State *g)
+   }
+ #endif
+   lj_mcode_free(J);
++  lj_mem_tracing_skip_nprobes(g, 4);
+   lj_mem_freevec(g, J->snapmapbuf, J->sizesnapmap, SnapEntry);
+   lj_mem_freevec(g, J->snapbuf, J->sizesnap, SnapShot);
+   lj_mem_freevec(g, J->irbuf + J->irbotlim, J->irtoplim - J->irbotlim, IRIns);
+   lj_mem_freevec(g, J->trace, J->sizetrace, GCRef);
++
++  lj_mem_tracing_jit_trace_probe(g, J->sizesnapmap * sizeof(SnapEntry), 0);
++  lj_mem_tracing_jit_trace_probe(g, J->sizesnap * sizeof(SnapShot), 0);
++  lj_mem_tracing_jit_trace_probe(g, (J->irtoplim - J->irbotlim) * sizeof(IRIns), 0);
++  lj_mem_tracing_jit_trace_probe(g, J->sizetrace * sizeof(GCRef), 0);
+ }
+ 
+ /* -- Penalties and blacklisting ------------------------------------------ */
 diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_udata.c b/bundle/LuaJIT-2.1-20220411/src/lj_udata.c
-index ee4a145d..16d07594 100644
+index ee4a145d..dc2492b9 100644
 --- a/bundle/LuaJIT-2.1-20220411/src/lj_udata.c
 +++ b/bundle/LuaJIT-2.1-20220411/src/lj_udata.c
-@@ -10,10 +10,15 @@
- #include "lj_gc.h"
+@@ -11,6 +11,7 @@
  #include "lj_err.h"
  #include "lj_udata.h"
-+#include "lj_mem_tracing.h"
-+
  
++
  GCudata *lj_udata_new(lua_State *L, MSize sz, GCtab *env)
  {
    GCudata *ud = lj_mem_newt(L, sizeof(GCudata) + sz, GCudata);
-+
-+  lj_mem_tracing_probe(L, NULL, ud, 0, sizeof(GCudata) + sz);
-+
-   global_State *g = G(L);
-   newwhite(g, ud);  /* Not finalized. */
-   ud->gct = ~LJ_TUDATA;
-@@ -30,6 +35,8 @@ GCudata *lj_udata_new(lua_State *L, MSize sz, GCtab *env)
- 
- void LJ_FASTCALL lj_udata_free(global_State *g, GCudata *ud)
- {
-+  lj_mem_tracing_probe(gco2th(gcref(g->cur_L)), ud, NULL, sizeudata(ud), 0);
-+
-   lj_mem_free(g, ud, sizeudata(ud));
- }
- 
 diff --git a/bundle/LuaJIT-2.1-20220411/src/ljamalg.c b/bundle/LuaJIT-2.1-20220411/src/ljamalg.c
 index 4d85950a..36ad2f6d 100644
 --- a/bundle/LuaJIT-2.1-20220411/src/ljamalg.c
@@ -2753,7 +3111,6 @@ index fd84cc54..93752ba8 100644
  LUALIB_API void luaL_openlibs(lua_State *L);
  
  #ifndef lua_assert
-
 -- 
 2.34.1
 
