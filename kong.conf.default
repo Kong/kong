@@ -282,6 +282,7 @@
                                  # Similarly to `error_template_html`, the template
                                  # is required to contain one single `%s` placeholder for
                                  # the error message.
+
 #------------------------------------------------------------------------------
 # HYBRID MODE
 #------------------------------------------------------------------------------
