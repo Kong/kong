@@ -106,7 +106,13 @@ function _M.state()
     shm:set(ERROR_KEY, state.error)
 
   else
-    state.error = shm:get(ERROR_KEY)
+    if not state.error then
+      state.error = shm:get(ERROR_KEY)
+    end
+
+    if state.error then
+      state.status = "error"
+    end
   end
 
   return state
@@ -150,6 +156,7 @@ end
 
 
 function _M.stop()
+  -- PLEASE DONT YIELD IN THIS FUNCTION
   if not _M.is_active() then
     return
   end
