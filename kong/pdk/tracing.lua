@@ -106,7 +106,7 @@ end
 --- Trace Context. Those IDs are all represented as bytes, and the length may vary.
 -- We try best to preserve as much information as possible from the tracing context.
 -- @field trace_id bytes auto generated 16 bytes ID if not designated
--- @field span_id bytes 
+-- @field span_id bytes
 -- @field parent_span_id bytes
 --
 --- Timing. All times are in nanoseconds.
@@ -124,7 +124,7 @@ end
 -- @field kind number TODO: Should we remove this field? It's used by OTEL and zipkin. Maybe move this to impl_specific.
 -- @field attributes table extra information about the span. Attribute of OTEL or meta of Datadog.
 -- TODO: @field impl_specific table implementation specific fields. For example, impl_specific.datadog is used by Datadog tracer.
--- TODO: @field events table list of events. 
+-- TODO: @field events table list of events.
 --
 --- Internal fields
 -- @field tracer table
@@ -187,10 +187,8 @@ local function create_span(tracer, options)
   local sampled
   if span.parent and span.parent.should_sample ~= nil then
     sampled = span.parent.should_sample
-
   elseif options.should_sample ~= nil then
     sampled = options.should_sample
-
   else
     sampled = tracer and tracer.sampler(trace_id)
   end
@@ -259,10 +257,9 @@ local function new_span(tracer, name, options)
   return span
 end
 
---- Ends a Span
+--- Ends a Span.
 -- Set the end time and release the span,
--- the span table MUST not being used after ended.
---
+-- the span table MUST not be used after ended.
 -- @function span:finish
 -- @tparam number|nil end_time_ns
 -- @usage
@@ -292,8 +289,7 @@ function span_mt:finish(end_time_ns)
   end
 end
 
---- Set an attribute to a Span
---
+--- Set an attribute to a Span.
 -- @function span:set_attribute
 -- @tparam string key
 -- @tparam string|number|boolean value
@@ -323,8 +319,7 @@ function span_mt:set_attribute(key, value)
   self.attributes[key] = value
 end
 
---- Adds an event to a Span
---
+--- Adds an event to a Span.
 -- @function span:add_event
 -- @tparam string name Event name
 -- @tparam table|nil attributes Event attributes
@@ -356,8 +351,7 @@ function span_mt:add_event(name, attributes, time_ns)
   self.events[0] = len
 end
 
---- Adds an error event to a Span
---
+--- Adds an error event to a Span.
 -- @function span:record_error
 -- @tparam string err error string
 function span_mt:record_error(err)
@@ -370,12 +364,11 @@ function span_mt:record_error(err)
   })
 end
 
---- Adds an error event to a Span
+--- Adds an error event to a Span.
 -- Status codes:
 -- - `0` unset
 -- - `1` ok
 -- - `2` error
---
 -- @function span:set_status
 -- @tparam number status status code
 function span_mt:set_status(status)
@@ -443,9 +436,8 @@ local function new_tracer(name, options)
   self.sampler = get_trace_id_based_sampler(options.sampling_rate)
   self.active_span_key = name .. "_" .. "active_span"
 
-  --- Get the active span
-  -- Returns the root span by default
-  --
+  --- Get the active span.
+  -- Returns the root span by default.
   -- @function kong.tracing.active_span
   -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
   -- @treturn table span
@@ -457,8 +449,7 @@ local function new_tracer(name, options)
     return ngx.ctx[self.active_span_key]
   end
 
-  --- Set the active span
-  --
+  --- Set the active span.
   -- @function kong.tracing.set_active_span
   -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
   -- @tparam table span
@@ -474,8 +465,7 @@ local function new_tracer(name, options)
     ngx.ctx[self.active_span_key] = span
   end
 
-  --- Create a new Span
-  --
+  --- Create a new Span.
   -- @function kong.tracing.start_span
   -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
   -- @tparam string name span name
@@ -497,12 +487,11 @@ local function new_tracer(name, options)
     return link_span(...)
   end
 
-  --- Batch process spans
-  -- Please note that socket is not available in the log phase, use `ngx.timer.at` instead
-  --
+  --- Batch process spans.
+  -- Please note that socket is not available in the log phase, use `ngx.timer.at` instead.
   -- @function kong.tracing.process_span
   -- @phases log
-  -- @tparam function processor a function that accecpt a span as the parameter
+  -- @tparam function processor a function that accepts a span as the parameter
   function self.process_span(processor, ...)
     check_phase(PHASES.log)
 
@@ -522,8 +511,7 @@ local function new_tracer(name, options)
     end
   end
 
-  --- Update the value of should_sample for all spans
-  --
+  --- Update the value of should_sample for all spans.
   -- @function kong.tracing:set_should_sample
   -- @tparam bool should_sample value for the sample parameter
   function self:set_should_sample(should_sample)
