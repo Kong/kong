@@ -32,6 +32,7 @@ local ipairs = ipairs
 local pairs = pairs
 local fmt = string.format
 local string_sub = string.sub
+local gsub = string.gsub
 local json_decode = cjson.decode
 local json_encode = cjson.encode
 local EMPTY_T = pl_tablex.readonly({})
@@ -251,13 +252,17 @@ local function check_required_parameter(parameter, path_spec)
     value = get_req_body_json() or EMPTY_T
 
   elseif location == "path" then
-    -- find location of parameter in the specification
-    local uri_params = split(string_sub(path_spec,2),"/")
-    for idx, name in ipairs(uri_params) do
-      if re_match(name, parameter.name) then
-        value = template_environment[location][idx]
-        break
-      end
+    local request_path = normalize(kong.request.get_path(), true)
+    local path_pattern = gsub(path_spec, "/", "\\/")
+    path_pattern = gsub(path_pattern, "{(.-)}", function(str)
+      return "(?<" .. str .. ">[A-Za-z0-9._-]+)"
+    end)
+    local m, err = re_match(request_path, path_pattern)
+    if err then
+      kong.log.err("failed to match regular expression path: ", path_pattern)
+    end
+    if m then
+      value = m[parameter.name]
     end
 
   else

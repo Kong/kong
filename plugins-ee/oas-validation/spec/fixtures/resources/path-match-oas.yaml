@@ -1,0 +1,59 @@
+openapi: "3.0.0"
+info:
+  title: Sample API
+  description: A Sample OpenAPI Spec
+  version: 1.0.0
+paths:
+  /user/{username}:
+    get:
+      summary: Get user by user name
+      description: ''
+      operationId: getUserByName
+      parameters:
+        - name: username
+          in: path
+          description: 'The name that needs to be fetched. Use user1 for testing. '
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+        '400':
+          description: Invalid username supplied
+        '404':
+          description: User not found
+  /user/{username}/report.{format}:
+    get:
+      parameters:
+        - name: username
+          in: path
+          description: 'The name that needs to be fetched. Use user1 for testing. '
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: format
+          required: true
+          description: The user to create.
+          schema:
+            type: string
+            enum:
+              - pdf
+              - txt
+              - word
+      responses:
+        201:
+          description: Created
+  /user/{username}.pdf:
+    get:
+      parameters:
+        - name: username
+          in: path
+          description: 'The name that needs to be fetched. Use user1 for testing. '
+          required: true
+          schema:
+            type: string
+      responses:
+        201:
+          description: Created
