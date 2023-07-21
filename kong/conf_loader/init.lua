@@ -530,7 +530,6 @@ local CONF_PARSERS = {
       "nginx_stream_lua_ssl_protocols",
     },
   },
-  lua_ssl_protocols = { typ = "string" },
   lua_socket_pool_size = { typ = "number" },
 
   role = { enum = { "data_plane", "control_plane", "traditional", }, },

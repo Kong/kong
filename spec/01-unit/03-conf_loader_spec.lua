@@ -1557,9 +1557,9 @@ describe("Configuration loader", function()
 
         it("sets nginx_http_lua_ssl_protocols and nginx_stream_lua_ssl_protocols to different values", function()
           local conf, err = conf_loader(nil, {
-            lua_ssl_protocols = "TLSv1.1"
-            nginx_http_lua_ssl_protocols = "TLSv1.2"
-            nginx_stream_lua_ssl_protocols = "TLSv1.3"
+            lua_ssl_protocols = "TLSv1.1",
+            nginx_http_lua_ssl_protocols = "TLSv1.2",
+            nginx_stream_lua_ssl_protocols = "TLSv1.3",
           })
           assert.is_nil(err)
           assert.is_table(conf)
