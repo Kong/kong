@@ -256,7 +256,16 @@ describe("Memory tracing #" .. strategy .. " #" .. deploy, function ()
         },
         response_body = {
           status = "error",
-          message = "invalid stack depth (must be greater than or equal to 1): 0",
+          message = "invalid stack depth (must be between 1 and 64): 0",
+        },
+      },
+      {
+        request_body = {
+          stack_depth = 65,
+        },
+        response_body = {
+          status = "error",
+          message = "invalid stack depth (must be between 1 and 64): 65",
         },
       },
       {

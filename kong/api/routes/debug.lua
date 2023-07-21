@@ -57,6 +57,9 @@ local DEFAULT_MEMORY_TRACING_BLOCK_SIZE  = 2^20 * 512  -- 512 MiB
 local MIN_MEMORY_TRACING_BLOCK_SIZE      = 2^20 * 512  -- 512 MiB
 local MAX_MEMORY_TRACING_BLOCK_SIZE      = 2^30 * 5    -- 5 GiB
 local MIN_MEMORY_TRACING_STACK_DEPTH     = 1
+local MAX_MEMORY_TRACING_STACK_DEPTH     = 64          -- 64 frames
+                                                       -- this number was hard coded
+                                                       -- in our implementation
 
 local ERR_MSG_INVALID_PROFILING_TIMEOUT  = string.format(
                                            "invalid timeout (must be between %d and %d): ",
@@ -86,8 +89,9 @@ local ERR_MSG_INVALID_BLOCK_SIZE         = string.format(
                                          )
 
 local ERR_MSG_INVALID_STACK_DEPTH        = string.format(
-                                           "invalid stack depth (must be greater than or equal to %d): ",
-                                           MIN_MEMORY_TRACING_STACK_DEPTH
+                                           "invalid stack depth (must be between %d and %d): ",
+                                           MIN_MEMORY_TRACING_STACK_DEPTH,
+                                           MAX_MEMORY_TRACING_STACK_DEPTH
                                          )
 
 
@@ -391,7 +395,7 @@ local routes = {
         return kong.response.exit(400, response_body("error", ERR_MSG_INVALID_BLOCK_SIZE .. block_size))
       end
 
-      if stack_depth < MIN_MEMORY_TRACING_STACK_DEPTH then
+      if stack_depth < MIN_MEMORY_TRACING_STACK_DEPTH or stack_depth > MAX_MEMORY_TRACING_STACK_DEPTH then
         return kong.response.exit(400, response_body("error", ERR_MSG_INVALID_STACK_DEPTH .. stack_depth))
       end
 
