@@ -1673,7 +1673,7 @@ local config = {
             },
           },
           {
-            token_cache_key_include_scope = {
+            token_cache_key_include_scope = { description = "Include the scope in the token cache key, so token with different scopes are considered diffrent tokens.",
               type = "boolean",
               default = false,
             }
