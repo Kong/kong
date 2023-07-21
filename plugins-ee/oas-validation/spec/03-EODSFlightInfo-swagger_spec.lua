@@ -57,7 +57,7 @@ for _, strategy in helpers.each_strategy() do
       )
 
       -- add the plugin to test to the route we created
-      db.plugins:insert {
+      assert(db.plugins:insert {
         name = PLUGIN_NAME,
         service = { id = service1.id },
         route = { id = route1.id },
@@ -65,7 +65,7 @@ for _, strategy in helpers.each_strategy() do
           api_spec = ngx.escape_uri(fixture_path.read_fixture("ICC-EODSFlightInformation-1.5.5-swagger.yaml")),
           verbose_response = true
         },
-      }
+      })
 
       -- start kong
       assert(helpers.start_kong({

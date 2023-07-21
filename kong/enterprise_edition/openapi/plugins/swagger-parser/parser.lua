@@ -12,6 +12,8 @@ local lyaml = require "lyaml"
 local type = type
 local pcall = pcall
 local fmt = string.format
+local tab_sort = table.sort
+local pairs = pairs
 
 local _M = {}
 
@@ -20,13 +22,14 @@ _M.dereference = function(schema)
 end
 
 _M.parse = function(spec_content)
+  spec_content = ngx.unescape_uri(spec_content)
   local parsed_spec, decode_err = cjson.decode(spec_content)
   if decode_err then
     -- fallback to YAML
     local pok
     pok, parsed_spec = pcall(lyaml.load, spec_content)
     if not pok or type(parsed_spec) ~= "table" then
-      return nil, fmt("Spec is neither valid json ('%s') nor valid yaml ('%s')",
+      return nil, fmt("api specification is neither valid json ('%s') nor valid yaml ('%s')",
         decode_err, parsed_spec)
     end
   end
@@ -35,6 +38,20 @@ _M.parse = function(spec_content)
   if err then
     return nil, err
   end
+
+  -- sort paths for later path matching
+  if deferenced_schema.paths then
+    local sorted_paths = {}
+    local n = 0
+    for path in pairs(deferenced_schema.paths) do
+      n = n + 1
+      sorted_paths[n] = path
+    end
+
+    tab_sort(sorted_paths)
+    deferenced_schema.sorted_paths = sorted_paths
+  end
+
 
   local spec = {
     spec = deferenced_schema,

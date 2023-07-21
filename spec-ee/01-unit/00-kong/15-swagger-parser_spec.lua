@@ -418,7 +418,7 @@ describe("swagger-parser", function()
       ]]
       local res, err = swagger_parser.parse(spec_str)
       assert.is_nil(res)
-      assert.same(err, "max recursion of 1000 exceeded in schema dereferencing")
+      assert.same(err, "recursion detected in schema dereferencing")
     end)
   end)
 
@@ -566,7 +566,7 @@ describe("swagger-parser", function()
       ]]
       local _, err = swagger_parser.dereference(lyaml.load(schema_yaml))
       assert.not_nil(err)
-      assert.equal("max recursion of 1000 exceeded in schema dereferencing", err)
+      assert.equal("recursion detected in schema dereferencing", err)
     end)
 
     it("should fail when contains recursive reference", function()
@@ -592,7 +592,7 @@ describe("swagger-parser", function()
 
       local _, err = swagger_parser.dereference(lyaml.load(schema_yaml))
       assert.not_nil(err)
-      assert.equal("max recursion of 1000 exceeded in schema dereferencing", err)
+      assert.equal("recursion detected in schema dereferencing", err)
     end)
   end)
 end)

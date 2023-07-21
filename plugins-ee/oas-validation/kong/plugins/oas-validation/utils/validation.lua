@@ -5,21 +5,21 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local common_utils  = require "kong.plugins.oas-validation.utils.common"
+local pl_tablex = require "pl.tablex"
+local split = require("pl.utils").split
+local constants = require "kong.plugins.oas-validation.constants"
 
-local split         = require("pl.utils").split
+local re_match = ngx.re.match
 
-local ngx           = ngx
-local re_match      = ngx.re.match
-
-local exists              = common_utils.exists
-local to_wildcard_subtype = common_utils.to_wildcard_subtype
+local EMPTY_T = pl_tablex.readonly({})
+local ipairs = ipairs
+local fmt = string.format
+local type = type
+local gsub = string.gsub
+local tostring = tostring
+local CONTENT_METHODS = constants.CONTENT_METHODS
 
 local _M = {}
-
-local CONTENT_METHODS = {
-  "POST", "PUT", "PATCH"
-}
 
 local COMMON_FILE_FORMAT_SEPARATOR = {
   csv = {
@@ -42,27 +42,34 @@ local RE_UUID  = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
 local OPEN_API = "openapi"
 
 
--- @param body_spec Specification of the request/response body.
--- @param content_type Content-Type of the request/response body.
--- @return Schema of the request/response body if succeeed, nil otherwise.
-local function locate_content_schema_by_content_type(body_spec, content_type)
-  local schema
-  if body_spec and body_spec.content then
-    schema = (body_spec.content[content_type] and body_spec.content[content_type].schema) or
-             (body_spec.content[to_wildcard_subtype(content_type)] and body_spec.content[to_wildcard_subtype(content_type)].schema) or
-             (body_spec.content["*/*"] and body_spec.content["*/*"].schema)
-  end
-
-  return schema
+local function to_wildcard_subtype(content_type)
+  -- remove parameter in content type
+  return gsub(content_type, "([^/]+)/([^/]+)", "%1") .. "/*"
 end
 
 
-function _M.locate_request_body_schema(method_spec, content_type)
-  local request_body_spec = method_spec.requestBody
-  local schema = locate_content_schema_by_content_type(request_body_spec, content_type)
+-- @param body_spec Specification of the request/response body.
+-- @param content_type Content-Type of the request/response body.
+-- @return Schema of the request/response body if succeeed, nil otherwise.
+local function locate_content_schema_by_content_type(media_types, media_type)
+  local schema
+  if media_types then
+    schema = (media_types[media_type] and media_types[media_type].schema) or
+             (media_types[to_wildcard_subtype(media_type)] and media_types[to_wildcard_subtype(media_type)].schema) or
+             (media_types["*/*"] and media_types["*/*"].schema)
+  end
+  return schema
+end
+
+function _M.locate_request_body_schema(request_body_spec, content_type)
+  local schema
+
+  if request_body_spec then
+    schema = locate_content_schema_by_content_type(request_body_spec.content, content_type)
+  end
 
   if not schema then
-    return nil, string.format("no request body schema found for content type '%s'", content_type)
+    return nil, fmt("no request body schema found for content type '%s'", content_type)
   end
 
   return schema
@@ -87,11 +94,11 @@ function _M.locate_response_body_schema(spec_version, method_spec, status_code, 
     end
 
   elseif response and response.content then
-    schema = locate_content_schema_by_content_type(response, content_type)
+    schema = locate_content_schema_by_content_type(response.content, content_type)
   end
 
   if not schema then
-    return nil, string.format("no response body schema found for status code '%s' and content type '%s'",
+    return nil, fmt("no response body schema found for status code '%s' and content type '%s'",
                               status_code, content_type)
   end
 
@@ -104,9 +111,9 @@ local function find_param(params, name, locin)
     return false
   end
 
-  for pi, pv in ipairs(params) do
-    if pv["name"] == name and pv["in"] == locin then
-      return true, pi
+  for _, param in ipairs(params) do
+    if param["name"] == name and param["in"] == locin then
+      return true, param
     end
   end
 
@@ -114,29 +121,33 @@ local function find_param(params, name, locin)
 end
 
 
--- Merge path and method parameters
--- Method parameter should override path parameter if they share same name and location value
-function _M.merge_params(p_params, m_params)
+-- Merge method-level parameters into path-level parameters
+-- Method-level parameter should override path parameter if they share same name and location value
+function _M.merge_params(path_params, method_params)
+  if path_params == nil or #path_params == 0 then
+    -- returns method-level parameters if path-level parameters is empty
+    return method_params
+  end
+
   local merged_params = {}
-  if p_params then
-    for pi, pv in ipairs(p_params) do
-      local res, idx = find_param(m_params, pv["name"], pv["in"])
-      if res then
-        -- method-level parameter can override path-level parameter
-        table.insert(merged_params, m_params[idx])
-      else
-        table.insert(merged_params, pv)
-      end
+  local n = 0
+  for _, param in ipairs(path_params or EMPTY_T) do
+    local found, method_param = find_param(method_params, param["name"], param["in"])
+    n = n + 1
+    if found then
+      -- method-level parameter can override path-level parameter
+      merged_params[n] = method_param
+    else
+      merged_params[n] = param
     end
   end
 
-  if m_params then
-    --add other method parameters
-    for pi, pv in ipairs(m_params) do
-      local res = find_param(merged_params, pv["name"], pv["in"])
-      if not res then
-        table.insert(merged_params, pv)
-      end
+  -- add other method parameters
+  for _, param in ipairs(method_params or EMPTY_T) do
+    local found = find_param(merged_params, param["name"], param["in"])
+    if not found then
+      n = n + 1
+      merged_params[n] = param
     end
   end
 
@@ -172,11 +183,6 @@ function _M.param_array_helper(parameter)
 end
 
 
-function _M.is_body_method(method)
-  return exists(CONTENT_METHODS, method)
-end
-
-
 function _M.parameter_schema_check(parameter)
   local location = parameter["in"]
 
@@ -204,20 +210,21 @@ function _M.parameter_schema_check(parameter)
 end
 
 
-function _M.content_type_allowed(content_type, method, method_spec, conf)
+function _M.content_type_allowed(content_type, method, method_spec)
   if content_type ~= "application/json" then
     return false, "content-type '" .. content_type .. "' is not supported"
   end
 
-  if exists(CONTENT_METHODS, method) then
+  if CONTENT_METHODS[method] then
     if method_spec.consumes then
       local content_types = method_spec.consumes
       if type(content_types) ~= "table" then
-        content_types = {content_types}
+        content_types = { content_types }
       end
 
-      if not exists(content_types, content_type) then
-        return false, string.format("content type '%s' does not exist in specification", content_type)
+      local cmp = function(e, v) return e:lower() == v:lower() and e end
+      if not pl_tablex.find_if(content_types, cmp, content_type) then
+        return false, fmt("content type '%s' does not exist in specification", content_type)
       end
     end
   end

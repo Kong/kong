@@ -6,10 +6,10 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local typedefs = require "kong.db.schema.typedefs"
-local spec_parser = require("kong.plugins.oas-validation.utils.spec_parser")
+local swagger_parser = require "kong.enterprise_edition.openapi.plugins.swagger-parser.parser"
 
 local function validate_spec(entity)
-  return spec_parser.load_spec(entity)
+  return swagger_parser.parse(entity)
 end
 
 return {

@@ -5,45 +5,50 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local cjson                 = require("cjson.safe").new()
-local generator             = require("kong.tools.json-schema.draft4").generate
-local pl_tablex             = require "pl.tablex"
-local pl_stringx            = require "pl.stringx"
-local deserialize           = require "resty.openapi3.deserializer"
-local split                 = require("pl.utils").split
-local normalize             = require("kong.tools.uri").normalize
-local event_hooks           = require "kong.enterprise_edition.event_hooks"
-local clone                 = require "table.clone"
-local meta                  = require "kong.meta"
+local cjson = require "cjson.safe".new()
+local pl_tablex = require "pl.tablex"
+local pl_stringx = require "pl.stringx"
+local split = require "pl.utils".split
+local deserialize = require "resty.openapi3.deserializer"
+local event_hooks = require "kong.enterprise_edition.event_hooks"
+local clone = require "table.clone"
+local swagger_parser = require "kong.enterprise_edition.openapi.plugins.swagger-parser.parser"
+local lrucache = require "resty.lrucache"
+local utils = require "kong.plugins.oas-validation.utils"
+local validation_utils = require "kong.plugins.oas-validation.utils.validation"
+local sha256_hex = require "kong.tools.utils".sha256_hex
+local normalize = require "kong.tools.uri".normalize
+local generator = require "kong.tools.json-schema.draft4".generate
+local parse_mime_type = require "kong.tools.mime_type".parse_mime_type
+local meta = require "kong.meta"
+local constants = require "kong.plugins.oas-validation.constants"
 
-local common_utils          = require "kong.plugins.oas-validation.utils.common"
-local validation_utils      = require "kong.plugins.oas-validation.utils.validation"
-local spec_parser           = require "kong.plugins.oas-validation.utils.spec_parser"
+local kong = kong
+local ngx = ngx
+local type = type
+local setmetatable = setmetatable
+local re_match = ngx.re.match
+local ipairs = ipairs
+local pairs = pairs
+local fmt = string.format
+local string_sub = string.sub
+local json_decode = cjson.decode
+local json_encode = cjson.encode
+local EMPTY_T = pl_tablex.readonly({})
+local find = pl_tablex.find
+local replace = pl_stringx.replace
+local request_get_header = kong.request.get_header
 
-local get_req_body_json           = common_utils.get_req_body_json
-local extract_media_type          = common_utils.extract_media_type
-local get_spec_from_conf          = spec_parser.get_spec_from_conf
-local get_method_spec             = spec_parser.get_method_spec
-local content_type_allowed        = validation_utils.content_type_allowed
-local is_body_method              = validation_utils.is_body_method
-local param_array_helper          = validation_utils.param_array_helper
-local merge_params                = validation_utils.merge_params
-local parameter_validator_v2      = validation_utils.parameter_validator_v2
-local locate_request_body_schema  = validation_utils.locate_request_body_schema
+local get_req_body_json = utils.get_req_body_json
+local content_type_allowed = validation_utils.content_type_allowed
+local param_array_helper = validation_utils.param_array_helper
+local merge_params = validation_utils.merge_params
+local parameter_validator_v2 = validation_utils.parameter_validator_v2
+local locate_request_body_schema = validation_utils.locate_request_body_schema
 local locate_response_body_schema = validation_utils.locate_response_body_schema
 
-local kong                  = kong
-local ngx                   = ngx
-local re_match              = ngx.re.match
-local ipairs                = ipairs
-local fmt                   = string.format
-local json_decode           = cjson.decode
-local json_encode           = cjson.encode
-local EMPTY                 = pl_tablex.readonly({})
-local find                  = pl_tablex.find
-local replace               = pl_stringx.replace
-local string_sub            = string.sub
 
+local spec_cache = lrucache.new(1000)
 
 cjson.decode_array_with_array_mt(true)
 
@@ -54,11 +59,11 @@ local DEFAULT_CONTENT_TYPE = "application/json"
 
 local OPEN_API = "openapi"
 
+local CONTENT_METHODS = constants.CONTENT_METHODS
 
 local OASValidationPlugin = {
   VERSION  = meta.core_version,
-  -- priority after security & rate limiting plugins
-  PRIORITY = 850,
+  PRIORITY = 850, -- priority after security & rate limiting plugins
 }
 
 
@@ -110,20 +115,19 @@ end
 
 
 -- Check the necessity of the parameter validation
-local function need_validate_parameter(parameter, conf)
-  if parameter["in"] == "header" and not conf.validate_request_header_params then
+local function need_validate_parameter(parameter, conf, parsed_spec)
+  local location = parameter["in"]
+
+  if location == "header" and not conf.validate_request_header_params then
     return false
   end
-
-  if parameter["in"] == "query" and not conf.validate_request_query_params then
+  if location == "query" and not conf.validate_request_query_params then
     return false
   end
-
-  if parameter["in"] == "path" and not conf.validate_request_uri_params then
+  if location == "path" and not conf.validate_request_uri_params then
     return false
   end
-
-  if parameter["in"] == "body" and not conf.validate_request_body and conf.parsed_spec.swagger then
+  if location == "body" and not conf.validate_request_body and parsed_spec.swagger then
     return false
   end
 
@@ -233,7 +237,6 @@ local function validate_parameter_value(parameter, spec_ver)
 
   if parameter.schema then
     return validate_parameter_value_openapi(parameter)
-
   elseif spec_ver ~= OPEN_API then
     return validate_parameter_value_swagger(parameter)
   end
@@ -245,11 +248,11 @@ local function check_required_parameter(parameter, path_spec)
   local value
   local location = parameter["in"]
   if location == "body" then
-    value = get_req_body_json() or EMPTY
+    value = get_req_body_json() or EMPTY_T
 
   elseif location == "path" then
     -- find location of parameter in the specification
-    local uri_params = split(string.sub(path_spec,2),"/")
+    local uri_params = split(string_sub(path_spec,2),"/")
     for idx, name in ipairs(uri_params) do
       if re_match(name, parameter.name) then
         value = template_environment[location][idx]
@@ -294,7 +297,7 @@ local function check_parameter_existence(spec_params, location, allowed)
   local template_environment = kong.ctx.plugin.template_environment
   for qname, _ in pairs(template_environment[location]) do
     local exists = false
-    for _, parameter in pairs(spec_params) do
+    for _, parameter in pairs(spec_params or EMPTY_T) do
       if parameter["in"] == location and qname:lower() == parameter.name:lower() then
         exists = true
         break
@@ -326,35 +329,41 @@ local function emit_event_hook(errmsg)
 end
 
 
-local function validate_error_handler(conf, errcode, errmsg, default_errmsg, log_level)
-  emit_event_hook(errmsg)
+local function handle_validate_error(err, default_message, http_code, options)
+  options = options or EMPTY_T
 
-  local log_level = log_level or "err"
-  -- no need to return error
-  if errcode == nil then
-    kong.log[log_level](errmsg)
+  emit_event_hook(err)
+
+  if options.interrupt_request then
+    local message = options.verbose and err or default_message
+    kong.response.exit(http_code, { message = message })
     return
   end
 
-  -- need to return response error with errcode
-  if conf.verbose_response then
-    return kong.response.exit(errcode, { message = errmsg })
-
-  else
-    return kong.response.exit(errcode, { message = default_errmsg })
-  end
+  local level = options.log_level or "err"
+  kong.log[level](err)
 end
 
 
 function OASValidationPlugin:init_worker()
-
   -- register validation event hook
   event_hooks.publish("oas-validation", "validation-failed", {
     fields = { "consumer", "ip", "service", "err" },
     unique = { "consumer", "ip", "service" },
     description = "Run an event when oas validation fails",
   })
+end
 
+
+
+local function extract_media_type(content_type)
+  if content_type then
+    local media_type, media_subtype = parse_mime_type(content_type)
+    if media_type and media_subtype then
+      return media_type .. "/" .. media_subtype
+    end
+  end
+  return DEFAULT_CONTENT_TYPE
 end
 
 
@@ -362,29 +371,32 @@ function OASValidationPlugin:response(conf)
   if not conf.validate_response_body then
     return
   end
-
   -- do not validate if the request is not originated from the proxied service
   if kong.response.get_source() ~= "service" then
     return
   end
 
-  local body = kong.service.response.get_raw_body()
+  local data = ngx.ctx._oas_validation_data
+  local spec_method = data.spec_method
+
   local resp_status_code = kong.service.response.get_status()
 
-  local content_type_header = kong.service.response.get_header("Content-Type")
-  local content_type = extract_media_type(content_type_header) or DEFAULT_CONTENT_TYPE
+  local content_type = extract_media_type(kong.service.response.get_header("Content-Type"))
 
-  local method_spec = ngx.ctx.method_spec or get_method_spec(conf, ngx.ctx.resp_uri, ngx.ctx.resp_method)
-  local schema, err = locate_response_body_schema(conf.parsed_spec.swagger or OPEN_API, method_spec, resp_status_code, content_type)
+  local schema, err = locate_response_body_schema(data.spec_version or OPEN_API, spec_method, resp_status_code, content_type)
 
   -- no response schema found, skip validation
   if not schema then
-    return validate_error_handler(conf, nil, err, err, "notice")
+    return handle_validate_error(err, nil, nil, {
+      verbose = conf.verbose_response,
+      interrupt_request = false, -- does not interrupt the request flow
+      log_level = "notice",
+    })
   end
 
   local parameter = { schema = schema }
   local validator = validator_cache[parameter]
-  local resp_obj = json_decode(body)
+  local resp_obj = json_decode(kong.service.response.get_raw_body())
   --check response type
   if parameter.schema.type == "array" and type(resp_obj) == "string" then
     resp_obj = {resp_obj}
@@ -396,14 +408,30 @@ function OASValidationPlugin:response(conf)
 
   local ok, err = validator(resp_obj)
   if not ok then
-    local errmsg = fmt("response body validation failed with error: %s", replace(err, "userdata", "null"))
-    if conf.notify_only_response_body_validation_failure then
-      return validate_error_handler(conf, nil, errmsg, errmsg, "err")
-
-    else
-      return validate_error_handler(conf, 406, errmsg, DENY_RESPONSE_MESSAGE, "err")
-    end
+    err = fmt("response body validation failed with error: %s", replace(err, "userdata", "null"))
+    return handle_validate_error(err, DENY_RESPONSE_MESSAGE, 406, {
+      verbose = conf.verbose_response,
+      interrupt_request = not conf.notify_only_response_body_validation_failure,
+      log_level = "err",
+    })
   end
+end
+
+
+
+local function parse_spec(spec_content)
+  local spec_cache_key = sha256_hex(spec_content)
+  local parsed_spec = spec_cache:get(spec_cache_key)
+  if not parsed_spec then
+    spec_content = ngx.unescape_uri(spec_content)
+    local spec, err = swagger_parser.parse(spec_content)
+    if err then
+      return nil, err
+    end
+    parsed_spec = spec.spec
+    spec_cache:set(spec_cache_key, parsed_spec)
+  end
+  return parsed_spec
 end
 
 local function init_template_environment()
@@ -412,13 +440,13 @@ local function init_template_environment()
     __index = function(self, key)
       local lazy_loaders = {
         header = function(self)
-          return kong.request.get_headers() or EMPTY
+          return kong.request.get_headers() or EMPTY_T
         end,
         query = function(self)
-          return kong.request.get_query() or EMPTY
+          return kong.request.get_query() or EMPTY_T
         end,
         path = function(self)
-          return split(string_sub(normalize(kong.request.get_path(),true), 2),"/") or EMPTY
+          return split(string_sub(normalize(kong.request.get_path(),true), 2),"/") or EMPTY_T
         end
       }
       local loader = lazy_loaders[key]
@@ -443,112 +471,75 @@ end
 function OASValidationPlugin:access(conf)
   kong.ctx.plugin.template_environment = init_template_environment()
 
-  local method = kong.request.get_method()
-  local path = normalize(kong.request.get_path(), true)
-  if conf.validate_response_body then
-    -- used ngx.ctx instead of kong.ctx since kong.ctx used in response phase is not thread safe
-    ngx.ctx.resp_uri = path
-    ngx.ctx.resp_method = method
+  local request_method = kong.request.get_method()
+  local request_path = normalize(kong.request.get_path(), true)
+  local error_options = {
+    verbose = conf.verbose_response,
+    interrupt_request = not conf.notify_only_request_validation_failure,
+  }
+
+  local parsed_spec, err = parse_spec(conf.api_spec)
+  if err then
+    err = "validation failed, Unable to parse the api specification: " .. err
+    return handle_validate_error(err, DENY_REQUEST_MESSAGE, 400, error_options)
   end
 
-  local content_type_header = kong.request.get_header("Content-Type")
-  local content_type = extract_media_type(content_type_header) or DEFAULT_CONTENT_TYPE
-
-  local method_spec, path_spec, path_params, err = get_spec_from_conf(conf, path, method)
+  local path_spec, match_path, method_spec = utils.retrieve_operation(parsed_spec, request_path, request_method)
   if not method_spec then
-    local errmsg = fmt("validation failed, %s", err)
-    if conf.notify_only_request_validation_failure then
-      return validate_error_handler(conf, nil, errmsg, errmsg, "err")
-
-    else
-      return validate_error_handler(conf, 400, errmsg, DENY_REQUEST_MESSAGE, "err")
-    end
+    local err = "validation failed, path not found in api specification"
+    return handle_validate_error(err, DENY_REQUEST_MESSAGE, 400, error_options)
   end
-  ngx.ctx.method_spec = method_spec
 
   -- check content-type matches the spec
-  local ok, err = content_type_allowed(content_type, method, method_spec)
+  local content_type = extract_media_type(request_get_header("Content-Type"))
+  local ok, err = content_type_allowed(content_type, request_method, method_spec)
   if not ok then
-    local errmsg = fmt("validation failed: %s", err)
-    if conf.notify_only_request_validation_failure then
-      return validate_error_handler(conf, nil, errmsg, errmsg, "err")
-
-    else
-      return validate_error_handler(conf, 400, errmsg, DENY_REQUEST_MESSAGE, "err")
-    end
+    err = fmt("validation failed: %s", err)
+    return handle_validate_error(err, DENY_REQUEST_MESSAGE, 400, error_options)
   end
 
-  --merge path and method level parameters
-  --method level parameters take precedence over path
-  local merged_params
-  if path_params then
-    merged_params = merge_params(path_params, method_spec.parameters)
-
-  else
-    merged_params = method_spec.parameters
+  local parameters = method_spec.parameters or {}
+  if path_spec.parameters then
+    -- injects path level parameters
+    -- https://swagger.io/docs/specification/describing-parameters/#path-parameters [Common Parameters]
+    parameters = merge_params(path_spec.parameters, parameters)
   end
 
   if conf.header_parameter_check then
-    local ok, err = check_parameter_existence(merged_params or EMPTY, "header", conf.allowed_header_parameters)
+    local ok, err = check_parameter_existence(parameters, "header", conf.allowed_header_parameters)
     if not ok then
-      local errmsg = fmt("validation failed with error: %s", err)
-      if conf.notify_only_request_validation_failure then
-        return validate_error_handler(conf, nil, errmsg, errmsg, "err")
-
-      else
-        return validate_error_handler(conf, 400, errmsg, DENY_PARAM_MESSAGE, "err")
-      end
+      err = fmt("validation failed with error: %s", err)
+      return handle_validate_error(err, DENY_PARAM_MESSAGE, 400, error_options)
     end
   end
 
   -- check if query & headers in request exist in spec
   if conf.query_parameter_check then
-    local ok, err = check_parameter_existence(merged_params or EMPTY, "query")
+    local ok, err = check_parameter_existence(parameters, "query")
     if not ok then
-      local errmsg = fmt("validation failed with error: %s", err)
-      if conf.notify_only_request_validation_failure then
-        return validate_error_handler(conf, nil, errmsg, errmsg, "err")
-
-      else
-        return validate_error_handler(conf, 400, errmsg, DENY_PARAM_MESSAGE, "err")
-      end
+      err = fmt("validation failed with error: %s", err)
+      return handle_validate_error(err, DENY_PARAM_MESSAGE, 400, error_options)
     end
   end
 
-  for _, parameter in ipairs(merged_params or EMPTY) do
-    -- Shortcuts for skipping paramter validation
-    if not need_validate_parameter(parameter, conf) then
-      goto skip_paramter_validation
-    end
-
-    -- Parameter validation
-    local ok, err = validate_parameters(parameter, path_spec, conf.parsed_spec.swagger or OPEN_API)
-    if not ok then
-      -- check for userdata cjson.null and return nicer err message
-      local errmsg = fmt("%s '%s' validation failed with error: '%s'", parameter["in"],
-                                      parameter.name, replace(err, "userdata", "null"))
-      if conf.notify_only_request_validation_failure then
-        return validate_error_handler(conf, nil, errmsg, errmsg, "err")
-
-      else
-        return validate_error_handler(conf, 400, errmsg, DENY_PARAM_MESSAGE, "err")
+  for _, parameter in ipairs(parameters) do
+    if need_validate_parameter(parameter, conf, parsed_spec) then
+      local ok, err = validate_parameters(parameter, match_path, parsed_spec.swagger or OPEN_API)
+      if not ok then
+        -- check for userdata cjson.null and return nicer err message
+        err = fmt("%s '%s' validation failed with error: '%s'", parameter["in"],
+          parameter.name, replace(err, "userdata", "null"))
+        return handle_validate_error(err, DENY_PARAM_MESSAGE, 400, error_options)
       end
     end
-
-    ::skip_paramter_validation::
   end
 
   -- validate oas body if required
-  if conf.validate_request_body and conf.parsed_spec.openapi and is_body_method(method) then
-    local res_schema, errmsg = locate_request_body_schema(method_spec, content_type)
+  if conf.validate_request_body and parsed_spec.openapi and CONTENT_METHODS[request_method] then
+    local res_schema, errmsg = locate_request_body_schema(method_spec.requestBody, content_type)
 
     if not res_schema then
-      if conf.notify_only_request_validation_failure then
-        return validate_error_handler(conf, nil, errmsg, errmsg, "err")
-
-      else
-        return validate_error_handler(conf, 400, errmsg, DENY_PARAM_MESSAGE, "err")
-      end
+      return handle_validate_error(errmsg, DENY_PARAM_MESSAGE, 400, error_options)
     end
 
     local parameter = {
@@ -556,18 +547,21 @@ function OASValidationPlugin:access(conf)
     }
     local validator = validator_cache[parameter]
     -- validate request body against schema
-    local ok, err = validator(get_req_body_json() or EMPTY)
-
+    local ok, err = validator(get_req_body_json() or EMPTY_T)
     if not ok then
       -- check for userdata cjson.null and return nicer err message
-      local errmsg = fmt("request body validation failed with error: '%s'", replace(err, "userdata", "null"))
-      if conf.notify_only_request_validation_failure then
-        return validate_error_handler(conf, nil, errmsg, errmsg, "err")
-
-      else
-        return validate_error_handler(conf, 400, errmsg, DENY_PARAM_MESSAGE, "err")
-      end
+      err = fmt("request body validation failed with error: '%s'", replace(err, "userdata", "null"))
+      return handle_validate_error(err, DENY_PARAM_MESSAGE, 400, error_options)
     end
+  end
+
+  if conf.validate_response_body then
+    -- used ngx.ctx instead of kong.ctx since kong.ctx used in response phase is not thread safe
+    local data = {
+      spec_method = method_spec,
+      spec_version = parsed_spec.swagger,
+    }
+    ngx.ctx._oas_validation_data = data
   end
 end
 

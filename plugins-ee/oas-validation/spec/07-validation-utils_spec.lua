@@ -6,395 +6,396 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local cjson = require "cjson"
-local spec_parser = require "kong.plugins.oas-validation.utils.spec_parser"
+local swagger_parser = require "kong.enterprise_edition.openapi.plugins.swagger-parser.parser"
 local validation_utils = require "kong.plugins.oas-validation.utils.validation"
+local utils = require "kong.plugins.oas-validation.utils"
 local fixture_path  = require "spec.fixtures.fixture_path"
 
 
 describe("validation utils spec", function ()
-  it("get correct spec table from spec string", function ()
-    local spec_str = [[
-      {
-        "openapi": "3.0.0",
-        "info": {
-          "title": "Sample API",
-          "description": "A Sample OpenAPI Spec",
-          "termsOfService": "http://swagger.io/terms/",
-          "contact": {
-            "email": ""
-          },
-          "license": {
-            "name": "Apache 2.0",
-            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
-          },
-          "version": "1.0.0"
-        },
-        "servers": [
-          {
-            "url": "http://example.com/v1"
-          }
-        ],
-        "paths": {
-          "/pets": {
-            "get": {
-              "summary": "List all pets",
-              "operationId": "listPets",
-              "tags": [
-                "pets"
-              ],
-              "responses": {
-                "200": {
-                  "description": "A paged array of pets",
-                  "headers": {
-                    "x-next": {
-                      "description": "A link to the next page of responses",
-                      "schema": {
-                        "type": "string"
-                      }
-                    }
-                  },
-                  "content": {
-                    "application/json": {
-                      "schema": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-        ]]
-    local res, err = spec_parser.load_spec(spec_str)
-    assert.truthy(res)
-    assert.is_nil(err)
-  end)
-
-  it("get correct spec table from spec string that contains reference", function ()
-    local spec_str = [[
-      {
-        "openapi": "3.0.3",
-        "info": {
-          "title": "Swagger Petstore - OpenAPI 3.0",
-          "description": "",
-          "termsOfService": "http://swagger.io/terms/",
-          "contact": {
-            "email": "apiteam@swagger.io"
-          },
-          "license": {
-            "name": "Apache 2.0",
-            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
-          },
-          "version": "1.0.11"
-        },
-        "externalDocs": {
-          "description": "Find out more about Swagger",
-          "url": "http://swagger.io"
-        },
-        "servers": [
-          {
-            "url": "https://petstore3.swagger.io/api/v3"
-          }
-        ],
-        "paths": {
-          "/pet": {
-            "put": {
-              "summary": "Update an existing pet",
-              "description": "Update an existing pet by Id",
-              "operationId": "updatePet",
-              "requestBody": {
-                "description": "Update an existent pet in the store",
-                "content": {
-                  "application/json": {
-                    "schema": {
-                      "$ref": "#/components/schemas/Pet"
-                    }
-                  },
-                  "application/xml": {
-                    "schema": {
-                      "$ref": "#/components/schemas/Pet"
-                    }
-                  },
-                  "application/x-www-form-urlencoded": {
-                    "schema": {
-                      "$ref": "#/components/schemas/Pet"
-                    }
-                  }
-                },
-                "required": true
-              },
-              "responses": {
-                "200": {
-                  "description": "Successful operation",
-                  "content": {
-                    "application/json": {
-                      "schema": {
-                        "$ref": "#/components/schemas/Pet"
-                      }
-                    },
-                    "application/xml": {
-                      "schema": {
-                        "$ref": "#/components/schemas/Pet"
-                      }
-                    }
-                  }
-                },
-                "400": {
-                  "description": "Invalid ID supplied"
-                },
-                "404": {
-                  "description": "Pet not found"
-                },
-                "405": {
-                  "description": "Validation exception"
-                }
-              }
-            }
-          }
-        },
-        "components": {
-          "schemas": {
-            "Tag": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "integer",
-                  "format": "int64"
-                },
-                "name": {
-                  "type": "string"
-                }
-              },
-              "xml": {
-                "name": "tag"
-              }
-            },
-            "Pet": {
-              "required": [
-                "name",
-                "photoUrls"
-              ],
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "integer",
-                  "format": "int64",
-                  "example": 10
-                },
-                "name": {
-                  "type": "string",
-                  "example": "doggie"
-                },
-                "photoUrls": {
-                  "type": "array",
-                  "xml": {
-                    "wrapped": true
-                  },
-                  "items": {
-                    "type": "string",
-                    "xml": {
-                      "name": "photoUrl"
-                    }
-                  }
-                },
-                "tags": {
-                  "type": "array",
-                  "xml": {
-                    "wrapped": true
-                  },
-                  "items": {
-                    "$ref": "#/components/schemas/Tag"
-                  }
-                },
-                "status": {
-                  "type": "string",
-                  "description": "pet status in the store",
-                  "enum": [
-                    "available",
-                    "pending",
-                    "sold"
-                  ]
-                }
-              },
-              "xml": {
-                "name": "pet"
-              }
-            }
-          }
-        }
-      }
-        ]]
-
-    local res, err = spec_parser.load_spec(spec_str)
-    assert.truthy(res)
-    assert.is_nil(err)
-    assert.is_not_nil(res["components"]["schemas"]["Pet"]["properties"]["tags"]["items"])
-    assert.is_not_nil(res["paths"]["/pet"]["put"]["requestBody"]["content"]["application/json"]["schema"]["properties"])
-  end)
-
-  it("should return error when spec has recursive reference", function ()
-    local spec_str = [[
-      {
-        "openapi": "3.0.3",
-        "info": {
-          "title": "Swagger Petstore - OpenAPI 3.0",
-          "description": "",
-          "termsOfService": "http://swagger.io/terms/",
-          "contact": {
-            "email": "apiteam@swagger.io"
-          },
-          "license": {
-            "name": "Apache 2.0",
-            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
-          },
-          "version": "1.0.11"
-        },
-        "externalDocs": {
-          "description": "Find out more about Swagger",
-          "url": "http://swagger.io"
-        },
-        "servers": [
-          {
-            "url": "https://petstore3.swagger.io/api/v3"
-          }
-        ],
-        "paths": {
-          "/pet": {
-            "put": {
-              "summary": "Update an existing pet",
-              "description": "Update an existing pet by Id",
-              "operationId": "updatePet",
-              "requestBody": {
-                "description": "Update an existent pet in the store",
-                "content": {
-                  "application/json": {
-                    "schema": {
-                      "$ref": "#/components/schemas/Pet"
-                    }
-                  },
-                  "application/xml": {
-                    "schema": {
-                      "$ref": "#/components/schemas/Pet"
-                    }
-                  },
-                  "application/x-www-form-urlencoded": {
-                    "schema": {
-                      "$ref": "#/components/schemas/Pet"
-                    }
-                  }
-                },
-                "required": true
-              },
-              "responses": {
-                "200": {
-                  "description": "Successful operation",
-                  "content": {
-                    "application/json": {
-                      "schema": {
-                        "$ref": "#/components/schemas/Pet"
-                      }
-                    },
-                    "application/xml": {
-                      "schema": {
-                        "$ref": "#/components/schemas/Pet"
-                      }
-                    }
-                  }
-                },
-                "400": {
-                  "description": "Invalid ID supplied"
-                },
-                "404": {
-                  "description": "Pet not found"
-                },
-                "405": {
-                  "description": "Validation exception"
-                }
-              }
-            }
-          }
-        },
-        "components": {
-          "schemas": {
-            "Tag": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "integer",
-                  "format": "int64"
-                },
-                "name": {
-                  "type": "string"
-                },
-                "recursivepet": {
-                  "$ref": "#/components/schemas/Tag"
-                }
-              },
-              "xml": {
-                "name": "tag"
-              }
-            },
-            "Pet": {
-              "required": [
-                "name",
-                "photoUrls"
-              ],
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "integer",
-                  "format": "int64",
-                  "example": 10
-                },
-                "name": {
-                  "type": "string",
-                  "example": "doggie"
-                },
-                "photoUrls": {
-                  "type": "array",
-                  "xml": {
-                    "wrapped": true
-                  },
-                  "items": {
-                    "type": "string",
-                    "xml": {
-                      "name": "photoUrl"
-                    }
-                  }
-                },
-                "tags": {
-                  "type": "array",
-                  "xml": {
-                    "wrapped": true
-                  },
-                  "items": {
-                    "$ref": "#/components/schemas/Tag"
-                  }
-                },
-                "status": {
-                  "type": "string",
-                  "description": "pet status in the store",
-                  "enum": [
-                    "available",
-                    "pending",
-                    "sold"
-                  ]
-                }
-              },
-              "xml": {
-                "name": "pet"
-              }
-            }
-          }
-        }
-      }
-    ]]
-    local res, err = spec_parser.load_spec(spec_str)
-    assert.is_nil(res)
-    assert.same(err, "recursion detected in schema dereferencing")
-  end)
+  --it("get correct spec table from spec string", function ()
+  --  local spec_str = [[
+  --    {
+  --      "openapi": "3.0.0",
+  --      "info": {
+  --        "title": "Sample API",
+  --        "description": "A Sample OpenAPI Spec",
+  --        "termsOfService": "http://swagger.io/terms/",
+  --        "contact": {
+  --          "email": ""
+  --        },
+  --        "license": {
+  --          "name": "Apache 2.0",
+  --          "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+  --        },
+  --        "version": "1.0.0"
+  --      },
+  --      "servers": [
+  --        {
+  --          "url": "http://example.com/v1"
+  --        }
+  --      ],
+  --      "paths": {
+  --        "/pets": {
+  --          "get": {
+  --            "summary": "List all pets",
+  --            "operationId": "listPets",
+  --            "tags": [
+  --              "pets"
+  --            ],
+  --            "responses": {
+  --              "200": {
+  --                "description": "A paged array of pets",
+  --                "headers": {
+  --                  "x-next": {
+  --                    "description": "A link to the next page of responses",
+  --                    "schema": {
+  --                      "type": "string"
+  --                    }
+  --                  }
+  --                },
+  --                "content": {
+  --                  "application/json": {
+  --                    "schema": {
+  --                      "type": "string"
+  --                    }
+  --                  }
+  --                }
+  --              }
+  --            }
+  --          }
+  --        }
+  --      }
+  --    }
+  --      ]]
+  --  local res, err = spec_parser.load_spec(spec_str)
+  --  assert.truthy(res)
+  --  assert.is_nil(err)
+  --end)
+  --
+  --it("get correct spec table from spec string that contains reference", function ()
+  --  local spec_str = [[
+  --    {
+  --      "openapi": "3.0.3",
+  --      "info": {
+  --        "title": "Swagger Petstore - OpenAPI 3.0",
+  --        "description": "",
+  --        "termsOfService": "http://swagger.io/terms/",
+  --        "contact": {
+  --          "email": "apiteam@swagger.io"
+  --        },
+  --        "license": {
+  --          "name": "Apache 2.0",
+  --          "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+  --        },
+  --        "version": "1.0.11"
+  --      },
+  --      "externalDocs": {
+  --        "description": "Find out more about Swagger",
+  --        "url": "http://swagger.io"
+  --      },
+  --      "servers": [
+  --        {
+  --          "url": "https://petstore3.swagger.io/api/v3"
+  --        }
+  --      ],
+  --      "paths": {
+  --        "/pet": {
+  --          "put": {
+  --            "summary": "Update an existing pet",
+  --            "description": "Update an existing pet by Id",
+  --            "operationId": "updatePet",
+  --            "requestBody": {
+  --              "description": "Update an existent pet in the store",
+  --              "content": {
+  --                "application/json": {
+  --                  "schema": {
+  --                    "$ref": "#/components/schemas/Pet"
+  --                  }
+  --                },
+  --                "application/xml": {
+  --                  "schema": {
+  --                    "$ref": "#/components/schemas/Pet"
+  --                  }
+  --                },
+  --                "application/x-www-form-urlencoded": {
+  --                  "schema": {
+  --                    "$ref": "#/components/schemas/Pet"
+  --                  }
+  --                }
+  --              },
+  --              "required": true
+  --            },
+  --            "responses": {
+  --              "200": {
+  --                "description": "Successful operation",
+  --                "content": {
+  --                  "application/json": {
+  --                    "schema": {
+  --                      "$ref": "#/components/schemas/Pet"
+  --                    }
+  --                  },
+  --                  "application/xml": {
+  --                    "schema": {
+  --                      "$ref": "#/components/schemas/Pet"
+  --                    }
+  --                  }
+  --                }
+  --              },
+  --              "400": {
+  --                "description": "Invalid ID supplied"
+  --              },
+  --              "404": {
+  --                "description": "Pet not found"
+  --              },
+  --              "405": {
+  --                "description": "Validation exception"
+  --              }
+  --            }
+  --          }
+  --        }
+  --      },
+  --      "components": {
+  --        "schemas": {
+  --          "Tag": {
+  --            "type": "object",
+  --            "properties": {
+  --              "id": {
+  --                "type": "integer",
+  --                "format": "int64"
+  --              },
+  --              "name": {
+  --                "type": "string"
+  --              }
+  --            },
+  --            "xml": {
+  --              "name": "tag"
+  --            }
+  --          },
+  --          "Pet": {
+  --            "required": [
+  --              "name",
+  --              "photoUrls"
+  --            ],
+  --            "type": "object",
+  --            "properties": {
+  --              "id": {
+  --                "type": "integer",
+  --                "format": "int64",
+  --                "example": 10
+  --              },
+  --              "name": {
+  --                "type": "string",
+  --                "example": "doggie"
+  --              },
+  --              "photoUrls": {
+  --                "type": "array",
+  --                "xml": {
+  --                  "wrapped": true
+  --                },
+  --                "items": {
+  --                  "type": "string",
+  --                  "xml": {
+  --                    "name": "photoUrl"
+  --                  }
+  --                }
+  --              },
+  --              "tags": {
+  --                "type": "array",
+  --                "xml": {
+  --                  "wrapped": true
+  --                },
+  --                "items": {
+  --                  "$ref": "#/components/schemas/Tag"
+  --                }
+  --              },
+  --              "status": {
+  --                "type": "string",
+  --                "description": "pet status in the store",
+  --                "enum": [
+  --                  "available",
+  --                  "pending",
+  --                  "sold"
+  --                ]
+  --              }
+  --            },
+  --            "xml": {
+  --              "name": "pet"
+  --            }
+  --          }
+  --        }
+  --      }
+  --    }
+  --      ]]
+  --
+  --  local res, err = spec_parser.load_spec(spec_str)
+  --  assert.truthy(res)
+  --  assert.is_nil(err)
+  --  assert.is_not_nil(res["components"]["schemas"]["Pet"]["properties"]["tags"]["items"])
+  --  assert.is_not_nil(res["paths"]["/pet"]["put"]["requestBody"]["content"]["application/json"]["schema"]["properties"])
+  --end)
+  --
+  --it("should return error when spec has recursive reference", function ()
+  --  local spec_str = [[
+  --    {
+  --      "openapi": "3.0.3",
+  --      "info": {
+  --        "title": "Swagger Petstore - OpenAPI 3.0",
+  --        "description": "",
+  --        "termsOfService": "http://swagger.io/terms/",
+  --        "contact": {
+  --          "email": "apiteam@swagger.io"
+  --        },
+  --        "license": {
+  --          "name": "Apache 2.0",
+  --          "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+  --        },
+  --        "version": "1.0.11"
+  --      },
+  --      "externalDocs": {
+  --        "description": "Find out more about Swagger",
+  --        "url": "http://swagger.io"
+  --      },
+  --      "servers": [
+  --        {
+  --          "url": "https://petstore3.swagger.io/api/v3"
+  --        }
+  --      ],
+  --      "paths": {
+  --        "/pet": {
+  --          "put": {
+  --            "summary": "Update an existing pet",
+  --            "description": "Update an existing pet by Id",
+  --            "operationId": "updatePet",
+  --            "requestBody": {
+  --              "description": "Update an existent pet in the store",
+  --              "content": {
+  --                "application/json": {
+  --                  "schema": {
+  --                    "$ref": "#/components/schemas/Pet"
+  --                  }
+  --                },
+  --                "application/xml": {
+  --                  "schema": {
+  --                    "$ref": "#/components/schemas/Pet"
+  --                  }
+  --                },
+  --                "application/x-www-form-urlencoded": {
+  --                  "schema": {
+  --                    "$ref": "#/components/schemas/Pet"
+  --                  }
+  --                }
+  --              },
+  --              "required": true
+  --            },
+  --            "responses": {
+  --              "200": {
+  --                "description": "Successful operation",
+  --                "content": {
+  --                  "application/json": {
+  --                    "schema": {
+  --                      "$ref": "#/components/schemas/Pet"
+  --                    }
+  --                  },
+  --                  "application/xml": {
+  --                    "schema": {
+  --                      "$ref": "#/components/schemas/Pet"
+  --                    }
+  --                  }
+  --                }
+  --              },
+  --              "400": {
+  --                "description": "Invalid ID supplied"
+  --              },
+  --              "404": {
+  --                "description": "Pet not found"
+  --              },
+  --              "405": {
+  --                "description": "Validation exception"
+  --              }
+  --            }
+  --          }
+  --        }
+  --      },
+  --      "components": {
+  --        "schemas": {
+  --          "Tag": {
+  --            "type": "object",
+  --            "properties": {
+  --              "id": {
+  --                "type": "integer",
+  --                "format": "int64"
+  --              },
+  --              "name": {
+  --                "type": "string"
+  --              },
+  --              "recursivepet": {
+  --                "$ref": "#/components/schemas/Tag"
+  --              }
+  --            },
+  --            "xml": {
+  --              "name": "tag"
+  --            }
+  --          },
+  --          "Pet": {
+  --            "required": [
+  --              "name",
+  --              "photoUrls"
+  --            ],
+  --            "type": "object",
+  --            "properties": {
+  --              "id": {
+  --                "type": "integer",
+  --                "format": "int64",
+  --                "example": 10
+  --              },
+  --              "name": {
+  --                "type": "string",
+  --                "example": "doggie"
+  --              },
+  --              "photoUrls": {
+  --                "type": "array",
+  --                "xml": {
+  --                  "wrapped": true
+  --                },
+  --                "items": {
+  --                  "type": "string",
+  --                  "xml": {
+  --                    "name": "photoUrl"
+  --                  }
+  --                }
+  --              },
+  --              "tags": {
+  --                "type": "array",
+  --                "xml": {
+  --                  "wrapped": true
+  --                },
+  --                "items": {
+  --                  "$ref": "#/components/schemas/Tag"
+  --                }
+  --              },
+  --              "status": {
+  --                "type": "string",
+  --                "description": "pet status in the store",
+  --                "enum": [
+  --                  "available",
+  --                  "pending",
+  --                  "sold"
+  --                ]
+  --              }
+  --            },
+  --            "xml": {
+  --              "name": "pet"
+  --            }
+  --          }
+  --        }
+  --      }
+  --    }
+  --  ]]
+  --  local res, err = spec_parser.load_spec(spec_str)
+  --  assert.is_nil(res)
+  --  assert.same(err, "recursion detected in schema dereferencing")
+  --end)
 
   it("can fetch correct path & method spec", function ()
     local spec_str = [[
@@ -592,12 +593,11 @@ describe("validation utils spec", function ()
             xml:
               name: pet
     ]]
-    local res, err = spec_parser.load_spec(spec_str)
+    local spec, err = swagger_parser.parse(spec_str)
     assert.is_nil(err)
-    local conf = { parsed_spec=res }
-    local path_spec = spec_parser.get_spec_from_conf(conf, "/pet/123", "GET")
-    local path_spec2 = spec_parser.get_spec_from_conf(conf, "/pet/538434e2-600d-11ed-841e-860b1c27d8fd", "GET")
-    local path_spec3 = spec_parser.get_spec_from_conf(conf, "/pet/woof.woof", "GET")
+    local path_spec = utils.retrieve_operation(spec.spec, "/pet/123", "GET")
+    local path_spec2 = utils.retrieve_operation(spec.spec, "/pet/538434e2-600d-11ed-841e-860b1c27d8fd", "GET")
+    local path_spec3 = utils.retrieve_operation(spec.spec, "/pet/woof.woof", "GET")
     assert.not_nil(path_spec)
     assert.same(path_spec, path_spec2)
     assert.same(path_spec2, path_spec3)
@@ -669,14 +669,14 @@ describe("validation utils spec", function ()
         }
       }
         ]]
-    local res, err = spec_parser.load_spec(spec_str)
-    assert.truthy(res, err)
+    local spec, err = swagger_parser.parse(spec_str)
     assert.is_nil(err)
-    local conf = { parsed_spec=res }
-    local method_spec, _, path_params, err = spec_parser.get_spec_from_conf(conf, "/pet/123", "GET")
-    assert.is_nil(err)
-    local merged_params = validation_utils.merge_params(path_params, method_spec.parameters)
-    assert.same(merged_params, path_params)
+    local path_spec, _, method_spec = utils.retrieve_operation(spec.spec, "/pet/123", "GET")
+    local parameters = method_spec.parameters or {}
+    if path_spec.parameters then
+      parameters = validation_utils.merge_params(path_spec.parameters, parameters)
+    end
+    assert.same(parameters, path_spec.parameters)
   end)
 
   it("can merge parameters correctly when have both method-level and path-level parameters", function ()
@@ -774,13 +774,14 @@ describe("validation utils spec", function ()
         }
       }
         ]]
-    local res, err = spec_parser.load_spec(spec_str)
-    assert.truthy(res, err)
+    local spec, err = swagger_parser.parse(spec_str)
+    assert.truthy(spec)
     assert.is_nil(err)
-    local conf = { parsed_spec=res }
-    local method_spec, _, path_params, err = spec_parser.get_spec_from_conf(conf, "/pet/123", "GET")
-    assert.is_nil(err)
-    local merged_params = validation_utils.merge_params(path_params, method_spec.parameters)
+    local path_spec, _, method_spec = utils.retrieve_operation(spec.spec, "/pet/123", "GET")
+    local parameters = method_spec.parameters or {}
+    if path_spec.parameters then
+      parameters = validation_utils.merge_params(path_spec.parameters, parameters)
+    end
     local expected_result = cjson.decode([[[
       {
         "in": "path",
@@ -811,32 +812,30 @@ describe("validation utils spec", function ()
       }
     ]
 ]])
-    assert.same(merged_params, expected_result)
+    assert.same(parameters, expected_result)
   end)
 
   it("can fetch request body content schema", function ()
     local spec_str = fixture_path.read_fixture("petstore-simple.json")
-    local res, err = spec_parser.load_spec(spec_str)
-    assert.truthy(res)
+    local spec, err = swagger_parser.parse(spec_str)
+    assert.truthy(spec)
     assert.is_nil(err)
-    local conf = { parsed_spec=res }
-    local method_spec, _, _, _ = spec_parser.get_spec_from_conf(conf, "/pet", "PUT")
+    local _, _, method_spec = utils.retrieve_operation(spec.spec, "/pet", "PUT")
     assert.truthy(method_spec)
-    local schema, _ = validation_utils.locate_request_body_schema(method_spec, "application/json")
+    local schema, _ = validation_utils.locate_request_body_schema(method_spec.requestBody, "application/json")
     assert.truthy(schema)
 
-    local schema2, err = validation_utils.locate_request_body_schema(method_spec, "text/plain")
+    local schema2, err = validation_utils.locate_request_body_schema(method_spec.requestBody, "text/plain")
     assert.is_nil(schema2)
     assert.same(err, "no request body schema found for content type 'text/plain'")
   end)
 
   it("can fetch response body content schema", function ()
     local spec_str = fixture_path.read_fixture("petstore-simple.json")
-    local res, err = spec_parser.load_spec(spec_str)
-    assert.truthy(res)
+    local spec, err = swagger_parser.parse(spec_str)
+    assert.truthy(spec)
     assert.is_nil(err)
-    local conf = { parsed_spec=res }
-    local method_spec, _, _, _ = spec_parser.get_spec_from_conf(conf, "/pet", "PUT")
+    local _, _, method_spec = utils.retrieve_operation(spec.spec, "/pet", "PUT")
     assert.truthy(method_spec)
 
     local schema, err = validation_utils.locate_response_body_schema("openapi", method_spec, 200, "application/json")
