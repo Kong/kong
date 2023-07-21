@@ -43,7 +43,7 @@ return {
     { config = {
       type = "record",
       fields = {
-        { endpoint = typedefs.url { required = true } }, -- OTLP/HTTP
+        { endpoint = typedefs.url { required = true, referenceable = true } }, -- OTLP/HTTP
         { headers = { description = "The custom headers to be added in the HTTP request sent to the OTLP server. This setting is useful for adding the authentication headers (token) for the APM backend.", type = "map",
           keys = typedefs.header_name,
           values = {
