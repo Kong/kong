@@ -373,7 +373,7 @@ $ luacheck .
 
 #### Writing tests
 
-We use [busted](https://olivinelabs.com/busted/) to write our tests. Your patch
+We use [busted](https://lunarmodules.github.io/busted/) to write our tests. Your patch
 must include the related test updates or additions, in the appropriate test
 suite.
 
