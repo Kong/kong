@@ -692,16 +692,37 @@ function _M:exec(ctx)
     dst_port = tonumber(var.proxy_protocol_server_port)
   end
 
-  local match_t, err = self:select(nil, nil, nil, scheme,
-                                   src_ip, src_port,
-                                   dst_ip, dst_port,
-                                   sni)
+  local cache_key = (src_ip   or "") .. "|" ..
+                    (src_port or "") .. "|" ..
+                    (dst_ip   or "") .. "|" ..
+                    (dst_port or "") .. "|" ..
+                    (sni      or "")
+
+  local match_t = self.cache:get(cache_key)
   if not match_t then
-    if err then
-      ngx_log(ngx_ERR, "router returned an error: ", err)
+    if self.cache_neg:get(cache_key) then
+      route_match_stat(ctx, "neg")
+      return nil
     end
 
-    return nil
+    local err
+    match_t, err = self:select(nil, nil, nil, scheme,
+                               src_ip, src_port,
+                               dst_ip, dst_port,
+                               sni)
+    if not match_t then
+      if err then
+        ngx_log(ngx_ERR, "router returned an error: ", err)
+      end
+
+      self.cache_neg:set(cache_key, true)
+      return nil
+    end
+
+    self.cache:set(cache_key, match_t)
+
+  else
+    route_match_stat(ctx, "pos")
   end
 
   return match_t
