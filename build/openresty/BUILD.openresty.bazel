@@ -273,6 +273,29 @@ CONFIGURE_OPTIONS = [
     "//conditions:default": [],
 })
 
+wasmx_build_data = select({
+    "@kong//:wasmx_flag": [
+        "@ngx_wasm_module//:all_srcs",
+    ],
+    "//conditions:default": [],
+}) + select({
+    "@kong//:wasmx_v8": [
+        "@v8//:all_srcs",
+        "@openresty//:wasmx_v8_ar",
+    ],
+    "//conditions:default": [],
+}) + select({
+    "@kong//:wasmx_wasmer": [
+        "@wasmer//:all_srcs",
+    ],
+    "//conditions:default": [],
+}) + select({
+    "@kong//:wasmx_wasmtime": [
+        "@wasmtime//:all_srcs",
+    ],
+    "//conditions:default": [],
+})
+
 # TODO: set prefix to populate pid_path, conf_path, log_path etc
 
 filegroup(
@@ -295,12 +318,7 @@ configure_make(
         "@lua-resty-lmdb//:all_srcs",
         "@lua-resty-events//:all_srcs",
         "@openresty_binding//:all_srcs",
-        "@ngx_wasm_module//:all_srcs",
-        "@v8//:all_srcs",
-        "@wasmer//:all_srcs",
-        "@wasmtime//:all_srcs",
-        "@openresty//:wasmx_v8_ar",
-    ],
+    ] + wasmx_build_data,
     configure_command = "configure",
     configure_in_place = True,
     configure_options = CONFIGURE_OPTIONS,
