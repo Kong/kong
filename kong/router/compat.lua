@@ -145,6 +145,9 @@ local function get_expression(route)
   local headers = route.headers
   local snis    = route.snis
 
+  local srcs    = route.sources
+  local dsts    = route.destinations
+
   expr_buf:reset()
 
   local gen = gen_for_field("tls.sni", OP_EQUAL, snis, function(_, p)
@@ -158,7 +161,11 @@ local function get_expression(route)
   if gen then
     -- See #6425, if `net.protocol` is not `https`
     -- then SNI matching should simply not be considered
-    gen = "((net.protocol != \"https\" && net.protocol != \"tls\")" .. LOGICAL_OR .. gen .. ")"
+    if srcs or dsts then
+      gen = "(net.protocol != \"tls\""   .. LOGICAL_OR .. gen .. ")"
+    else
+      gen = "(net.protocol != \"https\"" .. LOGICAL_OR .. gen .. ")"
+    end
 
     buffer_append(expr_buf, LOGICAL_AND, gen)
   end
@@ -166,8 +173,8 @@ local function get_expression(route)
   -- stream expression
 
   do
-    local src_gen = gen_for_nets("net.src.ip", "net.src.port", route.sources)
-    local dst_gen = gen_for_nets("net.dst.ip", "net.dst.port", route.destinations)
+    local src_gen = gen_for_nets("net.src.ip", "net.src.port", srcs)
+    local dst_gen = gen_for_nets("net.dst.ip", "net.dst.port", dsts)
 
     if src_gen then
       buffer_append(expr_buf, LOGICAL_AND, src_gen)
