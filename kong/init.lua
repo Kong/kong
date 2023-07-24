@@ -93,6 +93,7 @@ local constants = require "kong.constants"
 local get_ctx_table = require("resty.core.ctx").get_ctx_table
 local admin_gui = require "kong.admin_gui"
 local wasm = require "kong.runloop.wasm"
+local reports = require "kong.reports"
 
 
 local kong             = kong
@@ -221,6 +222,7 @@ do
     "events:requests:ws",
     "events:requests:wss",
     "events:requests:go_plugins",
+    "events:km:visit",
     "events:streams",
     "events:streams:tcp",
     "events:streams:tls",
@@ -1692,6 +1694,12 @@ function Kong.admin_gui_kconfig_content()
     kong.response.exit(500, { message = "An unexpected error occurred" })
   else
     ngx.say(content)
+  end
+end
+
+function Kong.admin_gui_log()
+  if kong.configuration.anonymous_reports then
+    reports.admin_gui_log(ngx.ctx)
   end
 end
 

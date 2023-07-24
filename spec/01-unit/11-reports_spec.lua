@@ -260,6 +260,34 @@ describe("reports", function()
       end)
     end)
 
+    describe("sends '_admin_gui' for 'admin_gui_listen'", function()
+      it("off", function()
+        local conf = assert(conf_loader(nil, {
+          admin_gui_listen = "off",
+        }))
+        reports.configure_ping(conf)
+
+        local thread = helpers.tcp_server(port, opts)
+        reports.send_ping("127.0.0.1", port)
+
+        local _, res = assert(thread:join())
+        assert.matches("_admin_gui=0", res, nil, true)
+      end)
+
+      it("on", function()
+        local conf = assert(conf_loader(nil, {
+          admin_gui_listen = "127.0.0.1:8001",
+        }))
+        reports.configure_ping(conf)
+
+        local thread = helpers.tcp_server(port, opts)
+        reports.send_ping("127.0.0.1", port)
+
+        local _, res = assert(thread:join())
+        assert.matches("_admin_gui=1", res, nil, true)
+      end)
+    end)
+
     describe("sends '_proxy' for 'proxy_listen'", function()
       it("off", function()
         local conf = assert(conf_loader(nil, {
