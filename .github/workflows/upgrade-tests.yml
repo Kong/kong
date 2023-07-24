@@ -3,6 +3,7 @@ name: Upgrade Tests
 on:
   pull_request:
     paths:
+    - 'scripts/upgrade-tests/**'
     - 'kong/db/migrations/**'
     - 'spec/05-migration/**'
     - 'kong/enterprise_edition/db/migrations/**'
