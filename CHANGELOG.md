@@ -98,8 +98,8 @@
   Thanks [@backjo](https://github.com/backjo) for contributing this change.
   [#10723](https://github.com/Kong/kong/pull/10729)
 - Make `kong vault get` CLI command work in dbless mode by injecting the necessary directives into the kong cli nginx.conf.
-  Meanwhile, make the following kong configurations can't reference vaults because they're needed before vaults even initialized/ready.
-  `prefix`, `vaults`, `database`, `lmdb_environment_path`, `lmdb_map_size`, `lua_ssl_trusted_certificate`, `lua_ssl_protocols`, `nginx_http_lua_ssl_protocols`, `nginx_stream_lua_ssl_protocols`, `vault_*`
+Meanwhile, the following Kong configurations cannot reference vaults as they are required for vaults initializing:
+`prefix`, `vaults`, `database`, `lmdb_environment_path`, `lmdb_map_size`, `lua_ssl_trusted_certificate`, `lua_ssl_protocols`, `nginx_http_lua_ssl_protocols`, `nginx_stream_lua_ssl_protocols`, `vault_*`.
   [#10675](https://github.com/Kong/kong/pull/10675)
 
 #### Admin API
