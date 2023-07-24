@@ -178,6 +178,8 @@ local DYNAMIC_KEY_NAMESPACES = {
       upstream_keepalive          = true,
       upstream_keepalive_timeout  = true,
       upstream_keepalive_requests = true,
+      -- we already add it to nginx_kong_inject.lua explicitly
+      lua_ssl_protocols           = true,
     },
   },
   {
@@ -203,7 +205,10 @@ local DYNAMIC_KEY_NAMESPACES = {
   {
     injected_conf_name = "nginx_stream_directives",
     prefix = "nginx_stream_",
-    ignore = EMPTY,
+    ignore = {
+      -- we already add it to nginx_kong_stream_inject.lua explicitly
+      lua_ssl_protocols = true,
+    },
   },
   {
     injected_conf_name = "nginx_supstream_directives",
@@ -263,6 +268,9 @@ local PREFIX_PATHS = {
   nginx_kong_gui_include_conf = {"nginx-kong-gui-include.conf"},
   nginx_kong_conf = {"nginx-kong.conf"},
   nginx_kong_stream_conf = {"nginx-kong-stream.conf"},
+  nginx_inject_conf = {"nginx-inject.conf"},
+  nginx_kong_inject_conf = {"nginx-kong-inject.conf"},
+  nginx_kong_stream_inject_conf = {"nginx-kong-stream-inject.conf"},
 
   kong_env = {".kong_env"},
   kong_process_secrets = {".kong_process_secrets"},
@@ -610,6 +618,23 @@ local CONF_SENSITIVE = {
 }
 
 
+-- List of setttings whose values can't reference vaults
+-- because they'll be used before the vaults even ready
+local CONF_NO_VAULT = {
+  prefix = true,
+  vaults = true,
+  database = true,
+  lmdb_environment_path = true,
+  lmdb_map_size = true,
+  lua_ssl_trusted_certificate = true,
+  lua_ssl_verify_depth = true,
+  lua_ssl_protocols = true,
+  nginx_http_lua_ssl_protocols = true,
+  nginx_stream_lua_ssl_protocols = true,
+  vault_env_prefix = true,
+}
+
+
 local typ_checks = {
   array = function(v) return type(v) == "table" end,
   string = function(v) return type(v) == "string" end,
@@ -749,6 +774,45 @@ local function check_and_parse(conf, opts)
   ---------------------
   -- custom validations
   ---------------------
+
+  if conf.lua_ssl_trusted_certificate then
+    local new_paths = {}
+
+    for _, trusted_cert in ipairs(conf.lua_ssl_trusted_certificate) do
+      if trusted_cert == "system" then
+        local system_path, err = utils.get_system_trusted_certs_filepath()
+        if system_path then
+          trusted_cert = system_path
+
+        elseif not ngx.IS_CLI then
+          log.info("lua_ssl_trusted_certificate: unable to locate system bundle: " .. err ..
+                   ". If you are using TLS connections, consider specifying " ..
+                   "\"lua_ssl_trusted_certificate\" manually")
+        end
+      end
+
+      if trusted_cert ~= "system" then
+        if not exists(trusted_cert) then
+          trusted_cert = try_decode_base64(trusted_cert)
+          local _, err = openssl_x509.new(trusted_cert)
+          if err then
+            errors[#errors + 1] = "lua_ssl_trusted_certificate: " ..
+                                  "failed loading certificate from " ..
+                                  trusted_cert
+          end
+        end
+
+        new_paths[#new_paths + 1] = trusted_cert
+      end
+    end
+
+    conf.lua_ssl_trusted_certificate = new_paths
+  end
+
+  -- leave early if we're still at the stage before executing the main `resty` cmd
+  if opts.pre_cmd then
+    return #errors == 0, errors[1], errors
+  end
 
   conf.host_ports = {}
   if conf.port_maps then
@@ -894,40 +958,6 @@ local function check_and_parse(conf, opts)
     if conf.admin_gui_path:match("//+") then
       errors[#errors + 1] = "admin_gui_path must not contain continuous slashes ('/')"
     end
-  end
-
-  if conf.lua_ssl_trusted_certificate then
-    local new_paths = {}
-
-    for _, trusted_cert in ipairs(conf.lua_ssl_trusted_certificate) do
-      if trusted_cert == "system" then
-        local system_path, err = utils.get_system_trusted_certs_filepath()
-        if system_path then
-          trusted_cert = system_path
-
-        elseif not ngx.IS_CLI then
-          log.info("lua_ssl_trusted_certificate: unable to locate system bundle: " .. err ..
-                   ". If you are using TLS connections, consider specifying " ..
-                   "\"lua_ssl_trusted_certificate\" manually")
-        end
-      end
-
-      if trusted_cert ~= "system" then
-        if not exists(trusted_cert) then
-          trusted_cert = try_decode_base64(trusted_cert)
-          local _, err = openssl_x509.new(trusted_cert)
-          if err then
-            errors[#errors + 1] = "lua_ssl_trusted_certificate: " ..
-                                  "failed loading certificate from " ..
-                                  trusted_cert
-          end
-        end
-
-        new_paths[#new_paths + 1] = trusted_cert
-      end
-    end
-
-    conf.lua_ssl_trusted_certificate = new_paths
   end
 
   if conf.ssl_cipher_suite ~= "custom" then
@@ -1709,6 +1739,16 @@ local function load(path, custom_conf, opts)
                               tablex.union(opts, { defaults_only = true, }),
                               user_conf)
 
+  -- remove the unnecessary fields if we are still at the very early stage
+  -- before executing the main `resty` cmd, i.e. still in `bin/kong`
+  if opts.pre_cmd then
+    for k, v in pairs(conf) do
+      if not CONF_NO_VAULT[k] then
+        conf[k] = nil
+      end
+    end
+  end
+
   ---------------------------------
   -- Dereference process references
   ---------------------------------
@@ -1785,6 +1825,9 @@ local function load(path, custom_conf, opts)
       for k, v in pairs(conf) do
         v = parse_value(v, "string")
         if vault.is_reference(v) then
+          if CONF_NO_VAULT[k] then
+            return nil, fmt("the value of %s can't reference vault", k)
+          end
           if refs then
             refs[k] = v
           else
@@ -1820,6 +1863,39 @@ local function load(path, custom_conf, opts)
 
   conf.loaded_vaults = loaded_vaults
   conf["$refs"] = refs
+
+  -- load absolute paths
+  conf.prefix = abspath(conf.prefix)
+
+  if conf.lua_ssl_trusted_certificate
+     and #conf.lua_ssl_trusted_certificate > 0 then
+
+    conf.lua_ssl_trusted_certificate = tablex.map(
+      function(cert)
+        if exists(cert) then
+          return abspath(cert)
+        end
+        return cert
+      end,
+      conf.lua_ssl_trusted_certificate
+    )
+
+    conf.lua_ssl_trusted_certificate_combined =
+      abspath(pl_path.join(conf.prefix, ".ca_combined"))
+  end
+
+  -- attach prefix files paths
+  for property, t_path in pairs(PREFIX_PATHS) do
+    conf[property] = pl_path.join(conf.prefix, unpack(t_path))
+  end
+
+  log.verbose("prefix in use: %s", conf.prefix)
+
+  -- leave early if we're still at the very early stage before executing
+  -- the main `resty` cmd. The rest confs below are unused.
+  if opts.pre_cmd then
+    return setmetatable(conf, nil) -- remove Map mt
+  end
 
   local default_nginx_main_user = false
   local default_nginx_user = false
@@ -2061,9 +2137,6 @@ local function load(path, custom_conf, opts)
     conf.enabled_headers = setmetatable(enabled_headers, _nop_tostring_mt)
   end
 
-  -- load absolute paths
-  conf.prefix = abspath(conf.prefix)
-
   for _, prefix in ipairs({ "ssl", "admin_ssl", "admin_gui_ssl", "status_ssl", "client_ssl", "cluster" }) do
     local ssl_cert = conf[prefix .. "_cert"]
     local ssl_cert_key = conf[prefix .. "_cert_key"]
@@ -2121,30 +2194,6 @@ local function load(path, custom_conf, opts)
       end
     end
   end
-
-  if conf.lua_ssl_trusted_certificate
-     and #conf.lua_ssl_trusted_certificate > 0 then
-
-    conf.lua_ssl_trusted_certificate = tablex.map(
-      function(cert)
-        if exists(cert) then
-          return abspath(cert)
-        end
-        return cert
-      end,
-      conf.lua_ssl_trusted_certificate
-    )
-
-    conf.lua_ssl_trusted_certificate_combined =
-      abspath(pl_path.join(conf.prefix, ".ca_combined"))
-  end
-
-  -- attach prefix files paths
-  for property, t_path in pairs(PREFIX_PATHS) do
-    conf[property] = pl_path.join(conf.prefix, unpack(t_path))
-  end
-
-  log.verbose("prefix in use: %s", conf.prefix)
 
   -- hybrid mode HTTP tunneling (CONNECT) proxy inside HTTPS
   if conf.cluster_use_proxy then

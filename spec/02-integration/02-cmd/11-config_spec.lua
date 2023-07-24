@@ -704,9 +704,13 @@ describe("kong config", function()
 
     os.remove("kong.yml")
     assert.is_nil(lfs.attributes("kong.yml"))
-    assert(helpers.kong_exec("config init"))
+    assert(helpers.kong_exec("config init", {
+      prefix = helpers.test_conf.prefix,
+    }))
     assert.not_nil(lfs.attributes("kong.yml"))
-    assert(helpers.kong_exec("config parse kong.yml"))
+    assert(helpers.kong_exec("config parse kong.yml", {
+      prefix = helpers.test_conf.prefix,
+    }))
   end)
 
   it("config init can take an argument", function()
@@ -717,8 +721,12 @@ describe("kong config", function()
 
     os.remove(tmpname)
     assert.is_nil(lfs.attributes(tmpname))
-    assert(helpers.kong_exec("config init " .. tmpname))
+    assert(helpers.kong_exec("config init " .. tmpname, {
+      prefix = helpers.test_conf.prefix,
+    }))
     assert.not_nil(lfs.attributes(tmpname))
-    assert(helpers.kong_exec("config parse " .. tmpname))
+    assert(helpers.kong_exec("config parse " .. tmpname, {
+      prefix = helpers.test_conf.prefix,
+    }))
   end)
 end)
