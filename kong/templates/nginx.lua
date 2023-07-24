@@ -11,10 +11,7 @@ error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 $(el.name) $(el.value);
 > end
 
-> if database == "off" then
-lmdb_environment_path ${{LMDB_ENVIRONMENT_PATH}};
-lmdb_map_size         ${{LMDB_MAP_SIZE}};
-> end
+include 'nginx-inject.conf';
 
 events {
     # injected nginx_events_* directives

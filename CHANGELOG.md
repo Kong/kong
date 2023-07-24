@@ -97,6 +97,10 @@
 - Added new span attribute `net.peer.name` if balancer_data.hostname is available.
   Thanks [@backjo](https://github.com/backjo) for contributing this change.
   [#10723](https://github.com/Kong/kong/pull/10729)
+- Make `kong vault get` CLI command work in dbless mode by injecting the necessary directives into the kong cli nginx.conf.
+Meanwhile, the following Kong configurations cannot reference vaults as they are required for vaults initializing:
+`prefix`, `vaults`, `database`, `lmdb_environment_path`, `lmdb_map_size`, `lua_ssl_trusted_certificate`, `lua_ssl_protocols`, `nginx_http_lua_ssl_protocols`, `nginx_stream_lua_ssl_protocols`, `vault_*`.
+  [#10675](https://github.com/Kong/kong/pull/10675)
 
 #### Admin API
 
