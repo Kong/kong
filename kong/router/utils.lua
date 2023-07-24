@@ -399,7 +399,7 @@ do
 
     local ipv4 = ipmatcher.parse_ipv4(addr)
 
-    -- do not deal with ipv6 now
+    -- FIXME: support ipv6
     if not ipv4 then
       return addr, mask
     end
