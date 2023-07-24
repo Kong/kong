@@ -37,7 +37,7 @@ nfpm_release_select = repository_rule(
 def nfpm_repositories():
     npfm_matrix = [
         ["linux", "x86_64", "6dd3b07d4d6ee373baea5b5fca179ebf78dec38c9a55392bae34040e596e4de7"],
-        ["linux", "arm64", "0e711d333d7673462f0afff8a57d4c09a215b3d20d989b5e4271f6622f325ded"],
+        ["linux", "arm64", "e6487dca9d9e9b1781fe7fa0a3d844e70cf12d92f3b5fc0c4ff771aa776b05ca"],
         ["Darwin", "x86_64", "19954ef8e6bfa0607efccd0a97452b6d571830665bd76a2f9957413f93f9d8cd"],
         ["Darwin", "arm64", "9fd82cda017cdfd49b010199a2eed966d0a645734d9a6bf932c4ef82c8c12c96"],
     ]
