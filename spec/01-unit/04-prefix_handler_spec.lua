@@ -4,9 +4,11 @@ local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local ffi = require "ffi"
 local tablex = require "pl.tablex"
 local ssl_fixtures = require "spec.fixtures.ssl"
+local pl_path = require "pl.path"
 
 local exists = helpers.path.exists
 local join = helpers.path.join
+local currentdir = pl_path.currentdir
 
 local C = ffi.C
 
@@ -898,9 +900,10 @@ describe("NGINX conf compiler", function()
           )
         end)
         describe("lua_ssl_trusted_certificate", function()
+          local cwd = currentdir()
           it("with one cert", function()
             assert.matches(
-              "wasm {.+tls_trusted_certificate spec/fixtures/kong_clustering_ca.crt.+}",
+              string.format("wasm {.+tls_trusted_certificate %s/spec/fixtures/kong_clustering_ca.crt;.+}", cwd),
               ngx_cfg({
                 wasm = true,
                 lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering_ca.crt",
@@ -909,7 +912,7 @@ describe("NGINX conf compiler", function()
           end)
           it("with more than one cert, picks first", function()
             assert.matches(
-            "wasm {.+tls_trusted_certificate spec/fixtures/kong_clustering_ca.crt.+}",
+            string.format("wasm {.+tls_trusted_certificate %s/spec/fixtures/kong_clustering_ca.crt;.+}", cwd),
             ngx_cfg({
               wasm = true,
               lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering_ca.crt,spec/fixtures/kong_clustering.crt",
