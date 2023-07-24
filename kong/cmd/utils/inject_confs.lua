@@ -25,9 +25,7 @@ local function load_conf(args)
 
   -- make sure necessary files like `.ca_combined` exist
   -- but skip_write to avoid overwriting the existing nginx configurations
-  if not pl_path.exists(conf.lua_ssl_trusted_certificate_combined) then
-    assert(prepare_prefix(conf, nil, true))
-  end
+  assert(prepare_prefix(conf, nil, true))
 
   return conf
 end
