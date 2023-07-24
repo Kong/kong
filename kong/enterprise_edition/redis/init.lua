@@ -13,6 +13,8 @@ local redis_cluster   = require "resty.rediscluster"
 local typedefs        = require "kong.db.schema.typedefs"
 local utils           = require "kong.tools.utils"
 local reports         = require "kong.reports"
+local string_format   = string.format
+local table_concat    = table.concat
 
 local log = ngx.log
 local ERR = ngx.ERR
@@ -284,10 +286,23 @@ function _M.connection(conf)
       connection_options = connect_opts,
     })
 
-    local err
-    red, err = rc:connect()
+    local err, previous_errors
+    -- When trying to connect on multiple hosts, the resty-redis-connector will record the errors
+    -- inside a third return value, see https://github.com/ledgetech/lua-resty-redis-connector/blob
+    -- /03dff6da124ec0a6ea6fa1f7fd2a0a47dc27c33d/lib/resty/redis/connector.lua#L343-L344
+    -- for more details.
+    -- Note that this third return value is not recorded in the official documentation
+    red, err, previous_errors = rc:connect()
     if not red or err then
-      log(ERR, "failed to connect to redis: ", err)
+      if previous_errors then
+        local err_msg = string_format("failed to connect to redis: %s, previous errors: %s",
+                                      err, table_concat(previous_errors, ", "))
+        log(ERR, "failed to connect to redis: ", err_msg)
+        err = err_msg
+      else
+        log(ERR, "failed to connect to redis: ", err)
+      end
+
       return nil, err
     end
   end

@@ -248,6 +248,14 @@ describe("public tool rate-limiting redis cluster", function()
       keepalive_backlog = 5,
       cluster_addresses = { "localhost:7654" },
     },
+    err_sentinel_conf = {
+      connect_timeout = 100,
+      send_timeout    = 100,
+      read_timeout    = 100,
+      keepalive_pool_size = 5,
+      keepalive_backlog = 5,
+      sentinel_addresses = { "localhost:7654", "localhost:7655", "localhost:7656" },
+    },
   }
 
   key = "df52e254-a4a1-5b08-a5b0-b9ba1e5948d4"
@@ -278,5 +286,15 @@ describe("public tool rate-limiting redis cluster", function()
     _, err = redis_cluster:get_window(key, namespace, window, size)
     assert.is_not_nil(err)
     assert(err:find("failed to fetch slots: connection refused", nil, true))
+  end)
+
+  it("invalid sentinel addresses must return previous error", function()
+    local _, err
+    redis_cluster = redis_strategy.new(nil, config.err_sentinel_conf)
+
+    _, err = redis_cluster:get_counters(namespace, { size }, time)
+    assert.is_not_nil(err)
+    assert(err:find("previous errors: connection refused, connection refused, connection refused",
+                    nil, true))
   end)
 end)
