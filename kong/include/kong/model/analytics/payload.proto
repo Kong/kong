@@ -20,6 +20,7 @@ message RequestMetadata {
   repeated BalancerInfo tries = 9;
   ConsumerInfo consumer = 10;
   AuthInfo auth = 11;
+  bytes trace_id = 12;
 }
 
 message RequestInfo {

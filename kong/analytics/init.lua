@@ -28,6 +28,7 @@ local DELAY_UPPER_BOUND = 3
 local DEFAULT_ANALYTICS_FLUSH_INTERVAL = 1
 local DEFAULT_ANALYTICS_BUFFER_SIZE_LIMIT = 100000
 local KONG_VERSION = kong.version
+local to_hex = require "resty.string".to_hex
 
 local table_insert = table.insert
 local table_remove = table.remove
@@ -222,6 +223,7 @@ function _M:create_payload(message)
   local payload = {
     client_ip = "",
     started_at = 0,
+    trace_id = "",
     upstream = {
       upstream_uri = ""
     },
@@ -289,6 +291,15 @@ function _M:create_payload(message)
 
   payload.client_ip = message.client_ip
   payload.started_at = message.started_at
+
+  local root_span = ngx.ctx.KONG_SPANS and ngx.ctx.KONG_SPANS[1]
+  local trace_id = root_span and root_span.trace_id
+
+  if trace_id and root_span.should_sample then
+    log(DEBUG, _log_prefix, "Attaching raw trace_id of to_hex(trace_id): ", to_hex(trace_id))
+    payload.trace_id = trace_id
+  end
+
 
   if message.upstream_uri ~= nil then
     payload.upstream.upstream_uri = self:split(message.upstream_uri, "?")[1]

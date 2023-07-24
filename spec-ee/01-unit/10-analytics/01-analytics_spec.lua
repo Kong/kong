@@ -11,6 +11,7 @@ _G.kong = {
   version = "x.y.z",
 }
 
+local utils = require "kong.tools.utils"
 local protoc = require "protoc"
 local pb = require "pb"
 local analytics = require "kong.analytics"
@@ -224,6 +225,84 @@ local request_log_rate_limit = {
 }
 
 describe("extract request log properly", function()
+  local trace_bytes = utils.get_rand_bytes(16)
+
+  before_each(function()
+    ngx.ctx["KONG_SPANS"] = {{
+        trace_id = trace_bytes,
+        should_sample = true
+      }
+    }
+  end)
+
+  after_each(function()
+    ngx.ctx.KONG_SPANS = nil
+  end)
+
+  it("extract payload info properly dont sample trace_id", function()
+    ngx.ctx["KONG_SPANS"][1].should_sample = false
+    local payload = analytics:create_payload(request_log)
+    local expected = {
+      auth = {
+        id = "4135aa9dc1b842a653dea846903ddb95bfb8c5a10c504a7fa16e10bc31d1fdf0",
+        type = "key-auth"
+      },
+      client_ip = "192.168.144.1",
+      started_at = 1614232668342,
+      upstream = {
+        upstream_uri = "/anything"
+      },
+      request = {
+        header_user_agent = "HTTPie/2.4.0",
+        header_host = "localhost:8000",
+        http_method = "GET",
+        body_size = 138,
+        uri = "/log",
+      },
+      response = {
+        http_status = 200,
+        body_size = 827,
+        header_content_length = 503,
+        header_content_type = "application/json",
+        ratelimit_enabled = false,
+        ratelimit_enabled_second = false,
+        ratelimit_enabled_minute = false,
+        ratelimit_enabled_hour = false,
+        ratelimit_enabled_day = false,
+        ratelimit_enabled_month = false,
+        ratelimit_enabled_year = false
+
+      },
+      route = {
+        id = "78f79740-c410-4fd9-a998-d0a60a99dc9b",
+        name = "route"
+      },
+      service = {
+        id = "167290ee-c682-4ebf-bdea-e49a3ac5e260",
+        name = "service",
+        port = 80,
+        protocol = "http"
+      },
+      latencies = {
+        kong_gateway_ms = 58,
+        upstream_ms = 457,
+        response_ms = 515
+      },
+      trace_id = "",
+      tries = {
+        {
+          balancer_latency = 10,
+          port = 80,
+          ip = "18.211.130.98"
+        }
+      },
+      consumer = {
+        id = "54baa5a9-23d6-41e0-9c9a-02434b010b25",
+      },
+    }
+    assert.are.same(expected, payload)
+  end)
+
   it("extract payload info properly", function()
     local payload = analytics:create_payload(request_log)
     local expected = {
@@ -272,6 +351,7 @@ describe("extract request log properly", function()
         upstream_ms = 457,
         response_ms = 515
       },
+      trace_id = trace_bytes,
       tries = {
         {
           balancer_latency = 10,
@@ -349,6 +429,7 @@ describe("extract request log properly", function()
         upstream_ms = 457,
         response_ms = 515
       },
+      trace_id = trace_bytes,
       tries = {
         {
           balancer_latency = 10,
@@ -361,6 +442,7 @@ describe("extract request log properly", function()
       },
     }
     assert.are.same(expected, payload)
+
   end)
 end)
 
@@ -438,6 +520,7 @@ describe("proto buffer", function()
     local expected = {
       client_ip = "",
       started_at = 0,
+      trace_id = "",
       response = {
         http_status = 0,
         body_size = 0,
@@ -479,6 +562,7 @@ describe("proto buffer", function()
     local default = {
       client_ip = "",
       started_at = 0,
+      trace_id = "",
       response = {
         http_status = 0,
         body_size = 0,
