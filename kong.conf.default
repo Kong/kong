@@ -1979,7 +1979,7 @@
                                  #
                                  # See https://github.com/openresty/lua-nginx-module#lua_package_cpath
 
-#lua_socket_pool_size = 30       # Specifies the size limit for every cosocket
+#lua_socket_pool_size = 256      # Specifies the size limit for every cosocket
                                  # connection pool associated with every remote
                                  # server.
                                  #
