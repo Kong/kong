@@ -31,6 +31,7 @@ local ngx_log       = ngx.log
 local get_phase     = ngx.get_phase
 local get_method    = ngx.req.get_method
 local get_headers   = ngx.req.get_headers
+local get_uri_args  = ngx.req.get_uri_args
 local ngx_ERR       = ngx.ERR
 
 
@@ -65,6 +66,7 @@ do
                   "http.method", "http.host",
                   "http.path", "http.raw_path",
                   "http.headers.*",
+                  "http.queries.*",
                  },
 
     ["Int"]    = {"net.port",
@@ -176,6 +178,22 @@ local function has_header_matching_field(fields)
 end
 
 
+local function is_http_queries_field(field)
+  return field:sub(1, 13) == "http.queries."
+end
+
+
+local function has_query_matching_field(fields)
+  for i = 1, #fields do
+    if is_http_queries_field(fields[i]) then
+      return true
+    end
+  end
+
+  return false
+end
+
+
 local function new_from_scratch(routes, get_exp_and_priority)
   local phase = get_phase()
 
@@ -216,6 +234,7 @@ local function new_from_scratch(routes, get_exp_and_priority)
 
   local fields = inst:get_fields()
   local match_headers = has_header_matching_field(fields)
+  local match_queries = has_query_matching_field(fields)
 
   return setmetatable({
       schema = CACHED_SCHEMA,
@@ -224,6 +243,7 @@ local function new_from_scratch(routes, get_exp_and_priority)
       services = services_t,
       fields = fields,
       match_headers = match_headers,
+      match_queries = match_queries,
       updated_at = new_updated_at,
       rebuilding = false,
     }, _MT)
@@ -309,6 +329,7 @@ local function new_from_previous(routes, get_exp_and_priority, old_router)
 
   old_router.fields = fields
   old_router.match_headers = has_header_matching_field(fields)
+  old_router.match_queries = has_query_matching_field(fields)
   old_router.updated_at = new_updated_at
   old_router.rebuilding = false
 
