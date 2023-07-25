@@ -666,7 +666,7 @@ function _M:select(_, _, _, scheme,
     if field == "net.dst.port" then
       assert(c:add_value(field, dst_port))
       goto continue
-    end -- if
+    end
 
     ::continue::
   end -- for
