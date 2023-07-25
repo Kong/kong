@@ -3,6 +3,7 @@ local cjson   = require "cjson"
 
 
 local md5 = ngx.md5
+local TCP_PORT = helpers.get_available_port()
 
 
 for _, strategy in helpers.each_strategy() do
@@ -23,6 +24,29 @@ for _, strategy in helpers.each_strategy() do
           "enable-buffering",
           "enable-buffering-response",
         })
+
+        -- the test using this service requires the error handler to be
+        -- triggered, which does not happen when using the mock upstream
+        local s0 = bp.services:insert {
+          name = "service0",
+          url = "http://127.0.0.1:" .. TCP_PORT,
+        }
+
+        local r0 = bp.routes:insert {
+          paths = { "/0" },
+          service = s0,
+        }
+
+        bp.plugins:insert {
+          name = "enable-buffering",
+          route = r0,
+          protocols = {
+            "http",
+            "https",
+          },
+          config = {},
+          service = s0,
+        }
 
         local r1 = bp.routes:insert {
           paths = { "/1" },
@@ -227,6 +251,24 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(nil, res.headers["MD5"])
       end)
 
+      -- this test sends an intentionally mismatched if-match header
+      -- to produce an nginx output filter error and status code 412
+      -- the response has to go through kong_error_handler (via error_page)
+      it("remains healthy when if-match header is used with buffering", function()
+        local thread = helpers.tcp_server(TCP_PORT)
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/0",
+          headers = {
+            ["if-match"] = 1
+          }
+        })
+
+        thread:join()
+        assert.response(res).has_status(412)
+        assert.logfile().has.no.line("exited on signal 11")
+      end)
     end)
   end)
 end
