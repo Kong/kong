@@ -150,22 +150,22 @@ local function get_upstream_uri_v0(matched_route, request_postfix, req_uri,
         end
 
         return sub(upstream_base, 1, -2)
-      end
+      end -- if request_postfix
 
-      if byte(request_postfix, 1, 1) == SLASH then
+      if byte(request_postfix, 1) == SLASH then
         -- double "/", so drop the first
         return sub(upstream_base, 1, -2) .. request_postfix
       end
 
       -- ends with / and strip_path = true, no double slash
       return upstream_base .. request_postfix
-    end
+    end -- if strip_path
 
     -- ends with / and strip_path = false
     -- we retain the incoming path, just prefix it with the upstream
     -- path, but skip the initial slash
     return upstream_base .. sub(req_uri, 2)
-  end
+  end -- byte(upstream_base, -1) == SLASH
 
   -- does not end with / and strip_path = true
   if strip_path then
@@ -175,14 +175,14 @@ local function get_upstream_uri_v0(matched_route, request_postfix, req_uri,
       end
 
       return upstream_base
-    end
+    end -- if request_postfix
 
-    if byte(request_postfix, 1, 1) == SLASH then
+    if byte(request_postfix, 1) == SLASH then
       return upstream_base .. request_postfix
     end
 
     return upstream_base .. "/" .. request_postfix
-  end
+  end -- if strip_path
 
   -- does not end with / and strip_path = false
   if req_uri == "/" then
