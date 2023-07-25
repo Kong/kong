@@ -18,7 +18,6 @@ local compat      = require("kong.router.compat")
 local utils       = require("kong.router.utils")
 
 
-local is_http = ngx.config.subsystem == "http"
 local phonehome_statistics = utils.phonehome_statistics
 
 
@@ -48,9 +47,8 @@ function _M.new(routes, cache, cache_neg, old_router)
 
   phonehome_statistics(routes)
 
-  if not is_http or
-     not flavor or flavor == "traditional"
-  then
+  if not flavor or flavor == "traditional" then
+
     local trad, err = traditional.new(routes, cache, cache_neg)
     if not trad then
       return nil, err
@@ -65,6 +63,7 @@ function _M.new(routes, cache, cache_neg, old_router)
     return expressions.new(routes, cache, cache_neg, old_router)
   end
 
+  -- flavor == "traditional_compatible"
   return compat.new(routes, cache, cache_neg, old_router)
 end
 

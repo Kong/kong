@@ -9,6 +9,7 @@ local helpers = require "spec.helpers"
 local utils = require "pl.utils"
 local stringx = require "pl.stringx"
 local http = require "resty.http"
+local atc_compat = require "kong.router.compat"
 
 
 local function count_server_blocks(filename)
@@ -147,9 +148,49 @@ describe("#stream proxy interface listeners", function()
   end)
 end)
 
+
+local function reload_router(flavor)
+  _G.kong = {
+    configuration = {
+      router_flavor = flavor,
+    },
+  }
+
+  helpers.setenv("KONG_ROUTER_FLAVOR", flavor)
+
+  package.loaded["spec.helpers"] = nil
+  package.loaded["kong.global"] = nil
+  package.loaded["kong.cache"] = nil
+  package.loaded["kong.db"] = nil
+  package.loaded["kong.db.schema.entities.routes"] = nil
+  package.loaded["kong.db.schema.entities.routes_subschemas"] = nil
+
+  helpers = require "spec.helpers"
+
+  helpers.unsetenv("KONG_ROUTER_FLAVOR")
+end
+
+
+local function gen_route(flavor, r)
+  if flavor ~= "expressions" then
+    return r
+  end
+
+  r.expression = atc_compat.get_expression(r)
+  r.priority = tonumber(atc_compat._get_priority(r))
+
+  r.destinations = nil
+
+  return r
+end
+
+
+for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
 for _, strategy in helpers.each_strategy() do
   if strategy ~= "off" then
-    describe("[stream]", function()
+    describe("[stream" .. ", flavor = " .. flavor .. "]", function()
+      reload_router(flavor)
+
       local MESSAGE = "echo, ping, pong. echo, ping, pong. echo, ping, pong.\n"
       lazy_setup(function()
         local bp = helpers.get_db_utils(strategy, {
@@ -164,7 +205,7 @@ for _, strategy in helpers.each_strategy() do
           protocol = "tcp",
         })
 
-        assert(bp.routes:insert {
+        assert(bp.routes:insert(gen_route(flavor, {
           destinations = {
             { port = 19000 },
           },
@@ -172,9 +213,9 @@ for _, strategy in helpers.each_strategy() do
             "tcp",
           },
           service = service,
-        })
+        })))
 
-        assert(bp.routes:insert {
+        assert(bp.routes:insert(gen_route(flavor, {
           protocols = { "tcp" },
           service   = service,
           destinations = {
@@ -185,9 +226,9 @@ for _, strategy in helpers.each_strategy() do
             { ip = "0.0.0.0" },
             { port = 19004 },
           }
-        })
+        })))
 
-        assert(bp.routes:insert {
+        assert(bp.routes:insert(gen_route(flavor, {
           protocols = { "tcp" },
           service   = service,
           destinations = {
@@ -198,9 +239,9 @@ for _, strategy in helpers.each_strategy() do
             { ip = "0.0.0.0" },
             { port = 19004 },
           }
-        })
+        })))
 
-        assert(bp.routes:insert {
+        assert(bp.routes:insert(gen_route(flavor, {
           protocols = { "tcp" },
           service   = service,
           destinations = {
@@ -211,9 +252,9 @@ for _, strategy in helpers.each_strategy() do
             { ip = "0.0.0.0" },
             { port = 19004 },
           }
-        })
+        })))
 
-        assert(bp.routes:insert {
+        assert(bp.routes:insert(gen_route(flavor, {
           protocols = { "tcp" },
           service   = service,
           destinations = {
@@ -224,9 +265,9 @@ for _, strategy in helpers.each_strategy() do
             { ip = "0.0.0.0" },
             { port = 19004 },
           }
-        })
+        })))
 
-        assert(bp.routes:insert {
+        assert(bp.routes:insert(gen_route(flavor, {
           protocols = { "tcp" },
           service   = service,
           destinations = {
@@ -237,9 +278,10 @@ for _, strategy in helpers.each_strategy() do
             { ip = "0.0.0.0" },
             { port = 19004 },
           }
-        })
+        })))
 
         assert(helpers.start_kong({
+          router_flavor = flavor,
           database      = strategy,
           stream_listen = helpers.get_proxy_ip(false) .. ":19000, " ..
                           helpers.get_proxy_ip(false) .. ":18000, " ..
@@ -293,3 +335,4 @@ for _, strategy in helpers.each_strategy() do
     end)
   end
 end
+end   -- for flavor

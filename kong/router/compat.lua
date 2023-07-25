@@ -24,6 +24,7 @@ local escape_str      = atc.escape_str
 local is_empty_field  = atc.is_empty_field
 local gen_for_field   = atc.gen_for_field
 local split_host_port = atc.split_host_port
+local parse_ip_addr   = require("kong.router.utils").parse_ip_addr
 
 
 local type = type
@@ -33,6 +34,9 @@ local assert = assert
 local tb_insert = table.insert
 local byte = string.byte
 local bor, band, lshift = bit.bor, bit.band, bit.lshift
+
+
+local is_http = ngx.config.subsystem == "http"
 
 
 local DOT              = byte(".")
@@ -48,6 +52,9 @@ local headers_buf       = buffer.new(128)
 local single_header_buf = buffer.new(64)
 
 
+-- sep: a seperator of expressions, like '&&'
+-- idx: indicate whether or not to add 'sep'
+--      for example, we should not add 'sep' for the first element in array
 local function buffer_append(buf, sep, str, idx)
   if #buf > 0 and
      (idx == nil or idx > 1)
@@ -62,6 +69,7 @@ local OP_EQUAL    = "=="
 local OP_PREFIX   = "^="
 local OP_POSTFIX  = "=^"
 local OP_REGEX    = "~"
+local OP_IN       = "in"
 
 
 local LOGICAL_OR  = atc.LOGICAL_OR
@@ -74,6 +82,68 @@ local LOGICAL_AND = atc.LOGICAL_AND
 local uuid_generator = assert(uuid.factory_v5('7f145bf9-0dce-4f91-98eb-debbce4b9f6b'))
 
 
+local function gen_for_nets(ip_field, port_field, vals)
+  if is_empty_field(vals) then
+    return nil
+  end
+
+  local nets_buf = buffer.new(64):put("(")
+
+  for i = 1, #vals do
+    local v = vals[i]
+
+    if type(v) ~= "table" then
+      ngx.log(ngx.ERR, "sources/destinations elements must be a table")
+      return nil
+    end
+
+    if is_empty_field(v) then
+      ngx.log(ngx.ERR, "sources/destinations elements must not be empty")
+      return nil
+    end
+
+    local ip = v.ip
+    local port = v.port
+
+    local exp_ip, exp_port
+
+    if ip then
+      local addr, mask = parse_ip_addr(ip)
+
+      if mask then  -- ip in cidr
+        exp_ip = ip_field .. " " .. OP_IN ..  " " ..
+                 addr .. "/" .. mask
+
+      else          -- ip == addr
+        exp_ip = ip_field .. " " .. OP_EQUAL .. " " ..
+                 addr
+      end
+    end
+
+    if port then
+      exp_port = port_field .. " " .. OP_EQUAL .. " " .. port
+    end
+
+    if not ip then
+      buffer_append(nets_buf, LOGICAL_OR, exp_port, i)
+      goto continue
+    end
+
+    if not port then
+      buffer_append(nets_buf, LOGICAL_OR, exp_ip, i)
+      goto continue
+    end
+
+    buffer_append(nets_buf, LOGICAL_OR,
+                  "(" .. exp_ip .. LOGICAL_AND .. exp_port .. ")", i)
+
+    ::continue::
+  end   -- for
+
+  return nets_buf:put(")"):get()
+end
+
+
 local function get_expression(route)
   local methods = route.methods
   local hosts   = route.hosts
@@ -81,12 +151,10 @@ local function get_expression(route)
   local headers = route.headers
   local snis    = route.snis
 
-  expr_buf:reset()
+  local srcs    = route.sources
+  local dsts    = route.destinations
 
-  local gen = gen_for_field("http.method", OP_EQUAL, methods)
-  if gen then
-    buffer_append(expr_buf, LOGICAL_AND, gen)
-  end
+  expr_buf:reset()
 
   local gen = gen_for_field("tls.sni", OP_EQUAL, snis, function(_, p)
     if #p > 1 and byte(p, -1) == DOT then
@@ -99,8 +167,38 @@ local function get_expression(route)
   if gen then
     -- See #6425, if `net.protocol` is not `https`
     -- then SNI matching should simply not be considered
-    gen = "(net.protocol != \"https\"" .. LOGICAL_OR .. gen .. ")"
+    if srcs or dsts then
+      gen = "(net.protocol != \"tls\""   .. LOGICAL_OR .. gen .. ")"
+    else
+      gen = "(net.protocol != \"https\"" .. LOGICAL_OR .. gen .. ")"
+    end
 
+    buffer_append(expr_buf, LOGICAL_AND, gen)
+  end
+
+  -- stream expression
+
+  do
+    local src_gen = gen_for_nets("net.src.ip", "net.src.port", srcs)
+    local dst_gen = gen_for_nets("net.dst.ip", "net.dst.port", dsts)
+
+    if src_gen then
+      buffer_append(expr_buf, LOGICAL_AND, src_gen)
+    end
+
+    if dst_gen then
+      buffer_append(expr_buf, LOGICAL_AND, dst_gen)
+    end
+
+    if src_gen or dst_gen then
+      return expr_buf:get()
+    end
+  end
+
+  -- http expression
+
+  local gen = gen_for_field("http.method", OP_EQUAL, methods)
+  if gen then
     buffer_append(expr_buf, LOGICAL_AND, gen)
   end
 
@@ -193,6 +291,71 @@ do
 end
 
 
+local stream_get_priority
+do
+  -- compatible with http priority
+  local STREAM_SNI_BIT = lshift_uint64(0x01ULL, 61)
+
+  -- IP > PORT > CIDR
+  local IP_BIT         = lshift_uint64(0x01ULL, 3)
+  local PORT_BIT       = lshift_uint64(0x01ULL, 2)
+  local CIDR_BIT       = lshift_uint64(0x01ULL, 0)
+
+  local function calc_ip_weight(ips)
+    local weight = 0x0ULL
+
+    if is_empty_field(ips) then
+      return weight
+    end
+
+    for i = 1, #ips do
+      local ip   = ips[i].ip
+      local port = ips[i].port
+
+      if ip then
+        if ip:find("/", 1, true) then
+          weight = bor(weight, CIDR_BIT)
+
+        else
+          weight = bor(weight, IP_BIT)
+        end
+      end
+
+      if port then
+        weight = bor(weight, PORT_BIT)
+      end
+    end
+
+    return weight
+  end
+
+  stream_get_priority = function(snis, srcs, dsts)
+    local match_weight = 0x0ULL
+
+    -- [sni] has higher priority than [src] or [dst]
+    if not is_empty_field(snis) then
+      match_weight = STREAM_SNI_BIT
+    end
+
+    -- [src] + [dst] has higher priority than [sni]
+    if not is_empty_field(srcs) and
+       not is_empty_field(dsts)
+    then
+      match_weight = STREAM_SNI_BIT
+    end
+
+    local src_bits = calc_ip_weight(srcs)
+    local dst_bits = calc_ip_weight(dsts)
+
+    local priority = bor(match_weight,
+                         lshift(src_bits, 4),
+                         dst_bits)
+
+    return priority
+  end
+end
+
+
 local PLAIN_HOST_ONLY_BIT = lshift(0x01ULL, 60)
 local REGEX_URL_BIT       = lshift(0x01ULL, 51)
 
@@ -212,13 +375,26 @@ local REGEX_URL_BIT       = lshift(0x01ULL, 51)
 -- |                         |                                     |
 -- +-------------------------+-------------------------------------+
 local function get_priority(route)
+  local snis = route.snis
+  local srcs = route.sources
+  local dsts = route.destinations
+
+  -- stream expression
+
+  if not is_empty_field(srcs) or
+     not is_empty_field(dsts)
+  then
+    return stream_get_priority(snis, srcs, dsts)
+  end
+
+  -- http expression
+
   local methods = route.methods
   local hosts   = route.hosts
   local paths   = route.paths
   local headers = route.headers
-  local snis    = route.snis
 
-  local match_weight = 0
+  local match_weight = 0  -- 0x0ULL
 
   if not is_empty_field(methods) then
     match_weight = match_weight + 1
@@ -380,7 +556,9 @@ function _M.new(routes_and_services, cache, cache_neg, old_router)
     return error("expected arg #1 routes to be a table", 2)
   end
 
-  routes_and_services = split_routes_and_services_by_path(routes_and_services)
+  if is_http then
+    routes_and_services = split_routes_and_services_by_path(routes_and_services)
+  end
 
   return atc.new(routes_and_services, cache, cache_neg, old_router, get_exp_and_priority)
 end
