@@ -1,6 +1,7 @@
 local new_zipkin_reporter = require "kong.plugins.zipkin.reporter".new
 local new_span = require "kong.plugins.zipkin.span".new
 local utils = require "kong.tools.utils"
+local request_id = require "kong.tracing.request_id"
 local propagation = require "kong.tracing.propagation"
 local request_tags = require "kong.plugins.zipkin.request_tags"
 local kong_meta = require "kong.meta"
@@ -122,6 +123,8 @@ if subsystem == "http" then
     if conf.http_span_name == "method_path" then
       span_name = method .. ' ' .. path
     end
+
+    request_id.set(to_hex(trace_id), request_id.TYPES.TRACE)
 
     local request_span = new_span(
       "SERVER",

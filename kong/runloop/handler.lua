@@ -2,6 +2,7 @@
 
 local meta         = require "kong.meta"
 local utils        = require "kong.tools.utils"
+local request_id   = require "kong.tracing.request_id"
 local Router       = require "kong.router"
 local balancer     = require "kong.runloop.balancer"
 local events       = require "kong.runloop.events"
@@ -1118,6 +1119,7 @@ return {
       local server_port = var.server_port
       ctx.host_port = HOST_PORTS[server_port] or server_port
       instrumentation.request(ctx)
+      request_id.rewrite()
     end,
   },
   access = {

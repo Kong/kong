@@ -23,6 +23,10 @@ lua_shared_dict kong_db_cache               ${{MEM_CACHE_SIZE}};
 lua_shared_dict kong_db_cache_miss          12m;
 lua_shared_dict kong_secrets                5m;
 
+map "" $kong_request_id {
+    default '';
+}
+
 underscores_in_headers on;
 > if ssl_ciphers then
 ssl_ciphers ${{SSL_CIPHERS}};
@@ -75,6 +79,9 @@ server {
 
     error_page 400 404 405 408 411 412 413 414 417 494 /kong_error_handler;
     error_page 500 502 503 504                     /kong_error_handler;
+
+    set $kong_request_id $request_id;
+    lua_kong_error_log_request_id $kong_request_id;
 
     access_log ${{PROXY_ACCESS_LOG}};
     error_log  ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};

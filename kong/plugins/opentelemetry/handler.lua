@@ -1,4 +1,5 @@
 local Queue = require "kong.tools.queue"
+local request_id = require "kong.tracing.request_id"
 local http = require "resty.http"
 local clone = require "table.clone"
 local otlp = require "kong.plugins.opentelemetry.otlp"
@@ -117,6 +118,7 @@ function OpenTelemetryHandler:access(conf)
   if trace_id then
     injected_parent_span.trace_id = trace_id
     kong.ctx.plugin.trace_id = trace_id
+    request_id.set(to_hex(trace_id), request_id.TYPES.TRACE)
   end
 
   -- overwrite parent span's parent_id

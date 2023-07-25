@@ -1,0 +1,7 @@
+message: Add a Request ID (which matches the trace_id or correlation_id when available) to error templates and logs.
+type: feature
+scope: Core
+prs:
+  - 11308
+jiras:
+  - "KAG-2034"

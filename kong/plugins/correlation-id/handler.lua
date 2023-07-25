@@ -1,6 +1,7 @@
 -- Copyright (C) Kong Inc.
 local uuid = require "kong.tools.utils".uuid
 local kong_meta = require "kong.meta"
+local request_id = require "kong.tracing.request_id"
 
 
 local kong = kong
@@ -61,6 +62,10 @@ function CorrelationIdHandler:access(conf)
     if correlation_id then
       kong.service.request.set_header(conf.header_name, correlation_id)
     end
+  end
+
+  if correlation_id then
+    request_id.set(correlation_id, request_id.TYPES.CORR)
   end
 
   if conf.echo_downstream then

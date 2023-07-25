@@ -26,6 +26,27 @@ local HTML_TEMPLATE = [[
 
 local RESPONSE_CODE    = 504
 local RESPONSE_MESSAGE = "The upstream server is timing out"
+local TEST_CONF        = helpers.test_conf
+
+local function get_request_id_from_logs(log_pattern)
+  local request_id
+  log_pattern = log_pattern or ""
+  assert
+  .eventually(function()
+    local logs = pl_file.read(TEST_CONF.prefix .. "/" .. TEST_CONF.proxy_error_log)
+    if not logs then
+      return false
+    end
+
+    local _
+    _, _, request_id = logs:find(log_pattern .. ".-, request_id: \"(%x+)\"")
+    return request_id ~= nil
+  end)
+  .with_timeout(5)
+  .ignore_exceptions(true)
+  .is_truthy()
+  return request_id
+end
 
 
 for _, strategy in helpers.each_strategy() do
@@ -240,6 +261,7 @@ for _, strategy in helpers.each_strategy() do
 
       before_each(function()
         proxy_client = helpers.proxy_client()
+        helpers.clean_logfile()
       end)
 
       after_each(function()
@@ -260,7 +282,7 @@ for _, strategy in helpers.each_strategy() do
 
           local body = assert.res_status(RESPONSE_CODE, res)
           local custom_template = pl_file.read(html_template_path)
-          local html_message = string.format(custom_template, RESPONSE_MESSAGE)
+          local html_message = string.format(custom_template, RESPONSE_MESSAGE, get_request_id_from_logs())
           assert.equal(html_message, body)
         end)
 
@@ -275,7 +297,7 @@ for _, strategy in helpers.each_strategy() do
 
           local body = assert.res_status(RESPONSE_CODE, res)
           local custom_template = pl_file.read(plain_template_path)
-          local html_message = string.format(custom_template, RESPONSE_MESSAGE)
+          local html_message = string.format(custom_template, RESPONSE_MESSAGE, get_request_id_from_logs())
           assert.equal(html_message, body)
         end)
 
@@ -304,7 +326,7 @@ for _, strategy in helpers.each_strategy() do
 
           local body = assert.res_status(RESPONSE_CODE, res)
           local custom_template = pl_file.read(xml_template_path)
-          local xml_message = string.format(custom_template, RESPONSE_MESSAGE)
+          local xml_message = string.format(custom_template, RESPONSE_MESSAGE, get_request_id_from_logs())
           assert.equal(xml_message, body)
         end)
 
@@ -320,7 +342,7 @@ for _, strategy in helpers.each_strategy() do
 
             local body = assert.res_status(RESPONSE_CODE, res)
             local custom_template = pl_file.read(html_template_path)
-            local html_message = string.format(custom_template, RESPONSE_MESSAGE)
+            local html_message = string.format(custom_template, RESPONSE_MESSAGE, get_request_id_from_logs())
             assert.equal(html_message, body)
           end)
 
