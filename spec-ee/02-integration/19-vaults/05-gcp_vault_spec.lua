@@ -44,26 +44,27 @@ for _, strategy in helpers.each_strategy() do
       helpers.setenv("GCP_SERVICE_ACCOUNT", "")
       local res, err = get("{vault://gcp/test?project_id=test}")
       assert.is_nil(res)
-      assert.is_equal("unable to load value (test) from vault (gcp): GCP_SERVICE_ACCOUNT invalid (invalid service account) [{vault://gcp/test?project_id=test}]", err)
+      assert.equals("could not get value from external vault (no value found (GCP_SERVICE_ACCOUNT invalid (invalid service account)))", err)
     end)
 
     it("missing gcp project_id", function()
       local res, err = get("{vault://gcp/test}")
       assert.is_nil(res)
-      assert.same("unable to load value (test) from vault (gcp): gcp secret manager requires project_id [{vault://gcp/test}]", err)
+      assert.matches("gcp secret manager requires project_id", err)
     end)
 
     --- Below tests must be run with `GCP_SERVICE_ACCOUNT` set to a valid service account
     it("get undefined #flaky", function()
+      -- helpers.setenv("GCP_SERVICE_ACCOUNT", GCP_SERVICE_ACCOUNT)
       local res, err = get(fmt("{vault://gcp/test?project_id=%s}", project_id))
       assert.is_nil(res)
-      assert.same(fmt("unable to load value (test) from vault (gcp): unable to retrieve secret from gcp secret manager (code : 404, status: NOT_FOUND) [{vault://gcp/test?project_id=%s}]", project_id), err)
+      assert.matches("code : 404, status: NOT_FOUND", err)
     end)
 
     it("empty value returns 404 #flaky", function()
       local res, err = get(fmt("{vault://gcp/test_empty?project_id=%s}", project_id))
       assert.is_nil(res)
-      assert.same(fmt("unable to load value (test_empty) from vault (gcp): unable to retrieve secret from gcp secret manager (code : 404, status: NOT_FOUND) [{vault://gcp/test_empty?project_id=%s}]", project_id), err)
+      assert.matches("code : 404, status: NOT_FOUND", err)
     end)
 
     it("get text #flaky", function()

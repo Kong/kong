@@ -9,6 +9,7 @@
 local meta = require "kong.meta"
 local gcp = require "resty.gcp"
 local access_token = require "resty.gcp.request.credentials.accesstoken"
+local cjson = require("cjson.safe")
 
 
 local decode_base64 = ngx.decode_base64
@@ -77,16 +78,18 @@ local function get(conf, resource, version)
     return nil, err
   end
 
-  if type(res) ~= "table" then
-    ngx.log(ngx.ERR, "error while retrieving secret from gcp secret manager: ", err or res)
-    return nil, "unable to retrieve secret from gcp secret manager (invalid response)"
+  if not res then
+    local payload = cjson.decode(err)
+    if type(payload) == 'table' then
+      return nil, fmt("unable to retrieve secret from gcp secret manager (code : %s, status: %s)", payload.error.code, payload.error.status)
+    else
+      return nil, fmt("unable to retrieve secret from gcp secret manager: %s", err)
+    end
   end
 
-  -- Check if any error reported
-  local error_payload = res.error
-  if type(error_payload) == "table" then
-    -- Error response from GCP API
-    return nil, fmt("unable to retrieve secret from gcp secret manager (code : %s, status: %s)", error_payload.code, error_payload.status)
+  if type(res) ~= "table" then
+    ngx.log(ngx.ERR, "error while retrieving secret from gcp secret manager: ", res)
+    return nil, "unable to retrieve secret from gcp secret manager (invalid response)"
   end
 
   local payload = res.payload
