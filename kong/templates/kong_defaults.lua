@@ -165,7 +165,7 @@ worker_state_update_frequency = 5
 
 router_flavor = traditional_compatible
 
-lua_socket_pool_size = 30
+lua_socket_pool_size = 256
 lua_ssl_trusted_certificate = system
 lua_ssl_verify_depth = 1
 lua_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
