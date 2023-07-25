@@ -1110,14 +1110,14 @@ describe("NGINX conf compiler", function()
           helpers.unsetenv("PG_DATABASE")
         end)
 
-        helpers.setenv("PG_DATABASE", "resolved-kong-database")
+        helpers.setenv("PG_DATABASE", "pg-database")
 
         local conf = assert(conf_loader(nil, {
           prefix = tmp_config.prefix,
           pg_database = "{vault://env/pg-database}",
         }))
 
-        assert.equal("resolved-kong-database", conf.pg_database)
+        assert.equal("pg-database", conf.pg_database)
         assert.equal("{vault://env/pg-database}", conf["$refs"].pg_database)
 
         assert(prefix_handler.prepare_prefix(conf))
