@@ -84,7 +84,7 @@ _M.config_schema = {
         default = 0
       } },
     { keepalive_pool_size = { description = "The size limit for every cosocket connection pool associated with every remote server, per worker process. If neither `keepalive_pool_size` nor `keepalive_backlog` is specified, no pool is created. If `keepalive_pool_size` isn't specified but `keepalive_backlog` is specified, then the pool uses the default value.", type = "integer",
-        default = 30,
+        default = 256,
         between = { 1, MAX_INT }
       } },
     { keepalive_backlog = { description = "Limits the total number of opened connections for a pool. If the connection pool is full, all connection queues beyond the maximum limit go into the backlog queue. If the backlog queue is full, subsequent connect operations fail and return `nil`. Queued connect operations resume once the number of connections in the pool is less than `keepalive_pool_size`. Note that queued connect operations are subject to set timeouts.",
