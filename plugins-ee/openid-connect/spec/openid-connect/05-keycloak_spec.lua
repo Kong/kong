@@ -2607,7 +2607,19 @@ for _, strategy in helpers.all_strategies() do
         })
         assert.response(res).has.status(403)
         local json = assert.response(res).has.jsonbody()
-        assert.matches("Forbidden *", json.message)
+        assert.matches("Forbidden %(required %w+ were not found %[ %w+ ]%)", json.message)
+      end)
+
+      it("invalid bearer token responds with the correct log message", function ()
+        local res = proxy_client:get("/debug_1", {
+          headers = {
+            Authorization = "Bearer I dunno token",
+          },
+        })
+        assert.response(res).has.status(401)
+        local json = assert.response(res).has.jsonbody()
+        assert.matches("Unauthorized %(invalid bearer token%)", json.message)
+        error_assert(res, "invalid_token")
       end)
     end)
 

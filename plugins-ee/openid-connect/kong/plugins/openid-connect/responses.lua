@@ -18,7 +18,7 @@ local UnauthorizedError = error_codes.UnauthorizedError
 local kong = kong
 
 local function unauthorized(error_o, ctx, issuer, client, anonymous, session)
-  local err = error_o.log_message
+  local err = error_o.log
   local msg = error_o.message
   if err then
     log.notice(err)
@@ -49,7 +49,7 @@ end
 
 
 local function forbidden(error_o, ctx, issuer, client, anonymous, session)
-  local err = error_o.log_message
+  local err = error_o.log
   local msg = error_o.message
   if err then
     log.notice(err)
@@ -96,7 +96,7 @@ local function new(args, ctx, issuer, client, anonymous, session)
         message = msg,
         error_description = error_description,
         expose_error_code = expose_error_code,
-        log = log_message,
+        log_msg = log_message,
       }
       return unauthorized(error_o, ctx, issuer, client, anonymous, session)
     end,
@@ -106,7 +106,7 @@ local function new(args, ctx, issuer, client, anonymous, session)
         message = msg,
         error_description = error_description,
         expose_error_code = expose_error_code,
-        log = log_message,
+        log_msg = log_message,
       }
       return unauthorized(error_o, ctx, issuer, client, anonymous, session)
     end,

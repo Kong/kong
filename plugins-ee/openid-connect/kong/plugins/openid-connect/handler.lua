@@ -1156,7 +1156,7 @@ function OICHandler.access(_, conf)
 
       if type(introspection_data) ~= "table" then
         log("authentication with bearer token failed")
-        return unauthorized(err or "invalid introspection results")
+        return unauthorized(err or "invalid bearer token")
       end
 
       if introspection_check_active and introspection_data.active ~= true then
