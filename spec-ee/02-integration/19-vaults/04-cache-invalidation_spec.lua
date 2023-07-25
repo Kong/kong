@@ -18,12 +18,11 @@ local LUA_PATH = CUSTOM_VAULTS .. "/?.lua;" ..
                  CUSTOM_PLUGINS .. "/?/init.lua;;"
 
 local NESTED_HEADER = "X-This-Is-The-Secret"
-local NESTED_HEADER_2 = "X-This-Is-The-Secret-2"
-local DUMMY_PLUGIN_HEADER = "Dummy-Plugin"
 local fmt = string.format
 local utils = require "kong.tools.utils"
 local VAULTS = require "spec-ee.fixtures.vaults.mock"
 
+local DUMMY_PLUGIN_HEADER = "Dummy-Plugin"
 
 local noop = function(...) end
 
@@ -39,18 +38,14 @@ for _, vault in ipairs(VAULTS) do
 end
 
 
--- TODO: this test only uses PostgreSQL (strategy is nil on get_db_utils below). Also test with the Off strategy
 for _, attachment_point in ipairs({ 'global', 'service', 'route' }) do
 for _, vault in ipairs(VAULTS) do
--- TODO: disabling aws and test temporarily. We should re-enable it accounting for the fact that AWS is "eventually consistent"
-if vault.name ~= "test" and vault.name ~= "aws"  then
+if vault.name ~= "test" then
 
 
-describe("vault ttl and rotation (#" .. attachment_point .. "_" .. vault.name .. ")", function()
-  local client
+describe("vault cache invalidation (#" .. attachment_point .. "_" .. vault.name .. ")", function()
+  local client, admin_client
   local secret = "my-secret-" .. utils.uuid()
-  local secret_2 = "my-secret-2-" .. utils.uuid()
-
 
   local function http_get(path)
     path = path or "/"
@@ -66,10 +61,9 @@ describe("vault ttl and rotation (#" .. attachment_point .. "_" .. vault.name ..
     return res
   end
 
-
   lazy_setup(function()
     helpers.setenv("KONG_LUA_PATH_OVERRIDE", LUA_PATH)
-    helpers.setenv("KONG_VAULT_ROTATION_INTERVAL", "1")
+    helpers.setenv("KONG_VAULT_ROTATION_INTERVAL", "360")
 
     helpers.test_conf.loaded_plugins = {
       dummy = true,
@@ -77,7 +71,6 @@ describe("vault ttl and rotation (#" .. attachment_point .. "_" .. vault.name ..
 
     vault:setup()
     vault:create_secret(secret, "init")
-    vault:create_secret(secret_2, "init")
 
     local bp = helpers.get_db_utils(nil,
                                     nil,
@@ -99,16 +92,15 @@ describe("vault ttl and rotation (#" .. attachment_point .. "_" .. vault.name ..
       service   = service,
     }))
 
-    local secret_reference = fmt("{vault://%s/%s/secret?ttl=3&resurrect_ttl=3}", vault.prefix, secret)
-    local secret_reference_2 = fmt("{vault://%s/%s/secret?ttl=3&resurrect_ttl=60}", vault.prefix, secret_2)
+    -- 60 second TTL
+    local secret_reference = fmt("{vault://%s/%s/secret?ttl=60&resurrect_ttl=60}", vault.prefix, secret)
     assert(bp.plugins:insert({
       name = "dummy",
       config = {
         resp_header_value = secret_reference,
         resp_headers = {
           [NESTED_HEADER] = secret_reference,
-          [NESTED_HEADER_2] = secret_reference_2,
-        }
+        },
       },
       route = (attachment_point == 'route') and { id = route.id } or nil,
       service = (attachment_point == 'service') and { id = service.id } or nil,
@@ -125,21 +117,25 @@ describe("vault ttl and rotation (#" .. attachment_point .. "_" .. vault.name ..
     client = helpers.proxy_client()
   end)
 
+  before_each(function()
+    admin_client = helpers.admin_client()
+  end)
 
   lazy_teardown(function()
     if client then
       client:close()
     end
+    if admin_client then
+      admin_client:close()
+    end
 
     pcall(vault.delete_secret, vault, secret)
-    pcall(vault.delete_secret, vault, secret_2)
     vault:teardown()
 
     helpers.stop_kong()
 
     helpers.unsetenv("KONG_LUA_PATH_OVERRIDE")
   end)
-
 
   local function check_plugin_secret(expect1, expect2, timeout, level1_header, level2_header)
     assert
@@ -161,55 +157,26 @@ describe("vault ttl and rotation (#" .. attachment_point .. "_" .. vault.name ..
       .is_truthy("expected plugin secret to be updated within " .. tostring(timeout) .. " seconds")
   end
 
+  it("check if caches get evicted when configuration of vault changes", function()
+    check_plugin_secret("init", "init", 11)
 
-  local function check_no_plugin_secret(timeout)
-    assert
-      .with_timeout(timeout)
-      .with_step(0.5)
-      .eventually(
-      function()
-        local res = http_get("/")
-        return not res.headers[NESTED_HEADER] and not res.headers[DUMMY_PLUGIN_HEADER]
-      end)
-      .is_truthy("expected plugin secret to be removed within " .. tostring(timeout) .. " seconds")
-  end
+    -- call any CRUD operation on a vault
+    vault:update_secret(secret, "did_rotate_run", {ttl = 5, resurrect_ttl = 5})
+    local HEADERS = { ["Content-Type"] = "application/json" }
+    local res = admin_client:patch(fmt("/vaults/%s", vault.prefix), {
+      headers = HEADERS,
+      body = {
+        config = {
+          resurrect_ttl = 36000
+        },
+      },
+    })
+    assert.res_status(200, res)
 
-  it("updates plugin config references", function()
-
-    -- Did we see the change from `init` to the newly set secret?
-    vault:update_secret(secret, "updated_once", { ttl = 5, resurrect_ttl = 5 })
-    check_plugin_secret("updated_once", "updated_once", 11)
-
-    -- Did we see the change from previsouly set secret to the newly set secret?
-    vault:update_secret(secret, "updated_twice", { ttl = 5, resurrect_ttl = 5 })
-    check_plugin_secret("updated_twice", "updated_twice", 11)
-
-    -- Does it disappear when we delete it from the vault?
-    vault:delete_secret(secret)
-    check_no_plugin_secret(10)
-  end)
-
-  it("respects resurrect_ttl times", function ()
-    -- If we create a secret with a high resurrect time, we expect that it
-    -- does not expire, even when we delete the secret from the vault
-    -- inbetween
-    check_plugin_secret("init", nil, 11, NESTED_HEADER_2)
-
-    -- We delete a secret
-    vault:delete_secret(secret_2)
-    -- Check if we can still see it (it should be valid for at least a couple of seconds.)
-    check_plugin_secret("init", nil, 11, NESTED_HEADER_2)
-    -- re-create the secret
-    vault:create_secret(secret_2, "created_again", { ttl = 5, resurrect_ttl = 5 })
-    -- and check if this eventually changes to the new value
-    check_plugin_secret("created_again", nil, 11, NESTED_HEADER_2)
-
-    -- If we create it again(with a different value), do we see the changes?
-    vault:update_secret(secret_2, "updated_yet_again", {ttl = 5, resurrect_ttl = 5})
-    check_plugin_secret("updated_yet_again", nil, 11, NESTED_HEADER_2)
+    check_plugin_secret("did_rotate_run", "did_rotate_run", 11)
   end)
 end)
 
-end  -- conditional to exclude `test` vault
+end
 end -- each vault backend
 end -- each attachment_point

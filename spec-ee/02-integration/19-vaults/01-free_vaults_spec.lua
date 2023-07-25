@@ -105,10 +105,7 @@ describe("License restrictions in \"free\" mode", function()
         vaults = "bundled",
       }))
 
-      assert.logfile().has.line("unable to resolve reference {vault://hcv/secret/redis_password} " ..
-        "(unable to load value (secret) from vault (hcv): " ..
-        "vault hcv requires a license to be used [{vault://hcv/secret/redis_password}])",
-        true)
+      assert.logfile().has.line("vault hcv requires a license to be used", true)
     end)
   end)
 end)
