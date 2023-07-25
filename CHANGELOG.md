@@ -36,6 +36,9 @@
 
 #### Core
 
+- Enable `expressions` and `traditional_compatible` router flavor in stream subsystem.
+  [#11071](https://github.com/Kong/kong/pull/11071)
+
 #### Admin API
 
 #### Kong Manager
@@ -169,8 +172,9 @@ Meanwhile, the following Kong configurations cannot reference vaults as they are
 - Bumped pgmoon from 1.16.0 to 1.16.2 (Kong's fork)
   [#11181](https://github.com/Kong/kong/pull/11181)
   [#11229](https://github.com/Kong/kong/pull/11229)
-- Bumped atc-router from 1.0.5 to 1.1.0
+- Bumped atc-router from 1.0.5 to 1.2.0
   [#10100](https://github.com/Kong/kong/pull/10100)
+  [#11071](https://github.com/Kong/kong/pull/11071)
 - Bumped lua-resty-lmdb from 1.1.0 to 1.3.0
   [#11227](https://github.com/Kong/kong/pull/11227)
 
