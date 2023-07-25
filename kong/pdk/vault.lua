@@ -25,11 +25,10 @@ local buffer = require "string.buffer"
 local nkeys = require "table.nkeys"
 local clone = require "table.clone"
 local cjson = require("cjson.safe").new()
+local stringx = require ("pl.stringx")
 
 
 local ngx = ngx
-local time = ngx.time
-local exiting = ngx.worker.exiting
 local get_phase = ngx.get_phase
 local fmt = string.format
 local sub = string.sub
@@ -50,125 +49,108 @@ local parse_url = require("socket.url").parse
 local parse_path = require("socket.url").parse_path
 local encode_base64url = require("ngx.base64").encode_base64url
 local decode_json = cjson.decode
+local split = stringx.split
 
 local ROTATION_INTERVAL = tonumber(os.getenv("KONG_VAULT_ROTATION_INTERVAL") or 60)
-
+local REFERENCE_IDENTIFIER = "reference"
+local DAO_MAX_TTL = constants.DATABASE.DAO_MAX_TTL
 
 local function new(self)
+  -- Don't put this onto the top level of the file unless you're prepared for a surprise
+  local Schema = require "kong.db.schema"
+
   local ROTATION_SEMAPHORE = semaphore.new(1)
   local ROTATION_WAIT = 0
 
-
-  local REFERENCES = {}
-  local FAILED = {}
-
-
   local LRU = lrucache.new(1000)
-
+  local SHDICT = ngx.shared["kong_secrets"]
 
   local KEY_BUFFER = buffer.new(100)
-
 
   local RETRY_LRU = lrucache.new(1000)
   local RETRY_SEMAPHORE = semaphore.new(1)
   local RETRY_WAIT = 1
   local RETRY_TTL = 10
 
-
   local STRATEGIES = {}
   local SCHEMAS = {}
   local CONFIGS = {}
-  local CONFIG_HASHES = {}
-
 
   local BRACE_START = byte("{")
   local BRACE_END = byte("}")
   local COLON = byte(":")
   local SLASH = byte("/")
 
-
   local BUNDLED_VAULTS = constants.BUNDLED_VAULTS
   local VAULT_NAMES
-  local vaults = self and self.configuration and self.configuration.loaded_vaults
-  if vaults then
-    VAULT_NAMES = {}
+  do
+    local vaults = self and self.configuration and self.configuration.loaded_vaults
+    if vaults then
+      VAULT_NAMES = {}
 
-    for name in pairs(vaults) do
-      VAULT_NAMES[name] = true
+      for name in pairs(vaults) do
+        VAULT_NAMES[name] = true
+      end
+
+    else
+      VAULT_NAMES = BUNDLED_VAULTS and clone(BUNDLED_VAULTS) or {}
     end
-
-  else
-    VAULT_NAMES = BUNDLED_VAULTS and clone(BUNDLED_VAULTS) or {}
   end
 
 
-  local function build_cache_key(name, resource, version, hash)
-    version = version or ""
-    hash = hash or ""
-    return "reference:" .. name .. ":" .. resource .. ":" .. version .. ":" .. hash
+  local function build_cache_key(reference, hash)
+    return REFERENCE_IDENTIFIER .. "\0" .. reference .. "\0" .. hash
   end
 
-
-  local function validate_value(value, err, ttl, vault, resource, key, reference)
-    if type(value) ~= "string" then
-      if err then
-        return nil, fmt("unable to load value (%s) from vault (%s): %s [%s]", resource, vault, err, reference)
-      end
-
-      if value == nil then
-        return nil, fmt("unable to load value (%s) from vault (%s): not found [%s]", resource, vault, reference)
-      end
-
-      return nil, fmt("unable to load value (%s) from vault (%s): invalid type (%s), string expected [%s]",
-                      resource, vault, type(value), reference)
-    end
-
-    if not key then
-      return value, nil, ttl
-    end
-
-    local json
-    json, err = decode_json(value)
+  ---
+  -- This function extracts a subfield from a JSON object.
+  -- It first decodes the JSON string into a Lua table, then checks for the presence and type of a specific key.
+  --
+  -- @function get_subfield
+  -- @param value The JSON string to be parsed and decoded.
+  -- @param key The specific subfield to be searched for within the JSON object.
+  -- @return On success, returns the value associated with the specified key in the JSON object.
+  -- If the key does not exist or its value is not a string, returns nil along with an error message.
+  -- If the input value cannot be parsed as a JSON object, also returns nil along with an error message.
+  local function get_subfield(value, key)
+    -- Note that this function will only find keys in flat maps.
+    -- Deeper nested structures are not supported.
+    local json, err = decode_json(value)
     if type(json) ~= "table" then
-      if err then
-        return nil, fmt("unable to json decode value (%s) received from vault (%s): %s [%s]",
-                        value, vault, err, reference)
-      end
-
-      return nil, fmt("unable to json decode value (%s) received from vault (%s): invalid type (%s), table expected [%s]",
-                      value, vault, type(json), reference)
+      return nil, fmt("unable to json decode value (%s): %s", json, err)
     end
 
     value = json[key]
-    if type(value) ~= "string" then
-      if value == nil then
-        return nil, fmt("vault (%s) did not return value for resource '%s' with a key of '%s' [%s]",
-                        vault, resource, key, reference)
-      end
-
-      return nil, fmt("invalid value received from vault (%s) for resource '%s' with a key of '%s': invalid type (%s), string expected [%s]",
-                      vault, resource, key, type(value), reference)
+    if value == nil then
+      return nil, fmt("subfield %s not found in JSON secret", key)
+    elseif type(value) ~= "string" then
+      return nil, fmt("unexpected %s value in JSON secret for subfield %s", type(value), key)
     end
 
-    return value, nil, ttl
+    return value
   end
-
-
-  local function adjust_ttl(ttl, config)
+  ---
+  -- This function adjusts the 'time-to-live' (TTL) according to the configuration provided in 'vault_config'.
+  -- If the TTL is not a number or if it falls outside of the configured minimum or maximum TTL, it will be adjusted accordingly.
+  --
+  -- @function adjust_ttl
+  -- @param ttl The initial time-to-live value.
+  -- @param vault_config The configuration table for the vault, which may contain 'ttl', 'min_ttl', and 'max_ttl' fields.
+  -- @return Returns the adjusted TTL. If the initial TTL is not a number, it returns the 'ttl' field from the 'vault_config' table or 0 if it doesn't exist.
+  -- If the initial TTL is greater than 'max_ttl' from 'vault_config', it returns 'max_ttl'.
+  -- If the initial TTL is less than 'min_ttl' from 'vault_config', it returns 'min_ttl'.
+  -- Otherwise, it returns the original TTL.
+  local function adjust_ttl(ttl, vault_config)
     if type(ttl) ~= "number" then
-      return config and config.ttl or 0
+      return vault_config and vault_config.ttl or 0
     end
 
-    if ttl <= 0 then
-      return ttl
-    end
-
-    local max_ttl = config and config.max_ttl
+    local max_ttl = vault_config and vault_config.max_ttl
     if max_ttl and max_ttl > 0 and ttl > max_ttl then
       return max_ttl
     end
 
-    local min_ttl = config and config.min_ttl
+    local min_ttl = vault_config and vault_config.min_ttl
     if min_ttl and ttl < min_ttl then
       return min_ttl
     end
@@ -176,211 +158,36 @@ local function new(self)
     return ttl
   end
 
+  ---
+  -- This function retrieves a vault by its prefix. It either fetches the vault from a cache or directly accesses it.
+  -- The vault is expected to be found in a database (db) or cache. If not found, an error message is returned.
+  --
+  -- @function get_vault
+  -- @param prefix The unique identifier of the vault to be retrieved.
+  -- @return Returns the vault if it's found. If the vault is not found, it returns nil along with an error message.
+  local function get_vault(prefix)
+    -- find a vault - it can be either a named vault that needs to be loaded from the cache, or the
+    -- vault type accessed by name
+    local cache = self.core_cache
+    local vaults = self.db.vaults
+    local vault, err
 
-  local function retrieve_value(strategy, config, hash, reference, resource, name,
-                                version, key, cache, rotation, cache_only)
-    local cache_key
-    if cache or rotation then
-      cache_key = build_cache_key(name, resource, version, hash)
-    end
-
-    local value, err, ttl
-    if cache_only then
-      if not cache then
-        return nil, fmt("unable to load value (%s) from vault cache (%s): no cache [%s]", resource, name, reference)
-      end
-
-      value, err = cache:get(cache_key, config)
-
-    elseif rotation then
-      value = rotation[cache_key]
-      if not value then
-        if cache then
-          value, err, ttl = cache:renew(cache_key, config, function()
-            value, err, ttl = strategy.get(config, resource, version)
-            if value then
-              ttl = adjust_ttl(ttl, config)
-              rotation[cache_key] = value
-            end
-            return value, err, ttl
-          end)
-
-        else
-          value, err, ttl = strategy.get(config, resource, version)
-          if value then
-            ttl = adjust_ttl(ttl, config)
-            rotation[cache_key] = value
-          end
-        end
-      end
-
-    elseif cache then
-      value, err = cache:get(cache_key, config, function()
-        value, err, ttl = strategy.get(config, resource, version)
-        if value then
-          ttl = adjust_ttl(ttl, config)
-        end
-        return value, err, ttl
-      end)
-
+    if cache then
+      local vault_cache_key = vaults:cache_key(prefix)
+      vault, err = cache:get(vault_cache_key, nil, vaults.select_by_prefix, vaults, prefix)
     else
-      if kong and kong.licensing and kong.licensing:license_type() == "free" and strategy.license_required then
-        value, err = nil, "vault " .. strategy.name .. " requires a license to be used"
-      else
-        value, err, ttl = strategy.get(config, resource, version)
-        if value then
-          ttl = adjust_ttl(ttl, config)
-        end
-      end
+      vault, err = vaults:select_by_prefix(prefix)
     end
 
-    return validate_value(value, err, ttl, name, resource, key, reference)
+    if vault then
+      return vault
+    end
+
+    return nil, fmt("cannot find vault %s: %s", prefix, err)
   end
 
 
-  local function calculate_config_hash(config, schema)
-    local hash
-    for k in schema:each_field() do
-      local v = config[k]
-      if v ~= nil then
-        if not hash then
-          hash = true
-          KEY_BUFFER:reset()
-        end
-        KEY_BUFFER:putf("%s=%s;", k, v)
-      end
-    end
-
-    if hash then
-      return encode_base64url(md5_bin(KEY_BUFFER:get()))
-    end
-
-    -- nothing configured, so hash can be nil
-    return nil
-  end
-
-
-  local function calculate_config_hash_for_prefix(config, schema, prefix)
-    local hash = CONFIG_HASHES[prefix]
-    if hash then
-      return hash ~= true and hash or nil
-    end
-
-    local hash = calculate_config_hash(config, schema)
-
-    -- true is used as to store `nil` hash
-    CONFIG_HASHES[prefix] = hash or true
-
-    return hash
-  end
-
-
-  local function get_config_with_overrides(base_config, config_overrides, schema, prefix)
-    local config
-    for k, f in schema:each_field() do
-      local v = config_overrides[k]
-      v = arguments.infer_value(v, f)
-      -- TODO: should we be more visible with validation errors?
-      if v ~= nil and schema:validate_field(f, v) then
-        if not config then
-          config = clone(base_config)
-          KEY_BUFFER:reset()
-          if prefix then
-            local hash = calculate_config_hash_for_prefix(config, schema, prefix)
-            if hash then
-              KEY_BUFFER:putf("%s;", hash)
-            end
-          end
-        end
-        config[k] = v
-        KEY_BUFFER:putf("%s=%s;", k, v)
-      end
-    end
-
-    local hash
-    if config then
-      hash = encode_base64url(md5_bin(KEY_BUFFER:get()))
-    end
-
-    return config or base_config, hash
-  end
-
-
-  local function get_config(base_config, config_overrides, schema, prefix)
-    if not config_overrides or isempty(config_overrides) then
-      if not prefix then
-        return base_config
-      end
-
-      local hash = calculate_config_hash_for_prefix(base_config, schema, prefix)
-      return base_config, hash
-    end
-
-    return get_config_with_overrides(base_config, config_overrides, schema, prefix)
-  end
-
-
-  local function process_secret(reference, opts, rotation, cache_only)
-    local name = opts.name
-    if not VAULT_NAMES[name] then
-      return nil, fmt("vault not found (%s) [%s]", name, reference)
-    end
-    local strategy = STRATEGIES[name]
-    local schema = SCHEMAS[name]
-    if not strategy then
-      local vaults = self and (self.db and self.db.vaults)
-      if vaults and vaults.strategies then
-        strategy = vaults.strategies[name]
-        if not strategy then
-          return nil, fmt("could not find vault (%s) [%s]", name, reference)
-        end
-
-        schema = vaults.schema.subschemas[name]
-        if not schema then
-          return nil, fmt("could not find vault schema (%s): %s [%s]", name, strategy, reference)
-        end
-
-        schema = require("kong.db.schema").new(schema.fields.config)
-
-      else
-        local ok
-        ok, strategy = pcall(require, fmt("kong.vaults.%s", name))
-        if not ok then
-          return nil, fmt("could not find vault (%s): %s [%s]", name, strategy, reference)
-        end
-
-        local def
-        ok, def = pcall(require, fmt("kong.vaults.%s.schema", name))
-        if not ok then
-          return nil, fmt("could not find vault schema (%s): %s [%s]", name, def, reference)
-        end
-
-        local Schema = require("kong.db.schema")
-
-        schema = Schema.new(require("kong.db.schema.entities.vaults"))
-
-        local err
-        ok, err = schema:new_subschema(name, def)
-        if not ok then
-          return nil, fmt("could not load vault sub-schema (%s): %s [%s]", name, err, reference)
-        end
-
-        schema = schema.subschemas[name]
-        if not schema then
-          return nil, fmt("could not find vault sub-schema (%s) [%s]", name, reference)
-        end
-
-        if type(strategy.init) == "function" then
-          strategy.init()
-        end
-
-        schema = Schema.new(schema.fields.config)
-      end
-
-      STRATEGIES[name] = strategy
-      SCHEMAS[name] = schema
-    end
-
+  local function get_vault_config_from_kong_conf(name)
     -- base config stays the same so we can cache it
     local base_config = CONFIGS[name]
     if not base_config then
@@ -388,6 +195,7 @@ local function new(self)
       if self and self.configuration then
         local configuration = self.configuration
         local env_name = gsub(name, "-", "_")
+        local schema = assert(SCHEMAS[name])
         for k, f in schema:each_field() do
           -- n is the entry in the kong.configuration table, for example
           -- KONG_VAULT_ENV_PREFIX will be found in kong.configuration
@@ -416,61 +224,164 @@ local function new(self)
         CONFIGS[name] = base_config
       end
     end
-
-    local config, hash = get_config(base_config, opts.config, schema)
-
-    return retrieve_value(strategy, config, hash, reference, opts.resource, name,
-                          opts.version, opts.key, self and self.core_cache,
-                          rotation, cache_only)
+    return base_config
   end
 
 
-  local function config_secret(reference, opts, rotation, cache_only)
-    local prefix = opts.name
-    local vaults = self.db.vaults
-    local cache = self.core_cache
-    local vault
-    local err
-    if cache then
-      local cache_key = vaults:cache_key(prefix)
-      vault, err = cache:get(cache_key, nil, vaults.select_by_prefix, vaults, prefix)
-
-    else
-      vault, err = vaults:select_by_prefix(prefix)
+  ---
+  -- Fetches the strategy and schema for a given vault during initialization.
+  --
+  -- This function checks if the vault exists in `VAULT_NAMES`, fetches the associated strategy and schema from
+  -- the `STRATEGIES` and `SCHEMAS` tables, respectively. If the strategy or schema isn't found in the tables, it
+  -- attempts to fetch them from the application's database or by requiring them from a module.
+  --
+  -- The fetched strategy and schema are then stored back into the `STRATEGIES` and `SCHEMAS` tables for later use.
+  -- If the `init` method exists in the strategy, it's also executed.
+  --
+  -- @function get_vault_strategy_and_schema_during_init
+  -- @param name string The name of the vault to fetch the strategy and schema for.
+  -- @return strategy ??? The fetched or required strategy for the given vault.
+  -- @return schema ??? The fetched or required schema for the given vault.
+  -- @return string|nil An error message, if an error occurred while fetching or requiring the strategy or schema.
+  local function get_vault_strategy_and_schema_during_init(name)
+    if not VAULT_NAMES[name] then
+      return nil, nil, fmt("vault not found (%s)", name)
     end
 
-    if not vault then
-      if err then
-        return nil, fmt("vault not found (%s): %s [%s]", prefix, err, reference)
-      end
-
-      return nil, fmt("vault not found (%s) [%s]", prefix, reference)
-    end
-
-    local name = vault.name
     local strategy = STRATEGIES[name]
     local schema = SCHEMAS[name]
-    if not strategy then
+    if strategy and schema then
+      return strategy, schema
+    end
+
+    local vaults = self and (self.db and self.db.vaults)
+    if vaults and vaults.strategies then
       strategy = vaults.strategies[name]
       if not strategy then
-        return nil, fmt("vault not installed (%s) [%s]", name, reference)
+        return nil, nil, fmt("could not find vault (%s)", name)
       end
 
       schema = vaults.schema.subschemas[name]
       if not schema then
-        return nil, fmt("could not find vault sub-schema (%s) [%s]", name, reference)
+        return nil, nil, fmt("could not find vault schema (%s): %s", name, strategy)
       end
 
-      schema = require("kong.db.schema").new(schema.fields.config)
+      schema = Schema.new(schema.fields.config)
+    else
+      local ok
+      ok, strategy = pcall(require, fmt("kong.vaults.%s", name))
+      if not ok then
+        return nil, nil, fmt("could not find vault (%s): %s", name, strategy)
+      end
 
-      STRATEGIES[name] = strategy
-      SCHEMAS[name] = schema
+      local def
+      ok, def = pcall(require, fmt("kong.vaults.%s.schema", name))
+      if not ok then
+        return nil, nil, fmt("could not find vault schema (%s): %s", name, def)
+      end
+
+      schema = Schema.new(require("kong.db.schema.entities.vaults"))
+
+      local err
+      ok, err = schema:new_subschema(name, def)
+      if not ok then
+        return nil, nil, fmt("could not load vault sub-schema (%s): %s", name, err)
+      end
+
+      schema = schema.subschemas[name]
+      if not schema then
+        return nil, nil, fmt("could not find vault sub-schema (%s)", name)
+      end
+
+      if type(strategy.init) == "function" then
+        strategy.init()
+      end
+
+      schema = Schema.new(schema.fields.config)
     end
 
-    local config, hash = get_config(vault.config, opts.config, schema, prefix)
+    STRATEGIES[name] = strategy
+    SCHEMAS[name] = schema
 
-    return retrieve_value(strategy, config, hash, reference, opts.resource, prefix,
-                          opts.version, opts.key, cache, rotation, cache_only)
+    return strategy, schema
+  end
+
+
+  local function get_vault_strategy_and_schema(name)
+    local vaults = self.db.vaults
+    local strategy = STRATEGIES[name]
+    local schema = SCHEMAS[name]
+    if strategy then
+      return strategy, schema
+    end
+
+    strategy = vaults.strategies[name]
+    if not strategy then
+      return nil, nil, fmt("vault not installed (%s)", name)
+    end
+
+    schema = vaults.schema.subschemas[name]
+    if not schema then
+      return nil, nil, fmt("could not find vault sub-schema (%s)", name)
+    end
+
+    schema = Schema.new(schema.fields.config)
+
+    STRATEGIES[name] = strategy
+    SCHEMAS[name] = schema
+
+    return strategy, schema
+  end
+
+
+  local function get_config_and_hash(base_config, config_overrides, schema, prefix)
+    local config = {}
+    config_overrides = config_overrides or {}
+    KEY_BUFFER:reset()
+    if prefix then
+      KEY_BUFFER:putf("%s;", prefix)
+    end
+    for k, f in schema:each_field() do
+      local v = config_overrides[k] or base_config[k]
+      v = arguments.infer_value(v, f)
+      -- The schema:validate_field() can yield. This is problematic
+      -- as this funciton is called in phases (like the body_filter) where
+      -- we can't yield.
+      -- It's questionable to validate at this point anyways.
+
+      -- if v ~= nil and schema:validate_field(f, v) then
+      config[k] = v
+      KEY_BUFFER:putf("%s=%s;", k, v)
+      -- end
+    end
+    return config, encode_base64url(md5_bin(KEY_BUFFER:get()))
+  end
+
+
+  local function get_process_strategy(parsed_reference)
+    local strategy, schema, err = get_vault_strategy_and_schema_during_init(parsed_reference.name)
+    if not (strategy and schema) then
+      return nil, nil, nil, err
+    end
+
+    local base_config = get_vault_config_from_kong_conf(parsed_reference.name)
+
+    return strategy, schema, base_config
+  end
+
+
+  local function get_config_strategy(parsed_reference)
+    local vault, err = get_vault(parsed_reference.name)
+    if not vault then
+      return nil, nil, nil, err
+    end
+
+    local strategy, schema, err = get_vault_strategy_and_schema(vault.name)
+    if not (strategy and schema) then
+      return nil, nil, nil, err
+    end
+
+    return strategy, schema, vault.config
   end
 
 
@@ -551,120 +462,304 @@ local function new(self)
   end
 
 
-  local function get(reference, rotation, cache_only)
-    local opts, err = parse_reference(reference)
-    if err then
-      return nil, err
+  --- Invokes a provided strategy to fetch a secret.
+  -- This function invokes a strategy provided to it to retrieve a secret from a resource, with version control.
+  -- The secret can have multiple values, each stored under a different key.
+  -- The secret returned by the strategy must be a string containing a JSON object, which can be indexed by the key to get a specific value.
+  -- If the secret can't be retrieved or doesn't have the expected format, appropriate errors are returned.
+  --
+  -- @function invoke_strategy
+  -- @param strategy The strategy used to fetch the secret.
+  -- @param config The configuration required by the strategy.
+  -- @param parsed_reference A table containing the resource and version of the secret to be fetched, and optionally, a key to index a specific value.
+  -- @return value The value of the secret or subfield if retrieval is successful.
+  -- @return nil If retrieval is successful, the second returned value will be nil.
+  -- @return err A string describing an error if there was one, or ttl (time to live) of the fetched secret.
+  -- @usage local value, _, err = invoke_strategy(strategy, config, parsed_reference)
+  -- @within Strategies
+  local function invoke_strategy(strategy, config, parsed_reference)
+    local value, err, ttl = strategy.get(config, parsed_reference.resource, parsed_reference.version)
+
+    if value == nil then
+      if err then
+        return nil, nil, fmt("no value found (%s)", err)
+      else
+        return nil, nil, "no value found"
+      end
+    elseif type(value) ~= "string" then
+      return nil, nil, fmt("value returned from vault has invalid type (%s), string expected", type(value))
     end
 
-    local value, stale_value
-    if not rotation then
-      value, stale_value = LRU:get(reference)
-      if value then
-        return value
+    -- in vault reference, the secret can have multiple values, each stored under a key.  The vault returns a JSON
+    -- string that contains an object which can be indexed by the key.
+    local key = parsed_reference.key
+    if key then
+      local sub_err
+      value, sub_err = get_subfield(value, key)
+      if not value then
+        return nil, nil, fmt("could not get subfield value: %s", sub_err)
       end
     end
 
-    local ttl
-    if self and self.db and VAULT_NAMES[opts.name] == nil then
-      value, err, ttl = config_secret(reference, opts, rotation, cache_only)
+    return value, nil, ttl
+  end
+
+  --- Function `parse_and_resolve_reference` processes a reference to retrieve configuration settings,
+  -- a strategy to be used, and the hash of the reference.
+  -- The function first parses the reference. Then, it gets the strategy, the schema, and the base configuration
+  -- settings for the vault based on the parsed reference. It checks the license type if required by the strategy.
+  -- Finally, it gets the configuration and the hash of the reference.
+  --
+  -- @function parse_and_resolve_reference
+  -- @param reference The reference to be parsed and resolved.
+  -- @return The configuration, a nil value (as a placeholder for an error that did not occur),
+  -- the parsed reference, the strategy to be used, and the hash of the reference.
+  -- If an error occurs, it returns `nil` and an error message.
+  -- @usage local config, _, parsed_reference, strategy, hash = parse_and_resolve_reference(reference)
+  local function parse_and_resolve_reference(reference)
+
+    local parsed_reference, err = parse_reference(reference)
+    if not parsed_reference then
+      return nil, err
+    end
+
+    local strategy, schema, base_config
+    if self and self.db and VAULT_NAMES[parsed_reference.name] == nil then
+      strategy, schema, base_config, err = get_config_strategy(parsed_reference)
     else
-      value, err, ttl = process_secret(reference, opts, rotation, cache_only)
+      strategy, schema, base_config, err = get_process_strategy(parsed_reference)
     end
 
+    if not (schema and strategy) then
+      return nil, fmt("could not find vault (%s) (%s)", parsed_reference.name, err or "")
+    end
+
+    if kong and kong.licensing and kong.licensing:license_type() == "free" and strategy.license_required then
+      return nil, "vault " .. strategy.name .. " requires a license to be used"
+    end
+
+    local config, hash = get_config_and_hash(base_config, parsed_reference.config, schema, parsed_reference.name)
+
+    return config, nil, parsed_reference, strategy, hash
+  end
+
+  --- Function `get_from_vault` retrieves a value from the vault using the provided strategy.
+  -- The function first retrieves a value from the vault and its ttl (time-to-live).
+  -- It then adjusts the ttl within configured bounds, stores the value in the SHDICT cache
+  -- with a ttl that includes a resurrection time, and stores the value in the LRU cache with
+  -- the adjusted ttl.
+  --
+  -- @function get_from_vault
+  -- @param strategy The strategy to be used to retrieve the value from the vault.
+  -- @param config The configuration settings to be used.
+  -- @param parsed_reference The parsed reference key to lookup in the vault.
+  -- @param cache_key The key to be used when storing the value in the cache.
+  -- @param reference The original reference key.
+  -- @return The retrieved value from the vault. If an error occurs, it returns `nil` and an error message.
+  -- @usage local value, err = get_from_vault(strategy, config, parsed_reference, cache_key, reference)
+  local function get_from_vault(strategy, config, parsed_reference, cache_key, reference)
+    local value, ttl, err = invoke_strategy(strategy, config, parsed_reference)
     if not value then
-      if stale_value then
-        if not cache_only then
-          self.log.warn(err, " (returning a stale value)")
-        end
-        return stale_value
-      end
+      return nil, fmt("could not get value from external vault (%s)", err)
+    end
+    -- adjust ttl to the minimum and maximum values configured
+    ttl = adjust_ttl(ttl, config)
+    local shdict_ttl = ttl + (config.resurrect_ttl or DAO_MAX_TTL)
 
+    -- Ignore "success" return value as we return the error to the caller.  The secret value is still valid and
+    -- can be used, although the shdict does not have it.
+    local store_ok, store_err = SHDICT:safe_set(cache_key, value, shdict_ttl)
+    if not store_ok then
+      return nil, store_err
+    end
+
+    LRU:set(reference, value, ttl)
+    return value, store_err
+  end
+
+  --- Function `renew_from_vault` attempts to retrieve a value from the vault.
+  -- It first parses and resolves the reference, then uses the resulting strategy,
+  -- config, parsed_reference, and cache_key to attempt to get the value from the vault.
+  --
+  -- @function renew_from_vault
+  -- @param reference The reference key to lookup in the vault.
+  -- @return The retrieved value from the vault corresponding to the provided reference.
+  -- If the value is not found or if an error occurs, it returns `nil` and an error message.
+  -- @usage local value, err = renew_from_vault(reference)
+  local function renew_from_vault(reference)
+    local config, err, parsed_reference, strategy, hash = parse_and_resolve_reference(reference)
+
+    if not config then
+      return nil, err
+    end
+    local cache_key = build_cache_key(reference, hash)
+
+    return get_from_vault(strategy, config, parsed_reference, cache_key, reference)
+  end
+
+  --- Function `get` retrieves a value from local (LRU) or shared dictionary (SHDICT) cache.
+  -- If the value is not found in these caches and `cache_only` is not set, it attempts
+  -- to retrieve the value from a vault.
+  --
+  -- @function get
+  -- @param reference The reference key to lookup in the cache and potentially the vault.
+  -- @param cache_only Optional boolean flag. If set to true, the function will not attempt
+  -- to retrieve the value from the vault if it's not found in the caches.
+  -- @return The retrieved value corresponding to the provided reference. If the value is
+  -- not found, it returns `nil` and an error message.
+  -- @usage local value, err = get(reference, cache_only)
+  local function get(reference, cache_only)
+    local value, _ = LRU:get(reference)
+    -- Note: We should ignore the stale value here
+    -- lua-resty-lrucache will always return the stale-value when
+    -- the ttl has expired. As this is the worker-local cache
+    -- we should defer the resurrect_ttl logic to the SHDICT
+    -- which we do by adding the resurrect_ttl to the TTL
+
+    -- If we have a worker-level cache hit, return it
+    if value then
+      return value
+    end
+
+    local config, err, parsed_reference, strategy, hash = parse_and_resolve_reference(reference)
+
+    if not config then
       return nil, err
     end
 
-    if type(ttl) == "number" and ttl > 0 then
-      LRU:set(reference, value, ttl)
-      REFERENCES[reference] = time() + ttl - ROTATION_INTERVAL
+    local cache_key = build_cache_key(reference, hash)
 
-    elseif ttl == 0 then
-      LRU:set(reference, value)
+    value = SHDICT:get(cache_key)
+    -- If we have a node-level cache hit, return it.
+    -- Note: This will live for TTL + Resurrection Time
+    if value then
+      -- If we have something in the node-level cache, but not in the worker-level
+      -- cache, we should update the worker-level cache. Use the remaining TTL from the SHDICT
+      local lru_ttl = (SHDICT:ttl(cache_key) or 0) - (parsed_reference.resurrect_ttl or config.resurrect_ttl or DAO_MAX_TTL)
+      -- only do that when the TTL is greater than 0. (0 is infinite)
+      if lru_ttl > 0 then
+        LRU:set(reference, value, lru_ttl)
+      end
+      return value
     end
 
-    return value
+    -- This forces the result from the caches. Stop here and return any value, even if nil
+    if not cache_only then
+      return get_from_vault(strategy, config, parsed_reference, cache_key, reference)
+    end
+    return nil, "could not find cached values"
+  end
+
+  --- Function `get_from_cache` retrieves values from a cache.
+  --
+  -- This function uses the provided references to fetch values from a cache.
+  -- The fetching process will return cached values if they exist.
+  --
+  -- @function get_from_cache
+  -- @param references A list or table of reference keys. Each reference key corresponds to a value in the cache.
+  -- @return The retrieved values corresponding to the provided references. If a value does not exist in the cache for a particular reference, it is not clear from the given code what will be returned.
+  -- @usage local values = get_from_cache(references)
+  local function get_from_cache(references)
+    return get(references, true)
   end
 
 
-  local function update(options)
-    if type(options) ~= "table" then
-      return options
+  --- Function `update` recursively updates a configuration table.
+  --
+  -- This function updates a configuration table by replacing reference fields
+  -- with values fetched from a cache. The references are specified in a `$refs`
+  -- field, which should be a table mapping from field names to reference keys.
+  --
+  -- If a reference cannot be fetched from the cache, the corresponding field is
+  -- set to an empty string and an error is logged.
+  --
+  -- @function update
+  -- @param config A table representing the configuration to update. If `config`
+  -- is not a table, the function immediately returns it without any modifications.
+  -- @return The updated configuration table. If the `$refs` field is not a table
+  -- or is empty, the function returns `config` as is.
+  -- @usage local updated_config = update(config)
+  local function update(config)
+    -- config should always be a table, eh?
+    if type(config) ~= "table" then
+      return config
     end
 
-    -- TODO: should we skip updating options, if it was done recently?
-
-    -- TODO: should we have flag for disabling/enabling recursion?
-    for k, v in pairs(options) do
-      if k ~= "$refs" and type(v) == "table" then
-        options[k] = update(v)
+    for k, v in pairs(config) do
+      if type(v) == "table" then
+        config[k] = update(v)
       end
     end
 
-    local refs = options["$refs"]
+    -- This can potentially grow without ever getting
+    -- reset. This will only happen when a user repeatedly changes
+    -- references without ever restarting kong, which sounds
+    -- kinda unlikely, but should still be monitored.
+    local refs = config["$refs"]
     if type(refs) ~= "table" or isempty(refs) then
-      return options
+      return config
     end
 
-    for field_name, reference in pairs(refs) do
-      local value = get(reference, nil, true) -- TODO: ignoring errors?
-      if value ~= nil then
-        options[field_name] = value
-      end
-    end
-
-    return options
-  end
-
-
-  local function try(callback, options)
-    -- store current values early on to avoid race conditions
-    local previous
-    local refs
-    local refs_empty
-    if options then
-      refs = options["$refs"]
-      if refs then
-        refs_empty = isempty(refs)
-        if not refs_empty then
-          previous = {}
-          for name in pairs(refs) do
-            previous[name] = options[name]
+    local function update_references(refs, target)
+      for field_name, field_value in pairs(refs) do
+        if is_reference(field_value) then
+          local value, err = get_from_cache(field_value)
+          if not value then
+            self.log.notice("error updating secret reference ", field_value, ": ", err)
           end
+          target[field_name] = value or ''
+        elseif type(field_value) == "table" then
+          update_references(field_value, target[field_name])
         end
       end
     end
 
-    -- try with already resolved credentials
-    local res, err = callback(options)
-    if res then
-      return res
-    end
+    update_references(refs, config)
 
+    return config
+  end
+
+  --- Checks if the necessary criteria to perform automatic secret rotation are met.
+  -- The function checks whether 'options' and 'refs' parameters are not nil and not empty.
+  -- If these checks are not met, a relevant error message is returned.
+  -- @local
+  -- @function check_abort_criteria
+  -- @tparam table options The options for the automatic secret rotation. If this parameter is nil,
+  -- the function logs a notice and returns an error message.
+  -- @tparam table refs The references for the automatic secret rotation. If this parameter is nil or
+  -- an empty table, the function logs a notice and returns an error message.
+  -- @treturn string|nil If all checks pass, the function returns nil. If any check fails, the function
+  -- returns a string containing an error message.
+  -- @usage check_abort_criteria(options, refs)
+  local function check_abort_criteria(options, refs)
+    -- If no options are provided, log a notice and return the error
     if not options then
-      self.log.notice("cannot automatically rotate secrets in absence of options")
-      return nil, err
+      return "cannot automatically rotate secrets in absence of options"
     end
 
+    -- If no references are provided, log a notice and return the error
     if not refs then
-      self.log.notice('cannot automatically rotate secrets in absence of options["$refs"]')
-      return nil, err
+      return 'cannot automatically rotate secrets in absence of options["$refs"]'
     end
 
-    if refs_empty then
-      self.log.notice('cannot automatically rotate secrets with empty options["$refs"]')
-      return nil, err
+    -- If the references are empty, log a notice and return the error
+    if isempty(refs) then
+      return 'cannot automatically rotate secrets with empty options["$refs"]'
     end
+    return nil
+  end
 
-    -- generate an LRU key
+  --- Generates sorted keys based on references.
+  -- This function generates keys from a table of references and then sorts these keys.
+  -- @local
+  -- @function generate_sorted_keys
+  -- @tparam table refs The references based on which keys are to be generated. It is expected
+  -- to be a non-empty table, where the keys are strings and the values are the associated values.
+  -- @treturn table keys The sorted keys from the references.
+  -- @treturn number count The count of the keys.
+  -- @usage local keys, count = generate_sorted_keys(refs)
+  local function generate_sorted_keys(refs)
+    -- Generate sorted keys based on references
     local count = nkeys(refs)
     local keys = self.table.new(count, 0)
     local i = 0
@@ -672,51 +767,136 @@ local function new(self)
       i = i + 1
       keys[i] = k
     end
-
     sort(keys)
 
-    KEY_BUFFER:reset()
+    return keys, count
+  end
 
-    for i = 1, count do
-      local key = keys[i]
+  --- Populates the key buffer with sorted keys.
+  -- This function takes a table of sorted keys and their corresponding count, and populates a
+  -- predefined KEY_BUFFER with these keys.
+  -- @local
+  -- @function populate_buffer
+  -- @tparam table keys The sorted keys that are to be put in the buffer.
+  -- @tparam number count The count of the keys.
+  -- @tparam table refs The references from which the values corresponding to the keys are obtained.
+  -- @usage populate_buffer(keys, count, refs)
+  local function populate_buffer(keys, count, refs)
+    -- Populate the key buffer with sorted keys
+    KEY_BUFFER:reset()
+    for j = 1, count do
+      local key = keys[j]
       local val = refs[key]
       KEY_BUFFER:putf("%s=%s;", key, val)
     end
+  end
 
-    local key = md5_bin(KEY_BUFFER:get())
-    local updated
+  --- Generates an LRU (Least Recently Used) cache key based on sorted keys of the references.
+  -- This function generates a key for each reference, sorts these keys, and then populates a
+  -- key buffer with these keys. It also generates an md5 hash of the key buffer.
+  -- @local
+  -- @function populate_key_buffer
+  -- @tparam table refs The references based on which cache keys are to be generated.
+  -- @treturn table keys The sorted keys from the references.
+  -- @treturn number count The count of the keys.
+  -- @treturn string md5Hash The md5 hash of the populated key buffer.
+  -- @usage local keys, count, hash = populate_key_buffer(refs)
+  local function populate_key_buffer(refs)
+    -- Generate an LRU (Least Recently Used) cache key based on sorted keys of the references
+    local keys, count = generate_sorted_keys(refs)
+    populate_buffer(keys, count, refs)
+    return keys, count, md5_bin(KEY_BUFFER:get())
+  end
 
-    -- is there already values with RETRY_TTL seconds ttl?
-    local values = RETRY_LRU:get(key)
-    if values then
-      for name, value in pairs(values) do
-        updated = previous[name] ~= value
-        if updated then
-          break
+  --- Checks if a particular value has been updated compared to its previous state.
+  -- @local
+  -- @function is_value_updated
+  -- @tparam table previous The previous state of the values.
+  -- @tparam string name The name of the value to check.
+  -- @tparam any value The current value to check.
+  -- @treturn bool updated Returns true if the value has been updated, false otherwise.
+  -- @usage local updated = is_value_updated(previous, name, value)
+  local function is_value_updated(previous, name, value)
+    return previous[name] ~= value
+  end
+
+  --- Checks if any values in the table have been updated compared to their previous state.
+  -- @local
+  -- @function values_are_updated
+  -- @tparam table values The current state of the values.
+  -- @tparam table previous The previous state of the values.
+  -- @treturn bool updated Returns true if any value has been updated, false otherwise.
+  -- @usage local updated = values_are_updated(values, previous)
+  local function values_are_updated(values, previous)
+    for name, value in pairs(values) do
+      if is_value_updated(previous, name, value) then
+        return true
+      end
+    end
+    return false
+  end
+
+  --- Function `try` attempts to execute a provided callback function with the provided options.
+  -- If the callback function fails, the `try` function will attempt to resolve references and update
+  -- the values in the options table before re-attempting the callback function.
+  -- NOTE: This function currently only detects changes by doing a shallow comparison. As a result, it might trigger more retries than necessary - when a config option has a table value and it seems "changed" even if the "new value" is a new table with the same keys and values inside.
+  -- @function try
+  -- @param callback The callback function to execute. This function should take an options table as its argument.
+  -- @param options The options table to provide to the callback function. This table may include a "$refs" field which is a table mapping reference names to their values.
+  -- @return Returns the result of the callback function if it succeeds, otherwise it returns `nil` and an error message.
+  local function try(callback, options)
+    -- Store the current references to avoid race conditions
+    local previous
+    local refs
+    if options then
+      refs = options["$refs"]
+      if refs and not isempty(refs) then
+        previous = {}
+        for name in pairs(refs) do
+          previous[name] = options[name]
         end
       end
+    end
 
-      if not updated then
-        return nil, err
+    -- Try to execute the callback with the current options
+    local res, callback_err = callback(options)
+    if res then
+      return res -- If the callback succeeds, return the result
+    end
+
+    local abort_err = check_abort_criteria(options, refs)
+    if abort_err then
+      self.log.notice(abort_err)
+      return nil, callback_err -- we are returning callback_error and not abort_err on purpose.
+    end
+
+    local keys, count, key = populate_key_buffer(refs)
+
+    -- Check if there are already values cached with a certain time-to-live
+    local updated
+    -- The RETRY_LRU cache probaly isn't very helpful anymore.
+    -- Consider removing it in further refactorings of this function.
+    local values = RETRY_LRU:get(key)
+    if values then
+      -- If the cached values are different from the previous values, consider them as updated
+      if not values_are_updated(values, previous) then
+      -- If no updated values are found, return the error
+        return nil, callback_err
       end
-
+      -- Update the options with the new values and re-try the callback
       for name, value in pairs(values) do
         options[name] = value
       end
-
-      -- try with updated credentials
       return callback(options)
     end
 
+    -- Semaphore cannot wait in "init" or "init_worker" phases
     local wait_ok
     local phase = get_phase()
-
     if phase == "init" or phase == "init_worker" then
-      -- semaphore:wait can't work in init/init_worker phase
       wait_ok = false
-
     else
-      -- grab a semaphore to limit concurrent updates to reduce calls to vaults
+      -- Limit concurrent updates by waiting for a semaphore
       local wait_err
       wait_ok, wait_err = RETRY_SEMAPHORE:wait(RETRY_WAIT)
       if not wait_ok then
@@ -724,42 +904,37 @@ local function new(self)
       end
     end
 
-    -- do we now have values with RETRY_TTL seconds ttl?
+    -- Check again if we now have values cached with a certain time-to-live
     values = RETRY_LRU:get(key)
     if values then
+      -- Release the semaphore if we had waited for it
       if wait_ok then
-        -- release a resource
         RETRY_SEMAPHORE:post()
       end
 
-      for name, value in pairs(values) do
-        updated = previous[name] ~= value
-        if updated then
-          break
-        end
+      if not values_are_updated(values, previous) then
+      -- If no updated values are found, return the error
+        return nil, callback_err
       end
-
-      if not updated then
-        return nil, err
-      end
-
+      -- Update the options with the new values and re-try the callback
       for name, value in pairs(values) do
         options[name] = value
       end
 
-      -- try with updated credentials
       return callback(options)
     end
 
-    -- resolve references without read-cache
-    local rotation = {}
+    -- If no values are cached, resolve the references directly
     local values = {}
     for i = 1, count do
       local name = keys[i]
-      local value, get_err = get(refs[name], rotation)
+      local ref = refs[name]
+      local value, get_err
+      if type(ref) == "string" then
+        value, get_err = renew_from_vault(ref)
+      end
       if not value then
         self.log.notice("resolving reference ", refs[name], " failed: ", get_err or "unknown")
-
       else
         values[name] = value
         if updated == nil and previous[name] ~= value then
@@ -768,72 +943,70 @@ local function new(self)
       end
     end
 
-    -- set the values in LRU
+    -- Cache the newly resolved values
     RETRY_LRU:set(key, values, RETRY_TTL)
 
+    -- Release the semaphore if we had waited for it
     if wait_ok then
-      -- release a resource
       RETRY_SEMAPHORE:post()
     end
 
+    -- If no updated values are found, return the error
     if not updated then
-      return nil, err
+      return nil, callback_err
     end
 
+    -- Update the options with the new values and re-try the callback
     for name, value in pairs(values) do
       options[name] = value
     end
-
-    -- try with updated credentials
     return callback(options)
   end
 
+  --- Function `rotate_secrets` rotates the secrets in the shared dictionary cache (SHDICT).
+  -- It iterates over all keys in the SHDICT and, if a key corresponds to a reference and the
+  -- ttl of the key is less than or equal to the resurrection period, it refreshes the value
+  -- associated with the reference.
+  --
+  -- @function rotate_secrets
+  -- @return Returns `true` after it has finished iterating over all keys in the SHDICT.
+  -- @usage local success = rotate_secrets()
+  local function rotate_secrets(force_refresh)
+    for _, key in pairs(SHDICT:get_keys(0)) do
+      -- key looks like "reference\0$reference\0hash"
+      local key_components = split(key, "\0")
+      local identifier = key_components[1]
+      local reference = key_components[2]
 
-  local function rotate_secrets()
-    if isempty(REFERENCES) then
-      return true
-    end
-
-    local rotation = {}
-    local current_time = time()
-
-    local removals
-    local removal_count = 0
-
-    for reference, expiry in pairs(REFERENCES) do
-      if exiting() then
-        return true
+      -- Abort criteria, `identifier`` and `reference` must exist
+      -- reference must be the "reference" identifier prefix
+      if not (identifier and reference
+         and identifier == REFERENCE_IDENTIFIER) then
+        goto next_key
       end
 
-      if current_time > expiry then
-        local value, err = get(reference, rotation)
-        if not value then
-          local fail_count = (FAILED[reference] or 0) + 1
-          if fail_count < 5 then
-            self.log.notice("rotating reference ", reference, " failed: ", err or "unknown")
-            FAILED[reference] = fail_count
-
-          else
-            self.log.warn("rotating reference ", reference, " failed (removed from rotation): ", err or "unknown")
-            if not removals then
-              removals = { reference }
-            else
-              removals[removal_count] = reference
-            end
-          end
-        end
+      local config, err = parse_and_resolve_reference(reference)
+      if not config then
+        self.log.warn("could not parse reference %s (%s)", reference, err)
+        goto next_key
       end
-    end
 
-    if removal_count > 0 then
-      for i = 1, removal_count do
-        local reference = removals[i]
-        REFERENCES[reference] = nil
-        FAILED[reference] = nil
-        LRU:delete(reference)
+      local resurrect_ttl = config.resurrect_ttl or DAO_MAX_TTL
+
+      -- The ttl for this key, is the TTL + the resurrect time
+      -- If the TTL is still greater than the resurrect time
+      -- we don't have to refresh
+      if SHDICT:ttl(key) > resurrect_ttl and not force_refresh then
+        goto next_key
       end
-    end
 
+      -- we should refresh the secret at this point
+      local _, err = renew_from_vault(reference)
+      if err then
+        self.log.warn("could not retrieve value for reference %s (%s)", reference, err)
+      end
+      ::next_key::
+    end
     return true
   end
 
@@ -862,7 +1035,7 @@ local function new(self)
   local _VAULT = {}
 
 
-  local function flush_config_cache(data)
+  local function flush_and_refresh(data)
     local cache = self.core_cache
     if cache then
       local vaults = self.db.vaults
@@ -871,7 +1044,6 @@ local function new(self)
       if old_entity then
         old_prefix = old_entity.prefix
         if old_prefix and old_prefix ~= ngx.null then
-          CONFIG_HASHES[old_prefix] = nil
           cache:invalidate(vaults:cache_key(old_prefix))
         end
       end
@@ -880,13 +1052,19 @@ local function new(self)
       if entity then
         local prefix = entity.prefix
         if prefix and prefix ~= ngx.null and prefix ~= old_prefix then
-          CONFIG_HASHES[prefix] = nil
           cache:invalidate(vaults:cache_key(prefix))
         end
       end
     end
 
+
     LRU:flush_all()
+    RETRY_LRU:flush_all()
+    -- We can't call SHDICT.flush_all() here as it would invalidate all
+    -- available caches and without reloading the values from a vault implementation.
+    -- For exmaple the plugins_iterator relies on the caches being populated.
+    -- We rather force a secret-rotation in this scenarion, to avoid empty caches.
+    rotate_secrets(true)
   end
 
 
@@ -899,7 +1077,7 @@ local function new(self)
     initialized = true
 
     if self.configuration.database ~= "off" then
-      self.worker_events.register(flush_config_cache, "crud", "vaults")
+      self.worker_events.register(flush_and_refresh, "crud", "vaults")
     end
 
     local _, err = self.timer:named_every("secret-rotation", ROTATION_INTERVAL, rotate_secrets_timer)
@@ -910,14 +1088,13 @@ local function new(self)
 
 
   ---
-  -- Flushes vault config and the references LRU cache.
+  -- Flushes vault config and the references in LRU cache.
   --
   -- @function kong.vault.flush
   --
   -- @usage
   -- kong.vault.flush()
   function _VAULT.flush()
-    CONFIG_HASHES = {}
     LRU:flush_all()
   end
 

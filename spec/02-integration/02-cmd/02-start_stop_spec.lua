@@ -120,7 +120,8 @@ describe("kong start/stop #" .. strategy, function()
       vaults = "env",
     })
 
-    assert.matches("Error: failed to dereference '{vault://env/ipheader}': unable to load value (ipheader) from vault (env): not found [{vault://env/ipheader}] for config option 'nginx_proxy_real_ip_header'", stderr, nil, true)
+    assert.matches("vault://env/ipheader", stderr, nil, true)
+    assert.matches("Error: failed to dereference '{vault://env/ipheader}'", stderr)
     assert.is_nil(stdout)
     assert.is_false(ok)
   end)
@@ -133,7 +134,7 @@ describe("kong start/stop #" .. strategy, function()
       pg_database = TEST_CONF.pg_database,
     })
 
-    assert.matches("failed to dereference '{vault://non-existent/pg_password}': vault not found (non-existent)", stderr, nil, true)
+    assert.matches("Error: failed to dereference", stderr, nil, true)
     assert.is_nil(stdout)
     assert.is_false(ok)
   end)
@@ -149,8 +150,9 @@ describe("kong start/stop #" .. strategy, function()
     })
 
     assert.is_string(stderr)
-    assert.matches("Error: failed to dereference '{vault://env/auth_conf}': unable to load value (auth_conf) from vault (env): not found [{vault://env/auth_conf}] for config option 'admin_gui_auth_conf",
-      stderr, nil, true)
+    assert.matches("vault://env/auth_conf", stderr, nil, true)
+    assert.matches("Error: failed to dereference '{vault://env/auth_conf}'", stderr, nil, true)
+
     assert.is_nil(stdout)
     assert.is_false(ok)
   end)

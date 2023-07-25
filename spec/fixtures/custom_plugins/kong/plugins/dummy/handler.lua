@@ -11,9 +11,17 @@ local DummyHandler =  {
 }
 
 
-function DummyHandler:access()
+function DummyHandler:access(conf)
   if ngx.req.get_uri_args()["send_error"] then
     return kong.response.exit(404, { message = "Not found" })
+  end
+
+  if conf.test_try then
+    kong.vault.try(function ()
+      if conf.resp_header_value == "open_sesame" then
+        ngx.header["X-Try-Works"] = "true"
+      end
+    end, conf)
   end
 
   ngx.header["Dummy-Plugin-Access-Header"] = "dummy"
@@ -22,6 +30,12 @@ end
 
 function DummyHandler:header_filter(conf)
   ngx.header["Dummy-Plugin"] = conf.resp_header_value
+
+  if conf.resp_headers then
+    for header, value in pairs(conf.resp_headers) do
+      ngx.header[header] = value
+    end
+  end
 
   if conf.resp_code then
     ngx.status = conf.resp_code
