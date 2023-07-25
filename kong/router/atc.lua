@@ -468,6 +468,8 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
           return nil, err
         end
       end
+
+      goto continue
     end
 
     ::continue::
@@ -663,6 +665,7 @@ function _M:select(_, _, _, scheme,
 
     if field == "net.dst.port" then
       assert(c:add_value(field, dst_port))
+      goto continue
     end -- if
 
     ::continue::
