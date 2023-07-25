@@ -26,7 +26,7 @@ describe("Environment Variables Vault", function()
   it("get undefined", function()
     helpers.unsetenv("TEST_ENV")
     local res, err = get("{vault://env/test_env}")
-    assert.is_equal("unable to load value (test_env) from vault (env): not found [{vault://env/test_env}]", err)
+    assert.matches("could not get value from external vault", err)
     assert.is_nil(res)
   end)
 

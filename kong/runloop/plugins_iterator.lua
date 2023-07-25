@@ -283,8 +283,8 @@ local function get_next_global_or_collected_plugin(plugins, i)
   if i > plugins[0] then
     return nil
   end
-
-  return i, plugins[i - 1], plugins[i]
+  local cfg = kong.vault.update(plugins[i])
+  return i, plugins[i - 1], cfg
 end
 
 
