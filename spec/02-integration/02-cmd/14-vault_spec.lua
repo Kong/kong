@@ -30,20 +30,15 @@ describe("kong vault #" .. strategy, function()
   end)
 
   it("vault get with non-existing vault", function()
-    local ok, stderr, stdout = helpers.kong_exec("vault get none/foo", {
-      prefix = helpers.test_conf.prefix,
-    })
-    assert.matches("Error: vault not found (none)", stderr, nil, true)
-    assert.matches("[{vault://none/foo}]", stderr, nil, true)
+    local ok, stderr, stdout = helpers.kong_exec("vault get none/foo")
+    assert.matches("Error: could not find vault (none)", stderr, nil, true)
     assert.is_nil(stdout)
     assert.is_false(ok)
   end)
 
   it("vault get with non-existing key", function()
-    local ok, stderr, stdout = helpers.kong_exec("vault get env/none", {
-      prefix = helpers.test_conf.prefix,
-    })
-    assert.matches("Error: unable to load value (none) from vault (env): not found [{vault://env/none}]", stderr, nil, true)
+    local ok, stderr, stdout = helpers.kong_exec("vault get env/none")
+    assert.matches("could not get value from external vault", stderr, nil, true)
     assert.is_nil(stdout)
     assert.is_false(ok)
   end)
