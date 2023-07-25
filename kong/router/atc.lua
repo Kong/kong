@@ -699,33 +699,38 @@ function _M:exec(ctx)
                     (sni      or "")
 
   local match_t = self.cache:get(cache_key)
-  if not match_t then
-    if self.cache_neg:get(cache_key) then
-      route_match_stat(ctx, "neg")
-      return nil
-    end
 
-    local err
-    match_t, err = self:select(nil, nil, nil, scheme,
-                               src_ip, src_port,
-                               dst_ip, dst_port,
-                               sni)
-    if not match_t then
-      if err then
-        ngx_log(ngx_ERR, "router returned an error: ", err)
-      end
-
-      self.cache_neg:set(cache_key, true)
-      return nil
-    end
-
-    self.cache:set(cache_key, match_t)
-
-  else
+  -- pos cache hit
+  if match_t then
     route_match_stat(ctx, "pos")
+    return match_t
   end
 
-  return match_t
+  -- neg cache hit
+  if self.cache_neg:get(cache_key) then
+    route_match_stat(ctx, "neg")
+    return nil
+  end
+
+  -- cache miss
+  local match_t, err = self:select(nil, nil, nil, scheme,
+                                   src_ip, src_port,
+                                   dst_ip, dst_port,
+                                   sni)
+
+  -- found a match
+  if match_t then
+    self.cache:set(cache_key, match_t)
+    return match_t
+  end
+
+  if err then
+    ngx_log(ngx_ERR, "router returned an error: ", err)
+  end
+
+  self.cache_neg:set(cache_key, true)
+
+  return nil
 end
 
 end   -- if is_http
