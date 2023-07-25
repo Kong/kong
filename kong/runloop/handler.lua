@@ -1151,6 +1151,7 @@ return {
       local balancer_data = ctx.balancer_data
       balancer_data.scheme = upstream_scheme -- COMPAT: pdk
 
+      local upstream_host = var.upstream_host
       local ok, err, errcode = balancer_execute(ctx)
       if not ok then
         return kong.response.error(errcode, err)

@@ -1,10 +1,4 @@
 local helpers = require "spec.helpers"
-local pl_file = require "pl.file"
-local cjson = require "cjson"
-
-
-local TEST_CONF = helpers.test_conf
-
 
 for _, strategy in helpers.each_strategy() do
   describe("#stream Proxying [#" .. strategy .. "]", function()
