@@ -2270,10 +2270,8 @@
                                  # whether to display Vitals metrics and
                                  # visualizations on the dashboard.
 
-#vitals_strategy = database      # Determines whether to use the Kong database
-                                 # (either PostgreSQL or Cassandra, as defined
-                                 # by the `database` config value above), or a
-                                 # separate storage engine, for Vitals metrics.
+#vitals_strategy = database      # Determines whether to use the Kong database or
+                                 # a separate storage engine for Vitals metrics.
                                  # Accepted values are `database`, `prometheus`,
                                  # or `influxdb`.
 
@@ -3071,8 +3069,6 @@
                                  # - `access.after`: trace the postprocess of
                                  #    access phase, like balancer execution and
                                  #    internal variable assigning
-                                 # - `cassandra_iterate`: trace Cassandra driver to
-                                 #    paginate over results
                                  # - `plugin`: trace plugins phase handlers
 
 #tracing_debug_header =          # Defines the name of the HTTP request header
