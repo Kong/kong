@@ -13,9 +13,6 @@ def wasmx_repositories():
     wasmtime_os = KONG_VAR["WASMTIME_OS"]
     wasmer_os = KONG_VAR["WASMER_OS"]
     v8_os = KONG_VAR["V8_OS"]
-    wasmtime_arch = KONG_VAR["WASMTIME_ARCH"]
-    wasmer_arch = KONG_VAR["WASMER_ARCH"]
-    v8_arch = KONG_VAR["V8_ARCH"]
 
     maybe(
         new_git_repository,
@@ -45,13 +42,12 @@ filegroup(
 
     maybe(
         http_archive,
-        name = "v8",
+        name = "v8-x86_64",
         urls = [
             "https://github.com/Kong/ngx_wasm_runtimes/releases/download/v8-" +
-            v8_version + "/ngx_wasm_runtime-v8-" + v8_version + "-" + v8_os + "-" +
-            v8_arch + ".tar.gz",
+            v8_version + "/ngx_wasm_runtime-v8-" + v8_version + "-" + v8_os + "-x86_64.tar.gz",
         ],
-        strip_prefix = "v8-" + v8_version + "-" + v8_os + "-" + v8_arch,
+        strip_prefix = "v8-" + v8_version + "-" + v8_os + "-x86_64",
         build_file_content = """
 filegroup(
     name = "all_srcs",
@@ -69,10 +65,33 @@ filegroup(
 
     maybe(
         http_archive,
-        name = "wasmer",
+        name = "v8-aarch64",
+        urls = [
+            "https://github.com/Kong/ngx_wasm_runtimes/releases/download/v8-" +
+            v8_version + "/ngx_wasm_runtime-v8-" + v8_version + "-" + v8_os + "-aarch64.tar.gz",
+        ],
+        strip_prefix = "v8-" + v8_version + "-" + v8_os + "-aarch64",
+        build_file_content = """
+filegroup(
+    name = "all_srcs",
+    srcs = glob(["include/**", "lib/**"]),
+    visibility = ["//visibility:public"]
+)
+
+filegroup(
+    name = "lib",
+    srcs = glob(["**/*.a"]),
+    visibility = ["//visibility:public"]
+)
+""",
+    )
+
+    maybe(
+        http_archive,
+        name = "wasmer-x86_64",
         urls = [
             "https://github.com/wasmerio/wasmer/releases/download/v" +
-            wasmer_version + "/wasmer-" + wasmer_os + "-" + wasmer_arch + ".tar.gz",
+            wasmer_version + "/wasmer-" + wasmer_os + "-x86_64.tar.gz",
         ],
         build_file_content = """
 filegroup(
@@ -91,12 +110,57 @@ filegroup(
 
     maybe(
         http_archive,
-        name = "wasmtime",
+        name = "wasmer-aarch64",
+        urls = [
+            "https://github.com/wasmerio/wasmer/releases/download/v" +
+            wasmer_version + "/wasmer-" + wasmer_os + "-aarch64.tar.gz",
+        ],
+        build_file_content = """
+filegroup(
+    name = "all_srcs",
+    srcs = glob(["include/**", "lib/**"]),
+    visibility = ["//visibility:public"]
+)
+
+filegroup(
+    name = "lib",
+    srcs = glob(["**/*.so", "**/*.dylib"]),
+    visibility = ["//visibility:public"]
+)
+""",
+    )
+
+    maybe(
+        http_archive,
+        name = "wasmtime-x86_64",
         urls = [
             "https://github.com/bytecodealliance/wasmtime/releases/download/v" +
-            wasmtime_version + "/wasmtime-v" + wasmtime_version + "-" + wasmtime_arch + "-" + wasmtime_os + "-c-api.tar.xz",
+            wasmtime_version + "/wasmtime-v" + wasmtime_version + "-x86_64-" + wasmtime_os + "-c-api.tar.xz",
         ],
-        strip_prefix = "wasmtime-v" + wasmtime_version + "-" + wasmtime_arch + "-" + wasmtime_os + "-c-api",
+        strip_prefix = "wasmtime-v" + wasmtime_version + "-x86_64-" + wasmtime_os + "-c-api",
+        build_file_content = """
+filegroup(
+    name = "all_srcs",
+    srcs = glob(["include/**", "lib/**"]),
+    visibility = ["//visibility:public"]
+)
+
+filegroup(
+    name = "lib",
+    srcs = glob(["**/*.so", "**/*.dylib"]),
+    visibility = ["//visibility:public"]
+)
+""",
+    )
+
+    maybe(
+        http_archive,
+        name = "wasmtime-aarch64",
+        urls = [
+            "https://github.com/bytecodealliance/wasmtime/releases/download/v" +
+            wasmtime_version + "/wasmtime-v" + wasmtime_version + "-aarch64-" + wasmtime_os + "-c-api.tar.xz",
+        ],
+        strip_prefix = "wasmtime-v" + wasmtime_version + "-aarch64-" + wasmtime_os + "-c-api",
         build_file_content = """
 filegroup(
     name = "all_srcs",
