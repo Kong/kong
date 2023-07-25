@@ -596,9 +596,9 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  -- XXX: now flavor "expressions" does not support tcp/tls
-  if flavor ~= "expressions" then
   describe("TLS proxy [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
+    reload_router(flavor)
+
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
         "routes",
@@ -692,7 +692,6 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
-  end   -- if flavor ~= "expressions" then
 
   describe("SSL [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
 

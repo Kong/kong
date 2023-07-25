@@ -1,9 +1,9 @@
 local helpers = require "spec.helpers"
 local ssl_fixtures = require "spec.fixtures.ssl"
+local atc_compat = require "kong.router.compat"
 
 
 local fixtures = {
-  dns_mock = helpers.dns_mock.new(),
   http_mock = {
     upstream_mtls = [[
       server {
@@ -44,14 +44,55 @@ local fixtures = {
 }
 
 
-fixtures.dns_mock:A {
-  name = "example.com",
-  address = "127.0.0.1",
-}
+local function reload_router(flavor)
+  _G.kong = {
+    configuration = {
+      router_flavor = flavor,
+    },
+  }
+
+  helpers.setenv("KONG_ROUTER_FLAVOR", flavor)
+
+  package.loaded["spec.helpers"] = nil
+  package.loaded["kong.global"] = nil
+  package.loaded["kong.cache"] = nil
+  package.loaded["kong.db"] = nil
+  package.loaded["kong.db.schema.entities.routes"] = nil
+  package.loaded["kong.db.schema.entities.routes_subschemas"] = nil
+
+  helpers = require "spec.helpers"
+
+  helpers.unsetenv("KONG_ROUTER_FLAVOR")
+
+  fixtures.dns_mock = helpers.dns_mock.new({ mocks_only = true })
+  fixtures.dns_mock:A {
+    name = "example.com",
+    address = "127.0.0.1",
+  }
+end
 
 
+local function gen_route(flavor, r)
+  if flavor ~= "expressions" then
+    return r
+  end
+
+  r.expression = atc_compat.get_expression(r)
+  r.priority = tonumber(atc_compat._get_priority(r))
+
+  r.hosts = nil
+  r.paths = nil
+  r.snis  = nil
+
+  r.destinations = nil
+
+  return r
+end
+
+
+for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
 for _, strategy in helpers.each_strategy() do
-  describe("overriding upstream TLS parameters for database #" .. strategy, function()
+  describe("overriding upstream TLS parameters for database [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
     local admin_client
     local bp
     local service_mtls, service_tls
@@ -62,6 +103,8 @@ for _, strategy in helpers.each_strategy() do
     local tls_service_mtls, tls_service_tls
     local tls_upstream
     local tls_service_mtls_upstream
+
+    reload_router(flavor)
 
     lazy_setup(function()
       bp = helpers.get_db_utils(strategy, {
@@ -111,23 +154,23 @@ for _, strategy in helpers.each_strategy() do
         cert = ssl_fixtures.cert_ca,
       }))
 
-      assert(bp.routes:insert({
+      assert(bp.routes:insert(gen_route(flavor,{
         service = { id = service_mtls.id, },
         hosts = { "example.com", },
         paths = { "/mtls", },
-      }))
+      })))
 
-      assert(bp.routes:insert({
+      assert(bp.routes:insert(gen_route(flavor,{
         service = { id = service_tls.id, },
         hosts = { "example.com", },
         paths = { "/tls", },
-      }))
+      })))
 
-      assert(bp.routes:insert({
+      assert(bp.routes:insert(gen_route(flavor,{
         service = { id = service_mtls_upstream.id, },
         hosts = { "example.com", },
         paths = { "/mtls-upstream", },
-      }))
+      })))
 
       -- tls
       tls_service_mtls = assert(bp.services:insert({
@@ -155,7 +198,7 @@ for _, strategy in helpers.each_strategy() do
         host = "example.com"
       }))
 
-      assert(bp.routes:insert({
+      assert(bp.routes:insert(gen_route(flavor,{
         service = { id = tls_service_mtls.id, },
         destinations = {
           {
@@ -165,9 +208,9 @@ for _, strategy in helpers.each_strategy() do
         protocols = {
           "tls",
         },
-      }))
+      })))
 
-      assert(bp.routes:insert({
+      assert(bp.routes:insert(gen_route(flavor,{
         service = { id = tls_service_tls.id, },
         destinations = {
           {
@@ -177,9 +220,9 @@ for _, strategy in helpers.each_strategy() do
         protocols = {
           "tls",
         },
-      }))
+      })))
 
-      assert(bp.routes:insert({
+      assert(bp.routes:insert(gen_route(flavor,{
         service = { id = tls_service_mtls_upstream.id, },
         destinations = {
           {
@@ -189,10 +232,11 @@ for _, strategy in helpers.each_strategy() do
         protocols = {
           "tls",
         },
-      }))
+      })))
 
 
       assert(helpers.start_kong({
+        router_flavor = flavor,
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         stream_listen = helpers.get_proxy_ip(false) .. ":19000,"
@@ -760,3 +804,4 @@ for _, strategy in helpers.each_strategy() do
   end
   end)
 end
+end   -- for flavor
