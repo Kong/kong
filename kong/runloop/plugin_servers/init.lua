@@ -277,7 +277,20 @@ end
 --- reset_instance: removes an instance from the table.
 function reset_instance(plugin_name, conf)
   local key = type(conf) == "table" and kong.plugin.get_id() or plugin_name
-  running_instances[key] = nil
+  local current_instance = running_instances[key]
+
+  --
+  -- the same plugin (which acts as a plugin server) is shared among
+  -- instances of the plugin; for example, the same plugin can be applied
+  -- to many routes
+  -- `reset_instance` is called when (but not only) the plugin server died;
+  -- in such case, all associated instances must be removed, not only the current
+  --
+  for k, instance in pairs(running_instances) do
+    if instance.rpc == current_instance.rpc then
+      running_instances[k] = nil
+    end
+  end
 end
 
 
