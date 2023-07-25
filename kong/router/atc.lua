@@ -630,29 +630,42 @@ function _M:select(_, _, _, scheme,
 
   local c = context.new(self.schema)
 
-  for _, field in ipairs(self.fields) do
+  for i = 1, self.fields_n do
+    local field = self.fields[i]
+
     if field == "net.protocol" then
       assert(c:add_value(field, scheme))
+      goto continue
+    end
 
-    elseif field == "tls.sni" then
+    if field == "tls.sni" then
       local res, err = c:add_value(field, sni)
       if not res then
         return nil, err
       end
+      goto continue
+    end
 
-    elseif field == "net.src.ip" then
+    if field == "net.src.ip" then
       assert(c:add_value(field, src_ip))
+      goto continue
+    end
 
-    elseif field == "net.src.port" then
+    if field == "net.src.port" then
       assert(c:add_value(field, src_port))
+      goto continue
+    end
 
-    elseif field == "net.dst.ip" then
+    if field == "net.dst.ip" then
       assert(c:add_value(field, dst_ip))
+      goto continue
+    end
 
-    elseif field == "net.dst.port" then
+    if field == "net.dst.port" then
       assert(c:add_value(field, dst_port))
-
     end -- if
+
+    ::continue::
   end -- for
 
   local matched = self.router:execute(c)
