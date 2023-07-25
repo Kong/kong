@@ -3,6 +3,10 @@ local http = require "resty.http"
 
 local fmt = string.format
 
+
+local DEFAULTS_CONSUMED
+
+
 ---
 -- Fake vault for integration tests.
 local test = {
@@ -30,6 +34,14 @@ local function get_from_shm(secret, version)
   if raw then
     return cjson.decode(raw)
   end
+end
+
+
+local function delete_from_shm(secret)
+  local key = key_for(secret)
+  local shm = assert(ngx.shared[test.SHM_NAME])
+
+  shm:delete(key)
 end
 
 
@@ -67,7 +79,10 @@ function test.get(conf, resource, version)
   local value = secret.value
   local ttl = secret.ttl
 
-  if value == nil then
+  if value == nil and not DEFAULTS_CONSUMED then
+    -- default values to be used only once, during startup.  This is a hacky measure to make the test vault, which
+    -- uses Kong's nginx, work.
+    DEFAULTS_CONSUMED = true
     value = conf.default_value
     ttl = conf.default_value_ttl
   end
@@ -91,6 +106,10 @@ function test.api()
     else
       return kong.response.exit(404, { message = "not found" })
     end
+
+  elseif method == "DELETE" then
+    delete_from_shm(secret)
+    return kong.response.exit(204)
 
   elseif method ~= "PUT" then
     return kong.response.exit(405, { message = "method not allowed" })
@@ -150,6 +169,20 @@ function test.client.put(secret, value, opts)
   assert(res.status == 201, "failed PUT " .. uri .. ": " .. res.status)
 
   return cjson.decode(res.body)
+end
+
+
+function test.client.delete(secret)
+  local client = assert(http.new())
+
+  local uri = fmt("http://127.0.0.1:%d/secret/%s", test.PORT, secret)
+
+  local res, err = client:request_uri(uri, {
+    method = "DELETE",
+  })
+
+  assert(err == nil, "failed DELETE " .. uri .. ": " .. tostring(err))
+  assert(res.status == 204, "failed DELETE " .. uri .. ": " .. res.status)
 end
 
 

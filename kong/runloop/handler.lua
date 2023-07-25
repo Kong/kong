@@ -683,6 +683,7 @@ do
       if plugins_hash ~= CURRENT_PLUGINS_HASH then
         local start = get_now_ms()
 
+        kong.vault.flush()
         plugins_iterator, err = new_plugins_iterator()
         if not plugins_iterator then
           return nil, err
@@ -713,7 +714,6 @@ do
 
       kong.core_cache:purge()
       kong.cache:purge()
-      kong.vault.flush()
 
       if router then
         ROUTER = router
