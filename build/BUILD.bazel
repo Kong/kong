@@ -73,14 +73,23 @@ install_webui_cmd = select({
 })
 
 wasmx_vm_deps = select({
-    "@kong//:wasmx_v8": [
-        "@v8//:lib",
+    "@kong//:wasmx_v8_x86_64": [
+        "@v8-x86_64//:lib",
     ],
-    "@kong//:wasmx_wasmer": [
-        "@wasmer//:lib",
+    "@kong//:wasmx_v8_aarch64": [
+        "@v8-aarch64//:lib",
     ],
-    "@kong//:wasmx_wasmtime": [
-        "@wasmtime//:lib",
+    "@kong//:wasmx_wasmer_x86_64": [
+        "@wasmer-x86_64//:lib",
+    ],
+    "@kong//:wasmx_wasmer_aarch64": [
+        "@wasmer-aarch64//:lib",
+    ],
+    "@kong//:wasmx_wasmtime_x86_64": [
+        "@wasmtime-x86_64//:lib",
+    ],
+    "@kong//:wasmx_wasmtime_aarch64": [
+        "@wasmtime-aarch64//:lib",
     ],
     "//conditions:default": [],
 })

@@ -75,15 +75,6 @@ def _load_vars(ctx):
         content += '"WASMER_OS": "linux",'
         content += '"WASMTIME_OS": "linux",'
 
-    if ctx.os.arch == "amd64" or ctx.os.arch == "x86_64":
-        content += '"V8_ARCH": "x86_64",'
-        content += '"WASMER_ARCH": "amd64",'
-        content += '"WASMTIME_ARCH": "x86_64",'
-    elif ctx.os.arch == "aarch64":
-        content += '"V8_ARCH": "FIXME",'  # no releases available atm
-        content += '"WASMER_ARCH": "aarch64",'
-        content += '"WASMTIME_ARCH": "aarch64",'
-
     ctx.file("BUILD.bazel", "")
     ctx.file("variables.bzl", "KONG_VAR = {\n" + content + "\n}")
 

@@ -27,7 +27,7 @@ build-packages:
 - label: ubuntu-22.04-arm64
   os: vars.RELEASE_RUNS_ON
   package: deb
-  bazel-args: --platforms=//:generic-crossbuild-aarch64 --//:wasmx=false
+  bazel-args: --platforms=//:generic-crossbuild-aarch64
   check-manifest-suite: ubuntu-22.04-arm64
 - label: ubuntu-22.04-fips
   os: vars.RELEASE_RUNS_ON
@@ -50,7 +50,7 @@ build-packages:
   os: vars.RELEASE_RUNS_ON
   image: debian:11
   package: deb
-  bazel-args: --platforms=//:generic-crossbuild-aarch64 --//:wasmx=false
+  bazel-args: --platforms=//:generic-crossbuild-aarch64
   check-manifest-suite: debian-11-arm64
 
 # RHEL
@@ -92,7 +92,6 @@ build-packages:
   package: rpm
   package-type: el9
   check-manifest-suite: el9-arm64
-  bazel-args: --//:wasmx=false
 
 # Amazon Linux
 - label: amazonlinux-2
@@ -107,7 +106,6 @@ build-packages:
   package: rpm
   package-type: aws2
   check-manifest-suite: amazonlinux-2-arm64
-  bazel-args: --//:wasmx=false
 - label: amazonlinux-2023
   os: vars.RELEASE_RUNS_ON
   image: amazonlinux:2023
@@ -120,7 +118,6 @@ build-packages:
   package: rpm
   package-type: aws2023
   check-manifest-suite: amazonlinux-2023-arm64
-  bazel-args: --//:wasmx=false
 
 
 build-images:

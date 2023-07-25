@@ -256,21 +256,39 @@ CONFIGURE_OPTIONS = [
     ],
     "//conditions:default": [],
 }) + select({
-    "@kong//:wasmx_v8": [
-        "--with-cc-opt=\"-I$$EXT_BUILD_ROOT$$/external/v8/include\"",
-        "--with-ld-opt=\"-L$$EXT_BUILD_ROOT$$/external/v8/lib\"",
+    "@kong//:wasmx_v8_x86_64": [
+        "--with-cc-opt=\"-I$$EXT_BUILD_ROOT$$/external/v8-x86_64/include\"",
+        "--with-ld-opt=\"-L$$EXT_BUILD_ROOT$$/external/v8-x86_64/lib\"",
     ],
     "//conditions:default": [],
 }) + select({
-    "@kong//:wasmx_wasmer": [
-        "--with-cc-opt=\"-I$$EXT_BUILD_ROOT$$/external/wasmer/include\"",
-        "--with-ld-opt=\"-L$$EXT_BUILD_ROOT$$/external/wasmer/lib\"",
+    "@kong//:wasmx_v8_aarch64": [
+        "--with-cc-opt=\"-I$$EXT_BUILD_ROOT$$/external/v8-aarch64/include\"",
+        "--with-ld-opt=\"-L$$EXT_BUILD_ROOT$$/external/v8-aarch64/lib\"",
     ],
     "//conditions:default": [],
 }) + select({
-    "@kong//:wasmx_wasmtime": [
-        "--with-cc-opt=\"-I$$EXT_BUILD_ROOT$$/external/wasmtime/include\"",
-        "--with-ld-opt=\"-L$$EXT_BUILD_ROOT$$/external/wasmtime/lib\"",
+    "@kong//:wasmx_wasmer_x86_64": [
+        "--with-cc-opt=\"-I$$EXT_BUILD_ROOT$$/external/wasmer-x86_64/include\"",
+        "--with-ld-opt=\"-L$$EXT_BUILD_ROOT$$/external/wasmer-x86_64/lib\"",
+    ],
+    "//conditions:default": [],
+}) + select({
+    "@kong//:wasmx_wasmer_aarch64": [
+        "--with-cc-opt=\"-I$$EXT_BUILD_ROOT$$/external/wasmer-aarch64/include\"",
+        "--with-ld-opt=\"-L$$EXT_BUILD_ROOT$$/external/wasmer-aarch64/lib\"",
+    ],
+    "//conditions:default": [],
+}) + select({
+    "@kong//:wasmx_wasmtime_x86_64": [
+        "--with-cc-opt=\"-I$$EXT_BUILD_ROOT$$/external/wasmtime-x86_64/include\"",
+        "--with-ld-opt=\"-L$$EXT_BUILD_ROOT$$/external/wasmtime-x86_64/lib\"",
+    ],
+    "//conditions:default": [],
+}) + select({
+    "@kong//:wasmx_wasmtime_aarch64": [
+        "--with-cc-opt=\"-I$$EXT_BUILD_ROOT$$/external/wasmtime-aarch64/include\"",
+        "--with-ld-opt=\"-L$$EXT_BUILD_ROOT$$/external/wasmtime-aarch64/lib\"",
     ],
     "//conditions:default": [],
 })
@@ -281,19 +299,33 @@ wasmx_build_data = select({
     ],
     "//conditions:default": [],
 }) + select({
-    "@kong//:wasmx_v8": [
-        "@v8//:all_srcs",
-        "@openresty//:wasmx_v8_ar",
+    "@kong//:wasmx_v8_x86_64": [
+        "@v8-x86_64//:all_srcs",
     ],
     "//conditions:default": [],
 }) + select({
-    "@kong//:wasmx_wasmer": [
-        "@wasmer//:all_srcs",
+    "@kong//:wasmx_v8_aarch64": [
+        "@v8-aarch64//:all_srcs",
     ],
     "//conditions:default": [],
 }) + select({
-    "@kong//:wasmx_wasmtime": [
-        "@wasmtime//:all_srcs",
+    "@kong//:wasmx_wasmer_x86_64": [
+        "@wasmer-x86_64//:all_srcs",
+    ],
+    "//conditions:default": [],
+}) + select({
+    "@kong//:wasmx_wasmer_aarch64": [
+        "@wasmer-aarch64//:all_srcs",
+    ],
+    "//conditions:default": [],
+}) + select({
+    "@kong//:wasmx_wasmtime_x86_64": [
+        "@wasmtime-x86_64//:all_srcs",
+    ],
+    "//conditions:default": [],
+}) + select({
+    "@kong//:wasmx_wasmtime_aarch64": [
+        "@wasmtime-aarch64//:all_srcs",
     ],
     "//conditions:default": [],
 })
@@ -325,28 +357,51 @@ configure_make(
     configure_in_place = True,
     configure_options = CONFIGURE_OPTIONS,
     env = select({
-        "@kong//:wasmx_v8": {
+        "@kong//:wasmx_v8_x86_64": {
             "NGX_WASM_RUNTIME": "v8",
-            "NGX_WASM_RUNTIME_LIB": "$$EXT_BUILD_ROOT$$/external/v8/lib",
-            "NGX_WASM_RUNTIME_INC": "$$EXT_BUILD_ROOT$$/external/v8/include",
+            "NGX_WASM_RUNTIME_LIB": "$$EXT_BUILD_ROOT$$/external/v8-x86_64/lib",
+            "NGX_WASM_RUNTIME_INC": "$$EXT_BUILD_ROOT$$/external/v8-x86_64/include",
             # https://github.com/Kong/ngx_wasm_module/blob/0f07c712c48d410190ec5e0cc0b34fdfd190387d/t/10-build/003-dynamic_module.t#L43
-            "NGX_WASM_RUNTIME_LD_OPT": "$$EXT_BUILD_ROOT$$/external/v8/lib/libwee8.a -lv8bridge -lstdc++ -lm -ldl -lpthread",
+            "NGX_WASM_RUNTIME_LD_OPT": "$$EXT_BUILD_ROOT$$/external/v8-x86_64/lib/libwee8.a -lv8bridge -lstdc++ -lm -ldl -lpthread",
             # see the above comments and source for this dummy ar script
             "AR": "$(execpath @openresty//:wasmx_v8_ar)",
         },
-        "@kong//:wasmx_wasmer": {
-            "NGX_WASM_RUNTIME": "wasmer",
-            "NGX_WASM_RUNTIME_LIB": "$$EXT_BUILD_ROOT$$/external/wasmer/lib",
-            "NGX_WASM_RUNTIME_INC": "$$EXT_BUILD_ROOT$$/external/wasmer/include",
-            # https://github.com/Kong/ngx_wasm_module/blob/0f07c712c48d410190ec5e0cc0b34fdfd190387d/t/10-build/003-dynamic_module.t#L30
-            "NGX_WASM_RUNTIME_LD_OPT": "$$EXT_BUILD_ROOT$$/external/wasmer/lib/libwasmer.a -lm -ldl -lpthread",
+        "@kong//:wasmx_v8_aarch64": {
+            "NGX_WASM_RUNTIME": "v8",
+            "NGX_WASM_RUNTIME_LIB": "$$EXT_BUILD_ROOT$$/external/v8-aarch64/lib",
+            "NGX_WASM_RUNTIME_INC": "$$EXT_BUILD_ROOT$$/external/v8-aarch64/include",
+            # https://github.com/Kong/ngx_wasm_module/blob/0f07c712c48d410190ec5e0cc0b34fdfd190387d/t/10-build/003-dynamic_module.t#L43
+            "NGX_WASM_RUNTIME_LD_OPT": "$$EXT_BUILD_ROOT$$/external/v8-aarch64/lib/libwee8.a -lv8bridge -lstdc++ -lm -ldl -lpthread",
+            # see the above comments and source for this dummy ar script
+            "AR": "$(execpath @openresty//:wasmx_v8_ar)",
         },
-        "@kong//:wasmx_wasmtime": {
-            "NGX_WASM_RUNTIME": "wasmtime",
-            "NGX_WASM_RUNTIME_LIB": "$$EXT_BUILD_ROOT$$/external/wasmtime/lib",
-            "NGX_WASM_RUNTIME_INC": "$$EXT_BUILD_ROOT$$/external/wasmtime/include",
+        "@kong//:wasmx_wasmer_x86_64": {
+            "NGX_WASM_RUNTIME": "wasmer",
+            "NGX_WASM_RUNTIME_LIB": "$$EXT_BUILD_ROOT$$/external/wasmer-x86_64/lib",
+            "NGX_WASM_RUNTIME_INC": "$$EXT_BUILD_ROOT$$/external/wasmer-x86_64/include",
             # https://github.com/Kong/ngx_wasm_module/blob/0f07c712c48d410190ec5e0cc0b34fdfd190387d/t/10-build/003-dynamic_module.t#L30
-            "NGX_WASM_RUNTIME_LD_OPT": "$$EXT_BUILD_ROOT$$/external/wasmtime/lib/libwasmtime.a -lm -ldl -lpthread",
+            "NGX_WASM_RUNTIME_LD_OPT": "$$EXT_BUILD_ROOT$$/external/wasmer-x86_64/lib/libwasmer.a -lm -ldl -lpthread",
+        },
+        "@kong//:wasmx_wasmer_aarch64": {
+            "NGX_WASM_RUNTIME": "wasmer",
+            "NGX_WASM_RUNTIME_LIB": "$$EXT_BUILD_ROOT$$/external/wasmer-aarch64/lib",
+            "NGX_WASM_RUNTIME_INC": "$$EXT_BUILD_ROOT$$/external/wasmer-aarch64/include",
+            # https://github.com/Kong/ngx_wasm_module/blob/0f07c712c48d410190ec5e0cc0b34fdfd190387d/t/10-build/003-dynamic_module.t#L30
+            "NGX_WASM_RUNTIME_LD_OPT": "$$EXT_BUILD_ROOT$$/external/wasmer-aarch64/lib/libwasmer.a -lm -ldl -lpthread",
+        },
+        "@kong//:wasmx_wasmtime_x86_64": {
+            "NGX_WASM_RUNTIME": "wasmtime",
+            "NGX_WASM_RUNTIME_LIB": "$$EXT_BUILD_ROOT$$/external/wasmtime-x86_64/lib",
+            "NGX_WASM_RUNTIME_INC": "$$EXT_BUILD_ROOT$$/external/wasmtime-x86_64/include",
+            # https://github.com/Kong/ngx_wasm_module/blob/0f07c712c48d410190ec5e0cc0b34fdfd190387d/t/10-build/003-dynamic_module.t#L30
+            "NGX_WASM_RUNTIME_LD_OPT": "$$EXT_BUILD_ROOT$$/external/wasmtime-x86_64/lib/libwasmtime.a -lm -ldl -lpthread",
+        },
+        "@kong//:wasmx_wasmtime_aarch64": {
+            "NGX_WASM_RUNTIME": "wasmtime",
+            "NGX_WASM_RUNTIME_LIB": "$$EXT_BUILD_ROOT$$/external/wasmtime-aarch64/lib",
+            "NGX_WASM_RUNTIME_INC": "$$EXT_BUILD_ROOT$$/external/wasmtime-aarch64/include",
+            # https://github.com/Kong/ngx_wasm_module/blob/0f07c712c48d410190ec5e0cc0b34fdfd190387d/t/10-build/003-dynamic_module.t#L30
+            "NGX_WASM_RUNTIME_LD_OPT": "$$EXT_BUILD_ROOT$$/external/wasmtime-aarch64/lib/libwasmtime.a -lm -ldl -lpthread",
         },
         "//conditions:default": {},
     }),

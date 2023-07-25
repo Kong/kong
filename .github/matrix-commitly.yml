@@ -7,7 +7,7 @@ build-packages:
 - label: ubuntu-22.04-arm64
   os: vars.RELEASE_RUNS_ON
   package: deb
-  bazel-args: --platforms=//:generic-crossbuild-aarch64 --//:wasmx=false
+  bazel-args: --platforms=//:generic-crossbuild-aarch64
   check-manifest-suite: ubuntu-22.04-arm64
 
 build-images:
