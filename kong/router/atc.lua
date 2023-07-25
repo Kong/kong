@@ -560,40 +560,49 @@ function _M:exec(ctx)
                     (sni        or "") .. (headers_key or "")
 
   local match_t = self.cache:get(cache_key)
-  if not match_t then
-    if self.cache_neg:get(cache_key) then
-      route_match_stat(ctx, "neg")
-      return nil
-    end
 
-    local req_scheme = ctx and ctx.scheme or var.scheme
-
-    local err
-    match_t, err = self:select(req_method, req_uri, req_host, req_scheme,
-                          nil, nil, nil, nil,
-                          sni, headers)
-    if not match_t then
-      if err then
-        ngx_log(ngx_ERR, "router returned an error: ", err,
-                         ", 404 Not Found will be returned for the current request")
-      end
-
-      self.cache_neg:set(cache_key, true)
-      return nil
-    end
-
-    self.cache:set(cache_key, match_t)
-
-  else
+  -- pos cache hit
+  if match_t then
     route_match_stat(ctx, "pos")
+
+    -- debug HTTP request header logic
+    add_debug_headers(var, header, match_t)
+
+    return match_t
   end
 
+  -- neg cache hit
+  if self.cache_neg:get(cache_key) then
+    route_match_stat(ctx, "neg")
+    return nil
+  end
+
+  -- cache miss
+  local req_scheme = ctx and ctx.scheme or var.scheme
+
+  local match_t, err = self:select(req_method, req_uri, req_host, req_scheme,
+                                   nil, nil, nil, nil,
+                                   sni, headers)
+
   -- found a match
+  if match_t then
+    self.cache:set(cache_key, match_t)
 
-  -- debug HTTP request header logic
-  add_debug_headers(var, header, match_t)
+    -- debug HTTP request header logic
+    add_debug_headers(var, header, match_t)
 
-  return match_t
+    return match_t
+  end
+
+  -- no match
+  if err then
+    ngx_log(ngx_ERR, "router returned an error: ", err,
+                     ", 404 Not Found will be returned for the current request")
+  end
+
+  self.cache_neg:set(cache_key, true)
+
+  return nil
 end
 
 else  -- is stream subsystem
@@ -724,6 +733,7 @@ function _M:exec(ctx)
     return match_t
   end
 
+  -- no match
   if err then
     ngx_log(ngx_ERR, "router returned an error: ", err)
   end
