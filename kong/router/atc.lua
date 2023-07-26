@@ -475,7 +475,6 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
   local upstream_uri = get_upstream_uri_v0(matched_route, request_postfix, req_uri,
                                            upstream_base)
 
-
   return {
     route           = matched_route,
     service         = service,
