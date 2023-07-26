@@ -64,7 +64,7 @@ jobs:
       with:
         path: |
           ${{ env.BUILD_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+        key: ${{ hashFiles('bin/kong', '.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Check test-helpers doc generation
       run: |
@@ -165,7 +165,7 @@ jobs:
         path: |
           ${{ env.BUILD_ROOT }}
 
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+        key: ${{ hashFiles('bin/kong', '.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Build WASM Test Filters
       uses: ./.github/actions/build-wasm-test-filters
@@ -270,7 +270,7 @@ jobs:
         path: |
           ${{ env.BUILD_ROOT }}
 
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+        key: ${{ hashFiles('bin/kong', '.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Build WASM Test Filters
       uses: ./.github/actions/build-wasm-test-filters
@@ -332,7 +332,7 @@ jobs:
       with:
         path: |
           ${{ env.BUILD_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+        key: ${{ hashFiles('bin/kong', '.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Install Test::Nginx
       run: |
