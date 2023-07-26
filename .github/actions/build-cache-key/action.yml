@@ -1,0 +1,45 @@
+name: Build Cache Key
+
+description: >
+  Generates a cache key suitable for save/restore of Kong builds.
+
+inputs:
+  prefix:
+    description: 'String prefix applied to the build cache key'
+    required: false
+    default: 'build'
+
+outputs:
+  cache-key:
+    description: 'The generated cache key'
+    value: ${{ steps.cache-key.outputs.CACHE_KEY }}
+
+runs:
+  using: composite
+  steps:
+    - name: Generate cache key
+      id: cache-key
+      shell: bash
+      run: |
+        # please keep these sorted
+        FILE_HASHES=(
+          ${{ hashFiles('.bazelignore') }}
+          ${{ hashFiles('.bazelrc') }}
+          ${{ hashFiles('.bazelversion') }}
+          ${{ hashFiles('.github/actions/build-cache-key/**') }}
+          ${{ hashFiles('.github/workflows/build.yml') }}
+          ${{ hashFiles('.requirements') }}
+          ${{ hashFiles('BUILD.bazel') }}
+          ${{ hashFiles('WORKSPACE') }}
+          ${{ hashFiles('bin/kong') }}
+          ${{ hashFiles('bin/kong-health') }}
+          ${{ hashFiles('build/**') }}
+          ${{ hashFiles('kong-*.rockspec') }}
+          ${{ hashFiles('kong.conf.default') }}
+          ${{ hashFiles('kong/**') }}
+        )
+
+        HASH=$(sha256sum - <<< "${FILE_HASHES[*]}" | awk '{print $1}' )
+        CACHE_KEY=${{ inputs.prefix }}::${HASH}
+        echo "cache-key: ${CACHE_KEY}"
+        echo "CACHE_KEY=${CACHE_KEY}" >> $GITHUB_OUTPUT
