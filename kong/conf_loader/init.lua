@@ -618,9 +618,8 @@ local CONF_SENSITIVE = {
 }
 
 
--- List of setttings whose values can't reference vaults
--- because they'll be used before the vaults even ready
-local CONF_NO_VAULT = {
+-- List of confs necessary for compiling injected nginx conf
+local CONF_BASIC = {
   prefix = true,
   vaults = true,
   database = true,
@@ -1743,7 +1742,7 @@ local function load(path, custom_conf, opts)
   -- before executing the main `resty` cmd, i.e. still in `bin/kong`
   if opts.pre_cmd then
     for k, v in pairs(conf) do
-      if not CONF_NO_VAULT[k] then
+      if not CONF_BASIC[k] then
         conf[k] = nil
       end
     end
@@ -1825,9 +1824,6 @@ local function load(path, custom_conf, opts)
       for k, v in pairs(conf) do
         v = parse_value(v, "string")
         if vault.is_reference(v) then
-          if CONF_NO_VAULT[k] then
-            return nil, fmt("the value of %s can't reference vault", k)
-          end
           if refs then
             refs[k] = v
           else
