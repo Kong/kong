@@ -2043,8 +2043,62 @@ describe("Configuration loader", function()
       assert.equal(5000, conf.pg_port)
       assert.equal("{vault://env/pg-port#0}", conf["$refs"].pg_port)
     end)
-    it("fields that can't reference vault", function()
-      local CONF_NO_VAULTS = {
+    it("fields in CONF_BASIC can reference env non-entity vault", function()
+      helpers.setenv("VAULT_TEST", "testvalue")
+      helpers.setenv("VAULT_PG", "postgres")
+      helpers.setenv("VAULT_CERT", "/tmp")
+      helpers.setenv("VAULT_DEPTH", "3")
+      finally(function()
+        helpers.unsetenv("VAULT_TEST")
+        helpers.unsetenv("VAULT_PG")
+        helpers.unsetenv("VAULT_CERT")
+        helpers.unsetenv("VAULT_DEPTH")
+      end)
+      local CONF_BASIC = {
+        prefix = true,
+        -- vaults = true, -- except this one
+        database = true,
+        lmdb_environment_path = true,
+        lmdb_map_size = true,
+        lua_ssl_trusted_certificate = true,
+        lua_ssl_verify_depth = true,
+        lua_ssl_protocols = true,
+        nginx_http_lua_ssl_protocols = true,
+        nginx_stream_lua_ssl_protocols = true,
+        -- vault_env_prefix = true, -- except this one
+      }
+      for k, _ in pairs(CONF_BASIC) do
+        if k == "database" then
+          local conf, err = conf_loader(nil, {
+            [k] = "{vault://env/vault_pg}",
+          })
+          assert.is_nil(err)
+          assert.equal("postgres", conf.database)
+        elseif k == "lua_ssl_trusted_certificate" then
+          local conf, err = conf_loader(nil, {
+            [k] = "{vault://env/vault_cert}",
+          })
+          assert.is_nil(err)
+          assert.equal("table", type(conf.lua_ssl_trusted_certificate))
+          assert.equal("/tmp", conf.lua_ssl_trusted_certificate[1])
+        elseif k == "lua_ssl_verify_depth" then
+          local conf, err = conf_loader(nil, {
+            [k] = "{vault://env/vault_depth}",
+          })
+          assert.is_nil(err)
+          assert.equal(3, conf.lua_ssl_verify_depth)
+        else
+          local conf, err = conf_loader(nil, {
+            [k] = "{vault://env/vault_test}",
+          })
+          assert.is_nil(err)
+          -- may be converted into an absolute path
+          assert.matches(".*testvalue", conf[k])
+        end
+      end
+    end)
+    it("fields in CONF_BASIC will fail to reference vault if vault has other dependency", function()
+      local CONF_BASIC = {
         prefix = true,
         vaults = true,
         database = true,
@@ -2057,22 +2111,32 @@ describe("Configuration loader", function()
         nginx_stream_lua_ssl_protocols = true,
         vault_env_prefix = true,
       }
-      for k, _ in pairs(CONF_NO_VAULTS) do
+      for k, _ in pairs(CONF_BASIC) do
         local conf, err = conf_loader(nil, {
-          [k] = "{vault://env/test}",
+          [k] = "{vault://test-env/test}",
         })
-
-        assert.equal(nil, conf)
-        if k == "lua_ssl_protocols" then
-          assert.matches("the value of .*lua_ssl_protocols can't reference vault", err)
+        -- fail to reference
+        if k == "lua_ssl_trusted_certificate" or k == "database" then
+          assert.is_not_nil(err)
+        elseif k == "lua_ssl_verify_depth" then
+          assert.is_nil(conf[k])
+        elseif k == "vaults" then
+          assert.is_nil(err)
+          assert.equal("table", type(conf.vaults))
+          assert.matches("{vault://test%-env/test}", conf.vaults[1])
+        elseif k == "prefix" then
+          assert.is_nil(err)
+          assert.matches(".*{vault:/test%-env/test}", conf[k])
         else
-          assert.equal("the value of " .. k .. " can't reference vault", err)
+          assert.is_nil(err)
+          -- path may have a prefix added
+          assert.matches(".*{vault://test%-env/test}", conf[k])
         end
       end
     end)
     it("only load a subset of fields when opts.pre_cmd=true", function()
       local FIELDS = {
-        -- CONF_NO_VAULTS
+        -- CONF_BASIC
         prefix = true,
         vaults = true,
         database = true,
