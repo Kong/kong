@@ -48,6 +48,22 @@ local ROTATION_INTERVAL = tonumber(os.getenv("KONG_VAULT_ROTATION_INTERVAL") or 
 local REFERENCE_IDENTIFIER = "reference"
 local DAO_MAX_TTL = constants.DATABASE.DAO_MAX_TTL
 
+
+local BRACE_START = byte("{")
+local BRACE_END = byte("}")
+local COLON = byte(":")
+local SLASH = byte("/")
+
+local function is_reference(reference)
+  return type(reference)      == "string"
+      and byte(reference, 1)   == BRACE_START
+      and byte(reference, -1)  == BRACE_END
+      and byte(reference, 7)   == COLON
+      and byte(reference, 8)   == SLASH
+      and byte(reference, 9)   == SLASH
+      and sub(reference, 2, 6) == "vault"
+end
+
 local function new(self)
   -- Don't put this onto the top level of the file unless you're prepared for a surprise
   local Schema = require "kong.db.schema"
@@ -56,7 +72,7 @@ local function new(self)
   local ROTATION_WAIT = 0
 
   local LRU = lrucache.new(1000)
-  local SHDICT = ngx.shared["kong_secrets"]
+  local SHDICT = ngx.shared.kong_secrets
 
   local KEY_BUFFER = buffer.new(100)
 
@@ -68,11 +84,6 @@ local function new(self)
   local STRATEGIES = {}
   local SCHEMAS = {}
   local CONFIGS = {}
-
-  local BRACE_START = byte("{")
-  local BRACE_END = byte("}")
-  local COLON = byte(":")
-  local SLASH = byte("/")
 
   local BUNDLED_VAULTS = constants.BUNDLED_VAULTS
   local VAULT_NAMES
@@ -375,17 +386,6 @@ local function new(self)
     end
 
     return strategy, schema, vault.config
-  end
-
-
-  local function is_reference(reference)
-    return type(reference)      == "string"
-       and byte(reference, 1)   == BRACE_START
-       and byte(reference, -1)  == BRACE_END
-       and byte(reference, 7)   == COLON
-       and byte(reference, 8)   == SLASH
-       and byte(reference, 9)   == SLASH
-       and sub(reference, 2, 6) == "vault"
   end
 
 
@@ -1240,4 +1240,5 @@ end
 
 return {
   new = new,
+  is_reference = is_reference,
 }
