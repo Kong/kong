@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local cjson  = require "cjson"
 
 for _, strategy in helpers.each_strategy() do
   describe("#stream Proxying [#" .. strategy .. "]", function()
