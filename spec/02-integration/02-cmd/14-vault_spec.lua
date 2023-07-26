@@ -153,8 +153,7 @@ describe("kong vault #" .. strategy, function()
       local ok, stderr, stdout = helpers.kong_exec("vault get test-env/nonexist", {
         prefix = helpers.test_conf.prefix,
       })
-      assert.matches("Error: unable to load value (nonexist) from vault (test-env): not found", stderr, nil, true)
-      assert.matches("[{vault://test-env/nonexist}]", stderr, nil, true)
+      assert.matches("could not get value from external vault", stderr, nil, true)
       assert.is_nil(stdout)
       assert.is_false(ok)
     end)
@@ -163,8 +162,7 @@ describe("kong vault #" .. strategy, function()
       local ok, stderr, stdout = helpers.kong_exec("vault get nonexist/nonexist", {
         prefix = helpers.test_conf.prefix,
       })
-      assert.matches("Error: vault not found (nonexist)", stderr, nil, true)
-      assert.matches("[{vault://nonexist/nonexist}]", stderr, nil, true)
+      assert.matches("could not find vault (nonexist)", stderr, nil, true)
       assert.is_nil(stdout)
       assert.is_false(ok)
     end)
