@@ -184,6 +184,7 @@ local constants = {
     "kong_cluster_events",
     "kong_healthchecks",
     "kong_rate_limiting_counters",
+    "kong_secrets",
   },
   DATABASE = {
     POSTGRES = {
