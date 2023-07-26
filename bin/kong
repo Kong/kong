@@ -3,6 +3,8 @@
 setmetatable(_G, nil)
 pcall(require, "luarocks.loader")
 package.path = (os.getenv("KONG_LUA_PATH_OVERRIDE") or "") .. "./?.lua;./?/init.lua;" .. package.path
+require("kong.globalpatches")({ cli = true })
+math.randomseed() -- Generate PRNG seed
 
 local pl_app = require "pl.lapp"
 local pl_utils = require "pl.utils"
