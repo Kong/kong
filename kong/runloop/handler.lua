@@ -1141,9 +1141,6 @@ return {
                        upstream_url_t.port,
                        service, route)
       var.upstream_host = upstream_url_t.host
-      if match_t.upstream_host then
-        var.upstream_host = match_t.upstream_host
-      end
     end,
     after = function(ctx)
       local upstream_scheme = var.upstream_scheme

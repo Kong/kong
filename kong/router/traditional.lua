@@ -1300,10 +1300,6 @@ local function find_match(ctx)
           end
         end
 
-        if matched_route.preserve_host and upstream_host == nil then
-          upstream_host = matches.sni
-        end
-
         return {
           route           = matched_route.route,
           service         = matched_route.service,
