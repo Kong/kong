@@ -656,24 +656,6 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
     )
   end
 
-  if kong_config.declarative_config_encryption_mode ~= "off" then
-    local key_path = kong_config.lmdb_encryption_key
-    if not pl_path.exists(key_path) then
-      log("generating new lmdb_encryption_key, old LMDB environment will be deleted")
-      local ok, err = pl_file.write(key_path, openssl_rand.bytes(32))
-      if not ok then
-        return nil, "error writing lmdb_encryption_key:" .. err
-      end
-
-      if pl_path.exists(kong_config.lmdb_environment_path) then
-        local ok, err = pl_dir.rmtree(kong_config.lmdb_environment_path)
-        if not ok then
-          return nil, "error deleting old LMDB environment: " .. err
-        end
-      end
-    end
-  end
-
   -- check ulimit
   local ulimit, err = get_ulimit()
   if not ulimit then return nil, err

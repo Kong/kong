@@ -47,6 +47,7 @@
 * The Redis strategy of Rate Limiting catches strategy connection failure. [#4810](https://github.com/Kong/kong-ee/pull/4810)
 * Introduces a new parameter `cascade` to support workspace cascade delete. [FTI-4731](https://konghq.atlassian.net/browse/FTI-4731)
 * Plugins can now be scoped to `Consumer Groups`. [KAG-666](https://konghq.atlassian.net/browse/KAG-666)
+* Remove option `declarative_config_encryption_mode` in kong.conf and disable LMDB encryption. [FTI-5068](https://konghq.atlassian.net/browse/FTI-5068)
 
 ### Fixes
 

@@ -1464,10 +1464,6 @@
 
 #declarative_config_string =    # The declarative configuration as a string
 
-#declarative_config_encryption_mode = off  # Set encryption of the declarative config mapped file on filesystem.
-                                           # `aes-256-gcm` = Use AES-256-GCM to encrypt
-                                           # `chacha20-poly1305` = Use chacha20-poly1305 to encrypt
-                                           # `off` = does not encrypt
 #lmdb_environment_path = dbless.lmdb  # Directory where the LMDB database files used by
                                       # DB-less and Hybrid mode to store Kong
                                       # configurations reside.
