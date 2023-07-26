@@ -1,6 +1,6 @@
 local helpers = require "spec.helpers"
 
-for _, strategy in helpers.each_strategy() do
+for _, strategy in helpers.each_strategy({"postgres"}) do
   describe("#stream Proxying [#" .. strategy .. "]", function()
     local bp
     local admin_client
@@ -70,7 +70,6 @@ for _, strategy in helpers.each_strategy() do
       assert(tcp:sslhandshake(nil, "ssl-hello.com", false))
       assert(tcp:send("get_sni\n"))
       local body = assert(tcp:receive("*a"))
-      ngx.log(ngx.ERR, body)
       assert.equal("nil\n", body)
       tcp:close()
     end)
