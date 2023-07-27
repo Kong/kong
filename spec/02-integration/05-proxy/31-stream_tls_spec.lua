@@ -31,6 +31,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       })
 
       bp.routes:insert {
+        name = "routes_stream",
         destinations = {
           {
             port = 19443,
@@ -74,7 +75,47 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       tcp:close()
     end)
 
+    it("tls set preserve_host", function()
+      local res = assert(admin_client:send {
+        method  = "PATCH",
+        path    = "/routes/routes_stream",
+        body    = {
+          preserve_host = true,
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+      assert.res_status(200, res)
+      local opt = {
+        stream_enabled = true,
+        stream_port = 19003
+      }
+      helpers.wait_for_all_config_update(opt)
+
+      local tcp = ngx.socket.tcp()
+      assert(tcp:connect(helpers.get_proxy_ip(true), 19443))
+      assert(tcp:sslhandshake(nil, "ssl-hello.com", false))
+      assert(tcp:send("get_sni\n"))
+      local body = assert(tcp:receive("*a"))
+      assert.equal("ssl-hello.com\n", body)
+      tcp:close()
+    end)
+    
     it("tls set host_header", function()
+      -- clear preserve_host
+      local res = assert(admin_client:send {
+        method  = "PATCH",
+        path    = "/routes/routes_stream",
+        body    = {
+          preserve_host = false,
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+      assert.res_status(200, res)
+
       local res = assert(admin_client:send {
         method  = "PATCH",
         path    = "/upstreams/upstream_srv",
