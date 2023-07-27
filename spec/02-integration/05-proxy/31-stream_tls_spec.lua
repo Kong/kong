@@ -116,6 +116,16 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       })
       assert.res_status(200, res)
 
+      helpers.wait_for_all_config_update(opt)
+
+      local tcp = ngx.socket.tcp()
+      assert(tcp:connect(helpers.get_proxy_ip(true), 19443))
+      assert(tcp:sslhandshake(nil, "ssl-hello.com", false))
+      assert(tcp:send("get_sni\n"))
+      local body = assert(tcp:receive("*a"))
+      assert.equal("nil\n", body)
+      tcp:close()
+
       local res = assert(admin_client:send {
         method  = "PATCH",
         path    = "/upstreams/upstream_srv",
