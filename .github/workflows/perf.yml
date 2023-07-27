@@ -132,9 +132,11 @@ jobs:
 
     - name: Choose perf suites
       id: choose_perf
+      env: 
+           COMMENT_BODY: ${{ github.event.comment.body }}
       run: |
-        suites=$(echo "${{ github.event.comment.body }}" | awk '{print $1}')
-        tags=$(echo "${{ github.event.comment.body }}" | awk '{print $2}')
+        suites=$(echo "$COMMENT_BODY" | awk '{print $1}')
+        tags=$(echo "$COMMENT_BODY" | awk '{print $2}')
 
         if [[ $suite == "/flamegraph" ]]; then
           suites="02-flamegraph"
