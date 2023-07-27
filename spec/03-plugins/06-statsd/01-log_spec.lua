@@ -892,18 +892,17 @@ for _, strategy in helpers.each_strategy() do
     describe("metrics", function()
       before_each(function()
         -- it's important to restart kong between each test
-        -- to prevent flaky tests caused by periodic
+        -- to prevent flaky tests caused by periodic 
         -- sending of metrics by statsd.
         if proxy_client then
           proxy_client:close()
         end
-
+  
         assert(helpers.restart_kong({
           database   = strategy,
-          vitals = "on",
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
-
+  
         proxy_client = helpers.proxy_client()
         proxy_client_grpc = helpers.proxy_client_grpc()
         shdict_count = #get_shdicts()
@@ -1510,7 +1509,7 @@ for _, strategy in helpers.each_strategy() do
         local ok, res, err = thread:join()
         assert(ok, res)
         assert(res, err)
-        assert.contains("kong.service.statsd17.workspace." ..
+        assert.contains("kong.service.statsd17.workspace." .. 
           workspace_name_pattern .. ".status.200:1|c", res, true)
       end)
 
@@ -1717,7 +1716,6 @@ for _, strategy in helpers.each_strategy() do
         --]]
         assert(helpers.restart_kong({
           database   = strategy,
-          vitals = "on",
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
@@ -1755,7 +1753,6 @@ for _, strategy in helpers.each_strategy() do
         --]]
         assert(helpers.restart_kong({
           database   = strategy,
-          vitals = "on",
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
@@ -1792,7 +1789,6 @@ for _, strategy in helpers.each_strategy() do
         --]]
         assert(helpers.restart_kong({
           database   = strategy,
-          vitals = "on",
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
@@ -1829,7 +1825,6 @@ for _, strategy in helpers.each_strategy() do
         --]]
         assert(helpers.restart_kong({
           database   = strategy,
-          vitals = "on",
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
@@ -1866,7 +1861,6 @@ for _, strategy in helpers.each_strategy() do
         --]]
         assert(helpers.restart_kong({
           database   = strategy,
-          vitals = "on",
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
@@ -1922,7 +1916,6 @@ for _, strategy in helpers.each_strategy() do
 
         assert(helpers.restart_kong({
           database   = strategy,
-          vitals = "on",
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
@@ -1955,7 +1948,6 @@ for _, strategy in helpers.each_strategy() do
 
         assert(helpers.restart_kong({
           database   = strategy,
-          vitals = "on",
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
@@ -1988,7 +1980,6 @@ for _, strategy in helpers.each_strategy() do
 
         assert(helpers.restart_kong({
           database   = strategy,
-          vitals = "on",
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
@@ -2021,7 +2012,6 @@ for _, strategy in helpers.each_strategy() do
 
         assert(helpers.restart_kong({
           database   = strategy,
-          vitals = "on",
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
@@ -2054,7 +2044,6 @@ for _, strategy in helpers.each_strategy() do
 
         assert(helpers.restart_kong({
           database   = strategy,
-          vitals = "on",
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
@@ -2084,12 +2073,12 @@ for _, strategy in helpers.each_strategy() do
 
     describe("metrics #grpc", function()
       it("logs over UDP with default metrics", function()
-
+        
         assert(helpers.restart_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
-
+  
         shdict_count = #get_shdicts()
 
         local metrics_count = expected_metrics_count(8)
@@ -2344,7 +2333,6 @@ for _, strategy in helpers.each_strategy() do
       }
       assert(helpers.start_kong({
         database   = strategy,
-        vitals = "on",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
 

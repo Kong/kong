@@ -2252,7 +2252,7 @@
 # VITALS
 #------------------------------------------------------------------------------
 
-#vitals = off                    # When enabled, Kong will store and report
+#vitals = on                     # When enabled, Kong will store and report
                                  # metrics about its performance.
                                  #
                                  # When running Kong in a multi-node setup,

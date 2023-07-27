@@ -19,8 +19,7 @@ local openssl_version = require "resty.openssl.version"
 local openssl_x509 = require "resty.openssl.x509"
 local openssl_pkey = require "resty.openssl.pkey"
 local url = require "socket.url"
-local deprecation = require("kong.deprecation")
-
+local deprecation = require "kong.deprecation"
 
 local re_match = ngx.re.match
 local concat = table.concat
@@ -878,13 +877,6 @@ local function validate(conf, errors)
     end
 
     validate_portal_cors_origins(conf, errors)
-  end
-
-  if conf.vitals then
-    deprecation("vitals is deprecated and will be removed in a future version, " ..
-      "please use Konnect SaaS(https://konghq.com/products/kong-konnect) or a plugin " ..
-      "like statsd or prometheus for analytics and observability",
-      { after = "3.4.0.0" })
   end
 
   validate_vitals_tsdb(conf, errors)

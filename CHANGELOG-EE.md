@@ -10,9 +10,6 @@
 
 ### Breaking Changes
 
-- :warning: Vitals is deprecated and disabled by default
-  [KAG-1656](https://konghq.atlassian.net/browse/KAG-1656)
-  [#5738](https://github.com/Kong/kong-ee/pull/5738)
 - Ubuntu 18.04 artifacts are no longer supported as it's EOL
 - AmazonLinux 2022 artifacts are renamed to AmazonLinux 2023 according to AWS's decision
 
