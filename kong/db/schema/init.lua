@@ -11,7 +11,7 @@ local utils        = require "kong.tools.utils"
 local cjson        = require "cjson"
 local new_tab      = require "table.new"
 local nkeys        = require "table.nkeys"
-local is_reference = require "kong.pdk.vault".new().is_reference
+local is_reference = require "kong.pdk.vault".is_reference
 
 
 local setmetatable = setmetatable

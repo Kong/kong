@@ -97,6 +97,9 @@
   [#11082](https://github.com/Kong/kong/pull/11082)
 - Fix an issue where the router of flavor `expressions` can not configure https redirection.
   [#11166](https://github.com/Kong/kong/pull/11166)
+- Make `kong vault get` CLI command work in dbless mode by injecting the necessary directives into the kong cli nginx.conf.
+  [#11127](https://github.com/Kong/kong/pull/11127)
+  [#11291](https://github.com/Kong/kong/pull/11291)
 
 #### Admin API
 

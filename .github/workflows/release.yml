@@ -206,7 +206,7 @@ jobs:
       with:
         path: |
           bazel-bin/pkg
-        key: ${{ matrix.label }}-build-${{ hashFiles('.requirements', 'plugins-ee/**/*.lua', 'kong/**/*.lua', 'distribution/*.sh', 'distribution/*.lua', '**/*.rockspec', '**/*.bzl', '**/*.bazel') }}
+        key: ${{ matrix.label }}-build-${{ hashFiles('bin/kong', '.requirements', 'plugins-ee/**/*.lua', 'kong/**/*.lua', 'distribution/*.sh', 'distribution/*.lua', '**/*.rockspec', '**/*.bzl', '**/*.bazel') }}
 
     - name: Set .requirements into environment variables
       run: |

@@ -8,13 +8,10 @@
 local helpers = require "spec.helpers"
 
 
-describe("kong vault", function()
+for _, strategy in helpers.all_strategies() do
+describe("kong vault #" .. strategy, function()
   lazy_setup(function()
     helpers.get_db_utils(nil, {}) -- runs migrations
-  end)
-
-  after_each(function()
-    helpers.kill_all()
   end)
 
   lazy_teardown(function()
@@ -22,28 +19,36 @@ describe("kong vault", function()
   end)
 
   it("vault help", function()
-    local ok, stderr, stdout = helpers.kong_exec("vault --help")
+    local ok, stderr, stdout = helpers.kong_exec("vault --help", {
+      prefix = helpers.test_conf.prefix,
+    })
     assert.matches("Usage: kong vault COMMAND [OPTIONS]", stderr, nil, true)
     assert.is_nil(stdout)
     assert.is_false(ok)
   end)
 
   it("vault get without params", function()
-    local ok, stderr, stdout = helpers.kong_exec("vault get")
+    local ok, stderr, stdout = helpers.kong_exec("vault get", {
+      prefix = helpers.test_conf.prefix,
+    })
     assert.matches("Error: the 'get' command needs a <reference> argument", stderr)
     assert.is_nil(stdout)
     assert.is_false(ok)
   end)
 
   it("vault get with non-existing vault", function()
-    local ok, stderr, stdout = helpers.kong_exec("vault get none/foo")
+    local ok, stderr, stdout = helpers.kong_exec("vault get none/foo", {
+      prefix = helpers.test_conf.prefix,
+    })
     assert.matches("Error: could not find vault (none)", stderr, nil, true)
     assert.is_nil(stdout)
     assert.is_false(ok)
   end)
 
   it("vault get with non-existing key", function()
-    local ok, stderr, stdout = helpers.kong_exec("vault get env/none")
+    local ok, stderr, stdout = helpers.kong_exec("vault get env/none", {
+      prefix = helpers.test_conf.prefix,
+    })
     assert.matches("could not get value from external vault", stderr, nil, true)
     assert.is_nil(stdout)
     assert.is_false(ok)
@@ -101,56 +106,73 @@ describe("kong vault", function()
     end)
   end)
 
-  for _, strategy in helpers.each_strategy({ "postgres"}) do
-    describe("[env] instantiated #" .. strategy, function()
-      local admin_client
-      lazy_setup(function()
-        helpers.get_db_utils(strategy, {
-          "vaults"
-        })
+  describe("[env] instantiated #" .. strategy, function()
+    local db, _, yaml_file
+    lazy_setup(function()
+      _, db = helpers.get_db_utils(strategy, {
+        "vaults"
+      })
 
-        assert(helpers.start_kong({
-          database   = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
+      db.vaults:insert {
+        prefix = "test-env",
+        name = "env",
+        config = {
+          prefix = "SECRETS_",
+        }
+      }
 
-        admin_client = helpers.admin_client()
-        local res = admin_client:put("/vaults/test-env", {
-          headers = {
-            ["Content-Type"] = "application/json"
-          },
-          body = {
-            name = "env",
-            config = {
-              prefix = "SECRETS_"
-            },
-          }
-        })
+      yaml_file = helpers.make_yaml_file([[
+        _format_version: "3.0"
+        vaults:
+        - config:
+            prefix: SECRETS_
+          name: env
+          prefix: test-env
+      ]])
 
-        assert.res_status(200, res)
-      end)
-
-      lazy_teardown(function()
-        if admin_client then
-          admin_client:close()
-        end
-
-        helpers.stop_kong()
-      end)
-
-      it("vault get env", function()
-        finally(function()
-          helpers.unsetenv("SECRETS_TEST")
-        end)
-        helpers.setenv("SECRETS_TEST", "testvalue")
-        ngx.sleep(3)
-        local ok, stderr, stdout = helpers.kong_exec("vault get test-env/test", {
-          prefix = helpers.test_conf.prefix,
-        })
-        assert.equal("", stderr)
-        assert.matches("testvalue", stdout)
-        assert.is_true(ok)
-      end)
+      assert(helpers.start_kong({
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        declarative_config = yaml_file,
+      }))
     end)
-  end
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("vault get env", function()
+      finally(function()
+        helpers.unsetenv("SECRETS_TEST")
+      end)
+      helpers.setenv("SECRETS_TEST", "testvalue")
+      ngx.sleep(3)
+
+      local ok, stderr, stdout = helpers.kong_exec("vault get test-env/test", {
+        prefix = helpers.test_conf.prefix,
+      })
+      assert.equal("", stderr)
+      assert.matches("testvalue", stdout)
+      assert.is_true(ok)
+    end)
+
+    it("vault get non-existing env", function()
+      local ok, stderr, stdout = helpers.kong_exec("vault get test-env/nonexist", {
+        prefix = helpers.test_conf.prefix,
+      })
+      assert.matches("could not get value from external vault", stderr, nil, true)
+      assert.is_nil(stdout)
+      assert.is_false(ok)
+    end)
+
+    it("vault get non-existing vault", function()
+      local ok, stderr, stdout = helpers.kong_exec("vault get nonexist/nonexist", {
+        prefix = helpers.test_conf.prefix,
+      })
+      assert.matches("could not find vault (nonexist)", stderr, nil, true)
+      assert.is_nil(stdout)
+      assert.is_false(ok)
+    end)
+  end)
 end)
+end

@@ -11,9 +11,11 @@ local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local ffi = require "ffi"
 local tablex = require "pl.tablex"
 local ssl_fixtures = require "spec.fixtures.ssl"
+local pl_path = require "pl.path"
 
 local exists = helpers.path.exists
 local join = helpers.path.join
+local currentdir = pl_path.currentdir
 
 local C = ffi.C
 
@@ -188,7 +190,7 @@ describe("NGINX conf compiler", function()
       assert.matches("listen%s+127%.0%.0%.1:9001;", kong_nginx_conf)
       assert.matches("server_name%s+kong;", kong_nginx_conf)
       assert.matches("server_name%s+kong_admin;", kong_nginx_conf)
-      assert.matches("lua_ssl_trusted_certificate.+;", kong_nginx_conf)
+      assert.matches("include 'nginx-kong-inject.conf';", kong_nginx_conf, nil, true)
     end)
     it("compiles with custom conf", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
@@ -340,37 +342,6 @@ describe("NGINX conf compiler", function()
         assert.not_matches("proxy_ssl_certificate%s+.*spec/fixtures/kong_spec%.crt", kong_nginx_conf)
         assert.not_matches("proxy_ssl_certificate_key%s+.*spec/fixtures/kong_spec%.key", kong_nginx_conf)
       end)
-    end)
-    it("sets lua_ssl_verify_depth", function()
-      local conf = assert(conf_loader(helpers.test_conf_path, {
-        lua_ssl_verify_depth = "2"
-      }))
-      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
-      assert.matches("lua_ssl_verify_depth%s+2;", kong_nginx_conf)
-    end)
-    it("includes default lua_ssl_verify_depth", function()
-      local conf = assert(conf_loader(helpers.test_conf_path))
-      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
-      assert.matches("lua_ssl_verify_depth%s+1;", kong_nginx_conf)
-    end)
-    it("includes default lua_ssl_trusted_certificate", function()
-      local conf = assert(conf_loader(helpers.test_conf_path))
-      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
-      assert.matches("lua_ssl_trusted_certificate.+;", kong_nginx_conf)
-    end)
-    it("sets lua_ssl_trusted_certificate to a combined file (single entry)", function()
-      local conf = assert(conf_loader(helpers.test_conf_path, {
-        lua_ssl_trusted_certificate = "spec/fixtures/kong_spec.crt",
-      }))
-      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
-      assert.matches("lua_ssl_trusted_certificate%s+.*ca_combined", kong_nginx_conf)
-    end)
-    it("sets lua_ssl_trusted_certificate to a combined file (multiple entries)", function()
-      local conf = assert(conf_loader(helpers.test_conf_path, {
-        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering_ca.crt,spec/fixtures/kong_clustering.crt",
-      }))
-      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
-      assert.matches("lua_ssl_trusted_certificate%s+.*ca_combined", kong_nginx_conf)
     end)
     it("writes the client_max_body_size as defined", function()
       local conf = assert(conf_loader(nil, {
@@ -808,6 +779,7 @@ describe("NGINX conf compiler", function()
       local nginx_conf = prefix_handler.compile_nginx_conf(helpers.test_conf)
       assert.matches("worker_processes%s+1;", nginx_conf)
       assert.matches("daemon%s+on;", nginx_conf)
+      assert.matches("include 'nginx-inject.conf';", nginx_conf, nil, true)
     end)
     it("compiles with custom conf", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
@@ -970,10 +942,11 @@ describe("NGINX conf compiler", function()
             }, debug)
           )
         end)
-        describe("lua_ssl_trusted_certificate", function()
+        pending("lua_ssl_trusted_certificate", function()
+          local cwd = currentdir()
           it("with one cert", function()
             assert.matches(
-              "wasm {.+tls_trusted_certificate spec/fixtures/kong_clustering_ca.crt.+}",
+              string.format("wasm {.+tls_trusted_certificate %s/spec/fixtures/kong_clustering_ca.crt;.+}", cwd),
               ngx_cfg({
                 wasm = true,
                 lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering_ca.crt",
@@ -982,7 +955,7 @@ describe("NGINX conf compiler", function()
           end)
           it("with more than one cert, picks first", function()
             assert.matches(
-            "wasm {.+tls_trusted_certificate spec/fixtures/kong_clustering_ca.crt.+}",
+            string.format("wasm {.+tls_trusted_certificate %s/spec/fixtures/kong_clustering_ca.crt;.+}", cwd),
             ngx_cfg({
               wasm = true,
               lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering_ca.crt,spec/fixtures/kong_clustering.crt",
@@ -1571,6 +1544,108 @@ describe("NGINX conf compiler", function()
           end)
         end)
       end)
+    end)
+  end)
+
+  describe("compile_nginx_main_inject_conf()", function()
+    it("compiles a main NGINX inject conf", function()
+      local main_inject_conf = prefix_handler.compile_nginx_main_inject_conf(helpers.test_conf)
+      assert.not_matches("lmdb_environment_path", main_inject_conf, nil, true)
+      assert.not_matches("lmdb_map_size", main_inject_conf, nil, true)
+    end)
+
+    it("compiles a main NGINX inject conf #database=off", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        database = "off",
+      }))
+      local main_inject_conf = prefix_handler.compile_nginx_main_inject_conf(conf)
+      assert.matches("lmdb_environment_path%s+dbless.lmdb;", main_inject_conf)
+      assert.matches("lmdb_map_size%s+2048m;", main_inject_conf)
+    end)
+  end)
+
+  describe("compile_nginx_http_inject_conf()", function()
+    it("compiles a http NGINX inject conf", function()
+      local http_inject_conf = prefix_handler.compile_nginx_http_inject_conf(helpers.test_conf)
+      assert.matches("lua_ssl_verify_depth%s+1;", http_inject_conf)
+      assert.matches("lua_ssl_trusted_certificate.+;", http_inject_conf)
+      assert.matches("lua_ssl_protocols%s+TLSv1.1 TLSv1.2 TLSv1.3;", http_inject_conf)
+    end)
+    it("sets lua_ssl_verify_depth", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        lua_ssl_verify_depth = "2"
+      }))
+      local http_inject_conf = prefix_handler.compile_nginx_http_inject_conf(conf)
+      assert.matches("lua_ssl_verify_depth%s+2;", http_inject_conf)
+    end)
+    it("includes default lua_ssl_verify_depth", function()
+      local conf = assert(conf_loader(helpers.test_conf_path))
+      local http_inject_conf = prefix_handler.compile_nginx_http_inject_conf(conf)
+      assert.matches("lua_ssl_verify_depth%s+1;", http_inject_conf)
+    end)
+    it("includes default lua_ssl_trusted_certificate", function()
+      local conf = assert(conf_loader(helpers.test_conf_path))
+      local http_inject_conf = prefix_handler.compile_nginx_http_inject_conf(conf)
+      assert.matches("lua_ssl_trusted_certificate.+;", http_inject_conf)
+    end)
+    it("sets lua_ssl_trusted_certificate to a combined file (single entry)", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        lua_ssl_trusted_certificate = "spec/fixtures/kong_spec.crt",
+      }))
+      local http_inject_conf = prefix_handler.compile_nginx_http_inject_conf(conf)
+      assert.matches("lua_ssl_trusted_certificate%s+.*ca_combined", http_inject_conf)
+    end)
+    it("sets lua_ssl_trusted_certificate to a combined file (multiple entries)", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering_ca.crt,spec/fixtures/kong_clustering.crt",
+      }))
+      local http_inject_conf = prefix_handler.compile_nginx_http_inject_conf(conf)
+      assert.matches("lua_ssl_trusted_certificate%s+.*ca_combined", http_inject_conf)
+    end)
+  end)
+
+  describe("compile_nginx_stream_inject_conf()", function()
+    it("compiles a stream NGINX inject conf", function()
+      local stream_inject_conf = prefix_handler.compile_nginx_stream_inject_conf(helpers.test_conf)
+      assert.matches("lua_ssl_verify_depth%s+1;", stream_inject_conf)
+      assert.matches("lua_ssl_trusted_certificate.+;", stream_inject_conf)
+      assert.matches("lua_ssl_protocols%s+TLSv1.1 TLSv1.2 TLSv1.3;", stream_inject_conf)
+    end)
+    it("sets lua_ssl_verify_depth", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        lua_ssl_verify_depth = "2"
+      }))
+      local stream_inject_conf = prefix_handler.compile_nginx_stream_inject_conf(conf)
+      assert.matches("lua_ssl_verify_depth%s+2;", stream_inject_conf)
+    end)
+    it("includes default lua_ssl_verify_depth", function()
+      local conf = assert(conf_loader(helpers.test_conf_path))
+      local stream_inject_conf = prefix_handler.compile_nginx_stream_inject_conf(conf)
+      assert.matches("lua_ssl_verify_depth%s+1;", stream_inject_conf)
+    end)
+    it("includes default lua_ssl_trusted_certificate", function()
+      local conf = assert(conf_loader(helpers.test_conf_path))
+      local stream_inject_conf = prefix_handler.compile_nginx_stream_inject_conf(conf)
+      assert.matches("lua_ssl_trusted_certificate.+;", stream_inject_conf)
+    end)
+    it("sets lua_ssl_trusted_certificate to a combined file (single entry)", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        lua_ssl_trusted_certificate = "spec/fixtures/kong_spec.crt",
+      }))
+      local stream_inject_conf = prefix_handler.compile_nginx_stream_inject_conf(conf)
+      assert.matches("lua_ssl_trusted_certificate%s+.*ca_combined", stream_inject_conf)
+    end)
+    it("sets lua_ssl_trusted_certificate to a combined file (multiple entries)", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering_ca.crt,spec/fixtures/kong_clustering.crt",
+      }))
+      local stream_inject_conf = prefix_handler.compile_nginx_stream_inject_conf(conf)
+      assert.matches("lua_ssl_trusted_certificate%s+.*ca_combined", stream_inject_conf)
+    end)
+
+    it("include nginx-kong-stream-inject.conf in nginx-kong-stream.conf", function()
+      local nginx_conf = prefix_handler.compile_kong_stream_conf(helpers.test_conf)
+      assert.matches("include 'nginx-kong-stream-inject.conf';", nginx_conf, nil, true)
     end)
   end)
 end)

@@ -21,11 +21,7 @@ $(el.name) $(el.value);
 env KONG_LICENSE_DATA;
 env KONG_LICENSE_PATH;
 
-> if database == "off" then
-lmdb_environment_path ${{LMDB_ENVIRONMENT_PATH}};
-lmdb_map_size         ${{LMDB_MAP_SIZE}};
-
-> end
+include 'nginx-inject.conf';
 
 events {
     # injected nginx_events_* directives

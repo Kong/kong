@@ -101,6 +101,7 @@ function build_containers() {
     docker exec -w /kong $OLD_CONTAINER make dev CRYPTO_DIR=/usr/local/kong
     # Kong version >= 3.3 moved non Bazel-built dev setup to make dev-legacy
     docker exec -w /kong $NEW_CONTAINER make dev-legacy CRYPTO_DIR=/usr/local/kong
+    docker exec ${NEW_CONTAINER} ln -sf /kong/bin/kong /usr/local/bin/kong
 }
 
 function initialize_test_list() {
