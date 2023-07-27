@@ -93,6 +93,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         timeout = 60,
       }
       helpers.wait_for_all_config_update(opt)
+      ngx.sleep(10)
 
       local tcp = ngx.socket.tcp()
       assert(tcp:connect(helpers.get_proxy_ip(true), 19443))
