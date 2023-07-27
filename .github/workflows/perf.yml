@@ -29,17 +29,25 @@ jobs:
         (startsWith(github.event.comment.body, '/perf') || startsWith(github.event.comment.body, '/flamegraph'))
       )
 
+    outputs:
+      cache-key: ${{ steps.cache-key.outputs.cache-key }}
+
     steps:
     - name: Checkout Kong source code
       uses: actions/checkout@v3
+
+    - name: Generate cache key
+      id: cache-key
+      uses: ./.github/actions/build-cache-key
+      with:
+        prefix: perf
 
     - name: Lookup build cache
       id: cache-deps
       uses: actions/cache@v3
       with:
-        path: |
-          ${{ env.BUILD_ROOT }}
-        key: perf-${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+        path: ${{ env.BUILD_ROOT }}
+        key: ${{ steps.cache-key.outputs.cache-key }}
 
     - name: Install packages
       if: steps.cache-deps.outputs.cache-hit != 'true'
@@ -71,8 +79,6 @@ jobs:
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
         make install-dev-rocks
-
-  # the above should be same as build_and_test.yml expect that perf.yml is used in cache_key
 
   perf:
     name: RPS, latency and flamegraphs
@@ -116,9 +122,8 @@ jobs:
       if: env.GHA_CACHE == 'true'
       uses: actions/cache@v3
       with:
-        path: |
-          ${{ env.BUILD_ROOT }}
-        key: perf-${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+        path: ${{ env.BUILD_ROOT }}
+        key: ${{ needs.build-packages.outputs.cache-key }}
 
     - name: Install performance test Dependencies
       run: |
