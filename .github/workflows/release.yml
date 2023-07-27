@@ -433,11 +433,11 @@ jobs:
     name: Scan Images - ${{ matrix.label }}
     needs: [metadata, build-images]
     runs-on: ${{ vars.RELEASE_RUNS_ON }}
-    if: always() && needs.build-images.result == 'success' && github.repository_owner == 'Kong' && fromJSON(needs.metadata.outputs.matrix)['scan-vulnerabilities'] != ''
+    if: github.repository_owner == 'Kong'
     strategy:
       fail-fast: false
       matrix:
-        include: "${{ fromJSON(needs.metadata.outputs.matrix)['scan-vulnerabilities'] }}"
+        include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-images'] }}"
     steps:
     - name: Install regctl
       uses: regclient/actions/regctl-installer@main
@@ -449,40 +449,34 @@ jobs:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
 
-    # TODO: Refactor matrix file to support and parse platforms specific to distro
-    # Workaround: Look for specific amd64 and arm64  hardcooded architectures
     - name: Parse Architecture Specific Image Manifest Digests
       id: image_manifest_metadata
       run: |
         IMAGE=${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}-${{ matrix.label }}
 
-        manifest_list_exists="$(
-          if regctl manifest get "${IMAGE}" --format raw-body --require-list -v panic &> /dev/null; then
-            echo true
-          else
-            echo false
-          fi
-        )"
-        echo "manifest_list_exists=$manifest_list_exists"
-        echo "manifest_list_exists=$manifest_list_exists" >> $GITHUB_OUTPUT
+        archs="${{ matrix.docker-platforms }}"
+        if [[ -z "$archs" ]]; then
+          archs="linux/amd64"
+        fi
 
-        amd64_sha="$(regctl image digest "${IMAGE}" --platform linux/amd64 || echo '')"
-        arm64_sha="$(regctl image digest "${IMAGE}" --platform linux/arm64 || echo '')"
-        echo "amd64_image_sha=${IMAGE}@${amd64_sha}"
-        echo "amd64_image_sha=${IMAGE}@${amd64_sha}" >> $GITHUB_OUTPUT
-        echo "arm64_image_sha=${IMAGE}@${arm64_sha}"
-        echo "arm64_image_sha=${IMAGE}@${arm64_sha}" >> $GITHUB_OUTPUT
+        for arch in $(echo "$archs" | sed -e 's/,/ /g'); do
+          arch=${arch#*/}
+          echo "Fetching digest for ${arch}..."
+          sha="$(regctl image digest "${IMAGE}" --platform linux/${arch})"
+          echo "${arch}_image_sha=${IMAGE}@${sha}"
+          echo "${arch}_image_sha=${IMAGE}@${sha}" >> $GITHUB_OUTPUT
+        done
 
     - name: Scan AMD64 Image digest
+      if: ${{ steps.image_manifest_metadata.outputs.amd64_image_sha != '' }}
       id: sbom_action_amd64
-      if: steps.image_manifest_metadata.outputs.amd64_sha != ''
       uses: Kong/public-shared-actions/security-actions/scan-docker-image@v1.8.0
       with:
         asset_prefix: kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-amd64
         image: ${{ steps.image_manifest_metadata.outputs.amd64_image_sha }}
 
     - name: Scan ARM64 Image digest
-      if: steps.image_manifest_metadata.outputs.manifest_list_exists == 'true' && steps.image_manifest_metadata.outputs.arm64_sha != ''
+      if: ${{ steps.image_manifest_metadata.outputs.arm64_image_sha != '' }}
       id: sbom_action_arm64
       uses: Kong/public-shared-actions/security-actions/scan-docker-image@v1.8.0
       with:
@@ -519,7 +513,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: "${{ fromJSON(needs.metadata.outputs.matrix)['smoke-tests'] }}"
+        include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-images'] }}"
 
     services:
       postgres:
@@ -609,12 +603,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: "${{ fromJSON(needs.metadata.outputs.matrix)['test-images'] }}"
+        include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-images'] }}"
     uses: ./.github/workflows/gateway-api-tests.yml
     with:
       control_plane_image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}
       gateway_version: ${{ needs.metadata.outputs.kong-version }}
-      multiarch: ${{ matrix.multiarch != '' && true || false }}
+      multiarch: ${{ matrix.docker-platforms != '' && true || false }}
       target_test: smoke
     secrets: inherit
 
@@ -628,12 +622,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: "${{ fromJSON(needs.metadata.outputs.matrix)['test-images'] }}"
+        include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-images'] }}"
     uses: ./.github/workflows/gateway-api-tests.yml
     with:
       control_plane_image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}
       gateway_version: ${{ needs.metadata.outputs.kong-version }}
-      multiarch: ${{ matrix.multiarch != '' && true || false }}
+      multiarch: ${{ matrix.docker-platforms != '' && true || false }}
       target_test: non-smoke
     secrets: inherit
 

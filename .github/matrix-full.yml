@@ -181,37 +181,6 @@ build-images:
   artifact-from-alt: amazonlinux-2023-arm64
   docker-platforms: linux/amd64,linux/arm64
 
-test-images:
-- label: ubuntu
-  multiarch: true
-- label: ubuntu-fips
-- label: debian
-  multiarch: true
-- label: rhel
-  multiarch: true
-- label: rhel-fips
-- label: amazonlinux-2
-  multiarch: true
-- label: amazonlinux-2023
-  multiarch: true
-
-smoke-tests:
-- label: ubuntu
-- label: ubuntu-fips
-- label: debian
-- label: rhel
-- label: rhel-fips
-- label: amazonlinux-2
-- label: amazonlinux-2023
-
-scan-vulnerabilities:
-- label: ubuntu
-- label: ubuntu-fips
-- label: debian
-- label: rhel
-- label: rhel-fips
-- label: amazonlinux-2
-- label: amazonlinux-2023
 
 release-packages:
 # Ubuntu

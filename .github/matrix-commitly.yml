@@ -18,16 +18,6 @@ build-images:
   artifact-from-alt: ubuntu-22.04-arm64
   docker-platforms: linux/amd64, linux/arm64
 
-test-images:
-- label: ubuntu
-  multiarch: true
-
-smoke-tests:
-- label: ubuntu
-
-scan-vulnerabilities:
-- label: ubuntu
-
 release-packages:
 
 release-images:
