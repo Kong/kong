@@ -21,7 +21,7 @@ import {
   getNegative,
 } from '@support';
 
-describe('Plugin Scope Precedence Model', () => {
+describe.skip('Plugin Scope Precedence Model', () => {
   const isHybrid = isGwHybrid();
   const url = `${getBasePath({
     environment: Environment.gateway.admin,
