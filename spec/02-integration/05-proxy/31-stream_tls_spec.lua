@@ -1,7 +1,8 @@
 local helpers = require "spec.helpers"
 
+for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
 for _, strategy in helpers.each_strategy({"postgres"}) do
-  describe("#stream Proxying [#" .. strategy .. "]", function()
+  describe("#stream Proxying [#" .. strategy .. "] [#" .. flavor .. "]", function()
     local bp
     local admin_client
 
@@ -57,6 +58,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           .. helpers.get_proxy_ip(false) .. ":19003,"
           .. helpers.get_proxy_ip(false) .. ":19443 ssl",
         proxy_stream_error_log = "/tmp/error.log",
+        router_flavor = flavor,
       }))
       admin_client = helpers.http_client("127.0.0.1", 9001)
     end)
@@ -155,4 +157,5 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       tcp:close()
     end)
   end)
+end
 end
