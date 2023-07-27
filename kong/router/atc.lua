@@ -475,11 +475,6 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
   local upstream_uri = get_upstream_uri_v0(matched_route, request_postfix, req_uri,
                                            upstream_base)
   
-  local upstream_host
-  if matched_route.preserve_host then
-    upstream_host = req_host or sni
-  end
-  
   return {
     route           = matched_route,
     service         = service,
@@ -494,7 +489,7 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
     },
     upstream_scheme = service_protocol,
     upstream_uri    = upstream_uri,
-    upstream_host   = upstream_host,
+    upstream_host   = matched_route.preserve_host and req_host or ni,
   }
 end
 
@@ -663,6 +658,7 @@ function _M:select(_, _, _, scheme,
       port = service_port,
     },
     upstream_scheme = service_protocol,
+    upstream_host  = matched_route.preserve_host and sni or ni,
   }
 end
 

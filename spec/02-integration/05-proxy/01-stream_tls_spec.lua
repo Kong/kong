@@ -56,6 +56,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           .. helpers.get_proxy_ip(false) .. ":19002,"
           .. helpers.get_proxy_ip(false) .. ":19003,"
           .. helpers.get_proxy_ip(false) .. ":19443 ssl",
+        proxy_stream_error_log = "/tmp/error.log",
       }))
       admin_client = helpers.http_client("127.0.0.1", 9001)
     end)
@@ -94,7 +95,6 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         timeout = 60,
       }
       helpers.wait_for_all_config_update(opt)
-      ngx.sleep(10)
 
       local tcp = ngx.socket.tcp()
       assert(tcp:connect(helpers.get_proxy_ip(true), 19443))
