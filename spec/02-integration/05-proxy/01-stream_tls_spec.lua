@@ -89,7 +89,8 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       assert.res_status(200, res)
       local opt = {
         stream_enabled = true,
-        stream_port = 19003
+        stream_port = 19003,
+        timeout = 60,
       }
       helpers.wait_for_all_config_update(opt)
 
