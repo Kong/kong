@@ -16,14 +16,9 @@
 ### Deprecations
 
 - **Alpine packages, Docker images are now removed from the release and are no longer supported in future versions.**
-- Developer portal is deprecated, please use [Konnect Developer portal](https://konghq.com/products/kong-konnect).
-  Contact the Kong team for further details.
-  [#5752](https://github.com/Kong/kong-ee/pull/5752)
-  [KAG-1657](https://konghq.atlassian.net/browse/KAG-1657)
 - The `/consumer_groups/:id/overrides` feature is deprecated in favor of the more generic plugin scoping mechanism.
   [KAG-666](https://konghq.atlassian.net/browse/KAG-666)
 - **CentOS packages are now removed from the release and are no longer supported in future versions.**
-
 - Renamed configuration property `admin_api_uri` to `admin_gui_api_url`.
   The old `admin_api_uri` property is considered deprecated and will be
   fully removed in a future version of Kong.

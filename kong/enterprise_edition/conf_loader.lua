@@ -855,12 +855,6 @@ local function validate(conf, errors)
   end
 
   if conf.portal then
-
-    deprecation("developer portal is deprecated and will be removed in a future version, " ..
-      "please use Kong Konnect developer portal (https://konghq.com/products/kong-konnect), " ..
-      "contact the Kong team for further details",
-      { after = "3.4.0.0" })
-
     validate_portal_smtp_config(conf, errors)
     validate_portal_session(conf, errors)
     validate_portal_auth_password_complexity(conf, errors)
