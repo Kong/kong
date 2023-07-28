@@ -177,6 +177,11 @@
 - Bumped lua-resty-lmdb from 1.1.0 to 1.3.0
   [#11227](https://github.com/Kong/kong/pull/11227)
 
+### Known Issues
+- Some referenceable configuration fields, such as the `http_endpoint` field
+  of the `http-log` plugin and the `endpoint` field of the `opentelemetry` plugin,
+  do not accept reference values due to incorrect field validation.
+
 ## 3.3.0
 
 ### Breaking Changes
