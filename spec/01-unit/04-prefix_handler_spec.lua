@@ -19,7 +19,10 @@ ffi.cdef([[
 ]])
 
 
+-- the pattern expands to: "([%%%^%$%(%)%.%[%]%*%+%-%?])"
 local escape_pattern = '(['..("%^$().[]*+-?"):gsub("(.)", "%%%1")..'])'
+-- escape all the special characters %^$().[]*+-? in the string
+-- e.g. "%^$().[]*+-?" ---> "%%%^%$%(%)%.%[%]%*%+%-%?"
 local function escape_special_chars(str)
   return str:gsub(escape_pattern, "%%%1")
 end
