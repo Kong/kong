@@ -84,6 +84,7 @@ function roundrobin_algorithm:getPeer(cacheOnly, handle, hashValue)
   if handle then
     -- existing handle, so it's a retry
     handle.retryCount = handle.retryCount + 1
+
   else
     -- no handle, so this is a first try
     handle = {}   -- self:getHandle()  -- no GC specific handler needed
@@ -91,8 +92,7 @@ function roundrobin_algorithm:getPeer(cacheOnly, handle, hashValue)
   end
 
   local starting_pointer = self.pointer
-  local address
-  local ip, port, hostname
+
   repeat
     self.pointer = self.pointer + 1
 
@@ -100,28 +100,38 @@ function roundrobin_algorithm:getPeer(cacheOnly, handle, hashValue)
       self.pointer = 1
     end
 
-    address = self.wheel[self.pointer]
-    if address ~= nil and address.available and not address.disabled then
-      ip, port, hostname = balancers.getAddressPeer(address, cacheOnly)
-      if ip then
-        -- success, update handle
-        handle.address = address
-        return ip, port, hostname, handle
+    local address = self.wheel[self.pointer]
+    if not address or not address.available or address.disabled then
+      goto continue
+    end
 
-      elseif port == balancers.errors.ERR_DNS_UPDATED then
-        -- if healty we just need to try again
-        if not self.balancer.healthy then
-          return nil, balancers.errors.ERR_BALANCER_UNHEALTHY
-        end
-      elseif port == balancers.errors.ERR_ADDRESS_UNAVAILABLE then
-        ngx.log(ngx.DEBUG, "found address but it was unavailable. ",
-          " trying next one.")
-      else
-        -- an unknown error occurred
-        return nil, port
+    -- address ~= nil and address.available and not address.disabled
+
+    local ip, port, hostname = balancers.getAddressPeer(address, cacheOnly)
+
+    if ip then
+      -- success, update handle
+      handle.address = address
+      return ip, port, hostname, handle
+    end
+
+    -- no ip, port is an error hint
+    if port == balancers.errors.ERR_DNS_UPDATED then
+      -- if healthy we just need to try again
+      if not self.balancer.healthy then
+        return nil, balancers.errors.ERR_BALANCER_UNHEALTHY
       end
 
+    elseif port == balancers.errors.ERR_ADDRESS_UNAVAILABLE then
+      ngx.log(ngx.DEBUG, "found address but it was unavailable. ",
+                         " trying next one.")
+
+    else
+      -- an unknown error occurred
+      return nil, port
     end
+
+    ::continue::
 
   until self.pointer == starting_pointer
 
@@ -130,7 +140,7 @@ end
 
 
 function roundrobin_algorithm.new(opts)
-  assert(type(opts) == "table", "Expected an options table, but got: "..type(opts))
+  assert(type(opts) == "table", "Expected an options table, but got: " .. type(opts))
 
   local balancer = opts.balancer
 
