@@ -400,15 +400,23 @@ function Rpc:handle_event(plugin_name, conf, phase)
   end
 
   if not res or res == "" then
-    if err == "not ready" then
-      self.reset_instance(plugin_name, conf)
-      return handle_not_ready(plugin_name)
-    end
-    if err and (str_find(err:lower(), "no plugin instance", 1, true)
-      or str_find(err:lower(), "closed", 1, true)) then
-      kong.log.warn(err)
-      self.reset_instance(plugin_name, conf)
-      return self:handle_event(plugin_name, conf, phase)
+    if err then
+      local ok, err = kong.worker_events.post("plugin_server", "reset_instances",
+      { plugin_name = plugin_name, conf = conf })
+      if not ok then
+        kong.log.err("failed to post plugin_server reset_instances event: ", err)
+      end
+
+      if err == "not ready" then
+        self.reset_instance(plugin_name, conf)
+        return handle_not_ready(plugin_name)
+      end
+      if err and (str_find(err:lower(), "no plugin instance", 1, true)
+        or str_find(err:lower(), "closed", 1, true)) then
+        kong.log.warn(err)
+        self.reset_instance(plugin_name, conf)
+        return self:handle_event(plugin_name, conf, phase)
+      end
     end
     kong.log.err(err)
   end
