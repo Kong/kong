@@ -158,7 +158,7 @@ describe("vault cache invalidation (#" .. attachment_point .. "_" .. vault.name 
   end
 
   it("check if caches get evicted when configuration of vault changes", function()
-    check_plugin_secret("init", "init", 11)
+    check_plugin_secret("init", "init", 22)
 
     -- call any CRUD operation on a vault
     vault:update_secret(secret, "did_rotate_run", {ttl = 5, resurrect_ttl = 5})
@@ -173,7 +173,7 @@ describe("vault cache invalidation (#" .. attachment_point .. "_" .. vault.name 
     })
     assert.res_status(200, res)
 
-    check_plugin_secret("did_rotate_run", "did_rotate_run", 11)
+    check_plugin_secret("did_rotate_run", "did_rotate_run", 22)
   end)
 end)
 
