@@ -70,9 +70,12 @@ local TYPE_SERVICE  = 0
 local TYPE_ROUTE    = 1
 local TYPE_COMBINED = 2
 
+local STATUS_DISABLED = "wasm support is not enabled"
+local STATUS_NO_FILTERS = "no wasm filters are available"
+local STATUS_ENABLED = "wasm support is enabled"
 
 local ENABLED = false
-local STATUS = "wasm support is not enabled"
+local STATUS = STATUS_DISABLED
 
 
 local hash_chain
@@ -562,7 +565,7 @@ local function disable(reason)
   _G.dns_client = nil
 
   ENABLED = false
-  STATUS = reason or "wasm support is not enabled"
+  STATUS = reason or STATUS_DISABLED
 end
 
 
@@ -576,7 +579,7 @@ local function enable(kong_config)
   ATTACH_OPTS.isolation = proxy_wasm.isolations.FILTER
 
   ENABLED = true
-  STATUS = "wasm support is enabled"
+  STATUS = STATUS_ENABLED
 end
 
 
@@ -606,11 +609,11 @@ function _M.init(kong_config)
       enable(kong_config)
 
     else
-      disable("no wasm filters are available")
+      disable(STATUS_NO_FILTERS)
     end
 
   else
-    disable("wasm support is not enabled")
+    disable(STATUS_DISABLED)
   end
 end
 
