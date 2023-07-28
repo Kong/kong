@@ -92,6 +92,8 @@ function roundrobin_algorithm:getPeer(cacheOnly, handle, hashValue)
   end
 
   local starting_pointer = self.pointer
+  local address
+  local ip, port, hostname
 
   repeat
     self.pointer = self.pointer + 1
@@ -100,14 +102,14 @@ function roundrobin_algorithm:getPeer(cacheOnly, handle, hashValue)
       self.pointer = 1
     end
 
-    local address = self.wheel[self.pointer]
+    address = self.wheel[self.pointer]
     if not address or not address.available or address.disabled then
       goto continue
     end
 
     -- address ~= nil and address.available and not address.disabled
 
-    local ip, port, hostname = balancers.getAddressPeer(address, cacheOnly)
+    ip, port, hostname = balancers.getAddressPeer(address, cacheOnly)
 
     if ip then
       -- success, update handle
