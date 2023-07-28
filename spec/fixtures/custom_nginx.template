@@ -1134,6 +1134,12 @@ server {
             local sock = assert(ngx.req.socket())
             local data = sock:receive()  -- read a line from downstream
 
+            if string.find(data, "get_sni") then
+                sock:send(ngx.var.ssl_server_name)
+                sock:send("\n")
+                return
+            end
+
             if ngx.var.protocol == "TCP" then
                 ngx.say(data)
 

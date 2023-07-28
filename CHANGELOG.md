@@ -38,6 +38,8 @@
 
 - Enable `expressions` and `traditional_compatible` router flavor in stream subsystem.
   [#11071](https://github.com/Kong/kong/pull/11071)
+- Make upstream `host_header` and router `preserve_host` config work in stream tls proxy.
+  [#11244](https://github.com/Kong/kong/pull/11244)
 
 #### Admin API
 
