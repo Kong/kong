@@ -17,7 +17,6 @@ describe("wasm DB entities [#" .. strategy .. "]", function()
   local function reset_db()
     if not db then return end
     db.filter_chains:truncate()
-    db.filter_chains:load_filters({})
     db.routes:truncate()
     db.services:truncate()
     db.workspaces:truncate()
@@ -25,6 +24,11 @@ describe("wasm DB entities [#" .. strategy .. "]", function()
 
 
   lazy_setup(function()
+    require("kong.runloop.wasm").enable({
+      { name = "test" },
+      { name = "other" },
+    })
+
     local _
     _, db = helpers.get_db_utils(strategy, {
       "workspaces",
@@ -34,10 +38,6 @@ describe("wasm DB entities [#" .. strategy .. "]", function()
     })
 
     dao = db.filter_chains
-    dao:load_filters({
-      { name = "test", },
-      { name = "other", },
-    })
   end)
 
   lazy_teardown(reset_db)
@@ -321,8 +321,8 @@ describe("wasm DB entities [#" .. strategy .. "]", function()
           assert.is_table(err_t.fields)
           assert.same({
             filters = {
-              [2] = { name = "no such filter: missing" },
-              [4] = { name = "no such filter: also-missing" },
+              [2] = { name = "no such filter" },
+              [4] = { name = "no such filter" },
             },
           }, err_t.fields)
 
@@ -347,8 +347,8 @@ describe("wasm DB entities [#" .. strategy .. "]", function()
           assert.is_table(err_t.fields)
           assert.same({
             filters = {
-              [2] = { name = "no such filter: missing" },
-              [4] = { name = "no such filter: also-missing" },
+              [2] = { name = "no such filter" },
+              [4] = { name = "no such filter" },
             },
           }, err_t.fields)
 

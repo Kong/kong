@@ -693,8 +693,6 @@ function Kong.init()
   -- Load plugins as late as possible so that everything is set up
   assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
 
-  assert(db.filter_chains:load_filters(config.wasm_modules_parsed))
-
   kong.invoke_plugin = invoke_plugin.new {
     loaded_plugins = db.plugins:get_handlers(),
     kong_global = kong_global,

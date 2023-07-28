@@ -234,6 +234,7 @@ local entity_checkers = {
         { field_sources = { type = "array", elements = { type = "string" } } },
         { fn = { type = "function" } },
         { run_with_missing_fields = { type = "boolean" } },
+        { run_with_invalid_fields = { type = "boolean" } },
       }
     }
   },

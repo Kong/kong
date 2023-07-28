@@ -13,8 +13,9 @@ local clustering_utils = require("kong.clustering.utils")
 local events = require("kong.clustering.events")
 local clustering_tls = require("kong.clustering.tls")
 local clustering_telemetry = require("kong.clustering.telemetry")
-
 local config_sync_backup = require "kong.clustering.config_sync_backup"
+local wasm = require("kong.runloop.wasm")
+
 local assert = assert
 local sort = table.sort
 
@@ -129,8 +130,8 @@ function _M:init_worker()
   end, plugins_list)
 
   local filters = {}
-  if kong.db.filter_chains.filters then
-    for _, filter in ipairs(kong.db.filter_chains.filters) do
+  if wasm.enabled() and wasm.filters then
+    for _, filter in ipairs(wasm.filters) do
       filters[filter.name] = { name = filter.name }
     end
   end

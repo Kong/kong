@@ -31,18 +31,16 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
 
 describe("#wasm filter execution (#" .. strategy .. ")", function()
   lazy_setup(function()
-    local bp, db = helpers.get_db_utils("postgres", {
-      "routes",
-      "services",
-      "filter_chains",
-    })
-
-
-    db.filter_chains:load_filters({
+    require("kong.runloop.wasm").enable({
       { name = "tests" },
       { name = "response_transformer" },
     })
 
+    local bp = helpers.get_db_utils("postgres", {
+      "routes",
+      "services",
+      "filter_chains",
+    })
 
     local function service_and_route(name)
       local service = assert(bp.services:insert({

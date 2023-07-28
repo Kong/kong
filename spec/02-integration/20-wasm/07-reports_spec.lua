@@ -37,7 +37,7 @@ for _, strategy in helpers.each_strategy() do
       assert(fd:write("127.0.0.1 " .. constants.REPORTS.ADDRESS))
       assert(fd:close())
 
-      local bp, db = assert(helpers.get_db_utils(strategy, {
+      local bp = assert(helpers.get_db_utils(strategy, {
         "services",
         "routes",
         "plugins",
@@ -58,7 +58,7 @@ for _, strategy in helpers.each_strategy() do
         config = {}
       })
 
-      db.filter_chains:load_filters({
+      require("kong.runloop.wasm").enable({
         { name = "tests" },
       })
 

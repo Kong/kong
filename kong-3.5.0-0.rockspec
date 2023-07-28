@@ -417,7 +417,6 @@ build = {
     ["kong.db.schema.entities.document_objects"] = "kong/db/schema/entities/document_objects.lua",
     ["kong.db.dao.keys"] = "kong/db/dao/keys.lua",
     ["kong.db.dao.key_sets"] = "kong/db/dao/key_sets.lua",
-    ["kong.db.dao.filter_chains"] = "kong/db/dao/filter_chains.lua",
     ["kong.db.schema.entities.keys"] = "kong/db/schema/entities/keys.lua",
     ["kong.db.schema.entities.key_sets"] = "kong/db/schema/entities/key_sets.lua",
     ["kong.db.schema.entities.consumers"] = "kong/db/schema/entities/consumers.lua",
