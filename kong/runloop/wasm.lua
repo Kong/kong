@@ -1,4 +1,28 @@
-local _M = {}
+local _M = {
+  -- these filter lookup tables are created once and then reset/re-used when
+  -- `wasm.init()` is called. This means other modules are permitted to stash
+  -- a reference to them, which helps to avoid several chicken/egg dependency
+  -- ordering issues.
+
+  ---@type kong.configuration.wasm_filter[]
+  filters = {},
+
+  ---@type table<string, kong.configuration.wasm_filter>
+  filters_by_name = {},
+
+  ---@type string[]
+  filter_names = {},
+}
+
+
+--- This represents a wasm module discovered by the conf_loader in
+--- `kong.configuration.wasm_filters_path`
+---
+---@class kong.configuration.wasm_filter
+---
+---@field name string
+---@field path string
+
 
 local utils = require "kong.tools.utils"
 local dns = require "kong.tools.dns"
@@ -46,8 +70,13 @@ local TYPE_SERVICE  = 0
 local TYPE_ROUTE    = 1
 local TYPE_COMBINED = 2
 
+local STATUS_DISABLED = "wasm support is not enabled"
+local STATUS_NO_FILTERS = "no wasm filters are available"
+local STATUS_ENABLED = "wasm support is enabled"
 
 local ENABLED = false
+local STATUS = STATUS_DISABLED
+
 
 local hash_chain
 do
@@ -513,33 +542,79 @@ local function get_filter_chain_for_request(route, service)
 end
 
 
+---@param filters kong.configuration.wasm_filter[]|nil
+local function set_available_filters(filters)
+  clear_tab(_M.filters)
+  clear_tab(_M.filters_by_name)
+  clear_tab(_M.filter_names)
+
+  if filters then
+    for i, filter in ipairs(filters) do
+      _M.filters[i] = filter
+      _M.filters_by_name[filter.name] = filter
+      _M.filter_names[i] = filter.name
+    end
+  end
+end
+
+
+---@param reason string
+local function disable(reason)
+  set_available_filters(nil)
+
+  _G.dns_client = nil
+
+  ENABLED = false
+  STATUS = reason or STATUS_DISABLED
+end
+
+
+local function enable(kong_config)
+  set_available_filters(kong_config.wasm_modules_parsed)
+
+  -- setup a DNS client for ngx_wasm_module
+  _G.dns_client = _G.dns_client or dns(kong_config)
+
+  proxy_wasm = proxy_wasm or require "resty.wasmx.proxy_wasm"
+  ATTACH_OPTS.isolation = proxy_wasm.isolations.FILTER
+
+  ENABLED = true
+  STATUS = STATUS_ENABLED
+end
+
+
 _M.get_version = get_version
 
 _M.update_in_place = update_in_place
 
 _M.set_state = set_state
 
+function _M.enable(filters)
+  enable({
+    wasm = true,
+    wasm_modules_parsed = filters,
+  })
+end
+
+_M.disable = disable
+
 
 ---@param kong_config table
 function _M.init(kong_config)
-  if not kong_config.wasm then
-    return
+  if kong_config.wasm then
+    local filters = kong_config.wasm_modules_parsed
+
+    if filters and #filters > 0 then
+      reports.add_immutable_value("wasm_cnt", #filters)
+      enable(kong_config)
+
+    else
+      disable(STATUS_NO_FILTERS)
+    end
+
+  else
+    disable(STATUS_DISABLED)
   end
-
-  local modules = kong_config.wasm_modules_parsed
-  if not modules or #modules == 0 then
-    return
-  end
-
-  reports.add_immutable_value("wasm_cnt", #modules)
-
-  -- setup a DNS client for ngx_wasm_module
-  _G.dns_client = dns(kong_config)
-
-  proxy_wasm = require "resty.wasmx.proxy_wasm"
-  ENABLED = true
-
-  ATTACH_OPTS.isolation = proxy_wasm.isolations.FILTER
 end
 
 
@@ -652,5 +727,15 @@ function _M.enabled()
   return ENABLED
 end
 
+
+---@return boolean? ok
+---@return string? error
+function _M.status()
+  if not ENABLED then
+    return nil, STATUS
+  end
+
+  return true
+end
 
 return _M
