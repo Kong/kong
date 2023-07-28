@@ -207,7 +207,7 @@ function get_instance_id(plugin_name, conf)
     -- some other thread is already starting an instance
     -- prevent busy-waiting
     ngx_sleep(SLEEP_STEP)
-  
+
     -- to prevent a potential dead loop when someone failed to release the ID
     wait_count = wait_count + 1
     if wait_count > MAX_WAIT_STEPS then
@@ -393,6 +393,7 @@ end
 
 
 function plugin_servers.start()
+  -- only worker 0 managers the plugin server
   if worker_id() == 0 then
     local pluginserver_timer = proc_mgmt.pluginserver_timer
 
@@ -403,6 +404,8 @@ function plugin_servers.start()
     end
   end
 
+  -- workers != 0 still need to get plugin servers definitions
+  --
   local connection_check_timer = proc_mgmt.connection_check_timer
 
   for _, server_def in ipairs(proc_mgmt.get_server_defs()) do
@@ -410,6 +413,11 @@ function plugin_servers.start()
       native_timer_at(0, connection_check_timer, server_def)
     end
   end
+
+  -- in case plugin server restarts, all workers need to update their defs
+  kong.worker_events.register(function (data)
+    reset_instance(data.plugin_name, data.conf)
+  end, "plugin_server", "reset_instances")
 end
 
 function plugin_servers.stop()
