@@ -658,6 +658,7 @@ function _M:select(_, _, _, scheme,
       port = service_port,
     },
     upstream_scheme = service_protocol,
+    upstream_host  = matched_route.preserve_host and sni or nil,
   }
 end
 
