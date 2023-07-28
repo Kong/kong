@@ -196,15 +196,16 @@ describe("#wasm filter chain cache " .. mode_suffix, function()
 
 
   lazy_setup(function()
+    require("kong.runloop.wasm").enable({
+      { name = "tests" },
+      { name = "response_transformer" },
+    })
+
     local bp
     bp, db = helpers.get_db_utils("postgres", {
       "services",
       "routes",
       "filter_chains",
-    })
-
-    db.filter_chains:load_filters({
-      { name = "response_transformer", },
     })
 
     services.filter = bp.services:insert({ name = hosts.filter })
