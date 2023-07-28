@@ -29,7 +29,6 @@ end
 
 
 function roundrobin_algorithm:afterHostUpdate()
-  local new_wheel = {}
   local total_points = 0
   local total_weight = 0
   local divisor = 0
@@ -37,9 +36,11 @@ function roundrobin_algorithm:afterHostUpdate()
   local targets = self.balancer.targets or {}
 
   -- calculate the gcd to find the proportional weight of each address
-  for _, target in ipairs(targets) do
-    for _, address in ipairs(target.addresses) do
-      local address_weight = address.weight
+  for i = 1, #targets do
+    local addresses = targets[i].addresses
+
+    for j = 1, #addresses do
+      local address_weight = addresses[j].weight
       divisor = gcd(divisor, address_weight)
       total_weight = total_weight + address_weight
     end
@@ -56,11 +57,19 @@ function roundrobin_algorithm:afterHostUpdate()
   end
 
   -- add all addresses to the wheel
-  for _, targets in ipairs(targets) do
-    for _, address in ipairs(targets.addresses) do
+  local new_wheel = {}
+  local idx = 1
+
+  for i = 1, #targets do
+    local addresses = targets[i].addresses
+
+    for j = 1, #addresses do
+      local address = addresses[j]
       local address_points = address.weight / divisor
+
       for _ = 1, address_points do
-        new_wheel[#new_wheel + 1] = address
+        new_wheel[idx] = address
+        idx = idx + 1
       end
     end
   end
