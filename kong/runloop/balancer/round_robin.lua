@@ -132,11 +132,11 @@ function roundrobin_algorithm:getPeer(cacheOnly, handle, hashValue)
     if port == balancers.errors.ERR_ADDRESS_UNAVAILABLE then
       ngx.log(ngx.DEBUG, "found address but it was unavailable. ",
                          " trying next one.")
-
-    else
-      -- an unknown error occurred
-      return nil, port
+      goto continue
     end
+
+    -- an unknown error occurred
+    return nil, port
 
     ::continue::
 
