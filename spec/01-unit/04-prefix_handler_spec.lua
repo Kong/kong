@@ -26,6 +26,14 @@ ffi.cdef([[
 ]])
 
 
+-- the pattern expands to: "([%%%^%$%(%)%.%[%]%*%+%-%?])"
+local escape_pattern = '(['..("%^$().[]*+-?"):gsub("(.)", "%%%1")..'])'
+-- escape all the special characters %^$().[]*+-? in the string
+-- e.g. "%^$().[]*+-?" ---> "%%%^%$%(%)%.%[%]%*%+%-%?"
+local function escape_special_chars(str)
+  return str:gsub(escape_pattern, "%%%1")
+end
+
 local function kong_user_group_exists()
   if C.getpwnam("kong") == nil or C.getgrnam("kong") == nil then
     return false
@@ -942,8 +950,9 @@ describe("NGINX conf compiler", function()
             }, debug)
           )
         end)
-        pending("lua_ssl_trusted_certificate", function()
+        describe("lua_ssl_trusted_certificate", function()
           local cwd = currentdir()
+          cwd = escape_special_chars(cwd) -- escape the possible special characters in the prefix
           it("with one cert", function()
             assert.matches(
               string.format("wasm {.+tls_trusted_certificate %s/spec/fixtures/kong_clustering_ca.crt;.+}", cwd),
