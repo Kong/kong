@@ -473,7 +473,10 @@ local function set_host_header(balancer_data, upstream_scheme, upstream_host, is
 
     var.upstream_host = new_upstream_host
 
-    -- stream module does not support ngx.balancer.recreate_request
+   -- stream module does not support ngx.balancer.recreate_request
+    -- and we do not need to recreate the request in balancer_by_lua
+    -- some nginx proxy variables will compile when init upstream ssl connection
+    -- https://github.com/nginx/nginx/blob/master/src/stream/ngx_stream_proxy_module.c#L1070
     if is_balancer_phase and is_http_module then
       return recreate_request()
     end
