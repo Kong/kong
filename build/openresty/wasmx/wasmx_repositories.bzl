@@ -6,7 +6,6 @@ load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 
 def wasmx_repositories():
-    ngx_wasm_module_branch = KONG_VAR["NGX_WASM_MODULE_BRANCH"]
     wasmtime_version = KONG_VAR["WASMTIME_VERSION"]
     wasmer_version = KONG_VAR["WASMER_VERSION"]
     v8_version = KONG_VAR["V8_VERSION"]
@@ -14,10 +13,16 @@ def wasmx_repositories():
     wasmer_os = KONG_VAR["WASMER_OS"]
     v8_os = KONG_VAR["V8_OS"]
 
+    ngx_wasm_module_tag = KONG_VAR["NGX_WASM_MODULE"]
+    ngx_wasm_module_branch = KONG_VAR.get("NGX_WASM_MODULE_BRANCH")
+    if ngx_wasm_module_branch:
+        ngx_wasm_module_tag = None
+
     maybe(
         new_git_repository,
         name = "ngx_wasm_module",
         branch = ngx_wasm_module_branch,
+        tag = ngx_wasm_module_tag,
         remote = KONG_VAR.get("NGX_WASM_MODULE_REMOTE", "https://github.com/Kong/ngx_wasm_module.git"),
         build_file_content = """
 filegroup(
