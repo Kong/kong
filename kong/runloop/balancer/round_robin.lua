@@ -136,7 +136,7 @@ function roundrobin_algorithm:getPeer(cacheOnly, handle, hashValue)
     end
 
     -- an unknown error occurred
-    return nil, port
+    do return nil, port end
 
     ::continue::
 
