@@ -118,13 +118,18 @@ function roundrobin_algorithm:getPeer(cacheOnly, handle, hashValue)
     end
 
     -- no ip, port is an error hint
+
     if port == balancers.errors.ERR_DNS_UPDATED then
       -- if healthy we just need to try again
-      if not self.balancer.healthy then
-        return nil, balancers.errors.ERR_BALANCER_UNHEALTHY
+      if self.balancer.healthy then
+        goto continue
       end
 
-    elseif port == balancers.errors.ERR_ADDRESS_UNAVAILABLE then
+      -- not healthy
+      return nil, balancers.errors.ERR_BALANCER_UNHEALTHY
+    end
+
+    if port == balancers.errors.ERR_ADDRESS_UNAVAILABLE then
       ngx.log(ngx.DEBUG, "found address but it was unavailable. ",
                          " trying next one.")
 
