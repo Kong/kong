@@ -1188,7 +1188,7 @@ describe("workspace-" .. workspace, function ()
 
             end)
 
-            it("perform passive health checks", function()
+            it("#flaky perform passive health checks", function()
 
               for nfails = 1, 3 do
 
@@ -1340,7 +1340,7 @@ describe("workspace-" .. workspace, function ()
               end
             end)
 
-            it("perform passive health checks in downstream status code was changed with subrequest", function()
+            it("#flaky perform passive health checks in downstream status code was changed with subrequest", function()
 
               for nfails = 1, 3 do
 
@@ -2275,7 +2275,7 @@ describe("workspace-" .. workspace, function ()
 
             end)
 
-            it("perform passive health checks -- connection #timeouts", function()
+            it("#flaky perform passive health checks -- connection #timeouts", function()
 
               -- configure healthchecks
               bu.begin_testcase_setup(strategy, bp)
@@ -2748,7 +2748,7 @@ describe("workspace-" .. workspace, function ()
 
       end)
 
-      it("perform passive health checks -- stream connection failure", function()
+      it("#flaky perform passive health checks -- stream connection failure", function()
         -- configure healthchecks
         bu.begin_testcase_setup(strategy, bp)
         local upstream_name, upstream_id = bu.add_upstream(bp, {
