@@ -1,4 +1,5 @@
 local helpers = require "spec.helpers"
+local cjson = require "cjson"
 
 
 local function post_config(client, config)
@@ -48,7 +49,9 @@ end
 
 
 describe("#wasm declarative config", function()
-  local client
+  local admin
+  local proxy
+  local header_name = "x-wasm-dbless"
 
   lazy_setup(function()
     assert(helpers.start_kong({
@@ -57,16 +60,75 @@ describe("#wasm declarative config", function()
       wasm = true,
     }))
 
-    client = helpers.admin_client()
+    admin = helpers.admin_client()
+    proxy = helpers.proxy_client()
   end)
 
   lazy_teardown(function()
-    if client then client:close() end
+    if admin then admin:close() end
+    if proxy then proxy:close() end
     helpers.stop_kong()
   end)
 
+  it("permits valid filter chain entities", function()
+    local res = post_config(admin, {
+      services = {
+        { name = "test",
+          url = helpers.mock_upstream_url,
+          routes = {
+            { name = "test",
+              hosts = { "wasm.test" }
+            },
+          },
+          filter_chains = {
+            { name = "test",
+              filters = {
+                { name = "response_transformer",
+                  config = cjson.encode {
+                    append = {
+                      headers = {
+                        header_name .. ":hello!"
+                      },
+                    },
+                  },
+                }
+              },
+            },
+          },
+        },
+      },
+    })
+
+    assert.response(res).has.status(201)
+
+    assert
+      .eventually(function()
+        res = proxy:get("/status/200", {
+          headers = { host = "wasm.test" },
+        })
+
+        res:read_body()
+
+        if res.status ~= 200 then
+          return nil, { exp = 200, got = res.status }
+        end
+
+        local header = res.headers[header_name]
+
+        if header == nil then
+          return nil, header_name ..  " header not present in the response"
+
+        elseif header ~= "hello!" then
+          return nil, { exp = "hello!", got = header }
+        end
+
+        return true
+      end)
+      .is_truthy("filter-chain created by POST /config is active")
+  end)
+
   it("rejects filter chains with non-existent filters", function()
-    local res = post_config(client, {
+    local res = post_config(admin, {
       services = {
         { name = "test",
           url = "http://wasm.test/",
