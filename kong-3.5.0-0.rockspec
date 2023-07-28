@@ -457,7 +457,6 @@ build = {
     ["kong.db.schema.entities.consumer_groups"] = "kong/db/schema/entities/consumer_groups.lua",
     ["kong.db.schema.entities.consumer_group_plugins"] = "kong/db/schema/entities/consumer_group_plugins.lua",
     ["kong.db.schema.entities.consumer_group_consumers"] = "kong/db/schema/entities/consumer_group_consumers.lua",
-
     -- EE ]]
     ["kong.db.schema.others.migrations"] = "kong/db/schema/others/migrations.lua",
     ["kong.db.schema.others.declarative_config"] = "kong/db/schema/others/declarative_config.lua",

@@ -436,6 +436,18 @@ local function compile_nginx_stream_inject_conf(kong_config)
   return compile_conf(kong_config, nginx_stream_inject_template)
 end
 
+local function compile_nginx_main_inject_conf(kong_config)
+  return compile_conf(kong_config, nginx_main_inject_template)
+end
+
+local function compile_nginx_http_inject_conf(kong_config)
+  return compile_conf(kong_config, nginx_http_inject_template)
+end
+
+local function compile_nginx_stream_inject_conf(kong_config)
+  return compile_conf(kong_config, nginx_stream_inject_template)
+end
+
 local function prepare_prefix(kong_config, nginx_custom_template_path, skip_write, write_process_secrets)
   log.verbose("preparing nginx prefix directory at %s", kong_config.prefix)
 

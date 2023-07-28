@@ -237,6 +237,7 @@ do
     "events:requests:ws",
     "events:requests:wss",
     "events:requests:go_plugins",
+    "events:km:visit",
     "events:streams",
     "events:streams:tcp",
     "events:streams:tls",
@@ -858,6 +859,10 @@ function Kong.init_worker()
   kong.core_cache = core_cache
 
   kong.db:set_events_handler(worker_events)
+
+  if kong.configuration.admin_gui_listeners then
+    kong.cache:invalidate_local(constants.ADMIN_GUI_KCONFIG_CACHE_KEY)
+  end
 
   if process.type() == "privileged agent" then
     if kong.clustering then
@@ -1838,6 +1843,12 @@ end
 function Kong.serve_portal_assets()
   ngx.ctx.KONG_PHASE = PHASES.admin_api
   return lapis.serve("kong.portal.gui")
+end
+
+function Kong.admin_gui_log()
+  if kong.configuration.anonymous_reports then
+    reports.admin_gui_log(ngx.ctx)
+  end
 end
 
 function Kong.status_content()

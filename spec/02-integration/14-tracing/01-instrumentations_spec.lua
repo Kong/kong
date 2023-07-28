@@ -416,6 +416,7 @@ for _, strategy in helpers.each_strategy() do
         assert_has_attributes(balancer_span, {
           ["net.peer.ip"] = "127.0.0.1",
           ["net.peer.port"] = "%d+",
+          ["net.peer.name"]  = "127.0.0.1",
         })
 
         assert_has_attributes(db_span, {
