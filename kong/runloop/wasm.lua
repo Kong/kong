@@ -9,6 +9,7 @@ local _M = {}
 
 local utils = require "kong.tools.utils"
 local dns = require "kong.tools.dns"
+local reports = require "kong.reports"
 local clear_tab = require "table.clear"
 
 ---@module 'resty.wasmx.proxy_wasm'
@@ -537,6 +538,8 @@ function _M.init(kong_config)
     return
   end
 
+  reports.add_immutable_value("wasm_cnt", #modules)
+
   -- setup a DNS client for ngx_wasm_module
   _G.dns_client = dns(kong_config)
 
@@ -596,6 +599,8 @@ function _M.attach(ctx)
     -- all filters in this chain are disabled
     return
   end
+
+  ctx.ran_wasm = true
 
   local ok, err = proxy_wasm.attach(chain.c_plan, ATTACH_OPTS)
   if not ok then
