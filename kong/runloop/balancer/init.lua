@@ -35,6 +35,7 @@ local table_concat = table.concat
 local run_hook = hooks.run_hook
 local var = ngx.var
 local get_updated_now_ms = utils.get_updated_now_ms
+local is_http_module   = ngx.config.subsystem == "http"
 
 local CRIT = ngx.CRIT
 local ERR = ngx.ERR
@@ -499,7 +500,11 @@ local function set_host_header(balancer_data, upstream_scheme, upstream_host, is
 
     var.upstream_host = new_upstream_host
 
-    if is_balancer_phase then
+   -- stream module does not support ngx.balancer.recreate_request
+    -- and we do not need to recreate the request in balancer_by_lua
+    -- some nginx proxy variables will compile when init upstream ssl connection
+    -- https://github.com/nginx/nginx/blob/master/src/stream/ngx_stream_proxy_module.c#L1070
+    if is_balancer_phase and is_http_module then
       return recreate_request()
     end
   end
