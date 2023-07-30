@@ -441,9 +441,92 @@ local function _register_balancer_events(f)
 end
 
 
+local stream_config_listener
+local stream_config_notify
+do
+  local cjson_encode = require("cjson.safe").encode
+
+  -- init.lua
+  stream_config_listener = function()
+    local sock, err = ngx.req.socket()
+    if not sock then
+      kong.log.crit("unable to obtain request socket: ", err)
+      return
+    end
+
+    local data, err = sock:receive("*a")
+    if not data then
+      ngx.log(ngx.CRIT, "unable to receive reconfigure data: ", err)
+      return
+    end
+
+    local reconfigure_data, err = cjson.decode(data)
+    if not reconfigure_data then
+      ngx.log(ngx.ERR, "failed to json decode reconfigure data: ", err)
+      return
+    end
+
+    local ok, err = kong.worker_events.post("declarative", "reconfigure", reconfigure_data)
+    if ok ~= "done" then
+      ngx.log(ngx.ERR, "failed to rebroadcast reconfigure event in stream: ", err or ok)
+    end
+  end
+
+  local IS_HTTP_SUBSYSTEM = ngx.config.subsystem == "http"
+  local STREAM_CONFIG_SOCK = "unix:" .. ngx.config.prefix() .. "/stream_config.sock"
+
+  local ngx_socket_tcp = ngx.socket.tcp
+
+  declarative_reconfigure_notify = function(reconfigure_data)
+
+    -- call reconfigure_handler
+    local ok, err = worker_events.post("declarative", "reconfigure", reconfigure_data)
+    if ok ~= "done" then
+      return nil, "failed to broadcast reconfigure event: " .. (err or ok)
+    end
+
+    -- only http should notify stream
+    if not IS_HTTP_SUBSYSTEM or
+       #kong.configuration.stream_listeners <= 0
+    then
+      return true
+    end
+
+    -- update stream if necessary
+
+    local json, err = cjson_encode(reconfigure_data)
+    if not json then
+      return nil, err
+    end
+
+    local sock = ngx_socket_tcp()
+    ok, err = sock:connect(STREAM_CONFIG_SOCK)
+    if not ok then
+      return nil, err
+    end
+
+    local bytes
+    bytes, err = sock:send(json)
+    sock:close()
+
+    if not bytes then
+      return nil, err
+    end
+
+    assert(bytes == #json,
+           "incomplete reconfigure data sent to the stream subsystem")
+
+    return true
+  end
+end
+
+
 return {
   register_events = register_events,
 
   -- exposed only for tests
   _register_balancer_events = _register_balancer_events,
+
+  stream_config_listener = stream_config_listener,
+  stream_config_notify = stream_config_notify,
 }
