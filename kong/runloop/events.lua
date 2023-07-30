@@ -444,7 +444,7 @@ end
 local declarative_reconfigure_notify
 local stream_reconfigure_listener
 do
-  local cjson = require"cjson.safe"
+  local buffer = require "string.buffer"
 
   local function broadcast_reconfigure_event(data)
     return kong.worker_events.post("declarative", "reconfigure", data)
@@ -470,8 +470,8 @@ do
 
     -- update stream if necessary
 
-    local json, err = cjson.encode(reconfigure_data)
-    if not json then
+    local str, err = buffer.encode(reconfigure_data)
+    if not str then
       return nil, err
     end
 
@@ -484,14 +484,14 @@ do
     -- send to stream_reconfigure_listener()
 
     local bytes
-    bytes, err = sock:send(json)
+    bytes, err = sock:send(str)
     sock:close()
 
     if not bytes then
       return nil, err
     end
 
-    assert(bytes == #json,
+    assert(bytes == #str,
            "incomplete reconfigure data sent to the stream subsystem")
 
     return true
@@ -510,7 +510,7 @@ do
       return
     end
 
-    local reconfigure_data, err = cjson.decode(data)
+    local reconfigure_data, err = buffer.decode(data)
     if not reconfigure_data then
       ngx.log(ngx.ERR, "failed to json decode reconfigure data: ", err)
       return
