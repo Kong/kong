@@ -441,13 +441,13 @@ local function _register_balancer_events(f)
 end
 
 
-local stream_config_listener
-local stream_config_notify
+local stream_reconfigure_listener
+local declarative_reconfigure_notify
 do
-  local cjson_encode = require("cjson.safe").encode
+  local cjson = require"cjson.safe"
 
   -- init.lua
-  stream_config_listener = function()
+  stream_reconfigure_listener = function()
     local sock, err = ngx.req.socket()
     if not sock then
       kong.log.crit("unable to obtain request socket: ", err)
@@ -475,8 +475,6 @@ do
   local IS_HTTP_SUBSYSTEM = ngx.config.subsystem == "http"
   local STREAM_CONFIG_SOCK = "unix:" .. ngx.config.prefix() .. "/stream_config.sock"
 
-  local ngx_socket_tcp = ngx.socket.tcp
-
   declarative_reconfigure_notify = function(reconfigure_data)
 
     -- call reconfigure_handler
@@ -494,12 +492,12 @@ do
 
     -- update stream if necessary
 
-    local json, err = cjson_encode(reconfigure_data)
+    local json, err = cjson.encode(reconfigure_data)
     if not json then
       return nil, err
     end
 
-    local sock = ngx_socket_tcp()
+    local sock = ngx.socket.tcp()
     ok, err = sock:connect(STREAM_CONFIG_SOCK)
     if not ok then
       return nil, err
@@ -527,6 +525,6 @@ return {
   -- exposed only for tests
   _register_balancer_events = _register_balancer_events,
 
-  stream_config_listener = stream_config_listener,
-  stream_config_notify = stream_config_notify,
+  stream_reconfigure_listener = stream_reconfigure_listener,
+  declarative_reconfigure_notify = declarative_reconfigure_notify,
 }

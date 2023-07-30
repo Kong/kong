@@ -1725,7 +1725,7 @@ end
 
 do
   local events = require "kong.runloop.events"
-  Kong.stream_config_listener = events.stream_config_listener
+  Kong.stream_config_listener = events.stream_reconfigure_listener
 end
 
 
