@@ -446,6 +446,10 @@ local declarative_reconfigure_notify
 do
   local cjson = require"cjson.safe"
 
+  local function broadcast_reconfigure_event(data)
+    return kong.worker_events.post("declarative", "reconfigure", data)
+  end
+
   -- init.lua
   stream_reconfigure_listener = function()
     local sock, err = ngx.req.socket()
@@ -466,7 +470,8 @@ do
       return
     end
 
-    local ok, err = kong.worker_events.post("declarative", "reconfigure", reconfigure_data)
+    -- call reconfigure_handler in each worker's stream subsystem
+    local ok, err = broadcast_reconfigure_event(reconfigure_data)
     if ok ~= "done" then
       ngx.log(ngx.ERR, "failed to rebroadcast reconfigure event in stream: ", err or ok)
     end
@@ -477,8 +482,8 @@ do
 
   declarative_reconfigure_notify = function(reconfigure_data)
 
-    -- call reconfigure_handler
-    local ok, err = worker_events.post("declarative", "reconfigure", reconfigure_data)
+    -- call reconfigure_handler in each worker's http subsystem
+    local ok, err = broadcast_reconfigure_event(reconfigure_data)
     if ok ~= "done" then
       return nil, "failed to broadcast reconfigure event: " .. (err or ok)
     end
@@ -502,6 +507,8 @@ do
     if not ok then
       return nil, err
     end
+
+    -- send to stream_reconfigure_listener()
 
     local bytes
     bytes, err = sock:send(json)
