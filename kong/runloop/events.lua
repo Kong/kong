@@ -450,7 +450,6 @@ do
     return kong.worker_events.post("declarative", "reconfigure", data)
   end
 
-  -- init.lua
   stream_reconfigure_listener = function()
     local sock, err = ngx.req.socket()
     if not sock then
@@ -532,6 +531,9 @@ return {
   -- exposed only for tests
   _register_balancer_events = _register_balancer_events,
 
+  -- init.lua
   stream_reconfigure_listener = stream_reconfigure_listener,
+
+  -- db/declarative/import.lua
   declarative_reconfigure_notify = declarative_reconfigure_notify,
 }
