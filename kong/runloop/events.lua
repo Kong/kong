@@ -446,12 +446,12 @@ local stream_reconfigure_listener
 do
   local buffer = require "string.buffer"
 
+  local IS_HTTP_SUBSYSTEM  = ngx.config.subsystem == "http"
+  local STREAM_CONFIG_SOCK = "unix:" .. ngx.config.prefix() .. "/stream_config.sock"
+
   local function broadcast_reconfigure_event(data)
     return kong.worker_events.post("declarative", "reconfigure", data)
   end
-
-  local IS_HTTP_SUBSYSTEM = ngx.config.subsystem == "http"
-  local STREAM_CONFIG_SOCK = "unix:" .. ngx.config.prefix() .. "/stream_config.sock"
 
   declarative_reconfigure_notify = function(reconfigure_data)
 
