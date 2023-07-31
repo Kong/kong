@@ -1,6 +1,7 @@
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
-load("//build/nfpm:rules.bzl", "nfpm_pkg")
 load("@bazel_skylib//lib:selects.bzl", "selects")
+load("//build/nfpm:rules.bzl", "nfpm_pkg")
+load("//build/toolchain:managed_toolchain.bzl", "aarch64_glibc_distros")
 
 filegroup(
     name = "distribution_srcs",
@@ -335,21 +336,6 @@ selects.config_setting_group(
 
 ##### constraints, platforms and config_settings for cross-compile
 
-constraint_setting(name = "libc_version")
-
-constraint_value(
-    # use whatever glibc version provided by the system installed cross toolchain
-    name = "glibc_system",
-    constraint_setting = ":libc_version",
-    visibility = ["//visibility:public"],
-)
-
-constraint_value(
-    name = "musl",
-    constraint_setting = ":libc_version",
-    visibility = ["//visibility:public"],
-)
-
 constraint_setting(name = "cross_build_setting")
 
 constraint_value(
@@ -363,7 +349,7 @@ platform(
     constraint_values = [
         "@platforms//os:linux",
         "@platforms//cpu:x86_64",
-        ":glibc_system",
+        "//build/platforms/distro:generic",
         ":cross_build",
     ],
 )
@@ -373,7 +359,7 @@ platform(
     constraint_values = [
         "@platforms//os:linux",
         "@platforms//cpu:aarch64",
-        ":glibc_system",
+        "//build/platforms/distro:generic",
         ":cross_build",
     ],
 )
@@ -389,7 +375,7 @@ platform(
     constraint_values = [
         "@platforms//os:linux",
         "@platforms//cpu:x86_64",
-        ":musl",
+        "//build/platforms/distro:alpine",
         ":cross_build",
     ],
 )
@@ -405,10 +391,23 @@ platform(
     constraint_values = [
         "@platforms//os:linux",
         "@platforms//cpu:aarch64",
-        ":musl",
+        "//build/platforms/distro:alpine",
         ":cross_build",
     ],
 )
+
+[
+    platform(
+        name = vendor + "-crossbuild-aarch64",
+        constraint_values = [
+            "@platforms//os:linux",
+            "@platforms//cpu:aarch64",
+            "//build/platforms/distro:" + vendor,
+            ":cross_build",
+        ],
+    )
+    for vendor in aarch64_glibc_distros
+]
 
 # config_settings define a select() condition based on user-set constraint_values
 # see https://bazel.build/docs/configurable-attributes
@@ -427,7 +426,7 @@ config_setting(
     constraint_values = [
         "@platforms//os:linux",
         "@platforms//cpu:x86_64",
-        ":musl",
+        "//build/platforms/distro:alpine",
         ":cross_build",
     ],
     visibility = ["//visibility:public"],
