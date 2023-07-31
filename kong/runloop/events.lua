@@ -448,7 +448,7 @@ do
 
   -- `kong.configuration.prefix` is already normalized to an absolute path,
   -- but `ngx.config.prefix()` is not
-  local PREFIX = kong.configuration and
+  local PREFIX = kong and kong.configuration and
                  kong.configuration.prefix or
                  require("pl.path").abspath(ngx.config.prefix())
   local STREAM_CONFIG_SOCK = "unix:" .. PREFIX .. "/stream_config.sock"
