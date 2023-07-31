@@ -446,8 +446,13 @@ local stream_reconfigure_listener
 do
   local buffer = require "string.buffer"
 
+  -- `kong.configuration.prefix` is already normalized to an absolute path,
+  -- but `ngx.config.prefix()` is not
+  local PREFIX = kong.configuration and
+                 kong.configuration.prefix or
+                 require("pl.path").abspath(ngx.config.prefix())
+  local STREAM_CONFIG_SOCK = "unix:" .. PREFIX .. "/stream_config.sock"
   local IS_HTTP_SUBSYSTEM  = ngx.config.subsystem == "http"
-  local STREAM_CONFIG_SOCK = "unix:" .. ngx.config.prefix() .. "/stream_config.sock"
 
   local function broadcast_reconfigure_event(data)
     return kong.worker_events.post("declarative", "reconfigure", data)
