@@ -62,8 +62,15 @@ build-packages:
   package: rpm
   package-type: el9
   check-manifest-suite: el9-amd64
+- label: rhel-9-arm64
+  os: ubuntu-22.04
+  image: rockylinux:9
+  package: rpm
+  package-type: el9
+  bazel-args: --platforms=//:rhel9-crossbuild-aarch64
+  check-manifest-suite: el9-arm64
 
-# Amazon Linux
+  # Amazon Linux
 - label: amazonlinux-2
   os: ubuntu-22.04
   image: amazonlinux:2
@@ -76,6 +83,13 @@ build-packages:
   package: rpm
   package-type: aws2023
   check-manifest-suite: amazonlinux-2023-amd64
+- label: amazonlinux-2023-arm64
+  os: ubuntu-22.04
+  image: amazonlinux:2023
+  package: rpm
+  package-type: aws2023
+  bazel-args: --platforms=//:aws2023-crossbuild-aarch64
+  check-manifest-suite: amazonlinux-2023-arm64
 
 build-images:
 # Only build images for the latest version of each major release.
@@ -107,6 +121,8 @@ build-images:
   package: rpm
   rpm_platform: el9
   artifact-from: rhel-9
+  artifact-from-alt: rhel-9-arm64
+  docker-platforms: linux/amd64, linux/arm64
 
 smoke-tests:
 - label: ubuntu
@@ -180,6 +196,12 @@ release-packages:
   artifact-version: 9
   artifact-type: rhel
   artifact: kong.el9.amd64.rpm
+- label: rhel-9-arm64
+  package: rpm
+  artifact-from: rhel-9-arm64
+  artifact-version: 9
+  artifact-type: rhel
+  artifact: kong.el9.arm64.rpm
 
 # Amazon Linux
 - label: amazonlinux-2
@@ -194,6 +216,12 @@ release-packages:
   artifact-version: 2023
   artifact-type: amazonlinux
   artifact: kong.aws2023.amd64.rpm
+- label: amazonlinux-2023-arm64
+  package: rpm
+  artifact-from: amazonlinux-2023-arm64
+  artifact-version: 2023
+  artifact-type: amazonlinux
+  artifact: kong.aws2023.arm64.rpm
 
 release-images:
 - label: ubuntu
