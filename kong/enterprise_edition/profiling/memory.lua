@@ -21,6 +21,9 @@ local BLOCK_SIZE_KEY            = "memory:block_size"
 local STACK_DEPTH_KEY           = "memory:stack_depth"
 local ERROR_KEY                 = "memory:error"
 
+-- timer to turn on the JIT compiler
+local TIMER_NAME                = "memory_profiling_expire_timer"
+
 
 -- For checking the lock status
 local LOCK_OPTS_FOR_CHECKING    = { timeout = 0, }
@@ -151,6 +154,14 @@ function _M.start(opt)
     return nil, err
   end
 
+  -- disable JIT compiler to get accurate stacktrace
+  jit.off()
+  jit.flush()
+
+  assert(kong.timer:named_at(TIMER_NAME, opt.timeout, function()
+    jit.on()
+  end))
+
   return true
 end
 
@@ -160,6 +171,10 @@ function _M.stop()
   if not _M.is_active() then
     return
   end
+
+  -- if failed, nothing to do
+  kong.timer:cancel(TIMER_NAME)
+  jit.on()
 
   local ok, err = kprof.mem.stop()
   if not ok then
