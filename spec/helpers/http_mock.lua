@@ -160,6 +160,7 @@ function http_mock.new(listens, routes, opts)
     listens = listens,
     routes = routes,
     directives = directives,
+    init_block = opts.init_block,
     log_opts = log_opts,
     logs = {},
     tls = opts.tls,
