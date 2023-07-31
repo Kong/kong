@@ -130,9 +130,5 @@ location ~* ^$(admin_gui_path_prefix)(?<path>/.*)?$ {
 > end
     sub_filter_once off;
     sub_filter_types *;
-
-    log_by_lua_block {
-        Kong.admin_gui_log()
-    }
 }
 ]]
