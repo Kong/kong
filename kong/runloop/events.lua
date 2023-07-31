@@ -505,7 +505,7 @@ do
   stream_reconfigure_listener = function()
     local sock, err = ngx.req.socket()
     if not sock then
-      kong.log.crit("unable to obtain request socket: ", err)
+      ngx.log(ngx.CRIT, "unable to obtain request socket: ", err)
       return
     end
 
