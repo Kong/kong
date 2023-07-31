@@ -115,6 +115,7 @@ describe("vault cache invalidation (#" .. attachment_point .. "_" .. vault.name 
     }, nil, nil, vault:fixtures()))
 
     client = helpers.proxy_client()
+    client.reopen = true
   end)
 
   before_each(function()
