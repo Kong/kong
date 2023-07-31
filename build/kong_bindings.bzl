@@ -65,6 +65,10 @@ def _load_vars(ctx):
     if ngx_wasm_module_remote:
         content += '"NGX_WASM_MODULE_REMOTE": "%s",' % ngx_wasm_module_remote
 
+    ngx_wasm_module_branch = ctx.os.environ.get("NGX_WASM_MODULE_BRANCH")
+    if ngx_wasm_module_branch:
+        content += '"NGX_WASM_MODULE_BRANCH": "%s",' % ngx_wasm_module_branch
+
     # wasm runtime options
     if ctx.os.name == "mac os x":
         content += '"V8_OS": "darwin",'
