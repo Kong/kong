@@ -28,15 +28,15 @@ describe("wasm admin API [#" .. strategy .. "]", function()
   local service, route
 
   lazy_setup(function()
+    require("kong.runloop.wasm").enable({
+      { name = "tests" },
+      { name = "response_transformer" },
+    })
+
     bp, db = helpers.get_db_utils(strategy, {
       "routes",
       "services",
       "filter_chains",
-    })
-
-    db.filter_chains:load_filters({
-      { name = "tests" },
-      { name = "response_transformer" },
     })
 
     service = assert(db.services:insert {
@@ -118,7 +118,7 @@ describe("wasm admin API [#" .. strategy .. "]", function()
         local body = assert.response(res).has.jsonbody()
         assert.same({ data = {}, next = ngx.null }, body)
 
-       local chain = assert(bp.filter_chains:insert({
+        local chain = assert(bp.filter_chains:insert({
           filters = { { name = "tests" } },
           service = { id = service.id },
           tags = { "a" },

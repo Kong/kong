@@ -299,12 +299,6 @@ for _, v in ipairs(constants.CLUSTERING_SYNC_STATUS) do
   constants.CLUSTERING_SYNC_STATUS[k] = v
 end
 
--- Make the CORE_ENTITIES table usable both as an ordered array and as a set
--- This sets whether entity uses kong.core_cache (true) or kong.cache
-for _, v in ipairs(constants.CORE_ENTITIES) do
-  constants.CORE_ENTITIES[v] = true
-end
-
 -- EE [[
 
 -- Add all top-level ee_constants into constants (replaces existing ones)
@@ -342,5 +336,10 @@ constants.CORE_ENTITIES["consumers"] = nil
 
 -- EE ]]
 
+-- Make the CORE_ENTITIES table usable both as an ordered array and as a set
+-- This sets whether entity uses kong.core_cache (true) or kong.cache
+for _, v in ipairs(constants.CORE_ENTITIES) do
+  constants.CORE_ENTITIES[v] = true
+end
 
 return constants

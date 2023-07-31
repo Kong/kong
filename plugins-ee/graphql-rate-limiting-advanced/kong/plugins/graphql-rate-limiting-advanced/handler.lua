@@ -15,6 +15,14 @@ local cost         = require "kong.plugins.graphql-rate-limiting-advanced.cost"
 local meta         = require "kong.meta"
 local http         = require "resty.http"
 local cjson        = require "cjson.safe"
+local kong_global  = require "kong.global"
+local utils        = require "kong.tools.utils"
+local balancer     = require "kong.runloop.balancer"
+
+local get_updated_now_ms = utils.get_updated_now_ms
+local time_ns = utils.time_ns
+
+local PHASES       = kong_global.phases
 
 
 local ngx      = ngx
@@ -206,8 +214,83 @@ function NewRLHandler:init_worker()
   end, "gql-rl", "delete")
 end
 
+---
+-- Execute the balancer and select an IP/port for the upstream.
+--
+-- This is mostly copy/paste from `Kong.balancer()`
+--
+---@param ctx table
+---@param opts resty.websocket.client.connect.opts
+---@param upstream_scheme "http"|"https"
+local function get_peer(ctx, opts, upstream_scheme)
+  local now_ms = get_updated_now_ms()
+
+  if not ctx.KONG_BALANCER_START then
+    ctx.KONG_BALANCER_START = now_ms
+  end
+
+  local balancer_data = ctx.balancer_data
+  local tries = balancer_data.tries
+
+  local old_phase = ctx.KONG_PHASE
+  ctx.KONG_PHASE = PHASES.balancer
+  local ok, err, errcode = balancer.execute(balancer_data, ctx, true)
+  ctx.KONG_PHASE = old_phase
+  if not ok then
+    ngx.log(ngx.ERR, "failed to retry the dns/balancer resolver for ",
+            tostring(balancer_data.host), "' with: ", tostring(err))
+
+    return kong.response.exit(errcode)
+  end
+
+  local current_try = {}
+  balancer_data.try_count = balancer_data.try_count + 1
+  tries[balancer_data.try_count] = current_try
+
+  current_try.balancer_start = now_ms
+  current_try.balancer_start_ns = time_ns()
+
+  if not balancer_data.preserve_host then
+    -- set the upstream host header if not `preserve_host`
+    local new_upstream_host = balancer_data.hostname
+    local port = balancer_data.port
+
+    if (port ~= 80  and port ~= 443)
+    or (port == 80 and upstream_scheme ~= "http")
+    or (port == 443 and upstream_scheme ~= "https")
+    then
+      new_upstream_host = new_upstream_host .. ":" .. port
+    end
+
+    if new_upstream_host ~= opts.host then
+      opts.host = new_upstream_host
+    end
+  end
+
+  if upstream_scheme == "https" then
+    local server_name = opts.host
+
+    -- the host header may contain a port number that needs to be stripped
+    local pos = server_name:find(":")
+    if pos then
+      server_name = server_name:sub(1, pos - 1)
+    end
+
+    opts.server_name = server_name
+  end
+
+  current_try.ip   = balancer_data.ip
+  current_try.port = balancer_data.port
+
+  -- set the targets as resolved
+  ngx.log(ngx.DEBUG, "setting address (try ", balancer_data.try_count, "): ",
+                     balancer_data.ip, ":", balancer_data.port)
+  return current_try
+end
+
 
 local function introspect_upstream_schema(service, request)
+  local ip = service.host
   local host = service.host
   local port = service.port
   local path = service.path
@@ -217,10 +300,25 @@ local function introspect_upstream_schema(service, request)
     ['authorization'] = request.get_header("authorization")
   }
 
+  local addr = ngx.ctx.balancer_data
+  if addr == nil then
+    return nil, "failed to get balancer data"
+  end
+
+  if addr.type == "name" then
+    local opts = {
+      host = ngx.var.upstream_host,
+    }
+    local try = get_peer(ngx.ctx, opts, ngx.var.upstream_scheme)
+    ip = try.ip
+    port = try.port
+    host = opts.host
+  end
+
   local httpc = http.new()
-  local ok, c_err = httpc:connect(host, port)
+  local ok, c_err = httpc:connect(ip, port)
   if not ok then
-    kong.log.err("failed to connect to ", host, ":", tostring(port), ": ", c_err)
+    kong.log.err("failed to connect to ", ip, ":", tostring(port), ": ", c_err)
     return nil, c_err
   end
 
@@ -233,13 +331,18 @@ local function introspect_upstream_schema(service, request)
     end
   end
 
+  if ngx.var.upstream_host and ngx.var.upstream_host ~= "" then
+    host = ngx.var.upstream_host
+  end
+
+  headers['host'] = host
   local introspection_req_body = cjson.encode({ query = GqlSchema.TYPE_INTROSPECTION_QUERY })
   kong.log.err("introspection request body: ", introspection_req_body)
   local res, req_err = httpc:request {
     method = "POST",
     path = path,
     body = introspection_req_body,
-    headers = headers
+    headers = headers,
   }
 
   if not res then

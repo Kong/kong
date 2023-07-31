@@ -10,6 +10,7 @@ local utils = require "kong.tools.utils"
 local reports = require "kong.reports"
 local endpoints = require "kong.api.endpoints"
 local arguments = require "kong.api.arguments"
+local api_helpers = require "kong.api.api_helpers"
 
 
 local ngx = ngx
@@ -124,6 +125,23 @@ return {
 
   ["/plugins/:plugins"] = {
     PATCH = patch_plugin
+  },
+
+  ["/plugins/schema/:name"] = {
+    GET = function(self, db)
+      kong.log.deprecation("/plugins/schema/:name endpoint is deprecated, ",
+                           "please use /schemas/plugins/:name instead", {
+                             after = "1.2.0",
+                             removal = "4.0.0",
+                           })
+      local subschema = db.plugins.schema.subschemas[self.params.name]
+      if not subschema then
+        return kong.response.exit(404, { message = "No plugin named '" .. self.params.name .. "'" })
+      end
+
+      local copy = api_helpers.schema_to_jsonable(subschema.fields.config)
+      return kong.response.exit(200, copy)
+    end
   },
 
   ["/plugins/enabled"] = {

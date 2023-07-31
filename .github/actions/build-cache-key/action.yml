@@ -37,6 +37,13 @@ runs:
           ${{ hashFiles('kong-*.rockspec') }}
           ${{ hashFiles('kong.conf.default') }}
           ${{ hashFiles('kong/**') }}
+
+          # EE
+          ${{ hashFiles('**/*.rockspec') }}
+          ${{ hashFiles('distribution/*.lua') }}
+          ${{ hashFiles('distribution/*.sh') }}
+          ${{ hashFiles('plugins-ee/**/*.lua') }}
+          ${{ hashFiles('plugins-ee/**/*.rockspec') }}
         )
 
         HASH=$(sha256sum - <<< "${FILE_HASHES[*]}" | awk '{print $1}' )

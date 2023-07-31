@@ -46,6 +46,8 @@ jobs:
     - name: Generate cache key
       id: cache-key
       uses: ./.github/actions/build-cache-key
+      with:
+        prefix: ci-build-${{ inputs.label }}
 
     - name: Lookup build cache
       id: cache-deps

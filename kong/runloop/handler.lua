@@ -1247,12 +1247,35 @@ return {
                        upstream_url_t.host,
                        upstream_url_t.port,
                        service, route)
-      var.upstream_host = upstream_url_t.host
+      if match_t.upstream_host then
+        var.upstream_host = match_t.upstream_host
+      end
     end,
     after = function(ctx)
+      local upstream_scheme = var.upstream_scheme
+
+      local balancer_data = ctx.balancer_data
+      balancer_data.scheme = upstream_scheme -- COMPAT: pdk
+
+      -- The content of var.upstream_host is only set by the router if
+      -- preserve_host is true
+      --
+      -- We can't rely on var.upstream_host for balancer retries inside
+      -- `set_host_header` because it would never be empty after the first -- balancer try
+      local upstream_host = var.upstream_host
+      if upstream_host ~= nil and upstream_host ~= "" then
+        balancer_data.preserve_host = true
+      end
+
       local ok, err, errcode = balancer_execute(ctx)
       if not ok then
         return kong.response.error(errcode, err)
+      end
+
+      local ok, err = balancer.set_host_header(balancer_data, upstream_scheme, upstream_host)
+      if not ok then
+        log(ERR, "failed to set balancer Host header: ", err)
+        return exit(500)
       end
     end
   },

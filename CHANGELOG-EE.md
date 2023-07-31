@@ -74,6 +74,8 @@
   [FTI-5127](https://konghq.atlassian.net/browse/FTI-5127)
 - OpenID-Connect now supports adding scope to the token cache key with `token_cache_key_include_scope` set to true.
   [KAG-1439](https://konghq.atlassian.net/browse/KAG-1439)
+- graphql-rate-limiting-advanced now support config with upstream target.
+  [FTI-5209](https://konghq.atlassian.net/browse/FTI-5209)
 
 ### Fixes
 
