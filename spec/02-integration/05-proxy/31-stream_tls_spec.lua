@@ -113,7 +113,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       assert.equal("ssl-hello.com\n", body)
       tcp:close()
     end)
-    
+
     it("tls set host_header", function()
       -- clear preserve_host
       local res = assert(admin_client:send {
@@ -127,7 +127,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         }
       })
       assert.res_status(200, res)
-      
+
       local opt = {
         stream_enabled = true,
         stream_port = 19003
