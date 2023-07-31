@@ -6,9 +6,9 @@ load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 
 def wasmx_repositories():
-    wasmtime_version = KONG_VAR["WASMTIME_VERSION"]
-    wasmer_version = KONG_VAR["WASMER_VERSION"]
-    v8_version = KONG_VAR["V8_VERSION"]
+    wasmtime_version = KONG_VAR["WASMTIME"]
+    wasmer_version = KONG_VAR["WASMER"]
+    v8_version = KONG_VAR["V8"]
     wasmtime_os = KONG_VAR["WASMTIME_OS"]
     wasmer_os = KONG_VAR["WASMER_OS"]
     v8_os = KONG_VAR["V8_OS"]
