@@ -40,6 +40,8 @@
   [#11071](https://github.com/Kong/kong/pull/11071)
 - Make upstream `host_header` and router `preserve_host` config work in stream tls proxy.
   [#11244](https://github.com/Kong/kong/pull/11244)
+- Add beta support for WebAssembly/proxy-wasm
+  [#11218](https://github.com/Kong/kong/pull/11218)
 
 #### Admin API
 
