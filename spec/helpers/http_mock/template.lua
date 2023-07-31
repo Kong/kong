@@ -63,8 +63,8 @@ http {
 
     setmetatable(_G, g_meta)
 # end
-# if init_block then
-$(init_block)
+# if init_by_lua_block then
+$(init_by_lua_block)
 # end
   }
 

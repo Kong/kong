@@ -27,7 +27,7 @@ for _, tls in ipairs {true, false} do
           resp_body = true
         }
       }))
-      
+
       assert(mock:start())
     end)
 
@@ -219,6 +219,32 @@ describe("http_mock config", function()
     local pid_filename = mock_prefix .. "/logs/nginx.pid"
 
     assert(pl_file.access_time(pid_filename) ~= nil, "mocking not in the correct place")
+  end)
+
+  it("init_by_lua_block inject", function ()
+    local mock = assert(http_mock.new(nil, {
+      ["/test"] = {
+        access = [[
+          ngx.print(test_value)
+        ]],
+      },
+    }, {
+      init_by_lua_block = [[
+        -- Test that the mock is injected
+        test_value = "hello world"
+      ]]
+    }))
+    mock:start()
+    finally(function()
+      assert(mock:stop())
+    end)
+
+    local client = mock:get_client()
+    local res = assert(client:send({
+      path = "/test"
+    }))
+    assert.response(res).has.status(200)
+    assert.same(res:read_body(), "hello world")
   end)
 end)
 

@@ -61,6 +61,8 @@ end
 -- @tparam[opt=false] bool opts.log_opts.collect_resp whether to log responses
 -- @tparam[opt=false] bool opts.log_opts.collect_resp_body whether to log response bodies
 -- @tparam[opt=true] bool opts.log_opts.collect_err: whether to log errors
+-- @tparam[opt=""] string opts.init_by_lua_block the lua code injected into the init_by_lua_block
+
 -- @treturn http_mock a mock instance
 -- @treturn string the port the mock server listens to
 -- @usage
@@ -160,7 +162,7 @@ function http_mock.new(listens, routes, opts)
     listens = listens,
     routes = routes,
     directives = directives,
-    init_block = opts.init_block,
+    init_by_lua_block = opts.init_by_lua_block,
     log_opts = log_opts,
     logs = {},
     tls = opts.tls,
