@@ -9,7 +9,7 @@ def read_requirements(path=None):
         lines = [re.findall("(.+)=([^# ]+)", d) for d in f.readlines()]
         return {l[0][0]: l[0][1].strip() for l in lines if l}
 
-def common_suites(expect, fips: bool = False):
+def common_suites(expect, fips: bool = False, libxcrypt_no_obsolete_api: bool = False):
     # file existence
     expect("/usr/local/kong/include/google/protobuf/**.proto",
            "includes Google protobuf headers").exists()
@@ -57,6 +57,13 @@ def common_suites(expect, fips: bool = False):
         .contain("ngx_http_lua_kong_ffi_var_get_by_index") \
         .contain("ngx_http_lua_kong_ffi_var_set_by_index") \
         .contain("ngx_http_lua_kong_ffi_var_load_indexes")
+
+    if libxcrypt_no_obsolete_api:
+        expect("/usr/local/openresty/nginx/sbin/nginx", "nginx linked with libxcrypt.so.2") \
+            .needed_libraries.contain("libcrypt.so.2")
+    else:
+        expect("/usr/local/openresty/nginx/sbin/nginx", "nginx should link libxcrypt.so.1") \
+            .needed_libraries.contain("libcrypt.so.1")
 
     if not fips:
         expect("/usr/local/openresty/nginx/sbin/nginx", "nginx compiled with OpenSSL 3.1.x") \

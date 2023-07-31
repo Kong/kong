@@ -87,10 +87,11 @@ build-packages:
   bazel-args: --//:fips=true
   check-manifest-suite: el9-amd64-fips
 - label: rhel-9-arm64
-  os: ubuntu-22.04-arm64
+  os: vars.RELEASE_RUNS_ON
   image: rockylinux:9
   package: rpm
   package-type: el9
+  bazel-args: --platforms=//:rhel9-crossbuild-aarch64
   check-manifest-suite: el9-arm64
 
 # Amazon Linux
@@ -101,10 +102,11 @@ build-packages:
   package-type: aws2
   check-manifest-suite: amazonlinux-2-amd64
 - label: amazonlinux-2-arm64
-  os: ubuntu-22.04-arm64
+  os: vars.RELEASE_RUNS_ON
   image: amazonlinux:2
   package: rpm
   package-type: aws2
+  bazel-args: --platforms=//:aws2-crossbuild-aarch64
   check-manifest-suite: amazonlinux-2-arm64
 - label: amazonlinux-2023
   os: vars.RELEASE_RUNS_ON
@@ -113,10 +115,11 @@ build-packages:
   package-type: aws2023
   check-manifest-suite: amazonlinux-2023-amd64
 - label: amazonlinux-2023-arm64
-  os: ubuntu-22.04-arm64
+  os: vars.RELEASE_RUNS_ON
   image: amazonlinux:2023
   package: rpm
   package-type: aws2023
+  bazel-args: --platforms=//:aws2023-crossbuild-aarch64
   check-manifest-suite: amazonlinux-2023-arm64
 
 

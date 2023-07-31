@@ -59,6 +59,7 @@ targets = {
     "amazonlinux-2023-amd64": ExpectSuite(
         name="Amazon Linux 2023 (amd64)",
         manifest="fixtures/amazonlinux-2023-amd64.txt",
+        libxcrypt_no_obsolete_api=True,
         libc_max_version="2.34",
         # gcc 11.2.1
         libcxx_max_version="3.4.29",
@@ -96,6 +97,7 @@ targets = {
         name="Redhat 9 (amd64)",
         manifest="fixtures/el9-amd64.txt",
         use_rpath=True,
+        libxcrypt_no_obsolete_api=True,
         libc_max_version="2.34",
         # gcc 11.3.1
         libcxx_max_version="3.4.29",
@@ -105,6 +107,7 @@ targets = {
         name="Redhat 9 (amd64) FIPS",
         manifest="fixtures/el9-amd64-fips.txt",
         use_rpath=True,
+        libxcrypt_no_obsolete_api=True,
         fips=True,
         libc_max_version="2.34",
         # gcc 11.3.1
@@ -176,6 +179,10 @@ for target in list(targets.keys()):
     e.manifest = e.manifest.replace("-amd64.txt", "-arm64.txt")
     e.name = e.name.replace("(amd64)", "(arm64)")
     e.extra_tests = [arm64_suites]
+
+    # TODO: cross compiled aws2023 uses rpath instead of runpath
+    if target == "amazonlinux-2023-amd64":
+        e.use_rpath = True
 
     targets[target.replace("-amd64", "-arm64")] = e
 

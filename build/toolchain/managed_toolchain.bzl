@@ -1,5 +1,12 @@
 load(":cc_toolchain_config.bzl", "cc_toolchain_config")
 
+aarch64_glibc_distros = {
+    "rhel9": "11",
+    "rhel8": "8",
+    "aws2023": "11",
+    "aws2": "7",
+}
+
 def _generate_wrappers_impl(ctx):
     wrapper_file = ctx.actions.declare_file("wrapper")
     ctx.actions.expand_template(
@@ -118,3 +125,28 @@ def register_managed_toolchain(name = None, arch = "x86_64", vendor = "unknown",
         gcc_version = gcc_version,
     )
     native.register_toolchains("//build/toolchain:%s_toolchain" % identifier)
+
+def register_all_toolchains(name = None):
+    native.register_toolchains("//build/toolchain:local_aarch64-linux-gnu_toolchain")
+
+    register_managed_toolchain(
+        arch = "x86_64",
+        gcc_version = "11",
+        libc = "musl",
+        vendor = "alpine",
+    )
+
+    register_managed_toolchain(
+        arch = "aarch64",
+        gcc_version = "11",
+        libc = "musl",
+        vendor = "alpine",
+    )
+
+    for vendor in aarch64_glibc_distros:
+        register_managed_toolchain(
+            arch = "aarch64",
+            gcc_version = aarch64_glibc_distros[vendor],
+            libc = "gnu",
+            vendor = vendor,
+        )

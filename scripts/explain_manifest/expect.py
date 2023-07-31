@@ -65,12 +65,13 @@ def write_block_desc(desc_verb):
 
 class ExpectSuite():
     def __init__(self, name, manifest,
-                 libc_max_version=None, libcxx_max_version=None, cxxabi_max_version=None, use_rpath=False, fips=False, extra_tests=[]):
+                 libc_max_version=None, libcxx_max_version=None, cxxabi_max_version=None, use_rpath=False, fips=False, libxcrypt_no_obsolete_api=False, extra_tests=[]):
         self.name = name
         self.manifest = manifest
         self.libc_max_version = libc_max_version
         self.libcxx_max_version = libcxx_max_version
         self.cxxabi_max_version = cxxabi_max_version
+        self.libxcrypt_no_obsolete_api = libxcrypt_no_obsolete_api
         self.use_rpath = use_rpath
         self.fips = fips
         self.extra_tests = extra_tests
@@ -335,7 +336,7 @@ class ExpectChain():
     def run(self, suite: ExpectSuite):
         self._current_suite = suite
 
-        suites.common_suites(self.expect, suite.fips)
+        suites.common_suites(self.expect, suite.fips, suite.libxcrypt_no_obsolete_api)
         suites.ee_suites(self.expect, suite.fips)
         suites.libc_libcpp_suites(
             self.expect, suite.libc_max_version, suite.libcxx_max_version, suite.cxxabi_max_version)

@@ -1,4 +1,5 @@
 load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make", "make")
+load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 load("@openresty_binding//:variables.bzl", "LUAJIT_VERSION")
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
@@ -132,6 +133,25 @@ make(
     ],
 )
 
+selects.config_setting_group(
+    name = "nogroup-name-as-nobody",
+    match_any = [
+        "@kong//build/platforms/distro:rhel9",
+        "@kong//build/platforms/distro:rhel8",
+        "@kong//build/platforms/distro:aws2023",
+        "@kong//build/platforms/distro:aws2",
+    ],
+)
+
+selects.config_setting_group(
+    name = "needs-xcrypt2",
+    match_any = [
+        "@kong//build/platforms/distro:generic",
+        "@kong//build/platforms/distro:rhel9",
+        "@kong//build/platforms/distro:aws2023",
+    ],
+)
+
 CONFIGURE_OPTIONS = [
     "--with-pcre-jit",
     "--with-http_ssl_module",
@@ -240,6 +260,12 @@ CONFIGURE_OPTIONS = [
         # we place it here to skip macos, which uses darwin ld
         # https://github.com/Kong/ngx_wasm_module/commit/e70a19f53e1dda99d016c5cfa393652720959afd
         "--with-ld-opt=\"-Wl,--allow-multiple-definition\"",
+    ],
+    "//conditions:default": [],
+}) + select({
+    # some distros name "nogroup" group name as "nobody"
+    ":nogroup-name-as-nobody": [
+        "--group=nobody",
     ],
     "//conditions:default": [],
 }) + select({
@@ -428,7 +454,7 @@ configure_make(
     }) + select({
         # any cross build that migrated to use libxcrypt needs those flags
         # alpine uses different libc so doesn't need it
-        "@kong//:aarch64-linux-anylibc-cross": [
+        ":needs-xcrypt2": [
             "@cross_deps_libxcrypt//:libxcrypt",
         ],
         "//conditions:default": [],
