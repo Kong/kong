@@ -125,4 +125,127 @@ for _, db_strategy in strategies() do
           end)
         end
     end)
+
+    describe("graphql-rate-limiting-advanced with upstream access with strategy #" .. db_strategy, function()
+      local client
+
+      setup(function()
+          local bp = helpers.get_db_utils(db_strategy == "off" and "postgres" or db_strategy,
+                                          nil, {"graphql-rate-limiting-advanced"})
+
+          local upstream = bp.upstreams:insert()
+
+          bp.targets:insert({
+            upstream = upstream,
+            target = "graphql.service.local.domain:10002",
+          })
+
+          local service = bp.services:insert({
+            url = "https://" .. upstream.name .. ":10002/graphql",
+        })
+
+          if db_strategy ~= "off" then
+            local route1 = assert(bp.routes:insert {
+              hosts = { "route-1.com" },
+              service = service,
+            })
+
+            assert(bp.plugins:insert {
+              name = "graphql-rate-limiting-advanced",
+              route = { id = route1.id },
+              config = {
+                  window_size = {30},
+                  limit = {5},
+                  strategy = "cluster",
+                  sync_rate = 1,
+              },
+            })
+          end
+
+          local yaml_file = helpers.make_yaml_file([[
+            _format_version: '3.0'
+            upstreams:
+            - name: gql-rl-upstream
+              targets:
+              - target: graphql.service.local.domain:10002
+                weight: 1
+            services:
+            - name: gql-rl-srv
+              url: https://gql-rl-upstream:10002/graphql
+              routes:
+              - name: gql-rl-rt
+                hosts:
+                - route-2.com
+                paths:
+                - /request
+                plugins:
+                - name: graphql-rate-limiting-advanced
+                  config:
+                    window_size:
+                    - 30
+                    limit:
+                    - 5
+                    strategy: cluster
+                    sync_rate: -1
+          ]])
+
+          assert(helpers.start_kong({
+              database = db_strategy,
+              plugins = "bundled,graphql-rate-limiting-advanced",
+              nginx_conf = "spec/fixtures/custom_nginx.template",
+              declarative_config = db_strategy == "off" and yaml_file or nil,
+              pg_host = db_strategy == "off" and "unknownhost.konghq.com" or nil,
+          }, nil, nil, fixtures))
+      end)
+
+      before_each(function()
+          if client then
+              client:close()
+          end
+          client = helpers.proxy_client()
+      end)
+
+      teardown(function()
+          if client then
+              client:close()
+          end
+
+          helpers.stop_kong(nil, true)
+      end)
+
+      if db_strategy ~= "off" then
+        it("handles a simple request successfully", function()
+          local res = assert(client:send {
+              method = "POST",
+              path = "/request",
+              headers = {
+                  ["Host"] = "route-1.com",
+                  ["Content-Type"] = "application/x-www-form-urlencoded",
+              },
+              body = {
+                  query = '{ user(id:"1") { id, friends }}'
+              }
+          })
+
+          assert.res_status(200, res)
+        end)
+
+      else
+        it("handles a simple request successfully in without database", function()
+          local res = assert(client:send {
+              method = "POST",
+              path = "/request",
+              headers = {
+                  ["Host"] = "route-2.com",
+                  ["Content-Type"] = "application/x-www-form-urlencoded",
+              },
+              body = {
+                  query = '{ user(id:"1") { id, friends }}'
+              }
+          })
+
+          assert.res_status(200, res)
+        end)
+      end
+  end)
 end
