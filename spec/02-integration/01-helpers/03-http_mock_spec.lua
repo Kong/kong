@@ -229,7 +229,7 @@ describe("http_mock config", function()
         ]],
       },
     }, {
-      init_by_lua_block = [[
+      init = [[
         -- Test that the mock is injected
         test_value = "hello world"
       ]]
