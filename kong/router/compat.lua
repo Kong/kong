@@ -356,8 +356,8 @@ do
 end
 
 
-local PLAIN_HOST_ONLY_BIT = lshift(0x01ULL, 60)
-local REGEX_URL_BIT       = lshift(0x01ULL, 51)
+local PLAIN_HOST_ONLY_BIT = lshift_uint64(0x01ULL, 60)
+local REGEX_URL_BIT       = lshift_uint64(0x01ULL, 51)
 
 
 -- convert a route to a priority value for use in the ATC router
