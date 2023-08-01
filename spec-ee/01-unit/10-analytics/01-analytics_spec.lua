@@ -175,22 +175,22 @@ local request_log_rate_limit = {
       ['x-kong-proxy-latency'] = 57,
       ['x-kong-upstream-latency'] = 457,
       ['access-control-allow-origin'] = "*",
-      ['ratelimit-limit'] = 10,
-      ['ratelimit-remaining'] = 0,
-      ['ratelimit-reset'] = 39,
-      ['retry-after'] = 39,
-      ['x-ratelimit-limit-day'] = 600,
-      ['x-ratelimit-limit-hour'] = 500,
-      ['x-ratelimit-limit-minute'] = 10,
-      ['x-ratelimit-limit-month'] = 700,
-      ['x-ratelimit-limit-second'] = 5,
-      ['x-ratelimit-limit-year'] = 800,
-      ['x-ratelimit-remaining-day'] = 580,
-      ['x-ratelimit-remaining-hour'] = 480,
-      ['x-ratelimit-remaining-minute'] = 0,
-      ['x-ratelimit-remaining-month'] = 680,
-      ['x-ratelimit-remaining-second'] = 5,
-      ['x-ratelimit-remaining-year'] = 780
+      ['ratelimit-limit'] = "10",
+      ['ratelimit-remaining'] = "0",
+      ['ratelimit-reset'] = "39",
+      ['retry-after'] = "39",
+      ['x-ratelimit-limit-day'] = "600",
+      ['x-ratelimit-limit-hour'] = "500",
+      ['x-ratelimit-limit-minute'] = "10",
+      ['x-ratelimit-limit-month'] = "700",
+      ['x-ratelimit-limit-second'] = "5",
+      ['x-ratelimit-limit-year'] = "800",
+      ['x-ratelimit-remaining-day'] = "580",
+      ['x-ratelimit-remaining-hour'] = "480",
+      ['x-ratelimit-remaining-minute'] = "0",
+      ['x-ratelimit-remaining-month'] = "680",
+      ['x-ratelimit-remaining-second'] = "5",
+      ['x-ratelimit-remaining-year'] = "780"
     },
     status = 200,
     size = 827
@@ -515,8 +515,8 @@ describe("proto buffer", function()
       }
     }
     local payload = analytics:create_payload(request_log_with_strings)
-    local bytes = pb.encode("kong.model.analytics.RequestMetadata", payload)
-    local decoded = pb.decode("kong.model.analytics.RequestMetadata", bytes)
+    local bytes = pb.encode("kong.model.analytics.Payload", { data = {payload} })
+    local decoded = pb.decode("kong.model.analytics.Payload", bytes)
     local expected = {
       client_ip = "",
       started_at = 0,
@@ -552,7 +552,7 @@ describe("proto buffer", function()
       },
       tries = {},
     }
-    assert.are.same(expected, decoded)
+    assert.are.same(expected, decoded.data[1])
   end)
 
   it("encode and decode defaults correctly", function()
