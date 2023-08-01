@@ -1342,6 +1342,26 @@ local function wait_until(f, timeout, step)
 end
 
 
+
+--- Waits until no Lua error occurred
+-- The check function will repeatedly be called (with a fixed interval), until
+-- there is no Lua error occurred
+--
+-- NOTE: this is a regular Lua function, not a Luassert assertion.
+-- @function pwait_until
+-- @param f check function
+-- @param timeout (optional) maximum time to wait after which an error is
+-- thrown, defaults to 5.
+-- @param step (optional) interval between checks, defaults to 0.05.
+-- @return nothing. It returns when the condition is met, or throws an error
+-- when it times out.
+local function pwait_until(f, timeout, step)
+  wait_until(function()
+    return pcall(f)
+  end, timeout, step)
+end
+
+
 --- Waits for invalidation of a cached key by polling the mgt-api
 -- and waiting for a 404 response. Throws an error on timeout.
 --
@@ -2921,6 +2941,7 @@ end
   grpc_client = grpc_client,
   http2_client = http2_client,
   wait_until = wait_until,
+  pwait_until = pwait_until,
   wait_pid = wait_pid,
   tcp_server = tcp_server,
   udp_server = udp_server,
