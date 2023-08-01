@@ -29,7 +29,7 @@ jobs:
           const run_url = `https://github.com/${repo_name}/actions/runs/${run_id}`;
           const workflow_name = "${{ github.event.workflow_run.name }}";
           const branch_name = "${{ github.event.workflow_run.head_branch }}";
-          const actor_github_id = "${{ github.event.workflow_run.head_commit.author.login }}";
+          const actor_github_id = "${{ github.event.workflow_run.head_commit.author.username }}";
           const actor_slack_id = slack_mapping[actor_github_id];
           const actor = actor_slack_id ? `<@${actor_slack_id}>` : actor_github_id;
           const payload = {
