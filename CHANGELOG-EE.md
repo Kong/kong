@@ -2,9 +2,16 @@
 
 # Table of Contents
 
+- [3.4.0.0](#3400)
 - [3.3.0.0](#3300)
 
 # Unreleased
+
+### Fixes
+
+* Fix the return info and log of previous errors are missing when use redis cluster mode connection fails. #6032
+
+# 3.4.0.0
 
 ## Enterprise
 
@@ -43,7 +50,6 @@
 
 ### Fixes
 
-* Fix the return info and log of previous errors are missing when use redis cluster mode connection fails
 * Fix a potential memory leak and reconnection problem which will probably occur when telemetry breaks down due to any exceptions in its `send` thread. [FTI-5225](https://konghq.atlassian.net/browse/FTI-5225)
 * Fix the bug that will cause the telemetry websocket to be broken when there is a bad latency in flushing vitals to database by decoupling the process of receving vitals data from DP and the process of flushing vitals to database in the side of CP with a queue as a buffer. [FTI-4386](https://konghq.atlassian.net/browse/FTI-4386)
 * Fix the bug of getting empty request_id when generating auditting data. [FTI-2438](https://konghq.atlassian.net/browse/FTI-2438)
