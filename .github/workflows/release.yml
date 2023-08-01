@@ -102,14 +102,14 @@ jobs:
       matrix:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-packages'] }}"
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-22.04
     container:
       image: ${{ matrix.image }}
       options: --privileged
 
     steps:
     - name: Early Rpm Setup
-      if: matrix.package == 'rpm'
+      if: matrix.package == 'rpm' && matrix.image != ''
       run: |
         # tar/gzip is needed to restore git cache (if available)
         yum install -y tar gzip which file zlib-devel
@@ -123,7 +123,7 @@ jobs:
 
     - name: Cache Git
       id: cache-git
-      if: matrix.package == 'rpm' || matrix.image == 'debian:10'
+      if: (matrix.package == 'rpm' || matrix.image == 'debian:10') && matrix.image != ''
       uses: actions/cache@v3
       with:
         path: /usr/local/git
@@ -131,7 +131,7 @@ jobs:
 
     # el-7,8, amazonlinux-2,2023, debian-10 doesn't have git 2.18+, so we need to install it manually
     - name: Install newer Git
-      if: (matrix.package == 'rpm' || matrix.image == 'debian:10') && steps.cache-git.outputs.cache-hit != 'true'
+      if: (matrix.package == 'rpm' || matrix.image == 'debian:10') && matrix.image != '' && steps.cache-git.outputs.cache-hit != 'true'
       run: |
         if which apt 2>/dev/null; then
           apt update
@@ -150,7 +150,7 @@ jobs:
         make install
 
     - name: Add Git to PATH
-      if: matrix.package == 'rpm' || matrix.image == 'debian:10'
+      if: (matrix.package == 'rpm' || matrix.image == 'debian:10') && matrix.image != ''
       run: |
         echo "/usr/local/git/bin" >> $GITHUB_PATH
 
@@ -210,7 +210,7 @@ jobs:
         sudo apt-get install crossbuild-essential-arm64 -y
 
     - name: Install Rpm Dependencies
-      if: matrix.package == 'rpm'
+      if: matrix.package == 'rpm' && matrix.image != ''
       run: |
         yum groupinstall -y 'Development Tools'
         dnf config-manager --set-enabled powertools || true # enable devel packages on rockylinux:8
