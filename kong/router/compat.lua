@@ -55,7 +55,7 @@ local single_header_buf = buffer.new(64)
 -- sep: a seperator of expressions, like '&&'
 -- idx: indicate whether or not to add 'sep'
 --      for example, we should not add 'sep' for the first element in array
-local function buffer_append(buf, sep, str, idx)
+local function expression_append(buf, sep, str, idx)
   if #buf > 0 and
      (idx == nil or idx > 1)
   then
@@ -125,17 +125,17 @@ local function gen_for_nets(ip_field, port_field, vals)
     end
 
     if not ip then
-      buffer_append(nets_buf, LOGICAL_OR, exp_port, i)
+      expression_append(nets_buf, LOGICAL_OR, exp_port, i)
       goto continue
     end
 
     if not port then
-      buffer_append(nets_buf, LOGICAL_OR, exp_ip, i)
+      expression_append(nets_buf, LOGICAL_OR, exp_ip, i)
       goto continue
     end
 
-    buffer_append(nets_buf, LOGICAL_OR,
-                  "(" .. exp_ip .. LOGICAL_AND .. exp_port .. ")", i)
+    expression_append(nets_buf, LOGICAL_OR,
+                      "(" .. exp_ip .. LOGICAL_AND .. exp_port .. ")", i)
 
     ::continue::
   end   -- for
@@ -173,7 +173,7 @@ local function get_expression(route)
       gen = "(net.protocol != \"https\"" .. LOGICAL_OR .. gen .. ")"
     end
 
-    buffer_append(expr_buf, LOGICAL_AND, gen)
+    expression_append(expr_buf, LOGICAL_AND, gen)
   end
 
   -- stream expression
@@ -183,11 +183,11 @@ local function get_expression(route)
     local dst_gen = gen_for_nets("net.dst.ip", "net.dst.port", dsts)
 
     if src_gen then
-      buffer_append(expr_buf, LOGICAL_AND, src_gen)
+      expression_append(expr_buf, LOGICAL_AND, src_gen)
     end
 
     if dst_gen then
-      buffer_append(expr_buf, LOGICAL_AND, dst_gen)
+      expression_append(expr_buf, LOGICAL_AND, dst_gen)
     end
 
     if src_gen or dst_gen then
@@ -199,7 +199,7 @@ local function get_expression(route)
 
   local gen = gen_for_field("http.method", OP_EQUAL, methods)
   if gen then
-    buffer_append(expr_buf, LOGICAL_AND, gen)
+    expression_append(expr_buf, LOGICAL_AND, gen)
   end
 
   if not is_empty_field(hosts) then
@@ -225,11 +225,11 @@ local function get_expression(route)
         exp = "(" .. exp .. LOGICAL_AND ..
               "net.port ".. OP_EQUAL .. " " .. port .. ")"
       end
-      buffer_append(hosts_buf, LOGICAL_OR, exp, i)
+      expression_append(hosts_buf, LOGICAL_OR, exp, i)
     end -- for route.hosts
 
-    buffer_append(expr_buf, LOGICAL_AND,
-                  hosts_buf:put(")"):get())
+    expression_append(expr_buf, LOGICAL_AND,
+                      hosts_buf:put(")"):get())
   end
 
   gen = gen_for_field("http.path", function(path)
@@ -245,7 +245,7 @@ local function get_expression(route)
     return p
   end)
   if gen then
-    buffer_append(expr_buf, LOGICAL_AND, gen)
+    expression_append(expr_buf, LOGICAL_AND, gen)
   end
 
   if not is_empty_field(headers) then
@@ -264,15 +264,15 @@ local function get_expression(route)
           op = OP_REGEX
         end
 
-        buffer_append(single_header_buf, LOGICAL_OR,
-                      name .. " " .. op .. " " .. escape_str(value:lower()), i)
+        expression_append(single_header_buf, LOGICAL_OR,
+                          name .. " " .. op .. " " .. escape_str(value:lower()), i)
       end
 
-      buffer_append(headers_buf, LOGICAL_AND,
-                    single_header_buf:put(")"):get())
+      expression_append(headers_buf, LOGICAL_AND,
+                        single_header_buf:put(")"):get())
     end
 
-    buffer_append(expr_buf, LOGICAL_AND, headers_buf:get())
+    expression_append(expr_buf, LOGICAL_AND, headers_buf:get())
   end
 
   return expr_buf:get()
