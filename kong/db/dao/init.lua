@@ -670,7 +670,7 @@ local function recursion_over_constraints(self, entity, show_ws_id, entries, c)
   return entries
 end
 
-
+-- [[ EE
 local function find_workspace_cascade_delete_entities(self, entity, show_ws_id, entries)
   local constraints = self.schema:get_constraints()
 
@@ -695,6 +695,7 @@ local function find_workspace_cascade_delete_entities(self, entity, show_ws_id, 
 
   return entries
 end
+--- EE ]]
 
 
 local function find_cascade_delete_entities(self, entity, show_ws_id)

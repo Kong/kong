@@ -6,7 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local fmt = string.format
-local cjson = require "cjson"
 local helpers = require "spec.helpers"
 
 local fixtures = {
@@ -24,44 +23,38 @@ local fixtures = {
   }
 }
 
-local function create_entities(client, uri, request_body)
-  local res = assert(client:post(uri, {
-    body = request_body,
-    headers = { ["Content-Type"] = "application/json" }
-  }))
-  local res_body = assert.res_status(201, res)
-  return cjson.decode(res_body)
-end
 
-local function init_workspace(client, ws)
+local function init_workspace(bp, ws)
   local entities = {}
 
-  local data = create_entities(client, fmt("/%s/services", ws.name), {
+  local service = assert(bp.services:insert_ws({
     name = "example-service",
     url = "http://localhost:12345",
-  })
-  entities["servcies"] = { data }
+  }, ws))
+  entities["services"] = { service }
 
-  local data = create_entities(client, fmt("/%s/services/example-service/routes", ws.name), {
+  local route = assert(bp.routes:insert_ws({
     name = "example-route",
     paths = { "/ws2" },
-  })
-  entities["routes"] = { data }
+    service = service,
+  }, ws))
+  entities["routes"] = { route }
 
-  local data = create_entities(client, fmt("/%s/routes/example-route/plugins", ws.name), {
+  local plugin = assert(bp.plugins:insert_ws({
     name = "key-auth",
-  })
-  entities["plugins"] = { data }
+    route = route,
+  }, ws))
+  entities["plugins"] = { plugin }
 
-  local data = create_entities(client, fmt("/%s/consumers", ws.name), {
+  local consumer = assert(bp.consumers:insert_ws({
     username = "foo",
-  })
-  entities["consumers"] = { data }
+  }, ws))
+  entities["consumers"] = { consumer }
 
-  local data = create_entities(client, fmt("/%s/consumers/foo/key-auth", ws.name), {
-    key = "5SRmk6gLnTy1SyQ1Cl9GzoRXJbjYGGbZ"
-  })
-  entities["plugins"][2] = data
+  assert(bp.keyauth_credentials:insert_ws({
+    key = "5SRmk6gLnTy1SyQ1Cl9GzoRXJbjYGGbZ",
+    consumer = { id = consumer.id },
+  }, ws))
 
   return entities
 end
@@ -71,9 +64,9 @@ for _, strategy in helpers.each_strategy() do
 
   describe("workspace cascade delete #" .. strategy, function()
     local bp, db
-    local admin_client
-    local proxy_client
+    local admin_client, proxy_client
     local ws
+    local cache_keys
 
     lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy)
@@ -89,6 +82,15 @@ for _, strategy in helpers.each_strategy() do
         name = "workspace1"
       })
 
+      local entities = init_workspace(bp, ws)
+
+      cache_keys = {
+        db.workspaces:cache_key(ws.name),
+        db.services:cache_key(entities.services[1].id, nil, nil, nil, nil, ws.id),
+        db.keyauth_credentials:cache_key("5SRmk6gLnTy1SyQ1Cl9GzoRXJbjYGGbZ", nil, nil, nil, nil, ws.id),
+        db.consumers:cache_key(entities.consumers[1].id, nil, nil, nil, nil, ws.id),
+      }
+
       assert(helpers.start_kong({
         database = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -96,34 +98,18 @@ for _, strategy in helpers.each_strategy() do
 
       admin_client = helpers.admin_client()
       proxy_client = helpers.proxy_client()
-    end)
 
-    lazy_teardown(function()
-      helpers.stop_kong()
-      if admin_client then
-        admin_client:close()
-      end
-      if proxy_client then
-        proxy_client:close()
-      end
-    end)
+      -- verify the workspace exist
+      local res = assert(admin_client:get("/workspaces/" .. ws.name))
+      assert.res_status(200, res)
+      local res = assert(admin_client:get("/" .. ws.name .. "/consumers/"))
+      assert.res_status(200, res)
 
-    it("cascade delete a non-empty workspace", function()
-      local entities = init_workspace(admin_client, ws)
-
-      -- configuration should work
+      -- verify the configuration works
       local res = proxy_client:get("/ws2/hello?apikey=5SRmk6gLnTy1SyQ1Cl9GzoRXJbjYGGbZ")
       assert.res_status(200, res)
 
-      local cache_keys = {
-        db.workspaces:cache_key(ws.name),
-        db.workspaces:cache_key(ws.id),
-        db.services:cache_key(entities.servcies[1].id, nil, nil, nil, nil, ws.id),
-        db.keyauth_credentials:cache_key("5SRmk6gLnTy1SyQ1Cl9GzoRXJbjYGGbZ", nil, nil, nil, nil, ws.id),
-        db.consumers:cache_key(entities.consumers[1].id, nil, nil, nil, nil, ws.id),
-      }
-
-      -- caches should exist
+      -- verify the caches exist
       for _, key in ipairs(cache_keys) do
         local res = assert(admin_client:get("/cache/" .. key))
         res:read_body()
@@ -136,9 +122,29 @@ for _, strategy in helpers.each_strategy() do
 
       local res = assert(admin_client:get("/workspaces/" .. ws.name))
       assert.res_status(404, res)
+    end)
 
+    lazy_teardown(function()
+      helpers.stop_kong()
+      if admin_client then
+        admin_client:close()
+      end
+      if proxy_client then
+        proxy_client:close()
+      end
+    end)
+
+
+    it("workspace and its data should be deleted from database", function()
+      local res = assert(db.connector:query("select table_name from information_schema.columns where column_name = 'ws_id'"))
+      for _, e in ipairs(res) do
+        local count = assert(db.connector:query(fmt("select count(*) as n from %s where ws_id = '%s'", e.table_name, ws.id)))
+        assert.equal(0, count[1].n)
+      end
+    end)
+
+    it("caches should be evicted", function()
       helpers.pwait_until(function()
-        -- caches should be evicted
         for _, key in ipairs(cache_keys) do
           local res = assert(admin_client:get("/cache/" .. key))
           res:read_body()
@@ -146,32 +152,27 @@ for _, strategy in helpers.each_strategy() do
         end
         return true
       end, 5)
+    end)
 
-      -- router should be rebuilt
+    it("router should be rebuilt", function()
       local res = proxy_client:get("/hello")
       local body = assert.res_status(404, res)
       assert.equal('{\n  "message":"no Route matched with those values"\n}', body)
+    end)
 
-      -- workspace and its data should be deleted from database
-      local res = assert(db.connector:query("select table_name from information_schema.columns where column_name = 'ws_id'"))
-      for _, e in ipairs(res) do
-        local count = assert(db.connector:query(fmt("select count(*) as n from %s where ws_id = '%s'", e.table_name, ws.id)))
-        assert.equal(0, count[1].n)
-      end
-
-      -- should not touch other workspaces
+    it("should not touch other workspaces", function()
       local res = proxy_client:get("/ws1/hello")
       assert.res_status(200, res)
     end)
-
   end)
 
   describe("clustering sync", function()
     local admin_client
     local ws
+    local bp
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      bp = helpers.get_db_utils(strategy)
 
       local service = bp.services:insert {
         protocol = "http",
@@ -187,6 +188,8 @@ for _, strategy in helpers.each_strategy() do
       ws = assert(bp.workspaces:insert {
         name = "workspace2"
       })
+
+      init_workspace(bp, ws)
 
       assert(helpers.start_kong({
         role = "control_plane",
@@ -223,7 +226,6 @@ for _, strategy in helpers.each_strategy() do
 
     it("DP should be notified after workspace is cascade deleted", function()
       local proxy_client = helpers.proxy_client(nil, 9002)
-      init_workspace(admin_client, ws)
 
       -- configuration should work
       helpers.pwait_until(function()
