@@ -1,6 +1,5 @@
 build-packages:
 # label: used to distinguish artifacts for later use
-# os: the github actions runner label to pick from
 # image: docker image name if the build is running in side a container
 # package: package type
 # package-type: the nfpm packaging target, //:kong_{package} target; only used when package is rpm
@@ -9,35 +8,29 @@ build-packages:
 
 # Ubuntu
 - label: ubuntu-20.04
-  os: ubuntu-22.04
   image: ubuntu:20.04
   package: deb
   check-manifest-suite: ubuntu-20.04-amd64
 - label: ubuntu-22.04
-  os: ubuntu-22.04
   package: deb
   check-manifest-suite: ubuntu-22.04-amd64
 - label: ubuntu-22.04-arm64
-  os: ubuntu-22.04
   package: deb
   bazel-args: --platforms=//:generic-crossbuild-aarch64
   check-manifest-suite: ubuntu-22.04-arm64
 
 # Debian
 - label: debian-10
-  os: ubuntu-22.04
   image: debian:10
   package: deb
   check-manifest-suite: debian-10-amd64
 - label: debian-11
-  os: ubuntu-22.04
   image: debian:11
   package: deb
   check-manifest-suite: debian-11-amd64
 
 # CentOS
 - label: centos-7
-  os: ubuntu-22.04
   image: centos:7
   package: rpm
   package-type: el7
@@ -45,26 +38,21 @@ build-packages:
 
 # RHEL
 - label: rhel-7
-  os: ubuntu-22.04
   image: centos:7
   package: rpm
   package-type: el7
   check-manifest-suite: el7-amd64
 - label: rhel-8
-  os: ubuntu-22.04
   image: rockylinux:8
   package: rpm
   package-type: el8
   check-manifest-suite: el8-amd64
 - label: rhel-9
-  os: ubuntu-22.04
   image: rockylinux:9
   package: rpm
   package-type: el9
   check-manifest-suite: el9-amd64
 - label: rhel-9-arm64
-  os: ubuntu-22.04
-  image: rockylinux:9
   package: rpm
   package-type: el9
   bazel-args: --platforms=//:rhel9-crossbuild-aarch64
@@ -72,20 +60,16 @@ build-packages:
 
   # Amazon Linux
 - label: amazonlinux-2
-  os: ubuntu-22.04
   image: amazonlinux:2
   package: rpm
   package-type: aws2
   check-manifest-suite: amazonlinux-2-amd64
 - label: amazonlinux-2023
-  os: ubuntu-22.04
   image: amazonlinux:2023
   package: rpm
   package-type: aws2023
   check-manifest-suite: amazonlinux-2023-amd64
 - label: amazonlinux-2023-arm64
-  os: ubuntu-22.04
-  image: amazonlinux:2023
   package: rpm
   package-type: aws2023
   bazel-args: --platforms=//:aws2023-crossbuild-aarch64
