@@ -155,7 +155,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: /usr/local/git
-        key: ${{ matrix.label }}-git-2.30.0
+        key: ${{ matrix.label }}-git-2.41.0
 
     # el-7,8, amazonlinux-2,2023, debian-10 doesn't have git 2.18+, so we need to install it manually
     - name: Install newer Git
@@ -169,9 +169,9 @@ jobs:
           yum groupinstall -y 'Development Tools'
           yum install -y wget zlib-devel openssl-devel curl-devel expat-devel gettext-devel perl-CPAN perl-devel
         fi
-        wget https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.30.0.tar.gz
-        tar xf git-2.30.0.tar.gz
-        cd git-2.30.0
+        wget https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.41.0.tar.gz
+        tar xf git-2.41.0.tar.gz
+        cd git-2.41.0
         make configure
         ./configure --prefix=/usr/local/git
         make -j$(nproc)
