@@ -57,6 +57,7 @@
 * Fix the bug that will cause the telemetry websocket in Konnect mode between CP and DP to be broken due to unexpected payloads when counter of request equals zero. [KAG-1900](https://konghq.atlassian.net/browse/KAG-1900)
 * Fix Kong Manger doesn't get the latest kconfig while the license posted via admin API. [FTI-5135](https://konghq.atlassian.net/browse/FTI-5135)
 * Fix LuaJIT crash on Arm64 and enable JIT on M1. [KAG-2028](https://konghq.atlassian.net/browse/KAG-2028)
+* Fixed an issue where the license cannot load when pulling `KONG_LICENSE_DATA` from Vault. [FTI-4856](https://konghq.atlassian.net/browse/FTI-4856)
 
 ## Plugins
 
