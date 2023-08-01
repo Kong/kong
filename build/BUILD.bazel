@@ -147,10 +147,10 @@ link_modules_dir = select({
 kong_directory_genrule(
     name = "kong",
     srcs = [
-        "@openresty",
-        "@openresty//:luajit",
         "@luarocks//:luarocks_make",
         "@luarocks//:luarocks_target",
+        "@openresty",
+        "@openresty//:luajit",
         "@protoc//:all_srcs",
         "@openssl",
         # EE in-place modifications

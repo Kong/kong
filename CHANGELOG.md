@@ -101,9 +101,17 @@
   [#11082](https://github.com/Kong/kong/pull/11082)
 - Fix an issue where the router of flavor `expressions` can not configure https redirection.
   [#11166](https://github.com/Kong/kong/pull/11166)
+- Added new span attribute `net.peer.name` if balancer_data.hostname is available.
+  Thanks [@backjo](https://github.com/backjo) for contributing this change.
+  [#10723](https://github.com/Kong/kong/pull/10729)
 - Make `kong vault get` CLI command work in dbless mode by injecting the necessary directives into the kong cli nginx.conf.
   [#11127](https://github.com/Kong/kong/pull/11127)
   [#11291](https://github.com/Kong/kong/pull/11291)
+- Fix an issue where a crashing Go plugin server process would cause subsequent
+  requests proxied through Kong to execute Go plugins with inconsistent configurations.
+  The issue only affects scenarios where the same Go plugin is applied to different Route
+  or Service entities.
+  [#11306](https://github.com/Kong/kong/pull/11306)
 
 #### Admin API
 

@@ -8,7 +8,6 @@ math.randomseed() -- Generate PRNG seed
 
 local pl_app = require "pl.lapp"
 local pl_utils = require "pl.utils"
-local pl_tablex = require "pl.tablex"
 local inject_confs = require "kong.cmd.utils.inject_confs"
 
 local options = [[
@@ -29,10 +28,12 @@ local cmds = {
   migrations = true,
   version = true,
   config = true,
-  runner = true,
   roar = true,
   hybrid = true,
   vault = true,
+  -- [=[ EE
+  runner = true,
+  --]=]
 }
 
 -- unnecessary to inject nginx directives for these simple cmds
