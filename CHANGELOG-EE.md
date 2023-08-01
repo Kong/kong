@@ -86,6 +86,8 @@
   [KAG-1439](https://konghq.atlassian.net/browse/KAG-1439)
 - graphql-rate-limiting-advanced now support config with upstream target.
   [FTI-5209](https://konghq.atlassian.net/browse/FTI-5209)
+- Add workspace name to the logging payload.
+  [FTI-4728](https://konghq.atlassian.net/browse/FTI-4728)
 
 ### Fixes
 
