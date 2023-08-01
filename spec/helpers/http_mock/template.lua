@@ -32,8 +32,8 @@ events {
 http {
   lua_shared_dict mock_logs $(shm_size);
 
-# if log_opts.err then
   init_by_lua_block {
+# if log_opts.err then
     -- disable warning of global variable
     local g_meta = getmetatable(_G)
     setmetatable(_G, nil)
@@ -49,16 +49,12 @@ http {
       table.insert(err_t, {err, debug.traceback("", 3)})
     end
 
-    function assert(truthy, err) -- luacheck: ignore
-      if truthy then
-        return truthy
-      end
-
-      if ngx.ctx then
+    function assert(truthy, err, ...) -- luacheck: ignore
+      if not truthy and ngx.ctx then
         insert_err(err)
       end
 
-      return original_assert(truthy, err)
+      return original_assert(truthy, err, ...)
     end
 
     original_error = error -- luacheck: ignore
@@ -74,9 +70,12 @@ http {
     err_patched = true -- luacheck: ignore
 
     setmetatable(_G, g_meta)
+# end
+# if init then
+$(init)
+# end
   }
 
-# end
   server {
     listen 0.0.0.0:$(debug.port);
     server_name mock_debug;
