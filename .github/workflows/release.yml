@@ -106,8 +106,7 @@ jobs:
           echo "deploy-environment=release" >> $GITHUB_OUTPUT
         fi
 
-        # replace vars.RELEASE_RUNS_ON to the actual vars value, and convert into json
-        echo "matrix=$(yq e '(.build-packages[] | select(.os == "vars.RELEASE_RUNS_ON").os) |= "${{ vars.RELEASE_RUNS_ON }}"' $matrix_file | yq e -I=0 -o=json -)" >> $GITHUB_OUTPUT
+        echo "matrix=$(yq e -I=0 -o=json $matrix_file)" >> $GITHUB_OUTPUT
 
         cat $GITHUB_OUTPUT
 
@@ -131,14 +130,14 @@ jobs:
       matrix:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-packages'] }}"
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ vars.RELEASE_RUNS_ON }}
     container:
       image: ${{ matrix.image }}
       options: --privileged
 
     steps:
     - name: Early Rpm Setup
-      if: matrix.package == 'rpm'
+      if: matrix.package == 'rpm' && matrix.image != ''
       run: |
         # tar/gzip is needed to restore git cache (if available)
         yum install -y tar gzip which file zlib-devel
@@ -152,7 +151,7 @@ jobs:
 
     - name: Cache Git
       id: cache-git
-      if: matrix.package == 'rpm' || matrix.image == 'debian:10'
+      if: (matrix.package == 'rpm' || matrix.image == 'debian:10') && matrix.image != ''
       uses: actions/cache@v3
       with:
         path: /usr/local/git
@@ -160,7 +159,7 @@ jobs:
 
     # el-7,8, amazonlinux-2,2023, debian-10 doesn't have git 2.18+, so we need to install it manually
     - name: Install newer Git
-      if: (matrix.package == 'rpm' || matrix.image == 'debian:10') && steps.cache-git.outputs.cache-hit != 'true'
+      if: (matrix.package == 'rpm' || matrix.image == 'debian:10') && matrix.image != '' && steps.cache-git.outputs.cache-hit != 'true'
       run: |
         if which apt 2>/dev/null; then
           apt update
@@ -179,7 +178,7 @@ jobs:
         make install
 
     - name: Add Git to PATH
-      if: matrix.package == 'rpm' || matrix.image == 'debian:10'
+      if: (matrix.package == 'rpm' || matrix.image == 'debian:10') && matrix.image != ''
       run: |
         echo "/usr/local/git/bin" >> $GITHUB_PATH
 
@@ -243,7 +242,7 @@ jobs:
         sudo apt-get install crossbuild-essential-arm64 -y
 
     - name: Install Rpm Build Dependencies
-      if: matrix.package == 'rpm' && steps.cache-deps.outputs.cache-hit != 'true'
+      if: matrix.package == 'rpm' && matrix.image != '' && steps.cache-deps.outputs.cache-hit != 'true'
       run: |
         yum groupinstall -y 'Development Tools'
         dnf config-manager --set-enabled powertools || true # enable devel packages on rockylinux:8
@@ -252,12 +251,6 @@ jobs:
         yum install -y cpanminus || (yum install -y perl && curl -L https://raw.githubusercontent.com/miyagawa/cpanminus/master/cpanm | perl - App::cpanminus) # amazonlinux2023 removed cpanminus
         # required for openssl 3.x config
         cpanm IPC/Cmd.pm
-
-    # TODO: remove this after @boringssl_fips//:build is able to use cmake managed by bazel
-    - name: Setup CMake
-      if: (matrix.package == 'rpm' || matrix.image == 'ubuntu:18.04') && steps.cache-deps.outputs.cache-hit != 'true'
-      # the version of the actions is same as the cmake version to be installed
-      uses: lukka/get-cmake@1a178d42f9f4f47310373da4f5ef02297ed5a6e8 # v3.25
 
     - name: Build Kong
       if: steps.cache-deps.outputs.cache-hit != 'true'
