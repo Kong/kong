@@ -56,6 +56,9 @@
 * Fix a bug that would cause an error when the header x-datadog-parent-id is not passed to Kong. [KAG-1642](https://konghq.atlassian.net/browse/KAG-1642)
 * Fix a queueing related bug that caused the event-hooks feature to
   not work in release 3.3.0.0 [KAG-1760](https://konghq.atlassian.net/browse/KAG-1760)
+* Fix an issue where a crashing Go plugin server process would cause subsequent
+  requests proxied through Kong to execute Go plugins with inconsistent configurations.
+  The issue only affects scenarios where the same Go plugin is applied to different Route not work in release 3.3.0.0 [KAG-1760](https://konghq.atlassian.net/browse/KAG-1760)
 * Update the datafile library to make the SAML plugin work again when
   Kong is controlled by systemd [KAG-1832](https://konghq.atlassian.net/browse/KAG-1832)
 * Fix an issue that sometimes can't attach workspace with the cache's consumer well. [FTI-4564](https://konghq.atlassian.net/browse/FTI-4564)
