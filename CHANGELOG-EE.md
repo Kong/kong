@@ -132,7 +132,14 @@
 
 ### Features
 
+* Enhanced the user experience of entity editing pages with a refined look and feel. [KAG-1453](https://konghq.atlassian.net/browse/KAG-1453) [KAG-1568](https://konghq.atlassian.net/browse/KAG-1568)
+* Simplified the user path by removing the configuration pages for nested entities. [KAG-1660](https://konghq.atlassian.net/browse/KAG-1660)
+
 ### Fixes
+
+* Fixes an issue using OIDC does not handle `invalid credentials` when providing wrong usename. [FTI-5194](https://konghq.atlassian.net/browse/FTI-5194)
+* Add an alert message in the `admins tab` page for `workspace access` while the admin_auth is set to `openid-connect`. [FTI-5085](https://konghq.atlassian.net/browse/FTI-5085)
+* Fixed an issue the custom permission endpoint not work. [#FTI-5053](https://konghq.atlassian.net/browse/FTI-5053)
 
 # 3.3.0.0
 
