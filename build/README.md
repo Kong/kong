@@ -170,6 +170,29 @@ bazel build //:kong_el8 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_
 - `RPM_SIGNING_KEY_FILE`: the path to the GPG private key file.
 - `NFPM_RPM_PASSPHRASE`: the passphrase of the GPG private key.
 
+#### ngx_wasm_module options
+
+Building of [ngx_wasm_module](https://github.com/Kong/ngx_wasm_module) can be
+controlled with a few CLI flags:
+
+* `--//:wasmx=(true|false)` (default: `true`) - enable/disable wasmx
+* `--//:wasmx_module_flag=(dynamic|static)` (default: `dynamic`) - switch
+    between static or dynamic nginx module build configuration
+* `--//:wasm_runtime=(wasmtime|wasmer|v8)` (default: `wasmtime`) select the wasm
+    runtime to build
+
+Additionally, there are a couple environment variables that can be set at build
+time to control how the ngx_wasm_module repository is sourced:
+
+* `NGX_WASM_MODULE_REMOTE` (default: `https://github.com/Kong/ngx_wasm_module.git`) -
+    this can be set to a local filesystem path to avoid pulling the repo from github
+* `NGX_WASM_MODULE_BRANCH` (default: none) - Setting this environment variable
+    tells bazel to build from a branch rather than using the tag found in our
+    `.requirements` file
+
+**NOTE:** these environment variables currently do not integrate very well with
+bazel's cache mechanism, so you may need to clear cache after changing their value.
+
 ## Cross compiling
 
 Cross compiling is currently only tested on Ubuntu 22.04 x86_64 with following targeting platforms:
