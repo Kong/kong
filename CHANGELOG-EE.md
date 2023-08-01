@@ -69,6 +69,7 @@
 * Fix LuaJIT crash on Arm64 and enable JIT on M1. [KAG-2028](https://konghq.atlassian.net/browse/KAG-2028)
 * Fixed an issue where the license cannot load when pulling `KONG_LICENSE_DATA` from Vault. [FTI-4856](https://konghq.atlassian.net/browse/FTI-4856)
 * Fixed an issue in the Dev Portal when attempting to expand an API. [FTI-4899](https://konghq.atlassian.net/browse/FTI-4899)
+* Fixed an issue where the kafka-log or the kafka-upstream could loose connection to a broker when when broker leadership changes [FTI-4895](https://konghq.atlassian.net/browse/FTI-4895)
 
 ## Plugins
 
