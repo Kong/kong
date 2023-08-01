@@ -408,71 +408,52 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 
     if field == "http.method" then
       assert(c:add_value(field, req_method))
-      goto continue
-    end
 
-    if field == "http.path" then
+    elseif field == "http.path" then
       local res, err = c:add_value(field, req_uri)
       if not res then
         return nil, err
       end
-      goto continue
-    end
 
-    if field == "http.host" then
+    elseif field == "http.host" then
       local res, err = c:add_value(field, host)
       if not res then
         return nil, err
       end
-      goto continue
-    end
 
-    if field == "net.port" then
-      assert(c:add_value(field, port))
-      goto continue
-    end
+    elseif field == "net.port" then
+     assert(c:add_value(field, port))
 
-    if field == "net.protocol" then
+    elseif field == "net.protocol" then
       assert(c:add_value(field, req_scheme))
-      goto continue
-    end
 
-    if field == "tls.sni" then
+    elseif field == "tls.sni" then
       local res, err = c:add_value(field, sni)
       if not res then
         return nil, err
       end
-      goto continue
-    end
 
-    if req_headers and is_http_headers_field(field) then
+    elseif req_headers and is_http_headers_field(field) then
       local h = field:sub(14)
       local v = req_headers[h]
 
-      if not v then
-        goto continue
-      end
+      if v then
+        if type(v) == "string" then
+          local res, err = c:add_value(field, v:lower())
+          if not res then
+            return nil, err
+          end
 
-      if type(v) == "string" then
-        local res, err = c:add_value(field, v:lower())
-        if not res then
-          return nil, err
-        end
-        goto continue
-      end
-
-      -- type(v) == "table"
-      for idx = 1, #v do
-        local res, err = c:add_value(field, v[idx]:lower())
-        if not res then
-          return nil, err
+        else
+          for _, v in ipairs(v) do
+            local res, err = c:add_value(field, v:lower())
+            if not res then
+              return nil, err
+            end
+          end
         end
       end
-
-      goto continue
     end
-
-    ::continue::
   end   -- for self.fields
 
   local matched = self.router:execute(c)
@@ -637,38 +618,26 @@ function _M:select(_, _, _, scheme,
 
     if field == "net.protocol" then
       assert(c:add_value(field, scheme))
-      goto continue
-    end
 
-    if field == "tls.sni" then
+    elseif field == "tls.sni" then
       local res, err = c:add_value(field, sni)
       if not res then
         return nil, err
       end
-      goto continue
-    end
 
-    if field == "net.src.ip" then
+    elseif field == "net.src.ip" then
       assert(c:add_value(field, src_ip))
-      goto continue
-    end
 
-    if field == "net.src.port" then
+    elseif field == "net.src.port" then
       assert(c:add_value(field, src_port))
-      goto continue
-    end
 
-    if field == "net.dst.ip" then
+    elseif field == "net.dst.ip" then
       assert(c:add_value(field, dst_ip))
-      goto continue
-    end
 
-    if field == "net.dst.port" then
+    elseif field == "net.dst.port" then
       assert(c:add_value(field, dst_port))
-      goto continue
-    end
 
-    ::continue::
+    end -- if
   end -- for
 
   local matched = self.router:execute(c)
