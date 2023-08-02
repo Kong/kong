@@ -16,10 +16,19 @@ def transform(f: FileInfo):
     # paths created by bazel.
 
     if glob_match(f.path, ["**/kong/lib/libxslt.so*", "**/kong/lib/libexslt.so*", "**/kong/lib/libjq.so*"]):
-        if f.rpath and "/usr/local/kong/lib" in f.rpath:
-            f.rpath = "/usr/local/kong/lib"
-        elif f.runpath and "/usr/local/kong/lib" in f.runpath:
-            f.runpath = "/usr/local/kong/lib"
+        expected_rpath = "/usr/local/kong/lib"
+        if f.rpath and expected_rpath in f.rpath:
+            f.rpath = expected_rpath
+        elif f.runpath and expected_rpath in f.runpath:
+            f.runpath = expected_rpath
+        # otherwise remain unmodified
+
+    if f.path.endswith("/modules/ngx_wasm_module.so"):
+        expected_rpath = "/usr/local/openresty/luajit/lib:/usr/local/kong/lib"
+        if f.rpath and expected_rpath in f.rpath:
+            f.rpath = expected_rpath
+        elif f.runpath and expected_rpath in f.runpath:
+            f.runpath = expected_rpath
         # otherwise remain unmodified
 
     # XXX: boringssl also hardcodes the rpath during build; normally library
