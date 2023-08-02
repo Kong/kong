@@ -1443,7 +1443,7 @@ local config = {
             },
           },
           {
-            leeway = { description = "Allow some leeway (in seconds) on the ttl / expiry verification.", required = false,
+            leeway = { description = "Allow some leeway (in seconds) on the iat claim and ttl / expiry verification.", required = false,
               type     = "number",
               default  = 0,
             },
