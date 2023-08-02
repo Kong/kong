@@ -120,10 +120,14 @@
 * OAS Validation
   * Fix a bug that the plugin is unable to pass the validation even if path parameter is valid. [FTI-4965](https://konghq.atlassian.net/browse/FTI-4965)
   * Fix an issue that the plugin always validates the request body even if the method spec has no requestBody defined. [FTI-4967](https://konghq.atlassian.net/browse/FTI-4967)
+  * Fix an issue that the comparison between large absolute value numbers may be incorrect due to the number being converted to exponential notation. [FTI-5128](https://konghq.atlassian.net/browse/FTI-5128)
 * OpenID-Connect
   * Correctly set the right table key on 'log' and 'message'.
   * If an invalid opaque token is provided but verified failed, print the correct error.
-
+* Request Validator
+  * Optmize the response message for invalid request.
+  [FTI-5078](https://konghq.atlassian.net/browse/FTI-5078)
+  [FTI-5006](https://konghq.atlassian.net/browse/FTI-5006)
 
 ## Kong Manager
 
