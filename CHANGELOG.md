@@ -31,6 +31,8 @@
   `max_retry_delay` must now be `number`s greater than 0.001
   (seconds).
   [#10840](https://github.com/Kong/kong/pull/10840)
+- For OAuth2 plugin, `scope` has been taken into account as a new creteria of the request validation. When refreshing token with `refresh_token`, the scopes associated with the `refresh_token` provided in the request must be same with or a subset of the scopes configured in the OAuth2 plugin instance hit by the request. 
+  [#11342](https://github.com/Kong/kong/pull/11342)
 
 ### Additions
 
