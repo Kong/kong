@@ -2,12 +2,39 @@ load("//build:build_system.bzl", "kong_rules_group")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 
 genrule(
+    name = "luarocks_install_ee_plugin_dependencies",
+    srcs = [
+        "@luarocks//:luarocks_exec",
+        "@luarocks//:luarocks_make",  # don't let them run concurrently
+    ],
+    outs = ["luarocks_install_ee_plugin_dependencies.log"],
+    cmd = """
+        touch $@.tmp
+
+        cwd=$$(pwd)
+        for dir in kong-openid-connect lua-resty-openapi3-deserializer kong-gql; do
+            echo "Installing library: $$dir" >> $$cwd/$@.tmp
+            pushd distribution/$$dir >> $$cwd/$@.tmp
+                $$cwd/$(location @luarocks//:luarocks_exec) make *.rockspec >> $$cwd/$@.tmp
+            popd >> $$cwd/$@.tmp
+        done
+
+        # only generate the output when the command succeeds
+        mv $@.tmp $@
+    """,
+    visibility = ["//visibility:public"],
+)
+
+genrule(
     name = "luarocks_install_ee_plugins",
     srcs = [
         "@luarocks//:luarocks_exec",
         "@luarocks//:luarocks_make",  # don't let them run concurrently
         "@kong//:plugins_ee_rockspec_srcs",
-    ],
+    ] + select({
+        "@kong//:private_luarocks_flag": [],
+        "//conditions:default": ["//build/ee:luarocks_install_ee_plugin_dependencies"],
+    }),
     outs = ["luarocks_install_ee_plugins.log"],
     cmd = """
         touch $@.tmp
