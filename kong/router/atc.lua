@@ -17,7 +17,6 @@ local type = type
 local assert = assert
 local setmetatable = setmetatable
 local pairs = pairs
-local ipairs = ipairs
 local tonumber = tonumber
 
 
@@ -78,8 +77,8 @@ do
   CACHED_SCHEMA = schema.new()
 
   for typ, fields in pairs(FIELDS) do
-    for _, v in ipairs(fields) do
-      assert(CACHED_SCHEMA:add_field(v, typ))
+    for i = 1, #fields do
+      assert(CACHED_SCHEMA:add_field(fields[i], typ))
     end
   end
 
@@ -166,8 +165,8 @@ end
 
 
 local function has_header_matching_field(fields)
-  for _, field in ipairs(fields) do
-    if is_http_headers_field(field) then
+  for i = 1, #fields do
+    if is_http_headers_field(fields[i]) then
       return true
     end
   end
@@ -225,6 +224,7 @@ local function new_from_scratch(routes, get_exp_and_priority)
       routes = routes_t,
       services = services_t,
       fields = fields,
+      fields_n = #fields,
       match_headers = match_headers,
       updated_at = new_updated_at,
       rebuilding = false,
@@ -312,6 +312,7 @@ local function new_from_previous(routes, get_exp_and_priority, old_router)
   local fields = inst:get_fields()
 
   old_router.fields = fields
+  old_router.fields_n = #fields
   old_router.match_headers = has_header_matching_field(fields)
   old_router.updated_at = new_updated_at
   old_router.rebuilding = false
@@ -402,7 +403,9 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 
   local host, port = split_host_port(req_host)
 
-  for _, field in ipairs(self.fields) do
+  for i = 1, self.fields_n do
+    local field = self.fields[i]
+
     if field == "http.method" then
       assert(c:add_value(field, req_method))
 
@@ -442,8 +445,8 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
           end
 
         else
-          for _, v in ipairs(v) do
-            local res, err = c:add_value(field, v:lower())
+          for idx = 1, #v do
+            local res, err = c:add_value(field, v[idx]:lower())
             if not res then
               return nil, err
             end
@@ -509,8 +512,8 @@ do
       local name = name:gsub("-", "_"):lower()
 
       if type(value) == "table" then
-        for i, v in ipairs(value) do
-          value[i] = v:lower()
+        for i = 1, #value do
+          value[i] = value[i]:lower()
         end
         tb_sort(value)
         value = tb_concat(value, ", ")
@@ -610,7 +613,9 @@ function _M:select(_, _, _, scheme,
 
   local c = context.new(self.schema)
 
-  for _, field in ipairs(self.fields) do
+  for i = 1, self.fields_n do
+    local field = self.fields[i]
+
     if field == "net.protocol" then
       assert(c:add_value(field, scheme))
 
