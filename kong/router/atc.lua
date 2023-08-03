@@ -407,13 +407,13 @@ end
 if is_http then
 
 function _M:select(req_method, req_uri, req_host, req_scheme,
-                   src_ip, src_port,
-                   dst_ip, dst_port,
-                   sni, req_headers)
+                   _, _,
+                   _, _,
+                   sni, req_headers, req_queries)
   check_select_params(req_method, req_uri, req_host, req_scheme,
-                      src_ip, src_port,
-                      dst_ip, dst_port,
-                      sni, req_headers)
+                      nil, nil,
+                      nil, nil,
+                      sni, req_headers, req_queries)
 
   local c = context.new(self.schema)
 
@@ -467,7 +467,38 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
           end
         end
       end
-    end
+
+    elseif req_queries and is_http_queries_field(field) then
+      local n = field:sub(14)
+      local v = req_queries[n]
+
+      if v then
+        -- the query parameter has only one value, like /?foo=bar
+        if type(v) == "string" then
+          local res, err = c:add_value(field, v)
+          if not res then
+            return nil, err
+          end
+
+        -- the query parameter has no value, like /?foo, get_uri_arg will get a boolean `false`
+        -- we treat as empty string here.
+        elseif type(v) == "boolean" then
+          local res, err = c:add_value(field, "")
+          if not res then
+            return nil, err
+          end
+
+        -- multiple values for a single query parameter, like /?foo=bar&foo=baz
+        else
+          for idx = 1, #v do
+            local res, err = c:add_value(field, v[idx])
+            if not res then
+              return nil, err
+            end
+          end
+        end -- type(v)
+      end   -- if v
+    end -- if field
   end
 
   local matched = self.router:execute(c)
