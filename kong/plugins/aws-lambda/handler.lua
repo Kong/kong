@@ -2,8 +2,6 @@
 
 local aws_v4 = require "kong.plugins.aws-lambda.v4"
 local aws_serializer = require "kong.plugins.aws-lambda.aws-serializer"
-local aws_ecs_cred_provider = require "kong.plugins.aws-lambda.iam-ecs-credentials"
-local aws_ec2_cred_provider = require "kong.plugins.aws-lambda.iam-ec2-credentials"
 local http = require "resty.http"
 local cjson = require "cjson.safe"
 local meta = require "kong.meta"
@@ -13,47 +11,46 @@ local kong = kong
 
 local VIA_HEADER = constants.HEADERS.VIA
 local VIA_HEADER_VALUE = meta._NAME .. "/" .. meta._VERSION
-local IAM_CREDENTIALS_CACHE_KEY_PATTERN = "plugin.aws-lambda.iam_role_temp_creds.%s"
-local AWS_PORT = 443
+
+local aws = require("resty.aws")
+-- Loading necessary runtime env vars but avoid region fetching from IMDS
+-- Since this happens inside `require`
+local _ = require("resty.aws.config").get_config()
 local AWS_REGION do
   AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
 end
+local AWS
 
 
 local function fetch_aws_credentials(aws_conf)
-  local fetch_metadata_credentials do
-    local metadata_credentials_source = {
-      aws_ecs_cred_provider,
-      -- The EC2 one will always return `configured == true`, so must be the last!
-      aws_ec2_cred_provider,
+  -- AK/SK should take precedence
+  if aws_conf.access_key then
+    local creds = aws:Credentials {
+      accessKeyId = aws_conf.access_key,
+      secretAccessKey = aws_conf.secret_key,
     }
 
-    for _, credential_source in ipairs(metadata_credentials_source) do
-      if credential_source.configured then
-        fetch_metadata_credentials = credential_source.fetchCredentials
-        break
-      end
-    end
+    AWS.config.credentials = creds
   end
 
   if aws_conf.aws_assume_role_arn then
-    local metadata_credentials, err = fetch_metadata_credentials(aws_conf)
-
-    if err then
-      return nil, err
+    local sts, err = AWS:STS()
+    if not sts then
+      return nil, fmt("unable to create AWS STS (%s)", err)
     end
 
-    local aws_sts_cred_source = require "kong.plugins.aws-lambda.iam-sts-credentials"
-    return aws_sts_cred_source.fetch_assume_role_credentials(aws_conf.aws_region,
-                                                             aws_conf.aws_assume_role_arn,
-                                                             aws_conf.aws_role_session_name,
-                                                             metadata_credentials.access_key,
-                                                             metadata_credentials.secret_key,
-                                                             metadata_credentials.session_token)
+    local sts_creds = AWS:ChainableTemporaryCredentials {
+      params = {
+        RoleArn = aws_conf.aws_assume_role_arn,
+        RoleSessionName = aws_conf.aws_role_session_name,
+      },
+      sts = sts,
+    }
 
-  else
-    return fetch_metadata_credentials(aws_conf)
+    AWS.config.credentials = sts_creds
   end
+
+  return AWS.config.credentials:get()
 end
 
 
@@ -104,6 +101,67 @@ local function validate_http_status_code(status_code)
   end
 
   return false
+end
+
+
+-- Build the JSON blob that you want to provide to your Lambda function as input.
+local function build_request_payload(conf)
+  local upstream_body = kong.table.new(0, 6)
+  local ctx = ngx.ctx
+
+  if conf.awsgateway_compatible then
+    upstream_body = aws_serializer(ctx, conf)
+
+  elseif conf.forward_request_body or
+    conf.forward_request_headers or
+    conf.forward_request_method or
+    conf.forward_request_uri then
+
+    -- new behavior to forward request method, body, uri and their args
+    if conf.forward_request_method then
+      upstream_body.request_method = kong.request.get_method()
+    end
+
+    if conf.forward_request_headers then
+      upstream_body.request_headers = kong.request.get_headers()
+    end
+
+    if conf.forward_request_uri then
+      upstream_body.request_uri = kong.request.get_path_with_query()
+      upstream_body.request_uri_args = kong.request.get_query()
+    end
+
+    if conf.forward_request_body then
+      local content_type = kong.request.get_header("content-type")
+      local body_raw = request_util.read_request_body(conf.skip_large_bodies)
+      local body_args, err = kong.request.get_body()
+      if err and err:match("content type") then
+        body_args = {}
+        if not raw_content_types[content_type] and conf.base64_encode_body then
+          -- don't know what this body MIME type is, base64 it just in case
+          body_raw = ngx_encode_base64(body_raw)
+          upstream_body.request_body_base64 = true
+        end
+      end
+
+      upstream_body.request_body      = body_raw
+      upstream_body.request_body_args = body_args
+    end
+
+  else
+    -- backwards compatible upstream body for configurations not specifying
+    -- `forward_request_*` values
+    local body_args = kong.request.get_body()
+    upstream_body = kong.table.merge(kong.request.get_query(), body_args)
+  end
+
+  local upstream_body_json, err = cjson.encode(upstream_body)
+  if not upstream_body_json then
+    kong.log.err("could not JSON encode upstream body",
+                 " to forward request values: ", err)
+  end
+
+  return upstream_body_json
 end
 
 
@@ -173,77 +231,31 @@ end
 local AWSLambdaHandler = {}
 
 
+function AWSLambdaHandler:init_worker()
+  -- Initialize a global level AWS object for reusing
+  local config = { region = AWS_REGION }
+  AWS = aws(config)
+end
+
+
 function AWSLambdaHandler:access(conf)
-  local upstream_body = kong.table.new(0, 6)
-  local ctx = ngx.ctx
-
-  if conf.awsgateway_compatible then
-    upstream_body = aws_serializer(ctx, conf)
-
-  elseif conf.forward_request_body or
-    conf.forward_request_headers or
-    conf.forward_request_method or
-    conf.forward_request_uri then
-
-    -- new behavior to forward request method, body, uri and their args
-    if conf.forward_request_method then
-      upstream_body.request_method = kong.request.get_method()
-    end
-
-    if conf.forward_request_headers then
-      upstream_body.request_headers = kong.request.get_headers()
-    end
-
-    if conf.forward_request_uri then
-      upstream_body.request_uri = kong.request.get_path_with_query()
-      upstream_body.request_uri_args = kong.request.get_query()
-    end
-
-    if conf.forward_request_body then
-      local content_type = kong.request.get_header("content-type")
-      local body_raw = request_util.read_request_body(conf.skip_large_bodies)
-      local body_args, err = kong.request.get_body()
-      if err and err:match("content type") then
-        body_args = {}
-        if not raw_content_types[content_type] and conf.base64_encode_body then
-          -- don't know what this body MIME type is, base64 it just in case
-          body_raw = ngx_encode_base64(body_raw)
-          upstream_body.request_body_base64 = true
-        end
-      end
-
-      upstream_body.request_body      = body_raw
-      upstream_body.request_body_args = body_args
-    end
-
-  else
-    -- backwards compatible upstream body for configurations not specifying
-    -- `forward_request_*` values
-    local body_args = kong.request.get_body()
-    upstream_body = kong.table.merge(kong.request.get_query(), body_args)
-  end
-
-  local upstream_body_json, err = cjson.encode(upstream_body)
-  if not upstream_body_json then
-    kong.log.err("could not JSON encode upstream body",
-                 " to forward request values: ", err)
-  end
+  local upstream_body_json = build_request_payload(conf)
 
   local region = conf.aws_region or AWS_REGION
-  local host = conf.host
-
   if not region then
     return error("no region specified")
   end
 
+  local host = conf.host
   if not host then
     host = fmt("lambda.%s.amazonaws.com", region)
   end
 
-  local path = fmt("/2015-03-31/functions/%s/invocations", conf.function_name)
-  local port = conf.port or AWS_PORT
+  local port = conf.port or 443
 
   local scheme = conf.disable_https and "http" or "https"
+
+  local path = fmt("/2015-03-31/functions/%s/invocations", conf.function_name)
 
   local opts = {
     region = region,
@@ -273,21 +285,15 @@ function AWSLambdaHandler:access(conf)
 
   if not conf.aws_key then
     -- no credentials provided, so try the IAM metadata service
-    local iam_role_cred_cache_key = fmt(IAM_CREDENTIALS_CACHE_KEY_PATTERN, conf.aws_assume_role_arn or "default")
-    local iam_role_credentials = kong.cache:get(
-      iam_role_cred_cache_key,
-      nil,
-      fetch_aws_credentials,
-      aws_conf
-    )
+    local success, access_id, secret_key, session_token = fetch_aws_credentials(aws_conf)
 
-    if not iam_role_credentials then
+    if not success then
       return kong.response.error(500, "Credentials not found")
     end
 
-    opts.access_key = iam_role_credentials.access_key
-    opts.secret_key = iam_role_credentials.secret_key
-    opts.headers["X-Amz-Security-Token"] = iam_role_credentials.session_token
+    opts.access_key = access_id
+    opts.secret_key = secret_key
+    opts.headers["X-Amz-Security-Token"] = session_token
 
   else
     opts.access_key = conf.aws_key
@@ -331,6 +337,7 @@ function AWSLambdaHandler:access(conf)
     return error(content)
   end
 
+  local ctx = ngx.ctx
   -- setting the latency here is a bit tricky, but because we are not
   -- actually proxying, it will not be overwritten
   ctx.KONG_WAITING_TIME = get_now() - kong_wait_time_start
