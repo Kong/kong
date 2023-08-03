@@ -410,6 +410,7 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
                    _, _,
                    _, _,
                    sni, req_headers, req_queries)
+
   check_select_params(req_method, req_uri, req_host, req_scheme,
                       nil, nil,
                       nil, nil,
