@@ -466,8 +466,8 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
               return nil, err
             end
           end
-        end
-      end
+        end -- if type(v)
+      end   -- if v
 
     elseif req_queries and is_http_queries_field(field) then
       local n = field:sub(14)
@@ -501,6 +501,7 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
         end -- type(v)
       end   -- if v
     end -- if field
+
   end   -- for self.fields
 
   local matched = self.router:execute(c)
@@ -714,8 +715,9 @@ function _M:select(_, _, _, scheme,
     elseif field == "net.dst.port" then
       assert(c:add_value(field, dst_port))
 
-    end -- if
-  end -- for
+    end -- if field
+
+  end -- for self.fields
 
   local matched = self.router:execute(c)
   if not matched then
@@ -841,7 +843,7 @@ function _M._set_ngx(mock_ngx)
     end
 
     if mock_ngx.req.get_uri_args then
-      get_headers = mock_ngx.req.get_uri_args
+      get_uri_args = mock_ngx.req.get_uri_args
     end
   end
 end
