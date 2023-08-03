@@ -838,6 +838,10 @@ function _M._set_ngx(mock_ngx)
     if mock_ngx.req.get_headers then
       get_headers = mock_ngx.req.get_headers
     end
+
+    if mock_ngx.req.get_uri_args then
+      get_headers = mock_ngx.req.get_uri_args
+    end
   end
 end
 
