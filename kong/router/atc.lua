@@ -500,7 +500,7 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
         end -- type(v)
       end   -- if v
     end -- if field
-  end
+  end   -- for self.fields
 
   local matched = self.router:execute(c)
   if not matched then
