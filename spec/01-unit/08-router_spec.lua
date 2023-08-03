@@ -4853,3 +4853,61 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
     end)
   end)
 end
+
+do
+  local flavor = "expressions"
+
+  describe("#only Router (flavor = " .. flavor .. ")", function()
+    reload_router(flavor)
+
+    local use_case, router
+
+    lazy_setup(function()
+      use_case = {
+        -- one query
+        {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+            expression = [[http.path == "/foo/bar" && http.queries.a == "1"]],
+            priority = 100,
+          },
+        },
+        -- query has no value
+        {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+            expression = [[http.path == "/foo/bar" && http.queries.a == "true"]],
+            priority = 100,
+          },
+        },
+        -- query has multi values
+        {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8103",
+            expression = [[http.path == "/foo/bar" && any(http.queries.a) == "2"]],
+            priority = 100,
+          },
+        },
+      }
+
+      router = assert(new_router(use_case))
+    end)
+
+    it("[should matches http.queries]", function()
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = "1"})
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = "true"})
+      assert.truthy(match_t)
+      assert.same(use_case[2].route, match_t.route)
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = {"1", "2", }})
+      assert.truthy(match_t)
+      assert.same(use_case[3].route, match_t.route)
+    end)
+
+  end)
+end
+
