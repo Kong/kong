@@ -4857,14 +4857,14 @@ end
 do
   local flavor = "expressions"
 
-  describe("#only Router (flavor = " .. flavor .. ")", function()
+  describe("Router (flavor = " .. flavor .. ")", function()
     reload_router(flavor)
 
     local use_case, router
 
     lazy_setup(function()
       use_case = {
-        -- one query
+        -- query has one value
         {
           service = service,
           route   = {
@@ -4896,7 +4896,7 @@ do
       router = assert(new_router(use_case))
     end)
 
-    it("[should matches http.queries]", function()
+    it("select() should matches http.queries", function()
       local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = "1"})
       assert.truthy(match_t)
       assert.same(use_case[1].route, match_t.route)
@@ -4906,6 +4906,9 @@ do
       local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = {"1", "2", }})
       assert.truthy(match_t)
       assert.same(use_case[3].route, match_t.route)
+    end)
+
+    it("exec() should matches http.queries", function()
     end)
 
   end)
