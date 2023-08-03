@@ -445,8 +445,8 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
           end
 
         else
-          for _, v in ipairs(v) do
-            local res, err = c:add_value(field, v:lower())
+          for idx = 1, #v do
+            local res, err = c:add_value(field, v[idx]:lower())
             if not res then
               return nil, err
             end
