@@ -4878,7 +4878,7 @@ do
           service = service,
           route   = {
             id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
-            expression = [[http.path == "/foo/bar" && http.queries.a == "true"]],
+            expression = [[http.path == "/foo/bar" && http.queries.a == ""]],
             priority = 100,
           },
         },
@@ -4896,11 +4896,11 @@ do
       router = assert(new_router(use_case))
     end)
 
-    it("select() should matches http.queries", function()
+    it("select() should match http.queries", function()
       local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = "1"})
       assert.truthy(match_t)
       assert.same(use_case[1].route, match_t.route)
-      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = "true"})
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = ""})
       assert.truthy(match_t)
       assert.same(use_case[2].route, match_t.route)
       local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = {"1", "2", }})
@@ -4908,7 +4908,7 @@ do
       assert.same(use_case[3].route, match_t.route)
     end)
 
-    it("exec() should matches http.queries", function()
+    it("exec() should match http.queries", function()
     end)
 
   end)
