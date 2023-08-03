@@ -544,6 +544,7 @@ end
 
 
 local get_headers_key
+--local get_queries_key
 do
   local tb_sort = table.sort
   local tb_concat = table.concat
@@ -573,6 +574,26 @@ do
 
     return headers_buf:get()
   end
+
+  --[[
+  local queries_buf = buffer.new(64)
+
+  get_queries_key = function(queries)
+    queries_buf:reset()
+
+    -- NOTE: DO NOT yield until headers_buf:get()
+    for name, value in pairs(queries) do
+      if type(value) == "table" then
+        tb_sort(value)
+        value = tb_concat(value, ", ")
+      end
+
+      queries_buf:putf("|%s=%s", name, value)
+    end
+
+    return queries_buf:get()
+  end
+  --]]
 end
 
 
