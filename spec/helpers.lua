@@ -3564,8 +3564,24 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
 
   truncate_tables(db, tables)
 
-  env.nginx_conf = env.nginx_conf or "spec/fixtures/default_nginx.template"
-  local nginx_conf = " --nginx-conf " .. env.nginx_conf
+  local nginx_conf = ""
+  local nginx_conf_flags = {}
+  if env.nginx_conf then
+    nginx_conf = " --nginx-conf " .. env.nginx_conf
+    -- render `test` blocks in the templates
+    nginx_conf_flags[#nginx_conf_flags + 1] = 'test'
+  end
+
+  if TEST_COVERAGE_MODE == "true" then
+    -- render `coverage` blocks in the templates
+    nginx_conf_flags[#nginx_conf_flags + 1] = 'coverage'
+  end
+
+  if next(nginx_conf_flags) then
+    nginx_conf_flags = " --nginx-conf-flags " .. table.concat(nginx_conf_flags, ",")
+  else
+    nginx_conf_flags = ""
+  end
 
   if dcbp and not env.declarative_config and not env.declarative_config_string then
     if not config_yml then
@@ -3582,8 +3598,7 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
   end
 
   assert(render_fixtures(TEST_CONF_PATH .. nginx_conf, env, prefix, fixtures))
-
-  return kong_exec("start --conf " .. TEST_CONF_PATH .. nginx_conf, env)
+  return kong_exec("start --conf " .. TEST_CONF_PATH .. nginx_conf .. nginx_conf_flags, env)
 end
 
 

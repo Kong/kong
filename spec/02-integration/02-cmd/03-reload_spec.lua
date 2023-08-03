@@ -98,7 +98,8 @@ describe("kong reload #" .. strategy, function()
     client:close()
 
     assert(helpers.kong_exec("reload --conf " .. helpers.test_conf_path
-           .. " --nginx-conf spec/fixtures/custom_nginx.template"))
+           .. " --nginx-conf spec/fixtures/custom_nginx.template"
+           .. " --nginx-conf-flags test"))
 
 
     helpers.wait_until_no_common_workers(workers, 1)
@@ -740,7 +741,7 @@ describe("Admin GUI config", function ()
 
     client:close()
 
-    assert(helpers.reload_kong("off", "reload --conf " .. helpers.test_conf_path .. " --nginx-conf spec/fixtures/default_nginx.template", {
+    assert(helpers.reload_kong("off", "reload --conf " .. helpers.test_conf_path, {
       database = "off",
       admin_gui_listen = "127.0.0.1:9012",
       admin_gui_url = "http://test2.example.com",

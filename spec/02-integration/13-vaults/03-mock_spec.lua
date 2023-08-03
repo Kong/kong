@@ -126,7 +126,8 @@ for _, strategy in helpers.each_strategy() do
         local workers = get_kong_workers()
 
         assert(helpers.kong_exec("reload --conf " .. helpers.test_conf_path ..
-                                 " --nginx-conf spec/fixtures/custom_nginx.template", {
+                                 " --nginx-conf spec/fixtures/custom_nginx.template" ..
+                                 " --nginx-conf-flags test", {
           vaults = "env,mock"
         }))
 

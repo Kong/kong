@@ -34,6 +34,10 @@ $(el.name) $(el.value);
 > end
 
 init_by_lua_block {
+> if test and coverage then
+    require 'luacov'
+    jit.off()
+> end -- test and coverage
     Kong = require 'kong'
     Kong.init()
 }
@@ -479,6 +483,10 @@ server {
     }
 }
 > end -- role == "control_plane"
+
+> if test then
+    include '*.test.conf';
+> end -- test
 
 server {
     charset UTF-8;

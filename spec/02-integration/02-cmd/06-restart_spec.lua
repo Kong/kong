@@ -55,7 +55,8 @@ describe("kong restart", function()
     wait_for_pid()
 
     assert(helpers.kong_exec("restart --prefix " .. helpers.test_conf.prefix
-           .. " --nginx-conf spec/fixtures/custom_nginx.template", env))
+           .. " --nginx-conf spec/fixtures/custom_nginx.template"
+           .. " --nginx-conf-flags test", env))
     wait_for_pid()
 
     -- new server

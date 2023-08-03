@@ -56,7 +56,8 @@ local function execute(args)
   assert(not kill.is_running(conf.nginx_pid),
          "Kong is already running in " .. conf.prefix)
 
-  assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
+  assert(prefix_handler.prepare_prefix(conf, args.nginx_conf, nil, nil,
+         args.nginx_conf_flags))
 
   cleanup_dangling_unix_sockets(conf.prefix)
 
@@ -117,20 +118,23 @@ Start Kong (Nginx and other configured services) in the configured
 prefix directory.
 
 Options:
- -c,--conf        (optional string)   Configuration file.
+ -c,--conf                 (optional string)   Configuration file.
 
- -p,--prefix      (optional string)   Override prefix directory.
+ -p,--prefix               (optional string)   Override prefix directory.
 
- --nginx-conf     (optional string)   Custom Nginx configuration template.
+ --nginx-conf              (optional string)   Custom Nginx configuration template.
 
- --run-migrations (optional boolean)  Run migrations before starting.
+ --run-migrations          (optional boolean)  Run migrations before starting.
 
- --db-timeout     (default 60)        Timeout, in seconds, for all database
-                                      operations.
+ --db-timeout              (default 60)        Timeout, in seconds, for all database
+                                               operations.
 
- --lock-timeout   (default 60)        When --run-migrations is enabled, timeout,
-                                      in seconds, for nodes waiting on the
-                                      leader node to finish running migrations.
+ --lock-timeout            (default 60)        When --run-migrations is enabled, timeout,
+                                               in seconds, for nodes waiting on the
+                                               leader node to finish running migrations.
+
+ --nginx-conf-flags        (optional string)   Flags that can be used to control
+                                               how Nginx configuration templates are rendered
 ]]
 
 return {
