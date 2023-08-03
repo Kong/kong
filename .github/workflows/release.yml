@@ -172,6 +172,12 @@ jobs:
         wget https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.41.0.tar.gz
         tar xf git-2.41.0.tar.gz
         cd git-2.41.0
+
+        # https://gitlab.com/gitlab-org/omnibus-gitlab/-/merge_requests/5948/diffs
+        if [[ ${{ matrix.image }} == "centos:7" ]]; then
+          echo 'CFLAGS=-std=gnu99' >> config.mak
+        fi
+
         make configure
         ./configure --prefix=/usr/local/git
         make -j$(nproc)
