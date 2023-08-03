@@ -31,7 +31,7 @@ local ngx_log       = ngx.log
 local get_phase     = ngx.get_phase
 local get_method    = ngx.req.get_method
 local get_headers   = ngx.req.get_headers
---local get_uri_args  = ngx.req.get_uri_args
+local get_uri_args  = ngx.req.get_uri_args
 local ngx_ERR       = ngx.ERR
 
 
@@ -544,7 +544,7 @@ end
 
 
 local get_headers_key
---local get_queries_key
+local get_queries_key
 do
   local tb_sort = table.sort
   local tb_concat = table.concat
@@ -575,7 +575,6 @@ do
     return headers_buf:get()
   end
 
-  --[[
   local queries_buf = buffer.new(64)
 
   get_queries_key = function(queries)
@@ -593,7 +592,6 @@ do
 
     return queries_buf:get()
   end
-  --]]
 end
 
 
@@ -620,7 +618,6 @@ function _M:exec(ctx)
     headers_key = get_headers_key(headers)
   end
 
-  --[[
   local queries, queries_key
   if self.match_queries then
     local err
@@ -633,9 +630,8 @@ function _M:exec(ctx)
                        "(currently at ", lua_max_req_queries, ")")
     end
 
-    --queries_key = get_queries_key(queries)
+    queries_key = get_queries_key(queries)
   end
-  --]]
 
   req_uri = strip_uri_args(req_uri)
 
@@ -644,7 +640,7 @@ function _M:exec(ctx)
   local cache_key = (req_method or "") .. "|" ..
                     (req_uri    or "") .. "|" ..
                     (req_host   or "") .. "|" ..
-                    (sni        or "") .. (headers_key or "") --.. (queries_key or "")
+                    (sni        or "") .. (headers_key or "") .. (queries_key or "")
 
   local match_t = self.cache:get(cache_key)
   if not match_t then
@@ -658,7 +654,7 @@ function _M:exec(ctx)
     local err
     match_t, err = self:select(req_method, req_uri, req_host, req_scheme,
                           nil, nil, nil, nil,
-                          sni, headers)
+                          sni, headers, queries)
     if not match_t then
       if err then
         ngx_log(ngx_ERR, "router returned an error: ", err,
