@@ -12,10 +12,12 @@ ifeq ($(OS), darwin)
 OPENSSL_DIR ?= $(shell brew --prefix)/opt/openssl
 GRPCURL_OS ?= osx
 YAML_DIR ?= $(shell brew --prefix)/opt/libyaml
+EXPAT_DIR ?= $(HOMEBREW_DIR)/opt/expat
 else
 OPENSSL_DIR ?= /usr
 GRPCURL_OS ?= $(OS)
 YAML_DIR ?= /usr
+EXPAT_DIR ?= $(LIBRARY_PREFIX)
 endif
 
 ifeq ($(MACHINE), aarch64)
@@ -79,7 +81,7 @@ wasm-test-filters:
 	./scripts/build-wasm-test-filters.sh
 
 build-kong: check-bazel
-	$(BAZEL) build //build:kong --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME)
+	$(BAZEL) build //build:kong --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME) --//:debug=false
 
 build-venv: check-bazel
 	$(eval VENV := bazel-bin/build/$(BUILD_NAME)-venv.sh)

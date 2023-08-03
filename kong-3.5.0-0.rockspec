@@ -33,6 +33,7 @@ dependencies = {
   "lua-protobuf == 0.5.0",
   "lua-resty-healthcheck == 1.6.2",
   "lua-messagepack == 0.5.2",
+  "lua-resty-aws == 1.2.3",
   "lua-resty-openssl == 0.8.23",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
@@ -439,9 +440,6 @@ build = {
 
     ["kong.plugins.aws-lambda.aws-serializer"]       = "kong/plugins/aws-lambda/aws-serializer.lua",
     ["kong.plugins.aws-lambda.handler"]              = "kong/plugins/aws-lambda/handler.lua",
-    ["kong.plugins.aws-lambda.iam-ec2-credentials"]  = "kong/plugins/aws-lambda/iam-ec2-credentials.lua",
-    ["kong.plugins.aws-lambda.iam-ecs-credentials"]  = "kong/plugins/aws-lambda/iam-ecs-credentials.lua",
-    ["kong.plugins.aws-lambda.iam-sts-credentials"]  = "kong/plugins/aws-lambda/iam-sts-credentials.lua",
     ["kong.plugins.aws-lambda.schema"]               = "kong/plugins/aws-lambda/schema.lua",
     ["kong.plugins.aws-lambda.v4"]                   = "kong/plugins/aws-lambda/v4.lua",
     ["kong.plugins.aws-lambda.request-util"]         = "kong/plugins/aws-lambda/request-util.lua",
