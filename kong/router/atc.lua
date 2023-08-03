@@ -549,12 +549,12 @@ do
   local tb_sort = table.sort
   local tb_concat = table.concat
 
-  local headers_buf = buffer.new(64)
+  local str_buf = buffer.new(64)
 
   get_headers_key = function(headers)
-    headers_buf:reset()
+    str_buf:reset()
 
-    -- NOTE: DO NOT yield until headers_buf:get()
+    -- NOTE: DO NOT yield until str_buf:get()
     for name, value in pairs(headers) do
       local name = name:gsub("-", "_"):lower()
 
@@ -569,28 +569,26 @@ do
         value = value:lower()
       end
 
-      headers_buf:putf("|%s=%s", name, value)
+      str_buf:putf("|%s=%s", name, value)
     end
 
-    return headers_buf:get()
+    return str_buf:get()
   end
 
-  local queries_buf = buffer.new(64)
-
   get_queries_key = function(queries)
-    queries_buf:reset()
+    str_buf:reset()
 
-    -- NOTE: DO NOT yield until headers_buf:get()
+    -- NOTE: DO NOT yield until str_buf:get()
     for name, value in pairs(queries) do
       if type(value) == "table" then
         tb_sort(value)
         value = tb_concat(value, ", ")
       end
 
-      queries_buf:putf("|%s=%s", name, value)
+      str_buf:putf("|%s=%s", name, value)
     end
 
-    return queries_buf:get()
+    return str_buf:get()
   end
 end
 
