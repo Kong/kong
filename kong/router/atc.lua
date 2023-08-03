@@ -481,10 +481,10 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
             return nil, err
           end
 
-        -- the query parameter has no value, like /?foo, get_uri_arg will get a boolean `false`
-        -- we treat as empty string here.
+        -- the query parameter has no value, like /?foo,
+        -- get_uri_arg will get a boolean `true`
         elseif type(v) == "boolean" then
-          local res, err = c:add_value(field, "")
+          local res, err = c:add_value(field, tostring(v))
           if not res then
             return nil, err
           end
