@@ -566,7 +566,7 @@ jobs:
     - name: Smoke Tests - Version Test
       run: |
         workflow_version="$(
-          echo '${{ steps.metadata.outputs.kong-version }}' \
+          echo '${{ needs.metadata.outputs.kong-version }}' \
             | sed -e 's@\.@\\\.@g'
         )"
 
