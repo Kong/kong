@@ -4873,7 +4873,7 @@ do
             priority = 100,
           },
         },
-        -- query has no value
+        -- query has no value or is empty string
         {
           service = service,
           route   = {
@@ -4882,7 +4882,7 @@ do
             priority = 100,
           },
         },
-        -- query has multi values
+        -- query has multiple values
         {
           service = service,
           route   = {
@@ -4900,9 +4900,15 @@ do
       local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = "1"})
       assert.truthy(match_t)
       assert.same(use_case[1].route, match_t.route)
+
       local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = ""})
       assert.truthy(match_t)
       assert.same(use_case[2].route, match_t.route)
+
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = true})
+      assert.truthy(match_t)
+      assert.same(use_case[2].route, match_t.route)
+
       local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = {"1", "2", }})
       assert.truthy(match_t)
       assert.same(use_case[3].route, match_t.route)
