@@ -716,7 +716,7 @@ local function new(self)
   -- @phases rewrite, access, response, admin_api
   -- @treturn string|nil The plain request body or nil if it does not fit into
   -- the NGINX temporary buffer.
-  -- @treturn string|nil An error message.
+  -- @treturn nil|string An error message.
   -- @usage
   -- -- Given a body with payload "Hello, Earth!":
   --
