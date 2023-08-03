@@ -31,7 +31,7 @@ local ngx_log       = ngx.log
 local get_phase     = ngx.get_phase
 local get_method    = ngx.req.get_method
 local get_headers   = ngx.req.get_headers
-local get_uri_args  = ngx.req.get_uri_args
+--local get_uri_args  = ngx.req.get_uri_args
 local ngx_ERR       = ngx.ERR
 
 
@@ -599,6 +599,23 @@ function _M:exec(ctx)
     headers_key = get_headers_key(headers)
   end
 
+  --[[
+  local queries, queries_key
+  if self.match_queries then
+    local err
+    queries, err = get_uri_args()
+    if err == "truncated" then
+      local lua_max_req_queries = kong and kong.configuration and kong.configuration.lua_max_req_queries or 100
+      ngx_log(ngx_ERR, "router: not all request queries were read in order to determine the route as ",
+                       "the request contains more than ", lua_max_req_queries, " queries, route selection ",
+                       "may be inaccurate, consider increasing the 'lua_max_req_queries' configuration value ",
+                       "(currently at ", lua_max_req_queries, ")")
+    end
+
+    --queries_key = get_queries_key(queries)
+  end
+  --]]
+
   req_uri = strip_uri_args(req_uri)
 
   -- cache lookup
@@ -606,7 +623,7 @@ function _M:exec(ctx)
   local cache_key = (req_method or "") .. "|" ..
                     (req_uri    or "") .. "|" ..
                     (req_host   or "") .. "|" ..
-                    (sni        or "") .. (headers_key or "")
+                    (sni        or "") .. (headers_key or "") --.. (queries_key or "")
 
   local match_t = self.cache:get(cache_key)
   if not match_t then
