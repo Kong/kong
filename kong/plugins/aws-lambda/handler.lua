@@ -4,8 +4,8 @@ local fmt = string.format
 local ngx_var = ngx.var
 local ngx_now = ngx.now
 local ngx_update_time = ngx.update_time
-local kong = kong
 
+local kong = kong
 local meta = require "kong.meta"
 local constants = require "kong.constants"
 local VIA_HEADER = constants.HEADERS.VIA
@@ -18,7 +18,8 @@ local extract_proxy_response = request_util.extract_proxy_response
 local aws = require("resty.aws")
 -- Loading necessary runtime env vars but avoid region fetching from IMDS
 -- Since this happens inside `require`
-local _ = require("resty.aws.config").get_config()
+local aws_config = require("resty.aws.config")
+local AWS_GLOBAL_CONFIG = aws_config.get_config()
 local AWS_REGION do
   AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
 end
@@ -39,13 +40,16 @@ local AWSLambdaHandler = {
 
 
 function AWSLambdaHandler:init_worker()
-  -- Initialize a global level AWS object for reusing
-  local config = { region = AWS_REGION }
+  local config = { global = AWS_GLOBAL_CONFIG }
+  -- Set global region manually to skip IMDS fetching
+  config.global.region = AWS_REGION
   AWS = aws(config)
 end
 
 
 function AWSLambdaHandler:access(conf)
+  -- The region in plugin configuraion has higher priority
+  -- than the one in environment variable
   local region = conf.aws_region or AWS_REGION
   if not region then
     return error("no region specified")
