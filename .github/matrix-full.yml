@@ -29,13 +29,6 @@ build-packages:
   package: deb
   check-manifest-suite: debian-11-amd64
 
-# CentOS
-- label: centos-7
-  image: centos:7
-  package: rpm
-  package-type: el7
-  check-manifest-suite: el7-amd64
-
 # RHEL
 - label: rhel-7
   image: centos:7
@@ -152,14 +145,6 @@ release-packages:
   artifact-version: 11
   artifact-type: debian
   artifact: kong.amd64.deb
-
-# CentOS
-- label: centos-7
-  package: rpm
-  artifact-from: centos-7
-  artifact-version: 7
-  artifact-type: centos
-  artifact: kong.el7.amd64.rpm
 
 # RHEL
 - label: rhel-7
