@@ -289,15 +289,15 @@ local PREFIX_PATHS = {
   admin_ssl_cert_default_ecdsa = {"ssl", "admin-kong-default-ecdsa.crt"},
   admin_ssl_cert_key_default_ecdsa = {"ssl", "admin-kong-default-ecdsa.key"},
 
-  status_ssl_cert_default = {"ssl", "status-kong-default.crt"},
-  status_ssl_cert_key_default = {"ssl", "status-kong-default.key"},
-  status_ssl_cert_default_ecdsa = {"ssl", "status-kong-default-ecdsa.crt"},
-  status_ssl_cert_key_default_ecdsa = {"ssl", "status-kong-default-ecdsa.key"},
-
   admin_gui_ssl_cert_default = {"ssl", "admin-gui-kong-default.crt"},
   admin_gui_ssl_cert_key_default = {"ssl", "admin-gui-kong-default.key"},
   admin_gui_ssl_cert_default_ecdsa = {"ssl", "admin-gui-kong-default-ecdsa.crt"},
   admin_gui_ssl_cert_key_default_ecdsa = {"ssl", "admin-gui-kong-default-ecdsa.key"},
+
+  status_ssl_cert_default = {"ssl", "status-kong-default.crt"},
+  status_ssl_cert_key_default = {"ssl", "status-kong-default.key"},
+  status_ssl_cert_default_ecdsa = {"ssl", "status-kong-default-ecdsa.crt"},
+  status_ssl_cert_key_default_ecdsa = {"ssl", "status-kong-default-ecdsa.key"},
 }
 
 
@@ -930,18 +930,6 @@ local function check_and_parse(conf, opts)
                                client_ssl_cert_key
       end
     end
-  end
-
-  -- admin_gui_origin is a parameter for internal use only
-  -- it's not set directly by the user
-  -- if admin_gui_path is set to a path other than /, admin_gui_url may
-  -- contain a path component
-  -- to make it suitable to be used as an origin in headers, we need to
-  -- parse and reconstruct the admin_gui_url to ensure it only contains
-  -- the scheme, host, and port
-  if conf.admin_gui_url then
-    local parsed_url = socket_url.parse(conf.admin_gui_url)
-    conf.admin_gui_origin = parsed_url.scheme .. "://" .. parsed_url.authority
   end
 
   if conf.admin_gui_path then
@@ -2190,6 +2178,18 @@ local function load(path, custom_conf, opts)
         break
       end
     end
+  end
+
+  -- admin_gui_origin is a parameter for internal use only
+  -- it's not set directly by the user
+  -- if admin_gui_path is set to a path other than /, admin_gui_url may
+  -- contain a path component
+  -- to make it suitable to be used as an origin in headers, we need to
+  -- parse and reconstruct the admin_gui_url to ensure it only contains
+  -- the scheme, host, and port
+  if conf.admin_gui_url then
+    local parsed_url = socket_url.parse(conf.admin_gui_url)
+    conf.admin_gui_origin = parsed_url.scheme .. "://" .. parsed_url.authority
   end
 
   -- hybrid mode HTTP tunneling (CONNECT) proxy inside HTTPS

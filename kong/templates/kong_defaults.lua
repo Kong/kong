@@ -185,17 +185,16 @@ untrusted_lua = sandbox
 untrusted_lua_sandbox_requires =
 untrusted_lua_sandbox_environment =
 
+admin_gui_url =
+admin_gui_path = /
+admin_gui_api_url = NONE
+
 openresty_path =
 
 opentelemetry_tracing = off
 opentelemetry_tracing_sampling_rate = 0.01
 tracing_instrumentations = off
 tracing_sampling_rate = 0.01
-
-admin_gui_url =
-admin_gui_origin =    # for internal use only, can not be configured manually
-admin_gui_path = /
-admin_gui_api_url =
 
 wasm = off
 wasm_filters_path = NONE

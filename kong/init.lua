@@ -89,7 +89,6 @@ local process = require "ngx.process"
 local tablepool = require "tablepool"
 local table_new = require "table.new"
 local utils = require "kong.tools.utils"
-local constants = require "kong.constants"
 local get_ctx_table = require("resty.core.ctx").get_ctx_table
 local admin_gui = require "kong.admin_gui"
 local wasm = require "kong.runloop.wasm"

@@ -307,7 +307,7 @@ describe("Configuration loader", function()
     assert.is_not_nil(conf)
     assert.is_nil(conf.admin_gui_origin)
 
-    local conf, _, errors = conf_loader(nil, {
+    conf, _, errors = conf_loader(nil, {
       admin_gui_url = "http://localhost:8002",
     })
     assert.is_nil(errors)

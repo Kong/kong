@@ -1,45 +1,19 @@
+local match          = require "luassert.match"
 local pl_path        = require "pl.path"
 
-local helpers        = require "spec.helpers"
 local admin_gui      = require "kong.admin_gui"
 local conf_loader    = require "kong.conf_loader"
-local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local log            = require "kong.cmd.utils.log"
+local prefix_handler = require "kong.cmd.utils.prefix_handler"
 
-local exists = helpers.path.exists
+local helpers        = require "spec.helpers"
 
 describe("admin_gui template", function()
-  local conf = assert(conf_loader(helpers.test_conf_path))
-
-  it("auto-generates SSL certificate and key", function()
-    assert(prefix_handler.gen_default_ssl_cert(conf, "admin_gui"))
-    assert(exists(conf.admin_gui_ssl_cert_default))
-    assert(exists(conf.admin_gui_ssl_cert_key_default))
-  end)
-
-  it("does not re-generate if they already exist", function()
-    assert(prefix_handler.gen_default_ssl_cert(conf, "admin_gui"))
-    local cer = helpers.file.read(conf.admin_gui_ssl_cert_default)
-    local key = helpers.file.read(conf.admin_gui_ssl_cert_key_default)
-    assert(prefix_handler.gen_default_ssl_cert(conf, "admin_gui"))
-    assert.equal(cer, helpers.file.read(conf.admin_gui_ssl_cert_default))
-    assert.equal(key, helpers.file.read(conf.admin_gui_ssl_cert_key_default))
-  end)
-
-  it("generates a different SSL certificate and key from the RESTful API", function()
-    assert(prefix_handler.gen_default_ssl_cert(conf, "admin_gui"))
-    local cer, key = {}, {}
-    cer[1] = helpers.file.read(conf.admin_gui_ssl_cert_default)
-    key[1] = helpers.file.read(conf.admin_gui_ssl_cert_key_default)
-    assert(prefix_handler.gen_default_ssl_cert(conf, "admin"))
-    cer[2] = helpers.file.read(conf.admin_ssl_cert_default)
-    key[2] = helpers.file.read(conf.admin_ssl_cert_key_default)
-    assert.not_equals(cer[1], cer[2])
-    assert.not_equals(key[1], key[2])
-  end)
-
   describe("admin_gui.generate_kconfig() - proxied", function()
+    local mock_prefix  = "servroot"
+
     local conf = {
+      prefix = mock_prefix,
       admin_gui_url = "http://0.0.0.0:8002",
       admin_gui_api_url = "https://admin-reference.kong-cloud.com",
       admin_gui_path = '/manager',
@@ -81,6 +55,11 @@ describe("admin_gui template", function()
       },
     }
 
+    setup(function()
+      prefix_handler.prepare_prefixed_interface_dir("/usr/local/kong", "gui", conf)
+      assert(pl_path.isdir(mock_prefix))
+    end)
+
     it("should generates the appropriate kconfig", function()
       local kconfig_content = admin_gui.generate_kconfig(conf)
 
@@ -114,7 +93,10 @@ describe("admin_gui template", function()
   end)
 
   describe("admin_gui.generate_kconfig() - not proxied", function()
+    local mock_prefix  = "servroot"
+
     local conf = {
+      prefix = mock_prefix,
       admin_gui_url = "http://0.0.0.0:8002",
       admin_gui_api_url = "0.0.0.0:8001",
       anonymous_reports = false,
@@ -156,6 +138,11 @@ describe("admin_gui template", function()
       },
     }
 
+    setup(function()
+      prefix_handler.prepare_prefixed_interface_dir("/usr/local/kong", "gui", conf)
+      assert(pl_path.isdir(mock_prefix))
+    end)
+
     it("should generates the appropriate kconfig", function()
       local kconfig_content = admin_gui.generate_kconfig(conf)
 
@@ -188,6 +175,8 @@ describe("admin_gui template", function()
   end)
 
   describe("prepare_admin() - message logs", function()
+    local conf = assert(conf_loader(helpers.test_conf_path))
+
     local default_prefix = conf.prefix
     local mock_prefix  = "servroot_2"
     local usr_path = "servroot"
@@ -207,10 +196,6 @@ describe("admin_gui template", function()
         assert(pl_path.rmdir(usr_interface_path))
       end
 
-      -- reverts the spy stub & matcher
-      log.warn:revert()
-      assert:unregister("matcher", "correct")
-
       -- reset prefix
       conf.prefix = default_prefix
     end)
@@ -218,12 +203,28 @@ describe("admin_gui template", function()
     it("symlink creation should log out error", function()
       local spy_log = spy.on(log, "warn")
 
-      local err = "ln: failed to create symbolic link 'servroot_2/gui2': "
+      finally(function()
+        log.warn:revert()
+        assert:unregister("matcher", "str_match")
+      end)
+
+      assert:register("matcher", "str_match", function (_state, arguments)
+        local expected = arguments[1]
+        return function(value)
+          return string.match(value, expected) ~= nil
+        end
+      end)
+
+      local coreutils_err_msg = "ln: failed to create symbolic link 'servroot_2/gui2': "
                  .. "No such file or directory\n"
+
+      local bsd_err_msg = "ln: servroot_2/gui2: No such file or directory\n"
 
       prefix_handler.prepare_prefixed_interface_dir(usr_path, usr_interface_dir, conf)
       assert.spy(spy_log).was_called(1)
-      assert.spy(spy_log).was_called_with(err)
+      assert.spy(spy_log).was_called_with(
+        match.is_any_of(match.str_match(coreutils_err_msg), match.str_match(bsd_err_msg))
+      )
     end)
   end)
 end)
