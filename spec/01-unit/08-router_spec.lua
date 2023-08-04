@@ -50,6 +50,42 @@ local headers_mt = {
   end
 }
 
+local spy_stub = {
+  nop = function() end
+}
+
+local function mock_ngx(method, request_uri, headers, queries)
+  local _ngx
+  _ngx = {
+    log = ngx.log,
+    re = ngx.re,
+    var = setmetatable({
+      request_uri = request_uri,
+      http_kong_debug = headers.kong_debug
+    }, {
+      __index = function(_, key)
+        if key == "http_host" then
+          spy_stub.nop()
+          return headers.host
+        end
+      end
+    }),
+    req = {
+      get_method = function()
+        return method
+      end,
+      get_headers = function()
+        return setmetatable(headers, headers_mt)
+      end,
+      get_uri_args = function()
+        return queries
+      end,
+    }
+  }
+
+  return _ngx
+end
+
 for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
   describe("Router (flavor = " .. flavor .. ")", function()
     reload_router(flavor)
@@ -3108,39 +3144,6 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
     end)
 
     describe("exec()", function()
-      local spy_stub = {
-        nop = function() end
-      }
-
-      local function mock_ngx(method, request_uri, headers)
-        local _ngx
-        _ngx = {
-          log = ngx.log,
-          re = ngx.re,
-          var = setmetatable({
-            request_uri = request_uri,
-            http_kong_debug = headers.kong_debug
-          }, {
-            __index = function(_, key)
-              if key == "http_host" then
-                spy_stub.nop()
-                return headers.host
-              end
-            end
-          }),
-          req = {
-            get_method = function()
-              return method
-            end,
-            get_headers = function()
-              return setmetatable(headers, headers_mt)
-            end
-          }
-        }
-
-        return _ngx
-      end
-
       it("returns parsed upstream_url + upstream_uri", function()
         local use_case_routes = {
           {
@@ -4895,42 +4898,6 @@ do
 
       router = assert(new_router(use_case))
     end)
-
-    local spy_stub = {
-      nop = function() end
-    }
-
-    local function mock_ngx(method, request_uri, headers, queries)
-      local _ngx
-      _ngx = {
-        log = ngx.log,
-        re = ngx.re,
-        var = setmetatable({
-          request_uri = request_uri,
-          http_kong_debug = headers.kong_debug
-        }, {
-          __index = function(_, key)
-            if key == "http_host" then
-              spy_stub.nop()
-              return headers.host
-            end
-          end
-        }),
-        req = {
-          get_method = function()
-            return method
-          end,
-          get_headers = function()
-            return setmetatable(headers, headers_mt)
-          end,
-          get_uri_args = function()
-            return queries
-          end,
-        }
-      }
-
-      return _ngx
-    end
 
     it("select() should match http.queries", function()
       local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = "1",})
