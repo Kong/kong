@@ -2,8 +2,6 @@ name: Performance Test
 
 on:
   pull_request:
-  issue_comment:
-    types: [created]
   schedule:
   # don't know the timezone but it's daily at least
   - cron:  '0 7 * * *'
