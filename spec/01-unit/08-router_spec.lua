@@ -4896,25 +4896,92 @@ do
       router = assert(new_router(use_case))
     end)
 
+    local spy_stub = {
+      nop = function() end
+    }
+
+    local function mock_ngx(method, request_uri, headers, queries)
+      local _ngx
+      _ngx = {
+        log = ngx.log,
+        re = ngx.re,
+        var = setmetatable({
+          request_uri = request_uri,
+          http_kong_debug = headers.kong_debug
+        }, {
+          __index = function(_, key)
+            if key == "http_host" then
+              spy_stub.nop()
+              return headers.host
+            end
+          end
+        }),
+        req = {
+          get_method = function()
+            return method
+          end,
+          get_headers = function()
+            return setmetatable(headers, headers_mt)
+          end,
+          get_uri_args = function()
+            return queries
+          end,
+        }
+      }
+
+      return _ngx
+    end
+
     it("select() should match http.queries", function()
-      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = "1"})
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = "1",})
       assert.truthy(match_t)
       assert.same(use_case[1].route, match_t.route)
 
-      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = ""})
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = "",})
       assert.truthy(match_t)
       assert.same(use_case[2].route, match_t.route)
 
-      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = true})
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = true,})
       assert.truthy(match_t)
       assert.same(use_case[2].route, match_t.route)
 
-      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = {"1", "2", }})
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = {"1", "2",}})
       assert.truthy(match_t)
       assert.same(use_case[3].route, match_t.route)
     end)
 
     it("exec() should match http.queries", function()
+      local _ngx = mock_ngx("GET", "/foo/bar", { host = "domain.org"}, { a = "1"})
+      local get_uri_args = spy.on(_ngx.req, "get_uri_args")
+
+      router._set_ngx(_ngx)
+      local match_t = router:exec()
+      assert.spy(get_uri_args).was_called(1)
+      assert.same(use_case[1].route, match_t.route)
+
+      local _ngx = mock_ngx("GET", "/foo/bar", { host = "domain.org"}, { a = ""})
+      local get_uri_args = spy.on(_ngx.req, "get_uri_args")
+
+      router._set_ngx(_ngx)
+      local match_t = router:exec()
+      assert.spy(get_uri_args).was_called(1)
+      assert.same(use_case[2].route, match_t.route)
+
+      local _ngx = mock_ngx("GET", "/foo/bar", { host = "domain.org"}, { a = true})
+      local get_uri_args = spy.on(_ngx.req, "get_uri_args")
+
+      router._set_ngx(_ngx)
+      local match_t = router:exec()
+      assert.spy(get_uri_args).was_called(1)
+      assert.same(use_case[2].route, match_t.route)
+
+      local _ngx = mock_ngx("GET", "/foo/bar", { host = "domain.org"}, { a = {"1", "2"}})
+      local get_uri_args = spy.on(_ngx.req, "get_uri_args")
+
+      router._set_ngx(_ngx)
+      local match_t = router:exec()
+      assert.spy(get_uri_args).was_called(1)
+      assert.same(use_case[3].route, match_t.route)
     end)
 
   end)
