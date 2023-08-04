@@ -4904,17 +4904,20 @@ do
       assert.truthy(match_t)
       assert.same(use_case[1].route, match_t.route)
 
-      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = "",})
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = ""})
       assert.truthy(match_t)
       assert.same(use_case[2].route, match_t.route)
 
-      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = true,})
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = true})
       assert.truthy(match_t)
       assert.same(use_case[2].route, match_t.route)
 
-      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = {"1", "2",}})
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = {"1", "2"}})
       assert.truthy(match_t)
       assert.same(use_case[3].route, match_t.route)
+
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = "x"})
+      assert.falsy(match_t)
     end)
 
     it("exec() should match http.queries", function()
@@ -4949,6 +4952,14 @@ do
       local match_t = router:exec()
       assert.spy(get_uri_args).was_called(1)
       assert.same(use_case[3].route, match_t.route)
+
+      local _ngx = mock_ngx("GET", "/foo/bar", { host = "domain.org"}, { a = "x"})
+      local get_uri_args = spy.on(_ngx.req, "get_uri_args")
+
+      router._set_ngx(_ngx)
+      local match_t = router:exec()
+      assert.spy(get_uri_args).was_called(1)
+      assert.falsy(match_t)
     end)
 
   end)
