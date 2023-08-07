@@ -1,7 +1,7 @@
-diff --git a/bundle/LuaJIT-2.1-20220411/src/Makefile b/bundle/LuaJIT-2.1-20220411/src/Makefile
+diff --git a/bundle/LuaJIT-2.1-20230410/src/Makefile b/bundle/LuaJIT-2.1-20230410/src/Makefile
 index 68a9a7c..8d2de33 100644
---- a/bundle/LuaJIT-2.1-20220411/src/Makefile
-+++ b/bundle/LuaJIT-2.1-20220411/src/Makefile
+--- a/bundle/LuaJIT-2.1-20230410/src/Makefile
++++ b/bundle/LuaJIT-2.1-20230410/src/Makefile
 @@ -27,7 +27,8 @@ NODOTABIVER= 51
  DEFAULT_CC = gcc
  #

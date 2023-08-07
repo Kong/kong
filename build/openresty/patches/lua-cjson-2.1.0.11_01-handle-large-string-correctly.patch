@@ -1,7 +1,7 @@
-diff --git a/bundle/lua-cjson-2.1.0.10/lua_cjson.c b/bundle/lua-cjson-2.1.0.10/lua_cjson.c
+diff --git a/bundle/lua-cjson-2.1.0.11/lua_cjson.c b/bundle/lua-cjson-2.1.0.11/lua_cjson.c
 index ff61c47..3b055c4 100644
---- a/bundle/lua-cjson-2.1.0.10/lua_cjson.c
-+++ b/bundle/lua-cjson-2.1.0.10/lua_cjson.c
+--- a/bundle/lua-cjson-2.1.0.11/lua_cjson.c
++++ b/bundle/lua-cjson-2.1.0.11/lua_cjson.c
 @@ -40,6 +40,7 @@
  #include <stdint.h>
  #include <string.h>
@@ -44,10 +44,10 @@ index ff61c47..3b055c4 100644
 
      luaL_argcheck(l, lua_gettop(l) == 1, 1, "expected 1 argument");
 
-diff --git a/bundle/lua-cjson-2.1.0.10/strbuf.c b/bundle/lua-cjson-2.1.0.10/strbuf.c
+diff --git a/bundle/lua-cjson-2.1.0.11/strbuf.c b/bundle/lua-cjson-2.1.0.11/strbuf.c
 index ed13367..2dc30be 100644
---- a/bundle/lua-cjson-2.1.0.10/strbuf.c
-+++ b/bundle/lua-cjson-2.1.0.10/strbuf.c
+--- a/bundle/lua-cjson-2.1.0.11/strbuf.c
++++ b/bundle/lua-cjson-2.1.0.11/strbuf.c
 @@ -26,6 +26,7 @@
  #include <stdlib.h>
  #include <stdarg.h>
@@ -258,10 +258,10 @@ index ed13367..2dc30be 100644
 
  /* vi:ai et sw=4 ts=4:
   */
-diff --git a/bundle/lua-cjson-2.1.0.10/strbuf.h b/bundle/lua-cjson-2.1.0.10/strbuf.h
+diff --git a/bundle/lua-cjson-2.1.0.11/strbuf.h b/bundle/lua-cjson-2.1.0.11/strbuf.h
 index 5df0b7b..d77e0f4 100644
---- a/bundle/lua-cjson-2.1.0.10/strbuf.h
-+++ b/bundle/lua-cjson-2.1.0.10/strbuf.h
+--- a/bundle/lua-cjson-2.1.0.11/strbuf.h
++++ b/bundle/lua-cjson-2.1.0.11/strbuf.h
 @@ -32,15 +32,13 @@
 
  /* Size: Total bytes allocated to *buf

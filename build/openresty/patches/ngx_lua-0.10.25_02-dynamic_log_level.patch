@@ -1,7 +1,7 @@
-diff --git a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_log.c b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_log.c
+diff --git a/bundle/ngx_lua-0.10.25/src/ngx_http_lua_log.c b/bundle/ngx_lua-0.10.25/src/ngx_http_lua_log.c
 index 43ab820..d18fd05 100644
---- a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_log.c
-+++ b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_log.c
+--- a/bundle/ngx_lua-0.10.25/src/ngx_http_lua_log.c
++++ b/bundle/ngx_lua-0.10.25/src/ngx_http_lua_log.c
 @@ -101,7 +101,11 @@ log_wrapper(ngx_log_t *log, const char *ident, ngx_uint_t level,
      const char          *msg;
      lua_Debug            ar;
