@@ -9,10 +9,10 @@ Fix contributed by Peter Cawley.
  src/lj_asm_arm64.h | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_asm_arm64.h b/bundle/LuaJIT-2.1-20220411/src/lj_asm_arm64.h
+diff --git a/bundle/LuaJIT-2.1-20230410/src/lj_asm_arm64.h b/bundle/LuaJIT-2.1-20230410/src/lj_asm_arm64.h
 index 805ea54b..95138fe9 100644
---- a/bundle/LuaJIT-2.1-20220411/src/lj_asm_arm64.h
-+++ b/bundle/LuaJIT-2.1-20220411/src/lj_asm_arm64.h
+--- a/bundle/LuaJIT-2.1-20230410/src/lj_asm_arm64.h
++++ b/bundle/LuaJIT-2.1-20230410/src/lj_asm_arm64.h
 @@ -938,7 +938,7 @@ static void asm_hrefk(ASMState *as, IRIns *ir)
    IRIns *irkey = IR(kslot->op1);
    int32_t ofs = (int32_t)(kslot->op2 * sizeof(Node));
