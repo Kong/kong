@@ -174,9 +174,10 @@
   [#11214](https://github.com/Kong/kong/pull/11214)
 - Bumped lua-resty-session from 4.0.3 to 4.0.4
   [#11011](https://github.com/Kong/kong/pull/11011)
-- Bumped OpenSSL from 1.1.1t to 3.1.1
+- Bumped OpenSSL from 1.1.1t to 3.1.2
   [#10180](https://github.com/Kong/kong/pull/10180)
   [#11140](https://github.com/Kong/kong/pull/11140)
+  [#11361](https://github.com/Kong/kong/pull/11361)
 - Bumped pgmoon from 1.16.0 to 1.16.2 (Kong's fork)
   [#11181](https://github.com/Kong/kong/pull/11181)
   [#11229](https://github.com/Kong/kong/pull/11229)
