@@ -8,10 +8,10 @@ Subject: [PATCH] Fix fuse case for LDP instuction on Arm64 when offset is
  src/lj_emit_arm64.h | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_emit_arm64.h b/bundle/LuaJIT-2.1-20220411/src/lj_emit_arm64.h
+diff --git a/bundle/LuaJIT-2.1-20230410/src/lj_emit_arm64.h b/bundle/LuaJIT-2.1-20230410/src/lj_emit_arm64.h
 index 0ddba4a3..e19a8e4a 100644
---- a/bundle/LuaJIT-2.1-20220411/src/lj_emit_arm64.h
-+++ b/bundle/LuaJIT-2.1-20220411/src/lj_emit_arm64.h
+--- a/bundle/LuaJIT-2.1-20230410/src/lj_emit_arm64.h
++++ b/bundle/LuaJIT-2.1-20230410/src/lj_emit_arm64.h
 @@ -143,7 +143,7 @@ static void emit_lso(ASMState *as, A64Ins ai, Reg rd, Reg rn, int64_t ofs)
        goto nopair;
      }
