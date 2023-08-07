@@ -60,21 +60,9 @@ function AWSLambdaHandler:access(conf)
   local port = conf.port or 443
   local scheme = conf.disable_https and "http" or "https"
   local endpoint = fmt("%s://%s", scheme, host)
-  local proxy_opts
-  if conf.proxy_url then
-    proxy_opts = { http_proxy = conf.proxy_url, https_proxy = conf.proxy_url }
-  end
 
   local lambda_service = LAMBDA_SERVICE_CACHE[conf]
   if not lambda_service then
-    -- Overriding global proxy_opts so STS can use proxy too
-    -- if no proxy then reset to default
-    if proxy_opts then
-      AWS.config.proxy_opts = proxy_opts
-    else
-      AWS.config.proxy_opts = nil
-    end
-
     -- Override credential config according to plugin config
     -- We override global AWS object credentials here and
     -- make sure it gets updated when config changed.
@@ -89,7 +77,12 @@ function AWSLambdaHandler:access(conf)
 
     -- Assume role based on configuration
     if conf.aws_assume_role_arn then
-      local sts, err = AWS:STS()
+      local sts, err = AWS:STS({
+        region = region,
+        stsRegionalEndpoints = AWS_GLOBAL_CONFIG.sts_regional_endpoints,
+        http_proxy = conf.proxy_url,
+        https_proxy = conf.proxy_url,
+      })
       if not sts then
         return error(fmt("unable to create AWS STS (%s)", err))
       end
@@ -113,6 +106,8 @@ function AWSLambdaHandler:access(conf)
       timeout = conf.timeout,
       keepalive_idle_timeout = conf.keepalive,
       ssl_verify = false, -- TODO: set this default to true in the next major version
+      http_proxy = conf.proxy_url,
+      https_proxy = conf.proxy_url,
     })
     LAMBDA_SERVICE_CACHE[conf] = lambda_service
   end
