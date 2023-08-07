@@ -9,7 +9,13 @@
 
 ### Fixes
 
-* Fix the return info and log of previous errors are missing when use redis cluster mode connection fails. #6032
+* Fix the return info and log of previous errors are missing when use redis cluster mode connection fails. [6032](https://github.com/Kong/kong-ee/pull/6032)
+
+## Plugins
+
+### Fixes
+
+* **Response-Transformer-Advanced**: Do not load response body when `if_status` does not match. [FTI-5265](https://konghq.atlassian.net/browse/FTI-5265)
 
 # 3.4.0.0
 
@@ -94,7 +100,6 @@
 
 ### Fixes
 
-* **Response-Transformer-Advanced**: Do not load response body when `if_status` does not match. [FTI-5265](https://konghq.atlassian.net/browse/FTI-5265)
 * Oauth 2.0 Introspection plugin fails when request with JSON that is not a table. [FTI-4974](https://konghq.atlassian.net/browse/FTI-4974)
 * Portal documentation page: field `registration` in `document_object` will not be set
   when the plugin `Portal Application Registration` is installed but not enabled.
