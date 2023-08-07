@@ -157,17 +157,6 @@ function _M.is_json_body(content_type)
 end
 
 
--- if resp_code is in allowed response codes (conf.replace.if_status),
--- return string specified in conf.replace.body; otherwise, return resp_body
-function _M.replace_body(conf, resp_body, resp_code)
-  local allowed_codes = conf.replace.if_status
-  if not skip_transform(resp_code, allowed_codes) and conf.replace.body then
-    return conf.replace.body
-  end
-  return resp_body
-end
-
-
 local function arbitrary_transform(conf, data, fn)
   local opts = { dots_in_keys = conf.dots_in_keys }
   if next(conf.transform.json) == nil then
@@ -199,7 +188,47 @@ local function init_json_path(json, paths)
   return json
 end
 
-function _M.transform_json_body(conf, buffered_data, resp_code)
+function _M.determine_transform_operations(conf, resp_code, transform_ops)
+  if conf.remove and conf.remove.json and #conf.remove.json > 0
+     and not skip_transform(resp_code, conf.remove.if_status) then
+    transform_ops.remove_body = true
+    transform_ops._need_transform = true
+  end
+
+  if conf.replace and conf.replace.json and #conf.replace.json > 0
+     and not skip_transform(resp_code, conf.replace.if_status) then
+    transform_ops.replace_body = true
+    transform_ops._need_transform = true
+  end
+
+  if conf.add and conf.add.json and #conf.add.json > 0
+     and not skip_transform(resp_code, conf.add.if_status) then
+    transform_ops.add_body = true
+    transform_ops._need_transform = true
+  end
+
+  if conf.append and conf.append.json and #conf.append.json > 0
+     and not skip_transform(resp_code, conf.append.if_status) then
+    transform_ops.append_body = true
+    transform_ops._need_transform = true
+  end
+
+  if conf.allow and conf.allow.json and #conf.allow.json > 0
+     and not skip_transform(resp_code, conf.remove.if_status) then
+    transform_ops.filter_body = true
+    transform_ops._need_transform = true
+  end
+
+  if conf.transform and conf.transform.functions and #conf.transform.functions > 0
+     and not skip_transform(resp_code, conf.transform.if_status) then
+    transform_ops.transform_body = true
+    transform_ops._need_transform = true
+  end
+
+  return transform_ops
+end
+
+function _M.transform_json_body(conf, buffered_data, transform_ops)
   local opts = { dots_in_keys = conf.dots_in_keys }
   local json_body, err = read_json_body(buffered_data)
   if not json_body then
@@ -208,14 +237,14 @@ function _M.transform_json_body(conf, buffered_data, resp_code)
   end
 
   -- remove key:value to body
-  if conf.remove and not skip_transform(resp_code, conf.remove.if_status) then
+  if transform_ops.remove_body then
     for _, name in iter(conf.remove.json) do
       navigate_and_apply(json_body, name, function (o, p) o[p] = nil end, opts)
     end
   end
 
   -- replace key:value to body
-  if conf.replace and not skip_transform(resp_code, conf.replace.if_status) then
+  if transform_ops.replace_body then
     for i, name, value in iter(conf.replace.json) do
       local v = cjson.encode(value)
       if v and sub(v, 1, 1) == [["]] and sub(v, -1, -1) == [["]] then
@@ -238,7 +267,7 @@ function _M.transform_json_body(conf, buffered_data, resp_code)
   end
 
   -- add new key:value to body
-  if conf.add and not skip_transform(resp_code, conf.add.if_status) then
+  if transform_ops.add_body then
     for i, name, value in iter(conf.add.json) do
       local v = cjson.encode(value)
       if v and sub(v, 1, 1) == [["]] and sub(v, -1, -1) == [["]] then
@@ -265,7 +294,7 @@ function _M.transform_json_body(conf, buffered_data, resp_code)
   end
 
   -- append new key:value or value to existing key
-  if conf.append and not skip_transform(resp_code, conf.append.if_status) then
+  if transform_ops.append_body then
     for i, name, value in iter(conf.append.json) do
       local v = cjson.encode(value)
       if v and sub(v, 1, 1) == [["]] and sub(v, -1, -1) == [["]] then
@@ -287,7 +316,7 @@ function _M.transform_json_body(conf, buffered_data, resp_code)
   end
 
   -- filter body
-  if conf.allow and conf.allow.json and not skip_transform(resp_code, conf.remove.if_status) then
+  if transform_ops.filter_body then
     local filtered_json_body = {}
     local filtered = false
     for _, name in iter(conf.allow.json) do
@@ -305,7 +334,7 @@ function _M.transform_json_body(conf, buffered_data, resp_code)
 
   local err
   -- perform arbitrary transformations on a json
-  if conf.transform and not skip_transform(resp_code, conf.transform.if_status) then
+  if transform_ops.transform_body then
 
     for _, fn in ipairs(get_transform_functions(conf)) do
       local ok, err_or_data = pcall(arbitrary_transform, conf, json_body, fn)

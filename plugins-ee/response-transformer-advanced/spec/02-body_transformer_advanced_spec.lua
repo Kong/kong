@@ -42,7 +42,9 @@ describe("Plugin: response-transformer-advanced", function()
 
       it("skips 'add' transform if response status doesn't match", function()
         local json = [[{"p2":"v1"}]]
-        local body = body_transformer.transform_json_body(conf_skip, json, 200)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 200, transform_ops)
+        local body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({p2 = "v1"}, body_json)
       end)
@@ -51,13 +53,17 @@ describe("Plugin: response-transformer-advanced", function()
         local json = [[{"p2":"v1", "a":[]}]]
 
         -- status code matches
-        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 500, transform_ops)
+        local body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({p1 = "v1", p2 = "v1", p3 = "value:3", p4 = '"v1"', p5 = -1, p6 = false, p7 = true, a = {}}, body_json)
         assert.equals('[]', cjson.encode(body_json.a))
 
         -- status code doesn't match
-        body = body_transformer.transform_json_body(conf_skip, json, 200)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 200, transform_ops)
+        body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         body_json = cjson.decode(body)
         assert.same({p2 = "v1", a = {}}, body_json)
         assert.equals('[]', cjson.encode(body_json.a))
@@ -67,12 +73,16 @@ describe("Plugin: response-transformer-advanced", function()
         local json = [[{"p2":-1}]]
 
         -- status code matches
-        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 500, transform_ops)
+        local body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({p1 = "v1", p2 = -1, p3 = "value:3", p4 = '"v1"', p5 = -1, p6 = false, p7 = true}, body_json)
 
         -- status code doesn't match
-        body = body_transformer.transform_json_body(conf_skip, json, 200)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 200, transform_ops)
+        body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         body_json = cjson.decode(body)
         assert.same({p2 = -1}, body_json)
       end)
@@ -81,12 +91,16 @@ describe("Plugin: response-transformer-advanced", function()
         local json = [[{"p2":false}]]
 
         -- status code matches
-        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 500, transform_ops)
+        local body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({p1 = "v1", p2 = false, p3 = "value:3", p4 = '"v1"', p5 = -1, p6 = false, p7 = true}, body_json)
 
         -- status code doesn't match
-        body = body_transformer.transform_json_body(conf_skip, json, 200)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 200, transform_ops)
+        body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         body_json = cjson.decode(body)
         assert.same({p2 = false}, body_json)
       end)
@@ -95,12 +109,16 @@ describe("Plugin: response-transformer-advanced", function()
         local json = [[{"p2":"v1"}]]
 
         -- status code matches
-        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 500, transform_ops)
+        local body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({p1 = "v1", p2 = "v1", p3 = "value:3", p4 = '"v1"', p5 = -1, p6 = false, p7 = true}, body_json)
 
         -- status code doesn't match
-        body = body_transformer.transform_json_body(conf_skip, json, 200)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 200, transform_ops)
+        body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         body_json = cjson.decode(body)
         assert.same({p2 = "v1"}, body_json)
       end)
@@ -109,7 +127,9 @@ describe("Plugin: response-transformer-advanced", function()
         local json = [=[ [{ "p1": "v1" }, { "p1": "v1" }, { "p2": "v1" }] ]=]
         local config = { add = { json = { "[*].p2:v2" } } }
 
-        local body = body_transformer.transform_json_body(config, json, 500)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 500, transform_ops)
+        local body = body_transformer.transform_json_body(config, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({{ p1 = "v1", p2 = "v2" }, { p1 = "v1", p2 = "v2" }, { p2 = "v1" }}, body_json)
       end)
@@ -118,7 +138,9 @@ describe("Plugin: response-transformer-advanced", function()
         local json = [[ { "p1": { "p1": "v1" }} ]]
         local config = { add = { json = { "p1.p2:v2" } } }
 
-        local body = body_transformer.transform_json_body(config, json, 500)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 500, transform_ops)
+        local body = body_transformer.transform_json_body(config, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({ p1 = { p1 = "v1", p2 = "v2" }}, body_json)
       end)
@@ -127,7 +149,9 @@ describe("Plugin: response-transformer-advanced", function()
         local json = [[ { "p1": { "p1": "v1" }} ]]
         local config = { add = { json = { "p1.p2:v2" } }, dots_in_keys = true }
 
-        local body = body_transformer.transform_json_body(config, json, 500)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 500, transform_ops)
+        local body = body_transformer.transform_json_body(config, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({ p1 = { p1 = "v1" }, ["p1.p2"] = "v2" }, body_json)
       end)
@@ -160,7 +184,9 @@ describe("Plugin: response-transformer-advanced", function()
 
       it("skips append transform if response status doesn't match", function()
         local json = [[{"p3":"v2"}]]
-        local body = body_transformer.transform_json_body(conf_skip, json, 200)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 200, transform_ops)
+        local body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({p3 = "v2"}, body_json)
       end)
@@ -169,13 +195,17 @@ describe("Plugin: response-transformer-advanced", function()
         local json = [[{"p2":"v1", "a":[]}]]
 
         -- status code matches
-        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 500, transform_ops)
+        local body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({ p2 = "v1", p1 = {"v1"}, p3 = {'"v1"'}, a = {}, p4 = {-1}, p5 = {false}, p6 = {true} }, body_json)
         assert.equals('[]', cjson.encode(body_json.a))
 
         -- status doesn't match
-        body = body_transformer.transform_json_body(conf_skip, json, 200)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 200, transform_ops)
+        body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         body_json = cjson.decode(body)
         assert.same({ p2 = "v1", a = {} }, body_json)
         assert.equals('[]', cjson.encode(body_json.a))
@@ -185,12 +215,16 @@ describe("Plugin: response-transformer-advanced", function()
         local json = [[{"p4":"v2"}]]
 
         -- status code matches
-        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 500, transform_ops)
+        local body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({p1 = {"v1"}, p3 = {'"v1"'}, p4={"v2", -1}, p5 = {false}, p6 = {true}}, body_json)
 
         -- status code doesn't match
-        body = body_transformer.transform_json_body(conf_skip, json, 200)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 200, transform_ops)
+        body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         body_json = cjson.decode(body)
         assert.same({p4 = "v2"}, body_json)
       end)
@@ -199,12 +233,16 @@ describe("Plugin: response-transformer-advanced", function()
         local json = [[{"p5":"v5", "p6":"v6"}]]
 
         -- status code matches
-        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 500, transform_ops)
+        local body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({p1 = {"v1"}, p3 = {'"v1"'}, p4={-1}, p5 = {"v5", false}, p6 = {"v6", true}}, body_json)
 
         -- status code doesn't match
-        body = body_transformer.transform_json_body(conf_skip, json, 200)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 200, transform_ops)
+        body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         body_json = cjson.decode(body)
         assert.same({p5 = "v5", p6 = "v6"}, body_json)
       end)
@@ -213,12 +251,16 @@ describe("Plugin: response-transformer-advanced", function()
         local json = [[{"p1":"v2"}]]
 
         -- status code matches
-        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 500, transform_ops)
+        local body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({p1 = {"v2", "v1"}, p3 = {'"v1"'}, p4={-1}, p5 = {false}, p6 = {true}}, body_json)
 
         -- status code doesn't match
-        body = body_transformer.transform_json_body(conf_skip, json, 200)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 200, transform_ops)
+        body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         body_json = cjson.decode(body)
         assert.same({p1 = "v2"}, body_json)
       end)
@@ -227,7 +269,9 @@ describe("Plugin: response-transformer-advanced", function()
         local json = [=[ [{"p1": "v1"}, {"p1": "v1"}, {"p1": "v1"}] ]=]
         local config = { append = { json = { "[3].p1:v2" } } }
 
-        local body = body_transformer.transform_json_body(config, json, 500)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(config, 500, transform_ops)
+        local body = body_transformer.transform_json_body(config, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({{ p1 = "v1" }, { p1 = "v1" }, { p1 = { "v1", "v2" }}}, body_json)
       end)
@@ -236,7 +280,9 @@ describe("Plugin: response-transformer-advanced", function()
         local json = [[ { "p1": { "p1": "v1" }} ]]
         local config = { append = { json = { "p1.p1:v2" } } }
 
-        local body = body_transformer.transform_json_body(config, json, 500)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(config, 500, transform_ops)
+        local body = body_transformer.transform_json_body(config, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({ p1 = { p1 = { "v1", "v2" }}}, body_json)
       end)
@@ -245,7 +291,9 @@ describe("Plugin: response-transformer-advanced", function()
         local json = [[ { "p1": { "p1": "v1" }} ]]
         local config = { append = { json = { "p1.p1:v2" } }, dots_in_keys = true }
 
-        local body = body_transformer.transform_json_body(config, json, 500)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(config, 500, transform_ops)
+        local body = body_transformer.transform_json_body(config, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({ p1 = { p1 = "v1" }, ["p1.p1"] = { "v2" }}, body_json)
       end)
@@ -277,7 +325,9 @@ describe("Plugin: response-transformer-advanced", function()
 
       it("skips remove transform if response status doesn't match", function()
         local json = [[{"p1" : "v1", "p2" : "v1"}]]
-        local body = body_transformer.transform_json_body(conf_skip, json, 200)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 200, transform_ops)
+        local body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({p1 = "v1", p2 = "v1"}, body_json)
       end)
@@ -286,13 +336,17 @@ describe("Plugin: response-transformer-advanced", function()
         local json = [[{"p1" : "v1", "p2" : "v1", "a": []}]]
 
         -- status code matches
-        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 500, transform_ops)
+        local body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({a = {}}, body_json)
         assert.equals('[]', cjson.encode(body_json.a))
 
         -- status code doesn't match
-        body = body_transformer.transform_json_body(conf_skip, json, 200)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 200, transform_ops)
+        body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         body_json = cjson.decode(body)
         assert.same({p1 = "v1", p2 = "v1", a = {}}, body_json)
         assert.equals('[]', cjson.encode(body_json.a))
@@ -302,7 +356,9 @@ describe("Plugin: response-transformer-advanced", function()
         local json = [=[{ "results": [{ "p1": "v1" }, { "p1": "v1" }, { "p2": "v1" }] }]=]
         local config = { remove = { json = { "results[1].p1", "results[2].p1" } } }
 
-        local body = body_transformer.transform_json_body(config, json, 500)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(config, 500, transform_ops)
+        local body = body_transformer.transform_json_body(config, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({ results = {{}, {}, { p2 = "v1" }}}, body_json)
       end)
@@ -311,7 +367,9 @@ describe("Plugin: response-transformer-advanced", function()
         local json = [=[{ "results": [{ "p1": "v1" }, { "p1": "v1" }, { "p2": "v1" }] }]=]
         local config = { remove = { json = { "result[*]" } } }
 
-        local body = body_transformer.transform_json_body(config, json, 500)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(config, 500, transform_ops)
+        local body = body_transformer.transform_json_body(config, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({ results = {{p1 = "v1"}, {p1 = "v1"}, { p2 = "v1" }}}, body_json)
       end)
@@ -320,7 +378,9 @@ describe("Plugin: response-transformer-advanced", function()
         local json = [[ { "p1": { "p1": "v1" }} ]]
         local config = { remove = { json = { "p1.p1" } } }
 
-        local body = body_transformer.transform_json_body(config, json, 500)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(config, 500, transform_ops)
+        local body = body_transformer.transform_json_body(config, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({ p1 = { } }, body_json)
       end)
@@ -329,7 +389,9 @@ describe("Plugin: response-transformer-advanced", function()
         local json = [[ { "p1": { "p1": "v1" }} ]]
         local config = { remove = { json = { "p1.p1" } }, dots_in_keys = true }
 
-        local body = body_transformer.transform_json_body(config, json, 500)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(config, 500, transform_ops)
+        local body = body_transformer.transform_json_body(config, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({ p1 = { p1 = "v1" } }, body_json)
       end)
@@ -361,7 +423,9 @@ describe("Plugin: response-transformer-advanced", function()
 
       it("skips filter transform if response status doesn't match", function()
         local json = [[{"p1" : "v1", "p2" : "v1"}]]
-        local body = body_transformer.transform_json_body(conf_skip, json, 200)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 200, transform_ops)
+        local body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({p1 = "v1", p2 = "v1"}, body_json)
       end)
@@ -370,13 +434,17 @@ describe("Plugin: response-transformer-advanced", function()
         local json = [[{"p1" : "v1", "p2" : "v1", "a": []}]]
 
         -- status code matches
-        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 500, transform_ops)
+        local body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({p1 = "v1", p2 = "v1", a = {}}, body_json)
         assert.equals('[]', cjson.encode(body_json.a))
 
         -- status code doesn't match
-        body = body_transformer.transform_json_body(conf_skip, json, 200)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 200, transform_ops)
+        body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         body_json = cjson.decode(body)
         assert.same({p1 = "v1", p2 = "v1", a = {}}, body_json)
         assert.equals('[]', cjson.encode(body_json.a))
@@ -645,7 +713,9 @@ describe("Plugin: response-transformer-advanced", function()
           local expected_output = case.output
           config.allow.json = case.config.allow.json
 
-          local pok, err = pcall(body_transformer.transform_json_body, config, input, 200)
+          local transform_ops =  table.new(0, 7)
+          transform_ops = body_transformer.determine_transform_operations(config, 200, transform_ops)
+          local pok, err = pcall(body_transformer.transform_json_body, config, input, transform_ops)
           assert.is_true(pok, "failed to test the case: " .. case.description .. ", err: " .. err)
           local output = err
           assert.same(cjson.decode(expected_output), cjson.decode(output),
@@ -681,7 +751,9 @@ describe("Plugin: response-transformer-advanced", function()
 
       it("skips replace transform if response code doesn't match", function()
         local json = [[{"p2" : "v1"}]]
-        local body = body_transformer.transform_json_body(conf_skip, json, 200)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 200, transform_ops)
+        local body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({p2 = "v1"}, body_json)
       end)
@@ -690,13 +762,17 @@ describe("Plugin: response-transformer-advanced", function()
         local json = [[{"p1" : "v1", "p2" : "v1", "a": []}]]
 
         -- status code matches
-        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 500, transform_ops)
+        local body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({p1 = "v2", p2 = '"v2"', a = {}}, body_json)
         assert.equals('[]', cjson.encode(body_json.a))
 
         -- status code doesn't match
-        local body = body_transformer.transform_json_body(conf_skip, json, 200)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 200, transform_ops)
+        local body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({p1 = "v1", p2 = "v1", a = {}}, body_json)
         assert.equals('[]', cjson.encode(body_json.a))
@@ -706,12 +782,16 @@ describe("Plugin: response-transformer-advanced", function()
         local json = [[{"p3" : "v1"}]]
 
         -- status code matches
-        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 500, transform_ops)
+        local body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({p3 = -1}, body_json)
 
         -- status code doesn't match
-        body = body_transformer.transform_json_body(conf_skip, json, 200)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 200, transform_ops)
+        body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         body_json = cjson.decode(body)
         assert.same({p3 = "v1"}, body_json)
       end)
@@ -720,12 +800,16 @@ describe("Plugin: response-transformer-advanced", function()
         local json = [[{"p4" : "v4", "p5" : "v5"}]]
 
         -- status code matches
-        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 500, transform_ops)
+        local body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({p4 = false, p5 = true}, body_json)
 
         -- status code doesn't match
-        body = body_transformer.transform_json_body(conf_skip, json, 200)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 200, transform_ops)
+        body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         body_json = cjson.decode(body)
         assert.same({p4 = "v4", p5 = "v5"}, body_json)
       end)
@@ -734,7 +818,9 @@ describe("Plugin: response-transformer-advanced", function()
         local json = [=[ [{ "p1": "v1" }, { "p1": "v1" }, { "p2": "v1" }] ]=]
         local config = { replace = { json = { "[*].p1:v2" } } }
 
-        local body = body_transformer.transform_json_body(config, json, 500)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(config, 500, transform_ops)
+        local body = body_transformer.transform_json_body(config, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({{ p1 = "v2" }, { p1 = "v2" }, { p2 = "v1" }}, body_json)
       end)
@@ -743,7 +829,9 @@ describe("Plugin: response-transformer-advanced", function()
         local json = [[ { "p1": { "p1": "v1" }} ]]
         local config = { replace = { json = { "p1.p1:v2" } } }
 
-        local body = body_transformer.transform_json_body(config, json, 500)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(config, 500, transform_ops)
+        local body = body_transformer.transform_json_body(config, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({ p1 = { p1 = "v2" } }, body_json)
       end)
@@ -752,7 +840,9 @@ describe("Plugin: response-transformer-advanced", function()
         local json = [[ { "p1": { "p1": "v1" }} ]]
         local config = { replace = { json = { "p1.p1:v2" } }, dots_in_keys = true }
 
-        local body = body_transformer.transform_json_body(config, json, 500)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(config, 500, transform_ops)
+        local body = body_transformer.transform_json_body(config, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({ p1 = { p1 = "v1" } }, body_json)
       end)
@@ -812,7 +902,9 @@ describe("Plugin: response-transformer-advanced", function()
         }
 
         conf.transform.functions = { transform_function }
-        local body = body_transformer.transform_json_body(conf, json, 200)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf, 200, transform_ops)
+        local body = body_transformer.transform_json_body(conf, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same(expected, body_json)
       end)
@@ -856,7 +948,9 @@ describe("Plugin: response-transformer-advanced", function()
         }
 
         conf.transform.functions = transform_functions
-        local body = body_transformer.transform_json_body(conf, json, 200)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf, 200, transform_ops)
+        local body = body_transformer.transform_json_body(conf, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same(expected, body_json)
 
@@ -874,7 +968,9 @@ describe("Plugin: response-transformer-advanced", function()
         ]]
 
         conf.transform.functions = { some_function_that_access_global_ctx }
-        local body = body_transformer.transform_json_body(conf, json, 200)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf, 200, transform_ops)
+        local body = body_transformer.transform_json_body(conf, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same("nil", body_json)
       end)
@@ -894,7 +990,9 @@ describe("Plugin: response-transformer-advanced", function()
         local expected = "bar"
 
         conf.transform.functions = { some_function_that_access_global_ctx }
-        local body = body_transformer.transform_json_body(conf, json, 200)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf, 200, transform_ops)
+        local body = body_transformer.transform_json_body(conf, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same(expected, body_json)
       end)
@@ -916,7 +1014,9 @@ describe("Plugin: response-transformer-advanced", function()
 
         conf.transform.functions = { some_function_that_access_global_ctx }
 
-        local body, err = body_transformer.transform_json_body(conf, json, 200)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf, 200, transform_ops)
+        local body, err = body_transformer.transform_json_body(conf, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same(expected, body_json)
         assert.not_nil(err)
@@ -963,7 +1063,9 @@ describe("Plugin: response-transformer-advanced", function()
         conf.transform.json = { "foo[*].id:40", "foo[*].id" }
         conf.transform.functions = { transform_function, yet_another_function }
 
-        local body, err = body_transformer.transform_json_body(conf, json, 200)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf, 200, transform_ops)
+        local body, err = body_transformer.transform_json_body(conf, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same(expected, body_json)
         assert.is_nil(err)
@@ -1005,7 +1107,9 @@ describe("Plugin: response-transformer-advanced", function()
 
         conf.transform.functions = { universe }
 
-        local body, err = body_transformer.transform_json_body(conf, json, 200)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf, 200, transform_ops)
+        local body, err = body_transformer.transform_json_body(conf, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same(expected, body_json)
         assert.is_nil(err)
@@ -1042,7 +1146,9 @@ describe("Plugin: response-transformer-advanced", function()
 
       it("skips all transforms whose response code don't match", function()
         local json = [[{"p1" : "v1", "p2" : "v1"}]]
-        local body = body_transformer.transform_json_body(conf_skip, json, 200)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 200, transform_ops)
+        local body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({p1 = "v1", p2 = "v1"}, body_json)
       end)
@@ -1051,65 +1157,23 @@ describe("Plugin: response-transformer-advanced", function()
         local json = [[{"p1" : "v1", "p2" : "v1", "a" : []}]]
 
         -- status code matches
-        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 500, transform_ops)
+        local body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({p2 = "v2", p3 = {"v1", "v2"}, a = {}}, body_json)
         assert.equals('[]', cjson.encode(body_json.a))
 
         -- status code doesn't match
-        local body = body_transformer.transform_json_body(conf_skip, json, 200)
+        local transform_ops =  table.new(0, 7)
+        transform_ops = body_transformer.determine_transform_operations(conf_skip, 200, transform_ops)
+        local body = body_transformer.transform_json_body(conf_skip, json, transform_ops)
         local body_json = cjson.decode(body)
         assert.same({p1 = "v1", p2 = "v1", a = {}}, body_json)
         assert.equals('[]', cjson.encode(body_json.a))
       end)
     end)
   end)
-
-  describe("replace_body()", function()
-    it("replaces entire body if enabled without status code filter", function()
-      local conf = {
-        replace  = {
-          body = [[{"error": "server error"}]],
-        },
-      }
-      local original_body = [[{"error": "error message with sensitive data"}]]
-      local body = body_transformer.replace_body(conf, original_body, 200)
-      assert.same([[{"error": "server error"}]], body)
-      body = body_transformer.replace_body(conf, original_body, 400)
-      assert.same([[{"error": "server error"}]], body)
-      body = body_transformer.replace_body(conf, original_body, 500)
-      assert.same([[{"error": "server error"}]], body)
-    end)
-    it("replaces entire body only in specified response codes", function()
-      local conf = {
-        replace  = {
-          body = [[{"error": "server error"}]],
-          if_status = {"200", "400"}
-        },
-      }
-      local original_body = [[{"error": "error message with sensitive data"}]]
-      local body = body_transformer.replace_body(conf, original_body, 200)
-      assert.same([[{"error": "server error"}]], body)
-      body = body_transformer.replace_body(conf, original_body, 400)
-      assert.same([[{"error": "server error"}]], body)
-      body = body_transformer.replace_body(conf, original_body, 500)
-      assert.same([[{"error": "error message with sensitive data"}]], body)
-    end)
-    it("doesn't replace entire body if response code doesn't match", function()
-      local conf = {
-        replace  = {
-          body = [[{"error": "server error"}]],
-          if_status = {"500"}
-        },
-      }
-      local original_body = [[{"error": "error message with sensitive data"}]]
-      local body = body_transformer.replace_body(conf, original_body, 200)
-      assert.same([[{"error": "error message with sensitive data"}]], body)
-      body = body_transformer.replace_body(conf, original_body, 400)
-      assert.same([[{"error": "error message with sensitive data"}]], body)
-    end)
-  end)
-
 
   describe("filter body", function()
     it("filter body if enabled without status code filter", function()
@@ -1136,7 +1200,9 @@ describe("Plugin: response-transformer-advanced", function()
         },
       }
       local original_body = [[{"p1" : "v1", "p2" : "v1"}]]
-      local body = body_transformer.transform_json_body(conf, original_body, 200)
+      local transform_ops =  table.new(0, 7)
+      transform_ops = body_transformer.determine_transform_operations(conf, 200, transform_ops)
+      local body = body_transformer.transform_json_body(conf, original_body, transform_ops)
       assert.same([[{"p1":"v1"}]], body)
     end)
   end)
@@ -1177,6 +1243,7 @@ describe("Plugin: response-transformer-advanced", function()
             ngx.arg[2] = true
           end,
         },
+        table = table,
       }
       handler = require("kong.plugins.response-transformer-advanced.handler")
     end)

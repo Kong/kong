@@ -24,6 +24,22 @@ describe("Plugin: response-transformer-advanced (filter)", function()
       hosts = { "response2.com" },
     })
 
+    local service1 = bp.services:insert({
+      port = helpers.get_proxy_port(),
+      host = helpers.get_proxy_ip(),
+      path = "/big_decimals",
+    })
+
+    bp.routes:insert({
+      strip_path = true,
+      service = service1,
+      paths = { "/foo" }
+    })
+
+    local route4 = bp.routes:insert({
+      paths = { "/big_decimals" }
+    })
+
     bp.plugins:insert {
       route     = { id = route1.id },
       name      = "response-transformer-advanced",
@@ -41,7 +57,18 @@ describe("Plugin: response-transformer-advanced (filter)", function()
       config    = {
         replace = {
           body      = "plugin_text",
-          if_status = {"401"}
+          if_status = {"401"},
+        }
+      }
+    }
+
+    bp.plugins:insert {
+      route     = { id = route4.id },
+      name      = "response-transformer-advanced",
+      config    = {
+        replace = {
+          body      = "worng_body",
+          if_status = {"500-599"}
         }
       }
     }
@@ -49,6 +76,17 @@ describe("Plugin: response-transformer-advanced (filter)", function()
     bp.plugins:insert {
       route     = { id = route2.id },
       name      = "key-auth",
+    }
+
+    bp.plugins:insert {
+      route     = { id = route4.id },
+      name      = "request-termination",
+      config = {
+        body = '{"key":6.07526679167888E14}',
+        content_type = "application/json",
+        echo = false,
+        status_code = 200
+      }
     }
 
     local consumer1 = bp.consumers:insert {
@@ -121,6 +159,13 @@ describe("Plugin: response-transformer-advanced (filter)", function()
       -- against the content type, so ensure that we pass the replaced
       -- body to the client even though the content type is different
       assert.equal("plugin_text", body)
+    end)
+    it("does not load raw response body(avoid encoding with cjson)", function()
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/foo",
+      })
+      assert.equals("{\"key\":6.07526679167888E14}", res:read_body())
     end)
   end)
 end)

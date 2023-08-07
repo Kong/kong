@@ -10,9 +10,11 @@ local body_transformer = require "kong.plugins.response-transformer-advanced.bod
 local header_transformer = require "kong.plugins.response-transformer-advanced.header_transformer"
 local feature_flag_limit_body = require "kong.plugins.response-transformer-advanced.feature_flags.limit_body"
 local meta = require "kong.meta"
+local transform_utils = require "kong.plugins.response-transformer-advanced.transform_utils"
 
 local is_body_transform_set = header_transformer.is_body_transform_set
 local is_json_body = header_transformer.is_json_body
+local skip_transform = transform_utils.skip_transform
 local kong = kong
 local ngx = ngx
 
@@ -36,18 +38,17 @@ function ResponseTransformerHandler:body_filter(conf)
   end
 
   if is_body_transform_set(conf) then
-    local resp_body = kong.response.get_raw_body()
-    if not resp_body then
-      return
-    end
+    local resp_body
+    if not skip_transform(ngx.status, conf.replace.if_status) and conf.replace.body then
+      -- follow origin behavior, if no body, do not transform
+      if not kong.response.get_raw_body() then
+        return
+      end
 
-    -- raw body transformation takes precedence over
-    -- json transforms
-    local replaced_body = body_transformer.replace_body(conf, resp_body, ngx.status)
-
-    if replaced_body then
-      kong.response.set_raw_body(replaced_body)
-      resp_body = replaced_body
+      -- raw body transformation takes precedence over
+      -- json transforms
+      kong.response.set_raw_body(conf.replace.body)
+      resp_body = conf.replace.body
     end
 
     -- transform json
@@ -55,6 +56,11 @@ function ResponseTransformerHandler:body_filter(conf)
       local body, err
       local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
       if is_gzip then
+        resp_body = kong.response.get_raw_body()
+        if not resp_body then
+          return
+        end
+
         resp_body, err = utils.inflate_gzip(resp_body)
         if err then
           kong.log.err("failed to inflate gzipped body: ", err)
@@ -67,25 +73,39 @@ function ResponseTransformerHandler:body_filter(conf)
         end
       end
 
-      body, err = body_transformer.transform_json_body(conf, resp_body, ngx.status)
-      if err then
-        kong.log.err(err)
-        return
-      end
-
-      if body then
-        if is_gzip then
-          body, err = utils.deflate_gzip(body)
-          if err then
-            kong.log.err("failed to deflate gzipped body: ", err)
+      local transform_ops =  kong.table.new(0, 7)
+      transform_ops = body_transformer.determine_transform_operations(conf, ngx.status, transform_ops)
+      if transform_ops._need_transform then
+        if not resp_body then
+          resp_body = kong.response.get_raw_body()
+          if not resp_body then
+            kong.table.clear(transform_ops)
             return
           end
         end
 
-        -- Only replace with JSON body if transformation was successful.
-        -- Otherwise, leave original or replaced_body (above) in place.
-        kong.response.set_raw_body(body)
+        body, err = body_transformer.transform_json_body(conf, resp_body, transform_ops)
+        kong.table.clear(transform_ops)
+        if err then
+          kong.log.err(err)
+          return
+        end
+
+        if body then
+          if is_gzip then
+            body, err = utils.deflate_gzip(body)
+            if err then
+              kong.log.err("failed to deflate gzipped body: ", err)
+              return
+            end
+          end
+
+          -- Only replace with JSON body if transformation was successful.
+          -- Otherwise, leave original or replaced_body (above) in place.
+          kong.response.set_raw_body(body)
+        end
       end
+      kong.table.clear(transform_ops)
     end
   end
 end
