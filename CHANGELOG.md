@@ -136,6 +136,8 @@
   [#10559](https://github.com/Kong/kong/pull/10559)
 - **Zipkin**: Fixed an issue that traces not being generated correctly when instrumentations are enabled.
   [#10983](https://github.com/Kong/kong/pull/10983)
+- **Acme**: Fixed string concatenation on cert renewal errors
+  [#11364](https://github.com/Kong/kong/pull/11364)
 
 #### PDK
 
@@ -178,9 +180,10 @@
   [#11214](https://github.com/Kong/kong/pull/11214)
 - Bumped lua-resty-session from 4.0.3 to 4.0.4
   [#11011](https://github.com/Kong/kong/pull/11011)
-- Bumped OpenSSL from 1.1.1t to 3.1.1
+- Bumped OpenSSL from 1.1.1t to 3.1.2
   [#10180](https://github.com/Kong/kong/pull/10180)
   [#11140](https://github.com/Kong/kong/pull/11140)
+  [#11361](https://github.com/Kong/kong/pull/11361)
 - Bumped pgmoon from 1.16.0 to 1.16.2 (Kong's fork)
   [#11181](https://github.com/Kong/kong/pull/11181)
   [#11229](https://github.com/Kong/kong/pull/11229)
@@ -239,6 +242,8 @@
 - Tracing: tracing_sampling_rate defaults to 0.01 (trace one of every 100 requests) instead of the previous 1
   (trace all requests). Tracing all requests is inappropriate for most production systems
   [#10774](https://github.com/Kong/kong/pull/10774)
+- **Proxy Cache**: Add option to remove the proxy cache headers from the response
+  [#10445](https://github.com/Kong/kong/pull/10445)
 
 ### Additions
 

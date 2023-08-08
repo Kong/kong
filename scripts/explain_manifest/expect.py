@@ -64,17 +64,11 @@ def write_block_desc(desc_verb):
 
 
 class ExpectSuite():
-    def __init__(self, name, manifest,
-                 libc_max_version=None, libcxx_max_version=None, cxxabi_max_version=None, use_rpath=False, fips=False, libxcrypt_no_obsolete_api=False, extra_tests=[]):
+    def __init__(self, name, manifest, use_rpath=False, tests={}):
         self.name = name
         self.manifest = manifest
-        self.libc_max_version = libc_max_version
-        self.libcxx_max_version = libcxx_max_version
-        self.cxxabi_max_version = cxxabi_max_version
-        self.libxcrypt_no_obsolete_api = libxcrypt_no_obsolete_api
         self.use_rpath = use_rpath
-        self.fips = fips
-        self.extra_tests = extra_tests
+        self.tests = tests
 
 
 class ExpectChain():
@@ -250,8 +244,10 @@ class ExpectChain():
         self._print_title()
 
         self._path_glob = path_glob
+        if isinstance(path_glob, str):
+            self._path_glob = [path_glob]
         for f in self._infos:
-            if glob_match_ignore_slash(f.relpath, [path_glob]):
+            if glob_match_ignore_slash(f.relpath, self._path_glob):
                 self._files.append(f)
         return self
 
@@ -316,27 +312,22 @@ class ExpectChain():
         self._current_suite = suite
 
         if not suite.manifest:
-            self._print_error("manifest is not set for suite %s" % suite.name)
-        else:
-            diff_result = subprocess.run(
-                ['diff', "-BbNaur", suite.manifest, '-'], input=manifest, stdout=subprocess.PIPE)
-            if diff_result.returncode != 0:
-                self._print_fail("manifest is not up-to-date:")
-                if diff_result.stdout:
-                    print(diff_result.stdout.decode())
-                if diff_result.stderr:
-                    print(diff_result.stderr.decode())
+            return
+
+        diff_result = subprocess.run(
+            ['diff', "-BbNaur", suite.manifest, '-'], input=manifest, stdout=subprocess.PIPE)
+        if diff_result.returncode != 0:
+            self._print_fail("manifest is not up-to-date:")
+            if diff_result.stdout:
+                print(diff_result.stdout.decode())
+            if diff_result.stderr:
+                print(diff_result.stderr.decode())
 
     @write_block_desc("run test suite")
     def run(self, suite: ExpectSuite):
         self._current_suite = suite
 
-        suites.common_suites(self.expect, suite.fips, suite.libxcrypt_no_obsolete_api)
-        suites.libc_libcpp_suites(
-            self.expect, suite.libc_max_version, suite.libcxx_max_version, suite.cxxabi_max_version)
-
-        if suite.extra_tests:
-            for s in suite.extra_tests:
-                s(self.expect)
+        for s in suite.tests:
+            s(self.expect, **suite.tests[s])
 
         self._print_result()  # cleanup the lazy buffer
