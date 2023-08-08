@@ -621,9 +621,9 @@ function _M:exec(ctx)
   local headers, headers_key
   if self.match_headers then
     local err
-    headers, err = get_headers()
+    local lua_max_req_headers = kong and kong.configuration and kong.configuration.lua_max_req_headers or 100
+    headers, err = get_headers(lua_max_req_headers)
     if err == "truncated" then
-      local lua_max_req_headers = kong and kong.configuration and kong.configuration.lua_max_req_headers or 100
       ngx_log(ngx_ERR, "router: not all request headers were read in order to determine the route as ",
                        "the request contains more than ", lua_max_req_headers, " headers, route selection ",
                        "may be inaccurate, consider increasing the 'lua_max_req_headers' configuration value ",
@@ -638,9 +638,9 @@ function _M:exec(ctx)
   local queries, queries_key
   if self.match_queries then
     local err
-    queries, err = get_uri_args()
+    local lua_max_req_queries = 100
+    queries, err = get_uri_args(lua_max_req_queries)
     if err == "truncated" then
-      local lua_max_req_queries = 100
       ngx_log(ngx_ERR, "router: not all request queries were read in order to determine the route as ",
                        "the request contains more than ", lua_max_req_queries, " queries, route selection ",
                        "may be inaccurate")
