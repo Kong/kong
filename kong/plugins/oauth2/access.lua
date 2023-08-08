@@ -767,8 +767,8 @@ local function issue_token(conf)
         else
           -- Check scopes
           if token.scope then
-            for v in token.scope:gmatch("%S+") do
-              if not table_contains(conf.scopes, v) then
+            for scope in token.scope:gmatch("%S+") do
+              if not table_contains(conf.scopes, scope) then
                 response_params = {
                   [ERROR] = "invalid_scope",
                   error_description = "scope mismatch",
