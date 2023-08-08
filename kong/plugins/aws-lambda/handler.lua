@@ -16,10 +16,7 @@ local build_request_payload = request_util.build_request_payload
 local extract_proxy_response = request_util.extract_proxy_response
 
 local aws = require("resty.aws")
--- Loading necessary runtime env vars but avoid region fetching from IMDS
--- Since this happens inside `require`
-local aws_config = require("resty.aws.config")
-local AWS_GLOBAL_CONFIG = aws_config.get_config()
+local AWS_GLOBAL_CONFIG
 local AWS_REGION do
   AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
 end
@@ -38,12 +35,9 @@ local AWSLambdaHandler = {
   VERSION = meta.version
 }
 
-
-function AWSLambdaHandler:init_worker()
-  local config = { global = AWS_GLOBAL_CONFIG }
-  -- Set global region manually to skip IMDS fetching
-  config.global.region = AWS_REGION
-  AWS = aws(config)
+function AWSLambdaHandler:init()
+  AWS_GLOBAL_CONFIG = require("resty.aws.config").global
+  AWS = aws()
 end
 
 
