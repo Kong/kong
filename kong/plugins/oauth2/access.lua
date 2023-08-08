@@ -780,9 +780,9 @@ local function issue_token(conf)
 
           if not response_params[ERROR] then
             response_params = generate_token(conf, kong.router.get_service(),
-                                            client,
-                                            token.authenticated_userid,
-                                            token.scope, state, false, token)
+                                             client,
+                                             token.authenticated_userid,
+                                             token.scope, state, false, token)
             -- Delete old token if refresh token not persisted
             if not conf.reuse_refresh_token then
               kong.db.oauth2_tokens:delete({ id = token.id })
