@@ -34,7 +34,7 @@ lint() {
 
 read_modules() {
     local spec="$1"
-    resty -e '
+    lua -e '
         local fn = loadstring(io.stdin:read("*a"))
         local rock = {}
         setfenv(fn, rock)

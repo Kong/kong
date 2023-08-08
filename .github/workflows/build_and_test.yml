@@ -229,16 +229,6 @@ jobs:
           source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           scripts/autodoc
 
-    - name: Static Code Analysis
-      run: |
-          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
-          make sca
-
-    - name: Validate rockspec file
-      run: |
-          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
-          scripts/validate-rockspec
-
     - name: Check spec file misspelling
       run: |
           scripts/check_spec_files_spelling.sh

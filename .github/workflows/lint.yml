@@ -1,0 +1,64 @@
+name: Lint
+
+on:
+  pull_request: {}
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
+      - master
+      - next/*
+      - release/*
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lua-check:
+    name: Lua Check
+    runs-on: ubuntu-latest-kong
+    permissions:
+      contents: read
+      issues: read
+      checks: write
+      pull-requests: write
+    if: (github.actor != 'dependabot[bot]')
+
+    steps:
+    - name: Checkout source code
+      uses: actions/checkout@v3
+
+    # Optional step to run on only changed files
+    - name: Get changed files
+      id: changed-files
+      uses: tj-actions/changed-files@54849deb963ca9f24185fb5de2965e002d066e6b # v37
+      with:
+        files: |
+          **.lua
+    
+    - name: Get changed spec files
+      id: changed-spec-files
+      uses: tj-actions/changed-files@54849deb963ca9f24185fb5de2965e002d066e6b # v37
+      with:
+        files: |
+          spec/**
+          spec-ee/**
+
+    - name: Lua Check
+      if: steps.changed-files.outputs.any_changed == 'true'
+      uses: Kong/public-shared-actions/code-check-actions/lua-lint@33449c46c6766a3d3c8f167cc383381225862b36
+      with:
+        additional_args: '--no-default-config --config .luacheckrc --exclude-files ./distribution/'
+        files: ${{ steps.changed-files.outputs.all_changed_files }}
+
+    - name: Check spec and copyright-header
+      if: steps.changed-spec-files.outputs.any_changed == 'true'
+      run: |
+        make sca
+
+    - name: Validate rockspec file
+      run: |
+        sudo apt-get update && sudo apt-get install -y luarocks
+        sudo luarocks install luacheck
+        scripts/validate-rockspec
