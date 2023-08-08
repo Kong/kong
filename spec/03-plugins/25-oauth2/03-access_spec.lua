@@ -264,6 +264,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       local service17   = admin_api.services:insert()
       local service18   = admin_api.services:insert()
       local service19   = admin_api.services:insert()
+      local service20   = admin_api.services:insert()
 
       local route1 = assert(admin_api.routes:insert({
         hosts     = { "oauth2.com" },
@@ -389,6 +390,12 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         hosts       = { "oauth2_19.com" },
         protocols   = { "http", "https" },
         service     = service19,
+      }))
+
+      local route20 = assert(admin_api.routes:insert({
+        hosts       = { "oauth2_20.com" },
+        protocols   = { "http", "https" },
+        service     = service20,
       }))
 
       local service_grpc = assert(admin_api.services:insert {
@@ -583,6 +590,14 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         route = { id = route19.id },
         config   = {
           scopes                   = { "scope19" },
+          global_credentials       = true,
+        }
+      })
+
+      admin_api.oauth2_plugins:insert({
+        route = { id = route20.id },
+        config   = {
+          scopes                   = { "scope18", "scope20" },
           global_credentials       = true,
         }
       })
@@ -2935,75 +2950,96 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         })
         assert.res_status(401, res)
       end)
-      it("fails to refresh token when scope is mismatching", function ()
-        -- provision code
-        local code, body, res
-        local request_client = helpers.proxy_ssl_client()
-        body = {
-            provision_key = "provision123",
-            client_id = "clientid123",
-            response_type = "code",
-            scope = "scope18",
-            state = "hello",
-            authenticated_userid = "userid123",
-        }
-        res = assert(request_client:send {
-          method = "POST",
-          path = "/oauth2/authorize",
-          body = body,
-          headers = kong.table.merge({
-            ["Host"] = "oauth2_18.com",
-            ["Content-Type"] = "application/json"
+      describe("refreshing token", function()
+        local request_client, token
+        it("fails when scope is mismatching", function ()
+          -- provision code
+          local code, body, res
+          request_client = helpers.proxy_ssl_client()
+          body = {
+              provision_key = "provision123",
+              client_id = "clientid123",
+              response_type = "code",
+              scope = "scope18",
+              state = "hello",
+              authenticated_userid = "userid123",
+          }
+          res = assert(request_client:send {
+            method = "POST",
+            path = "/oauth2/authorize",
+            body = body,
+            headers = kong.table.merge({
+              ["Host"] = "oauth2_18.com",
+              ["Content-Type"] = "application/json"
+            })
           })
-        })
-        res = assert(cjson.decode(assert.res_status(200, res)))
-        if res.redirect_uri then
-          local iterator, err = ngx.re.gmatch(res.redirect_uri, "^http://google\\.com/kong\\?code=([\\w]{32,32})&state=hello$")
-          assert.is_nil(err)
-          local m, err = iterator()
-          assert.is_nil(err)
-          code = m[1]
-        end
+          res = assert(cjson.decode(assert.res_status(200, res)))
+          if res.redirect_uri then
+            local iterator, err = ngx.re.gmatch(res.redirect_uri, "^http://google\\.com/kong\\?code=([\\w]{32,32})&state=hello$")
+            assert.is_nil(err)
+            local m, err = iterator()
+            assert.is_nil(err)
+            code = m[1]
+          end
 
-        -- provision token
-        body = {
-          code = code,
-          client_id = "clientid123",
-          client_secret = "secret123",
-          grant_type = "authorization_code",
-          redirect_uri = "http://google.com/kong",
-        }
-        res = assert(request_client:send {
-          method  = "POST",
-          path    = "/oauth2/token",
-          body    = body,
-          headers = {
-            ["Host"]         = "oauth2_18.com",
-            ["Content-Type"] = "application/json"
+          -- provision token
+          body = {
+            code = code,
+            client_id = "clientid123",
+            client_secret = "secret123",
+            grant_type = "authorization_code",
+            redirect_uri = "http://google.com/kong",
           }
-        })
-        local token = assert(cjson.decode(assert.res_status(200, res)))
+          res = assert(request_client:send {
+            method  = "POST",
+            path    = "/oauth2/token",
+            body    = body,
+            headers = {
+              ["Host"]         = "oauth2_18.com",
+              ["Content-Type"] = "application/json"
+            }
+          })
+          token = assert(cjson.decode(assert.res_status(200, res)))
 
-        -- refresh token with mismatching scope
-        res = assert(request_client:send {
-          method  = "POST",
-          path    = "/oauth2/token",
-          body    = {
-            refresh_token    = token.refresh_token,
-            client_id        = "clientid123",
-            client_secret    = "secret123",
-            grant_type       = "refresh_token",
-          },
-          headers = {
-            ["Host"]         = "oauth2_19.com",
-            ["Content-Type"] = "application/json"
-          }
-        })
-        res = assert(cjson.decode(assert.res_status(400, res)))
-        assert.same({
-          error = "invalid_scope",
-          error_description = "scope mismatch"
-        }, res)
+          -- refresh token with mismatching scope
+          res = assert(request_client:send {
+            method  = "POST",
+            path    = "/oauth2/token",
+            body    = {
+              refresh_token    = token.refresh_token,
+              client_id        = "clientid123",
+              client_secret    = "secret123",
+              grant_type       = "refresh_token",
+            },
+            headers = {
+              ["Host"]         = "oauth2_19.com",
+              ["Content-Type"] = "application/json"
+            }
+          })
+          res = assert(cjson.decode(assert.res_status(400, res)))
+          assert.same({
+            error = "invalid_scope",
+            error_description = "scope mismatch"
+          }, res)
+        end)
+        it("successes when scope is a subset", function()
+          -- refresh token with mismatching scope
+          local res = assert(request_client:send {
+            method  = "POST",
+            path    = "/oauth2/token",
+            body    = {
+              refresh_token    = token.refresh_token,
+              client_id        = "clientid123",
+              client_secret    = "secret123",
+              grant_type       = "refresh_token",
+            },
+            headers = {
+              ["Host"]         = "oauth2_20.com",
+              ["Content-Type"] = "application/json"
+            }
+          })
+          res = assert(cjson.decode(assert.res_status(200, res)))
+        end)
       end)
       it("fails when a correct access_token is being sent in the wrong header", function()
         local token = provision_token("oauth2_11.com",nil,"clientid1011","secret1011")
