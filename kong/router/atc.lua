@@ -514,7 +514,7 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
       end -- type(v)
 
     else  -- unknown field
-      error("unknown schema field: ".. field, 2)
+      error("unknown http schema field: ".. field, 2)
 
     end -- if field
 
@@ -732,7 +732,7 @@ function _M:select(_, _, _, scheme,
       assert(c:add_value(field, dst_port))
 
     else  -- unknown field
-      error("unknown schema field: ".. field, 2)
+      error("unknown stream schema field: ".. field, 2)
 
     end -- if field
 
