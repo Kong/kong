@@ -468,7 +468,7 @@ do
 
     -- only http should notify stream
     if not IS_HTTP_SUBSYSTEM or
-       #kong.configuration.stream_listeners <= 0
+       #kong.configuration.stream_listeners == 0
     then
       return true
     end
