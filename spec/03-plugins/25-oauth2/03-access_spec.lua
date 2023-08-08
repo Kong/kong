@@ -3038,7 +3038,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               ["Content-Type"] = "application/json"
             }
           })
-          res = assert(cjson.decode(assert.res_status(200, res)))
+          assert(cjson.decode(assert.res_status(200, res)))
         end)
       end)
       it("fails when a correct access_token is being sent in the wrong header", function()
