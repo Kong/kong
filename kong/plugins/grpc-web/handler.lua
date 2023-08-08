@@ -31,7 +31,7 @@ local CORS_HEADERS = {
   ["Content-Type"] = "application/grpc-web-text+proto",
   ["Access-Control-Allow-Origin"] = "*",
   ["Access-Control-Allow-Methods"] = "POST",
-  ["Access-Control-Allow-Headers"] = "content-type,x-grpc-web,x-user-agent",
+  ["Access-Control-Allow-Headers"] = "content-type,x-grpc-web,x-user-agent,grpc-timeout",
 }
 
 function grpc_web:access(conf)

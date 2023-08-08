@@ -178,5 +178,19 @@ for _, strategy in helpers.each_strategy() do
        assert.same({ reply = "hello heya" }, cjson.decode((res:read_body())))
        assert.is_nil(err)
      end)
+
+     test("Call binary gRCP via HTTP with a deadline", function()
+      local res, err = proxy_client:post("/hello.HelloService/SayHello", {
+        headers = {
+          ["Content-Type"] = "application/grpc-web+proto",
+          ["Content-Length"] = tostring(#HELLO_REQUEST_BODY),
+          ["grpc-timeout"] = "1m",
+        },
+        body = HELLO_REQUEST_BODY,
+      })
+
+      assert.equal(HELLO_RESPONSE_BODY, res:read_body())
+      assert.is_nil(err)
+    end)
  end)
 end
