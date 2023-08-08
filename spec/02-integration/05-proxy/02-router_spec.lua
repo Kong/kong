@@ -2598,5 +2598,4 @@ do
 
   end   -- strategy
 
-
-end
+end -- http expression 'http.queries.*'
