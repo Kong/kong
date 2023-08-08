@@ -64,7 +64,7 @@ do
 
     ["String"] = {"net.protocol", "tls.sni",
                   "http.method", "http.host",
-                  "http.path", "http.raw_path",
+                  "http.path",
                   "http.headers.*",
                   "http.queries.*",
                  },
