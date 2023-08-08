@@ -4502,7 +4502,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             router_ignore_sni = assert(new_router(use_case_ignore_sni))
           end)
 
-          it("[sni]", function()
+          it_trad_only("[sni]", function()
             local match_t = router:select(nil, nil, nil, "tcp", nil, nil, nil, nil,
                                           "www.example.org")
             assert.truthy(match_t)
