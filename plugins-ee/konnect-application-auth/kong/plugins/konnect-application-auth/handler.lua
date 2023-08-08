@@ -131,6 +131,10 @@ function KonnectApplicationAuthHandler:access(plugin_conf)
     return error(err)
   end
 
+  if not application and plugin_conf.auth_type == "key-auth" then
+    return kong.response.error(401, "Unauthorized")
+  end
+
   if not is_authorized(application, plugin_conf.scope) then
     return kong.response.error(403, "You cannot consume this service")
   end

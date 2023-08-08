@@ -301,20 +301,20 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(json.message, "Unauthorized")
       end)
 
-      it("returns 403 if api key in query is invalid", function ()
+      it("returns 401 if api key in query is invalid", function ()
         local res = client:get("/request?apikey=derp", {
           headers = {
             host = "keyauth.konghq.com"
           }
         })
 
-        local body = assert.res_status(403, res)
+        local body = assert.res_status(401, res)
         local json = cjson.decode(body)
 
-        assert.equal(json.message, "You cannot consume this service")
+        assert.equal(json.message, "Unauthorized")
       end)
 
-      it("returns 403 if api key in header is invalid", function ()
+      it("returns 401 if api key in header is invalid", function ()
         local res = client:get("/request", {
           headers = {
             apikey = "derp",
@@ -322,10 +322,10 @@ for _, strategy in helpers.each_strategy() do
           }
         })
 
-        local body = assert.res_status(403, res)
+        local body = assert.res_status(401, res)
         local json = cjson.decode(body)
 
-        assert.equal(json.message, "You cannot consume this service")
+        assert.equal(json.message, "Unauthorized")
       end)
 
       it("returns 200 if api key found in query", function ()

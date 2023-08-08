@@ -135,6 +135,8 @@
   * Optmize the response message for invalid request.
   [FTI-5078](https://konghq.atlassian.net/browse/FTI-5078)
   [FTI-5006](https://konghq.atlassian.net/browse/FTI-5006)
+* **Konnect Application Auth**
+  * Fix http error code when bad key is sent using `key-auth`.
 
 ## Kong Manager
 
