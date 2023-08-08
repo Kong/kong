@@ -1750,9 +1750,9 @@ function _M.new(routes, cache, cache_neg)
       local headers
       if match_headers then
         local err
-        headers, err = get_headers()
+        local lua_max_req_headers = kong and kong.configuration and kong.configuration.lua_max_req_headers or 100
+        headers, err = get_headers(lua_max_req_headers)
         if err == "truncated" then
-          local lua_max_req_headers = kong and kong.configuration and kong.configuration.lua_max_req_headers or 100
           log(ERR, "router: not all request headers were read in order to determine the route as ",
                     "the request contains more than ", lua_max_req_headers, " headers, route selection ",
                     "may be inaccurate, consider increasing the 'lua_max_req_headers' configuration value ",
