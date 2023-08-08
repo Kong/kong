@@ -623,11 +623,10 @@ function _M:exec(ctx)
     local err
     queries, err = get_uri_args()
     if err == "truncated" then
-      local lua_max_req_queries = kong and kong.configuration and kong.configuration.lua_max_req_queries or 100
+      local lua_max_req_queries = 100
       ngx_log(ngx_ERR, "router: not all request queries were read in order to determine the route as ",
                        "the request contains more than ", lua_max_req_queries, " queries, route selection ",
-                       "may be inaccurate, consider increasing the 'lua_max_req_queries' configuration value ",
-                       "(currently at ", lua_max_req_queries, ")")
+                       "may be inaccurate")
     end
 
     queries_key = get_queries_key(queries)
