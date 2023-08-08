@@ -448,60 +448,77 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
         return nil, err
       end
 
-    elseif req_headers and is_http_headers_field(field) then
+    elseif is_http_headers_field(field) then
+      if not req_headers then
+        goto continue
+      end
+
       local h = field:sub(14)
       local v = req_headers[h]
 
-      if v then
-        if type(v) == "string" then
-          local res, err = c:add_value(field, v:lower())
+      if not v then
+        goto continue
+      end
+
+      if type(v) == "string" then
+        local res, err = c:add_value(field, v:lower())
+        if not res then
+          return nil, err
+        end
+
+      else  -- type(v) == "table"
+        for idx = 1, #v do
+          local res, err = c:add_value(field, v[idx]:lower())
           if not res then
             return nil, err
           end
+        end
+      end -- if type(v)
 
-        else
-          for _, v in ipairs(v) do
-            local res, err = c:add_value(field, v:lower())
-            if not res then
-              return nil, err
-            end
-          end
-        end -- if type(v)
-      end   -- if v
+    elseif is_http_queries_field(field) then
+      if not req_queries then
+        goto continue
+      end
 
-    elseif req_queries and is_http_queries_field(field) then
       local n = field:sub(14)
       local v = req_queries[n]
 
-      if v then
-        -- the query parameter has only one value, like /?foo=bar
-        if type(v) == "string" then
-          local res, err = c:add_value(field, v)
+      if not v then
+        goto continue
+      end
+
+      -- the query parameter has only one value, like /?foo=bar
+      if type(v) == "string" then
+        local res, err = c:add_value(field, v)
+        if not res then
+          return nil, err
+        end
+
+      -- the query parameter has no value, like /?foo,
+      -- get_uri_arg will get a boolean `true`
+      -- we think it is equivalent to /?foo=
+      elseif type(v) == "boolean" then
+        local res, err = c:add_value(field, "")
+        if not res then
+          return nil, err
+        end
+
+      -- multiple values for a single query parameter, like /?foo=bar&foo=baz
+      else
+        for idx = 1, #v do
+          local res, err = c:add_value(field, v[idx])
           if not res then
             return nil, err
           end
+        end
+      end -- type(v)
 
-        -- the query parameter has no value, like /?foo,
-        -- get_uri_arg will get a boolean `true`
-        -- we think it is equivalent to /?foo=
-        elseif type(v) == "boolean" then
-          local res, err = c:add_value(field, "")
-          if not res then
-            return nil, err
-          end
+    else  -- unknown field
+      error("unknown schema field: ".. field, 2)
 
-        -- multiple values for a single query parameter, like /?foo=bar&foo=baz
-        else
-          for idx = 1, #v do
-            local res, err = c:add_value(field, v[idx])
-            if not res then
-              return nil, err
-            end
-          end
-        end -- type(v)
-      end   -- if v
     end -- if field
 
+    ::continue::
   end   -- for self.fields
 
   local matched = self.router:execute(c)
@@ -713,6 +730,9 @@ function _M:select(_, _, _, scheme,
 
     elseif field == "net.dst.port" then
       assert(c:add_value(field, dst_port))
+
+    else  -- unknown field
+      error("unknown schema field: ".. field, 2)
 
     end -- if field
 
