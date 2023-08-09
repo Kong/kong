@@ -456,17 +456,13 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
       local h = field:sub(14)
       local v = req_headers[h]
 
-      if not v then
-        goto continue
-      end
-
       if type(v) == "string" then
         local res, err = c:add_value(field, v:lower())
         if not res then
           return nil, err
         end
 
-      else  -- type(v) == "table"
+      elseif type(v) == "table" then
         for idx = 1, #v do
           local res, err = c:add_value(field, v[idx]:lower())
           if not res then
@@ -482,10 +478,6 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 
       local n = field:sub(14)
       local v = req_queries[n]
-
-      if not v then
-        goto continue
-      end
 
       -- the query parameter has only one value, like /?foo=bar
       if type(v) == "string" then
@@ -504,7 +496,7 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
         end
 
       -- multiple values for a single query parameter, like /?foo=bar&foo=baz
-      else
+      elseif type(v) == "table" then
         for idx = 1, #v do
           local res, err = c:add_value(field, v[idx])
           if not res then
