@@ -26,7 +26,7 @@ local function execute(args)
 
   local count = 0
   for k, v in pairs(pids) do
-    local running = process.is_running(v)
+    local running = process.exists(v)
     local msg = pl_stringx.ljust(k, 12, ".") .. (running and "running" or "not running")
     if running then
       count = count + 1

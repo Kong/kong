@@ -557,7 +557,7 @@ describe("kong start/stop #" .. strategy, function()
       assert.False(ok)
       assert.matches("Kong is already running in " .. PREFIX, stderr, nil, true)
 
-      assert(process.is_running(TEST_CONF.nginx_pid))
+      assert(process.exists(TEST_CONF.nginx_pid))
     end)
 
     it("does not prepare the prefix directory if Kong is already running", function()

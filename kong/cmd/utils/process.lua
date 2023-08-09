@@ -17,7 +17,7 @@ local function kill(pid_file, args)
   end
 end
 
-local function is_running(pid_file)
+local function exists(pid_file)
   -- we do our own pid_file exists check here because
   -- we want to return `nil` in case of NOT running,
   -- and not `0` like `kill` would return.
@@ -28,5 +28,5 @@ end
 
 return {
   kill = kill,
-  is_running = is_running
+  exists = exists,
 }

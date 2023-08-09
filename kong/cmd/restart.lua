@@ -27,7 +27,7 @@ local function execute(args)
   local running
   repeat
     ngx.sleep(0.1)
-    running = process.is_running(conf.nginx_pid)
+    running = process.exists(conf.nginx_pid)
   until not running or ngx.time() >= texp
 
   start.execute(args)

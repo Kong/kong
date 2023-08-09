@@ -53,7 +53,7 @@ local function execute(args)
 
   conf.pg_timeout = args.db_timeout -- connect + send + read
 
-  assert(not process.is_running(conf.nginx_pid),
+  assert(not process.exists(conf.nginx_pid),
          "Kong is already running in " .. conf.prefix)
 
   assert(prefix_handler.prepare_prefix(conf, args.nginx_conf, nil, nil,

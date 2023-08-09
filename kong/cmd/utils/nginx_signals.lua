@@ -55,7 +55,7 @@ end
 
 
 local function send_signal(kong_conf, signal)
-  if not process.is_running(kong_conf.nginx_pid) then
+  if not process.exists(kong_conf.nginx_pid) then
     return nil, fmt("nginx not running in prefix: %s", kong_conf.prefix)
   end
 
@@ -143,7 +143,7 @@ function _M.start(kong_conf)
     return nil, err
   end
 
-  if process.is_running(kong_conf.nginx_pid) then
+  if process.exists(kong_conf.nginx_pid) then
     return nil, "nginx is already running in " .. kong_conf.prefix
   end
 
@@ -215,7 +215,7 @@ end
 
 
 function _M.reload(kong_conf)
-  if not process.is_running(kong_conf.nginx_pid) then
+  if not process.exists(kong_conf.nginx_pid) then
     return nil, fmt("nginx not running in prefix: %s", kong_conf.prefix)
   end
 

@@ -42,8 +42,8 @@ local function execute(args)
 
   print("")
   local pid_file = pl_path.join(prefix, "pids", "nginx.pid")
-  process.is_running(pid_file)
-  assert(process.is_running(pid_file), "Kong is not running at " .. prefix)
+  process.exists(pid_file)
+  assert(process.exists(pid_file), "Kong is not running at " .. prefix)
   print("Kong is healthy at ", prefix)
 end
 

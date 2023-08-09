@@ -24,7 +24,7 @@ local function execute(args)
     log.verbose("waiting %s seconds before quitting", args.wait)
     while twait > ngx.now() do
       ngx.sleep(0.2)
-      if not process.is_running(conf.nginx_pid) then
+      if not process.exists(conf.nginx_pid) then
         log.error("Kong stopped while waiting (unexpected)")
         return
       end
@@ -41,7 +41,7 @@ local function execute(args)
   local texp, running = tstart + math.max(args.timeout, 1) -- min 1s timeout
   repeat
     ngx.sleep(0.2)
-    running = process.is_running(conf.nginx_pid)
+    running = process.exists(conf.nginx_pid)
     ngx.update_time()
   until not running or ngx.now() >= texp
 
