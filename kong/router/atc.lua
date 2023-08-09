@@ -649,7 +649,7 @@ function _M:exec(ctx)
   local cache_key = (req_method or "") .. "|" ..
                     (req_uri    or "") .. "|" ..
                     (req_host   or "") .. "|" ..
-                    (sni        or "") .. (headers_key or "") .. (queries_key or "")
+                    (sni        or "") .. (headers_key or "|") .. (queries_key or "|")
 
   local match_t = self.cache:get(cache_key)
   if not match_t then
