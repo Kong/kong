@@ -405,6 +405,37 @@ describe("plugin queue", function()
     assert.match_re(log_messages, "INFO .*queue resumed processing")
   end)
 
+  it("queue does not fail for max batch size = max entries", function()
+    local function enqueue(entry)
+      Queue.enqueue(
+        queue_conf({
+          name = "capacity-exceeded",
+          max_batch_size = 2,
+          max_entries = 2,
+          max_coalescing_delay = 0.1,
+        }),
+        function(_, batch)
+          ngx.sleep(1)
+          return false, "FAIL FAIL FAIL"
+        end,
+        nil,
+        entry
+      )
+    end
+
+    -- enqueue 2 entries, enough for first batch
+    for i = 1, 2 do
+      enqueue("initial batch: " .. tostring(i))
+    end
+    -- wait for max_coalescing_delay such that the first batch is processed (and will be stuck in retry loop, as our handler always fails)
+    ngx.sleep(0.1)
+    -- fill in some more entries
+    for i = 1, 2 do
+      enqueue("fill up: " .. tostring(i))
+    end
+    wait_until_queue_done("capacity-exceeded")
+  end)
+
   it("drops entries when it reaches its max_bytes", function()
     local processed
     local function enqueue(entry)
