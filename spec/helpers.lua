@@ -4045,7 +4045,7 @@ end
 
   -- Only use in CLI tests from spec/02-integration/01-cmd
   kill_all = function(prefix, timeout)
-    local kill = require "kong.cmd.utils.kill"
+    local process = require "kong.cmd.utils.process"
 
     local running_conf = get_running_conf(prefix)
     if not running_conf then return end
@@ -4053,7 +4053,7 @@ end
     -- kill kong_tests.conf service
     local pid_path = running_conf.nginx_pid
     if pl_path.exists(pid_path) then
-      kill.kill(pid_path, "-TERM")
+      process.kill(pid_path, "-TERM")
       wait_pid(pid_path, timeout)
     end
   end,
@@ -4069,7 +4069,7 @@ end
   end,
 
   signal = function(prefix, signal, pid_path)
-    local kill = require "kong.cmd.utils.kill"
+    local process = require "kong.cmd.utils.process"
 
     if not pid_path then
       local running_conf = get_running_conf(prefix)
@@ -4080,7 +4080,7 @@ end
       pid_path = running_conf.nginx_pid
     end
 
-    return kill.kill(pid_path, signal)
+    return process.kill(pid_path, signal)
   end,
   -- send signal to all Nginx workers, not including the master
   signal_workers = function(prefix, signal, pid_path)

@@ -1,6 +1,6 @@
 local ffi = require "ffi"
 local log = require "kong.cmd.utils.log"
-local kill = require "kong.cmd.utils.kill"
+local process = require "kong.cmd.utils.process"
 local meta = require "kong.meta"
 local pl_path = require "pl.path"
 local version = require "version"
@@ -55,13 +55,13 @@ end
 
 
 local function send_signal(kong_conf, signal)
-  if not kill.is_running(kong_conf.nginx_pid) then
+  if not process.is_running(kong_conf.nginx_pid) then
     return nil, fmt("nginx not running in prefix: %s", kong_conf.prefix)
   end
 
   log.verbose("sending %s signal to nginx running at %s", signal, kong_conf.nginx_pid)
 
-  local code = kill.kill(kong_conf.nginx_pid, "-s " .. signal)
+  local code = process.kill(kong_conf.nginx_pid, "-s " .. signal)
   if code ~= 0 then
     return nil, "could not send signal"
   end
@@ -143,7 +143,7 @@ function _M.start(kong_conf)
     return nil, err
   end
 
-  if kill.is_running(kong_conf.nginx_pid) then
+  if process.is_running(kong_conf.nginx_pid) then
     return nil, "nginx is already running in " .. kong_conf.prefix
   end
 
@@ -215,7 +215,7 @@ end
 
 
 function _M.reload(kong_conf)
-  if not kill.is_running(kong_conf.nginx_pid) then
+  if not process.is_running(kong_conf.nginx_pid) then
     return nil, fmt("nginx not running in prefix: %s", kong_conf.prefix)
   end
 
