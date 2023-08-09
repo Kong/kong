@@ -88,12 +88,14 @@ describe("plugin queue", function()
           else
             return real_now()
           end
-        end
+        end,
+        worker = {
+          exiting = function()
+            return false
+          end
+        }
       }
     })
-    ngx.worker.exiting = function()
-        return false
-      end
   end)
 
   after_each(unmock)
@@ -234,7 +236,7 @@ describe("plugin queue", function()
   end)
 
   it("batches messages during shutdown", function()
-    ngx.worker.exiting = function()
+    _G.ngx.worker.exiting = function()
       return true
     end
     local process_count = 0
