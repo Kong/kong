@@ -771,7 +771,7 @@ local function issue_token(conf)
               if not table_contains(conf.scopes, scope) then
                 response_params = {
                   [ERROR] = "invalid_scope",
-                  error_description = "scope mismatch",
+                  error_description = "Scope mismatch",
                 }
                 break
               end
