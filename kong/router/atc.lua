@@ -497,8 +497,8 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 
       -- multiple values for a single query parameter, like /?foo=bar&foo=baz
       elseif type(v) == "table" then
-        for idx = 1, #v do
-          local res, err = c:add_value(field, v[idx])
+        for _, v in ipairs(v) do
+          local res, err = c:add_value(field, v)
           if not res then
             return nil, err
           end
