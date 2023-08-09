@@ -9,6 +9,7 @@
     }
   },
   "host": "api.example.com",
+  "basePath": "/v1",
   "schemes": [
     "http",
     "https"

@@ -33,6 +33,7 @@ return {
           { header_parameter_check = { description = "If set to true, checks if HTTP header parameters in the request exist in the API specification.", type = "boolean", default = false, required = true } },
           { allowed_header_parameters = { description = "List of header parameters in the request that will be ignored when performing HTTP header validation. These are additional headers added to an API request beyond those defined in the API specification.  For example, you might include the HTTP header `User-Agent`, which lets servers and network peers identify the application, operating system, vendor, and/or version of the requesting user agent.", type = "string",
               default = "Host,Content-Type,User-Agent,Accept,Content-Length", required = false } },
+          { include_base_path = { description = "Indicates whether to include the base path when performing path match evaluation.", type = "boolean", default = false, required = true } },
         },
       },
     },

@@ -10,10 +10,7 @@
   },
   "servers": [
     {
-      "url": "http://api.example.com/"
-    },
-    {
-      "url": "https://api.example.com/"
+      "url": "/v1"
     }
   ],
   "paths": {

@@ -179,5 +179,11 @@ return {
     rate_limiting = {
       "sync_rate",
     },
+    mocking = {
+      "include_base_path",
+    },
+    oas_validation = {
+      "include_base_path",
+    },
   },
 }

@@ -7,8 +7,7 @@ info:
   version: 1.0.0
 
 servers:
-  - url: http://api.example.com/
-  - url: https://api.example.com/
+  - url: "/v1"
 
 paths:
   /inventory:

@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local dereference = require "kong.enterprise_edition.openapi.plugins.swagger-parser.dereference"
+local options = require "kong.enterprise_edition.openapi.plugins.swagger-parser.options"
 local cjson = require("cjson.safe").new()
 local lyaml = require "lyaml"
 
@@ -21,7 +22,7 @@ _M.dereference = function(schema)
   return dereference.dereference(schema)
 end
 
-_M.parse = function(spec_content)
+_M.parse = function(spec_content, opts)
   spec_content = ngx.unescape_uri(spec_content)
   local parsed_spec, decode_err = cjson.decode(spec_content)
   if decode_err then
@@ -38,6 +39,8 @@ _M.parse = function(spec_content)
   if err then
     return nil, err
   end
+
+  options.apply(deferenced_schema, opts)
 
   -- sort paths for later path matching
   if deferenced_schema.paths then

@@ -3,6 +3,10 @@ info:
   title: Sample API
   description: A Sample OpenAPI Spec
   version: 1.0.0
+
+servers:
+  - url: "/v1"
+
 paths:
   /user/{username}:
     get:

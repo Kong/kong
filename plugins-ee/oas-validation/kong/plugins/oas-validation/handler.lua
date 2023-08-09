@@ -424,12 +424,20 @@ end
 
 
 
-local function parse_spec(spec_content)
-  local spec_cache_key = sha256_hex(spec_content)
+local function parse_spec(conf)
+  local spec_content = conf.api_spec
+  -- includes conf.include_base_path as part of the cache key
+  -- as it could lead to a different parsed result.
+  local spec_cache_key = fmt("%s:%s",
+                             sha256_hex(spec_content),
+                             conf.include_base_path)
   local parsed_spec = spec_cache:get(spec_cache_key)
   if not parsed_spec then
+    local opts = {
+      resolve_base_path = conf.include_base_path
+    }
     spec_content = ngx.unescape_uri(spec_content)
-    local spec, err = swagger_parser.parse(spec_content)
+    local spec, err = swagger_parser.parse(spec_content, opts)
     if err then
       return nil, err
     end
@@ -483,7 +491,7 @@ function OASValidationPlugin:access(conf)
     interrupt_request = not conf.notify_only_request_validation_failure,
   }
 
-  local parsed_spec, err = parse_spec(conf.api_spec)
+  local parsed_spec, err = parse_spec(conf)
   if err then
     err = "validation failed, Unable to parse the api specification: " .. err
     return handle_validate_error(err, DENY_REQUEST_MESSAGE, 400, error_options)

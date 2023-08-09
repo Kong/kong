@@ -24,6 +24,15 @@ local fixtures = {
           location ~ "/user/test.pdf" {
             return 200;
           }
+
+          location ~ "/v1/user/foo/report.pdf" {
+            return 200;
+          }
+
+          location ~ "/v1/user/test.pdf" {
+            return 200;
+          }
+
         }
     ]]
   }
@@ -49,7 +58,6 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "petstore1.com" },
         service = service1,
       }))
-
       assert(db.plugins:insert {
         name = PLUGIN_NAME,
         route = { id = route1.id },
@@ -62,6 +70,26 @@ for _, strategy in helpers.each_strategy() do
           header_parameter_check = true,
           query_parameter_check = true,
           verbose_response = true
+        },
+      })
+
+      local route2 = assert(db.routes:insert({
+        hosts = { "petstore2.com" },
+        service = service1,
+      }))
+      assert(db.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = route2.id },
+        config = {
+          api_spec = fixture_path.read_fixture("path-match-oas.yaml"),
+          validate_response_body = true,
+          validate_request_header_params = true,
+          validate_request_query_params = true,
+          validate_request_uri_params = true,
+          header_parameter_check = true,
+          query_parameter_check = true,
+          verbose_response = true,
+          include_base_path = true,
         },
       })
 
@@ -107,6 +135,30 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         assert.response(res).has.status(200)
+      end)
+
+      describe("include_base_path = true", function()
+        it("/user/{username}/report.{format} - should match", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/v1/user/foo/report.pdf",
+            headers = {
+              host = "petstore2.com",
+            },
+          })
+          assert.response(res).has.status(200)
+        end)
+
+        it("/user/{username}.pdf - should match", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/v1/user/test.pdf",
+            headers = {
+              host = "petstore2.com",
+            },
+          })
+          assert.response(res).has.status(200)
+        end)
       end)
     end)
 

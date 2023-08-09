@@ -73,30 +73,43 @@ for _, strategy in strategies() do
             host = "mocking.com",
           }
 
-          local route1 = db.routes:insert({
+          local route1 = assert(db.routes:insert({
             hosts = { "mocking.com" },
             service = service,
-          })
-          db.plugins:insert {
+          }))
+          assert(db.plugins:insert {
             name = PLUGIN_NAME,
             route = { id = route1.id },
             config = {
               api_specification = spec_content
             },
-          }
+          })
 
-          local route2 = db.routes:insert({
+          local route2 = assert(db.routes:insert({
             hosts = { "mocking-codes.com" },
             service = service,
-          })
-          db.plugins:insert {
+          }))
+          assert(db.plugins:insert {
             name = PLUGIN_NAME,
             route = { id = route2.id },
             config = {
               api_specification = spec_content,
               included_status_codes = { 400, 409 }
             },
-          }
+          })
+
+          local route3 = assert(db.routes:insert({
+            hosts = { "mocking-include-base-path.com" },
+            service = service,
+          }))
+          assert(db.plugins:insert {
+            name = PLUGIN_NAME,
+            route = { id = route3.id },
+            config = {
+              api_specification = spec_content,
+              include_base_path = true
+            },
+          })
 
           -- start kong
           assert(helpers.start_kong({
@@ -184,6 +197,33 @@ for _, strategy in strategies() do
             })
 
             assert.response(res).has.status(400)
+          end)
+
+          describe("include_base_path = true", function()
+            it("/v1/inventory GET", function()
+              local res = assert(client:send {
+                method = "GET",
+                path = "/v1/inventory",
+                headers = {
+                  host = "mocking-include-base-path.com"
+                }
+              })
+
+              assert.response(res).has.status(200)
+              assert.equal("true", assert.response(res).has.header("X-Kong-Mocking-Plugin"))
+              assert.equal("application/json", assert.response(res).has.header("Content-Type"))
+              local body = assert.response(res).has.jsonbody()
+              assert.same({
+                id = "d290f1ee-6c54-4b01-90e6-d701748f0851",
+                name = "test",
+                release_date = "2016-08-29T09:12:33.001Z",
+                manufacturer = {
+                  name = "ACME Corporation",
+                  home_page = "https://www.acme-corp.com",
+                  phone = "408-867-5309"
+                }
+              }, body)
+            end)
           end)
         end)
 

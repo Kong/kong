@@ -275,8 +275,10 @@ function MockingHandler:access(conf)
     if err then
       return kong.response.exit(500, { message = err })
     end
-
-    spec, err = swagger_parser.parse(content)
+    local opts = {
+      resolve_base_path = conf.include_base_path
+    }
+    spec, err = swagger_parser.parse(content, opts)
     if err then
       kong.log.err("failed to parse specification: ", err)
       return kong.response.exit(500, { message = "An unexpected error happened" })
