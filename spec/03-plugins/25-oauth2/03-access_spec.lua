@@ -3022,7 +3022,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             error_description = "scope mismatch"
           }, res)
         end)
-        it("successes when scope is a subset", function()
+        it("succeeds when scope is a subset", function()
           -- refresh token with mismatching scope
           local res = assert(request_client:send {
             method  = "POST",
