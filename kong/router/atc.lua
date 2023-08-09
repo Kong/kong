@@ -184,8 +184,8 @@ end
 
 
 local function has_query_matching_field(fields)
-  for i = 1, #fields do
-    if is_http_queries_field(fields[i]) then
+  for _, field in ipairs(fields) do
+    if is_http_queries_field(field) then
       return true
     end
   end
