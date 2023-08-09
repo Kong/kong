@@ -165,7 +165,7 @@ describe.skip('Plugin Scope Precedence Model', () => {
 
         pluginIdList = [firstPluginId, secondPluginId];
 
-        await wait(isHybrid ? 8000 : 5000);
+        await wait(8000);
 
         const resp = await getNegative(`${proxyUrl}/precedence_test`, {
           authorization: `Basic ${Buffer.from('test:test').toString('base64')}`,
@@ -194,7 +194,7 @@ describe.skip('Plugin Scope Precedence Model', () => {
       expect(resp.status, 'Status should be 201').equal(201);
     });
 
-    await wait(isHybrid ? 7000 : 5000);
+    await wait(8000);
 
     const resp = await getNegative(`${proxyUrl}/precedence_test`, {
       authorization: `Basic ${Buffer.from('test:test').toString('base64')}`,
