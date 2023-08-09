@@ -2580,12 +2580,12 @@ do
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/foobar",
-          query   = "a=1&a=2",
+          query   = "a=2&a=10",
         })
         assert.res_status(200, res)
       end)
 
-      it("query does not match  multiple values", function()
+      it("query does not match multiple values", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/foobar",
