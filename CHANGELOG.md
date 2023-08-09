@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [3.4.0](#340)
 - [3.3.0](#330)
 - [3.2.0](#320)
 - [3.1.0](#310)
@@ -9,6 +10,8 @@
 
 
 ## Unreleased
+
+## 3.4.0
 
 ### Breaking Changes
 
@@ -1385,6 +1388,7 @@ Please see [CHANGELOG-OLD.md](CHANGELOG-OLD.md) file for < 3.0 releases.
 
 [Back to TOC](#table-of-contents)
 
+[3.4.0]: https://github.com/Kong/kong/compare/3.3.0...3.4.0
 [3.3.0]: https://github.com/Kong/kong/compare/3.2.0...3.3.0
 [3.2.0]: https://github.com/Kong/kong/compare/3.1.0...3.2.0
 [3.1.0]: https://github.com/Kong/kong/compare/3.0.1...3.1.0
