@@ -63,7 +63,7 @@ local PluginsIterator = {}
 -- @tparam string|nil consumer_id The consumer identifier. If `nil`, an empty string is used.
 -- @treturn string The compound key, in the format `route_id:service_id:consumer_id`.
 ---
-function PluginsIterator.build_compound_key(route_id, service_id, consumer_id)
+local function build_compound_key(route_id, service_id, consumer_id)
   return format("%s:%s:%s", route_id or "", service_id or "", consumer_id or "")
 end
 
@@ -147,6 +147,8 @@ local function get_plugin_config(plugin, name, ws_id)
   return cfg
 end
 
+local PLUGIN_GLOBAL_KEY = build_compound_key() -- all nil
+
 ---
 -- Lookup a configuration for a given combination of route_id, service_id, consumer_id
 --
@@ -169,9 +171,8 @@ end
 -- @tparam string|nil consumer_id The consumer identifier.
 -- @return any|nil The configuration corresponding to the best matching combination, or 'nil' if no configuration is found.
 ---
-function PluginsIterator.lookup_cfg(combos, route_id, service_id, consumer_id)
+local function lookup_cfg(combos, route_id, service_id, consumer_id)
   -- Use the build_compound_key function to create an index for the 'combos' table
-  local build_compound_key = PluginsIterator.build_compound_key
 
     local key
     if route_id and service_id and consumer_id then
@@ -216,7 +217,7 @@ function PluginsIterator.lookup_cfg(combos, route_id, service_id, consumer_id)
             return combos[key]
         end
     end
-    return combos[build_compound_key(nil, nil, nil)]
+    return combos[PLUGIN_GLOBAL_KEY]
 
 end
 
@@ -243,7 +244,7 @@ local function load_configuration_through_combos(ctx, combos, plugin)
   local consumer_id = (ctx.authenticated_consumer and not plugin.handler.no_consumer) and ctx.authenticated_consumer.id or nil
 
   -- Call the lookup_cfg function to get the best matching plugin configuration
-  return PluginsIterator.lookup_cfg(combos, route_id, service_id, consumer_id)
+  return lookup_cfg(combos, route_id, service_id, consumer_id)
 end
 
 local function get_workspace(self, ctx)
@@ -283,8 +284,8 @@ local function get_next_global_or_collected_plugin(plugins, i)
   if i > plugins[0] then
     return nil
   end
-
-  return i, plugins[i - 1], plugins[i]
+  local cfg = kong.vault.update(plugins[i])
+  return i, plugins[i - 1], cfg
 end
 
 
@@ -466,7 +467,7 @@ function PluginsIterator.new(version)
         combos[name] = combos[name] or {}
 
         -- Build a compound key using the route_id, service_id, and consumer_id
-        local compound_key = PluginsIterator.build_compound_key(route_id, service_id, consumer_id)
+        local compound_key = build_compound_key(route_id, service_id, consumer_id)
 
         -- Store the plugin configuration in the 'combos' table using the compound key
         combos[name][compound_key] = cfg
@@ -514,5 +515,9 @@ function PluginsIterator.new(version)
     release = release,
   }
 end
+
+-- for testing
+PluginsIterator.lookup_cfg = lookup_cfg
+PluginsIterator.build_compound_key = build_compound_key
 
 return PluginsIterator

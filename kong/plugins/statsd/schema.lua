@@ -8,7 +8,7 @@ local METRIC_NAMES = {
   "request_size", "response_size", "status_count", "status_count_per_user",
   "unique_users", "upstream_latency",
   "status_count_per_workspace", "status_count_per_user_per_route",
-  "shdict_usage", "lmdb_usage",
+  "shdict_usage",
 }
 
 
@@ -120,12 +120,6 @@ local DEFAULT_METRICS = {
     sample_rate        = 1,
     service_identifier = nil,
   },
-  {
-    name               = "lmdb_usage",
-    stat_type          = "gauge",
-    sample_rate        = 1,
-    service_identifier = nil,
-  },  
 }
 
 

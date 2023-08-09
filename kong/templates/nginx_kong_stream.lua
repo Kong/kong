@@ -10,10 +10,8 @@ lua_socket_pool_size   ${{LUA_SOCKET_POOL_SIZE}};
 lua_socket_log_errors  off;
 lua_max_running_timers 4096;
 lua_max_pending_timers 16384;
-lua_ssl_verify_depth   ${{LUA_SSL_VERIFY_DEPTH}};
-> if lua_ssl_trusted_certificate_combined then
-lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE_COMBINED}}';
-> end
+
+include 'nginx-kong-stream-inject.conf';
 
 lua_shared_dict stream_kong                        5m;
 lua_shared_dict stream_kong_locks                  8m;
@@ -24,6 +22,7 @@ lua_shared_dict stream_kong_core_db_cache          ${{MEM_CACHE_SIZE}};
 lua_shared_dict stream_kong_core_db_cache_miss     12m;
 lua_shared_dict stream_kong_db_cache               ${{MEM_CACHE_SIZE}};
 lua_shared_dict stream_kong_db_cache_miss          12m;
+lua_shared_dict stream_kong_secrets                5m;
 
 > if ssl_ciphers then
 ssl_ciphers ${{SSL_CIPHERS}};

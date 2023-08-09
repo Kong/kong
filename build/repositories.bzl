@@ -41,6 +41,16 @@ def github_cli_repositories():
             build_file_content = _SRCS_BUILD_FILE_CONTENT,
         )
 
+def kong_github_repositories():
+    maybe(
+        github_release,
+        name = "kong_admin_gui",
+        repo = "kong/kong-manager",
+        tag = KONG_VAR["KONG_MANAGER"],
+        pattern = "release.tar.gz",
+        build_file_content = _DIST_BUILD_FILE_CONTENT,
+    )
+
 def _copyright_header(ctx):
     paths = ctx.execute(["find", ctx.path("."), "-type", "f"]).stdout.split("\n")
 
@@ -96,8 +106,6 @@ def _github_release_impl(ctx):
 
     ctx.extract(ctx.attr.pattern)
 
-    _copyright_header(ctx)
-
 github_release = repository_rule(
     implementation = _github_release_impl,
     attrs = {
@@ -135,6 +143,7 @@ def build_repositories():
 
     kong_resty_websocket_repositories()
     github_cli_repositories()
+    kong_github_repositories()
 
     protoc_repositories()
 

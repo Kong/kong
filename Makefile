@@ -37,7 +37,7 @@ endif
 .PHONY: install dev \
 	lint test test-integration test-plugins test-all \
 	pdk-phase-check functional-tests \
-	fix-windows release
+	fix-windows release wasm-test-filters
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 KONG_SOURCE_LOCATION ?= $(ROOT_DIR)
@@ -67,12 +67,16 @@ bin/grpcurl:
 bin/h2client:
 	@curl -s -S -L \
 		https://github.com/Kong/h2client/releases/download/v$(H2CLIENT_VERSION)/h2client_$(H2CLIENT_VERSION)_$(OS)_$(H2CLIENT_MACHINE).tar.gz | tar xz -C bin;
+	@$(RM) bin/README.md
 
 
 check-bazel: bin/bazel
 ifndef BAZEL
 	$(eval BAZEL := bin/bazel)
 endif
+
+wasm-test-filters:
+	./scripts/build-wasm-test-filters.sh
 
 build-kong: check-bazel
 	$(BAZEL) build //build:kong --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME)
@@ -96,7 +100,7 @@ install-dev-rocks: build-venv
 	  fi \
 	done;
 
-dev: build-venv install-dev-rocks bin/grpcurl bin/h2client
+dev: build-venv install-dev-rocks bin/grpcurl bin/h2client wasm-test-filters
 
 build-release: check-bazel
 	$(BAZEL) clean --expunge

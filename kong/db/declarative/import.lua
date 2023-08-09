@@ -6,7 +6,6 @@ local utils = require("kong.tools.utils")
 local declarative_config = require("kong.db.schema.others.declarative_config")
 
 
-local cjson_encode = require("cjson.safe").encode
 local marshall = require("kong.db.declarative.marshaller").marshall
 local schema_topological_sort = require("kong.db.schema.topological_sort")
 local nkeys = require("table.nkeys")
@@ -21,7 +20,6 @@ local min = math.min
 local null = ngx.null
 local md5 = ngx.md5
 local get_phase = ngx.get_phase
-local ngx_socket_tcp = ngx.socket.tcp
 local yield = utils.yield
 local sha256 = utils.sha256_hex
 
@@ -443,8 +441,7 @@ end
 
 local load_into_cache_with_events
 do
-  local IS_HTTP_SUBSYSTEM = ngx.config.subsystem == "http"
-  local STREAM_CONFIG_SOCK = "unix:" .. ngx.config.prefix() .. "/stream_config.sock"
+  local events = require("kong.runloop.events")
 
   local exiting = ngx.worker.exiting
 
@@ -454,7 +451,6 @@ do
     end
 
     local reconfigure_data
-    local worker_events = kong.worker_events
 
     local ok, err, default_ws = load_into_cache(entities, meta, hash)
     if ok then
@@ -489,9 +485,9 @@ do
         balancer_hash,
       }
 
-      ok, err = worker_events.post("declarative", "reconfigure", reconfigure_data)
-      if ok ~= "done" then
-        return nil, "failed to broadcast reconfigure event: " .. (err or ok)
+      ok, err = events.declarative_reconfigure_notify(reconfigure_data)
+      if not ok then
+        return nil, err
       end
 
     elseif err:find("MDB_MAP_FULL", nil, true) then
@@ -500,33 +496,6 @@ do
     else
       return nil, err
     end
-
-    if IS_HTTP_SUBSYSTEM and #kong.configuration.stream_listeners > 0 then
-      -- update stream if necessary
-
-      local json, err = cjson_encode(reconfigure_data)
-      if not json then
-        return nil, err
-      end
-
-      local sock = ngx_socket_tcp()
-      ok, err = sock:connect(STREAM_CONFIG_SOCK)
-      if not ok then
-        return nil, err
-      end
-
-      local bytes
-      bytes, err = sock:send(json)
-      sock:close()
-
-      if not bytes then
-        return nil, err
-      end
-
-      assert(bytes == #json,
-             "incomplete reconfigure data sent to the stream subsystem")
-    end
-
 
     if exiting() then
       return nil, "exiting"

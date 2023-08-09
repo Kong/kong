@@ -160,9 +160,6 @@ describe("kong.clustering.compat", function()
           session = {
             "anything",
           },
-          statsd = {
-            "anything",
-          },
         },
       })
     end)
@@ -308,29 +305,6 @@ describe("kong.clustering.compat", function()
               cookie_samesite = "Lax",
               cookie_httponly = false,
               cookie_persistent = true,
-            },
-          },
-        },
-      },
-      {
-        name = "statsd lmdb metrics",
-        version = "1.0.0",
-        plugins = {
-          {
-            name = "statsd",
-            config = {
-              metrics = {"lmdb_usage", "shdict_usage", "status_count_per_user_per_route"}
-            },
-          },
-        },
-        expect = {
-          {
-            name = "statsd",
-            config = {
-              metrics = { "shdict_usage", "status_count_per_user_per_route", },
-              flush_timeout = 2,
-              queue_size = 1,
-              retry_count = 10,
             },
           },
         },

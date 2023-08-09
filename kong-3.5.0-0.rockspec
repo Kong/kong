@@ -1,10 +1,10 @@
 package = "kong"
-version = "3.4.0-0"
+version = "3.5.0-0"
 rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git+https://github.com/Kong/kong.git",
-  tag = "3.4.0"
+  tag = "3.5.0"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -22,7 +22,7 @@ dependencies = {
   "multipart == 0.5.9",
   "version == 1.0.1",
   "kong-lapis == 1.14.0.2",
-  "kong-pgmoon == 1.16.1",
+  "kong-pgmoon == 1.16.2",
   "luatz == 0.4",
   "lua_system_constants == 0.1.4",
   "lyaml == 6.2.8",
@@ -84,8 +84,12 @@ build = {
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
+    ["kong.templates.nginx_kong_gui_include"] = "kong/templates/nginx_kong_gui_include.lua",
     ["kong.templates.nginx_kong_stream"] = "kong/templates/nginx_kong_stream.lua",
     ["kong.templates.kong_defaults"] = "kong/templates/kong_defaults.lua",
+    ["kong.templates.nginx_inject"] = "kong/templates/nginx_inject.lua",
+    ["kong.templates.nginx_kong_inject"] = "kong/templates/nginx_kong_inject.lua",
+    ["kong.templates.nginx_kong_stream_inject"] = "kong/templates/nginx_kong_stream_inject.lua",
     ["kong.templates.kong_yml"] = "kong/templates/kong_yml.lua",
 
     ["kong.resty.dns.client"] = "kong/resty/dns/client.lua",
@@ -118,24 +122,28 @@ build = {
     ["kong.cmd.utils.nginx_signals"] = "kong/cmd/utils/nginx_signals.lua",
     ["kong.cmd.utils.prefix_handler"] = "kong/cmd/utils/prefix_handler.lua",
     ["kong.cmd.utils.process_secrets"] = "kong/cmd/utils/process_secrets.lua",
+    ["kong.cmd.utils.inject_confs"] = "kong/cmd/utils/inject_confs.lua",
 
     ["kong.api"] = "kong/api/init.lua",
     ["kong.api.api_helpers"] = "kong/api/api_helpers.lua",
     ["kong.api.arguments"] = "kong/api/arguments.lua",
     ["kong.api.endpoints"] = "kong/api/endpoints.lua",
-    ["kong.api.routes.kong"] = "kong/api/routes/kong.lua",
-    ["kong.api.routes.health"] = "kong/api/routes/health.lua",
+    ["kong.api.routes.cache"] = "kong/api/routes/cache.lua",
+    ["kong.api.routes.certificates"] = "kong/api/routes/certificates.lua",
+    ["kong.api.routes.clustering"] = "kong/api/routes/clustering.lua",
     ["kong.api.routes.config"] = "kong/api/routes/config.lua",
     ["kong.api.routes.consumers"] = "kong/api/routes/consumers.lua",
+    ["kong.api.routes.debug"] = "kong/api/routes/debug.lua",
+    ["kong.api.routes.filter_chains"] = "kong/api/routes/filter_chains.lua",
+    ["kong.api.routes.health"] = "kong/api/routes/health.lua",
+    ["kong.api.routes.kong"] = "kong/api/routes/kong.lua",
     ["kong.api.routes.plugins"] = "kong/api/routes/plugins.lua",
-    ["kong.api.routes.cache"] = "kong/api/routes/cache.lua",
-    ["kong.api.routes.upstreams"] = "kong/api/routes/upstreams.lua",
-    ["kong.api.routes.targets"] = "kong/api/routes/targets.lua",
-    ["kong.api.routes.certificates"] = "kong/api/routes/certificates.lua",
     ["kong.api.routes.snis"] = "kong/api/routes/snis.lua",
     ["kong.api.routes.tags"] = "kong/api/routes/tags.lua",
-    ["kong.api.routes.clustering"] = "kong/api/routes/clustering.lua",
-    ["kong.api.routes.debug"] = "kong/api/routes/debug.lua",
+    ["kong.api.routes.targets"] = "kong/api/routes/targets.lua",
+    ["kong.api.routes.upstreams"] = "kong/api/routes/upstreams.lua",
+
+    ["kong.admin_gui"] = "kong/admin_gui/init.lua",
 
     ["kong.status"] = "kong/status/init.lua",
     ["kong.status.ready"] = "kong/status/ready.lua",
@@ -171,6 +179,7 @@ build = {
     ["kong.runloop.plugin_servers.process"] = "kong/runloop/plugin_servers/process.lua",
     ["kong.runloop.plugin_servers.mp_rpc"] = "kong/runloop/plugin_servers/mp_rpc.lua",
     ["kong.runloop.plugin_servers.pb_rpc"] = "kong/runloop/plugin_servers/pb_rpc.lua",
+    ["kong.runloop.wasm"] = "kong/runloop/wasm.lua",
 
     ["kong.workspaces"] = "kong/workspaces/init.lua",
 
@@ -209,6 +218,7 @@ build = {
     ["kong.db.schema.entities.workspaces"] = "kong/db/schema/entities/workspaces.lua",
     ["kong.db.schema.entities.clustering_data_planes"] = "kong/db/schema/entities/clustering_data_planes.lua",
     ["kong.db.schema.entities.parameters"] = "kong/db/schema/entities/parameters.lua",
+    ["kong.db.schema.entities.filter_chains"] = "kong/db/schema/entities/filter_chains.lua",
     ["kong.db.schema.others.migrations"] = "kong/db/schema/others/migrations.lua",
     ["kong.db.schema.others.declarative_config"] = "kong/db/schema/others/declarative_config.lua",
     ["kong.db.schema.entity"] = "kong/db/schema/entity.lua",

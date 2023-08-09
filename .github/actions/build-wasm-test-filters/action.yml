@@ -1,0 +1,79 @@
+name: Build WASM Test Filters
+
+description: >
+  Installs the rust toolchain and builds the WASM filters that are used
+  in our integration tests
+
+runs:
+  using: composite
+  steps:
+    - name: Setup env vars
+      shell: bash
+      run: |
+        WASM_FILTER_PATH=$PWD/spec/fixtures/proxy_wasm_filters
+        echo "WASM_FILTER_PATH=$WASM_FILTER_PATH" >> $GITHUB_ENV
+        echo "WASM_FIXTURE_PATH=$WASM_FILTER_PATH/build" >> $GITHUB_ENV
+        echo "WASM_FILTER_CARGO_LOCK=$WASM_FILTER_PATH/Cargo.lock" >> $GITHUB_ENV
+        echo "WASM_FILTER_CACHE_PREFIX=wasm-test-filters::v3::${{ runner.os }}" >> $GITHUB_ENV
+
+    - name: Restore Cache
+      uses: actions/cache/restore@v3
+      id: restore-cache
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          ${{ env.WASM_FILTER_PATH }}/target
+        key: ${{ env.WASM_FILTER_CACHE_PREFIX }}::${{ hashFiles(env.WASM_FILTER_CARGO_LOCK, format('{0}/**/*.rs', env.WASM_FILTER_PATH)) }}
+        restore-keys: ${{ env.WASM_FILTER_CACHE_PREFIX }}
+
+    - name: Install Rust Toolchain
+      if: steps.restore-cache.outputs.cache-hit != 'true'
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+        components: cargo
+        target: wasm32-wasi
+
+    - name: cargo build
+      if: steps.restore-cache.outputs.cache-hit != 'true'
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        # building in release mode yields smaller library sizes, so it's
+        # better for our cacheability
+        args: >
+          --manifest-path "${{ env.WASM_FILTER_PATH }}/Cargo.toml"
+          --workspace
+          --lib
+          --target wasm32-wasi
+          --release
+
+    - name: Save cache
+      if: steps.restore-cache.outputs.cache-hit != 'true'
+      id: save-cache
+      uses: actions/cache/save@v3
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          ${{ env.WASM_FILTER_PATH }}/target
+        key: ${{ env.WASM_FILTER_CACHE_PREFIX }}::${{ hashFiles(env.WASM_FILTER_CARGO_LOCK, format('{0}/**/*.rs', env.WASM_FILTER_PATH)) }}
+
+    - name: Create a symlink to the target directory
+      shell: bash
+      run: |
+        ln -sfv \
+          --no-target-directory \
+          "${{ env.WASM_FILTER_PATH }}"/target/wasm32-wasi/release \
+          "${{ env.WASM_FIXTURE_PATH }}"
+
+    - name: debug
+      shell: bash
+      run: ls -la "${{ env.WASM_FIXTURE_PATH }}"/*.wasm

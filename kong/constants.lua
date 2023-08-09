@@ -141,6 +141,7 @@ local constants = {
     "vaults",
     "key_sets",
     "keys",
+    "filter_chains",
   },
   ENTITY_CACHE_STORE = setmetatable({
     consumers = "cache",
@@ -183,6 +184,7 @@ local constants = {
     "kong_cluster_events",
     "kong_healthchecks",
     "kong_rate_limiting_counters",
+    "kong_secrets",
   },
   DATABASE = {
     POSTGRES = {
@@ -209,6 +211,7 @@ local constants = {
     { KONG_VERSION_INCOMPATIBLE   = "kong_version_incompatible", },
     { PLUGIN_SET_INCOMPATIBLE     = "plugin_set_incompatible", },
     { PLUGIN_VERSION_INCOMPATIBLE = "plugin_version_incompatible", },
+    { FILTER_SET_INCOMPATIBLE     = "filter_set_incompatible", },
   },
   CLUSTERING_TIMEOUT = 5000, -- 5 seconds
   CLUSTERING_PING_INTERVAL = 30, -- 30 seconds
@@ -240,6 +243,8 @@ local constants = {
 
   DYN_LOG_LEVEL_KEY = "kong:dyn_log_level",
   DYN_LOG_LEVEL_TIMEOUT_AT_KEY = "kong:dyn_log_level_timeout_at",
+
+  ADMIN_GUI_KCONFIG_CACHE_KEY = "admin:gui:kconfig",
 }
 
 for _, v in ipairs(constants.CLUSTERING_SYNC_STATUS) do

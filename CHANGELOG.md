@@ -36,7 +36,18 @@
 
 #### Core
 
+- Enable `expressions` and `traditional_compatible` router flavor in stream subsystem.
+  [#11071](https://github.com/Kong/kong/pull/11071)
+- Make upstream `host_header` and router `preserve_host` config work in stream tls proxy.
+  [#11244](https://github.com/Kong/kong/pull/11244)
+- Add beta support for WebAssembly/proxy-wasm
+  [#11218](https://github.com/Kong/kong/pull/11218)
+
 #### Admin API
+
+#### Kong Manager
+- First release of the Kong Manager Open Source Edition.
+  [#11131](https://github.com/Kong/kong/pull/11131)
 
 #### Status API
 
@@ -46,6 +57,8 @@
   The field `header_type`now accepts the `aws` value to handle this specific
   propagation header.
   [11075](https://github.com/Kong/kong/pull/11075)
+- **Opentelemetry**: Support the `endpoint` parameter as referenceable.
+  [#11220](https://github.com/Kong/kong/pull/11220)
 - **Ip-Restriction**: Add TCP support to the plugin.
   Thanks [@scrudge](https://github.com/scrudge) for contributing this change.
   [#10245](https://github.com/Kong/kong/pull/10245)
@@ -88,8 +101,21 @@
   [#11082](https://github.com/Kong/kong/pull/11082)
 - Fix an issue where the router of flavor `expressions` can not configure https redirection.
   [#11166](https://github.com/Kong/kong/pull/11166)
-  - Fix a bug that caused spans to not be instrumented with http.status_code when the request was not proxied upstream.
+- Fix a bug that caused spans to not be instrumented with `http.status_code` when the request was not proxied to the upstream.
+  Thanks [@backjo](https://github.com/backjo) for contributing this change.
   [#11152](https://github.com/Kong/kong/pull/11152)
+- Added new span attribute `net.peer.name` if balancer_data.hostname is available.
+  Thanks [@backjo](https://github.com/backjo) for contributing this change.
+  [#10723](https://github.com/Kong/kong/pull/10729)
+- Make `kong vault get` CLI command work in dbless mode by injecting the necessary directives into the kong cli nginx.conf.
+  [#11127](https://github.com/Kong/kong/pull/11127)
+  [#11291](https://github.com/Kong/kong/pull/11291)
+- Fix an issue where a crashing Go plugin server process would cause subsequent
+  requests proxied through Kong to execute Go plugins with inconsistent configurations.
+  The issue only affects scenarios where the same Go plugin is applied to different Route
+  or Service entities.
+  [#11306](https://github.com/Kong/kong/pull/11306)
+
 
 #### Admin API
 
@@ -110,6 +136,8 @@
   [#10559](https://github.com/Kong/kong/pull/10559)
 - **Zipkin**: Fixed an issue that traces not being generated correctly when instrumentations are enabled.
   [#10983](https://github.com/Kong/kong/pull/10983)
+- **Acme**: Fixed string concatenation on cert renewal errors
+  [#11364](https://github.com/Kong/kong/pull/11364)
 
 #### PDK
 
@@ -146,18 +174,29 @@
   [#11099](https://github.com/Kong/kong/pull/11099)
 - Bumped kong-lapis from 1.8.3.1 to 1.14.0.2
   [#10841](https://github.com/Kong/kong/pull/10841)
-- Bumped lua-resty-events from 0.1.4 to 0.1.6
+- Bumped lua-resty-events from 0.1.4 to 0.2.0
   [#10883](https://github.com/Kong/kong/pull/10883)
   [#11083](https://github.com/Kong/kong/pull/11083)
+  [#11214](https://github.com/Kong/kong/pull/11214)
 - Bumped lua-resty-session from 4.0.3 to 4.0.4
   [#11011](https://github.com/Kong/kong/pull/11011)
-- Bumped OpenSSL from 1.1.1t to 3.1.1
+- Bumped OpenSSL from 1.1.1t to 3.1.2
   [#10180](https://github.com/Kong/kong/pull/10180)
   [#11140](https://github.com/Kong/kong/pull/11140)
-- Bumped pgmoon from 1.16.0 to 1.16.1 (Kong's fork)
+  [#11361](https://github.com/Kong/kong/pull/11361)
+- Bumped pgmoon from 1.16.0 to 1.16.2 (Kong's fork)
   [#11181](https://github.com/Kong/kong/pull/11181)
-- Bumped atc-router from 1.0.5 to 1.1.0
+  [#11229](https://github.com/Kong/kong/pull/11229)
+- Bumped atc-router from 1.0.5 to 1.2.0
   [#10100](https://github.com/Kong/kong/pull/10100)
+  [#11071](https://github.com/Kong/kong/pull/11071)
+- Bumped lua-resty-lmdb from 1.1.0 to 1.3.0
+  [#11227](https://github.com/Kong/kong/pull/11227)
+
+### Known Issues
+- Some referenceable configuration fields, such as the `http_endpoint` field
+  of the `http-log` plugin and the `endpoint` field of the `opentelemetry` plugin,
+  do not accept reference values due to incorrect field validation.
 
 ## 3.3.0
 
@@ -203,6 +242,8 @@
 - Tracing: tracing_sampling_rate defaults to 0.01 (trace one of every 100 requests) instead of the previous 1
   (trace all requests). Tracing all requests is inappropriate for most production systems
   [#10774](https://github.com/Kong/kong/pull/10774)
+- **Proxy Cache**: Add option to remove the proxy cache headers from the response
+  [#10445](https://github.com/Kong/kong/pull/10445)
 
 ### Additions
 
@@ -286,17 +327,11 @@
   Previously, the `header_type` was hardcoded to `preserve`, now it can be set to one of the
   following values: `preserve`, `ignore`, `b3`, `b3-single`, `w3c`, `jaeger`, `ot`.
   [#10620](https://github.com/Kong/kong/pull/10620)
-- **Prometheus**: add `lmdb_usage` related metrics in Prometheus plugin.
-  [#10301](https://github.com/Kong/kong/pull/10301)
-- **Statsd**: add `lmdb_usage` related metrics in Statsd plugin.
-  [#10301](https://github.com/Kong/kong/pull/10301)
 
 #### PDK
 
 - PDK now supports getting plugins' ID with `kong.plugin.get_id`.
   [#9903](https://github.com/Kong/kong/pull/9903)
-- PDK now supports getting lmdb environment information with `kong.node.get_memory_stats`.
-  [#10301](https://github.com/Kong/kong/pull/10301)
 
 ### Fixes
 

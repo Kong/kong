@@ -91,6 +91,9 @@ local table_new = require "table.new"
 local utils = require "kong.tools.utils"
 local constants = require "kong.constants"
 local get_ctx_table = require("resty.core.ctx").get_ctx_table
+local admin_gui = require "kong.admin_gui"
+local wasm = require "kong.runloop.wasm"
+local reports = require "kong.reports"
 
 
 local kong             = kong
@@ -219,6 +222,7 @@ do
     "events:requests:ws",
     "events:requests:wss",
     "events:requests:go_plugins",
+    "events:km:visit",
     "events:streams",
     "events:streams:tcp",
     "events:streams:tls",
@@ -579,6 +583,7 @@ function Kong.init()
 
   kong_global.init_pdk(kong, config)
   instrumentation.init(config)
+  wasm.init(config)
 
   local db = assert(DB.new(config))
   instrumentation.db_query(db.connector)
@@ -756,6 +761,10 @@ function Kong.init_worker()
 
   kong.db:set_events_handler(worker_events)
 
+  if kong.configuration.admin_gui_listeners then
+    kong.cache:invalidate_local(constants.ADMIN_GUI_KCONFIG_CACHE_KEY)
+  end
+
   if process.type() == "privileged agent" then
     if kong.clustering then
       kong.clustering:init_worker()
@@ -855,6 +864,13 @@ function Kong.init_worker()
 
   if kong.clustering then
     kong.clustering:init_worker()
+  end
+
+  ok, err = wasm.init_worker()
+  if not ok then
+    err = "wasm nginx worker initialization failed: " .. tostring(err)
+    stash_init_worker_error(err)
+    return
   end
 end
 
@@ -1037,6 +1053,7 @@ function Kong.access()
     return kong.response.error(503, "no Service found with those values")
   end
 
+  runloop.wasm_attach(ctx)
   runloop.access.after(ctx)
 
   ctx.KONG_ACCESS_ENDED_AT = get_updated_now_ms()
@@ -1594,7 +1611,7 @@ function Kong.handle_error()
 end
 
 
-local function serve_content(module, options)
+local function serve_content(module)
   local ctx = ngx.ctx
   ctx.KONG_PROCESSING_START = start_time() * 1000
   ctx.KONG_ADMIN_CONTENT_START = ctx.KONG_ADMIN_CONTENT_START or now() * 1000
@@ -1602,9 +1619,7 @@ local function serve_content(module, options)
 
   log_init_worker_errors(ctx)
 
-  options = options or {}
-
-  header["Access-Control-Allow-Origin"] = options.allow_origin or "*"
+  ngx.header["Access-Control-Allow-Origin"] = ngx.req.get_headers()["Origin"] or "*"
 
   lapis.serve(module)
 
@@ -1614,7 +1629,7 @@ local function serve_content(module, options)
 end
 
 
-function Kong.admin_content(options)
+function Kong.admin_content()
   kong.worker_events.poll()
 
   local ctx = ngx.ctx
@@ -1622,7 +1637,7 @@ function Kong.admin_content(options)
     ctx.workspace = kong.default_workspace
   end
 
-  return serve_content("kong.api", options)
+  return serve_content("kong.api")
 end
 
 
@@ -1665,6 +1680,26 @@ function Kong.admin_header_filter()
   --ctx.KONG_ADMIN_HEADER_FILTER_TIME = ctx.KONG_ADMIN_HEADER_FILTER_ENDED_AT - ctx.KONG_ADMIN_HEADER_FILTER_START
 end
 
+function Kong.admin_gui_kconfig_content()
+  local content, err = kong.cache:get(
+    constants.ADMIN_GUI_KCONFIG_CACHE_KEY,
+    nil,
+    admin_gui.generate_kconfig,
+    kong.configuration
+  )
+  if err then
+    kong.log.err("error occurred while retrieving admin gui config `kconfig.js` from cache", err)
+    kong.response.exit(500, { message = "An unexpected error occurred" })
+  else
+    ngx.say(content)
+  end
+end
+
+function Kong.admin_gui_log()
+  if kong.configuration.anonymous_reports then
+    reports.admin_gui_log(ngx.ctx)
+  end
+end
 
 function Kong.status_content()
   return serve_content("kong.status")
@@ -1689,32 +1724,8 @@ end
 
 
 do
-  local cjson = require "cjson.safe"
-
-  function Kong.stream_config_listener()
-    local sock, err = ngx.req.socket()
-    if not sock then
-      kong.log.crit("unable to obtain request socket: ", err)
-      return
-    end
-
-    local data, err = sock:receive("*a")
-    if not data then
-      ngx_log(ngx_CRIT, "unable to receive reconfigure data: ", err)
-      return
-    end
-
-    local reconfigure_data, err = cjson.decode(data)
-    if not reconfigure_data then
-      ngx_log(ngx_ERR, "failed to json decode reconfigure data: ", err)
-      return
-    end
-
-    local ok, err = kong.worker_events.post("declarative", "reconfigure", reconfigure_data)
-    if ok ~= "done" then
-      ngx_log(ngx_ERR, "failed to rebroadcast reconfigure event in stream: ", err or ok)
-    end
-  end
+  local events = require "kong.runloop.events"
+  Kong.stream_config_listener = events.stream_reconfigure_listener
 end
 
 

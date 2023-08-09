@@ -134,7 +134,6 @@ end
 
 local function get_upstream_uri_v0(matched_route, request_postfix, req_uri,
                                    upstream_base)
-  local upstream_uri
 
   local strip_path = matched_route.strip_path or matched_route.strip_uri
 
@@ -143,58 +142,54 @@ local function get_upstream_uri_v0(matched_route, request_postfix, req_uri,
     if strip_path then
       if request_postfix == "" then
         if upstream_base == "/" then
-          upstream_uri = "/"
-
-        elseif byte(req_uri, -1) == SLASH then
-          upstream_uri = upstream_base
-
-        else
-          upstream_uri = sub(upstream_base, 1, -2)
+          return "/"
         end
 
-      elseif byte(request_postfix, 1, 1) == SLASH then
+        if byte(req_uri, -1) == SLASH then
+          return upstream_base
+        end
+
+        return sub(upstream_base, 1, -2)
+      end -- if request_postfix
+
+      if byte(request_postfix, 1) == SLASH then
         -- double "/", so drop the first
-        upstream_uri = sub(upstream_base, 1, -2) .. request_postfix
-
-      else -- ends with / and strip_path = true, no double slash
-        upstream_uri = upstream_base .. request_postfix
+        return sub(upstream_base, 1, -2) .. request_postfix
       end
 
-    else -- ends with / and strip_path = false
-      -- we retain the incoming path, just prefix it with the upstream
-      -- path, but skip the initial slash
-      upstream_uri = upstream_base .. sub(req_uri, 2)
+      -- ends with / and strip_path = true, no double slash
+      return upstream_base .. request_postfix
+    end -- if strip_path
+
+    -- ends with / and strip_path = false
+    -- we retain the incoming path, just prefix it with the upstream
+    -- path, but skip the initial slash
+    return upstream_base .. sub(req_uri, 2)
+  end -- byte(upstream_base, -1) == SLASH
+
+  -- does not end with / and strip_path = true
+  if strip_path then
+    if request_postfix == "" then
+      if #req_uri > 1 and byte(req_uri, -1) == SLASH then
+        return upstream_base .. "/"
+      end
+
+      return upstream_base
+    end -- if request_postfix
+
+    if byte(request_postfix, 1) == SLASH then
+      return upstream_base .. request_postfix
     end
 
-  else -- does not end with /
-    -- does not end with / and strip_path = true
-    if strip_path then
-      if request_postfix == "" then
-        if #req_uri > 1 and byte(req_uri, -1) == SLASH then
-          upstream_uri = upstream_base .. "/"
+    return upstream_base .. "/" .. request_postfix
+  end -- if strip_path
 
-        else
-          upstream_uri = upstream_base
-        end
-
-      elseif byte(request_postfix, 1, 1) == SLASH then
-        upstream_uri = upstream_base .. request_postfix
-
-      else
-        upstream_uri = upstream_base .. "/" .. request_postfix
-      end
-
-    else -- does not end with / and strip_path = false
-      if req_uri == "/" then
-        upstream_uri = upstream_base
-
-      else
-        upstream_uri = upstream_base .. req_uri
-      end
-    end
+  -- does not end with / and strip_path = false
+  if req_uri == "/" then
+    return upstream_base
   end
 
-  return upstream_uri
+  return upstream_base .. req_uri
 end
 
 
@@ -383,6 +378,39 @@ do
 end
 
 
+local parse_ip_addr
+do
+  local bit = require("bit")
+  local ipmatcher = require("resty.ipmatcher")
+
+  local band, lshift, rshift = bit.band, bit.lshift, bit.rshift
+
+  parse_ip_addr = function(ip)
+    local addr, mask = ipmatcher.split_ip(ip)
+
+    if not mask then
+      return addr
+    end
+
+    local ipv4 = ipmatcher.parse_ipv4(addr)
+
+    -- FIXME: support ipv6
+    if not ipv4 then
+      return addr, mask
+    end
+
+    local cidr = lshift(rshift(ipv4, 32 - mask), 32 - mask)
+
+    local n1 = band(       cidr     , 0xff)
+    local n2 = band(rshift(cidr,  8), 0xff)
+    local n3 = band(rshift(cidr, 16), 0xff)
+    local n4 = band(rshift(cidr, 24), 0xff)
+
+    return n4 .. "." .. n3 .. "." .. n2 .. "." .. n1, mask
+  end
+end
+
+
 return {
   DEFAULT_MATCH_LRUCACHE_SIZE  = DEFAULT_MATCH_LRUCACHE_SIZE,
 
@@ -396,4 +424,6 @@ return {
   route_match_stat     = route_match_stat,
   is_regex_magic       = is_regex_magic,
   phonehome_statistics = phonehome_statistics,
+
+  parse_ip_addr        = parse_ip_addr,
 }

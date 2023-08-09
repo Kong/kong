@@ -5,6 +5,7 @@ local utils        = require "kong.tools.utils"
 local Router       = require "kong.router"
 local balancer     = require "kong.runloop.balancer"
 local events       = require "kong.runloop.events"
+local wasm         = require "kong.runloop.wasm"
 local reports      = require "kong.reports"
 local constants    = require "kong.constants"
 local certificate  = require "kong.runloop.certificate"
@@ -94,6 +95,9 @@ local ROUTER_SYNC_OPTS
 
 local PLUGINS_ITERATOR
 local PLUGINS_ITERATOR_SYNC_OPTS
+
+local WASM_STATE_VERSION
+local WASM_STATE_SYNC_OPTS
 
 local RECONFIGURE_OPTS
 local GLOBAL_QUERY_OPTS = { workspace = ngx.null, show_ws_id = true }
@@ -569,6 +573,43 @@ local function _set_update_plugins_iterator(f)
 end
 
 
+local function build_wasm_state()
+  local version = wasm.get_version()
+  local ok, err = wasm.update_in_place(version)
+
+  if not ok then
+    return nil, err
+  end
+
+  WASM_STATE_VERSION = version
+
+  return true
+end
+
+
+local function rebuild_wasm_state(opts)
+  return rebuild("filter_chains", build_wasm_state,
+                 WASM_STATE_VERSION, opts)
+end
+
+
+local function wasm_attach(ctx)
+  if not wasm.enabled() then
+    return
+  end
+
+  if kong.db.strategy ~= "off" and kong.configuration.worker_consistency == "strict" then
+    local ok, err = rebuild_wasm_state(WASM_STATE_SYNC_OPTS)
+    if not ok then
+      log(ERR, "could not update wasm filter chain state: ", err,
+               " (stale state will be used)")
+    end
+  end
+
+  wasm.attach(ctx)
+end
+
+
 local reconfigure_handler
 do
   local now = ngx.now
@@ -642,12 +683,26 @@ do
       if plugins_hash ~= CURRENT_PLUGINS_HASH then
         local start = get_now_ms()
 
+        kong.vault.flush()
         plugins_iterator, err = new_plugins_iterator()
         if not plugins_iterator then
           return nil, err
         end
 
         log(INFO, "building a new plugins iterator took ", get_now_ms() - start,
+                  " ms on worker #", worker_id)
+      end
+
+      local wasm_state
+      if wasm.enabled() then
+        local start = get_now_ms()
+        wasm_state, err = wasm.rebuild_state()
+
+        if not wasm_state then
+          return nil, err
+        end
+
+        log(INFO, "rebuilding wasm filter chain state took ", get_now_ms() - start,
                   " ms on worker #", worker_id)
       end
 
@@ -659,7 +714,6 @@ do
 
       kong.core_cache:purge()
       kong.cache:purge()
-      kong.vault.flush()
 
       if router then
         ROUTER = router
@@ -679,6 +733,10 @@ do
         log(DEBUG, "reinitializing balancer with a new configuration on worker #", worker_id)
         balancer.init()
         CURRENT_BALANCER_HASH = balancer_hash or 0
+      end
+
+      if wasm_state then
+        wasm.set_state(wasm_state)
       end
 
       return true
@@ -853,6 +911,12 @@ local function set_init_versions_in_cache()
     return nil, "failed to set initial plugins iterator version in cache: " .. tostring(err)
   end
 
+  ok, err = core_cache_shm:safe_set("kong_core_db_cachefilter_chains:version", marshalled_value)
+  if not ok then
+    return nil, "failed to set initial wasm filter chains version in cache: " .. tostring(err)
+  end
+
+
   return true
 end
 
@@ -867,6 +931,7 @@ return {
   get_plugins_iterator = get_plugins_iterator,
   get_updated_plugins_iterator = get_updated_plugins_iterator,
   set_init_versions_in_cache = set_init_versions_in_cache,
+  wasm_attach = wasm_attach,
 
   -- exposed only for tests
   _set_router = _set_router,
@@ -937,6 +1002,12 @@ return {
             timeout = rebuild_timeout,
             on_timeout = "run_unlocked",
           }
+
+          WASM_STATE_SYNC_OPTS = {
+            name = "wasm",
+            timeout = rebuild_timeout,
+            on_timeout = "run_unlocked",
+          }
         end
       end
 
@@ -995,6 +1066,32 @@ return {
           log(ERR, "could not schedule timer to rebuild plugins iterator: ", err)
         end
 
+
+        if wasm.enabled() then
+          local wasm_async_opts = {
+            name = "wasm",
+            timeout = 0,
+            on_timeout = "return_true",
+          }
+
+          local function rebuild_wasm_filter_chains_timer(premature)
+            if premature then
+              return
+            end
+
+            local _, err = rebuild_wasm_state(wasm_async_opts)
+            if err then
+              log(ERR, "could not rebuild wasm filter chains via timer: ", err)
+            end
+          end
+
+          local _, err = kong.timer:named_every("wasm-filter-chains-rebuild",
+                                           worker_state_update_frequency,
+                                           rebuild_wasm_filter_chains_timer)
+          if err then
+            log(ERR, "could not schedule timer to rebuild wasm filter chains: ", err)
+          end
+        end
       end
     end,
   },
@@ -1043,12 +1140,35 @@ return {
                        upstream_url_t.host,
                        upstream_url_t.port,
                        service, route)
-      var.upstream_host = upstream_url_t.host
+      if match_t.upstream_host then
+        var.upstream_host = match_t.upstream_host
+      end
     end,
     after = function(ctx)
+      local upstream_scheme = var.upstream_scheme
+
+      local balancer_data = ctx.balancer_data
+      balancer_data.scheme = upstream_scheme -- COMPAT: pdk
+
+      -- The content of var.upstream_host is only set by the router if
+      -- preserve_host is true
+      --
+      -- We can't rely on var.upstream_host for balancer retries inside
+      -- `set_host_header` because it would never be empty after the first -- balancer try
+      local upstream_host = var.upstream_host
+      if upstream_host ~= nil and upstream_host ~= "" then
+        balancer_data.preserve_host = true
+      end
+
       local ok, err, errcode = balancer_execute(ctx)
       if not ok then
         return kong.response.error(errcode, err)
+      end
+
+      local ok, err = balancer.set_host_header(balancer_data, upstream_scheme, upstream_host)
+      if not ok then
+        log(ERR, "failed to set balancer Host header: ", err)
+        return exit(500)
       end
     end
   },
@@ -1269,9 +1389,7 @@ return {
       -- We overcome this behavior with our own logic, to preserve user
       -- desired semantics.
       -- perf: branch usually not taken, don't cache var outside
-      if byte(ctx.request_uri or var.request_uri, -1) == QUESTION_MARK then
-        var.upstream_uri = var.upstream_uri .. "?"
-      elseif var.is_args == "?" then
+      if byte(ctx.request_uri or var.request_uri, -1) == QUESTION_MARK or var.is_args == "?" then
         var.upstream_uri = var.upstream_uri .. "?" .. (var.args or "")
       end
 

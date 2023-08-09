@@ -4,7 +4,7 @@ local utils        = require "kong.tools.utils"
 local cjson        = require "cjson"
 local new_tab      = require "table.new"
 local nkeys        = require "table.nkeys"
-local is_reference = require "kong.pdk.vault".new().is_reference
+local is_reference = require "kong.pdk.vault".is_reference
 
 
 local setmetatable = setmetatable
@@ -1221,7 +1221,10 @@ local function run_entity_check(self, name, input, arg, full_check, errors)
   end
 
   -- Don't run check if any of its fields has errors
-  if not all_ok and not checker.run_with_invalid_fields then
+  if not all_ok
+     and not checker.run_with_invalid_fields
+     and not arg.run_with_invalid_fields
+  then
     return
   end
 

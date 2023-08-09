@@ -124,13 +124,20 @@ describe("dbless persistence with a declarative config #off", function()
         database = "off",
         declarative_config = yaml_file,
     }))
-    local proxy_client = assert(helpers.proxy_client())
-    local res = assert(proxy_client:get("/test", { headers = { host = "example1.dev" } }))
-    assert.res_status(401, res)
 
-    res = assert(proxy_client:get("/500", { headers = { host = "example1.dev" } }))
-    assert.res_status(404, res) -- 404, only the declarative config is loaded
-    proxy_client:close()
+    assert
+      .with_timeout(15)
+      .eventually(function ()
+        local proxy_client = helpers.proxy_client()
+        local res = proxy_client:get("/test", { headers = { host = "example1.dev" } })
+        assert.res_status(401, res) -- 401, should load the declarative config
+
+        res = proxy_client:get("/500", { headers = { host = "example1.dev" } })
+        assert.res_status(404, res) -- 404, should not load the persisted lmdb config
+
+        proxy_client:close()
+      end)
+      .has_no_error()
   end)
 
   it("doesn't load the persisted lmdb config if a declarative config is set on reload", function()
@@ -138,17 +145,19 @@ describe("dbless persistence with a declarative config #off", function()
       database = "off",
       declarative_config = yaml_file,
     }))
-    local res
-    helpers.wait_until(function()
-      local proxy_client = assert(helpers.proxy_client())
-      res = assert(proxy_client:get("/test", { headers = { host = "example1.dev" } }))
-      proxy_client:close()
-      return res.status == 401
-    end)
 
-    local proxy_client = assert(helpers.proxy_client())
-    res = assert(proxy_client:get("/500", { headers = { host = "example1.dev" } }))
-    assert.res_status(404, res) -- 404, only the declarative config is loaded
-    proxy_client:close()
+    assert
+      .with_timeout(15)
+      .eventually(function ()
+        local proxy_client = helpers.proxy_client()
+        local res = proxy_client:get("/test", { headers = { host = "example1.dev" } })
+        assert.res_status(401, res) -- 401, should load the declarative config
+
+        res = proxy_client:get("/500", { headers = { host = "example1.dev" } })
+        assert.res_status(404, res) -- 404, should not load the persisted lmdb config
+
+        proxy_client:close()
+      end)
+      .has_no_error()
   end)
 end)

@@ -5,7 +5,7 @@ diff --git a/config b/config
 index 126c78c..1f0b2aa 100644
 --- a/config
 +++ b/config
-@@ -5,6 +5,8 @@ ngx_module_incs="$ngx_addon_dir/lmdb/libraries/liblmdb $ngx_addon_dir/src"
+@@ -7,6 +7,8 @@ ngx_module_incs="$ngx_addon_dir/lmdb/libraries/liblmdb $ngx_addon_dir/src"
 
  . auto/module
 
@@ -21,17 +21,17 @@ index 14d8cc2..cf17251 100644
 @@ -3,7 +3,7 @@ cat <<EOF >>$NGX_MAKEFILE
 
  $ngx_addon_dir/lmdb/libraries/liblmdb/liblmdb.a:
-        echo "Building liblmdb"; \\
--       \$(MAKE) -C $ngx_addon_dir/lmdb/libraries/liblmdb; \\
-+       \$(MAKE) -C $ngx_addon_dir/lmdb/libraries/liblmdb CC=\$(CC) AR=\$(AR); \\
-        echo "Finished building liblmdb"
+ 	echo "Building liblmdb"; \\
+-	\$(MAKE) -C $ngx_addon_dir/lmdb/libraries/liblmdb; \\
++	\$(MAKE) -C $ngx_addon_dir/lmdb/libraries/liblmdb CC=\$(CC) AR=\$(AR); \\
+ 	echo "Finished building liblmdb"
 
  EOF
 diff --git a/libraries/liblmdb/Makefile b/libraries/liblmdb/Makefile
 index c252b50..1054432 100644
 --- a/lmdb/libraries/liblmdb/Makefile
 +++ b/lmdb/libraries/liblmdb/Makefile
-@@ -18,13 +18,13 @@
+@@ -18,11 +18,11 @@
  # There may be other macros in mdb.c of interest. You should
  # read mdb.c before changing any of them.
  #
@@ -43,9 +43,7 @@ index c252b50..1054432 100644
  THREADS = -pthread
  OPT = -O2 -g
 -CFLAGS	= $(THREADS) $(OPT) $(W) $(XCFLAGS)
--LDFLAGS = $(THREADS)
 +CFLAGS	+= $(THREADS) $(OPT) $(W) $(XCFLAGS)
-+LDFLAGS += $(THREADS)
- LDLIBS	= 
- SOLIBS	= 
+ LDLIBS	=
+ SOLIBS	=
  SOEXT	= .so

@@ -1,6 +1,8 @@
 load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make", "make")
-load("@kong_bindings//:variables.bzl", "KONG_VAR")
+load("@bazel_skylib//lib:selects.bzl", "selects")
+load("@kong//build/openresty/wasmx:rules.bzl", "wasm_runtime", "wasmx_configure_options", "wasmx_env")
 load("@openresty_binding//:variables.bzl", "LUAJIT_VERSION")
+load("@kong_bindings//:variables.bzl", "KONG_VAR")
 
 filegroup(
     name = "luajit_srcs",
@@ -90,6 +92,25 @@ make(
     visibility = ["//visibility:public"],
 )
 
+selects.config_setting_group(
+    name = "nogroup-name-as-nobody",
+    match_any = [
+        "@kong//build/platforms/distro:rhel9",
+        "@kong//build/platforms/distro:rhel8",
+        "@kong//build/platforms/distro:aws2023",
+        "@kong//build/platforms/distro:aws2",
+    ],
+)
+
+selects.config_setting_group(
+    name = "needs-xcrypt2",
+    match_any = [
+        "@kong//build/platforms/distro:generic",
+        "@kong//build/platforms/distro:rhel9",
+        "@kong//build/platforms/distro:aws2023",
+    ],
+)
+
 CONFIGURE_OPTIONS = [
     "--with-pcre-jit",
     "--with-http_ssl_module",
@@ -176,7 +197,7 @@ CONFIGURE_OPTIONS = [
 }) + select({
     # any cross build that migrated to use libxcrypt needs those flags
     # alpine uses different libc so doesn't need it
-    "@kong//:aarch64-linux-anylibc-cross": [
+    ":needs-xcrypt2": [
         "--with-cc-opt=\"-I$$EXT_BUILD_DEPS$$/libxcrypt/include\"",
         "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/libxcrypt/lib\"",
     ],
@@ -194,7 +215,13 @@ CONFIGURE_OPTIONS = [
         "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/lib -Wl,-Bsymbolic-functions -Wl,-z,relro\"",
     ],
     "//conditions:default": [],
-})
+}) + select({
+    # some distros name "nogroup" group name as "nobody"
+    ":nogroup-name-as-nobody": [
+        "--group=nobody",
+    ],
+    "//conditions:default": [],
+}) + wasmx_configure_options
 
 # TODO: set prefix to populate pid_path, conf_path, log_path etc
 
@@ -211,17 +238,31 @@ filegroup(
     ),
 )
 
+wasm_runtime(
+    name = "wasm_runtime",
+    visibility = ["//visibility:public"],
+)
+
 configure_make(
     name = "openresty",
-    build_data = [
+    configure_command = "configure",
+    configure_in_place = True,
+    configure_options = CONFIGURE_OPTIONS,
+    data = [
         "@lua-kong-nginx-module//:all_srcs",
         "@lua-resty-lmdb//:all_srcs",
         "@lua-resty-events//:all_srcs",
         "@openresty_binding//:all_srcs",
-    ],
-    configure_command = "configure",
-    configure_in_place = True,
-    configure_options = CONFIGURE_OPTIONS,
+    ] + select({
+        "@kong//:wasmx_flag": [
+            "@ngx_wasm_module//:all_srcs",
+            # wasm_runtime has to be a "data" (target) instead of "build_data" (exec)
+            # to be able to lookup by its path (relative to INSTALLDIR)
+            ":wasm_runtime",
+        ],
+        "//conditions:default": [],
+    }),
+    env = wasmx_env,
     lib_source = ":all_srcs",
     out_bin_dir = "",
     out_binaries = [
@@ -244,7 +285,7 @@ configure_make(
     }) + select({
         # any cross build that migrated to use libxcrypt needs those flags
         # alpine uses different libc so doesn't need it
-        "@kong//:aarch64-linux-anylibc-cross": [
+        ":needs-xcrypt2": [
             "@cross_deps_libxcrypt//:libxcrypt",
         ],
         "//conditions:default": [],

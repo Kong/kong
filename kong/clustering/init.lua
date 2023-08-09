@@ -6,6 +6,7 @@ local pl_tablex = require("pl.tablex")
 local clustering_utils = require("kong.clustering.utils")
 local events = require("kong.clustering.events")
 local clustering_tls = require("kong.clustering.tls")
+local wasm = require("kong.runloop.wasm")
 
 
 local assert = assert
@@ -101,15 +102,27 @@ function _M:init_worker()
     return { name = p.name, version = p.handler.VERSION, }
   end, plugins_list)
 
+  local filters = {}
+  if wasm.enabled() and wasm.filters then
+    for _, filter in ipairs(wasm.filters) do
+      filters[filter.name] = { name = filter.name }
+    end
+  end
+
+  local basic_info = {
+    plugins = plugins_list,
+    filters = filters,
+  }
+
   local role = self.conf.role
 
   if role == "control_plane" then
-    self:init_cp_worker(plugins_list)
+    self:init_cp_worker(basic_info)
     return
   end
 
   if role == "data_plane" then
-    self:init_dp_worker(plugins_list)
+    self:init_dp_worker(basic_info)
   end
 end
 

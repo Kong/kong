@@ -111,6 +111,10 @@ function _M.balancer(ctx)
         span:set_attribute("http.status_code", try.code)
         span:set_status(2)
       end
+      
+      if balancer_data.hostname ~= nil then
+        span:set_attribute("net.peer.name", balancer_data.hostname)
+      end
 
       if try.balancer_latency_ns ~= nil then
         local try_upstream_connect_time = (tonumber(upstream_connect_time[i], 10) or 0) * 1000
@@ -127,6 +131,10 @@ function _M.balancer(ctx)
       if try.state then
         span:set_attribute("http.status_code", try.code)
         span:set_status(2)
+      end
+      
+      if balancer_data.hostname ~= nil then
+        span:set_attribute("net.peer.name", balancer_data.hostname)
       end
 
       local upstream_finish_time = ctx.KONG_BODY_FILTER_ENDED_AT_NS

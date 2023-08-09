@@ -302,6 +302,32 @@ local function load_vault_subschemas(fields, vault_set)
 end
 
 
+local function ws_id_for(item)
+  if item.ws_id == nil or item.ws_id == ngx.null then
+    return "*"
+  end
+  return item.ws_id
+end
+
+
+local function add_to_by_key(by_key, schema, item, entity, key)
+  local ws_id = ws_id_for(item)
+  if schema.fields[schema.endpoint_key].unique_across_ws then
+    ws_id = "*"
+  end
+  by_key[ws_id] = by_key[ws_id] or {}
+  local ws_keys = by_key[ws_id]
+  ws_keys[entity] = ws_keys[entity] or {}
+  local entity_keys = ws_keys[entity]
+  if entity_keys[key] then
+    return false
+  end
+
+  entity_keys[key] = item
+  return true
+end
+
+
 local function uniqueness_error_msg(entity, key, value)
   return "uniqueness violation: '" .. entity .. "' entity " ..
          "with " .. key .. " set to '" .. value .. "' already declared"
@@ -343,13 +369,11 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
 
       local failed = false
       if key and key ~= ngx.null then
-        by_key[entity] = by_key[entity] or {}
-        if by_key[entity][key] then
+        local ok = add_to_by_key(by_key, entity_schema, item, entity, key)
+        if not ok then
           errs[entity] = errs[entity] or {}
           errs[entity][i] = uniqueness_error_msg(entity, endpoint_key, key)
           failed = true
-        else
-          by_key[entity][key] = item
         end
       end
 
@@ -371,6 +395,7 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
             expected[entity] = expected[entity] or {}
             expected[entity][ref] = expected[entity][ref] or {}
             insert(expected[entity][ref], {
+              ws_id = ws_id_for(item),
               key = k,
               value = v,
               at = key or item_id or i
@@ -389,9 +414,9 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
 end
 
 
-local function find_entity(key, entity, by_key, by_id)
-  return (by_key[entity] and by_key[entity][key])
-      or (by_id[entity]  and by_id[entity][key])
+local function find_entity(ws_id, key, entity, by_key, by_id)
+  return (by_key[ws_id] and by_key[ws_id][entity] and by_key[ws_id][entity][key])
+      or (by_id[entity] and by_id[entity][key])
 end
 
 
@@ -412,7 +437,7 @@ local function validate_references(self, input)
         if type(key) == "table" then
           key = key.id or key
         end
-        local found = find_entity(key, b, by_key, by_id)
+        local found = find_entity(k.ws_id, key, b, by_key, by_id)
 
         if not found then
           errs[a] = errs[a] or {}
@@ -443,7 +468,7 @@ end
 -- ensure uniqueness, we bail out and return `nil` (instead of
 -- producing an incorrect identifier that may not be unique).
 local function build_cache_key(entity, item, schema, parent_fk, child_key)
-  local ck = { entity }
+  local ck = { entity, ws_id_for(item) }
   for _, k in ipairs(schema.cache_key) do
     if schema.fields[k].auto then
       return nil
@@ -531,6 +556,10 @@ local function get_key_for_uuid_gen(entity, item, schema, parent_fk, child_key)
           end
         end
       end
+
+      if not schema.fields[schema.endpoint_key].unique_across_ws then
+        key = key .. ":" .. ws_id_for(item)
+      end
     end
 
     -- generate a PK based on the endpoint_key
@@ -617,8 +646,7 @@ local function populate_ids_for_validation(input, known_entities, parent_entity,
       if schema.endpoint_key then
         key = item[schema.endpoint_key]
         if key then
-          by_key[entity] = by_key[entity] or {}
-          by_key[entity][key] = item
+          add_to_by_key(by_key, schema, item, entity, key)
         end
       end
 
@@ -636,7 +664,7 @@ local function populate_ids_for_validation(input, known_entities, parent_entity,
       for _, entry in pairs(entries) do
         for name, field in schema:each_field(entry) do
           if field.type == "foreign" and type(entry[name]) == "string" then
-            local found = find_entity(entry[name], field.reference, by_key, by_id)
+            local found = find_entity(ws_id_for(entry), entry[name], field.reference, by_key, by_id)
             if found then
               entry[name] = all_schemas[field.reference]:extract_pk_values(found)
             end
@@ -692,6 +720,18 @@ local function insert_default_workspace_if_not_given(_, entities)
     }, "insert")
     entities.workspaces[default_workspace] = entity
   end
+end
+
+
+local function get_unique_key(schema, entity, field, value)
+  if not schema.workspaceable or field.unique_across_ws then
+    return value
+  end
+  local ws_id = ws_id_for(entity)
+  if type(value) == "table" then
+    value = value.id
+  end
+  return ws_id .. ":" .. tostring(value)
 end
 
 
@@ -763,7 +803,7 @@ local function flatten(self, input)
       local flat_entry = {}
       for name, field in schema:each_field(entry) do
         if field.type == "foreign" and type(entry[name]) == "string" then
-          local found = find_entity(entry[name], field.reference, by_key, by_id)
+          local found = find_entity(ws_id_for(entry), entry[name], field.reference, by_key, by_id)
           if found then
             flat_entry[name] = all_schemas[field.reference]:extract_pk_values(found)
           end
@@ -775,15 +815,16 @@ local function flatten(self, input)
         if field.unique then
           local flat_value = flat_entry[name]
           if flat_value and flat_value ~= ngx.null then
+            local unique_key = get_unique_key(schema, entry, field, flat_value)
             uniques[name] = uniques[name] or {}
-            if uniques[name][flat_value] then
+            if uniques[name][unique_key] then
               errs = errs or {}
               errs[entity] = errors[entity] or {}
               local key = schema.endpoint_key
                           and flat_entry[schema.endpoint_key] or id
               errs[entity][key] = uniqueness_error_msg(entity, name, flat_value)
             else
-              uniques[name][flat_value] = true
+              uniques[name][unique_key] = true
             end
           end
         end

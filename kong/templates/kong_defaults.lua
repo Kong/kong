@@ -7,6 +7,8 @@ proxy_stream_access_log = logs/access.log basic
 proxy_stream_error_log = logs/error.log
 admin_access_log = logs/admin_access.log
 admin_error_log = logs/error.log
+admin_gui_access_log = logs/admin_gui_access.log
+admin_gui_error_log = logs/admin_gui_error.log
 status_access_log = off
 status_error_log = logs/status_error.log
 vaults = bundled
@@ -25,6 +27,7 @@ node_id = NONE
 proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 http2 ssl reuseport backlog=16384
 stream_listen = off
 admin_listen = 127.0.0.1:8001 reuseport backlog=16384, 127.0.0.1:8444 http2 ssl reuseport backlog=16384
+admin_gui_listen = 0.0.0.0:8002, 0.0.0.0:8445 ssl
 status_listen = off
 cluster_listen = 0.0.0.0:8005
 cluster_control_plane = 127.0.0.1:8005
@@ -42,6 +45,7 @@ cluster_dp_labels = NONE
 lmdb_environment_path = dbless.lmdb
 lmdb_map_size = 2048m
 mem_cache_size = 128m
+worker_events_max_payload = 65535
 ssl_cert = NONE
 ssl_cert_key = NONE
 client_ssl = off
@@ -57,6 +61,8 @@ ssl_session_timeout = 1d
 ssl_session_cache_size = 10m
 admin_ssl_cert = NONE
 admin_ssl_cert_key = NONE
+admin_gui_ssl_cert = NONE
+admin_gui_ssl_cert_key = NONE
 status_ssl_cert = NONE
 status_ssl_cert_key = NONE
 headers = server_tokens, latency_tokens
@@ -159,7 +165,7 @@ worker_state_update_frequency = 5
 
 router_flavor = traditional_compatible
 
-lua_socket_pool_size = 30
+lua_socket_pool_size = 256
 lua_ssl_trusted_certificate = system
 lua_ssl_verify_depth = 1
 lua_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
@@ -185,4 +191,13 @@ opentelemetry_tracing = off
 opentelemetry_tracing_sampling_rate = 0.01
 tracing_instrumentations = off
 tracing_sampling_rate = 0.01
+
+admin_gui_url =
+admin_gui_origin =    # for internal use only, can not be configured manually
+admin_gui_path = /
+admin_gui_api_url =
+
+wasm = off
+wasm_filters_path = NONE
+wasm_dynamic_module = NONE
 ]]

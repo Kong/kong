@@ -17,7 +17,7 @@ local type = type
 local assert = assert
 local setmetatable = setmetatable
 local pairs = pairs
-local ipairs = ipairs
+local tonumber = tonumber
 
 
 local max = math.max
@@ -49,6 +49,9 @@ local LOGICAL_OR  = " || "
 local LOGICAL_AND = " && "
 
 
+local is_http = ngx.config.subsystem == "http"
+
+
 -- reuse buffer object
 local values_buf = buffer.new(64)
 
@@ -64,15 +67,18 @@ do
                  },
 
     ["Int"]    = {"net.port",
+                  "net.src.port", "net.dst.port",
                  },
 
+    ["IpAddr"] = {"net.src.ip", "net.dst.ip",
+                 },
   }
 
   CACHED_SCHEMA = schema.new()
 
   for typ, fields in pairs(FIELDS) do
-    for _, v in ipairs(fields) do
-      assert(CACHED_SCHEMA:add_field(v, typ))
+    for i = 1, #fields do
+      assert(CACHED_SCHEMA:add_field(fields[i], typ))
     end
   end
 
@@ -159,8 +165,8 @@ end
 
 
 local function has_header_matching_field(fields)
-  for _, field in ipairs(fields) do
-    if is_http_headers_field(field) then
+  for i = 1, #fields do
+    if is_http_headers_field(fields[i]) then
       return true
     end
   end
@@ -218,6 +224,7 @@ local function new_from_scratch(routes, get_exp_and_priority)
       routes = routes_t,
       services = services_t,
       fields = fields,
+      fields_n = #fields,
       match_headers = match_headers,
       updated_at = new_updated_at,
       rebuilding = false,
@@ -305,6 +312,7 @@ local function new_from_previous(routes, get_exp_and_priority, old_router)
   local fields = inst:get_fields()
 
   old_router.fields = fields
+  old_router.fields_n = #fields
   old_router.match_headers = has_header_matching_field(fields)
   old_router.updated_at = new_updated_at
   old_router.rebuilding = false
@@ -343,7 +351,6 @@ end
 -- example.*:123 => example.*, 123
 local split_host_port
 do
-  local tonumber = tonumber
   local DEFAULT_HOSTS_LRUCACHE_SIZE = DEFAULT_MATCH_LRUCACHE_SIZE
 
   local memo_hp = lrucache.new(DEFAULT_HOSTS_LRUCACHE_SIZE)
@@ -381,6 +388,8 @@ do
 end
 
 
+if is_http then
+
 function _M:select(req_method, req_uri, req_host, req_scheme,
                    src_ip, src_port,
                    dst_ip, dst_port,
@@ -394,7 +403,9 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 
   local host, port = split_host_port(req_host)
 
-  for _, field in ipairs(self.fields) do
+  for i = 1, self.fields_n do
+    local field = self.fields[i]
+
     if field == "http.method" then
       assert(c:add_value(field, req_method))
 
@@ -434,8 +445,8 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
           end
 
         else
-          for _, v in ipairs(v) do
-            local res, err = c:add_value(field, v:lower())
+          for idx = 1, #v do
+            local res, err = c:add_value(field, v[idx]:lower())
             if not res then
               return nil, err
             end
@@ -501,8 +512,8 @@ do
       local name = name:gsub("-", "_"):lower()
 
       if type(value) == "table" then
-        for i, v in ipairs(value) do
-          value[i] = v:lower()
+        for i = 1, #value do
+          value[i] = value[i]:lower()
         end
         tb_sort(value)
         value = tb_concat(value, ", ")
@@ -587,6 +598,143 @@ function _M:exec(ctx)
 
   return match_t
 end
+
+else  -- is stream subsystem
+
+function _M:select(_, _, _, scheme,
+                   src_ip, src_port,
+                   dst_ip, dst_port,
+                   sni)
+
+  check_select_params(nil, nil, nil, scheme,
+                      src_ip, src_port,
+                      dst_ip, dst_port,
+                      sni)
+
+  local c = context.new(self.schema)
+
+  for i = 1, self.fields_n do
+    local field = self.fields[i]
+
+    if field == "net.protocol" then
+      assert(c:add_value(field, scheme))
+
+    elseif field == "tls.sni" then
+      local res, err = c:add_value(field, sni)
+      if not res then
+        return nil, err
+      end
+
+    elseif field == "net.src.ip" then
+      assert(c:add_value(field, src_ip))
+
+    elseif field == "net.src.port" then
+      assert(c:add_value(field, src_port))
+
+    elseif field == "net.dst.ip" then
+      assert(c:add_value(field, dst_ip))
+
+    elseif field == "net.dst.port" then
+      assert(c:add_value(field, dst_port))
+
+    end -- if
+  end -- for
+
+  local matched = self.router:execute(c)
+  if not matched then
+    return nil
+  end
+
+  local uuid = c:get_result()
+
+  local service = self.services[uuid]
+  local matched_route = self.routes[uuid]
+
+  local service_protocol, _,  --service_type
+        service_host, service_port,
+        service_hostname_type = get_service_info(service)
+
+  return {
+    route          = matched_route,
+    service        = service,
+    upstream_url_t = {
+      type = service_hostname_type,
+      host = service_host,
+      port = service_port,
+    },
+    upstream_scheme = service_protocol,
+    upstream_host  = matched_route.preserve_host and sni or nil,
+  }
+end
+
+
+function _M:exec(ctx)
+  local src_ip   = var.remote_addr
+  local dst_ip   = var.server_addr
+
+  local src_port = tonumber(var.remote_port, 10)
+  local dst_port = tonumber((ctx or ngx.ctx).host_port, 10) or
+                   tonumber(var.server_port, 10)
+
+  -- error value for non-TLS connections ignored intentionally
+  local sni = server_name()
+
+  -- fallback to preread SNI if current connection doesn't terminate TLS
+  if not sni then
+    sni = var.ssl_preread_server_name
+  end
+
+  local scheme
+  if var.protocol == "UDP" then
+    scheme = "udp"
+  else
+    scheme = sni and "tls" or "tcp"
+  end
+
+  -- when proxying TLS request in second layer or doing TLS passthrough
+  -- rewrite the dst_ip, port back to what specified in proxy_protocol
+  if var.kong_tls_passthrough_block == "1" or var.ssl_protocol then
+    dst_ip = var.proxy_protocol_server_addr
+    dst_port = tonumber(var.proxy_protocol_server_port)
+  end
+
+  local cache_key = (src_ip   or "") .. "|" ..
+                    (src_port or "") .. "|" ..
+                    (dst_ip   or "") .. "|" ..
+                    (dst_port or "") .. "|" ..
+                    (sni      or "")
+
+  local match_t = self.cache:get(cache_key)
+  if not match_t then
+    if self.cache_neg:get(cache_key) then
+      route_match_stat(ctx, "neg")
+      return nil
+    end
+
+    local err
+    match_t, err = self:select(nil, nil, nil, scheme,
+                               src_ip, src_port,
+                               dst_ip, dst_port,
+                               sni)
+    if not match_t then
+      if err then
+        ngx_log(ngx_ERR, "router returned an error: ", err)
+      end
+
+      self.cache_neg:set(cache_key, true)
+      return nil
+    end
+
+    self.cache:set(cache_key, match_t)
+
+  else
+    route_match_stat(ctx, "pos")
+  end
+
+  return match_t
+end
+
+end   -- if is_http
 
 
 function _M._set_ngx(mock_ngx)

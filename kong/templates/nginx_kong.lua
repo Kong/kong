@@ -9,10 +9,8 @@ lua_socket_pool_size   ${{LUA_SOCKET_POOL_SIZE}};
 lua_socket_log_errors  off;
 lua_max_running_timers 4096;
 lua_max_pending_timers 16384;
-lua_ssl_verify_depth   ${{LUA_SSL_VERIFY_DEPTH}};
-> if lua_ssl_trusted_certificate_combined then
-lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE_COMBINED}}';
-> end
+
+include 'nginx-kong-inject.conf';
 
 lua_shared_dict kong                        5m;
 lua_shared_dict kong_locks                  8m;
@@ -23,6 +21,7 @@ lua_shared_dict kong_core_db_cache          ${{MEM_CACHE_SIZE}};
 lua_shared_dict kong_core_db_cache_miss     12m;
 lua_shared_dict kong_db_cache               ${{MEM_CACHE_SIZE}};
 lua_shared_dict kong_db_cache_miss          12m;
+lua_shared_dict kong_secrets                5m;
 
 underscores_in_headers on;
 > if ssl_ciphers then
@@ -405,6 +404,51 @@ server {
     }
 }
 > end
+
+> if (role == "control_plane" or role == "traditional") and #admin_listen > 0 and #admin_gui_listeners > 0 then
+server {
+    server_name kong_gui;
+> for i = 1, #admin_gui_listeners do
+    listen $(admin_gui_listeners[i].listener);
+> end
+
+> if admin_gui_ssl_enabled then
+> for i = 1, #admin_gui_ssl_cert do
+    ssl_certificate     $(admin_gui_ssl_cert[i]);
+    ssl_certificate_key $(admin_gui_ssl_cert_key[i]);
+> end
+    ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+> end
+
+    client_max_body_size 10m;
+    client_body_buffer_size 10m;
+
+    types {
+        text/html                             html htm shtml;
+        text/css                              css;
+        text/xml                              xml;
+        image/gif                             gif;
+        image/jpeg                            jpeg jpg;
+        application/javascript                js;
+        application/json                      json;
+        image/png                             png;
+        image/tiff                            tif tiff;
+        image/x-icon                          ico;
+        image/x-jng                           jng;
+        image/x-ms-bmp                        bmp;
+        image/svg+xml                         svg svgz;
+        image/webp                            webp;
+    }
+
+    access_log ${{ADMIN_GUI_ACCESS_LOG}};
+    error_log ${{ADMIN_GUI_ERROR_LOG}};
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript;
+
+    include nginx-kong-gui-include.conf;
+}
+> end -- of the (role == "control_plane" or role == "traditional") and #admin_listen > 0 and #admin_gui_listeners > 0
 
 > if role == "control_plane" then
 server {

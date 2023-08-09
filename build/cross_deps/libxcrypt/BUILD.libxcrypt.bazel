@@ -1,4 +1,5 @@
 load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make")
+load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 
 filegroup(
@@ -7,6 +8,17 @@ filegroup(
         include = ["**"],
         exclude = ["*.bazel"],
     ),
+)
+
+selects.config_setting_group(
+    name = "disable-obsolete-api",
+    # looks like RHEL is aggressive on migrating to libxcrypt
+    # set this option if any distro is looking for "libcrypto.so.2"
+    # instead of "libcrypt.so.1" (i.e. "error while loading shared libraries: libcrypt.so.1")
+    match_any = [
+        "@kong//build/platforms/distro:rhel9",
+        "@kong//build/platforms/distro:aws2023",
+    ],
 )
 
 configure_make(
@@ -21,12 +33,20 @@ configure_make(
             "--host=x86_64-linux-musl",
         ],
         "//conditions:default": [],
+    }) + select({
+        ":disable-obsolete-api": [
+            "--enable-obsolete-api=no",
+        ],
+        "//conditions:default": [],
     }),
     lib_source = ":all_srcs",
     # out_lib_dir = "lib",
     out_shared_libs = select({
         "@platforms//os:macos": [
             "libcrypt.1.dylib",
+        ],
+        ":disable-obsolete-api": [
+            "libcrypt.so.2",
         ],
         "//conditions:default": [
             "libcrypt.so.1",

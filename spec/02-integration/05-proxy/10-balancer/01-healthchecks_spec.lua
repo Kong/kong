@@ -1289,7 +1289,7 @@ for _, strategy in helpers.each_strategy() do
               end
             end)
 
-            it("perform passive health checks in downstream status code was changed with subrequest", function()
+            it("#flaky perform passive health checks in downstream status code was changed with subrequest", function()
 
               for nfails = 1, 3 do
 

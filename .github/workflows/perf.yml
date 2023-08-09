@@ -2,8 +2,6 @@ name: Performance Test
 
 on:
   pull_request:
-  issue_comment:
-    types: [created]
   schedule:
   # don't know the timezone but it's daily at least
   - cron:  '0 7 * * *'
@@ -29,17 +27,25 @@ jobs:
         (startsWith(github.event.comment.body, '/perf') || startsWith(github.event.comment.body, '/flamegraph'))
       )
 
+    outputs:
+      cache-key: ${{ steps.cache-key.outputs.cache-key }}
+
     steps:
     - name: Checkout Kong source code
       uses: actions/checkout@v3
+
+    - name: Generate cache key
+      id: cache-key
+      uses: ./.github/actions/build-cache-key
+      with:
+        prefix: perf
 
     - name: Lookup build cache
       id: cache-deps
       uses: actions/cache@v3
       with:
-        path: |
-          ${{ env.BUILD_ROOT }}
-        key: perf-${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+        path: ${{ env.BUILD_ROOT }}
+        key: ${{ steps.cache-key.outputs.cache-key }}
 
     - name: Install packages
       if: steps.cache-deps.outputs.cache-hit != 'true'
@@ -47,6 +53,8 @@ jobs:
 
     - name: Build Kong
       if: steps.cache-deps.outputs.cache-hit != 'true'
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: |
         make build-kong
         BUILD_PREFIX=$BUILD_ROOT/kong-dev
@@ -69,8 +77,6 @@ jobs:
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
         make install-dev-rocks
-  
-  # the above should be same as build_and_test.yml expect that perf.yml is used in cache_key
 
   perf:
     name: RPS, latency and flamegraphs
@@ -114,9 +120,8 @@ jobs:
       if: env.GHA_CACHE == 'true'
       uses: actions/cache@v3
       with:
-        path: |
-          ${{ env.BUILD_ROOT }}
-        key: perf-${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+        path: ${{ env.BUILD_ROOT }}
+        key: ${{ needs.build-packages.outputs.cache-key }}
 
     - name: Install performance test Dependencies
       run: |
@@ -131,8 +136,8 @@ jobs:
     - name: Choose perf suites
       id: choose_perf
       run: |
-        suites=$(echo "${{ github.event.comment.body }}" | awk '{print $1}')
-        tags=$(echo "${{ github.event.comment.body }}" | awk '{print $2}')
+        suites="$(printf '%s' "${{ github.event.comment.body }}" | awk '{print $1}')"
+        tags="$(printf '%s' "${{ github.event.comment.body }}" | awk '{print $2}')"
 
         if [[ $suite == "/flamegraph" ]]; then
           suites="02-flamegraph"
@@ -163,7 +168,7 @@ jobs:
       id: compare_versions
       run: |
         pr_ref=$(echo "${{ github.event.pull_request.base.ref }}")
-        custom_vers=$(echo "${{ github.event.comment.body }}" | awk '{print $3}')
+        custom_vers="$(printf '%s' "${{ github.event.comment.body }}" | awk '{print $3}')"
 
         if [[ ! -z "${pr_ref}" ]]; then
           vers="git:${{ github.head_ref }},git:${pr_ref}"

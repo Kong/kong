@@ -1,3 +1,10 @@
+- Path      : /etc/kong/kong.logrotate
+
+- Path      : /lib/systemd/system/kong.service
+
+- Path      : /usr/local/kong/gui
+  Type      : directory
+
 - Path      : /usr/local/kong/include/google
   Type      : directory
 
@@ -145,6 +152,14 @@
   Needed    :
   - libc.so.6
 
+- Path      : /usr/local/openresty/nginx/modules/ngx_wasm_module.so
+  Needed    :
+  - libm.so.6
+  - libgcc_s.so.1
+  - libc.so.6
+  - ld-linux-x86-64.so.2
+  Runpath   : /usr/local/openresty/luajit/lib:/usr/local/kong/lib
+
 - Path      : /usr/local/openresty/nginx/sbin/nginx
   Needed    :
   - libcrypt.so.2
@@ -160,7 +175,7 @@
   - lua-kong-nginx-module/stream
   - lua-resty-events
   - lua-resty-lmdb
-  OpenSSL   : OpenSSL 3.1.1 30 May 2023
+  - ngx_wasm_module
+  OpenSSL   : OpenSSL 3.1.2 1 Aug 2023
   DWARF     : True
   DWARF - ngx_http_request_t related DWARF DIEs: True
-

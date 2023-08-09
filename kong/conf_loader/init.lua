@@ -3,6 +3,7 @@ local require = require
 
 local kong_default_conf = require "kong.templates.kong_defaults"
 local process_secrets = require "kong.cmd.utils.process_secrets"
+local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local openssl_pkey = require "resty.openssl.pkey"
 local openssl_x509 = require "resty.openssl.x509"
 local pl_stringio = require "pl.stringio"
@@ -42,6 +43,7 @@ local concat = table.concat
 local getenv = os.getenv
 local exists = pl_path.exists
 local abspath = pl_path.abspath
+local isdir = pl_path.isdir
 local tostring = tostring
 local tonumber = tonumber
 local setmetatable = setmetatable
@@ -176,6 +178,8 @@ local DYNAMIC_KEY_NAMESPACES = {
       upstream_keepalive          = true,
       upstream_keepalive_timeout  = true,
       upstream_keepalive_requests = true,
+      -- we already add it to nginx_kong_inject.lua explicitly
+      lua_ssl_protocols           = true,
     },
   },
   {
@@ -201,7 +205,10 @@ local DYNAMIC_KEY_NAMESPACES = {
   {
     injected_conf_name = "nginx_stream_directives",
     prefix = "nginx_stream_",
-    ignore = EMPTY,
+    ignore = {
+      -- we already add it to nginx_kong_stream_inject.lua explicitly
+      lua_ssl_protocols = true,
+    },
   },
   {
     injected_conf_name = "nginx_supstream_directives",
@@ -221,6 +228,31 @@ local DYNAMIC_KEY_NAMESPACES = {
     prefix = "vault_",
     ignore = EMPTY,
   },
+  {
+    injected_conf_name = "nginx_wasm_wasmtime_directives",
+    prefix = "nginx_wasm_wasmtime_",
+    ignore = EMPTY,
+  },
+  {
+    injected_conf_name = "nginx_wasm_v8_directives",
+    prefix = "nginx_wasm_v8_",
+    ignore = EMPTY,
+  },
+  {
+    injected_conf_name = "nginx_wasm_wasmer_directives",
+    prefix = "nginx_wasm_wasmer_",
+    ignore = EMPTY,
+  },
+  {
+    injected_conf_name = "nginx_wasm_main_shm_directives",
+    prefix = "nginx_wasm_shm_",
+    ignore = EMPTY,
+  },
+  {
+    injected_conf_name = "nginx_wasm_main_directives",
+    prefix = "nginx_wasm_",
+    ignore = EMPTY,
+  },
 }
 
 
@@ -233,8 +265,12 @@ local PREFIX_PATHS = {
   nginx_acc_logs = {"logs", "access.log"},
   admin_acc_logs = {"logs", "admin_access.log"},
   nginx_conf = {"nginx.conf"},
+  nginx_kong_gui_include_conf = {"nginx-kong-gui-include.conf"},
   nginx_kong_conf = {"nginx-kong.conf"},
   nginx_kong_stream_conf = {"nginx-kong-stream.conf"},
+  nginx_inject_conf = {"nginx-inject.conf"},
+  nginx_kong_inject_conf = {"nginx-kong-inject.conf"},
+  nginx_kong_stream_inject_conf = {"nginx-kong-stream-inject.conf"},
 
   kong_env = {".kong_env"},
   kong_process_secrets = {".kong_process_secrets"},
@@ -257,6 +293,11 @@ local PREFIX_PATHS = {
   status_ssl_cert_key_default = {"ssl", "status-kong-default.key"},
   status_ssl_cert_default_ecdsa = {"ssl", "status-kong-default-ecdsa.crt"},
   status_ssl_cert_key_default_ecdsa = {"ssl", "status-kong-default-ecdsa.key"},
+
+  admin_gui_ssl_cert_default = {"ssl", "admin-gui-kong-default.crt"},
+  admin_gui_ssl_cert_key_default = {"ssl", "admin-gui-kong-default.key"},
+  admin_gui_ssl_cert_default_ecdsa = {"ssl", "admin-gui-kong-default-ecdsa.crt"},
+  admin_gui_ssl_cert_key_default_ecdsa = {"ssl", "admin-gui-kong-default-ecdsa.key"},
 }
 
 
@@ -288,6 +329,7 @@ local CONF_PARSERS = {
   port_maps = { typ = "array" },
   proxy_listen = { typ = "array" },
   admin_listen = { typ = "array" },
+  admin_gui_listen = {typ = "array"},
   status_listen = { typ = "array" },
   stream_listen = { typ = "array" },
   cluster_listen = { typ = "array" },
@@ -295,6 +337,8 @@ local CONF_PARSERS = {
   ssl_cert_key = { typ = "array" },
   admin_ssl_cert = { typ = "array" },
   admin_ssl_cert_key = { typ = "array" },
+  admin_gui_ssl_cert = { typ = "array" },
+  admin_gui_ssl_cert_key = { typ = "array" },
   status_ssl_cert = { typ = "array" },
   status_ssl_cert_key = { typ = "array" },
   db_update_frequency = {  typ = "number"  },
@@ -321,6 +365,8 @@ local CONF_PARSERS = {
       replacement = "nginx_main_worker_processes",
     },
   },
+
+  worker_events_max_payload = { typ = "number" },
 
   upstream_keepalive_pool_size = { typ = "number" },
   upstream_keepalive_max_requests = { typ = "number" },
@@ -456,6 +502,8 @@ local CONF_PARSERS = {
   proxy_stream_error_log = { typ = "string" },
   admin_access_log = { typ = "string" },
   admin_error_log = { typ = "string" },
+  admin_gui_access_log = {typ = "string"},
+  admin_gui_error_log = {typ = "string"},
   status_access_log = { typ = "string" },
   status_error_log = { typ = "string" },
   log_level = { enum = {
@@ -538,10 +586,17 @@ local CONF_PARSERS = {
   proxy_server = { typ = "string" },
   proxy_server_ssl_verify = { typ = "boolean" },
 
+  wasm = { typ = "boolean" },
+  wasm_filters_path = { typ = "string" },
+
   error_template_html = { typ = "string" },
   error_template_json = { typ = "string" },
   error_template_xml = { typ = "string" },
   error_template_plain = { typ = "string" },
+
+  admin_gui_url = {typ = "string"},
+  admin_gui_path = {typ = "string"},
+  admin_gui_api_url = {typ = "string"},
 }
 
 
@@ -558,8 +613,25 @@ local CONF_SENSITIVE = {
   ssl_cert_key = true,
   client_ssl_cert_key = true,
   admin_ssl_cert_key = true,
+  admin_gui_ssl_cert_key = true,
   status_ssl_cert_key = true,
   debug_ssl_cert_key = true,
+}
+
+
+-- List of confs necessary for compiling injected nginx conf
+local CONF_BASIC = {
+  prefix = true,
+  vaults = true,
+  database = true,
+  lmdb_environment_path = true,
+  lmdb_map_size = true,
+  lua_ssl_trusted_certificate = true,
+  lua_ssl_verify_depth = true,
+  lua_ssl_protocols = true,
+  nginx_http_lua_ssl_protocols = true,
+  nginx_stream_lua_ssl_protocols = true,
+  vault_env_prefix = true,
 }
 
 
@@ -626,6 +698,55 @@ local function parse_value(value, typ)
 end
 
 
+-- Check if module is dynamic
+local function check_dynamic_module(mod_name)
+  local configure_line = ngx.config.nginx_configure()
+  local mod_re = [[^.*--add-dynamic-module=(.+\/]] .. mod_name .. [[(\s|$)).*$]]
+  return ngx.re.match(configure_line, mod_re, "oi") ~= nil
+end
+
+
+-- Lookup dynamic module object
+-- this function will lookup for the `mod_name` dynamic module in the following
+-- paths:
+--  - /usr/local/kong/modules -- default path for modules in container images
+--  - <nginx binary path>/../modules
+-- @param[type=string] mod_name The module name to lookup, without file extension
+local function lookup_dynamic_module_so(mod_name, kong_conf)
+  log.debug("looking up dynamic module %s", mod_name)
+
+  local mod_file = fmt("/usr/local/kong/modules/%s.so", mod_name)
+  if exists(mod_file) then
+    log.debug("module '%s' found at '%s'", mod_name, mod_file)
+    return mod_file
+  end
+
+  local nginx_bin = nginx_signals.find_nginx_bin(kong_conf)
+  mod_file = fmt("%s/../modules/%s.so", pl_path.dirname(nginx_bin), mod_name)
+  if exists(mod_file) then
+    log.debug("module '%s' found at '%s'", mod_name, mod_file)
+    return mod_file
+  end
+
+  return nil, fmt("%s dynamic module shared object not found", mod_name)
+end
+
+
+-- Validate Wasm properties
+local function validate_wasm(conf)
+  local wasm_enabled = conf.wasm
+  local filters_path = conf.wasm_filters_path
+
+  if wasm_enabled then
+    if filters_path and not exists(filters_path) and not isdir(filters_path) then
+      return nil, fmt("wasm_filters_path '%s' is not a valid directory", filters_path)
+    end
+  end
+
+  return true
+end
+
+
 -- Validate properties (type/enum/custom) and infer their type.
 -- @param[type=table] conf The configuration table to treat.
 local function check_and_parse(conf, opts)
@@ -653,6 +774,45 @@ local function check_and_parse(conf, opts)
   ---------------------
   -- custom validations
   ---------------------
+
+  if conf.lua_ssl_trusted_certificate then
+    local new_paths = {}
+
+    for _, trusted_cert in ipairs(conf.lua_ssl_trusted_certificate) do
+      if trusted_cert == "system" then
+        local system_path, err = utils.get_system_trusted_certs_filepath()
+        if system_path then
+          trusted_cert = system_path
+
+        elseif not ngx.IS_CLI then
+          log.info("lua_ssl_trusted_certificate: unable to locate system bundle: " .. err ..
+                   ". If you are using TLS connections, consider specifying " ..
+                   "\"lua_ssl_trusted_certificate\" manually")
+        end
+      end
+
+      if trusted_cert ~= "system" then
+        if not exists(trusted_cert) then
+          trusted_cert = try_decode_base64(trusted_cert)
+          local _, err = openssl_x509.new(trusted_cert)
+          if err then
+            errors[#errors + 1] = "lua_ssl_trusted_certificate: " ..
+                                  "failed loading certificate from " ..
+                                  trusted_cert
+          end
+        end
+
+        new_paths[#new_paths + 1] = trusted_cert
+      end
+    end
+
+    conf.lua_ssl_trusted_certificate = new_paths
+  end
+
+  -- leave early if we're still at the stage before executing the main `resty` cmd
+  if opts.pre_cmd then
+    return #errors == 0, errors[1], errors
+  end
 
   conf.host_ports = {}
   if conf.port_maps then
@@ -682,7 +842,7 @@ local function check_and_parse(conf, opts)
     end
   end
 
-  for _, prefix in ipairs({ "proxy_", "admin_", "status_" }) do
+  for _, prefix in ipairs({ "proxy_", "admin_", "admin_gui_", "status_" }) do
     local listen = conf[prefix .. "listen"]
 
     local ssl_enabled = find(concat(listen, ",") .. " ", "%sssl[%s,]") ~= nil
@@ -772,38 +932,32 @@ local function check_and_parse(conf, opts)
     end
   end
 
-  if conf.lua_ssl_trusted_certificate then
-    local new_paths = {}
+  -- admin_gui_origin is a parameter for internal use only
+  -- it's not set directly by the user
+  -- if admin_gui_path is set to a path other than /, admin_gui_url may
+  -- contain a path component
+  -- to make it suitable to be used as an origin in headers, we need to
+  -- parse and reconstruct the admin_gui_url to ensure it only contains
+  -- the scheme, host, and port
+  if conf.admin_gui_url then
+    local parsed_url = socket_url.parse(conf.admin_gui_url)
+    conf.admin_gui_origin = parsed_url.scheme .. "://" .. parsed_url.authority
+  end
 
-    for _, trusted_cert in ipairs(conf.lua_ssl_trusted_certificate) do
-      if trusted_cert == "system" then
-        local system_path, err = utils.get_system_trusted_certs_filepath()
-        if system_path then
-          trusted_cert = system_path
-
-        elseif not ngx.IS_CLI then
-          log.info("lua_ssl_trusted_certificate: unable to locate system bundle: " .. err ..
-                   ". If you are using TLS connections, consider specifying " ..
-                   "\"lua_ssl_trusted_certificate\" manually")
-        end
-      end
-
-      if trusted_cert ~= "system" then
-        if not exists(trusted_cert) then
-          trusted_cert = try_decode_base64(trusted_cert)
-          local _, err = openssl_x509.new(trusted_cert)
-          if err then
-            errors[#errors + 1] = "lua_ssl_trusted_certificate: " ..
-                                  "failed loading certificate from " ..
-                                  trusted_cert
-          end
-        end
-
-        new_paths[#new_paths + 1] = trusted_cert
-      end
+  if conf.admin_gui_path then
+    if not conf.admin_gui_path:find("^/") then
+      errors[#errors + 1] = "admin_gui_path must start with a slash ('/')"
     end
-
-    conf.lua_ssl_trusted_certificate = new_paths
+    if conf.admin_gui_path:find("^/.+/$") then
+        errors[#errors + 1] = "admin_gui_path must not end with a slash ('/')"
+    end
+    if conf.admin_gui_path:match("[^%a%d%-_/]+") then
+      errors[#errors + 1] = "admin_gui_path can only contain letters, digits, " ..
+        "hyphens ('-'), underscores ('_'), and slashes ('/')"
+    end
+    if conf.admin_gui_path:match("//+") then
+      errors[#errors + 1] = "admin_gui_path must not contain continuous slashes ('/')"
+    end
   end
 
   if conf.ssl_cipher_suite ~= "custom" then
@@ -1203,6 +1357,19 @@ local function check_and_parse(conf, opts)
     errors[#errors + 1] = "Cassandra as a datastore for Kong is not supported in versions 3.4 and above. Please use Postgres."
   end
 
+  local ok, err = validate_wasm(conf)
+  if not ok then
+    errors[#errors + 1] = err
+  end
+
+  if conf.wasm and check_dynamic_module("ngx_wasm_module") then
+    local err
+    conf.wasm_dynamic_module, err = lookup_dynamic_module_so("ngx_wasm_module", conf)
+    if err then
+      errors[#errors + 1] = err
+    end
+  end
+
   return #errors == 0, errors[1], errors
 end
 
@@ -1384,6 +1551,34 @@ local function load_config_file(path)
   return load_config(f)
 end
 
+--- Get available Wasm filters list
+-- @param[type=string] Path where Wasm filters are stored.
+local function get_wasm_filters(filters_path)
+  local wasm_filters = {}
+
+  if filters_path then
+    local filter_files = {}
+    for entry in pl_path.dir(filters_path) do
+      local pathname = pl_path.join(filters_path, entry)
+      if not filter_files[pathname] and pl_path.isfile(pathname) then
+        filter_files[pathname] = pathname
+
+        local extension = pl_path.extension(entry)
+        if string.lower(extension) == ".wasm" then
+          insert(wasm_filters, {
+            name = entry:sub(0, -#extension - 1),
+            path = pathname,
+          })
+        else
+          log.debug("ignoring file ", entry, " in ", filters_path, ": does not contain wasm suffix")
+        end
+      end
+    end
+  end
+
+  return wasm_filters
+end
+
 
 --- Load Kong configuration
 -- The loaded configuration will have all properties from the default config
@@ -1544,6 +1739,16 @@ local function load(path, custom_conf, opts)
                               tablex.union(opts, { defaults_only = true, }),
                               user_conf)
 
+  -- remove the unnecessary fields if we are still at the very early stage
+  -- before executing the main `resty` cmd, i.e. still in `bin/kong`
+  if opts.pre_cmd then
+    for k, v in pairs(conf) do
+      if not CONF_BASIC[k] then
+        conf[k] = nil
+      end
+    end
+  end
+
   ---------------------------------
   -- Dereference process references
   ---------------------------------
@@ -1656,6 +1861,39 @@ local function load(path, custom_conf, opts)
   conf.loaded_vaults = loaded_vaults
   conf["$refs"] = refs
 
+  -- load absolute paths
+  conf.prefix = abspath(conf.prefix)
+
+  if conf.lua_ssl_trusted_certificate
+     and #conf.lua_ssl_trusted_certificate > 0 then
+
+    conf.lua_ssl_trusted_certificate = tablex.map(
+      function(cert)
+        if exists(cert) then
+          return abspath(cert)
+        end
+        return cert
+      end,
+      conf.lua_ssl_trusted_certificate
+    )
+
+    conf.lua_ssl_trusted_certificate_combined =
+      abspath(pl_path.join(conf.prefix, ".ca_combined"))
+  end
+
+  -- attach prefix files paths
+  for property, t_path in pairs(PREFIX_PATHS) do
+    conf[property] = pl_path.join(conf.prefix, unpack(t_path))
+  end
+
+  log.verbose("prefix in use: %s", conf.prefix)
+
+  -- leave early if we're still at the very early stage before executing
+  -- the main `resty` cmd. The rest confs below are unused.
+  if opts.pre_cmd then
+    return setmetatable(conf, nil) -- remove Map mt
+  end
+
   local default_nginx_main_user = false
   local default_nginx_user = false
 
@@ -1682,6 +1920,55 @@ local function load(path, custom_conf, opts)
     if default_nginx_main_user == true and default_nginx_user == true then
       conf.nginx_user = nil
       conf.nginx_main_user = nil
+    end
+  end
+
+  -- Wasm module support
+  if conf.wasm then
+    local wasm_filters = get_wasm_filters(conf.wasm_filters_path)
+    conf.wasm_modules_parsed = setmetatable(wasm_filters, _nop_tostring_mt)
+
+    local function add_wasm_directive(directive, value, prefix)
+      local directive_name = (prefix or "") .. directive
+      if conf[directive_name] == nil then
+        conf[directive_name] = value
+      end
+    end
+
+    local wasm_main_prefix = "nginx_wasm_"
+
+    -- proxy_wasm_lua_resolver is intended to be 'on' by default, but we can't
+    -- set it as such in kong_defaults, because it can only be used if wasm is
+    -- _also_ enabled. We inject it here if the user has not opted to set it
+    -- themselves.
+    add_wasm_directive("nginx_http_proxy_wasm_lua_resolver", "on")
+
+    -- wasm vm properties are inherited from previously set directives
+    if conf.lua_ssl_trusted_certificate and #conf.lua_ssl_trusted_certificate >= 1 then
+      add_wasm_directive("tls_trusted_certificate", conf.lua_ssl_trusted_certificate[1], wasm_main_prefix)
+    end
+
+    if conf.lua_ssl_verify_depth and conf.lua_ssl_verify_depth > 0 then
+      add_wasm_directive("tls_verify_cert", "on", wasm_main_prefix)
+      add_wasm_directive("tls_verify_host", "on", wasm_main_prefix)
+      add_wasm_directive("tls_no_verify_warn", "on", wasm_main_prefix)
+    end
+
+    local wasm_inherited_injections = {
+      nginx_http_lua_socket_connect_timeout = "nginx_http_wasm_socket_connect_timeout",
+      nginx_proxy_lua_socket_connect_timeout = "nginx_proxy_wasm_socket_connect_timeout",
+      nginx_http_lua_socket_read_timeout = "nginx_http_wasm_socket_read_timeout",
+      nginx_proxy_lua_socket_read_timeout = "nginx_proxy_wasm_socket_read_timeout",
+      nginx_http_lua_socket_send_timeout = "nginx_http_wasm_socket_send_timeout",
+      nginx_proxy_lua_socket_send_timeout = "nginx_proxy_wasm_socket_send_timeout",
+      nginx_http_lua_socket_buffer_size = "nginx_http_wasm_socket_buffer_size",
+      nginx_proxy_lua_socket_buffer_size = "nginx_proxy_wasm_socket_buffer_size",
+    }
+
+    for directive, wasm_directive in pairs(wasm_inherited_injections) do
+      if conf[directive] then
+        add_wasm_directive(wasm_directive, conf[directive])
+      end
     end
   end
 
@@ -1808,6 +2095,7 @@ local function load(path, custom_conf, opts)
     { name = "proxy_listen",   subsystem = "http",   ssl_flag = "proxy_ssl_enabled" },
     { name = "stream_listen",  subsystem = "stream", ssl_flag = "stream_proxy_ssl_enabled" },
     { name = "admin_listen",   subsystem = "http",   ssl_flag = "admin_ssl_enabled" },
+    { name = "admin_gui_listen", subsystem = "http", ssl_flag = "admin_gui_ssl_enabled" },
     { name = "status_listen",  subsystem = "http",   ssl_flag = "status_ssl_enabled" },
     { name = "cluster_listen", subsystem = "http" },
   })
@@ -1846,10 +2134,7 @@ local function load(path, custom_conf, opts)
     conf.enabled_headers = setmetatable(enabled_headers, _nop_tostring_mt)
   end
 
-  -- load absolute paths
-  conf.prefix = abspath(conf.prefix)
-
-  for _, prefix in ipairs({ "ssl", "admin_ssl", "status_ssl", "client_ssl", "cluster" }) do
+  for _, prefix in ipairs({ "ssl", "admin_ssl", "admin_gui_ssl", "status_ssl", "client_ssl", "cluster" }) do
     local ssl_cert = conf[prefix .. "_cert"]
     local ssl_cert_key = conf[prefix .. "_cert_key"]
 
@@ -1906,30 +2191,6 @@ local function load(path, custom_conf, opts)
       end
     end
   end
-
-  if conf.lua_ssl_trusted_certificate
-     and #conf.lua_ssl_trusted_certificate > 0 then
-
-    conf.lua_ssl_trusted_certificate = tablex.map(
-      function(cert)
-        if exists(cert) then
-          return abspath(cert)
-        end
-        return cert
-      end,
-      conf.lua_ssl_trusted_certificate
-    )
-
-    conf.lua_ssl_trusted_certificate_combined =
-      abspath(pl_path.join(conf.prefix, ".ca_combined"))
-  end
-
-  -- attach prefix files paths
-  for property, t_path in pairs(PREFIX_PATHS) do
-    conf[property] = pl_path.join(conf.prefix, unpack(t_path))
-  end
-
-  log.verbose("prefix in use: %s", conf.prefix)
 
   -- hybrid mode HTTP tunneling (CONNECT) proxy inside HTTPS
   if conf.cluster_use_proxy then

@@ -177,6 +177,7 @@ schema-change-noteworthy:
 - plugins-ee/**/daos.lua
 - plugins-ee/**/schema.lua
 - kong/db/dao/*.lua
+- kong/enterprise_edition/redis/init.lua
 
 build/bazel:
 - '**/*.bazel'
