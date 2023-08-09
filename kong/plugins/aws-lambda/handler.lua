@@ -136,6 +136,10 @@ function AWSLambdaHandler:access(conf)
 
   local headers = res.headers
 
+  -- Remove Content-Length header returned by Lambda service,
+  -- to make sure returned response length will be correctly calculated
+  -- afterwards.
+  headers["Content-Length"] = nil
   -- We're responding with the header returned from Lambda service
   -- Remove hop-by-hop headers to prevent it from being sent to client
   if ngx_var.http2 then
