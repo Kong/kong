@@ -463,13 +463,15 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
         end
 
       elseif type(v) == "table" then
-        for idx = 1, #v do
-          local res, err = c:add_value(field, v[idx]:lower())
+        for _, v in ipairs(v) do
+          local res, err = c:add_value(field, v:lower())
           if not res then
             return nil, err
           end
         end
       end -- if type(v)
+
+      -- if v is nil or others, goto continue
 
     elseif is_http_queries_field(field) then
       if not req_queries then
@@ -503,7 +505,9 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
             return nil, err
           end
         end
-      end -- type(v)
+      end -- if type(v)
+
+      -- if v is nil or others, goto continue
 
     else  -- unknown field
       error("unknown http schema field: " .. field)
