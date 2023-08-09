@@ -254,11 +254,21 @@ function Queue:process_once()
     end
   end
 
+  local batch = {unpack(self.entries, self.front, self.front + entry_count - 1)}
+  -- Guard against queue shrinkage during handler invocation by using math.min below.
+  for _ = 1, math.min(entry_count, self:count()) do
+    self:delete_frontmost_entry()
+  end
+  if self.queue_full then
+    self:log_info('queue resumed processing')
+    self.queue_full = false
+  end
+
   local start_time = now()
   local retry_count = 0
   while true do
     self:log_debug("passing %d entries to handler", entry_count)
-    ok, err = self.handler(self.handler_conf, {unpack(self.entries, self.front, self.front + entry_count - 1)})
+    ok, err = self.handler(self.handler_conf, batch)
     if ok then
       self:log_debug("handler processed %d entries sucessfully", entry_count)
       break
@@ -282,15 +292,6 @@ function Queue:process_once()
     -- The maximum time between retries is capped by the max_retry_delay configuration parameter.
     sleep(math_min(self.max_retry_delay, 2 ^ retry_count * self.initial_retry_delay))
     retry_count = retry_count + 1
-  end
-
-  -- Guard against queue shrinkage during handler invocation by using math.min below.
-  for _ = 1, math.min(entry_count, self:count()) do
-    self:delete_frontmost_entry()
-  end
-  if self.queue_full then
-    self:log_info('queue resumed processing')
-    self.queue_full = false
   end
 end
 
