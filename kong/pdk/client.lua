@@ -262,6 +262,43 @@ local function new(self)
     ctx.authenticated_credential = credential
   end
 
+  ---
+  -- Sets the authentication context of the current request.
+  -- @function kong.client.set_authentication_context
+  -- @phases access
+  -- @tparam table|nil authentication_context The authentication context to set
+  -- @usage
+  -- kong.client.set_authentication_context({
+  --   username = given_username,
+  -- })
+  function _CLIENT.set_authentication_context(authentication_context)
+    check_phase(PHASES.access)
+
+    if not TABLE_OR_NIL[type(authentication_context)] then
+      error("authentication_context must be a table or nil", 2)
+    end
+
+    ngx.ctx.authentication_context = authentication_context
+  end
+
+  ---
+  -- Returns the authentication context of the current request if exist, otherwise nil.
+  -- @function kong.client.get_authentication_context
+  -- @phases access, header_filter, response, body_filter, log
+  -- @treturn table The authentication context
+  -- @usage
+  -- local authentication_context = kong.client.get_authentication_context()
+  -- if authentication_context then
+  --   username = authentication_context.username
+  -- else
+  --   -- The authentication context has not been set yet.
+  -- end
+  function _CLIENT.get_authentication_context()
+    check_phase(AUTH_AND_LATER)
+
+    return ngx.ctx.authentication_context
+  end
+
 
   ---
   -- Returns the protocol matched by the current route (`"http"`, `"https"`, `"tcp"` or

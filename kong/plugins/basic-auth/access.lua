@@ -175,6 +175,9 @@ local function do_authentication(conf)
   local given_username, given_password = retrieve_credentials("proxy-authorization", conf)
   if given_username and given_password then
     credential = load_credential_from_db(given_username)
+    kong.client.set_authentication_context({
+      username = given_username,
+    })
   end
 
   -- Try with the authorization header
@@ -182,6 +185,9 @@ local function do_authentication(conf)
     given_username, given_password = retrieve_credentials("authorization", conf)
     if given_username and given_password then
       credential = load_credential_from_db(given_username)
+      kong.client.set_authentication_context({
+        username = given_username,
+      })
     else
       return fail_authentication()
     end

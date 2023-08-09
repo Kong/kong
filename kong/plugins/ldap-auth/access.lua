@@ -153,6 +153,10 @@ local function authenticate(conf, given_credentials)
     return false
   end
 
+  kong.client.set_authentication_context({
+    username = given_username,
+  })
+
   local key, err = cache_key(conf, given_username, given_password)
   if err then
     return error(err)
