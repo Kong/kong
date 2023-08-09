@@ -91,6 +91,9 @@ describe("plugin queue", function()
         end
       }
     })
+    ngx.worker.exiting = function()
+        return false
+      end
   end)
 
   after_each(unmock)
@@ -200,6 +203,40 @@ describe("plugin queue", function()
   end)
 
   it("batches messages when `max_batch_size` is 2", function()
+    local process_count = 0
+    local first_entry, last_entry
+    local function enqueue(entry)
+      Queue.enqueue(
+        queue_conf({
+          name = "batch",
+          max_batch_size = 2,
+          max_coalescing_delay = 0.1,
+        }),
+        function(_, batch)
+          first_entry = first_entry or batch[1]
+          last_entry = batch[#batch]
+          process_count = process_count + 1
+          return true
+        end,
+        nil,
+        entry
+      )
+    end
+    enqueue("One")
+    enqueue("Two")
+    enqueue("Three")
+    enqueue("Four")
+    enqueue("Five")
+    wait_until_queue_done("batch")
+    assert.equals(3, process_count)
+    assert.equals("One", first_entry)
+    assert.equals("Five", last_entry)
+  end)
+
+  it("batches messages during shutdown", function()
+    ngx.worker.exiting = function()
+      return true
+    end
     local process_count = 0
     local first_entry, last_entry
     local function enqueue(entry)
