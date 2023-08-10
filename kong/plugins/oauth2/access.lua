@@ -777,15 +777,28 @@ local function issue_token(conf)
             error_description = "Invalid " .. REFRESH_TOKEN
           }
 
-        else
-          -- Check that the token belongs to the client application
-          if token.credential.id ~= client.id then
+        -- Check that the token belongs to the client application
+        elseif token.credential.id ~= client.id then
             response_params = {
               [ERROR] = "invalid_client",
               error_description = "Invalid client authentication"
             }
 
-          else
+        else
+          -- Check scopes
+          if token.scope then
+            for scope in token.scope:gmatch("%S+") do
+              if not table_contains(conf.scopes, scope) then
+                response_params = {
+                  [ERROR] = "invalid_scope",
+                  error_description = "Scope mismatch",
+                }
+                break
+              end
+            end
+          end
+
+          if not response_params[ERROR] then
             response_params = generate_token(conf, kong.router.get_service(),
                                              client,
                                              token.authenticated_userid,
