@@ -510,7 +510,7 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
       -- if v is nil or others, goto continue
 
     else  -- unknown field
-      error("unknown http schema field: " .. field)
+      error("unknown router matching schema field: " .. field)
 
     end -- if field
 
@@ -731,7 +731,7 @@ function _M:select(_, _, _, scheme,
       assert(c:add_value(field, dst_port))
 
     else  -- unknown field
-      error("unknown stream schema field: " .. field)
+      error("unknown router matching schema field: " .. field)
 
     end -- if field
 
