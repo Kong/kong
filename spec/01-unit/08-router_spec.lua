@@ -4912,7 +4912,7 @@ do
       assert.truthy(match_t)
       assert.same(use_case[2].route, match_t.route)
 
-      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = {"1", "2"}})
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = {"2", "10"}})
       assert.truthy(match_t)
       assert.same(use_case[3].route, match_t.route)
 
