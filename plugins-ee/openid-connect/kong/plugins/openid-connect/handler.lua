@@ -2280,7 +2280,7 @@ function OICHandler.access(_, conf)
         end
 
         session:set_headers()
-
+        kong.ctx.shared.authenticated_session = session
         if downstream_headers_claims and downstream_headers_names then
           headers.set(args, "session_id", function()
             return session:get_property("id")

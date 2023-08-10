@@ -366,7 +366,7 @@ function _M.login(self, db, helpers)
 
   local _, err = get_authenticated_developer(self)
   if err then
-    if kong.ctx.shared.authenticated_session then
+    if kong.ctx.shared.authenticated_session and not is_oidc then
       kong.ctx.shared.authenticated_session:destroy()
     end
 
@@ -374,8 +374,7 @@ function _M.login(self, db, helpers)
     if is_oidc then
       local redirect
       if err == UNAUTHED_ERR.message then
-        redirect = workspace_config.build_ws_portal_gui_url(kong.configuration, workspace)  .. '/register'
-        return ngx.redirect(redirect)
+        redirect = workspace_config.build_ws_portal_gui_url(kong.configuration, workspace) .. '/register'
       else
         redirect = get_oidc_auth_redirect(workspace, auth_conf, "forbidden")
       end
