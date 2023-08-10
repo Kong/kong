@@ -75,6 +75,8 @@ local https_server = require "spec.fixtures.https_server"
 local stress_generator = require "spec.fixtures.stress_generator"
 local resty_signal = require "resty.signal"
 local lfs = require "lfs"
+local process = require "kong.cmd.utils.process"
+
 
 ffi.cdef [[
   int setenv(const char *name, const char *value, int overwrite);
@@ -3636,7 +3638,7 @@ end
 -- @return true or nil+err
 local function stop_kong(prefix, preserve_prefix, preserve_dc, signal, nowait)
   prefix = prefix or conf.prefix
-  signal = signal or "TERM"
+  signal = signal or process.SIG_TERM
 
   local running_conf, err = get_running_conf(prefix)
   if not running_conf then
@@ -4045,15 +4047,13 @@ end
 
   -- Only use in CLI tests from spec/02-integration/01-cmd
   kill_all = function(prefix, timeout)
-    local process = require "kong.cmd.utils.process"
-
     local running_conf = get_running_conf(prefix)
     if not running_conf then return end
 
     -- kill kong_tests.conf service
     local pid_path = running_conf.nginx_pid
     if pl_path.exists(pid_path) then
-      process.kill(pid_path, "-TERM")
+      process.term(pid_path)
       wait_pid(pid_path, timeout)
     end
   end,
@@ -4069,8 +4069,6 @@ end
   end,
 
   signal = function(prefix, signal, pid_path)
-    local process = require "kong.cmd.utils.process"
-
     if not pid_path then
       local running_conf = get_running_conf(prefix)
       if not running_conf then
@@ -4080,7 +4078,7 @@ end
       pid_path = running_conf.nginx_pid
     end
 
-    return process.kill(pid_path, signal)
+    return process.signal(pid_path, signal)
   end,
   -- send signal to all Nginx workers, not including the master
   signal_workers = function(prefix, signal, pid_path)

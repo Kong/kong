@@ -55,14 +55,15 @@ end
 
 
 local function send_signal(kong_conf, signal)
-  if not process.exists(kong_conf.nginx_pid) then
+  local pid = process.pid(kong_conf.nginx_pid)
+
+  if not pid or not process.exists(pid) then
     return nil, fmt("nginx not running in prefix: %s", kong_conf.prefix)
   end
 
   log.verbose("sending %s signal to nginx running at %s", signal, kong_conf.nginx_pid)
 
-  local code = process.kill(kong_conf.nginx_pid, "-s " .. signal)
-  if code ~= 0 then
+  if not process.signal(pid, signal) then
     return nil, "could not send signal"
   end
 
@@ -205,12 +206,12 @@ end
 
 
 function _M.stop(kong_conf)
-  return send_signal(kong_conf, "TERM")
+  return send_signal(kong_conf, process.SIG_TERM)
 end
 
 
 function _M.quit(kong_conf)
-  return send_signal(kong_conf, "QUIT")
+  return send_signal(kong_conf, process.SIG_QUIT)
 end
 
 
