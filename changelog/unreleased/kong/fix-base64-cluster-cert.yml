@@ -1,0 +1,3 @@
+message: Fixed an issue where cluster_cert or cluster_ca_cert is inserted into lua_ssl_trusted_certificate before being base64 decoded.
+type: bugfix
+scope: Core
