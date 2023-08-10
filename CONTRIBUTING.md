@@ -625,6 +625,21 @@ local t = {foo="hello",bar="world"}
 local t = { foo = "hello", bar = "world" }
 ```
 
+Perfer `ipairs()` to `for` loop when iterating an array,
+which gives us more readability:
+
+```lua
+-- bad
+for i = 1, #t do
+  ...
+end
+
+-- good
+for _, v in ipairs(t) do
+  ...
+end
+```
+
 [Back to code style TOC](#table-of-contents---code-style)
 
 ### Strings
