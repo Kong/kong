@@ -1989,3 +1989,80 @@
                         # * No recursion is performed. Only .wasm files at the
                         #   top level are registered
                         # * This path _may_ be a symlink to a directory.
+
+#------------------------------------------------------------------------------
+# WASM injected directives
+#------------------------------------------------------------------------------
+
+# The Nginx Wasm module (i.e. ngx_wasm_module) has its own settings, which can
+# be tuned via `wasm_*` directives in the Nginx configuration file. Kong
+# supports configuration of these directives via its Nginx directive injection
+# mechanism.
+#
+# The following namespaces are supported:
+#
+# - `nginx_wasm_<directive>`: Injects `<directive>` into the `wasm {}` block.
+# - `nginx_wasm_shm_<name>`: Injects `shm_kv <name>` into the `wasm {}` block,
+#   allowing operators to define custom shared memory zones which are usable by
+#   the `get_shared_data`/`set_shared_data` Proxy-Wasm SDK functions.
+# - `nginx_wasm_wasmtime_<flag>`: Injects `flag <flag>` into the `wasmtime {}`
+#   block, allowing various Wasmtime-specific flags to be set.
+# - `nginx_<http|proxy>_<directive>`: Injects `<directive>` into the
+#   `http {}` or `server {}` blocks, as specified in the Nginx injected directives
+#   section.
+#
+# The documentation for all supported directives can be found in the Nginx Wasm
+# module repository:
+#
+# https://github.com/Kong/ngx_wasm_module/blob/main/docs/DIRECTIVES.md
+#
+# The Wasmtime flag documentation can be found here:
+#
+# https://docs.wasmtime.dev/c-api/config_8h.html
+#
+# There are several noteworthy ngx_wasm_module behaviors which can be tuned via
+# `http {}`/`server {}` level directive injection (identical behavior in either
+# level), for example:
+#
+# - `nginx_http_proxy_wasm_socket_<connect|read|send>_timeout`: sets connection/read/send
+#   timeouts for Wasm dispatches.
+# - `nginx_http_proxy_wasm_socket_buffer_size`: sets a buffer size for
+#   reading Wasm dispatch responses.
+#
+# The values for these settings are inherited from their `nginx_*_lua_*`
+# counterparts if they have not been explicitly set. For instance, if you set
+# `nginx_http_lua_socket_connect_timeout`, the value
+# of this setting will be propagated to `nginx_http_wasm_socket_connect_timeout`
+# unless you _also_ set `nginx_http_wasm_socket_connect_timeout`.
+#
+# Some TLS-related settings receive special treatment as well:
+#
+# - `lua_ssl_trusted_certificate`: when set, the value is propagated to the
+#   `nginx_wasm_tls_trusted_certificate` directive.
+# - `lua_ssl_verify_depth`: when set (to a value greater than zero), several
+#   TLS-related `nginx_wasm_*` settings are enabled:
+#   * `nginx_wasm_tls_verify_cert`
+#   * `nginx_wasm_tls_verify_host`
+#   * `nginx_wasm_tls_no_verify_warn`
+#
+# Like other `kong.conf` fields, all injected Nginx directives documented here
+# can be set via environment variable. For instance, setting:
+#
+#   `KONG_NGINX_WASM_TLS_VERIFY_CERT=<value>`
+#
+#   Will inject the following in to the `wasm {}` block:
+#
+#   `tls_verify_cert <value>;`
+#
+# There are several Nginx directives supported by ngx_wasm_module which should
+# not be used because they are irrelevant to or unsupported by Kong, or they may
+# conflict with Kong's own management of Proxy-Wasm. Use of these directives may
+# result in unintentional breakage:
+#
+# - `wasm_call`
+# - `module`
+# - `proxy_wasm`
+# - `proxy_wasm_isolation`
+# - `resolver_add`
+# - `proxy_wasm_request_headers_in_access`
+# - `shm_queue`
