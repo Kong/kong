@@ -1248,6 +1248,45 @@ local function check_and_parse(conf, opts)
     end
   end
 
+  if conf.role == "control_plane" or conf.role == "data_plane" then
+    local cluster_cert = conf.cluster_cert
+    local cluster_cert_key = conf.cluster_cert_key
+    local cluster_ca_cert = conf.cluster_ca_cert
+
+    if not cluster_cert or not cluster_cert_key then
+      errors[#errors + 1] = "cluster certificate and key must be provided to use Hybrid mode"
+
+    else
+      if not exists(cluster_cert) then
+        cluster_cert = try_decode_base64(cluster_cert)
+        conf.cluster_cert = cluster_cert
+        local _, err = openssl_x509.new(cluster_cert)
+        if err then
+          errors[#errors + 1] = "cluster_cert: failed loading certificate from " .. cluster_cert
+        end
+      end
+
+      if not exists(cluster_cert_key) then
+        cluster_cert_key = try_decode_base64(cluster_cert_key)
+        conf.cluster_cert_key = cluster_cert_key
+        local _, err = openssl_pkey.new(cluster_cert_key)
+        if err then
+          errors[#errors + 1] = "cluster_cert_key: failed loading key from " .. cluster_cert_key
+        end
+      end
+    end
+
+    if cluster_ca_cert and not exists(cluster_ca_cert) then
+      cluster_ca_cert = try_decode_base64(cluster_ca_cert)
+      conf.cluster_ca_cert = cluster_ca_cert
+      local _, err = openssl_x509.new(cluster_ca_cert)
+      if err then
+        errors[#errors + 1] = "cluster_ca_cert: failed loading certificate from " ..
+                              cluster_ca_cert
+      end
+    end
+  end
+
   if conf.role == "control_plane" then
     if #conf.admin_listen < 1 or strip(conf.admin_listen[1]) == "off" then
       errors[#errors + 1] = "admin_listen must be specified when role = \"control_plane\""
@@ -1347,45 +1386,6 @@ local function check_and_parse(conf, opts)
 
   if conf.cluster_max_payload < 4194304 then
     errors[#errors + 1] = "cluster_max_payload must be 4194304 (4MB) or greater"
-  end
-
-  if conf.role == "control_plane" or conf.role == "data_plane" then
-    local cluster_cert = conf.cluster_cert
-    local cluster_cert_key = conf.cluster_cert_key
-    local cluster_ca_cert = conf.cluster_ca_cert
-
-    if not cluster_cert or not cluster_cert_key then
-      errors[#errors + 1] = "cluster certificate and key must be provided to use Hybrid mode"
-
-    else
-      if not exists(cluster_cert) then
-        cluster_cert = try_decode_base64(cluster_cert)
-        conf.cluster_cert = cluster_cert
-        local _, err = openssl_x509.new(cluster_cert)
-        if err then
-          errors[#errors + 1] = "cluster_cert: failed loading certificate from " .. cluster_cert
-        end
-      end
-
-      if not exists(cluster_cert_key) then
-        cluster_cert_key = try_decode_base64(cluster_cert_key)
-        conf.cluster_cert_key = cluster_cert_key
-        local _, err = openssl_pkey.new(cluster_cert_key)
-        if err then
-          errors[#errors + 1] = "cluster_cert_key: failed loading key from " .. cluster_cert_key
-        end
-      end
-    end
-
-    if cluster_ca_cert and not exists(cluster_ca_cert) then
-      cluster_ca_cert = try_decode_base64(cluster_ca_cert)
-      conf.cluster_ca_cert = cluster_ca_cert
-      local _, err = openssl_x509.new(cluster_ca_cert)
-      if err then
-        errors[#errors + 1] = "cluster_ca_cert: failed loading certificate from " ..
-                              cluster_ca_cert
-      end
-    end
   end
 
   if conf.upstream_keepalive_pool_size < 0 then

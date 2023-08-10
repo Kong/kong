@@ -970,6 +970,38 @@ describe("Configuration loader", function()
           assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
         end)
 
+        it("autoload base64 cluster_cert or cluster_ca_cert for data plane in lua_ssl_trusted_certificate", function()
+          local ssl_fixtures = require "spec.fixtures.ssl"
+          local cert = ssl_fixtures.cert
+          local cacert = ssl_fixtures.cert_ca
+          local key = ssl_fixtures.key
+          local conf, _, errors = conf_loader(nil, {
+            role = "data_plane",
+            database = "off",
+            cluster_cert = ngx.encode_base64(cert),
+            cluster_cert_key = ngx.encode_base64(key),
+          })
+          assert.is_nil(errors)
+          assert.contains(
+            cert,
+            conf.lua_ssl_trusted_certificate
+          )
+
+          local conf, _, errors = conf_loader(nil, {
+            role = "data_plane",
+            database = "off",
+            cluster_mtls = "pki",
+            cluster_cert = ngx.encode_base64(cert),
+            cluster_cert_key = ngx.encode_base64(key),
+            cluster_ca_cert = ngx.encode_base64(cacert),
+          })
+          assert.is_nil(errors)
+          assert.contains(
+            cacert,
+            conf.lua_ssl_trusted_certificate
+          )
+        end)
+
         it("validates proxy_server", function()
           local conf, _, errors = conf_loader(nil, {
             proxy_server = "http://cool:pwd@localhost:2333",
