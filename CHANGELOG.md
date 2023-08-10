@@ -44,6 +44,8 @@
   [#11244](https://github.com/Kong/kong/pull/11244)
 - Add beta support for WebAssembly/proxy-wasm
   [#11218](https://github.com/Kong/kong/pull/11218)
+- Fixed critical level logs when starting external plugin servers. Those logs cannot be suppressed due to the limitation of OpenResty. We choose to remove the socket availibilty detection feature.
+  [#11372](https://github.com/Kong/kong/pull/11372)
 
 #### Admin API
 

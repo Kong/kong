@@ -8,18 +8,13 @@
 local cjson = require "cjson.safe"
 local pl_path = require "pl.path"
 local raw_log = require "ngx.errlog".raw_log
-local ngx = ngx
-local sleep = ngx.sleep
-local connect = ngx.socket.connect
 local is_not_http_subsystem = ngx.config.subsystem ~= "http"
 
 local _, ngx_pipe = pcall(require, "ngx.pipe")
 
 
 local kong = kong
-local log = ngx.log
 local ngx_INFO = ngx.INFO
-local ngx_WARN = ngx.WARN
 local cjson_decode = cjson.decode
 
 local proc_mgmt = {}
@@ -210,36 +205,6 @@ local function grab_logs(proc, name)
   end
 end
 
--- if a plugin server is not ready after 20s of waiting we consider it failed
-local pluginserver_start_timeout = 20
-
-function proc_mgmt.connection_check_timer(premature, server_def)
-  if premature then
-    return
-  end
-
-  if is_not_http_subsystem then
-    return
-  end
-
-  local step = 0.1
-
-  local time = 0
-  local uri = "unix:" .. server_def.socket
-  local c, err
-  while time < pluginserver_start_timeout do
-    c, err = connect(uri)
-    if c then
-      server_def.ready = true
-      c:close()
-      return
-    end
-    sleep(step)
-    time = time + step
-  end
-  server_def.socket_err = err
-end
-
 function proc_mgmt.pluginserver_timer(premature, server_def)
   if premature then
     return
@@ -278,20 +243,8 @@ function proc_mgmt.pluginserver_timer(premature, server_def)
     end
   end
   kong.log.notice("Exiting: pluginserver '", server_def.name, "' not respawned.")
-
 end
 
--- limit the number of warning messages
-local plugin_already_warned = {}
-function proc_mgmt.handle_not_ready(plugin_name)
-  if plugin_already_warned[plugin_name] then
-    return
-  end
-
-  plugin_already_warned[plugin_name] = true
-  log(ngx_WARN, "plugin server is not ready, ",
-      plugin_name, " will not be executed in this request")
-end
 
 
 return proc_mgmt
