@@ -158,29 +158,18 @@ local function add_atc_matcher(inst, route, route_id,
 end
 
 
-if is_http then
-
-
-local function is_http_headers_field(field)
-  return field:sub(1, 13) == "http.headers."
-end
-
-
-local function is_http_queries_field(field)
-  return field:sub(1, 13) == "http.queries."
-end
-
-
 local function categorize_http_fields(fields)
   local baisc = {}
   local headers = {}
   local queries = {}
 
   for _, field in ipairs(fields) do
-    if is_http_headers_field(field) then
+    local prefix = field:sub(1, 13)
+
+    if prefix == "http.headers." then
       headers[field:sub(14)] = field
 
-    elseif is_http_queries_field(field) then
+    elseif prefix == "http.queries." then
       queries[field:sub(14)] = field
 
     else
@@ -190,9 +179,6 @@ local function categorize_http_fields(fields)
 
   return baisc, headers, queries
 end
-
-
-end -- if is_http then
 
 
 local function new_from_scratch(routes, get_exp_and_priority)
