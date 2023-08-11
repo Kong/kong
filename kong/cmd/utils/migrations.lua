@@ -195,6 +195,9 @@ local function reset(schema_state, db, ttl)
     -- failed to acquire locks - maybe locks table was dropped?
     log.error(err .. " - retrying without cluster lock")
     log("Resetting database...")
+    -- ROLLBACK in order to solve this error
+    -- ERROR: current transaction is aborted, commands ignored until end of transaction block
+    assert(db.connector:query("ROLLBACK;"))
     assert(db:schema_reset())
     log("Database successfully reset")
     return true

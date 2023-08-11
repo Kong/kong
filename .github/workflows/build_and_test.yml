@@ -112,6 +112,11 @@ jobs:
         path: |
           luacov.stats.out
 
+    - name: Get kernel message
+      if: failure()
+      run: |
+        sudo dmesg -T
+
   integration-tests-postgres:
     name: Postgres ${{ matrix.suite }} - ${{ matrix.split }} tests
     runs-on: ubuntu-22.04
@@ -244,6 +249,11 @@ jobs:
         path: |
           luacov.stats.out
 
+    - name: Get kernel message
+      if: failure()
+      run: |
+        sudo dmesg -T
+
   integration-tests-dbless:
     name: DB-less integration tests
     runs-on: ubuntu-22.04
@@ -312,6 +322,11 @@ jobs:
         path: |
           luacov.stats.out
 
+    - name: Get kernel message
+      if: failure()
+      run: |
+        sudo dmesg -T
+
   pdk-tests:
     name: PDK tests
     runs-on: ubuntu-22.04
@@ -358,6 +373,11 @@ jobs:
         retention-days: 1
         path: |
           luacov.stats.out
+
+    - name: Get kernel message
+      if: failure()
+      run: |
+        sudo dmesg -T
 
   aggregator:
     needs: [lint-doc-and-unit-tests,pdk-tests,integration-tests-postgres,integration-tests-dbless]

@@ -44,7 +44,11 @@ for _, strategy in helpers.each_strategy() do
 
     local db = assert(DB.new(tmp_conf, strategy))
     assert(db:init_connector())
+    -- in spec/helpers.lua, db has already been init'ed
+    -- the stored connection will be reused here,
+    -- so we need to set schema explicitly to 'kong_migrations_tests'
     assert(db:connect())
+    assert(db.connector:query("SET SCHEMA 'kong_migrations_tests';\n"))
     finally(function()
       db.connector:close()
     end)
