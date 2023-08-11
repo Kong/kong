@@ -7,6 +7,8 @@
 
 # Unreleased
 
+## Core
+
 ### Fixes
 
 * Fix the return info and log of previous errors are missing when use redis cluster mode connection fails. [6032](https://github.com/Kong/kong-ee/pull/6032)
@@ -15,6 +17,8 @@
 
 ### Fixes
 
+* **Konnect Application Auth**
+  * Fix http error code when bad key is sent using `key-auth`.
 * **Response-Transformer-Advanced**: Do not load response body when `if_status` does not match. [FTI-5265](https://konghq.atlassian.net/browse/FTI-5265)
 
 # 3.4.0.0
@@ -135,8 +139,6 @@
   * Optmize the response message for invalid request.
   [FTI-5078](https://konghq.atlassian.net/browse/FTI-5078)
   [FTI-5006](https://konghq.atlassian.net/browse/FTI-5006)
-* **Konnect Application Auth**
-  * Fix http error code when bad key is sent using `key-auth`.
 
 ## Kong Manager
 
