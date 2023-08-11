@@ -158,6 +158,9 @@ local function add_atc_matcher(inst, route, route_id,
 end
 
 
+if is_http then
+
+
 local function is_http_headers_field(field)
   return field:sub(1, 13) == "http.headers."
 end
@@ -188,6 +191,33 @@ local function has_query_matching_field(fields)
 
   return false
 end
+
+
+local tb_insert = table.insert
+
+
+local function categorize_http_fields(fields)
+  local baisc = {}
+  local headers = {}
+  local queries = {}
+
+  for _, field in ipairs(fields) do
+    if is_http_headers_field(field) then
+      tb_insert(headers, field)
+
+    elseif is_http_queries_field(field) then
+      tb_insert(queries, field)
+
+    else
+      tb_insert(basic, field)
+    end
+  end
+
+  return baisc, headers, queries
+end
+
+
+end -- if is_http then
 
 
 local function new_from_scratch(routes, get_exp_and_priority)
