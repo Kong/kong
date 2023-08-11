@@ -273,6 +273,11 @@ jobs:
         service: kong-ee-github-actions-ci
         files: ${{ env.TEST_RESULTS_XML_OUTPUT }}
 
+    - name: Get kernel message
+      if: failure()
+      run: |
+        sudo dmesg -T
+
   integration-tests-postgres:
     name: Postgres ${{ matrix.suite }} - ${{ matrix.split }} tests
     runs-on: ubuntu-latest-kong
@@ -468,6 +473,11 @@ jobs:
         service: kong-ee-github-actions-ci
         files: ${{ env.TEST_RESULTS_XML_OUTPUT }}
 
+    - name: Get kernel message
+      if: failure()
+      run: |
+        sudo dmesg -T
+
     # EE only
     - name: Stop Redis Cluster
       if: ${{ always() }}
@@ -582,6 +592,11 @@ jobs:
       run: |
           docker compose -p redis-cluster down -v
 
+    - name: Get kernel message
+      if: failure()
+      run: |
+        sudo dmesg -T
+
   pdk-tests:
     name: PDK tests
     runs-on: ubuntu-latest-kong
@@ -647,6 +662,11 @@ jobs:
         retention-days: 1
         path: |
           luacov.stats.out
+
+    - name: Get kernel message
+      if: failure()
+      run: |
+        sudo dmesg -T
 
   build-image:
     name: Build Pongo Base Image - ${{ matrix.label }}
