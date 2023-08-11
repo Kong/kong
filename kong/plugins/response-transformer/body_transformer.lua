@@ -14,7 +14,8 @@ local pcall = pcall
 
 
 cjson.decode_array_with_array_mt(true)
-if kong.configuration.cjson_encode_number_precision then
+if kong and kong.configuration and
+    kong.configuration.cjson_encode_number_precision then
   cjson.encode_number_precision(
   kong.configuration.cjson_encode_number_precision)
 end
