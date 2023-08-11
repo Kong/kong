@@ -193,9 +193,6 @@ local function has_query_matching_field(fields)
 end
 
 
-local tb_insert = table.insert
-
-
 local function categorize_http_fields(fields)
   local baisc = {}
   local headers = {}
@@ -203,13 +200,13 @@ local function categorize_http_fields(fields)
 
   for _, field in ipairs(fields) do
     if is_http_headers_field(field) then
-      tb_insert(headers, field)
+      headers[field:sub(14)] = field
 
     elseif is_http_queries_field(field) then
-      tb_insert(queries, field)
+      queries[field:sub(14)] = field
 
     else
-      tb_insert(basic, field)
+      table.insert(basic, field)
     end
   end
 
@@ -485,12 +482,17 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
         return nil, err
       end
 
-    elseif is_http_headers_field(field) then
-      if not req_headers then
-        goto continue
-      end
+    else  -- unknown field
+      error("unknown router matching schema field: " .. field)
 
-      local h = field:sub(14)
+    end -- if field
+
+    ::continue::
+  end   -- for self.fields
+
+  if req_headers then
+    for h, field in pairs(self.header_fields) do
+
       local v = req_headers[h]
 
       if type(v) == "string" then
@@ -507,15 +509,12 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
           end
         end
       end -- if type(v)
+    end   -- for self.header_fields
+  end   -- req_headers
 
-      -- if v is nil or others, goto continue
+  if req_queries then
+    for n, field in pairs(self.query_fields) do
 
-    elseif is_http_queries_field(field) then
-      if not req_queries then
-        goto continue
-      end
-
-      local n = field:sub(14)
       local v = req_queries[n]
 
       -- the query parameter has only one value, like /?foo=bar
@@ -543,16 +542,8 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
           end
         end
       end -- if type(v)
-
-      -- if v is nil or others, goto continue
-
-    else  -- unknown field
-      error("unknown router matching schema field: " .. field)
-
-    end -- if field
-
-    ::continue::
-  end   -- for self.fields
+    end   -- for self.query_fields
+  end   -- req_queries
 
   local matched = self.router:execute(c)
   if not matched then
