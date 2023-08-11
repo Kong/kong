@@ -1596,6 +1596,25 @@ describe("Configuration loader", function()
       local conf = assert(conf_loader(helpers.test_conf_path))
       assert.equal(DATABASE, conf.database)
     end)
+    it("error when cjson encode_number_precision is not a valid number", function()
+      local conf, err = conf_loader(nil, {
+        cjson_encode_number_precision = 13,
+      })
+      assert.equal("cjson_encode_number_precision must be an integer between 14 and 16", err)
+      assert.is_nil(conf)
+      local conf, err = conf_loader(nil, {
+        cjson_encode_number_precision = 17,
+      })
+      assert.equal("cjson_encode_number_precision must be an integer between 14 and 16", err)
+      assert.is_nil(conf)
+    end)
+    it("accept a valid number as cjson encode_number_precision", function()
+      local conf, err = conf_loader(nil, {
+        cjson_encode_number_precision = 16,
+      })
+      assert.is_nil(err)
+      assert.equal(16, conf.cjson_encode_number_precision)
+    end)
   end)
 
   describe("pg_semaphore options", function()

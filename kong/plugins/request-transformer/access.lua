@@ -44,6 +44,10 @@ local compile_opts = {
 
 
 cjson.decode_array_with_array_mt(true)
+if kong.configuration.cjson_encode_number_precision then
+  cjson.encode_number_precision(
+  kong.configuration.cjson_encode_number_precision)
+end
 
 
 local function parse_json(body)

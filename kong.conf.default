@@ -1845,6 +1845,14 @@
                                   # valid UUID. When empty, node ID is
                                   # automatically generated.
 
+#cjson_encode_number_precision
+                                  # Precision used when encoding numbers to
+                                  # JSON. This is the maximum number of
+                                  # significant digits used when encoding
+                                  # floating point numbers to JSON text.
+                                  #
+                                  # The default value is 14, the maximum value is 16.
+
 #------------------------------------------------------------------------------
 # KONG MANAGER
 #------------------------------------------------------------------------------

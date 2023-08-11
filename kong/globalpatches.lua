@@ -15,9 +15,11 @@ return function(options)
   local meta = require "kong.meta"
 
 
+  -- TODO: if other modules call require("cjson.safe").new()
+  -- then this cjson patch could be invalid.
   local cjson = require("cjson.safe")
   cjson.encode_sparse_array(nil, nil, 2^15)
-  
+
   local pb = require "pb"
 
   -- let pb decode arrays to table cjson.empty_array_mt metatable

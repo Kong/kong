@@ -697,6 +697,12 @@ function Kong.init_worker()
   -- duplicated seeds.
   math.randomseed()
 
+  if kong.configuration.cjson_encode_number_precision then
+    require("cjson").encode_number_precision(
+      kong.configuration.cjson_encode_number_precision)
+    require("cjson.safe").encode_number_precision(
+      kong.configuration.cjson_encode_number_precision)
+  end
 
   -- setup timerng to _G.kong
   kong.timer = _G.timerng

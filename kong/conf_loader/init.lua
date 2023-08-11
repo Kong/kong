@@ -597,6 +597,8 @@ local CONF_PARSERS = {
   admin_gui_url = {typ = "string"},
   admin_gui_path = {typ = "string"},
   admin_gui_api_url = {typ = "string"},
+
+  cjson_encode_number_precision = { typ = "number", },
 }
 
 
@@ -1367,6 +1369,14 @@ local function check_and_parse(conf, opts)
     conf.wasm_dynamic_module, err = lookup_dynamic_module_so("ngx_wasm_module", conf)
     if err then
       errors[#errors + 1] = err
+    end
+  end
+
+  if conf.cjson_encode_number_precision then
+    if conf.cjson_encode_number_precision < 14 or conf.cjson_encode_number_precision > 16
+    or conf.cjson_encode_number_precision ~= floor(conf.cjson_encode_number_precision)
+    then
+      errors[#errors + 1] = "cjson_encode_number_precision must be an integer between 14 and 16"
     end
   end
 
