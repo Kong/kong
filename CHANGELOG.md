@@ -22,6 +22,7 @@
 #### Core
 
 - '/schemas' endpoint returns additional information about cross-field validation as part of the schema. This should help tools that use the Admin API to perform better client-side validation.
+- add support for `cjson_encode_number_precision`. It specifies the precision used when encoding floating point numbers to JSON. 
 
 #### Plugins
 
