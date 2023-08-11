@@ -195,10 +195,7 @@ local setkeepalive
 
 local function reconnect(config)
   local phase = get_phase()
-  if phase == "init" or phase == "init_worker" or ngx.IS_CLI then
-    -- Force LuaSocket usage in the CLI in order to allow for self-signed
-    -- certificates to be trusted (via opts.cafile) in the resty-cli
-    -- interpreter (no way to set lua_ssl_trusted_certificate).
+  if phase == "init" or phase == "init_worker" then
     config.socket_type = "luasocket"
 
   else
@@ -219,16 +216,16 @@ local function reconnect(config)
     return nil, err
   end
 
-  if connection.sock:getreusedtimes() == 0 then
-    if config.schema == "" then
-      local res = connection:query("SELECT CURRENT_SCHEMA AS schema")
-      if res and res[1] and res[1].schema and res[1].schema ~= null then
-        config.schema = res[1].schema
-      else
-        config.schema = "public"
-      end
+  if config.schema == "" then
+    local res = connection:query("SELECT CURRENT_SCHEMA AS schema")
+    if res and res[1] and res[1].schema and res[1].schema ~= null then
+      config.schema = res[1].schema
+    else
+      config.schema = "public"
     end
+  end
 
+  if connection.sock:getreusedtimes() == 0 then
     ok, err = connection:query(concat {
       "SET SCHEMA ",    connection:escape_literal(config.schema), ";\n",
       "SET TIME ZONE ", connection:escape_literal("UTC"), ";",
@@ -298,7 +295,7 @@ function _mt:init()
   local res, err = self:query("SHOW server_version_num;")
   local ver = tonumber(res and res[1] and res[1].server_version_num)
   if not ver then
-    return nil, "failed to retrieve PostgreSQL server_version_num: " .. err
+    return nil, "failed to retrieve PostgreSQL server_version_num: " .. (err or "")
   end
 
   local major = floor(ver / 10000)
