@@ -284,15 +284,24 @@ local function get_next_global_or_collected_plugin(plugins, i)
   if i > plugins[0] then
     return nil
   end
-  local cfg = kong.vault.update(plugins[i])
-  return i, plugins[i - 1], cfg
+
+  return i, plugins[i-1], plugins[i]
 end
 
 
-local function get_global_iterator(self, phase)
+local function get_global_iterator(self, phase, skip_vault_update)
   local plugins = self.globals[phase]
-  if plugins[0] == 0 then
+  local count = plugins[0]
+  if count == 0 then
     return nil
+  end
+
+  if not skip_vault_update then
+    local i = 2
+    while i <= count do
+      kong.vault.update(plugins[i])
+      i = i + 2
+    end
   end
 
   return get_next_global_or_collected_plugin, plugins
@@ -329,7 +338,7 @@ local function get_next_and_collect(ctx, i)
   if combos then
     cfg = load_configuration_through_combos(ctx, combos, plugin)
     if cfg then
-      cfg = kong.vault.update(cfg)
+      kong.vault.update(cfg)
       local handler = plugin.handler
       local collected = ctx.plugins
       for j = 1, DOWNSTREAM_PHASES_COUNT do

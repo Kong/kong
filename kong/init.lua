@@ -301,12 +301,12 @@ local function execute_init_worker_plugins_iterator(plugins_iterator, ctx)
 end
 
 
-local function execute_global_plugins_iterator(plugins_iterator, phase, ctx)
+local function execute_global_plugins_iterator(plugins_iterator, phase, ctx, skip_vault_update)
   if not plugins_iterator.has_plugins then
     return
   end
 
-  local iterator, plugins = plugins_iterator:get_global_iterator(phase)
+  local iterator, plugins = plugins_iterator:get_global_iterator(phase, skip_vault_update)
   if not iterator then
     return
   end
@@ -1007,7 +1007,7 @@ function Kong.rewrite()
     plugins_iterator = runloop.get_updated_plugins_iterator()
   end
 
-  execute_global_plugins_iterator(plugins_iterator, "rewrite", ctx)
+  execute_global_plugins_iterator(plugins_iterator, "rewrite", ctx, is_https)
 
   ctx.KONG_REWRITE_ENDED_AT = get_updated_now_ms()
   ctx.KONG_REWRITE_TIME = ctx.KONG_REWRITE_ENDED_AT - ctx.KONG_REWRITE_START
