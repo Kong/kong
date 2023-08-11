@@ -267,6 +267,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       local service20   = admin_api.services:insert()
       local service21   = admin_api.services:insert()
 
+
       local route1 = assert(admin_api.routes:insert({
         hosts     = { "oauth2.com" },
         protocols = { "http", "https" },
@@ -4204,7 +4205,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
   describe("Plugin: oauth2 (ttl) with #"..strategy, function()
     lazy_setup(function()
       local route11 = assert(admin_api.routes:insert({
-        hosts     = { "oauth2_21.com" },
+        hosts     = { "oauth2_21.refresh.com" },
         protocols = { "http", "https" },
         service   = admin_api.services:insert(),
       }))
@@ -4222,7 +4223,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       }
 
       local route12 = assert(admin_api.routes:insert({
-        hosts     = { "oauth2_22.com" },
+        hosts     = { "oauth2_22.refresh.com" },
         protocols = { "http", "https" },
         service   = admin_api.services:insert(),
       }))
@@ -4253,7 +4254,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
 
     describe("refresh token", function()
       it("is deleted after defined TTL", function()
-        local token = provision_token("oauth2_21.com", nil, "clientid7890", "secret7890")
+        local token = provision_token("oauth2_21.refresh.com", nil, "clientid7890", "secret7890")
         local token_entity = db.oauth2_tokens:select_by_access_token(token.access_token)
         assert.is_table(token_entity)
 
@@ -4265,7 +4266,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       end)
 
       it("is not deleted when when TTL is 0 == never", function()
-        local token = provision_token("oauth2_22.com", nil, "clientid7890", "secret7890")
+        local token = provision_token("oauth2_22.refresh.com", nil, "clientid7890", "secret7890")
         local token_entity = db.oauth2_tokens:select_by_access_token(token.access_token)
         assert.is_table(token_entity)
 
