@@ -3,6 +3,13 @@ local tempfilename = require("pl.path").tmpname
 local pretty = require("pl.pretty").write
 
 
+-- Several DNS tests use the actual DNS to verify the client behavior against real name servers.  It seems that
+-- even though we have a DNS mocking system, it is good to have some coverage against actual servers to ensure that
+-- we're not relying on mocked behavior.  We use the domain name kong-gateway-testing.link, which is hosted in Route53
+-- in the AWS sandbox, allowing Gateway developers to make additions if required.
+local TEST_DOMAIN="kong-gateway-testing.link"
+
+
 -- empty records and not found errors should be identical, hence we
 -- define a constant for that error message
 local NOT_FOUND_ERROR = "dns server error: 3 name error"
@@ -79,7 +86,7 @@ describe("[DNS client]", function()
               resolvConf = {"nameserver [fe80::1%enp0s20f0u1u1]"},
             })
           end)
-      local ip, port = client.toip("thijsschreijer.nl")
+      local ip, port = client.toip(TEST_DOMAIN)
       assert.is_nil(ip)
       assert.not_matches([[failed to parse host name "[fe80::1%enp0s20f0u1u1]": invalid IPv6 address]], port, nil, true)
       assert.matches([[failed to create a resolver: no nameservers specified]], port, nil, true)
@@ -557,13 +564,68 @@ describe("[DNS client]", function()
         }, list)
     end)
 
+    for retrans in ipairs({1, 2}) do
+      for _, timeout in ipairs({1, 2}) do
+        it("correctly observes #timeout of " .. tostring(timeout) .. " seconds with " .. tostring(retrans) .. " retries", function()
+          -- KAG-2300 - https://github.com/Kong/kong/issues/10182
+          -- If we encounter a timeout while talking to the DNS server, expect the total timeout to be close to the
+          -- configured timeout * retrans parameters
+          assert(client.init({
+            resolvConf = {
+              "nameserver 198.51.100.0",
+              "domain one.com",
+            },
+            timeout = timeout * 1000,
+            retrans = retrans,
+            hosts = {
+              "127.0.0.1 host"
+            }
+          }))
+          query_func = function(self, original_query_func, name, options)
+            ngx.sleep(5)
+            return nil
+          end
+          local start_time = ngx.now()
+          client.resolve("host1.one.com.")
+          local duration = ngx.now() - start_time
+          assert.truthy(duration < (timeout * retrans + 1))
+        end)
+      end
+    end
+
+    -- The domain name below needs to have both a SRV and an A record
+    local SRV_A_TEST_NAME = "timeouttest."..TEST_DOMAIN
+
+    it("verify correctly set up test DNS entry", function()
+      assert(client.init({ timeout = 1000, retrans = 2 }))
+      local answers = client.resolve(SRV_A_TEST_NAME, { qtype = client.TYPE_SRV})
+      assert.same(client.TYPE_SRV, answers[1].type)
+      answers = client.resolve(SRV_A_TEST_NAME, { qtype = client.TYPE_A})
+      assert.same(client.TYPE_A, answers[1].type)
+    end)
+
+    it("does not respond with incorrect answer on transient failure", function()
+      -- KAG-2300 - https://github.com/Kong/kong/issues/10182
+      -- If we encounter a timeout while talking to the DNS server, don't keep trying with other record types
+      assert(client.init({ timeout = 1000, retrans = 2 }))
+      query_func = function(self, original_query_func, name, options)
+        if options.qtype == client.TYPE_SRV then
+          ngx.sleep(10)
+        else
+          return original_query_func(self, name, options)
+        end
+      end
+      local answers = client.resolve(SRV_A_TEST_NAME)
+      assert.is_nil(answers)
+    end)
+
   end)
 
 
   it("fetching a record without nameservers errors", function()
     assert(client.init({ resolvConf = {} }))
 
-    local host = "thijsschreijer.nl"
+    local host = TEST_DOMAIN
     local typ = client.TYPE_A
 
     local answers, err, _ = client.resolve(host, { qtype = typ })
@@ -574,7 +636,7 @@ describe("[DNS client]", function()
   it("fetching a TXT record", function()
     assert(client.init())
 
-    local host = "txttest.thijsschreijer.nl"
+    local host = "txttest."..TEST_DOMAIN
     local typ = client.TYPE_TXT
 
     local answers, err, try_list = client.resolve(host, { qtype = typ })
@@ -587,7 +649,7 @@ describe("[DNS client]", function()
   it("fetching a CNAME record", function()
     assert(client.init())
 
-    local host = "smtp.thijsschreijer.nl"
+    local host = "smtp."..TEST_DOMAIN
     local typ = client.TYPE_CNAME
 
     local answers = assert(client.resolve(host, { qtype = typ }))
@@ -599,7 +661,7 @@ describe("[DNS client]", function()
   it("fetching a CNAME record FQDN", function()
     assert(client.init())
 
-    local host = "smtp.thijsschreijer.nl"
+    local host = "smtp."..TEST_DOMAIN
     local typ = client.TYPE_CNAME
 
     local answers = assert(client.resolve(host .. ".", { qtype = typ }))
@@ -611,7 +673,7 @@ describe("[DNS client]", function()
   it("expire and touch times", function()
     assert(client.init())
 
-    local host = "txttest.thijsschreijer.nl"
+    local host = "txttest."..TEST_DOMAIN
     local typ = client.TYPE_TXT
 
     local answers, _, _ = assert(client.resolve(host, { qtype = typ }))
@@ -667,7 +729,7 @@ describe("[DNS client]", function()
   it("fetching multiple A records", function()
     assert(client.init())
 
-    local host = "atest.thijsschreijer.nl"
+    local host = "atest."..TEST_DOMAIN
     local typ = client.TYPE_A
 
     local answers = assert(client.resolve(host, { qtype = typ }))
@@ -681,7 +743,7 @@ describe("[DNS client]", function()
   it("fetching multiple A records FQDN", function()
     assert(client.init())
 
-    local host = "atest.thijsschreijer.nl"
+    local host = "atest."..TEST_DOMAIN
     local typ = client.TYPE_A
 
     local answers = assert(client.resolve(host .. ".", { qtype = typ }))
@@ -710,20 +772,20 @@ describe("[DNS client]", function()
     This does not affect client side code, as the result is always the final A record.
     --]]
 
-    local host = "smtp.thijsschreijer.nl"
+    local host = "smtp."..TEST_DOMAIN
     local typ = client.TYPE_A
     local answers, _, _ = assert(client.resolve(host))
 
     -- check first CNAME
     local key1 = client.TYPE_CNAME..":"..host
     local entry1 = lrucache:get(key1)
-    assert.are.equal(host, entry1[1].name)       -- the 1st record is the original 'smtp.thijsschreijer.nl'
+    assert.are.equal(host, entry1[1].name)       -- the 1st record is the original 'smtp.'..TEST_DOMAIN
     assert.are.equal(client.TYPE_CNAME, entry1[1].type) -- and that is a CNAME
 
     -- check second CNAME
     local key2 = client.TYPE_CNAME..":"..entry1[1].cname
     local entry2 = lrucache:get(key2)
-    assert.are.equal(entry1[1].cname, entry2[1].name) -- the 2nd is the middle 'thuis.thijsschreijer.nl'
+    assert.are.equal(entry1[1].cname, entry2[1].name) -- the 2nd is the middle 'thuis.'..TEST_DOMAIN
     assert.are.equal(client.TYPE_CNAME, entry2[1].type) -- and that is also a CNAME
 
     -- check second target to match final record
@@ -745,7 +807,7 @@ describe("[DNS client]", function()
   it("fetching multiple SRV records (un-typed)", function()
     assert(client.init())
 
-    local host = "srvtest.thijsschreijer.nl"
+    local host = "srvtest."..TEST_DOMAIN
     local typ = client.TYPE_SRV
 
     -- un-typed lookup
@@ -763,7 +825,7 @@ describe("[DNS client]", function()
     assert(client.init({ search = {}, }))
     local lrucache = client.getcache()
 
-    local host = "cname2srv.thijsschreijer.nl"
+    local host = "cname2srv."..TEST_DOMAIN
     local typ = client.TYPE_SRV
 
     -- un-typed lookup
@@ -793,7 +855,7 @@ describe("[DNS client]", function()
           },
         }))
 
-    local host = "srvtest.thijsschreijer.nl"
+    local host = "srvtest."..TEST_DOMAIN
     local typ = client.TYPE_A   --> the entry is SRV not A
 
     local answers, err, _ = client.resolve(host, {qtype = typ})
@@ -809,7 +871,7 @@ describe("[DNS client]", function()
           },
         }))
 
-    local host = "IsNotHere.thijsschreijer.nl"
+    local host = "IsNotHere."..TEST_DOMAIN
 
     local answers, err, _ = client.resolve(host)
     assert.is_nil(answers)
@@ -1099,7 +1161,7 @@ describe("[DNS client]", function()
   describe("toip() function", function()
     it("A/AAAA-record, round-robin",function()
       assert(client.init({ search = {}, }))
-      local host = "atest.thijsschreijer.nl"
+      local host = "atest."..TEST_DOMAIN
       local answers = assert(client.resolve(host))
       answers.last_index = nil -- make sure to clean
       local ips = {}
@@ -1303,11 +1365,12 @@ describe("[DNS client]", function()
       assert.is_number(port)
       assert.is_not.equal(0, port)
     end)
+
     it("port passing if SRV port=0",function()
       assert(client.init({ search = {}, }))
       local ip, port, host
 
-      host = "srvport0.thijsschreijer.nl"
+      host = "srvport0."..TEST_DOMAIN
       ip, port = client.toip(host, 10)
       assert.is_string(ip)
       assert.is_number(port)
@@ -1317,6 +1380,7 @@ describe("[DNS client]", function()
       assert.is_string(ip)
       assert.is_nil(port)
     end)
+
     it("recursive SRV pointing to itself",function()
       assert(client.init({
             resolvConf = {
@@ -1325,7 +1389,7 @@ describe("[DNS client]", function()
             },
           }))
       local ip, record, port, host, err, _
-      host = "srvrecurse.thijsschreijer.nl"
+      host = "srvrecurse."..TEST_DOMAIN
 
       -- resolve SRV specific should return the record including its
       -- recursive entry
@@ -1480,7 +1544,7 @@ describe("[DNS client]", function()
     --empty/error responses should be cached for a configurable time
     local emptyTtl = 0.1
     local staleTtl = 0.1
-    local qname = "really.really.really.does.not.exist.thijsschreijer.nl"
+    local qname = "really.really.really.does.not.exist."..TEST_DOMAIN
     assert(client.init({
           emptyTtl = emptyTtl,
           staleTtl = staleTtl,
@@ -1648,7 +1712,7 @@ describe("[DNS client]", function()
         -- starting resolving
         coroutine.yield(coroutine.running())
         local result, _, _ = client.resolve(
-                                "thijsschreijer.nl",
+                                TEST_DOMAIN,
                                 { qtype = client.TYPE_A }
                               )
         table.insert(results, result)
@@ -1692,7 +1756,7 @@ describe("[DNS client]", function()
       }))
 
       -- insert a stub thats waits and returns a fixed record
-      local name = "thijsschreijer.nl"
+      local name = TEST_DOMAIN
       query_func = function()
         local ip = "1.4.2.3"
         local entry = {
@@ -1738,7 +1802,7 @@ describe("[DNS client]", function()
 
       -- all results are equal, as they all will wait for the first response
       for i = 1, 10 do
-        assert.equal("dns lookup pool exceeded retries (1): timeout", results[i])
+        assert.equal("timeout", results[i])
       end
     end)
   end)
@@ -1755,7 +1819,7 @@ describe("[DNS client]", function()
 
     -- insert a stub thats waits and returns a fixed record
     local call_count = 0
-    local name = "thijsschreijer.nl"
+    local name = TEST_DOMAIN
     query_func = function()
       local ip = "1.4.2.3"
       local entry = {

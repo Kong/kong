@@ -1,0 +1,3 @@
+message: Update the DNS client to follow configured timeouts in a more predictable manner
+type: bugfix
+scope: Core
