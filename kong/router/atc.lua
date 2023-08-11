@@ -166,30 +166,8 @@ local function is_http_headers_field(field)
 end
 
 
-local function has_header_matching_field(fields)
-  for _, field in ipairs(fields) do
-    if is_http_headers_field(field) then
-      return true
-    end
-  end
-
-  return false
-end
-
-
 local function is_http_queries_field(field)
   return field:sub(1, 13) == "http.queries."
-end
-
-
-local function has_query_matching_field(fields)
-  for _, field in ipairs(fields) do
-    if is_http_queries_field(field) then
-      return true
-    end
-  end
-
-  return false
 end
 
 
@@ -256,8 +234,6 @@ local function new_from_scratch(routes, get_exp_and_priority)
   end
 
   local fields, header_fields, query_fields = categorize_http_fields(inst:get_fields())
-  local match_headers = not isempty(header_fields)
-  local match_queries = not isempty(query_fields)
 
   return setmetatable({
       schema = CACHED_SCHEMA,
@@ -267,8 +243,8 @@ local function new_from_scratch(routes, get_exp_and_priority)
       fields = fields,
       header_fields = header_fields,
       query_fields = query_fields,
-      match_headers = match_headers,
-      match_queries = match_queries,
+      match_headers = not isempty(header_fields),
+      match_queries = not isempty(query_fields),
       updated_at = new_updated_at,
       rebuilding = false,
     }, _MT)
