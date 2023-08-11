@@ -95,10 +95,18 @@ resolver.query = function(self, name, options, tries)
   end
 
   if not mocks_only then
-    -- no mock, so invoke original resolver
-    local a, b, c = old_query(self, name, options, tries)
-    return a, b, c
+    -- No mock, so invoke original resolver.  Note that if the original resolver fails (i.e. because an
+    -- invalid domain name like example.com was used), we return an empty result set instead of passing
+    -- the error up to the caller.  This is done so that if the mock contains "A" records (which would
+    -- be the most common case), the initial query for a SRV record does not fail, but appear not to have
+    -- yielded any results.  This will make dns/client.lua try finding an A record next.
+    local records, err, tries = old_query(self, name, options, tries)
+    if records then
+      return records, err, tries
+    end
   end
+
+  return {}, nil, tries
 end
 
 -- do
