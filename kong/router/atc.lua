@@ -35,12 +35,8 @@ local get_uri_args  = ngx.req.get_uri_args
 local ngx_ERR       = ngx.ERR
 
 
-local sanitize_uri_postfix = utils.sanitize_uri_postfix
 local check_select_params  = utils.check_select_params
-local strip_uri_args       = utils.strip_uri_args
 local get_service_info     = utils.get_service_info
-local add_debug_headers    = utils.add_debug_headers
-local get_upstream_uri_v0  = utils.get_upstream_uri_v0
 local route_match_stat     = utils.route_match_stat
 
 
@@ -405,6 +401,13 @@ end
 
 
 if is_http then
+
+
+local sanitize_uri_postfix = utils.sanitize_uri_postfix
+local strip_uri_args       = utils.strip_uri_args
+local add_debug_headers    = utils.add_debug_headers
+local get_upstream_uri_v0  = utils.get_upstream_uri_v0
+
 
 function _M:select(req_method, req_uri, req_host, req_scheme,
                    _, _,
