@@ -9,6 +9,7 @@ local context = require("resty.router.context")
 local lrucache = require("resty.lrucache")
 local server_name = require("ngx.ssl").server_name
 local tb_new = require("table.new")
+local isempty = require("table.isempty")
 local utils = require("kong.router.utils")
 local yield = require("kong.tools.utils").yield
 
@@ -87,7 +88,6 @@ end
 local is_empty_field
 do
   local null    = ngx.null
-  local isempty = require("table.isempty")
 
   is_empty_field = function(f)
     return f == nil or f == null or isempty(f)
@@ -258,9 +258,9 @@ local function new_from_scratch(routes, get_exp_and_priority)
     yield(true, phase)
   end
 
-  local fields = inst:get_fields()
-  local match_headers = has_header_matching_field(fields)
-  local match_queries = has_query_matching_field(fields)
+  local fields, header_fields, query_fields = categorize_http_fields(inst:get_fields())
+  local match_headers = not isempty(header_fields)
+  local match_queries = not isempty(query_fields)
 
   return setmetatable({
       schema = CACHED_SCHEMA,
@@ -268,6 +268,8 @@ local function new_from_scratch(routes, get_exp_and_priority)
       routes = routes_t,
       services = services_t,
       fields = fields,
+      header_fields = header_fields,
+      query_fields = query_fields,
       match_headers = match_headers,
       match_queries = match_queries,
       updated_at = new_updated_at,
@@ -351,11 +353,13 @@ local function new_from_previous(routes, get_exp_and_priority, old_router)
     yield(true, phase)
   end
 
-  local fields = inst:get_fields()
+  local fields, header_fields, query_fields = categorize_http_fields(inst:get_fields())
 
   old_router.fields = fields
-  old_router.match_headers = has_header_matching_field(fields)
-  old_router.match_queries = has_query_matching_field(fields)
+  old_router.header_fields = header_fields,
+  old_router.query_fields = query_fields,
+  old_router.match_headers = not isempty(header_fields)
+  old_router.match_queries = not isempty(query_fields)
   old_router.updated_at = new_updated_at
   old_router.rebuilding = false
 
