@@ -15,10 +15,11 @@ local semaphore = require "ngx.semaphore"
 local lrucache = require "resty.lrucache"
 local isempty = require "table.isempty"
 local buffer = require "string.buffer"
+local isarray = require "table.isarray"
 local nkeys = require "table.nkeys"
 local clone = require "table.clone"
 local cjson = require("cjson.safe").new()
-local stringx = require ("pl.stringx")
+local stringx = require("pl.stringx")
 
 
 local ngx = ngx
@@ -44,6 +45,7 @@ local encode_base64url = require("ngx.base64").encode_base64url
 local decode_json = cjson.decode
 local split = stringx.split
 
+
 local ROTATION_INTERVAL = tonumber(os.getenv("KONG_VAULT_ROTATION_INTERVAL") or 60)
 local REFERENCE_IDENTIFIER = "reference"
 local DAO_MAX_TTL = constants.DATABASE.DAO_MAX_TTL
@@ -54,14 +56,15 @@ local BRACE_END = byte("}")
 local COLON = byte(":")
 local SLASH = byte("/")
 
+
 local function is_reference(reference)
   return type(reference)      == "string"
-      and byte(reference, 1)   == BRACE_START
-      and byte(reference, -1)  == BRACE_END
-      and byte(reference, 7)   == COLON
-      and byte(reference, 8)   == SLASH
-      and byte(reference, 9)   == SLASH
-      and sub(reference, 2, 6) == "vault"
+     and byte(reference, 1)   == BRACE_START
+     and byte(reference, -1)  == BRACE_END
+     and byte(reference, 7)   == COLON
+     and byte(reference, 8)   == SLASH
+     and byte(reference, 9)   == SLASH
+     and sub(reference, 2, 6) == "vault"
 end
 
 local function new(self)
@@ -615,7 +618,6 @@ local function new(self)
     end
 
     local config, err, parsed_reference, strategy, hash = parse_and_resolve_reference(reference)
-
     if not config then
       return nil, err
     end
@@ -643,19 +645,30 @@ local function new(self)
     return nil, "could not find cached values"
   end
 
-  --- Function `get_from_cache` retrieves values from a cache.
+  --- Function `get_from_cache` retrieves a value from a cache.
   --
-  -- This function uses the provided references to fetch values from a cache.
-  -- The fetching process will return cached values if they exist.
+  -- This function uses the provided reference to fetch a value from a cache.
   --
   -- @function get_from_cache
-  -- @param references A list or table of reference keys. Each reference key corresponds to a value in the cache.
-  -- @return The retrieved values corresponding to the provided references. If a value does not exist in the cache for a particular reference, it is not clear from the given code what will be returned.
-  -- @usage local values = get_from_cache(references)
-  local function get_from_cache(references)
-    return get(references, true)
-  end
+  -- @param reference Reference to read from cache.
+  -- @return Resolved reference value or "" in case it was not found in caches.
+  -- @usage local value = get_from_cache(reference)
+  local function get_from_cache(reference)
+    local value, err = get(reference, true)
+    if value then
+      return value
+    end
 
+    self.log.warn("error updating secret reference ", reference, ": ", err, " (resetting value to empty string)")
+
+    -- It was debated whether returning nil, empty string or something else
+    -- when the vault fails to return value from cache. All solutions have
+    -- their issues. Empty string can for example be considered dangerous if
+    -- that resets a password that client is asked for. The `nil` could remove
+    -- something that was configured or perhaps cause runtime crashes more
+    -- easily, or hide potential issues deeper etc.
+    return ""
+  end
 
   --- Function `update` recursively updates a configuration table.
   --
@@ -679,35 +692,31 @@ local function new(self)
     end
 
     for k, v in pairs(config) do
-      if type(v) == "table" then
+      if k ~= "$refs" and type(v) == "table" then
         config[k] = update(v)
       end
     end
 
-    -- This can potentially grow without ever getting
-    -- reset. This will only happen when a user repeatedly changes
-    -- references without ever restarting kong, which sounds
-    -- kinda unlikely, but should still be monitored.
     local refs = config["$refs"]
     if type(refs) ~= "table" or isempty(refs) then
       return config
     end
 
-    local function update_references(refs, target)
-      for field_name, field_value in pairs(refs) do
-        if is_reference(field_value) then
-          local value, err = get_from_cache(field_value)
-          if not value then
-            self.log.notice("error updating secret reference ", field_value, ": ", err)
-          end
-          target[field_name] = value or ''
-        elseif type(field_value) == "table" then
-          update_references(field_value, target[field_name])
+    for field_name, reference in pairs(refs) do
+      if type(reference) == "string" then -- a string reference
+        config[field_name] = get_from_cache(reference)
+
+      elseif isarray(reference) then -- array or set of references
+        for i = 1, #reference do
+          config[field_name][i] = get_from_cache(reference[i])
+        end
+
+      elseif type(reference) == "table" then -- map of references
+        for key, ref in pairs(reference) do
+          config[field_name][key] = get_from_cache(ref)
         end
       end
     end
-
-    update_references(refs, config)
 
     return config
   end

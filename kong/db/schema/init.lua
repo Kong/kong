@@ -1596,6 +1596,44 @@ local function adjust_field_for_context(field, value, context, nulls, opts)
 end
 
 
+local function resolve_reference(reference)
+  local deref, err = kong.vault.get(reference)
+  if deref then
+    return deref
+  end
+
+  if err then
+    kong.log.warn("unable to resolve reference ", reference, " (", err, ")")
+  else
+    kong.log.warn("unable to resolve reference ", reference)
+  end
+
+  -- It was debated whether returning nil, empty string or something else
+  -- when the vault fails to return value from cache. All solutions have
+  -- their issues. Empty string can for example be considered dangerous if
+  -- that resets a password that client is asked for. The `nil` could remove
+  -- something that was configured or perhaps cause runtime crashes more
+  -- easily, or hide potential issues deeper etc.
+  return ""
+end
+
+
+local function fill_prev_refs(prev_refs, refs, key)
+  if prev_refs and prev_refs[key] then
+    if refs then
+      if not refs[key] then
+        refs[key] = prev_refs[key]
+      end
+
+    else
+      refs = { [key] = prev_refs[key] }
+    end
+  end
+
+  return refs
+end
+
+
 --- Given a table, update its fields whose schema
 -- definition declares them as `auto = true`,
 -- based on its CRUD operation context, and set
@@ -1728,26 +1766,10 @@ function Schema:process_auto_fields(data, context, nulls, opts)
               refs = { [key] = value }
             end
 
-            local deref, err = kong.vault.get(value)
-            if deref then
-              value = deref
+            value = resolve_reference(value)
 
-            else
-              if err then
-                kong.log.warn("unable to resolve reference ", value, " (", err, ")")
-              else
-                kong.log.warn("unable to resolve reference ", value)
-              end
-
-              value = nil
-            end
-
-          elseif prev_refs and prev_refs[key] then
-            if refs then
-              refs[key] = prev_refs[key]
-            else
-              refs = { [key] = prev_refs[key] }
-            end
+          else
+            refs = fill_prev_refs(prev_refs, refs, key)
           end
 
         elseif vtype == "table" and (ftype == "array" or ftype == "set") then
@@ -1767,33 +1789,12 @@ function Schema:process_auto_fields(data, context, nulls, opts)
 
                   refs[key][i] = value[i]
 
-                  local deref, err = kong.vault.get(value[i])
-                  if deref then
-                    value[i] = deref
-
-                  else
-                    if err then
-                      kong.log.warn("unable to resolve reference ", value[i], " (", err, ")")
-                    else
-                      kong.log.warn("unable to resolve reference ", value[i])
-                    end
-
-                    value[i] = nil
-                  end
+                  value[i] = resolve_reference(value[i])
                 end
               end
             end
 
-            if prev_refs and prev_refs[key] then
-              if refs then
-                if not refs[key] then
-                  refs[key] = prev_refs[key]
-                end
-
-              else
-                refs = { [key] = prev_refs[key] }
-              end
-            end
+            refs = fill_prev_refs(prev_refs, refs, key)
           end
 
         elseif vtype == "table" and ftype == "map" then
@@ -1813,33 +1814,12 @@ function Schema:process_auto_fields(data, context, nulls, opts)
 
                   refs[key][k] = v
 
-                  local deref, err = kong.vault.get(v)
-                  if deref then
-                    value[k] = deref
-
-                  else
-                    if err then
-                      kong.log.warn("unable to resolve reference ", v, " (", err, ")")
-                    else
-                      kong.log.warn("unable to resolve reference ", v)
-                    end
-
-                    value[k] = nil
-                  end
+                  value[k] = resolve_reference(v)
                 end
               end
             end
 
-            if prev_refs and prev_refs[key] then
-              if refs then
-                if not refs[key] then
-                  refs[key] = prev_refs[key]
-                end
-
-              else
-                refs = { [key] = prev_refs[key] }
-              end
-            end
+            refs = fill_prev_refs(prev_refs, refs, key)
           end
         end
       end
