@@ -32,6 +32,8 @@
   `max_retry_delay` must now be `number`s greater than 0.001
   (seconds).
   [#10840](https://github.com/Kong/kong/pull/10840)
+- For OAuth2 plugin, `scope` has been taken into account as a new criterion of the request validation. When refreshing token with `refresh_token`, the scopes associated with the `refresh_token` provided in the request must be same with or a subset of the scopes configured in the OAuth2 plugin instance hit by the request. 
+  [#11342](https://github.com/Kong/kong/pull/11342)
 
 ### Additions
 
@@ -43,6 +45,8 @@
   [#11244](https://github.com/Kong/kong/pull/11244)
 - Add beta support for WebAssembly/proxy-wasm
   [#11218](https://github.com/Kong/kong/pull/11218)
+- Fixed critical level logs when starting external plugin servers. Those logs cannot be suppressed due to the limitation of OpenResty. We choose to remove the socket availibilty detection feature.
+  [#11372](https://github.com/Kong/kong/pull/11372)
 
 #### Admin API
 
@@ -113,6 +117,8 @@
   The issue only affects scenarios where the same Go plugin is applied to different Route
   or Service entities.
   [#11306](https://github.com/Kong/kong/pull/11306)
+- Fix an issue where cluster_cert or cluster_ca_cert is inserted into lua_ssl_trusted_certificate before being base64 decoded.
+  [#11385](https://github.com/Kong/kong/pull/11385)
 
 #### Admin API
 
@@ -133,6 +139,8 @@
   [#10559](https://github.com/Kong/kong/pull/10559)
 - **Zipkin**: Fixed an issue that traces not being generated correctly when instrumentations are enabled.
   [#10983](https://github.com/Kong/kong/pull/10983)
+- **Acme**: Fixed string concatenation on cert renewal errors
+  [#11364](https://github.com/Kong/kong/pull/11364)
 
 #### PDK
 
@@ -237,6 +245,8 @@
 - Tracing: tracing_sampling_rate defaults to 0.01 (trace one of every 100 requests) instead of the previous 1
   (trace all requests). Tracing all requests is inappropriate for most production systems
   [#10774](https://github.com/Kong/kong/pull/10774)
+- **Proxy Cache**: Add option to remove the proxy cache headers from the response
+  [#10445](https://github.com/Kong/kong/pull/10445)
 
 ### Additions
 

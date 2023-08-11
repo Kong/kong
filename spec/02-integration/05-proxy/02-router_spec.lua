@@ -2453,3 +2453,149 @@ for _, strategy in helpers.each_strategy() do
 end
 end
 end
+
+
+-- http expression 'http.queries.*'
+do
+  local function reload_router(flavor)
+    _G.kong = {
+      configuration = {
+        router_flavor = flavor,
+      },
+    }
+
+    helpers.setenv("KONG_ROUTER_FLAVOR", flavor)
+
+    package.loaded["spec.helpers"] = nil
+    package.loaded["kong.global"] = nil
+    package.loaded["kong.cache"] = nil
+    package.loaded["kong.db"] = nil
+    package.loaded["kong.db.schema.entities.routes"] = nil
+    package.loaded["kong.db.schema.entities.routes_subschemas"] = nil
+
+    helpers = require "spec.helpers"
+
+    helpers.unsetenv("KONG_ROUTER_FLAVOR")
+  end
+
+
+  local flavor = "expressions"
+
+  for _, strategy in helpers.each_strategy() do
+    describe("Router [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
+      local proxy_client
+
+      reload_router(flavor)
+
+      lazy_setup(function()
+        local bp = helpers.get_db_utils(strategy, {
+          "routes",
+          "services",
+        })
+
+        local service = bp.services:insert {
+          name = "global-cert",
+        }
+
+        bp.routes:insert {
+          protocols = { "http" },
+          expression = [[http.path == "/foo/bar" && http.queries.a == "1"]],
+          priority = 100,
+          service   = service,
+        }
+
+        bp.routes:insert {
+          protocols = { "http" },
+          expression = [[http.path == "/foo" && http.queries.a == ""]],
+          priority = 100,
+          service   = service,
+        }
+
+        bp.routes:insert {
+          protocols = { "http" },
+          expression = [[http.path == "/foobar" && any(http.queries.a) == "2"]],
+          priority = 100,
+          service   = service,
+        }
+
+        assert(helpers.start_kong({
+          router_flavor = flavor,
+          database    = strategy,
+          nginx_conf  = "spec/fixtures/custom_nginx.template",
+        }))
+
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+      end)
+
+      before_each(function()
+        proxy_client = helpers.proxy_client()
+      end)
+
+      after_each(function()
+        if proxy_client then
+          proxy_client:close()
+        end
+      end)
+
+      it("query has wrong value", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/foo/bar",
+          query   = "a=x",
+        })
+        assert.res_status(404, res)
+      end)
+
+      it("query has one value", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/foo/bar",
+          query   = "a=1",
+        })
+        assert.res_status(200, res)
+      end)
+
+      it("query value is empty string", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/foo",
+          query   = "a=",
+        })
+        assert.res_status(200, res)
+      end)
+
+      it("query has no value", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/foo",
+          query   = "a&b=999",
+        })
+        assert.res_status(200, res)
+      end)
+
+      it("query has multiple values", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/foobar",
+          query   = "a=2&a=10",
+        })
+        assert.res_status(200, res)
+      end)
+
+      it("query does not match multiple values", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/foobar",
+          query   = "a=10&a=20",
+        })
+        assert.res_status(404, res)
+      end)
+
+    end)
+
+  end   -- strategy
+
+end -- http expression 'http.queries.*'

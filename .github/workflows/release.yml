@@ -144,6 +144,12 @@ jobs:
         wget https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.41.0.tar.gz
         tar xf git-2.41.0.tar.gz
         cd git-2.41.0
+
+        # https://gitlab.com/gitlab-org/omnibus-gitlab/-/merge_requests/5948/diffs
+        if [[ ${{ matrix.image }} == "centos:7" ]]; then
+          echo 'CFLAGS=-std=gnu99' >> config.mak
+        fi
+
         make configure
         ./configure --prefix=/usr/local/git
         make -j$(nproc)
@@ -260,9 +266,9 @@ jobs:
         path: bazel-bin/pkg
         retention-days: 3
 
-  build-packages-verify-manifest:
+  verify-manifest-packages:
     needs: [metadata, build-packages]
-    name: Verify Manifest - ${{ matrix.label }}
+    name: Verify Manifest - Package ${{ matrix.label }}
     runs-on: ubuntu-22.04
 
     strategy:
@@ -389,8 +395,41 @@ jobs:
           Docker image available `${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}`
           Artifacts available https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-  scan:
-    name: Scan - ${{ matrix.label }}
+  verify-manifest-images:
+    needs: [metadata, build-images]
+    name: Verify Manifest - Image ${{ matrix.label }}
+    runs-on: ubuntu-22.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-images'] }}"
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip' # caching pip dependencies
+
+    - name: Verify
+      run: |
+        cd scripts/explain_manifest
+        # docker image verify requires sudo to set correct permissions, so we
+        # also install deps for root
+        sudo -E pip install -r requirements.txt
+        IMAGE=${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}-${{ matrix.label }}
+
+        sudo -E python ./main.py --image $IMAGE -f docker_image_filelist.txt -s docker-image
+
+        if [[ ! -z "${{ matrix.docker-platforms }}" ]]; then
+          DOCKER_DEFAULT_PLATFORM=linux/arm64 sudo -E python ./main.py --image $IMAGE -f docker_image_filelist.txt -s docker-image
+        fi
+
+  scan-images:
+    name: Scan Images - ${{ matrix.label }}
     needs: [metadata, build-images]
     runs-on: ubuntu-22.04
     if: |-
@@ -443,7 +482,7 @@ jobs:
       uses: Kong/public-shared-actions/security-actions/scan-docker-image@v1
       with:
         asset_prefix: kong-${{ github.sha }}-${{ matrix.label }}-linux-amd64
-        image: ${{env.IMAGE}}@${{ steps.image_manifest_metadata.outputs.amd64_sha }}
+        image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}
 
     - name: Scan ARM64 Image digest
       if: steps.image_manifest_metadata.outputs.manifest_list_exists == 'true' && steps.image_manifest_metadata.outputs.arm64_sha != ''
@@ -451,7 +490,7 @@ jobs:
       uses: Kong/public-shared-actions/security-actions/scan-docker-image@v1
       with:
         asset_prefix: kong-${{ github.sha }}-${{ matrix.label }}-linux-arm64
-        image: ${{env.IMAGE}}@${{ steps.image_manifest_metadata.outputs.arm64_sha }}
+        image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}
 
   smoke-tests:
     name: Smoke Tests - ${{ matrix.label }}

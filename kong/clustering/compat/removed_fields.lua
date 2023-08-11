@@ -92,5 +92,8 @@ return {
     rate_limiting = {
       "sync_rate",
     },
+    proxy_cache = {
+      "response_headers",
+    },
   },
 }

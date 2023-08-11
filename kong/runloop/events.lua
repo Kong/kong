@@ -441,8 +441,104 @@ local function _register_balancer_events(f)
 end
 
 
+local declarative_reconfigure_notify
+local stream_reconfigure_listener
+do
+  local buffer = require "string.buffer"
+
+  -- `kong.configuration.prefix` is already normalized to an absolute path,
+  -- but `ngx.config.prefix()` is not
+  local PREFIX = kong and kong.configuration and
+                 kong.configuration.prefix or
+                 require("pl.path").abspath(ngx.config.prefix())
+  local STREAM_CONFIG_SOCK = "unix:" .. PREFIX .. "/stream_config.sock"
+  local IS_HTTP_SUBSYSTEM  = ngx.config.subsystem == "http"
+
+  local function broadcast_reconfigure_event(data)
+    return kong.worker_events.post("declarative", "reconfigure", data)
+  end
+
+  declarative_reconfigure_notify = function(reconfigure_data)
+
+    -- call reconfigure_handler in each worker's http subsystem
+    local ok, err = broadcast_reconfigure_event(reconfigure_data)
+    if ok ~= "done" then
+      return nil, "failed to broadcast reconfigure event: " .. (err or ok)
+    end
+
+    -- only http should notify stream
+    if not IS_HTTP_SUBSYSTEM or
+       #kong.configuration.stream_listeners == 0
+    then
+      return true
+    end
+
+    -- update stream if necessary
+
+    local str, err = buffer.encode(reconfigure_data)
+    if not str then
+      return nil, err
+    end
+
+    local sock = ngx.socket.tcp()
+    ok, err = sock:connect(STREAM_CONFIG_SOCK)
+    if not ok then
+      return nil, err
+    end
+
+    -- send to stream_reconfigure_listener()
+
+    local bytes
+    bytes, err = sock:send(str)
+    sock:close()
+
+    if not bytes then
+      return nil, err
+    end
+
+    assert(bytes == #str,
+           "incomplete reconfigure data sent to the stream subsystem")
+
+    return true
+  end
+
+  stream_reconfigure_listener = function()
+    local sock, err = ngx.req.socket()
+    if not sock then
+      ngx.log(ngx.CRIT, "unable to obtain request socket: ", err)
+      return
+    end
+
+    local data, err = sock:receive("*a")
+    if not data then
+      ngx.log(ngx.CRIT, "unable to receive reconfigure data: ", err)
+      return
+    end
+
+    local reconfigure_data, err = buffer.decode(data)
+    if not reconfigure_data then
+      ngx.log(ngx.ERR, "failed to json decode reconfigure data: ", err)
+      return
+    end
+
+    -- call reconfigure_handler in each worker's stream subsystem
+    local ok, err = broadcast_reconfigure_event(reconfigure_data)
+    if ok ~= "done" then
+      ngx.log(ngx.ERR, "failed to rebroadcast reconfigure event in stream: ", err or ok)
+    end
+  end
+end
+
+
 return {
+  -- runloop/handler.lua
   register_events = register_events,
+
+  -- db/declarative/import.lua
+  declarative_reconfigure_notify = declarative_reconfigure_notify,
+
+  -- init.lua
+  stream_reconfigure_listener = stream_reconfigure_listener,
 
   -- exposed only for tests
   _register_balancer_events = _register_balancer_events,

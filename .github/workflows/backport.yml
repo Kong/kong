@@ -19,6 +19,6 @@ jobs:
         )
       )
     steps:
-      - uses: tibdex/backport@2e217641d82d02ba0603f46b1aeedefb258890ac # v2.0.3
+      - uses: tibdex/backport@9565281eda0731b1d20c4025c43339fb0a23812e # v2.0.4
         with:
           github_token: ${{ secrets.PAT }}

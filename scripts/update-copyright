@@ -1,4 +1,4 @@
-#!/usr/bin/env resty
+#!/usr/bin/env lua
 
 --[[
 Usage: ./scripts/update-copyright
@@ -8,15 +8,23 @@ review is recommended.
 
 Assumes the following command-line utilities are available:
 
+* lua
 * mkdir
 * find
 * curl
 * luarocks
+* luasocket (luarocks install luasocket) to parse urls
 
 This command creates a temporary "work" folder where it does a lot of temporary work,
 including installing rocks inside said folder.
 
 Requires internet connection in order to download luarocks and license files.
+
+On Macs, you might need to set up OPENSSL_DIR and CRYPTO_DIR.
+
+The default for mac is:
+
+OPENSSL_DIR=/usr/local/opt/openssl/ CRYPTO_DIR=/usr/local/opt/openssl/ ./scripts/update-copyright
 ]]
 
 setmetatable(_G, nil)
@@ -81,6 +89,9 @@ local HARDCODED_DEPENDENCIES = {
   ["go-spew"] = {
     url = "https://github.com/davecgh/go-spew",
   },
+  ["luasyslog"] = {
+    url = "https://github.com/lunarmodules/luasyslog"
+  }
 }
 
 -- rocks whose license text cannot be easily found
@@ -344,7 +355,8 @@ local function find_and_download_license(main_url, alt_url)
     end
   end
 
-  error("Could not find license file for " .. gh_url)
+  print("Could not find license file for " .. gh_url)
+  return "undefined", "undefined"
 end
 
 
@@ -381,15 +393,20 @@ print("Parsing rockfiles ...")
 
 local rocklist = io.open(rocklist_path, "r")
 local rocks = {}
-for rockpath in rocklist:lines() do
-  local rockfile = io.open(rockpath, "r")
-  local rocktext = rockfile:read("*a")
+for rockpath in assert(rocklist:lines()) do
+  local rockfile = assert(io.open(rockpath, "r"))
+  local rocktext = assert(rockfile:read("*a"))
   rockfile:close()
 
   -- parse the text of the rockspec and fill up the `rock` variable
   local rock = {}
-  local rockchunk = assert(loadstring(rocktext))
-  setfenv(rockchunk, rock)
+  local rockchunk
+  if _G.loadstring then
+    rockchunk = assert(loadstring(rocktext))
+    setfenv(rockchunk, rock)
+  else
+    rockchunk = assert(load(rocktext, "sandbox string", "bt", rock))
+  end
   assert(pcall(rockchunk))
   if rock.package ~= "kong" then -- skip kong itself
     rocks[#rocks + 1] = rock
