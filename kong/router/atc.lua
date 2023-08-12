@@ -9,7 +9,6 @@ local context = require("resty.router.context")
 local lrucache = require("resty.lrucache")
 local server_name = require("ngx.ssl").server_name
 local tb_new = require("table.new")
-local isempty = require("table.isempty")
 local utils = require("kong.router.utils")
 local yield = require("kong.tools.utils").yield
 
@@ -88,6 +87,7 @@ end
 local is_empty_field
 do
   local null    = ngx.null
+  local isempty = require("table.isempty")
 
   is_empty_field = function(f)
     return f == nil or f == null or isempty(f)
@@ -159,14 +159,14 @@ end
 
 
 local function categorize_fields(fields)
-  local headers = {}
-  local queries = {}
 
   if not is_http then
-    return fields, headers, queries
+    return fields, nil, nil
   end
 
   local baisc = {}
+  local headers = {}
+  local queries = {}
 
   for _, field in ipairs(fields) do
     local prefix = field:sub(1, 13)
@@ -234,8 +234,8 @@ local function new_from_scratch(routes, get_exp_and_priority)
       fields = fields,
       header_fields = header_fields,
       query_fields = query_fields,
-      match_headers = not isempty(header_fields),
-      match_queries = not isempty(query_fields),
+      match_headers = not is_empty_field(header_fields),
+      match_queries = not is_empty_field(query_fields),
       updated_at = new_updated_at,
       rebuilding = false,
     }, _MT)
@@ -322,8 +322,8 @@ local function new_from_previous(routes, get_exp_and_priority, old_router)
   old_router.fields = fields
   old_router.header_fields = header_fields,
   old_router.query_fields = query_fields,
-  old_router.match_headers = not isempty(header_fields)
-  old_router.match_queries = not isempty(query_fields)
+  old_router.match_headers = not is_empty_field(header_fields)
+  old_router.match_queries = not is_empty_field(query_fields)
   old_router.updated_at = new_updated_at
   old_router.rebuilding = false
 
