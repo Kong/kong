@@ -158,10 +158,15 @@ local function add_atc_matcher(inst, route, route_id,
 end
 
 
-local function categorize_http_fields(fields)
-  local baisc = {}
+local function categorize_fields(fields)
   local headers = {}
   local queries = {}
+
+  if not is_http then
+    return fields, headers, queries
+  end
+
+  local baisc = {}
 
   for _, field in ipairs(fields) do
     local prefix = field:sub(1, 13)
@@ -219,7 +224,7 @@ local function new_from_scratch(routes, get_exp_and_priority)
     yield(true, phase)
   end
 
-  local fields, header_fields, query_fields = categorize_http_fields(inst:get_fields())
+  local fields, header_fields, query_fields = categorize_fields(inst:get_fields())
 
   return setmetatable({
       schema = CACHED_SCHEMA,
@@ -312,7 +317,7 @@ local function new_from_previous(routes, get_exp_and_priority, old_router)
     yield(true, phase)
   end
 
-  local fields, header_fields, query_fields = categorize_http_fields(inst:get_fields())
+  local fields, header_fields, query_fields = categorize_fields(inst:get_fields())
 
   old_router.fields = fields
   old_router.header_fields = header_fields,
