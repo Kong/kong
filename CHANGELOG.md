@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [3.4.0](#340)
 - [3.3.0](#330)
 - [3.2.0](#320)
 - [3.1.0](#310)
@@ -7,8 +8,28 @@
 - [3.0.0](#300)
 - [Previous releases](#previous-releases)
 
-
 ## Unreleased
+
+# Fixes
+
+#### Core
+
+- Fixed critical level logs when starting external plugin servers. Those logs cannot be suppressed due to the limitation of OpenResty. We choose to remove the socket availability detection feature.
+  [#11372](https://github.com/Kong/kong/pull/11372)
+- Fix an issue where a crashing Go plugin server process would cause subsequent
+  requests proxied through Kong to execute Go plugins with inconsistent configurations.
+  The issue only affects scenarios where the same Go plugin is applied to different Route
+  or Service entities.
+  [#11306](https://github.com/Kong/kong/pull/11306)
+- Fix an issue where cluster_cert or cluster_ca_cert is inserted into lua_ssl_trusted_certificate before being base64 decoded.
+  [#11385](https://github.com/Kong/kong/pull/11385)
+
+#### Plugins
+
+- For OAuth2 plugin, `scope` has been taken into account as a new criterion of the request validation. When refreshing token with `refresh_token`, the scopes associated with the `refresh_token` provided in the request must be same with or a subset of the scopes configured in the OAuth2 plugin instance hit by the request.
+  [#11342](https://github.com/Kong/kong/pull/11342)
+
+## 3.4.0
 
 ### Breaking Changes
 
@@ -32,8 +53,8 @@
   `max_retry_delay` must now be `number`s greater than 0.001
   (seconds).
   [#10840](https://github.com/Kong/kong/pull/10840)
-- For OAuth2 plugin, `scope` has been taken into account as a new criterion of the request validation. When refreshing token with `refresh_token`, the scopes associated with the `refresh_token` provided in the request must be same with or a subset of the scopes configured in the OAuth2 plugin instance hit by the request. 
-  [#11342](https://github.com/Kong/kong/pull/11342)
+- **Acme**: Fixed string concatenation on cert renewal errors
+  [#11364](https://github.com/Kong/kong/pull/11364)
 
 ### Additions
 
@@ -45,8 +66,6 @@
   [#11244](https://github.com/Kong/kong/pull/11244)
 - Add beta support for WebAssembly/proxy-wasm
   [#11218](https://github.com/Kong/kong/pull/11218)
-- Fixed critical level logs when starting external plugin servers. Those logs cannot be suppressed due to the limitation of OpenResty. We choose to remove the socket availibilty detection feature.
-  [#11372](https://github.com/Kong/kong/pull/11372)
 
 #### Admin API
 
@@ -119,6 +138,9 @@
   [#11306](https://github.com/Kong/kong/pull/11306)
 - Fix an issue where cluster_cert or cluster_ca_cert is inserted into lua_ssl_trusted_certificate before being base64 decoded.
   [#11385](https://github.com/Kong/kong/pull/11385)
+- Update the DNS client to follow configured timeouts in a more predictable manner.  Also fix a corner case in its
+  behavior that could cause it to resolve incorrectly during transient network and DNS server failures.
+  [#11386](https://github.com/Kong/kong/pull/11386)
 
 #### Admin API
 
@@ -139,8 +161,6 @@
   [#10559](https://github.com/Kong/kong/pull/10559)
 - **Zipkin**: Fixed an issue that traces not being generated correctly when instrumentations are enabled.
   [#10983](https://github.com/Kong/kong/pull/10983)
-- **Acme**: Fixed string concatenation on cert renewal errors
-  [#11364](https://github.com/Kong/kong/pull/11364)
 
 #### PDK
 
