@@ -234,8 +234,6 @@ local function new_from_scratch(routes, get_exp_and_priority)
       fields = fields,
       header_fields = header_fields,
       query_fields = query_fields,
-      match_headers = not is_empty_field(header_fields),
-      match_queries = not is_empty_field(query_fields),
       updated_at = new_updated_at,
       rebuilding = false,
     }, _MT)
@@ -320,10 +318,8 @@ local function new_from_previous(routes, get_exp_and_priority, old_router)
   local fields, header_fields, query_fields = categorize_fields(inst:get_fields())
 
   old_router.fields = fields
-  old_router.header_fields = header_fields,
-  old_router.query_fields = query_fields,
-  old_router.match_headers = not is_empty_field(header_fields)
-  old_router.match_queries = not is_empty_field(query_fields)
+  old_router.header_fields = header_fields
+  old_router.query_fields = query_fields
   old_router.updated_at = new_updated_at
   old_router.rebuilding = false
 
@@ -454,7 +450,6 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 
     end -- if field
 
-    ::continue::
   end   -- for self.fields
 
   if req_headers then
@@ -630,7 +625,7 @@ function _M:exec(ctx)
   local sni = server_name()
 
   local headers, headers_key
-  if self.match_headers then
+  if not is_empty_field(self.header_fields) then
     headers = get_http_params(get_headers, "headers", "lua_max_req_headers")
 
     headers["host"] = nil
@@ -639,7 +634,7 @@ function _M:exec(ctx)
   end
 
   local queries, queries_key
-  if self.match_queries then
+  if not is_empty_field(self.query_fields) then
     queries = get_http_params(get_uri_args, "queries", "lua_max_uri_args")
 
     queries_key = get_queries_key(queries)
