@@ -107,7 +107,7 @@ sudo apt update \
 
 ```
 
-Fedora/RHEL:
+Fedora/CentOS/RHEL:
 
 ```shell
 dnf install \
@@ -339,7 +339,7 @@ is easy enough now. Most of us use the freely available VirtualBox without any t
 
 If you use Linux for your desktop, you can skip this section.
 
-There are no "hard" requirements on any Linux distro, but RHEL can be more of a challenge
+There are no "hard" requirements on any Linux distro, but RHEL and CentOS can be more of a challenge
 to get recent versions of many packages; Fedora, Debian, or Ubuntu are easier for this.
 
 To avoid long compilation times, give the VM plenty of RAM (8GB recommended) and all the CPU cores you can.
