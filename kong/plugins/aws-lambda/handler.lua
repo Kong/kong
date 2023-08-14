@@ -57,21 +57,21 @@ function AWSLambdaHandler:access(conf)
 
   local lambda_service = LAMBDA_SERVICE_CACHE[conf]
   if not lambda_service then
+    local credentials = AWS.config.credentials
     -- Override credential config according to plugin config
-    -- We override global AWS object credentials here and
-    -- make sure it gets updated when config changed.
     if conf.aws_key then
       local creds = AWS:Credentials {
         accessKeyId = conf.aws_key,
         secretAccessKey = conf.aws_secret,
       }
 
-      AWS.config.credentials = creds
+      credentials = creds
     end
 
     -- Assume role based on configuration
     if conf.aws_assume_role_arn then
       local sts, err = AWS:STS({
+        credentials = credentials,
         region = region,
         stsRegionalEndpoints = AWS_GLOBAL_CONFIG.sts_regional_endpoints,
         http_proxy = conf.proxy_url,
@@ -89,11 +89,12 @@ function AWSLambdaHandler:access(conf)
         sts = sts,
       }
 
-      AWS.config.credentials = sts_creds
+      credentials = sts_creds
     end
 
     -- Create a new Lambda service object
     lambda_service = AWS:Lambda({
+      credentials = credentials,
       region = region,
       endpoint = endpoint,
       port = port,
