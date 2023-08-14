@@ -81,7 +81,7 @@ wasm-test-filters:
 	./scripts/build-wasm-test-filters.sh
 
 build-kong: check-bazel
-	$(BAZEL) build //build:kong --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME) --//:debug=false
+	$(BAZEL) build //build:kong --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME)
 
 build-venv: check-bazel
 	$(eval VENV := bazel-bin/build/$(BUILD_NAME)-venv.sh)
