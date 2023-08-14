@@ -59,35 +59,44 @@ jobs:
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
-    - name: Lookup build cache
-      id: cache-deps
-      uses: actions/cache@v3
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
       with:
-        path: ${{ env.BUILD_ROOT }}
-        key: ${{ needs.build.outputs.cache-key }}
+        name: build
+        path: .
+
+    - name: Extract the artifact contents
+      run: |
+        sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
+        sudo mkdir -p ${{ env.BUILD_ROOT }}/kong-dev
+        sudo tar -C ${{ env.BUILD_ROOT }}/kong-dev -xzvf artifacts/build.tar.gz
+
+    - name: Install Kong dev
+      run: make dev LIBRARY_PREFIX=/usr/local/kong
 
     - name: Check test-helpers doc generation
       run: |
-          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
-          pushd ./spec && ldoc .
+        source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+        pushd ./spec && ldoc .
 
     - name: Check autodoc generation
       run: |
-          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
-          scripts/autodoc
+        source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+        scripts/autodoc
 
     - name: Lint Lua code
       run: |
-          make lint
+        sudo chmod +x bazel-bin/build/kong-dev-venv.sh
+        make lint
 
     - name: Validate rockspec file
       run: |
-          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
-          scripts/validate-rockspec
+        source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+        scripts/validate-rockspec
 
     - name: Check spec file misspelling
       run: |
-          scripts/check_spec_files_spelling.sh
+        scripts/check_spec_files_spelling.sh
 
     - name: Check labeler configuration
       run: scripts/check-labeler.pl .github/labeler.yml
@@ -97,12 +106,18 @@ jobs:
         KONG_TEST_PG_DATABASE: kong
         KONG_TEST_PG_USER: kong
       run: |
-          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
-          TEST_CMD="bin/busted -v -o htest spec/01-unit"
-          if [[ $KONG_TEST_COVERAGE = true ]]; then
-            TEST_CMD="$TEST_CMD --coverage"
-          fi
-          $TEST_CMD
+        ulimit -c unlimited
+        mkdir -p /tmp/cores
+        chmod 777 /tmp/cores
+        echo '/tmp/cores/core.%e.%p' | sudo tee /proc/sys/kernel/core_pattern
+        sudo sysctl -w fs.suid_dumpable=2
+        sudo sysctl -p
+        source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+        TEST_CMD="bin/busted -v -o htest spec/01-unit"
+        if [[ $KONG_TEST_COVERAGE = true ]]; then
+          TEST_CMD="$TEST_CMD --coverage"
+        fi
+        $TEST_CMD
 
     - name: Archive coverage stats file
       uses: actions/upload-artifact@v3
@@ -117,6 +132,16 @@ jobs:
       if: failure()
       run: |
         sudo dmesg -T
+        sudo chmod -R 777 /tmp/cores
+
+    - name: Upload core dumps
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: core-dumps-${{ github.job }}-${{ github.run_id }}
+        retention-days: 3
+        path: |
+          /tmp/cores
 
   integration-tests-postgres:
     name: Postgres ${{ matrix.suite }} - ${{ matrix.split }} tests
@@ -163,12 +188,20 @@ jobs:
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
-    - name: Lookup build cache
-      id: cache-deps
-      uses: actions/cache@v3
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
       with:
-        path: ${{ env.BUILD_ROOT }}
-        key: ${{ needs.build.outputs.cache-key }}
+        name: build
+        path: .
+
+    - name: Extract the artifact contents
+      run: |
+        sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
+        sudo mkdir -p ${{ env.BUILD_ROOT }}/kong-dev
+        sudo tar -C ${{ env.BUILD_ROOT }}/kong-dev -xzvf artifacts/build.tar.gz
+
+    - name: Install Kong dev
+      run: make dev LIBRARY_PREFIX=/usr/local/kong
 
     - name: Build WASM Test Filters
       uses: ./.github/actions/build-wasm-test-filters
@@ -237,9 +270,9 @@ jobs:
         TEST_SUITE: ${{ matrix.suite }}
         TEST_SPLIT: ${{ matrix.split }}
       run: |
-          make dev # required to install other dependencies like bin/grpcurl
-          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
-          .ci/run_tests.sh
+        make dev # required to install other dependencies like bin/grpcurl
+        source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+        .ci/run_tests.sh
 
     - name: Archive coverage stats file
       uses: actions/upload-artifact@v3
@@ -254,6 +287,16 @@ jobs:
       if: failure()
       run: |
         sudo dmesg -T
+        sudo chmod -R 777 /tmp/cores
+
+    - name: Upload core dumps
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: core-dumps-${{ github.job }}-${{ matrix.suite }}-${{ matrix.split }}-${{ github.run_id }}
+        retention-days: 3
+        path: |
+          /tmp/cores
 
     - name: Setup tmate session
       uses: mxschmitt/action-tmate@v3
@@ -282,12 +325,20 @@ jobs:
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
-    - name: Lookup build cache
-      id: cache-deps
-      uses: actions/cache@v3
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
       with:
-        path: ${{ env.BUILD_ROOT }}
-        key: ${{ needs.build.outputs.cache-key }}
+        name: build
+        path: .
+
+    - name: Extract the artifact contents
+      run: |
+        sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
+        sudo mkdir -p ${{ env.BUILD_ROOT }}/kong-dev
+        sudo tar -C ${{ env.BUILD_ROOT }}/kong-dev -xzvf artifacts/build.tar.gz
+
+    - name: Install Kong dev
+      run: make dev LIBRARY_PREFIX=/usr/local/kong
 
     - name: Build WASM Test Filters
       uses: ./.github/actions/build-wasm-test-filters
@@ -321,9 +372,9 @@ jobs:
         KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
         TEST_SUITE: dbless
       run: |
-          make dev # required to install other dependencies like bin/grpcurl
-          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
-          .ci/run_tests.sh
+        make dev # required to install other dependencies like bin/grpcurl
+        source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+        .ci/run_tests.sh
 
     - name: Archive coverage stats file
       uses: actions/upload-artifact@v3
@@ -338,6 +389,16 @@ jobs:
       if: failure()
       run: |
         sudo dmesg -T
+        sudo chmod -R 777 /tmp/cores
+
+    - name: Upload core dumps
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: core-dumps-${{ github.job }}-${{ github.run_id }}
+        retention-days: 3
+        path: |
+          /tmp/cores
 
   pdk-tests:
     name: PDK tests
@@ -348,12 +409,20 @@ jobs:
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
-    - name: Lookup build cache
-      id: cache-deps
-      uses: actions/cache@v3
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
       with:
-        path: ${{ env.BUILD_ROOT }}
-        key: ${{ needs.build.outputs.cache-key }}
+        name: build
+        path: .
+
+    - name: Extract the artifact contents
+      run: |
+        sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
+        sudo mkdir -p ${{ env.BUILD_ROOT }}/kong-dev
+        sudo tar -C ${{ env.BUILD_ROOT }}/kong-dev -xzvf artifacts/build.tar.gz
+
+    - name: Install Kong dev
+      run: make dev LIBRARY_PREFIX=/usr/local/kong
 
     - name: Install Test::Nginx
       run: |
