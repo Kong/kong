@@ -50,6 +50,9 @@
   [#11328](https://github.com/Kong/kong/pull/11328)
 - Fix an issue that response status code is not real upstream status when using kong.response function.
   [#11437](https://github.com/Kong/kong/pull/11437)
+- Removed a hardcoded proxy-wasm isolation level setting that was preventing the
+  `nginx_http_proxy_wasm_isolation` configuration value from taking effect.
+  [#11407](https://github.com/Kong/kong/pull/11407)
 
 #### Plugins
 

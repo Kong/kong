@@ -2062,7 +2062,6 @@
 # - `wasm_call`
 # - `module`
 # - `proxy_wasm`
-# - `proxy_wasm_isolation`
 # - `resolver_add`
 # - `proxy_wasm_request_headers_in_access`
 # - `shm_queue`
