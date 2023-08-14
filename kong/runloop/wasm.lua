@@ -49,7 +49,6 @@ local sha256 = utils.sha256_bin
 
 local VERSION_KEY = "filter_chains:version"
 local TTL_ZERO = { ttl = 0 }
-local ATTACH_OPTS = {}
 
 
 ---
@@ -576,7 +575,6 @@ local function enable(kong_config)
   _G.dns_client = _G.dns_client or dns(kong_config)
 
   proxy_wasm = proxy_wasm or require "resty.wasmx.proxy_wasm"
-  ATTACH_OPTS.isolation = proxy_wasm.isolations.FILTER
 
   ENABLED = true
   STATUS = STATUS_ENABLED
@@ -670,7 +668,7 @@ function _M.attach(ctx)
 
   ctx.ran_wasm = true
 
-  local ok, err = proxy_wasm.attach(chain.c_plan, ATTACH_OPTS)
+  local ok, err = proxy_wasm.attach(chain.c_plan)
   if not ok then
     log(CRIT, "failed attaching ", chain.label, " filter chain to request: ", err)
     return kong.response.error(500)
