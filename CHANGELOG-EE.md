@@ -12,6 +12,7 @@
 ### Fixes
 
 * Fix the return info and log of previous errors are missing when use redis cluster mode connection fails. [6032](https://github.com/Kong/kong-ee/pull/6032)
+* Fixed an issue where plugin would not trigger correctly when the authenticated consumer is part of multiple consumer groups.
 
 ## Plugins
 

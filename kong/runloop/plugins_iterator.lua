@@ -9,6 +9,7 @@ local workspaces   = require "kong.workspaces"
 local constants    = require "kong.constants"
 local utils        = require "kong.tools.utils"
 local tablepool    = require "tablepool"
+local isempty      = require("table.isempty")
 
 local topsort_plugins = require("kong.db.schema.topsort_plugins")
 
@@ -29,9 +30,9 @@ local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 local subsystem = ngx.config.subsystem
 
 local NON_COLLECTING_PHASES, DOWNSTREAM_PHASES, DOWNSTREAM_PHASES_COUNT, COLLECTING_PHASE,
-      WS_DOWNSTREAM_PHASES, WS_DOWNSTREAM_PHASES_COUNT, WS_COLLECTING_PHASE
+    WS_DOWNSTREAM_PHASES, WS_DOWNSTREAM_PHASES_COUNT, WS_COLLECTING_PHASE
 do
-  if subsystem == "stream" then
+if subsystem == "stream" then
     NON_COLLECTING_PHASES = {
       "certificate",
       "log",
@@ -221,8 +222,12 @@ local PLUGIN_GLOBAL_KEY = build_compound_key() -- all nil
 -- @tparam string|nil consumer_group_id The consumer group identifier.
 -- @return any|nil The configuration corresponding to the best matching combination, or 'nil' if no configuration is found.
 ---
-local function lookup_cfg(combos, route_id, service_id, consumer_id, consumer_group_id)
-  -- Use the build_compound_key function to create an index for the 'combos' table
+local function lookup_cfg(combos, route_id, service_id, consumer_id, consumer_groups)
+    -- Use the build_compound_key function to create an index for the 'combos' table
+
+    consumer_groups = consumer_groups or {}
+    -- iterate over `consumer_groups`, while preserving the order. This will ensure that plugins associated
+    -- with groups that the consumer is part of will be executed (while respecting group priority)
 
     local key
     if route_id and service_id and consumer_id then
@@ -231,68 +236,84 @@ local function lookup_cfg(combos, route_id, service_id, consumer_id, consumer_gr
             return combos[key]
         end
     end
-    if route_id and service_id and consumer_group_id then
-        key = build_compound_key(route_id, service_id, nil, consumer_group_id)
-        if combos[key] then
-            return combos[key]
+
+    if route_id and service_id then
+        for _, consumer_group in ipairs(consumer_groups) do
+            key = build_compound_key(route_id, service_id, nil, consumer_group.id)
+            if combos[key] then
+                return combos[key]
+            end
         end
     end
+
     if route_id and consumer_id then
         key = build_compound_key(route_id, nil, consumer_id, nil)
         if combos[key] then
             return combos[key]
         end
     end
+
     if service_id and consumer_id then
         key = build_compound_key(nil, service_id, consumer_id, nil)
         if combos[key] then
             return combos[key]
         end
     end
-    if route_id and consumer_group_id then
-        key = build_compound_key(route_id, nil, nil, consumer_group_id)
-        if combos[key] then
-            return combos[key]
+
+    if route_id then
+        for _, consumer_group in ipairs(consumer_groups) do
+            key = build_compound_key(route_id, nil, nil, consumer_group.id)
+            if combos[key] then
+                return combos[key]
+            end
         end
     end
-    if service_id and consumer_group_id then
-        key = build_compound_key(nil, service_id, nil, consumer_group_id)
-        if combos[key] then
-            return combos[key]
+
+    if service_id then
+        for _, consumer_group in ipairs(consumer_groups) do
+            key = build_compound_key(nil, service_id, nil, consumer_group.id)
+            if combos[key] then
+                return combos[key]
+            end
         end
     end
+
     if route_id and service_id then
         key = build_compound_key(route_id, service_id, nil, nil)
         if combos[key] then
             return combos[key]
         end
     end
+
     if consumer_id then
         key = build_compound_key(nil, nil, consumer_id, nil)
         if combos[key] then
             return combos[key]
         end
     end
-    if consumer_group_id then
-        key = build_compound_key(nil, nil, nil, consumer_group_id)
+
+    for _, consumer_group in ipairs(consumer_groups) do
+        key = build_compound_key(nil, nil, nil, consumer_group.id)
         if combos[key] then
             return combos[key]
         end
     end
+
     if route_id then
         key = build_compound_key(route_id, nil, nil, nil)
         if combos[key] then
             return combos[key]
         end
     end
+
     if service_id then
         key = build_compound_key(nil, service_id, nil, nil)
         if combos[key] then
             return combos[key]
         end
     end
-    return combos[PLUGIN_GLOBAL_KEY]
 
+    return combos[PLUGIN_GLOBAL_KEY]
 end
 
 
@@ -318,12 +339,14 @@ local function load_configuration_through_combos(ctx, combos, plugin)
   local consumer_id = (ctx.authenticated_consumer and not plugin.handler.no_consumer) and ctx.authenticated_consumer.id or nil
   -- EE only
   -- Check if we have an authenticated_consumer_group
-  local consumer_group_id = (ctx.authenticated_consumer_group and not plugin.handler.no_consumer_group) and
-                             ctx.authenticated_consumer_group.id or nil
+  local consumer_groups = {}
+  if not plugin.handler.no_consumer_group and ctx.authenticated_consumer_groups and not isempty(ctx.authenticated_consumer_groups) then
+    consumer_groups = ctx.authenticated_consumer_groups
+  end
   -- EE only end
 
-  -- Call the lookup_cfg function to get the best matching plugin configuration
-  return lookup_cfg(combos, route_id, service_id, consumer_id, consumer_group_id)
+  -- if consumer_groups is empty, check for explicit `nil` for consumer_group_id
+  return lookup_cfg(combos, route_id, service_id, consumer_id, consumer_groups)
 end
 
 local function get_workspace(self, ctx)
