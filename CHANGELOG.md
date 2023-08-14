@@ -31,6 +31,9 @@
   [#11306](https://github.com/Kong/kong/pull/11306)
 - Fix an issue where cluster_cert or cluster_ca_cert is inserted into lua_ssl_trusted_certificate before being base64 decoded.
   [#11385](https://github.com/Kong/kong/pull/11385)
+- Update the DNS client to follow configured timeouts in a more predictable manner.  Also fix a corner case in its
+  behavior that could cause it to resolve incorrectly during transient network and DNS server failures.
+  [#11386](https://github.com/Kong/kong/pull/11386)
 
 #### Plugins
 
