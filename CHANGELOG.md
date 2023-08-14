@@ -10,7 +10,15 @@
 
 ## Unreleased
 
-# Fixes
+### Additions
+
+#### Core
+
+- Fixed critical level logs when starting external plugin servers. Those logs cannot be suppressed due to
+  the limitation of OpenResty. We choose to remove the socket availibilty detection feature.
+  [#11372](https://github.com/Kong/kong/pull/11372)
+
+### Fixes
 
 #### Core
 
