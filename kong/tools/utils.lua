@@ -1652,15 +1652,22 @@ do
   local get_phase = ngx.get_phase
   local ngx_sleep = _G.native_ngx_sleep or ngx.sleep
 
+  local SLEEP_PHASES = {
+    rewrite = true,
+    access = true,
+    content = true,
+    timer = true,
+    ssl_certificate = true,
+    ssl_session_fetch = true,
+    ssl_client_hello = true,
+    preread = true,
+  }
+
   local YIELD_ITERATIONS = 1000
   local counter = YIELD_ITERATIONS
 
   function _M.yield(in_loop, phase)
-    if ngx.IS_CLI then
-      return
-    end
-    phase = phase or get_phase()
-    if phase == "init" or phase == "init_worker" then
+    if ngx.IS_CLI or SLEEP_PHASES[phase or get_phase()] == nil then
       return
     end
     if in_loop then
