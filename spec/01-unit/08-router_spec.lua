@@ -57,6 +57,42 @@ local headers_mt = {
   end
 }
 
+local spy_stub = {
+  nop = function() end
+}
+
+local function mock_ngx(method, request_uri, headers, queries)
+  local _ngx
+  _ngx = {
+    log = ngx.log,
+    re = ngx.re,
+    var = setmetatable({
+      request_uri = request_uri,
+      http_kong_debug = headers.kong_debug
+    }, {
+      __index = function(_, key)
+        if key == "http_host" then
+          spy_stub.nop()
+          return headers.host
+        end
+      end
+    }),
+    req = {
+      get_method = function()
+        return method
+      end,
+      get_headers = function()
+        return setmetatable(headers, headers_mt)
+      end,
+      get_uri_args = function()
+        return queries
+      end,
+    }
+  }
+
+  return _ngx
+end
+
 for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
   describe("Router (flavor = " .. flavor .. ")", function()
     reload_router(flavor)
@@ -3114,39 +3150,6 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
     end)
 
     describe("exec()", function()
-      local spy_stub = {
-        nop = function() end
-      }
-
-      local function mock_ngx(method, request_uri, headers)
-        local _ngx
-        _ngx = {
-          log = ngx.log,
-          re = ngx.re,
-          var = setmetatable({
-            request_uri = request_uri,
-            http_kong_debug = headers.kong_debug
-          }, {
-            __index = function(_, key)
-              if key == "http_host" then
-                spy_stub.nop()
-                return headers.host
-              end
-            end
-          }),
-          req = {
-            get_method = function()
-              return method
-            end,
-            get_headers = function()
-              return setmetatable(headers, headers_mt)
-            end
-          }
-        }
-
-        return _ngx
-      end
-
       it("returns parsed upstream_url + upstream_uri", function()
         local use_case_routes = {
           {
@@ -4505,7 +4508,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             router_ignore_sni = assert(new_router(use_case_ignore_sni))
           end)
 
-          it("[sni]", function()
+          it_trad_only("[sni]", function()
             local match_t = router:select(nil, nil, nil, "tcp", nil, nil, nil, nil,
                                           "www.example.org")
             assert.truthy(match_t)
@@ -4859,3 +4862,112 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
     end)
   end)
 end
+
+do
+  local flavor = "expressions"
+
+  describe("Router (flavor = " .. flavor .. ")", function()
+    reload_router(flavor)
+
+    local use_case, router
+
+    lazy_setup(function()
+      use_case = {
+        -- query has one value
+        {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+            expression = [[http.path == "/foo/bar" && http.queries.a == "1"]],
+            priority = 100,
+          },
+        },
+        -- query has no value or is empty string
+        {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+            expression = [[http.path == "/foo/bar" && http.queries.a == ""]],
+            priority = 100,
+          },
+        },
+        -- query has multiple values
+        {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8103",
+            expression = [[http.path == "/foo/bar" && any(http.queries.a) == "2"]],
+            priority = 100,
+          },
+        },
+      }
+
+      router = assert(new_router(use_case))
+    end)
+
+    it("select() should match http.queries", function()
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = "1",})
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = ""})
+      assert.truthy(match_t)
+      assert.same(use_case[2].route, match_t.route)
+
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = true})
+      assert.truthy(match_t)
+      assert.same(use_case[2].route, match_t.route)
+
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = {"2", "10"}})
+      assert.truthy(match_t)
+      assert.same(use_case[3].route, match_t.route)
+
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, nil, {a = "x"})
+      assert.falsy(match_t)
+    end)
+
+    it("exec() should match http.queries", function()
+      local _ngx = mock_ngx("GET", "/foo/bar", { host = "domain.org"}, { a = "1"})
+      local get_uri_args = spy.on(_ngx.req, "get_uri_args")
+
+      router._set_ngx(_ngx)
+      local match_t = router:exec()
+      assert.spy(get_uri_args).was_called(1)
+      assert.same(use_case[1].route, match_t.route)
+
+      local _ngx = mock_ngx("GET", "/foo/bar", { host = "domain.org"}, { a = ""})
+      local get_uri_args = spy.on(_ngx.req, "get_uri_args")
+
+      router._set_ngx(_ngx)
+      local match_t = router:exec()
+      assert.spy(get_uri_args).was_called(1)
+      assert.same(use_case[2].route, match_t.route)
+
+      local _ngx = mock_ngx("GET", "/foo/bar", { host = "domain.org"}, { a = true})
+      local get_uri_args = spy.on(_ngx.req, "get_uri_args")
+
+      router._set_ngx(_ngx)
+      local match_t = router:exec()
+      assert.spy(get_uri_args).was_called(1)
+      assert.same(use_case[2].route, match_t.route)
+
+      local _ngx = mock_ngx("GET", "/foo/bar", { host = "domain.org"}, { a = {"1", "2"}})
+      local get_uri_args = spy.on(_ngx.req, "get_uri_args")
+
+      router._set_ngx(_ngx)
+      local match_t = router:exec()
+      assert.spy(get_uri_args).was_called(1)
+      assert.same(use_case[3].route, match_t.route)
+
+      local _ngx = mock_ngx("GET", "/foo/bar", { host = "domain.org"}, { a = "x"})
+      local get_uri_args = spy.on(_ngx.req, "get_uri_args")
+
+      router._set_ngx(_ngx)
+      local match_t = router:exec()
+      assert.spy(get_uri_args).was_called(1)
+      assert.falsy(match_t)
+    end)
+
+  end)
+end
+

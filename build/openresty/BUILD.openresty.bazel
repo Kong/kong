@@ -116,6 +116,25 @@ selects.config_setting_group(
     ],
 )
 
+selects.config_setting_group(
+    name = "nogroup-name-as-nobody",
+    match_any = [
+        "@kong//build/platforms/distro:rhel9",
+        "@kong//build/platforms/distro:rhel8",
+        "@kong//build/platforms/distro:aws2023",
+        "@kong//build/platforms/distro:aws2",
+    ],
+)
+
+selects.config_setting_group(
+    name = "needs-xcrypt2",
+    match_any = [
+        "@kong//build/platforms/distro:generic",
+        "@kong//build/platforms/distro:rhel9",
+        "@kong//build/platforms/distro:aws2023",
+    ],
+)
+
 CONFIGURE_OPTIONS = [
     "--with-pcre-jit",
     "--with-http_ssl_module",
@@ -205,7 +224,7 @@ CONFIGURE_OPTIONS = [
 }) + select({
     # any cross build that migrated to use libxcrypt needs those flags
     # alpine uses different libc so doesn't need it
-    "@kong//:aarch64-linux-anylibc-cross": [
+    ":needs-xcrypt2": [
         "--with-cc-opt=\"-I$$EXT_BUILD_DEPS$$/libxcrypt/include\"",
         "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/libxcrypt/lib\"",
     ],

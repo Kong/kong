@@ -149,6 +149,30 @@ paths:
   /routes/{routes}/plugins/{plugins}:
     patch:
       description: This method is not available when using DB-less mode.
+  /filter-chains:
+    post:
+      description: This method is not available when using DB-less mode.
+  /filter-chains/{filter_chains}:
+    patch:
+      description: This method is not available when using DB-less mode.
+    delete:
+      description: This method is not available when using DB-less mode.
+  /services/{services}/filter-chains:
+    post:
+      description: This method is not available when using DB-less mode.
+  /services/{services}/filter-chains/{filter_chains}:
+    patch:
+      description: This method is not available when using DB-less mode.
+    delete:
+      description: This method is not available when using DB-less mode.
+  /routes/{routes}/filter-chains:
+    post:
+      description: This method is not available when using DB-less mode.
+  /routes/{routes}/filter-chains/{filter_chains}:
+    patch:
+      description: This method is not available when using DB-less mode.
+    delete:
+      description: This method is not available when using DB-less mode.
 components:
   schemas:
     key_sets:
@@ -691,6 +715,49 @@ components:
           type: integer
       required:
       - kid
+    filter_chains:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        enabled:
+          type: boolean
+          default: true
+        filters:
+          type: array
+          items:
+            $ref: '#/components/schemas/filters'
+        service:
+          nullable: true
+          $ref: '#/components/schemas/services'
+          default: ~
+        route:
+          nullable: true
+          $ref: '#/components/schemas/routes'
+          default: ~
+        tags:
+          type: array
+        created_at:
+          format: int32
+          type: integer
+        updated_at:
+          format: int32
+          type: integer
+      required: []
+    filters:
+      properties:
+        name:
+          type: string
+        config:
+          type: string
+        enabled:
+          type: boolean
+          default: true
+      required:
+        - name
 servers:
 - description: 8001 is the default port on which the Admin API listens.
   url: http://localhost:8001

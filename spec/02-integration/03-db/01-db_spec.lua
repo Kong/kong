@@ -243,12 +243,7 @@ for _, strategy in helpers.each_strategy() do
       assert(db:close())
     end)
 
-    it("returns opened connection when using cosockets", function()
-      -- bin/busted runs with ngx.IS_CLI = true, which forces luasocket to
-      -- be used in the DB connector (for custom CAs to work)
-      -- Disable this behavior for this test, especially considering we
-      -- are running within resty-cli, and thus within timer_by_lua (which
-      -- can support cosockets).
+    it("returns opened connection when IS_CLI=false", function()
       ngx.IS_CLI = false
 
       local db, err = DB.new(helpers.test_conf, strategy)
@@ -271,7 +266,7 @@ for _, strategy in helpers.each_strategy() do
       db:close()
     end)
 
-    it("returns opened connection when using luasocket", function()
+    it("returns opened connection when IS_CLI=true", function()
       ngx.IS_CLI = true
 
       local db, err = DB.new(helpers.test_conf, strategy)
@@ -285,7 +280,7 @@ for _, strategy in helpers.each_strategy() do
       assert.is_table(conn)
 
       if strategy == "postgres" then
-        assert.equal("luasocket", db.connector:get_stored_connection().sock_type)
+        assert.equal("nginx", db.connector:get_stored_connection().sock_type)
         assert.is_false(db.connector:get_stored_connection().config.ssl)
 
       end
@@ -293,7 +288,7 @@ for _, strategy in helpers.each_strategy() do
       db:close()
     end)
 
-    postgres_only("returns opened connection with ssl (cosockets)", function()
+    postgres_only("returns opened connection with ssl (IS_CLI=false)", function()
       ngx.IS_CLI = false
 
       local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
@@ -319,7 +314,7 @@ for _, strategy in helpers.each_strategy() do
       db:close()
     end)
 
-    postgres_only("returns opened connection with ssl (luasocket)", function()
+    postgres_only("returns opened connection with ssl (IS_CLI=true)", function()
       ngx.IS_CLI = true
 
       local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
@@ -337,7 +332,7 @@ for _, strategy in helpers.each_strategy() do
       assert.is_table(conn)
 
       if strategy == "postgres" then
-        assert.equal("luasocket", db.connector:get_stored_connection().sock_type)
+        assert.equal("nginx", db.connector:get_stored_connection().sock_type)
         assert.is_true(db.connector:get_stored_connection().config.ssl)
 
       end
@@ -345,7 +340,7 @@ for _, strategy in helpers.each_strategy() do
       db:close()
     end)
 
-    postgres_only("connects to postgres with readonly account (cosockets)", function()
+    postgres_only("connects to postgres with readonly account (IS_CLI=false)", function()
       ngx.IS_CLI = false
 
       local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
@@ -373,7 +368,7 @@ for _, strategy in helpers.each_strategy() do
       db:close()
     end)
 
-    postgres_only("connects to postgres with readonly account (luasocket)", function()
+    postgres_only("connects to postgres with readonly account (IS_CLI=true)", function()
       ngx.IS_CLI = true
 
       local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
@@ -392,13 +387,13 @@ for _, strategy in helpers.each_strategy() do
 
       assert.is_nil(db.connector:get_stored_connection("read"))
 
-      assert.equal("luasocket", db.connector:get_stored_connection("write").sock_type)
+      assert.equal("nginx", db.connector:get_stored_connection("write").sock_type)
 
       if strategy == "portgres" then
         assert.is_false(db.connector:get_stored_connection("write").config.ssl)
       end
 
-      assert.equal("luasocket", db.connector:get_stored_connection().sock_type)
+      assert.equal("nginx", db.connector:get_stored_connection().sock_type)
 
       if strategy == "portgres" then
         assert.is_false(db.connector:get_stored_connection("write").config.ssl)
@@ -414,7 +409,7 @@ for _, strategy in helpers.each_strategy() do
       helpers.get_db_utils(strategy, {})
     end)
 
-    it("returns true when there is a stored connection (cosockets)", function()
+    it("returns true when there is a stored connection (IS_CLI=false)", function()
       ngx.IS_CLI = false
 
       local db, err = DB.new(helpers.test_conf, strategy)
@@ -439,7 +434,7 @@ for _, strategy in helpers.each_strategy() do
       db:close()
     end)
 
-    it("returns true when there is a stored connection (luasocket)", function()
+    it("returns true when there is a stored connection (IS_CLI=true)", function()
       ngx.IS_CLI = true
 
       local db, err = DB.new(helpers.test_conf, strategy)
@@ -453,7 +448,7 @@ for _, strategy in helpers.each_strategy() do
       assert.is_table(conn)
 
       if strategy == "postgres" then
-        assert.equal("luasocket", db.connector:get_stored_connection().sock_type)
+        assert.equal("nginx", db.connector:get_stored_connection().sock_type)
         assert.is_false(db.connector:get_stored_connection().config.ssl)
 
       end
@@ -464,7 +459,7 @@ for _, strategy in helpers.each_strategy() do
       db:close()
     end)
 
-    postgres_only("returns true when there is a stored connection with ssl (cosockets)", function()
+    postgres_only("returns true when there is a stored connection with ssl (IS_CLI=false)", function()
       ngx.IS_CLI = false
 
       local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
@@ -492,7 +487,7 @@ for _, strategy in helpers.each_strategy() do
       db:close()
     end)
 
-    postgres_only("returns true when there is a stored connection with ssl (luasocket)", function()
+    postgres_only("returns true when there is a stored connection with ssl (IS_CLI=true)", function()
       ngx.IS_CLI = true
 
       local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
@@ -510,7 +505,7 @@ for _, strategy in helpers.each_strategy() do
       assert.is_table(conn)
 
       if strategy == "postgres" then
-        assert.equal("luasocket", db.connector:get_stored_connection().sock_type)
+        assert.equal("nginx", db.connector:get_stored_connection().sock_type)
         assert.is_true(db.connector:get_stored_connection().config.ssl)
 
       end
@@ -521,7 +516,7 @@ for _, strategy in helpers.each_strategy() do
       db:close()
     end)
 
-    it("returns true when there is no stored connection (cosockets)", function()
+    it("returns true when there is no stored connection (IS_CLI=false)", function()
       ngx.IS_CLI = false
 
       local db, err = DB.new(helpers.test_conf, strategy)
@@ -534,7 +529,7 @@ for _, strategy in helpers.each_strategy() do
       assert.is_true(db:setkeepalive())
     end)
 
-    it("returns true when there is no stored connection (luasocket)", function()
+    it("returns true when there is no stored connection (IS_CLI=true)", function()
       ngx.IS_CLI = true
 
       local db, err = DB.new(helpers.test_conf, strategy)
@@ -547,7 +542,7 @@ for _, strategy in helpers.each_strategy() do
       assert.is_true(db:setkeepalive())
     end)
 
-    postgres_only("keepalives both read only and write connection (cosockets)", function()
+    postgres_only("keepalives both read only and write connection (IS_CLI=false)", function()
       ngx.IS_CLI = false
 
       local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
@@ -584,7 +579,7 @@ for _, strategy in helpers.each_strategy() do
       db:close()
     end)
 
-    postgres_only("connects and keepalives only write connection (luasocket)", function()
+    postgres_only("connects and keepalives only write connection (IS_CLI=true)", function()
       ngx.IS_CLI = true
 
       local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
@@ -605,7 +600,7 @@ for _, strategy in helpers.each_strategy() do
       assert.is_nil(err)
       assert.is_table(conn)
 
-      assert.equal("luasocket", db.connector:get_stored_connection("write").sock_type)
+      assert.equal("nginx", db.connector:get_stored_connection("write").sock_type)
       assert.is_nil(db.connector:get_stored_connection("read"))
 
       if strategy == "postgres" then
@@ -627,7 +622,7 @@ for _, strategy in helpers.each_strategy() do
       helpers.get_db_utils(strategy, {})
     end)
 
-    it("returns true when there is a stored connection (cosockets)", function()
+    it("returns true when there is a stored connection (IS_CLI=false)", function()
       ngx.IS_CLI = false
 
       local db, err = DB.new(helpers.test_conf, strategy)
@@ -650,7 +645,7 @@ for _, strategy in helpers.each_strategy() do
       assert.is_true(db:close())
     end)
 
-    it("returns true when there is a stored connection (luasocket)", function()
+    it("returns true when there is a stored connection (IS_CLI=true)", function()
       ngx.IS_CLI = true
 
       local db, err = DB.new(helpers.test_conf, strategy)
@@ -664,7 +659,7 @@ for _, strategy in helpers.each_strategy() do
       assert.is_table(conn)
 
       if strategy == "postgres" then
-        assert.equal("luasocket", db.connector:get_stored_connection().sock_type)
+        assert.equal("nginx", db.connector:get_stored_connection().sock_type)
         assert.is_false(db.connector:get_stored_connection().config.ssl)
 
       end
@@ -673,7 +668,7 @@ for _, strategy in helpers.each_strategy() do
       assert.is_true(db:close())
     end)
 
-    postgres_only("returns true when there is a stored connection with ssl (cosockets)", function()
+    postgres_only("returns true when there is a stored connection with ssl (IS_CLI=false)", function()
       ngx.IS_CLI = false
 
       local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
@@ -699,7 +694,7 @@ for _, strategy in helpers.each_strategy() do
       assert.is_true(db:close())
     end)
 
-    postgres_only("returns true when there is a stored connection with ssl (luasocket)", function()
+    postgres_only("returns true when there is a stored connection with ssl (IS_CLI=true)", function()
       ngx.IS_CLI = true
 
       local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
@@ -717,7 +712,7 @@ for _, strategy in helpers.each_strategy() do
       assert.is_table(conn)
 
       if strategy == "postgres" then
-        assert.equal("luasocket", db.connector:get_stored_connection().sock_type)
+        assert.equal("nginx", db.connector:get_stored_connection().sock_type)
         assert.is_true(db.connector:get_stored_connection().config.ssl)
 
       end
@@ -725,7 +720,7 @@ for _, strategy in helpers.each_strategy() do
       assert.is_true(db:close())
     end)
 
-    it("returns true when there is no stored connection (cosockets)", function()
+    it("returns true when there is no stored connection (IS_CLI=false)", function()
       ngx.IS_CLI = false
 
       local db, err = DB.new(helpers.test_conf, strategy)
@@ -738,7 +733,7 @@ for _, strategy in helpers.each_strategy() do
       assert.is_true(db:close())
     end)
 
-    it("returns true when there is no stored connection (luasocket)", function()
+    it("returns true when there is no stored connection (IS_CLI=true)", function()
       ngx.IS_CLI = true
 
       local db, err = DB.new(helpers.test_conf, strategy)
@@ -751,7 +746,7 @@ for _, strategy in helpers.each_strategy() do
       assert.equal(true, db:close())
     end)
 
-    postgres_only("returns true when both read-only and write connection exists (cosockets)", function()
+    postgres_only("returns true when both read-only and write connection exists (IS_CLI=false)", function()
       ngx.IS_CLI = false
 
       local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
@@ -788,7 +783,7 @@ for _, strategy in helpers.each_strategy() do
       db:close()
     end)
 
-    postgres_only("returns true when both read-only and write connection exists (luasocket)", function()
+    postgres_only("returns true when both read-only and write connection exists (IS_CLI=true)", function()
       ngx.IS_CLI = true
 
       local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
@@ -808,7 +803,7 @@ for _, strategy in helpers.each_strategy() do
       assert.is_nil(err)
       assert.is_table(conn)
 
-      assert.equal("luasocket", db.connector:get_stored_connection("write").sock_type)
+      assert.equal("nginx", db.connector:get_stored_connection("write").sock_type)
       assert.is_nil(db.connector:get_stored_connection("read"))
 
       if strategy == "postgres" then

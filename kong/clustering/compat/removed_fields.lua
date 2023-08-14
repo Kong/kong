@@ -185,5 +185,8 @@ return {
     oas_validation = {
       "include_base_path",
     },
+    proxy_cache = {
+      "response_headers",
+    },
   },
 }

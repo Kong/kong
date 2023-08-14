@@ -72,7 +72,7 @@ end
 local function check_select_params(req_method, req_uri, req_host, req_scheme,
                                    src_ip, src_port,
                                    dst_ip, dst_port,
-                                   sni, req_headers)
+                                   sni, req_headers, req_queries)
   if req_method and type(req_method) ~= "string" then
     error("method must be a string", 2)
   end
@@ -102,6 +102,9 @@ local function check_select_params(req_method, req_uri, req_host, req_scheme,
   end
   if req_headers and type(req_headers) ~= "table" then
     error("headers must be a table", 2)
+  end
+  if req_queries and type(req_queries) ~= "table" then
+    error("queries must be a table", 2)
   end
 end
 

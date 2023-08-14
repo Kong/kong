@@ -721,7 +721,9 @@ local function new(self)
   --
   -- @function kong.request.get_raw_body
   -- @phases rewrite, access, response, admin_api
-  -- @treturn string The plain request body.
+  -- @treturn string|nil The plain request body or nil if it does not fit into
+  -- the NGINX temporary buffer.
+  -- @treturn nil|string An error message.
   -- @usage
   -- -- Given a body with payload "Hello, Earth!":
   --

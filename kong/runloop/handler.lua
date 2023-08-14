@@ -1518,9 +1518,7 @@ return {
       -- We overcome this behavior with our own logic, to preserve user
       -- desired semantics.
       -- perf: branch usually not taken, don't cache var outside
-      if byte(ctx.request_uri or var.request_uri, -1) == QUESTION_MARK then
-        var.upstream_uri = var.upstream_uri .. "?"
-      elseif var.is_args == "?" then
+      if byte(ctx.request_uri or var.request_uri, -1) == QUESTION_MARK or var.is_args == "?" then
         var.upstream_uri = var.upstream_uri .. "?" .. (var.args or "")
       end
 

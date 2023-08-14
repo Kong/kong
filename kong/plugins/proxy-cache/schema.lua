@@ -82,6 +82,16 @@ return {
           { vary_headers = { description = "Relevant headers considered for the cache key. If undefined, none of the headers are taken into consideration.", type = "array",
             elements = { type = "string" },
           }},
+          { response_headers = {
+            type = "record",
+            fields = {
+              { age  = {type = "boolean",  default = true} },
+              { ["X-Cache-Status"]  = {type = "boolean",  default = true} },
+              { ["X-Cache-Key"]  = {type = "boolean",  default = true} },
+            },
+          }},
+
+
         },
       }
     },

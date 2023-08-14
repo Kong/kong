@@ -107,7 +107,7 @@ describe("#wasm - hybrid mode", function()
   end)
 
   lazy_teardown(function()
-    helpers.stop_kong(cp_prefix, true)
+    helpers.stop_kong(cp_prefix)
   end)
 
   describe("[happy path]", function()
@@ -255,7 +255,43 @@ describe("#wasm - hybrid mode", function()
 
 
     lazy_teardown(function()
-      helpers.stop_kong(dp_prefix, true)
+      helpers.stop_kong(dp_prefix)
+    end)
+
+    it("does not sync configuration", function()
+      assert.logfile(cp_errlog).has.line(
+        [[unable to send updated configuration to data plane: data plane is missing one or more wasm filters]],
+        true, 5)
+
+      expect_status(dp_prefix, STATUS.FILTER_SET_INCOMPATIBLE)
+    end)
+  end)
+
+  describe("data planes missing one or more wasm filter", function()
+    local tmp_dir
+
+    lazy_setup(function()
+      helpers.clean_logfile(cp_errlog)
+      tmp_dir = helpers.make_temp_dir()
+
+      assert(helpers.start_kong({
+        role                  = "data_plane",
+        database              = "off",
+        prefix                = dp_prefix,
+        cluster_cert          = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key      = "spec/fixtures/kong_clustering.key",
+        cluster_control_plane = "127.0.0.1:9005",
+        admin_listen          = "off",
+        nginx_conf            = "spec/fixtures/custom_nginx.template",
+        wasm                  = true,
+        wasm_filters_path     = tmp_dir,
+      }))
+    end)
+
+
+    lazy_teardown(function()
+      helpers.stop_kong(dp_prefix)
+      helpers.dir.rmtree(tmp_dir)
     end)
 
     it("does not sync configuration", function()

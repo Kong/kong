@@ -262,11 +262,11 @@ are located in the [spec/05-migration/](spec/05-migration/) directory
 and must be named after the migration they test such that the
 migration `kong/**/*.lua` has a test in
 `spec/05-migration/**/*_spec.lua`.  The presence of a test is enforced
-by the [upgrade testing](scripts/test-upgrade-path.sh) shell script
+by the [upgrade testing](scripts/upgrade-tests/test-upgrade-path.sh) shell script
 which is [automatically run](.github/workflows/upgrade-tests.yml)
 through a GitHub Action.
 
-The [upgrade testing](scripts/test-upgrade-path.sh) shell script works
+The [upgrade testing](scripts/upgrade-tests/test-upgrade-path.sh) shell script works
 as follows:
 
  * A new Kong Gateway installation is brought up using
