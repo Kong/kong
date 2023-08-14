@@ -11,6 +11,14 @@
 
 ## Unreleased
 
+### Fixes
+
+#### Core
+
+- Removed a hardcoded proxy-wasm isolation level setting that was preventing the
+  `nginx_http_proxy_wasm_isolation` configuration value from taking effect.
+  [#11407](https://github.com/Kong/kong/pull/11407)
+
 ## 3.4.0
 
 ### Breaking Changes
