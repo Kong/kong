@@ -40,6 +40,10 @@
 - Ubuntu 18.04 artifacts are no longer supported as it's EOL
 - AmazonLinux 2022 artifacts are renamed to AmazonLinux 2023 according to AWS's decision
 
+### Deprecations
+
+- **CentOS packages are now removed from the release and are no longer supported in future versions.**
+
 #### Core
 
 - '/schemas' endpoint returns additional information about cross-field validation as part of the schema. This should help tools that use the Admin API to perform better client-side validation.
