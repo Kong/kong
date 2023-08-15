@@ -30,7 +30,7 @@ function get_current_version() {
     then
         echo $version_from_rockspec-ubuntu
     else
-        echo ubuntu
+        echo master-ubuntu
     fi
 }
 
