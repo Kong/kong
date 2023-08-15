@@ -1,0 +1,3 @@
+message: the AWS-Lambda plugin has been refactored by using `lua-resty-aws` as an underlying AWS library. The refactor simplifies the AWS-Lambda plugin code base and adding support for multiple IAM authenticating scenarios.
+type: feature
+scope: Plugin

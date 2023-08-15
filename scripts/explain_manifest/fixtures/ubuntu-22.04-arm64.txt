@@ -37,6 +37,11 @@
   - ld-linux-aarch64.so.1
   Runpath   : /usr/local/kong/lib
 
+- Path      : /usr/local/kong/lib/libexpat.so.1.8.10
+  Needed    :
+  - libc.so.6
+  - ld-linux-aarch64.so.1
+
 - Path      : /usr/local/kong/lib/libssl.so.3
   Needed    :
   - libcrypto.so.3
@@ -75,6 +80,13 @@
   Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/lua_system_constants.so
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/lib/lua/5.1/lxp.so
+  Needed    :
+  - libexpat.so.1
+  - libc.so.6
+  - ld-linux-aarch64.so.1
   Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/mime/core.so

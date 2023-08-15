@@ -43,6 +43,7 @@ genrule(
     name = "luarocks_exec",
     srcs = [
         "@openssl",
+        "@libexpat",
     ] + select({
         "@kong//:any-cross": ["@cross_deps_libyaml//:libyaml"],
         "//conditions:default": [
@@ -65,6 +66,7 @@ touch "$$ROCKS_DIR/../luarocks_config.lua"
 ROCKS_CONFIG=$$(readlink -f "$$ROCKS_DIR/../luarocks_config.lua")
 
 OPENSSL_DIR=$$WORKSPACE_PATH/$$(echo '$(locations @openssl)' | awk '{print $$1}')
+EXPAT_DIR=$$WORKSPACE_PATH/$$(echo '$(locations @libexpat)' | awk '{print $$1}')
 
 # we use system libyaml on macos
 if [[ "$$OSTYPE" == "darwin"* ]]; then
@@ -120,6 +122,7 @@ export EXT_BUILD_ROOT=$$WORKSPACE_PATH # for musl
 $$host_luajit $$WORKSPACE_PATH/$$LUAROCKS_HOST/bin/luarocks \\$$@ \\
     OPENSSL_DIR=$$OPENSSL_DIR \\
     CRYPTO_DIR=$$OPENSSL_DIR \\
+    EXPAT_DIR=$$EXPAT_DIR \\
     YAML_DIR=$$YAML_DIR
 EOF
 """,

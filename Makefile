@@ -12,10 +12,12 @@ ifeq ($(OS), darwin)
 OPENSSL_DIR ?= $(shell brew --prefix)/opt/openssl
 GRPCURL_OS ?= osx
 YAML_DIR ?= $(shell brew --prefix)/opt/libyaml
+EXPAT_DIR ?= $(HOMEBREW_DIR)/opt/expat
 else
 OPENSSL_DIR ?= /usr
 GRPCURL_OS ?= $(OS)
 YAML_DIR ?= /usr
+EXPAT_DIR ?= $(LIBRARY_PREFIX)
 endif
 
 ifeq ($(MACHINE), aarch64)
