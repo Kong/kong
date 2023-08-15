@@ -272,6 +272,7 @@ jobs:
         api-key: ${{ secrets.DATADOG_API_KEY }}
         service: kong-ee-github-actions-ci
         files: ${{ env.TEST_RESULTS_XML_OUTPUT }}
+        extra-args: --xpath-tag test.suite=/testcase/@filename
 
     - name: Get kernel message
       if: failure()
@@ -472,6 +473,7 @@ jobs:
         api-key: ${{ secrets.DATADOG_API_KEY }}
         service: kong-ee-github-actions-ci
         files: ${{ env.TEST_RESULTS_XML_OUTPUT }}
+        extra-args: --xpath-tag test.suite=/testcase/@filename
 
     - name: Get kernel message
       if: failure()
@@ -585,6 +587,7 @@ jobs:
         api-key: ${{ secrets.DATADOG_API_KEY }}
         service: kong-ee-github-actions-ci
         files: ${{ env.TEST_RESULTS_XML_OUTPUT }}
+        extra-args: --xpath-tag test.suite=/testcase/@filename
 
     # EE only
     - name: Stop Redis Cluster
@@ -844,6 +847,7 @@ jobs:
         api-key: ${{ secrets.DATADOG_API_KEY }}
         service: kong-ee-github-actions-ci
         files: ${{ env.TEST_RESULTS_XML_OUTPUT }}
+        extra-args: --xpath-tag test.suite=/testcase/@filename
 
     - name: Get kernel message
       if: failure()

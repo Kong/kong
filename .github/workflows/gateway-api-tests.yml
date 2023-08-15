@@ -162,6 +162,7 @@ jobs:
           api-key: ${{ secrets.DATADOG_API_KEY }}
           service: kong-ee-github-actions-ci
           files: spec-ee/kong-api-tests/results/
+          extra-args: --xpath-tag test.suite=/testcase/@classname
 
       - name: Retry Gateway Failed API Tests
         if: steps.execute_tests.outcome == 'failure'
