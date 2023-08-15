@@ -698,6 +698,8 @@ function Kong.init()
     kong_global = kong_global,
   }
 
+  assert(db.plugins:execute_plugin_init())
+
   if is_stream_module then
     stream_api.load_handlers()
   end

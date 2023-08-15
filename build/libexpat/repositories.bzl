@@ -16,5 +16,5 @@ def libexpat_repositories():
         url = "https://github.com/libexpat/libexpat/releases/download/" + tag + "/expat-" + version + ".tar.gz",
         sha256 = "6b902ab103843592be5e99504f846ec109c1abb692e85347587f237a4ffa1033",
         strip_prefix = "expat-" + version,
-        build_file = "//build/ee/libexpat:BUILD.libexpat.bazel",
+        build_file = "//build/libexpat:BUILD.libexpat.bazel",
     )

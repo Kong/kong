@@ -8,9 +8,9 @@ exports_files([
 ])
 
 lib_deps = [
+    "@libexpat",
     # EE only
     "@jq",
-    "@libexpat",
     "@libxml2",
     "@libxslt",
     "@passwdqc",

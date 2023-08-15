@@ -89,9 +89,9 @@ CACHE_DIR=$$(readlink -f "$$ROCKS_DIR/../cache")
 touch "$$ROCKS_DIR/../luarocks_config.lua"
 ROCKS_CONFIG=$$(readlink -f "$$ROCKS_DIR/../luarocks_config.lua")
 
-EXPAT_DIR=$$WORKSPACE_PATH/$$(echo '$(locations @libexpat)' | awk '{print $$1}')
 LIBXML2_DIR=$$WORKSPACE_PATH/$$(echo '$(locations @libxml2)' | awk '{print $$1}')
 OPENSSL_DIR=$$WORKSPACE_PATH/$$(echo '$(locations @openssl)' | awk '{print $$1}')
+EXPAT_DIR=$$WORKSPACE_PATH/$$(echo '$(locations @libexpat)' | awk '{print $$1}')
 
 # we use system libyaml on macos
 if [[ "$$OSTYPE" == "darwin"* ]]; then

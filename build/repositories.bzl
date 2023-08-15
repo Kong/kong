@@ -5,6 +5,7 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
 load("//build/luarocks:luarocks_repositories.bzl", "luarocks_repositories")
 load("//build/cross_deps:repositories.bzl", "cross_deps_repositories")
+load("//build/libexpat:repositories.bzl", "libexpat_repositories")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 
 _SRCS_BUILD_FILE_CONTENT = """
@@ -150,6 +151,7 @@ def kong_resty_websocket_repositories():
     )
 
 def build_repositories():
+    libexpat_repositories()
     luarocks_repositories()
 
     kong_resty_websocket_repositories()
