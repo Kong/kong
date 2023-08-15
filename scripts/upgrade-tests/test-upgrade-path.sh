@@ -86,7 +86,7 @@ NEW_CONTAINER=$ENV_PREFIX-kong_new-1
 
 function prepare_container() {
     docker exec $1 apt-get update
-    docker exec $1 apt-get install -y build-essential curl m4
+    docker exec $1 apt-get install -y build-essential curl m4 unzip git
     docker exec $1 bash -c "ln -sf /usr/local/kong/include/* /usr/include"
     docker exec $1 bash -c "ln -sf /usr/local/kong/lib/* /usr/lib"
 }
