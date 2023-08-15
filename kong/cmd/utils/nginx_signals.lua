@@ -63,8 +63,9 @@ local function send_signal(kong_conf, signal)
 
   log.verbose("sending %s signal to nginx running at %s", signal, kong_conf.nginx_pid)
 
-  if not process.signal(pid, signal) then
-    return nil, "could not send signal"
+  local ok, err = process.signal(pid, signal)
+  if not ok then
+    return nil, fmt("could not send signal: %s", err or "unknown error")
   end
 
   return true
