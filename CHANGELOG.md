@@ -65,6 +65,8 @@
   [#11378](https://github.com/Kong/kong/pull/11378)
 - **AWS-Lambda**: fix an issue that the AWS-Lambda plugin cannot extract a json encoded proxy integration response.
   [#11413](https://github.com/Kong/kong/pull/11413)
+- **Acme**: fix `account_key` is not optional.
+  [#11410](https://github.com/Kong/kong/pull/11410)
 
 ### Dependencies
 

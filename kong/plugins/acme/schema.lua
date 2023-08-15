@@ -79,7 +79,7 @@ local VAULT_STORAGE_SCHEMA = {
 }
 
 local ACCOUNT_KEY_SCHEMA = {
-  { key_id = { type = "string", required = true, description = "The Key ID." } },
+  { key_id = { type = "string", description = "The Key ID." } },
   { key_set = { type = "string", description = "The ID of the key set to associate the Key ID with." } }
 }
 
@@ -242,6 +242,18 @@ local schema = {
           end
           if _G.kong and kong.configuration.role == "control_plane" and field == "shm" then
             return nil, "\"shm\" storage can't be used in Hybrid mode"
+          end
+          return true
+        end
+      }
+    },
+    {
+      custom_entity_check = {
+        field_sources = { "config.account_key", },
+        fn = function(entity)
+          local field = entity.config.account_key
+          if field and type(field) == "table" and (not field.key_id or type(field.key_id) ~= "string" )then
+            return nil, "account_key.key_id must be set if account_key is set"
           end
           return true
         end

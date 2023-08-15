@@ -89,6 +89,22 @@ describe("Plugin: acme (schema)", function()
           }
         },
     },
+    ----------------------------------------
+    {
+      name = "accepts valid account_key without key_id",
+      input = {
+        account_email = "example@example.com",
+        api_uri = "https://api.acme.org",
+        account_key = {
+          key_set = "my-key-set",
+        }
+      },
+      error = {
+        ["@entity"] = {
+          'account_key.key_id must be set if account_key is set'
+        },
+      },
+    },
   }
 
   for _, t in ipairs(tests) do
