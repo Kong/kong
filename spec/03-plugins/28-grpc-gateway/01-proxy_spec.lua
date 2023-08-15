@@ -17,6 +17,12 @@ for _, strategy in helpers.each_strategy() do
     lazy_setup(function()
       assert(helpers.start_grpc_target())
 
+      -- start_grpc_target takes long time, the db socket might already
+      -- be timeout, so we close it to avoid `db:init_connector` failing
+      -- in `helpers.get_db_utils`
+      helpers.db:connect()
+      helpers.db:close()
+
       local bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",

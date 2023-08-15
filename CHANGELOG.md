@@ -157,6 +157,8 @@
   [#11090](https://github.com/Kong/kong/pull/11090)
 - Remove kong branding from kong HTML error template.
   [#11150](https://github.com/Kong/kong/pull/11150)
+- Drop luasocket in cli
+  [#11177](https://github.com/Kong/kong/pull/11177)
 
 #### Status API
 

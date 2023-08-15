@@ -236,8 +236,16 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       it("drops old tables using a 'custom' schema", function()
         helpers.test_conf.pg_schema = "custom"
 
+        -- set schema so that it will bootstrap schema in `get_db_utils`
+        assert(db:query("SET SCHEMA 'custom';\n"))
         local _, db, _ = helpers.get_db_utils("postgres")
         db = db.connector
+        finally(function()
+          db:connect_migrations({ no_keyspace = true })
+          db:schema_reset()
+          db:close()
+        end)
+        assert(db:query("SET SCHEMA 'custom';\n"))
 
         local opts = {
           connector         = db,
