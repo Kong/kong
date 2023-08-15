@@ -36,7 +36,7 @@ function get_current_version() {
 
 export OLD_KONG_VERSION=2.8.0
 export OLD_KONG_IMAGE=kong:$OLD_KONG_VERSION-ubuntu
-export NEW_KONG_IMAGE=kong:$(get_current_version kong)
+export NEW_KONG_IMAGE=kong/kong:$(get_current_version kong)
 
 function usage() {
     cat 1>&2 <<EOF
