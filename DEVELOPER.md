@@ -107,7 +107,7 @@ sudo apt update \
 
 ```
 
-Fedora/CentOS/RHEL:
+Fedora/RHEL:
 
 ```shell
 dnf install \
