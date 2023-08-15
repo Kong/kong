@@ -14,7 +14,7 @@ local SetConsumerGroup = {
 function SetConsumerGroup:access(conf)
   local group_name = conf.group_name
   local group_id = conf.group_id
-  kong.client.set_authenticated_consumer_group({ name = group_name, id = group_id })
+  kong.client.set_authenticated_consumer_groups({{ name = group_name, id = group_id }})
   ngx.header["SetConsumerGroup-Was-Executed"] = "true"
 end
 

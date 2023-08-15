@@ -31,7 +31,7 @@ __DATA__
             }))
 
 
-            ngx.say("consumer: ", tostring(pdk.client.get_consumer()), ", credential: ", tostring(pdk.client.get_credential()), ", consumer_group: ", tostring(pdk.client.get_consumer_group()))
+            ngx.say("consumer: ", tostring(pdk.client.get_consumer()), ", credential: ", tostring(pdk.client.get_credential()), ", consumer_group: ", tostring(pdk.client.get_consumer_groups()))
         }
     }
 --- request
