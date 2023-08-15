@@ -40,6 +40,10 @@
   - libc.so.6
   Rpath     : /usr/local/kong/lib
 
+- Path      : /usr/local/kong/lib/libexpat.so.1.8.10
+  Needed    :
+  - libc.so.6
+
 - Path      : /usr/local/kong/lib/libssl.so.3
   Needed    :
   - libcrypto.so.3
@@ -74,6 +78,12 @@
 
 - Path      : /usr/local/lib/lua/5.1/lua_system_constants.so
   Needed    :
+  - libc.so.6
+  Rpath     : /usr/local/kong/lib
+
+- Path      : /usr/local/lib/lua/5.1/lxp.so
+  Needed    :
+  - libexpat.so.1
   - libc.so.6
   Rpath     : /usr/local/kong/lib
 
