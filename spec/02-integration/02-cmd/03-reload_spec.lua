@@ -98,8 +98,7 @@ describe("kong reload #" .. strategy, function()
     client:close()
 
     assert(helpers.kong_exec("reload --conf " .. helpers.test_conf_path
-           .. " --nginx-conf spec/fixtures/custom_nginx.template"
-           .. " --nginx-conf-flags test"))
+           .. " --nginx-conf spec/fixtures/custom_nginx.template"))
 
 
     helpers.wait_until_no_common_workers(workers, 1)

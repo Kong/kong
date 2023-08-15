@@ -738,9 +738,8 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
   end
   pl_file.write(kong_config.nginx_kong_stream_inject_conf, nginx_stream_inject_conf)
 
-  -- write Kong's test injected configuration files (*test.conf)
-  -- these are included in the Kong's HTTP NGINX conf when
-  -- the `test` flag is set in the template environment
+  -- write Kong's test injected configuration files (*.test.conf)
+  -- these are included in the Kong's HTTP NGINX conf by the test template
   local test_template_inj_path = "spec/fixtures/template_inject/"
   if pl_path.isdir(test_template_inj_path) then
     for _, file in ipairs(pl_dir.getfiles(test_template_inj_path, "*.lua")) do

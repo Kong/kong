@@ -3565,11 +3565,9 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
   truncate_tables(db, tables)
 
   local nginx_conf = ""
-  local nginx_conf_flags = {}
+  local nginx_conf_flags = { "test" }
   if env.nginx_conf then
     nginx_conf = " --nginx-conf " .. env.nginx_conf
-    -- render `test` blocks in the templates
-    nginx_conf_flags[#nginx_conf_flags + 1] = 'test'
   end
 
   if TEST_COVERAGE_MODE == "true" then

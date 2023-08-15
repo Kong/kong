@@ -484,10 +484,6 @@ server {
 }
 > end -- role == "control_plane"
 
-> if test then
-    include '*.test.conf';
-> end -- test
-
 server {
     charset UTF-8;
     server_name kong_worker_events;
