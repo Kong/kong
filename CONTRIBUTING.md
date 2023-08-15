@@ -625,7 +625,7 @@ local t = {foo="hello",bar="world"}
 local t = { foo = "hello", bar = "world" }
 ```
 
-Perfer `ipairs()` to `for` loop when iterating an array,
+Prefer `ipairs()` to `for` loop when iterating an array,
 which gives us more readability:
 
 ```lua
