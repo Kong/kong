@@ -33,5 +33,30 @@ export const retryRequest = async (
       timeout -= interval;
     }
   }
+
+  /*
+    * The last try.
+    *
+    * If we get here, we've timed out,
+    * but we might miss a try in some cases,
+    * For example, if the timeout is 10 seconds,
+    * and the interval is 3 seconds,
+    * we'll try 3 times, the last try will be at 9 seconds.
+    * But the condition might be true at 10 seconds,
+    * and the timeout not is less than 0,
+    * so we'll exit the above loop,
+    * and we'll miss the last try.
+  */
+  try {
+    assertions(response);
+    return response;
+  } catch (error: any) {
+    errorMsg = error.message;
+    console.log(errorMsg);
+    console.log(
+      `** Assertion(s) Failed -- Retrying in ${interval / 1000} seconds **`
+    );
+  }
+
   throw new Error(errorMsg);
 };
