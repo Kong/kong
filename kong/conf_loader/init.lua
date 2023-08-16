@@ -670,6 +670,7 @@ local CONF_SENSITIVE = {
   ssl_cert_key = true,
   client_ssl_cert_key = true,
   admin_ssl_cert_key = true,
+  admin_gui_ssl_cert_key = true,
   status_ssl_cert_key = true,
   debug_ssl_cert_key = true,
 }

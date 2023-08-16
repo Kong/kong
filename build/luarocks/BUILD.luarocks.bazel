@@ -95,7 +95,7 @@ OPENSSL_DIR=$$WORKSPACE_PATH/$$(echo '$(locations @openssl)' | awk '{print $$1}'
 
 # we use system libyaml on macos
 if [[ "$$OSTYPE" == "darwin"* ]]; then
-    YAML_DIR=$$(brew --prefix)/opt/libyaml
+    YAML_DIR=$$(HOME=~$$(whoami) brew --prefix)/opt/libyaml
 elif [[ -d $$WORKSPACE_PATH/$(BINDIR)/external/cross_deps_libyaml/libyaml ]]; then
     # TODO: is there a good way to use locations but doesn't break non-cross builds?
     YAML_DIR=$$WORKSPACE_PATH/$(BINDIR)/external/cross_deps_libyaml/libyaml

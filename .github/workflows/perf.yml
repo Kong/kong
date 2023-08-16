@@ -2,8 +2,6 @@ name: Performance Test
 
 on:
   pull_request:
-  issue_comment:
-    types: [created]
   schedule:
   # don't know the timezone but it's daily at least
   - cron:  '0 19 * * *'
@@ -210,8 +208,8 @@ jobs:
     - name: Choose perf suites
       id: choose_perf
       run: |
-        suites=$(echo "${{ github.event.comment.body }}" | awk '{print $1}')
-        tags=$(echo "${{ github.event.comment.body }}" | awk '{print $2}')
+        suites="$(printf '%s' "${{ github.event.comment.body }}" | awk '{print $1}')"
+        tags="$(printf '%s' "${{ github.event.comment.body }}" | awk '{print $2}')"
 
         if [[ $suite == "/flamegraph" ]]; then
           suites="02-flamegraph"
@@ -242,7 +240,7 @@ jobs:
       id: compare_versions
       run: |
         pr_ref=$(echo "${{ github.event.pull_request.base.ref }}")
-        custom_vers=$(echo "${{ github.event.comment.body }}" | awk '{print $3}')
+        custom_vers="$(printf '%s' "${{ github.event.comment.body }}" | awk '{print $3}')"
 
         if [[ ! -z "${pr_ref}" ]]; then
           vers="git:${{ github.head_ref }},git:${pr_ref}"

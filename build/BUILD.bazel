@@ -211,7 +211,7 @@ kong_directory_genrule(
         install_webui_cmd +
         link_modules_dir +
         install_wasm_deps_cmd +
-        """ 
+        """
         mkdir -p ${BUILD_DESTDIR}/etc/kong
         cp kong.conf.default ${BUILD_DESTDIR}/etc/kong/kong.conf.default
 

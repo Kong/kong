@@ -107,7 +107,7 @@ sudo apt update \
 
 ```
 
-Fedora/RHEL:
+Fedora/CentOS/RHEL:
 
 ```shell
 dnf install \
@@ -262,11 +262,11 @@ are located in the [spec/05-migration/](spec/05-migration/) directory
 and must be named after the migration they test such that the
 migration `kong/**/*.lua` has a test in
 `spec/05-migration/**/*_spec.lua`.  The presence of a test is enforced
-by the [upgrade testing](scripts/test-upgrade-path.sh) shell script
+by the [upgrade testing](scripts/upgrade-tests/test-upgrade-path.sh) shell script
 which is [automatically run](.github/workflows/upgrade-tests.yml)
 through a GitHub Action.
 
-The [upgrade testing](scripts/test-upgrade-path.sh) shell script works
+The [upgrade testing](scripts/upgrade-tests/test-upgrade-path.sh) shell script works
 as follows:
 
  * A new Kong Gateway installation is brought up using
@@ -339,7 +339,7 @@ is easy enough now. Most of us use the freely available VirtualBox without any t
 
 If you use Linux for your desktop, you can skip this section.
 
-There are no "hard" requirements on any Linux distro, but RHEL can be more of a challenge
+There are no "hard" requirements on any Linux distro, but RHEL and CentOS can be more of a challenge
 to get recent versions of many packages; Fedora, Debian, or Ubuntu are easier for this.
 
 To avoid long compilation times, give the VM plenty of RAM (8GB recommended) and all the CPU cores you can.

@@ -111,7 +111,7 @@ local function load_upstreams_dict_into_memory()
   -- please refer to https://github.com/Kong/kong/pull/4301 and
   -- https://github.com/Kong/kong/pull/8974#issuecomment-1317788871
   if isempty(upstreams_dict) then
-    log(DEBUG, "empty upstreams dict. Could it be an uncatched database error?")
+    log(DEBUG, "no upstreams were specified")
   end
 
   return upstreams_dict
