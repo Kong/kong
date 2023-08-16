@@ -244,12 +244,18 @@ describe('Gateway Plugins: OpenTelemetry', function () {
           'Should have kong operationName'
         ).to.equal(`kong`);
 
+        const instance_id = data.processes.p1.tags.find((obj) => {
+          return obj.key === 'service.instance.id';
+        });
+        const version = data.processes.p1.tags.find((obj) => {
+          return obj.key === 'service.version';
+        });
         expect(
-          data.processes.p1.tags[0].value,
+          instance_id.value,
           'Should have correct service.instance.id'
         ).to.equal(`8888`);
         expect(
-          data.processes.p1.tags[1].value,
+          version.value,
           'Should have correct service.version'
         ).to.equal(`kongtest`);
       }
