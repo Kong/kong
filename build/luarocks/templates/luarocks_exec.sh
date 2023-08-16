@@ -2,11 +2,11 @@
 
 # template variables starts
 libexpat_path="{{@libexpat//:libexpat}}"
-libxml2_path="invalid"
+libxml2_path="{{@libxml2//:libxml2}}"
 openssl_path="{{@openssl//:openssl}}"
 luarocks_host_path="{{@luarocks//:luarocks_host}}"
 luajit_path="{{@openresty//:luajit}}"
-kongrocks_path="invalid"
+kongrocks_path="{{@kongrocks//:all_srcs}}"
 cross_deps_libyaml_path="{{@cross_deps_libyaml//:libyaml}}"
 CC={{CC}}
 LD={{LD}}
@@ -31,7 +31,7 @@ OPENSSL_DIR=$root_path/$openssl_path
 
 # we use system libyaml on macos
 if [[ "$OSTYPE" == "darwin"* ]]; then
-     YAML_DIR=$(HOME=~$(whoami) PATH=/opt/homebrew/bin:$PATH brew --prefix)/opt/libyaml
+    YAML_DIR=$(HOME=~$(whoami) brew --prefix)/opt/libyaml
 elif [[ -d $cross_deps_libyaml_path ]]; then
     # TODO: is there a good way to use locations but doesn't break non-cross builds?
     YAML_DIR=$root_path/$cross_deps_libyaml_path
