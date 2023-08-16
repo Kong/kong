@@ -1,21 +1,43 @@
 local cjson      = require "cjson"
 local helpers    = require "spec.helpers"
 
+local function reset_log(logname)
+  local client = assert(helpers.http_client(helpers.mock_upstream_host,
+      helpers.mock_upstream_port))
+  assert(client:send {
+      method  = "DELETE",
+      path    = "/reset_log/" .. logname,
+      headers = {
+        Accept = "application/json"
+      }
+  })
+  client:close()
+end
+
+local function get_log(typ, n)
+  local entries
+  helpers.wait_until(function()
+    local client = assert(helpers.http_client(helpers.mock_upstream_host,
+                                              helpers.mock_upstream_port))
+    local res = client:get("/read_log/" .. typ, {
+      headers = {
+        Accept = "application/json"
+      }
+    })
+    local raw = assert.res_status(200, res)
+    local body = cjson.decode(raw)
+
+    entries = body.entries
+    return #entries > 0
+  end, 10)
+  if n then
+    assert(#entries == n, "expected " .. n .. " log entries, but got " .. #entries)
+  end
+  return entries
+end
+
 
 for _, strategy in helpers.each_strategy() do
-  local function reset_log(logname)
-    local client = assert(helpers.http_client(helpers.mock_upstream_host,
-        helpers.mock_upstream_port))
-    assert(client:send {
-        method  = "DELETE",
-        path    = "/reset_log/" .. logname,
-        headers = {
-          Accept = "application/json"
-        }
-    })
-    client:close()
-  end
-
   describe("Plugin: http-log (log) [#" .. strategy .. "]", function()
     local proxy_client
     local proxy_client_grpc, proxy_client_grpcs
@@ -328,6 +350,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("logs to HTTP", function()
+      reset_log("http")
       local res = proxy_client:get("/status/200", {
         headers = {
           ["Host"] = "http_logging.test"
@@ -335,25 +358,12 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(200, res)
 
-      helpers.wait_until(function()
-        local client = assert(helpers.http_client(helpers.mock_upstream_host,
-                                                  helpers.mock_upstream_port))
-        local res = client:get("/read_log/http", {
-          headers = {
-            Accept = "application/json"
-          }
-        })
-        local raw = assert.res_status(200, res)
-        local body = cjson.decode(raw)
-
-        if #body.entries == 1 then
-          assert.same("127.0.0.1", body.entries[1].client_ip)
-          return true
-        end
-      end, 10)
+      local entries = get_log("http", 1)
+      assert.same("127.0.0.1", entries[1].client_ip)
     end)
 
     it("identifies plugin in queue handler logs", function()
+      reset_log("http_tag")
       local res = proxy_client:get("/status/200", {
         headers = {
           ["Host"] = "http_logging_tag.test"
@@ -361,27 +371,13 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(200, res)
 
-      helpers.wait_until(function()
-        local client = assert(helpers.http_client(helpers.mock_upstream_host,
-          helpers.mock_upstream_port))
-        local res = client:get("/read_log/http_tag", {
-          headers = {
-            Accept = "application/json"
-          }
-        })
-        local raw = assert.res_status(200, res)
-        local body = cjson.decode(raw)
-
-        if #body.entries == 1 then
-          assert.same("127.0.0.1", body.entries[1].client_ip)
-          return true
-        end
-      end, 10)
-
+      local entries = get_log("http_tag", 1)
+      assert.same("127.0.0.1", entries[1].client_ip)
       assert.logfile().has.line("http\\-log.*my-plugin-instance-name.*done processing queue")
     end)
 
     it("logs to HTTP with content-type 'application/json'", function()
+      reset_log("http2")
       local res = proxy_client:get("/status/200", {
         headers = {
           ["Host"] = "content_type_application_json_http_logging.test"
@@ -389,26 +385,13 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(200, res)
 
-      helpers.wait_until(function()
-        local client = assert(helpers.http_client(helpers.mock_upstream_host,
-                                                  helpers.mock_upstream_port))
-        local res = client:get("/read_log/http2", {
-          headers = {
-            Accept = "application/json"
-          }
-        })
-        local raw = assert.res_status(200, res)
-        local body = cjson.decode(raw)
-
-        if #body.entries == 1 then
-          assert.same("127.0.0.1", body.entries[1].client_ip)
-          assert.same(body.entries[1].log_req_headers['content-type'] or "", "application/json")
-          return true
-        end
-      end, 10)
+      local entries = get_log("http2", 1)
+      assert.same("127.0.0.1", entries[1].client_ip)
+      assert.same(entries[1].log_req_headers['content-type'] or "", "application/json")
     end)
 
     it("logs to HTTP with content-type 'application/json; charset=utf-8'", function()
+      reset_log("http3")
       local res = proxy_client:get("/status/200", {
         headers = {
           ["Host"] = "content_type_application_json_charset_utf_8_http_logging.test"
@@ -416,27 +399,14 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(200, res)
 
-      helpers.wait_until(function()
-        local client = assert(helpers.http_client(helpers.mock_upstream_host,
-                                                  helpers.mock_upstream_port))
-        local res = client:get("/read_log/http3", {
-          headers = {
-            Accept = "application/json"
-          }
-        })
-        local raw = assert.res_status(200, res)
-        local body = cjson.decode(raw)
-
-        if #body.entries == 1 then
-          assert.same("127.0.0.1", body.entries[1].client_ip)
-          assert.same(body.entries[1].log_req_headers['content-type'] or "", "application/json; charset=utf-8")
-          return true
-        end
-      end, 10)
+      local entries = get_log("http3", 1)
+      assert.same("127.0.0.1", entries[1].client_ip)
+      assert.same(entries[1].log_req_headers['content-type'] or "", "application/json; charset=utf-8")
     end)
 
     describe("custom log values by lua", function()
       it("logs custom values", function()
+        reset_log("custom_http")
         local res = proxy_client:get("/status/200", {
           headers = {
             ["Host"] = "custom_http_logging.test"
@@ -444,27 +414,14 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
 
-        helpers.wait_until(function()
-          local client = assert(helpers.http_client(helpers.mock_upstream_host,
-          helpers.mock_upstream_port))
-          local res = client:get("/read_log/custom_http", {
-            headers = {
-              Accept = "application/json"
-            }
-          })
-          local raw = assert.res_status(200, res)
-          local body = cjson.decode(raw)
-
-          if #body.entries == 1 then
-            assert.same("127.0.0.1", body.entries[1].client_ip)
-            assert.same(123, body.entries[1].new_field)
-            return true
-          end
-        end, 10)
+        local entries = get_log("custom_http", 1)
+        assert.same("127.0.0.1", entries[1].client_ip)
+        assert.same(123, entries[1].new_field)
       end)
     end)
 
     it("logs to HTTP (#grpc)", function()
+      reset_log("grpc")
       -- Making the request
       local ok, resp = proxy_client_grpc({
         service = "hello.HelloService.SayHello",
@@ -478,27 +435,14 @@ for _, strategy in helpers.each_strategy() do
       assert.truthy(ok)
       assert.truthy(resp)
 
-      helpers.wait_until(function()
-        local client = assert(helpers.http_client(helpers.mock_upstream_host,
-                                                  helpers.mock_upstream_port))
-        local res = client:get("/read_log/grpc", {
-          headers = {
-            Accept = "application/json"
-          }
-        })
-        local raw = assert.res_status(200, res)
-        local body = cjson.decode(raw)
-
-        if #body.entries == 1 then
-          assert.same("127.0.0.1", body.entries[1].client_ip)
-          assert.same("application/grpc", body.entries[1].request.headers["content-type"])
-          assert.same("application/grpc", body.entries[1].response.headers["content-type"])
-          return true
-        end
-      end, 10)
+      local entries = get_log("grpc", 1)
+      assert.same("127.0.0.1", entries[1].client_ip)
+      assert.same("application/grpc", entries[1].request.headers["content-type"])
+      assert.same("application/grpc", entries[1].response.headers["content-type"])
     end)
 
     it("logs to HTTP (#grpcs)", function()
+      reset_log("grpcs")
       -- Making the request
       local ok, resp = proxy_client_grpcs({
         service = "hello.HelloService.SayHello",
@@ -512,27 +456,14 @@ for _, strategy in helpers.each_strategy() do
       assert.truthy(ok)
       assert.truthy(resp)
 
-      helpers.wait_until(function()
-        local client = assert(helpers.http_client(helpers.mock_upstream_host,
-                                                  helpers.mock_upstream_port))
-        local res = client:get("/read_log/grpcs", {
-          headers = {
-            Accept = "application/json"
-          }
-        })
-        local raw = assert.res_status(200, res)
-        local body = cjson.decode(raw)
-
-        if #body.entries == 1 then
-          assert.same("127.0.0.1", body.entries[1].client_ip)
-          assert.same("application/grpc", body.entries[1].request.headers["content-type"])
-          assert.same("application/grpc", body.entries[1].response.headers["content-type"])
-          return true
-        end
-      end, 10)
+      local entries = get_log("grpcs", 1)
+      assert.same("127.0.0.1", entries[1].client_ip)
+      assert.same("application/grpc", entries[1].request.headers["content-type"])
+      assert.same("application/grpc", entries[1].response.headers["content-type"])
     end)
 
     it("logs to HTTPS", function()
+      reset_log("https")
       local res = proxy_client:get("/status/200", {
         headers = {
           ["Host"] = "https_logging.test"
@@ -540,21 +471,9 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(200, res)
 
-      helpers.wait_until(function()
-        local client = assert(helpers.http_client(helpers.mock_upstream_host,
-                                                  helpers.mock_upstream_port))
-        local res = client:get("/read_log/https", {
-          headers = {
-            Accept = "application/json"
-          }
-        })
-        local raw = assert.res_status(200, res)
-        local body = cjson.decode(raw)
-        if #body.entries == 1 then
-          assert.same("127.0.0.1", body.entries[1].client_ip)
-          return true
-        end
-      end, 10)
+      local entries = get_log("https", 1)
+      assert(#entries == 1, "expected 1 log entry, but got " .. #entries)
+      assert.same("127.0.0.1", entries[1].client_ip)
     end)
 
     it("gracefully handles layer 4 failures", function()
@@ -575,6 +494,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("adds authorization if userinfo and/or header is present", function()
+      reset_log("basic_auth")
       local res = proxy_client:get("/status/200", {
         headers = {
           ["Host"] = "http_basic_auth_logging.test"
@@ -582,37 +502,26 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(200, res)
 
-      helpers.wait_until(function()
-        local client = assert(helpers.http_client(helpers.mock_upstream_host,
-                                                  helpers.mock_upstream_port))
-        local res = client:get("/read_log/basic_auth", {
-          headers = {
-            Accept = "application/json"
-          }
-        })
+      local entries = get_log("basic_auth", 1)
 
-        local body = cjson.decode(assert.res_status(200, res))
-
-        if #body.entries == 1 then
-          local ok = 0
-          for name, value in pairs(body.entries[1].log_req_headers) do
-            if name == "authorization" then
-              assert.same("Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk", value)
-              ok = ok + 1
-            end
-            if name == "hello-world" then
-              assert.equal("hi there", value)
-              ok = ok + 1
-            end
+      local ok = 0
+        for name, value in pairs(entries[1].log_req_headers) do
+          if name == "authorization" then
+            assert.same("Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk", value)
+            ok = ok + 1
           end
-          if ok == 2 then
-            return true
+          if name == "hello-world" then
+            assert.equal("hi there", value)
+            ok = ok + 1
           end
         end
-      end, 10)
+        if ok == 2 then
+          return true
+        end
     end)
 
     it("should dereference config.headers value", function()
+      reset_log("vault_header")
       local res = proxy_client:get("/status/200", {
         headers = {
           ["Host"] = "vault_headers_logging.test"
@@ -620,23 +529,9 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(200, res)
 
-      helpers.wait_until(function()
-        local client = assert(helpers.http_client(helpers.mock_upstream_host,
-          helpers.mock_upstream_port))
-        local res = client:get("/read_log/vault_header", {
-          headers = {
-            Accept = "application/json"
-          }
-        })
-        local raw = assert.res_status(200, res)
-        local body = cjson.decode(raw)
-
-        if #body.entries == 1 then
-          assert.same("value1", body.entries[1].log_req_headers.key1)
-          assert.same(vault_env_value, body.entries[1].log_req_headers.key2)
-          return true
-        end
-      end, 10)
+      local entries = get_log("vault_header", 1)
+      assert.same("value1", entries[1].log_req_headers.key1)
+      assert.same(vault_env_value, entries[1].log_req_headers.key2)
     end)
 
 
@@ -653,22 +548,8 @@ for _, strategy in helpers.each_strategy() do
                 }
           })
           assert.res_status(200, res)
-
-          helpers.wait_until(function()
-              local client = assert(helpers.http_client(helpers.mock_upstream_host, helpers.mock_upstream_port))
-              local res = client:get("/read_log/config_change", {
-                  headers = {
-                    Accept = "application/json"
-                  }
-              })
-              local raw = assert.res_status(200, res)
-              local body = cjson.decode(raw)
-
-              if #body.entries == 1 then
-                assert.same(value, body.entries[1].log_req_headers.key1)
-                return true
-              end
-          end, 10)
+          local entries = get_log("config_change", 1)
+          assert.same(value, entries[1].log_req_headers.key1)
         end
 
         local res = admin_client:post("/services/", {
@@ -986,6 +867,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("executes successfully when route does not exist", function()
+      reset_log("http")
       local res = proxy_client:get("/nonexistant/proxy/path", {
         headers = {
           ["Host"] = "http_no_exist.test"
@@ -994,21 +876,8 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(404, res)
 
       --Assert that the plugin executed and has 1 log entry
-      helpers.wait_until(function()
-        local client = assert(helpers.http_client(helpers.mock_upstream_host,
-                                                  helpers.mock_upstream_port))
-        local res = client:get("/read_log/http", {
-          headers = {
-            Accept = "application/json"
-          }
-        })
-        local raw = assert.res_status(200, res)
-        local body = cjson.decode(raw)
-        if #body.entries == 1 then
-          assert.same("127.0.0.1", body.entries[1].client_ip)
-          return true
-        end
-      end, 10)
+      local entries = get_log("http", 1)
+      assert.same("127.0.0.1", entries[1].client_ip)
 
       -- Assertion: there should be no [error], including no error
       -- resulting from attempting to reference the id on
