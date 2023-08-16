@@ -1,5 +1,7 @@
 local helpers       = require "spec.helpers"
 local pl_file       = require "pl.file"
+local pl_dir        = require "pl.dir"
+local pl_path       = require "pl.path"
 
 local get_hostname = require("kong.pdk.node").new().get_hostname
 
@@ -17,16 +19,33 @@ local uuid_pattern = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-4%x%x%x%-%x%x%x%x%-%x%x%x%x%x%
 local workspace_name_pattern = "default"
 
 
-local function get_shdicts()
+local function count_shdicts(conf_file)
   local prefix = helpers.test_conf.prefix
-  local ngxconf = helpers.utils.readfile(prefix .. "/nginx.conf")
-  local pattern = "\n%s*lua_shared_dict%s+(.-)[%s;\n]"
-  local shdicts = {}
-  for dict_name in ngxconf:gmatch(pattern) do
-    table.insert(shdicts, dict_name)
-    --print(#shdicts, "-", dict_name)
+  local counter = 0
+
+  -- count in matched `*` files
+  if conf_file:find("*") then
+    for _, file in ipairs(pl_dir.getallfiles(prefix, conf_file)) do
+      local basename = pl_path.basename(file)
+      counter = counter + count_shdicts(basename)
+    end
+    return counter
   end
-  return shdicts
+
+  -- count in the current file
+  local ngx_conf = helpers.utils.readfile(prefix .. "/" .. conf_file)
+  local dict_ptrn = "%s*lua_shared_dict%s+(.-)[%s;\n]"
+  for _ in ngx_conf:gmatch(dict_ptrn) do
+    counter = counter + 1
+  end
+
+  -- count in other included files
+  local include_ptrn = "%s*include%s+'(.-%.conf)'[;\n]"
+  for include_file in ngx_conf:gmatch(include_ptrn) do
+    counter = counter + count_shdicts(include_file)
+  end
+
+  return counter
 end
 
 
@@ -862,7 +881,7 @@ for _, strategy in helpers.each_strategy() do
 
       proxy_client = helpers.proxy_client()
       proxy_client_grpc = helpers.proxy_client_grpc()
-      shdict_count = #get_shdicts()
+      shdict_count = count_shdicts("nginx.conf")
     end)
 
     lazy_teardown(function()
@@ -894,7 +913,7 @@ for _, strategy in helpers.each_strategy() do
   
         proxy_client = helpers.proxy_client()
         proxy_client_grpc = helpers.proxy_client_grpc()
-        shdict_count = #get_shdicts()
+        shdict_count = count_shdicts("nginx.conf")
       end)
 
       it("logs over UDP with default metrics", function()
@@ -2054,7 +2073,7 @@ for _, strategy in helpers.each_strategy() do
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
   
-        shdict_count = #get_shdicts()
+        shdict_count = count_shdicts("nginx.conf")
 
         local metrics_count = expected_metrics_count(8)
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
@@ -2312,7 +2331,7 @@ for _, strategy in helpers.each_strategy() do
       }))
 
       proxy_client = helpers.proxy_client()
-      shdict_count = #get_shdicts()
+      shdict_count = count_shdicts("nginx.conf")
     end)
 
     lazy_teardown(function()
