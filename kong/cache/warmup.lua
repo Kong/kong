@@ -136,6 +136,11 @@ function cache_warmup.single_dao(dao)
     if not ok then
       return nil, err
     end
+
+    if entity_name == "acl" then
+      kong.plugins.acl.groups.warmup_groups_cache(entity.consumer.id)
+    end
+
   end
 
   if entity_name == "services" and host_count > 0 then
