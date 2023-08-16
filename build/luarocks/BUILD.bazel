@@ -4,6 +4,9 @@ exports_files(
     [
         "BUILD.luarocks.bazel",
         "luarocks_wrap_script.lua",
+        "templates/luarocks_exec.sh",
+        "templates/luarocks_make.sh",
+        "templates/luarocks_target.sh",
     ],
     visibility = ["//visibility:public"],
 )
