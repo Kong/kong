@@ -164,7 +164,7 @@ local function categorize_fields(fields)
     return fields, nil, nil
   end
 
-  local baisc = {}
+  local basic = {}
   local headers = {}
   local queries = {}
 
@@ -182,7 +182,7 @@ local function categorize_fields(fields)
     end
   end
 
-  return baisc, headers, queries
+  return basic, headers, queries
 end
 
 
@@ -471,6 +471,9 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
           end
         end
       end -- if type(v)
+
+      -- if v is nil or others, ignore
+
     end   -- for self.header_fields
   end   -- req_headers
 
@@ -504,6 +507,9 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
           end
         end
       end -- if type(v)
+
+      -- if v is nil or others, ignore
+
     end   -- for self.query_fields
   end   -- req_queries
 
