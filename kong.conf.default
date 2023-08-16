@@ -1851,7 +1851,7 @@
                                   # significant digits used when encoding
                                   # floating point numbers to JSON text.
                                   #
-                                  # The default value is 14, the maximum value is 16.
+                                  # The value is 14, 15, or 16, and defaults to 14.
 
 #------------------------------------------------------------------------------
 # KONG MANAGER
