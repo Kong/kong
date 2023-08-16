@@ -93,9 +93,18 @@ end
 
 
 local function extract_proxy_response(content)
-  local serialized_content, err = cjson.decode(content)
-  if not serialized_content then
-    return nil, err
+  local serialized_content, err
+  if type(content) == "string" then
+    serialized_content, err = cjson.decode(content)
+    if not serialized_content then
+      return nil, err
+    end
+
+  elseif type(content) == "table" then
+    serialized_content = content
+
+  else
+    return nil, "proxy response must be json format"
   end
 
   local ok, err = validate_custom_response(serialized_content)
