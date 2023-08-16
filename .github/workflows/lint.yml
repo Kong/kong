@@ -36,7 +36,7 @@ jobs:
       with:
         files: |
           **.lua
-    
+
     - name: Get changed spec files
       id: changed-spec-files
       uses: tj-actions/changed-files@54849deb963ca9f24185fb5de2965e002d066e6b # v37
@@ -47,7 +47,7 @@ jobs:
 
     - name: Lua Check
       if: steps.changed-files.outputs.any_changed == 'true'
-      uses: Kong/public-shared-actions/code-check-actions/lua-lint@33449c46c6766a3d3c8f167cc383381225862b36
+      uses: Kong/public-shared-actions/code-check-actions/lua-lint@28046231055b99899d55d32eda2a5f4a6075db36
       with:
         additional_args: '--no-default-config --config .luacheckrc --exclude-files ./distribution/'
         files: ${{ steps.changed-files.outputs.all_changed_files }}
