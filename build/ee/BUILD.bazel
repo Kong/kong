@@ -22,6 +22,7 @@ genrule(
         # only generate the output when the command succeeds
         mv $@.tmp $@
     """,
+    message = "Luarocks: Install EE plugins' dependencies",
     visibility = ["//visibility:public"],
 )
 
@@ -55,6 +56,7 @@ genrule(
         # only generate the output when the command succeeds
         mv $@.tmp $@
     """,
+    message = "Luarocks: Install EE plugins",
     visibility = ["//visibility:public"],
 )
 
@@ -208,6 +210,7 @@ genrule(
         # just to  validate the resulting file is writeable/valid/etc.
         "$$_jq" '.' '$@' >/dev/null
     """,
+    message = "Luarocks: Generate license manifest",
     tools = select({
         "@kong//:any-cross": ["@jq//:libjq"],
         "//conditions:default": [],
