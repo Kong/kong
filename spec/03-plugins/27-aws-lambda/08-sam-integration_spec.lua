@@ -64,6 +64,26 @@ if sam.get_os_architecture() ~= "aarch64" then
             log_type      = "None",
           },
         }
+
+        local route2 = bp.routes:insert {
+          hosts = { "lambda2.com" },
+        }
+
+        bp.plugins:insert {
+          name     = "aws-lambda",
+          route    = { id = route2.id },
+          config   = {
+            host          = "localhost",
+            port          = sam_port,
+            disable_https = true,
+            aws_key       = "mock-key",
+            aws_secret    = "mock-secret",
+            aws_region    = "us-east-1",
+            function_name = "HelloWorldFunction",
+            log_type      = "None",
+            is_proxy_integration = true,
+          },
+        }
       end)
 
       lazy_teardown(function()
@@ -102,6 +122,19 @@ if sam.get_os_architecture() ~= "aarch64" then
             }
           })
           assert.res_status(200, res)
+        end)
+
+        it("can extract proxy response correctly", function ()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/",
+            headers = {
+              host = "lambda2.com"
+            }
+          })
+          assert.res_status(201, res)
+          local body = assert.response(res).has.jsonbody()
+          assert.equal("hello world", body.message)
         end)
       end)
     end)
