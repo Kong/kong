@@ -235,7 +235,7 @@ local function get_ulimit()
   end
 end
 
-local function compile_conf(kong_config, conf_template)
+local function compile_conf(kong_config, conf_template, template_env_inject)
   -- computed config properties for templating
   local compile_env = {
     _escape = ">",
@@ -246,6 +246,8 @@ local function compile_conf(kong_config, conf_template)
       getenv = os.getenv,
     }
   }
+
+  compile_env = pl_tablex.merge(compile_env, template_env_inject or {}, true)
 
   do
     local worker_rlimit_nofile_auto
@@ -388,16 +390,16 @@ local function write_process_secrets_file(path, data)
   return true
 end
 
-local function compile_kong_conf(kong_config)
-  return compile_conf(kong_config, kong_nginx_template)
+local function compile_kong_conf(kong_config, template_env_inject)
+  return compile_conf(kong_config, kong_nginx_template, template_env_inject)
 end
 
 local function compile_kong_gui_include_conf(kong_config)
   return compile_conf(kong_config, kong_nginx_gui_include_template)
 end
 
-local function compile_kong_stream_conf(kong_config)
-  return compile_conf(kong_config, kong_nginx_stream_template)
+local function compile_kong_stream_conf(kong_config, template_env_inject)
+  return compile_conf(kong_config, kong_nginx_stream_template, template_env_inject)
 end
 
 local function compile_nginx_conf(kong_config, template)
@@ -436,7 +438,11 @@ local function compile_nginx_stream_inject_conf(kong_config)
   return compile_conf(kong_config, nginx_stream_inject_template)
 end
 
-local function prepare_prefix(kong_config, nginx_custom_template_path, skip_write, write_process_secrets)
+local function compile_kong_test_inject_conf(kong_config, template, template_env)
+  return compile_conf(kong_config, template, template_env)
+end
+
+local function prepare_prefix(kong_config, nginx_custom_template_path, skip_write, write_process_secrets, nginx_conf_flags)
   log.verbose("preparing nginx prefix directory at %s", kong_config.prefix)
 
   if not exists(kong_config.prefix) then
@@ -678,7 +684,12 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
     gen_default_dhparams(kong_config)
   end
 
-  -- write NGINX conf
+  local template_env = {}
+  nginx_conf_flags = nginx_conf_flags and pl_stringx.split(nginx_conf_flags, ",") or {}
+  for _, flag in ipairs(nginx_conf_flags) do
+    template_env[flag] = true
+  end
+
   local nginx_conf, err = compile_nginx_conf(kong_config, nginx_template)
   if not nginx_conf then
     return nil, err
@@ -693,14 +704,14 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
   pl_file.write(kong_config.nginx_kong_gui_include_conf, nginx_kong_gui_include_conf)
 
   -- write Kong's HTTP NGINX conf
-  local nginx_kong_conf, err = compile_kong_conf(kong_config)
+  local nginx_kong_conf, err = compile_kong_conf(kong_config, template_env)
   if not nginx_kong_conf then
     return nil, err
   end
   pl_file.write(kong_config.nginx_kong_conf, nginx_kong_conf)
 
   -- write Kong's stream NGINX conf
-  local nginx_kong_stream_conf, err = compile_kong_stream_conf(kong_config)
+  local nginx_kong_stream_conf, err = compile_kong_stream_conf(kong_config, template_env)
   if not nginx_kong_stream_conf then
     return nil, err
   end
@@ -726,6 +737,29 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
     return nil, err
   end
   pl_file.write(kong_config.nginx_kong_stream_inject_conf, nginx_stream_inject_conf)
+
+  -- write Kong's test injected configuration files (*.test.conf)
+  -- these are included in the Kong's HTTP NGINX conf by the test template
+  local test_template_inj_path = "spec/fixtures/template_inject/"
+  if pl_path.isdir(test_template_inj_path) then
+    for _, file in ipairs(pl_dir.getfiles(test_template_inj_path, "*.lua")) do
+      local t_path = pl_path.splitext(file)
+      local t_module = string.gsub(t_path, "/", ".")
+      local nginx_kong_test_inject_conf, err = compile_kong_test_inject_conf(
+        kong_config,
+        require(t_module),
+        template_env
+      )
+
+      if not nginx_kong_test_inject_conf then
+        return nil, err
+      end
+
+      local t_name = pl_path.basename(t_path)
+      local output_path = kong_config.prefix .. "/" .. t_name .. ".test.conf"
+      pl_file.write(output_path, nginx_kong_test_inject_conf)
+    end
+  end
 
   -- testing written NGINX conf
   local ok, err = nginx_signals.check_conf(kong_config)

@@ -30,13 +30,13 @@ function get_current_version() {
     then
         echo $version_from_rockspec-ubuntu
     else
-        echo ubuntu
+        echo master-ubuntu
     fi
 }
 
 export OLD_KONG_VERSION=2.8.0
 export OLD_KONG_IMAGE=kong:$OLD_KONG_VERSION-ubuntu
-export NEW_KONG_IMAGE=kong:$(get_current_version kong)
+export NEW_KONG_IMAGE=kong/kong:$(get_current_version kong)
 
 function usage() {
     cat 1>&2 <<EOF
@@ -86,7 +86,7 @@ NEW_CONTAINER=$ENV_PREFIX-kong_new-1
 
 function prepare_container() {
     docker exec $1 apt-get update
-    docker exec $1 apt-get install -y build-essential curl m4
+    docker exec $1 apt-get install -y build-essential curl m4 unzip git
     docker exec $1 bash -c "ln -sf /usr/local/kong/include/* /usr/include"
     docker exec $1 bash -c "ln -sf /usr/local/kong/lib/* /usr/lib"
 }

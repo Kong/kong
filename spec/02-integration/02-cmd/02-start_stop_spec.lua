@@ -1,5 +1,6 @@
 local helpers   = require "spec.helpers"
 local constants = require "kong.constants"
+local pl_file   = require("pl.file")
 
 local cjson = require "cjson"
 
@@ -587,25 +588,46 @@ describe("kong start/stop #" .. strategy, function()
     end)
 
     it("ensures the required shared dictionaries are defined", function()
-      local templ_fixture     = "spec/fixtures/custom_nginx.template"
-      local new_templ_fixture = "spec/fixtures/custom_nginx.template.tmp"
+      local tmp_nginx_config = "spec/fixtures/nginx_conf.tmp"
+      local prefix_handler = require "kong.cmd.utils.prefix_handler"
+      local conf_loader = require "kong.conf_loader"
 
-      finally(function()
-        os.remove(new_templ_fixture)
-      end)
+      local nginx_conf = assert(conf_loader(helpers.test_conf_path, {
+        prefix = "servroot_tmp",
+      }))
+      assert(prefix_handler.prepare_prefix(nginx_conf))
+      assert.truthy(helpers.path.exists(nginx_conf.nginx_conf))
+      local kong_nginx_conf = assert(prefix_handler.compile_kong_conf(nginx_conf))
 
       for _, dict in ipairs(constants.DICTS) do
         -- remove shared dictionary entry
-        assert(os.execute(fmt("sed '/lua_shared_dict %s .*;/d' %s > %s",
-                              dict, templ_fixture, new_templ_fixture)))
+        local http_cfg = string.gsub(kong_nginx_conf, "lua_shared_dict%s" .. dict .. "%s.-\n", "")
+        local conf = [[pid pids/nginx.pid;
+          error_log logs/error.log debug;
+          daemon on;
+          worker_processes 1;
+          events {
+            multi_accept off;
+          }
+          http {
+            ]]
+            .. http_cfg ..
+            [[
+          }
+        ]]
 
-        local ok, err = helpers.start_kong({ nginx_conf = new_templ_fixture })
+        pl_file.write(tmp_nginx_config, conf)
+        local ok, err = helpers.start_kong({ nginx_conf = tmp_nginx_config })
         assert.falsy(ok)
         assert.matches(
           "missing shared dict '" .. dict .. "' in Nginx configuration, "    ..
           "are you using a custom template? Make sure the 'lua_shared_dict " ..
           dict .. " [SIZE];' directive is defined.", err, nil, true)
       end
+
+      finally(function()
+        os.remove(tmp_nginx_config)
+      end)
     end)
 
     if strategy == "off" then

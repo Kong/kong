@@ -8,6 +8,7 @@ exports_files([
 
 lib_deps = [
     "@openssl",  #TODO: select over fips (but select doesn't work in list comprehension)
+    "@libexpat",
 ]
 
 install_lib_deps_cmd = "\n".join([
