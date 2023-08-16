@@ -31,7 +31,7 @@ OPENSSL_DIR=$root_path/$openssl_path
 
 # we use system libyaml on macos
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    YAML_DIR=$(HOME=~$(whoami) brew --prefix)/opt/libyaml
+     YAML_DIR=$(HOME=~$(whoami) PATH=/opt/homebrew/bin:$PATH brew --prefix)/opt/libyaml
 elif [[ -d $cross_deps_libyaml_path ]]; then
     # TODO: is there a good way to use locations but doesn't break non-cross builds?
     YAML_DIR=$root_path/$cross_deps_libyaml_path
@@ -40,7 +40,7 @@ else
 fi
 
 if [[ $CC != /* ]]; then
-    # point to our relative path of musl toolchain
+    # point to our relative path of managed toolchain
     CC=$root_path/$CC
     LD=$root_path/$LD
 fi
