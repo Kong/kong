@@ -122,7 +122,7 @@ if sam.get_os_architecture() ~= "aarch64" then
             method  = "GET",
             path    = "/",
             headers = {
-              host = "lambda2com"
+              host = "lambda2.com"
             }
           })
           assert.res_status(201, res)
