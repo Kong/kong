@@ -39,7 +39,7 @@ end
 
 local AWSLambdaHandler = {
   PRIORITY = 750,
-  VERSION = meta.version
+  VERSION = meta.core_version,
 }
 
 function AWSLambdaHandler:init()
