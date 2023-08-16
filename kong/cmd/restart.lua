@@ -50,12 +50,14 @@ This command is equivalent to doing both 'kong stop' and
 'kong start'.
 
 Options:
- -c,--conf        (optional string)   configuration file
- -p,--prefix      (optional string)   prefix at which Kong should be running
- --nginx-conf     (optional string)   custom Nginx configuration template
- --run-migrations (optional boolean)  optionally run migrations on the DB
- --db-timeout     (default 60)
- --lock-timeout   (default 60)
+ -c,--conf                 (optional string)   configuration file
+ -p,--prefix               (optional string)   prefix at which Kong should be running
+ --nginx-conf              (optional string)   custom Nginx configuration template
+ --run-migrations          (optional boolean)  optionally run migrations on the DB
+ --db-timeout              (default 60)
+ --lock-timeout            (default 60)
+ --nginx-conf-flags        (optional string)   flags that can be used to control
+                                               how Nginx configuration templates are rendered
 ]]
 
 return {

@@ -52,6 +52,10 @@ $(el.name) $(el.value);
 > end
 
 init_by_lua_block {
+> if test and coverage then
+    require 'luacov'
+    jit.off()
+> end -- test and coverage
     Kong = require 'kong'
     Kong.init()
 }
@@ -150,6 +154,8 @@ server {
         set $upstream_x_forwarded_prefix '';
         set $kong_proxy_mode             'http';
 
+        set $set_request_id $request_id;
+        
         proxy_http_version      1.1;
         proxy_buffering          on;
         proxy_request_buffering  on;

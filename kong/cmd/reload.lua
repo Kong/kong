@@ -43,7 +43,8 @@ local function execute(args)
     conf.declarative_config = nil
   end
 
-  assert(prefix_handler.prepare_prefix(conf, args.nginx_conf, nil, true))
+  assert(prefix_handler.prepare_prefix(conf, args.nginx_conf, nil, true,
+         args.nginx_conf_flags))
 
   _G.kong = kong_global.new()
   kong_global.init_pdk(_G.kong, conf)
@@ -69,9 +70,11 @@ and stop the old ones when they have finished processing
 current requests.
 
 Options:
- -c,--conf        (optional string) configuration file
- -p,--prefix      (optional string) prefix Kong is running at
- --nginx-conf     (optional string) custom Nginx configuration template
+ -c,--conf                 (optional string) configuration file
+ -p,--prefix               (optional string) prefix Kong is running at
+ --nginx-conf              (optional string) custom Nginx configuration template
+ --nginx-conf-flags        (optional string) flags that can be used to control
+                                             how Nginx configuration templates are rendered
 ]]
 
 

@@ -47,6 +47,10 @@ $(el.name) $(el.value);
 > end
 
 init_by_lua_block {
+> if test and coverage then
+    require 'luacov'
+    jit.off()
+> end -- test and coverage
     -- shared dictionaries conflict between stream/http modules. use a prefix.
     local shared = ngx.shared
     local stream_shdict_prefix = "stream_"

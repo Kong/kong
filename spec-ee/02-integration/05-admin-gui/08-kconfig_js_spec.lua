@@ -32,7 +32,7 @@ describe("Admin GUI config", function ()
 
     client:close()
 
-    assert(helpers.reload_kong("reload --conf " .. helpers.test_conf_path .. " --nginx-conf spec/fixtures/default_nginx.template", {
+    assert(helpers.reload_kong("reload --conf " .. helpers.test_conf_path, {
       database = "off",
       admin_gui_listen = "127.0.0.1:9012",
       admin_gui_url = "http://test2.example.com",

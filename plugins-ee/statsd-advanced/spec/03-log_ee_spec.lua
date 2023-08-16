@@ -8,6 +8,8 @@
 local helpers       = require "spec.helpers"
 local vitals        = require "kong.vitals"
 local pl_file       = require "pl.file"
+local pl_path       = require "pl.path"
+local pl_dir        = require "pl.dir"
 
 -- kong < 2.3
 local get_hostname = require("kong.tools.utils").get_hostname or
@@ -35,16 +37,34 @@ local workspace_name_pattern = "default"
 
 -- All tests that test the extra metrics and feature of statsd-advanced compared to statsd CE go here
 
-local function get_shdicts()
+
+local function count_shdicts(conf_file)
   local prefix = helpers.test_conf.prefix
-  local ngxconf = helpers.utils.readfile(prefix .. "/nginx.conf")
-  local pattern = "\n%s*lua_shared_dict%s+(.-)[%s;\n]"
-  local shdicts = {}
-  for dict_name in ngxconf:gmatch(pattern) do
-    table.insert(shdicts, dict_name)
-    --print(#shdicts, "-", dict_name)
+  local counter = 0
+
+  -- count in matched `*` files
+  if conf_file:find("*") then
+    for _, file in ipairs(pl_dir.getallfiles(prefix, conf_file)) do
+      local basename = pl_path.basename(file)
+      counter = counter + count_shdicts(basename)
+    end
+    return counter
   end
-  return shdicts
+
+  -- count in the current file
+  local ngx_conf = helpers.utils.readfile(prefix .. "/" .. conf_file)
+  local dict_ptrn = "%s*lua_shared_dict%s+(.-)[%s;\n]"
+  for _ in ngx_conf:gmatch(dict_ptrn) do
+    counter = counter + 1
+  end
+
+  -- count in other included files
+  local include_ptrn = "%s*include%s+'(.-%.conf)'[;\n]"
+  for include_file in ngx_conf:gmatch(include_ptrn) do
+    counter = counter + count_shdicts(include_file)
+  end
+
+  return counter
 end
 
 for _, strategy in helpers.each_strategy() do
@@ -457,7 +477,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- this is to ensure we have the right number of shdicts being used so we know
       -- how many udp packets are we expecting below
-      shdict_count = #get_shdicts()
+      shdict_count = count_shdicts("nginx.conf")
     end)
 
     teardown(function()
@@ -486,7 +506,7 @@ for _, strategy in helpers.each_strategy() do
         }))
 
         proxy_client = helpers.proxy_client()
-        shdict_count = #get_shdicts()
+        shdict_count = count_shdicts("nginx.conf")
       end)
 
       it("logs over UDP with default metrics with vitals on", function()
@@ -919,7 +939,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- this is to ensure we have the right number of shdicts being used so we know
       -- how many udp packets are we expecting below
-      shdict_count = #get_shdicts()
+      shdict_count = count_shdicts("nginx.conf")
     end)
 
     teardown(function()
@@ -1017,7 +1037,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- this is to ensure we have the right number of shdicts being used so we know
       -- how many udp packets are we expecting below
-      --shdict_count = #get_shdicts()
+      --shdict_count = count_shdicts("nginx.conf")
     end)
 
     teardown(function()
