@@ -37,6 +37,7 @@ env:
   RELATIVE_BUILD_ROOT: bazel-bin/build
   BUILD_ROOT: ${{ github.workspace }}/bazel-bin/build
   KONG_TEST_COVERAGE: ${{ inputs.coverage == true || github.event_name == 'schedule' }}
+  AWS_EC2_METADATA_DISABLED: true
 
 # cancel previous runs if new commits are pushed to the PR, but run for each commit on master
 concurrency:
