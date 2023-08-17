@@ -24,8 +24,13 @@ The build system requires the following tools to be installed:
     # check bazel version
     bazel version
   ```
-
+- [Python](https://www.python.org/), Python 3 is used to build some of the dependencies. Note: build system relies on `python`
+  in the PATH; if you have `python3` you need to create a symlink from `python` to `python3`
 - [Build dependencies](https://github.com/Kong/kong/blob/master/DEVELOPER.md#build-and-install-from-source)
+
+**Note**: Bazel relies on logged user to create the temporary file system; however if your username contains `@`
+it collides with Bazel templating system. Therefore you can set the environment variable `export USER=myname` to fix
+this issue.
 
 ## Building
 
