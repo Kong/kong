@@ -49,6 +49,11 @@
 - **AWS-Lambda**: fix an issue that the AWS-Lambda plugin cannot extract a json encoded proxy integration response.
   [#11413](https://github.com/Kong/kong/pull/11413)
 
+### Dependencies
+
+- Bumped lua-resty-openssl from 1.3.0 to 1.3.1
+  [#11419](https://github.com/Kong/kong/pull/11419)
+
 ## 3.4.0
 
 ### Breaking Changes
