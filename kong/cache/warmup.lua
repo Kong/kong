@@ -143,9 +143,11 @@ function cache_warmup.single_dao(dao)
 
     if entity_name == "acls" and acl_groups ~= nil then
       log(NOTICE, "warmup acl groups cache for consumer id: ", entity.consumer.id , "...")
-      acl_groups.warmup_groups_cache(entity.consumer.id)
+      local _, err = acl_groups.warmup_groups_cache(entity.consumer.id)
+      if err then
+        log(NOTICE, "warmup acl groups cache for consumer id: ", entity.consumer.id , " err: ", err)
+      end
     end
-
   end
 
   if entity_name == "services" and host_count > 0 then
