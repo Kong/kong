@@ -6,6 +6,7 @@ export {
   Environment,
   getApp,
   getBasePath,
+  getGatewayBasePath,
   getEnvironment,
   getProtocol,
   isCI,

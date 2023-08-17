@@ -13,7 +13,8 @@ export const retryRequest = async (
   axiosRequest: () => Promise<AxiosResponse>,
   assertions: (response: AxiosResponse) => void,
   timeout = 15000,
-  interval = 3000
+  interval = 3000,
+  verbose = false,
 ): Promise<AxiosResponse> => {
   let response: AxiosResponse = {} as any;
   let errorMsg = '';
@@ -24,11 +25,13 @@ export const retryRequest = async (
       assertions(response);
       return response;
     } catch (error: any) {
-      errorMsg = error.message;
-      console.log(errorMsg);
-      console.log(
-        `** Assertion(s) Failed -- Retrying in ${interval / 1000} seconds **`
-      );
+      if (verbose) {
+        errorMsg = error.message;
+        console.log(errorMsg);
+        console.log(
+            `** Assertion(s) Failed -- Retrying in ${interval / 1000} seconds **`
+        );
+      }
       await new Promise((resolve) => setTimeout(resolve, interval));
       timeout -= interval;
     }

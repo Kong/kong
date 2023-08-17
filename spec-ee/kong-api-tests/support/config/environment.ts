@@ -119,6 +119,13 @@ export const getBasePath = (
 };
 
 /**
+ * Get the base path for a certain endpoint in the gateway test envronment
+ */
+
+export const getGatewayBasePath = (key: string): string =>
+    getPaths()['gateway'][key];
+
+/**
  * Check if the current test run environment is CI
  * @returns {boolean}- true or false
  */

@@ -495,7 +495,6 @@ export const waitForConfigRebuild = async (options: any = {}) => {
   // create a service
   const service = await createGatewayService(`routerRebuild-${randomString()}`);
   const serviceId = service.id;
-  await wait(1000);
 
   // create a route for a service
   const routePath = `/routerRebuild-${randomString()}`;
@@ -515,12 +514,12 @@ export const waitForConfigRebuild = async (options: any = {}) => {
     reqSuccess,
     assertionsSuccess,
     options?.timeout,
-    options?.interval
+    options?.interval,
+    options?.verbose,
   );
 
   // removing the service and the route
   await deleteGatewayRoute(routeId);
-  await wait(1000);
   await deleteGatewayService(serviceId);
 
   // send request to route until response is 404
