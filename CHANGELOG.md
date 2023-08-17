@@ -34,6 +34,8 @@
   [#11306](https://github.com/Kong/kong/pull/11306)
 - Fix an issue where cluster_cert or cluster_ca_cert is inserted into lua_ssl_trusted_certificate before being base64 decoded.
   [#11385](https://github.com/Kong/kong/pull/11385)
+- Fix cache warmup mechanism not working in `acls` plugin groups config entity scenario.
+  [#11414](https://github.com/Kong/kong/pull/11414)
 
 #### Plugins
 
