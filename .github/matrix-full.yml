@@ -34,6 +34,7 @@ build-packages:
   image: centos:7
   package: rpm
   package-type: el7
+  bazel-args: --//:wasmx_el7_workaround=true
   check-manifest-suite: el7-amd64
 - label: rhel-8
   image: rockylinux:8
