@@ -226,7 +226,8 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         ["eighth"]="response-transformer-advanced oas-validation opa konnect-application-auth oauth2-introspection degraphql"
         ["ninth"]="ldap-auth-advanced"
         ["fips-first"]="jwe-decrypt jwt-signer openid-connect saml"
-        ["fips-second"]="mtls-auth key-auth-enc oauth2-introspection"
+        ["fips-second"]="mtls-auth"
+        ["fips-third"]="key-auth-enc oauth2-introspection"
     )
 
     plugins=${plugins_to_test["$TEST_SPLIT"]}

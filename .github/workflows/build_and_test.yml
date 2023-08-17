@@ -751,6 +751,7 @@ jobs:
         - ninth
         - fips-first
         - fips-second
+        - fips-third
 
         label:
         - normal
@@ -778,6 +779,8 @@ jobs:
         - split: fips-first
           label: normal
         - split: fips-second
+          label: normal
+        - split: fips-third
           label: normal
 
     env:
