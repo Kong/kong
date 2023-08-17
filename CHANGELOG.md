@@ -46,8 +46,13 @@
 
 ### Dependencies
 
-- Bumped lua-resty-openssl from 1.3.0 to 1.3.1
+- Bumped lua-resty-aws from 1.3.0 to 1.3.1
   [#11419](https://github.com/Kong/kong/pull/11419)
+- Bumped lua-resty-session from 4.0.4 to 4.0.5
+  [#11416](https://github.com/Kong/kong/pull/11416)
+- Bumped OpenSSL from 3.1.1 to 3.1.2
+  [#11361](https://github.com/Kong/kong/pull/11361)
+
 
 ## 3.4.0
 
@@ -228,10 +233,9 @@
   [#11214](https://github.com/Kong/kong/pull/11214)
 - Bumped lua-resty-session from 4.0.3 to 4.0.4
   [#11011](https://github.com/Kong/kong/pull/11011)
-- Bumped OpenSSL from 1.1.1t to 3.1.2
+- Bumped OpenSSL from 1.1.1t to 3.1.1
   [#10180](https://github.com/Kong/kong/pull/10180)
   [#11140](https://github.com/Kong/kong/pull/11140)
-  [#11361](https://github.com/Kong/kong/pull/11361)
 - Bumped pgmoon from 1.16.0 to 1.16.2 (Kong's fork)
   [#11181](https://github.com/Kong/kong/pull/11181)
   [#11229](https://github.com/Kong/kong/pull/11229)
