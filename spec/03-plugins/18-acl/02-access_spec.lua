@@ -1347,6 +1347,14 @@ for _, strategy in helpers.each_strategy() do
 
     describe("cache warmup acls group", function()
       it("cache warmup acls group", function()
+        assert(helpers.restart_kong {
+          plugins    = "bundled, ctx-checker",
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          db_cache_warmup_entities = "keyauth_credentials,consumers,acls",
+        })
+
+        proxy_client = helpers.proxy_client()
         local res = assert(proxy_client:get("/request", {
           headers = {
             ["Host"] = "acl14.com"
