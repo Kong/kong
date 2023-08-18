@@ -147,7 +147,6 @@ local function get_or_create_queue(queue_conf, handler, handler_conf)
   for option, value in pairs(queue_conf) do
     queue[option] = value
   end
-
   queue = setmetatable(queue, Queue_mt)
 
   kong.timer:named_at("queue " .. key, 0, function(_, q)
@@ -258,13 +257,22 @@ function Queue:process_once()
   local retry_count = 0
   while true do
     self:log_debug("passing %d entries to handler", entry_count)
-    ok, err = self.handler(self.handler_conf, {unpack(self.entries, self.front, self.front + entry_count - 1)})
-    if ok then
+    local status
+    status, ok, err = pcall(self.handler, self.handler_conf,
+                            {unpack(self.entries, self.front, self.front + entry_count - 1)})
+    if not status then
+      -- We just log the error and continue, since we want to
+      -- continue executing the remaining entries in the queue.
+      self:log_err("handler processed %d entries failed, err: %s", entry_count, ok)
+      break
+    end
+
+    if status and ok then
       self:log_debug("handler processed %d entries sucessfully", entry_count)
       break
     end
 
-    if not err then
+    if status and not err then
       self:log_err("handler returned falsy value but no error information")
     end
 

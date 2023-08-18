@@ -715,4 +715,34 @@ describe("plugin queue", function()
     assert.equals(123, converted_parameters.max_batch_size)
     assert.equals(234, converted_parameters.max_coalescing_delay)
   end)
+
+  it("continue processing after hard error in handler", function()
+    local processed = {}
+    local function enqueue(entry)
+      Queue.enqueue(
+        queue_conf({
+          name = "continue-processing",
+          max_batch_size = 1,
+          max_entries = 5,
+          max_coalescing_delay = 0.1,
+        }),
+        function(_, batch)
+          if batch[1] == "Two" then
+            error("hard error")
+          end
+          table.insert(processed, batch[1])
+          return true
+        end,
+        nil,
+        entry
+      )
+    end
+    enqueue("One")
+    enqueue("Two")
+    enqueue("Three")
+    wait_until_queue_done("continue-processing")
+    assert.equal("One", processed[1])
+    assert.equal("Three", processed[2])
+    assert.match_re(log_messages, 'ERR \\[\\] queue continue-processing: handler processed 1 entries failed, err: .*: hard error')
+  end)
 end)
