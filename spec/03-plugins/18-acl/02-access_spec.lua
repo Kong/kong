@@ -718,10 +718,39 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      local route14 = bp.routes:insert({
+        hosts = { "acl14.com" }
+      })
+
+      local acl_prefunction_code = "        local consumer_id = \"" .. tostring(consumer2.id) .. "\"\n" .. [[
+        local cache_key = kong.db.acls:cache_key(consumer_id)
+
+        -- we must use shadict to get the cache, because the `kong.cache` was hooked by `kong.plugins.pre-function` 
+        local raw_groups, err = ngx.shared.kong_db_cache:get("kong_db_cache"..cache_key)
+        if raw_groups then
+          ngx.exit(200)
+        else
+          ngx.log(ngx.ERR, "failed to get cache: ", err)
+          ngx.exit(500)
+        end
+          
+      ]]
+
+      bp.plugins:insert {
+        route = { id = route14.id },
+        name = "pre-function",
+        config = {
+          access = {
+            acl_prefunction_code,
+          },
+        }
+      }
+
       assert(helpers.start_kong({
         plugins    = "bundled, ctx-checker",
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        db_cache_warmup_entities = "keyauth_credentials,consumers,acls",
       }))
     end)
 
@@ -1322,6 +1351,26 @@ for _, strategy in helpers.each_strategy() do
         assert.same({ message = "You cannot consume this service" }, json)
       end)
     end)
+
+    describe("cache warmup acls group", function()
+      it("cache warmup acls group", function()
+        assert(helpers.restart_kong {
+          plugins    = "bundled, ctx-checker",
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          db_cache_warmup_entities = "keyauth_credentials,consumers,acls",
+        })
+
+        proxy_client = helpers.proxy_client()
+        local res = assert(proxy_client:get("/request", {
+          headers = {
+            ["Host"] = "acl14.com"
+          }
+        }))
+        assert.res_status(200, res)
+      end)
+    end)
+  
   end)
 
   describe("Plugin: ACL (access) [#" .. strategy .. "] anonymous", function()

@@ -8,6 +8,10 @@
 local utils = require "kong.tools.utils"
 local constants = require "kong.constants"
 local buffer = require "string.buffer"
+local acl_groups
+if utils.load_module_if_exists("kong.plugins.acl.groups") then
+  acl_groups = require "kong.plugins.acl.groups"
+end
 
 
 local cache_warmup = {}
@@ -142,6 +146,14 @@ function cache_warmup.single_dao(dao)
     local ok, err = cache_warmup.single_entity(dao, entity)
     if not ok then
       return nil, err
+    end
+
+    if entity_name == "acls" and acl_groups ~= nil then
+      log(NOTICE, "warmup acl groups cache for consumer id: ", entity.consumer.id , "...")
+      local _, err = acl_groups.warmup_groups_cache(entity.consumer.id)
+      if err then
+        log(NOTICE, "warmup acl groups cache for consumer id: ", entity.consumer.id , " err: ", err)
+      end
     end
   end
 
