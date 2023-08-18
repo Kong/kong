@@ -88,8 +88,11 @@ Called 3 times
             local pdk = PDK.new()
             -- call pdk.response.get_raw_body() multiple times
             local body = pdk.response.get_raw_body()
+            assert(body == "hello, world!\n")
             local body = pdk.response.get_raw_body()
+            assert(body == "hello, world!\n")
             local body = pdk.response.get_raw_body()
+            assert(body == "hello, world!\n")
         }
     }
 --- request
