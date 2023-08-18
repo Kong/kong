@@ -159,12 +159,18 @@ describe('Gateway Plugins: OpenTelemetry', function () {
       'Should have correct serviceName'
     ).to.equal(`kong`);
 
+    let instance_id = targetDataset.processes.p1.tags.find((obj) => {
+      return obj.key === 'service.instance.id';
+    });
+    let version = targetDataset.processes.p1.tags.find((obj) => {
+      return obj.key === 'service.version';
+    });
     expect(
-      targetDataset.processes.p1.tags[0].value,
+      instance_id.value,
       'Should have service.instance.id'
     ).to.be.string;
     expect(
-      targetDataset.processes.p1.tags[1].value,
+      version.value,
       'Should have service.version'
     ).to.be.string;
 
