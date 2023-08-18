@@ -73,3 +73,27 @@ Enhanced by Body Filter
 Called 3 times
 --- no_error_log
 [error]
+
+
+
+=== TEST 3: response.get_raw_body() calls multiple times
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        content_by_lua_block {
+            ngx.print("hello, world!\n")
+        }
+        body_filter_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+            -- call pdk.response.get_raw_body() multiple times
+            local body = pdk.response.get_raw_body()
+            local body = pdk.response.get_raw_body()
+        }
+    }
+--- request
+GET /t
+--- response_body
+hello, world!
+--- no_error_log
+[error]
