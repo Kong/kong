@@ -6,7 +6,6 @@ import {
   postNegative,
   randomString,
   createConsumer,
-  deleteConsumer,
   logResponse,
   createConsumerGroup,
   deleteConsumerGroup,
@@ -17,12 +16,10 @@ import {
   createRouteForService,
   createKeyAuthCredentialsForConsumer,
   wait,
-  deletePlugin,
-  deleteGatewayService,
-  deleteGatewayRoute,
   retryRequest,
   removeConsumerFromConsumerGroup,
   waitForConfigRebuild,
+  clearAllKongResource,
 } from '@support';
 
 describe('Gateway Consumer Groups with RLA', function () {
@@ -58,15 +55,13 @@ describe('Gateway Consumer Groups with RLA', function () {
   let consumer1: any;
   let consumer2: any;
   let serviceId: string;
-  let routeId: string;
-  let keyAuthPluginId: string;
 
   before(async function () {
+    await clearAllKongResource();
     //  create service and route
     const service = await createGatewayService(randomString());
     serviceId = service.id;
-    const route = await createRouteForService(serviceId, [path]);
-    routeId = route.id;
+    await createRouteForService(serviceId, [path]);
 
     // create key-auth-enc plugin for consumer authentication
     const pluginResp = await axios({
@@ -78,7 +73,6 @@ describe('Gateway Consumer Groups with RLA', function () {
     });
     logResponse(pluginResp);
     expect(pluginResp.status, 'Status should be 201').to.equal(201);
-    keyAuthPluginId = pluginResp.data.id;
 
     // create consumer 1 and add key-auth-enc credentials to it
     const consumer1Req = await createConsumer();
@@ -119,15 +113,27 @@ describe('Gateway Consumer Groups with RLA', function () {
     await addConsumerToConsumerGroup(consumer1.username, consumerGroup1.id);
   });
 
-  nonSupportedPlugins.forEach(({ name, config }) => {
-    it(`should not create a consumer_group scoped plugin for non-supported plugin ${name}`, async function () {
-      const resp = await postNegative(`${url}/${consumerGroup1.id}/plugins`, {
-        name,
-        config,
-      });
-      logResponse(resp);
+  describe('non support plugins', function () {
+    let consumerGroup: any;
 
-      expect(resp.status, 'Status should be 400').to.equal(400);
+    beforeEach(async function () {
+      consumerGroup = await createConsumerGroup();
+    });
+
+    afterEach(async function () {
+      await deleteConsumerGroup(consumerGroup.id);
+    });
+
+    nonSupportedPlugins.forEach(({ name, config }) => {
+      it(`should not create a consumer_group scoped plugin for non-supported plugin ${name}`, async function () {
+        const resp = await postNegative(`${url}/${consumerGroup.id}/plugins`, {
+          name,
+          config,
+        });
+        logResponse(resp);
+
+        expect(resp.status, 'Status should be 400').to.equal(400);
+      });
     });
   });
 
@@ -285,12 +291,6 @@ describe('Gateway Consumer Groups with RLA', function () {
   });
 
   after(async function () {
-    await deleteGatewayRoute(routeId);
-    await deleteGatewayService(serviceId);
-    await deletePlugin(rtPluginId);
-    await deletePlugin(keyAuthPluginId);
-    await deleteConsumer(consumer1.id);
-    await deleteConsumer(consumer2.id);
-    await deleteConsumerGroup(consumerGroup1.id);
+    await clearAllKongResource();
   });
 });

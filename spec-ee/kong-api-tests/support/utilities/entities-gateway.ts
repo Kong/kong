@@ -1,15 +1,18 @@
-import axios, { AxiosRequestHeaders } from 'axios';
+import axios, { AxiosRequestHeaders, AxiosPromise, AxiosResponse } from 'axios';
 import { expect } from '../assert/chai-expect';
 import { Environment, getBasePath, isGateway } from '../config/environment';
 import { logResponse } from './logging';
-import { randomString, wait } from './random';
+import { randomString } from './random';
 import { retryRequest } from './retry-axios';
-import { getNegative, postNegative } from './negative-axios';
+import { getNegative } from './negative-axios';
 
 export const getUrl = (endpoint: string) => {
   const basePath = getBasePath({
     environment: isGateway() ? Environment.gateway.admin : undefined,
   });
+  if (endpoint && endpoint.startsWith('/')) {
+    return `${basePath}${endpoint}`;
+  }
   return `${basePath}/${endpoint}`;
 };
 
@@ -502,7 +505,8 @@ export const waitForConfigRebuild = async (options: any = {}) => {
   const routeId = route.id;
 
   // send request to route until response is 200
-  const reqSuccess = () => getNegative(`${proxyUrl}${routePath}`, options?.proxyReqHeader);
+  const reqSuccess = () =>
+    getNegative(`${proxyUrl}${routePath}`, options?.proxyReqHeader);
   const assertionsSuccess = (resp) => {
     expect(
       resp.status,
@@ -523,7 +527,8 @@ export const waitForConfigRebuild = async (options: any = {}) => {
   await deleteGatewayService(serviceId);
 
   // send request to route until response is 404
-  const reqFail = () => getNegative(`${proxyUrl}${routePath}`, options?.proxyReqHeader);
+  const reqFail = () =>
+    getNegative(`${proxyUrl}${routePath}`, options?.proxyReqHeader);
   const assertionsFail = (resp) => {
     expect(
       resp.status,
@@ -537,4 +542,96 @@ export const waitForConfigRebuild = async (options: any = {}) => {
     options?.timeout,
     options?.interval
   );
+};
+
+interface ItemProps {
+  id?: string;
+  username?: string;
+  name?: string;
+}
+
+interface ResponseProps {
+  data: Array<ItemProps>;
+}
+
+export const clearAllKongResource = async () => {
+  await clearKongResource('consumers');
+  await clearKongResource('consumer_groups');
+  await clearKongResource('certificates');
+  await clearKongResource('ca_certificates');
+  await clearKongResource('snis');
+  await clearKongResource('plugins');
+  await clearKongResource('vaults');
+  await clearKongResource('routes');
+  await clearKongResource('services');
+  await clearKongResource('upstreams');
+};
+
+export const clearKongResource = async (endpoint: string) => {
+  const tasks: (() => AxiosPromise)[] = [];
+  const deletePromises: AxiosPromise[] = [];
+  const url = getUrl(endpoint);
+  try {
+    const items: ItemProps[] = [];
+    let next = url;
+
+    for (;;) {
+      const res: AxiosResponse<ResponseProps> = await axios({
+        method: 'get',
+        url: next,
+      });
+
+      if (Array.isArray(res.data.data)) {
+        items.push(...res.data.data);
+      }
+
+      if ((res.data as any)?.next) {
+        next = getUrl((res.data as any)?.next);
+      } else {
+        break;
+      }
+    }
+
+    if (items.length === 0) {
+      console.log(`No items on ${endpoint} to delete.`);
+
+      return;
+    } else {
+      console.log(`Will delete ${items.length} resources on ${endpoint}.`);
+    }
+
+    items.forEach((resource: ItemProps) => {
+      const clearAllOptions = {
+        method: 'DELETE',
+        url: `${getUrl(endpoint)}/${resource.id || resource.name}`,
+      };
+
+      tasks.push(async () => axios(clearAllOptions));
+    });
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response?.status === 404) return;
+  }
+
+  try {
+    await Promise.all(
+      Array.from({ length: 10 }).map(async () => {
+        let task: (() => AxiosPromise) | undefined;
+
+        while ((task = tasks.shift())) {
+          try {
+            await task();
+          } catch (e) {
+            if (axios.isAxiosError(e) && e.response?.status === 404) {
+              continue;
+            }
+
+            throw e;
+          }
+        }
+      })
+    );
+    console.log(`${deletePromises.length} ${endpoint} have been deleted`);
+  } catch (err) {
+    console.log(err);
+  }
 };
