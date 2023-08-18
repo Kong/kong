@@ -89,6 +89,7 @@ Called 3 times
             -- call pdk.response.get_raw_body() multiple times
             local body = pdk.response.get_raw_body()
             local body = pdk.response.get_raw_body()
+            local body = pdk.response.get_raw_body()
         }
     }
 --- request
