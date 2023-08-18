@@ -1,0 +1,5 @@
+message: Fix cache warmup mechanism not working in `acls` plugin groups config entity scenario.
+type: bugfix
+scope: Core
+prs:
+  - 11414
