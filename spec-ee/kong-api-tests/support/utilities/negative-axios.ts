@@ -19,23 +19,15 @@ export const getNegative = async (
   headers: AxiosRequestHeaders = {},
   body?: object | string,
   additionalOptions?: object | any
-) => {
-  try {
-    await axios({
-      url,
-      headers,
-      data: body,
-      // return false to reject the promise and always check response, negative testing
-      validateStatus: function () {
-        return false;
-      },
-      httpsAgent: additionalOptions?.rejectUnauthorized ? agent : null,
+) =>
+    axios({
+        url,
+        headers,
+        data: body,
+        // Don't raise errors for any status code
+        validateStatus: null,
+        httpsAgent: additionalOptions?.rejectUnauthorized ? agent : null,
     });
-  } catch (error) {
-    let response: any = error;
-    return (response = response.response);
-  }
-};
 
 /**
  * Sends post request which expected to fail,
@@ -53,21 +45,13 @@ export const postNegative = async (
   method: Method = 'post',
   headers: AxiosRequestHeaders = {},
   additionalOptions?: object | any
-) => {
-  try {
-    await axios({
-      method,
-      headers,
-      url,
-      data,
-      // return false to reject the promise and always check response, negative testing
-      validateStatus: function () {
-        return false;
-      },
-      httpsAgent: additionalOptions?.rejectUnauthorized ? agent : null,
+)=>
+    axios({
+        method,
+        headers,
+        url,
+        data,
+        // Don't raise errors for any status code
+        validateStatus: null,
+        httpsAgent: additionalOptions?.rejectUnauthorized ? agent : null,
     });
-  } catch (error) {
-    let response: any = error;
-    return (response = response.response);
-  }
-};

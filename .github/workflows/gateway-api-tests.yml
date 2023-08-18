@@ -164,10 +164,6 @@ jobs:
           files: spec-ee/kong-api-tests/results/
           extra-args: --xpath-tag test.suite=/testcase/@classname
 
-      - name: Retry Gateway Failed API Tests
-        if: steps.execute_tests.outcome == 'failure'
-        run: npm run test-multiple -- --spec=$(cat failed-tests.txt)
-
       - name: Get Gateway Details
         if: always()
         continue-on-error: true

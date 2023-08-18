@@ -1,8 +1,7 @@
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import https from 'https';
 import {
   logResponse,
-  getNegative,
   getGatewayHost,
   wait,
   expect,
@@ -19,18 +18,14 @@ axios.defaults.httpsAgent = agent;
 /**
  * Get /status/ready endpoint response
  * @param {number} port - port to use
- * @param {boolean} expect503 - whether to expect 503 response
  */
 export const getStatusReadyEndpointResponse = async (
-  port = defaultPort,
-  expect503 = false
-) => {
-  const statusUrl = `https://${getGatewayHost()}:${port}/status/ready`;
-  const resp = expect503
-    ? await getNegative(statusUrl, {}, {}, { rejectUnauthorized: true })
-    : await axios(statusUrl);
-  return resp;
-};
+  port = defaultPort
+) : Promise<AxiosResponse> =>
+    axios({
+      url: `https://${getGatewayHost()}:${port}/status/ready`,
+      validateStatus: null,
+    })
 
 /**
  * Expect /status/ready to return 200 OK
@@ -52,7 +47,7 @@ export const expectStatusReadyEndpoint503 = async (
   message,
   port = defaultPort
 ) => {
-  const response = await getStatusReadyEndpointResponse(port, true);
+  const response = await getStatusReadyEndpointResponse(port);
   logResponse(response);
 
   expect(response.status).to.equal(503);
@@ -73,7 +68,7 @@ export const waitForTargetStatus = async (
 ) => {
   let response;
   while (timeout > 0) {
-    response = await getStatusReadyEndpointResponse(port, true);
+    response = await getStatusReadyEndpointResponse(port);
     if (response.status === returnStatus) {
       // log final response
       logResponse(response);

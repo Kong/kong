@@ -8,7 +8,8 @@
 export const eventually = async (
   assertions: () => Promise<void>,
   timeout = 15000,
-  interval = 3000
+  interval = 3000,
+  verbose = false,
 ): Promise<void> => {
   let errorMsg = '';
 
@@ -19,11 +20,13 @@ export const eventually = async (
       return;
     } catch (error: any) {
       const end = Date.now();
-      errorMsg = error.message;
-      console.log(errorMsg);
-      console.log(
-        `** Assertion(s) Failed -- Retrying in ${interval / 1000} seconds **`
-      );
+      if (verbose) {
+        errorMsg = error.message;
+        console.log(errorMsg);
+        console.log(
+            `** Assertion(s) Failed -- Retrying in ${interval / 1000} seconds **`
+        );
+      }
       await new Promise((resolve) => setTimeout(resolve, interval));
       timeout -= interval + (end - start);
     }

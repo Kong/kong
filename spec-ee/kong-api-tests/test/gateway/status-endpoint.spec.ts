@@ -1,3 +1,5 @@
+// This test requires `make generate STATUS_LISTEN=true HTTP2=true  GW_MODE=hybrid` to pass
+
 import {
   expect,
   isGwHybrid,
@@ -6,6 +8,7 @@ import {
   expectStatusReadyEndpoint503,
   waitForTargetStatus,
   runDockerContainerCommand,
+  eventually,
 } from '@support';
 
 const isHybrid = isGwHybrid();
@@ -26,25 +29,29 @@ describe('/status Endpoint tests', function () {
 
   it('should return 503 for CP status when connection to database is lost', async function () {
     // Sever connection between Kong and database
-    runDockerContainerCommand(databaseContainerName, 'stop');
+    await runDockerContainerCommand(databaseContainerName, 'stop');
+    await runDockerContainerCommand(databaseContainerName, 'container wait');
 
-    // wait up to 10 seconds, ensure 503 is returned in that time
     expect(await waitForTargetStatus(503, 10000)).to.equal(true);
-    expectStatusReadyEndpoint503('failed to connect to database');
+    await expectStatusReadyEndpoint503('failed to connect to database');
   });
 
   if (isHybrid) {
     it('should return 200 in DP status when connection to database is severed', async function () {
-      // wait up to 10 seconds, ensure 200 is returned in that time
       expect(await waitForTargetStatus(200, 10000, dpPortNumber)).to.equal(true);
     });
   }
 
   it('should return 200 OK for CP status when connection to database is restored', async function () {
-    // restore connection between Kong and database
-    runDockerContainerCommand(databaseContainerName, 'start');
+    // Restore connection between Kong and database
+    await runDockerContainerCommand(databaseContainerName, 'start');
+    await eventually(async () => {
+      const containerStatus = JSON.parse(await runDockerContainerCommand(databaseContainerName, "inspect"))
+      expect(typeof containerStatus).to.equal("object")
+      expect(typeof containerStatus[0]).to.equal("object")
+      expect(containerStatus[0]?.State?.Health?.Status).to.equal("healthy")
+    }, 60000, 1000)
 
-    // wait up to 10 seconds, ensure 200 is returned in that time
-    expect(await waitForTargetStatus(200, 15000)).to.equal(true);
+    expect(await waitForTargetStatus(200, 10000)).to.equal(true);
   });
 });

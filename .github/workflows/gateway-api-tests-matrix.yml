@@ -276,10 +276,6 @@ jobs:
         id: execute_tests
         continue-on-error: true
 
-      - name: Retry Gateway Failed API Tests
-        if: steps.execute_tests.outcome == 'failure'
-        run: npm run test-multiple -- --spec=$(cat failed-tests.txt)
-
       - name: Get Gateway Details
         if: always()
         continue-on-error: true
@@ -411,10 +407,6 @@ jobs:
           else
             npm run test-spec --spec=$RUN_SPEC;
           fi
-
-      - name: Retry Gateway Failed API Tests
-        if: steps.execute_tests.outcome == 'failure'
-        run: npm run test-multiple -- --spec=$(cat failed-tests.txt)
 
       - name: Get Gateway Details
         if: always()
@@ -550,10 +542,6 @@ jobs:
           else
             npm run test-spec --spec=$RUN_SPEC;
           fi
-
-      - name: Retry Gateway Failed API Tests
-        if: steps.execute_tests.outcome == 'failure'
-        run: npm run test-multiple -- --spec=$(cat failed-tests.txt)
 
       - name: Send test results to Slack
         if: ${{ env.SEND_SLACK_RESULTS == 'true' && always() && github.ref == 'refs/heads/master' }}
