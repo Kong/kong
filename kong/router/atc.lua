@@ -610,6 +610,24 @@ do
   end
 end
 
+-- func => get_headers or get_uri_args
+-- name => "headers" or "queries"
+-- max_config_option => "lua_max_req_headers" or "lua_max_uri_args"
+local function get_http_params(func, name, max_config_option)
+  local params, err = func()
+  if err == "truncated" then
+    local max = kong and kong.configuration and kong.configuration[max_config_option] or 100
+    ngx_log(ngx_ERR,
+            string.format("router: not all request %s were read in order to determine the route as " ..
+                          "the request contains more than %d %s, route selection " ..
+                          "may be inaccurate, consider increasing the '%s' configuration value " ..
+                          "(currently at %d)"),
+                          name, max, name, max_config_option, max)
+  end
+
+  return params
+end
+
 
 function _M:exec(ctx)
   local req_method = get_method()
