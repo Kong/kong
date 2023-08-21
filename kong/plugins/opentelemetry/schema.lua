@@ -52,7 +52,7 @@ return {
         { read_timeout = typedefs.timeout { default = 5000 } },
         { http_response_header_for_traceid = { type = "string", default = nil }},
         { header_type = { type = "string", required = false, default = "preserve",
-                          one_of = { "preserve", "ignore", "b3", "b3-single", "w3c", "jaeger", "ot", "aws" } } },
+                          one_of = { "preserve", "ignore", "b3", "b3-single", "w3c", "jaeger", "ot", "aws", "gcp" } } },
       },
       entity_checks = {
         { custom_entity_check = {
