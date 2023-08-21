@@ -255,8 +255,7 @@ function Queue:process_once()
   end
 
   local batch = {unpack(self.entries, self.front, self.front + entry_count - 1)}
-  -- Guard against queue shrinkage during handler invocation by using math.min below.
-  for _ = 1, math.min(entry_count, self:count()) do
+  for _ = 1, entry_count do
     self:delete_frontmost_entry()
   end
   if self.queue_full then
