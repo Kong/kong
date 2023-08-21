@@ -249,6 +249,10 @@ local constants = {
 
   REQUEST_DEBUG_TOKEN_FILE = ".request_debug_token",
   REQUEST_DEBUG_LOG_PREFIX = "[request-debug]",
+
+  SCHEMA_NAMESPACES = {
+    PROXY_WASM_FILTERS = "proxy-wasm-filters",
+  },
 }
 
 for _, v in ipairs(constants.CLUSTERING_SYNC_STATUS) do

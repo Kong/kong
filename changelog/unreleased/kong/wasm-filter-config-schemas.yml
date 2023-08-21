@@ -1,0 +1,7 @@
+message: Add support for optional Wasm filter configuration schemas
+type: feature
+scope: Core
+prs:
+  - 11568
+jiras:
+  - KAG-662

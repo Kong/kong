@@ -208,7 +208,7 @@ local function escape_literal(connector, literal, field)
           return error("postgres strategy to escape multidimensional arrays of maps or records is not implemented")
         end
 
-      elseif et == "map" or et == "record" then
+      elseif et == "map" or et == "record" or et == "json" then
         local jsons = {}
         for i, v in ipairs(literal) do
           jsons[i] = cjson.encode(v)
@@ -221,7 +221,7 @@ local function escape_literal(connector, literal, field)
 
       return encode_array(literal)
 
-    elseif field.type == "map" or field.type == "record" then
+    elseif field.type == "map" or field.type == "record" or field.type == "json" then
       return encode_json(literal)
     end
   end

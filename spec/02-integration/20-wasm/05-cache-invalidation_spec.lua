@@ -5,6 +5,7 @@ local nkeys = require "table.nkeys"
 local HEADER = "X-Proxy-Wasm"
 local TIMEOUT = 20
 local STEP = 0.1
+local FILTER_PATH = assert(helpers.test_conf.wasm_filters_path)
 
 
 local json = cjson.encode
@@ -197,8 +198,12 @@ describe("#wasm filter chain cache " .. mode_suffix, function()
 
   lazy_setup(function()
     require("kong.runloop.wasm").enable({
-      { name = "tests" },
-      { name = "response_transformer" },
+      { name = "tests",
+        path = FILTER_PATH .. "/tests.wasm",
+      },
+      { name = "response_transformer",
+        path = FILTER_PATH .. "/response_transformer.wasm",
+      },
     })
 
     local bp

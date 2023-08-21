@@ -1,5 +1,6 @@
 local typedefs = require "kong.db.schema.typedefs"
 local wasm = require "kong.runloop.wasm"
+local constants = require "kong.constants"
 
 
 ---@class kong.db.schema.entities.filter_chain : table
@@ -9,7 +10,6 @@ local wasm = require "kong.runloop.wasm"
 ---@field enabled    boolean
 ---@field route      table|nil
 ---@field service    table|nil
----@field protocols  table|nil
 ---@field created_at number
 ---@field updated_at number
 ---@field tags       string[]
@@ -18,21 +18,40 @@ local wasm = require "kong.runloop.wasm"
 
 ---@class kong.db.schema.entities.wasm_filter : table
 ---
----@field name    string
----@field enabled boolean
----@field config  string|table|nil
+---@field name        string
+---@field enabled     boolean
+---@field config      string|nil
+---@field json_config any|nil
 
 
 local filter = {
   type = "record",
   fields = {
-    { name    = { type = "string", required = true, one_of = wasm.filter_names,
-                  err = "no such filter", }, },
-    { config  = { type = "string", required = false, }, },
-    { enabled = { type = "boolean", default = true, required = true, }, },
+    { name       = { type = "string", required = true, one_of = wasm.filter_names,
+                     err = "no such filter", }, },
+    { config     = { type = "string", required = false, }, },
+    { enabled    = { type = "boolean", default = true, required = true, }, },
+
+    { json_config = {
+        type = "json",
+        required = false,
+        json_schema = {
+          parent_subschema_key = "name",
+          namespace = constants.SCHEMA_NAMESPACES.PROXY_WASM_FILTERS,
+          optional = true,
+        },
+      },
+    },
+
+  },
+  entity_checks = {
+    { mutually_exclusive = {
+        "config",
+        "json_config",
+      },
+    },
   },
 }
-
 
 return {
   name = "filter_chains",

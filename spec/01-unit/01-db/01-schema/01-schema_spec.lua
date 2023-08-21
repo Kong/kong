@@ -315,6 +315,8 @@ describe("schema", function()
           "fail" },
         { { type = "function" },
           "fail" },
+        { { type = "json", json_schema = { inline = { type = "string" }, } },
+          123 },
       }
 
       local covered_check = {}
@@ -2879,6 +2881,7 @@ describe("schema", function()
           { g = { type = "record", fields = {} }, },
           { h = { type = "map", keys = {}, values = {} }, },
           { i = { type = "function" }, },
+          { j = { type = "json", json_schema = { inline = { type = "string" }, } }, },
         }
       })
       check_all_types_covered(Test.fields)
@@ -2893,6 +2896,7 @@ describe("schema", function()
       assert.same(ngx.null, data.g)
       assert.same(ngx.null, data.h)
       assert.same(ngx.null, data.i)
+      assert.same(ngx.null, data.j)
     end)
 
     it("produces nil for empty string fields with selects", function()
@@ -2998,6 +3002,7 @@ describe("schema", function()
           { g = { type = "record", fields = {} }, },
           { h = { type = "map", keys = {}, values = {} }, },
           { i = { type = "function" }, },
+          { j = { type = "json", json_schema = { inline = { type = "string" }, } }, },
         }
       })
       check_all_types_covered(Test.fields)
@@ -3027,6 +3032,7 @@ describe("schema", function()
           { my_record = { type = "record", fields = { { my_field = { type = "integer" } } } } },
           { my_map = { type = "map", keys = {}, values = {} }, },
           { my_function = { type = "function" }, },
+          { my_json = { type = "json", json_schema = { inline = { type = "string" }, } }, },
         }
       })
       check_all_types_covered(Test.fields)
@@ -3040,6 +3046,7 @@ describe("schema", function()
         my_record = "hello",
         my_map = "hello",
         my_function = "hello",
+        my_json = 123,
       }
       local data, err = Test:process_auto_fields(bad_value)
       assert.is_nil(err)
@@ -3092,7 +3099,11 @@ describe("schema", function()
                     }
                 } }
               }
-          } }
+          } },
+          { j = {
+              type = "json",
+              json_schema = { inline = { type = "string" }, },
+          } },
         }
       })
       check_all_types_covered(Test.fields)
