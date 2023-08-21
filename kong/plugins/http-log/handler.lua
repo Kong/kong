@@ -181,10 +181,36 @@ end
 
 
 function HttpLogHandler:log(conf)
+  -- do custom fields
   if conf.custom_fields_by_lua then
     local set_serialize_value = kong.log.set_serialize_value
     for key, expression in pairs(conf.custom_fields_by_lua) do
       set_serialize_value(key, sandbox(expression, sandbox_opts)())
+    end
+  end
+
+  -- do logged header allow list if enabled
+  if conf.enable_logged_header_allow_list then
+    local set_serialize_value = kong.log.set_serialize_value
+
+    -- clear all request and response headers
+    set_serialize_value("request.headers", nil)
+    set_serialize_value("response.headers", nil)
+
+    -- restore allowed headers
+    local request_get_header = kong.request.get_header
+    local response_get_header = kong.response.get_header
+    for _, header_name in ipairs(conf.logged_headers_allow_list) do
+      local request_header_val = request_get_header(header_name)
+      local response_header_val = response_get_header(header_name)
+
+      if request_header_val then
+        set_serialize_value("request.headers." .. header_name, request_header_val)
+      end
+
+      if response_header_val then
+        set_serialize_value("response.headers." .. header_name, response_header_val)
+      end
     end
   end
 

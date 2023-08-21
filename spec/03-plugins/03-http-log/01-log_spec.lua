@@ -322,6 +322,32 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      local service11 = bp.services:insert{
+        protocol = "http",
+        host     = helpers.mock_upstream_host,
+        port     = helpers.mock_upstream_port,
+      }
+
+      local route11 = bp.routes:insert {
+        hosts   = { "log_allowed_headers.test" },
+        service = service9
+      }
+
+      bp.plugins:insert {
+        route = { id = route11.id },
+        name     = "http-log",
+        config   = {
+          http_endpoint = "http://" .. helpers.mock_upstream_host
+                                    .. ":"
+                                    .. helpers.mock_upstream_port
+                                    .. "/post_log/custom_http",
+          enable_logged_header_allow_list = true,
+          logged_headers_allow_list = {
+            "allowed_header",
+          },
+        }
+      }
+
       helpers.setenv(vault_env_name, vault_env_value)
 
       assert(helpers.start_kong({
@@ -417,6 +443,25 @@ for _, strategy in helpers.each_strategy() do
         local entries = get_log("custom_http", 1)
         assert.same("127.0.0.1", entries[1].client_ip)
         assert.same(123, entries[1].new_field)
+      end)
+    end)
+
+    describe("logged headers allow list", function()
+      it("only log allowed headers", function()
+        reset_log("allowed_headers")
+        local res = proxy_client:get("/status/200", {
+          headers = {
+            ["Host"] = "log_allowed_headers.test",
+            ["allowed_header"] = "123",
+            ["unallowed_header"] = "123"
+          }
+        })
+        assert.res_status(200, res)
+
+        local entries = get_log("allowed_headers", 1)
+        assert.same("127.0.0.1", entries[1].client_ip)
+        assert.same(123, entries[1].request.headers.allowed_header)
+        assert.same(nil, entries[1].request.headers.unallowed_header)
       end)
     end)
 
