@@ -609,6 +609,7 @@ local function new(self, major_version)
       end
 
       arg[1] = body_buffer
+      ngx.ctx.KONG_BODY_BUFFER = nil
       return body_buffer
     end
 
