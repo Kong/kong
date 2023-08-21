@@ -87,12 +87,18 @@ Called 3 times
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
             -- call pdk.response.get_raw_body() multiple times
-            local body = pdk.response.get_raw_body()
-            assert(body == "hello, world!\n")
-            local body = pdk.response.get_raw_body()
-            assert(body == "hello, world!\n")
-            local body = pdk.response.get_raw_body()
-            assert(body == "hello, world!\n")
+            ngx.ctx.called = (ngx.ctx.called or 0) + 1
+            for i = 1, 3 do
+                ngx.ctx.called2 = (ngx.ctx.called2 or 0) + 1
+                local body = pdk.response.get_raw_body()
+                if body then
+                    assert("hello, world!\n" == body)
+                end
+            end
+        }
+        log_by_lua_block {
+            assert(ngx.ctx.called == 2)
+            assert(ngx.ctx.called2 == 6)
         }
     }
 --- request
