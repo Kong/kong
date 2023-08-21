@@ -725,6 +725,7 @@ describe("plugin queue", function()
           max_batch_size = 1,
           max_entries = 5,
           max_coalescing_delay = 0.1,
+          max_retry_time = 3,
         }),
         function(_, batch)
           if batch[1] == "Two" then
@@ -744,5 +745,6 @@ describe("plugin queue", function()
     assert.equal("One", processed[1])
     assert.equal("Three", processed[2])
     assert.match_re(log_messages, 'ERR \\[\\] queue continue-processing: handler processed 1 entries failed, err: .*: hard error')
+    assert.match_re(log_messages, 'ERR \\[\\] queue continue-processing: could not send entries, giving up after \\d retries.  1 queue entries were lost')  
   end)
 end)
