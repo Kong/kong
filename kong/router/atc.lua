@@ -610,6 +610,7 @@ do
   end
 end
 
+
 -- func => get_headers or get_uri_args
 -- name => "headers" or "queries"
 -- max_config_option => "lua_max_req_headers" or "lua_max_uri_args"
@@ -674,8 +675,8 @@ function _M:exec(ctx)
 
     local err
     match_t, err = self:select(req_method, req_uri, req_host, req_scheme,
-                          nil, nil, nil, nil,
-                          sni, headers, queries)
+                               nil, nil, nil, nil,
+                               sni, headers, queries)
     if not match_t then
       if err then
         ngx_log(ngx_ERR, "router returned an error: ", err,
