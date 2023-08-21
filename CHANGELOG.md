@@ -14,6 +14,9 @@
 
 #### Core
 
+- Support HTTP query parameters in expression routes.
+  [#11348](https://github.com/Kong/kong/pull/11348)
+
 #### Plugins
 
 - **AWS-Lambda**: the AWS-Lambda plugin has been refactored by using `lua-resty-aws` as an
