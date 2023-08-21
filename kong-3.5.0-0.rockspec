@@ -223,6 +223,7 @@ build = {
     ["kong.db.schema.entities.clustering_data_planes"] = "kong/db/schema/entities/clustering_data_planes.lua",
     ["kong.db.schema.entities.parameters"] = "kong/db/schema/entities/parameters.lua",
     ["kong.db.schema.entities.filter_chains"] = "kong/db/schema/entities/filter_chains.lua",
+    ["kong.db.schema.json"] = "kong/db/schema/json.lua",
     ["kong.db.schema.others.migrations"] = "kong/db/schema/others/migrations.lua",
     ["kong.db.schema.others.declarative_config"] = "kong/db/schema/others/declarative_config.lua",
     ["kong.db.schema.entity"] = "kong/db/schema/entity.lua",

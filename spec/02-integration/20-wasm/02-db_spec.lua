@@ -1,11 +1,14 @@
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
+local schema_lib = require "kong.db.schema.json"
+
+local FILTER_PATH = assert(helpers.test_conf.wasm_filters_path)
 
 -- no cassandra support
 for _, strategy in helpers.each_strategy({ "postgres" }) do
 
 describe("wasm DB entities [#" .. strategy .. "]", function()
-  local db, dao
+  local db
 
   local function reset_db()
     if not db then return end
@@ -18,8 +21,12 @@ describe("wasm DB entities [#" .. strategy .. "]", function()
 
   lazy_setup(function()
     require("kong.runloop.wasm").enable({
-      { name = "test" },
-      { name = "other" },
+      { name = "test",
+        path = FILTER_PATH .. "/test.wasm",
+      },
+      { name = "other",
+        path = FILTER_PATH .. "/other.wasm",
+      },
     })
 
     local _
@@ -29,13 +36,17 @@ describe("wasm DB entities [#" .. strategy .. "]", function()
       "services",
       "filter_chains",
     })
-
-    dao = db.filter_chains
   end)
 
   lazy_teardown(reset_db)
 
   describe("filter_chains", function()
+    local dao
+
+    lazy_setup(function()
+      dao = db.filter_chains
+    end)
+
     local function make_service()
       local service = assert(db.services:insert({
         url = "http://wasm.test/",
@@ -360,7 +371,124 @@ describe("wasm DB entities [#" .. strategy .. "]", function()
       end)
 
       describe(".config", function()
-        pending("is validated against the filter schema")
+        it("is an optional string", function()
+          local service = assert(db.services:insert({
+            url = "http://example.test",
+          }))
+
+          assert.truthy(dao:insert({
+            service = { id = service.id },
+            filters = {
+              {
+                name = "test",
+                config = "foo",
+              }
+            }
+          }))
+
+          service = assert(db.services:insert({
+            url = "http://example.test",
+          }))
+
+          assert.truthy(dao:insert({
+            service = { id = service.id },
+            filters = {
+              {
+                name = "test",
+                config = nil,
+              }
+            }
+          }))
+        end)
+      end)
+
+      describe(".json_config", function()
+        local schema_name = "proxy-wasm-filters/test"
+
+        lazy_teardown(function()
+          schema_lib.remove_schema(schema_name)
+        end)
+
+        it("is validated against user schema", function()
+          local service = assert(db.services:insert({
+            url = "http://example.test",
+          }))
+
+          schema_lib.add_schema("proxy-wasm-filters/test", {
+            type = "object",
+            properties = {
+              foo = { type = "string" },
+              bar = { type = "object" },
+            },
+            required = { "foo", "bar" },
+            additionalProperties = false,
+          })
+
+          assert.truthy(dao:insert({
+            service = { id = service.id },
+            filters = {
+              {
+                name = "test",
+                json_config = {
+                  foo = "foo string",
+                  bar = { a = 1, b = 2 },
+                },
+              }
+            }
+          }))
+
+          service = assert(db.services:insert({
+            url = "http://example.test",
+          }))
+
+          local chain, err = dao:insert({
+            service = { id = service.id },
+            filters = {
+              {
+                name = "test",
+                json_config = {
+                  foo = 123,
+                  bar = { a = 1, b = 2 },
+                },
+              }
+            }
+          })
+          assert.is_nil(chain)
+          assert.matches("property foo validation failed", err)
+
+          service = assert(db.services:insert({
+            url = "http://example.test",
+          }))
+
+          chain, err = dao:insert({
+            service = { id = service.id },
+            filters = {
+              {
+                name = "test",
+                json_config = ngx.null,
+              }
+            }
+          })
+          assert.is_nil(chain)
+          assert.matches("expected object, got null", err)
+
+          service = assert(db.services:insert({
+            url = "http://example.test",
+          }))
+
+          chain, err = dao:insert({
+            service = { id = service.id },
+            filters = {
+              {
+                name = "test",
+                json_config = nil,
+              }
+            }
+          })
+          assert.is_nil(chain)
+          assert.matches("expected object, got null", err)
+
+        end)
       end)
     end)
 
