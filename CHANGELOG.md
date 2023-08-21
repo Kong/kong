@@ -177,7 +177,7 @@
 - Fix an issue where `/schemas/plugins/validate` endpoint fails to validate valid plugin configuration
   when the key of `custom_fields_by_lua` contains dot character(s).
   [#11091](https://github.com/Kong/kong/pull/11091)
-- Fix an issue that the `data` of Admin API `/tags/:tag` response becomes empty object when no data.
+- Fix an issue with the `/tags/:tag` Admin API returning a JSON object (`{}`) instead of an array (`[]`) for empty data sets.
   [#11213](https://github.com/Kong/kong/pull/11213)
 
 #### Plugins
