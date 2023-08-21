@@ -261,8 +261,8 @@ function Queue:process_once()
     status, ok, err = pcall(self.handler, self.handler_conf,
                             {unpack(self.entries, self.front, self.front + entry_count - 1)})                   
     if not status then
-      -- We just log the error and continue, since we want to
-      -- continue executing the remaining entries in the queue.
+      -- We just log the error and retry
+      -- and we want to continue executing the remaining entries in the queue.
       self:log_err("handler processed %d entries failed, err: %s", entry_count, ok)
 
     else
