@@ -19,6 +19,9 @@ local _M = {
 
   ---@type string[]
   filter_names = {},
+
+  ---@type table<string, kong.runloop.wasm.filter_meta>
+  filter_meta = {},
 }
 
 
@@ -30,11 +33,21 @@ local _M = {
 ---@field name string
 ---@field path string
 
+---@class kong.configuration.wasm_filter.meta
+---
+---@field config_schema kong.db.schema.json.schema_doc|nil
+
 
 local utils = require "kong.tools.utils"
 local dns = require "kong.tools.dns"
 local reports = require "kong.reports"
 local clear_tab = require "table.clear"
+local cjson = require "cjson.safe"
+local json_schema = require "kong.db.schema.json"
+local pl_file = require "pl.file"
+local pl_path = require "pl.path"
+local constants = require "kong.constants"
+
 
 ---@module 'resty.wasmx.proxy_wasm'
 local proxy_wasm
@@ -52,10 +65,24 @@ local assert = assert
 local concat = table.concat
 local insert = table.insert
 local sha256 = utils.sha256_bin
+local cjson_encode = cjson.encode
+local cjson_decode = cjson.decode
+local fmt = string.format
 
 
 local VERSION_KEY = "filter_chains:version"
 local TTL_ZERO = { ttl = 0 }
+
+---@class kong.runloop.wasm.filter_meta
+---
+---@field config_schema table|nil
+
+local FILTER_META_SCHEMA = {
+  type = "object",
+  properties = {
+    config_schema = json_schema.metaschema,
+  },
+}
 
 
 ---
@@ -376,6 +403,16 @@ local function rebuild_state(db, version, old_state)
 
       local chain_type = service_id and TYPE_SERVICE or TYPE_ROUTE
 
+      for _, filter in ipairs(chain.filters) do
+        if filter.enabled then
+          -- serialize all JSON configurations up front
+          if not filter.config and filter.json_config ~= nil then
+            filter.config = cjson_encode(filter.json_config)
+            filter.json_config = nil
+          end
+        end
+      end
+
       insert(all_chain_refs, {
         type           = chain_type,
 
@@ -533,7 +570,6 @@ local function update_in_place(new_version)
 end
 
 
-
 ---@param route?    { id: string }
 ---@param service?  { id: string }
 ---@return kong.runloop.wasm.filter_chain_reference?
@@ -549,10 +585,73 @@ end
 
 
 ---@param filters kong.configuration.wasm_filter[]|nil
+local function discover_filter_metadata(filters)
+  if not filters then return end
+
+  local errors = {}
+
+  for _, filter in ipairs(filters) do
+    local meta_path = (filter.path:gsub("%.wasm$", "")) .. ".meta.json"
+
+    local function add_error(reason, err)
+      table.insert(errors, fmt("* %s (%s) %s: %s", filter.name, meta_path, reason, err))
+    end
+
+    if pl_path.exists(meta_path) then
+      if pl_path.isfile(meta_path) then
+        local data, err = pl_file.read(meta_path)
+
+        if data then
+          local meta
+          meta, err = cjson_decode(data)
+
+          if err then
+            add_error("JSON decode error", err)
+
+          else
+            local ok
+            ok, err = json_schema.validate(meta, FILTER_META_SCHEMA)
+            if ok then
+              _M.filter_meta[filter.name] = meta
+
+            else
+              add_error("file contains invalid metadata", err)
+            end
+          end
+
+        else
+          add_error("I/O error", err)
+        end
+
+      else
+        add_error("invalid type", "path exists but is not a file")
+      end
+    end
+  end
+
+  if #errors > 0 then
+    local err = "\nFailed to load metadata for one or more filters:\n"
+                .. table.concat(errors, "\n") .. "\n"
+
+    error(err)
+  end
+
+  local namespace = constants.SCHEMA_NAMESPACES.PROXY_WASM_FILTERS
+  for name, meta in pairs(_M.filter_meta) do
+    if meta.config_schema then
+      local schema_name = namespace .. "/" .. name
+      json_schema.add_schema(schema_name, meta.config_schema)
+    end
+  end
+end
+
+
+---@param filters kong.configuration.wasm_filter[]|nil
 local function set_available_filters(filters)
   clear_tab(_M.filters)
   clear_tab(_M.filters_by_name)
   clear_tab(_M.filter_names)
+  clear_tab(_M.filter_meta)
 
   if filters then
     for i, filter in ipairs(filters) do
@@ -560,6 +659,8 @@ local function set_available_filters(filters)
       _M.filters_by_name[filter.name] = filter
       _M.filter_names[i] = filter.name
     end
+
+    discover_filter_metadata(filters)
   end
 end
 

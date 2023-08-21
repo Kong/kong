@@ -59,7 +59,9 @@ for _, strategy in helpers.each_strategy() do
       })
 
       require("kong.runloop.wasm").enable({
-        { name = "tests" },
+        { name = "tests",
+          path = helpers.test_conf.wasm_filters_path .. "/tests.wasm",
+        },
       })
 
       assert(helpers.start_kong({

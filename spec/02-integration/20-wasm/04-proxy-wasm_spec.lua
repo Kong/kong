@@ -27,7 +27,9 @@ describe("proxy-wasm filters (#wasm)", function()
 
   lazy_setup(function()
     require("kong.runloop.wasm").enable({
-      { name = "tests" },
+      { name = "tests",
+        path = helpers.test_conf.wasm_filters_path .. "/tests.wasm",
+      },
     })
 
     local bp, db = helpers.get_db_utils(DATABASE, {

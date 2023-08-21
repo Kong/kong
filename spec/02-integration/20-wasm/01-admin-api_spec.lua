@@ -10,6 +10,8 @@ local utils = require "kong.tools.utils"
 
 local fmt = string.format
 
+local FILTER_PATH = assert(helpers.test_conf.wasm_filters_path)
+local NULL = ngx.null
 
 local function json(body)
   return {
@@ -29,8 +31,12 @@ describe("wasm admin API [#" .. strategy .. "]", function()
 
   lazy_setup(function()
     require("kong.runloop.wasm").enable({
-      { name = "tests" },
-      { name = "response_transformer" },
+      { name = "tests",
+        path = FILTER_PATH .. "/tests.wasm",
+      },
+      { name = "response_transformer",
+        path = FILTER_PATH .. "/response_transformer.wasm",
+      },
     })
 
     bp, db = helpers.get_db_utils(strategy, {
@@ -208,9 +214,9 @@ describe("wasm admin API [#" .. strategy .. "]", function()
         assert.same({ "foo", "bar" }, patched.tags)
         assert.is_false(patched.enabled)
         assert.equals(2, #patched.filters)
-        assert.same({ name = "tests", config = "123", enabled = true },
+        assert.same({ name = "tests", config = "123", enabled = true, json_config = NULL },
                     patched.filters[1])
-        assert.same({ name = "tests", config = "456", enabled = false },
+        assert.same({ name = "tests", config = "456", enabled = false, json_config = NULL },
                     patched.filters[2])
       end)
     end)
@@ -367,9 +373,9 @@ describe("wasm admin API [#" .. strategy .. "]", function()
         assert.same({ "foo", "bar" }, patched.tags)
         assert.is_false(patched.enabled)
         assert.equals(2, #patched.filters)
-        assert.same({ name = "tests", config = "123", enabled = true },
+        assert.same({ name = "tests", config = "123", enabled = true, json_config = NULL },
                     patched.filters[1])
-        assert.same({ name = "tests", config = "456", enabled = false },
+        assert.same({ name = "tests", config = "456", enabled = false, json_config = NULL },
                     patched.filters[2])
       end)
     end)

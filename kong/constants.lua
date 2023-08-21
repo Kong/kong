@@ -292,6 +292,10 @@ local constants = {
 
   REQUEST_DEBUG_TOKEN_FILE = ".request_debug_token",
   REQUEST_DEBUG_LOG_PREFIX = "[request-debug]",
+
+  SCHEMA_NAMESPACES = {
+    PROXY_WASM_FILTERS = "proxy-wasm-filters",
+  },
 }
 
 -- XXX EE: add enterprise-specific CLUSTERING_SYNC_STATUS enum values before

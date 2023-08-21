@@ -24,11 +24,15 @@ impl ResponseTransformerContext {
 impl RootContext for ResponseTransformerContext {
     fn on_configure(&mut self, _: usize) -> bool {
         let bytes = self.get_plugin_configuration().unwrap();
-        if let Ok(config) = serde_json::from_slice(bytes.as_slice()) {
-            self.config = config;
-            true
-        } else {
-            false
+        match serde_json::from_slice::<Config>(bytes.as_slice()) {
+            Ok(config) => {
+                self.config = config;
+                true
+            },
+            Err(e) => {
+                error!("failed parsing filter config: {}", e);
+                false
+            }
         }
     }
 
