@@ -261,11 +261,16 @@ function Queue:process_once()
     status, ok, err = pcall(self.handler, self.handler_conf,
                             {unpack(self.entries, self.front, self.front + entry_count - 1)})
     if status and ok == true then
-      self:log_debug("handler processed %d entries sucessfully", entry_count)
+      self:log_debug("handler processed %d entries successfully", entry_count)
       break
+    end
 
-    else
+    if not status then
       self:log_err("handler processed %d entries failed, err: %s", entry_count, ok)
+    end
+
+    if not err then
+      self:log_err("handler returned falsy value but no error information")
     end
 
     if (now() - start_time) > self.max_retry_time then
