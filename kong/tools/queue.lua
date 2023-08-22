@@ -259,20 +259,13 @@ function Queue:process_once()
     self:log_debug("passing %d entries to handler", entry_count)
     local status
     status, ok, err = pcall(self.handler, self.handler_conf,
-                            {unpack(self.entries, self.front, self.front + entry_count - 1)})                   
-    if not status then
-      -- We just log the error and retry
-      -- and we want to continue executing the remaining entries in the queue.
-      self:log_err("handler processed %d entries failed, err: %s", entry_count, ok)
+                            {unpack(self.entries, self.front, self.front + entry_count - 1)})
+    if status and ok == true then
+      self:log_debug("handler processed %d entries sucessfully", entry_count)
+      break
 
     else
-      if ok == true then
-        self:log_debug("handler processed %d entries sucessfully", entry_count)
-        break
-  
-      else
-        self:log_err("handler returned falsy value but no error information")
-      end
+      self:log_err("handler processed %d entries failed, err: %s", entry_count, ok)
     end
 
     if (now() - start_time) > self.max_retry_time then
