@@ -734,6 +734,8 @@
                                  # the pattern defined by `openssl ciphers`.
                                  # This value is ignored if `ssl_cipher_suite`
                                  # is not `custom`.
+                                 # If you use DHE ciphers, you must also 
+                                 # configure the `ssl_dhparam` parameter.
 
 #ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
                                  # Enables the specified protocols for
