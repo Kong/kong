@@ -20,6 +20,10 @@
   underlying AWS library. The refactor simplifies the AWS-Lambda plugin code base and
   adding support for multiple IAM authenticating scenarios.
   [#11350](https://github.com/Kong/kong/pull/11350)
+- **OpenTelemetry** and **Zipkin**: Support GCP X-Cloud-Trace-Context header
+  The field `header_type` now accepts the value `gcp` to propagate the
+  Google Cloud trace header
+  [#11254](https://github.com/Kong/kong/pull/11254)
 
 ### Fixes
 
