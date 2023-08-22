@@ -58,8 +58,8 @@ function roundrobin_algorithm:afterHostUpdate()
   local new_wheel = {}
   local idx = 1
 
-  for _, targets in ipairs(targets) do
-    for _, address in ipairs(targets.addresses) do
+  for _, target in ipairs(targets) do
+    for _, address in ipairs(target.addresses) do
       local address_points = address.weight / divisor
       for _ = 1, address_points do
         new_wheel[idx] = address
