@@ -50,6 +50,8 @@
   [#11342](https://github.com/Kong/kong/pull/11342)
 - When the worker is in shutdown mode and more data is immediately available without waiting for `max_coalescing_delay`, queues are now cleared in batches.
   [#11376](https://github.com/Kong/kong/pull/11376)
+- A race condition in the plugin queue could potentially crash the worker when `max_entries` was set to `max_batch_size`.
+  [#11378](https://github.com/Kong/kong/pull/11378)
 - **AWS-Lambda**: fix an issue that the AWS-Lambda plugin cannot extract a json encoded proxy integration response.
   [#11413](https://github.com/Kong/kong/pull/11413)
 
