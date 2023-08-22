@@ -1296,7 +1296,7 @@ do
     local res = ngx.location.capture("/kong_buffered_http", options)
     if res.truncated and options.method ~= ngx.HTTP_HEAD then
       ctx.KONG_PHASE = PHASES.error
-      ngx.status = 502
+      ngx.status = res.status or 502
       return kong_error_handlers(ctx)
     end
 
