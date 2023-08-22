@@ -17,6 +17,7 @@
     "chai": "^4.3.7",
     "chai-arrays": "^2.2.0",
     "chai-as-promised": "^7.1.1",
+    "chai-bytes": "^0.1.2",
     "chai-like": "^1.1.1",
     "chai-string": "^1.5.0",
     "dotenv": "^16.3.1",

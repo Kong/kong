@@ -19,7 +19,7 @@ import {
   retryRequest,
   removeConsumerFromConsumerGroup,
   waitForConfigRebuild,
-  clearAllKongResource,
+  clearAllKongResources,
 } from '@support';
 
 describe('Gateway Consumer Groups with RLA', function () {
@@ -57,7 +57,7 @@ describe('Gateway Consumer Groups with RLA', function () {
   let serviceId: string;
 
   before(async function () {
-    await clearAllKongResource();
+    await clearAllKongResources();
     //  create service and route
     const service = await createGatewayService(randomString());
     serviceId = service.id;
@@ -291,6 +291,6 @@ describe('Gateway Consumer Groups with RLA', function () {
   });
 
   after(async function () {
-    await clearAllKongResource();
+    await clearAllKongResources();
   });
 });

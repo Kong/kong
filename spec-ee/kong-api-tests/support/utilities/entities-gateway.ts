@@ -554,7 +554,7 @@ interface ResponseProps {
   data: Array<ItemProps>;
 }
 
-export const clearAllKongResource = async () => {
+export const clearAllKongResources = async () => {
   await clearKongResource('consumers');
   await clearKongResource('consumer_groups');
   await clearKongResource('certificates');
@@ -593,11 +593,7 @@ export const clearKongResource = async (endpoint: string) => {
     }
 
     if (items.length === 0) {
-      console.log(`No items on ${endpoint} to delete.`);
-
       return;
-    } else {
-      console.log(`Will delete ${items.length} resources on ${endpoint}.`);
     }
 
     items.forEach((resource: ItemProps) => {
@@ -630,7 +626,6 @@ export const clearKongResource = async (endpoint: string) => {
         }
       })
     );
-    console.log(`${deletePromises.length} ${endpoint} have been deleted`);
   } catch (err) {
     console.log(err);
   }

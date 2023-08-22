@@ -12,19 +12,18 @@ import {
 import axios from 'axios';
 import WebSocket from 'promise-ws';
 
-describe('Websocket Size Limit Plugin Tests', () => {
+describe('Websocket Size Limit Plugin Tests', function () {
   const adminApi = getGatewayBasePath('admin');
 
   ['ws', 'wss'].forEach(protocol => {
-    const echoServer = `websocket-echo-server:${protocol == 'ws' ? 9000 : 9443}/.ws`
+    const echoServer = `${protocol}://websocket-echo-server:${protocol == 'ws' ? 9000 : 9443}/.ws`;
 
-    describe(`Tests with "${protocol}" protocol using ${echoServer}`, () => {
-
-      const proxyUrl = getGatewayBasePath(`${protocol}Proxy`) + `/.${protocol}`
+    describe(`Tests with "${protocol}" protocol using ${echoServer}`, function () {
+      const proxyUrl = getGatewayBasePath(`${protocol}Proxy`) + `/.${protocol}`;
 
       const servicePayload = {
         name: randomString(),
-        url: `${protocol}://${echoServer}`,
+        url: echoServer,
       };
 
       const routePayload = {
@@ -39,18 +38,11 @@ describe('Websocket Size Limit Plugin Tests', () => {
       let pluginId: string;
       let server: any;
 
-      before(async () => {
-        const service = await createGatewayService(
-            servicePayload.name,
-            servicePayload
-        );
+      before(async function () {
+        const service = await createGatewayService(servicePayload.name, servicePayload);
         serviceId = service.id;
 
-        const route = await createRouteForService(
-            serviceId,
-            undefined,
-            routePayload
-        );
+        const route = await createRouteForService(serviceId, undefined, routePayload);
         routeId = route.id;
 
         pluginBasePayload = {
@@ -63,10 +55,10 @@ describe('Websocket Size Limit Plugin Tests', () => {
           },
         };
 
-        await waitForConfigRebuild({interval: 1000});
+        await waitForConfigRebuild({ interval: 1000 });
       });
 
-      it('should be able to add websocket size limit plugin', async () => {
+      it('should be able to add websocket size limit plugin', async function () {
         const resp = await axios({
           method: 'post',
           url: `${adminApi}/plugins`,
@@ -84,13 +76,12 @@ describe('Websocket Size Limit Plugin Tests', () => {
         pluginId = resp.data.id;
       });
 
-      it('should send message when the size is below the limit', async () => {
+      it('should send message when the size is below the limit', async function () {
         const websocket = await WebSocket.create(proxyUrl, {
           rejectUnauthorized: false,
         });
 
-        const received = new Promise(resolve =>
-            websocket.on('message', data => resolve(data)));
+        const received = new Promise(resolve => websocket.on('message', data => resolve(data)));
 
         await websocket.send('345');
         const data = await received;
@@ -98,8 +89,8 @@ describe('Websocket Size Limit Plugin Tests', () => {
         await websocket.close();
       });
 
-      it('should be able to patch the plugin with client payload size limited', async () => {
-        const client_max_payload = 3
+      it('should be able to patch the plugin with client payload size limited', async function () {
+        const client_max_payload = 3;
         const resp = await axios({
           method: 'patch',
           url: `${adminApi}/plugins/${pluginId}`,
@@ -116,28 +107,25 @@ describe('Websocket Size Limit Plugin Tests', () => {
         expect(resp.status, 'Status should be 200').to.equal(200);
 
         const checkResponse = await axios({
-          url: `${adminApi}/plugins/${pluginId}`
+          url: `${adminApi}/plugins/${pluginId}`,
         });
         expect(checkResponse.data.config.client_max_payload).to.equal(client_max_payload);
 
-        await waitForConfigRebuild({interval: 1000});
+        await waitForConfigRebuild({ interval: 1000 });
       });
 
       it('should not send data when size is limited', async function () {
-
         const websocket = await WebSocket.create(proxyUrl, {
           rejectUnauthorized: false,
         });
 
-        const closed = new Promise(resolve =>
-            websocket.addEventListener('close', data => resolve(data))
-        );
+        const closed = new Promise(resolve => websocket.addEventListener('close', data => resolve(data)));
 
         websocket.on('message', data => console.log('received data', data.length));
 
         await websocket.send('X'.repeat(11000));
         await websocket.close();
-        const data: any = await (closed);
+        const data: any = await closed;
 
         expect(data.code).to.equal(1009);
         expect(data.reason).to.equal('Payload Too Large');
@@ -148,5 +136,5 @@ describe('Websocket Size Limit Plugin Tests', () => {
         await deleteGatewayService(serviceId);
       });
     });
-  })
-})
+  });
+});
