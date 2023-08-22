@@ -618,6 +618,26 @@ do
 end
 
 
+-- func => get_headers or get_uri_args
+-- name => "headers" or "queries"
+-- max_config_option => "lua_max_req_headers" or "lua_max_uri_args"
+local function get_http_params(func, name, max_config_option)
+  local params, err = func()
+  if err == "truncated" then
+    local max = kong and kong.configuration and kong.configuration[max_config_option] or 100
+    ngx_log(ngx_ERR,
+            string.format("router: not all request %s were read in order to determine the route " ..
+                          "as the request contains more than %d %s, " ..
+                          "route selection may be inaccurate, " ..
+                          "consider increasing the '%s' configuration value " ..
+                          "(currently at %d)",
+                          name, max, name, max_config_option, max))
+  end
+
+  return params
+end
+
+
 function _M:exec(ctx)
   local req_method = get_method()
   local req_uri = ctx and ctx.request_uri or var.request_uri
@@ -626,15 +646,7 @@ function _M:exec(ctx)
 
   local headers, headers_key
   if self.match_headers then
-    local err
-    headers, err = get_headers()
-    if err == "truncated" then
-      local lua_max_req_headers = kong and kong.configuration and kong.configuration.lua_max_req_headers or 100
-      ngx_log(ngx_ERR, "router: not all request headers were read in order to determine the route as ",
-                       "the request contains more than ", lua_max_req_headers, " headers, route selection ",
-                       "may be inaccurate, consider increasing the 'lua_max_req_headers' configuration value ",
-                       "(currently at ", lua_max_req_headers, ")")
-    end
+    headers = get_http_params(get_headers, "headers", "lua_max_req_headers")
 
     headers["host"] = nil
 
@@ -643,15 +655,7 @@ function _M:exec(ctx)
 
   local queries, queries_key
   if self.match_queries then
-    local err
-    queries, err = get_uri_args()
-    if err == "truncated" then
-      local lua_max_uri_args = kong and kong.configuration and kong.configuration.lua_max_uri_args or 100
-      ngx_log(ngx_ERR, "router: not all request queries were read in order to determine the route as ",
-                       "the request contains more than ", lua_max_uri_args, " queries, route selection ",
-                       "may be inaccurate, consider increasing the 'lua_max_uri_args' configuration value ",
-                       "(currently at ", lua_max_uri_args, ")")
-    end
+    queries = get_http_params(get_uri_args, "queries", "lua_max_uri_args")
 
     queries_key = get_queries_key(queries)
   end
@@ -678,8 +682,8 @@ function _M:exec(ctx)
 
     local err
     match_t, err = self:select(req_method, req_uri, req_host, req_scheme,
-                          nil, nil, nil, nil,
-                          sni, headers, queries)
+                               nil, nil, nil, nil,
+                               sni, headers, queries)
     if not match_t then
       if err then
         ngx_log(ngx_ERR, "router returned an error: ", err,
