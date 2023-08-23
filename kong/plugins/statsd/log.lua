@@ -1,7 +1,6 @@
 local Queue = require "kong.tools.queue"
 local constants = require "kong.plugins.statsd.constants"
 local statsd_logger = require "kong.plugins.statsd.statsd_logger"
-local ws = require "kong.workspaces"
 
 local ngx = ngx
 local kong = kong
