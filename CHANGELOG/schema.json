@@ -52,7 +52,7 @@
     },
     "jiras": {
       "type": "array",
-      "description": "List of associated Jira tickets",
+      "description": "List of associated Jira tickets for internal tracking.",
       "items": {
         "type": "string",
         "pattern": "^[A-Z]+-[0-9]+$"
