@@ -12,6 +12,7 @@ on:
 
 env:
   BUILD_ROOT: ${{ github.workspace }}/${{ inputs.relative-build-root }}
+  NGX_WASM_MODULE_REMOTE: https://github.com/fffonion/ngx_wasm_module
 
 jobs:
   build:

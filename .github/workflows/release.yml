@@ -41,6 +41,7 @@ env:
   GHA_CACHE: ${{ github.event_name == 'pull_request' }}
 
   HAS_ACCESS_TO_GITHUB_TOKEN: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') }}
+  NGX_WASM_MODULE_REMOTE: https://github.com/fffonion/ngx_wasm_module
 
 jobs:
   metadata:
