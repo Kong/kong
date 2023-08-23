@@ -274,8 +274,11 @@ function Queue:process_once()
     end
 
     if not status then
-      self:log_err("handler processed %d entries failed, err: %s", entry_count, ok)
+      -- protected call failed, ok is the error message
+      err = ok
     end
+
+    self:log_warn("handler could not process entries: %s", tostring(err or "no error details returned by handler"))
 
     if not err then
       self:log_err("handler returned falsy value but no error information")
@@ -287,8 +290,6 @@ function Queue:process_once()
         retry_count, entry_count)
       break
     end
-
-    self:log_warn("handler could not process entries: %s", tostring(err))
 
     -- Delay before retrying.  The delay time is calculated by multiplying the configured initial_retry_delay with
     -- 2 to the power of the number of retries, creating an exponential increase over the course of each retry.
