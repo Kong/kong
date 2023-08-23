@@ -1,4 +1,3 @@
-local pl_tablex = require "pl.tablex"
 local utils = require "kong.tools.utils"
 local hooks = require "kong.hooks"
 local get_certificate = require("kong.runloop.certificate").get_certificate
@@ -33,7 +32,7 @@ local is_http_module   = ngx.config.subsystem == "http"
 local CRIT = ngx.CRIT
 local ERR = ngx.ERR
 local WARN = ngx.WARN
-local EMPTY_T = pl_tablex.readonly {}
+local EMPTY_T = require("kong.constants").EMPTY_TABLE
 
 
 local set_authority
