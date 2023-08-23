@@ -1,4 +1,4 @@
-#!/usr/bin/env lua
+#!/usr/bin/env luajit
 
 local pl_template = require "pl.template"
 local pl_tablex = require "pl.tablex"
