@@ -40,6 +40,8 @@
   [#11385](https://github.com/Kong/kong/pull/11385)
 - Fix cache warmup mechanism not working in `acls` plugin groups config entity scenario.
   [#11414](https://github.com/Kong/kong/pull/11414)
+- Fix an issue that queue stops processing when a hard error is encountered in the handler function.
+  [#11423](https://github.com/Kong/kong/pull/11423)
 
 #### Plugins
 

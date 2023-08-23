@@ -267,11 +267,19 @@ function Queue:process_once()
   local retry_count = 0
   while true do
     self:log_debug("passing %d entries to handler", entry_count)
-    ok, err = self.handler(self.handler_conf, batch)
-    if ok then
-      self:log_debug("handler processed %d entries sucessfully", entry_count)
+    local status
+    status, ok, err = pcall(self.handler, self.handler_conf, batch)
+    if status and ok == true then
+      self:log_debug("handler processed %d entries successfully", entry_count)
       break
     end
+
+    if not status then
+      -- protected call failed, ok is the error message
+      err = ok
+    end
+
+    self:log_warn("handler could not process entries: %s", tostring(err or "no error details returned by handler"))
 
     if not err then
       self:log_err("handler returned falsy value but no error information")
@@ -283,8 +291,6 @@ function Queue:process_once()
         retry_count, entry_count)
       break
     end
-
-    self:log_warn("handler could not process entries: %s", tostring(err))
 
     -- Delay before retrying.  The delay time is calculated by multiplying the configured initial_retry_delay with
     -- 2 to the power of the number of retries, creating an exponential increase over the course of each retry.
