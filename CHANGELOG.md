@@ -81,17 +81,6 @@
 
 - '/schemas' endpoint returns additional information about cross-field validation as part of the schema. This should help tools that use the Admin API to perform better client-side validation.
 
-#### Plugins
-
-- Validation for queue related parameters has been
-  improved. `max_batch_size`, `max_entries` and `max_bytes` are now
-  `integer`s instead of `number`s.  `initial_retry_delay` and
-  `max_retry_delay` must now be `number`s greater than 0.001
-  (seconds).
-  [#10840](https://github.com/Kong/kong/pull/10840)
-- **Acme**: Fixed string concatenation on cert renewal errors
-  [#11364](https://github.com/Kong/kong/pull/11364)
-
 ### Additions
 
 #### Core
@@ -203,6 +192,14 @@
   [#10559](https://github.com/Kong/kong/pull/10559)
 - **Zipkin**: Fixed an issue that traces not being generated correctly when instrumentations are enabled.
   [#10983](https://github.com/Kong/kong/pull/10983)
+- **Acme**: Fixed string concatenation on cert renewal errors
+  [#11364](https://github.com/Kong/kong/pull/11364)
+- Validation for queue related parameters has been
+  improved. `max_batch_size`, `max_entries` and `max_bytes` are now
+  `integer`s instead of `number`s.  `initial_retry_delay` and
+  `max_retry_delay` must now be `number`s greater than 0.001
+  (seconds).
+  [#10840](https://github.com/Kong/kong/pull/10840)
 
 #### PDK
 
