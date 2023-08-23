@@ -77,6 +77,20 @@ def _check_sanity(ctx):
                  "The following command is useful to check if Xcode is picked up by Bazel:\n" +
                  "eval `find /private/var/tmp/_bazel_*/|grep xcode-locator|head -n1`")
 
+        python = ctx.execute(["which", "python"]).stdout.strip()
+        if not python:
+            fail("rules_foreign_cc hasn't migrated to python3 on macOS yet, and your system doens't \n" +
+                 "have a `python` binary. Consider create a symlink to `python3` and include in PATH:\n" +
+                 "ln -s `which python3` /usr/local/bin/python\n" +
+                 "export PATH=/usr/local/bin:$PATH bazel build <target>\n")
+
+    user = ctx.os.environ.get("USER", "")
+    if "@" in user:
+        fail("Bazel uses $USER in cache and rule_foreign_cc uses `@` in its sed command.\n" +
+             "However, your username contains a `@` character, which will cause build failure.\n" +
+             "Please rerun this build with:\n" +
+             "export USER=" + user.replace("@", "_") + " bazel build <target>")
+
 def _load_bindings_impl(ctx):
     _check_sanity(ctx)
 
