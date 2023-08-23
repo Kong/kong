@@ -30,13 +30,13 @@ function get_current_version() {
     then
         echo $version_from_rockspec-ubuntu
     else
-        echo latest-ubuntu
+        echo master-ubuntu
     fi
 }
 
 export OLD_KONG_VERSION=next/2.8.x.x
-export OLD_KONG_IMAGE=kong/kong-gateway:2.8-ubuntu
-export NEW_KONG_IMAGE=kong/kong-gateway:$(get_current_version kong)
+export OLD_KONG_IMAGE=kong/kong-gateway-dev:next-2.8.x.x-ubuntu
+export NEW_KONG_IMAGE=kong/kong-gateway-dev:$(get_current_version kong)
 
 function usage() {
     cat 1>&2 <<EOF
