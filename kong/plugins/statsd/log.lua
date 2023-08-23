@@ -129,11 +129,10 @@ local get_service_id = {
 
 local get_workspace_id = {
   workspace_id   = function()
-    return ws.get_workspace_id()
+    return kong.default_workspace
   end,
   workspace_name = function()
-    local workspace = ws.get_workspace()
-    return workspace.name
+    return "default"
   end
 }
 
