@@ -256,7 +256,8 @@ do
     return byte(path) == TILDE
   end
 
-  local empty_table = {}
+  local empty_table = constants.EMPTY_TABLE
+
   -- reuse tables to avoid cost of creating tables and garbage collection
   local protocols = {
     http            = 0, -- { "http", "https" },
