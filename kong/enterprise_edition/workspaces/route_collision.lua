@@ -216,11 +216,11 @@ end
 -- collide.
 local function is_route_crud_allowed_smart(req, router)
   router = router or runloop.get_router()
-  local params = req.params
+  local args = req.args and req.args.post or {}
 
   local methods, uris, headers, snis
 
-  local route_id_or_name = params.routes
+  local route_id_or_name = req.params.routes
   local ws = workspaces.get_workspace()
   if route_id_or_name then
     if type(route_id_or_name) == "table" then
@@ -250,15 +250,15 @@ local function is_route_crud_allowed_smart(req, router)
     end
 
     methods, uris, headers, snis = sanitize_routes_ngx_nulls(
-      params.methods or (route and route.methods),
-      params.paths or (route and route.paths),
-      params.headers or (route and route.headers),
-      params.snis or (route and route.snis)
+      args.methods or (route and route.methods),
+      args.paths or (route and route.paths),
+      args.headers or (route and route.headers),
+      args.snis or (route and route.snis)
     )
 
   else
     methods, uris, headers, snis = sanitize_routes_ngx_nulls(
-      params.methods, params.paths, params.headers, params.snis
+      args.methods, args.paths, args.headers, args.snis
     )
   end
 
@@ -267,7 +267,7 @@ local function is_route_crud_allowed_smart(req, router)
 
     NOTE: PATCH, POST, and PUT all populate req.args.post table
   --]]
-  local hosts = req.args and req.args.post and req.args.post.hosts
+  local hosts = args.hosts
   hosts = sanitize_route_param(type(hosts) == "string" and { hosts } or hosts)
 
   for perm in permutations(methods and values(methods) or split(ALL_METHODS),
