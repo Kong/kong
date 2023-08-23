@@ -24,6 +24,7 @@ Sample 1
 ```yaml
 message: Introduce the request id as core feature.
 type: feat
+scope: Core
 prs:
   - 11308
 ```
