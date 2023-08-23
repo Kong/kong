@@ -77,10 +77,6 @@
 
 - **CentOS packages are now removed from the release and are no longer supported in future versions.**
 
-#### Core
-
-- '/schemas' endpoint returns additional information about cross-field validation as part of the schema. This should help tools that use the Admin API to perform better client-side validation.
-
 ### Additions
 
 #### Core
@@ -91,6 +87,9 @@
   [#11244](https://github.com/Kong/kong/pull/11244)
 - Add beta support for WebAssembly/proxy-wasm
   [#11218](https://github.com/Kong/kong/pull/11218)
+- '/schemas' endpoint returns additional information about cross-field validation as part of the schema.
+  This should help tools that use the Admin API to perform better client-side validation.
+  [#11108](https://github.com/Kong/kong/pull/11108)
 
 #### Admin API
 
