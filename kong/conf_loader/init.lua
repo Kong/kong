@@ -156,7 +156,7 @@ local HEADER_KEY_TO_NAME = {
 }
 
 
-local EMPTY = {}
+local EMPTY = constants.EMPTY_TABLE
 
 
 -- NOTE! Prefixes should always follow `nginx_[a-z]+_`.
