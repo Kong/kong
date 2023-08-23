@@ -1667,7 +1667,7 @@ local config = {
             },
           },
           {
-            expose_error_code = {
+            expose_error_code = { description = "Specifies whether to expose the error code header, as defined in RFC 6750. If an authorization request fails, this header is sent in the response. Set to `false` to disable.",
               type = "boolean",
               default = true,
             },
