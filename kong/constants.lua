@@ -245,6 +245,9 @@ local constants = {
   DYN_LOG_LEVEL_TIMEOUT_AT_KEY = "kong:dyn_log_level_timeout_at",
 
   ADMIN_GUI_KCONFIG_CACHE_KEY = "admin:gui:kconfig",
+
+  EMPTY_TABLE = setmetatable({},
+      {__newindex = function() error("The 'EMPTY' table is read-only") end}),
 }
 
 for _, v in ipairs(constants.CLUSTERING_SYNC_STATUS) do
