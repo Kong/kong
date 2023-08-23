@@ -31,8 +31,7 @@ local ERR = ngx.ERR
 local WARN = ngx.WARN
 
 local SRV_0_WEIGHT = 1      -- SRV record with weight 0 should be hit minimally, hence we replace by 1
-local EMPTY = setmetatable({},
-  {__newindex = function() error("The 'EMPTY' table is read-only") end})
+local EMPTY = require("kong.constants").EMPTY_TABLE
 local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 
 -- global binary heap for all balancers to share as a single update timer for
