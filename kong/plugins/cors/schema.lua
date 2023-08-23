@@ -31,7 +31,7 @@ return {
     { config = {
         type = "record",
         fields = {
-          { origins = { description = "List of allowed domains for the `Access-Control-Allow-Origin` header. If you want to allow all origins, add `*` as a single value to this configuration field. The accepted values can either be flat strings or PCRE regexes.", type = "array",
+          { origins = { description = "List of allowed domains for the `Access-Control-Allow-Origin` header. If you want to allow all origins, add `"*"` as a single value to this configuration field. The accepted values can either be flat strings or PCRE regexes.", type = "array",
               elements = {
                 type = "string",
                 custom_validator = validate_asterisk_or_regex,
