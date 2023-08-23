@@ -202,12 +202,11 @@ function HttpLogHandler:log(conf)
     local response_get_header = kong.response.get_header
     for _, header_name in ipairs(conf.logged_headers_allow_list) do
       local request_header_val = request_get_header(header_name)
-      local response_header_val = response_get_header(header_name)
-
       if request_header_val then
         set_serialize_value("request.headers." .. header_name, request_header_val)
       end
 
+      local response_header_val = response_get_header(header_name)
       if response_header_val then
         set_serialize_value("response.headers." .. header_name, response_header_val)
       end
