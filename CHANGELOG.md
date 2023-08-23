@@ -91,13 +91,9 @@
   This should help tools that use the Admin API to perform better client-side validation.
   [#11108](https://github.com/Kong/kong/pull/11108)
 
-#### Admin API
-
 #### Kong Manager
 - First release of the Kong Manager Open Source Edition.
   [#11131](https://github.com/Kong/kong/pull/11131)
-
-#### Status API
 
 #### Plugins
 
@@ -110,8 +106,6 @@
 - **Ip-Restriction**: Add TCP support to the plugin.
   Thanks [@scrudge](https://github.com/scrudge) for contributing this change.
   [#10245](https://github.com/Kong/kong/pull/10245)
-
-#### PDK
 
 #### Performance
 
@@ -200,8 +194,6 @@
   (seconds).
   [#10840](https://github.com/Kong/kong/pull/10840)
 
-#### PDK
-
 ### Changed
 
 #### Core
@@ -225,10 +217,6 @@
 - Remove the database information from the status API when operating in dbless
   mode or data plane.
   [#10995](https://github.com/Kong/kong/pull/10995)
-
-#### PDK
-
-#### Plugins
 
 ### Dependencies
 
