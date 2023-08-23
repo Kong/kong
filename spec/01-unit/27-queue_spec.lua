@@ -321,19 +321,24 @@ describe("plugin queue", function()
   end)
 
   it("gives up sending after retrying", function()
-    Queue.enqueue(
-      queue_conf({
-        name = "retry-give-up",
-        max_batch_size = 1,
-        max_retry_time = 1,
-        max_coalescing_delay = 0.1,
-      }),
-      function()
-        return false, "FAIL FAIL FAIL"
-      end,
-      nil,
-      "Hello"
-    )
+    local function enqueue(entry)
+      Queue.enqueue(
+        queue_conf({
+          name = "retry-give-up",
+          max_batch_size = 1,
+          max_retry_time = 1,
+          max_coalescing_delay = 0.1,
+        }),
+        function()
+          return false, "FAIL FAIL FAIL"
+        end,
+        nil,
+        entry
+      )
+    end
+
+    enqueue("Hello")
+    enqueue("another value")
     wait_until_queue_done("retry-give-up")
     assert.match_re(log_messages, 'WARN .* handler could not process entries: FAIL FAIL FAIL')
     assert.match_re(log_messages, 'ERR .*1 queue entries were lost')
@@ -403,6 +408,41 @@ describe("plugin queue", function()
     wait_until_queue_done("capacity-exceeded")
     assert.equal("Six", processed[1])
     assert.match_re(log_messages, "INFO .*queue resumed processing")
+  end)
+
+  it("queue does not fail for max batch size = max entries", function()
+    local fail_process = true
+    local function enqueue(entry)
+      Queue.enqueue(
+        queue_conf({
+          name = "capacity-exceeded",
+          max_batch_size = 2,
+          max_entries = 2,
+          max_coalescing_delay = 0.1,
+        }),
+        function(_, batch)
+          ngx.sleep(1)
+          if fail_process then
+            return false, "FAIL FAIL FAIL"
+          end
+          return true
+        end,
+        nil,
+        entry
+      )
+    end
+    -- enqueue 2 entries, enough for first batch
+    for i = 1, 2 do
+      enqueue("initial batch: " .. tostring(i))
+    end
+    -- wait for max_coalescing_delay such that the first batch is processed (and will be stuck in retry loop, as our handler always fails)
+    ngx.sleep(0.1)
+    -- fill in some more entries
+    for i = 1, 2 do
+      enqueue("fill up: " .. tostring(i))
+    end
+    fail_process = false
+    wait_until_queue_done("capacity-exceeded")
   end)
 
   it("drops entries when it reaches its max_bytes", function()

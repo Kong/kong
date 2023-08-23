@@ -1,6 +1,5 @@
 load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make")
-
-# load("@rules_foreign_cc//foreign_cc:defs.bzl", "make")
+load("@kong//build:build_system.bzl", "kong_template_genrule")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 
 filegroup(
@@ -11,9 +10,9 @@ filegroup(
     ),
 )
 
-# This rules is used to install luarocks to install rockspecs
-# we need a different rule to install luarocks in release artifact
-# so that we got correct interpreter path etc.
+# This rules is used to bootstrap luarocks to install rocks dependencies
+# A different rule is used to install luarocks in the release artifact
+# so that we got correct interpreter path, lua paths, etc.
 configure_make(
     name = "luarocks_host",
     configure_command = "configure",
@@ -37,102 +36,27 @@ configure_make(
     ],
 )
 
-# TODO: set cross compile CC/LD in luarocks_make
-
-genrule(
+kong_template_genrule(
     name = "luarocks_exec",
     srcs = [
-        "@openssl",
-        "@libexpat",
+        "@openssl//:openssl",
+        "@libexpat//:libexpat",
     ] + select({
         "@kong//:any-cross": ["@cross_deps_libyaml//:libyaml"],
         "//conditions:default": [
-            ":luarocks_host",
+            "@luarocks//:luarocks_host",
             "@openresty//:luajit",
         ],
     }),
-    outs = ["luarocks_exec.sh"],
-    cmd = ("LIB_RPATH='%s'/kong/lib" % KONG_VAR["INSTALL_DESTDIR"]) +
-          """
-WORKSPACE_PATH=$$(pwd)
-ROCKS_DIR=$$WORKSPACE_PATH/$$(dirname $@)/luarocks_tree
-if [ ! -d $$ROCKS_DIR ]; then
-    mkdir -p $$ROCKS_DIR
-fi
-# pre create the dir and file so bsd readlink is happy
-mkdir -p "$$ROCKS_DIR/../cache"
-CACHE_DIR=$$(readlink -f "$$ROCKS_DIR/../cache")
-touch "$$ROCKS_DIR/../luarocks_config.lua"
-ROCKS_CONFIG=$$(readlink -f "$$ROCKS_DIR/../luarocks_config.lua")
-
-OPENSSL_DIR=$$WORKSPACE_PATH/$$(echo '$(locations @openssl)' | awk '{print $$1}')
-EXPAT_DIR=$$WORKSPACE_PATH/$$(echo '$(locations @libexpat)' | awk '{print $$1}')
-
-# we use system libyaml on macos
-if [[ "$$OSTYPE" == "darwin"* ]]; then
-    YAML_DIR=$$(HOME=~$$(whoami) brew --prefix)/opt/libyaml
-elif [[ -d $$WORKSPACE_PATH/$(BINDIR)/external/cross_deps_libyaml/libyaml ]]; then
-    # TODO: is there a good way to use locations but doesn't break non-cross builds?
-    YAML_DIR=$$WORKSPACE_PATH/$(BINDIR)/external/cross_deps_libyaml/libyaml
-else
-    YAML_DIR=/usr
-fi
-
-CC=$(CC)
-LD=$(CC) # yes, not a typo
-if [[ $$CC != /* ]]; then
-    # point to our relative path of musl toolchain
-    CC=$$WORKSPACE_PATH/$$CC
-    LD=$$WORKSPACE_PATH/$$LD
-fi
-
-echo "
-rocks_trees = {
-    { name = [[system]], root = [[$$ROCKS_DIR]] }
-}
-local_cache = '$$CACHE_DIR'
-gcc_rpath = false -- disable default rpath, add our own
-variables = {
-    CC = '$$CC',
-    LD = '$$LD',
-    LDFLAGS = '-Wl,-rpath,$$LIB_RPATH',
-}
-" > $$ROCKS_CONFIG
-
-LUAROCKS_HOST=$$(echo '$(locations :luarocks_host)' | awk '{print $$1}')
-
-host_luajit=$$WORKSPACE_PATH/$$(echo $(locations @openresty//:luajit) | awk '{{print $$1}}')/bin/luajit
-
-cat << EOF > $@
-LIB_RPATH=$$LIB_RPATH
-WORKSPACE_PATH=$$WORKSPACE_PATH
-LUAROCKS_HOST=$$LUAROCKS_HOST
-ROCKS_DIR=$$ROCKS_DIR
-CACHE_DIR=$$CACHE_DIR
-ROCKS_CONFIG=$$ROCKS_CONFIG
-
-export LUAROCKS_CONFIG=$$ROCKS_CONFIG
-export CC=$$CC
-export LD=$$LD
-export EXT_BUILD_ROOT=$$WORKSPACE_PATH # for musl
-
-# force the interpreter here instead of invoking luarocks directly,
-# some distros has BINPRM_BUF_SIZE smaller than the shebang generated,
-# which is usually more than 160 bytes
-$$host_luajit $$WORKSPACE_PATH/$$LUAROCKS_HOST/bin/luarocks \\$$@ \\
-    OPENSSL_DIR=$$OPENSSL_DIR \\
-    CRYPTO_DIR=$$OPENSSL_DIR \\
-    EXPAT_DIR=$$EXPAT_DIR \\
-    YAML_DIR=$$YAML_DIR
-EOF
-""",
-    executable = True,
-    toolchains = [
-        "@bazel_tools//tools/cpp:current_cc_toolchain",
-    ],
+    is_executable = True,
+    output = "luarocks_exec.sh",
+    substitutions = {
+        "{{lib_rpath}}": "%s/kong/lib" % KONG_VAR["INSTALL_DESTDIR"],
+    },
+    template = "@//build/luarocks:templates/luarocks_exec.sh",
     tools = select({
         "@kong//:any-cross": [
-            ":luarocks_host",
+            "@luarocks//:luarocks_host",
             "@openresty//:luajit",
         ],
         "//conditions:default": [],
@@ -140,109 +64,45 @@ EOF
     visibility = ["//visibility:public"],
 )
 
-genrule(
+kong_template_genrule(
     name = "luarocks_make",
     srcs = [
         "@kong//:rockspec_srcs",
-        ":luarocks_exec",
-        ":luarocks_target",  # to avoid concurrency issue, run this after luarocks_target
+        "@luarocks//:luarocks_exec",
+        "@luarocks//:luarocks_target",  # to avoid concurrency issue, run this after luarocks_target
     ],
-    outs = ["luarocks_make.log"],
-    cmd = """
-        if [[ "$$OSTYPE" == "darwin"* ]]; then
-            export DEVELOPER_DIR=$$(xcode-select -p)
-            export SDKROOT=$$(xcrun --sdk macosx --show-sdk-path)
-        fi
-        mkdir -p $$(dirname $@)
-        # lyaml needs this and doesn't honor --no-doc
-        # the alternate will populate a non-existent HOME
-        # env var just to let ldoc happy
-        # alias LDOC command to true(1) command
-        export LDOC=true
-
-        $(location :luarocks_exec) make --no-doc 2>&1 >$@.tmp
-
-        # only generate the output when the command succeeds
-        mv $@.tmp $@
-    """,
+    is_executable = True,
+    output = "luarocks_make.log",
+    progress_message = "Luarocks: Install Kong rocks dependencies",
+    template = "@//build/luarocks:templates/luarocks_make.sh",
     visibility = ["//visibility:public"],
 )
 
 # install luarocks itself in target configuration
-genrule(
+kong_template_genrule(
     name = "luarocks_target",
-    srcs = [
-        ":luarocks_exec",
-    ] + select({
+    srcs = [":luarocks_exec"] + select({
         "@kong//:any-cross": [],
         "//conditions:default": [
-            ":luarocks_host",
+            "@luarocks//:luarocks_host",
             "@openresty//:luajit",
         ],
     }),
-    outs = ["luarocks_target.log"],
-    cmd = """
-    build_destdir={build_destdir}
-    install_destdir={install_destdir}
-    luarocks_version={luarocks_version}
-    workspace_path={workspace_path}
-    """.format(
-              build_destdir = KONG_VAR["BUILD_DESTDIR"],
-              install_destdir = KONG_VAR["INSTALL_DESTDIR"],
-              luarocks_version = KONG_VAR["LUAROCKS"],
-              workspace_path = KONG_VAR["WORKSPACE_PATH"],
-          ) +
-          """
-        mkdir -p $$(dirname $@)
-
-        # install luarocks
-        $(location :luarocks_exec) install "luarocks $${luarocks_version}" 2>&1 >$@.tmp
-
-        # use host configuration to invoke luarocks API to wrap a correct bin/luarocks script
-        rocks_tree=$${workspace_path}/$$(dirname '$(location @luarocks//:luarocks_exec)')/luarocks_tree
-        host_luajit=$${workspace_path}/$$(echo $(locations @openresty//:luajit) | awk '{{print $$1}}')/bin/luajit
-
-        host_luarocks_tree=$$(echo '$(locations luarocks_host)' | awk '{print $$1}')
-        export LUA_PATH="$${build_destdir}/share/lua/5.1/?.lua;$${build_destdir}/share/lua/5.1/?/init.lua;$${host_luarocks_tree}/share/lua/5.1/?.lua;$${host_luarocks_tree}/share/lua/5.1/?/init.lua;;"
-
-        ROCKS_CONFIG="luarocks_make_config.lua"
-        cat << EOF > $$ROCKS_CONFIG
-rocks_trees = {
-    { name = [[system]], root = [[$$rocks_tree]] }
-}
-EOF
-        export LUAROCKS_CONFIG=$$ROCKS_CONFIG
-
-        $${host_luajit} $(location @kong//build/luarocks:luarocks_wrap_script.lua) \
-                    luarocks $${rocks_tree} $${install_destdir} 2>&1 >>$@.tmp
-
-        # write the luarocks config with host configuration
-        mkdir -p $$rocks_tree/etc/luarocks
-        cat << EOF > $$rocks_tree/etc/luarocks/config-5.1.lua
--- LuaRocks configuration
-rocks_trees = {
-    { name = "user", root = home .. "/.luarocks" };
-    { name = "system", root = "$${install_destdir}" };
-}
-lua_interpreter = "luajit";
-variables = {
-    LUA_DIR = "$${install_destdir}/openresty/luajit";
-    LUA_INCDIR = "$${install_destdir}/openresty/luajit/include/luajit-2.1";
-    LUA_BINDIR = "$${install_destdir}/openresty/luajit/bin";
-}
-EOF
-
-        # TODO: this still doesn't work
-        sed -i -e "s|$$rocks_tree|$$install_destdir|g" $$rocks_tree/bin/luarocks
-
-        # only generate the output when the command succeeds
-        mv $@.tmp $@
-    """,
+    is_executable = True,
+    output = "luarocks_target.log",
+    progress_message = "Luarocks: Install luarocks on target system",
+    substitutions = {
+        "{{build_destdir}}": KONG_VAR["BUILD_DESTDIR"],
+        "{{install_destdir}}": KONG_VAR["INSTALL_DESTDIR"],
+        "{{luarocks_version}}": KONG_VAR["LUAROCKS"],
+        "{{workspace_path}}": KONG_VAR["WORKSPACE_PATH"],
+    },
+    template = "@//build/luarocks:templates/luarocks_target.sh",
     tools = [
-        "@kong//build/luarocks:luarocks_wrap_script.lua",
+        "@//build/luarocks:luarocks_wrap_script.lua",
     ] + select({
-        "@kong//:any-cross": [
-            ":luarocks_host",
+        "@//:any-cross": [
+            "@luarocks//:luarocks_host",
             "@openresty//:luajit",
         ],
         "//conditions:default": [],

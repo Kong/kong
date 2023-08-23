@@ -1,14 +1,12 @@
 """A module defining the third party dependency luarocks"""
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 
 def luarocks_repositories():
     version = KONG_VAR["LUAROCKS"]
 
-    maybe(
-        http_archive,
+    http_archive(
         name = "luarocks",
         build_file = "//build/luarocks:BUILD.luarocks.bazel",
         strip_prefix = "luarocks-" + version,

@@ -20,6 +20,10 @@
   underlying AWS library. The refactor simplifies the AWS-Lambda plugin code base and
   adding support for multiple IAM authenticating scenarios.
   [#11350](https://github.com/Kong/kong/pull/11350)
+- **OpenTelemetry** and **Zipkin**: Support GCP X-Cloud-Trace-Context header
+  The field `header_type` now accepts the value `gcp` to propagate the
+  Google Cloud trace header
+  [#11254](https://github.com/Kong/kong/pull/11254)
 
 ### Fixes
 
@@ -45,6 +49,8 @@
   [#11342](https://github.com/Kong/kong/pull/11342)
 - When the worker is in shutdown mode and more data is immediately available without waiting for `max_coalescing_delay`, queues are now cleared in batches.
   [#11376](https://github.com/Kong/kong/pull/11376)
+- A race condition in the plugin queue could potentially crash the worker when `max_entries` was set to `max_batch_size`.
+  [#11378](https://github.com/Kong/kong/pull/11378)
 - **AWS-Lambda**: fix an issue that the AWS-Lambda plugin cannot extract a json encoded proxy integration response.
   [#11413](https://github.com/Kong/kong/pull/11413)
 
@@ -150,6 +156,10 @@
   [#11066](https://github.com/Kong/kong/pull/11066)
 - Fix a bug that caused sampling rate to be applied to individual spans producing split traces.
   [#11135](https://github.com/Kong/kong/pull/11135)
+- Fix a bug that caused spans to not be instrumented with http.status_code when the request was not proxied to an upstream.
+  Thanks [@backjo](https://github.com/backjo) for contributing this change.
+  [#11152](https://github.com/Kong/kong/pull/11152),
+  [#11406](https://github.com/Kong/kong/pull/11406)
 - Fix a bug that caused the router to fail in `traditional_compatible` mode when a route with multiple paths and no service was created.
   [#11158](https://github.com/Kong/kong/pull/11158)
 - Fix an issue where the router of flavor `expressions` can not work correctly
@@ -179,6 +189,8 @@
 - Fix an issue where `/schemas/plugins/validate` endpoint fails to validate valid plugin configuration
   when the key of `custom_fields_by_lua` contains dot character(s).
   [#11091](https://github.com/Kong/kong/pull/11091)
+- Fix an issue with the `/tags/:tag` Admin API returning a JSON object (`{}`) instead of an array (`[]`) for empty data sets.
+  [#11213](https://github.com/Kong/kong/pull/11213)
 
 #### Plugins
 
@@ -248,6 +260,8 @@
   [#11071](https://github.com/Kong/kong/pull/11071)
 - Bumped lua-resty-lmdb from 1.1.0 to 1.3.0
   [#11227](https://github.com/Kong/kong/pull/11227)
+- Bumped lua-ffi-zlib from 0.5 to 0.6
+  [#11373](https://github.com/Kong/kong/pull/11373)
 
 ### Known Issues
 - Some referenceable configuration fields, such as the `http_endpoint` field

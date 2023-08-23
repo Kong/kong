@@ -75,6 +75,7 @@ return {
             elements = { type = "string" },
           }},
           { response_headers = {
+            description = "Caching related diagnostic headers that should be included in cached responses",
             type = "record",
             fields = {
               { age  = {type = "boolean",  default = true} },
