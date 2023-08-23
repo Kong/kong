@@ -8,6 +8,7 @@
 local resty_sha256 = require "resty.sha256"
 local resty_str = require "resty.string"
 local meta = require "kong.meta"
+local helpers = require "kong.enterprise_edition.consumer_groups_helpers"
 
 
 local tostring = tostring
@@ -137,6 +138,13 @@ function KonnectApplicationAuthHandler:access(plugin_conf)
 
   if not is_authorized(application, plugin_conf.scope) then
     return kong.response.error(403, "You cannot consume this service")
+  end
+
+  if application.consumer_group and application.consumer_group ~= '' then
+    local consumer_group = helpers.get_consumer_group(application.consumer_group)
+    if consumer_group then
+      kong.client.set_authenticated_consumer_groups({consumer_group})
+    end
   end
 end
 
