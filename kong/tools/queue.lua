@@ -147,6 +147,7 @@ local function get_or_create_queue(queue_conf, handler, handler_conf)
   for option, value in pairs(queue_conf) do
     queue[option] = value
   end
+
   queue = setmetatable(queue, Queue_mt)
 
   kong.timer:named_at("queue " .. key, 0, function(_, q)
