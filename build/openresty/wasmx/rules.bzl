@@ -23,16 +23,44 @@ wasmx_configure_options = select({
         "--add-dynamic-module=$$EXT_BUILD_ROOT$$/external/ngx_wasm_module",
     ],
     "//conditions:default": [],
+}) + select({
+    "@kong//build/openresty/wasmx:needs_ngx_wasm_rs": [
+        "--with-cc-opt=\"-I$$EXT_BUILD_ROOT$$/external/ngx_wasm_module/lib/ngx-wasm-rs/include\"",
+        "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/lib -lngx_wasm_rs\"",
+    ],
+    "//conditions:default": {},
+})
+
+wasmx_data = select({
+    "@kong//:wasmx_flag": [
+        "@ngx_wasm_module//:nginx_module_srcs",
+        # wasm_runtime has to be a "data" (target) instead of "build_data" (exec)
+        # to be able to lookup by its path (relative to INSTALLDIR)
+        "@kong//build/openresty/wasmx:wasm_runtime",
+    ],
+    "//conditions:default": [],
+}) + select({
+    "@kong//build/openresty/wasmx:use_v8": [
+        "@kong//build/openresty/wasmx:wasmx_v8_ar",
+    ],
+    "//conditions:default": [],
+}) + select({
+    "@kong//build/openresty/wasmx:needs_ngx_wasm_rs": [
+        "@ngx_wasm_module//:ngx_wasm_rs_headers",
+    ],
+    "//conditions:default": {},
 })
 
 wasmx_env = select({
     "@kong//build/openresty/wasmx:use_v8": {
         "NGX_WASM_RUNTIME": "v8",
-        # see the above comments and source for this dummy ar script
-        "AR": "$(execpath @kong//build/openresty:wasmx/wasmx_v8_ar)",
+        "NGX_WASM_CARGO": "0",
+        # see the comments and source in BUILD.bazel for this dummy ar script
+        "AR": "$(execpath @kong//build/openresty/wasmx:wasmx_v8_ar)",
     },
     "@kong//build/openresty/wasmx:use_wasmer": {
         "NGX_WASM_RUNTIME": "wasmer",
+        "NGX_WASM_CARGO": "0",
     },
     "@kong//build/openresty/wasmx:use_wasmtime": {
         "NGX_WASM_RUNTIME": "wasmtime",
@@ -40,10 +68,17 @@ wasmx_env = select({
     "//conditions:default": {},
 }) | select({
     "@kong//:wasmx_flag": {
-        "NGX_WASM_RUNTIME_LIB": "$$INSTALLDIR/../wasm_runtime/lib",
-        "NGX_WASM_RUNTIME_INC": "$$INSTALLDIR/../wasm_runtime/include",
+        "NGX_WASM_RUNTIME_LIB": "$$EXT_BUILD_ROOT$$/$(BINDIR)/build/openresty/wasmx/wasm_runtime/lib",
+        "NGX_WASM_RUNTIME_INC": "$$EXT_BUILD_ROOT$$/$(BINDIR)/build/openresty/wasmx/wasm_runtime/include",
     },
     "//conditions:default": {},
+})
+
+wasmx_deps = select({
+    "@kong//build/openresty/wasmx:needs_ngx_wasm_rs": [
+        "@ngx_wasm_module//:ngx_wasm_rs_shared",
+    ],
+    "//conditions:default": [],
 })
 
 def _wasm_runtime_link_impl(ctx):

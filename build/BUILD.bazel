@@ -55,16 +55,14 @@ install_wasm_deps_cmd = select({
         mkdir -p "$(dirname "$dest")"
         cp -v "$fname" "$dest"
     done
-
-    if [[ -d ${BUILD_DESTDIR}/openresty/nginx/lib ]]; then
-        # both v8 and wasmer currently depend on openresty/nginx/lib/libngx_wasm_rs.so,
-        # but in the case of wasmtime it is statically linked and thus not needed in
-        # the final package
-        if [[ -e ${BUILD_DESTDIR}/openresty/nginx/lib/libngx_wasm_rs.so ]]; then
-            copy_with_filter ${BUILD_DESTDIR}/openresty/nginx/lib ${BUILD_DESTDIR}/kong/lib
-        fi
-        rm -rf ${BUILD_DESTDIR}/openresty/nginx/lib
-    fi
+""",
+    "//conditions:default": "\n",
+}) + select({
+    "@kong//build/openresty/wasmx:needs_ngx_wasm_rs": """
+    # both v8 and wasmer currently depend on openresty/nginx/lib/libngx_wasm_rs.so,
+    # but in the case of wasmtime it is statically linked and thus not needed in
+    # the final package
+    cp $(location @ngx_wasm_module//:ngx_wasm_rs) ${BUILD_DESTDIR}/kong/lib
 """,
     "//conditions:default": "\n",
 })
@@ -98,7 +96,12 @@ kong_directory_genrule(
     }) + select({
         "@kong//:wasmx_flag": [
             "@ngx_wasm_module//:lua_libs",
-            "@openresty//:wasm_runtime",
+            "@kong//build/openresty/wasmx:wasm_runtime",
+        ],
+        "//conditions:default": [],
+    }) + select({
+        "@kong//build/openresty/wasmx:needs_ngx_wasm_rs": [
+            "@ngx_wasm_module//:ngx_wasm_rs",
         ],
         "//conditions:default": [],
     }) + lib_deps + lualib_deps,

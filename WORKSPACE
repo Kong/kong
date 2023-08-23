@@ -52,6 +52,18 @@ load("@atc_router//build:crates.bzl", "atc_router_crates")
 
 atc_router_crates()
 
+load("@ngx_wasm_module//build:repos.bzl", "ngx_wasm_module_repositories")
+
+ngx_wasm_module_repositories()
+
+load("@ngx_wasm_module//build:deps.bzl", "ngx_wasm_module_dependencies")
+
+ngx_wasm_module_dependencies(cargo_home_isolated = False)  # TODO: set cargo_home_isolated=True for release
+
+load("@ngx_wasm_module//build:crates.bzl", "ngx_wasm_module_crates")
+
+ngx_wasm_module_crates()
+
 load("//build:repositories.bzl", "build_repositories")
 
 build_repositories()

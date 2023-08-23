@@ -1,6 +1,6 @@
 """A module defining the third party dependency WasmX"""
 
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 
@@ -53,29 +53,10 @@ wasm_runtimes = {
 }
 
 def wasmx_repositories():
-    new_git_repository(
+    git_repository(
         name = "ngx_wasm_module",
         branch = KONG_VAR["NGX_WASM_MODULE"],
         remote = KONG_VAR["NGX_WASM_MODULE_REMOTE"],
-        build_file_content = """
-filegroup(
-    name = "all_srcs",
-    srcs = glob(["src/**"]),
-    visibility = ["//visibility:public"]
-)
-
-filegroup(
-    name = "lua_libs",
-    srcs = glob(["lib/resty/**"]),
-    visibility = ["//visibility:public"]
-)
-
-filegroup(
-    name = "v8bridge_srcs",
-    srcs = glob(["lib/v8bridge/**"]),
-    visibility = ["//visibility:public"]
-)
-""",
     )
 
     wasmtime_version = KONG_VAR["WASMTIME"]
@@ -110,8 +91,10 @@ filegroup(
             if os == "macos":
                 url_os = "darwin"
             url_arch = arch
-            if arch == "aarch64" and os == "macos":
+            if arch == "aarch64":
                 url_arch = "arm64"
+            elif arch == "x86_64":
+                url_arch = "amd64"
 
             http_archive(
                 name = "wasmer-%s-%s" % (os, arch),
@@ -120,7 +103,6 @@ filegroup(
                     wasmer_version + "/wasmer-%s-%s.tar.gz" % (url_os, url_arch),
                 ],
                 sha256 = wasm_runtimes["wasmer"][os][arch],
-                strip_prefix = "wasmer-%s-%s" % (url_os, url_arch),
                 build_file_content = wasm_runtime_build_file,
             )
 

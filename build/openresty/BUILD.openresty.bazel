@@ -1,6 +1,6 @@
 load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make", "make")
 load("@bazel_skylib//lib:selects.bzl", "selects")
-load("@kong//build/openresty/wasmx:rules.bzl", "wasm_runtime", "wasmx_configure_options", "wasmx_env")
+load("@kong//build/openresty/wasmx:rules.bzl", "wasm_runtime", "wasmx_configure_options", "wasmx_data", "wasmx_deps", "wasmx_env")
 load("@openresty_binding//:variables.bzl", "LUAJIT_VERSION")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 
@@ -246,11 +246,6 @@ filegroup(
     ),
 )
 
-wasm_runtime(
-    name = "wasm_runtime",
-    visibility = ["//visibility:public"],
-)
-
 configure_make(
     name = "openresty",
     configure_command = "configure",
@@ -261,15 +256,7 @@ configure_make(
         "@lua-resty-lmdb//:all_srcs",
         "@lua-resty-events//:all_srcs",
         "@openresty_binding//:all_srcs",
-    ] + select({
-        "@kong//:wasmx_flag": [
-            "@ngx_wasm_module//:all_srcs",
-            # wasm_runtime has to be a "data" (target) instead of "build_data" (exec)
-            # to be able to lookup by its path (relative to INSTALLDIR)
-            ":wasm_runtime",
-        ],
-        "//conditions:default": [],
-    }),
+    ] + wasmx_data,
     env = wasmx_env,
     lib_source = ":all_srcs",
     out_bin_dir = "",
@@ -297,5 +284,5 @@ configure_make(
             "@cross_deps_libxcrypt//:libxcrypt",
         ],
         "//conditions:default": [],
-    }),
+    }) + wasmx_deps,
 )

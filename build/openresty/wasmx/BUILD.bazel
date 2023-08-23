@@ -1,4 +1,6 @@
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
+load("@bazel_skylib//lib:selects.bzl", "selects")
+load("@kong//build/openresty/wasmx:rules.bzl", "wasm_runtime")
 
 config_setting(
     name = "use_v8",
@@ -22,6 +24,30 @@ config_setting(
         "@kong//:wasmx": "true",
         "@kong//:wasm_runtime": "wasmtime",
     },
+)
+
+config_setting(
+    name = "wasmx_on_linux",
+    constraint_values = [
+        "@platforms//os:linux",
+    ],
+    flag_values = {
+        "@kong//:wasmx": "true",
+    },
+)
+
+selects.config_setting_group(
+    name = "needs_ngx_wasm_rs",
+    match_any = [
+        ":use_v8",
+        ":use_wasmer",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+wasm_runtime(
+    name = "wasm_runtime",
+    visibility = ["//visibility:public"],
 )
 
 # this works around an issue that occurs when installing/compiling the v8 wasm
@@ -57,4 +83,5 @@ fi
 /usr/bin/ar ${extra:-} $@
 """],
     is_executable = True,
+    visibility = ["@openresty//:__pkg__"],
 )
