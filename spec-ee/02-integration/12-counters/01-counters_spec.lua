@@ -195,10 +195,11 @@ for _, strategy in helpers.each_strategy() do
         assert.equals(0, total)
       end)
 
-      it("should reset counters data, remain keys and set different start_at", function()
+      it("should reset counters data, remain keys and set different start_at", function()        
         local KEY_FOO = "foo"
         local KEY_BAR = "bar"
-
+        
+        ngx.update_time()
         counters:add_key(KEY_FOO)
         counters:add_key(KEY_BAR)
 

@@ -14,11 +14,12 @@ local json_decode = json.decode
 local FAKE_TIMESTAMP = 1667543171
 
 local mock_request
+local original_new
 
 local function mock_http_client()
-  local origin_new = http.new
+  original_new = http.new
   http.new = function (self)
-    local instance = origin_new(self)
+    local instance = original_new(self)
     instance.request_uri = mock_request
     return instance
   end
@@ -152,6 +153,12 @@ describe("cp outage handling storage support: #gcp", function()
 
     -- initialization
     mock_http_client()
+  end)
+
+  lazy_teardown(function()
+    helpers.unsetenv("GCP_SERVICE_ACCOUNT")
+
+    http.new = original_new
   end)
 
   before_each(function()

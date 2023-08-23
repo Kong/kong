@@ -802,38 +802,41 @@ describe("vitals Prometheus strategy", function()
   
         it("duration " .. expected_duration_seconds .. " , http.new error", function()
           stub(http, "new").returns(nil, "http.new error")
+          finally(function()
+            http.new:revert()
+          end)
   
           local prom = prometheus.new({host = "notahost", port = 65555})
           local ok, err = prom:query(ngx.time() - 30, { "label", "sum()", true }, 30)
   
           assert.is_nil(ok)
           assert.equals("error initializing resty http: http.new error", err)
-  
-          http.new:revert()
         end)
 
         it("duration " .. expected_duration_seconds .. " , client.connect error", function()
           stub(http, "new").returns(object_only_error_on("connect"), nil)
+          finally(function()
+            http.new:revert()
+          end)
   
           local prom = prometheus.new({host = "notahost", port = 65555})
           local ok, err = prom:query(ngx.time() - 30, { "label", "sum()", true }, 30)
   
           assert.is_nil(ok)
           assert.equals("error connecting Prometheus: connect error", err)
-  
-          http.new:revert()
         end)
 
         it("duration " .. expected_duration_seconds .. " , client.request error", function()
           stub(http, "new").returns(object_only_error_on("request"), nil)
+          finally(function()
+            http.new:revert()
+          end)
   
           local prom = prometheus.new({host = "notahost", port = 65555})
           local ok, err = prom:query(ngx.time() - 30, { "label", "sum()", true }, 30)
   
           assert.is_nil(ok)
           assert.equals("request Prometheus failed: request error", err)
-  
-          http.new:revert()
         end)
 
         it("duration " .. expected_duration_seconds .. " , client.read_body error", function()
@@ -844,14 +847,15 @@ describe("vitals Prometheus strategy", function()
               return object_only_error_on("read_body"), nil
             end
           }, always_returns_true), nil)
+          finally(function()
+            http.new:revert()
+          end)
   
           local prom = prometheus.new({host = "notahost", port = 65555})
           local ok, err = prom:query(ngx.time() - 30, { "label", "sum()", true }, 30)
   
           assert.is_nil(ok)
           assert.equals("read Prometheus response failed: read_body error", err)
-  
-          http.new:revert()
         end)
 
         it("duration " .. expected_duration_seconds .. " , client.read_body returns invalid json", function()
@@ -866,14 +870,15 @@ describe("vitals Prometheus strategy", function()
               }, always_returns_true), nil
             end
           }, always_returns_true), nil)
+          finally(function()
+            http.new:revert()
+          end)
   
           local prom = prometheus.new({host = "notahost", port = 65555})
           local ok, err = prom:query(ngx.time() - 30, { "label", "sum()", true }, 30)
   
           assert.is_nil(ok)
           assert.equals("json decode failed Expected value but found invalid number at character 1", err)
-  
-          http.new:revert()
         end)
 
         it("duration " .. expected_duration_seconds .. " , client.read_body returns invalid json", function()
@@ -888,14 +893,15 @@ describe("vitals Prometheus strategy", function()
               }, always_returns_true), nil
             end
           }, always_returns_true), nil)
+          finally(function()
+            http.new:revert()
+          end)
 
           local prom = prometheus.new({host = "notahost", port = 65555})
           local ok, err = prom:query(ngx.time() - 30, { "label", "sum()", true }, 30)
 
           assert.is_nil(ok)
           assert.equals("Prometheus reported StrangeError: oops", err)
-
-          http.new:revert()
         end)
       end
     end)
@@ -1458,12 +1464,13 @@ describe("vitals Prometheus strategy", function()
   
       local prom_instance = prometheus.new(nil, {host = "notahost", port = 65555})
       local s = spy.new(prom_instance.select_phone_home)
+      finally(function()
+        s:revert()
+      end)
 
       s()
 
       assert.spy(s).was_returned_with({}, nil)
-
-      s:revert()
     end)
   end)
 
@@ -1473,12 +1480,13 @@ describe("vitals Prometheus strategy", function()
 
       local prom_instance = prometheus.new(nil, {host = "notahost", port = 65555})
       local s = spy.new(prom_instance.node_exists)
+      finally(function()
+        s:revert()
+      end)
 
       s()
 
       assert.spy(s).was_returned_with(true, nil)
-
-      s:revert()
     end)
 
     -- init requires kong.configuration now so it should be covered by integration tests
@@ -1488,12 +1496,13 @@ describe("vitals Prometheus strategy", function()
 
       local prom_instance = prometheus.new(nil, {host = "notahost", port = 65555})
       local s = spy.new(prom_instance.init)
+      finally(function()
+        s:revert()
+      end)
 
       s()
 
       assert.spy(s).was_returned_with(true, nil)
-
-      s:revert()
     end)
 
     it("a dummy function", function()
@@ -1501,12 +1510,13 @@ describe("vitals Prometheus strategy", function()
 
       local prom = prometheus.new(nil, {host = "notahost", port = 65555})
       local s = spy.new(prom.this_is_a_dummy_function)
+      finally(function()
+        s:revert()
+      end)
 
       s()
 
       assert.spy(s).was_returned_with(true, nil)
-
-      s:revert()
     end)
   end)
 end)

@@ -23,6 +23,10 @@ describe("request", function()
     package.loaded["resty.http"] = http
   end)
 
+  teardown(function()
+    http.new:revert()
+  end)
+
   before_each(function()
     -- reset opts to defaults
     opts = {
