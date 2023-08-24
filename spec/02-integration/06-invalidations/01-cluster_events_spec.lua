@@ -296,6 +296,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("broadcasts an event with a delay", function()
+        ngx.update_time()
         local cluster_events_1 = assert(kong_cluster_events.new {
           db = db,
           node_id = uuid_1,
