@@ -45,7 +45,7 @@
   [#11414](https://github.com/Kong/kong/pull/11414)
 - Fix an issue that queue stops processing when a hard error is encountered in the handler function.
   [#11423](https://github.com/Kong/kong/pull/11423)
-- Fix an issue that query args are not forwarded in proxied request.
+- Fix an issue that query parameters are not forwarded in proxied request.
   Thanks [@chirag-manwani](https://github.com/chirag-manwani) for contributing this change.
   [#11328](https://github.com/Kong/kong/pull/11328)
 
