@@ -1165,7 +1165,7 @@ end
 -- before or after the plugins
 return {
   build_router = build_router,
-  update_router = update_router,
+
   build_plugins_iterator = build_plugins_iterator,
   update_plugins_iterator = update_plugins_iterator,
   get_plugins_iterator = get_plugins_iterator,
