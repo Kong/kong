@@ -62,9 +62,9 @@ local function parse_github_ref(reference_type, references)
   local parsed_references = {}
   for i, ref in ipairs(references or {}) do
     local repo = GITHUB_KONG_REPO
-    local ref_no = tonumber(ref)
+    local ref_no = tonumber(ref) -- treat ref as number string first
     local name = "#" .. ref
-    if not ref_no then -- pr is a/b:1 format
+    if not ref_no then -- ref is not a number string
       local parts = pl_stringx.split(ref, ":")
       repo = parts[1]
       ref_no = parts[2]
@@ -98,10 +98,7 @@ local function is_yaml(filename)
 end
 
 local function is_empty_table(t)
-  if next(t) == nil then
-    return true
-  end
-  return false
+  return next(t) == nil
 end
 
 local function compile_template(data, template)
@@ -172,7 +169,6 @@ local function collect_folder(folder)
   for _, filename in ipairs(files) do
     local content = assert(pl_file.read(filename))
     local entry = assert(lyaml.load(content))
-    -- validate entry?
 
     entry.prs = parse_github_ref("pr", entry.prs) or {}
     entry.jiras = parse_jiras(entry.jiras)
