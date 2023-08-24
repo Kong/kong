@@ -50,7 +50,7 @@ runs:
           OFFSET=${#FILE_HASHES[@]}
 
           echo "EXTRA:"
-          printf '%q\n' "$EXTRA"
+          echo "$EXTRA"
 
           readarray \
             -O "$OFFSET" \
