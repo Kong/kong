@@ -9,7 +9,7 @@ local pl_stringx = require "pl.stringx"
 local lyaml = require "lyaml"
 local pl_app = require 'pl.lapp'
 
-local CHANGELOG_PATH
+local CHANGELOG_PATH -- absolute path of CHANGELOG directory
 do
   local base_path = os.getenv("PWD")
   local command = debug.getinfo(1, "S").source:sub(2)
