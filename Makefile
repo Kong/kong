@@ -24,7 +24,8 @@ endif
 	setup-ci setup-kong-build-tools \
 	lint test test-integration test-plugins test-all \
 	pdk-phase-check functional-tests \
-	fix-windows release
+	fix-windows \
+	nightly-release release
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 KONG_SOURCE_LOCATION ?= $(ROOT_DIR)
@@ -72,15 +73,6 @@ else
 	KONG_PACKAGE_NAME ?= kong-${BRANCH}
 	KONG_VERSION ?= `date +%Y-%m-%d`
 endif
-
-release-docker-images:
-	cd $(KONG_BUILD_TOOLS_LOCATION); \
-	$(MAKE) \
-	KONG_SOURCE_LOCATION=${KONG_SOURCE_LOCATION} \
-	package-kong && \
-	$(MAKE) \
-	KONG_SOURCE_LOCATION=${KONG_SOURCE_LOCATION} \
-	release-kong-docker-images
 
 release:
 ifeq ($(ISTAG),false)
