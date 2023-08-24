@@ -39,6 +39,21 @@ for _, strategy in helpers.each_strategy() do
 
         route.service = bp.services:insert(service)
 
+        if route.enable_buffering then
+          route.enable_buffering = nil
+          bp.plugins:insert({
+            name = "pre-function",
+            service = { id = route.service.id },
+            config = {
+              access = {
+                [[
+                  kong.service.request.enable_buffering()
+                ]],
+              },
+            }
+          })
+        end
+
         if not route.protocols then
           route.protocols = { "http" }
         end
@@ -80,6 +95,17 @@ for _, strategy in helpers.each_strategy() do
             read_timeout   = 1, -- ms
           },
         },
+        {
+          methods = { "PUT" },
+          service = {
+            name            = "api-4",
+            protocol        = "http",
+            host            = "konghq.com",
+            port            = 81,
+            connect_timeout = 1, -- ms
+          },
+          enable_buffering = true,
+        },
       }
 
       bp.plugins:insert {
@@ -90,7 +116,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       assert(helpers.start_kong({
-        plugins    = "ctx-checker-last",
+        plugins    = "bundled, ctx-checker-last",
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
@@ -168,5 +194,22 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(504, res.status)
       end)
     end)
+
+    describe("upstream_connect_timeout with enable_buffering", function()
+      it("sets upstream send timeout value", function()
+        local res = assert(proxy_client:send {
+          method  = "PUT",
+          path    = "/put",
+          body    = {
+            huge  = string.rep("a", 2^25)
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+
+        assert.equal(504, res.status)
+      end)
+    end)
+
+
   end)
 end
