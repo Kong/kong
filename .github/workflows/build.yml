@@ -34,6 +34,11 @@ jobs:
     - name: Generate cache key
       id: cache-key
       uses: ./.github/actions/build-cache-key
+      with:
+        extra: |
+          ${{ hashFiles('kong/**') }}
+          ${{ hashFiles('kong/**') }}
+          ${{ hashFiles('kong*.rockspec') }}
 
     - name: Lookup build cache
       id: cache-deps

@@ -43,14 +43,23 @@ runs:
           ${{ hashFiles('kong.conf.default') }}
         )
 
+        echo "FILE_HASHES (init):"
+        printf '%q\n' "${FILE_HASHES[@]}"
+
         if [[ -n ${EXTRA:-} ]]; then
           OFFSET=${#FILE_HASHES[@]}
+
+          echo "EXTRA:"
+          printf '%q\n' "$EXTRA"
 
           readarray \
             -O "$OFFSET" \
             -t \
             FILE_HASHES \
           <<< "$EXTRA"
+
+          echo "FILE_HASHES (extended):"
+          printf '%q\n' "${FILE_HASHES[@]}"
         fi
 
         NORMALIZED=$(
@@ -58,6 +67,9 @@ runs:
             | grep -vE '^$' \
             | sort --stable --unique
         )
+
+        echo "FILE_HASHES (normalized):"
+        echo "$NORMALIZED"
 
         HASH=$(sha256sum - <<< "$NORMALIZED" | awk '{print $1}' )
         CACHE_KEY=${{ inputs.prefix }}::${HASH}
