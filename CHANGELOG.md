@@ -14,9 +14,8 @@
 
 #### Core
 
-- Fixed critical level logs when starting external plugin servers. Those logs cannot be suppressed due to
-  the limitation of OpenResty. We choose to remove the socket availibilty detection feature.
-  [#11372](https://github.com/Kong/kong/pull/11372)
+- Support HTTP query parameters in expression routes.
+  [#11348](https://github.com/Kong/kong/pull/11348)
 
 #### Plugins
 
@@ -43,12 +42,16 @@
   [#11386](https://github.com/Kong/kong/pull/11386)
 - Fix cache warmup mechanism not working in `acls` plugin groups config entity scenario.
   [#11414](https://github.com/Kong/kong/pull/11414)
+- Fix an issue that query parameters are not forwarded in proxied request.
+  Thanks [@chirag-manwani](https://github.com/chirag-manwani) for contributing this change.
+  [#11328](https://github.com/Kong/kong/pull/11328)
 
 #### Plugins
 
 - **OAuth2**: For OAuth2 plugin, `scope` has been taken into account as a new criterion of the request validation. When refreshing token with `refresh_token`, the scopes associated with the `refresh_token` provided in the request must be same with or a subset of the scopes configured in the OAuth2 plugin instance hit by the request.
   [#11342](https://github.com/Kong/kong/pull/11342)
 - When the worker is in shutdown mode and more data is immediately available without waiting for `max_coalescing_delay`, queues are now cleared in batches.
+  Thanks [@JensErat](https://github.com/JensErat) for contributing this change.
   [#11376](https://github.com/Kong/kong/pull/11376)
 - A race condition in the plugin queue could potentially crash the worker when `max_entries` was set to `max_batch_size`.
   [#11378](https://github.com/Kong/kong/pull/11378)
