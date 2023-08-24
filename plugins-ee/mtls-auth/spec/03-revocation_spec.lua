@@ -106,7 +106,7 @@ for _, strategy in strategies() do
       ]], }
     }
 
-    describe("Plugin: mtls-auth (revocation) [#" .. strategy .. "]", function()
+    describe("#flaky Plugin: mtls-auth (revocation) [#" .. strategy .. "]", function()
       local mtls_client
       local bp, db
       local consumer, consumer2, consumer3, service, route
