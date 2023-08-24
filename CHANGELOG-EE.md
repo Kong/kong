@@ -21,6 +21,8 @@
 * **Konnect Application Auth**
   * Fix http error code when bad key is sent using `key-auth`.
 * **Response-Transformer-Advanced**: Do not load response body when `if_status` does not match. [FTI-5265](https://konghq.atlassian.net/browse/FTI-5265)
+* **Canary**
+  * Prevent setting `steps` to `nil` when `percentage` or `duration` is used to split traffic. [FTI-5332](https://konghq.atlassian.net/browse/FTI-5332).
 
 # 3.4.0.0
 

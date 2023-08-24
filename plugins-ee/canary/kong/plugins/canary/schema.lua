@@ -26,6 +26,19 @@ local function check_start(start)
   return true
 end
 
+local function validate_steps(config)
+  if not is_null_value(config.canary_by_header_name) or
+                          config.consumer == "allow" or
+                           config.consumer == "deny" or
+                     not is_null_value(config.steps)
+  then
+
+    return true
+  end
+
+  return false, "config.steps must be a number greater than 1"
+end
+
 return {
   name = "canary",
   fields = {
@@ -50,6 +63,7 @@ return {
             end,
           }},
         },
+        custom_validator = validate_steps,
         fields = {
           { start = { description = "Future time in seconds since epoch, when the canary release will start. Ignored when `percentage` is set, or when using `allow` or `deny` in `hash`.", type = "number",
               custom_validator = check_start

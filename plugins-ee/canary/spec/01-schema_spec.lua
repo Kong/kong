@@ -11,6 +11,7 @@ local validate_entity = require("spec.helpers").validate_plugin_config_schema
 local canary_schema = require "kong.plugins.canary.schema"
 
 local ngx = ngx
+local ngx_null = ngx.null
 
 
 describe("canary schema", function()
@@ -153,12 +154,38 @@ describe("canary schema", function()
     assert.is_truthy(ok)
     assert.is_nil(err)
   end)
+  it("prevents setting steps to ngx.null with start/duration", function()
+    local ok, err = validate_entity({ duration = 300, upstream_host = "balancer_a", steps = ngx_null }, canary_schema)
+
+    assert.is_nil(ok)
+    assert.equals(err.config, "config.steps must be a number greater than 1")
+  end)
+  it("steps default to 1000 with start/duration", function()
+    local ok, err = validate_entity({ duration = 300, upstream_host = "balancer_a", steps = nil }, canary_schema)
+
+    assert.is_truthy(ok)
+    assert.is_nil(err)
+    assert.equals(ok.config.steps, 1000)
+  end)
+  it("prevents setting steps to ngx.null with percentage", function()
+    local ok, err = validate_entity({ percentage = 10, upstream_host = "balancer_a", steps = ngx_null }, canary_schema)
+
+    assert.is_nil(ok)
+    assert.equals(err.config, "config.steps must be a number greater than 1")
+  end)
+  it("steps default to 1000 with percentage", function()
+    local ok, err = validate_entity({ percentage = 10, upstream_host = "balancer_a", steps = nil }, canary_schema)
+
+    assert.is_truthy(ok)
+    assert.is_nil(err)
+    assert.equals(ok.config.steps, 1000)
+  end)
 
   local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
   for _, strategy in strategies() do
     describe("strategy: [#" .. strategy .. "]", function ()
       local proxy_client, admin_client, admin_client_2
-      local route1
+      local route1, route2, route3
       local db_strategy = strategy ~= "off" and strategy or nil
       setup(function()
         local bp = helpers.get_db_utils(db_strategy, nil, {
@@ -166,6 +193,14 @@ describe("canary schema", function()
         })
         route1 = bp.routes:insert({
           hosts = { "canary1.com" },
+          preserve_host = false,
+        })
+        route2 = bp.routes:insert({
+          hosts = { "canary2.com" },
+          preserve_host = false,
+        })
+        route3 = bp.routes:insert({
+          hosts = { "canary3.com" },
           preserve_host = false,
         })
         assert(helpers.start_kong({
@@ -192,6 +227,9 @@ describe("canary schema", function()
         end
         if admin_client then
           admin_client:close()
+        end
+        if admin_client_2 then
+          admin_client_2:close()
         end
       end)
 
@@ -223,6 +261,150 @@ describe("canary schema", function()
         -- check if start time is set to current time
         local within_current_time = json.data[1].config.start - tstart < 3
         assert.True(within_current_time)
+      end)
+
+      it("prevent setting steps to nil with start and duration", function()
+        local res, body, json_body, plugin_id, admin_client_3, admin_client_4
+        res = assert(admin_client:send {
+          method = "POST",
+          path = "/routes/" .. route2.id .."/plugins",
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            name = "canary",
+            config = {
+              duration = 300,
+              upstream_host = "balancer_2",
+            },
+          },
+        })
+        body = assert.res_status(201, res)
+        plugin_id = cjson.decode(body).id
+
+        local res = assert(admin_client_2:send {
+          method = "PATCH",
+          path = "/plugins/" .. plugin_id,
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            config = {
+              steps = 100,
+            },
+          },
+        })
+        body = assert.res_status(200, res)
+        json_body = cjson.decode(body)
+        assert.equals(100, json_body.config.steps)
+
+        admin_client_3 = helpers.admin_client()
+        res = assert(admin_client_3:send {
+          method = "PATCH",
+          path = "/plugins/" .. plugin_id,
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            config = {
+              steps = nil,
+            },
+          },
+        })
+        body = assert.res_status(200, res)
+        json_body = cjson.decode(body)
+        assert.equals(100, json_body.config.steps)
+        admin_client_3:close()
+
+        admin_client_4 = helpers.admin_client()
+        res = assert(admin_client_4:send {
+          method = "PATCH",
+          path = "/plugins/" .. plugin_id,
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            config = {
+              steps = ngx_null,
+            },
+          },
+        })
+        body = assert.res_status(400, res)
+        json_body = cjson.decode(body)
+        assert.equals("schema violation (config: config.steps must be a number greater than 1)", json_body.message)
+        admin_client_4:close()
+      end)
+
+      it("prevent setting steps to nil with percentage", function()
+        local res, body, json_body, plugin_id, admin_client_3, admin_client_4
+        res = assert(admin_client:send {
+          method = "POST",
+          path = "/routes/" .. route3.id .."/plugins",
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            name = "canary",
+            config = {
+              percentage = 30,
+              upstream_host = "balancer_3",
+            },
+          },
+        })
+        body = assert.res_status(201, res)
+        plugin_id = cjson.decode(body).id
+
+        local res = assert(admin_client_2:send {
+          method = "PATCH",
+          path = "/plugins/" .. plugin_id,
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            config = {
+              steps = 100,
+            },
+          },
+        })
+        body = assert.res_status(200, res)
+        json_body = cjson.decode(body)
+        assert.equals(100, json_body.config.steps)
+
+        admin_client_3 = helpers.admin_client()
+        res = assert(admin_client_3:send {
+          method = "PATCH",
+          path = "/plugins/" .. plugin_id,
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            config = {
+              steps = nil,
+            },
+          },
+        })
+        body = assert.res_status(200, res)
+        json_body = cjson.decode(body)
+        assert.equals(100, json_body.config.steps)
+        admin_client_3:close()
+
+        admin_client_4 = helpers.admin_client()
+        res = assert(admin_client_4:send {
+          method = "PATCH",
+          path = "/plugins/" .. plugin_id,
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            config = {
+              steps = ngx_null,
+            },
+          },
+        })
+        body = assert.res_status(400, res)
+        json_body = cjson.decode(body)
+        assert.equals("schema violation (config: config.steps must be a number greater than 1)", json_body.message)
+        admin_client_4:close()
       end)
     end)
   end
