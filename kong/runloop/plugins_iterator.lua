@@ -426,10 +426,8 @@ end
 
 
 function PluginsIterator.new(version)
-  if kong.db.strategy ~= "off" then
-    if not version then
-      error("version must be given", 2)
-    end
+  if not version then
+    error("version must be given", 2)
   end
 
   loaded_plugins = loaded_plugins or get_loaded_plugins()
