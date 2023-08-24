@@ -88,12 +88,12 @@ jobs:
       run: |
         grep -v '^#' ${{ env.KONG_SOURCE_LOCATION}}/.requirements >> $GITHUB_ENV
         echo "DOCKER_RELEASE_REPOSITORY=kong/kong" >> $GITHUB_ENV
-        echo "KONG_TEST_CONTAINER_TAG=${GITHUB_REF_NAME##*/}-${{ matrix.package_type }}" >> $GITHUB_ENV
+        echo "KONG_TEST_CONTAINER_TAG=$GITHUB_REF_NAME-${{ matrix.package_type }}" >> $GITHUB_ENV
         if [[ ${{matrix.package_type }} == "apk" ]]; then
-          echo "ADDITIONAL_TAG_LIST=${GITHUB_REF_NAME##*/}-alpine" >> $GITHUB_ENV
+          echo "ADDITIONAL_TAG_LIST=$GITHUB_REF_NAME-alpine" >> $GITHUB_ENV
         fi
         if [[ ${{matrix.package_type }} == "deb" ]]; then
-          echo "ADDITIONAL_TAG_LIST=${GITHUB_REF_NAME##*/}-debian ${GITHUB_REF_NAME##*/} $GITHUB_SHA" >> $GITHUB_ENV
+          echo "ADDITIONAL_TAG_LIST=$GITHUB_REF_NAME-debian $GITHUB_REF_NAME $GITHUB_SHA" >> $GITHUB_ENV
         fi
 
     - name: Package & Test
@@ -104,7 +104,6 @@ jobs:
           make package/test/${{ matrix.package_type }}
 
     - name: Push Docker Image
-      continue-on-error: true
       env:
         SKIP_TESTS: true
       run: |
@@ -112,7 +111,6 @@ jobs:
           make release/docker/${{ matrix.package_type }}
 
     - name: Store the package artifacts
-      continue-on-error: true
       uses: actions/upload-artifact@v3
       with:
         name: ${{ matrix.package_type }}
