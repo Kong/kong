@@ -67,8 +67,8 @@ Usage: changelog <command> [options]
 
 Commands:
   add <filename> [options]           add a changelog file.
-  release <version> [options]        release a release note based on the files in the CHANGELOG/unreleased directory.
-  preview <version> [options]        preview a release note based on the files in the CHANGELOG/unreleased directory.
+  release <version>                  release a release note based on the files in the CHANGELOG/unreleased directory.
+  preview <version>                  preview a release note based on the files in the CHANGELOG/unreleased directory.
 
 Options:
   -h, --help                         display help for command
