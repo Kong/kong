@@ -8,8 +8,8 @@ inputs:
     description: 'String prefix applied to the build cache key'
     required: false
     default: 'build'
-  paths:
-    description: 'Additional paths (newline-delimited) to use in cache key generation'
+  extra:
+    description: 'Additional values/file hashes to use in the cache key'
     required: false
 
 outputs:
@@ -24,74 +24,42 @@ runs:
       id: cache-key
       shell: bash
       env:
-        EXTRA_PATHS: ${{ inputs.paths }}
+        EXTRA: ${{ inputs.extra }}
       run: |
-        echo "::group::Enumerate Paths"
-
-        LIST=$(mktemp)
-
-        add_file() {
-          local f=$1
-          echo "path spec: $f"
-
-          git ls-files \
-            --full-name \
-            --recurse-submodules \
-            "$f" \
-            >> "$LIST"
-        }
-
         # please keep these sorted
-        DEFAULT_PATHS=(
-          '.bazelignore'
-          '.bazelrc'
-          '.bazelversion'
-          '.github/actions/build-cache-key/**'
-          '.github/workflows/build.yml'
-          '.requirements'
-          'BUILD.bazel'
-          'WORKSPACE'
-          'bin/kong'
-          'bin/kong-health'
-          'build/**'
-          'kong-*.rockspec'
-          'kong.conf.default'
+        FILE_HASHES=(
+          ${{ hashFiles('.bazelignore') }}
+          ${{ hashFiles('.bazelrc') }}
+          ${{ hashFiles('.bazelversion') }}
+          ${{ hashFiles('.github/actions/build-cache-key/**') }}
+          ${{ hashFiles('.github/workflows/build.yml') }}
+          ${{ hashFiles('.requirements') }}
+          ${{ hashFiles('BUILD.bazel') }}
+          ${{ hashFiles('WORKSPACE') }}
+          ${{ hashFiles('bin/kong') }}
+          ${{ hashFiles('bin/kong-health') }}
+          ${{ hashFiles('build/**') }}
+          ${{ hashFiles('kong-*.rockspec') }}
+          ${{ hashFiles('kong.conf.default') }}
         )
 
-        for fname in "${DEFAULT_PATHS[@]}"; do
-          add_file "$fname"
-        done
+        if [[ -n ${EXTRA:-} ]]; then
+          OFFSET=${#FILE_HASHES[@]}
 
-        if [[ -n ${EXTRA_PATHS:-} ]]; then
-          readarray -t EXTRA <<< "$EXTRA_PATHS"
-
-          for fname in "${EXTRA[@]}"; do
-            if [[ -z ${fname:-} ]]; then
-              continue
-            fi
-
-            add_file "$fname"
-          done
+          readarray \
+            -O "$OFFSET" \
+            -t \
+            FILE_HASHES \
+          <<< "$EXTRA"
         fi
 
-        echo "::endgroup::"
+        NORMALIZED=$(
+          printf '%s\n' "${FILE_HASHES[@]}" \
+            | grep -vE '^$' \
+            | sort --stable --unique
+        )
 
-        echo "::group::Hash Files"
-
-        HASH=$(mktemp)
-
-        sort \
-          --stable \
-          --unique \
-          < "$LIST" \
-        | while read -r fname; do
-          sha256sum "$fname" | tee -a "$HASH"
-        done
-
-        echo "::endgroup::"
-
-        ALL=$(sha256sum "$HASH" | awk '{print $1}')
-
-        CACHE_KEY=${{ inputs.prefix }}::${ALL}
+        HASH=$(sha256sum - <<< "$NORMALIZED" | awk '{print $1}' )
+        CACHE_KEY=${{ inputs.prefix }}::${HASH}
         echo "cache-key: ${CACHE_KEY}"
         echo "CACHE_KEY=${CACHE_KEY}" >> $GITHUB_OUTPUT
