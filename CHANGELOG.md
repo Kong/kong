@@ -71,20 +71,9 @@
 - Ubuntu 18.04 artifacts are no longer supported as it's EOL
 - AmazonLinux 2022 artifacts are renamed to AmazonLinux 2023 according to AWS's decision
 
-#### Core
+### Deprecations
 
-- '/schemas' endpoint returns additional information about cross-field validation as part of the schema. This should help tools that use the Admin API to perform better client-side validation.
-
-#### Plugins
-
-- Validation for queue related parameters has been
-  improved. `max_batch_size`, `max_entries` and `max_bytes` are now
-  `integer`s instead of `number`s.  `initial_retry_delay` and
-  `max_retry_delay` must now be `number`s greater than 0.001
-  (seconds).
-  [#10840](https://github.com/Kong/kong/pull/10840)
-- **Acme**: Fixed string concatenation on cert renewal errors
-  [#11364](https://github.com/Kong/kong/pull/11364)
+- **CentOS packages are now removed from the release and are no longer supported in future versions.**
 
 ### Additions
 
@@ -96,14 +85,13 @@
   [#11244](https://github.com/Kong/kong/pull/11244)
 - Add beta support for WebAssembly/proxy-wasm
   [#11218](https://github.com/Kong/kong/pull/11218)
-
-#### Admin API
+- '/schemas' endpoint returns additional information about cross-field validation as part of the schema.
+  This should help tools that use the Admin API to perform better client-side validation.
+  [#11108](https://github.com/Kong/kong/pull/11108)
 
 #### Kong Manager
 - First release of the Kong Manager Open Source Edition.
   [#11131](https://github.com/Kong/kong/pull/11131)
-
-#### Status API
 
 #### Plugins
 
@@ -116,8 +104,6 @@
 - **Ip-Restriction**: Add TCP support to the plugin.
   Thanks [@scrudge](https://github.com/scrudge) for contributing this change.
   [#10245](https://github.com/Kong/kong/pull/10245)
-
-#### PDK
 
 #### Performance
 
@@ -191,8 +177,14 @@
   [#10559](https://github.com/Kong/kong/pull/10559)
 - **Zipkin**: Fixed an issue that traces not being generated correctly when instrumentations are enabled.
   [#10983](https://github.com/Kong/kong/pull/10983)
-
-#### PDK
+- **Acme**: Fixed string concatenation on cert renewal errors
+  [#11364](https://github.com/Kong/kong/pull/11364)
+- Validation for queue related parameters has been
+  improved. `max_batch_size`, `max_entries` and `max_bytes` are now
+  `integer`s instead of `number`s.  `initial_retry_delay` and
+  `max_retry_delay` must now be `number`s greater than 0.001
+  (seconds).
+  [#10840](https://github.com/Kong/kong/pull/10840)
 
 ### Changed
 
@@ -217,10 +209,6 @@
 - Remove the database information from the status API when operating in dbless
   mode or data plane.
   [#10995](https://github.com/Kong/kong/pull/10995)
-
-#### PDK
-
-#### Plugins
 
 ### Dependencies
 
