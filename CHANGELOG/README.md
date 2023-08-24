@@ -14,8 +14,8 @@ The `kong/CHANGELOG.md` now is deprecated.
 The description of the changelog file field, please follow the `schema.json` for more details.
 
 - message: Message of the changelog
-- type: Changelog type
-- scope: Changelog scope
+- type: Changelog type. (`feature`, `bugfix`, `dependency`, `deprecation`, `breaking_change`)
+- scope: Changelog scope. (`Core`, `Plugin`, `PDK`, `Admin API`, `Performance`, `Configuration`, `Clustering`)
 - prs: List of associated GitHub PRs
 - issues: List of associated GitHub issues
 - jiras: List of associated Jira tickets for internal track
