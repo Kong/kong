@@ -2712,78 +2712,6 @@ local function restart_kong(env, tables, fixtures)
 end
 
 
-local function wait_until_no_common_workers(workers, expected_total, strategy)
-  if strategy == "cassandra" then
-    ngx.sleep(0.5)
-  end
-  wait_until(function()
-    local pok, admin_client = pcall(admin_client)
-    if not pok then
-      return false
-    end
-    local res = assert(admin_client:send {
-      method = "GET",
-      path = "/",
-    })
-    luassert.res_status(200, res)
-    local json = cjson.decode(luassert.res_status(200, res))
-    admin_client:close()
-
-    local new_workers = json.pids.workers
-    local total = 0
-    local common = 0
-    if new_workers then
-      for _, v in ipairs(new_workers) do
-        total = total + 1
-        for _, v_old in ipairs(workers) do
-          if v == v_old then
-            common = common + 1
-            break
-          end
-        end
-      end
-    end
-    return common == 0 and total == (expected_total or total)
-  end, 30)
-end
-
-
-local function get_kong_workers()
-  local workers
-  wait_until(function()
-    local pok, admin_client = pcall(admin_client)
-    if not pok then
-      return false
-    end
-    local res = admin_client:send {
-      method = "GET",
-      path = "/",
-    }
-    if not res or res.status ~= 200 then
-      return false
-    end
-    local body = luassert.res_status(200, res)
-    local json = cjson.decode(body)
-
-    admin_client:close()
-    workers = json.pids.workers
-    return true
-  end, 10)
-  return workers
-end
-
-
---- Reload Kong and wait all workers are restarted.
-local function reload_kong(strategy, ...)
-  local workers = get_kong_workers()
-  local ok, err = kong_exec(...)
-  if ok then
-    wait_until_no_common_workers(workers, 1, strategy)
-  end
-  return ok, err
-end
-
-
 --- Simulate a Hybrid mode DP and connect to the CP specified in `opts`.
 -- @function clustering_client
 -- @param opts Options to use, the `host`, `port`, `cert` and `cert_key` fields
@@ -2960,9 +2888,6 @@ end
   start_kong = start_kong,
   stop_kong = stop_kong,
   restart_kong = restart_kong,
-  reload_kong = reload_kong,
-  get_kong_workers = get_kong_workers,
-  wait_until_no_common_workers = wait_until_no_common_workers,
 
   start_grpc_target = start_grpc_target,
   stop_grpc_target = stop_grpc_target,
