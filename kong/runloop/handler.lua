@@ -12,7 +12,6 @@ local concurrency  = require "kong.concurrency"
 local declarative  = require "kong.db.declarative"
 local workspaces   = require "kong.workspaces"
 local lrucache     = require "resty.lrucache"
-local marshall     = require "kong.cache.marshall"
 
 
 local PluginsIterator = require "kong.runloop.plugins_iterator"
@@ -1137,24 +1136,17 @@ end
 
 
 local function set_init_versions_in_cache()
-  -- because of worker events, kong.cache can not be initialized in `init` phase
-  -- therefore, we need to use the shdict API directly to set the initial value
-  assert(kong.configuration.role ~= "control_plane")
-  assert(ngx.get_phase() == "init")
-  local core_cache_shm = ngx.shared["kong_core_db_cache"]
-
-  -- ttl = forever is okay as "*:versions" keys are always manually invalidated
-  local marshalled_value = marshall("init", 0, 0)
-
-  -- see kong.cache.safe_set function
-  local ok, err = core_cache_shm:safe_set("kong_core_db_cacherouter:version", marshalled_value)
-  if not ok then
-    return nil, "failed to set initial router version in cache: " .. tostring(err)
+  if kong.configuration.role ~= "control_pane" then
+    local ok, err = kong.core_cache:safe_set("router:version", "init")
+    if not ok then
+      return nil, "failed to set router version in cache: " .. tostring(err)
+    end
   end
 
-  ok, err = core_cache_shm:safe_set("kong_core_db_cacheplugins_iterator:version", marshalled_value)
+  local ok, err = kong.core_cache:safe_set("plugins_iterator:version", "init")
   if not ok then
-    return nil, "failed to set initial plugins iterator version in cache: " .. tostring(err)
+    return nil, "failed to set plugins iterator version in cache: " ..
+                tostring(err)
   end
 
   return true
