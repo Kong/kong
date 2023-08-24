@@ -188,5 +188,8 @@ return {
     proxy_cache = {
       "response_headers",
     },
+    proxy_cache_advanced = {
+      "response_headers",
+    },
   },
 }

@@ -69,6 +69,23 @@ local function overwritable_header(header)
      and not ngx_re_match(n_header, "ratelimit-remaining")
 end
 
+local function set_header(conf, header, value)
+  if ngx.var.http_kong_debug or conf.response_headers[header] then
+    kong.response.set_header(header, value)
+  end
+end
+
+local function reset_res_header(res)
+  res.headers["Age"] = nil
+  res.headers["X-Cache-Status"] = nil
+  res.headers["X-Cache-Key"] = nil
+end
+
+local function set_res_header(res, header, value, conf)
+  if ngx.var.http_kong_debug or conf.response_headers[header] then
+    res.headers[header] = value
+  end
+end
 
 local function parse_directive_header(h)
   if not h then
@@ -231,12 +248,11 @@ end
 
 
 -- indicate that we should attempt to cache the response to this request
-local function signal_cache_req(ctx, cache_key, cache_status)
+local function signal_cache_req(ctx, conf, cache_key, cache_status)
   ctx.proxy_cache = {
     cache_key = cache_key,
   }
-
-  kong.response.set_header("X-Cache-Status", cache_status or "Miss")
+  set_header(conf, "X-Cache-Status", cache_status or "Miss")
 end
 
 
@@ -304,7 +320,7 @@ function ProxyCacheHandler:access(conf)
 
   -- if we know this request isnt cacheable, bail out
   if not cacheable_request(conf, cc) then
-    kong.response.set_header("X-Cache-Status", "Bypass")
+    set_header(conf, "X-Cache-Status", "Bypass")
     return
   end
 
@@ -329,7 +345,7 @@ function ProxyCacheHandler:access(conf)
     return
   end
 
-  kong.response.set_header("X-Cache-Key", cache_key)
+  set_header(conf, "X-Cache-Key", cache_key)
 
   -- try to fetch the cached object from the computed cache key
   local strategy = require(STRATEGY_PATH)({
@@ -352,13 +368,13 @@ function ProxyCacheHandler:access(conf)
     -- this request is cacheable but wasn't found in the data store
     -- make a note that we should store it in cache later,
     -- and pass the request upstream
-    return signal_cache_req(ctx, cache_key)
+    return signal_cache_req(ctx, conf, cache_key)
 
   elseif err then
     kong.log.err(err)
 
     if conf.bypass_on_err then
-      return signal_cache_req(ctx, cache_key, "Bypass")
+      return signal_cache_req(ctx, conf, cache_key, "Bypass")
     end
 
     return kong.response.exit(ngx.HTTP_BAD_GATEWAY, { message = err })
@@ -367,29 +383,29 @@ function ProxyCacheHandler:access(conf)
   if res.version ~= CACHE_VERSION then
     kong.log.notice("cache format mismatch, purging ", cache_key)
     strategy:purge(cache_key)
-    return signal_cache_req(ctx, cache_key, "Bypass")
+    return signal_cache_req(ctx, conf, cache_key, "Bypass")
   end
 
   -- figure out if the client will accept our cache value
   if conf.cache_control then
     if cc["max-age"] and time() - res.timestamp > cc["max-age"] then
-      return signal_cache_req(ctx, cache_key, "Refresh")
+      return signal_cache_req(ctx, conf, cache_key, "Refresh")
     end
 
     if cc["max-stale"] and time() - res.timestamp - res.ttl > cc["max-stale"]
     then
-      return signal_cache_req(ctx, cache_key, "Refresh")
+      return signal_cache_req(ctx, conf, cache_key, "Refresh")
     end
 
     if cc["min-fresh"] and res.ttl - (time() - res.timestamp) < cc["min-fresh"]
     then
-      return signal_cache_req(ctx, cache_key, "Refresh")
+      return signal_cache_req(ctx, conf, cache_key, "Refresh")
     end
 
   else
     -- don't serve stale data; res may be stored for up to `conf.storage_ttl` secs
     if time() - res.timestamp > conf.cache_ttl then
-      return signal_cache_req(ctx, cache_key, "Refresh")
+      return signal_cache_req(ctx, conf, cache_key, "Refresh")
     end
   end
 
@@ -423,8 +439,11 @@ function ProxyCacheHandler:access(conf)
     end
   end
 
-  res.headers["Age"] = floor(time() - res.timestamp)
-  res.headers["X-Cache-Status"] = "Hit"
+
+  reset_res_header(res)
+  set_res_header(res, "Age", floor(time() - res.timestamp), conf)
+  set_res_header(res, "X-Cache-Status", "Hit", conf)
+  set_res_header(res, "X-Cache-Key", cache_key, conf)
 
   return kong.response.exit(res.status, res.body, res.headers)
 end
@@ -448,7 +467,7 @@ function ProxyCacheHandler:header_filter(conf)
     proxy_cache.res_ttl = conf.cache_control and resource_ttl(cc) or conf.cache_ttl
 
   else
-    kong.response.set_header("X-Cache-Status", "Bypass")
+    set_header(conf, "X-Cache-Status", "Bypass")
     ctx.proxy_cache = nil
   end
 

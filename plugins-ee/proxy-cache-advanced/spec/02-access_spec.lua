@@ -156,6 +156,9 @@ for _, policy in ipairs({"memory", "redis"}) do
       local route21 = assert(bp.routes:insert {
         hosts = { "route-21.com" },
       })
+      local route22 = assert(bp.routes:insert {
+        hosts = { "route-22.com" },
+      })
 
       local consumer1 = assert(bp.consumers:insert {
         username = "bob",
@@ -375,6 +378,21 @@ for _, policy in ipairs({"memory", "redis"}) do
         },
       })
 
+      assert(bp.plugins:insert {
+        name = "proxy-cache-advanced",
+        route = { id = route22.id },
+        config = {
+          strategy = policy,
+          content_type = { "text/plain", "application/json" },
+          [policy] = policy_config,
+          response_headers = {
+            age = false,
+            ["X-Cache-Status"] = false,
+            ["X-Cache-Key"] = false
+          },
+        },
+      })
+
       assert(helpers.start_kong({
         plugins = "bundled,proxy-cache-advanced",
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -577,6 +595,29 @@ for _, policy in ipairs({"memory", "redis"}) do
 
       -- examine this cache key against another plugin's cache key for the same req
       cache_key = cache_key1
+    end)
+    it("No X-Cache* neither age headers on the response without debug header in the query", function()
+      local request = {
+        method = "GET",
+        path = "/get",
+        headers = {
+          host = "route-22.com",
+        },
+      }
+
+      local res = assert(client:send(request))
+      assert.res_status(200, res)
+      assert.is_nil(res.headers["X-Cache-Status"])
+      local res = assert(client:send(request))
+      assert.res_status(200, res)
+      assert.is_nil(res.headers["X-Cache-Status"])
+      assert.is_nil(res.headers["X-Cache-Key"])
+      assert.is_nil(res.headers["Age"])
+      request.headers["kong-debug"] = 1
+      local res = assert(client:send(request))
+      assert.same("Hit", res.headers["X-Cache-Status"])
+      assert.is_not_nil(res.headers["Age"])
+      assert.is_not_nil(res.headers["X-Cache-Key"])
     end)
 
     it("respects cache ttl", function()

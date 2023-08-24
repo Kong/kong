@@ -16,6 +16,13 @@
 
 ## Plugins
 
+### Features
+
+- **Proxy Cache Advanced**: Add option to remove the proxy cache
+  headers from the response.
+  [#6326](https://github.com/Kong/kong-ee/pull/6326)
+
+
 ### Fixes
 
 * **Konnect Application Auth**
