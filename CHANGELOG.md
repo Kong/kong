@@ -48,6 +48,8 @@
 - Fix an issue that query parameters are not forwarded in proxied request.
   Thanks [@chirag-manwani](https://github.com/chirag-manwani) for contributing this change.
   [#11328](https://github.com/Kong/kong/pull/11328)
+- Fix response status code is not real upstream status when using kong.response function.
+  [#11437](https://github.com/Kong/kong/pull/11437)
 
 #### Plugins
 
