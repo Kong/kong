@@ -252,7 +252,7 @@ local function release(version)
   assert(pl_file.write(filename, content))
   assert(pl_dir.makepath(UNRELEASED))
 
-  print("Generate released note successfully.")
+  print("Successfully generated release note.")
 end
 
 
