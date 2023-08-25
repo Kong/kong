@@ -169,7 +169,7 @@ local function categorize_fields(fields)
   local queries = {}
 
   -- 13 bytes, same len for "http.queries."
-  local PREFIX_LEN = #"http.headers."
+  local PREFIX_LEN = 13 -- #"http.headers."
 
   for _, field in ipairs(fields) do
     local prefix = field:sub(1, PREFIX_LEN)
