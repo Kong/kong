@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local to_hex = require "resty.string".to_hex
+local openssl_bignum = require "resty.openssl.bn"
 local table_merge = require "kong.tools.utils".table_merge
 local split = require "kong.tools.utils".split
 local strip = require "kong.tools.utils".strip
@@ -52,6 +53,9 @@ local AWS_PARENT_ID_KEY = "Parent"
 local AWS_PARENT_ID_LEN = 16
 local AWS_SAMPLED_FLAG_KEY = "Sampled"
 
+local GCP_TRACECONTEXT_REGEX = "^(?<trace_id>[0-9a-f]{32})/(?<span_id>[0-9]{1,20})(;o=(?<trace_flags>[0-9]))?$"
+local GCP_TRACE_ID_LEN = 32
+
 local function hex_to_char(c)
   return char(tonumber(c, 16))
 end
@@ -75,6 +79,16 @@ local function to_w3c_trace_id(trace_id)
     return ('\0'):rep(W3C_TRACEID_LEN - #trace_id) .. trace_id
   elseif #trace_id > W3C_TRACEID_LEN then
     return trace_id:sub(-W3C_TRACEID_LEN)
+  end
+
+  return trace_id
+end
+
+local function to_gcp_trace_id(trace_id)
+  if #trace_id < GCP_TRACE_ID_LEN then
+    return ('0'):rep(GCP_TRACE_ID_LEN - #trace_id) .. trace_id
+  elseif #trace_id > GCP_TRACE_ID_LEN then
+    return trace_id:sub(-GCP_TRACE_ID_LEN)
   end
 
   return trace_id
@@ -448,6 +462,31 @@ local function parse_datadog_headers(headers)
 end
 -- EE ]]
 
+local function parse_gcp_headers(gcp_header)
+  local warn = kong.log.warn
+
+  if type(gcp_header) ~= "string" then
+    return nil, nil, nil
+  end
+
+  local match, err = ngx.re.match(gcp_header, GCP_TRACECONTEXT_REGEX, 'jo')
+  if not match then
+    local warning = "invalid GCP header"
+    if err then
+      warning = warning .. ": " .. err
+    end
+
+    warn(warning .. "; ignoring.")
+
+    return nil, nil, nil
+  end
+
+  local trace_id = from_hex(match["trace_id"])
+  local span_id = openssl_bignum.from_dec(match["span_id"]):to_binary()
+  local should_sample = match["trace_flags"] == "1"
+
+  return trace_id, span_id, should_sample
+end
 
 -- This plugin understands several tracing header types:
 -- * Zipkin B3 headers (X-B3-TraceId, X-B3-SpanId, X-B3-ParentId, X-B3-Sampled, X-B3-Flags)
@@ -532,6 +571,11 @@ local function find_header_type(headers)
   if aws_header then
     return "aws", aws_header
   end
+
+  local gcp_header = headers["x-cloud-trace-context"]
+  if gcp_header then
+    return "gcp", gcp_header
+  end
 end
 
 
@@ -556,6 +600,8 @@ local function parse(headers, conf_header_type)
     trace_id, parent_id, should_sample = parse_datadog_headers(headers)
   elseif header_type == "aws" then
     trace_id, span_id, should_sample = parse_aws_headers(composed_header)
+  elseif header_type == "gcp" then
+    trace_id, span_id, should_sample = parse_gcp_headers(composed_header)
   end
 
   if not trace_id then
@@ -691,6 +737,12 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
     )
   end
 
+  if conf_header_type == "gcp" or found_header_type == "gcp" then
+    set_header("x-cloud-trace-context", to_gcp_trace_id(to_hex(proxy_span.trace_id)) ..
+      "/" .. openssl_bignum.from_binary(proxy_span.span_id):to_dec() ..
+      ";o=" .. (proxy_span.should_sample and "1" or "0")
+    )
+  end
 end
 
 

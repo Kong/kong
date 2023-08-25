@@ -20,7 +20,7 @@
 set -euo pipefail
 
 readonly BUILD_TARGET=wasm32-wasi
-readonly FIXTURE_PATH=spec/fixtures/proxy_wasm_filters
+readonly FIXTURE_PATH=${PWD}/spec/fixtures/proxy_wasm_filters
 
 readonly INSTALL_ROOT=${PWD}/bazel-bin/build/kong-dev
 readonly TARGET_DIR=${INSTALL_ROOT}/wasm-cargo-target
@@ -111,10 +111,28 @@ main() {
         exit 1
     }
 
+    readonly symlink="$FIXTURE_PATH/build"
+
     # symlink the target to a standard location used in spec/kong_tests.conf
     ln -sfv \
         "$KONG_TEST_WASM_FILTERS_PATH" \
-        "$FIXTURE_PATH/build"
+        "$symlink"
+
+    echo "Success! Test filters are now available at:"
+    echo
+    echo "$symlink"
+    echo
+    echo "For local development, set KONG_WASM_FILTERS_PATH accordingly:"
+    echo
+    echo "export KONG_WASM_FILTERS_PATH=\"$symlink\""
+    echo
+    echo "If testing with docker, make sure to mount the full (non-symlink) path"
+    echo "inside your container:"
+    echo
+    echo "docker run \\"
+    echo "  -e KONG_WASM_FILTERS_PATH=/filters \\"
+    echo "  -v \"\$(realpath \"$symlink\"):/filters\" \\"
+    echo "  ..."
 }
 
 main

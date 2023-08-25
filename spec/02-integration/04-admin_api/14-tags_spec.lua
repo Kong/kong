@@ -212,6 +212,16 @@ describe("Admin API - tags", function()
         assert.equals(2, #json.data)
       end)
 
+      it("/tags/:tags with a not exist tag", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/tags/does-not-exist"
+        })
+        local body = assert.res_status(200, res)
+        local ok = string.find(body, '"data":[]', nil, true)
+        assert.truthy(ok)
+      end)
+
       it("/tags/:tags with invalid :tags value", function()
         local res = assert(client:send {
           method = "GET",

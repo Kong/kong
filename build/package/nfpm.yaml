@@ -64,7 +64,6 @@ overrides:
     - ca-certificates
     - libpcre3
     - perl
-    - zlib1g-dev
     - libyaml-0-2
   rpm:
     depends:
@@ -73,7 +72,6 @@ overrides:
     - perl
     - perl-Time-HiRes
     - zlib
-    - zlib-devel
     - libyaml
     # Workaround for https://github.com/goreleaser/nfpm/issues/589
     - ${RPM_EXTRA_DEPS}

@@ -5,6 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local cjson = require "cjson"
 local Tags = {}
 
 function Tags:page_by_tag(tag, size, offset, options)
@@ -17,6 +18,9 @@ function Tags:page_by_tag(tag, size, offset, options)
   local rows, err_t, offset = self.strategy:page_by_tag(tag, size, offset, options)
   if err_t then
     return rows, tostring(err_t), err_t
+  end
+  if type(rows) == "table" then
+    setmetatable(rows, cjson.array_mt)
   end
   return rows, nil, nil, offset
 end
