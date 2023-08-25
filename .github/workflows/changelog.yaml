@@ -16,7 +16,7 @@ jobs:
 
       - name: Retrives changed files in CHANGELOG/unreleased/**/*.yaml
         id: changelog-check
-        uses: tj-actions/changed-files@v37
+        uses: tj-actions/changed-files@5817a9efb0d7cc34b917d8146ea10b9f32044968 # v37
         with:
           files: 'CHANGELOG/unreleased/**/*.yaml'
 
@@ -36,7 +36,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Validate changelogs
-        uses: thiagodnf/yaml-schema-checker@v0.0.8
+        uses: thiagodnf/yaml-schema-checker@228a5be72029114e3cd6301e0aaeef6b557fa033 # v0.0.8
         with:
           jsonSchemaFile: CHANGELOG/schema.json
           yamlFiles: |
