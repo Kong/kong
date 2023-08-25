@@ -20,7 +20,6 @@ do
   CHANGELOG_PATH = base_path
 end
 local UNRELEASED = "unreleased"
-local CHANGELOG_ENTRY_TEMPLATE = "changelog-template.yaml"
 local GITHUB_KONG_REPO = "Kong/kong"
 local JIRA_BASE_URL = "https://konghq.atlassian.net/browse/"
 local GITHUB_REFERENCE = {
@@ -211,27 +210,6 @@ local function generate_content(data)
 end
 
 
--- command: add
--- add a changelog file
-local function add(filename, properties)
-  local folder = properties.folder
-  if not folder then
-    error("Invalid parameter folder")
-  end
-
-  local path = absolute_path(UNRELEASED, folder)
-  if not pl_path.exists(path) then
-    assert(pl_dir.makepath(path))
-  end
-
-  local template = pl_file.read(absolute_path(CHANGELOG_ENTRY_TEMPLATE))
-  local content = compile_template(properties, template)
-  local abs_filename = pl_path.join(path, filename)
-  assert(pl_file.write(abs_filename, content))
-  print("File " .. filename .. " added")
-end
-
-
 -- command: release
 -- release a release note
 local function release(version)
@@ -267,14 +245,6 @@ end
 
 
 local cmds = {
-  add = function(args)
-    local filename = table.remove(args, 1)
-    if not filename then
-      print("Missing filename")
-      os.exit(1)
-    end
-    add(filename, args)
-  end,
   release = function(args)
     local version = args[1]
     if not version then
@@ -296,20 +266,15 @@ local args = pl_app [[
 Usage: changelog <command> [options]
 
 Commands:
-  add <filename> [options]           add a changelog file.
   release <version>                  release a release note based on the files in the CHANGELOG/unreleased directory.
   preview <version>                  preview a release note based on the files in the CHANGELOG/unreleased directory.
 
 Options:
   -h, --help                         display help for command
-  -m, --message (optional string)    changelog message
-  -t, --type (optional string)       changelog type
-  --folder (string default kong)     which folder under unreleased
 
 Examples:
   changelog preview 1.0.0
   changelog release 1.0.0
-  changelog add 1.yaml
 ]]
 
 local cmd_name = table.remove(args, 1)

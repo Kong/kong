@@ -57,10 +57,6 @@
         "type": "string",
         "pattern": "^[A-Z]+-[0-9]+$"
       }
-    },
-    "metadata": {
-      "type": "object",
-      "description": "The key-value metadata"
     }
   },
   "required": [

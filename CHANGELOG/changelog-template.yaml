@@ -1,7 +1,5 @@
-message: ${message}
-type: ${type}
+message:
+type:
 prs:
 jiras:
 issues:
-metadata:
-
