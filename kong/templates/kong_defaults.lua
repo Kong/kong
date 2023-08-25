@@ -65,6 +65,7 @@ portal_cors_origins = NONE
 portal_gui_use_subdomains = off
 portal_gui_ssl_cert = NONE
 portal_gui_ssl_cert_key = NONE
+portal_gui_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
 portal_gui_access_log = logs/portal_gui_access.log
 portal_gui_error_log = logs/portal_gui_error.log
 
@@ -72,6 +73,7 @@ portal_api_listen = 0.0.0.0:8004, 0.0.0.0:8447 ssl
 portal_api_url = NONE
 portal_api_ssl_cert = NONE
 portal_api_ssl_cert_key = NONE
+portal_api_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
 portal_api_access_log = logs/portal_api_access.log
 portal_api_error_log = logs/portal_api_error.log
 
@@ -160,6 +162,7 @@ admin_ssl_cert = NONE
 admin_ssl_cert_key = NONE
 admin_gui_ssl_cert = NONE
 admin_gui_ssl_cert_key = NONE
+admin_gui_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
 status_ssl_cert = NONE
 status_ssl_cert_key = NONE
 debug_ssl_cert = NONE

@@ -85,6 +85,7 @@ local EE_CONF_INFERENCES = {
   admin_emails_from = {typ = "string"},
   admin_emails_reply_to = {typ = "string"},
   admin_invitation_expiry = {typ = "number"},
+  admin_gui_ssl_protocols = {typ = "string"},
 
   admin_api_uri = {
     typ = "string",
@@ -104,6 +105,7 @@ local EE_CONF_INFERENCES = {
   portal_cors_origins = {typ = "array"},
   portal_gui_use_subdomains = {typ = "boolean"},
   portal_session_conf = {typ = "string"},
+  portal_gui_ssl_protocols = {typ = "string"},
   portal_gui_ssl_cert = { typ = "array" },
   portal_gui_ssl_cert_key = { typ = "array" },
 
@@ -112,6 +114,7 @@ local EE_CONF_INFERENCES = {
   portal_api_listen = {typ = "array"},
   portal_api_url = {typ = "string"},
   portal_app_auth = {typ = "string"},
+  portal_api_ssl_protocols = {typ = "string"},
   portal_api_ssl_cert = { typ = "array" },
   portal_api_ssl_cert_key = { typ = "array" },
 

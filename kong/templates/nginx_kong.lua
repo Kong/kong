@@ -393,7 +393,7 @@ server {
     ssl_certificate     $(admin_gui_ssl_cert[i]);
     ssl_certificate_key $(admin_gui_ssl_cert_key[i]);
 > end
-    ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+    ssl_protocols ${{ADMIN_GUI_SSL_PROTOCOLS}};
 > end
 
     client_max_body_size 10m;
@@ -442,7 +442,7 @@ server {
     ssl_certificate     $(portal_gui_ssl_cert[i]);
     ssl_certificate_key $(portal_gui_ssl_cert_key[i]);
 > end
-    ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+    ssl_protocols ${{PORTAL_GUI_SSL_PROTOCOLS}};
 > end
 
     client_max_body_size 10m;
@@ -554,7 +554,7 @@ server {
     ssl_certificate     $(portal_api_ssl_cert[i]);
     ssl_certificate_key $(portal_api_ssl_cert_key[i]);
 > end
-    ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+    ssl_protocols ${{PORTAL_API_SSL_PROTOCOLS}};
 
     ssl_session_cache shared:SSL:10m;
     ssl_session_timeout 10m;

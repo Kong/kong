@@ -677,3 +677,63 @@ describe("deprecated properties", function()
     assert.equal(nil, err)
   end)
 end)
+
+describe("admin_gui_ssl_protocols", function()
+  it("sets admin_gui_ssl_protocols to TLS 1.1-1.3 by default", function()
+    local conf, err = conf_loader()
+    assert.is_nil(err)
+    assert.is_table(conf)
+
+    assert.equal("TLSv1.1 TLSv1.2 TLSv1.3", conf.admin_gui_ssl_protocols)
+  end)
+
+  it("sets admin_gui_ssl_protocols to user specified value", function()
+    local conf, err = conf_loader(nil, {
+      admin_gui_ssl_protocols = "TLSv1.1"
+    })
+    assert.is_nil(err)
+    assert.is_table(conf)
+
+    assert.equal("TLSv1.1", conf.admin_gui_ssl_protocols)
+  end)
+end)
+
+describe("portal_gui_ssl_protocols", function()
+  it("sets portal_gui_ssl_protocols to TLS 1.1-1.3 by default", function()
+    local conf, err = conf_loader()
+    assert.is_nil(err)
+    assert.is_table(conf)
+
+    assert.equal("TLSv1.1 TLSv1.2 TLSv1.3", conf.portal_gui_ssl_protocols)
+  end)
+
+  it("sets portal_gui_ssl_protocols to user specified value", function()
+    local conf, err = conf_loader(nil, {
+      portal_gui_ssl_protocols = "TLSv1.1"
+    })
+    assert.is_nil(err)
+    assert.is_table(conf)
+
+    assert.equal("TLSv1.1", conf.portal_gui_ssl_protocols)
+  end)
+end)
+
+describe("portal_api_ssl_protocols", function()
+  it("sets portal_api_ssl_protocols to TLS 1.1-1.3 by default", function()
+    local conf, err = conf_loader()
+    assert.is_nil(err)
+    assert.is_table(conf)
+
+    assert.equal("TLSv1.1 TLSv1.2 TLSv1.3", conf.portal_api_ssl_protocols)
+  end)
+
+  it("sets portal_api_ssl_protocols to user specified value", function()
+    local conf, err = conf_loader(nil, {
+      portal_api_ssl_protocols = "TLSv1.1"
+    })
+    assert.is_nil(err)
+    assert.is_table(conf)
+    
+    assert.equal("TLSv1.1", conf.portal_api_ssl_protocols)
+  end)
+end)
