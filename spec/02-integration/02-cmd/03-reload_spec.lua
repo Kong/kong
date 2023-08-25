@@ -722,3 +722,53 @@ describe("key-auth plugin invalidation on dbless reload #off", function()
 
   end)
 end)
+
+describe("Admin GUI config", function ()
+  it("should be reloaded and invalidate kconfig.js cache", function()
+
+    assert(helpers.start_kong({
+      database = "off",
+      admin_gui_listen = "127.0.0.1:9012",
+      admin_gui_url = "http://test1.example.com"
+    }))
+
+    finally(function()
+      helpers.stop_kong()
+    end)
+
+    local client = assert(helpers.admin_gui_client(nil, 9012))
+
+    local res = assert(client:send {
+      method = "GET",
+      path = "/kconfig.js",
+    })
+    res = assert.res_status(200, res)
+    assert.matches("'ADMIN_GUI_URL': 'http://test1.example.com'", res, nil, true)
+
+    client:close()
+
+    assert(helpers.reload_kong("reload --conf " .. helpers.test_conf_path, {
+      database = "off",
+      admin_gui_listen = "127.0.0.1:9012",
+      admin_gui_url = "http://test2.example.com",
+      admin_gui_path = "/manager",
+    }))
+
+    ngx.sleep(1)    -- to make sure older workers are gone
+
+    client = assert(helpers.admin_gui_client(nil, 9012))
+    res = assert(client:send {
+      method = "GET",
+      path = "/kconfig.js",
+    })
+    assert.res_status(404, res)
+
+    res = assert(client:send {
+      method = "GET",
+      path = "/manager/kconfig.js",
+    })
+    res = assert.res_status(200, res)
+    assert.matches("'ADMIN_GUI_URL': 'http://test2.example.com'", res, nil, true)
+    client:close()
+  end)
+end)

@@ -8,7 +8,6 @@
 local lfs = require "lfs"
 local pl_path = require "pl.path"
 local helpers = require "spec.helpers"
-local ee_helpers = require "spec-ee.helpers"
 local test_prefix = helpers.test_conf.prefix
 
 local _
@@ -32,6 +31,7 @@ describe("Admin GUI - admin_gui_path", function()
       database = "off",
       admin_gui_listen = "127.0.0.1:9002",
     }))
+    client = assert(helpers.admin_gui_client(nil, 9002))
 
     local err, gui_dir_path, gui_index_file_path
     gui_dir_path = pl_path.join(test_prefix, "gui")
@@ -47,7 +47,6 @@ describe("Admin GUI - admin_gui_path", function()
     gui_index_file:write("TEST INDEX.HTML = /__km_base__/assets/image.png")
     gui_index_file:close()
 
-    client = assert(ee_helpers.admin_gui_client(nil, 9002))
     local res = assert(client:send {
       method = "GET",
       path = "/",
@@ -56,17 +55,19 @@ describe("Admin GUI - admin_gui_path", function()
     assert.matches("TEST INDEX%.HTML = /assets/image%.png", res)
     client:close()
 
-    client = assert(ee_helpers.admin_gui_client(nil, 9002))
     res = assert(client:send {
       method = "GET",
       path = "/kconfig.js",
     })
     res = assert.res_status(200, res)
+    assert.matches("'KONG_VERSION': '", res)
+    assert.matches("'ADMIN_GUI_PATH': '/'", res, nil, true)
+    -- XXX EE [[
     assert.matches("'RBAC_ENFORCED': 'false'", res, nil, true)
     assert.matches("'RBAC_HEADER': 'Kong-Admin-Token'", res, nil, true)
     assert.matches("'RBAC_USER_HEADER': 'Kong-Admin-User'", res, nil, true)
     assert.matches("'RBAC': 'off'", res, nil, true)
-    assert.matches("'ADMIN_GUI_PATH': '/'", res, nil, true)
+    -- XXX EE ]]
   end)
 
   it("should serve Admin GUI correctly when admin_gui_path is set", function()
@@ -75,6 +76,7 @@ describe("Admin GUI - admin_gui_path", function()
       admin_gui_listen = "127.0.0.1:9002",
       admin_gui_path = "/manager",
     }))
+    client = assert(helpers.admin_gui_client(nil, 9002))
 
     local err, gui_dir_path, gui_index_file_path
     gui_dir_path = pl_path.join(test_prefix, "gui")
@@ -90,7 +92,6 @@ describe("Admin GUI - admin_gui_path", function()
     gui_index_file:write("TEST INDEX.HTML = /__km_base__/assets/image.png")
     gui_index_file:close()
 
-    client = assert(ee_helpers.admin_gui_client(nil, 9002))
     local res = assert(client:send {
       method = "GET",
       path = "/",
@@ -98,7 +99,13 @@ describe("Admin GUI - admin_gui_path", function()
     assert.res_status(404, res)
     client:close()
 
-    client = assert(ee_helpers.admin_gui_client(nil, 9002))
+    res = assert(client:send {
+      method = "GET",
+      path = "/any_other_test_path",
+    })
+    assert.res_status(404, res)
+    client:close()
+
     res = assert(client:send {
       method = "GET",
       path = "/manager",
@@ -107,24 +114,32 @@ describe("Admin GUI - admin_gui_path", function()
     assert.matches("TEST INDEX%.HTML = /manager/assets/image%.png", res)
     client:close()
 
-    client = assert(ee_helpers.admin_gui_client(nil, 9002))
-    local res = assert(client:send {
+    res = assert(client:send {
       method = "GET",
       path = "/kconfig.js",
     })
     assert.res_status(404, res)
     client:close()
 
-    client = assert(ee_helpers.admin_gui_client(nil, 9002))
+    res = assert(client:send {
+      method = "GET",
+      path = "/any_other_test_path/kconfig.js",
+    })
+    assert.res_status(404, res)
+    client:close()
+
     res = assert(client:send {
       method = "GET",
       path = "/manager/kconfig.js",
     })
     res = assert.res_status(200, res)
+    assert.matches("'KONG_VERSION': '", res)
+    assert.matches("'ADMIN_GUI_PATH': '/manager'", res, nil, true)
+    -- XXX EE [[
     assert.matches("'RBAC_ENFORCED': 'false'", res, nil, true)
     assert.matches("'RBAC_HEADER': 'Kong-Admin-Token'", res, nil, true)
     assert.matches("'RBAC_USER_HEADER': 'Kong-Admin-User'", res, nil, true)
     assert.matches("'RBAC': 'off'", res, nil, true)
-    assert.matches("'ADMIN_GUI_PATH': '/manager'", res, nil, true)
+    -- XXX EE ]]
   end)
 end)

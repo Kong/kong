@@ -424,7 +424,7 @@ server {
 
     include nginx-kong-gui-include.conf;
 }
-> end
+> end -- of the (role == "control_plane" or role == "traditional") and #admin_listen > 0 and #admin_gui_listeners > 0
 
 
 > if (role == "control_plane" or role == "traditional") and portal then

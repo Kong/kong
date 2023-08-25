@@ -192,24 +192,6 @@ function _M.register_rbac_resources(db, ws_name, ws_table)
 end
 
 
---- returns a pre-configured `http_client` for the Kong Admin GUI.
--- @tparam[opt=60000] number timeout the timeout to use
--- @tparam[opt] number forced_port if provided will override the port in
--- the Kong configuration with this port
--- @return http-client, see `spec.helpers.http_client`.
-function _M.admin_gui_client(timeout, forced_port)
-  local admin_ip = "127.0.0.1"
-  local admin_port = forced_port
-  for _, entry in ipairs(_M.admin_gui_listeners) do
-    if entry.ssl == false then
-      admin_ip = entry.ip
-      admin_port = entry.port
-    end
-  end
-  assert(admin_port, "No http-admin found in the configuration")
-  return helpers.http_client(admin_ip, admin_port, timeout or 60000)
-end
-
 --- Returns the Dev Portal port.
 -- Throws an error if not found in the configuration.
 -- @tparam[opt=false] boolean ssl if `true` returns the ssl port

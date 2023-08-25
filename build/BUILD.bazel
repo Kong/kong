@@ -67,7 +67,7 @@ install_fips_cmd = select({
 
 install_webui_cmd = select({
     "//conditions:default": """
-        cp -r $(location @kong_admin//:dist_files) ${BUILD_DESTDIR}/kong/gui
+        cp -r $(location @kong_admin_gui//:dist_files) ${BUILD_DESTDIR}/kong/gui
         cp -r $(location @kong_portal//:dist_files) ${BUILD_DESTDIR}/kong/portal
     """,
     "@kong//:skip_webui_flags": "\n",
@@ -136,7 +136,7 @@ kong_directory_genrule(
     }) + select({
         "@kong//:skip_webui_flags": [],
         "//conditions:default": [
-            "@kong_admin//:dist_files",
+            "@kong_admin_gui//:dist_files",
             "@kong_portal//:dist_files",
         ],
     }) + select({

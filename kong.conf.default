@@ -2020,6 +2020,7 @@
                             # See: https://docs.konghq.com/enterprise/latest/admin-api/event-hooks/reference/
 
 #fips = off # Turn on FIPS mode; this mode is only available on a FIPS build.
+
 #------------------------------------------------------------------------------
 # KONG MANAGER
 #------------------------------------------------------------------------------

@@ -93,9 +93,11 @@ local instrumentation = require "kong.tracing.instrumentation"
 local process = require "ngx.process"
 local tablepool = require "tablepool"
 local table_new = require "table.new"
-local get_ctx_table = require("resty.core.ctx").get_ctx_table
 local utils = require "kong.tools.utils"
+local get_ctx_table = require("resty.core.ctx").get_ctx_table
+local admin_gui = require "kong.admin_gui"
 local wasm = require "kong.runloop.wasm"
+local reports = require "kong.reports"
 
 
 local internal_proxies = require "kong.enterprise_edition.proxies"
@@ -237,6 +239,7 @@ do
     "events:requests:ws",
     "events:requests:wss",
     "events:requests:go_plugins",
+    "events:km:visit",
     "events:streams",
     "events:streams:tcp",
     "events:streams:tls",
@@ -858,6 +861,10 @@ function Kong.init_worker()
   kong.core_cache = core_cache
 
   kong.db:set_events_handler(worker_events)
+
+  if kong.configuration.admin_gui_listeners then
+    kong.cache:invalidate_local(constants.ADMIN_GUI_KCONFIG_CACHE_KEY)
+  end
 
   if process.type() == "privileged agent" then
     if kong.clustering then
@@ -1725,14 +1732,14 @@ local function serve_content(module, options)
 
   log_init_worker_errors(ctx)
 
-  options = options or {}
-
   -- XXX EE [[
   -- if we support authentication via plugin as well as via RBAC token, then
   -- use cors plugin in api/init.lua to process cors requests and
   -- support the right origins, headers, etc.
+  options = options or {}
+
   if not kong.configuration.admin_gui_auth then
-    header["Access-Control-Allow-Origin"] = options.allow_origin or "*"
+    header["Access-Control-Allow-Origin"] = ngx.req.get_headers()["Origin"] or "*"
 
     -- this is mainly for backward compatibility
     -- if the lua block specifies the acam or acah headers, use them.
@@ -1817,12 +1824,24 @@ end
 
 
 function Kong.admin_gui_kconfig_content()
-  local kconfig_content, err = kong.cache:get(constants.ADMIN_GUI_KCONFIG_CACHE_KEY, nil, ee.prepare_admin, kong.configuration)
+  local content, err = kong.cache:get(
+    constants.ADMIN_GUI_KCONFIG_CACHE_KEY,
+    nil,
+    admin_gui.generate_kconfig,
+    kong.configuration
+  )
   if err then
-    kong.log.err('retrieve admin gui config `kconfig.js` from cache error occurred', err)
+    kong.log.err("error occurred while retrieving admin gui config `kconfig.js` from cache", err)
     kong.response.exit(500, { message = "An unexpected error occurred" })
+  else
+    ngx.say(content)
   end
-  ngx.print(kconfig_content)
+end
+
+function Kong.admin_gui_log()
+  if kong.configuration.anonymous_reports then
+    reports.admin_gui_log(ngx.ctx)
+  end
 end
 
 function Kong.serve_portal_api()

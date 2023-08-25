@@ -53,9 +53,10 @@ describe("Admin API listeners", function()
     assert(helpers.start_kong({
       proxy_listen = "0.0.0.0:9000",
       admin_listen = "off",
+      admin_gui_listen = "off",
     }))
     -- XXX EE
-    -- extra listeners (admin_gui, portal, etc) can affect this count
+    -- extra listeners (portal, etc) can affect this count
     assert.equals(2, count_server_blocks(helpers.test_conf.nginx_kong_conf))
     assert.is_nil(get_listeners(helpers.test_conf.nginx_kong_conf).kong_admin)
   end)
@@ -64,10 +65,11 @@ describe("Admin API listeners", function()
     assert(helpers.start_kong({
       proxy_listen = "0.0.0.0:9000",
       admin_listen = "127.0.0.1:9001, 127.0.0.1:9002",
+      admin_gui_listen = "off",
     }))
 
     -- XXX EE
-    -- extra listeners (admin_gui, portal, etc) can affect this count
+    -- extra listeners (portal, etc) can affect this count
     assert.equals(3, count_server_blocks(helpers.test_conf.nginx_kong_conf))
     assert.same({
       ["127.0.0.1:9001"] = 1,
@@ -130,7 +132,7 @@ for _, strategy in helpers.each_strategy() do
       rows, err = db.consumers:page_by_type(1)
       assert.is_nil(err)
       assert.same(25, #rows)
-      
+
       rows, err = db.consumers:page_by_type(2)
       assert.is_nil(err)
       assert.same(25, #rows)
