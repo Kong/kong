@@ -341,12 +341,8 @@ local function is_cert_revoked(conf, proof_chain, store)
     return not crl_status
   end
 
-  -- there was communication error or niether of OCSP URI or CRL URI set
-  if conf.revocation_check_mode == "IGNORE_CA_ERROR" then
-    return false
-  else
-    return true
-  end
+  -- returns an error string so that mlcache won't cache the value
+  return nil, "fail to check revocation"
 end
 
 
@@ -470,6 +466,15 @@ local function do_authentication(conf)
         conf, proof_chain, trust_table.store)
       if err then
         kong.log.err(err)
+      end
+
+      -- there was communication error or niether of OCSP URI or CRL URI set
+      if revoked == nil then
+        if conf.revocation_check_mode == "IGNORE_CA_ERROR" then
+          revoked = false
+        else
+          revoked = true
+        end
       end
 
       if revoked == true then

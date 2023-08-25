@@ -405,6 +405,29 @@ for _, strategy in strategies() do
             assert.logfile().has.line('cache miss for revocation status', true)
           end
         end)
+
+        if test_cache then
+          it(fmt("returns HTTP %s on https request if %s certificate passed with bad proxy (%s, leaf_only = %s, mode = %s), cache will not be stored for communication failure",
+                res3, cert, case_type, leaf_only, mode), function()
+            mtls_client = mock:get_client()
+            local res = assert(mtls_client:send {
+              method  = "GET",
+              path    = url,
+            })
+            local body = assert.res_status(res3, res)
+            mtls_client:close()
+            mock.client = nil
+            local json = cjson.decode(body)
+            if res3 == 200 then
+              assert.equal(name .. "@konghq.com", json.headers["x-consumer-username"])
+            else
+              assert.equal("TLS certificate failed verification", json.message)
+            end
+            if mode ~= "skip" then
+              assert.logfile().has.line('cache miss for revocation status', true)
+            end
+          end)
+        end
       end
     end
   end)
