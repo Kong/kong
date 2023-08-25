@@ -109,7 +109,6 @@ CONFIGURE_OPTIONS = [
     "--without-http_redis_module",
     "--without-http_rds_json_module",
     "--without-http_rds_csv_module",
-    "--without-ngx_devel_kit_module",
     "--with-luajit=$$EXT_BUILD_DEPS$$/luajit",
     "--with-cc-opt=\"-I$$EXT_BUILD_DEPS$$/pcre/include\"",
     "--with-cc-opt=\"-I$$EXT_BUILD_DEPS$$/openssl/include\"",
