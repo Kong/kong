@@ -168,14 +168,17 @@ local function categorize_fields(fields)
   local headers = {}
   local queries = {}
 
+  -- 13 bytes, same len for "http.queries."
+  local PREFIX_LEN = #"http.headers."
+
   for _, field in ipairs(fields) do
-    local prefix = field:sub(1, 13)
+    local prefix = field:sub(1, PREFIX_LEN)
 
     if prefix == "http.headers." then
-      headers[field:sub(14)] = field
+      headers[field:sub(PREFIX_LEN + 1)] = field
 
     elseif prefix == "http.queries." then
-      queries[field:sub(14)] = field
+      queries[field:sub(PREFIX_LEN + 1)] = field
 
     else
       table.insert(basic, field)
