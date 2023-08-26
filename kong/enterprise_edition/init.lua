@@ -5,10 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local pl_utils   = require "pl.utils"
-local pl_path    = require "pl.path"
-
-local log        = require "kong.cmd.utils.log"
 local meta       = require "kong.enterprise_edition.meta"
 local constants  = require "kong.constants"
 local workspaces = require "kong.workspaces"
@@ -26,6 +22,7 @@ local tracing = require "kong.tracing"
 local counters = require "kong.workspaces.counters"
 local workspace_config = require "kong.portal.workspace_config"
 local websocket = require "kong.enterprise_edition.runloop.websocket"
+local admin_gui_utils = require "kong.admin_gui.utils"
 
 local cjson = require "cjson.safe"
 
@@ -123,10 +120,6 @@ _M.handlers = {
   },
   init_worker = {
     after = function(ctx)
-      if kong.configuration.admin_gui_listeners then
-        kong.cache:invalidate_local(constants.ADMIN_GUI_KCONFIG_CACHE_KEY)
-      end
-
       kong.licensing:init_worker()
 
       -- register actions on configuration change (ie: license)
@@ -178,132 +171,19 @@ function _M.feature_flags_init(config)
 end
 
 
-local function render_kconfig(configs)
-  local kconfig_str = "window.K_CONFIG = {\n"
-  for config, value in pairs(configs) do
-    kconfig_str = kconfig_str .. "  '" .. config .. "': '" .. value .. "',\n"
-  end
-
-  -- remove trailing comma
-  kconfig_str = kconfig_str:sub(1, -3)
-  kconfig_str = kconfig_str .. "\n}\n"
-  return kconfig_str
-end
-
-local function prepare_interface(usr_path, interface_dir, kong_config)
-  local usr_interface_path = usr_path .. "/" .. interface_dir
-  local interface_path = kong_config.prefix .. "/" .. interface_dir
-
-  -- if the interface directory is not exist in custom prefix directory
-  -- try symlinking to the default prefix location
-  -- ensure user can access the interface appliation
-  if not pl_path.exists(interface_path)
-     and pl_path.exists(usr_interface_path) then
-
-    local ln_cmd = "ln -s " .. usr_interface_path .. " " .. interface_path
-    local ok, _, _, err_t = pl_utils.executeex(ln_cmd)
-
-    if not ok then
-      log.warn(err_t)
-    end
-  end
-end
-
-_M.prepare_interface = prepare_interface
-_M.render_kconfig = render_kconfig
-
--- return first listener matching filters
-local function select_listener(listeners, filters)
-  for _, listener in ipairs(listeners) do
-    local match = true
-    for filter, value in pairs(filters) do
-      if listener[filter] ~= value then
-        match = false
-      end
-    end
-    if match then
-      return listener
-    end
-  end
-end
-
-
-local function prepare_variable(variable)
-  if variable == nil then
-    return ""
-  end
-
-  return tostring(variable)
-end
-
-
-function _M.prepare_admin(kong_config)
-  local gui_listen = select_listener(kong_config.admin_gui_listeners, {ssl = false})
-  local gui_port = gui_listen and gui_listen.port
-  local gui_ssl_listen = select_listener(kong_config.admin_gui_listeners, {ssl = true})
-  local gui_ssl_port = gui_ssl_listen and gui_ssl_listen.port
-
-  local api_listen
-  local api_port
-  local api_ssl_listen
-  local api_ssl_port
-
-  -- only access the admin API on the proxy if auth is enabled
-  api_listen = select_listener(kong_config.admin_listeners, {ssl = false})
-  api_port = api_listen and api_listen.port
-  api_ssl_listen = select_listener(kong_config.admin_listeners, {ssl = true})
-  api_ssl_port = api_ssl_listen and api_ssl_listen.port
-
-  -- we will consider rbac to be on if it is set to "both" or "on",
-  -- because we don't currently support entity-level
-  local rbac_enforced = kong_config.rbac == "both" or kong_config.rbac == "on"
-
-  return render_kconfig({
-    ADMIN_GUI_AUTH = prepare_variable(kong_config.admin_gui_auth),
-    ADMIN_GUI_URL = prepare_variable(kong_config.admin_gui_url),
-    ADMIN_GUI_PATH = prepare_variable(kong_config.admin_gui_path),
-    ADMIN_GUI_PORT = prepare_variable(gui_port),
-    ADMIN_GUI_SSL_PORT = prepare_variable(gui_ssl_port),
-    ADMIN_API_URL = prepare_variable(kong_config.admin_gui_api_url),
-    ADMIN_API_PORT = prepare_variable(api_port),
-    ADMIN_API_SSL_PORT = prepare_variable(api_ssl_port),
-    ADMIN_GUI_HEADER_TXT = prepare_variable(kong_config.admin_gui_header_txt),
-    ADMIN_GUI_HEADER_BG_COLOR = prepare_variable(kong_config.admin_gui_header_bg_color),
-    ADMIN_GUI_HEADER_TXT_COLOR = prepare_variable(kong_config.admin_gui_header_txt_color),
-    ADMIN_GUI_FOOTER_TXT = prepare_variable(kong_config.admin_gui_footer_txt),
-    ADMIN_GUI_FOOTER_BG_COLOR = prepare_variable(kong_config.admin_gui_footer_bg_color),
-    ADMIN_GUI_FOOTER_TXT_COLOR = prepare_variable(kong_config.admin_gui_footer_txt_color),
-    ADMIN_GUI_LOGIN_BANNER_TITLE = prepare_variable(kong_config.admin_gui_login_banner_title),
-    ADMIN_GUI_LOGIN_BANNER_BODY = prepare_variable(kong_config.admin_gui_login_banner_body),
-    RBAC = prepare_variable(kong_config.rbac),
-    RBAC_ENFORCED = prepare_variable(rbac_enforced),
-    RBAC_HEADER = prepare_variable(kong_config.rbac_auth_header),
-    RBAC_USER_HEADER = prepare_variable(kong_config.admin_gui_auth_header),
-    KONG_VERSION = prepare_variable(meta.version),
-    KONG_EDITION = "enterprise",
-    FEATURE_FLAGS = prepare_variable(kong_config.admin_gui_flags),
-    PORTAL = prepare_variable(kong_config.portal),
-    PORTAL_GUI_PROTOCOL = prepare_variable(kong_config.portal_gui_protocol),
-    PORTAL_GUI_HOST = prepare_variable(kong_config.portal_gui_host),
-    PORTAL_GUI_USE_SUBDOMAINS = prepare_variable(kong_config.portal_gui_use_subdomains),
-    ANONYMOUS_REPORTS = prepare_variable(kong_config.anonymous_reports),
-  })
-end
-
-
 function _M.prepare_portal(self, kong_config)
   local workspace = workspaces.get_workspace()
   local is_authenticated = self.developer ~= nil
 
-  local portal_gui_listener = select_listener(kong_config.portal_gui_listeners,
+  local portal_gui_listener = admin_gui_utils.select_listener(kong_config.portal_gui_listeners,
                                               {ssl = false})
-  local portal_gui_ssl_listener = select_listener(kong_config.portal_gui_listeners,
+  local portal_gui_ssl_listener = admin_gui_utils.select_listener(kong_config.portal_gui_listeners,
                                                   {ssl = true})
   local portal_gui_port = portal_gui_listener and portal_gui_listener.port
   local portal_gui_ssl_port = portal_gui_ssl_listener and portal_gui_ssl_listener.port
-  local portal_api_listener = select_listener(kong_config.portal_api_listeners,
+  local portal_api_listener = admin_gui_utils.select_listener(kong_config.portal_api_listeners,
                                          {ssl = false})
-  local portal_api_ssl_listener = select_listener(kong_config.portal_api_listeners,
+  local portal_api_ssl_listener = admin_gui_utils.select_listener(kong_config.portal_api_listeners,
                                              {ssl = true})
   local portal_api_port = portal_api_listener and portal_api_listener.port
   local portal_api_ssl_port = portal_api_ssl_listener and portal_api_ssl_listener.port
@@ -319,20 +199,20 @@ function _M.prepare_portal(self, kong_config)
                             workspace, opts) or '[]'
 
   return {
-    PORTAL_API_URL = prepare_variable(kong_config.portal_api_url),
-    PORTAL_AUTH = prepare_variable(portal_auth),
-    PORTAL_API_PORT = prepare_variable(portal_api_port),
-    PORTAL_API_SSL_PORT = prepare_variable(portal_api_ssl_port),
-    PORTAL_GUI_URL = prepare_variable(portal_gui_url),
-    PORTAL_GUI_PORT = prepare_variable(portal_gui_port),
-    PORTAL_GUI_SSL_PORT = prepare_variable(portal_gui_ssl_port),
-    PORTAL_IS_AUTHENTICATED = prepare_variable(is_authenticated),
-    PORTAL_GUI_USE_SUBDOMAINS = prepare_variable(kong_config.portal_gui_use_subdomains),
-    PORTAL_DEVELOPER_META_FIELDS = prepare_variable(portal_developer_meta_fields),
-    RBAC_ENFORCED = prepare_variable(rbac_enforced),
-    RBAC_HEADER = prepare_variable(kong_config.rbac_auth_header),
-    KONG_VERSION = prepare_variable(meta.version),
-    WORKSPACE = prepare_variable(workspace.name)
+    PORTAL_API_URL = admin_gui_utils.prepare_variable(kong_config.portal_api_url),
+    PORTAL_AUTH = admin_gui_utils.prepare_variable(portal_auth),
+    PORTAL_API_PORT = admin_gui_utils.prepare_variable(portal_api_port),
+    PORTAL_API_SSL_PORT = admin_gui_utils.prepare_variable(portal_api_ssl_port),
+    PORTAL_GUI_URL = admin_gui_utils.prepare_variable(portal_gui_url),
+    PORTAL_GUI_PORT = admin_gui_utils.prepare_variable(portal_gui_port),
+    PORTAL_GUI_SSL_PORT = admin_gui_utils.prepare_variable(portal_gui_ssl_port),
+    PORTAL_IS_AUTHENTICATED = admin_gui_utils.prepare_variable(is_authenticated),
+    PORTAL_GUI_USE_SUBDOMAINS = admin_gui_utils.prepare_variable(kong_config.portal_gui_use_subdomains),
+    PORTAL_DEVELOPER_META_FIELDS = admin_gui_utils.prepare_variable(portal_developer_meta_fields),
+    RBAC_ENFORCED = admin_gui_utils.prepare_variable(rbac_enforced),
+    RBAC_HEADER = admin_gui_utils.prepare_variable(kong_config.rbac_auth_header),
+    KONG_VERSION = admin_gui_utils.prepare_variable(meta.version),
+    WORKSPACE = admin_gui_utils.prepare_variable(workspace.name)
   }
 end
 

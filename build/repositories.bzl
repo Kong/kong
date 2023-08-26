@@ -46,7 +46,7 @@ def github_cli_repositories():
 def kong_github_repositories():
     maybe(
         github_release,
-        name = "kong_admin",
+        name = "kong_admin_gui",
         repo = "kong/kong-admin",
         tag = KONG_VAR["KONG_ADMIN"],
         pattern = "release.tar.gz",

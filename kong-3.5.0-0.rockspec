@@ -115,6 +115,7 @@ build = {
 
     ["kong.enterprise_edition"] = "kong/enterprise_edition/init.lua",
     ["kong.enterprise_edition.admin.emails"] = "kong/enterprise_edition/admin/emails.lua",
+    ["kong.enterprise_edition.admin.gui"] = "kong/enterprise_edition/admin/gui.lua",
     ["kong.enterprise_edition.admins_helpers"] = "kong/enterprise_edition/admins_helpers.lua",
     ["kong.enterprise_edition.api_helpers"] = "kong/enterprise_edition/api_helpers.lua",
     ["kong.enterprise_edition.audit_log"] = "kong/enterprise_edition/audit_log.lua",
@@ -250,6 +251,9 @@ build = {
     ["kong.api.routes.upstreams"] = "kong/api/routes/upstreams.lua",
     ["kong.api.routes.vitals" ] = "kong/api/routes/vitals.lua",
     ["kong.api.routes.workspaces"] = "kong/api/routes/workspaces.lua",
+
+    ["kong.admin_gui"] = "kong/admin_gui/init.lua",
+    ["kong.admin_gui.utils"] = "kong/admin_gui/utils.lua",
 
     ["kong.status"] = "kong/status/init.lua",
     ["kong.status.ready"] = "kong/status/ready.lua",

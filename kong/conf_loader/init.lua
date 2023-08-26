@@ -332,6 +332,11 @@ local PREFIX_PATHS = {
   admin_ssl_cert_default_ecdsa = {"ssl", "admin-kong-default-ecdsa.crt"},
   admin_ssl_cert_key_default_ecdsa = {"ssl", "admin-kong-default-ecdsa.key"},
 
+  admin_gui_ssl_cert_default = {"ssl", "admin-gui-kong-default.crt"},
+  admin_gui_ssl_cert_key_default = {"ssl", "admin-gui-kong-default.key"},
+  admin_gui_ssl_cert_default_ecdsa = {"ssl", "admin-gui-kong-default-ecdsa.crt"},
+  admin_gui_ssl_cert_key_default_ecdsa = {"ssl", "admin-gui-kong-default-ecdsa.key"},
+
   status_ssl_cert_default = {"ssl", "status-kong-default.crt"},
   status_ssl_cert_key_default = {"ssl", "status-kong-default.key"},
   status_ssl_cert_default_ecdsa = {"ssl", "status-kong-default-ecdsa.crt"},
@@ -369,6 +374,7 @@ local CONF_PARSERS = {
   port_maps = { typ = "array" },
   proxy_listen = { typ = "array" },
   admin_listen = { typ = "array" },
+  admin_gui_listen = {typ = "array"},
   status_listen = { typ = "array" },
   debug_listen = { typ = "array" },
   stream_listen = { typ = "array" },
@@ -377,6 +383,8 @@ local CONF_PARSERS = {
   ssl_cert_key = { typ = "array" },
   admin_ssl_cert = { typ = "array" },
   admin_ssl_cert_key = { typ = "array" },
+  admin_gui_ssl_cert = { typ = "array" },
+  admin_gui_ssl_cert_key = { typ = "array" },
   status_ssl_cert = { typ = "array" },
   status_ssl_cert_key = { typ = "array" },
   debug_ssl_cert = { typ = "array" },
@@ -551,6 +559,8 @@ local CONF_PARSERS = {
   proxy_stream_error_log = { typ = "string" },
   admin_access_log = { typ = "string" },
   admin_error_log = { typ = "string" },
+  admin_gui_access_log = {typ = "string"},
+  admin_gui_error_log = {typ = "string"},
   status_access_log = { typ = "string" },
   status_error_log = { typ = "string" },
   debug_access_log = { typ = "string" },
@@ -646,6 +656,10 @@ local CONF_PARSERS = {
   error_template_json = { typ = "string" },
   error_template_xml = { typ = "string" },
   error_template_plain = { typ = "string" },
+
+  admin_gui_url = {typ = "string"},
+  admin_gui_path = {typ = "string"},
+  admin_gui_api_url = {typ = "string"},
 
   cluster_fallback_config_storage = { typ = "string" },
   cluster_fallback_config_export = { typ = "boolean" },
@@ -918,7 +932,7 @@ local function check_and_parse(conf, opts)
     end
   end
 
-  for _, prefix in ipairs({ "proxy_", "admin_", "status_" }) do
+  for _, prefix in ipairs({ "proxy_", "admin_", "admin_gui_", "status_" }) do
     local listen = conf[prefix .. "listen"]
 
     local ssl_enabled = find(concat(listen, ",") .. " ", "%sssl[%s,]") ~= nil
@@ -1005,6 +1019,22 @@ local function check_and_parse(conf, opts)
         errors[#errors + 1] = "client_ssl_cert_key: failed loading key from " ..
                                client_ssl_cert_key
       end
+    end
+  end
+
+  if conf.admin_gui_path then
+    if not conf.admin_gui_path:find("^/") then
+      errors[#errors+1] = "admin_gui_path must start with a slash ('/')"
+    end
+    if conf.admin_gui_path:find("^/.+/$") then
+        errors[#errors+1] = "admin_gui_path must not end with a slash ('/')"
+    end
+    if conf.admin_gui_path:match("[^%a%d%-_/]+") then
+      errors[#errors+1] = "admin_gui_path can only contain letters, digits, " ..
+        "hyphens ('-'), underscores ('_'), and slashes ('/')"
+    end
+    if conf.admin_gui_path:match("//+") then
+      errors[#errors+1] = "admin_gui_path must not contain continuous slashes ('/')"
     end
   end
 
@@ -2227,6 +2257,7 @@ local function load(path, custom_conf, opts)
     { name = "proxy_listen",   subsystem = "http",   ssl_flag = "proxy_ssl_enabled" },
     { name = "stream_listen",  subsystem = "stream", ssl_flag = "stream_proxy_ssl_enabled" },
     { name = "admin_listen",   subsystem = "http",   ssl_flag = "admin_ssl_enabled" },
+    { name = "admin_gui_listen", subsystem = "http", ssl_flag = "admin_gui_ssl_enabled" },
     { name = "status_listen",  subsystem = "http",   ssl_flag = "status_ssl_enabled" },
     { name = "debug_listen",  subsystem = "http",   ssl_flag = "debug_ssl_enabled" },
     { name = "cluster_listen", subsystem = "http" },
@@ -2266,7 +2297,7 @@ local function load(path, custom_conf, opts)
     conf.enabled_headers = setmetatable(enabled_headers, _nop_tostring_mt)
   end
 
-  for _, prefix in ipairs({ "ssl", "admin_ssl", "status_ssl", "client_ssl", "cluster" }) do
+  for _, prefix in ipairs({ "ssl", "admin_ssl", "admin_gui_ssl", "status_ssl", "client_ssl", "cluster" }) do
     local ssl_cert = conf[prefix .. "_cert"]
     local ssl_cert_key = conf[prefix .. "_cert_key"]
 
@@ -2323,6 +2354,18 @@ local function load(path, custom_conf, opts)
         break
       end
     end
+  end
+
+  -- admin_gui_origin is a parameter for internal use only
+  -- it's not set directly by the user
+  -- if admin_gui_path is set to a path other than /, admin_gui_url may
+  -- contain a path component
+  -- to make it suitable to be used as an origin in headers, we need to
+  -- parse and reconstruct the admin_gui_url to ensure it only contains
+  -- the scheme, host, and port
+  if conf.admin_gui_url then
+    local parsed_url = socket_url.parse(conf.admin_gui_url)
+    conf.admin_gui_origin = parsed_url.scheme .. "://" .. parsed_url.authority
   end
 
   ok, err = ee_conf_loader.load(conf)

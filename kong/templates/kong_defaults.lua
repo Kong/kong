@@ -14,6 +14,8 @@ proxy_stream_access_log = logs/access.log basic
 proxy_stream_error_log = logs/error.log
 admin_access_log = logs/admin_access.log
 admin_error_log = logs/error.log
+admin_gui_access_log = logs/admin_gui_access.log
+admin_gui_error_log = logs/admin_gui_error.log
 status_access_log = off
 status_error_log = logs/status_error.log
 debug_access_log = off
@@ -63,6 +65,7 @@ portal_cors_origins = NONE
 portal_gui_use_subdomains = off
 portal_gui_ssl_cert = NONE
 portal_gui_ssl_cert_key = NONE
+portal_gui_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
 portal_gui_access_log = logs/portal_gui_access.log
 portal_gui_error_log = logs/portal_gui_error.log
 
@@ -70,6 +73,7 @@ portal_api_listen = 0.0.0.0:8004, 0.0.0.0:8447 ssl
 portal_api_url = NONE
 portal_api_ssl_cert = NONE
 portal_api_ssl_cert_key = NONE
+portal_api_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
 portal_api_access_log = logs/portal_api_access.log
 portal_api_error_log = logs/portal_api_error.log
 
@@ -119,26 +123,8 @@ audit_log_payload_exclude = token, secret, password
 proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 http2 ssl reuseport backlog=16384
 stream_listen = off
 
-admin_api_uri = NONE
-admin_gui_api_url = NONE
-admin_gui_listen = 0.0.0.0:8002, 0.0.0.0:8445 ssl
-admin_gui_url =
-admin_gui_path = /
-admin_gui_access_log = logs/admin_gui_access.log
-admin_gui_error_log = logs/admin_gui_error.log
-admin_gui_flags = {}
-admin_gui_auth =
-admin_gui_auth_conf =
-admin_gui_auth_header = Kong-Admin-User
-admin_gui_auth_password_complexity =
-admin_gui_session_conf =
-admin_gui_auth_login_attempts = 0
-admin_approved_email = true
-admin_emails_from = ""
-admin_emails_reply_to = NONE
-admin_invitation_expiry = 259200
-
 admin_listen = 127.0.0.1:8001 reuseport backlog=16384, 127.0.0.1:8444 http2 ssl reuseport backlog=16384
+admin_gui_listen = 0.0.0.0:8002, 0.0.0.0:8445 ssl
 status_listen = off
 debug_listen = off
 cluster_listen = 0.0.0.0:8005
@@ -174,6 +160,9 @@ ssl_session_timeout = 1d
 ssl_session_cache_size = 10m
 admin_ssl_cert = NONE
 admin_ssl_cert_key = NONE
+admin_gui_ssl_cert = NONE
+admin_gui_ssl_cert_key = NONE
+admin_gui_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
 status_ssl_cert = NONE
 status_ssl_cert_key = NONE
 debug_ssl_cert = NONE
@@ -185,9 +174,6 @@ upstream_keepalive_pool_size = 60
 upstream_keepalive_max_requests = 100
 upstream_keepalive_idle_timeout = 60
 allow_debug_header = off
-
-admin_gui_ssl_cert = NONE
-admin_gui_ssl_cert_key = NONE
 
 nginx_user = kong kong
 nginx_worker_processes = auto
@@ -345,6 +331,24 @@ cluster_telemetry_server_name = NONE
 untrusted_lua = sandbox
 untrusted_lua_sandbox_requires =
 untrusted_lua_sandbox_environment =
+
+admin_gui_url =
+admin_gui_path = /
+admin_gui_api_url = NONE
+
+admin_api_uri = NONE
+
+admin_gui_flags = {}
+admin_gui_auth =
+admin_gui_auth_conf =
+admin_gui_auth_header = Kong-Admin-User
+admin_gui_auth_password_complexity =
+admin_gui_session_conf =
+admin_gui_auth_login_attempts = 0
+admin_approved_email = true
+admin_emails_from = ""
+admin_emails_reply_to = NONE
+admin_invitation_expiry = 259200
 
 admin_gui_header_txt = NONE
 admin_gui_header_bg_color = NONE

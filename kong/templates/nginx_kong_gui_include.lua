@@ -19,17 +19,15 @@ location = $(admin_gui_path_prefix)/robots.txt {
 }
 
 location = $(admin_gui_path_prefix)/kconfig.js {
+    default_type application/javascript;
+
+    gzip on;
+    gzip_types application/javascript;
+    expires -1;
+
     content_by_lua_block {
       Kong.admin_gui_kconfig_content()
     }
-    
-
-    gzip on;
-    gzip_types text/plain text/css application/json application/javascript;
-
-    log_not_found off;
-
-    expires -1;
 }
 
 location = $(admin_gui_path_prefix)/favicon.ico {
@@ -130,5 +128,9 @@ location ~* ^$(admin_gui_path_prefix)(?<path>/.*)?$ {
 > end
     sub_filter_once off;
     sub_filter_types *;
+
+    log_by_lua_block {
+        Kong.admin_gui_log()
+    }
 }
 ]]

@@ -248,6 +248,12 @@ function Queue:process_once()
     -- so that we can check for worker shutdown periodically.
     local wait_time = math_min(self.max_coalescing_delay - (now() - data_started), COALESCE_POLL_TIME)
 
+    if ngx.worker.exiting() then
+      -- minimize coalescing delay during shutdown to quickly process remaining entries
+      self.max_coalescing_delay = COALESCE_MIN_TIME
+      wait_time = COALESCE_MIN_TIME
+    end
+
     ok, err = self.semaphore:wait(wait_time)
     if not ok and err ~= "timeout" then
       self:log_err("could not wait for semaphore: %s", err)

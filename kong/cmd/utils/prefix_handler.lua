@@ -28,7 +28,6 @@ local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local pl_dir = require "pl.dir"
 local log = require "kong.cmd.utils.log"
-local ee = require "kong.enterprise_edition"
 local ffi = require "ffi"
 local bit = require "bit"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
@@ -115,15 +114,15 @@ local function gen_default_ssl_cert(kong_config, target)
       ssl_cert = kong_config["admin_ssl_cert_default" .. suffix]
       ssl_cert_key = kong_config["admin_ssl_cert_key_default" .. suffix]
 
+    elseif target == "admin_gui" then
+      ssl_cert = kong_config["admin_gui_ssl_cert_default" .. suffix]
+      ssl_cert_key = kong_config["admin_gui_ssl_cert_key_default" .. suffix]
+
     elseif target == "status" then
       ssl_cert = kong_config["status_ssl_cert_default" .. suffix]
       ssl_cert_key = kong_config["status_ssl_cert_key_default" .. suffix]
 
     -- [[ XXX EE
-    elseif target == "admin_gui" then
-      ssl_cert = kong_config["admin_gui_ssl_cert_default" .. suffix]
-      ssl_cert_key = kong_config["admin_gui_ssl_cert_key_default" .. suffix]
-
     elseif target == "portal_api" then
       ssl_cert = kong_config["portal_api_ssl_cert_default" .. suffix]
       ssl_cert_key = kong_config["portal_api_ssl_cert_key_default" .. suffix]
@@ -442,6 +441,25 @@ local function compile_kong_test_inject_conf(kong_config, template, template_env
   return compile_conf(kong_config, template, template_env)
 end
 
+local function prepare_prefixed_interface_dir(usr_path, interface_dir, kong_config)
+  local usr_interface_path = usr_path .. "/" .. interface_dir
+  local interface_path = kong_config.prefix .. "/" .. interface_dir
+
+  -- if the interface directory is not exist in custom prefix directory
+  -- try symlinking to the default prefix location
+  -- ensure user can access the interface appliation
+  if not pl_path.exists(interface_path)
+     and pl_path.exists(usr_interface_path) then
+
+    local ln_cmd = "ln -s " .. usr_interface_path .. " " .. interface_path
+    local ok, _, _, err_t = pl_utils.executeex(ln_cmd)
+
+    if not ok then
+      log.warn(err_t)
+    end
+  end
+end
+
 local function prepare_prefix(kong_config, nginx_custom_template_path, skip_write, write_process_secrets, nginx_conf_flags)
   log.verbose("preparing nginx prefix directory at %s", kong_config.prefix)
 
@@ -501,9 +519,9 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
   end
 
   -- generate default SSL certs if needed
-  -- [[ XXX EE: adding admin_gui, portal_gui, and portal_api ]]
+  -- [[ XXX EE: adding portal_gui, and portal_api ]]
   do
-    for _, target in ipairs({ "proxy", "admin", "status", "admin_gui", "portal_gui", "portal_api" }) do
+    for _, target in ipairs({ "proxy", "admin", "admin_gui", "status", "portal_gui", "portal_api" }) do
       local ssl_enabled = kong_config[target .. "_ssl_enabled"]
       if not ssl_enabled and target == "proxy" then
         ssl_enabled = kong_config.stream_proxy_ssl_enabled
@@ -611,13 +629,13 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
     for _, target in ipairs({
       "proxy",
       "admin",
+      "admin_gui",
       "status",
       "client",
       "cluster",
       "lua-ssl-trusted",
       "cluster-ca",
       -- [[ XXX EE
-      "admin_gui",
       "portal_gui",
       "portal_api",
       "keyring_public",
@@ -704,12 +722,12 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
     end
   end
 
-  -- [[ XXX EE: adding admin_gui, portal_gui, and portal_api ]]
+  -- [[ XXX EE: adding portal_gui, and portal_api ]]
   if kong_config.proxy_ssl_enabled or
      kong_config.stream_proxy_ssl_enabled or
      kong_config.admin_ssl_enabled or
-     kong_config.status_ssl_enabled or
      kong_config.admin_gui_ssl_enabled or
+     kong_config.status_ssl_enabled or
      kong_config.portal_api_ssl_enabled or
      kong_config.portal_gui_ssl_enabled
   then
@@ -847,9 +865,8 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
     return nil, err
   end
 
-  -- setup Kong Enterprise interfaces based on current configuration
   if kong_config.admin_gui_listeners then
-    ee.prepare_interface("/usr/local/kong", "gui", kong_config)
+    prepare_prefixed_interface_dir("/usr/local/kong", "gui", kong_config)
   end
 
   if secrets then
@@ -873,6 +890,7 @@ end
 return {
   get_ulimit = get_ulimit,
   prepare_prefix = prepare_prefix,
+  prepare_prefixed_interface_dir = prepare_prefixed_interface_dir,
   compile_conf = compile_conf,
   compile_kong_conf = compile_kong_conf,
   compile_kong_gui_include_conf = compile_kong_gui_include_conf,

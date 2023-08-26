@@ -19,18 +19,13 @@ end
 describe("Configuration loader - enterprise", function()
   it("loads the defaults", function()
     local conf = assert(conf_loader())
-    assert.same({"0.0.0.0:8002", "0.0.0.0:8445 ssl"}, conf.admin_gui_listen)
     assert.same({"0.0.0.0:8003", "0.0.0.0:8446 ssl"}, conf.portal_gui_listen)
     assert.same({"0.0.0.0:8004", "0.0.0.0:8447 ssl"}, conf.portal_api_listen)
-    assert.equal("/", conf.admin_gui_path)
-    assert.equal("logs/admin_gui_access.log", conf.admin_gui_access_log)
-    assert.equal("logs/admin_gui_error.log", conf.admin_gui_error_log)
+
     assert.equal("logs/portal_gui_access.log", conf.portal_gui_access_log)
     assert.equal("logs/portal_gui_error.log", conf.portal_gui_error_log)
     assert.equal("logs/portal_api_access.log", conf.portal_api_access_log)
     assert.equal("logs/portal_api_error.log", conf.portal_api_error_log)
-    assert.equal(0, #conf.admin_gui_ssl_cert)
-    assert.equal(0, #conf.admin_gui_ssl_cert_key)
     assert.equal(0, #conf.portal_gui_ssl_cert)
     assert.equal(0, #conf.portal_gui_ssl_cert_key)
     assert.equal(0, #conf.portal_api_ssl_cert)
@@ -43,7 +38,6 @@ describe("Configuration loader - enterprise", function()
     -- defaults
     assert.equal("on", conf.nginx_daemon)
     -- overrides
-    assert.same({"off"}, conf.admin_gui_listen)
     assert.same({"0.0.0.0:9003", "0.0.0.0:9446 ssl"}, conf.portal_gui_listen)
     assert.equal("127.0.0.1:9003", conf.portal_gui_host)
     assert.equal("http", conf.portal_gui_protocol)
@@ -52,59 +46,19 @@ describe("Configuration loader - enterprise", function()
     assert.is_nil(getmetatable(conf))
   end)
 
-  it("extracts flags, ports and listen ips from proxy_listen/admin_listen", function()
+  it("extracts flags, ports and listen ips from portal_listen", function()
     local conf = assert(conf_loader())
     -- portal is disabled by default
     assert.equal(nil, conf.portal_gui_listeners)
     assert.equal(nil, conf.portal_api_listeners)
-
-    assert.equal("0.0.0.0", conf.admin_gui_listeners[1].ip)
-    assert.equal(8002, conf.admin_gui_listeners[1].port)
-    assert.equal(false, conf.admin_gui_listeners[1].ssl)
-    assert.equal(false, conf.admin_gui_listeners[1].http2)
-    assert.equal("0.0.0.0:8000 reuseport backlog=16384", conf.proxy_listeners[1].listener)
-
-    assert.equal("0.0.0.0", conf.admin_gui_listeners[2].ip)
-    assert.equal(8445, conf.admin_gui_listeners[2].port)
-    assert.equal(true, conf.admin_gui_listeners[2].ssl)
-    assert.equal(false, conf.admin_gui_listeners[2].http2)
-    assert.equal("0.0.0.0:8445 ssl", conf.admin_gui_listeners[2].listener)
   end)
 
   it("attaches prefix paths", function()
     local conf = assert(conf_loader())
-    assert.equal("/usr/local/kong/ssl/admin-gui-kong-default.crt", conf.admin_gui_ssl_cert_default)
-    assert.equal("/usr/local/kong/ssl/admin-gui-kong-default.key", conf.admin_gui_ssl_cert_key_default)
     assert.equal("/usr/local/kong/ssl/portal-gui-kong-default.crt", conf.portal_gui_ssl_cert_default)
     assert.equal("/usr/local/kong/ssl/portal-gui-kong-default.key", conf.portal_gui_ssl_cert_key_default)
     assert.equal("/usr/local/kong/ssl/portal-api-kong-default.crt", conf.portal_api_ssl_cert_default)
     assert.equal("/usr/local/kong/ssl/portal-api-kong-default.key", conf.portal_api_ssl_cert_key_default)
-  end)
-
-  it("should populate correct admin_gui_origin if admin_gui_url presents", function()
-    local conf, _, errors = conf_loader(nil, {
-      admin_gui_url = "http://localhost:8002",
-    })
-    assert.is_nil(errors)
-    assert.is_not_nil(conf)
-    assert.is_not_nil(conf.admin_gui_origin)
-    assert.equal("http://localhost:8002", conf.admin_gui_origin)
-
-    conf, _, errors = conf_loader(nil, {
-      admin_gui_url = "https://localhost:8002",
-    })
-    assert.is_nil(errors)
-    assert.is_not_nil(conf)
-    assert.is_not_nil(conf.admin_gui_origin)
-    assert.equal("https://localhost:8002", conf.admin_gui_origin)
-
-    conf, _, errors = conf_loader(nil, {
-      admin_gui_url = "http://localhost:8002/manager",
-    })
-    assert.is_nil(errors)
-    assert.is_not_nil(conf)
-    assert.is_not_nil(conf.admin_gui_origin)
-    assert.equal("http://localhost:8002", conf.admin_gui_origin)
   end)
 
   describe("validations", function()
@@ -114,44 +68,6 @@ describe("Configuration loader - enterprise", function()
       })
       assert.equal(1, #errors)
       assert.is_nil(conf)
-    end)
-
-    it("enforces admin_gui_path values", function()
-      local conf, _, errors = conf_loader(nil, {
-        admin_gui_path = "without-leading-slash"
-      })
-      assert.equal(1, #errors)
-      assert.is_nil(conf)
-
-      conf, _, errors = conf_loader(nil, {
-        admin_gui_path = "/with-trailing-slash/"
-      })
-      assert.equal(1, #errors)
-      assert.is_nil(conf)
-
-      conf, _, errors = conf_loader(nil, {
-        admin_gui_path = "/with!invalid$characters"
-      })
-      assert.equal(1, #errors)
-      assert.is_nil(conf)
-
-      conf, _, errors = conf_loader(nil, {
-        admin_gui_path = "/with//many///continuous////slashes"
-      })
-      assert.equal(1, #errors)
-      assert.is_nil(conf)
-
-      conf, _, errors = conf_loader(nil, {
-        admin_gui_path = "with!invalid$characters-but-no-leading-slashes"
-      })
-      assert.equal(2, #errors)
-      assert.is_nil(conf)
-
-      conf, _, errors = conf_loader(nil, {
-        admin_gui_path = "/kong/manager"
-      })
-      assert.is_nil(errors)
-      assert.is_not_nil(conf)
     end)
 
     it("enforces admin_gui_auth if admin_gui_auth_conf is present", function()
@@ -176,12 +92,6 @@ describe("Configuration loader - enterprise", function()
     it("#flaky enforces listen addresses format", function()
       local err_str = "must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+] [ipv6only=on] [ipv6only=off] [so_keepalive=on] [so_keepalive=off] [so_keepalive=%w*:%w*:%d*], [... next entry ...]"
       local conf, err = conf_loader(nil, {
-        admin_gui_listen = "127.0.0.1"
-      })
-      assert.is_nil(conf)
-      assert.equal("admin_gui_listen " .. err_str, err)
-
-      conf, err = conf_loader(nil, {
         portal = "on",
         smtp_mock = "on",
         portal_gui_listen = "127.0.0.1",
@@ -596,7 +506,7 @@ describe("ee conf loader", function()
     end)
   end)
 
-  describe("validate_admin_gui_ssl()", function()
+  describe("SSL", function()
     it("accepts and decodes valid base64 values", function()
       local ssl_fixtures = require "spec.fixtures.ssl"
       local cert = ssl_fixtures.cert
@@ -605,8 +515,6 @@ describe("ee conf loader", function()
       local keyring_priv_key = helpers.file.read("spec-ee/fixtures/keyring/crypto_key.pem")
 
       local cert_and_keys = {
-        admin_gui_ssl_cert          = { cert },
-        admin_gui_ssl_cert_key      = { key },
         portal_gui_ssl_cert         = { cert },
         portal_gui_ssl_cert_key     = { key },
         portal_api_ssl_cert         = { cert },
@@ -617,7 +525,6 @@ describe("ee conf loader", function()
       }
 
       local conf_properties = {
-        admin_gui_listen  = { "0.0.0.0:8445 ssl" },
         portal_gui_listen = { "0.0.0.0:8446 ssl" },
         portal_api_listen = { "0.0.0.0:8447 ssl" },
         keyring_enabled = "on",
@@ -631,7 +538,6 @@ describe("ee conf loader", function()
         end
       end
 
-      ee_conf_loader.validate_admin_gui_ssl(conf_properties, msgs)
       ee_conf_loader.validate_portal_ssl(conf_properties, msgs)
       ee_conf_loader.validate_keyring(conf_properties, msgs)
 
@@ -649,57 +555,6 @@ describe("ee conf loader", function()
           assert.equals(decoded_v, values)
         end
       end
-    end)
-    it("returns errors if ssl_cert is set and doesn't exist", function()
-      local conf = {
-        admin_gui_listen = { "0.0.0.0:8002", "0.0.0.0:8445 ssl" },
-        admin_gui_ssl_cert = { "/path/to/cert" },
-        admin_gui_ssl_cert_key = { },
-      }
-
-      ee_conf_loader.validate_admin_gui_ssl(conf, msgs)
-      local expected = {
-        "admin_gui_ssl_cert_key must be specified",
-        "admin_gui_ssl_cert: failed loading certificate from /path/to/cert",
-      }
-
-      assert.same(expected, msgs)
-    end)
-
-    it("returns errors if ssl_cert_key is set and file not found", function()
-      local conf = {
-        admin_gui_listen = { "0.0.0.0:8002", "0.0.0.0:8445 ssl" },
-        admin_gui_ssl_cert_key = { "/path/to/cert" },
-        admin_gui_ssl_cert = { },
-      }
-
-      ee_conf_loader.validate_admin_gui_ssl(conf, msgs)
-      local expected = {
-        "admin_gui_ssl_cert must be specified",
-        "admin_gui_ssl_cert_key: failed loading key from /path/to/cert",
-      }
-
-      assert.same(expected, msgs)
-    end)
-
-    it("returns {} if ssl_cert and ssl_cert_key are not set", function()
-      local conf = {
-        some_other_key = "foo",
-        admin_gui_listen = { "0.0.0.0:8002" },
-      }
-
-      ee_conf_loader.validate_admin_gui_ssl(conf, msgs)
-      assert.same({}, msgs)
-    end)
-
-    it("returns {} if admin_gui_listen doesn't include SSL", function()
-      local conf = {
-        admin_gui_listen = { "0.0.0.0:8002" },
-        admin_gui_ssl_cert_key = "/path/to/cert",
-      }
-
-      ee_conf_loader.validate_admin_gui_ssl(conf, msgs)
-      assert.same({}, msgs)
     end)
   end)
 
@@ -820,5 +675,65 @@ describe("deprecated properties", function()
 
     assert.equal("http://admin.api:8001/api", conf.admin_gui_api_url)
     assert.equal(nil, err)
+  end)
+end)
+
+describe("admin_gui_ssl_protocols", function()
+  it("sets admin_gui_ssl_protocols to TLS 1.1-1.3 by default", function()
+    local conf, err = conf_loader()
+    assert.is_nil(err)
+    assert.is_table(conf)
+
+    assert.equal("TLSv1.1 TLSv1.2 TLSv1.3", conf.admin_gui_ssl_protocols)
+  end)
+
+  it("sets admin_gui_ssl_protocols to user specified value", function()
+    local conf, err = conf_loader(nil, {
+      admin_gui_ssl_protocols = "TLSv1.1"
+    })
+    assert.is_nil(err)
+    assert.is_table(conf)
+
+    assert.equal("TLSv1.1", conf.admin_gui_ssl_protocols)
+  end)
+end)
+
+describe("portal_gui_ssl_protocols", function()
+  it("sets portal_gui_ssl_protocols to TLS 1.1-1.3 by default", function()
+    local conf, err = conf_loader()
+    assert.is_nil(err)
+    assert.is_table(conf)
+
+    assert.equal("TLSv1.1 TLSv1.2 TLSv1.3", conf.portal_gui_ssl_protocols)
+  end)
+
+  it("sets portal_gui_ssl_protocols to user specified value", function()
+    local conf, err = conf_loader(nil, {
+      portal_gui_ssl_protocols = "TLSv1.1"
+    })
+    assert.is_nil(err)
+    assert.is_table(conf)
+
+    assert.equal("TLSv1.1", conf.portal_gui_ssl_protocols)
+  end)
+end)
+
+describe("portal_api_ssl_protocols", function()
+  it("sets portal_api_ssl_protocols to TLS 1.1-1.3 by default", function()
+    local conf, err = conf_loader()
+    assert.is_nil(err)
+    assert.is_table(conf)
+
+    assert.equal("TLSv1.1 TLSv1.2 TLSv1.3", conf.portal_api_ssl_protocols)
+  end)
+
+  it("sets portal_api_ssl_protocols to user specified value", function()
+    local conf, err = conf_loader(nil, {
+      portal_api_ssl_protocols = "TLSv1.1"
+    })
+    assert.is_nil(err)
+    assert.is_table(conf)
+    
+    assert.equal("TLSv1.1", conf.portal_api_ssl_protocols)
   end)
 end)

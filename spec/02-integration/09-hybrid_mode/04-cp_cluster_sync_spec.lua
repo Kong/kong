@@ -34,13 +34,13 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         prefix = "servroot",
         admin_listen = "127.0.0.1:9000",
+        admin_gui_listen = "off",
         cluster_listen = "127.0.0.1:9005",
 
         role = "control_plane",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         database = strategy,
-        admin_gui_listen      = "off",
         portal_gui_listen     = "off",
         portal_api_listen     = "off",
       }))
@@ -48,13 +48,13 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         prefix = "servroot2",
         admin_listen = "127.0.0.1:9001",
+        admin_gui_listen = "off",
         cluster_listen = "127.0.0.1:9006",
 
         role = "control_plane",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         database = strategy,
-        admin_gui_listen      = "off",
         portal_gui_listen     = "off",
         portal_api_listen     = "off",
         cluster_telemetry_listen = "localhost:9008",

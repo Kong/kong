@@ -50,6 +50,7 @@ describe("Proxy interface listeners", function()
     assert(helpers.start_kong({
       proxy_listen = "off",
       admin_listen = "0.0.0.0:9001",
+      admin_gui_listen = "off",
     }))
     -- XXX EE
     -- extra listeners (admin_gui, portal, etc) can affect this count
@@ -61,6 +62,7 @@ describe("Proxy interface listeners", function()
     assert(helpers.start_kong({
       proxy_listen = "127.0.0.1:9001, 127.0.0.1:9002",
       admin_listen = "0.0.0.0:9000",
+      admin_gui_listen = "off",
     }))
 
     -- XXX EE

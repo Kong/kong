@@ -9,6 +9,13 @@
 
 ## Core
 
+### Features
+
+- New configuration properties: `admin_gui_ssl_protocols`, `portal_gui_ssl_protocols`, `portal_api_ssl_protocols`
+  allow configuring their respective fields in the `nginx_kong.lua` nginx configuration file.
+  Thanks [@andrewgkew](https://github.com/andrewgkew) for contributing this change.
+  [FTI-3126](https://konghq.atlassian.net/browse/FTI-3126)
+
 ### Fixes
 
 * Fix the return info and log of previous errors are missing when use redis cluster mode connection fails. [6032](https://github.com/Kong/kong-ee/pull/6032)

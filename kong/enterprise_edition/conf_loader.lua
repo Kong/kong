@@ -18,7 +18,6 @@ local openssl = require "resty.openssl"
 local openssl_version = require "resty.openssl.version"
 local openssl_x509 = require "resty.openssl.x509"
 local openssl_pkey = require "resty.openssl.pkey"
-local url = require "socket.url"
 
 local re_match = ngx.re.match
 local concat = table.concat
@@ -30,11 +29,6 @@ local EE_PREFIX_PATHS = {
 
   nginx_portal_gui_acc_logs = {"logs", "portal_gui_access.log"},
   nginx_portal_gui_err_logs = {"logs", "portal_gui_error.log"},
-
-  admin_gui_ssl_cert_default = {"ssl", "admin-gui-kong-default.crt"},
-  admin_gui_ssl_cert_key_default = {"ssl", "admin-gui-kong-default.key"},
-  admin_gui_ssl_cert_default_ecdsa = {"ssl", "admin-gui-kong-default-ecdsa.crt"},
-  admin_gui_ssl_cert_key_default_ecdsa = {"ssl", "admin-gui-kong-default-ecdsa.key"},
 
   portal_api_ssl_cert_default = {"ssl", "portal-api-kong-default.crt"},
   portal_api_ssl_cert_key_default = {"ssl", "portal-api-kong-default.key"},
@@ -81,11 +75,6 @@ local EE_CONF_INFERENCES = {
   audit_log_signing_key = {typ = "string"},
   audit_log_payload_exclude = {typ = "array"},
 
-  admin_gui_listen = {typ = "array"},
-  admin_gui_path = {typ = "string"},
-  admin_gui_api_url = {typ = "string"},
-  admin_gui_error_log = {typ = "string"},
-  admin_gui_access_log = {typ = "string"},
   admin_gui_flags = {typ = "string"},
   admin_gui_auth = {typ = "string"},
   admin_gui_auth_conf = {typ = "string"},
@@ -96,8 +85,7 @@ local EE_CONF_INFERENCES = {
   admin_emails_from = {typ = "string"},
   admin_emails_reply_to = {typ = "string"},
   admin_invitation_expiry = {typ = "number"},
-  admin_gui_ssl_cert = { typ = "array" },
-  admin_gui_ssl_cert_key = { typ = "array" },
+  admin_gui_ssl_protocols = {typ = "string"},
 
   admin_api_uri = {
     typ = "string",
@@ -117,6 +105,7 @@ local EE_CONF_INFERENCES = {
   portal_cors_origins = {typ = "array"},
   portal_gui_use_subdomains = {typ = "boolean"},
   portal_session_conf = {typ = "string"},
+  portal_gui_ssl_protocols = {typ = "string"},
   portal_gui_ssl_cert = { typ = "array" },
   portal_gui_ssl_cert_key = { typ = "array" },
 
@@ -125,6 +114,7 @@ local EE_CONF_INFERENCES = {
   portal_api_listen = {typ = "array"},
   portal_api_url = {typ = "string"},
   portal_app_auth = {typ = "string"},
+  portal_api_ssl_protocols = {typ = "string"},
   portal_api_ssl_cert = { typ = "array" },
   portal_api_ssl_cert_key = { typ = "array" },
 
@@ -213,7 +203,6 @@ local EE_CONF_INFERENCES = {
 
 
 local EE_CONF_SENSITIVE = {
-  admin_gui_ssl_cert_key = true,
   smtp_password = true,
   admin_gui_auth_header = true,
   admin_gui_auth_conf = true,
@@ -259,24 +248,6 @@ local function parse_option_flags(value, flags)
   return pl_stringx.strip(value), result, pl_stringx.strip(sanitized)
 end
 
-
-local function validate_admin_gui_path(conf, errors)
-  if conf.admin_gui_path then
-    if not conf.admin_gui_path:find("^/") then
-      errors[#errors+1] = "admin_gui_path must start with a slash ('/')"
-    end
-    if conf.admin_gui_path:find("^/.+/$") then
-        errors[#errors+1] = "admin_gui_path must not end with a slash ('/')"
-    end
-    if conf.admin_gui_path:match("[^%a%d%-_/]+") then
-      errors[#errors+1] = "admin_gui_path can only contain letters, digits, " ..
-        "hyphens ('-'), underscores ('_'), and slashes ('/')"
-    end
-    if conf.admin_gui_path:match("//+") then
-      errors[#errors+1] = "admin_gui_path must not contain continuous slashes ('/')"
-    end
-  end
-end
 
 local function validate_admin_gui_authentication(conf, errors)
 -- TODO: reinstate validation after testing all auth types
@@ -543,10 +514,6 @@ local function validate_ssl(prefix, conf, errors)
       conf[prefix .. "ssl_cert_key"] = ssl_cert_key
     end
   end
-end
-
-local function validate_admin_gui_ssl(conf, errors)
-  validate_ssl("admin_gui_", conf, errors)
 end
 
 
@@ -844,9 +811,7 @@ local function validate_postgres_iam_auth(conf, errors)
 end
 
 local function validate(conf, errors)
-  validate_admin_gui_path(conf, errors)
   validate_admin_gui_authentication(conf, errors)
-  validate_admin_gui_ssl(conf, errors)
   validate_admin_gui_session(conf, errors)
 
   if not conf.smtp_mock then
@@ -989,27 +954,12 @@ local function load_ssl_cert_abs_paths(prefix, conf)
 end
 
 local function load(conf)
-  -- admin_gui_origin is a parameter for internal use only
-  -- it's not set directly by the user
-  -- if admin_gui_path is set to a path other than /, admin_gui_url may
-  -- contain a path component
-  -- to make it suitable to be used as an origin in headers, we need to
-  -- parse and reconstruct the admin_gui_url to ensure it only contains
-  -- the scheme, host, and port
-  if conf.admin_gui_url then
-    local parsed_url = url.parse(conf.admin_gui_url)
-    conf.admin_gui_origin = parsed_url.scheme .. "://" .. parsed_url.authority
-  end
-
   local ok, err = listeners.parse(conf, {
-    { name = "admin_gui_listen", subsystem = "http", ssl_flag = "admin_gui_ssl_enabled" },
     { name = "cluster_telemetry_listen", subsystem = "http" },
   })
   if not ok then
     return nil, err
   end
-
-  load_ssl_cert_abs_paths("admin_gui_ssl", conf)
 
   if conf.portal then
     ok, err = listeners.parse(conf, {
@@ -1050,10 +1000,8 @@ return {
 
   -- only exposed for unit testing :-(
   validate_enforce_rbac = validate_enforce_rbac,
-  validate_admin_gui_path = validate_admin_gui_path,
   validate_admin_gui_authentication = validate_admin_gui_authentication,
   validate_admin_gui_session = validate_admin_gui_session,
-  validate_admin_gui_ssl = validate_admin_gui_ssl,
   validate_smtp_config = validate_smtp_config,
   validate_portal_smtp_config = validate_portal_smtp_config,
   validate_portal_cors_origins = validate_portal_cors_origins,

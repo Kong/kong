@@ -2020,6 +2020,7 @@
                             # See: https://docs.konghq.com/enterprise/latest/admin-api/event-hooks/reference/
 
 #fips = off # Turn on FIPS mode; this mode is only available on a FIPS build.
+
 #------------------------------------------------------------------------------
 # KONG MANAGER
 #------------------------------------------------------------------------------
@@ -2083,6 +2084,10 @@
                         # this config is disabled, Kong Manager will
                         # use the window protocol + host and append the
                         # resolved admin_listen HTTP/HTTPS port.
+
+#admin_gui_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
+                        # Defines the TLS versions supported
+                        # for Kong Manager
 
 #admin_gui_ssl_cert =   # The SSL certificate for `admin_gui_listen` values
                         # with SSL enabled.
@@ -2420,6 +2425,10 @@
                         #   - `<scheme>://<WORKSPACE>.<HOSTNAME>` ->
                         #     `http://example-workspace.kong-portal.com/index`
 
+#portal_gui_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
+                        # Defines the TLS versions supported
+                        # for Kong Developer Portal
+
 #portal_gui_ssl_cert =  # Developer Portal GUI SSL Certificate
                         #
                         # The SSL certificate for `portal_gui_listen` values
@@ -2504,6 +2513,10 @@
                         # By default this value points to the local interface:
                         #
                         # - `http://0.0.0.0:8004`
+
+#portal_api_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
+                        # Defines the TLS versions supported
+                        # for Kong Developer Portal API
 
 #portal_api_ssl_cert =  # Developer Portal API SSL Certificate
                         #

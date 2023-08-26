@@ -232,7 +232,7 @@ for _, strategy in helpers.each_strategy() do
       local gui_client
 
       before_each(function()
-        gui_client = assert(ee_helpers.admin_gui_client(nil, ADMIN_GUI_PORT))
+        gui_client = assert(helpers.admin_gui_client(nil, ADMIN_GUI_PORT))
       end)
 
       after_each(function()
@@ -1353,13 +1353,13 @@ for _, strategy in helpers.each_strategy() do
           local ws = assert(db.workspaces:insert({
             name = "ws2",
           }))
-          
+
           local res = assert(client:send {
             method = "POST",
             path = "/ws2/rbac/roles",
             headers = {
               ["Content-Type"] = "application/json",
-              ["Kong-Admin-Token"] = "letmein-default", 
+              ["Kong-Admin-Token"] = "letmein-default",
             },
             body  = {
               name = "ws2-read-only",
@@ -1375,7 +1375,7 @@ for _, strategy in helpers.each_strategy() do
           if ws == nil then
             ws = "default"
           end
-          
+
           params.rbac_token_enabled = false
 
           local res = assert(client:send {
@@ -1383,7 +1383,7 @@ for _, strategy in helpers.each_strategy() do
             path = "/" .. ws .. "/admins",
             headers = {
               ["Content-Type"] = "application/json",
-              ["Kong-Admin-Token"] = "letmein-default", 
+              ["Kong-Admin-Token"] = "letmein-default",
             },
             body  = params,
           })
@@ -1461,7 +1461,7 @@ for _, strategy in helpers.each_strategy() do
               ["Kong-Admin-User"] = username,
             }
           })
-          assert.res_status(200, res) 
+          assert.res_status(200, res)
         end
 
         it("validates parameters", function()
@@ -1587,13 +1587,13 @@ for _, strategy in helpers.each_strategy() do
 
             -- set new password
             local new_password = "resetPassword123"
-            set_password(row.username, row.email, new_password, token) 
+            set_password(row.username, row.email, new_password, token)
 
             -- verify consumer and basic-auth cred table having a correct ws_id
             assert(db.consumers:select({ id = admin.consumer.id },
                   { show_ws_id = true, workspace = row.ws.id }))
-            
-            assert(db.basicauth_credentials:select_by_username(admin.username, 
+
+            assert(db.basicauth_credentials:select_by_username(admin.username,
                   { show_ws_id = true, workspace = row.ws.id }))
 
             -- use password
@@ -1614,7 +1614,7 @@ for _, strategy in helpers.each_strategy() do
 
             -- use password
             log_in(row.username, new_password)
-            
+
             -- update password
             new_password = "update-Password2"
             reset_password(admin, new_password)
@@ -1717,7 +1717,7 @@ for _, strategy in helpers.each_strategy() do
         if ws == nil then
           ws = "default"
         end
-        
+
         params.rbac_token_enabled = false
 
         local res = assert(client:send {
@@ -1725,7 +1725,7 @@ for _, strategy in helpers.each_strategy() do
           path = "/" .. ws .. "/admins",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Kong-Admin-Token"] = "letmein-default", 
+            ["Kong-Admin-Token"] = "letmein-default",
           },
           body  = params,
         })
