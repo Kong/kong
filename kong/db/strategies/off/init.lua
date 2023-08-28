@@ -216,11 +216,7 @@ local function select_by_key(schema, key)
 
   if entity and entity.ttl then
     local ttl_value = entity.ttl - now()
-    if ttl_value > 0 then
-        entity.ttl = ttl_value
-    else
-        entity.ttl = 0
-    end
+    entity.ttl = ttl_value > 0 and ttl_value or 0
   end
 
   return entity
