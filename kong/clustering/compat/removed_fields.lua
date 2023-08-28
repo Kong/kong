@@ -96,4 +96,12 @@ return {
       "response_headers",
     },
   },
+
+  -- Any dataplane older than 3.5.0
+  [3005000000] = {
+    http_log = {
+      "enable_logged_headers_allow_list",
+      "logged_headers_allow_list",
+    }
+  }
 }
