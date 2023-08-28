@@ -6,7 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local to_hex = require "resty.string".to_hex
-local openssl_bignum = require "resty.openssl.bn"
 local table_merge = require "kong.tools.utils".table_merge
 local split = require "kong.tools.utils".split
 local strip = require "kong.tools.utils".strip
@@ -424,6 +423,32 @@ local function parse_aws_headers(aws_header)
   return trace_id, span_id, should_sample
 end
 
+local function parse_gcp_headers(gcp_header)
+  local warn = kong.log.warn
+
+  if type(gcp_header) ~= "string" then
+    return nil, nil, nil
+  end
+
+  local match, err = ngx.re.match(gcp_header, GCP_TRACECONTEXT_REGEX, 'jo')
+  if not match then
+    local warning = "invalid GCP header"
+    if err then
+      warning = warning .. ": " .. err
+    end
+
+    warn(warning .. "; ignoring.")
+
+    return nil, nil, nil
+  end
+
+  local trace_id = from_hex(match["trace_id"])
+  local span_id = bn.from_dec(match["span_id"]):to_binary()
+  local should_sample = match["trace_flags"] == "1"
+
+  return trace_id, span_id, should_sample
+end
+
 -- [[ EE
 local function parse_datadog_headers(headers)
   local warn = kong.log.warn
@@ -462,31 +487,6 @@ local function parse_datadog_headers(headers)
 end
 -- EE ]]
 
-local function parse_gcp_headers(gcp_header)
-  local warn = kong.log.warn
-
-  if type(gcp_header) ~= "string" then
-    return nil, nil, nil
-  end
-
-  local match, err = ngx.re.match(gcp_header, GCP_TRACECONTEXT_REGEX, 'jo')
-  if not match then
-    local warning = "invalid GCP header"
-    if err then
-      warning = warning .. ": " .. err
-    end
-
-    warn(warning .. "; ignoring.")
-
-    return nil, nil, nil
-  end
-
-  local trace_id = from_hex(match["trace_id"])
-  local span_id = openssl_bignum.from_dec(match["span_id"]):to_binary()
-  local should_sample = match["trace_flags"] == "1"
-
-  return trace_id, span_id, should_sample
-end
 
 -- This plugin understands several tracing header types:
 -- * Zipkin B3 headers (X-B3-TraceId, X-B3-SpanId, X-B3-ParentId, X-B3-Sampled, X-B3-Flags)
@@ -739,7 +739,7 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
 
   if conf_header_type == "gcp" or found_header_type == "gcp" then
     set_header("x-cloud-trace-context", to_gcp_trace_id(to_hex(proxy_span.trace_id)) ..
-      "/" .. openssl_bignum.from_binary(proxy_span.span_id):to_dec() ..
+      "/" .. bn.from_binary(proxy_span.span_id):to_dec() ..
       ";o=" .. (proxy_span.should_sample and "1" or "0")
     )
   end

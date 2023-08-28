@@ -16,8 +16,6 @@ local table_merge = require "kong.tools.utils".table_merge
 
 local fmt  = string.format
 
-local openssl_bignumber = require "resty.openssl.bn"
-
 local function to_hex_ids(arr)
   return { arr[1],
            arr[2] and to_hex(arr[2]) or nil,
@@ -862,7 +860,7 @@ describe("propagation.parse", function()
       local t = { parse({ ["x-cloud-trace-context"] = cloud_trace_context }) }
       assert.same(
         { "gcp", trace_id_32, tostring(tonumber(span_id)), nil, true },
-        { t[1], to_hex(t[2]), openssl_bignumber.from_binary(t[3]):to_dec(), t[4], t[5] }
+        { t[1], to_hex(t[2]), bn.from_binary(t[3]):to_dec(), t[4], t[5] }
       )
       assert.spy(warn).not_called()
     end)
@@ -872,7 +870,7 @@ describe("propagation.parse", function()
       local t = { parse({ ["x-cloud-trace-context"] = cloud_trace_context }) }
       assert.same(
         { "gcp", trace_id_32, tostring(tonumber(span_id)), nil, false },
-        { t[1], to_hex(t[2]), openssl_bignumber.from_binary(t[3]):to_dec(), t[4], t[5] }
+        { t[1], to_hex(t[2]), bn.from_binary(t[3]):to_dec(), t[4], t[5] }
       )
       assert.spy(warn).not_called()
     end)
@@ -882,7 +880,7 @@ describe("propagation.parse", function()
       local t = { parse({ ["x-cloud-trace-context"] = cloud_trace_context }) }
       assert.same(
         { "gcp", trace_id_32, tostring(tonumber(span_id)), nil, false },
-        { t[1], to_hex(t[2]), openssl_bignumber.from_binary(t[3]):to_dec(), t[4], t[5] }
+        { t[1], to_hex(t[2]), bn.from_binary(t[3]):to_dec(), t[4], t[5] }
       )
       assert.spy(warn).not_called()
     end)
@@ -1040,7 +1038,7 @@ describe("propagation.set", function()
     }
 
     -- hex values are not valid span id inputs, translate to decimal
-    local gcp_headers = {["x-cloud-trace-context"] = gcp_trace_id .. "/" .. openssl_bignumber.from_hex(span_id):to_dec() .. ";o=1"}
+    local gcp_headers = {["x-cloud-trace-context"] = gcp_trace_id .. "/" .. bn.from_hex(span_id):to_dec() .. ";o=1"}
 
     before_each(function()
       headers = {}
