@@ -21,7 +21,7 @@
     "chai-like": "^1.1.1",
     "chai-string": "^1.5.0",
     "dotenv": "^16.3.1",
-    "expect": "^29.5.0",
+    "expect": "^29.6.4",
     "influx": "^5.9.3",
     "mocha": "^10.2.0",
     "mocha-multi-reporters": "^1.5.1",
