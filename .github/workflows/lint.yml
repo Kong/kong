@@ -32,14 +32,14 @@ jobs:
     # Optional step to run on only changed files
     - name: Get changed files
       id: changed-files
-      uses: tj-actions/changed-files@54849deb963ca9f24185fb5de2965e002d066e6b # v37
+      uses: tj-actions/changed-files@c860b5c47fa71f461da850094ef2f6e3d6514e44 # v37
       with:
         files: |
           **.lua
 
     - name: Get changed spec files
       id: changed-spec-files
-      uses: tj-actions/changed-files@54849deb963ca9f24185fb5de2965e002d066e6b # v37
+      uses: tj-actions/changed-files@c860b5c47fa71f461da850094ef2f6e3d6514e44 # v37
       with:
         files: |
           spec/**
