@@ -4,6 +4,7 @@ load("//build:build_system.bzl", "kong_directory_genrule", "kong_rules_group", "
 
 exports_files([
     "package/nfpm.yaml",
+    "package/nfpm-debuginfo.yaml",
 ])
 
 lib_deps = [
@@ -82,6 +83,26 @@ link_modules_dir = select({
     "//conditions:default": "",
 })
 
+##### debug symbols
+create_symbols_objects = select({
+    "@kong//:debug_symbols_package_flag": """
+        if [[ "$OSTYPE" == "linux"* ]]; then
+            mkdir -p ${BUILD_DESTDIR}/debug/openresty/nginx/modules ${BUILD_DESTDIR}/debug/openresty/lualib
+            objcopy --only-keep-debug ${BUILD_DESTDIR}/openresty/nginx/modules/ngx_wasm_module.so \
+                                      ${BUILD_DESTDIR}/debug/openresty/nginx/modules/ngx_wasm_module.so.dbg
+            objcopy --only-keep-debug ${BUILD_DESTDIR}/openresty/lualib/libatc_router.so \
+                                      ${BUILD_DESTDIR}/debug/openresty/lualib/libatc_router.so.dbg
+            objcopy --strip-unneeded ${BUILD_DESTDIR}/openresty/nginx/modules/ngx_wasm_module.so
+            objcopy --strip-unneeded ${BUILD_DESTDIR}/openresty/lualib/libatc_router.so
+            objcopy --add-gnu-debuglink=${BUILD_DESTDIR}/debug/openresty/nginx/modules/ngx_wasm_module.so.dbg \
+                                        ${BUILD_DESTDIR}/openresty/nginx/modules/ngx_wasm_module.so
+            objcopy --add-gnu-debuglink=${BUILD_DESTDIR}/debug/openresty/lualib/libatc_router.so.dbg \
+                                        ${BUILD_DESTDIR}/openresty/lualib/libatc_router.so
+        fi
+""",
+    "//conditions:default": "",
+})
+
 kong_directory_genrule(
     name = "kong",
     srcs = [
@@ -145,10 +166,12 @@ kong_directory_genrule(
 
         ATC_ROUTER=${WORKSPACE_PATH}/$(location @atc_router)
         cp $ATC_ROUTER ${BUILD_DESTDIR}/openresty/lualib/.
+        chmod -R "+rw" ${BUILD_DESTDIR}/openresty/lualib
 
         cp -r $(locations @protoc//:all_srcs) ${BUILD_DESTDIR}/kong/.
 
-    """ + install_lib_deps_cmd + install_lualib_deps_cmd + install_webui_cmd + link_modules_dir + install_wasm_deps_cmd + """
+    """ + install_lib_deps_cmd + install_lualib_deps_cmd + install_webui_cmd +
+        create_symbols_objects + link_modules_dir + install_wasm_deps_cmd + """
         mkdir -p ${BUILD_DESTDIR}/etc/kong
         cp kong.conf.default ${BUILD_DESTDIR}/etc/kong/kong.conf.default
 
