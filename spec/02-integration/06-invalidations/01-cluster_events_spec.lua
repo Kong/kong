@@ -90,6 +90,9 @@ for _, strategy in helpers.each_strategy() do
 
       before_each(function()
         spy_func = spy.new(function() end)
+        -- time sensitive tests should have accurate time at the start
+        -- and for the later `ngx.sleep()` calls the time will be updated automatically
+        ngx.update_time()
       end)
 
       it("broadcasts on a given channel", function()
