@@ -17,6 +17,7 @@ local tostring = tostring
 local tonumber = tonumber
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
+local now = ngx.now
 local null = ngx.null
 local unmarshall = marshaller.unmarshall
 local lmdb_get = lmdb.get
@@ -212,6 +213,15 @@ local function select_by_key(schema, key)
   end
 
   entity = schema:process_auto_fields(entity, "select", true, PROCESS_AUTO_FIELDS_OPTS)
+
+  if entity and entity.ttl then
+    local ttl_value = entity.ttl - now()
+    if ttl_value > 0 then
+        entity.ttl = ttl_value
+    else
+        entity.ttl = 0
+    end
+  end
 
   return entity
 end
