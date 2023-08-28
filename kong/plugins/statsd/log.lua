@@ -1,6 +1,7 @@
 local Queue = require "kong.tools.queue"
 local constants = require "kong.plugins.statsd.constants"
 local statsd_logger = require "kong.plugins.statsd.statsd_logger"
+local ws = require "kong.workspaces"
 
 local ngx = ngx
 local kong = kong
@@ -128,10 +129,10 @@ local get_service_id = {
 
 local get_workspace_id = {
   workspace_id   = function()
-    return kong.default_workspace
+    return ws.get_workspace_id()
   end,
   workspace_name = function()
-    return "default"
+    return ws.get_workspace_name()
   end
 }
 
