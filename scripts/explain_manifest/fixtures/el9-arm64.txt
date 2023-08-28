@@ -42,6 +42,7 @@
 
 - Path      : /usr/local/kong/lib/libexpat.so.1.8.10
   Needed    :
+  - libm.so.6
   - libc.so.6
 
 - Path      : /usr/local/kong/lib/libssl.so.3
