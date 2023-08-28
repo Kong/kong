@@ -305,14 +305,15 @@ for _, strategy in helpers.each_strategy() do
 
         assert(cluster_events_1:subscribe("nbf_channel", cb, false)) -- false to not start auto polling
 
-        local delay = 1
+        local delay = 5 -- database might be slow on CI
 
         assert(cluster_events_2:broadcast("nbf_channel", "hello world", delay))
 
         assert(cluster_events_1:poll())
         assert.spy(spy_func).was_not_called() -- not called yet
 
-        ngx.sleep(0.001) -- still yield in case our timer is set to 0
+        ngx.update_time() --  update time as in resty context the cached time is not updated frequently
+        ngx.sleep(2) -- still yield in case our timer is set to 0
 
         assert(cluster_events_1:poll())
         assert.spy(spy_func).was_not_called() -- still not called
@@ -324,7 +325,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("broadcasts an event with a polling delay for subscribers", function()
-        local delay = 1
+        local delay = 5 -- database might be slow on CI
 
         local cluster_events_1 = assert(kong_cluster_events.new {
           db = db,
@@ -347,7 +348,8 @@ for _, strategy in helpers.each_strategy() do
         assert(cluster_events_1:poll())
         assert.spy(spy_func).was_not_called() -- not called yet
 
-        ngx.sleep(0.5) -- still yield in case our timer is set to 0
+        ngx.update_time()
+        ngx.sleep(2) -- still yield in case our timer is set to 0
 
         assert(cluster_events_1:poll())
         assert.spy(spy_func).was_not_called() -- still not called
