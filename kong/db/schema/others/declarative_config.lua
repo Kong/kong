@@ -839,16 +839,16 @@ local function flatten(self, input)
       end
 
       if schema.ttl then
-        local ttl_value = entry.ttl
-        if ttl_value and ttl_value ~= 0 and ttl_value ~= null then
+        local expired_at = entry.ttl
+        if expired_at and expired_at ~= 0 and expired_at ~= null then
           if entry.updated_at then
-            ttl_value = ttl_value + entry.updated_at
+            expired_at = expired_at + entry.updated_at
           elseif entry.created_at then
-            ttl_value = ttl_value + entry.created_at
+            expired_at = expired_at + entry.created_at
           else
-            ttl_value = ttl_value + now_updated()
+            expired_at = expired_at + now_updated()
           end
-          flat_entry.ttl = ttl_value
+          flat_entry.ttl = expired_at
         end
       end
 
