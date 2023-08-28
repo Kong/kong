@@ -240,6 +240,8 @@
   [#11071](https://github.com/Kong/kong/pull/11071)
 - Bumped lua-resty-lmdb from 1.1.0 to 1.3.0
   [#11227](https://github.com/Kong/kong/pull/11227)
+- Bumped lua-ffi-zlib from 0.5 to 0.6
+  [#11373](https://github.com/Kong/kong/pull/11373)
 
 ### Known Issues
 - Some referenceable configuration fields, such as the `http_endpoint` field
