@@ -145,6 +145,7 @@ build = {
     ["kong.api.routes.upstreams"] = "kong/api/routes/upstreams.lua",
 
     ["kong.admin_gui"] = "kong/admin_gui/init.lua",
+    ["kong.admin_gui.utils"] = "kong/admin_gui/utils.lua",
 
     ["kong.status"] = "kong/status/init.lua",
     ["kong.status.ready"] = "kong/status/ready.lua",

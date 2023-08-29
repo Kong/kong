@@ -40,6 +40,7 @@ describe("anonymous reports for kong manager", function ()
   end
 
   local dns_hostsfile
+  local bp, db
 
   lazy_setup(function ()
     dns_hostsfile = assert(os.tmpname() .. ".hosts")
@@ -47,7 +48,7 @@ describe("anonymous reports for kong manager", function ()
     assert(fd:write("127.0.0.1 " .. constants.REPORTS.ADDRESS))
     assert(fd:close())
 
-    local bp = assert(helpers.get_db_utils(nil, {}, { "reports-api" }))
+    bp, db = assert(helpers.get_db_utils(nil, {}, { "reports-api" }))
 
     bp.plugins:insert({
       name = "reports-api",
@@ -57,6 +58,7 @@ describe("anonymous reports for kong manager", function ()
 
   lazy_teardown(function ()
     os.remove(dns_hostsfile)
+    db:truncate("plugins")
   end)
 
   describe("availability status", function ()

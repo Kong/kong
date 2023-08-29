@@ -1155,8 +1155,8 @@ describe("NGINX conf compiler", function()
           prefix = tmp_config.prefix,
           proxy_listen = "127.0.0.1:8000 ssl",
           admin_listen = "127.0.0.1:8001 ssl",
-          status_listen = "127.0.0.1:8002 ssl",
-          admin_gui_listen = "127.0.0.1:8003 ssl",
+          admin_gui_listen = "127.0.0.1:8002 ssl",
+          status_listen = "127.0.0.1:8003 ssl",
           ssl_cipher_suite = "custom",
           ssl_cert = "spec/fixtures/kong_spec.crt",
           ssl_cert_key = "spec/fixtures/kong_spec.key",
@@ -1176,8 +1176,8 @@ describe("NGINX conf compiler", function()
           prefix = tmp_config.prefix,
           proxy_listen  = "127.0.0.1:8000 ssl",
           admin_listen  = "127.0.0.1:8001 ssl",
-          status_listen = "127.0.0.1:8002 ssl",
-          admin_gui_listen = "127.0.0.1:8003 ssl",
+          admin_gui_listen = "127.0.0.1:8002 ssl",
+          status_listen = "127.0.0.1:8003 ssl",
         })
 
         assert(prefix_handler.prepare_prefix(conf))
@@ -1198,8 +1198,8 @@ describe("NGINX conf compiler", function()
           prefix = tmp_config.prefix,
           proxy_listen  = "127.0.0.1:8000 ssl",
           admin_listen  = "127.0.0.1:8001 ssl",
-          status_listen = "127.0.0.1:8002 ssl",
-          admin_gui_listen = "127.0.0.1:8003 ssl",
+          admin_gui_listen = "127.0.0.1:8002 ssl",
+          status_listen = "127.0.0.1:8003 ssl",
         })
 
         assert(prefix_handler.prepare_prefix(conf))
@@ -1222,8 +1222,8 @@ describe("NGINX conf compiler", function()
           prefix = tmp_config.prefix,
           proxy_listen  = "127.0.0.1:8000 ssl",
           admin_listen  = "127.0.0.1:8001 ssl",
-          status_listen = "127.0.0.1:8002 ssl",
-          admin_gui_listen = "127.0.0.1:8003 ssl",
+          admin_gui_listen = "127.0.0.1:8002 ssl",
+          status_listen = "127.0.0.1:8003 ssl",
           stream_listen = "127.0.0.1:7000 ssl",
         })
 

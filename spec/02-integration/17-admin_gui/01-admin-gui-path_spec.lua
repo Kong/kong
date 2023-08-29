@@ -50,6 +50,7 @@ describe("Admin GUI - admin_gui_path", function()
     })
     res = assert.res_status(200, res)
     assert.matches("'KONG_VERSION': '", res)
+    assert.matches("'ADMIN_GUI_PATH': '/'", res, nil, true)
   end)
 
   it("should serve Admin GUI correctly when admin_gui_path is set", function()
@@ -81,7 +82,7 @@ describe("Admin GUI - admin_gui_path", function()
     assert.res_status(404, res)
     client:close()
 
-    local res = assert(client:send {
+    res = assert(client:send {
       method = "GET",
       path = "/any_other_test_path",
     })
@@ -96,14 +97,14 @@ describe("Admin GUI - admin_gui_path", function()
     assert.matches("TEST INDEX%.HTML = /manager/assets/image%.png", res)
     client:close()
 
-    local res = assert(client:send {
+    res = assert(client:send {
       method = "GET",
       path = "/kconfig.js",
     })
     assert.res_status(404, res)
     client:close()
 
-    local res = assert(client:send {
+    res = assert(client:send {
       method = "GET",
       path = "/any_other_test_path/kconfig.js",
     })
@@ -116,5 +117,6 @@ describe("Admin GUI - admin_gui_path", function()
     })
     res = assert.res_status(200, res)
     assert.matches("'KONG_VERSION': '", res)
+    assert.matches("'ADMIN_GUI_PATH': '/manager'", res, nil, true)
   end)
 end)
