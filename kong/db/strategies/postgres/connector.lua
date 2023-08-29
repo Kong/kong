@@ -529,6 +529,7 @@ function _mt:query(sql, operation)
     operation = "write"
   end
 
+  local conn
   local res, err, partial, num_queries
 
   local ok
@@ -537,24 +538,35 @@ function _mt:query(sql, operation)
     return nil, "error acquiring query semaphore: " .. err
   end
 
-  local conn = self:get_stored_connection(operation)
-  if conn then
-    res, err, partial, num_queries = conn:query(sql)
-
-  else
-    local connection
+  conn = self:get_stored_connection(operation)
+  if not conn then
     local config = operation == "write" and self.config or self.config_ro
 
-    connection, err = connect(config)
-    if not connection then
+    conn, err = connect(config)
+    if not conn then
       self:release_query_semaphore_resource(operation)
       return nil, err
     end
+  end
 
-    res, err, partial, num_queries = connection:query(sql)
+  res, err, partial, num_queries = conn:query(sql)
 
+  if err and type(err) == "string" and string.find(err, "timeout", 1) then
+    ngx.log(ngx.ERR, "SQL query timeout: ", err)
+    -- Timeout could happens during query, and if it happens,
+    -- connection cannot be reused for subsequent query because
+    -- socket might contain data from previous query.
+    local _, err = conn:disconnect()
+    if err then
+      -- We're at the end of the query - just logging if
+      -- we cannot cleanup the timed out connection
+      ngx.log(ngx.ERR, "failed to disconnect timed-out connection: ", err)
+    end
+    self.store_connection(nil, operation)
+
+  else
     local keepalive_timeout = self:get_keepalive_timeout(operation)
-    setkeepalive(connection, keepalive_timeout)
+    setkeepalive(conn, keepalive_timeout)
   end
 
   self:release_query_semaphore_resource(operation)
