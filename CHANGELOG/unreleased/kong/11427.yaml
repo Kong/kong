@@ -1,0 +1,5 @@
+message: "**HTTP-Log**: add `enable_logged_headers_allow_list` and `logged_headers_allow_list` fields in HTTP Log plugin."
+type: feature
+scope: Plugin
+prs:
+  - 11427
