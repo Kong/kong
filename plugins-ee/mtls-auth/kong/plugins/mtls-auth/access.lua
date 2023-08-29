@@ -468,7 +468,7 @@ local function do_authentication(conf)
         kong.log.err(err)
       end
 
-      -- there was communication error or niether of OCSP URI or CRL URI set
+      -- there was communication error or neither of OCSP URI or CRL URI set
       if revoked == nil then
         if conf.revocation_check_mode == "IGNORE_CA_ERROR" then
           revoked = false
