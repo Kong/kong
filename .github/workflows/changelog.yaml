@@ -3,6 +3,10 @@ name: Changelog
 on:
   pull_request:
     types: [ "opened", "synchronize", "labeled", "unlabeled" ]
+    paths:
+      - 'kong/**'
+      - '**.rockspec'
+      - '.requirements'
 
 jobs:
   require-changelog:
