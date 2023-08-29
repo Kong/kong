@@ -9,7 +9,6 @@ local vault_loader = require("kong.db.schema.vault_loader")
 local schema_topological_sort = require("kong.db.schema.topological_sort")
 
 
-local now = ngx.now
 local null = ngx.null
 local type = type
 local next = next
@@ -19,7 +18,6 @@ local ipairs = ipairs
 local insert = table.insert
 local concat = table.concat
 local tostring = tostring
-local update_time = ngx.update_time
 local cjson_encode = require("cjson.safe").encode
 
 
@@ -37,12 +35,6 @@ local foreign_references = {}
 -- Maps an entity to entities that foreign-reference it
 -- e.g. `foreign_children["services"]["routes"] = "service"`
 local foreign_children = {}
-
-
-local function now_updated()
-  update_time()
-  return now()
-end
 
 
 function DeclarativeConfig.pk_string(schema, object)
@@ -838,18 +830,8 @@ local function flatten(self, input)
         end
       end
 
-      if schema.ttl then
-        local expired_at = entry.ttl
-        if expired_at and expired_at ~= 0 and expired_at ~= null then
-          if entry.updated_at then
-            expired_at = expired_at + entry.updated_at
-          elseif entry.created_at then
-            expired_at = expired_at + entry.created_at
-          else
-            expired_at = expired_at + now_updated()
-          end
-          flat_entry.ttl = expired_at
-        end
+      if schema.ttl and entry.ttl and entry.ttl ~= null then
+        flat_entry.ttl = entry.ttl
       end
 
       entities[entity][id] = flat_entry
