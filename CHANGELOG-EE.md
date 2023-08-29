@@ -37,7 +37,7 @@
 * **Response-Transformer-Advanced**: Do not load response body when `if_status` does not match. [FTI-5265](https://konghq.atlassian.net/browse/FTI-5265)
 * **Canary**
   * Prevent setting `steps` to `nil` when `percentage` or `duration` is used to split traffic. [FTI-5332](https://konghq.atlassian.net/browse/FTI-5332).
-* **Mtls-Auth**: Fix an issue where mtls-auth also caches the network failure when doing certificate revocation check. [FTI-5327](https://konghq.atlassian.net/browse/FTI-5327)
+* **Mtls-Auth**: Fix an issue that caused mtls-auth to cache network failures when doing certificate revocation check. [FTI-5327](https://konghq.atlassian.net/browse/FTI-5327)
 
 # 3.4.0.0
 
