@@ -20,7 +20,9 @@ do
   CHANGELOG_PATH = base_path
 end
 local UNRELEASED = "unreleased"
-local GITHUB_KONG_REPO = "Kong/kong"
+local REPOS = {
+  kong = "Kong/kong",
+}
 local JIRA_BASE_URL = "https://konghq.atlassian.net/browse/"
 local GITHUB_REFERENCE = {
   pr = "https://github.com/%s/pull/%d",
@@ -54,13 +56,13 @@ local function table_keys(t)
   return keys
 end
 
-local function parse_github_ref(reference_type, references)
+local function parse_github_ref(system, reference_type, references)
   if references == nil or references == lyaml.null then
     return nil
   end
   local parsed_references = {}
   for i, ref in ipairs(references or {}) do
-    local repo = GITHUB_KONG_REPO
+    local repo = REPOS[system]
     local ref_no = tonumber(ref) -- treat ref as number string first
     local name = "#" .. ref
     if not ref_no then -- ref is not a number string
@@ -147,7 +149,7 @@ local function collect_files(folder)
 end
 
 
-local function collect_folder(folder)
+local function collect_folder(system, folder)
   local data = {
     features = {},
     bugfixes = {},
@@ -169,9 +171,9 @@ local function collect_folder(folder)
     local content = assert(pl_file.read(filename))
     local entry = assert(lyaml.load(content))
 
-    entry.prs = parse_github_ref("pr", entry.prs) or {}
-    entry.jiras = parse_jiras(entry.jiras)
-    entry.issues = parse_github_ref("issue", entry.issues) or {}
+    entry.prs = parse_github_ref(system, "pr", entry.prs) or {}
+    entry.issues = parse_github_ref(system, "issue", entry.issues) or {}
+    entry.jiras = parse_jiras(entry.jiras) or {}
 
     if entry.scope == nil or entry.scope == lyaml.null then
       entry.scope = "Default"
@@ -196,7 +198,7 @@ end
 local function collect_unreleased()
   local data = {}
 
-  data.kong = collect_folder(absolute_path(UNRELEASED, "kong"))
+  data.kong = collect_folder("kong", absolute_path(UNRELEASED, "kong"))
 
   return data
 end
