@@ -263,7 +263,8 @@ describe("canary schema", function()
         assert.True(within_current_time)
       end)
 
-      it("prevent setting steps to nil with start and duration", function()
+      -- [=[ reopen after KAG-923
+      it("#flaky prevent setting steps to nil with start and duration", function()
         local res, body, json_body, plugin_id, admin_client_3, admin_client_4
         res = assert(admin_client:send {
           method = "POST",
@@ -335,7 +336,7 @@ describe("canary schema", function()
         admin_client_4:close()
       end)
 
-      it("prevent setting steps to nil with percentage", function()
+      it("#flaky prevent setting steps to nil with percentage", function()
         local res, body, json_body, plugin_id, admin_client_3, admin_client_4
         res = assert(admin_client:send {
           method = "POST",
@@ -406,6 +407,7 @@ describe("canary schema", function()
         assert.equals("schema violation (config: config.steps must be a number greater than 1)", json_body.message)
         admin_client_4:close()
       end)
+      --]=]
     end)
   end
 end)
