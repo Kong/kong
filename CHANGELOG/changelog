@@ -1,0 +1,298 @@
+#!/usr/bin/env luajit
+
+local pl_template = require "pl.template"
+local pl_tablex = require "pl.tablex"
+local pl_file = require "pl.file"
+local pl_dir = require "pl.dir"
+local pl_path = require "pl.path"
+local pl_stringx = require "pl.stringx"
+local lyaml = require "lyaml"
+local pl_app = require 'pl.lapp'
+
+local CHANGELOG_PATH -- absolute path of CHANGELOG directory
+do
+  local base_path = os.getenv("PWD")
+  local command = debug.getinfo(1, "S").source:sub(2)
+  local last_idx = pl_stringx.rfind(command, "/")
+  if last_idx then
+    base_path = pl_path.join(base_path, string.sub(command, 1, last_idx - 1))
+  end
+  CHANGELOG_PATH = base_path
+end
+local UNRELEASED = "unreleased"
+local REPOS = {
+  kong = "Kong/kong",
+  ["kong-ee"] = "Kong/kong-ee",
+  ["kong-manager-ee"] = "Kong/kong-admin",
+}
+local JIRA_BASE_URL = "https://konghq.atlassian.net/browse/"
+local GITHUB_REFERENCE = {
+  pr = "https://github.com/%s/pull/%d",
+  issue = "https://github.com/%s/issues/%d"
+}
+local SCOPE_PRIORITY = { -- smallest on top
+  Performance = 10,
+  Configuration = 20,
+  Core = 30,
+  PDK = 40,
+  Plugin = 50,
+  ["Admin API"] = 60,
+  Clustering = 70,
+  Default = 100, -- default priority
+}
+
+setmetatable(SCOPE_PRIORITY, {
+  __index = function()
+    return rawget(SCOPE_PRIORITY, "Default") - 1
+  end
+})
+
+local function table_keys(t)
+  if type(t) ~= "table" then
+    return t
+  end
+  local keys = {}
+  for k, _ in pairs(t) do
+    table.insert(keys, k)
+  end
+  return keys
+end
+
+local function parse_github_ref(system, reference_type, references)
+  if references == nil or references == lyaml.null then
+    return nil
+  end
+  local parsed_references = {}
+  for i, ref in ipairs(references or {}) do
+    local repo = REPOS[system]
+    local ref_no = tonumber(ref) -- treat ref as number string first
+    local name = "#" .. ref
+    if not ref_no then -- ref is not a number string
+      local parts = pl_stringx.split(ref, ":")
+      repo = parts[1]
+      ref_no = parts[2]
+      name = pl_stringx.replace(tostring(ref), ":", " #")
+    end
+    parsed_references[i] = {
+      id = ref_no,
+      name = name,
+      link = string.format(GITHUB_REFERENCE[reference_type], repo, ref_no),
+    }
+  end
+  return parsed_references
+end
+
+
+local function parse_jiras(jiras)
+  local jira_items = {}
+  for i, jira in ipairs(jiras or {}) do
+    jiras[i] = {
+      id = jira,
+      link = JIRA_BASE_URL .. jira
+    }
+  end
+  return jira_items
+end
+
+
+local function is_yaml(filename)
+  return pl_stringx.endswith(filename, ".yaml") or
+    pl_stringx.endswith(filename, ".yml")
+end
+
+local function is_empty_table(t)
+  return next(t) == nil
+end
+
+local function compile_template(data, template)
+  local compile_env = {
+    _escape = ">",
+    _brackets = "{}",
+    _debug = true,
+    pairs = pairs,
+    ipairs = ipairs,
+    tostring = tostring,
+    is_empty_table = is_empty_table,
+  }
+
+  compile_env = pl_tablex.merge(compile_env, data, true) -- union
+  local content, err = pl_template.substitute(template, compile_env)
+  if not content then
+    return nil, "failed to compile template: " .. err
+  end
+
+  return content
+end
+
+local function absolute_path(...)
+  local path = CHANGELOG_PATH
+  for _, p in ipairs({...}) do
+    path = pl_path.join(path, p)
+  end
+  return path
+end
+
+local function collect_files(folder)
+  local files
+  if pl_path.exists(folder) then
+    files = assert(pl_dir.getfiles(folder))
+    if files then
+      table.sort(files)
+    end
+  end
+  local sorted_files = {}
+  for _, filename in ipairs(files or {}) do
+    if is_yaml(filename) then
+      table.insert(sorted_files, filename)
+    end
+  end
+
+  return sorted_files
+end
+
+
+local function collect_folder(system, folder)
+  local data = {
+    features = {},
+    bugfixes = {},
+    breaking_changes = {},
+    dependencies = {},
+    deprecations = {},
+  }
+
+  local map = {
+    feature = "features",
+    bugfix = "bugfixes",
+    breaking_change = "breaking_changes",
+    dependency = "dependencies",
+    deprecation = "deprecations",
+  }
+
+  local files = collect_files(folder)
+  for _, filename in ipairs(files) do
+    local content = assert(pl_file.read(filename))
+    local entry = assert(lyaml.load(content))
+
+    entry.prs = parse_github_ref(system, "pr", entry.prs) or {}
+    entry.issues = parse_github_ref(system, "issue", entry.issues) or {}
+    entry.jiras = parse_jiras(entry.jiras) or {}
+
+    if entry.scope == nil or entry.scope == lyaml.null then
+      entry.scope = "Default"
+    end
+
+    local key = map[entry.type]
+    if not data[key][entry.scope] then
+      data[key][entry.scope] = {}
+    end
+    table.insert(data[key][entry.scope], entry)
+  end
+
+  for _, scopes in pairs(data) do
+    local scope_names = table_keys(scopes)
+    table.sort(scope_names, function(a, b) return SCOPE_PRIORITY[a] < SCOPE_PRIORITY[b] end)
+    scopes.sorted_scopes = scope_names
+  end
+
+  return data
+end
+
+local function collect_unreleased()
+  local data = {}
+
+  data.kong = collect_folder("kong", absolute_path(UNRELEASED, "kong"))
+
+  data.kong_ee = collect_folder("kong-ee", absolute_path(UNRELEASED, "kong-ee"))
+
+  data.km_ee = collect_folder("kong-manager-ee", absolute_path(UNRELEASED, "kong-manager-ee"))
+
+  return data
+end
+
+
+local function generate_content(data)
+  local template_path = absolute_path("changelog-md-template.lua")
+  local content = assert(pl_file.read(template_path))
+  local changelog_template = assert(loadstring(content))()
+  return compile_template(data, changelog_template)
+end
+
+
+-- command: release
+-- release a release note
+local function release(version)
+  -- mkdir unreleased path if not exists
+  if not pl_path.exists(absolute_path(UNRELEASED)) then
+    assert(pl_dir.makepath(absolute_path(UNRELEASED)))
+  end
+
+  local data = collect_unreleased()
+  data.version = version
+  local content = assert(generate_content(data))
+  local target_path = absolute_path(version)
+  if pl_path.exists(target_path) then
+    error("directory exists, please manually remove. " .. version)
+  end
+  os.execute("mv " .. UNRELEASED .. " " .. target_path)
+  local filename = pl_path.join(target_path, "changelog.md")
+  assert(pl_file.write(filename, content))
+  assert(pl_dir.makepath(UNRELEASED))
+
+  print("Successfully generated release note.")
+end
+
+
+-- command: preview
+-- preview the release note
+local function preview(version)
+  local data = collect_unreleased()
+  data.version = version
+  local content = assert(generate_content(data))
+  print(content)
+end
+
+
+local cmds = {
+  release = function(args)
+    local version = args[1]
+    if not version then
+      error("Missing version")
+    end
+    release(version)
+  end,
+  preview = function(args)
+    local version = args[1]
+    if not version then
+      error("Missing version")
+    end
+    preview(version)
+  end,
+}
+
+
+local args = pl_app [[
+Usage: changelog <command> [options]
+
+Commands:
+  release <version>                  release a release note based on the files in the CHANGELOG/unreleased directory.
+  preview <version>                  preview a release note based on the files in the CHANGELOG/unreleased directory.
+
+Options:
+  -h, --help                         display help for command
+
+Examples:
+  changelog preview 1.0.0
+  changelog release 1.0.0
+]]
+
+local cmd_name = table.remove(args, 1)
+if not cmd_name then
+  pl_app.quit()
+end
+
+local cmd_fn = cmds[cmd_name]
+if not cmds[cmd_name] then
+  pl_app.quit("Invalid command: " .. cmd_name, true)
+end
+
+cmd_fn(args)
