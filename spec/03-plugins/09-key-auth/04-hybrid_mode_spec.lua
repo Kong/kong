@@ -1,8 +1,4 @@
 local helpers = require "spec.helpers"
-local cjson   = require "cjson"
-local meta    = require "kong.meta"
-local utils   = require "kong.tools.utils"
-
 
 for _, strategy in helpers.each_strategy({"postgres"}) do
   describe("Plugin: key-auth (access) [#" .. strategy .. "] auto-expiring keys", function()
