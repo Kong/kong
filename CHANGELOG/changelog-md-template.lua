@@ -60,4 +60,39 @@ return [[
 
 > render_changelog_section("Fixes", kong.bugfixes)
 
+
+## Kong Enterprise
+
+> render_changelog_section("Breaking Changes", kong_ee.breaking_changes)
+
+
+> render_changelog_section("Deprecations", kong_ee.deprecations)
+
+
+> render_changelog_section("Dependencies", kong_ee.dependencies)
+
+
+> render_changelog_section("Features", kong_ee.features)
+
+
+> render_changelog_section("Fixes", kong_ee.bugfixes)
+
+
+## Kong Manager Enterprise
+
+> render_changelog_section("Breaking Changes", km_ee.breaking_changes)
+
+
+> render_changelog_section("Deprecations", km_ee.deprecations)
+
+
+> render_changelog_section("Dependencies", km_ee.dependencies)
+
+
+> render_changelog_section("Features", km_ee.features)
+
+
+> render_changelog_section("Fixes", km_ee.bugfixes)
+
+
 ]]

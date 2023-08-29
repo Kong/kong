@@ -22,6 +22,8 @@ end
 local UNRELEASED = "unreleased"
 local REPOS = {
   kong = "Kong/kong",
+  ["kong-ee"] = "Kong/kong-ee",
+  ["kong-manager-ee"] = "Kong/kong-admin",
 }
 local JIRA_BASE_URL = "https://konghq.atlassian.net/browse/"
 local GITHUB_REFERENCE = {
@@ -199,6 +201,10 @@ local function collect_unreleased()
   local data = {}
 
   data.kong = collect_folder("kong", absolute_path(UNRELEASED, "kong"))
+
+  data.kong_ee = collect_folder("kong-ee", absolute_path(UNRELEASED, "kong-ee"))
+
+  data.km_ee = collect_folder("kong-manager-ee", absolute_path(UNRELEASED, "kong-manager-ee"))
 
   return data
 end
