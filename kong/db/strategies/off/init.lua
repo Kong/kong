@@ -17,7 +17,6 @@ local tostring = tostring
 local tonumber = tonumber
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
-local now = ngx.now
 local null = ngx.null
 local unmarshall = marshaller.unmarshall
 local lmdb_get = lmdb.get
