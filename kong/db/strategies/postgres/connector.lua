@@ -529,7 +529,7 @@ function _mt:query(sql, operation)
     operation = "write"
   end
 
-  local conn
+  local conn, is_new_conn
   local res, err, partial, num_queries
 
   local ok
@@ -547,6 +547,7 @@ function _mt:query(sql, operation)
       self:release_query_semaphore_resource(operation)
       return nil, err
     end
+    is_new_conn = true
   end
 
   res, err, partial, num_queries = conn:query(sql)
@@ -564,7 +565,7 @@ function _mt:query(sql, operation)
     end
     self.store_connection(nil, operation)
 
-  else
+  elseif is_new_conn then
     local keepalive_timeout = self:get_keepalive_timeout(operation)
     setkeepalive(conn, keepalive_timeout)
   end
