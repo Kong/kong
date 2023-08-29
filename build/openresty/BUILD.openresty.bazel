@@ -120,6 +120,7 @@ CONFIGURE_OPTIONS = [
     "--with-http_v2_module",
     "--with-stream_realip_module",  # >= 1.11.4
     "--with-stream_ssl_preread_module",  # >= 1.11.5
+    "--with-http_gzip_static_module",
     "--without-http_encrypted_session_module",
     "--without-http_xss_module",
     "--without-http_coolkit_module",
