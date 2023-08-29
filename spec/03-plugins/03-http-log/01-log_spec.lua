@@ -353,11 +353,11 @@ for _, strategy in helpers.each_strategy() do
           }
         }
       }
-      
+
       local ws = bp.workspaces:insert{
         name = "ws1"
       }
-      
+
       local service12 = bp.services:insert_ws({
         protocol = "http",
         host     = helpers.mock_upstream_host,
@@ -370,7 +370,7 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "http_logging.workspace.name" },
         service = service12
       }, ws)
-      
+
       bp.plugins:insert_ws ({
         route = { id = route12.id },
         name     = "http-log",
@@ -381,7 +381,7 @@ for _, strategy in helpers.each_strategy() do
             .. "/post_log/http_name"
         }
       }, ws)
-      
+
       helpers.setenv(vault_env_name, vault_env_value)
 
       assert(helpers.start_kong({
@@ -469,7 +469,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       local entries = get_log("http_param", 1)
-      
+
       assert.same("127.0.0.1", entries[1].client_ip)
       assert.same({
         query = "param",
@@ -649,7 +649,6 @@ for _, strategy in helpers.each_strategy() do
 
       admin_client:close()
     end)
-  end)
 
     -- test both with a single worker for a deterministic test,
     -- and with multiple workers for a concurrency test
@@ -926,7 +925,7 @@ for _, strategy in helpers.each_strategy() do
 
         helpers.clean_logfile()
 
-        local entries = get_log("http", 1)      
+        local entries = get_log("http", 1)
         assert.same("127.0.0.1", entries[1].client_ip)
 
         -- Assertion: there should be no [error], including no error
