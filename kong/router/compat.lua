@@ -11,20 +11,23 @@ local _M = {}
 local bit = require("bit")
 local buffer = require("string.buffer")
 local atc = require("kong.router.atc")
+local utils = require("kong.router.utils")
 local tb_new = require("table.new")
 local tb_nkeys = require("table.nkeys")
 local uuid = require("resty.jit-uuid")
 
 
 local shallow_copy    = require("kong.tools.utils").shallow_copy
-local is_regex_magic  = require("kong.router.utils").is_regex_magic
+
+
+local is_regex_magic  = utils.is_regex_magic
+local parse_ip_addr   = utils.parse_ip_addr
 
 
 local escape_str      = atc.escape_str
 local is_empty_field  = atc.is_empty_field
 local gen_for_field   = atc.gen_for_field
 local split_host_port = atc.split_host_port
-local parse_ip_addr   = require("kong.router.utils").parse_ip_addr
 
 
 local type = type
@@ -411,7 +414,8 @@ local function get_priority(route)
 
     if headers_count > MAX_HEADER_COUNT then
       ngx.log(ngx.WARN, "too many headers in route ", route.id,
-                        " headers count capped at 255 when sorting")
+                        " headers count capped at ", MAX_HEADER_COUNT,
+                        " when sorting")
       headers_count = MAX_HEADER_COUNT
     end
   end
@@ -540,9 +544,10 @@ end
 
 
 local function split_routes_and_services_by_path(routes_and_services)
-  local routes_and_services_split = tb_new(#routes_and_services, 0)
+  local count = #routes_and_services
+  local routes_and_services_split = tb_new(count, 0)
 
-  for i = 1, #routes_and_services do
+  for i = 1, count do
     split_route_by_path_into(routes_and_services[i], routes_and_services_split)
   end
 
