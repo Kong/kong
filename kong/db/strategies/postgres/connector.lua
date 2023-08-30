@@ -552,16 +552,17 @@ function _mt:query(sql, operation)
 
   res, err, partial, num_queries = conn:query(sql)
 
-  if err and type(err) == "string" and string.find(err, "timeout", 1) then
-    ngx.log(ngx.ERR, "SQL query timeout: ", err)
-    -- Timeout could happens during query, and if it happens,
-    -- connection cannot be reused for subsequent query because
-    -- socket might contain data from previous query.
+  -- if err is string then either it is a SQL error
+  -- or it is a socket error, here we abort connections
+  -- that encounter errors instead of reusing them, for
+  -- safety reason
+  if err and type(err) == "string" then
+    ngx.log(ngx.DEBUG, "SQL query throw error: ", err, ", close connection")
     local _, err = conn:disconnect()
     if err then
       -- We're at the end of the query - just logging if
-      -- we cannot cleanup the timed out connection
-      ngx.log(ngx.ERR, "failed to disconnect timed-out connection: ", err)
+      -- we cannot cleanup the connection
+      ngx.log(ngx.ERR, "failed to disconnect: ", err)
     end
     self.store_connection(nil, operation)
 
