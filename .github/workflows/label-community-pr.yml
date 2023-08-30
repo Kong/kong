@@ -26,4 +26,4 @@ jobs:
           echo "Author is not a member. Adding label..."
           LABEL="author/community"
 
-          gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels" -X POST -F "labels[]=$LABEL"
+          GH_TOKEN=$GITHUB_TOKEN gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels" -X POST -F "labels[]=$LABEL"
