@@ -143,7 +143,7 @@ function _M:communicate(premature)
   -- connection established
   -- first, send out the plugin list and DP labels to CP
   -- The CP will make the decision on whether sync will be allowed
-  -- based no the received information
+  -- based on the received information
   local _
   _, err = c:send_binary(cjson_encode({ type = "basic_info",
                                         plugins = self.plugins_list,
