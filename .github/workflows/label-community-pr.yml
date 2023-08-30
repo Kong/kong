@@ -5,6 +5,9 @@ on:
     types:
       - opened
 
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 jobs:
   check_author:
     runs-on: ubuntu-latest
@@ -16,16 +19,11 @@ jobs:
           set +e
           gh api orgs/Kong/members --paginate | jq -r '.[].login' | grep -q '^${{ github.event.pull_request.user.login }}$'
           echo "exitcode=$?" >> $GITHUB_OUTPUT
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Add Label if Author is not a member
         if: steps.check_membership.outputs.exitcode == '1'
         run: |
           echo "Author is not a member. Adding label..."
-          TOKEN=${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER=${{ github.event.pull_request.number }}
           LABEL="author/community"
-          API_URL="https://api.github.com/repos/${{ github.repository }}/issues/${PR_NUMBER}/labels"
 
-          curl -X POST -H "Authorization: token $TOKEN" -d '["'"$LABEL"'"]' $API_URL
+          gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels" -X POST -F "labels[]=$LABEL"
