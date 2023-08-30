@@ -53,6 +53,8 @@
 - Removed a hardcoded proxy-wasm isolation level setting that was preventing the
   `nginx_http_proxy_wasm_isolation` configuration value from taking effect.
   [#11407](https://github.com/Kong/kong/pull/11407)
+- Fix TTL not working in DB-less and Hybrid mode.
+  [#11464](https://github.com/Kong/kong/pull/11464)
 
 #### Plugins
 
