@@ -1,0 +1,7 @@
+message: Fix TTL not working in DB-less and Hybrid mode
+type: bugfix
+scope: db/declarative
+prs:
+  - 11464
+jiras:
+  - "FTI-4512"
