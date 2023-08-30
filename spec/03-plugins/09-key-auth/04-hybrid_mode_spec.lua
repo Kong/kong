@@ -29,14 +29,6 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         username = "Jafar",
       }
 
-      bp.keyauth_credentials:insert({
-        key = "kong",
-        consumer = { id = user_jafar.id },
-      }, { ttl = ttl })
-
-      ngx.update_time()
-      inserted_at = ngx.now()
-
       assert(helpers.start_kong({
         role = "control_plane",
         database = strategy,
@@ -71,7 +63,25 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
     end)
 
     it("authenticate for up to 'ttl'", function()
-      local res
+
+      -- add credentials after nginx has started to avoid TTL expiration
+      local admin_client = helpers.admin_client()
+      local res = assert(admin_client:send {
+          method  = "POST",
+          path  = "/consumers/Jafar/key-auth",
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            key = "kong",
+            ttl = 10,
+          },
+      })
+      assert.res_status(201, res)
+      admin_client:close()
+
+      ngx.update_time()
+      inserted_at = ngx.now()
 
       helpers.wait_until(function()
         proxy_client = helpers.http_client("127.0.0.1", 9002)
