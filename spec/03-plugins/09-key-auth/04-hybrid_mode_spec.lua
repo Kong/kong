@@ -25,7 +25,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         route = { id = r.id },
       }
 
-      local user_jafar = bp.consumers:insert {
+      bp.consumers:insert {
         username = "Jafar",
       }
 
