@@ -22,8 +22,9 @@ jobs:
 
       - name: Add Label if Author is not a member
         if: steps.check_membership.outputs.exitcode == '1'
-        run: |
-          echo "Author is not a member. Adding label..."
-          LABEL="author/community"
-
-          GH_TOKEN=${{ github.token }} gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels" -X POST -F "labels[]=$LABEL"
+        uses: christianvuerings/add-labels@v1
+        with:
+          labels: |
+            author/community
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
