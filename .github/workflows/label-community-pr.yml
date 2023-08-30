@@ -13,6 +13,8 @@ jobs:
       - name: Check PR Author Membership
         id: check_membership
         uses: octokit/request-action@v2.x
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           route: GET /orgs/Kong/memberships/${{ github.event.pull_request.user.login }}
 
