@@ -353,11 +353,11 @@ for _, strategy in helpers.each_strategy() do
           }
         }
       }
-
+      
       local ws = bp.workspaces:insert{
         name = "ws1"
       }
-
+      
       local service12 = bp.services:insert_ws({
         protocol = "http",
         host     = helpers.mock_upstream_host,
@@ -370,7 +370,7 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "http_logging.workspace.name" },
         service = service12
       }, ws)
-
+      
       bp.plugins:insert_ws ({
         route = { id = route12.id },
         name     = "http-log",
@@ -381,7 +381,7 @@ for _, strategy in helpers.each_strategy() do
             .. "/post_log/http_name"
         }
       }, ws)
-
+      
       helpers.setenv(vault_env_name, vault_env_value)
 
       assert(helpers.start_kong({
@@ -469,7 +469,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       local entries = get_log("http_param", 1)
-
+      
       assert.same("127.0.0.1", entries[1].client_ip)
       assert.same({
         query = "param",
@@ -649,229 +649,12 @@ for _, strategy in helpers.each_strategy() do
 
       admin_client:close()
     end)
+  end)
 
-    -- test both with a single worker for a deterministic test,
-    -- and with multiple workers for a concurrency test
-    for _, workers in ipairs({1, 4}) do
-      describe("Plugin: http-log (log) queue (worker_processes = " .. workers .. ") [#" .. strategy .. "]", function()
-        local proxy_client
-
-        lazy_setup(function()
-          local bp = helpers.get_db_utils(strategy, {
-            "routes",
-            "services",
-            "plugins",
-          })
-
-          local service = bp.services:insert{
-            protocol = "http",
-            host     = helpers.mock_upstream_host,
-            port     = helpers.mock_upstream_port,
-          }
-
-          local route = bp.routes:insert {
-            hosts   = { "http_queue_logging.test" },
-            service = service
-          }
-
-          bp.plugins:insert {
-            route = { id = route.id },
-            name     = "http-log",
-            config   = {
-              queue = {
-                max_batch_size = 5,
-                max_coalescing_delay = 0.1,
-              },
-              http_endpoint = "http://" .. helpers.mock_upstream_host
-                                        .. ":"
-                                        .. helpers.mock_upstream_port
-                                        .. "/post_log/http_queue"
-            }
-          }
-
-          local route2 = bp.routes:insert {
-            hosts   = { "http_queue_logging2.test" },
-            service = service
-          }
-
-          bp.plugins:insert {
-            route = { id = route2.id },
-            name     = "http-log",
-            config   = {
-              queue = {
-                max_batch_size = 5,
-                max_coalescing_delay = 0.1,
-              },
-              http_endpoint = "http://" .. helpers.mock_upstream_host
-                                        .. ":"
-                                        .. helpers.mock_upstream_port
-                                        .. "/post_log/http_queue2"
-            }
-          }
-
-          assert(helpers.start_kong({
-            database = strategy,
-            nginx_worker_processes = workers,
-          }))
-
-          assert(helpers.start_kong({
-            database = strategy,
-            prefix = "servroot2",
-            admin_listen = "127.0.0.1:9010",
-            proxy_listen = "127.0.0.1:9011",
-            stream_listen = "off",
-            nginx_conf = "spec/fixtures/custom_nginx.template",
-            nginx_worker_processes = 1,
-          }))
-        end)
-
-        lazy_teardown(function()
-          helpers.stop_kong()
-          helpers.stop_kong("servroot2")
-        end)
-
-        before_each(function()
-          proxy_client = helpers.proxy_client()
-        end)
-
-        after_each(function()
-          if proxy_client then
-            proxy_client:close()
-          end
-        end)
-
-
-        it("logs to HTTP with a buffer", function()
-          reset_log("http_queue")
-
-          local n = 200
-
-          for i = 1, n do
-            local client = helpers.proxy_client()
-            local res = client:get("/status/" .. tostring(200 + (i % 10)), {
-              headers = {
-                ["Host"] = "http_queue_logging.test"
-              }
-            })
-            assert.res_status(200 + (i % 10), res)
-            client:close()
-          end
-
-          helpers.wait_until(function()
-            local client = assert(helpers.http_client(helpers.mock_upstream_host,
-                                                      helpers.mock_upstream_port))
-            local res = client:get("/count_log/http_queue", {
-              headers = {
-                Accept = "application/json"
-              }
-            })
-
-            if res.status == 500 then
-              -- we need to wait until sending has started as /count_log returns a 500 error for unknown log names
-              return false
-            end
-
-            local count = assert.res_status(200, res)
-            client:close()
-
-            if tonumber(count, 10) >= n then
-              return true
-            end
-          end, 60)
-        end)
-
-        it("does not mix buffers", function()
-          reset_log("http_queue")
-          reset_log("http_queue2")
-
-          local n = 200
-
-          for i = 1, n do
-            local client = helpers.proxy_client()
-            local res = client:get("/status/" .. tostring(200 + (i % 10)), {
-              headers = {
-                ["Host"] = "http_queue_logging.test"
-              }
-            })
-            assert.res_status(200 + (i % 10), res)
-            client:close()
-
-            client = helpers.proxy_client()
-            res = client:get("/status/" .. tostring(300 + (i % 10)), {
-              headers = {
-                ["Host"] = "http_queue_logging2.test"
-              }
-            })
-            assert.res_status(300 + (i % 10), res)
-            client:close()
-          end
-
-          helpers.wait_until(function()
-            local client = assert(helpers.http_client(helpers.mock_upstream_host,
-                                                      helpers.mock_upstream_port))
-            local res = client:get("/read_log/http_queue", {
-              headers = {
-                Accept = "application/json"
-              }
-            })
-            local raw = assert.res_status(200, res)
-            local body = cjson.decode(raw)
-            client:close()
-
-            local client2 = assert(helpers.http_client(helpers.mock_upstream_host,
-                                                      helpers.mock_upstream_port))
-            local res2 = client2:get("/read_log/http_queue2", {
-              headers = {
-                Accept = "application/json"
-              }
-            })
-            local raw2 = assert.res_status(200, res2)
-            local body2 = cjson.decode(raw2)
-            client2:close()
-
-            if not body.count or body.count < n or not body2.count or body2.count < n then
-              return false
-            end
-
-            table.sort(body.entries, function(a, b)
-              return a.response.status < b.response.status
-            end)
-
-            local i = 0
-            for _, entry in ipairs(body.entries) do
-              assert.same("127.0.0.1", entry.client_ip)
-              assert.same(200 + math.floor(i / (n / 10)), entry.response.status)
-              i = i + 1
-            end
-
-            if i ~= n then
-              return false
-            end
-
-            table.sort(body2.entries, function(a, b)
-              return a.response.status < b.response.status
-            end)
-
-            i = 0
-            for _, entry in ipairs(body2.entries) do
-              assert.same("127.0.0.1", entry.client_ip)
-              assert.same(300 + math.floor(i / (n / 10)), entry.response.status)
-              i = i + 1
-            end
-
-            if i ~= n then
-              return false
-            end
-
-            return true
-          end, 60)
-        end)
-      end)
-
-    end
-
-
-    describe("Plugin: http-log (log) enabled globally [#" .. strategy .. "]", function()
+  -- test both with a single worker for a deterministic test,
+  -- and with multiple workers for a concurrency test
+  for _, workers in ipairs({1, 4}) do
+    describe("Plugin: http-log (log) queue (worker_processes = " .. workers .. ") [#" .. strategy .. "]", function()
       local proxy_client
 
       lazy_setup(function()
@@ -881,24 +664,71 @@ for _, strategy in helpers.each_strategy() do
           "plugins",
         })
 
+        local service = bp.services:insert{
+          protocol = "http",
+          host     = helpers.mock_upstream_host,
+          port     = helpers.mock_upstream_port,
+        }
+
+        local route = bp.routes:insert {
+          hosts   = { "http_queue_logging.test" },
+          service = service
+        }
+
         bp.plugins:insert {
+          route = { id = route.id },
           name     = "http-log",
           config   = {
+            queue = {
+              max_batch_size = 5,
+              max_coalescing_delay = 0.1,
+            },
             http_endpoint = "http://" .. helpers.mock_upstream_host
                                       .. ":"
                                       .. helpers.mock_upstream_port
-                                      .. "/post_log/http"
+                                      .. "/post_log/http_queue"
+          }
+        }
+
+        local route2 = bp.routes:insert {
+          hosts   = { "http_queue_logging2.test" },
+          service = service
+        }
+
+        bp.plugins:insert {
+          route = { id = route2.id },
+          name     = "http-log",
+          config   = {
+            queue = {
+              max_batch_size = 5,
+              max_coalescing_delay = 0.1,
+            },
+            http_endpoint = "http://" .. helpers.mock_upstream_host
+                                      .. ":"
+                                      .. helpers.mock_upstream_port
+                                      .. "/post_log/http_queue2"
           }
         }
 
         assert(helpers.start_kong({
           database = strategy,
+          nginx_worker_processes = workers,
+        }))
+
+        assert(helpers.start_kong({
+          database = strategy,
+          prefix = "servroot2",
+          admin_listen = "127.0.0.1:9010",
+          proxy_listen = "127.0.0.1:9011",
+          stream_listen = "off",
           nginx_conf = "spec/fixtures/custom_nginx.template",
+          nginx_worker_processes = 1,
         }))
       end)
 
       lazy_teardown(function()
         helpers.stop_kong()
+        helpers.stop_kong("servroot2")
       end)
 
       before_each(function()
@@ -911,28 +741,198 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
 
-      it("executes successfully when route does not exist", function()
-        reset_log("http")
-        local pl_file = require "pl.file"
-        pl_file.write(helpers.test_conf.nginx_err_logs, "")
 
-        local res = proxy_client:get("/nonexistant/proxy/path", {
-          headers = {
-            ["Host"] = "http_no_exist.test"
-          }
-        })
-        assert.res_status(404, res)
+      it("logs to HTTP with a buffer", function()
+        reset_log("http_queue")
 
-        helpers.clean_logfile()
+        local n = 200
 
-        local entries = get_log("http", 1)
-        assert.same("127.0.0.1", entries[1].client_ip)
+        for i = 1, n do
+          local client = helpers.proxy_client()
+          local res = client:get("/status/" .. tostring(200 + (i % 10)), {
+            headers = {
+              ["Host"] = "http_queue_logging.test"
+            }
+          })
+          assert.res_status(200 + (i % 10), res)
+          client:close()
+        end
 
-        -- Assertion: there should be no [error], including no error
-        -- resulting from attempting to reference the id on
-        -- a route when no such value exists after http-log execution
-        assert.logfile().has.no.line("[error]", true)
+        helpers.wait_until(function()
+          local client = assert(helpers.http_client(helpers.mock_upstream_host,
+                                                    helpers.mock_upstream_port))
+          local res = client:get("/count_log/http_queue", {
+            headers = {
+              Accept = "application/json"
+            }
+          })
+
+          if res.status == 500 then
+            -- we need to wait until sending has started as /count_log returns a 500 error for unknown log names
+            return false
+          end
+
+          local count = assert.res_status(200, res)
+          client:close()
+
+          if tonumber(count, 10) >= n then
+            return true
+          end
+        end, 60)
       end)
+
+      it("does not mix buffers", function()
+        reset_log("http_queue")
+        reset_log("http_queue2")
+
+        local n = 200
+
+        for i = 1, n do
+          local client = helpers.proxy_client()
+          local res = client:get("/status/" .. tostring(200 + (i % 10)), {
+            headers = {
+              ["Host"] = "http_queue_logging.test"
+            }
+          })
+          assert.res_status(200 + (i % 10), res)
+          client:close()
+
+          client = helpers.proxy_client()
+          res = client:get("/status/" .. tostring(300 + (i % 10)), {
+            headers = {
+              ["Host"] = "http_queue_logging2.test"
+            }
+          })
+          assert.res_status(300 + (i % 10), res)
+          client:close()
+        end
+
+        helpers.wait_until(function()
+          local client = assert(helpers.http_client(helpers.mock_upstream_host,
+                                                    helpers.mock_upstream_port))
+          local res = client:get("/read_log/http_queue", {
+            headers = {
+              Accept = "application/json"
+            }
+          })
+          local raw = assert.res_status(200, res)
+          local body = cjson.decode(raw)
+          client:close()
+
+          local client2 = assert(helpers.http_client(helpers.mock_upstream_host,
+                                                    helpers.mock_upstream_port))
+          local res2 = client2:get("/read_log/http_queue2", {
+            headers = {
+              Accept = "application/json"
+            }
+          })
+          local raw2 = assert.res_status(200, res2)
+          local body2 = cjson.decode(raw2)
+          client2:close()
+
+          if not body.count or body.count < n or not body2.count or body2.count < n then
+            return false
+          end
+
+          table.sort(body.entries, function(a, b)
+            return a.response.status < b.response.status
+          end)
+
+          local i = 0
+          for _, entry in ipairs(body.entries) do
+            assert.same("127.0.0.1", entry.client_ip)
+            assert.same(200 + math.floor(i / (n / 10)), entry.response.status)
+            i = i + 1
+          end
+
+          if i ~= n then
+            return false
+          end
+
+          table.sort(body2.entries, function(a, b)
+            return a.response.status < b.response.status
+          end)
+
+          i = 0
+          for _, entry in ipairs(body2.entries) do
+            assert.same("127.0.0.1", entry.client_ip)
+            assert.same(300 + math.floor(i / (n / 10)), entry.response.status)
+            i = i + 1
+          end
+
+          if i ~= n then
+            return false
+          end
+
+          return true
+        end, 60)
+      end)
+    end)
+
+  end
+
+
+  describe("Plugin: http-log (log) enabled globally [#" .. strategy .. "]", function()
+    local proxy_client
+
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
+
+      bp.plugins:insert {
+        name     = "http-log",
+        config   = {
+          http_endpoint = "http://" .. helpers.mock_upstream_host
+                                    .. ":"
+                                    .. helpers.mock_upstream_port
+                                    .. "/post_log/http"
+        }
+      }
+
+      assert(helpers.start_kong({
+        database = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    before_each(function()
+      proxy_client = helpers.proxy_client()
+    end)
+
+    after_each(function()
+      if proxy_client then
+        proxy_client:close()
+      end
+    end)
+
+    it("executes successfully when route does not exist", function()
+      reset_log("http")
+      local pl_file = require "pl.file"
+      pl_file.write(helpers.test_conf.nginx_err_logs, "")
+
+      local res = proxy_client:get("/nonexistant/proxy/path", {
+        headers = {
+          ["Host"] = "http_no_exist.test"
+        }
+      })
+      assert.res_status(404, res)
+
+      helpers.clean_logfile()
+
+      local entries = get_log("http", 1)      
+      assert.same("127.0.0.1", entries[1].client_ip)
+
+      -- Assertion: there should be no [error], including no error
+      -- resulting from attempting to reference the id on
+      -- a route when no such value exists after http-log execution
+      assert.logfile().has.no.line("[error]", true)
     end)
   end)
 end
