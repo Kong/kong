@@ -20,7 +20,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Add Label if Author is not a member
-        if: steps.check_membership.outputs.data.exitcode == '1'
+        if: steps.check_membership.outputs.exitcode == '1'
         run: |
           echo "Author is not a member. Adding label..."
           TOKEN=${{ secrets.GITHUB_TOKEN }}
