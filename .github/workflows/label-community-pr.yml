@@ -14,14 +14,13 @@ jobs:
         id: check_membership
         uses: octokit/request-action@v2.x
         with:
-          route: GET /orgs/Kong/memberships/:username
-          username: ${{ github.event.pull_request.user.login }}
+          route: GET /orgs/Kong/memberships/${{ github.event.pull_request.user.login }}
 
       - name: Add Label if Author is not a member
         if: steps.check_membership.outputs.data.state != 'active'
         run: |
           echo "Author is not a member. Adding label..."
-          TOKEN=$GITHUB_TOKEN
+          TOKEN=${{ secrets.GITHUB_TOKEN }
           PR_NUMBER=${{ github.event.pull_request.number }}
           LABEL="author/community"
           API_URL="https://api.github.com/repos/${{ github.repository }}/issues/${PR_NUMBER}/labels"
