@@ -71,6 +71,8 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
     end)
 
     it("authenticate for up to 'ttl'", function()
+      local res
+
       helpers.wait_until(function()
         proxy_client = helpers.http_client("127.0.0.1", 9002)
         res = assert(proxy_client:send {
