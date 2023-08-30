@@ -775,11 +775,6 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
-        if self.schema.ttl and row.ttl and row.ttl ~= null then
-            local ttl_value = row.ttl - ngx.time()
-            row.ttl = ttl_value > 0 and ttl_value or 0
-        end
-
         return row
       end
 
@@ -1435,6 +1430,11 @@ function DAO:row_to_entity(row, options)
     else
       entity.ws_id = ws_id
     end
+  end
+
+  if self.schema.ttl and entity.ttl and entity.ttl ~= null then
+      local ttl_value = entity.ttl - ngx.time()
+      entity.ttl = ttl_value > 0 and ttl_value or 0
   end
 
   return entity
