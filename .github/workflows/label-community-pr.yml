@@ -20,6 +20,7 @@ jobs:
         id: check_membership
         run: |
           set +e
+          curl -sS -f -I -H "Authorization: token $GITHUB_TOKEN" https://api.github.com | grep -i x-oauth-scopes
           gh api orgs/Kong/members --paginate -q '.[].login' | grep -q '^${{ github.event.pull_request.user.login }}$'
           echo "exitcode=$?" >> $GITHUB_OUTPUT
 
@@ -28,5 +29,6 @@ jobs:
         run: |
           echo "Author is not a member. Adding label..."
           LABEL="author/community"
+          curl -sS -f -I -H "Authorization: token $GITHUB_TOKEN" https://api.github.com | grep -i x-oauth-scopes
 
           gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels" -X POST -F "labels[]=$LABEL"
