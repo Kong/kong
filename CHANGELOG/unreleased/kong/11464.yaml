@@ -1,6 +1,6 @@
 message: Fix TTL not working in DB-less and Hybrid mode
 type: bugfix
-scope: db/declarative
+scope: Core
 prs:
   - 11464
 jiras:
