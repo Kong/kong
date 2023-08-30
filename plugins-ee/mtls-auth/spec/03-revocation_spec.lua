@@ -9,11 +9,14 @@ local helpers = require "spec.helpers"
 local pl_file = require "pl.file"
 local cjson   = require "cjson"
 local fmt     = string.format
+local http_mock = require "spec.helpers.http_mock"
 
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
 local CA = pl_file.read("/kong-plugin/spec/fixtures/ocsp-responder-docker/certificates/ca.pem")
 local SUBCA = pl_file.read("/kong-plugin/spec/fixtures/ocsp-responder-docker/certificates/intermediate.pem")
+
+local HTTP_SERVER_PORT = helpers.get_available_port()
 
 --[[
 What does pongo do in .pongo/ocspserver.yml:
@@ -24,323 +27,385 @@ docker run -it -p2560:2560 -p8080:8080 --rm -v (pwd)/certificates:/data ocsp-res
 ]]--
 
 for _, strategy in strategies() do
-  -- leaf_only = true means the client only sends the client leaf cert
-  -- leaf_only = false means the client sends the client leaf cert and the intermediate ca cert
-  local test_cases = {
-    {cert = "valid",   type = "ocsp", leaf_only = true,  mode = "STRICT",          suffix = "",        res1 = 200, res2 = 200, res3 = 401, },
-    {cert = "valid",   type = "ocsp", leaf_only = true,  mode = "IGNORE_CA_ERROR", suffix = "",        res1 = 200, res2 = 200, res3 = 200, },
-    {cert = "valid",   type = "ocsp", leaf_only = true,  mode = "SKIP",            suffix = "",        res1 = 200, res2 = 200, res3 = 200, },
-    {cert = "valid",   type = "ocsp", leaf_only = false, mode = "STRICT",          suffix = "-inter",  res1 = 200, res2 = 200, res3 = 401, },
-    {cert = "valid",   type = "ocsp", leaf_only = false, mode = "IGNORE_CA_ERROR", suffix = "-inter",  res1 = 200, res2 = 200, res3 = 200, },
-    {cert = "valid",   type = "ocsp", leaf_only = false, mode = "SKIP",            suffix = "-inter",  res1 = 200, res2 = 200, res3 = 200, },
-    {cert = "valid",   type = "crl",  leaf_only = true,  mode = "STRICT",          suffix = "",        res1 = 200, res2 = 200, res3 = 401, },
-    {cert = "valid",   type = "crl",  leaf_only = true,  mode = "IGNORE_CA_ERROR", suffix = "",        res1 = 200, res2 = 200, res3 = 200, },
-    {cert = "valid",   type = "crl",  leaf_only = true,  mode = "SKIP",            suffix = "",        res1 = 200, res2 = 200, res3 = 200, },
-    {cert = "valid",   type = "crl",  leaf_only = false, mode = "STRICT",          suffix = "-inter",  res1 = 200, res2 = 200, res3 = 401, },
-    {cert = "valid",   type = "crl",  leaf_only = false, mode = "IGNORE_CA_ERROR", suffix = "-inter",  res1 = 200, res2 = 200, res3 = 200, },
-    {cert = "valid",   type = "crl",  leaf_only = false, mode = "SKIP",            suffix = "-inter",  res1 = 200, res2 = 200, res3 = 200, },
-    {cert = "revoked", type = "ocsp", leaf_only = true,  mode = "STRICT",          suffix = "",        res1 = 401, res2 = 401, res3 = 401, },
-    {cert = "revoked", type = "ocsp", leaf_only = true,  mode = "IGNORE_CA_ERROR", suffix = "",        res1 = 401, res2 = 401, res3 = 200, },
-    {cert = "revoked", type = "ocsp", leaf_only = true,  mode = "SKIP",            suffix = "",        res1 = 200, res2 = 200, res3 = 200, },
-    {cert = "revoked", type = "ocsp", leaf_only = false, mode = "STRICT",          suffix = "-inter",  res1 = 401, res2 = 401, res3 = 401, },
-    {cert = "revoked", type = "ocsp", leaf_only = false, mode = "IGNORE_CA_ERROR", suffix = "-inter",  res1 = 401, res2 = 401, res3 = 200, },
-    {cert = "revoked", type = "ocsp", leaf_only = false, mode = "SKIP",            suffix = "-inter",  res1 = 200, res2 = 200, res3 = 200, },
-    {cert = "revoked", type = "crl",  leaf_only = true,  mode = "STRICT",          suffix = "",        res1 = 401, res2 = 401, res3 = 401, },
-    {cert = "revoked", type = "crl",  leaf_only = true,  mode = "IGNORE_CA_ERROR", suffix = "",        res1 = 401, res2 = 401, res3 = 200, },
-    {cert = "revoked", type = "crl",  leaf_only = true,  mode = "SKIP",            suffix = "",        res1 = 200, res2 = 200, res3 = 200, },
-    {cert = "revoked", type = "crl",  leaf_only = false, mode = "STRICT",          suffix = "-inter",  res1 = 401, res2 = 401, res3 = 401, },
-    {cert = "revoked", type = "crl",  leaf_only = false, mode = "IGNORE_CA_ERROR", suffix = "-inter",  res1 = 401, res2 = 401, res3 = 200, },
-    {cert = "revoked", type = "crl",  leaf_only = false, mode = "SKIP",            suffix = "-inter",  res1 = 200, res2 = 200, res3 = 200, },
-  }
+  describe("Plugin: mtls-auth (revocation) [#" .. strategy .. "]", function()
+    local mtls_client
+    local bp, db
+    local service
+    local ca_cert, sub_ca_cert
+    local db_strategy = strategy ~= "off" and strategy or nil
+    local mock
 
-  for _, case in ipairs(test_cases) do
-    local cert = case.cert
-    local case_type = case.type
-    local leaf_only = case.leaf_only
-    local mode = case.mode
-    local name = case_type .. "-" .. cert
-    local suffix = case.suffix
-    local res1 = case.res1
-    local res2 = case.res2
-    local res3 = case.res3
-    local mtls_fixtures = { http_mock = {
-      mtls_server_block = [[
-        server {
-            server_name mtls_test_client;
-            listen 10121;
+    local function delete_cache()
+      local admin_client = helpers.admin_client()
+      local res = assert(admin_client:send({
+        method  = "DELETE",
+        path    = "/cache",
+      }))
+      assert.res_status(204, res)
+      admin_client:close()
+    end
 
-            location = /no_proxy {
-              proxy_ssl_certificate ../spec/fixtures/ocsp-responder-docker/certificates/]] .. name .. suffix .. [[.pem;
-              proxy_ssl_certificate_key ../spec/fixtures/ocsp-responder-docker/certificates/]] .. name .. [[.pem.key;
-              proxy_ssl_name example.com;
-              # enable send the SNI sent to server
-              proxy_ssl_server_name on;
-              proxy_set_header Host example.com;
+    lazy_setup(function()
+      bp, db = helpers.get_db_utils(db_strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "ca_certificates",
+        "mtls_auth_credentials",
+      }, { "mtls-auth", })
 
-              proxy_pass https://127.0.0.1:9443/get;
-            }
+      bp.consumers:insert {
+        username = "ocsp-valid@konghq.com"
+      }
 
-            location = /proxy {
-              proxy_ssl_certificate ../spec/fixtures/ocsp-responder-docker/certificates/]] .. name .. "2" .. suffix .. [[.pem;
-              proxy_ssl_certificate_key ../spec/fixtures/ocsp-responder-docker/certificates/]] .. name .. [[2.pem.key;
-              proxy_ssl_name exampleproxy.com;
-              # enable send the SNI sent to server
-              proxy_ssl_server_name on;
-              proxy_set_header Host exampleproxy.com;
+      bp.consumers:insert {
+        username = "ocsp-revoked@konghq.com"
+      }
 
-              proxy_pass https://127.0.0.1:9443/get;
-            }
+      bp.consumers:insert {
+        username = "crl-valid@konghq.com"
+      }
 
-            location = /bad_proxy {
-              # We use a second valid certificate here to defeat the DN -> Consumer cache
-              proxy_ssl_certificate ../spec/fixtures/ocsp-responder-docker/certificates/]] .. name .. "3" .. suffix .. [[.pem;
-              proxy_ssl_certificate_key ../spec/fixtures/ocsp-responder-docker/certificates/]] .. name .. [[3.pem.key;
-              proxy_ssl_name examplebadproxy.com;
-              # enable send the SNI sent to server
-              proxy_ssl_server_name on;
-              proxy_set_header Host examplebadproxy.com;
+      bp.consumers:insert {
+        username = "crl-revoked@konghq.com"
+      }
 
-              proxy_pass https://127.0.0.1:9443/get;
-            }
-        }
-      ]], }
+      service = bp.services:insert{
+        protocol = "https",
+        port     = helpers.mock_upstream_ssl_port,
+        host     = helpers.mock_upstream_ssl_host,
+      }
+
+      local route_no_proxy_strict = bp.routes:insert {
+        hosts   = { "noproxy-strict.com" },
+        service = { id = service.id, },
+      }
+
+      local route_proxy_strict = bp.routes:insert {
+        hosts   = { "proxy-strict.com" },
+        service = { id = service.id, },
+      }
+
+      local route_bad_proxy_strict = bp.routes:insert {
+        hosts   = { "badproxy-strict.com" },
+        service = { id = service.id, },
+      }
+
+      local route_no_proxy_skip = bp.routes:insert {
+        hosts   = { "noproxy-skip.com" },
+        service = { id = service.id, },
+      }
+
+      local route_bad_proxy_ignore = bp.routes:insert {
+        hosts   = { "badproxy-ignore.com" },
+        service = { id = service.id, },
+      }
+
+      ca_cert = assert(db.ca_certificates:insert({
+        cert = CA,
+      }))
+
+      sub_ca_cert = assert(db.ca_certificates:insert({
+        cert = SUBCA,
+      }))
+
+      assert(bp.plugins:insert {
+        name = "mtls-auth",
+        route = { id = route_no_proxy_strict.id },
+        config = {
+          ca_certificates = { ca_cert.id, sub_ca_cert.id},
+          revocation_check_mode = "STRICT",
+          cert_cache_ttl = 0,
+          cache_ttl = 0,
+        },
+      })
+
+      assert(bp.plugins:insert {
+        name = "mtls-auth",
+        route = { id = route_proxy_strict.id },
+        config = {
+          ca_certificates = { ca_cert.id, sub_ca_cert.id},
+          revocation_check_mode = "STRICT",
+          http_proxy_host = "squidcustom",
+          http_proxy_port = 3128,
+          cert_cache_ttl = 0,
+          cache_ttl = 0,
+        },
+      })
+
+      assert(bp.plugins:insert {
+        name = "mtls-auth",
+        route = { id = route_bad_proxy_strict.id },
+        config = {
+          ca_certificates = { ca_cert.id, sub_ca_cert.id},
+          revocation_check_mode = "STRICT",
+          http_proxy_host = "squidcustom",
+          http_proxy_port = 3129, -- this port is not open so HTTP CONNECT will fail
+          cert_cache_ttl = 0,
+          cache_ttl = 0,
+        },
+      })
+
+      assert(bp.plugins:insert {
+        name = "mtls-auth",
+        route = { id = route_no_proxy_skip.id },
+        config = {
+          ca_certificates = { ca_cert.id, sub_ca_cert.id},
+          revocation_check_mode = "SKIP",
+          cert_cache_ttl = 0,
+          cache_ttl = 0,
+        },
+      })
+
+      assert(bp.plugins:insert {
+        name = "mtls-auth",
+        route = { id = route_bad_proxy_ignore.id },
+        config = {
+          ca_certificates = { ca_cert.id, sub_ca_cert.id},
+          revocation_check_mode = "IGNORE_CA_ERROR",
+          http_proxy_host = "squidcustom",
+          http_proxy_port = 3129, -- this port is not open so HTTP CONNECT will fail
+          cert_cache_ttl = 0,
+          cache_ttl = 0,
+        },
+      })
+
+      local format = [[
+      proxy_ssl_certificate /kong-plugin/spec/fixtures/ocsp-responder-docker/certificates/%s.pem;
+      proxy_ssl_certificate_key /kong-plugin/spec/fixtures/ocsp-responder-docker/certificates/%s.pem.key;
+      proxy_ssl_name %s.com;
+      proxy_ssl_server_name on;
+      proxy_set_header Host %s.com;
+      proxy_pass https://127.0.0.1:9443/get;
+      ]]
+      mock = http_mock.new(HTTP_SERVER_PORT, {
+        ["/no_proxy_strict_ocsp_valid"] = {
+          directives = fmt(format, "ocsp-valid", "ocsp-valid", "noproxy-strict", "noproxy-strict"),
+        },
+        ["/no_proxy_strict_ocsp_valid_inter"] = {
+          directives = fmt(format, "ocsp-valid-inter", "ocsp-valid", "noproxy-strict", "noproxy-strict"),
+        },
+        ["/no_proxy_strict_ocsp_revoked"] = {
+          directives = fmt(format, "ocsp-revoked", "ocsp-revoked", "noproxy-strict", "noproxy-strict"),
+        },
+        ["/no_proxy_strict_ocsp_revoked_inter"] = {
+          directives = fmt(format, "ocsp-revoked-inter", "ocsp-revoked", "noproxy-strict", "noproxy-strict"),
+        },
+        ["/no_proxy_strict_crl_valid"] = {
+          directives = fmt(format, "crl-valid", "crl-valid", "noproxy-strict", "noproxy-strict"),
+        },
+        ["/no_proxy_strict_crl_valid_inter"] = {
+          directives = fmt(format, "crl-valid-inter", "crl-valid", "noproxy-strict", "noproxy-strict"),
+        },
+        ["/no_proxy_strict_crl_revoked"] = {
+          directives = fmt(format, "crl-revoked", "crl-revoked", "noproxy-strict", "noproxy-strict"),
+        },
+        ["/no_proxy_strict_crl_revoked_inter"] = {
+          directives = fmt(format, "crl-revoked-inter", "crl-revoked", "noproxy-strict", "noproxy-strict"),
+        },
+        ["/no_proxy_skip_ocsp_valid_inter"] = {
+          directives = fmt(format, "ocsp-valid-inter", "ocsp-valid", "noproxy-skip", "noproxy-skip"),
+        },
+        ["/no_proxy_skip_ocsp_revoked_inter"] = {
+          directives = fmt(format, "ocsp-revoked-inter", "ocsp-revoked", "noproxy-skip", "noproxy-skip"),
+        },
+        ["/no_proxy_skip_crl_valid_inter"] = {
+          directives = fmt(format, "crl-valid-inter", "crl-valid", "noproxy-skip", "noproxy-skip"),
+        },
+        ["/no_proxy_skip_crl_revoked_inter"] = {
+          directives = fmt(format, "crl-revoked-inter", "crl-revoked", "noproxy-skip", "noproxy-skip"),
+        },
+        ["/proxy_strict_ocsp_valid_inter"] = {
+          directives = fmt(format, "ocsp-valid-inter", "ocsp-valid", "proxy-strict", "proxy-strict"),
+        },
+        ["/proxy_strict_ocsp_revoked_inter"] = {
+          directives = fmt(format, "ocsp-revoked-inter", "ocsp-revoked", "proxy-strict", "proxy-strict"),
+        },
+        ["/proxy_strict_crl_valid_inter"] = {
+          directives = fmt(format, "crl-valid-inter", "crl-valid", "proxy-strict", "proxy-strict"),
+        },
+        ["/proxy_strict_crl_revoked_inter"] = {
+          directives = fmt(format, "crl-revoked-inter", "crl-revoked", "proxy-strict", "proxy-strict"),
+        },
+        ["/bad_proxy_strict_ocsp_valid_inter"] = {
+          directives = fmt(format, "ocsp-valid-inter", "ocsp-valid", "badproxy-strict", "badproxy-strict"),
+        },
+        ["/bad_proxy_strict_ocsp_revoked_inter"] = {
+          directives = fmt(format, "ocsp-revoked-inter", "ocsp-revoked", "badproxy-strict", "badproxy-strict"),
+        },
+        ["/bad_proxy_strict_crl_valid_inter"] = {
+          directives = fmt(format, "crl-valid-inter", "crl-valid", "badproxy-strict", "badproxy-strict"),
+        },
+        ["/bad_proxy_strict_crl_revoked_inter"] = {
+          directives = fmt(format, "crl-revoked-inter", "crl-revoked", "badproxy-strict", "badproxy-strict"),
+        },
+        ["/bad_proxy_ignore_ocsp_valid_inter"] = {
+          directives = fmt(format, "ocsp-valid-inter", "ocsp-valid", "badproxy-ignore", "badproxy-ignore"),
+        },
+        ["/bad_proxy_ignore_ocsp_revoked_inter"] = {
+          directives = fmt(format, "ocsp-revoked-inter", "ocsp-revoked", "badproxy-ignore", "badproxy-ignore"),
+        },
+        ["/bad_proxy_ignore_crl_valid_inter"] = {
+          directives = fmt(format, "crl-valid-inter", "crl-valid", "badproxy-ignore", "badproxy-ignore"),
+        },
+        ["/bad_proxy_ignore_crl_revoked_inter"] = {
+          directives = fmt(format, "crl-revoked-inter", "crl-revoked", "badproxy-ignore", "badproxy-ignore"),
+        },
+      }, {
+        hostname = "mtls_test_client",
+      })
+      assert(mock:start())
+
+      assert(helpers.start_kong({
+        database   = db_strategy,
+        plugins = "bundled,mtls-auth",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+      mock:stop()
+    end)
+
+    before_each(function()
+      helpers.clean_logfile() -- prevent log assertions from poisoning each other.
+    end)
+
+    -- leaf_only = true means the client only sends the client leaf cert
+    -- leaf_only = false means the client sends the client leaf cert and the intermediate ca cert
+    local test_cases = {                                                                     -- no_proxy    proxy       bad_proxy
+      {cert = "valid",   type = "ocsp", leaf_only = true,  mode = "strict", suffix = "",        res1 = 200,                                            },
+      {cert = "valid",   type = "ocsp", leaf_only = false, mode = "strict", suffix = "_inter",  res1 = 200, res2 = 200, res3 = 401, test_cache = true, },
+      {cert = "valid",   type = "ocsp", leaf_only = false, mode = "ignore", suffix = "_inter",                          res3 = 200,                    },
+      {cert = "valid",   type = "ocsp", leaf_only = false, mode = "skip",   suffix = "_inter",  res1 = 200,                                            },
+      {cert = "valid",   type = "crl",  leaf_only = true,  mode = "strict", suffix = "",        res1 = 200,                                            },
+      {cert = "valid",   type = "crl",  leaf_only = false, mode = "strict", suffix = "_inter",  res1 = 200, res2 = 200, res3 = 401, test_cache = true, },
+      {cert = "valid",   type = "crl",  leaf_only = false, mode = "ignore", suffix = "_inter",                          res3 = 200,                    },
+      {cert = "valid",   type = "crl",  leaf_only = false, mode = "skip",   suffix = "_inter",  res1 = 200,                                            },
+      {cert = "revoked", type = "ocsp", leaf_only = true,  mode = "strict", suffix = "",        res1 = 401,                                            },
+      {cert = "revoked", type = "ocsp", leaf_only = false, mode = "strict", suffix = "_inter",  res1 = 401, res2 = 401, res3 = 401, test_cache = true, },
+      {cert = "revoked", type = "ocsp", leaf_only = false, mode = "ignore", suffix = "_inter",                          res3 = 200,                    },
+      {cert = "revoked", type = "ocsp", leaf_only = false, mode = "skip",   suffix = "_inter",  res1 = 200,                                            },
+      {cert = "revoked", type = "crl",  leaf_only = true,  mode = "strict", suffix = "",        res1 = 401,                                            },
+      {cert = "revoked", type = "crl",  leaf_only = false, mode = "strict", suffix = "_inter",  res1 = 401, res2 = 401, res3 = 401, test_cache = true, },
+      {cert = "revoked", type = "crl",  leaf_only = false, mode = "ignore", suffix = "_inter",                          res3 = 200,                    },
+      {cert = "revoked", type = "crl",  leaf_only = false, mode = "skip",   suffix = "_inter",  res1 = 200,                                            },
     }
 
-    describe("#flaky Plugin: mtls-auth (revocation) [#" .. strategy .. "]", function()
-      local mtls_client
-      local bp, db
-      local consumer, consumer2, consumer3, service, route
-      local ca_cert, sub_ca_cert
-      local db_strategy = strategy ~= "off" and strategy or nil
+    for _, case in ipairs(test_cases) do
+      local cert = case.cert
+      local case_type = case.type
+      local leaf_only = case.leaf_only
+      local mode = case.mode
+      local name = case_type .. "-" .. cert
+      local suffix = case.suffix
+      local res1 = case.res1
+      local res2 = case.res2
+      local res3 = case.res3
+      local test_cache = case.test_cache
 
-      lazy_setup(function()
-        bp, db = helpers.get_db_utils(db_strategy, {
-          "routes",
-          "services",
-          "plugins",
-          "consumers",
-          "ca_certificates",
-          "mtls_auth_credentials",
-        }, { "mtls-auth", })
+      if res1 then
+        local url = fmt("/no_proxy_%s_%s_%s%s", mode, case_type, cert, suffix)
 
-        consumer = bp.consumers:insert {
-          username = name .. "@konghq.com"
-        }
+        it(fmt("returns HTTP %s on https request if %s certificate passed with no proxy (%s, leaf_only = %s, mode = %s), cache miss for revocation status",
+              res1, cert, case_type, leaf_only, mode), function()
+          delete_cache()
+          mtls_client = mock:get_client()
+          local res = assert(mtls_client:send {
+            method  = "GET",
+            path    = url,
+          })
+          local body = assert.res_status(res1, res)
+          mtls_client:close()
+          mock.client = nil
+          local json = cjson.decode(body)
+          if res1 == 200 then
+            assert.equal(name .. "@konghq.com", json.headers["x-consumer-username"])
+          else
+            assert.equal("TLS certificate failed verification", json.message)
+          end
+          if mode ~= "skip" then
+            assert.logfile().has.line('cache miss for revocation status', true)
+          end
+        end)
 
-        consumer2 = bp.consumers:insert {
-          username = name .. "2@konghq.com"
-        }
-
-        consumer3 = bp.consumers:insert {
-          username = name .. "3@konghq.com"
-        }
-
-        service = bp.services:insert{
-          protocol = "https",
-          port     = helpers.mock_upstream_ssl_port,
-          host     = helpers.mock_upstream_ssl_host,
-        }
-
-        route = bp.routes:insert {
-          hosts   = { "example.com" },
-          service = { id = service.id, },
-        }
-
-        local route_proxy = bp.routes:insert {
-          hosts   = { "exampleproxy.com" },
-          service = { id = service.id, },
-        }
-
-        local route_bad_proxy = bp.routes:insert {
-          hosts   = { "examplebadproxy.com" },
-          service = { id = service.id, },
-        }
-
-        ca_cert = assert(db.ca_certificates:insert({
-          cert = CA,
-        }))
-
-        sub_ca_cert = assert(db.ca_certificates:insert({
-          cert = SUBCA,
-        }))
-
-        assert(bp.plugins:insert {
-          name = "mtls-auth",
-          route = { id = route.id },
-          config = {
-            ca_certificates = { ca_cert.id, sub_ca_cert.id},
-            revocation_check_mode = mode,
-            cert_cache_ttl = 0,
-            cache_ttl = 0,
-          },
-        })
-
-        assert(bp.plugins:insert {
-          name = "mtls-auth",
-          route = { id = route_proxy.id },
-          config = {
-            ca_certificates = { ca_cert.id, sub_ca_cert.id},
-            revocation_check_mode = mode,
-            http_proxy_host = "squidcustom",
-            http_proxy_port = 3128,
-            cert_cache_ttl = 0,
-            cache_ttl = 0,
-          },
-        })
-
-        assert(bp.plugins:insert {
-          name = "mtls-auth",
-          route = { id = route_bad_proxy.id },
-          config = {
-            ca_certificates = { ca_cert.id, sub_ca_cert.id},
-            revocation_check_mode = mode,
-            http_proxy_host = "squidcustom",
-            http_proxy_port = 3129, -- this port is not open so HTTP CONNECT will fail
-            cert_cache_ttl = 0,
-            cache_ttl = 0,
-          },
-        })
-
-        assert(helpers.start_kong({
-          database   = db_strategy,
-          plugins = "bundled,mtls-auth",
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }, nil, nil, mtls_fixtures))
-      end)
-
-      lazy_teardown(function()
-        helpers.stop_kong()
-      end)
-
-      before_each(function()
-        helpers.clean_logfile() -- prevent log assertions from poisoning each other.
-      end)
-
-      it(fmt("returns HTTP %s on https request if %s certificate passed with no proxy (%s, leaf_only = %s, mode = %s), cache miss for revocation status",
-            res1, cert, case_type, leaf_only, mode), function()
-        mtls_client = helpers.http_client("127.0.0.1", 10121)
-        local res = assert(mtls_client:send {
-          method  = "GET",
-          path    = "/no_proxy",
-        })
-        local body = assert.res_status(res1, res)
-        mtls_client:close()
-        local json = cjson.decode(body)
-        if res1 == 200 then
-          assert.equal(name .. "@konghq.com", json.headers["x-consumer-username"])
-          assert.equal(consumer.id, json.headers["x-consumer-id"])
-        else
-          assert.equal("TLS certificate failed verification", json.message)
+        if test_cache then
+          it(fmt("returns HTTP %s on https request if %s certificate passed with no proxy (%s, leaf_only = %s, mode = %s), cache hit for revocation status",
+                res1, cert, case_type, leaf_only, mode), function()
+            mtls_client = mock:get_client()
+            local res = assert(mtls_client:send {
+              method  = "GET",
+              path    = url,
+            })
+            local body = assert.res_status(res1, res)
+            mtls_client:close()
+            mock.client = nil
+            local json = cjson.decode(body)
+            if res1 == 200 then
+              assert.equal(name .. "@konghq.com", json.headers["x-consumer-username"])
+            else
+              assert.equal("TLS certificate failed verification", json.message)
+            end
+            if mode ~= "skip" then
+              assert.logfile().has.no.line('cache miss for revocation status', true)
+            end
+          end)
         end
-        if mode ~= "SKIP" then
-          assert.logfile().has.line('cache miss for revocation status', true)
-        end
-      end)
+      end
 
-      it(fmt("returns HTTP %s on https request if %s certificate passed with no proxy (%s, leaf_only = %s, mode = %s), cache hit for revocation status",
-            res1, cert, case_type, leaf_only, mode), function()
-        mtls_client = helpers.http_client("127.0.0.1", 10121)
-        local res = assert(mtls_client:send {
-          method  = "GET",
-          path    = "/no_proxy",
-        })
-        local body = assert.res_status(res1, res)
-        mtls_client:close()
-        local json = cjson.decode(body)
-        if res1 == 200 then
-          assert.equal(name .. "@konghq.com", json.headers["x-consumer-username"])
-          assert.equal(consumer.id, json.headers["x-consumer-id"])
-        else
-          assert.equal("TLS certificate failed verification", json.message)
-        end
-        if mode ~= "SKIP" then
-          assert.logfile().has.no.line('cache miss for revocation status', true)
-        end
-      end)
+      if res2 then
+        local url = fmt("/proxy_%s_%s_%s%s", mode, case_type, cert, suffix)
 
-      it(fmt("returns HTTP %s on https request if %s certificate passed with proxy (%s, leaf_only = %s, mode = %s), cache miss for revocation status",
-            res2, cert, case_type, leaf_only, mode), function()
-        mtls_client = helpers.http_client("127.0.0.1", 10121)
-        local res = assert(mtls_client:send {
-          method  = "GET",
-          path    = "/proxy",
-        })
-        local body = assert.res_status(res2, res)
-        mtls_client:close()
-        local json = cjson.decode(body)
-        if res2 == 200 then
-          assert.equal(name .. "2@konghq.com", json.headers["x-consumer-username"])
-          assert.equal(consumer2.id, json.headers["x-consumer-id"])
-        else
-          assert.equal("TLS certificate failed verification", json.message)
-        end
-        if mode ~= "SKIP" then
-          assert.logfile().has.line('cache miss for revocation status', true)
-        end
-      end)
+        it(fmt("returns HTTP %s on https request if %s certificate passed with proxy (%s, leaf_only = %s, mode = %s), cache miss for revocation status",
+              res2, cert, case_type, leaf_only, mode), function()
+          delete_cache()
+          mtls_client = mock:get_client()
+          local res = assert(mtls_client:send {
+            method  = "GET",
+            path    = url,
+          })
+          local body = assert.res_status(res2, res)
+          mtls_client:close()
+          mock.client = nil
+          local json = cjson.decode(body)
+          if res2 == 200 then
+            assert.equal(name .. "@konghq.com", json.headers["x-consumer-username"])
+          else
+            assert.equal("TLS certificate failed verification", json.message)
+          end
+          if mode ~= "skip" then
+            assert.logfile().has.line('cache miss for revocation status', true)
+          end
+        end)
+      end
 
-      it(fmt("returns HTTP %s on https request if %s certificate passed with proxy (%s, leaf_only = %s, mode = %s), cache hit for revocation status",
-            res2, cert, case_type, leaf_only, mode), function()
-        mtls_client = helpers.http_client("127.0.0.1", 10121)
-        local res = assert(mtls_client:send {
-          method  = "GET",
-          path    = "/proxy",
-        })
-        local body = assert.res_status(res2, res)
-        mtls_client:close()
-        local json = cjson.decode(body)
-        if res2 == 200 then
-          assert.equal(name .. "2@konghq.com", json.headers["x-consumer-username"])
-          assert.equal(consumer2.id, json.headers["x-consumer-id"])
-        else
-          assert.equal("TLS certificate failed verification", json.message)
-        end
-        if mode ~= "SKIP" then
-          assert.logfile().has.no.line('cache miss for revocation status', true)
-        end
-      end)
+      if res3 then
+        local url = fmt("/bad_proxy_%s_%s_%s%s", mode, case_type, cert, suffix)
 
-      it(fmt("returns HTTP %s on https request if %s certificate passed with bad proxy (%s, leaf_only = %s, mode = %s), cache miss for revocation status",
-            res3, cert, case_type, leaf_only, mode), function()
-        mtls_client = helpers.http_client("127.0.0.1", 10121)
-        local res = assert(mtls_client:send {
-          method  = "GET",
-          path    = "/bad_proxy",
-        })
-        local body = assert.res_status(res3, res)
-        mtls_client:close()
-        local json = cjson.decode(body)
-        if res3 == 200 then
-          assert.equal(name .. "3@konghq.com", json.headers["x-consumer-username"])
-          assert.equal(consumer3.id, json.headers["x-consumer-id"])
-        else
-          assert.equal("TLS certificate failed verification", json.message)
-        end
-        if mode ~= "SKIP" then
-          assert.logfile().has.line('cache miss for revocation status', true)
-        end
-      end)
-
-      it(fmt("returns HTTP %s on https request if %s certificate passed with bad proxy (%s, leaf_only = %s, mode = %s), cache hit for revocation status",
-            res3, cert, case_type, leaf_only, mode), function()
-        mtls_client = helpers.http_client("127.0.0.1", 10121)
-        local res = assert(mtls_client:send {
-          method  = "GET",
-          path    = "/bad_proxy",
-        })
-        local body = assert.res_status(res3, res)
-        mtls_client:close()
-        local json = cjson.decode(body)
-        if res3 == 200 then
-          assert.equal(name .. "3@konghq.com", json.headers["x-consumer-username"])
-          assert.equal(consumer3.id, json.headers["x-consumer-id"])
-        else
-          assert.equal("TLS certificate failed verification", json.message)
-        end
-        if mode ~= "SKIP" then
-          assert.logfile().has.no.line('cache miss for revocation status', true)
-        end
-      end)
-    end)
-  end
+        it(fmt("returns HTTP %s on https request if %s certificate passed with bad proxy (%s, leaf_only = %s, mode = %s), cache miss for revocation status",
+              res3, cert, case_type, leaf_only, mode), function()
+          delete_cache()
+          mtls_client = mock:get_client()
+          local res = assert(mtls_client:send {
+            method  = "GET",
+            path    = url,
+          })
+          local body = assert.res_status(res3, res)
+          mtls_client:close()
+          mock.client = nil
+          local json = cjson.decode(body)
+          if res3 == 200 then
+            assert.equal(name .. "@konghq.com", json.headers["x-consumer-username"])
+          else
+            assert.equal("TLS certificate failed verification", json.message)
+          end
+          if mode ~= "skip" then
+            assert.logfile().has.line('cache miss for revocation status', true)
+          end
+        end)
+      end
+    end
+  end)
 end

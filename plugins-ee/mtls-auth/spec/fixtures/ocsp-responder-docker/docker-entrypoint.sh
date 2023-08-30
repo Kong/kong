@@ -4,7 +4,7 @@
 for type in ocsp crl
 do
     # issue certificates
-    for cert in valid valid2 valid3 revoked revoked2 revoked3
+    for cert in valid revoked
     do
         /create_client $type $cert
         /get_cert $type-$cert > /data/$type-$cert.pem
