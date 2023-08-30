@@ -3,7 +3,7 @@ local helpers = require "spec.helpers"
 for _, strategy in helpers.each_strategy({"postgres"}) do
   describe("Plugin: key-auth (access) [#" .. strategy .. "] auto-expiring keys", function()
     -- Give a bit of time to reduce test flakyness on slow setups
-    local ttl = 10
+    local ttl = 30
     local inserted_at
     local proxy_client
 
