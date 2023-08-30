@@ -1103,6 +1103,18 @@ function DAO:each(size, options)
 end
 
 
+function DAO:each_for_export(size, options)
+  local iter = self:each(size, options)
+  return function ()
+    local row, err, page = iter()
+    if row and row.ttl and row.ttl ~= null then
+      row.ttl = row.ttl + (row.updated_at or row.created_at or ngx.time())
+    end
+    return row, err, page
+  end
+end
+
+
 function DAO:insert(entity, options)
   validate_entity_type(entity)
 
@@ -1120,12 +1132,15 @@ function DAO:insert(entity, options)
     return nil, tostring(err_t), err_t
   end
 
+  -- ngx.log(ngx.ERR, "+ debug: insert:  ", cjson.encode(entity_to_insert))
+  -- ttl : 3600 relative value
   local row, err_t = self.strategy:insert(entity_to_insert, options)
   if not row then
     return nil, tostring(err_t), err_t
   end
 
   local ws_id = row.ws_id
+  -- ttl: 3600 relative value
   row, err, err_t = self:row_to_entity(row, options)
   if not row then
     return nil, err, err_t
@@ -1431,17 +1446,19 @@ function DAO:row_to_entity(row, options)
       entity.ws_id = ws_id
     end
   end
-
+--[[ xiaochen
   if self.schema.ttl and entity.ttl and entity.ttl ~= null then
       local ttl_value = entity.ttl - ngx.time()
       entity.ttl = ttl_value > 0 and ttl_value or 0
   end
+  ]]
 
   return entity
 end
 
 
 function DAO:post_crud_event(operation, entity, old_entity, options)
+    -- "for insert" old_entity=nil
   if options and options.no_broadcast_crud_event then
     return
   end

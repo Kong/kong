@@ -213,6 +213,11 @@ local function select_by_key(schema, key)
 
   entity = schema:process_auto_fields(entity, "select", true, PROCESS_AUTO_FIELDS_OPTS)
 
+  if schema.ttl and entity and entity.ttl and entity.ttl ~= null then
+    local ttl_value = entity.ttl - ngx.time()
+    entity.ttl = ttl_value > 0 and ttl_value or 0
+  end
+
   return entity
 end
 
