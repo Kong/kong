@@ -11,6 +11,9 @@ env:
 jobs:
   check_author:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
 
     steps:
       - name: Check PR Author Membership
