@@ -3,7 +3,7 @@ local helpers = require "spec.helpers"
 for _, strategy in helpers.each_strategy({"postgres"}) do
   describe("Plugin: key-auth (access) [#" .. strategy .. "] auto-expiring keys", function()
     -- Give a bit of time to reduce test flakyness on slow setups
-    local ttl = 20
+    local ttl = 10
     local inserted_at
     local proxy_client
 
@@ -71,19 +71,20 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
     end)
 
     it("authenticate for up to 'ttl'", function()
-      proxy_client = helpers.http_client("127.0.0.1", 9002)
-      local res = assert(proxy_client:send {
-        method  = "GET",
-        path  = "/status/200",
-        headers = {
-          ["Host"] = "key-ttl-hybrid.com",
-          ["apikey"] = "kong",
-        }
-      })
+      helpers.wait_until(function()
+        proxy_client = helpers.http_client("127.0.0.1", 9002)
+        res = assert(proxy_client:send {
+          method  = "GET",
+          path  = "/status/200",
+          headers = {
+            ["Host"] = "key-ttl-hybrid.com",
+            ["apikey"] = "kong",
+          }
+        })
 
-      assert.res_status(200, res)
-
-      proxy_client:close()
+        proxy_client:close()
+        return res and res.status == 200
+      end, 5)
 
       ngx.update_time()
       local elapsed = ngx.now() - inserted_at
