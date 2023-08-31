@@ -19,7 +19,7 @@ export const getNegative = async (
   headers: AxiosRequestHeaders = {},
   body?: object | string,
   additionalOptions?: object | any
-) =>
+) : Promise<any> =>
     axios({
         url,
         headers,
@@ -45,7 +45,7 @@ export const postNegative = async (
   method: Method = 'post',
   headers: AxiosRequestHeaders = {},
   additionalOptions?: object | any
-)=>
+) : Promise<any> =>
     axios({
         method,
         headers,
