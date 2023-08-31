@@ -1,5 +1,4 @@
 local certificate  = require "kong.runloop.certificate"
-local balancers    = require "kong.runloop.balancer.balancers"
 local ktls         = require "resty.kong.tls"
 
 
