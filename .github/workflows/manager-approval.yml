@@ -9,7 +9,7 @@ on:
       - 'plugins-ee/**'
       - '**.rockspec'
       - '.requirements'
-      - '!plugins-ee/**/spec'
+      - '!plugins-ee/**/spec/**'
 
 jobs:
   check-manager-approvals:
