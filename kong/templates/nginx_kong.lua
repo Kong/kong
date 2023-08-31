@@ -286,7 +286,7 @@ server {
 
         rewrite_by_lua_block       {
           -- ngx.localtion.capture will create a new nginx request,
-          -- so the overwritten client cert and key info get lost.
+          -- so the upstream ssl-related info attached to the `r` gets lost.
           -- we need to re-set them here to the new nginx request.
           local ctx = ngx.ctx
           local upstream_ssl = require("kong.runloop.upstream_ssl")
