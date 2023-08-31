@@ -73,7 +73,7 @@ jobs:
       run:
         working-directory: spec-ee/kong-api-tests
     runs-on: ${{ matrix.runs_on }}
-    timeout-minutes: 40
+    timeout-minutes: 90
     env:
       GW_MODE: ${{ matrix.gateway_mode }}
       AWS_ACCESS_KEY_ID: ${{ secrets.TEST_API_AWS_ACCESS_KEY_ID }}
