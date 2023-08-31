@@ -446,7 +446,7 @@ local function parse_gcp_headers(gcp_header)
   local span_id = bn.from_dec(match["span_id"]):to_binary()
   local should_sample = match["trace_flags"] == "1"
 
-  return trace_id, span_id, should_sample 
+  return trace_id, span_id, should_sample
 end
 
 -- [[ EE
@@ -738,7 +738,7 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
   end
 
   if conf_header_type == "gcp" or found_header_type == "gcp" then
-    set_header("x-cloud-trace-context", to_gcp_trace_id(to_hex(proxy_span.trace_id)) .. 
+    set_header("x-cloud-trace-context", to_gcp_trace_id(to_hex(proxy_span.trace_id)) ..
       "/" .. bn.from_binary(proxy_span.span_id):to_dec() ..
       ";o=" .. (proxy_span.should_sample and "1" or "0")
     )

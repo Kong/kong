@@ -41,16 +41,18 @@
   [#11306](https://github.com/Kong/kong/pull/11306)
 - Fix an issue where cluster_cert or cluster_ca_cert is inserted into lua_ssl_trusted_certificate before being base64 decoded.
   [#11385](https://github.com/Kong/kong/pull/11385)
-- Update the DNS client to follow configured timeouts in a more predictable manner.  Also fix a corner case in its
-  behavior that could cause it to resolve incorrectly during transient network and DNS server failures.
-  [#11386](https://github.com/Kong/kong/pull/11386)
 - Fix cache warmup mechanism not working in `acls` plugin groups config entity scenario.
   [#11414](https://github.com/Kong/kong/pull/11414)
+- Fix an issue that queue stops processing when a hard error is encountered in the handler function.
+  [#11423](https://github.com/Kong/kong/pull/11423)
 - Fix an issue that query parameters are not forwarded in proxied request.
   Thanks [@chirag-manwani](https://github.com/chirag-manwani) for contributing this change.
   [#11328](https://github.com/Kong/kong/pull/11328)
 - Fix an issue that response status code is not real upstream status when using kong.response function.
   [#11437](https://github.com/Kong/kong/pull/11437)
+- Removed a hardcoded proxy-wasm isolation level setting that was preventing the
+  `nginx_http_proxy_wasm_isolation` configuration value from taking effect.
+  [#11407](https://github.com/Kong/kong/pull/11407)
 
 #### Plugins
 
@@ -66,8 +68,13 @@
 
 ### Dependencies
 
-- Bumped lua-resty-openssl from 1.3.0 to 1.3.1
+- Bumped lua-resty-aws from 1.3.0 to 1.3.1
   [#11419](https://github.com/Kong/kong/pull/11419)
+- Bumped lua-resty-session from 4.0.4 to 4.0.5
+  [#11416](https://github.com/Kong/kong/pull/11416)
+- Bumped OpenSSL from 3.1.1 to 3.1.2
+  [#11361](https://github.com/Kong/kong/pull/11361)
+
 
 ## 3.4.0
 
@@ -143,6 +150,10 @@
   [#11066](https://github.com/Kong/kong/pull/11066)
 - Fix a bug that caused sampling rate to be applied to individual spans producing split traces.
   [#11135](https://github.com/Kong/kong/pull/11135)
+- Fix a bug that caused spans to not be instrumented with http.status_code when the request was not proxied to an upstream.
+  Thanks [@backjo](https://github.com/backjo) for contributing this change.
+  [#11152](https://github.com/Kong/kong/pull/11152),
+  [#11406](https://github.com/Kong/kong/pull/11406)
 - Fix a bug that caused the router to fail in `traditional_compatible` mode when a route with multiple paths and no service was created.
   [#11158](https://github.com/Kong/kong/pull/11158)
 - Fix an issue where the router of flavor `expressions` can not work correctly
@@ -172,6 +183,8 @@
 - Fix an issue where `/schemas/plugins/validate` endpoint fails to validate valid plugin configuration
   when the key of `custom_fields_by_lua` contains dot character(s).
   [#11091](https://github.com/Kong/kong/pull/11091)
+- Fix an issue with the `/tags/:tag` Admin API returning a JSON object (`{}`) instead of an array (`[]`) for empty data sets.
+  [#11213](https://github.com/Kong/kong/pull/11213)
 
 #### Plugins
 
@@ -232,10 +245,9 @@
   [#11214](https://github.com/Kong/kong/pull/11214)
 - Bumped lua-resty-session from 4.0.3 to 4.0.4
   [#11011](https://github.com/Kong/kong/pull/11011)
-- Bumped OpenSSL from 1.1.1t to 3.1.2
+- Bumped OpenSSL from 1.1.1t to 3.1.1
   [#10180](https://github.com/Kong/kong/pull/10180)
   [#11140](https://github.com/Kong/kong/pull/11140)
-  [#11361](https://github.com/Kong/kong/pull/11361)
 - Bumped pgmoon from 1.16.0 to 1.16.2 (Kong's fork)
   [#11181](https://github.com/Kong/kong/pull/11181)
   [#11229](https://github.com/Kong/kong/pull/11229)

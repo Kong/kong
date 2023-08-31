@@ -72,6 +72,13 @@ for _, strategy in helpers.each_strategy() do
                          hosts = { "status" },
                          strip_path = false })
 
+      local np_route = bp.routes:insert({
+        service = http_srv,
+        protocols = { "http" },
+        paths = { "/noproxy" },
+        strip_path = false
+      })
+
       bp.plugins:insert({
         name = tcp_trace_plugin_name,
         config = {
@@ -81,10 +88,19 @@ for _, strategy in helpers.each_strategy() do
         }
       })
 
+      bp.plugins:insert({
+        name = "request-termination",
+        route = np_route,
+        config = {
+          status_code = 418,
+          message = "No coffee for you. I'm a teapot.",
+        }
+      })
+
       assert(helpers.start_kong {
         database = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
-        plugins = "tcp-trace-exporter",
+        plugins = "bundled, tcp-trace-exporter",
         tracing_instrumentations = types,
         tracing_sampling_rate = 1,
       })
@@ -317,6 +333,38 @@ for _, strategy in helpers.each_strategy() do
         assert_has_span("kong", spans)
         assert_has_span("kong.header_filter.plugin." .. tcp_trace_plugin_name, spans)
 
+        assert_has_no_span("kong.balancer", spans)
+        assert_has_no_span("kong.database.query", spans)
+        assert_has_no_span("kong.router", spans)
+        assert_has_no_span("kong.dns", spans)
+        assert_has_no_span("kong.rewrite.plugin." .. tcp_trace_plugin_name, spans)
+      end)
+
+      it("contains the expected kong span with status code when request is not proxied", function ()
+        local thread = helpers.tcp_server(TCP_PORT)
+        local r = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/noproxy",
+        })
+        assert.res_status(418, r)
+
+        -- Getting back the TCP server input
+        local ok, res = thread:join()
+        assert.True(ok)
+        assert.is_string(res)
+
+        -- Making sure it's alright
+        local spans = cjson.decode(res)
+        local kong_span = assert_has_span("kong", spans)
+
+        assert_has_attributes(kong_span, {
+          ["http.method"]    = "GET",
+          ["http.flavor"]    = "1.1",
+          ["http.status_code"] = "418",
+          ["http.route"] = "/noproxy",
+          ["http.url"] = "http://0.0.0.0/noproxy",
+        })
+        assert_has_span("kong.header_filter.plugin." .. tcp_trace_plugin_name, spans)
         assert_has_no_span("kong.balancer", spans)
         assert_has_no_span("kong.database.query", spans)
         assert_has_no_span("kong.router", spans)

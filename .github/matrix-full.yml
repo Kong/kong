@@ -216,7 +216,6 @@ release-packages:
   artifact-type: debian
   artifact: kong.arm64.deb
 
-
 # RHEL
 - label: rhel-7
   package: rpm

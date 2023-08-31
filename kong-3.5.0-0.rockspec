@@ -54,7 +54,7 @@ dependencies = {
   "lua-resty-luasocket == 1.1.1",
   "lua-resty-gcp == 0.0.13",
   "lua-resty-acme == 0.11.0",
-  "lua-resty-session == 4.0.4",
+  "lua-resty-session == 4.0.5",
   "lua-resty-timer-ng == 0.2.5",
   "lpeg == 1.0.2",
 }
