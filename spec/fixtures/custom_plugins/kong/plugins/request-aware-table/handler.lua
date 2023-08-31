@@ -1,7 +1,6 @@
 local RAT = require "kong.tools.request_aware_table"
 
 local get_phase = ngx.get_phase
-local ngx = ngx
 local kong = kong
 
 
@@ -10,29 +9,24 @@ local _M = {
   VERSION = "1.0",
 }
 
-local checks_tab = RAT.new({}, "on")
-local no_checks_tab = RAT.new({}, "off")
+local tab = RAT.new({})
 
 local function access_tables()
   local query = kong.request.get_query()
-  local tab
-
-  if query.checks ~= "false" then
-    tab = checks_tab
-  else
-    tab = no_checks_tab
-  end
 
   if query.clear == "true" and get_phase() == "access" then
+    -- clear before access
     tab.clear()
   end
 
   -- write access
   tab.foo = "bar"
-  -- read access
-  ngx.log(ngx.DEBUG, "accessing to tab.foo" .. tab.foo)
+  tab.bar = "baz"
+  -- read/write access
+  tab.baz = tab.foo .. tab.bar
 
   if query.clear == "true" and get_phase() == "body_filter" then
+    -- clear after access
     tab.clear()
   end
 end

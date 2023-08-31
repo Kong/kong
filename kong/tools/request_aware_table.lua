@@ -1,5 +1,8 @@
 local table_clear = require "table.clear"
 
+local LOG_LEVELS = require "kong.constants".LOG_LEVELS
+local get_log_level = require("resty.kong.log").get_log_level
+
 local get_phase = ngx.get_phase
 local fmt = string.format
 local ngx_var = ngx.var
@@ -16,15 +19,18 @@ local NGX_VAR_PHASES = {
 }
 
 
+local function is_debug_mode()
+  local log_level = get_log_level(LOG_LEVELS[kong.configuration.log_level])
+  return log_level == LOG_LEVELS.debug
+end
+
+
 --- Request aware table constructor
 -- Wraps an existing table (or creates a new one) with request-aware access
 -- logic to protect the underlying data from race conditions.
 -- @param data_table (optional) The target table to use as underlying data
--- @param request_awareness_mode (optional) The mode for request awareness
---        - "off": No request awareness mode
---        - any other value, or nil: Control access for every r/w operation
 -- @return The newly created table with request-aware access
-local function new(data_table, request_awareness_mode)
+local function new(data_table)
   if data_table and type(data_table) ~= "table" then
     error("data_table must be a table", 2)
   end
@@ -65,7 +71,7 @@ local function new(data_table, request_awareness_mode)
 
   local _proxy_mt = {
     __index = function(_, k)
-      if request_awareness_mode ~= "off" then
+      if is_debug_mode() then
         enforce_sequential_access()
       end
 
@@ -73,7 +79,7 @@ local function new(data_table, request_awareness_mode)
     end,
 
     __newindex = function(_, k, v)
-      if request_awareness_mode ~= "off" then
+      if is_debug_mode() then
         enforce_sequential_access()
       end
 

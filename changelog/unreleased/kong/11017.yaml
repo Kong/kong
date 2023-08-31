@@ -1,0 +1,5 @@
+message: Add a request-aware table able to detect accesses from different requests.
+type: feature
+scope: Core
+prs:
+  - 11017
