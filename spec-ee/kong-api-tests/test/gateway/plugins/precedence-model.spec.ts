@@ -2,7 +2,6 @@ import axios from 'axios';
 import {
   Environment,
   expect,
-  isGwHybrid,
   getBasePath,
   createGatewayService,
   createRouteForService,
@@ -13,16 +12,15 @@ import {
   deleteGatewayRoute,
   deleteConsumer,
   deleteConsumerGroup,
-  wait,
   postNegative,
   logResponse,
   createPlugin,
   deletePlugin,
   getNegative,
+  waitForConfigRebuild,
 } from '@support';
 
-describe.skip('Plugin Scope Precedence Model', () => {
-  const isHybrid = isGwHybrid();
+describe('Plugin Scope Precedence Model', () => {
   const url = `${getBasePath({
     environment: Environment.gateway.admin,
   })}`;
@@ -72,7 +70,10 @@ describe.skip('Plugin Scope Precedence Model', () => {
     await addConsumerToConsumerGroup(consumerId, consumerGroupId);
 
     // set up basic-auth plugin and add credentials for consumer
-    const basicAuthPlugin = await createPlugin({ name: 'basic-auth' });
+    const basicAuthPlugin = await createPlugin({
+      name: 'basic-auth',
+      service: { id: serviceId },
+    });
     basicAuthPluginId = basicAuthPlugin.id;
 
     await axios({
@@ -84,7 +85,7 @@ describe.skip('Plugin Scope Precedence Model', () => {
       },
     });
 
-    await wait(3000);
+    await waitForConfigRebuild();
   });
 
   function buildPayload(scope) {
@@ -128,18 +129,16 @@ describe.skip('Plugin Scope Precedence Model', () => {
     idArray.map(async (id) => {
       if (id) await deletePlugin(id);
     });
-    // wait a couple seconds to ensure deletion
-    await wait(3000);
+
+    await waitForConfigRebuild();
   }
 
   it('should check that consumer group exists', async function () {
     const resp = await getNegative(`${url}/consumer_groups/${consumerGroupId}`);
-    logResponse(resp);
     expect(resp.status, 'Status should be 200').equal(200);
     expect(resp.data.consumer_group.name).equal('PrecedenceGroup');
   });
 
-  //test each combination of consumer group and non-consumer group scopes
   scopesConsumerGroups.forEach(async (scopeConsumer) => {
     scopesOther.forEach(async (scopeOther) => {
       const firstScope =
@@ -149,28 +148,26 @@ describe.skip('Plugin Scope Precedence Model', () => {
       const secondScope =
         firstScope === scopeConsumer ? scopeOther : scopeConsumer;
 
-      it(`should check that ${firstScope} takes precedence over ${secondScope}`, async function () {
+      // these tests should be run manually upon release rather than in CI
+      it.skip(`should check that ${firstScope} takes precedence over ${secondScope}`, async function () {
         const firstPayload = buildPayload(firstScope);
         const secondPayload = buildPayload(secondScope);
 
         const respFirst = await postNegative(`${url}/plugins`, firstPayload);
-        logResponse(respFirst);
         expect(respFirst.status, 'Status should be 201').equal(201);
         const firstPluginId = respFirst.data.id;
 
         const respSecond = await postNegative(`${url}/plugins`, secondPayload);
-        logResponse(respSecond);
         expect(respSecond.status, 'Status should be 201').equal(201);
         const secondPluginId = respSecond.data.id;
 
         pluginIdList = [firstPluginId, secondPluginId];
 
-        await wait(8000);
+        await waitForConfigRebuild();
 
         const resp = await getNegative(`${proxyUrl}/precedence_test`, {
           authorization: `Basic ${Buffer.from('test:test').toString('base64')}`,
         });
-        logResponse(resp);
 
         expect(resp.status, 'Status should be 200').equal(200);
 
@@ -188,13 +185,11 @@ describe.skip('Plugin Scope Precedence Model', () => {
     // create plugins for each scope
     payloads.map(async (payload) => {
       pluginIdList.push((await createPlugin(payload)).id);
-      console.log(pluginIdList);
       const resp = await postNegative(`${url}/plugins`, payload);
-      logResponse(resp);
       expect(resp.status, 'Status should be 201').equal(201);
     });
 
-    await wait(8000);
+    await waitForConfigRebuild();
 
     const resp = await getNegative(`${proxyUrl}/precedence_test`, {
       authorization: `Basic ${Buffer.from('test:test').toString('base64')}`,
@@ -203,6 +198,42 @@ describe.skip('Plugin Scope Precedence Model', () => {
 
     expect(resp.status, 'Status should be 200').equal(200);
     expect(resp.data.headers['X-Test-Header']).equal('consumer,route,service');
+  });
+
+  // select 3 indices from scopes array at random
+  const randomIndices: number[] = [];
+  while (randomIndices.length < 3) {
+    const randomIndex = Math.floor(Math.random() * scopes.length);
+    if (!randomIndices.includes(randomIndex)) {
+      randomIndices.push(randomIndex);
+    }
+  }
+
+  const randomScopes = randomIndices.map((index) => {
+    return scopes[index];
+  });
+
+  it(`should create 3 plugins with scopes: [${randomScopes[0]}], [${randomScopes[1]}], [${randomScopes[2]}] and ensure correct precedence`, async function () {
+    // create list comprehension of payloads for each scope
+    const payloads = randomScopes.map((scope) => {
+      return buildPayload(scope);
+    });
+
+    // create plugins for each scope
+    payloads.map(async (payload) => {
+      pluginIdList.push((await createPlugin(payload)).id);
+      const resp = await postNegative(`${url}/plugins`, payload);
+      expect(resp.status, 'Status should be 201').equal(201);
+    });
+
+    await waitForConfigRebuild();
+
+    const resp = await getNegative(`${proxyUrl}/precedence_test`, {
+      authorization: `Basic ${Buffer.from('test:test').toString('base64')}`,
+    });
+    expect(resp.status, 'Status should be 200').equal(200);
+    // first scope in list is the one with highest precedence
+    expect(resp.data.headers['X-Test-Header']).equal(`${randomScopes[0]}`);
   });
 
   afterEach(async function () {
