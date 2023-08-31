@@ -8,7 +8,7 @@ on:
       - 'plugins-ee/**'
       - '**.rockspec'
       - '.requirements'
-      - '!plugins-ee/**/spec'
+      - '!plugins-ee/**/spec/**'
 
 jobs:
   require-changelog:
