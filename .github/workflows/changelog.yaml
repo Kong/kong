@@ -42,7 +42,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Validate changelogs
-        uses: thiagodnf/yaml-schema-checker@228a5be72029114e3cd6301e0aaeef6b557fa033 # v0.0.8
+        uses: thiagodnf/yaml-schema-checker@58b96413951ebe86a396275c48620b8435439694 # v0.0.10
         with:
           jsonSchemaFile: CHANGELOG/schema.json
           yamlFiles: |
