@@ -32,7 +32,7 @@ jobs:
           echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
       - name: Checkout Kong source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Lookup build cache
         uses: actions/cache@v3
@@ -43,7 +43,7 @@ jobs:
 
       - name: Checkout kong-build-tools
         if: steps.cache-deps.outputs.cache-hit != 'true' || github.event.inputs.force_build == 'true'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: Kong/kong-build-tools
           path: kong-build-tools
@@ -51,7 +51,7 @@ jobs:
 
       - name: Checkout go-pluginserver
         if: steps.cache-deps.outputs.cache-hit != 'true' || github.event.inputs.force_build == 'true'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: Kong/go-pluginserver
           path: go-pluginserver
@@ -80,13 +80,13 @@ jobs:
           echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
       - name: Checkout Kong source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: kong
           ref: ${{ github.event.inputs.source_branch }}
 
       - name: Checkout Kong Docs
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: kong/docs.konghq.com
           path: docs.konghq.com

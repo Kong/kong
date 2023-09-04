@@ -63,7 +63,7 @@ jobs:
       gh-release-tag-name: ${{ steps.build-info.outputs.gh-release-tag-name }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Build Info
       id: build-info
       run: |
@@ -196,7 +196,7 @@ jobs:
         apt install -y wget libz-dev libssl-dev libcurl4-gnutls-dev libexpat1-dev sudo
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
@@ -309,7 +309,7 @@ jobs:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-packages'] }}"
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Download artifact
       uses: actions/download-artifact@v3
@@ -361,7 +361,7 @@ jobs:
       matrix:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-images'] }}"
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Download artifact
       uses: actions/download-artifact@v3
@@ -446,7 +446,7 @@ jobs:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-images'] }}"
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Install Python
       uses: actions/setup-python@v4
@@ -571,7 +571,7 @@ jobs:
       KONG_PROXY_URI: http://localhost:8000
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Login to Docker Hub
       uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc # v2.1.0
@@ -686,7 +686,7 @@ jobs:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['release-packages'] }}"
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Download artifact
       uses: actions/download-artifact@v3
