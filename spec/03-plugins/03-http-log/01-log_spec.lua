@@ -330,7 +330,7 @@ for _, strategy in helpers.each_strategy() do
 
       local route11 = bp.routes:insert {
         hosts   = { "log_allowed_headers.test" },
-        service = service9
+        service = service11
       }
 
       bp.plugins:insert {
