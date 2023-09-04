@@ -26,7 +26,7 @@
     "mocha": "^10.2.0",
     "mocha-multi-reporters": "^1.5.1",
     "promise-ws": "^1.0.0-1",
-    "redis": "^4.6.6",
+    "redis": "^4.6.8",
     "uuid": "^9.0.0"
   },
   "devDependencies": {
