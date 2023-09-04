@@ -283,6 +283,12 @@ local function validate_options_value(self, options)
     end
   end
 
+  if options.export ~= nil then
+    if type(options.export) ~= "boolean" then
+      errors.export = "must be a boolean"
+    end
+  end
+
   if next(errors) then
     return nil, errors
   end
@@ -1104,14 +1110,17 @@ end
 
 
 function DAO:each_for_export(size, options)
-  local iter = self:each(size, options)
-  return function ()
-    local row, err, page = iter()
-    if row and row.ttl and row.ttl ~= null then
-      row.ttl = row.ttl + (row.updated_at or row.created_at or ngx.time())
+  if self.strategy.schema.ttl then
+    if not options then
+      options = get_pagination_options(self, options)
+    else
+      options = utils.cycle_aware_deep_copy(options, true)
     end
-    return row, err, page
+
+    options.export = true
   end
+
+  return self:each(size, options)
 end
 
 
