@@ -189,8 +189,8 @@ function HttpLogHandler:log(conf)
     end
   end
 
-  -- do logged header allow list if enabled
-  if conf.enable_logged_header_allow_list then
+  -- do logged headers allow list if enabled
+  if conf.enable_logged_headers_allow_list then
     local set_serialize_value = kong.log.set_serialize_value
 
     -- clear all request and response headers

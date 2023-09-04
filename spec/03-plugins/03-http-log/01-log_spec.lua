@@ -341,7 +341,7 @@ for _, strategy in helpers.each_strategy() do
                                     .. ":"
                                     .. helpers.mock_upstream_port
                                     .. "/post_log/custom_http",
-          enable_logged_header_allow_list = true,
+          enable_logged_headers_allow_list = true,
           logged_headers_allow_list = {
             "allowed_header",
           },
