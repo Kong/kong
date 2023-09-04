@@ -1,4 +1,4 @@
-message: Fix an issue that TTL does not work in DB-less and Hybrid mode
+message: Fix an issue that the TTL of the key-auth plugin didnt work in DB-less and Hybrid mode.
 type: bugfix
 scope: Core
 prs:
