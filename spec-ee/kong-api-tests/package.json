@@ -31,7 +31,7 @@
   },
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.2",
-    "@types/chai": "^4.3.5",
+    "@types/chai": "^4.3.6",
     "@types/chai-arrays": "^2.0.0",
     "@types/chai-as-promised": "^7.1.5",
     "@types/chai-like": "^1.1.1",
