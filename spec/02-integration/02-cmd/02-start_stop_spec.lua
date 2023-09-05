@@ -183,6 +183,42 @@ describe("kong start/stop #" .. strategy, function()
     }))
   end)
 
+  it("kong startup failed when no license and fips is on" , function()
+    local license_env = os.getenv("KONG_LICENSE_DATA")
+    helpers.setenv("KONG_LICENSE_DATA", "")
+
+    local ok, stderr = kong_exec("start", {
+      fips = "on",
+    })
+    kong_exec("stop", {})
+
+    if type(license_env) == "string" then
+      helpers.setenv("KONG_LICENSE_DATA", license_env)
+    end
+
+    assert.is_string(stderr)
+    assert.matches("FIPS mode is not supported in Free mode. Please reach out to Kong if you are interested in using Kong FIPS compliant artifacts", stderr, nil, true)
+  end)
+
+  it("kong startup success with a valid license and configuration fips" , function()
+    local license_env = os.getenv("KONG_LICENSE_DATA")
+
+    helpers.setenv("KONG_LICENSE_DATA", pl_file.read("spec-ee/fixtures/mock_license.json"))
+
+    local ok, stderr = kong_exec("start", {
+      fips = "on",
+    })
+    kong_exec("stop", {})
+
+    if type(license_env) == "string" then
+      helpers.setenv("KONG_LICENSE_DATA", license_env)
+    end
+
+    if type(stderr) == "string" then
+        assert.not_matches("FIPS mode is not supported in Free mode. Please reach out to Kong if you are interested in using Kong FIPS compliant artifacts", stderr, nil, true)
+    end
+  end)
+
   it("resolves referenced secrets", function()
     helpers.setenv("PG_PASSWORD", "dummy")
     finally(function() helpers.unsetenv("PG_PASSWORD") end)
@@ -362,6 +398,7 @@ describe("kong start/stop #" .. strategy, function()
       assert.matches('portal_auth_conf = "******"', stdout, nil, true)
       assert.matches('portal_session_conf = "******"', stdout, nil, true)
     end)
+
   end)
 
   describe("custom --nginx-conf", function()

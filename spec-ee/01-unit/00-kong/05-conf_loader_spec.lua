@@ -8,6 +8,7 @@
 local conf_loader = require "kong.conf_loader"
 local ee_conf_loader = require("kong.enterprise_edition.conf_loader")
 local helpers = require "spec.helpers"
+local pl_file = require "pl.file"
 
 local openssl = require "resty.openssl"
 
@@ -635,6 +636,19 @@ describe("ee conf loader", function()
   end)
 
   describe("#fips", function()
+    local license_env
+
+    setup(function()                                                                                                                             
+      license_env = os.getenv("KONG_LICENSE_DATA")                                                                                               
+      helpers.setenv("KONG_LICENSE_DATA", pl_file.read("spec-ee/fixtures/mock_license.json"))                                                    
+    end)
+                                                                                                                                                 
+    teardown(function()                                                                                                                          
+      if type(license_env) == "string" then                                                                                                      
+        helpers.setenv("KONG_LICENSE_DATA", license_env)                                                                                         
+      end                                                                                                                                        
+    end)
+
     fips_test("with fips: validates correctly", function()
       local conf, err = conf_loader(nil, {
         fips = true,

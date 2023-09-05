@@ -771,7 +771,17 @@ local function validate_fips(conf, errors)
     return
   end
 
-  log.debug("enabling FIPS mode on %s (%s)",
+  local licensing = require "kong.enterprise_edition.licensing"
+
+  local license = licensing(conf)
+
+  if conf.fips and license.l_type == "free" then
+    error("FIPS mode is not supported in Free mode. Please reach out to " ..
+          "Kong if you are interested in using Kong FIPS compliant artifacts")
+  end
+
+  log.debug("enabling FIPS mode %s on %s (%s)",
+            (license.l_type == "full_expired" and "with expired license" or ""),
             openssl_version.version_text,
             openssl_version.version(openssl_version.CFLAGS))
 
