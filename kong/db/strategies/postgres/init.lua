@@ -481,7 +481,7 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
     statement_name = "page" .. suffix
   end
 
-  if options.export then
+  if options and options.export then
     statement_name = statement_name .. "_for_export"
   end
 
