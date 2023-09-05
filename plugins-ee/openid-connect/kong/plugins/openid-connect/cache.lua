@@ -16,6 +16,7 @@ local http          = require "resty.http"
 local json          = require "cjson.safe"
 local workspaces    = require "kong.workspaces"
 local semaphore     = require "ngx.semaphore"
+local string_buffer = require("string.buffer")
 
 
 local setmetatable  = setmetatable
@@ -1258,85 +1259,71 @@ local function tokens_load(oic, args, ttl)
 end
 
 
+local function get_token_cache_key(iss, salt, args)
+  if not args.grant_type then return nil end
+
+  local buffer = string_buffer.new()
+  buffer:put(iss, "#grant_type=", args.grant_type)
+
+  if args.grant_type == "refresh_token" then
+    assert(args.refresh_token, "no credentials given for refresh token grant")
+
+    buffer:put("&", args.refresh_token)
+  elseif args.grant_type == "password" then
+    assert(args.username and args.password, "no credentials given for password grant")
+
+    buffer:put("&", args.username, "&", args.password)
+  elseif args.grant_type == "client_credentials" then
+    assert((args.client_id and args.client_secret) or args.assertion,
+      "no credentials given for client credentials grant")
+
+    if args.assertion then
+      buffer:put("&", args.assertion)
+    else
+      buffer:put("&", args.client_id, "&", args.client_secret)
+    end
+  else
+    return nil
+  end
+
+  buffer:put("&", salt)
+
+  local scope = args.args and args.args.scope
+  if args.token_cache_key_include_scope and scope
+    and args.grant_type ~= "refresh_token" then
+      buffer:put("&", url_encode(scope))
+  end
+
+  return cache_key(sha256_base64url(buffer:get()))
+end
+
+
 function tokens.load(oic, args, ttl, use_cache, flush, salt)
-  local iss = oic.configuration.issuer
-  local key
   local res
   local err
+  local key
 
   if use_cache or flush then
-    local scope = args.args and args.args.scope
-    local scope_arg
-    if args.token_cache_key_include_scope and scope
-      and args.grant_type ~= "refresh_token" then
-      scope_arg = '&' .. url_encode(scope)
-    end
-    local extra_arg = (salt and "&" .. salt or "") .. (scope_arg or "")
-    if args.grant_type == "refresh_token" then
-      if not args.refresh_token then
-        return nil, "no credentials given for refresh token grant"
-      end
+    local ok
+    ok, key = pcall(get_token_cache_key, oic.configuration.issuer, salt, args)
+    if not ok then return nil, key end
 
-      key = cache_key(sha256_base64url(concat {
-        iss,
-        "#grant_type=refresh_token&",
-        args.refresh_token,
-        extra_arg,
-      }))
-
-    elseif args.grant_type == "password" then
-      if not args.username or not args.password then
-        return nil, "no credentials given for password grant"
-      end
-
-      key = cache_key(sha256_base64url(concat {
-        iss,
-        "#grant_type=password&",
-        args.username,
-        "&",
-        args.password,
-        extra_arg,
-      }))
-
-    elseif args.grant_type == "client_credentials" then
-      if not ((args.client_id and args.client_secret) or args.assertion) then
-        return nil, "no credentials given for client credentials grant"
-      end
-
-      if args.assertion then
-        key = cache_key(sha256_base64url(concat {
-          iss,
-          "#grant_type=client_credentials&",
-          args.assertion,
-          extra_arg,
-        }))
-
-      else
-        key = cache_key(sha256_base64url(concat {
-          iss,
-          "#grant_type=client_credentials&",
-          args.client_id,
-          "&",
-          args.client_secret,
-          extra_arg,
-        }))
-      end
-    end
+    if key then key = "oic:" .. key end
 
     if flush and key then
-      cache_invalidate("oic:" .. key)
+      cache_invalidate(key)
     end
   end
 
   if use_cache and key then
-    res, err = cache_get("oic:" .. key, ttl, tokens_load, oic, args, ttl)
+    res, err = cache_get(key, ttl, tokens_load, oic, args, ttl)
     if type(res) ~= "table" then
       return nil, err or "unable to exchange credentials"
     end
 
     local exp = res[1]
     if exp ~= 0 and exp < ttl.now then
-      cache_invalidate("oic:" .. key)
+      cache_invalidate(key)
       res, err = tokens_load(oic, args, ttl)
     end
 
