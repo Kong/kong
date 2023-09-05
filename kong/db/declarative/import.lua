@@ -23,9 +23,7 @@ local type = type
 local pairs = pairs
 local next = next
 local insert = table.insert
-local min = math.min
 local null = ngx.null
-local md5 = ngx.md5
 local get_phase = ngx.get_phase
 local yield = utils.yield
 local sha256 = utils.sha256_hex
@@ -463,14 +461,15 @@ local load_into_cache_with_events
 do
   local events = require("kong.runloop.events")
 
+  local md5 = ngx.md5
+  local min = math.min
+
   local exiting = ngx.worker.exiting
 
   local function load_into_cache_with_events_no_lock(entities, meta, hash, hashes)
     if exiting() then
       return nil, "exiting"
     end
-
-    local reconfigure_data
 
     local ok, err, default_ws = load_into_cache(entities, meta, hash)
     if not ok then
@@ -484,6 +483,7 @@ do
     local router_hash
     local plugins_hash
     local balancer_hash
+
     if hashes then
       if hashes.routes ~= DECLARATIVE_EMPTY_CONFIG_HASH then
         router_hash = md5(hashes.services .. hashes.routes)
@@ -499,13 +499,12 @@ do
          targets_hash   ~= DECLARATIVE_EMPTY_CONFIG_HASH
       then
         balancer_hash = md5(upstreams_hash .. targets_hash)
-
       else
         balancer_hash = DECLARATIVE_EMPTY_CONFIG_HASH
       end
     end
 
-    reconfigure_data = {
+    local reconfigure_data = {
       default_ws,
       router_hash,
       plugins_hash,
