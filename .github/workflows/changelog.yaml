@@ -9,8 +9,53 @@ on:
       - '.requirements'
 
 jobs:
+  add-changelog:
+    if: ${{ !contains(github.event.*.labels.*.name, 'skip-changelog') && github.event_name == 'pull_request' && github.event.action == 'opened' }}
+    name: Auto add changelog
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: install npm modules
+        run: |
+          npm install -g js-yaml
+
+      - name: parse description
+        run: |
+          echo "parsing PR description"
+          echo '${{ github.event.pull_request.number }}' > /tmp/pr-number.txt
+          echo '${{ github.event.pull_request.title }}' > /tmp/pr-title.txt
+          echo '${{ github.event.pull_request.body }}' > /tmp/pr-description.txt
+          export NODE_PATH=$(npm root --quiet -g)
+          node .github/scripts/changelog-automation.js
+
+      - name: add a changelog file
+        run: |
+          mv /tmp/${{ github.event.number }}.yaml CHANGELOG/unreleased/${{ github.event.pull_request.number }}.yaml
+          git config --local user.email "$(git log -n 1 --pretty=format:%ae)"
+          git config --local user.name "$(git log -n 1 --pretty=format:%an)"
+          git add CHANGELOG/unreleased/${{ github.event.pull_request.number }}.yaml
+          git commit -m "Add changelog file CHANGELOG/unreleased/${{ github.event.number }}.yaml"
+          git push
+
+      - name: leave a comment
+        uses: actions/github-script@v3
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            github.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "Changelog YAML Added."
+            })
+
   require-changelog:
     name: Is changelog required?
+    if: ${{ !contains(github.event.*.labels.*.name, 'skip-changelog') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -25,21 +70,22 @@ jobs:
           files: 'CHANGELOG/unreleased/**/*.yaml'
 
       - name: Requires a changelog file if 'skip-changelog' label is not added
-        if: ${{ !contains(github.event.*.labels.*.name, 'skip-changelog') }}
-        run: >
-          if [ "${{ steps.changelog-check.outputs.added_files_count }}" = "0" ]; then
-            echo "PR should contain a changelog file"
-            exit 1
-          fi
+        if: ${{ steps.changelog-check.outputs.added_files_count == 0 }}
+        run: |
+          echo "PR requires a changelog file, otherwise, add a 'skip-changelog' label."
+          exit 1
 
   validate-changelog:
+    if: ${{ !contains(github.event.*.labels.*.name, 'skip-changelog') }}
     name: Validate changelog
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
 
-      - name: Validate changelogs
+      - name: validate changelogs
         uses: thiagodnf/yaml-schema-checker@228a5be72029114e3cd6301e0aaeef6b557fa033 # v0.0.8
         with:
           jsonSchemaFile: CHANGELOG/schema.json

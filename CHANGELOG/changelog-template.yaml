@@ -1,5 +1,6 @@
 message:
 type:
+scope:
 prs:
 jiras:
 issues:

@@ -1,0 +1,58 @@
+name: Changelog Commands
+
+on:
+  issue_comment:
+    types: [created, edited, deleted]
+
+jobs:
+  job:
+    if: contains(github.event.comment.html_url, '/pull/') && contains(github.event.comment.body, '/update-changelog')
+    name: Update changelog
+    runs-on: ubuntu-latest
+    steps:
+      - name: retrive PR
+        run: |
+          pr_number=$(jq --raw-output .issue.number "$GITHUB_EVENT_PATH")
+          echo ${pr_number} > /tmp/pr-number.txt
+          curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/${{ github.repository }}/pulls/${pr_number}" > /tmp/pr.json
+          cat /tmp/pr.json | jq --raw-output .title > /tmp/pr-title.txt
+          cat /tmp/pr.json | jq --raw-output .body > /tmp/pr-description.txt
+          cat /tmp/pr-number.txt
+          cat /tmp/pr-title.txt
+          cat /tmp/pr-description.txt
+
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: install npm modules
+        run: |
+          npm install -g js-yaml
+
+      - name: update changelog
+        run: |
+          git fetch
+          git switch `cat /tmp/pr.json | jq --raw-output .head.ref`
+          git pull
+          pr_number=$(jq --raw-output .issue.number "$GITHUB_EVENT_PATH")
+          export NODE_PATH=$(npm root --quiet -g)
+          node .github/scripts/changelog-automation.js
+          rm -f CHANGELOG/unreleased/${pr_number}.yaml
+          mv /tmp/${pr_number}.yaml CHANGELOG/unreleased/${pr_number}.yaml
+          git config --local user.email "$(git log -n 1 --pretty=format:%ae)"
+          git config --local user.name "$(git log -n 1 --pretty=format:%an)"
+          git add CHANGELOG/unreleased/${pr_number}.yaml
+          git diff --quiet HEAD || git commit -m "Update changelog file CHANGELOG/unreleased/${pr_number}.yaml"
+          git push
+
+      - name: leave a comment
+        uses: actions/github-script@v3
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            github.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "Changelog YAML updated."
+            })

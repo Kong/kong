@@ -84,7 +84,7 @@ end
 local function parse_jiras(jiras)
   local jira_items = {}
   for i, jira in ipairs(jiras or {}) do
-    jiras[i] = {
+    jira_items[i] = {
       id = jira,
       link = JIRA_BASE_URL .. jira
     }

@@ -11,12 +11,21 @@ https://github.com/Kong/kong/blob/master/CONTRIBUTING.md#contributing
 ### Checklist
 
 - [ ] The Pull Request has tests
-- [ ] A changelog file has been added to `CHANGELOG/unreleased/kong` or adding `skip-changelog` label on PR if unnecessary. [README.md](https://github.com/Kong/kong/blob/master/CHANGELOG/README.md) (Please ping @vm-001 if you need help)
+- [ ] Fill out the changelog form below or add `skip-changelog` label on your PR if changelog is not required
 - [ ] There is a user-facing docs PR against https://github.com/Kong/docs.konghq.com - PUT DOCS PR HERE
 
-### Full changelog
 
-* [Implement ...]
+### Changelog
+
+[//]: # (changelog-anchor)
+```yaml
+message:
+type:
+scope:
+prs:
+issues:
+```
+[//]: # (changelog-anchor)
 
 ### Issue reference
 
