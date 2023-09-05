@@ -1,0 +1,42 @@
+load("@bazel_skylib//rules:build_test.bzl", "build_test")
+load("@rules_cc//cc:defs.bzl", "cc_test")
+load("@kong_bindings//:variables.bzl", "KONG_VAR")
+
+# mostly copied from https://github.com/bazelbuild/rules_foreign_cc/tree/main/examples/third_party/curl
+
+exports_files(
+    [
+        "BUILD.curl.bazel",
+        "cacerts-" + KONG_VAR["CA_CERTS"],
+    ],
+    visibility = ["//visibility:public"],
+)
+
+cc_test(
+    name = "curl_test",
+    srcs = ["curl_test.cc"],
+    linkopts = select({
+        "@platforms//os:linux": ["-ldl"],
+        "//conditions:default": [],
+    }),
+    deps = [
+        "@curl",
+    ],
+)
+
+build_test(
+    name = "build_test",
+    targets = [
+        "@curl//:curl",
+    ],
+    visibility = ["//:__pkg__"],
+)
+
+test_suite(
+    name = "curl_test_suite",
+    tests = [
+        ":build_test",
+        ":curl_test",
+    ],
+    visibility = ["//:__pkg__"],
+)

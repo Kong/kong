@@ -257,7 +257,7 @@ jobs:
       run: |
         cat bazel-out/_tmp/actions/stderr-*
         sudo dmesg || true
-        tail -n500 bazel-out/**/*/CMake.log || true
+        find bazel-*/ -name '*.log' | xargs tail -n500 || true
 
     - name: Upload artifact
       uses: actions/upload-artifact@v3
@@ -578,6 +578,11 @@ jobs:
       env:
         VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
       run: build/tests/03-http2-admin-api.sh
+
+    - name: Smoke Tests - Packaged Binaries
+      env:
+        VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
+      run: build/tests/04-bins.sh
 
   release-packages:
     name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}

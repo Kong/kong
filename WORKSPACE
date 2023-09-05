@@ -63,3 +63,16 @@ toolchain_repositories()
 load("//build/toolchain:managed_toolchain.bzl", "register_all_toolchains")
 
 register_all_toolchains()
+
+load(
+    "//build/curl:repositories.bzl",
+    "cacerts_repositories",
+    "curl_repositories",
+    "nghttp2_repositories",
+)
+
+curl_repositories()
+
+nghttp2_repositories()
+
+cacerts_repositories()

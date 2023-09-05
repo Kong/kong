@@ -45,6 +45,11 @@
   - libm.so.6
   - libc.so.6
 
+- Path      : /usr/local/kong/lib/libnghttp2.so.14.24.3
+  Needed    :
+  - libc.so.6
+  - ld-linux-aarch64.so.1
+
 - Path      : /usr/local/kong/lib/libssl.so.3
   Needed    :
   - libcrypto.so.3

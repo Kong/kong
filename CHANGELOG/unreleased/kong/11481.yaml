@@ -1,0 +1,6 @@
+message: Add statically-linked curl binary
+type: feature
+prs:
+  - 11481
+jiras:
+  - KAG-2165

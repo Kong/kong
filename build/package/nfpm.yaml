@@ -1,3 +1,4 @@
+---
 name: "${KONG_NAME}"
 arch: ${ARCH}
 platform: "linux"
@@ -5,69 +6,68 @@ version: "${KONG_VERSION}"
 section: "default"
 priority: "extra"
 provides:
-- kong
-- luarocks
+  - kong
+  - luarocks
+  - curl
+  - openssl
+  - ca-certificates
 maintainer: "Kong Inc. <support@konghq.com>"
 description: |
   Kong is a distributed gateway for APIs and Microservices, focused on high performance and reliability.
 vendor: "Kong Inc."
 license: "Apache-2.0"
 contents:
-- src: nfpm-prefix/bin
-  dst: /usr/local/bin
-- src: nfpm-prefix/kong
-  dst: /usr/local/kong
-  type: tree
-- src: nfpm-prefix/lib
-  dst: /usr/local/lib
-- src: nfpm-prefix/etc/luarocks
-  dst: /usr/local/etc/luarocks
-- src: nfpm-prefix/openresty
-  dst: /usr/local/openresty
-- src: nfpm-prefix/share
-  dst: /usr/local/share
-- src: nfpm-prefix/etc/kong
-  dst: /etc/kong
-- src: bin/kong
-  dst: /usr/local/bin/kong
-- src: bin/kong-health
-  dst: /usr/local/bin/kong-health
-- src: kong/include
-  dst: /usr/local/kong/include
-- src: build/package/kong.service
-  dst: /lib/systemd/system/kong.service
-- src: build/package/kong.logrotate
-  dst: /etc/kong/kong.logrotate
+  - src: nfpm-prefix/kong
+    dst: /usr/local/kong
+    type: tree
+  - src: nfpm-prefix/lib
+    dst: /usr/local/lib
+  - src: nfpm-prefix/etc/luarocks
+    dst: /usr/local/etc/luarocks
+  - src: nfpm-prefix/openresty
+    dst: /usr/local/openresty
+  - src: nfpm-prefix/share
+    dst: /usr/local/share
+  - src: nfpm-prefix/etc/kong
+    dst: /etc/kong
+  - src: bin/kong
+    dst: /usr/local/bin/kong
+  - src: bin/kong-health
+    dst: /usr/local/bin/kong-health
+  - src: kong/include
+    dst: /usr/local/kong/include
+  - src: build/package/kong.service
+    dst: /lib/systemd/system/kong.service
+  - src: build/package/kong.logrotate
+    dst: /etc/kong/kong.logrotate
 scripts:
   postinstall: ./build/package/postinstall.sh
 replaces:
-- ${KONG_REPLACES_1}
-- ${KONG_REPLACES_2}
+  - ${KONG_REPLACES_1}
+  - ${KONG_REPLACES_2}
 conflicts:
-- ${KONG_CONFLICTS_1}
-- ${KONG_CONFLICTS_2}
+  - ${KONG_CONFLICTS_1}
+  - ${KONG_CONFLICTS_2}
+depends:
+  - perl
+  - ca-certificates
 overrides:
+  # see build/nfpm/rules.bzl for values of _DEPENDS vars
   deb:
     depends:
-    - ca-certificates
-    - libpcre3
-    - perl
-    - libyaml-0-2
+      - ${LIBYAML_DEPENDS}
+      - ${PCRE_DEPENDS}
+      - ${ZLIB_DEPENDS}
   rpm:
     depends:
-    - ca-certificates
-    - pcre
-    - perl
-    - perl-Time-HiRes
-    - zlib
-    - libyaml
-    # Workaround for https://github.com/goreleaser/nfpm/issues/589
-    - ${RPM_EXTRA_DEPS}
-    - ${RPM_EXTRA_DEPS_2}
-    - ${RPM_EXTRA_DEPS_3}
-  apk:
-    depends:
-    - ca-certificates
+      - perl-Time-HiRes
+      - ${LIBYAML_DEPENDS}
+      - ${PCRE_DEPENDS}
+      - ${ZLIB_DEPENDS}
+      # Workaround for https://github.com/goreleaser/nfpm/issues/589
+      - ${RPM_EXTRA_DEPS}
+      - ${RPM_EXTRA_DEPS_2}
+      - ${RPM_EXTRA_DEPS_3}
 
 rpm:
   signature:

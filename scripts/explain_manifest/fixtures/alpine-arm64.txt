@@ -31,6 +31,10 @@
   Needed    :
   - libc.so
 
+- Path      : /usr/local/kong/lib/libnghttp2.so.14.24.3
+  Needed    :
+  - libc.so.6
+
 - Path      : /usr/local/kong/lib/libssl.so.1.1
   Needed    :
   - libcrypto.so.1.1

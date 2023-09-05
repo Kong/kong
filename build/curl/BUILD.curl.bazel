@@ -1,0 +1,114 @@
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make")
+load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
+load("@kong_bindings//:variables.bzl", "KONG_VAR")
+
+filegroup(
+    name = "all_srcs",
+    srcs = glob(
+        include = ["**"],
+        exclude = ["*.bazel"],
+    ),
+)
+
+copy_file(
+    name = "cacerts",
+    src = "@cacerts-bundle//file",
+    out = "ssl/cacerts-%s.pem" % KONG_VAR["CA_CERTS"],
+    visibility = ["//visibility:public"],
+)
+
+configure_make(
+    name = "curl",
+    configure_options = [
+        "--disable-dependency-tracking",
+        "--disable-ldap",
+        "--disable-manual",
+        "--disable-shared",
+        "--disable-silent-rules",
+        "--enable-debug",
+        "--enable-websockets",
+        "--with-ca-bundle=%s/kong/ssl/cacerts-%s.pem" % (
+            KONG_VAR["INSTALL_DESTDIR"],
+            KONG_VAR["CA_CERTS"],
+        ),
+        "--with-ca-fallback",
+        "--with-default-ssl-backend=openssl",
+        "--with-default-ssl-backend=openssl",
+        "--with-nghttp2=$$EXT_BUILD_DEPS$$/nghttp2",
+        "--with-ssl=$$EXT_BUILD_DEPS$$/openssl",
+        "--without-brotli",
+        "--without-ca-path",
+        "--without-libidn2",
+        "--without-libpsl",
+        "--without-librtmp",
+        "--without-libssh",
+        "--without-libssh2",
+        "--without-zstd",
+    ] + select({
+        "@kong//:aarch64-linux-anylibc-cross": [
+            "--host=aarch64-linux",
+        ],
+        "@kong//:x86_64-linux-musl-cross": [
+            "--host=x86_64-linux-musl",
+        ],
+        "//conditions:default": [],
+    }) + select({
+        "@kong//:any-cross": [
+            "--with-zlib=$$EXT_BUILD_DEPS$$/zlib",
+        ],
+        "//conditions:default": [],
+    }) + select({
+        "@kong//:debug_flag": ["--enable-debug"],
+        "//conditions:default": ["--disable-debug"],
+    }),
+    data = ["ssl/cacerts-%s.pem" % KONG_VAR["CA_CERTS"]],
+    env = select({
+        "@platforms//os:macos": {
+            "LIBS": "-lpthread",
+            # don't use rule_foreign_cc's libtool as archiver as it seems to be a bug
+            # see https://github.com/bazelbuild/rules_foreign_cc/issues/947
+            "AR": "/usr/bin/ar",
+        },
+        "//conditions:default": {
+            "LIBS": "-lpthread -lnghttp2",
+        },
+    }),
+    lib_source = ":all_srcs",
+    linkopts = [
+        "-L$$EXT_BUILD_DEPS$$/openssl",
+        "-L$$EXT_BUILD_DEPS$$/nghttp2",
+    ] + select({
+        "@kong//:any-cross": [
+            "-L$$EXT_BUILD_DEPS$$/zlib",
+        ],
+        "//conditions:default": [],
+    }) + select({
+        # Mac OS can't create static libraries apparently??
+        # https://stackoverflow.com/a/54890434
+        "@platforms//os:macos": [],
+        "//conditions:default": ["-static"],
+    }),
+    out_binaries = ["curl"],
+    targets = [
+        "-j" + KONG_VAR["NPROC"],
+        "install -j" + KONG_VAR["NPROC"],
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@nghttp2",
+        "@openssl",
+    ] + select({
+        "@kong//:any-cross": [
+            "@cross_deps_zlib//:zlib",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+filegroup(
+    name = "curl_dir",
+    srcs = [
+        ":curl",
+    ],
+    output_group = "gen_dir",
+)

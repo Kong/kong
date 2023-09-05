@@ -1,0 +1,2 @@
+*.bazel linguist-language=Starlark
+*.bzl linguist-language=Starlark

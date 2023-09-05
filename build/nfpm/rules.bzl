@@ -15,7 +15,30 @@ def _nfpm_pkg_impl(ctx):
         target_arch = "arm64"
     else:
         fail("Unsupported platform cpu: %s" % target_cpu)
+
     env["ARCH"] = target_arch
+
+    native_depends_dict = {
+        "apk": {
+            "LIBYAML_DEPENDS": "yaml-dev",
+            "PCRE_DEPENDS": "pcre",
+            "ZLIB_DEPENDS": "zlib",
+        },
+        "deb": {
+            "LIBYAML_DEPENDS": "libyaml-0-2",
+            "PCRE_DEPENDS": "libpcre3",
+            "ZLIB_DEPENDS": "zlib1g-dev",
+        },
+        "rpm": {
+            "LIBYAML_DEPENDS": "libyaml",
+            "PCRE_DEPENDS": "pcre",
+            "ZLIB_DEPENDS": "zlib",
+        },
+    }
+
+    # if not cross-compiling
+    if target_arch != "arm64":
+        env = dicts.add(env, native_depends_dict[ctx.attr.packager])
 
     # XXX: remove the "env" from KONG_VAR which is a list
     env["OPENRESTY_PATCHES"] = ""

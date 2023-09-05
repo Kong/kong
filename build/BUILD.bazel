@@ -20,6 +20,11 @@ install_lib_deps_cmd = "\n".join([
     for dep in lib_deps
 ])
 
+cli_deps = [
+    "@curl",
+    "@nghttp2",
+]
+
 lualib_deps = [
     "@lua-kong-nginx-module//:all_srcs",
     "@lua-resty-lmdb//:all_srcs",
@@ -90,6 +95,7 @@ kong_directory_genrule(
         "@openresty",
         "@openresty//:luajit",
         "@protoc//:all_srcs",
+        "@curl//:cacerts",
     ] + select({
         "@kong//:skip_webui_flags": [],
         "//conditions:default": [
@@ -101,7 +107,7 @@ kong_directory_genrule(
             "@openresty//:wasm_runtime",
         ],
         "//conditions:default": [],
-    }) + lib_deps + lualib_deps,
+    }) + lib_deps + cli_deps + lualib_deps,
     cmd =
         """ set -e
         function copy_with_filter {
@@ -133,6 +139,21 @@ kong_directory_genrule(
         LN ${BUILD_DESTDIR}/openresty/bin/resty ${BUILD_DESTDIR}/bin/resty
         chmod -R "+rw" ${BUILD_DESTDIR}/openresty
 
+        CURL=${WORKSPACE_PATH}/$(echo '$(locations @curl//:curl)' | awk '{print $1}')
+        copy_with_filter ${CURL} ${BUILD_DESTDIR}/kong/
+        mkdir -p ${BUILD_DESTDIR}/kong/bin/
+        cp ${CURL}/bin/curl ${BUILD_DESTDIR}/kong/bin/
+        cp ${CURL}/bin/curl-config ${BUILD_DESTDIR}/kong/bin/
+        chmod -R "+rxw" ${BUILD_DESTDIR}/kong/bin
+
+        CACERTS=${WORKSPACE_PATH}/$(echo '$(locations @curl//:cacerts)' | awk '{print $1}')
+        mkdir -p ${BUILD_DESTDIR}/kong/ssl/
+        cp -r ${CACERTS} ${BUILD_DESTDIR}/kong/ssl/
+        chmod -R "+r" ${BUILD_DESTDIR}/kong/ssl
+
+        NGHTTP2=${WORKSPACE_PATH}/$(echo '$(locations @nghttp2//:nghttp2)' | awk '{print $1}')
+        copy_with_filter ${NGHTTP2} ${BUILD_DESTDIR}/kong/
+
         LUAJIT=${WORKSPACE_PATH}/$(echo '$(locations @openresty//:luajit)' | awk '{print $1}')
         copy_with_filter ${LUAJIT} ${BUILD_DESTDIR}/openresty/luajit
         cp ${LUAJIT}/bin/luajit ${BUILD_DESTDIR}/openresty/luajit/bin/luajit
@@ -141,7 +162,7 @@ kong_directory_genrule(
 
         LUAROCKS=${WORKSPACE_PATH}/$(dirname '$(location @luarocks//:luarocks_make)')/luarocks_tree
         cp -r ${LUAROCKS}/. ${BUILD_DESTDIR}/.
-        rm ${BUILD_DESTDIR}/bin/lapis ${BUILD_DESTDIR}/bin/luarocks-admin
+        rm -v ${BUILD_DESTDIR}/bin/lapis ${BUILD_DESTDIR}/bin/luarocks-admin || true
 
         ATC_ROUTER=${WORKSPACE_PATH}/$(location @atc_router)
         cp $ATC_ROUTER ${BUILD_DESTDIR}/openresty/lualib/.

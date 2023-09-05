@@ -1,0 +1,77 @@
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make")
+load("@kong_bindings//:variables.bzl", "KONG_VAR")
+
+filegroup(
+    name = "all_srcs",
+    srcs = glob(
+        include = ["**"],
+        exclude = ["*.bazel"],
+    ),
+)
+
+configure_make(
+    name = "nghttp2",
+    autoconf = True,
+    configure_in_place = True,
+    configure_options = [
+        "--disable-dependency-tracking",
+        "--enable-lib-only",
+        "--with-openssl=$$EXT_BUILD_DEPS$$/openssl",
+        "--without-cunit",
+        "--without-jansson",
+        "--without-jemalloc",
+        "--without-libcares",
+        "--without-libev",
+        "--without-libevent-openssl",
+        "--without-libnghttp3",
+        "--without-libngtcp2",
+        # TODO if libxml2 makes it into CE, use it here
+        "--without-libxml2",
+        "--without-systemd",
+    ] + select({
+        "@kong//:aarch64-linux-anylibc-cross": [
+            "--host=aarch64-linux",
+        ],
+        "@kong//:x86_64-linux-musl-cross": [
+            "--host=x86_64-linux-musl",
+        ],
+        "//conditions:default": [],
+    }) + select({
+        "@kong//:any-cross": [
+            "--with-zlib=$$EXT_BUILD_DEPS$$/zlib",
+        ],
+        "//conditions:default": [],
+    }),
+    env = select({
+        "@platforms//os:macos": {
+            "AR": "/usr/bin/ar",
+        },
+        "//conditions:default": {},
+    }),
+    lib_source = ":all_srcs",
+    linkopts = [
+        "-L$$EXT_BUILD_DEPS$$/openssl",
+    ],
+    out_shared_libs = select({
+        "@platforms//os:macos": [
+            "libnghttp2.dylib",
+        ],
+        "//conditions:default": [
+            "libnghttp2.so",
+        ],
+    }),
+    out_static_libs = ["libnghttp2.a"],
+    targets = [
+        "-j" + KONG_VAR["NPROC"],
+        "install -j" + KONG_VAR["NPROC"],
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@openssl",
+    ] + select({
+        "@kong//:any-cross": [
+            "@cross_deps_zlib//:zlib",
+        ],
+        "//conditions:default": [],
+    }),
+)
