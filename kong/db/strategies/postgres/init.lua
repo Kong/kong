@@ -1090,6 +1090,7 @@ function _M.new(connector, schema, errors)
   self.statements["truncate_global"] = self.statements["truncate"]
 
   local add_statement
+  local add_statement_for_export
   do
     local function add(name, opts, add_ws)
       local orig_argn = opts.argn
