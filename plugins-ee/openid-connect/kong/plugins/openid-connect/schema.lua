@@ -1677,7 +1677,13 @@ local config = {
               type = "boolean",
               default = false,
             }
-          }
+          },
+          {
+            using_pseudo_issuer = { description = "If the plugin uses a pseudo issuer. When set to true, the plugin will not discover the configuration from the issuer URL.",
+              type = "boolean",
+              default = false,
+            }
+          },
         },
         shorthand_fields = {
           -- TODO: deprecated forms, to be removed in Kong 4.0

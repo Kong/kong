@@ -3292,7 +3292,73 @@ for _, strategy in helpers.all_strategies() do
           end)
         end)
       end
+
+      for _, using_pseudo_issuer in ipairs{false, true} do
+        describe("#using_pseudo_issuer=" .. tostring(using_pseudo_issuer), function()
+          lazy_setup(function()
+            local bp = helpers.get_db_utils(strategy, {
+              "routes",
+              "services",
+              "plugins",
+            }, {
+              PLUGIN_NAME
+            })
+
+            local service = bp.services:insert {
+              name = PLUGIN_NAME,
+              path = "/"
+            }
+            local route = bp.routes:insert {
+              service = service,
+              paths   = { "/" },
+            }
+
+            bp.plugins:insert {
+              route   = route,
+              name    = PLUGIN_NAME,
+              config  = {
+                issuer    = "http://unreachable",
+                using_pseudo_issuer = using_pseudo_issuer,
+                -- TODO: add JWT uri here
+              },
+            }
+
+            assert(helpers.start_kong({
+              database   = strategy,
+              nginx_conf = "spec/fixtures/custom_nginx.template",
+              plugins    = "bundled," .. PLUGIN_NAME,
+            }))
+          end)
+
+          lazy_teardown(function()
+            helpers.stop_kong()
+          end)
+
+          after_each(function()
+            helpers.clean_logfile()
+          end)
+
+          it("works", function()
+            -- trigger discovery
+            local client = helpers.proxy_client()
+            assert(client:send({
+              method = "GET",
+              path = "/",
+              headers = {
+                ["Host"] = "kong",
+                ["Authorization"] = PASSWORD_CREDENTIALS,
+              }
+            }))
+            if using_pseudo_issuer then
+              assert.logfile().has.no.line("[error]", true)
+            else
+              assert.logfile().has.line("unreachable", true)
+            end
+          end)
+        end)
+      end
     end)
+
   end)
 
 end

@@ -466,46 +466,50 @@ local function decode_previous_jwks(jwks_uri, jwks_string, err)
              " (ignoring)")
 end
 
+local function config_fallback(issuer_entity, issuer)
+  if issuer_entity then
+    log.debug("falling back to previous configuration")
+    return decode_previous_configuration(issuer_entity, issuer)
+
+  else
+    log.debug("falling back to empty configuration")
+    return {
+      issuer = issuer,
+    }
+  end
+end
+
+local function get_config(issuer, opts)
+  local conf, decoded, err
+  conf, err = fetch_configuration(issuer, opts)
+  if type(conf) ~= "string" then
+    log.notice("loading configuration for ", issuer, " using discovery failed: ", err or "unknown error")
+    return
+  end
+
+  decoded, err = json.decode(conf)
+  if type(decoded) ~= "table" then
+    log.err("decoding discovery document failed: ", err or "unknown error")
+    return
+  end
+
+  return decoded
+end
+
 
 local function discover(issuer, opts, issuer_entity)
   opts = opts or {}
 
-  local configuration_decoded
+  local configuration_decoded, err
 
   log.notice("loading configuration for ", issuer, " using discovery")
 
-  local conf, err = fetch_configuration(issuer, opts)
-  if type(conf) ~= "string" then
-    if issuer_entity then
-      log.notice("loading configuration for ", issuer, " using discovery failed: ", err or "unknown error",
-                 " (falling back to previous configuration)")
-      configuration_decoded = decode_previous_configuration(issuer_entity, issuer)
+  if not opts.using_pseudo_issuer then
+    configuration_decoded = get_config(issuer, opts)
+  end
 
-    else
-      log.err("loading configuration for ", issuer, " using discovery failed: ", err or "unknown error",
-                 " (falling back to empty configuration)")
-      configuration_decoded = {
-        issuer = issuer,
-      }
-    end
-
-  else
-    configuration_decoded, err = json.decode(conf)
-    if type(configuration_decoded) ~= "table" then
-      if issuer_entity then
-        log.err("decoding discovery document failed: ", err or "unknown error",
-                   " (falling back to previous configuration)")
-
-        configuration_decoded = decode_previous_configuration(issuer_entity, issuer)
-
-      else
-        log.err("decoding discovery document failed: ", err or "unknown error",
-                   " (falling back to empty configuration)")
-        configuration_decoded = {
-          issuer = issuer,
-        }
-      end
-    end
+  if not configuration_decoded then
+    configuration_decoded = config_fallback(issuer_entity, issuer)
   end
 
   local jwks = setmetatable({}, json.array_mt)
@@ -626,25 +630,26 @@ local function discover(issuer, opts, issuer_entity)
   local updated_at = time()
   configuration_decoded.updated_at = updated_at
 
-  conf, err = json.encode(configuration_decoded)
-  if type(conf) ~= "string" then
+  local encoded
+  encoded, err = json.encode(configuration_decoded)
+  if type(encoded) ~= "string" then
     if issuer_entity then
       log.notice("encoding discovery document failed: ", err or "unknown error",
                  " (falling back to previous configuration)")
-      conf = issuer_entity.configuration
+                 encoded = issuer_entity.configuration
 
     else
       log.err("encoding discovery document failed: ", err or "unknown error",
                  " (falling back to empty configuration)")
 
-      conf = json.encode({
+      encoded = json.encode({
         issuer = issuer,
         updated_at = updated_at,
       })
     end
   end
 
-  return conf, jwks
+  return encoded, jwks
 end
 
 

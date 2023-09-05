@@ -192,4 +192,12 @@ return {
       "response_headers",
     },
   },
+
+  -- Any dataplane older than 3.5.0
+  [3005000000] = {
+    -- Enterprise plugins
+    openid_connect = {
+      "using_pseudo_issuer",
+    },
+  },
 }
