@@ -7,6 +7,9 @@
 
 local helpers = require("spec.helpers")
 
+local FAKE_TIMESTAMP = 1667543171
+local original_time = ngx.time
+
 -- make an assertion of what response we expect to see.
 -- handle the detail of parsing the response line and subtle differencies
 local function response_line_match(line, method, url)
@@ -20,12 +23,6 @@ local function response_line_match(line, method, url)
   end
 
   assert.same(url, url_extracted)
-end
-
--- to get a definitive result
--- luacheck:ignore
-ngx.time = function()
-  return 1667543171
 end
 
 local test_config = [[
@@ -68,6 +65,12 @@ describe("cp outage handling storage support: #s3", function()
     helpers.setenv("AWS_SECRET_ACCESS_KEY", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY")
     helpers.setenv("AWS_CONFIG_STORAGE_ENDPOINT", "http://127.0.0.1:" .. S3PORT)
 
+    -- to get a definitive result
+    -- luacheck:ignore
+    ngx.time = function()
+      return FAKE_TIMESTAMP
+    end
+
     -- initialization
 
     local get_phase = ngx.get_phase
@@ -75,6 +78,11 @@ describe("cp outage handling storage support: #s3", function()
     s3 = require "kong.clustering.config_sync_backup.strategies.s3"
     ngx.get_phase = get_phase -- luacheck: ignore
     s3.init_worker()
+  end)
+
+  lazy_teardown(function()
+    -- luaeck:ignore
+    ngx.time = original_time
   end)
 
   before_each(function()

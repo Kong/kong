@@ -12,6 +12,7 @@ local json_encode = json.encode
 local json_decode = json.decode
 
 local FAKE_TIMESTAMP = 1667543171
+local original_time = ngx.time
 
 local mock_request
 local original_new
@@ -23,13 +24,6 @@ local function mock_http_client()
     instance.request_uri = mock_request
     return instance
   end
-end
-
-
--- to get a definitive result
--- luacheck:ignore
-ngx.time = function()
-  return FAKE_TIMESTAMP
 end
 
 local test_config = [[
@@ -151,12 +145,21 @@ describe("cp outage handling storage support: #gcp", function()
     -- environment variables
     helpers.setenv("GCP_SERVICE_ACCOUNT", GCP_SERVICE_ACCOUNT)
 
+    -- to get a definitive result
+    -- luacheck:ignore
+    ngx.time = function()
+      return FAKE_TIMESTAMP
+    end
+    
     -- initialization
     mock_http_client()
   end)
 
   lazy_teardown(function()
     helpers.unsetenv("GCP_SERVICE_ACCOUNT")
+
+    -- luacheck:ignore
+    ngx.time = original_time
 
     http.new = original_new
   end)
