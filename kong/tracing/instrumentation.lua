@@ -1,5 +1,4 @@
 local pdk_tracer = require "kong.pdk.tracing".new()
-local propagation = require "kong.tracing.propagation"
 local buffer = require "string.buffer"
 local utils = require "kong.tools.utils"
 local tablepool = require "tablepool"
@@ -83,10 +82,10 @@ function _M.balancer(ctx)
 
   local last_try_balancer_span
   do
-    local propagated = propagation.get_propagated()
+    local balancer_span = ctx.tracing and ctx.tracing.injected.balancer_span
     -- pre-created balancer span was not linked yet
-    if propagated and not propagated.linked then
-      last_try_balancer_span = propagated
+    if balancer_span and not balancer_span.linked then
+      last_try_balancer_span = balancer_span
     end
   end
 
@@ -216,6 +215,10 @@ _M.available_types = available_types
 
 -- Record inbound request
 function _M.request(ctx)
+  ctx.tracing = {
+    injected = {},
+  }
+
   local client = kong.client
 
   local method = get_method()
@@ -248,6 +251,22 @@ function _M.request(ctx)
   })
 
   tracer.set_active_span(active_span)
+end
+
+
+function _M.precreate_balancer_span(ctx)
+  if _M.balancer == NOOP then
+    -- balancer instrumentation not enabled
+    return
+  end
+
+  local root_span = ctx.KONG_SPANS and ctx.KONG_SPANS[1]
+  if ctx.tracing then
+    ctx.tracing.injected.balancer_span = tracer.create_span(nil, {
+      span_kind = 3,
+      parent = root_span,
+    })
+  end
 end
 
 
