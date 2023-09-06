@@ -623,34 +623,17 @@ local function parse(headers, conf_header_type)
 end
 
 
-local function get_propagated()
-  return ngx.ctx.propagated_span
-end
-
-
-local function set_propagated(span)
-  ngx.ctx.propagated_span = span
-end
-
-
 -- set outgoing propagation headers
 --
 -- @tparam string conf_header_type type of tracing header to use
 -- @tparam string found_header_type type of tracing header found in request
 -- @tparam table proxy_span span to be propagated
 -- @tparam string conf_default_header_type used when conf_header_type=ignore
--- @tparam bool reuse if true any existing propagated_span is reused instead of proxy_span
-local function set(conf_header_type, found_header_type, proxy_span, conf_default_header_type, reuse)
-  if reuse then
-    proxy_span = get_propagated() or proxy_span
-  end
+local function set(conf_header_type, found_header_type, proxy_span, conf_default_header_type)
   -- proxy_span can be noop, in which case it should not be propagated.
   if proxy_span.is_recording == false then
     kong.log.debug("skipping propagation of noop span")
     return
-  end
-  if reuse then
-    set_propagated(proxy_span)
   end
 
   local set_header = kong.service.request.set_header
@@ -750,5 +733,4 @@ return {
   parse = parse,
   set = set,
   from_hex = from_hex,
-  get_propagated = get_propagated,
 }

@@ -8,10 +8,12 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
+local pretty = require "pl.pretty"
 local to_hex = require "resty.string".to_hex
 
 local fmt = string.format
 
+local TCP_PORT = 35001
 
 local function gen_trace_id()
   return to_hex(utils.get_rand_bytes(16))
@@ -22,6 +24,20 @@ local function gen_span_id()
   return to_hex(utils.get_rand_bytes(8))
 end
 
+local function get_span(name, spans)
+  for _, span in ipairs(spans) do
+    if span.name == name then
+      return span
+    end
+  end
+end
+
+local function assert_has_span(name, spans)
+  local span = get_span(name, spans)
+  assert.is_truthy(span, fmt("\nExpected to find %q span in:\n%s\n",
+                             name, pretty.write(spans)))
+  return span
+end
 
 for _, strategy in helpers.each_strategy() do
 describe("propagation tests #" .. strategy, function()
@@ -311,4 +327,85 @@ describe("propagation tests #" .. strategy, function()
     assert.matches("00%-%x+-" .. json.headers["x-b3-spanid"] .. "%-01", json.headers.traceparent)
   end)
 end)
+
+for _, instrumentation in ipairs({ "request", "request,balancer" }) do
+describe("propagation tests with enabled " .. instrumentation .. " instrumentation (issue #11294) #" .. strategy, function()
+  local service, route
+  local proxy_client
+
+  lazy_setup(function()
+    local bp = helpers.get_db_utils(strategy, { "services", "routes", "plugins" }, { "tcp-trace-exporter" })
+
+    service = bp.services:insert()
+
+    route = bp.routes:insert({
+      service = service,
+      hosts = { "http-route" },
+    })
+
+    bp.plugins:insert({
+      name = "opentelemetry",
+      route = {id = route.id},
+      config = {
+        endpoint = "http://localhost:8080/v1/traces",
+      }
+    })
+
+    bp.plugins:insert({
+      name = "tcp-trace-exporter",
+      config = {
+        host = "127.0.0.1",
+        port = TCP_PORT,
+        custom_spans = false,
+      }
+    })
+
+    helpers.start_kong({
+      database = strategy,
+      plugins = "bundled, trace-propagator, tcp-trace-exporter",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      tracing_instrumentations = instrumentation,
+      tracing_sampling_rate = 1,
+    })
+
+    proxy_client = helpers.proxy_client()
+  end)
+
+  teardown(function()
+    helpers.stop_kong()
+  end)
+
+  it("sets the outgoint parent span's ID correctly", function()
+    local trace_id = gen_trace_id()
+    local span_id = gen_span_id()
+    local thread = helpers.tcp_server(TCP_PORT)
+
+    local r = proxy_client:get("/", {
+      headers = {
+        traceparent = fmt("00-%s-%s-01", trace_id, span_id),
+        host = "http-route"
+      },
+    })
+    local body = assert.response(r).has.status(200)
+
+    local _, res = thread:join()
+    assert.is_string(res)
+    local spans = cjson.decode(res)
+
+    local parent_span
+    if instrumentation == "request" then
+      -- balancer instrumentation is not enabled,
+      -- the outgoing parent span is the root span
+      parent_span = assert_has_span("kong", spans)
+    else
+      -- balancer instrumentation is enabled,
+      -- the outgoing parent span is the balancer span
+      parent_span = assert_has_span("kong.balancer", spans)
+    end
+
+    local json = cjson.decode(body)
+    assert.matches("00%-" .. trace_id .. "%-" .. parent_span.span_id .. "%-01", json.headers.traceparent)
+  end)
+end)
+end
 end
