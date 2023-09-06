@@ -61,7 +61,7 @@ configure_make(
     data = ["ssl/cacerts-%s.pem" % KONG_VAR["CA_CERTS"]],
     env = select({
         "@platforms//os:macos": {
-            "LIBS": "-lpthread",
+            "LIBS": "-lpthread -lnghttp2",
             # don't use rule_foreign_cc's libtool as archiver as it seems to be a bug
             # see https://github.com/bazelbuild/rules_foreign_cc/issues/947
             "AR": "/usr/bin/ar",
@@ -83,7 +83,10 @@ configure_make(
         # Mac OS can't create static libraries apparently??
         # https://stackoverflow.com/a/54890434
         "@platforms//os:macos": [],
-        "//conditions:default": ["-static"],
+        "//conditions:default": [
+            "-static",
+            "-Wl,-rpath,%s/kong/lib" % KONG_VAR["INSTALL_DESTDIR"],
+        ],
     }),
     out_binaries = ["curl"],
     targets = [
