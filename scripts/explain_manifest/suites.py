@@ -1,3 +1,5 @@
+import glob
+
 
 def read_requirements(path=None):
     if not path:
