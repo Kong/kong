@@ -27,7 +27,7 @@ configure_make(
         "--disable-silent-rules",
         "--enable-debug",
         "--enable-websockets",
-        "--libdir=lib",  # force lib instead of lib64 (multilib postfix)
+        "--libdir=%s/kong/lib" % KONG_VAR["INSTALL_DESTDIR"],  # force lib instead of lib64 (multilib postfix)
         "--with-ca-bundle=%s/kong/ssl/cacerts.pem" % KONG_VAR["INSTALL_DESTDIR"],
         "--with-ca-fallback",
         "--with-default-ssl-backend=openssl",
