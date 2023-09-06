@@ -8,11 +8,7 @@ source .requirements
 source build/tests/util.sh
 
 msg_test "Check if Kong provided cURL is executable"
-if ! test -x /usr/local/kong/bin/curl; then
-  err_exit " cURL not executable"
-fi
+assert_exec 0 'root' "test -x /usr/local/kong/bin/curl"
 
 msg_test "Check if Kong provided cURL runs correctly"
-if ! /usr/local/kong/bin/curl --version; then
-  err_exit " cURL not executable"
-fi
+assert_exec 0 'root' "/usr/local/kong/bin/curl --version"
