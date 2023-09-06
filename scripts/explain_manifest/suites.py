@@ -126,12 +126,14 @@ def docker_suites(expect):
             .uid.equals(kong_uid) \
             .gid.equals(kong_gid)
 
-    expect((
-        "/etc/ssl/certs/ca-certificates.crt", #Debian/Ubuntu/Gentoo
-        "/etc/pki/tls/certs/ca-bundle.crt", #Fedora/RHEL 6
-        "/etc/ssl/ca-bundle.pem", #OpenSUSE
-        "/etc/pki/tls/cacert.pem", #OpenELEC
-        "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem", #CentOS/RHEL 7
-        "/etc/ssl/cert.pem", #OpenBSD, Alpine
-    ), "ca-certiticates exists") \
-        .exists()
+    expect(
+        (
+            "/etc/ssl/certs/ca-certificates.crt", #Debian/Ubuntu/Gentoo
+            "/etc/pki/tls/certs/ca-bundle.crt", #Fedora/RHEL 6
+            "/etc/ssl/ca-bundle.pem", #OpenSUSE
+            "/etc/pki/tls/cacert.pem", #OpenELEC
+            "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem", #CentOS/RHEL 7
+            "/etc/ssl/cert.pem", #OpenBSD, Alpine
+        ) + (p for p in glob.glob("/usr/local/kong/ssl/cacerts*.pem")),
+        "ca-certiticates exists"
+    ).exists()
