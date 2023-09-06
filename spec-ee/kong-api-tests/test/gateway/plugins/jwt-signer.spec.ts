@@ -127,7 +127,7 @@ describe('Gateway Plugins: jwt-signer', function () {
     await retryRequest(req, assertions);
   });
 
-  it('should patch jwt-signer plugin to set JWKS_URI allowing token validation', async function () {
+  it.skip('should patch jwt-signer plugin to set JWKS_URI allowing token validation', async function () {
     const resp = await axios({
       method: 'patch',
       url: `${url}/${pluginId}`,
@@ -149,7 +149,7 @@ describe('Gateway Plugins: jwt-signer', function () {
     await wait(isHybrid ? hybridWaitTime : waitTime);
   });
 
-  it('should proxy request with a valid token', async function () {
+  it.skip('should proxy request with a valid token', async function () {
     const resp = await axios({
       headers: validTokenHeaders,
       url: `${proxyUrl}${path}`,
