@@ -255,7 +255,7 @@ jobs:
     - name: Bazel Debug Outputs
       if: failure()
       run: |
-        cat bazel-out/_tmp/actions/stderr-*
+        cat bazel-out/_tmp/actions/stderr-* || true
         sudo dmesg || true
         find bazel-*/ -name '*.log' | xargs tail -n500 || true
 
