@@ -59,4 +59,4 @@ runs:
           | awk '{print $1}'
         )
 
-        echo "CACHE_KEY=${PREFIX}::${HASH}" >> $GITHUB_OUTPUT
+        echo "CACHE_KEY=${PREFIX}::${HASH}" | tee -a $GITHUB_OUTPUT
