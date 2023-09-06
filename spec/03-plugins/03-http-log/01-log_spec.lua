@@ -460,7 +460,7 @@ for _, strategy in helpers.each_strategy() do
 
         local entries = get_log("allowed_headers", 1)
         assert.same("127.0.0.1", entries[1].client_ip)
-        assert.same(123, entries[1].request.headers.allowed_header)
+        assert.same("123", entries[1].request.headers.allowed_header)
         assert.same(nil, entries[1].request.headers.unallowed_header)
       end)
     end)
