@@ -17,6 +17,8 @@ description: |
 vendor: "Kong Inc."
 license: "Apache-2.0"
 contents:
+- src: nfpm-prefix/bin
+  dst: /usr/local/bin
 - src: nfpm-prefix/kong
   dst: /usr/local/kong
   type: tree
