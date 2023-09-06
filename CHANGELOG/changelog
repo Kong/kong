@@ -149,7 +149,7 @@ local function collect_files(folder)
 end
 
 
-local function collect_folder(system, folder)
+local function collect_sub_folder(system, sub_folder)
   local data = {
     features = {},
     bugfixes = {},
@@ -166,7 +166,7 @@ local function collect_folder(system, folder)
     deprecation = "deprecations",
   }
 
-  local files = collect_files(folder)
+  local files = collect_files(sub_folder)
   for _, filename in ipairs(files) do
     local content = assert(pl_file.read(filename))
     local entry = assert(lyaml.load(content))
@@ -195,10 +195,14 @@ local function collect_folder(system, folder)
   return data
 end
 
-local function collect_unreleased()
+local function collect_folder(folder)
+  if not pl_path.exists(absolute_path(folder)) then
+    error("folder: " .. folder .. " does not exist")
+  end
+
   local data = {}
 
-  data.kong = collect_folder("kong", absolute_path(UNRELEASED, "kong"))
+  data.kong = collect_sub_folder("kong", absolute_path(folder, "kong"))
 
   return data
 end
@@ -214,23 +218,26 @@ end
 
 -- command: release
 -- release a release note
-local function release(version)
+local function release(version, folder)
   -- mkdir unreleased path if not exists
   if not pl_path.exists(absolute_path(UNRELEASED)) then
     assert(pl_dir.makepath(absolute_path(UNRELEASED)))
   end
 
-  local data = collect_unreleased()
+  local data = collect_folder(folder)
   data.version = version
   local content = assert(generate_content(data))
   local target_path = absolute_path(version)
-  if pl_path.exists(target_path) then
+
+  if pl_path.exists(target_path) and version ~= folder then
     error("directory exists, please manually remove. " .. version)
   end
-  os.execute("mv " .. UNRELEASED .. " " .. target_path)
+  if folder == UNRELEASED then
+    os.execute("mv " .. UNRELEASED .. " " .. target_path)
+    assert(pl_dir.makepath(UNRELEASED))
+  end
   local filename = pl_path.join(target_path, "changelog.md")
   assert(pl_file.write(filename, content))
-  assert(pl_dir.makepath(UNRELEASED))
 
   print("Successfully generated release note.")
 end
@@ -238,8 +245,13 @@ end
 
 -- command: preview
 -- preview the release note
-local function preview(version)
-  local data = collect_unreleased()
+local function preview(version, folder)
+  -- mkdir unreleased path if not exists
+  if not pl_path.exists(absolute_path(UNRELEASED)) then
+    assert(pl_dir.makepath(absolute_path(UNRELEASED)))
+  end
+
+  local data = collect_folder(folder)
   data.version = version
   local content = assert(generate_content(data))
   print(content)
@@ -249,17 +261,19 @@ end
 local cmds = {
   release = function(args)
     local version = args[1]
+    local folder = args["from"]
     if not version then
       error("Missing version")
     end
-    release(version)
+    release(version, folder)
   end,
   preview = function(args)
     local version = args[1]
+    local folder = args["from"]
     if not version then
       error("Missing version")
     end
-    preview(version)
+    preview(version, folder)
   end,
 }
 
@@ -273,10 +287,13 @@ Commands:
 
 Options:
   -h, --help                         display help for command
+  --from      (default unreleased)   folder of changelog entries, default unreleased
 
 Examples:
   changelog preview 1.0.0
   changelog release 1.0.0
+  changelog preview 1.0.0 --from 1.0.0   # preview a release note 1.0.0 based on the files in the 1.0.0 directory
+  changelog release 1.0.0 --from 1.0.0   # release a release note 1.0.0 based on the files in the 1.0.0 directory, aka re-generate
 ]]
 
 local cmd_name = table.remove(args, 1)

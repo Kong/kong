@@ -71,10 +71,13 @@ Commands:
 
 Options:
   -h, --help                         display help for command
+  --from      (default unreleased)   folder of changelog entries, default unreleased
 
 Examples:
   changelog preview 1.0.0
   changelog release 1.0.0
+  changelog preview 1.0.0 --from 1.0.0   # preview a release note 1.0.0 based on the files in the 1.0.0 directory
+  changelog release 1.0.0 --from 1.0.0   # release a release note 1.0.0 based on the files in the 1.0.0 directory, aka re-generate
 ```
 
 **Preview a release note**
