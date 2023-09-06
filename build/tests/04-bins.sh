@@ -11,3 +11,8 @@ msg_test "Check if Kong provided cURL is executable"
 if ! test -x /usr/local/kong/bin/curl; then
   err_exit " cURL not executable"
 fi
+
+msg_test "Check if Kong provided cURL runs correctly"
+if ! /usr/local/kong/bin/curl --version; then
+  err_exit " cURL not executable"
+fi
