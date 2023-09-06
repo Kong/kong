@@ -9,6 +9,7 @@ import {
   deleteRole,
   randomString,
   logResponse,
+  waitForConfigRebuild,
   retryRequest,
 } from '@support';
 
@@ -30,6 +31,7 @@ describe('@smoke: Gateway RBAC: Role Endpoint Permissions', function () {
       name: resp.name,
       id: resp.id,
     };
+    await waitForConfigRebuild();
   });
 
   it('should create a role endpoint permission', async function () {
@@ -69,6 +71,7 @@ describe('@smoke: Gateway RBAC: Role Endpoint Permissions', function () {
       ]);
     };
 
+    await waitForConfigRebuild();
     await retryRequest(req, assertions);
   });
 
