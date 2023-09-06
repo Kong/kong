@@ -432,6 +432,7 @@ for _, strategy in helpers.each_strategy() do
           -- buffered_proxying
           local res_cert_buffered
           if subsystems == "http" then
+            local proxy_client = get_proxy_client(subsystems, 19000)
             local res = assert(proxy_client:send {
               path    = "/mtls-buffered-proxying",
               headers = {
