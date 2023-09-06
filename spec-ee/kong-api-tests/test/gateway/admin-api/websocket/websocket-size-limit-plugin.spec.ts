@@ -89,7 +89,7 @@ describe('Websocket Size Limit Plugin Tests', function () {
         await websocket.close();
       });
 
-      it.skip('should be able to patch the plugin with client payload size limited', async function () {
+      it('should be able to patch the plugin with client payload size limited', async function () {
         const client_max_payload = 3;
         const resp = await axios({
           method: 'patch',

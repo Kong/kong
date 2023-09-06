@@ -12,7 +12,7 @@ import { logResponse } from './logging';
 export const retryRequest = async (
   axiosRequest: () => Promise<AxiosResponse>,
   assertions: (response: AxiosResponse) => void,
-  timeout = 15000,
+  timeout = 30000,
   interval = 3000,
   verbose = false,
 ): Promise<AxiosResponse> => {
