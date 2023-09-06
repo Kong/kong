@@ -145,7 +145,6 @@ jobs:
 
       - name: Execute Gateway API Tests
         id: execute_tests
-        continue-on-error: true
         run: |
           if [[ $RUN_SPEC == 'all' ]]; then 
             npm run test-gateway;
@@ -167,7 +166,7 @@ jobs:
           extra-args: --xpath-tag test.suite=/testcase/@classname
 
       - name: Get Gateway Details
-        if: always()
+        if: ${{ always() }}
         continue-on-error: true
         id: get_gw_details
         run: |

@@ -276,7 +276,6 @@ jobs:
             npm run test-spec --spec=$RUN_SPEC;
           fi
         id: execute_tests
-        continue-on-error: true
 
       - name: Get Gateway Details
         if: always()
@@ -398,7 +397,6 @@ jobs:
 
       - name: Execute Gateway API Tests
         id: execute_tests
-        continue-on-error: true
         run: |
           if [[ $RUN_SPEC == 'all' ]]; then
             npm run test-gateway;
@@ -535,7 +533,6 @@ jobs:
 
       - name: Execute Gateway API Tests
         id: execute_tests
-        continue-on-error: true
         run: |
           if [[ $RUN_SPEC == 'all' ]]; then
             npm run test-gateway;
