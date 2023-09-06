@@ -27,12 +27,9 @@ configure_make(
         "--disable-silent-rules",
         "--enable-debug",
         "--enable-websockets",
-        "--with-ca-bundle=%s/kong/ssl/cacerts-%s.pem" % (
-            KONG_VAR["INSTALL_DESTDIR"],
-            KONG_VAR["CA_CERTS"],
-        ),
+        "--libdir=lib",  # force lib instead of lib64 (multilib postfix)
+        "--with-ca-bundle=%s/kong/ssl/cacerts.pem" % KONG_VAR["INSTALL_DESTDIR"],
         "--with-ca-fallback",
-        "--with-default-ssl-backend=openssl",
         "--with-default-ssl-backend=openssl",
         "--with-nghttp2=$$EXT_BUILD_DEPS$$/nghttp2",
         "--with-ssl=$$EXT_BUILD_DEPS$$/openssl",
