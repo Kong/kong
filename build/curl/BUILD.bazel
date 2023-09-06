@@ -7,7 +7,7 @@ load("@kong_bindings//:variables.bzl", "KONG_VAR")
 exports_files(
     [
         "BUILD.curl.bazel",
-        "cacerts-" + KONG_VAR["CA_CERTS"],
+        "cacerts-" + KONG_VAR["CA_CERTS"] + ".pem",
     ],
     visibility = ["//visibility:public"],
 )

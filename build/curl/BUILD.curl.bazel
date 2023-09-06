@@ -13,7 +13,7 @@ filegroup(
 copy_file(
     name = "cacerts",
     src = "@cacerts-bundle//file",
-    out = "ssl/cacerts-%s.pem" % KONG_VAR["CA_CERTS"],
+    out = "ssl/cacerts.pem",
     visibility = ["//visibility:public"],
 )
 
@@ -25,7 +25,6 @@ configure_make(
         "--disable-manual",
         "--disable-shared",
         "--disable-silent-rules",
-        "--enable-debug",
         "--enable-websockets",
         "--libdir=%s/kong/lib" % KONG_VAR["BUILD_DESTDIR"],  # force lib instead of lib64 (multilib postfix)
         "--with-ca-bundle=%s/kong/ssl/cacerts.pem" % KONG_VAR["INSTALL_DESTDIR"],
