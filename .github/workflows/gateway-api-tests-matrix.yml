@@ -6,7 +6,7 @@ on:
       enable_verbose_response_logging:
         description: 'Enable response logging for debugging'
         required: false
-        default: 'true'
+        default: 'false'
       send_slack_results:
         description: 'Send test result notifications to slack'
         required: false
@@ -46,10 +46,12 @@ on:
         description: 'Enable response logging for debugging'
         required: false
         type: 'string'
+        default: 'false'
       send_slack_results:
         description: 'Send test result notifications to slack'
         required: false
         type: string
+        default: 'false'
       target_test:
         description: 'Run only a single test by spec name, smoke, non-smoke or all tests'
         required: false
@@ -80,10 +82,10 @@ on:
         type: 'string'
 
 env:
-  SEND_SLACK_RESULTS: ${{ inputs.send_slack_results || 'true' }}
+  SEND_SLACK_RESULTS: ${{ inputs.send_slack_results }}
   GW_INPUT_IMAGE: ${{ inputs.gateway_image || 'kong/kong-gateway-internal:nightly-ubuntu' }}
   RUN_SPEC: ${{ inputs.target_test || 'all' }}
-  VERBOSE_RESPONSE_LOGS: ${{ inputs.enable_verbose_response_logging || 'true'}}
+  VERBOSE_RESPONSE_LOGS: ${{ inputs.enable_verbose_response_logging }}
   AWS_ACCESS_KEY_ID: ${{ secrets.TEST_API_AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.TEST_API_AWS_SECRET_ACCESS_KEY }}
   GCP_SERVICE_ACCOUNT: ${{ secrets.TEST_API_GCP_SERVICE_ACCOUNT }}

@@ -9,7 +9,7 @@ on:
       enable_verbose_response_logging:
         description: 'Enable response logging for debugging'
         required: false
-        default: 'true'
+        default: 'false'
       send_slack_results:
         description: 'Send test result notifications to slack'
         required: false
@@ -38,10 +38,12 @@ on:
         description: 'Enable response logging for debugging'
         required: false
         type: 'string'
+        default: 'false'
       send_slack_results:
         description: 'Send test result notifications to slack'
         required: false
         type: 'string'
+        default: 'false'
       target_test:
         description: 'Run only a single test by spec name, only smoke tests or all tests'
         required: false
@@ -63,7 +65,7 @@ on:
 env:
   GW_IMAGE: ${{ inputs.control_plane_image || 'kong/kong-gateway-internal:nightly-ubuntu' }}
   GW_DP_IMAGE: ${{ inputs.control_plane_image || 'kong/kong-gateway-internal:nightly-ubuntu' }}
-  SEND_SLACK_RESULTS: ${{ github.event.inputs.send_slack_results || 'true' }}
+  SEND_SLACK_RESULTS: ${{ github.event.inputs.send_slack_results }}
   # if this is a push event, or it is pull request but not from a fork, and not from dependabot (dependabot does not use forks), then this PR will have access to secrets
   HAS_ACCESS_TO_SECRETS: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && !contains(github.actor, 'dependabot')) }}
 
@@ -78,7 +80,7 @@ jobs:
       GW_MODE: ${{ matrix.gateway_mode }}
       AWS_ACCESS_KEY_ID: ${{ secrets.TEST_API_AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.TEST_API_AWS_SECRET_ACCESS_KEY }}
-      VERBOSE_RESPONSE_LOGS: ${{ inputs.enable_verbose_response_logging || 'true' }}
+      VERBOSE_RESPONSE_LOGS: ${{ inputs.enable_verbose_response_logging }}
       RUN_SPEC: ${{ inputs.target_test || 'all' }}
     strategy:
       fail-fast: false

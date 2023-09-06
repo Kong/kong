@@ -652,7 +652,7 @@ jobs:
     secrets: inherit
 
   test-images-e2e:
-    name: E2E Test Images - ${{ matrix.label }}
+    name: E2E Tests - ${{ matrix.label }}
     needs: [metadata, build-images]
     # cancel previous runs if new commits are pushed to the PR, but run for each commit on master
     concurrency:
