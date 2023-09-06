@@ -336,7 +336,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         -- buffered_proxying
-        if subsystems = "http" then
+        if subsystems == "http" then
           it("accessing protected upstream, buffered_proxying = true", function()
             local proxy_client = get_proxy_client(subsystems, 19000)
             local res = assert(proxy_client:send {
@@ -390,7 +390,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         -- buffered_proxying
-        if subsystems = "http" then
+        if subsystems == "http" then
           it("accessing protected upstream, buffered_proxying = true", function()
             helpers.wait_until(function()
               local proxy_client = get_proxy_client(subsystems, 19000)
