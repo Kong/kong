@@ -136,6 +136,6 @@ def docker_suites(expect):
             "/etc/pki/tls/cacert.pem", #OpenELEC
             "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem", #CentOS/RHEL 7
             "/etc/ssl/cert.pem", #OpenBSD, Alpine
-        ) + (p for p in glob.glob("/usr/local/kong/ssl/cacerts*.pem")),
+        ) + tuple(p for p in glob.glob("/usr/local/kong/ssl/cacerts*.pem")),
         "ca-certiticates exists"
     ).exists()
