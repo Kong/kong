@@ -1,0 +1,6 @@
+message: "allow the 'start' field be a past time but print a warning message"
+type: bugfix
+prs:
+- 6423
+jiras:
+- "KAG-923"

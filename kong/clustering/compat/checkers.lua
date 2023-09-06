@@ -14,6 +14,7 @@ local cjson = require "cjson"
 local null = ngx.null
 local ngx_log = ngx.log
 local ngx_WARN = ngx.WARN
+local ngx_time = ngx.time
 
 
 local _log_prefix = "[clustering] "
@@ -36,6 +37,32 @@ end
 
 
 local compatible_checkers = {
+  { 3005000000, --[[ 3.5.0.0 ]]
+    function(config_table, dp_version, log_suffix)
+      local config_plugins = config_table["plugins"]
+      if not config_plugins then
+        return nil
+      end
+
+      local has_update
+      for i = #config_plugins, 1, -1 do
+        local plugin = config_plugins[i]
+        local config = plugin.config
+
+        if plugin.name == "canary" and config.start - ngx_time() < 0 then
+          ngx_log(ngx_WARN, _log_prefix, "the plugin '", plugin.name,
+                  "' is using a past time for the 'start' field" ..
+                  " on old dataplanes, and will be removed.")
+
+          table_remove(config_plugins, i)
+          has_update = true
+        end
+      end
+
+      return has_update
+    end
+  },
+
   { 3004000000, --[[ 3.4.0.0 ]]
     function(config_table, dp_version, log_suffix)
       local entity_names = {

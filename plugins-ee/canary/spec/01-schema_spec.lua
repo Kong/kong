@@ -12,6 +12,7 @@ local canary_schema = require "kong.plugins.canary.schema"
 
 local ngx = ngx
 local ngx_null = ngx.null
+local ngx_time = ngx.time
 
 
 describe("canary schema", function()
@@ -26,8 +27,8 @@ describe("canary schema", function()
     assert.is_truthy(ok)
     assert.is_nil(err)
   end)
-  it("start in past", function()
-    local time =  math.floor(ngx.time())
+  it("start in now", function()
+    local time =  ngx_time()
     local ok, err = validate_entity({ start = time,  upstream_host = "balancer_a" },
                                     canary_schema)
 
@@ -35,12 +36,12 @@ describe("canary schema", function()
     assert.is_nil(err)
   end)
   it("start in past", function()
-    local time =  math.floor(ngx.time()) - 1000
+    local time =  ngx_time() - 1000
     local ok, err = validate_entity({ start = time,  upstream_host = "balancer_a" },
                                     canary_schema)
 
-    assert.is_falsy(ok)
-    assert.is_same("'start' cannot be in the past", err.config.start)
+    assert.is_truthy(ok)
+    assert.is_nil(err)
   end)
   it("hash set as `ip`", function()
     local ok, err = validate_entity({ hash = "ip", percentage = 10, upstream_host = "balancer_a" }, canary_schema)
@@ -185,7 +186,7 @@ describe("canary schema", function()
   for _, strategy in strategies() do
     describe("strategy: [#" .. strategy .. "]", function ()
       local proxy_client, admin_client, admin_client_2
-      local route1, route2, route3
+      local route1, route2, route3, route4
       local db_strategy = strategy ~= "off" and strategy or nil
       setup(function()
         local bp = helpers.get_db_utils(db_strategy, nil, {
@@ -201,6 +202,10 @@ describe("canary schema", function()
         })
         route3 = bp.routes:insert({
           hosts = { "canary3.com" },
+          preserve_host = false,
+        })
+        route4 = bp.routes:insert({
+          hosts = { "canary4.com" },
           preserve_host = false,
         })
         assert(helpers.start_kong({
@@ -263,8 +268,7 @@ describe("canary schema", function()
         assert.True(within_current_time)
       end)
 
-      -- [=[ reopen after KAG-923
-      it("#flaky prevent setting steps to nil with start and duration", function()
+      it("#db prevent setting steps to nil with start and duration", function()
         local res, body, json_body, plugin_id, admin_client_3, admin_client_4
         res = assert(admin_client:send {
           method = "POST",
@@ -336,7 +340,7 @@ describe("canary schema", function()
         admin_client_4:close()
       end)
 
-      it("#flaky prevent setting steps to nil with percentage", function()
+      it("#db prevent setting steps to nil with percentage", function()
         local res, body, json_body, plugin_id, admin_client_3, admin_client_4
         res = assert(admin_client:send {
           method = "POST",
@@ -407,7 +411,46 @@ describe("canary schema", function()
         assert.equals("schema violation (config: config.steps must be a number greater than 1)", json_body.message)
         admin_client_4:close()
       end)
-      --]=]
+
+      it("#db allow start to be a past time", function()
+        local res, body, json_body, plugin_id
+        local time = ngx_time()
+
+        res = assert(admin_client:send {
+          method = "POST",
+          path = "/routes/" .. route4.id .."/plugins",
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            name = "canary",
+            config = {
+              start = time,
+              duration = 300,
+              upstream_host = "balancer_2",
+            },
+          },
+        })
+        body = assert.res_status(201, res)
+        json_body = cjson.decode(body)
+        plugin_id = json_body.id
+
+        local res = assert(admin_client_2:send {
+          method = "PATCH",
+          path = "/plugins/" .. plugin_id,
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            config = {
+              start = time - 1000,
+            },
+          },
+        })
+        body = assert.res_status(200, res)
+        json_body = cjson.decode(body)
+        assert.equals(1000, time - json_body.config.start)
+      end)
     end)
   end
 end)

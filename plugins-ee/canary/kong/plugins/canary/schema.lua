@@ -6,8 +6,10 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local typedefs = require "kong.db.schema.typedefs"
-local null = ngx.null
 
+local null = ngx.null
+local log  = ngx.log
+local WARN = ngx.WARN
 
 local function is_null_value(value)
   if value == null or value == nil then
@@ -20,7 +22,7 @@ end
 local function check_start(start)
   local time = math.floor(ngx.now())
   if start and start < time then
-    return false, "'start' cannot be in the past"
+    log(WARN, "'start' is set to a past time: " .. start - time .. "s")
   end
 
   return true
