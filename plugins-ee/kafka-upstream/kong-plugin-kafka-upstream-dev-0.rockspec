@@ -10,7 +10,7 @@ description = {
 }
 dependencies = {
    "lua >= 5.1",
-   "kong-lua-resty-kafka == 0.16",
+   "kong-lua-resty-kafka == 0.17",
 }
 build = {
    type = "builtin",
