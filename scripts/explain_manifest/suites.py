@@ -78,6 +78,8 @@ def common_suites(expect, libxcrypt_no_obsolete_api: bool = False):
         .version_requirement.key("libssl.so.3").less_than("OPENSSL_3.2.0") \
         .version_requirement.key("libcrypto.so.3").less_than("OPENSSL_3.2.0") \
 
+    expect("/usr/local/kong/bin/curl", "includes Kong supplied curl binary").exists()
+
 
 def libc_libcpp_suites(expect, libc_max_version: str = None, libcxx_max_version: str = None, cxxabi_max_version: str = None):
     if libc_max_version:
@@ -130,12 +132,13 @@ def docker_suites(expect):
 
     expect(
         (
+            "/usr/local/kong/ssl/cacerts*.pem",
             "/etc/ssl/certs/ca-certificates.crt", #Debian/Ubuntu/Gentoo
             "/etc/pki/tls/certs/ca-bundle.crt", #Fedora/RHEL 6
             "/etc/ssl/ca-bundle.pem", #OpenSUSE
             "/etc/pki/tls/cacert.pem", #OpenELEC
             "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem", #CentOS/RHEL 7
             "/etc/ssl/cert.pem", #OpenBSD, Alpine
-        ) + tuple(p for p in glob.glob("/usr/local/kong/ssl/cacerts*.pem")),
-        "ca-certiticates exists"
+        ),
+        "ca-certificates exists"
     ).exists()
