@@ -24,6 +24,7 @@ runs:
       id: cache-key
       shell: bash
       env:
+        PREFIX: ${{ inputs.prefix }}
         EXTRA: ${{ inputs.extra }}
       run: |
         # please keep these sorted
@@ -43,35 +44,19 @@ runs:
           ${{ hashFiles('kong.conf.default') }}
         )
 
-        echo "FILE_HASHES (init):"
-        printf '%q\n' "${FILE_HASHES[@]}"
-
         if [[ -n ${EXTRA:-} ]]; then
-          OFFSET=${#FILE_HASHES[@]}
-
-          echo "EXTRA:"
-          echo "$EXTRA"
-
           readarray \
-            -O "$OFFSET" \
+            -O "${#FILE_HASHES[@]}" \
             -t \
             FILE_HASHES \
           <<< "$EXTRA"
-
-          echo "FILE_HASHES (extended):"
-          printf '%q\n' "${FILE_HASHES[@]}"
         fi
 
-        NORMALIZED=$(
-          printf '%s\n' "${FILE_HASHES[@]}" \
-            | grep -vE '^$' \
-            | sort --stable --unique
+        HASH=$(printf '%s\n' "${FILE_HASHES[@]}" \
+          | grep -vE '^$' \
+          | sort --stable --unique \
+          | sha256sum - \
+          | awk '{print $1}'
         )
 
-        echo "FILE_HASHES (normalized):"
-        echo "$NORMALIZED"
-
-        HASH=$(sha256sum - <<< "$NORMALIZED" | awk '{print $1}' )
-        CACHE_KEY=${{ inputs.prefix }}::${HASH}
-        echo "cache-key: ${CACHE_KEY}"
-        echo "CACHE_KEY=${CACHE_KEY}" >> $GITHUB_OUTPUT
+        echo "CACHE_KEY=${PREFIX}::${HASH}" >> $GITHUB_OUTPUT
