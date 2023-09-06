@@ -208,14 +208,12 @@ local function page_for_key(self, key, size, offset, options)
       return nil, "stale data detected while paginating"
     end
 
-    item = schema:process_auto_fields(item, "select", true, PROCESS_AUTO_FIELDS_OPTS)
-
     if schema.ttl then
       item = process_ttl_field(item)
     end
 
     if item then
-      ret[ret_idx] = item
+      ret[ret_idx] = schema:process_auto_fields(item, "select", true, PROCESS_AUTO_FIELDS_OPTS)
       ret_idx = ret_idx + 1
     end
   end
@@ -234,11 +232,14 @@ local function select_by_key(schema, key)
     return nil, err
   end
 
-  entity = schema:process_auto_fields(entity, "select", true, PROCESS_AUTO_FIELDS_OPTS)
-
   if schema.ttl then
     entity = process_ttl_field(entity)
+    if not entity then
+      return nil
+    end
   end
+
+  entity = schema:process_auto_fields(entity, "select", true, PROCESS_AUTO_FIELDS_OPTS)
 
   return entity
 end
