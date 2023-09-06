@@ -430,6 +430,7 @@ for _, strategy in helpers.each_strategy() do
           assert(proxy_client:close())
 
           -- buffered_proxying
+          local res_cert_buffered
           if subsystems == "http" then
             local res = assert(proxy_client:send {
               path    = "/mtls-buffered-proxying",
@@ -438,7 +439,7 @@ for _, strategy in helpers.each_strategy() do
               }
             })
             assert.res_status(200, res)
-            local res_cert = res.headers["X-Cert"]
+            res_cert_buffered = res.headers["X-Cert"]
             assert(proxy_client:close())
           end
 
@@ -470,6 +471,7 @@ for _, strategy in helpers.each_strategy() do
           assert.not_equals(res_cert, res_cert2)
 
           -- buffered_proxying
+          local res_cert2_buffered
           if subsystems == "http" then
             res = assert(proxy_client2:send {
               path    = "/mtls-buffered-proxying",
@@ -478,8 +480,8 @@ for _, strategy in helpers.each_strategy() do
               }
             })
             assert.res_status(200, res)
-            local res_cert2 = res.headers["X-Cert"]
-            assert.not_equals(res_cert, res_cert2)
+            res_cert2_buffered = res.headers["X-Cert"]
+            assert.not_equals(res_cert_buffered, res_cert2_buffered)
           end
 
           -- restore old
@@ -869,8 +871,7 @@ for _, strategy in helpers.each_strategy() do
           if subsystems == "http" then
             helpers.wait_until(function()
               local proxy_client = get_proxy_client(subsystems, 19001)
-              local err
-              res, err = proxy_client:send {
+              res = proxy_client:send {
                 path    = "/tls-buffered-proxying",
                 headers = {
                   ["Host"] = "example.com",
@@ -1024,7 +1025,7 @@ for _, strategy in helpers.each_strategy() do
           if subsystems == "http" then
             helpers.wait_until(function()
               local proxy_client = get_proxy_client(subsystems, 19001)
-              local res, err = proxy_client:send {
+              local res = proxy_client:send {
                 path    = "/tls-buffered-proxying",
                 headers = {
                   ["Host"] = "example.com",
