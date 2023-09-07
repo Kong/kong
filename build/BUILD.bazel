@@ -117,6 +117,7 @@ kong_directory_genrule(
                         --exclude="*.log" . | tar -xC $2/.
             chmod -R "+rw" $2
         }
+
         function LN {
             if [[ "$OSTYPE" == "darwin"* ]]; then
                 # TODO: support relative path links once we start to cross compile on macOS
