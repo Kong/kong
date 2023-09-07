@@ -120,8 +120,8 @@
   [FTI-5209](https://konghq.atlassian.net/browse/FTI-5209)
 - Add workspace name to the logging payload.
   [FTI-4728](https://konghq.atlassian.net/browse/FTI-4728)
-- konnect-application-auth now supports consumer_group mapping.
-  [TDX-3319](https://konghq.atlassian.net/browse/TDX-3319)
+- konnect-application-auth now supports consumer_groups mapping.
+  [TDX-3319](https://konghq.atlassian.net/browse/TDX-3319) [TDX-3393](https://konghq.atlassian.net/browse/TDX-3393)
 
 ### Fixes
 

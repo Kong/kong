@@ -10,7 +10,7 @@ return {
     up = [[
       DO $$
         BEGIN
-          ALTER TABLE IF EXISTS ONLY "konnect_applications" ADD "consumer_group" TEXT;
+          ALTER TABLE IF EXISTS ONLY "konnect_applications" ADD "consumer_groups" TEXT[];
         EXCEPTION WHEN DUPLICATE_COLUMN THEN
           -- Do nothing, accept existing state
         END;

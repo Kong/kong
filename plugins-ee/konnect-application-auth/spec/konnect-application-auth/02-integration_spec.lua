@@ -33,7 +33,8 @@ for _, strategy in helpers.each_strategy() do
     local forbidden_client_id_3 = uuid()
     local forbidden_client_id_4 = uuid()
     local key_auth_service_consumer_group
-    local consumer_group
+    local consumer_group1
+    local consumer_group2
 
     local scope = uuid()
 
@@ -215,7 +216,11 @@ for _, strategy in helpers.each_strategy() do
             header_filter = {[[
               local c = kong.client.get_consumer_groups()
               if c then
-                kong.response.set_header("x-consumer-groups-kaa", c[1].name)
+                local names = {}
+                for i, v in ipairs(c) do
+                  table.insert(names, v.name)
+                end
+                kong.response.set_header("x-consumer-groups-kaa", table.concat(names,","))
               end
               kong.response.set_header("x-test", "kaa")
             ]]}
@@ -225,17 +230,21 @@ for _, strategy in helpers.each_strategy() do
       db.konnect_applications:insert({
         client_id = hash_key("opendadoor"),
         scopes = { scope },
-        consumer_group = "imindaband"
+        consumer_groups = {"imindaband1","imindaband2"}
       })
 
       db.konnect_applications:insert({
         client_id = hash_key("opendadoor2"),
         scopes = { scope },
-        consumer_group = "idontexist"
+        consumer_groups = {"idontexist"}
       })
 
-      consumer_group = db.consumer_groups:insert({
-        name = "imindaband"
+      consumer_group1 = db.consumer_groups:insert({
+        name = "imindaband1"
+      })
+
+      consumer_group2 = db.consumer_groups:insert({
+        name = "imindaband2"
       })
 
       -- start kong
@@ -403,9 +412,9 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("Key-auth consumer group", function()
+    describe("Key-auth consumer groups", function()
 
-      it("maps the consumer group if found", function()
+      it("maps the consumer groups if found", function()
         local res = client:get("/request?apikey=opendadoor", {
             headers = {
                 host = "keyauthconsumergroup.konghq.com"
@@ -413,11 +422,11 @@ for _, strategy in helpers.each_strategy() do
         })
 
         assert.res_status(200, res)
-        assert.are.same(consumer_group.name, res.headers["x-consumer-groups-kaa"])
+        assert.are.same(consumer_group1.name .. "," .. consumer_group2.name, res.headers["x-consumer-groups-kaa"])
         assert.are.same("kaa", res.headers["x-test"])
       end)
 
-      it("doesnt map the consumer group if not found", function()
+      it("doesnt map the consumer groups if not found", function()
         local res = client:get("/request?apikey=opendadoor2", {
             headers = {
                 host = "keyauthconsumergroup.konghq.com"
@@ -429,7 +438,7 @@ for _, strategy in helpers.each_strategy() do
         assert.are.same("kaa", res.headers["x-test"])
       end)
 
-      it("doesnt map the consumer group if request fails", function()
+      it("doesnt map the consumer groups if request fails", function()
         local res = client:get("/request", {
             headers = {
                 host = "keyauthconsumergroup.konghq.com"
