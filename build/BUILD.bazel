@@ -151,7 +151,7 @@ kong_directory_genrule(
         cp -r ${CACERTS} ${BUILD_DESTDIR}/kong/ssl/
         (
             cd ${BUILD_DESTDIR}/kong/ssl/
-            ln -sf cacerts-*.pem cacerts.pem
+            LN cacerts-*.pem cacerts.pem
         )
         chmod -R "+r" ${BUILD_DESTDIR}/kong/ssl
 
