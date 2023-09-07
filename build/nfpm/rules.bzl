@@ -27,7 +27,7 @@ def _nfpm_pkg_impl(ctx):
         "deb": {
             "LIBYAML_DEPENDS": "libyaml-0-2",
             "PCRE_DEPENDS": "libpcre3",
-            "ZLIB_DEPENDS": "zlib1g-dev",
+            "ZLIB_DEPENDS": "",
         },
         "rpm": {
             "LIBYAML_DEPENDS": "libyaml",

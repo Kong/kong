@@ -50,17 +50,17 @@ replaces:
 conflicts:
 - ${KONG_CONFLICTS_1}
 - ${KONG_CONFLICTS_2}
-depends:
-- perl
 overrides:
   # see build/nfpm/rules.bzl for values of _DEPENDS vars
   deb:
     depends:
+    - perl
     - ${LIBYAML_DEPENDS}
     - ${PCRE_DEPENDS}
     - ${ZLIB_DEPENDS}
   rpm:
     depends:
+    - perl
     - perl-Time-HiRes
     - ${LIBYAML_DEPENDS}
     - ${PCRE_DEPENDS}
