@@ -13,5 +13,5 @@ assert_exec 0 'root' "test -x /usr/local/kong/bin/curl"
 msg_test "Check if Kong provided cURL runs correctly"
 assert_exec 0 'root' "/usr/local/kong/bin/curl --version"
 
-msg_test "Check if Kong provided cURL can do HTTP2"
-assert_exec 0 'root' "/usr/local/kong/bin/curl -sI https://curl.se -o/dev/null -w '%{http_version}\n' | grep 2"
+msg_test "Check if Kong provided cURL supports HTTP/2"
+assert_exec 0 'root' "/usr/local/kong/bin/curl --version | grep -E 'Features:.*HTTP2'"
