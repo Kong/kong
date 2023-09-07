@@ -8,9 +8,6 @@ priority: "extra"
 provides:
 - kong
 - luarocks
-- curl
-- openssl
-- ca-certificates
 maintainer: "Kong Inc. <support@konghq.com>"
 description: |
   Kong is a distributed gateway for APIs and Microservices, focused on high performance and reliability.
@@ -52,6 +49,9 @@ conflicts:
 - ${KONG_CONFLICTS_2}
 overrides:
   # see build/nfpm/rules.bzl for values of _DEPENDS vars
+  apk:
+    depends:
+    - perl
   deb:
     depends:
     - perl

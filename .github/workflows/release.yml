@@ -238,6 +238,10 @@ jobs:
       run: |
         bazel build --config release :kong_${{ matrix.package }} --verbose_failures ${{ matrix.bazel-args }}
 
+        for package in bazel-bin/pkg/*.*; do
+          dpkg-deb -f "${package}" || tar -Oxf "${package}" .PKGINFO || true
+        done
+
     - name: Package Kong - rpm
       if: matrix.package == 'rpm' && steps.cache-deps.outputs.cache-hit != 'true'
       env:
@@ -251,6 +255,10 @@ jobs:
         fi
 
         bazel build --config release :kong_${{ matrix.package-type }} --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel-args }}
+
+        for package in bazel-bin/pkg/*.*; do
+          rpm -qip "${package}" || true
+        done
 
     - name: Bazel Debug Outputs
       if: failure()
