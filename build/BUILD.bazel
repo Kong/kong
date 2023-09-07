@@ -149,7 +149,10 @@ kong_directory_genrule(
         CACERTS=${WORKSPACE_PATH}/$(echo '$(locations @curl//:cacerts)' | awk '{print $1}')
         mkdir -p ${BUILD_DESTDIR}/kong/ssl/
         cp -r ${CACERTS} ${BUILD_DESTDIR}/kong/ssl/
-        LN ${BUILD_DESTDIR}/kong/ssl/cacert-${CACERTS} ${BUILD_DESTDIR}/kong/ssl/cacerts.pem
+        (
+            cd ${BUILD_DESTDIR}/kong/ssl/
+            ln -sf cacerts-*.pem cacerts.pem
+        )
         chmod -R "+r" ${BUILD_DESTDIR}/kong/ssl
 
         NGHTTP2=${WORKSPACE_PATH}/$(echo '$(locations @nghttp2//:nghttp2)' | awk '{print $1}')

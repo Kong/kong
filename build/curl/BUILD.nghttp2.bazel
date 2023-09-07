@@ -15,7 +15,9 @@ configure_make(
     configure_in_place = True,
     configure_options = [
         "--disable-dependency-tracking",
+        "--disable-shared",
         "--enable-lib-only",
+        "--enable-static",
         "--with-openssl=$$EXT_BUILD_DEPS$$/openssl",
         "--without-cunit",
         "--without-jansson",
@@ -25,8 +27,7 @@ configure_make(
         "--without-libevent-openssl",
         "--without-libnghttp3",
         "--without-libngtcp2",
-        # TODO if libxml2 makes it into CE, use it here
-        "--without-libxml2",
+        "--without-libxml2",  # TODO if libxml2 makes it into CE, use it here
         "--without-systemd",
     ] + select({
         "@kong//:aarch64-linux-anylibc-cross": [
@@ -52,14 +53,6 @@ configure_make(
     linkopts = [
         "-L$$EXT_BUILD_DEPS$$/openssl",
     ],
-    out_shared_libs = select({
-        "@platforms//os:macos": [
-            "libnghttp2.dylib",
-        ],
-        "//conditions:default": [
-            "libnghttp2.so",
-        ],
-    }),
     out_static_libs = ["libnghttp2.a"],
     targets = [
         "-j" + KONG_VAR["NPROC"],

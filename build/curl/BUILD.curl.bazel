@@ -13,21 +13,24 @@ filegroup(
 copy_file(
     name = "cacerts",
     src = "@cacerts-bundle//file",
-    out = "ssl/cacerts.pem",
+    out = "ssl/cacerts-%s.pem" % KONG_VAR["CA_CERTS"],
     visibility = ["//visibility:public"],
 )
 
 configure_make(
     name = "curl",
+    autoconf = True,
+    configure_in_place = True,
     configure_options = [
+        "--disable-debug",
         "--disable-dependency-tracking",
         "--disable-ldap",
         "--disable-manual",
         "--disable-shared",
         "--disable-silent-rules",
+        "--enable-static",
         "--enable-websockets",
-        "--libdir=%s/kong/lib" % KONG_VAR["BUILD_DESTDIR"],  # force lib instead of lib64 (multilib postfix)
-        "--with-ca-bundle=%s/kong/ssl/cacerts.pem" % KONG_VAR["INSTALL_DESTDIR"],
+        "--with-ca-bundle=/usr/local/kong/ssl/cacerts.pem",
         "--with-ca-fallback",
         "--with-default-ssl-backend=openssl",
         "--with-nghttp2=$$EXT_BUILD_DEPS$$/nghttp2",
@@ -53,41 +56,22 @@ configure_make(
             "--with-zlib=$$EXT_BUILD_DEPS$$/zlib",
         ],
         "//conditions:default": [],
-    }) + select({
-        "@kong//:debug_flag": ["--enable-debug"],
-        "//conditions:default": ["--disable-debug"],
     }),
     data = ["ssl/cacerts-%s.pem" % KONG_VAR["CA_CERTS"]],
     env = select({
         "@platforms//os:macos": {
-            "LIBS": "-lpthread -lnghttp2",
-            # don't use rule_foreign_cc's libtool as archiver as it seems to be a bug
-            # see https://github.com/bazelbuild/rules_foreign_cc/issues/947
             "AR": "/usr/bin/ar",
         },
-        "//conditions:default": {
-            "LIBS": "-lpthread -lnghttp2",
-        },
+        "//conditions:default": {},
     }),
     lib_source = ":all_srcs",
     linkopts = [
-        "-L$$EXT_BUILD_DEPS$$/openssl",
-        "-L$$EXT_BUILD_DEPS$$/nghttp2",
-    ] + select({
-        "@kong//:any-cross": [
-            "-L$$EXT_BUILD_DEPS$$/zlib",
-        ],
-        "//conditions:default": [],
-    }) + select({
-        # Mac OS can't create static libraries apparently??
-        # https://stackoverflow.com/a/54890434
-        "@platforms//os:macos": [],
-        "//conditions:default": [
-            "-static",
-            "-Wl,-rpath,%s/kong/lib" % KONG_VAR["INSTALL_DESTDIR"],
-        ],
-    }),
-    out_binaries = ["curl"],
+        "-Wl,-rpath,%s/kong/lib" % KONG_VAR["INSTALL_DESTDIR"],
+    ],
+    out_binaries = [
+        "curl",
+        "curl-config",
+    ],
     targets = [
         "-j" + KONG_VAR["NPROC"],
         "install -j" + KONG_VAR["NPROC"],
