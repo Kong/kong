@@ -94,8 +94,7 @@ end
 
 
 local function is_yaml(filename)
-  return pl_stringx.endswith(filename, ".yaml") or
-    pl_stringx.endswith(filename, ".yml")
+  return pl_stringx.endswith(filename, ".yml")
 end
 
 local function is_empty_table(t)

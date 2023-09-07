@@ -6,7 +6,7 @@ The `kong/CHANGELOG.md` now is deprecated.
 
 ## How to add a changelog file for your PR?
 
-1/ Copy the `changelog-template.yaml` file and rename with your PR number or a short message as the filename. For example, `11279.yaml`, `introduce-a-new-changelog-system.yaml`. (Prefer using PR number as it's already unique and wouldn't introduce conflict)
+1/ Copy the `changelog-template.yml` file and rename with your PR number or a short message as the filename. For example, `11279.yml`, `introduce-a-new-changelog-system.yml`. (Prefer using PR number as it's already unique and wouldn't introduce conflict)
 
 2/ Fill out the changelog template.
 
@@ -14,7 +14,7 @@ The `kong/CHANGELOG.md` now is deprecated.
 The description of the changelog file field, please follow the `schema.json` for more details.
 
 - message: Message of the changelog
-- type: Changelog type. (`feature`, `bugfix`, `dependency`, `deprecation`, `breaking_change`)
+- type: Changelog type. (`feature`, `bugfix`, `dependency`, `deprecation`, `breaking_change`, `performance`)
 - scope: Changelog scope. (`Core`, `Plugin`, `PDK`, `Admin API`, `Performance`, `Configuration`, `Clustering`)
 - prs: List of associated GitHub PRs
 - issues: List of associated GitHub issues

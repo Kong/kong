@@ -18,11 +18,11 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: Retrives changed files in CHANGELOG/unreleased/**/*.yaml
+      - name: Retrives changed files in CHANGELOG/unreleased/**/*.yml
         id: changelog-check
         uses: tj-actions/changed-files@2f7246cb26e8bb6709b6cbfc1fec7febfe82e96a # v37
         with:
-          files: 'CHANGELOG/unreleased/**/*.yaml'
+          files: 'CHANGELOG/unreleased/**/*.yml'
 
       - name: Requires a changelog file if 'skip-changelog' label is not added
         if: ${{ !contains(github.event.*.labels.*.name, 'skip-changelog') }}
@@ -44,4 +44,4 @@ jobs:
         with:
           jsonSchemaFile: CHANGELOG/schema.json
           yamlFiles: |
-            CHANGELOG/unreleased/*/*.yaml
+            CHANGELOG/unreleased/*/*.yml
