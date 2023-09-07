@@ -31,18 +31,25 @@ function concurrency.with_worker_mutex(opts, fn)
 
   local opts_name    = opts.name
   local opts_timeout = opts.timeout
+  local opts_exptime = opts.exptime
 
   if type(opts_name) ~= "string" then
     error("opts.name is required and must be a string", 2)
   end
+
   if opts_timeout and type(opts_timeout) ~= "number" then
     error("opts.timeout must be a number", 2)
   end
 
+  if opts_exptime and type(opts_exptime) ~= "number" then
+    error("opts.exptime must be a number", 2)
+  end
+
   local timeout = opts_timeout or 60
+  local exptime = opts_exptime or timeout
 
   local rlock, err = resty_lock:new("kong_locks", {
-    exptime = timeout,
+    exptime = exptime,
     timeout = timeout,
   })
   if not rlock then

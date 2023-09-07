@@ -761,6 +761,8 @@ do
     local ok, err = concurrency.with_coroutine_mutex(RECONFIGURE_OPTS, function()
       -- below you are encouraged to yield for cooperative threading
 
+      kong.vault.flush()
+
       local rebuild_balancer = balancer_hash ~= CURRENT_BALANCER_HASH
       if rebuild_balancer then
         log(DEBUG, "stopping previously started health checkers on worker #", worker_id)
@@ -786,8 +788,6 @@ do
       local plugins_iterator
       if plugins_hash ~= CURRENT_PLUGINS_HASH then
         local start = get_monotonic_ms()
-
-        kong.vault.flush()
 
         plugins_iterator, err = new_plugins_iterator()
         if not plugins_iterator then
