@@ -7,14 +7,17 @@ local LOG_LEVELS = {
 }
 
 
-local function clear_table(client)
+local function new_table()
+  local client = helpers.proxy_client()
   local res = client:get("/", {
     query = {
+      new_tab = true,
       clear = true,
     }
   })
   assert.response(res).has.status(200)
   assert.logfile().has.no.line("[error]", true)
+  client:close()
 end
 
 for _, log_level in ipairs(LOG_LEVELS) do
@@ -60,8 +63,8 @@ for _, log_level in ipairs(LOG_LEVELS) do
 
       before_each(function()
         helpers.clean_logfile()
+        new_table()
         client = helpers.proxy_client()
-        clear_table(client)
       end)
 
       after_each(function()
@@ -75,32 +78,40 @@ for _, log_level in ipairs(LOG_LEVELS) do
         assert.response(res).has.status(200)
         assert.logfile().has.no.line("[error]", true)
       end)
-      it("denies access when there are race conditions and checks are enabled", function()
+
+      it("denies access when there are race conditions and checks are enabled (else allows)", function()
         -- access from request 1 (don't clear)
-        local ok, r = pcall(client.get, client, "/")
-        assert(ok)
+        local r = client:get("/")
         assert.response(r).has.status(200)
 
         -- access from request 2
-        ok, r = pcall(client.get, client, "/")
+        r = client:get("/")
         if concurrency_checks then
-          assert(not ok)
           assert.logfile().has.line("race condition detected", true)
         else
-          assert(ok)
           assert.response(r).has.status(200)
         end
       end)
+
       it("allows access when table is cleared between requests", function()
         -- access from request 1 (clear)
         local r = client:get("/", {
           query = {
             clear = true,
-          },
+          }
         })
         assert.response(r).has.status(200)
 
-        -- access from request 2
+        -- access from request 2 (clear)
+        r = client:get("/", {
+          query = {
+            clear = true,
+          }
+        })
+        assert.response(r).has.status(200)
+        assert.logfile().has.no.line("[error]", true)
+
+        -- access from request 3
         r = client:get("/")
         assert.response(r).has.status(200)
         assert.logfile().has.no.line("[error]", true)

@@ -1,93 +1,118 @@
+--- NOTE: tool is designed to assist with **detecting** request contamination
+-- issues on CI, during test runs. It does not offer security safeguards.
+
+local table_new = require "table.new"
 local table_clear = require "table.clear"
 
-local LOG_LEVELS = require "kong.constants".LOG_LEVELS
-local get_log_level = require("resty.kong.log").get_log_level
-
-local get_phase = ngx.get_phase
-local fmt = string.format
-local ngx_var = ngx.var
+local debug_mode  = kong.configuration.log_level == "debug"
+local get_phase   = ngx.get_phase
+local var         = ngx.var
+local log         = ngx.log
 
 local NGX_VAR_PHASES = {
-  set = true,
-  rewrite = true,
-  balancer = true,
-  access = true,
-  content = true,
+  set           = true,
+  rewrite       = true,
+  access        = true,
+  content       = true,
   header_filter = true,
-  body_filter = true,
-  log = true,
+  body_filter   = true,
+  log           = true,
+  balancer      = true,
 }
 
+-- Check if access is allowed for table, based on the request ID
+local function enforce_sequential_access(table)
+  if not NGX_VAR_PHASES[get_phase()] then
+    -- not in a request context: allow access and reset allowed request ID
+    rawset(table, "__allowed_request_id", nil)
+    return
+  end
 
-local function is_debug_mode()
-  local log_level = get_log_level(LOG_LEVELS[kong.configuration.log_level])
-  return log_level == LOG_LEVELS.debug
+  local curr_request_id = var.request_id
+  local allowed_request_id = rawget(table, "__allowed_request_id")
+  if not allowed_request_id then
+    -- first access. Set allowed request ID and allow access
+    rawset(table, "__allowed_request_id", curr_request_id)
+    return
+  end
+
+  if curr_request_id ~= table.__allowed_request_id then
+    error("race condition detected; access to table forbidden", 2)
+  end
 end
 
 
---- Request aware table constructor
--- Wraps an existing table (or creates a new one) with request-aware access
--- logic to protect the underlying data from race conditions.
--- @param data_table (optional) The target table to use as underlying data
+local function clear_table(self)
+  if debug_mode == false then
+    table_clear(self)
+    return
+  end
+
+  table_clear(self.__data)
+  rawset(self, "__allowed_request_id", nil)
+end
+
+
+local __proxy_mt = {
+  __index = function(t, k)
+    if k == "clear" then
+      return clear_table
+    end
+
+    enforce_sequential_access(t)
+    return t.__data[k]
+  end,
+
+  __newindex = function(t, k, v)
+    if k == "clear" then
+      log(ngx.WARN, "cannot overwrite 'clear' method")
+      return
+    end
+
+    enforce_sequential_access(t)
+    t.__data[k] = v
+  end,
+}
+
+
+local __direct_mt = {
+  __index = { clear = clear_table },
+
+  __newindex = function(t, k, v)
+    if k == "clear" then
+      log(ngx.WARN, "cannot overwrite 'clear' method")
+      return
+    end
+
+    rawset(t, k, v)
+  end,
+}
+
+
+-- Request aware table constructor
+--
+-- Creates a new table with request-aware access logic to protect the
+-- underlying data from race conditions.
+-- The table includes a :clear() method to delete all elements.
+--
+-- The request-aware access logic is turned off when `debug_mode` is disabled.
+--
+-- @param narr (optional) pre allocated array elements
+-- @param nrec (optional) pre allocated hash elements
 -- @return The newly created table with request-aware access
-local function new(data_table)
-  if data_table and type(data_table) ~= "table" then
-    error("data_table must be a table", 2)
+local function new(narr, nrec)
+  if not narr then narr = 0 end
+  if not nrec then nrec = 0 end
+
+  local data = table_new(narr, nrec)
+
+  -- return table without proxy when debug_mode is disabled
+  if debug_mode == false then
+    return setmetatable(data, __direct_mt)
   end
 
-  local allowed_request_id
-  local proxy = {}
-  local data  = data_table or {}
-
-  -- Check if access is allowed based on the request ID
-  local function enforce_sequential_access()
-    local curr_phase = get_phase()
-    if not NGX_VAR_PHASES[curr_phase] then
-      error(fmt("cannot enforce sequential access in %s phase", curr_phase), 2)
-    end
-
-    local curr_request_id = ngx_var.request_id
-
-    allowed_request_id = allowed_request_id or curr_request_id
-
-    if curr_request_id ~= allowed_request_id then
-      error("race condition detected; access to table forbidden", 2)
-    end
-  end
-
-  --- Clear data table
-  -- @tparam function fn (optional) An optional function to use instead
-  -- of `table.clear` to clear the data table
-  function proxy.clear(fn)
-    if fn then
-      fn(data)
-
-    else
-      table_clear(data)
-    end
-
-    allowed_request_id = nil
-  end
-
-  local _proxy_mt = {
-    __index = function(_, k)
-      if is_debug_mode() then
-        enforce_sequential_access()
-      end
-
-      return data[k]
-    end,
-
-    __newindex = function(_, k, v)
-      if is_debug_mode() then
-        enforce_sequential_access()
-      end
-
-      data[k] = v
-    end
-  }
-
-  return setmetatable(proxy, _proxy_mt)
+  -- wrap table in proxy (for access checks) when debug_mode is enabled
+  return setmetatable({ __data = data }, __proxy_mt)
 end
 
 return {
