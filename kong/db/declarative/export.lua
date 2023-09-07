@@ -142,7 +142,7 @@ local function export_from_db_impl(emitter, skip_ws, skip_disabled_entities, exp
     if db[name].pagination then
       page_size = db[name].pagination.max_page_size
     end
-    for row, err in db[name]:each(page_size, GLOBAL_QUERY_OPTS) do
+    for row, err in db[name]:each_for_export(page_size, GLOBAL_QUERY_OPTS) do
       if not row then
         end_transaction(db)
         kong.log.err(err)
