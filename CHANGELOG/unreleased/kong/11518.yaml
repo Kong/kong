@@ -1,0 +1,7 @@
+message: "bump resty.openssl from 0.8.23 to 0.8.25"
+type: dependency
+scope: Core
+prs:
+  - 11518
+jiras:
+  - "FTI-5324"
