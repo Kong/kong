@@ -138,6 +138,13 @@ macOS
 brew install libyaml
 ```
 
+Now, we have to set environment variable `GITHUB_TOKEN` to download some essential repos.
+You can follow [Managing your personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) to generate an access token.
+
+```bash
+# export GITHUB_TOKEN=ghp_xxxxxx_your_access_token
+```
+
 Finally, we start the build process:
 
 ```
@@ -319,6 +326,49 @@ When developing, you can use the `Makefile` for doing the following operations:
 | `test-integration` | Run the integration tests suite                        |
 | `test-plugins`     | Run the plugins test suite                             |
 | `test-all`         | Run all unit + integration + plugins tests at once     |
+
+### Setup Hybrid Mode Development Environment
+
+You can follow the steps given below to setup a hybrid mode environment.
+
+1. Activate the venv
+
+   ```bash
+   # . bazel-bin/build/kong-dev-venv.sh
+   ```
+
+2. Following [Deploy Kong Gateway in Hybrid Mode: Generate certificate/key pair](https://docs.konghq.com/gateway/latest/production/deployment-topologies/hybrid-mode/setup/#generate-a-certificatekey-pair) to generate a certificate/key pair.
+
+3. Create CP and DP configuration files, such as `kong-cp.conf` and `kong-dp.conf`.
+
+4. Following [Deploy Kong Gateway in Hybrid Mode: CP Configuration](https://docs.konghq.com/gateway/latest/production/deployment-topologies/hybrid-mode/setup/#set-up-the-control-plane) to configure CP using `kong.conf`.
+
+5. Following [Deploy Kong Gateway in Hybrid Mode: DP Configuration](https://docs.konghq.com/gateway/latest/production/deployment-topologies/hybrid-mode/setup/#install-and-start-data-planes) to configure DP using `kong.conf`.
+
+6. Unset environment variable `KONG_PREFIX` to ensure configuration directive `prefix` in configuration file is enabled.
+
+7. Modify or add the directive `prefix` to `kong-cp.conf` and `kong-dp.conf`
+to be `prefix=servroot-cp` and `prefix=servroot-dp`,
+or other names you want, but make sure they are different.
+
+8. Use the pre-defined docker-compose file to bring up databases, etc.
+
+   ```bash
+   # start_services
+   ```
+
+9. If it is the first time to start Kong, you have to execute the following command to CP node.
+
+   ```bash
+   # kong migrations bootstrap -c kong-cp.conf
+   ```
+
+10. Start CP and DP. `kong start -c kong-cp.conf` and `kong start -c kong-dp.conf`.
+
+11. To stop CP and DP, you can execute `kong stop -p servroot-cp` and
+`kong stop -p servroot-dp` in this example.
+Names `servroot-cp` and `servroot-dp` are set in configuration file in step 7.
+
 
 
 ## Dev on Linux (Host/VM)
