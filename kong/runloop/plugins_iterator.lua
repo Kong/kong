@@ -161,8 +161,6 @@ local function should_process_plugin(plugin)
 end
 
 
-local next_seq = 0
-
 local function get_plugin_config(plugin, name, ws_id)
   if not plugin or not plugin.enabled then
     return
@@ -188,8 +186,13 @@ local function get_plugin_config(plugin, name, ws_id)
   -- TODO: deprecate usage of __key__ as id of plugin
   if not cfg.__key__ then
     cfg.__key__ = key
+    -- generate a unique sequence across workers
+    -- with a seq 0, plugin server generates an unused random instance id
+    local next_seq, err = ngx.shared.kong:incr("plugins_iterator:__seq__", 1, 0, 0)
+    if err then
+      next_seq = 0
+    end
     cfg.__seq__ = next_seq
-    next_seq = next_seq + 1
   end
 
   return cfg
