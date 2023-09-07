@@ -257,7 +257,7 @@ jobs:
         bazel build --config release :kong_${{ matrix.package-type }} --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel-args }}
 
         for package in bazel-bin/pkg/*.*; do
-          rpm -qip "${package}" || true
+          rpm -qipR "${package}" || true
         done
 
     - name: Bazel Debug Outputs
