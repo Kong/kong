@@ -50,6 +50,11 @@ describe("Request ID error log tests #" .. strategy, function()
       hosts = { "otel_host" },
     })
 
+    local zipkin_route = bp.routes:insert({
+      service = service,
+      hosts = { "zipkin_host" },
+    })
+
     local correlation_route = bp.routes:insert({
       service = service,
       hosts = { "correlation_host" },
@@ -58,6 +63,16 @@ describe("Request ID error log tests #" .. strategy, function()
     local otel_correlation_route = bp.routes:insert({
       service = service,
       hosts = { "otel_correlation_host" },
+    })
+
+    local zipkin_correlation_route = bp.routes:insert({
+      service = service,
+      hosts = { "zipkin_correlation_host" },
+    })
+
+    local zipkin_otel_correlation_route = bp.routes:insert({
+      service = service,
+      hosts = { "zipkin_otel_correlation_host" },
     })
 
     local runtime_error_route = bp.routes:insert({
@@ -81,14 +96,59 @@ describe("Request ID error log tests #" .. strategy, function()
       }
     })
 
+    bp.plugins:insert({
+      name = "opentelemetry",
+      route = { id = zipkin_otel_correlation_route.id },
+      config = {
+        endpoint = "http://localhost:8080/v1/traces",
+      }
+    })
+
     bp.plugins:insert {
-      name     = "correlation-id",
+      name = "correlation-id",
       route = { id = correlation_route.id },
     }
 
     bp.plugins:insert {
-      name     = "correlation-id",
+      name = "correlation-id",
       route = { id = otel_correlation_route.id },
+    }
+
+    bp.plugins:insert {
+      name = "correlation-id",
+      route = { id = zipkin_correlation_route.id },
+    }
+
+    bp.plugins:insert {
+      name = "correlation-id",
+      route = { id = zipkin_otel_correlation_route.id },
+    }
+
+    bp.plugins:insert {
+      name = "zipkin",
+      route = { id = zipkin_route.id },
+      config = {
+        sample_ratio = 1,
+        default_header_type = "w3c",
+      }
+    }
+
+    bp.plugins:insert {
+      name = "zipkin",
+      route = { id = zipkin_correlation_route.id },
+      config = {
+        sample_ratio = 1,
+        default_header_type = "w3c",
+      }
+    }
+
+    bp.plugins:insert {
+      name = "zipkin",
+      route = { id = zipkin_otel_correlation_route.id },
+      config = {
+        sample_ratio = 1,
+        default_header_type = "w3c",
+      }
     }
 
     bp.plugins:insert({
@@ -131,7 +191,7 @@ describe("Request ID error log tests #" .. strategy, function()
     end
   end)
 
-  it("generates a new request ID when neither opentelemetry nor correlation-id are configured", function()
+  it("generates a new request ID when no tracing plugins are configured", function()
     local rid = to_hex(utils.get_rand_bytes(16))
     proxy_client:get("/", {
       headers = {
@@ -151,6 +211,18 @@ describe("Request ID error log tests #" .. strategy, function()
     proxy_client:get("/", {
       headers = {
         host = "otel_host",
+        traceparent = "00-" .. rid .. "-00f067aa0ba902b7-01",
+      },
+    })
+
+    assert.equals(rid, get_request_id_from_logs(log_pattern))
+  end)
+
+  it("updates request_id with trace_id from incoming header when zipkin is configured", function()
+    local rid = to_hex(utils.get_rand_bytes(16))
+    proxy_client:get("/", {
+      headers = {
+        host = "zipkin_host",
         traceparent = "00-" .. rid .. "-00f067aa0ba902b7-01",
       },
     })
@@ -184,6 +256,38 @@ describe("Request ID error log tests #" .. strategy, function()
     local rid_from_logs = get_request_id_from_logs(log_pattern)
     assert.equals(rid_corr, rid_from_logs)
     assert.not_equal(rid_otel, rid_from_logs)
+  end)
+
+  it("correlation ID takes precedence over Zipkin to set request_id", function()
+    local rid_corr = to_hex(utils.get_rand_bytes(16))
+    local rid_zipkin = to_hex(utils.get_rand_bytes(16))
+    proxy_client:get("/", {
+      headers = {
+        ["Host"] = "zipkin_correlation_host",
+        ["Kong-Request-ID"] = rid_corr,
+        traceparent = "00-" .. rid_zipkin .. "-00f067aa0ba902b7-01",
+      }
+    })
+
+    local rid_from_logs = get_request_id_from_logs(log_pattern)
+    assert.equals(rid_corr, rid_from_logs)
+    assert.not_equal(rid_zipkin, rid_from_logs)
+  end)
+
+  it("correlation ID takes precedence over Zipkin and OTel to set request_id", function()
+    local rid_corr = to_hex(utils.get_rand_bytes(16))
+    local rid_trace = to_hex(utils.get_rand_bytes(16))
+    proxy_client:get("/", {
+      headers = {
+        ["Host"] = "zipkin_otel_correlation_host",
+        ["Kong-Request-ID"] = rid_corr,
+        traceparent = "00-" .. rid_trace .. "-00f067aa0ba902b7-01",
+      }
+    })
+
+    local rid_from_logs = get_request_id_from_logs(log_pattern)
+    assert.equals(rid_corr, rid_from_logs)
+    assert.not_equal(rid_trace, rid_from_logs)
   end)
 
   it("logs a request ID in the output of runtime errors", function()

@@ -23,10 +23,6 @@ lua_shared_dict kong_db_cache               ${{MEM_CACHE_SIZE}};
 lua_shared_dict kong_db_cache_miss          12m;
 lua_shared_dict kong_secrets                5m;
 
-map "" $kong_request_id {
-    default '';
-}
-
 underscores_in_headers on;
 > if ssl_ciphers then
 ssl_ciphers ${{SSL_CIPHERS}};
@@ -55,6 +51,11 @@ exit_worker_by_lua_block {
 }
 
 > if (role == "traditional" or role == "data_plane") and #proxy_listeners > 0 then
+log_format request_id_access_log_format '[$kong_request_id] '
+                                        '$remote_addr - $remote_user [$time_local] '
+                                        '"$request" $status $body_bytes_sent '
+                                        '"$http_referer" "$http_user_agent"';
+
 # Load variable indexes
 lua_kong_load_var_index default;
 
@@ -83,7 +84,7 @@ server {
     set $kong_request_id $request_id;
     lua_kong_error_log_request_id $kong_request_id;
 
-    access_log ${{PROXY_ACCESS_LOG}};
+    access_log ${{PROXY_ACCESS_LOG}} request_id_access_log_format;
     error_log  ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
 > if proxy_ssl_enabled then

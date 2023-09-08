@@ -2,7 +2,6 @@ local to_hex = require "resty.string".to_hex
 local base = require "resty.core.base"
 
 local get_request = base.get_request
-local var = ngx.var
 
 
 -- Request ID types
@@ -11,9 +10,18 @@ local var = ngx.var
 -- TRACE = trace ID
 -- INIT  = the initial value
 local TYPES = {
-  INIT  = 1,
-  TRACE = 2,
-  CORR  = 3,
+  INIT = {
+    name = "initial",
+    priority = 1,
+  },
+  TRACE = {
+    name = "trace",
+    priority = 2,
+  },
+  CORR = {
+    name = "correlation",
+    priority = 3,
+  },
 }
 
 local NGX_VAR_PHASES = {
@@ -28,16 +36,38 @@ local NGX_VAR_PHASES = {
 }
 
 
-local function get_ctx_req_id()
-  return ngx.ctx.request_id and ngx.ctx.request_id.id
+local function get_ctx_request_id()
+  return ngx.ctx.request_id
 end
 
 
-local function set_ctx_req_id(id, type)
+local function set_ctx_request_id(id, type)
   ngx.ctx.request_id = {
     id = id,
     type = type,
   }
+end
+
+
+--- Function `should_overwrite_id` determines whether the new request id
+-- should overwrite the current one.
+--
+-- This function uses the provided (new) request id type to compare it with the
+-- current (old) request id's and determine whether the new has more priority
+-- than the old and should overwrite it.
+--
+-- @function should_overwrite_id
+-- @param new_type The new request id's type
+-- @param old_type The old request id's type
+-- @return boolean whether the new request id should overwrite the current one
+local function should_overwrite_id(new_type, old_type)
+  if new_type.priority < old_type.priority then
+    kong.log.info("request_id of type: ", new_type.name,
+                  "is less prioritary than current type: ", old_type.name)
+    return false
+  end
+
+  return true
 end
 
 
@@ -46,7 +76,8 @@ local function get()
     return nil, "no request found"
   end
 
-  local rid = get_ctx_req_id()
+  local rid = get_ctx_request_id()
+  rid = rid and rid.id
 
   if not rid then
     -- first access to the request id for this request:
@@ -55,7 +86,7 @@ local function get()
     ok, rid = pcall(function() return ngx.var.kong_request_id end)
 
     if ok and rid then
-      set_ctx_req_id(rid, TYPES.INIT)
+      set_ctx_request_id(rid, TYPES.INIT)
     end
   end
 
@@ -73,17 +104,17 @@ local function set(id, type)
 
   -- priority check
   local old_type = ngx.ctx.request_id and ngx.ctx.request_id.type or TYPES.INIT
-  if type < old_type then
-    return nil, "ignoring set for request_id of type: " .. type ..
-                ", less prioritary than current type: " .. ngx.ctx.request_id.type
+  if not should_overwrite_id(type, old_type) then
+    return nil, "priority check failed for request_id: " .. id .. " (" .. type.name .. ")"
   end
 
   -- the following line produces an error log that includes the current
   -- request_id, so both the old and new IDs are visible in the output
-  kong.log.notice("setting request_id to: '", id, "' for the current request")
+  kong.log.notice("setting request_id to: '", id, "' (", type.name ,
+                  ") for the current request")
 
-  set_ctx_req_id(id, type)
-  var.kong_request_id = id
+  set_ctx_request_id(id, type)
+  ngx.var.kong_request_id = id
 end
 
 
@@ -103,6 +134,11 @@ end
 return {
   get     = get,
   set     = set,
-  rewrite = rewrite,
   TYPES   = TYPES,
+  rewrite = rewrite,
+
+  -- for unit testing
+  _should_overwrite_id = should_overwrite_id,
+  _get_ctx_request_id  = get_ctx_request_id,
+  _set_ctx_request_id  = set_ctx_request_id,
 }

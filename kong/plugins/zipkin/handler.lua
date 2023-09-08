@@ -124,7 +124,10 @@ if subsystem == "http" then
       span_name = method .. ' ' .. path
     end
 
-    request_id.set(to_hex(trace_id), request_id.TYPES.TRACE)
+    local _, err = request_id.set(to_hex(trace_id), request_id.TYPES.TRACE)
+    if err then
+      kong.log.notice(err)
+    end
 
     local request_span = new_span(
       "SERVER",

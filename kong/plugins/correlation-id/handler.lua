@@ -65,7 +65,10 @@ function CorrelationIdHandler:access(conf)
   end
 
   if correlation_id then
-    request_id.set(correlation_id, request_id.TYPES.CORR)
+    local _, err = request_id.set(correlation_id, request_id.TYPES.CORR)
+    if err then
+      kong.log.notice(err)
+    end
   end
 
   if conf.echo_downstream then

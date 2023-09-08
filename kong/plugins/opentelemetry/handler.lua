@@ -12,6 +12,7 @@ local tostring = tostring
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
 local ngx_DEBUG = ngx.DEBUG
+local ngx_NOTICE = ngx.NOTICE
 local ngx_now = ngx.now
 local ngx_update_time = ngx.update_time
 local ngx_req = ngx.req
@@ -118,7 +119,10 @@ function OpenTelemetryHandler:access(conf)
   if trace_id then
     injected_parent_span.trace_id = trace_id
     kong.ctx.plugin.trace_id = trace_id
-    request_id.set(to_hex(trace_id), request_id.TYPES.TRACE)
+    local _, err = request_id.set(to_hex(trace_id), request_id.TYPES.TRACE)
+    if err then
+      ngx_log(ngx_NOTICE, _log_prefix, err)
+    end
   end
 
   -- overwrite parent span's parent_id
