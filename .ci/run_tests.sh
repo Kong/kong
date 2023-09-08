@@ -8,7 +8,7 @@ function red() {
     echo -e "\033[1;31m$*\033[0m"
 }
 
-export BUSTED_ARGS="--no-k -o htest -v --exclude-tags=flaky,ipv6"
+export BUSTED_ARGS="--no-k -o htest --repeat=10 -v --exclude-tags=flaky,ipv6"
 
 if [ "$KONG_TEST_DATABASE" == "postgres" ]; then
     export TEST_CMD="bin/busted $BUSTED_ARGS,off"
@@ -36,7 +36,8 @@ fi
 if [ "$TEST_SUITE" == "integration" ]; then
     if [[ "$TEST_SPLIT" == first* ]]; then
         # GitHub Actions, run first batch of integration tests
-        eval "$TEST_CMD" $(ls -d spec/02-integration/* | sort | grep -v 05-proxy)
+        # eval "$TEST_CMD" $(ls -d spec/02-integration/* | sort | grep -v 05-proxy)
+        eval "$TEST_CMD" spec/02-integration/05-proxy/10-balancer/01-healthchecks_spec.lua
 
     elif [[ "$TEST_SPLIT" == second* ]]; then
         # GitHub Actions, run second batch of integration tests

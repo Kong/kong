@@ -43,6 +43,7 @@ jobs:
     name: Lint, Doc and Unit tests
     runs-on: ubuntu-22.04
     needs: build
+    if: false
 
     services:
       postgres:
@@ -126,8 +127,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [integration, plugins]
-        split: [first (01-04), second (>= 05)]
+        # suite: [integration, plugins]
+        # split: [first (01-04), second (>= 05)]
+        suite: [integration]
+        split: [first (01-04)]
 
     services:
       postgres:
@@ -259,6 +262,7 @@ jobs:
     name: DB-less integration tests
     runs-on: ubuntu-22.04
     needs: build
+    if: false
 
     services:
       grpcbin:
@@ -332,6 +336,7 @@ jobs:
     name: PDK tests
     runs-on: ubuntu-22.04
     needs: build
+    if: false
 
     steps:
     - name: Checkout Kong source code
