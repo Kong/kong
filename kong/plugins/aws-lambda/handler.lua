@@ -16,10 +16,9 @@ local build_request_payload = request_util.build_request_payload
 local extract_proxy_response = request_util.extract_proxy_response
 
 local aws = require("resty.aws")
-local AWS_GLOBAL_CONFIG
-local AWS_REGION do
-  AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
-end
+local aws_config = require("resty.aws.config")
+-- Fetch and cache env vars during init phase
+local AWS_GLOBAL_CONFIG = aws_config.get_config()
 local AWS
 local LAMBDA_SERVICE_CACHE = setmetatable({}, { __mode = "k" })
 
@@ -35,18 +34,25 @@ local AWSLambdaHandler = {
   VERSION = meta.version
 }
 
-function AWSLambdaHandler:init()
-  AWS_GLOBAL_CONFIG = require("resty.aws.config").global
-  AWS = aws()
-end
-
 
 function AWSLambdaHandler:access(conf)
   -- The region in plugin configuraion has higher priority
   -- than the one in environment variable
-  local region = conf.aws_region or AWS_REGION
+  local region = conf.aws_region or AWS_GLOBAL_CONFIG.region
   if not region then
     return error("no region specified")
+  end
+
+  if not aws_config.global then
+    -- Fetch region from metadata service, or from
+    -- environment variable
+    AWS_GLOBAL_CONFIG = require("resty.aws.config").global
+  end
+
+  if not AWS then
+    AWS = aws({
+      region = region
+    })
   end
 
   local host = conf.host or fmt("lambda.%s.amazonaws.com", region)
