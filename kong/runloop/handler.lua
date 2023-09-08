@@ -625,7 +625,7 @@ do
   local CURRENT_PLUGINS_HASH  = 0
   local CURRENT_BALANCER_HASH = 0
 
-  local function get_now_ms()
+  local function get_monotonic_ms()
     update_time()
     return cur_msec()
   end
@@ -639,7 +639,7 @@ do
       return true
     end
 
-    local reconfigure_started_at = get_now_ms()
+    local reconfigure_started_at = get_monotonic_ms()
 
     log(INFO, "declarative reconfigure was started on worker #", worker_id)
 
@@ -671,39 +671,39 @@ do
 
       local router, err
       if router_hash ~= CURRENT_ROUTER_HASH then
-        local start = get_now_ms()
+        local start = get_monotonic_ms()
 
         router, err = new_router()
         if not router then
           return nil, err
         end
 
-        log(INFO, "building a new router took ",  get_now_ms() - start,
+        log(INFO, "building a new router took ",  get_monotonic_ms() - start,
                   " ms on worker #", worker_id)
       end
 
       local plugins_iterator
       if plugins_hash ~= CURRENT_PLUGINS_HASH then
-        local start = get_now_ms()
+        local start = get_monotonic_ms()
         plugins_iterator, err = new_plugins_iterator()
         if not plugins_iterator then
           return nil, err
         end
 
-        log(INFO, "building a new plugins iterator took ", get_now_ms() - start,
+        log(INFO, "building a new plugins iterator took ", get_monotonic_ms() - start,
                   " ms on worker #", worker_id)
       end
 
       local wasm_state
       if wasm.enabled() then
-        local start = get_now_ms()
+        local start = get_monotonic_ms()
         wasm_state, err = wasm.rebuild_state()
 
         if not wasm_state then
           return nil, err
         end
 
-        log(INFO, "rebuilding wasm filter chain state took ", get_now_ms() - start,
+        log(INFO, "rebuilding wasm filter chain state took ", get_monotonic_ms() - start,
                   " ms on worker #", worker_id)
       end
 
@@ -743,7 +743,7 @@ do
       return true
     end)  -- concurrency.with_coroutine_mutex
 
-    local reconfigure_time = get_now_ms() - reconfigure_started_at
+    local reconfigure_time = get_monotonic_ms() - reconfigure_started_at
 
     if ok then
       log(INFO, "declarative reconfigure took ", reconfigure_time,
