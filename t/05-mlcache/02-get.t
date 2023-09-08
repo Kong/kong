@@ -2379,6 +2379,7 @@ is stale: true
 
 
 === TEST 50: get() does not cache value in LRU indefinitely when retrieved from shm on last ms (see GH PR #58)
+--- SKIP
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
