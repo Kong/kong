@@ -1,5 +1,5 @@
 message: refactor workspace id and name retrieval
-type: refactor
+type: feature
 scope: Core
 prs:
 - 11442
