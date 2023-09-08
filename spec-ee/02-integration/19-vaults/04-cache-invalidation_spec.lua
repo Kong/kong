@@ -168,7 +168,7 @@ describe("vault cache invalidation (#" .. attachment_point .. "_" .. vault.name 
       headers = HEADERS,
       body = {
         config = {
-          resurrect_ttl = 36000
+          neg_ttl = 30
         },
       },
     })
