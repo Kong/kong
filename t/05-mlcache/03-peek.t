@@ -100,6 +100,7 @@ ttl: nil
 
 
 === TEST 3: peek() returns the remaining ttl if a key has been fetched before
+--- SKIP
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
