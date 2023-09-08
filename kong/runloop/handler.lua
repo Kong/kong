@@ -612,7 +612,8 @@ end
 
 local reconfigure_handler
 do
-  local now = ngx.now
+  local cur_msec = require("resty.core.time").monotonic_msec
+
   local update_time = ngx.update_time
   local ngx_worker_id = ngx.worker.id
   local exiting = ngx.worker.exiting
@@ -626,7 +627,7 @@ do
 
   local function get_now_ms()
     update_time()
-    return now() * 1000
+    return cur_msec()
   end
 
   reconfigure_handler = function(data)
