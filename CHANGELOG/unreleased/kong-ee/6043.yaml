@@ -1,0 +1,7 @@
+message: update vitals prometheus grafana dashboard
+type: bugfix
+prs:
+  - 6043
+jiras:
+  - "FTI-5039"
+scope: Core
