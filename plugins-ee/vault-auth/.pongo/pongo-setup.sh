@@ -1,9 +1,17 @@
 #!/usr/bin/env sh
 
 HC_VAULT_VERSION=1.7.1
-
-curl -Os https://releases.hashicorp.com/vault/"${HC_VAULT_VERSION}"/vault_"${HC_VAULT_VERSION}"_linux_amd64.zip
-unzip vault_"${HC_VAULT_VERSION}"_linux_amd64.zip
+arch=$(arch)
+if [[ $arch == "x86_64" || $arch == "amd64" ]]; then
+    arch=amd64
+elif [[ $arch == "aarch64" || $arch == "arm64" ]]; then
+    arch=arm64
+else
+    echo "Unsupport architecture for vault: $arch"
+    exit 1
+fi
+curl -Os https://releases.hashicorp.com/vault/"${HC_VAULT_VERSION}"/vault_"${HC_VAULT_VERSION}"_linux_${arch}.zip
+unzip vault_"${HC_VAULT_VERSION}"_linux_${arch}.zip
 mv vault /usr/bin
 
 # start vault in background, use 'nohup' to keep it around after script exit

@@ -34,6 +34,7 @@ services:
       - bash
       - -c
       - ':> /dev/tcp/127.0.0.1/8080'
+      timeout: 10s
     restart: on-failure
     stop_signal: SIGKILL
     networks:

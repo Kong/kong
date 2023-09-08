@@ -1840,7 +1840,7 @@ describe("declarative config: flatten", function()
               - username: foo
             jwt_secrets:
               - consumer: foo
-                key: "https://keycloak/auth/realms/foo"
+                key: "https://keycloak/realms/foo"
                 algorithm: RS256
                 rsa_public_key: "]] .. key .. [["
           ]]))
@@ -1866,7 +1866,7 @@ describe("declarative config: flatten", function()
                 },
                 created_at = 1234567890,
                 id = "UUID",
-                key = "https://keycloak/auth/realms/foo",
+                key = "https://keycloak/realms/foo",
                 rsa_public_key = key:gsub("\\n", "\n"),
                 tags = null,
                 ws_id = null,

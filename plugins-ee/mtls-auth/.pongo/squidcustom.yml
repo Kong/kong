@@ -2,7 +2,7 @@ version: '3.5'
 
 services:
   squidcustom:
-    image: ${SQUID_IMAGE:-sameersbn/squid:3.5.27-2}
+    image: ${SQUID_IMAGE:-ubuntu/squid:5.2-22.04_beta}
     volumes:
       - $PWD/spec/fixtures/squidcustom/squid.conf:/etc/squid/squid.conf
       - $PWD/spec/fixtures/squidcustom/passwords:/etc/squid/passwords

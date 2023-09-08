@@ -23,7 +23,7 @@ local USERNAME           = "samluser1"
 local PASSWORD           = "pass1234#"
 local KEYCLOAK_HOST      = "keycloak"
 local KEYCLOAK_PORT      = 8080
-local REALM_PATH         = "/auth/realms/demo"
+local REALM_PATH         = "/realms/demo"
 local SESSION_SECRET     = "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii"
 
 local IDP_DESCRIPTOR_URL = "http://" .. KEYCLOAK_HOST .. ":" .. KEYCLOAK_PORT .. REALM_PATH .. "/protocol/saml/descriptor"
@@ -179,7 +179,7 @@ local function retrieve_cert_from_idp()
   local client = http.new()
   local res, err = client:request_uri(IDP_DESCRIPTOR_URL, { method = "GET" })
   assert.is_nil(err)
-  assert.equal(200, res.status)
+  assert.equal(200, res.status, "non 200 response from keycloak was: " .. res.body)
   local body = xmlua.XML.parse(res.body)
   local cert = xpath.evaluate(body, "/md:EntityDescriptor/md:IDPSSODescriptor/md:KeyDescriptor/dsig:KeyInfo/dsig:X509Data/dsig:X509Certificate/text()")
   assert.is_truthy(cert)

@@ -2,14 +2,17 @@ version: '3.5'
 
 services:
   keycloak:
-    image: quay.io/keycloak/keycloak:15.0.2
+    image: quay.io/keycloak/keycloak:${PONGO_KEYCLOAK_VERSION:-22.0}
+    command:
+      - start-dev
+      - --import-realm
     volumes:
-      - $PWD/.pongo/demo-realm.json:/tmp/demo-realm.json
+      - $PWD/.pongo/demo-realm.json:/opt/keycloak/data/import/demo-realm.json
     environment:
-      KEYCLOAK_USER: admin
-      KEYCLOAK_PASSWORD: test
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: test
+      VIRTUAL_PORT: 8080
       DB_VENDOR: h2
-      KEYCLOAK_IMPORT: /tmp/demo-realm.json
       JAVA_OPTS_APPEND: -Dkeycloak.migration.strategy=OVERWRITE_EXISTING
     ports:
       # temporary exposure of port, Pongo should not need this
@@ -20,9 +23,11 @@ services:
       retries: 10
       test:
       - CMD
-      - curl
-      - --fail
-      - http://localhost:8080
+      - timeout
+      - 3s
+      - bash
+      - -c
+      - ':> /dev/tcp/127.0.0.1/8080'
       timeout: 10s
     restart: on-failure
     stop_signal: SIGKILL

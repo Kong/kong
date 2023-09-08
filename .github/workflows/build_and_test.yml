@@ -307,7 +307,6 @@ jobs:
     runs-on: ubuntu-latest-kong
     timeout-minutes: ${{ inputs.coverage == false && github.event_name != 'schedule' && 30 || 480 }}
     needs: build
-
     strategy:
       fail-fast: false
       matrix:
@@ -349,7 +348,7 @@ jobs:
           --name kong_redis
 
       zipkin:
-        image: openzipkin/zipkin:2.19
+        image: openzipkin/zipkin:2
         ports:
           - 9411:9411
 
@@ -525,7 +524,7 @@ jobs:
 
     services:
       grpcbin:
-        image: moul/grpcbin
+        image: kong/grpcbin
         ports:
           - 15002:9000
           - 15003:9001
