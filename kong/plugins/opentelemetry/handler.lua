@@ -103,34 +103,31 @@ function OpenTelemetryHandler:access(conf)
     kong.ctx.plugin.should_sample = false
   end
 
+  local injected_parent_span = ngx.ctx.tracing and
+                               ngx.ctx.tracing.injected.balancer_span or root_span
+
   local header_type, trace_id, span_id, parent_id, should_sample, _ = propagation_parse(headers, conf.header_type)
   if should_sample == false then
     tracer:set_should_sample(should_sample)
+    injected_parent_span.should_sample = should_sample
   end
 
   -- overwrite trace id
   -- as we are in a chain of existing trace
   if trace_id then
-    root_span.trace_id = trace_id
+    injected_parent_span.trace_id = trace_id
     kong.ctx.plugin.trace_id = trace_id
   end
 
-  -- overwrite root span's parent_id
+  -- overwrite parent span's parent_id
   if span_id then
-    root_span.parent_id = span_id
+    injected_parent_span.parent_id = span_id
 
   elseif parent_id then
-    root_span.parent_id = parent_id
+    injected_parent_span.parent_id = parent_id
   end
 
-  -- propagate the span that identifies the "last" balancer try
-  -- This has to happen "in advance". The span will be activated (linked)
-  -- after the OpenResty balancer results are available
-  local balancer_span = tracer.create_span(nil, {
-    span_kind = 3,
-    parent = root_span,
-  })
-  propagation_set(conf.header_type, header_type, balancer_span, "w3c", true)
+  propagation_set(conf.header_type, header_type, injected_parent_span, "w3c")
 end
 
 

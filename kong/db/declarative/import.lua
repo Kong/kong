@@ -16,9 +16,7 @@ local type = type
 local pairs = pairs
 local next = next
 local insert = table.insert
-local min = math.min
 local null = ngx.null
-local md5 = ngx.md5
 local get_phase = ngx.get_phase
 local yield = utils.yield
 local sha256 = utils.sha256_hex
@@ -443,6 +441,9 @@ local load_into_cache_with_events
 do
   local events = require("kong.runloop.events")
 
+  local md5 = ngx.md5
+  local min = math.min
+
   local exiting = ngx.worker.exiting
 
   local function load_into_cache_with_events_no_lock(entities, meta, hash, hashes)
@@ -450,50 +451,48 @@ do
       return nil, "exiting"
     end
 
-    local reconfigure_data
-
     local ok, err, default_ws = load_into_cache(entities, meta, hash)
-    if ok then
-      local router_hash
-      local plugins_hash
-      local balancer_hash
-      if hashes then
-        if hashes.routes ~= DECLARATIVE_EMPTY_CONFIG_HASH then
-          router_hash = md5(hashes.services .. hashes.routes)
-        else
-          router_hash = DECLARATIVE_EMPTY_CONFIG_HASH
-        end
-
-        plugins_hash = hashes.plugins
-
-        local upstreams_hash = hashes.upstreams
-        local targets_hash   = hashes.targets
-        if upstreams_hash ~= DECLARATIVE_EMPTY_CONFIG_HASH or
-           targets_hash   ~= DECLARATIVE_EMPTY_CONFIG_HASH
-        then
-          balancer_hash = md5(upstreams_hash .. targets_hash)
-
-        else
-          balancer_hash = DECLARATIVE_EMPTY_CONFIG_HASH
-        end
+    if not ok then
+      if err:find("MDB_MAP_FULL", nil, true) then
+        return nil, "map full"
       end
 
-      reconfigure_data = {
-        default_ws,
-        router_hash,
-        plugins_hash,
-        balancer_hash,
-      }
+      return nil, err
+    end
 
-      ok, err = events.declarative_reconfigure_notify(reconfigure_data)
-      if not ok then
-        return nil, err
+    local router_hash
+    local plugins_hash
+    local balancer_hash
+
+    if hashes then
+      if hashes.routes ~= DECLARATIVE_EMPTY_CONFIG_HASH then
+        router_hash = md5(hashes.services .. hashes.routes)
+      else
+        router_hash = DECLARATIVE_EMPTY_CONFIG_HASH
       end
 
-    elseif err:find("MDB_MAP_FULL", nil, true) then
-      return nil, "map full"
+      plugins_hash = hashes.plugins
 
-    else
+      local upstreams_hash = hashes.upstreams
+      local targets_hash   = hashes.targets
+      if upstreams_hash ~= DECLARATIVE_EMPTY_CONFIG_HASH or
+         targets_hash   ~= DECLARATIVE_EMPTY_CONFIG_HASH
+      then
+        balancer_hash = md5(upstreams_hash .. targets_hash)
+      else
+        balancer_hash = DECLARATIVE_EMPTY_CONFIG_HASH
+      end
+    end
+
+    local reconfigure_data = {
+      default_ws,
+      router_hash,
+      plugins_hash,
+      balancer_hash,
+    }
+
+    ok, err = events.declarative_reconfigure_notify(reconfigure_data)
+    if not ok then
       return nil, err
     end
 

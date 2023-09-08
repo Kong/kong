@@ -657,6 +657,8 @@ do
     local ok, err = concurrency.with_coroutine_mutex(RECONFIGURE_OPTS, function()
       -- below you are encouraged to yield for cooperative threading
 
+      kong.vault.flush()
+
       local rebuild_balancer = balancer_hash ~= CURRENT_BALANCER_HASH
       if rebuild_balancer then
         log(DEBUG, "stopping previously started health checkers on worker #", worker_id)
@@ -682,8 +684,6 @@ do
       local plugins_iterator
       if plugins_hash ~= CURRENT_PLUGINS_HASH then
         local start = get_now_ms()
-
-        kong.vault.flush()
         plugins_iterator, err = new_plugins_iterator()
         if not plugins_iterator then
           return nil, err
@@ -1194,6 +1194,9 @@ return {
 
       -- trace router
       local span = instrumentation.router()
+      -- create the balancer span "in advance" so its ID is available
+      -- to plugins in the access phase for doing headers propagation
+      instrumentation.precreate_balancer_span(ctx)
 
       -- routing request
       local router = get_updated_router()

@@ -966,26 +966,26 @@
                                   # `text/html`, `application/json`, and
                                   # `application/xml`.
 
-#upstream_keepalive_pool_size = 60  # Sets the default size of the upstream
-                                    # keepalive connection pools.
-                                    # Upstream keepalive connection pools
-                                    # are segmented by the `dst ip/dst
-                                    # port/SNI` attributes of a connection.
-                                    # A value of `0` will disable upstream
-                                    # keepalive connections by default, forcing
-                                    # each upstream request to open a new
-                                    # connection.
+#upstream_keepalive_pool_size = 512  # Sets the default size of the upstream
+                                     # keepalive connection pools.
+                                     # Upstream keepalive connection pools
+                                     # are segmented by the `dst ip/dst
+                                     # port/SNI` attributes of a connection.
+                                     # A value of `0` will disable upstream
+                                     # keepalive connections by default, forcing
+                                     # each upstream request to open a new
+                                     # connection.
 
-#upstream_keepalive_max_requests = 100  # Sets the default maximum number of
-                                        # requests than can be proxied upstream
-                                        # through one keepalive connection.
-                                        # After the maximum number of requests
-                                        # is reached, the connection will be
-                                        # closed.
-                                        # A value of `0` will disable this
-                                        # behavior, and a keepalive connection
-                                        # can be used to proxy an indefinite
-                                        # number of requests.
+#upstream_keepalive_max_requests = 1000  # Sets the default maximum number of
+                                         # requests than can be proxied upstream
+                                         # through one keepalive connection.
+                                         # After the maximum number of requests
+                                         # is reached, the connection will be
+                                         # closed.
+                                         # A value of `0` will disable this
+                                         # behavior, and a keepalive connection
+                                         # can be used to proxy an indefinite
+                                         # number of requests.
 
 #upstream_keepalive_idle_timeout = 60   # Sets the default timeout (in seconds)
                                         # for which an upstream keepalive
@@ -1142,6 +1142,16 @@
                                                 # in the worker process level compiled regex cache.
                                                 # It is recommended to set it to at least (number of regex paths * 2)
                                                 # to avoid high CPU usages.
+
+#nginx_http_keepalive_requests = 1000  # Sets the maximum number of client requests that can be served through one
+                                       # keep-alive connection. After the maximum number of requests are made,
+                                       # the connection is closed.
+                                       # Closing connections periodically is necessary to free per-connection
+                                       # memory allocations. Therefore, using too high maximum number of requests
+                                       # could result in excessive memory usage and not recommended.
+                                       # See: https://nginx.org/en/docs/http/ngx_http_core_module.html#keepalive_requests
+
+
 
 #------------------------------------------------------------------------------
 # DATASTORE

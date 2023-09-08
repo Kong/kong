@@ -1,0 +1,7 @@
+message: "**Opentelemetry**: fix an issue that resulted in invalid parent IDs in the propagated tracing headers"
+type: bugfix
+scope: Plugin
+prs:
+  - 11468
+jiras:
+  - "KAG-2281"

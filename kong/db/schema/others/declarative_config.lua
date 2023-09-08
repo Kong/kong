@@ -830,6 +830,10 @@ local function flatten(self, input)
         end
       end
 
+      if schema.ttl and entry.ttl and entry.ttl ~= null then
+        flat_entry.ttl = entry.ttl
+      end
+
       entities[entity][id] = flat_entry
     end
   end
