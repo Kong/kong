@@ -197,14 +197,24 @@ for _, strategy in helpers.each_strategy() do
         assert.match("Executed migrations:", stdout, 1, true)
 
         if strategy ~= "off" then
-        local db = init_db()
-        -- valid CQL and SQL; don't expect to go over one page in CQL here
-        local rows = db.connector:query([[SELECT * FROM schema_meta;]])
-        local n = 0
-        for _, row in ipairs(rows) do
-          n = n + #row.executed
-        end
-        assert.same(nr_migrations, n)
+          -- to avoid postgresql error:
+          -- [PostgreSQL error] failed to retrieve PostgreSQL server_version_num: receive_message:
+          -- failed to get type: timeout
+          -- when testing on ARM64 platform which has low single-core performance
+
+          local pok, db
+          helpers.wait_until(function()
+            pok, db = pcall(init_db)
+            return pok
+          end, 10)
+
+          -- valid CQL and SQL; don't expect to go over one page in CQL here
+          local rows = db.connector:query([[SELECT * FROM schema_meta;]])
+          local n = 0
+          for _, row in ipairs(rows) do
+            n = n + #row.executed
+          end
+          assert.same(nr_migrations, n)
         end
       end)
 
@@ -431,4 +441,21 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
+
+  describe("sanity: make sure postgres server is not overloaded", function()
+    local do_it = strategy == "off" and pending or it
+
+    do_it("", function()
+      helpers.wait_until(function()
+        local ok, err = pcall(init_db)
+        if err then
+          print(err)
+        end
+        return ok
+      end, 30, 1)
+    end)
+
+  end)
+
 end
+

@@ -448,6 +448,11 @@ jobs:
         luarocks --version || true
         luarocks config || true
 
+    - name: Tune up postgres max_connections
+      run: |
+        # arm64 runners may use more connections due to more worker cores
+        psql -hlocalhost -Ukong kong -tAc 'alter system set max_connections = 5000;'
+
     - name: Tests
       env:
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
