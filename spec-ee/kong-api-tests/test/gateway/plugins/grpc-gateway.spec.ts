@@ -14,9 +14,9 @@ import {
   isLocalDatabase,
 } from '@support';
 
-describe.skip('Gateway Plugins: gRPC-gateway', function () {
-  const grpcUrl = 'grpc://grpcb.in:9000';
-  const grpcSecureUrl = 'grpcs://grpcb.in:9001';
+describe('Gateway Plugins: gRPC-gateway', function () {
+  const grpcUrl = 'grpc://grpcbin:9000';
+  const grpcSecureUrl = 'grpcs://grpcbin:9001';
   const protoFile = 'hello-gateway.proto';
   const protoPath = '/usr/local/kong/protos/';
   const alternateProtoFile = 'hello-gateway-2.proto';
