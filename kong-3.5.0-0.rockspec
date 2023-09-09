@@ -33,7 +33,7 @@ dependencies = {
   "lua-protobuf == 0.5.0",
   "lua-resty-healthcheck == 1.6.3",
   "lua-messagepack == 0.5.2",
-  "lua-resty-aws == 1.3.2",
+  "lua-resty-aws == 1.3.4",
   "lua-resty-openssl == 0.8.25",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
@@ -150,6 +150,7 @@ build = {
     ["kong.status"] = "kong/status/init.lua",
     ["kong.status.ready"] = "kong/status/ready.lua",
 
+    ["kong.tools.aws"] = "kong/tools/aws.lua",
     ["kong.tools.dns"] = "kong/tools/dns.lua",
     ["kong.tools.grpc"] = "kong/tools/grpc.lua",
     ["kong.tools.utils"] = "kong/tools/utils.lua",
