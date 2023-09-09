@@ -15,12 +15,12 @@ local request_util = require "kong.plugins.aws-lambda.request-util"
 local build_request_payload = request_util.build_request_payload
 local extract_proxy_response = request_util.extract_proxy_response
 
-local aws = require("resty.aws")
-local AWS_GLOBAL_CONFIG
+local aws_config = require("resty.aws.config")
+local tools_aws = require("kong.tools.aws")
 local AWS_REGION do
   AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
 end
-local AWS
+
 local LAMBDA_SERVICE_CACHE = setmetatable({}, { __mode = "k" })
 
 
@@ -35,18 +35,12 @@ local AWSLambdaHandler = {
   VERSION = meta.version
 }
 
-function AWSLambdaHandler:init()
-  AWS_GLOBAL_CONFIG = require("resty.aws.config").global
-  AWS = aws()
-end
-
-
 function AWSLambdaHandler:access(conf)
-  -- The region in plugin configuraion has higher priority
+  -- The region in plugin configuration has higher priority
   -- than the one in environment variable
   local region = conf.aws_region or AWS_REGION
   if not region then
-    return error("no region specified")
+    return error("no region specified in configuration or environment")
   end
 
   local host = conf.host or fmt("lambda.%s.amazonaws.com", region)
@@ -56,14 +50,15 @@ function AWSLambdaHandler:access(conf)
   local endpoint = fmt("%s://%s", scheme, host)
 
   local lambda_service = LAMBDA_SERVICE_CACHE[conf]
+  local aws = tools_aws()
   if not lambda_service then
-    local credentials = AWS.config.credentials
+    local credentials = aws.config.credentials
     -- Override credential config according to plugin config
     -- Note that we will not override the credential in AWS
     -- singleton directly because it may be needed for other
     -- scenario
     if conf.aws_key then
-      local creds = AWS:Credentials {
+      local creds = aws:Credentials {
         accessKeyId = conf.aws_key,
         secretAccessKey = conf.aws_secret,
       }
@@ -74,12 +69,12 @@ function AWSLambdaHandler:access(conf)
       -- If plugin config has proxy, then EKS IRSA might
       -- need it as well, so we need to re-init the AWS
       -- IRSA credential provider
-      and AWS_GLOBAL_CONFIG.AWS_WEB_IDENTITY_TOKEN_FILE
-      and AWS_GLOBAL_CONFIG.AWS_ROLE_ARN then
-        local creds = AWS:TokenFileWebIdentityCredentials()
-        creds.sts = AWS:STS({
+      and aws_config.global.AWS_WEB_IDENTITY_TOKEN_FILE
+      and aws_config.global.AWS_ROLE_ARN then
+        local creds = aws:TokenFileWebIdentityCredentials()
+        creds.sts = aws:STS({
           region = region,
-          stsRegionalEndpoints = AWS_GLOBAL_CONFIG.sts_regional_endpoints,
+          stsRegionalEndpoints = aws_config.global.sts_regional_endpoints,
           ssl_verify = false,
           http_proxy = conf.proxy_url,
           https_proxy = conf.proxy_url,
@@ -90,10 +85,10 @@ function AWSLambdaHandler:access(conf)
 
     -- Assume role based on configuration
     if conf.aws_assume_role_arn then
-      local sts, err = AWS:STS({
+      local sts, err = aws:STS({
         credentials = credentials,
         region = region,
-        stsRegionalEndpoints = AWS_GLOBAL_CONFIG.sts_regional_endpoints,
+        stsRegionalEndpoints = aws_config.global.sts_regional_endpoints,
         ssl_verify = false,
         http_proxy = conf.proxy_url,
         https_proxy = conf.proxy_url,
@@ -102,7 +97,7 @@ function AWSLambdaHandler:access(conf)
         return error(fmt("unable to create AWS STS (%s)", err))
       end
 
-      local sts_creds = AWS:ChainableTemporaryCredentials {
+      local sts_creds = aws:ChainableTemporaryCredentials {
         params = {
           RoleArn = conf.aws_assume_role_arn,
           RoleSessionName = conf.aws_role_session_name,
@@ -114,7 +109,7 @@ function AWSLambdaHandler:access(conf)
     end
 
     -- Create a new Lambda service object
-    lambda_service = AWS:Lambda({
+    lambda_service = aws:Lambda({
       credentials = credentials,
       region = region,
       endpoint = endpoint,
