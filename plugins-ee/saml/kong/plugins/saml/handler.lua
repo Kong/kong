@@ -185,7 +185,12 @@ function SAMLHandler:access(config)
         },
       },
     })
-    session:save()
+    local ok, err = session:save()
+    if not ok then
+      local message = "Cannot save session data"
+      log.err(message .. ": " .. err or "(no error information provided)")
+      return kong.response.exit(500, { message = message })
+    end
 
     log("forwarding client to original " .. relay_state.verb .. " " .. relay_state.uri)
 

@@ -9,6 +9,7 @@ local xmlua   = require "xmlua"
 local redis   = require "resty.redis"
 local http    = require "resty.http"
 local xpath   = require "kong.plugins.saml.utils.xpath"
+local tablex  = require "pl.tablex"
 
 local version = require "version"
 local helpers = require "spec.helpers"
@@ -239,43 +240,39 @@ for _, strategy in helpers.all_strategies() do
 
             local idp_cert = retrieve_cert_from_idp()
 
+            local function plugin_config(params)
+              return tablex.merge(
+                {
+                  session_secret = SESSION_SECRET,
+                  session_redis_host = REDIS_HOST,
+                  session_redis_username = REDIS_USER_VALID,
+                  session_redis_password = REDIS_PASSWORD,
+                  session_memcached_host = MEMCACHED_HOST,
+                  session_storage = session_storage,
+                  validate_assertion_signature = false,
+                  issuer    = ISSUER_URL,
+                  assertion_consumer_path = "/consume",
+                  idp_sso_url = IDP_SSO_URL,
+                  nameid_format = "EmailAddress",
+                  idp_certificate = idp_cert,
+                },
+                params or {},
+                true
+              )
+            end
+
             bp.plugins:insert {
               route   = route_anon,
               name    = PLUGIN_NAME,
-              config  = {
-                issuer    = ISSUER_URL,
-                assertion_consumer_path = "/consume",
-                idp_sso_url = IDP_SSO_URL,
-                nameid_format = "EmailAddress",
-                idp_certificate = idp_cert,
-                session_secret = SESSION_SECRET,
-                session_redis_host = REDIS_HOST,
-                session_redis_username = REDIS_USER_VALID,
-                session_redis_password = REDIS_PASSWORD,
-                session_memcached_host = MEMCACHED_HOST,
-                session_storage = session_storage,
-                validate_assertion_signature = false,
+              config  = plugin_config({
                 anonymous = anon.id,
-              },
+              }),
             }
 
             bp.plugins:insert {
               route   = route_non_anon,
               name    = PLUGIN_NAME,
-              config  = {
-                issuer    = ISSUER_URL,
-                assertion_consumer_path = "/consume",
-                idp_sso_url = IDP_SSO_URL,
-                nameid_format = "EmailAddress",
-                idp_certificate = idp_cert,
-                session_secret = SESSION_SECRET,
-                session_redis_host = REDIS_HOST,
-                session_redis_username = REDIS_USER_VALID,
-                session_redis_password = REDIS_PASSWORD,
-                session_memcached_host = MEMCACHED_HOST,
-                session_storage = session_storage,
-                validate_assertion_signature = false,
-              },
+              config  = plugin_config(),
             }
 
             local cookie_route = bp.routes:insert {
@@ -285,25 +282,30 @@ for _, strategy in helpers.all_strategies() do
             bp.plugins:insert {
               route = cookie_route,
               name = PLUGIN_NAME,
-              config = {
-                issuer = ISSUER_URL,
-                assertion_consumer_path = "/consume",
+              config = plugin_config({
                 session_cookie_http_only = false,
                 session_cookie_domain = "example.org",
                 session_cookie_path = "/test",
                 session_cookie_same_site = "Default",
                 session_cookie_secure = true,
-                idp_sso_url = IDP_SSO_URL,
-                nameid_format = "EmailAddress",
-                idp_certificate = idp_cert,
-                session_secret = SESSION_SECRET,
-                session_redis_host = REDIS_HOST,
-                session_redis_username = REDIS_USER_VALID,
-                session_redis_password = REDIS_PASSWORD,
-                session_memcached_host = MEMCACHED_HOST,
-                session_storage = session_storage,
-                validate_assertion_signature = false,
-              },
+              }),
+            }
+
+            local bad_cookie_route = bp.routes:insert {
+              paths   = { "/cookie-tst-bad" },
+            }
+
+            bp.plugins:insert {
+              route = bad_cookie_route,
+              name = PLUGIN_NAME,
+              config = plugin_config({
+                session_redis_password = "this is not the redis password",
+                session_cookie_http_only = false,
+                session_cookie_domain = "example.org",
+                session_cookie_path = "/test",
+                session_cookie_same_site = "Default",
+                session_cookie_secure = true,
+              }),
             }
 
             assert(helpers.start_kong({
@@ -326,6 +328,27 @@ for _, strategy in helpers.all_strategies() do
               proxy_client:close()
             end
         end)
+
+        if session_storage == "redis" then
+          it("aborts the login flow when the redis configuration is incorrect", function()
+            local res = proxy_client:get("/cookie-tst-bad", {
+              headers = {
+                ["Host"] = "kong",
+                ["Accept"] = "text/html"
+              }
+            })
+
+            local saml_response, relay_state = sp_init_flow(res, USERNAME, PASSWORD)
+            local response = proxy_client:post("/cookie-tst-bad/consume", {
+              headers = {
+                ["Host"] = "kong",
+                ["Content-Type"] = "application/x-www-form-urlencoded",
+              },
+              body = "SAMLResponse=" .. ngx.escape_uri(saml_response) .. "&RelayState=" .. ngx.escape_uri(relay_state),
+            })
+            assert.equal(500, response.status)
+          end)
+        end
 
         it("correctly configures cookie attributes", function()
           local res = proxy_client:get("/cookie-tst", {
