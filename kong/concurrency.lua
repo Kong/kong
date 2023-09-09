@@ -135,4 +135,42 @@ function concurrency.with_coroutine_mutex(opts, fn)
 end
 
 
+do
+  ---
+  -- Return a worker-level singleton variable, which is a variable that is initialized once per worker
+  -- @tparam string name of the variable
+  -- @tparam function initialization function
+  -- @treturn any value of initialized singleton variable
+
+  local singletons = {}
+
+  function concurrency.get_worker_singleton(name, init)
+    if not singletons[name] then
+      if get_phase() == "init_worker" or ngx.IS_CLI then
+        singletons[name] = init()
+      else
+        concurrency.with_coroutine_mutex(
+                {
+                  name = "init-singleton:" .. name,
+                  timeout = 0
+                },
+                function()
+                  -- Need to check whether some other thread got to initialize the singleton already
+                  if not singletons[name] then
+                    local ok, value, err = pcall(init)
+                    if not ok then
+                      kong.log.err("Failed to call singleton initialization function: ", value)
+                    end
+                    if not value then
+                      kong.log.err("Singleton initialization function returned error: ", err)
+                    end
+                    singletons[name] = value
+                  end
+                end)
+      end
+    end
+    return singletons[name]
+  end
+end
+
 return concurrency
