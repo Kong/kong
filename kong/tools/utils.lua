@@ -1795,6 +1795,7 @@ _M.sha256_base64url = sha256_base64url
 
 local get_now_ms
 local get_updated_now_ms
+local get_start_time_ms
 do
   local now           = ngx.now
   local update_time   = ngx.update_time
