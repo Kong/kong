@@ -537,6 +537,13 @@ language you are using. :smile:
 
 [Back to TOC](#table-of-contents)
 
+#### Adding Changelog
+
+Every patch, except those 
+documentation-only changes, require a changelog entry to present.
+
+Please follow [instruction](#https://github.com/Kong/kong/tree/master/CHANGELOG) to include in your Pull Request.
+
 ### Contributor T-shirt
 
 If your Pull Request to [Kong/kong](https://github.com/Kong/kong) was
