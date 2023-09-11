@@ -200,4 +200,10 @@ return {
       "using_pseudo_issuer",
     },
   },
+
+  [3005000000] = {
+    cors = {
+      "private_network",
+    }
+  }
 }

@@ -235,6 +235,11 @@ function CorsHandler:access(conf)
     set_header("Access-Control-Max-Age", tostring(conf.max_age))
   end
 
+  if conf.private_network and
+    kong.request.get_header("Access-Control-Request-Private-Network") == 'true' then
+      set_header("Access-Control-Allow-Private-Network", 'true')
+  end
+
   return kong.response.exit(HTTP_OK)
 end
 
