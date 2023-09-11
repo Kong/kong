@@ -96,7 +96,7 @@ describe('Gateway Plugins: key-auth-enc', function () {
     );
 
     pluginId = resp.data.id;
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+    await wait(waitTime);
   });
 
   // This test case captures:
@@ -115,7 +115,7 @@ describe('Gateway Plugins: key-auth-enc', function () {
     expect(resp.data.ttl, 'Should contain ttl value').to.be.a('number');
 
     keyId = resp.data.key;
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+    await wait(waitTime);
   });
 
   it('key-auth-enc: should not proxy request without supplying apiKey', async function () {
@@ -158,14 +158,12 @@ describe('Gateway Plugins: key-auth-enc', function () {
     logResponse(resp);
 
     expect(resp.status, 'Status should be 200').to.equal(200);
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+    await wait(waitTime);
   });
 
-  // skipped in hybrid until https://konghq.atlassian.net/browse/FTI-4512 is resolved
+  // This test case captures:
+  // https://konghq.atlassian.net/browse/FTI-4512
   it('key-auth-enc: should not proxy request with apiKey in header after ttl expiration', async function () {
-    if (isHybrid) {
-      this.skip();
-    }
     const validTokenHeaders = {
       apiKey: keyId,
     };
@@ -178,11 +176,9 @@ describe('Gateway Plugins: key-auth-enc', function () {
     );
   });
 
-  // skipped in hybrid until https://konghq.atlassian.net/browse/FTI-4512 is resolved
+  // This test case captures:
+  // https://konghq.atlassian.net/browse/FTI-4512
   it('key-auth-enc: should not proxy request with apiKey in query param after ttl expiration', async function () {
-    if (isHybrid) {
-      this.skip();
-    }
     const queryUrl = `${proxyUrl}${path}?apiKey=${keyId}`;
 
     const resp = await getNegative(`${queryUrl}`);
