@@ -96,4 +96,10 @@ return {
       "response_headers",
     },
   },
+
+  [3005000000] = {
+    cors = {
+      "private_network",
+    }
+  }
 }
