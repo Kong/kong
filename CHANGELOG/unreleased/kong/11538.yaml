@@ -1,0 +1,7 @@
+message: Fix an issue that protocol `tls_passthrough` can not work with expressions flavor
+type: bugfix
+scope: Core
+prs:
+  - 11538
+jiras:
+issues:
