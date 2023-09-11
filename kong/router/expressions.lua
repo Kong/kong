@@ -13,7 +13,7 @@ local LOGICAL_AND = atc.LOGICAL_AND
 
 -- map to normal protocol
 local PROTOCOLS_OVERRIDE = {
-  tls_passthrough = "tcp",
+  tls_passthrough = "tls",
   grpc            = "http",
   grpcs           = "https",
 }
