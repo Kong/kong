@@ -3,3 +3,5 @@ type: bugfix
 scope: Core
 prs:
   - 11538
+jiras:
+  - "KAG-2561"
