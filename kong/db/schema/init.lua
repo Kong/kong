@@ -1586,15 +1586,9 @@ local function adjust_field_for_context(field, value, context, nulls, opts)
     end
 
     if subfield then
-      if field.type ~= "map" then
-        for i = 1, #value do
-          value[i] = adjust_field_for_context(subfield, value[i], context, nulls, opts)
-        end
-
-      else
-        for k, v in pairs(value) do
-          value[k] = adjust_field_for_context(subfield, v, context, nulls, opts)
-        end
+      -- uses pairs also for arrays and sets as well as maps, as there can be holes
+      for k, v in pairs(value) do
+        value[k] = adjust_field_for_context(subfield, v, context, nulls, opts)
       end
     end
   end
@@ -1757,7 +1751,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
                 kong.log.warn("unable to resolve reference ", value)
               end
 
-              value = nil
+              value = ""
             end
 
           elseif prev_refs and prev_refs[key] then
@@ -1796,7 +1790,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
                       kong.log.warn("unable to resolve reference ", value[i])
                     end
 
-                    value[i] = nil
+                    value[i] = ""
                   end
                 end
               end
@@ -1842,7 +1836,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
                       kong.log.warn("unable to resolve reference ", v)
                     end
 
-                    value[k] = nil
+                    value[k] = ""
                   end
                 end
               end
@@ -1881,7 +1875,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
   for key in pairs(data) do
     local field = self.fields[key]
     if field then
-      if field.type == "string" and (field.len_min or 1) > 0 and data[key] == ""
+      if field.type == "string" and (field.len_min or 1) > 0 and data[key] == "" and not (refs and refs[key])
       then
         data[key] = nulls and null or nil
       end

@@ -19,15 +19,17 @@ local pairs         = pairs
 local ipairs        = ipairs
 local assert        = assert
 
+local var          = ngx.var
 local null         = ngx.null
+local subsystem    = ngx.config.subsystem
 local format       = string.format
 local fetch_table  = tablepool.fetch
 local release_table = tablepool.release
 
+
 local TTL_ZERO          = { ttl = 0 }
 local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 
-local subsystem = ngx.config.subsystem
 
 local NON_COLLECTING_PHASES, DOWNSTREAM_PHASES, DOWNSTREAM_PHASES_COUNT, COLLECTING_PHASE,
     WS_DOWNSTREAM_PHASES, WS_DOWNSTREAM_PHASES_COUNT, WS_COLLECTING_PHASE
@@ -430,15 +432,25 @@ local function get_next_global_or_collected_plugin(plugins, i)
   if i > plugins[0] then
     return nil
   end
-  local cfg = kong.vault.update(plugins[i])
-  return i, plugins[i - 1], cfg
+
+  return i, plugins[i - 1], plugins[i]
 end
 
 
 local function get_global_iterator(self, phase)
   local plugins = self.globals[phase]
-  if not plugins or plugins[0] == 0 then
+  local count = plugins and plugins[0] or 0
+  if count == 0 then
     return nil
+  end
+
+  -- only execute this once per request
+  if phase == "certificate" or (phase == "rewrite" and var.https ~= "on") then
+    local i = 2
+    while i <= count do
+      kong.vault.update(plugins[i])
+      i = i + 2
+    end
   end
 
   return get_next_global_or_collected_plugin, plugins
@@ -476,7 +488,7 @@ local function get_next_and_collect(ctx, i)
   if combos then
     cfg = load_configuration_through_combos(ctx, combos, plugin)
     if cfg then
-      cfg = kong.vault.update(cfg)
+      kong.vault.update(cfg)
       local handler = plugin.handler
       local collected = ctx.plugins
       local collecting_phase

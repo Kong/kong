@@ -546,6 +546,10 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
     statement_name = "page" .. suffix
   end
 
+  if options and options.export then
+    statement_name = statement_name .. "_for_export"
+  end
+
   if token then
     local token_decoded = decode_base64(token)
     if not token_decoded then
@@ -1097,6 +1101,7 @@ function _M.new(connector, schema, errors)
     ws_id_select_where = "(" .. ws_id_escaped .. " = $0)"
   end
 
+  local select_for_export_expressions
   local ttl_select_where
   if has_ttl then
     fields_hash.ttl = { timestamp = true }
@@ -1104,6 +1109,13 @@ function _M.new(connector, schema, errors)
     insert(insert_names, "ttl")
     insert(insert_expressions, "$" .. #insert_names)
     insert(insert_columns, ttl_escaped)
+
+    select_for_export_expressions = concat {
+      select_expressions, ",",
+      "FLOOR(EXTRACT(EPOCH FROM (",
+        ttl_escaped, " AT TIME ZONE 'UTC'",
+      "))) AS ", ttl_escaped
+    }
 
     select_expressions = concat {
       select_expressions, ",",
@@ -1153,6 +1165,7 @@ function _M.new(connector, schema, errors)
   self.statements["truncate_global"] = self.statements["truncate"]
 
   local add_statement
+  local add_statement_for_export
   do
     local function add(name, opts, add_ws)
       local orig_argn = opts.argn
@@ -1180,6 +1193,14 @@ function _M.new(connector, schema, errors)
     add_statement = function(name, opts)
       add(name .. "_global", opts, false)
       add(name, opts, true)
+    end
+
+    add_statement_for_export = function(name, opts)
+      add_statement(name, opts)
+      if has_ttl then
+        opts.code[2] = select_for_export_expressions
+        add_statement(name .. "_for_export", opts)
+      end
     end
   end
 
@@ -1256,7 +1277,7 @@ function _M.new(connector, schema, errors)
     }
   })
 
-  add_statement("page_first", {
+  add_statement_for_export("page_first", {
     operation = "read",
     argn = { LIMIT },
     argv = single_args,
@@ -1271,7 +1292,7 @@ function _M.new(connector, schema, errors)
     }
   })
 
-  add_statement("page_next", {
+  add_statement_for_export("page_next", {
     operation = "read",
     argn = page_next_names,
     argv = page_next_args,
@@ -1447,7 +1468,7 @@ function _M.new(connector, schema, errors)
 
       local statement_name = "page_for_" .. foreign_entity_name
 
-      add_statement(statement_name .. "_first", {
+      add_statement_for_export(statement_name .. "_first", {
         operation = "read",
         argn = argn_first,
         argv = argv_first,
@@ -1463,7 +1484,7 @@ function _M.new(connector, schema, errors)
         }
       })
 
-      add_statement(statement_name .. "_next", {
+      add_statement_for_export(statement_name .. "_next", {
         operation = "read",
         argn = argn_next,
         argv = argv_next,
@@ -1498,7 +1519,7 @@ function _M.new(connector, schema, errors)
 
     for cond, op in pairs({["_and"] = "@>", ["_or"] = "&&"}) do
 
-      add_statement("page_by_tags" .. cond .. "_first", {
+      add_statement_for_export("page_by_tags" .. cond .. "_first", {
         operation = "read",
         argn = argn_first,
         argv = {},
@@ -1514,7 +1535,7 @@ function _M.new(connector, schema, errors)
         },
       })
 
-      add_statement("page_by_tags" .. cond .. "_next", {
+      add_statement_for_export("page_by_tags" .. cond .. "_next", {
         operation = "read",
         argn = argn_next,
         argv = {},

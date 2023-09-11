@@ -16,7 +16,8 @@
         "bugfix",
         "dependency",
         "deprecation",
-        "breaking_change"
+        "breaking_change",
+        "performance"
       ]
     },
     "scope": {

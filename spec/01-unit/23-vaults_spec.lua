@@ -41,6 +41,7 @@ describe("Vault PDK", function()
   local parse_reference
   local dereference
   local try
+  local update
 
   before_each(function()
     local conf = assert(conf_loader(nil, {
@@ -56,6 +57,7 @@ describe("Vault PDK", function()
     parse_reference = _G.kong.vault.parse_reference
     dereference = _G.kong.vault.get
     try = _G.kong.vault.try
+    update = _G.kong.vault.update
 
     vaults = {}
 
@@ -228,7 +230,7 @@ describe("Vault PDK", function()
       assert.equal("{vault://env/credentials/username}", options["$refs"].username)
       assert.equal("{vault://env/credentials/password}", options["$refs"].password)
 
-      -- has a cache that can be used for rate-limiting
+      -- updates values before first call from caches
 
       called = 0
       options = {
@@ -240,26 +242,173 @@ describe("Vault PDK", function()
         },
       }
 
-      helpers.unsetenv("CREDENTIALS")
-
-      -- re-initialize env vault to clear cached values
-
-      local env = require "kong.vaults.env"
-      env.init()
-
-      -- if we slept for 10 secs here, the below would fail as rate-limiting
-      -- cache would have been cleared
-
       local ok, err = try(callback, options)
 
       assert.is_nil(err)
       assert.True(ok)
-      assert.equal(2, called)
+      assert.equal(1, called)
 
       assert.equal("jane", options.username)
       assert.equal("qwerty", options.password)
       assert.equal("{vault://env/credentials/username}", options["$refs"].username)
       assert.equal("{vault://env/credentials/password}", options["$refs"].password)
+    end)
+  end)
+
+  describe("update function", function()
+    it("sets values to empty string on failure", function()
+      finally(function()
+        helpers.unsetenv("CREDENTIALS")
+      end)
+
+      helpers.setenv("CREDENTIALS", '{"username":"jane","password":"qwerty"}')
+
+      -- warmup cache
+      dereference("{vault://env/credentials/username}")
+      dereference("{vault://env/credentials/password}")
+
+      local config = {
+        str_found = "found",
+        str_not_found = "not found",
+        str_not_found_2 = "not found",
+        arr_found = { "found", "found", "found", "found", "found" },
+        arr_hole = { "found", "found", "not found", "found", "found" },
+        arr_not_found = { "found", "not found", "not found", "not found", "found" },
+        map_found = {
+          nil,
+          "found",
+          a = "found",
+          b = "found",
+          c = "found",
+          d = "found",
+        },
+        map_not_found = {
+          nil,
+          "found",
+          a = "found",
+          b = "found",
+          c = "found",
+          d = "found",
+        },
+        ["$refs"] = {
+          str_found = "{vault://env/credentials/username}",
+          str_not_found = "{vault://env/not-found}",
+          str_not_found_2 = "{vault://env/credentials/not-found}",
+          arr_found = {
+            nil,
+            "{vault://env/credentials/username}",
+            "{vault://env/credentials/password}",
+            "{vault://env/credentials/username}",
+          },
+          arr_hole = {
+            nil,
+            "{vault://env/credentials/username}",
+            "{vault://env/credentials/not-found}",
+            "{vault://env/credentials/username}",
+          },
+          arr_not_found = {
+            nil,
+            "{vault://env/not-found}",
+            "{vault://env/credentials/not-found}",
+            "{vault://env/not-found}",
+          },
+          map_found = {
+            a = "{vault://env/credentials/username}",
+            b = "{vault://env/credentials/password}",
+            c = "{vault://env/credentials/username}",
+          },
+          map_not_found = {
+            a = "{vault://env/not-found}",
+            b = "{vault://env/credentials/not-found}",
+            c = "{vault://env/not-found}",
+          }
+        },
+        sub = {
+          str_found = "found",
+          str_not_found = "not found",
+          str_not_found_2 = "not found",
+          arr_found = { "found", "found", "found", "found", "found" },
+          arr_hole = { "found", "found", "not found", "found", "found" },
+          arr_not_found = { "found", "not found", "not found", "not found", "found" },
+          map_found = {
+            nil,
+            "found",
+            a = "found",
+            b = "found",
+            c = "found",
+            d = "found",
+          },
+          map_not_found = {
+            nil,
+            "found",
+            a = "found",
+            b = "found",
+            c = "found",
+            d = "found",
+          },
+          ["$refs"] = {
+            str_found = "{vault://env/credentials/username}",
+            str_not_found = "{vault://env/not-found}",
+            str_not_found_2 = "{vault://env/credentials/not-found}",
+            arr_found = {
+              nil,
+              "{vault://env/credentials/username}",
+              "{vault://env/credentials/password}",
+              "{vault://env/credentials/username}",
+            },
+            arr_hole = {
+              nil,
+              "{vault://env/credentials/username}",
+              "{vault://env/credentials/not-found}",
+              "{vault://env/credentials/username}",
+            },
+            arr_not_found = {
+              nil,
+              "{vault://env/not-found}",
+              "{vault://env/credentials/not-found}",
+              "{vault://env/not-found}",
+            },
+            map_found = {
+              a = "{vault://env/credentials/username}",
+              b = "{vault://env/credentials/password}",
+              c = "{vault://env/credentials/username}",
+            },
+            map_not_found = {
+              a = "{vault://env/not-found}",
+              b = "{vault://env/credentials/not-found}",
+              c = "{vault://env/not-found}",
+            }
+          },
+        },
+      }
+
+      local updated_cfg = update(config)
+      assert.equal(config, updated_cfg)
+
+      for _, cfg in ipairs({ config, config.sub }) do
+        assert.equal("jane", cfg.str_found)
+        assert.equal("", cfg.str_not_found)
+        assert.equal("", cfg.str_not_found_2)
+        assert.same({ "found", "jane", "qwerty", "jane", "found" }, cfg.arr_found)
+        assert.same({ "found", "jane", "", "jane", "found" }, cfg.arr_hole)
+        assert.same({ "found", "", "", "", "found" }, cfg.arr_not_found)
+        assert.same({
+          nil,
+          "found",
+          a = "jane",
+          b = "qwerty",
+          c = "jane",
+          d = "found",
+        }, cfg.map_found)
+        assert.same({
+          nil,
+          "found",
+          a = "",
+          b = "",
+          c = "",
+          d = "found",
+        }, cfg.map_not_found)
+      end
     end)
   end)
 end)

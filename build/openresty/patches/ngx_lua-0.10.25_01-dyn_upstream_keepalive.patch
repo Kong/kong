@@ -1,6 +1,7 @@
-diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c
---- a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c	2022-12-02 10:58:50.054203731 +0800
-+++ b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c	2022-12-05 18:22:15.351308080 +0800
+diff --git a/bundle/ngx_lua-0.10.25/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-0.10.25/src/ngx_http_lua_balancer.c
+index af4da73..407c115 100644
+--- a/bundle/ngx_lua-0.10.25/src/ngx_http_lua_balancer.c
++++ b/bundle/ngx_lua-0.10.25/src/ngx_http_lua_balancer.c
 @@ -16,46 +16,104 @@
  #include "ngx_http_lua_directive.h"
  
@@ -37,34 +38,34 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
 +    ngx_uint_t                              total_tries;
 +
 +    int                                     last_peer_state;
-+
-+    ngx_str_t                               cpool_name;
  
 -    ngx_http_lua_srv_conf_t            *conf;
 -    ngx_http_request_t                 *request;
-+    void                                   *data;
++    ngx_str_t                               cpool_name;
  
 -    ngx_uint_t                          more_tries;
 -    ngx_uint_t                          total_tries;
-+    ngx_event_get_peer_pt                   original_get_peer;
-+    ngx_event_free_peer_pt                  original_free_peer;
++    void                                   *data;
  
 -    struct sockaddr                    *sockaddr;
 -    socklen_t                           socklen;
++    ngx_event_get_peer_pt                   original_get_peer;
++    ngx_event_free_peer_pt                  original_free_peer;
++
 +#if (NGX_HTTP_SSL)
 +    ngx_event_set_peer_session_pt           original_set_session;
 +    ngx_event_save_peer_session_pt          original_save_session;
 +#endif
-+
+ 
+-    ngx_str_t                          *host;
+-    in_port_t                           port;
 +    ngx_http_request_t                     *request;
 +    ngx_http_lua_srv_conf_t                *conf;
 +    ngx_http_lua_balancer_keepalive_pool_t *cpool;
  
--    ngx_str_t                          *host;
--    in_port_t                           port;
-+    ngx_str_t                              *host;
- 
 -    int                                 last_peer_state;
++    ngx_str_t                              *host;
++
 +    struct sockaddr                        *sockaddr;
 +    socklen_t                               socklen;
 +
@@ -126,7 +127,7 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
  
  
  ngx_int_t
-@@ -102,6 +160,61 @@
+@@ -102,6 +160,61 @@ ngx_http_lua_balancer_handler_inline(ngx_http_request_t *r,
  }
  
  
@@ -188,15 +189,19 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
  char *
  ngx_http_lua_balancer_by_lua_block(ngx_conf_t *cf, ngx_command_t *cmd,
      void *conf)
-@@ -125,16 +238,18 @@
+@@ -125,18 +238,20 @@ char *
  ngx_http_lua_balancer_by_lua(ngx_conf_t *cf, ngx_command_t *cmd,
      void *conf)
  {
+-    size_t                       chunkname_len;
+-    u_char                      *chunkname;
 -    u_char                      *cache_key = NULL;
 -    u_char                      *name;
 -    ngx_str_t                   *value;
 -    ngx_http_lua_srv_conf_t     *lscf = conf;
 -
++    size_t                             chunkname_len;
++    u_char                            *chunkname;
 +    u_char                            *cache_key = NULL;
 +    u_char                            *name;
 +    ngx_str_t                         *value;
@@ -213,7 +218,7 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
      if (cmd->post == NULL) {
          return NGX_CONF_ERROR;
      }
-@@ -178,11 +293,42 @@
+@@ -188,11 +303,42 @@ ngx_http_lua_balancer_by_lua(ngx_conf_t *cf, ngx_command_t *cmd,
  
      lscf->balancer.src_key = cache_key;
  
@@ -256,7 +261,7 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
      }
  
      uscf->peer.init_upstream = ngx_http_lua_balancer_init;
-@@ -198,14 +344,18 @@
+@@ -208,14 +354,18 @@ ngx_http_lua_balancer_by_lua(ngx_conf_t *cf, ngx_command_t *cmd,
  
  
  static ngx_int_t
@@ -279,7 +284,7 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
      us->peer.init = ngx_http_lua_balancer_init_peer;
  
      return NGX_OK;
-@@ -216,33 +366,38 @@
+@@ -226,33 +376,38 @@ static ngx_int_t
  ngx_http_lua_balancer_init_peer(ngx_http_request_t *r,
      ngx_http_upstream_srv_conf_t *us)
  {
@@ -329,7 +334,7 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
      return NGX_OK;
  }
  
-@@ -250,25 +405,26 @@
+@@ -260,25 +415,26 @@ ngx_http_lua_balancer_init_peer(ngx_http_request_t *r,
  static ngx_int_t
  ngx_http_lua_balancer_get_peer(ngx_peer_connection_t *pc, void *data)
  {
@@ -367,7 +372,7 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
      if (ctx == NULL) {
          ctx = ngx_http_lua_create_ctx(r);
          if (ctx == NULL) {
-@@ -286,21 +442,23 @@
+@@ -296,21 +452,23 @@ ngx_http_lua_balancer_get_peer(ngx_peer_connection_t *pc, void *data)
  
      ctx->context = NGX_HTTP_LUA_CONTEXT_BALANCER;
  
@@ -398,7 +403,7 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
      if (rc == NGX_ERROR) {
          return NGX_ERROR;
      }
-@@ -322,105 +480,444 @@
+@@ -332,79 +490,88 @@ ngx_http_lua_balancer_get_peer(ngx_peer_connection_t *pc, void *data)
          }
      }
  
@@ -418,11 +423,17 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
          }
  
 -        dd("tries: %d", (int) r->upstream->peer.tries);
+-
+-        return NGX_OK;
+-    }
+-
+-    return ngx_http_upstream_get_round_robin_peer(pc, &bp->rrp);
+-}
 +        if (ngx_http_lua_balancer_keepalive_is_enabled(bp)) {
 +            ngx_http_lua_balancer_get_keepalive_pool(L, pc->log,
 +                                                     &bp->cpool_name,
 +                                                     &bp->cpool);
-+
+ 
 +            if (bp->cpool == NULL
 +                && ngx_http_lua_balancer_create_keepalive_pool(L, pc->log,
 +                                                               &bp->cpool_name,
@@ -432,52 +443,84 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
 +            {
 +                return NGX_ERROR;
 +            }
-+
+ 
+-static ngx_int_t
+-ngx_http_lua_balancer_by_chunk(lua_State *L, ngx_http_request_t *r)
+-{
+-    u_char                  *err_msg;
+-    size_t                   len;
+-    ngx_int_t                rc;
 +            ngx_http_lua_assert(bp->cpool);
-+
+ 
+-    /* init nginx context in Lua VM */
+-    ngx_http_lua_set_req(L, r);
 +            if (!ngx_queue_empty(&bp->cpool->cache)) {
 +                q = ngx_queue_head(&bp->cpool->cache);
-+
+ 
+-#ifndef OPENRESTY_LUAJIT
+-    ngx_http_lua_create_new_globals_table(L, 0 /* narr */, 1 /* nrec */);
 +                item = ngx_queue_data(q, ngx_http_lua_balancer_keepalive_item_t,
 +                                      queue);
 +                c = item->connection;
-+
+ 
+-    /*  {{{ make new env inheriting main thread's globals table */
+-    lua_createtable(L, 0, 1 /* nrec */);   /* the metatable for the new env */
+-    ngx_http_lua_get_globals_table(L);
+-    lua_setfield(L, -2, "__index");
+-    lua_setmetatable(L, -2);    /*  setmetatable({}, {__index = _G}) */
+-    /*  }}} */
 +                ngx_queue_remove(q);
 +                ngx_queue_insert_head(&bp->cpool->free, q);
-+
+ 
+-    lua_setfenv(L, -2);    /*  set new running env for the code closure */
+-#endif /* OPENRESTY_LUAJIT */
 +                c->idle = 0;
 +                c->sent = 0;
 +                c->log = pc->log;
 +                c->read->log = pc->log;
 +                c->write->log = pc->log;
 +                c->pool->log = pc->log;
-+
+ 
+-    lua_pushcfunction(L, ngx_http_lua_traceback);
+-    lua_insert(L, 1);  /* put it under chunk and args */
 +                if (c->read->timer_set) {
 +                    ngx_del_timer(c->read);
 +                }
-+
+ 
+-    /*  protected call user code */
+-    rc = lua_pcall(L, 0, 1, 1);
 +                pc->cached = 1;
 +                pc->connection = c;
-+
+ 
+-    lua_remove(L, 1);  /* remove traceback function */
 +                ngx_log_debug3(NGX_LOG_DEBUG_HTTP, pc->log, 0,
 +                               "lua balancer: keepalive reusing connection %p, "
 +                               "requests: %ui, cpool: %p",
 +                               c, c->requests, bp->cpool);
-+
+ 
+-    dd("rc == %d", (int) rc);
 +                return NGX_DONE;
 +            }
-+
+ 
+-    if (rc != 0) {
+-        /*  error occurred when running loaded code */
+-        err_msg = (u_char *) lua_tolstring(L, -1, &len);
 +            bp->cpool->connections++;
-+
+ 
+-        if (err_msg == NULL) {
+-            err_msg = (u_char *) "unknown reason";
+-            len = sizeof("unknown reason") - 1;
 +            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0,
 +                           "lua balancer: keepalive no free connection, "
 +                           "cpool: %p", bp->cpool);
-+        }
+         }
  
-         return NGX_OK;
-     }
+-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+-                      "failed to run balancer_by_lua*: %*s", len, err_msg);
++        return NGX_OK;
++    }
  
--    return ngx_http_upstream_get_round_robin_peer(pc, &bp->rrp);
+-        lua_settop(L, 0); /*  clear remaining elems on stack */
 +    rc = bp->original_get_peer(pc, bp->data);
 +    if (rc == NGX_ERROR) {
 +        return rc;
@@ -486,23 +529,19 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
 +    if (pc->sockaddr == ngx_http_lua_balancer_default_server_sockaddr) {
 +        ngx_log_error(NGX_LOG_ERR, pc->log, 0,
 +                      "lua balancer: no peer set");
-+
-+        return NGX_ERROR;
-+    }
-+
-+    return rc;
+ 
+         return NGX_ERROR;
+     }
+ 
+-    lua_settop(L, 0); /*  clear remaining elems on stack */
+     return rc;
  }
  
- 
--static ngx_int_t
--ngx_http_lua_balancer_by_chunk(lua_State *L, ngx_http_request_t *r)
-+static void
-+ngx_http_lua_balancer_free_peer(ngx_peer_connection_t *pc, void *data,
-+    ngx_uint_t state)
+@@ -413,24 +580,354 @@ static void
+ ngx_http_lua_balancer_free_peer(ngx_peer_connection_t *pc, void *data,
+     ngx_uint_t state)
  {
--    u_char                  *err_msg;
--    size_t                   len;
--    ngx_int_t                rc;
+-    ngx_http_lua_balancer_peer_data_t  *bp = data;
 +    ngx_queue_t                                *q;
 +    ngx_connection_t                           *c;
 +    ngx_http_upstream_t                        *u;
@@ -510,38 +549,24 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
 +    ngx_http_lua_balancer_keepalive_pool_t     *cpool;
 +    ngx_http_lua_balancer_peer_data_t          *bp = data;
  
--    /* init nginx context in Lua VM */
--    ngx_http_lua_set_req(L, r);
-+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0,
+     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0,
+-                   "lua balancer free peer, tries: %ui", pc->tries);
 +                   "lua balancer: free peer, tries: %ui", pc->tries);
- 
--#ifndef OPENRESTY_LUAJIT
--    ngx_http_lua_create_new_globals_table(L, 0 /* narr */, 1 /* nrec */);
++
 +    u = bp->request->upstream;
 +    c = pc->connection;
  
--    /*  {{{ make new env inheriting main thread's globals table */
--    lua_createtable(L, 0, 1 /* nrec */);   /* the metatable for the new env */
--    ngx_http_lua_get_globals_table(L);
--    lua_setfield(L, -2, "__index");
--    lua_setmetatable(L, -2);    /*  setmetatable({}, {__index = _G}) */
--    /*  }}} */
+-    if (bp->sockaddr && bp->socklen) {
 +    if (ngx_http_lua_balancer_peer_set(bp)) {
-+        bp->last_peer_state = (int) state;
+         bp->last_peer_state = (int) state;
  
--    lua_setfenv(L, -2);    /*  set new running env for the code closure */
--#endif /* OPENRESTY_LUAJIT */
-+        if (pc->tries) {
-+            pc->tries--;
-+        }
+         if (pc->tries) {
+             pc->tries--;
+         }
  
--    lua_pushcfunction(L, ngx_http_lua_traceback);
--    lua_insert(L, 1);  /* put it under chunk and args */
 +        if (ngx_http_lua_balancer_keepalive_is_enabled(bp)) {
 +            cpool = bp->cpool;
- 
--    /*  protected call user code */
--    rc = lua_pcall(L, 0, 1, 1);
++
 +            if (state & NGX_PEER_FAILED
 +                || c == NULL
 +                || c->read->eof
@@ -644,23 +669,14 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
 +                ngx_http_lua_balancer_free_keepalive_pool(pc->log, cpool);
 +            }
 +        }
- 
--    lua_remove(L, 1);  /* remove traceback function */
++
 +        return;
 +    }
- 
--    dd("rc == %d", (int) rc);
++
 +    bp->original_free_peer(pc, bp->data, state);
 +}
- 
--    if (rc != 0) {
--        /*  error occurred when running loaded code */
--        err_msg = (u_char *) lua_tolstring(L, -1, &len);
- 
--        if (err_msg == NULL) {
--            err_msg = (u_char *) "unknown reason";
--            len = sizeof("unknown reason") - 1;
--        }
++
++
 +static ngx_int_t
 +ngx_http_lua_balancer_create_keepalive_pool(lua_State *L, ngx_log_t *log,
 +    ngx_str_t *cpool_name, ngx_uint_t cpool_size,
@@ -670,29 +686,24 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
 +    ngx_uint_t                                   i;
 +    ngx_http_lua_balancer_keepalive_pool_t      *upool;
 +    ngx_http_lua_balancer_keepalive_item_t      *items;
- 
--        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
--                      "failed to run balancer_by_lua*: %*s", len, err_msg);
++
 +    /* get upstream connection pools table */
 +    lua_pushlightuserdata(L, ngx_http_lua_lightudata_mask(
 +                          balancer_keepalive_pools_table_key));
 +    lua_rawget(L, LUA_REGISTRYINDEX); /* pools? */
- 
--        lua_settop(L, 0); /*  clear remaining elems on stack */
++
 +    ngx_http_lua_assert(lua_istable(L, -1));
 +
 +    lua_pushlstring(L, (const char *)cpool_name->data, cpool_name->len);
- 
++
 +    size = sizeof(ngx_http_lua_balancer_keepalive_pool_t) +
 +           sizeof(ngx_http_lua_balancer_keepalive_item_t) * cpool_size;
 +
 +    upool = lua_newuserdata(L, size + cpool_name->len); /* pools upool */
 +    if (upool == NULL) {
-         return NGX_ERROR;
-     }
- 
--    lua_settop(L, 0); /*  clear remaining elems on stack */
--    return rc;
++        return NGX_ERROR;
++    }
++
 +    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, log, 0,
 +                   "lua balancer: keepalive create pool, "
 +                   "name: %V, size: %ui",
@@ -724,33 +735,24 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
 +    *cpool = upool;
 +
 +    return NGX_OK;
- }
- 
- 
- static void
--ngx_http_lua_balancer_free_peer(ngx_peer_connection_t *pc, void *data,
--    ngx_uint_t state)
++}
++
++
++static void
 +ngx_http_lua_balancer_get_keepalive_pool(lua_State *L,
 +    ngx_log_t *log, ngx_str_t *cpool_name,
 +    ngx_http_lua_balancer_keepalive_pool_t **cpool)
- {
--    ngx_http_lua_balancer_peer_data_t  *bp = data;
++{
 +    ngx_http_lua_balancer_keepalive_pool_t      *upool;
- 
--    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0,
--                   "lua balancer free peer, tries: %ui", pc->tries);
++
 +    /* get upstream connection pools table */
 +    lua_pushlightuserdata(L, ngx_http_lua_lightudata_mask(
 +                          balancer_keepalive_pools_table_key));
 +    lua_rawget(L, LUA_REGISTRYINDEX); /* pools? */
- 
--    if (bp->sockaddr && bp->socklen) {
--        bp->last_peer_state = (int) state;
++
 +    if (lua_isnil(L, -1)) {
 +        lua_pop(L, 1); /* orig stack */
- 
--        if (pc->tries) {
--            pc->tries--;
++
 +        /* create upstream connection pools table */
 +        lua_createtable(L, 0, 0); /* pools */
 +        lua_pushlightuserdata(L, ngx_http_lua_lightudata_mask(
@@ -872,8 +874,8 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
 +
 +        if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
 +            goto close;
-         }
- 
++        }
++
          return;
      }
  
@@ -882,10 +884,10 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
 +
 +    item = c->data;
 +    c->log = ev->log;
-+
-+    ngx_http_lua_balancer_close(c);
  
 -    ngx_http_upstream_free_round_robin_peer(pc, data, state);
++    ngx_http_lua_balancer_close(c);
++
 +    ngx_queue_remove(&item->queue);
 +    ngx_queue_insert_head(&item->cpool->free, &item->queue);
 +
@@ -895,7 +897,7 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
  }
  
  
-@@ -431,12 +928,12 @@
+@@ -441,12 +938,12 @@ ngx_http_lua_balancer_set_session(ngx_peer_connection_t *pc, void *data)
  {
      ngx_http_lua_balancer_peer_data_t  *bp = data;
  
@@ -910,7 +912,7 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
  }
  
  
-@@ -445,13 +942,12 @@
+@@ -455,13 +952,12 @@ ngx_http_lua_balancer_save_session(ngx_peer_connection_t *pc, void *data)
  {
      ngx_http_lua_balancer_peer_data_t  *bp = data;
  
@@ -926,7 +928,7 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
  }
  
  #endif
-@@ -459,14 +955,14 @@
+@@ -469,14 +965,14 @@ ngx_http_lua_balancer_save_session(ngx_peer_connection_t *pc, void *data)
  
  int
  ngx_http_lua_ffi_balancer_set_current_peer(ngx_http_request_t *r,
@@ -948,7 +950,7 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
  
      if (r == NULL) {
          *err = "no request found";
-@@ -491,18 +987,6 @@
+@@ -501,18 +997,6 @@ ngx_http_lua_ffi_balancer_set_current_peer(ngx_http_request_t *r,
          return NGX_ERROR;
      }
  
@@ -967,7 +969,7 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
      ngx_memzero(&url, sizeof(ngx_url_t));
  
      url.url.data = ngx_palloc(r->pool, addr_len);
-@@ -526,6 +1010,8 @@
+@@ -536,6 +1020,8 @@ ngx_http_lua_ffi_balancer_set_current_peer(ngx_http_request_t *r,
          return NGX_ERROR;
      }
  
@@ -976,7 +978,7 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
      if (url.addrs && url.addrs[0].sockaddr) {
          bp->sockaddr = url.addrs[0].sockaddr;
          bp->socklen = url.addrs[0].socklen;
-@@ -536,6 +1022,72 @@
+@@ -546,6 +1032,72 @@ ngx_http_lua_ffi_balancer_set_current_peer(ngx_http_request_t *r,
          return NGX_ERROR;
      }
  
@@ -1049,7 +1051,7 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
      return NGX_OK;
  }
  
-@@ -545,14 +1097,13 @@
+@@ -555,14 +1107,13 @@ ngx_http_lua_ffi_balancer_set_timeouts(ngx_http_request_t *r,
      long connect_timeout, long send_timeout, long read_timeout,
      char **err)
  {
@@ -1067,7 +1069,7 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
  
      if (r == NULL) {
          *err = "no request found";
-@@ -577,15 +1128,9 @@
+@@ -587,15 +1138,9 @@ ngx_http_lua_ffi_balancer_set_timeouts(ngx_http_request_t *r,
          return NGX_ERROR;
      }
  
@@ -1085,7 +1087,7 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
      if (!bp->cloned_upstream_conf) {
          /* we clone the upstream conf for the current request so that
           * we do not affect other requests at all. */
-@@ -640,12 +1185,10 @@
+@@ -650,12 +1195,10 @@ ngx_http_lua_ffi_balancer_set_more_tries(ngx_http_request_t *r,
      int count, char **err)
  {
  #if (nginx_version >= 1007005)
@@ -1101,7 +1103,7 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
      ngx_http_lua_balancer_peer_data_t  *bp;
  
      if (r == NULL) {
-@@ -671,13 +1214,7 @@
+@@ -681,13 +1224,7 @@ ngx_http_lua_ffi_balancer_set_more_tries(ngx_http_request_t *r,
          return NGX_ERROR;
      }
  
@@ -1116,7 +1118,7 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
  
  #if (nginx_version >= 1007005)
      max_tries = r->upstream->conf->next_upstream_tries;
-@@ -703,12 +1240,10 @@
+@@ -713,12 +1250,10 @@ int
  ngx_http_lua_ffi_balancer_get_last_failure(ngx_http_request_t *r,
      int *status, char **err)
  {
@@ -1132,7 +1134,7 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
  
      if (r == NULL) {
          *err = "no request found";
-@@ -733,13 +1268,7 @@
+@@ -743,13 +1278,7 @@ ngx_http_lua_ffi_balancer_get_last_failure(ngx_http_request_t *r,
          return NGX_ERROR;
      }
  
@@ -1147,12 +1149,13 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-
  
      if (r->upstream_states && r->upstream_states->nelts > 1) {
          state = r->upstream_states->elts;
-diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_common.h b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_common.h
---- a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_common.h	2022-12-02 10:58:50.050203715 +0800
-+++ b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_common.h	2022-12-05 07:01:11.798290942 +0800
-@@ -240,13 +240,6 @@
-     ngx_http_lua_main_conf_handler_pt    exit_worker_handler;
+diff --git a/bundle/ngx_lua-0.10.25/src/ngx_http_lua_common.h b/bundle/ngx_lua-0.10.25/src/ngx_http_lua_common.h
+index 8435045..ea45f3a 100644
+--- a/bundle/ngx_lua-0.10.25/src/ngx_http_lua_common.h
++++ b/bundle/ngx_lua-0.10.25/src/ngx_http_lua_common.h
+@@ -247,13 +247,6 @@ struct ngx_http_lua_main_conf_s {
      ngx_str_t                            exit_worker_src;
+     u_char                              *exit_worker_chunkname;
  
 -    ngx_http_lua_balancer_peer_data_t      *balancer_peer_data;
 -                    /* neither yielding nor recursion is possible in
@@ -1164,8 +1167,8 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_common.h b/bundle/ngx_lua-0.
      ngx_chain_t                            *body_filter_chain;
                      /* neither yielding nor recursion is possible in
                       * body_filter_by_lua*, so there cannot be any races among
-@@ -328,6 +321,10 @@
- #endif
+@@ -348,6 +341,10 @@ union ngx_http_lua_srv_conf_u {
+     } srv;
  
      struct {
 +        ngx_http_upstream_init_pt            original_init_upstream;
@@ -1175,11 +1178,12 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_common.h b/bundle/ngx_lua-0.
          ngx_http_lua_srv_conf_handler_pt     handler;
          ngx_str_t                            src;
          u_char                              *src_key;
-diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_module.c b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_module.c
---- a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_module.c	2022-12-02 10:58:50.050203715 +0800
-+++ b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_module.c	2022-12-05 18:22:15.351308080 +0800
-@@ -1117,6 +1117,9 @@
-      *      lscf->srv.ssl_session_fetch_src = { 0, NULL };
+diff --git a/bundle/ngx_lua-0.10.25/src/ngx_http_lua_module.c b/bundle/ngx_lua-0.10.25/src/ngx_http_lua_module.c
+index 16f4424..b3b0d72 100644
+--- a/bundle/ngx_lua-0.10.25/src/ngx_http_lua_module.c
++++ b/bundle/ngx_lua-0.10.25/src/ngx_http_lua_module.c
+@@ -1158,6 +1158,9 @@ ngx_http_lua_create_srv_conf(ngx_conf_t *cf)
+      *      lscf->srv.ssl_session_fetch_chunkname = NULL;
       *      lscf->srv.ssl_session_fetch_src_key = NULL;
       *
 +     *      lscf->balancer.original_init_upstream = NULL;
@@ -1187,4 +1191,4 @@ diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_module.c b/bundle/ngx_lua-0.
 +     *      lscf->balancer.data = NULL;
       *      lscf->balancer.handler = NULL;
       *      lscf->balancer.src = { 0, NULL };
-      *      lscf->balancer.src_key = NULL;
+      *      lscf->balancer.chunkname = NULL;

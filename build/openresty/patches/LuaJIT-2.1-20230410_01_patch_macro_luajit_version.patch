@@ -7,10 +7,10 @@ Subject: [PATCH] Patch macro `LUAJIT_VERSION`
  src/luajit.h | 2 ++
  1 file changed, 2 insertions(+)
 
-diff --git a/bundle/LuaJIT-2.1-20220411/src/luajit.h b/bundle/LuaJIT-2.1-20220411/src/luajit.h
+diff --git a/bundle/LuaJIT-2.1-20230410/src/luajit.h b/bundle/LuaJIT-2.1-20230410/src/luajit.h
 index a4d33001..e35f4e7e 100644
---- a/bundle/LuaJIT-2.1-20220411/src/luajit.h
-+++ b/bundle/LuaJIT-2.1-20220411/src/luajit.h
+--- a/bundle/LuaJIT-2.1-20230410/src/luajit.h
++++ b/bundle/LuaJIT-2.1-20230410/src/luajit.h
 @@ -32,7 +32,9 @@
 
  #define OPENRESTY_LUAJIT

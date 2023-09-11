@@ -1,0 +1,7 @@
+message: Fix an issue that the TTL of the key-auth plugin didnt work in DB-less and Hybrid mode.
+type: bugfix
+scope: Core
+prs:
+  - 11464
+jiras:
+  - "FTI-4512"

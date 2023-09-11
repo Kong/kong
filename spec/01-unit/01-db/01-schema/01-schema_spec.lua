@@ -3760,6 +3760,7 @@ describe("schema", function()
     describe("#referenceable fields", function()
       lazy_setup(function()
         _G.kong = {
+          log   = require "kong.pdk.log".new(),
           vault = require "kong.pdk.vault".new(),
         }
       end)
@@ -3769,6 +3770,108 @@ describe("schema", function()
         package.loaded["kong.db.schema"] = nil
         Schema = require "kong.db.schema"
       end)
+
+      it("dereference string type field", function()
+        helpers.setenv("TEST_SECRET_FOO", "foo")
+        helpers.setenv("TEST_SECRET_BAR", "bar")
+        finally(function()
+          helpers.unsetenv("TEST_SECRET_FOO")
+          helpers.unsetenv("TEST_SECRET_BAR")
+        end)
+
+        local Test = Schema.new({
+          fields = {
+            {
+              secret = {
+                type = "string",
+                referenceable = true,
+              },
+            },
+          },
+        })
+
+        local data = Test:process_auto_fields({
+          secret = "{vault://env/test_secret_foo}",
+        }, "select")
+
+        assert.same({
+          secret = "{vault://env/test_secret_foo}",
+        }, data["$refs"])
+
+        assert.equal("foo", data.secret)
+
+        local data = Test:process_auto_fields({
+          secret = "{vault://env/test_not_found}",
+        }, "select")
+
+        assert.same({
+          secret = "{vault://env/test_not_found}",
+        }, data["$refs"])
+
+        assert.equal("", data.secret)
+
+        local data = Test:process_auto_fields({
+          secret = "{vault://env/test_secret_bar}",
+        }, "select")
+
+        assert.same({
+          secret = "{vault://env/test_secret_bar}",
+        }, data["$refs"])
+
+        assert.equal("bar", data.secret)
+      end)
+
+      it("dereference string type field (len_min=0)", function()
+        helpers.setenv("TEST_SECRET_FOO", "foo")
+        helpers.setenv("TEST_SECRET_BAR", "bar")
+        finally(function()
+          helpers.unsetenv("TEST_SECRET_FOO")
+          helpers.unsetenv("TEST_SECRET_BAR")
+        end)
+
+        local Test = Schema.new({
+          fields = {
+            {
+              secret = {
+                type = "string",
+                len_min = 0,
+                referenceable = true,
+              },
+            },
+          },
+        })
+
+        local data = Test:process_auto_fields({
+          secret = "{vault://env/test_secret_foo}",
+        }, "select")
+
+        assert.same({
+          secret = "{vault://env/test_secret_foo}",
+        }, data["$refs"])
+
+        assert.equal("foo", data.secret)
+
+        local data = Test:process_auto_fields({
+          secret = "{vault://env/test_not_found}",
+        }, "select")
+
+        assert.same({
+          secret = "{vault://env/test_not_found}",
+        }, data["$refs"])
+
+        assert.equal("", data.secret)
+
+        local data = Test:process_auto_fields({
+          secret = "{vault://env/test_secret_bar}",
+        }, "select")
+
+        assert.same({
+          secret = "{vault://env/test_secret_bar}",
+        }, data["$refs"])
+
+        assert.equal("bar", data.secret)
+      end)
+
 
       it("dereference array type field", function()
         helpers.setenv("TEST_SECRET_FOO", "foo")
@@ -3780,31 +3883,84 @@ describe("schema", function()
 
         local Test = Schema.new({
           fields = {
-            { secrets = {
-              type = "array",
-              elements = {
-                type = "string",
-                referenceable = true,
+            {
+              secrets = {
+                type = "array",
+                elements = {
+                  type = "string",
+                  referenceable = true,
+                },
               },
-            } },
+            },
           },
         })
 
         local data = Test:process_auto_fields({
           secrets = {
+            nil,
             "{vault://env/test_secret_foo}",
+            "{vault://env/test_not_found}",
+            "not a ref",
             "{vault://env/test_secret_bar}",
           },
         }, "select")
 
         assert.same({
           secrets = {
+            nil,
             "{vault://env/test_secret_foo}",
+            "{vault://env/test_not_found}",
+            nil,
             "{vault://env/test_secret_bar}",
           },
         }, data["$refs"])
 
-        assert.same({"foo", "bar"}, data.secrets)
+        assert.same({ nil, "foo", "", "not a ref", "bar" }, data.secrets)
+      end)
+
+      it("dereference set type field", function()
+        helpers.setenv("TEST_SECRET_FOO", "foo")
+        helpers.setenv("TEST_SECRET_BAR", "bar")
+        finally(function()
+          helpers.unsetenv("TEST_SECRET_FOO")
+          helpers.unsetenv("TEST_SECRET_BAR")
+        end)
+
+        local Test = Schema.new({
+          fields = {
+            {
+              secrets = {
+                type = "set",
+                elements = {
+                  type = "string",
+                  referenceable = true,
+                },
+              },
+            },
+          },
+        })
+
+        local data = Test:process_auto_fields({
+          secrets = {
+            nil,
+            "{vault://env/test_secret_foo}",
+            "{vault://env/test_not_found}",
+            "not a ref",
+            "{vault://env/test_secret_bar}",
+          },
+        }, "select")
+
+        assert.same({
+          secrets = {
+            nil,
+            "{vault://env/test_secret_foo}",
+            "{vault://env/test_not_found}",
+            nil,
+            "{vault://env/test_secret_bar}",
+          },
+        }, data["$refs"])
+
+        assert.same({ nil, "foo", "", "not a ref", "bar" }, data.secrets)
       end)
 
       it("dereference map type field", function()
@@ -3817,35 +3973,42 @@ describe("schema", function()
 
         local Test = Schema.new({
           fields = {
-            { secret = {
-              type = "map",
-              keys = "string",
-              values = {
-                type = "string",
-                referenceable = true,
+            {
+              secrets = {
+                type = "map",
+                keys = "string",
+                values = {
+                  type = "string",
+                  referenceable = true,
+                },
               },
-            } },
+            },
           },
         })
 
         local data = Test:process_auto_fields({
-          secret = {
+          secrets = {
+            not_a_ref = "not_a_ref",
             foo = "{vault://env/test_secret_foo}",
+            not_found = "{vault://env/test_not_found}",
             bar = "{vault://env/test_secret_bar}",
           },
         }, "select")
 
         assert.same({
-          secret = {
+          secrets = {
             foo = "{vault://env/test_secret_foo}",
+            not_found = "{vault://env/test_not_found}",
             bar = "{vault://env/test_secret_bar}",
           },
         }, data["$refs"])
 
         assert.same({
+          not_a_ref = "not_a_ref",
           foo = "foo",
+          not_found = "",
           bar = "bar",
-        }, data.secret)
+        }, data.secrets)
       end)
     end)
   end)

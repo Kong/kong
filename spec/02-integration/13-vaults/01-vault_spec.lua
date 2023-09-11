@@ -100,8 +100,8 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("{vault://test-vault/key}", certificate["$refs"].key)
       assert.equal("{vault://unknown/cert}", certificate["$refs"].cert_alt)
       assert.equal("{vault://unknown/missing-key}", certificate["$refs"].key_alt)
-      assert.is_nil(certificate.cert_alt)
-      assert.is_nil(certificate.key_alt)
+      assert.equal("", certificate.cert_alt)
+      assert.equal("", certificate.key_alt)
 
       -- process auto fields keeps the existing $refs
       local certificate_b = db.certificates.schema:process_auto_fields(certificate, "select")
@@ -157,8 +157,8 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("{vault://mock-vault/key}", certificate["$refs"].key)
       assert.equal("{vault://unknown/cert}", certificate["$refs"].cert_alt)
       assert.equal("{vault://unknown/missing-key}", certificate["$refs"].key_alt)
-      assert.is_nil(certificate.cert_alt)
-      assert.is_nil(certificate.key_alt)
+      assert.equal("", certificate.cert_alt)
+      assert.equal("", certificate.key_alt)
 
       -- TODO: this is unexpected but schema.process_auto_fields uses currently
       -- the `nulls` parameter to detect if the call comes from Admin API
