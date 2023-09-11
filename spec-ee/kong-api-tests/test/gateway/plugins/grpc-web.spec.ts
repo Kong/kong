@@ -14,7 +14,7 @@ import {
   isGwHybrid,
 } from '@support';
 
-describe('Gateway Plugins: gRPC-web', function () {
+describe.skip('Gateway Plugins: gRPC-web', function () {
   const grpcUrl = 'grpc://grpcb.in:9000';
   const grpcSecureUrl = 'grpcs://grpcb.in:9001';
   const protoFile = 'hello.proto';

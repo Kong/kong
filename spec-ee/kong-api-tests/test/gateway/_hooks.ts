@@ -1,4 +1,4 @@
-import { createRedisClient, gatewayAuthHeader, isCI } from '@support';
+import { createRedisClient, gatewayAuthHeader, isCI, waitForConfigRebuild } from '@support';
 import {
   postGatewayEeLicense,
   deleteGatewayEeLicense,
@@ -14,6 +14,8 @@ export const mochaHooks: Mocha.RootHookObject = {
     // Gateway for API tests starts without EE_LICENSE in CI, hence, we post license at the beggining of all teststo allow us test the functionality of license endpoint
     if (isCI()) {
       await postGatewayEeLicense();
+      // Wait for the license propagation completes before release to the test
+      await waitForConfigRebuild();
     }
     createRedisClient();
   },
