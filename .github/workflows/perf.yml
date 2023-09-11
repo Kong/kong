@@ -41,7 +41,7 @@ jobs:
 
     steps:
     - name: Checkout Kong source code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v3
       with:
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
@@ -175,7 +175,7 @@ jobs:
       run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev inkscape -y
 
     - name: Checkout Kong EE source code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v3
       with:
         # Fetch all history for all tags and branches
         fetch-depth: 0

@@ -164,7 +164,7 @@ jobs:
     steps:
 
     - name: Checkout Source Code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v3
 
     - name: Define Package Test Matrix
       id: define-package-matrix
@@ -223,10 +223,10 @@ jobs:
           echo "GW_DP_IMAGE=${{ github.event.client_payload.docker_image }}" >> $GITHUB_ENV
 
       - name: Checkout Source Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Checkout docker-compose-generator
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
         with:
           repository: Kong/gateway-docker-compose-generator
           path: spec-ee/kong-api-tests/gateway-docker-compose-generator
@@ -357,10 +357,10 @@ jobs:
           echo "GW_DP_IMAGE=${{ github.event.client_payload.docker_image }}" >> $GITHUB_ENV
 
       - name: Checkout Source Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Checkout docker-compose-generator
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
         with:
           repository: Kong/gateway-docker-compose-generator
           path: spec-ee/kong-api-tests/gateway-docker-compose-generator
@@ -473,10 +473,10 @@ jobs:
 
     steps:
       - name: Checkout Source Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Checkout docker-compose-generator
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
         with:
           repository: Kong/gateway-docker-compose-generator
           path: spec-ee/kong-api-tests/gateway-docker-compose-generator
