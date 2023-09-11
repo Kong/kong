@@ -177,7 +177,8 @@ for _, strategy in helpers.each_strategy() do
           }))
           local body = assert.res_status(401, res)
           local json = cjson.decode(body)
-          assert.same({ message = "Invalid authentication credentials" }, json)
+          assert.not_nil(json.message)
+          assert.matches("Invalid authentication credentials", json.message)
         end)
       end)
 

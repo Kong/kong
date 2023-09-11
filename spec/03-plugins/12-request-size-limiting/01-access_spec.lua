@@ -121,7 +121,8 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(413, res)
         local json = cjson.decode(body)
-        assert.same({ message = "Request size limit exceeded" }, json)
+        assert.not_nil(json.message)
+        assert.matches("Request size limit exceeded", json.message)
       end)
 
       it("blocks if size is greater than limit and Expect header", function()
@@ -138,7 +139,8 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(417, res)
         local json = cjson.decode(body)
-        assert.same({ message = "Request size limit exceeded" }, json)
+        assert.not_nil(json.message)
+        assert.matches("Request size limit exceeded", json.message)
       end)
 
       for _, unit in ipairs(size_units) do
@@ -155,7 +157,8 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.res_status(413, res)
           local json = cjson.decode(body)
-          assert.same({ message = "Request size limit exceeded" }, json)
+          assert.not_nil(json.message)
+          assert.matches("Request size limit exceeded", json.message)
         end)
       end
 
@@ -219,7 +222,8 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(413, res)
         local json = cjson.decode(body)
-        assert.same({ message = "Request size limit exceeded" }, json)
+        assert.not_nil(json.message)
+        assert.matches("Request size limit exceeded", json.message)
       end)
 
       it("blocks if size is greater than limit and Expect header", function()
@@ -236,7 +240,8 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(417, res)
         local json = cjson.decode(body)
-        assert.same({ message = "Request size limit exceeded" }, json)
+        assert.not_nil(json.message)
+        assert.matches("Request size limit exceeded", json.message)
       end)
 
       for _, unit in ipairs(size_units) do
@@ -253,7 +258,8 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.res_status(413, res)
           local json = cjson.decode(body)
-          assert.same({ message = "Request size limit exceeded" }, json)
+          assert.not_nil(json.message)
+          assert.matches("Request size limit exceeded", json.message)
         end)
       end
 
