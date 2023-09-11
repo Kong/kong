@@ -2,6 +2,10 @@
 NOTE: Please read the CONTRIBUTING.md guidelines before submitting your patch,
 and ensure you followed them all:
 https://github.com/Kong/kong/blob/master/CONTRIBUTING.md#contributing
+
+Refer to the Kong Gateway Community Pledge to understand how we work
+with the open source community:
+https://github.com/Kong/kong/blob/master/COMMUNITY_PLEDGE.md
 -->
 
 ### Summary
