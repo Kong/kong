@@ -1,4 +1,4 @@
-message: Fix an issue that protocol `tls_passthrough` can not work with expressions flavor
+message: Fix an issue that protocol `tls_passthough` can not work with expressions flavor
 type: bugfix
 scope: Core
 prs:
