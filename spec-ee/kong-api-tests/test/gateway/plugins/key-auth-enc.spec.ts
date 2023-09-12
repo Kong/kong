@@ -13,6 +13,7 @@ import {
   isLocalDatabase,
   logResponse,
   wait,
+  waitForConfigRebuild,
   retryRequest,
 } from '@support';
 import axios from 'axios';
@@ -205,6 +206,7 @@ describe('Gateway Plugins: key-auth-enc', function () {
     await wait(
       isHybrid ? hybridWaitTime + (isLocalDb ? 0 : waitTime) : waitTime
     );
+    await waitForConfigRebuild();
   });
 
   it('key-auth-enc: should proxy request without supplying apiKey after disabling plugin', async function () {
