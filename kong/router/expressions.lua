@@ -34,7 +34,7 @@ local function get_exp_and_priority(route)
   if protocols and #protocols == 1 and
     (protocols[1] == "https" or
      protocols[1] == "tls" or
-     protocols[1] == "tls_passthough")
+     protocols[1] == "tls_passthrough")
   then
     return exp, route.priority
   end

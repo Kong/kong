@@ -4989,7 +4989,7 @@ do
           service = service,
           route   = {
             id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
-            protocols = { "tls_passthough" },
+            protocols = { "tls_passthrough" },
             expression = [[tls.sni == "www.example.org"]],
             priority = 100,
           },
@@ -5014,7 +5014,7 @@ do
       assert.same(use_case[1].route, match_t.route)
     end)
 
-    it("exec() should match tls_passthough with tls.sni", function()
+    it("exec() should match tls_passthrough with tls.sni", function()
       local _ngx = {
         var = {
           remote_port = 1000,
