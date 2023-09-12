@@ -873,6 +873,12 @@ function Kong.init_worker()
     stash_init_worker_error(err)
     return
   end
+
+  ok, err = utils.set_worker_oom_score(ngx.worker.pid())
+  if not ok then
+    ngx_log(ngx_WARN, "failed to set worker oom_score_adj: ", err)
+    return
+  end
 end
 
 

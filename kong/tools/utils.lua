@@ -1803,4 +1803,31 @@ do
 end
 _M.get_updated_now_ms = get_updated_now_ms
 
+function _M.set_worker_oom_score(worker_id)
+  if not worker_id then
+    return nil, "missing worker_id"
+  end
+
+  if worker_id ~= 0 then
+    return nil
+  end
+
+  local oom_score = pl_file.read("/proc/self/oom_score_adj")
+  if not oom_score then
+    return nil, "could not read oom_score_adj"
+  end
+
+  local oom_score_adj = tonumber(oom_score) - 100
+  if oom_score_adj < -1000 then
+    oom_score_adj = -1000
+  end
+
+  local ok, err = pl_file.write("/proc/self/oom_score_adj", tostring(oom_score_adj))
+  if not ok then
+    return nil, "could not write oom_score_adj: " .. err
+  end
+
+  return true
+end
+
 return _M
