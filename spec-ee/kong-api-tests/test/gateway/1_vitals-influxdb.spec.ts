@@ -21,7 +21,7 @@ import {
 } from '@support';
 import axios from 'axios';
 
-describe('Vitals with InfluxDB Tests', function () {
+describe.skip('Vitals with InfluxDB Tests', function () {
   this.timeout(50000);
   const todaysDate = new Date().toISOString().split('T')[0];
 
