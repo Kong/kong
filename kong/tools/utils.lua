@@ -1817,15 +1817,25 @@ function _M.set_worker_oom_score(worker_id)
     return nil, "could not read oom_score_adj"
   end
 
-  local oom_score_adj = tonumber(oom_score) - 100
+  local oom_score_adj = tonumber(oom_score) - 1000
   if oom_score_adj < -1000 then
     oom_score_adj = -1000
   end
 
-  local ok, err = pl_file.write("/proc/self/oom_score_adj", tostring(oom_score_adj))
+  local pid = ngx.worker.pid()
+  local oom_score_file = "/proc/" .. pid .. "/oom_score_adj"
+
+  local io_file = io.open(oom_score_file, "w")
+  if not io_file then
+    return nil, "could not open oom_score_adj file"
+  end
+
+  local ok, err = io_file:write(tostring(oom_score_adj))
   if not ok then
     return nil, "could not write oom_score_adj: " .. err
   end
+
+  ngx.log(ngx.ERR, "set oom_score_adj " .. pid .. " to ", tostring(oom_score_adj))
 
   return true
 end
