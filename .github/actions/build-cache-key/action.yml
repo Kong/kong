@@ -8,6 +8,9 @@ inputs:
     description: 'String prefix applied to the build cache key'
     required: false
     default: 'build'
+  extra:
+    description: 'Additional values/file hashes to use in the cache key'
+    required: false
 
 outputs:
   cache-key:
@@ -20,6 +23,9 @@ runs:
     - name: Generate cache key
       id: cache-key
       shell: bash
+      env:
+        PREFIX: ${{ inputs.prefix }}
+        EXTRA: ${{ inputs.extra }}
       run: |
         # please keep these sorted
         FILE_HASHES=(
@@ -36,8 +42,6 @@ runs:
           ${{ hashFiles('build/**') }}
           ${{ hashFiles('kong-*.rockspec') }}
           ${{ hashFiles('kong.conf.default') }}
-          ${{ hashFiles('kong/**') }}
-
           # EE
           ${{ hashFiles('**/*.rockspec') }}
           ${{ hashFiles('distribution/*.lua') }}
@@ -46,7 +50,19 @@ runs:
           ${{ hashFiles('plugins-ee/**/*.rockspec') }}
         )
 
-        HASH=$(sha256sum - <<< "${FILE_HASHES[*]}" | awk '{print $1}' )
-        CACHE_KEY=${{ inputs.prefix }}::${HASH}
-        echo "cache-key: ${CACHE_KEY}"
-        echo "CACHE_KEY=${CACHE_KEY}" >> $GITHUB_OUTPUT
+        if [[ -n ${EXTRA:-} ]]; then
+          readarray \
+            -O "${#FILE_HASHES[@]}" \
+            -t \
+            FILE_HASHES \
+          <<< "$EXTRA"
+        fi
+
+        HASH=$(printf '%s\n' "${FILE_HASHES[@]}" \
+          | grep -vE '^$' \
+          | sort --stable --unique \
+          | sha256sum - \
+          | awk '{print $1}'
+        )
+
+        echo "CACHE_KEY=${PREFIX}::${HASH}" | tee -a $GITHUB_OUTPUT
