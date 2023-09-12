@@ -84,7 +84,7 @@ jobs:
       run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev jq httpie
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v3
       with:
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
@@ -198,7 +198,7 @@ jobs:
       run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v3
       with:
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
@@ -369,7 +369,7 @@ jobs:
       run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v3
       with:
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
@@ -532,7 +532,7 @@ jobs:
       run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v3
       with:
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
@@ -649,7 +649,7 @@ jobs:
       run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v3
       with:
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
@@ -729,7 +729,7 @@ jobs:
         label: [normal, fips]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v3
 
     - name: Download artifact
       uses: actions/download-artifact@v3
@@ -848,13 +848,13 @@ jobs:
         echo "/usr/local/openresty/nginx/sbin/" >> $GITHUB_PATH
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v3
       with:
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
     - name: Checkout kong-pongo
-      uses: actions/checkout@v4
+      uses: actions/checkout@v3
       with:
         repository: Kong/kong-pongo
         path: kong-pongo
@@ -911,7 +911,7 @@ jobs:
 
     steps:
     - name: Checkout source code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v3
 
     - name: Install requirements
       run: |

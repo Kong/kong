@@ -17,7 +17,7 @@ return {
       { id = typedefs.uuid },
       { created_at = typedefs.auto_timestamp_s },
       { client_id = { type = "string", required = true, unique = true, }, },
-      { consumer_group = { type = "string", required = false, }, },
+      { consumer_groups = { default = {}, type = "array", elements = { type = "string" }, }, },
       { scopes = { type = "array", elements = { type = "string", }, }, },
       { tags = typedefs.tags },
     },

@@ -116,6 +116,25 @@ local function is_authorized(application, scope)
   return false
 end
 
+--- map_consumer_groups makes the mapping of the consumer groups attached to the
+--- application. If the consumer_group is not found in the kong instance it skips
+--- the mapping.
+local function map_consumer_groups(application)
+  if #application.consumer_groups > 0 then
+    local cg_to_map = {}
+    for i = 1, #application.consumer_groups do
+      if application.consumer_groups[i] ~= '' then
+        local consumer_group = helpers.get_consumer_group(application.consumer_groups[i])
+        if consumer_group then
+          table.insert(cg_to_map, consumer_group)
+        end
+      end
+    end
+    if #cg_to_map > 0 then
+      kong.client.set_authenticated_consumer_groups(cg_to_map)
+    end
+  end
+end
 
 function KonnectApplicationAuthHandler:access(plugin_conf)
   local identifier, err = get_identifier(plugin_conf)
@@ -140,12 +159,8 @@ function KonnectApplicationAuthHandler:access(plugin_conf)
     return kong.response.error(403, "You cannot consume this service")
   end
 
-  if application.consumer_group and application.consumer_group ~= '' then
-    local consumer_group = helpers.get_consumer_group(application.consumer_group)
-    if consumer_group then
-      kong.client.set_authenticated_consumer_groups({consumer_group})
-    end
-  end
+  map_consumer_groups(application)
+
 end
 
 
