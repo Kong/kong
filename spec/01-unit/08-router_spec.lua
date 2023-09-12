@@ -4964,7 +4964,7 @@ do
 
   end)
 
-  describe("#only Router (flavor = " .. flavor .. ") [stream]", function()
+  describe("Router (flavor = " .. flavor .. ") [stream]", function()
     reload_router(flavor, "stream")
 
     local use_case, router
