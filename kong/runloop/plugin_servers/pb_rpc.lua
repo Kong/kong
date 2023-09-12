@@ -413,9 +413,13 @@ function Rpc:handle_event(plugin_name, conf, phase)
     end
 
     local err_lowered = err and err:lower() or ""
+    if err_lowered == "not ready" then
+      self.reset_instance(plugin_name, conf)
+    end
     if str_find(err_lowered, "no plugin instance")
       or str_find(err_lowered, "closed")  then
       kong.log.warn(err)
+      self.reset_instance(plugin_name, conf)
       return self:handle_event(plugin_name, conf, phase)
     end
     kong.log.err(err)
