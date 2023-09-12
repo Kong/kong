@@ -337,7 +337,6 @@ local function introspect_upstream_schema(service, request)
 
   headers['host'] = host
   local introspection_req_body = cjson.encode({ query = GqlSchema.TYPE_INTROSPECTION_QUERY })
-  kong.log.err("introspection request body: ", introspection_req_body)
   local res, req_err = httpc:request {
     method = "POST",
     path = path,
@@ -354,7 +353,7 @@ local function introspect_upstream_schema(service, request)
   local body = res:read_body()
 
   if status ~= 200 then
-    kong.log.err("failed response from upstream server")
+    kong.log.err("failed response from upstream server: introspect_upstream_schema return status: ", status, " body: ", body)
     return nil, { status = status, body = body }
   end
 
