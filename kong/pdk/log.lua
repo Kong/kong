@@ -16,6 +16,7 @@ local inspect = require "inspect"
 local ngx_ssl = require "ngx.ssl"
 local phase_checker = require "kong.pdk.private.phases"
 local utils = require "kong.tools.utils"
+local request_id = require "kong.tracing.request_id"
 
 
 local sub = string.sub
@@ -735,6 +736,7 @@ do
   -- The following fields are included in the returned table:
   -- * `client_ip` - client IP address in textual format.
   -- * `latencies` - request/proxy latencies.
+  -- * `request.id` - request id.
   -- * `request.headers` - request headers.
   -- * `request.method` - request method.
   -- * `request.querystring` - request query strings.
@@ -809,6 +811,7 @@ do
 
       local root = {
         request = {
+          id = request_id.get() or "",
           uri = request_uri,
           url = var.scheme .. "://" .. var.host .. ":" .. host_port .. request_uri,
           querystring = okong.request.get_query(), -- parameters, as a table
