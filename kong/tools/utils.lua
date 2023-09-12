@@ -1809,7 +1809,7 @@ function _M.set_worker_oom_score(worker_id)
   end
 
   if worker_id ~= 0 then
-    return nil
+    return true
   end
 
   local oom_score = pl_file.read("/proc/self/oom_score_adj")
