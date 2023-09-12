@@ -1503,6 +1503,7 @@ function Kong.log()
   local ctx = ngx.ctx
   if not ctx.KONG_LOG_START then
     ctx.KONG_LOG_START = now() * 1000
+    ctx.KONG_LOG_START_NS = time_ns()
     if is_stream_module then
       if not ctx.KONG_PROCESSING_START then
         ctx.KONG_PROCESSING_START = start_time() * 1000
@@ -1571,6 +1572,7 @@ function Kong.log()
 
       if ctx.KONG_BODY_FILTER_START and not ctx.KONG_BODY_FILTER_ENDED_AT then
         ctx.KONG_BODY_FILTER_ENDED_AT = ctx.KONG_LOG_START
+        ctx.KONG_BODY_FILTER_ENDED_AT_NS = ctx.KONG_LOG_START_NS
         ctx.KONG_BODY_FILTER_TIME = ctx.KONG_BODY_FILTER_ENDED_AT -
                                     ctx.KONG_BODY_FILTER_START
       end
