@@ -4860,7 +4860,7 @@ end
 do
   local flavor = "expressions"
 
-  describe("Router (flavor = " .. flavor .. ")", function()
+  describe("Router (flavor = " .. flavor .. ") [http] ", function()
     reload_router(flavor)
 
     local use_case, router
@@ -4960,6 +4960,48 @@ do
       local match_t = router:exec()
       assert.spy(get_uri_args).was_called(1)
       assert.falsy(match_t)
+    end)
+
+  end)
+
+  describe("Router (flavor = " .. flavor .. ") [stream] ", function()
+    reload_router(flavor, "stream")
+
+    local use_case, router
+
+    lazy_setup(function()
+      use_case = {
+        -- query has one value
+        {
+          service =  {
+            name = "service-tls-passthough-invalid",
+            protocol = "tcp",
+          },
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+            protocols = { "tls_passthough" },
+            expression = [[tls.sni == "www.example.org"]],
+            priority = 100,
+          },
+        },
+      }
+
+      router = assert(new_router(use_case))
+    end)
+
+    it("exec() should match tls_passthough with tls.sni", function()
+      local _ngx = {
+        var = {
+          remote_port = 1000,
+          server_port = 1000,
+          ssl_preread_server_name = "www.example.org",
+        },
+      }
+      router._set_ngx(_ngx)
+      local match_t = router:exec()
+      assert.truthy(match_t)
+
+      assert.same(use_case[1].route, match_t.route)
     end)
 
   end)
