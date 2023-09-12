@@ -139,7 +139,7 @@ brew install libyaml
 ```
 
 Now, we have to set environment variable `GITHUB_TOKEN` to download some essential repos.
-You can follow [Managing your personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) to generate an access token.
+You can follow [Managing your personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) to generate an access token. It does not need to have any other permission than `Public Repositories (read-only)`.
 
 ```bash
 # export GITHUB_TOKEN=ghp_xxxxxx_your_access_token
