@@ -179,6 +179,8 @@ jobs:
       uses: ./.github/actions/build-cache-key
       with:
         prefix: ${{ matrix.label }}-build
+        extra: |
+          ${{ hashFiles('kong/**') }}
 
     - name: Cache Packages
       id: cache-deps
