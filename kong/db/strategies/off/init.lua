@@ -62,6 +62,19 @@ local function ws(schema, options)
 end
 
 
+local function process_ttl_field(entity)
+  if entity and entity.ttl and entity.ttl ~= null then
+    local ttl_value = entity.ttl - ngx.time()
+    if ttl_value > 0 then
+      entity.ttl = ttl_value
+    else
+      entity = nil  -- do not return the expired entity
+    end
+  end
+  return entity
+end
+
+
 -- Returns a dict of entity_ids tagged according to the given criteria.
 -- Currently only the following kinds of keys are supported:
 -- * A key like `services|<ws_id>|@list` will only return service keys
@@ -165,6 +178,7 @@ local function page_for_key(self, key, size, offset, options)
   yield()
 
   local ret = {}
+  local ret_idx = 1
   local schema = self.schema
   local schema_name = schema.name
 
@@ -202,7 +216,14 @@ local function page_for_key(self, key, size, offset, options)
       return nil, "stale data detected while paginating"
     end
 
-    ret[i - offset + 1] = schema:process_auto_fields(item, "select", true, PROCESS_AUTO_FIELDS_OPTS)
+    if schema.ttl then
+      item = process_ttl_field(item)
+    end
+
+    if item then
+      ret[ret_idx] = schema:process_auto_fields(item, "select", true, PROCESS_AUTO_FIELDS_OPTS)
+      ret_idx = ret_idx + 1
+    end
   end
 
   if offset then
@@ -217,6 +238,13 @@ local function select_by_key(schema, key)
   local entity, err = unmarshall(lmdb_get(key))
   if not entity then
     return nil, err
+  end
+
+  if schema.ttl then
+    entity = process_ttl_field(entity)
+    if not entity then
+      return nil
+    end
   end
 
   entity = schema:process_auto_fields(entity, "select", true, PROCESS_AUTO_FIELDS_OPTS)

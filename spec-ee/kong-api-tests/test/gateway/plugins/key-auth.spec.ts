@@ -155,11 +155,9 @@ describe('@smoke: Gateway Plugins: key-auth', function () {
     await wait(isHybrid ? hybridWaitTime : waitTime);
   });
 
-  // skipped in hybrid until https://konghq.atlassian.net/browse/FTI-4512 is resolved
+  // This test case captures:
+  // https://konghq.atlassian.net/browse/FTI-4512
   it('should not proxy request with apiKey in header after ttl expiration', async function () {
-    if (isHybrid) {
-      this.skip();
-    }
     const validTokenHeaders = {
       apiKey: keyId,
     };
@@ -172,11 +170,9 @@ describe('@smoke: Gateway Plugins: key-auth', function () {
     );
   });
 
-  // skipped in hybrid until https://konghq.atlassian.net/browse/FTI-4512 is resolved
+  // This test case captures:
+  // https://konghq.atlassian.net/browse/FTI-4512
   it('should not proxy request with apiKey in query param after ttl expiration', async function () {
-    if (isHybrid) {
-      this.skip();
-    }
     const queryUrl = `${proxyUrl}${path}?apiKey=${keyId}`;
 
     const resp = await getNegative(`${queryUrl}`);

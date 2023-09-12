@@ -304,6 +304,12 @@ local function validate_options_value(self, options)
     end
   end
 
+  if options.export ~= nil then
+    if type(options.export) ~= "boolean" then
+      errors.export = "must be a boolean"
+    end
+  end
+
   if next(errors) then
     return nil, errors
   end
@@ -1160,6 +1166,21 @@ function DAO:each(size, options)
   end
 
   return iteration.by_row(self, pager, size, options)
+end
+
+
+function DAO:each_for_export(size, options)
+  if self.strategy.schema.ttl then
+    if not options then
+      options = get_pagination_options(self, options)
+    else
+      options = utils.cycle_aware_deep_copy(options, true)
+    end
+
+    options.export = true
+  end
+
+  return self:each(size, options)
 end
 
 
