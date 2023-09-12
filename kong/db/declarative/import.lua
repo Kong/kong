@@ -26,7 +26,6 @@ local insert = table.insert
 local null = ngx.null
 local get_phase = ngx.get_phase
 local yield = utils.yield
-local sha256 = utils.sha256_hex
 
 
 local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
@@ -151,10 +150,6 @@ local function unique_field_key(schema_name, ws_id, field, value, unique_across_
   if unique_across_ws then
     ws_id = ""
   end
-
-  -- LMDB imposes a default limit of 511 for keys, but the length of our unique
-  -- value might be unbounded, so we'll use a checksum instead of the raw value
-  value = sha256(value)
 
   return schema_name .. "|" .. ws_id .. "|" .. field .. ":" .. value
 end
