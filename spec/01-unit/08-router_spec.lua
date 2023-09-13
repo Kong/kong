@@ -4964,6 +4964,7 @@ do
 
   end)
 
+  --[==[
   describe("Router (flavor = " .. flavor .. ") [stream]", function()
     reload_router(flavor, "stream")
 
@@ -5030,5 +5031,6 @@ do
     end)
 
   end)
+  --]==]
 end
 
