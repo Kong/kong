@@ -169,7 +169,7 @@ function deco:frame(ftype, msg)
   local f = grpc_frame(ftype, msg)
 
   if self.text_encoding == "base64" then
-    f = ngx.encode_base64(f)
+    f = encode_base64(f)
   end
 
   return f
