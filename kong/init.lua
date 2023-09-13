@@ -661,31 +661,22 @@ function Kong.init_worker()
     return
   end
 
-  local is_not_control_plane = kong.configuration.role ~= "control_plane"
-  if is_not_control_plane then
+  if kong.configuration.role ~= "control_plane" then
     ok, err = execute_cache_warmup(kong.configuration)
     if not ok then
       ngx_log(ngx_ERR, "failed to warm up the DB cache: " .. err)
     end
   end
 
+  runloop.init_worker.before()
+
+  -- run plugins init_worker context
   ok, err = runloop.update_plugins_iterator()
   if not ok then
     stash_init_worker_error("failed to build the plugins iterator: " .. err)
     return
   end
 
-  if is_not_control_plane then
-    ok, err = runloop.update_router()
-    if not ok then
-      stash_init_worker_error("failed to build the router: " .. err)
-      return
-    end
-  end
-
-  runloop.init_worker.before()
-
-  -- run plugins init_worker context
   local plugins_iterator = runloop.get_plugins_iterator()
   local errors = execute_init_worker_plugins_iterator(plugins_iterator, ctx)
   if errors then
@@ -698,7 +689,7 @@ function Kong.init_worker()
 
   runloop.init_worker.after()
 
-  if is_not_control_plane and ngx.worker.id() == 0 then
+  if kong.configuration.role ~= "control_plane" then
     plugin_servers.start()
   end
 
