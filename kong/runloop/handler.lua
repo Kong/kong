@@ -54,7 +54,6 @@ local ERR   = ngx.ERR
 local CRIT  = ngx.CRIT
 local NOTICE = ngx.NOTICE
 local WARN  = ngx.WARN
-local INFO  = ngx.INFO
 local DEBUG = ngx.DEBUG
 local COMMA = byte(",")
 local SPACE = byte(" ")
@@ -77,10 +76,10 @@ local GLOBAL_QUERY_OPTS = { workspace = ngx.null, show_ws_id = true }
 
 
 local get_plugins_iterator, get_updated_plugins_iterator
-local build_plugins_iterator, update_plugins_iterator, replace_plugins_iterator
+local build_plugins_iterator, update_plugins_iterator
 local rebuild_plugins_iterator
 
-local get_updated_router, build_router, update_router, new_router, replace_router
+local get_updated_router, build_router, update_router
 local server_header = meta._SERVER_TOKENS
 local rebuild_router
 
@@ -364,30 +363,11 @@ local function register_events()
     local current_plugins_hash
     local current_balancer_hash
 
-
-    local now = ngx.now
-    local update_time = ngx.update_time
-    local worker_id = ngx.worker.id()
-
-    local exiting = ngx.worker.exiting
-    local function is_exiting()
-      if not exiting() then
-        return false
-      end
-      log(NOTICE, "declarative config flip was canceled on worker #", worker_id,
-                  ": process exiting")
-      return true
-    end
-
     worker_events.register(function(data)
-      if is_exiting() then
+      if ngx.worker.exiting() then
+        log(NOTICE, "declarative flip config canceled: process exiting")
         return true
       end
-
-      update_time()
-      local reconfigure_started_at = now() * 1000
-
-      log(INFO, "declarative config flip was started on worker #", worker_id)
 
       local default_ws
       local router_hash
@@ -402,11 +382,8 @@ local function register_events()
       end
 
       local ok, err = concurrency.with_coroutine_mutex(FLIP_CONFIG_OPTS, function()
-        -- below you are encouraged to yield for cooperative threading
-
         local rebuild_balancer = balancer_hash == nil or balancer_hash ~= current_balancer_hash
         if rebuild_balancer then
-          log(DEBUG, "stopping previously started health checkers on worker #", worker_id)
           balancer.stop_healthcheckers(CLEAR_HEALTH_STATUS_DELAY)
         end
 
@@ -414,65 +391,22 @@ local function register_events()
         core_cache:flip()
 
         kong.default_workspace = default_ws
-        ngx.ctx.workspace = default_ws
+        ngx.ctx.workspace = kong.default_workspace
 
-        local router, err
-        if router_hash == nil or router_hash ~= current_router_hash then
-          update_time()
-          local start = now() * 1000
-
-          router, err = new_router()
-          if not router then
-            return nil, err
-          end
-
-          update_time()
-          log(INFO, "building a new router took ",  now() * 1000 - start,
-                    " ms on worker #", worker_id)
-        end
-
-        local plugins_iterator
         if plugins_hash == nil or plugins_hash ~= current_plugins_hash then
-          update_time()
-          local start = now() * 1000
-
-          plugins_iterator, err = PluginsIterator.new()
-          if not plugins_iterator then
-            return nil, err
-          end
-
-          update_time()
-          log(INFO, "building a new plugins iterator took ", now() * 1000 - start,
-                    " ms on worker #", worker_id)
-        end
-
-        -- below you are not supposed to yield and this should be fast and atomic
-
-        -- TODO: we should perhaps only purge the configuration related cache.
-
-        log(DEBUG, "flushing caches as part of the config flip on worker #", worker_id)
-
-        if router then
-          replace_router(router)
-          current_router_hash = router_hash
-        end
-
-        if plugins_iterator then
-          replace_plugins_iterator(plugins_iterator)
+          rebuild_plugins_iterator(PLUGINS_ITERATOR_SYNC_OPTS)
           current_plugins_hash = plugins_hash
         end
 
+        if router_hash == nil or router_hash ~= current_router_hash then
+          rebuild_router(ROUTER_SYNC_OPTS)
+          current_router_hash = router_hash
+        end
+
         if rebuild_balancer then
-          -- TODO: balancer is a big blob of global state and you cannot easily
-          --       initialize new balancer and then atomically flip it.
-          log(DEBUG, "reinitializing balancer with a new configuration on worker #", worker_id)
           balancer.init()
           current_balancer_hash = balancer_hash
         end
-
-        update_time()
-        log(INFO, "declarative config flip took ", now() * 1000 - reconfigure_started_at,
-                  " ms on worker #", worker_id)
 
         declarative.lock()
 
@@ -480,9 +414,7 @@ local function register_events()
       end)
 
       if not ok then
-        update_time()
-        log(ERR, "declarative config flip failed after ", now() * 1000 - reconfigure_started_at,
-                 " ms on worker #", worker_id, ": ", err)
+        log(ERR, "config flip failed: ", err)
       end
     end, "declarative", "flip_config")
 
@@ -650,19 +582,13 @@ do
   local plugins_iterator
 
 
-  replace_plugins_iterator = function(new_iterator)
-    plugins_iterator = new_iterator
-    return true
-  end
-
-
   build_plugins_iterator = function(version)
     local new_iterator, err = PluginsIterator.new(version)
     if not new_iterator then
       return nil, err
     end
-
-    return replace_plugins_iterator(new_iterator)
+    plugins_iterator = new_iterator
+    return true
   end
 
 
@@ -831,7 +757,7 @@ do
   end
 
 
-  new_router = function(version)
+  build_router = function(version)
     local db = kong.db
     local routes, i = {}, 0
 
@@ -897,17 +823,12 @@ do
       router_cache_size = cache_size
     end
 
-    local router_new, err = Router.new(routes, router_cache, router_cache_neg)
-    if not router_new then
+    local new_router, err = Router.new(routes, router_cache, router_cache_neg)
+    if not new_router then
       return nil, "could not create router: " .. err
     end
 
-    return router_new
-  end
-
-
-  replace_router = function(router_new, version)
-    router = router_new
+    router = new_router
 
     if version then
       router_version = version
@@ -921,16 +842,6 @@ do
     -- /LEGACY
 
     return true
-  end
-
-
-  build_router = function(version)
-    local router_new, err = new_router(version)
-    if not router_new then
-      return nil, err
-    end
-
-    return replace_router(router_new, version)
   end
 
 
@@ -1218,8 +1129,9 @@ return {
             name = "flip-config",
             timeout = rebuild_timeout,
           }
+        end
 
-        elseif kong.configuration.worker_consistency == "strict" then
+        if strategy == "off" or kong.configuration.worker_consistency == "strict" then
           ROUTER_SYNC_OPTS = {
             name = "router",
             timeout = rebuild_timeout,
