@@ -244,6 +244,12 @@ local config = {
             },
           },
           {
+            unauthorized_destroy_session = { description = "Destroy any active session for the unauthorized requests.", required = false,
+            type     = "boolean",
+            default  = true,
+            },
+          },
+          {
             unauthorized_redirect_uri = { description = "Where to redirect the client on unauthorized requests.", required = false,
               type     = "array",
               elements = typedefs.url,
