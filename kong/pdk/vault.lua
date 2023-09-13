@@ -33,7 +33,7 @@ local get_updated_now_ms = utils.get_updated_now_ms
 
 local ngx = ngx
 local get_phase = ngx.get_phase
-local min = math.min
+local max = math.max
 local fmt = string.format
 local sub = string.sub
 local byte = string.byte
@@ -57,7 +57,7 @@ local decode_json = cjson.decode
 
 
 local NEGATIVELY_CACHED_VALUE = "\0"
-local ROTATION_INTERVAL = tonumber(os.getenv("KONG_VAULT_ROTATION_INTERVAL") or 60)
+local ROTATION_INTERVAL = tonumber(os.getenv("KONG_VAULT_ROTATION_INTERVAL"), 10) or 60
 local DAO_MAX_TTL = constants.DATABASE.DAO_MAX_TTL
 
 
@@ -190,7 +190,7 @@ end
 local function new(self)
   -- Don't put this onto the top level of the file unless you're prepared for a surprise
   local Schema = require "kong.db.schema"
-
+  
   local ROTATION_MUTEX_OPTS = {
     name = "vault-rotation",
     exptime = ROTATION_INTERVAL * 1.5, -- just in case the lock is not properly released
@@ -201,6 +201,7 @@ local function new(self)
   local RETRY_LRU = lrucache.new(1000)
 
   local SECRETS_CACHE = ngx.shared.kong_secrets
+  local SECRETS_CACHE_MIN_TTL = ROTATION_INTERVAL * 2
 
   local STRATEGIES = {}
   local SCHEMAS = {}
@@ -769,12 +770,12 @@ local function new(self)
     if value then
       -- adjust ttl to the minimum and maximum values configured
       ttl = adjust_ttl(ttl, config)
-      shdict_ttl = ttl + (config.resurrect_ttl or DAO_MAX_TTL)
+      shdict_ttl = max(ttl + (config.resurrect_ttl or DAO_MAX_TTL), SECRETS_CACHE_MIN_TTL)
       cache_value = value
 
     else
       -- negatively cached values will be rotated on each rotation interval
-      shdict_ttl = min(config.neg_ttl or ROTATION_INTERVAL)
+      shdict_ttl = max(config.neg_ttl or 0, SECRETS_CACHE_MIN_TTL)
       cache_value = NEGATIVELY_CACHED_VALUE
     end
 
@@ -784,6 +785,7 @@ local function new(self)
     end
 
     if not value then
+      LRU:delete(reference)
       return nil, fmt("could not get value from external vault (%s)", err)
     end
 
@@ -1183,7 +1185,7 @@ local function new(self)
     -- negatively cached.
     local ttl = SECRETS_CACHE:ttl(new_cache_key)
     if ttl and SECRETS_CACHE:get(new_cache_key) ~= NEGATIVELY_CACHED_VALUE then
-      local resurrect_ttl = config.resurrect_ttl or DAO_MAX_TTL
+      local resurrect_ttl = max(config.resurrect_ttl or DAO_MAX_TTL, SECRETS_CACHE_MIN_TTL)
       if ttl > resurrect_ttl then
         return true
       end
