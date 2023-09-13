@@ -66,6 +66,9 @@ function AWSLambdaHandler:access(conf)
   if not lambda_service then
     local credentials = AWS.config.credentials
     -- Override credential config according to plugin config
+    -- Note that we will not override the credential in AWS
+    -- singleton directly because it may be needed for other
+    -- scenario
     if conf.aws_key then
       local creds = AWS:Credentials {
         accessKeyId = conf.aws_key,
@@ -73,6 +76,23 @@ function AWSLambdaHandler:access(conf)
       }
 
       credentials = creds
+
+    elseif conf.proxy_url
+      -- If plugin config has proxy, then EKS IRSA might
+      -- need it as well, so we need to re-init the AWS
+      -- IRSA credential provider
+      and AWS_GLOBAL_CONFIG.AWS_WEB_IDENTITY_TOKEN_FILE
+      and AWS_GLOBAL_CONFIG.AWS_ROLE_ARN then
+        local creds = AWS:TokenFileWebIdentityCredentials()
+        creds.sts = AWS:STS({
+          region = region,
+          stsRegionalEndpoints = AWS_GLOBAL_CONFIG.sts_regional_endpoints,
+          ssl_verify = false,
+          http_proxy = conf.proxy_url,
+          https_proxy = conf.proxy_url,
+        })
+
+        credentials = creds
     end
 
     -- Assume role based on configuration
@@ -81,6 +101,7 @@ function AWSLambdaHandler:access(conf)
         credentials = credentials,
         region = region,
         stsRegionalEndpoints = AWS_GLOBAL_CONFIG.sts_regional_endpoints,
+        ssl_verify = false,
         http_proxy = conf.proxy_url,
         https_proxy = conf.proxy_url,
       })
