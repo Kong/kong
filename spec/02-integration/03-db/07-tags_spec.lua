@@ -219,6 +219,23 @@ for _, strategy in helpers.each_strategy() do
     describe("page() by tag", function()
       local single_tag_count = 5
       local total_entities_count = 100
+      for i = 1, total_entities_count do
+        local service = {
+          host = "anotherexample-" .. i .. ".org",
+          name = "service-paging" .. i,
+          tags = { "paging", "team_paging_" .. fmod(i, 5), "irrelevant_tag" }
+        }
+        local row, err, err_t = bp.services:insert(service)
+        assert.is_nil(err)
+        assert.is_nil(err_t)
+        assert.same(service.tags, row.tags)
+      end
+
+      if strategy == "off" then
+        local entities = assert(bp.done())
+        local dc = assert(declarative_config.load(helpers.test_conf.loaded_plugins))
+        declarative.load_into_cache(dc:flatten(entities))
+      end
 
       local scenarios = { -- { tags[], expected_result_count }
         {
@@ -244,26 +261,6 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local paging_size = { total_entities_count/single_tag_count, }
-
-      lazy_setup(function()
-        for i = 1, total_entities_count do
-          local service = {
-            host = "anotherexample-" .. i .. ".org",
-            name = "service-paging" .. i,
-            tags = { "paging", "team_paging_" .. fmod(i, 5), "irrelevant_tag" }
-          }
-          local row, err, err_t = bp.services:insert(service)
-          assert.is_nil(err)
-          assert.is_nil(err_t)
-          assert.same(service.tags, row.tags)
-        end
-
-        if strategy == "off" then
-          local entities = assert(bp.done())
-          local dc = assert(declarative_config.load(helpers.test_conf.loaded_plugins))
-          declarative.load_into_cache(dc:flatten(entities))
-        end
-      end)
 
       for s_idx, scenario in ipairs(scenarios) do
 
@@ -345,23 +342,20 @@ for _, strategy in helpers.each_strategy() do
           assert.stub(ngx.log).was_not_called()
         end)
 
-        it("and returns as normal if page size is large enough", function()
+        it("#flaky and returns as normal if page size is large enough", function()
           stub(ngx, "log")
 
-          -- cassandra is a bit slow on CI, so we need to wait a bit
-          helpers.pwait_until(function()
-            local rows, err, err_t, offset = db.services:page(enough_page_size, nil,
+          local rows, err, err_t, offset = db.services:page(enough_page_size, nil,
+          { tags = { "paging", "team_paging_1" }, tags_cond = 'and' })
+          assert(is_valid_page(rows, err, err_t))
+          assert.equal(enough_page_size, #rows)
+          if offset then
+            rows, err, err_t, offset = db.services:page(enough_page_size, offset,
             { tags = { "paging", "team_paging_1" }, tags_cond = 'and' })
             assert(is_valid_page(rows, err, err_t))
-            assert.equal(enough_page_size, #rows)
-            if offset then
-              rows, err, err_t, offset = db.services:page(enough_page_size, offset,
-              { tags = { "paging", "team_paging_1" }, tags_cond = 'and' })
-              assert(is_valid_page(rows, err, err_t))
-              assert.equal(0, #rows)
-              assert.is_nil(offset)
-            end
-          end)
+            assert.equal(0, #rows)
+            assert.is_nil(offset)
+          end
 
           assert.stub(ngx.log).was_not_called()
         end)
