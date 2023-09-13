@@ -1,6 +1,7 @@
 -- Copyright (c) Kong Inc. 2020
 
 local cjson = require "cjson"
+local buffer = require "string.buffer"
 local pb = require "pb"
 local grpc_tools = require "kong.tools.grpc"
 local grpc_frame = grpc_tools.frame
@@ -139,7 +140,7 @@ function deco:downstream(chunk)
   if self.msg_encoding ~= "proto" then
     local body = (self.downstream_body or "") .. chunk
 
-    local out, n = {}, 1
+    local out = buffer.new()
     local msg, body = grpc_unframe(body)
 
     while msg do
@@ -148,13 +149,12 @@ function deco:downstream(chunk)
         msg = grpc_frame(0x0, msg)
       end
 
-      out[n] = msg
-      n = n + 1
+      out:put(msg)
       msg, body = grpc_unframe(body)
     end
 
     self.downstream_body = body
-    chunk = table.concat(out)
+    chunk = out:get()
   end
 
   if self.text_encoding == "base64" then
