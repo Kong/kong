@@ -2,6 +2,6 @@ message: "Fix incorrect LuaJIT LDP/STP fusion on ARM64 which may sometimes cause
 type: dependency
 scope: Core
 prs:
-  - 11537
+  - 6465
 jiras:
   - "KAG-2473"
