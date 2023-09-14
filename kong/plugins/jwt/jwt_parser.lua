@@ -6,7 +6,7 @@
 -- @see https://github.com/x25/luajwt
 
 local json = require "cjson"
-local b64 = require("ngx.base64")
+local b64 = require "ngx.base64"
 local openssl_digest = require "resty.openssl.digest"
 local openssl_hmac = require "resty.openssl.hmac"
 local openssl_pkey = require "resty.openssl.pkey"
