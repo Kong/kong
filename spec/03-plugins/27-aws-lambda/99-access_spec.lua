@@ -497,6 +497,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("invokes a Lambda function with GET", function()
+        print(require("pl.utils").readfile("/home/runner/work/kong/kong/servroot/logs/error.log"))
         assert.logfile().has.line("TTTESTING!", true)
         local res = assert(proxy_client:send {
           method  = "GET",
