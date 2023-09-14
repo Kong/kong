@@ -504,6 +504,7 @@ for _, strategy in helpers.each_strategy() do
             ["Host"] = "lambda.com"
           }
         })
+        assert.logfile().has.line("TTTESTING!", true)
         assert.res_status(200, res)
         local body = assert.response(res).has.jsonbody()
         assert.is_string(res.headers["x-amzn-RequestId"])
