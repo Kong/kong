@@ -497,6 +497,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("invokes a Lambda function with GET", function()
+        assert.logfile().has.line("TTTESTING!", true)
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
@@ -504,7 +505,6 @@ for _, strategy in helpers.each_strategy() do
             ["Host"] = "lambda.com"
           }
         })
-        assert.logfile().has.line("TTTESTING!", true)
         assert.res_status(200, res)
         local body = assert.response(res).has.jsonbody()
         assert.is_string(res.headers["x-amzn-RequestId"])
