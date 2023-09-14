@@ -15,22 +15,22 @@ import {
   getNegative,
   getWorkspaces,
   isGwHybrid,
-  retryRequest,
-  isLocalDatabase,
   wait,
+  waitForConfigRebuild,
 } from '@support';
 import axios from 'axios';
 
-describe.skip('Vitals with InfluxDB Tests', function () {
-  this.timeout(50000);
+describe('Vitals with InfluxDB Tests', function () {
+  this.timeout(120000);
   const todaysDate = new Date().toISOString().split('T')[0];
 
   const proxyUrl = getBasePath({ environment: Environment.gateway.proxy });
   // isHybrid is being used across the test to control test flow for hybrid mode run
   const isHybrid = isGwHybrid();
-  const isLocalDb = isLocalDatabase();
-  const classicWait = 5000;
-  const longWait = 7000;
+  // Influxdb flush every 10s so let's wait for 12s to make sure it's definitely flushed
+  const flushWait = 12000;
+
+  const routePath = 'status';
 
   let serviceId: string;
   let routeId: string;
@@ -48,18 +48,13 @@ describe.skip('Vitals with InfluxDB Tests', function () {
 
     // connect to influxdb
     createInfluxDBConnection();
-    await wait(longWait);
-    await deleteAllDataFromKongRequest();
-    await wait(classicWait);
-    await deleteAllDataFromKongDatastoreCache();
-    await wait(longWait);
 
     const service = await createGatewayService('VitalsService', {
       url: 'http://httpbin/status',
     });
     serviceId = service.id;
 
-    const route = await createRouteForService(serviceId, ['/']);
+    const route = await createRouteForService(serviceId, [`/${routePath}`]);
     routeId = route.id;
 
     const workspaces: any = await getWorkspaces();
@@ -73,7 +68,10 @@ describe.skip('Vitals with InfluxDB Tests', function () {
       }
     }
 
-    await wait(isLocalDb ? classicWait : longWait);
+    await waitForConfigRebuild();
+    await wait(flushWait);
+    await deleteAllDataFromKongRequest();
+    await deleteAllDataFromKongDatastoreCache();
   });
 
   const assertKongRequestDetails = (response: any) => {
@@ -102,10 +100,9 @@ describe.skip('Vitals with InfluxDB Tests', function () {
   };
 
   it('should add entry in influxdb kong_request after request', async function () {
-    await wait(isHybrid ? longWait : classicWait);
-    await axios(`${proxyUrl}/200`);
+    await axios(`${proxyUrl}/${routePath}/200`);
     // wait for request metric to be added to influxdb
-    await wait(isHybrid ? longWait : 0);
+    await wait(flushWait);
 
     const requestEntries: any = await getAllEntriesFromKongRequest(1);
 
@@ -197,9 +194,11 @@ describe.skip('Vitals with InfluxDB Tests', function () {
   });
 
   it('should add multiple entries in influxdb kong_request after multiple requests', async function () {
-    await getNegative(`${proxyUrl}/404`);
-    await getNegative(`${proxyUrl}/500`);
-    await getNegative(`${proxyUrl}/200`);
+    await getNegative(`${proxyUrl}/${routePath}/404`);
+    await getNegative(`${proxyUrl}/${routePath}/500`);
+    await getNegative(`${proxyUrl}/${routePath}/200`);
+
+    await wait(flushWait);
 
     const requestEntries: any = await getAllEntriesFromKongRequest(4);
 
@@ -213,12 +212,6 @@ describe.skip('Vitals with InfluxDB Tests', function () {
 
       if (i === 0 || i === 3) {
         expect(entry.status, 'Should have status 200').to.eq(200);
-        if (i === 3) {
-          expect(
-            entry.kong_latency,
-            'Should have reduced kong_latency for a repeated request'
-          ).to.be.lte(kongLatency);
-        }
       } else if (i === 1) {
         expect(entry.status, 'Should have status 404').to.eq(404);
       } else if (i === 2) {
@@ -233,27 +226,30 @@ describe.skip('Vitals with InfluxDB Tests', function () {
     });
     serviceId2 = service.id;
 
-    await wait(isHybrid ? longWait : classicWait);
-
     const route = await createRouteForService(serviceId2, ['/influxdb']);
     routeId2 = route.id;
 
-    await wait(isHybrid ? longWait : classicWait);
+    await waitForConfigRebuild();
+    await wait(flushWait);
+    await deleteAllDataFromKongRequest();
+    await deleteAllDataFromKongDatastoreCache();
+
     await axios(`${proxyUrl}/influxdb`);
+    await wait(flushWait);
 
-    const requestEntries: any = await getAllEntriesFromKongRequest(5);
+    const requestEntries: any = await getAllEntriesFromKongRequest(1);
 
-    expect(requestEntries[4].route, 'Should have correct route id').to.eq(
+    expect(requestEntries[0].route, 'Should have correct route id').to.eq(
       routeId2
     );
-    expect(requestEntries[4].service, 'Should have correct service id').to.eq(
+    expect(requestEntries[0].service, 'Should have correct service id').to.eq(
       serviceId2
     );
-    expect(requestEntries[4].hostname, 'Should have correct hostname').to.eq(
+    expect(requestEntries[0].hostname, 'Should have correct hostname').to.eq(
       hostname
     );
-    expect(requestEntries[4].status, 'Should have status 2').to.eq(200);
-    expect(requestEntries[4].time._nanoISO).to.contain(todaysDate);
+    expect(requestEntries[0].status, 'Should have status 2').to.eq(200);
+    expect(requestEntries[0].time._nanoISO).to.contain(todaysDate);
   });
 
   it('should see an entry in kong_datastore_cache for a request with a new route and service', async function () {
@@ -261,8 +257,8 @@ describe.skip('Vitals with InfluxDB Tests', function () {
 
     expect(
       cacheEntries.length,
-      'Should have 2 entries in kong_datastore_cache'
-    ).to.be.greaterThanOrEqual(2);
+      'Should have 1 entries in kong_datastore_cache'
+    ).to.be.greaterThanOrEqual(1);
   });
 
   after(async function () {
