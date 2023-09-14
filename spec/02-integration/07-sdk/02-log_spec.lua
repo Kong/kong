@@ -2,7 +2,6 @@ local helpers = require "spec.helpers"
 local cjson   = require "cjson"
 local FILE_LOG_PATH = os.tmpname()
 
-print("FILE_LOG_PATH: ", FILE_LOG_PATH)
 
 local function find_in_file(f, pat)
   local line = f:read("*l")
@@ -130,10 +129,9 @@ for _, strategy in helpers.each_strategy() do
     describe("http subsystem 1", function()
       local proxy_client
       local bp
-      local db
-  
+
       lazy_setup(function()
-        bp, db = helpers.get_db_utils(strategy, {
+        bp, _ = helpers.get_db_utils(strategy, {
           "routes",
           "services",
           "plugins",
@@ -141,25 +139,25 @@ for _, strategy in helpers.each_strategy() do
           "acls",
           "keyauth_credentials",
         })
-  
+
         local consumer = bp.consumers:insert( {
           username = "foo",
         })
-  
+
         bp.keyauth_credentials:insert {
           key      = "test",
           consumer = { id = consumer.id },
         }
-  
+
         bp.acls:insert {
           group    = "allowed",
           consumer = consumer,
         }
-              
+
         local route1 = bp.routes:insert {
           paths = { "/status/200" },
         }
-  
+
         bp.plugins:insert {
           name = "acl",
           route = { id = route1.id },
@@ -167,12 +165,12 @@ for _, strategy in helpers.each_strategy() do
             allow = { "allowed" },
           },
         }
-  
+
         bp.plugins:insert {
           name     = "key-auth",
           route = { id = route1.id },
         }
-  
+
         bp.plugins:insert {
           name     = "file-log",
           route   = { id = route1.id },
@@ -187,7 +185,7 @@ for _, strategy in helpers.each_strategy() do
             "http"
           },
         }
-  
+
         assert(helpers.start_kong({
           plugins    = "bundled",
           database   = strategy,
@@ -196,19 +194,19 @@ for _, strategy in helpers.each_strategy() do
           nginx_worker_processes = 1,
         }))
       end)
-  
+
       before_each(function()
         proxy_client = helpers.proxy_client()
       end)
-  
+
       after_each(function ()
         proxy_client:close()
       end)
-  
-      lazy_teardown(function()   
+
+      lazy_teardown(function()
         helpers.stop_kong()
       end)
-  
+
       it("use the deep copy of Consumer object in serialize function", function()
         for i = 1, 3 do
           local res = proxy_client:send {
@@ -226,10 +224,9 @@ for _, strategy in helpers.each_strategy() do
     describe("http subsystem 2", function()
       local proxy_client
       local bp
-      local db
 
       lazy_setup(function()
-        bp, db = helpers.get_db_utils(strategy, {
+        bp, _ = helpers.get_db_utils(strategy, {
           "routes",
           "services",
           "plugins",
@@ -247,7 +244,7 @@ for _, strategy in helpers.each_strategy() do
           paths = { "/status/200" },
           service   = service,
         }
-  
+
         bp.plugins:insert {
           name = "error-handler-log",
           config = {},
@@ -275,19 +272,19 @@ for _, strategy in helpers.each_strategy() do
           nginx_worker_processes = 1,
         }))
       end)
-  
+
       before_each(function()
         proxy_client = helpers.proxy_client()
       end)
-  
+
       after_each(function ()
         proxy_client:close()
       end)
-  
-      lazy_teardown(function()   
+
+      lazy_teardown(function()
         helpers.stop_kong()
       end)
-  
+
       it("use the deep copy of Service object in serialize function", function()
         for i = 1, 3 do
           local res = proxy_client:send {
@@ -305,10 +302,9 @@ for _, strategy in helpers.each_strategy() do
     describe("http subsystem 3", function()
       local proxy_client
       local bp
-      local db
 
       lazy_setup(function()
-        bp, db = helpers.get_db_utils(strategy, {
+        bp, _ = helpers.get_db_utils(strategy, {
           "routes",
           "services",
           "plugins",
@@ -324,7 +320,7 @@ for _, strategy in helpers.each_strategy() do
           paths = { "/status/200" },
           service   = service,
         }
-  
+
         assert(bp.plugins:insert {
           name = "request-termination",
           route = { id = route1.id },
@@ -357,19 +353,19 @@ for _, strategy in helpers.each_strategy() do
           nginx_worker_processes = 1,
         }))
       end)
-  
+
       before_each(function()
         proxy_client = helpers.proxy_client()
       end)
-  
+
       after_each(function ()
         proxy_client:close()
       end)
-  
-      lazy_teardown(function()   
+
+      lazy_teardown(function()
         helpers.stop_kong()
       end)
-  
+
       it("use the deep copy of Route object in serialize function", function()
         for i = 1, 3 do
           local res = proxy_client:send {
@@ -387,11 +383,10 @@ for _, strategy in helpers.each_strategy() do
     describe("strean subsystem", function()
       local proxy_client
       local bp
-      local db
 
       local MESSAGE = "echo, ping, pong. echo, ping, pong. echo, ping, pong.\n"
       lazy_setup(function()
-        bp, db = helpers.get_db_utils(strategy, {
+        bp, _ = helpers.get_db_utils(strategy, {
           "routes",
           "services",
           "plugins",
@@ -412,7 +407,7 @@ for _, strategy in helpers.each_strategy() do
           },
           service = service,
         })
-  
+
         bp.plugins:insert {
           name     = "file-log",
           route = { id = route1.id },
@@ -438,19 +433,19 @@ for _, strategy in helpers.each_strategy() do
           proxy_stream_error_log = "logs/error.log",
         }))
       end)
-  
+
       before_each(function()
         proxy_client = helpers.proxy_client()
       end)
-  
+
       after_each(function ()
         proxy_client:close()
       end)
-  
-      lazy_teardown(function()   
+
+      lazy_teardown(function()
         helpers.stop_kong()
       end)
-  
+
       it("use the deep copy of Service object in serialize function", function()
         for i = 1, 3 do
           local tcp_client = ngx.socket.tcp()
