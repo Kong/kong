@@ -5,6 +5,50 @@ local ssl_fixtures = require "spec.fixtures.ssl"
 
 local POLL_INTERVAL = 0.1
 
+local function get_admin_2_plugins_iterator_id()
+  local admin_client_2 = helpers.http_client("127.0.0.1", 9001)
+  local res = assert(admin_client_2:send {
+    method = "GET",
+    path   = "/cache/plugins_iterator:version",
+  })
+  local body = assert.res_status(200, res)
+  local json = cjson.decode(body)
+  return json.message
+end
+
+local function assert_admin_2_wait(request, res_status, res_not_message)
+  local ret
+  helpers.wait_until(function()
+    local admin_client_2 = helpers.http_client("127.0.0.1", 9001)
+    finally(function()
+      admin_client_2:close()
+    end)
+
+    local res = admin_client_2:send(request)
+    if not res then
+      return false
+    end
+    if res.status ~= res_status then
+      return false
+    end
+    local body = res:read_body()
+    if not body then
+      return false
+    end
+    local json = cjson.decode(body)
+    if res_not_message then
+      if not json.message:match("^[%w-]+$") then
+        return false
+      end
+      if json.message == res_not_message then
+        return false
+      end
+    end
+    ret = json
+    return true
+  end, 10)
+  return ret
+end
 
 local function assert_proxy_2_wait(request, res_status, res_headers)
   helpers.wait_until(function()
@@ -651,9 +695,9 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(201, admin_res)
 
           helpers.wait_for_all_config_update({
-          forced_admin_port = 8001,
-          forced_proxy_port = 8000,
-        })
+            forced_admin_port = 8001,
+            forced_proxy_port = 8000,
+          })
 
           -- no need to wait for workers propagation (lua-resty-events)
           -- because our test instance only has 1 worker
@@ -697,9 +741,9 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(200, admin_res)
 
           helpers.wait_for_all_config_update({
-          forced_admin_port = 8001,
-          forced_proxy_port = 8000,
-        })
+            forced_admin_port = 8001,
+            forced_proxy_port = 8000,
+          })
 
           -- no need to wait for workers propagation (lua-resty-events)
           -- because our test instance only has 1 worker
@@ -734,9 +778,9 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(200, admin_res)
 
           helpers.wait_for_all_config_update({
-          forced_admin_port = 8001,
-          forced_proxy_port = 8000,
-        })
+            forced_admin_port = 8001,
+            forced_proxy_port = 8000,
+          })
 
           local cert_1_old = get_cert(8443, "test.wildcard.com")
           assert.certificate(cert_1_old).has.cn("localhost")
@@ -769,9 +813,9 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(200, admin_res)
 
           helpers.wait_for_all_config_update({
-          forced_admin_port = 8001,
-          forced_proxy_port = 8000,
-        })
+            forced_admin_port = 8001,
+            forced_proxy_port = 8000,
+          })
 
           local cert_1_old = get_cert(8443, "test.wildcard_updated.com")
           assert.certificate(cert_1_old).has.cn("localhost")
@@ -803,9 +847,9 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(204, admin_res)
 
           helpers.wait_for_all_config_update({
-          forced_admin_port = 8001,
-          forced_proxy_port = 8000,
-        })
+            forced_admin_port = 8001,
+            forced_proxy_port = 8000,
+          })
 
           -- no need to wait for workers propagation (lua-resty-events)
           -- because our test instance only has 1 worker
@@ -906,6 +950,7 @@ for _, strategy in helpers.each_strategy() do
           }
         }, 200, { ["Dummy-Plugin"] = ngx.null })
 
+        local iterator_id_before = get_admin_2_plugins_iterator_id()
         -- create Plugin
 
         local admin_res_plugin = assert(admin_client_1:send {
@@ -927,6 +972,12 @@ for _, strategy in helpers.each_strategy() do
           forced_admin_port = 8001,
           forced_proxy_port = 8000,
         })
+
+        -- wait for new plugins iterator version on node 2
+        assert_admin_2_wait({
+          method = "GET",
+          path   = "/cache/plugins_iterator:version",
+        }, 200, iterator_id_before)
 
         -- no need to wait for workers propagation (lua-resty-events)
         -- because our test instance only has 1 worker
@@ -951,6 +1002,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("on update", function()
+        local iterator_id_before = get_admin_2_plugins_iterator_id()
         local admin_res_plugin = assert(admin_client_1:send {
           method = "PATCH",
           path   = "/plugins/" .. service_plugin_id,
@@ -969,6 +1021,12 @@ for _, strategy in helpers.each_strategy() do
           forced_admin_port = 8001,
           forced_proxy_port = 8000,
         })
+
+        -- wait for new plugins iterator version on node 2
+        assert_admin_2_wait({
+          method = "GET",
+          path   = "/cache/plugins_iterator:version",
+        }, 200, iterator_id_before)
 
         -- no need to wait for workers propagation (lua-resty-events)
         -- because our test instance only has 1 worker
@@ -993,6 +1051,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("on delete", function()
+        local iterator_id_before = get_admin_2_plugins_iterator_id()
         local admin_res_plugin = assert(admin_client_1:send {
           method = "DELETE",
           path   = "/plugins/" .. service_plugin_id,
@@ -1003,6 +1062,12 @@ for _, strategy in helpers.each_strategy() do
           forced_admin_port = 8001,
           forced_proxy_port = 8000,
         })
+
+        -- wait for new plugins iterator version on node 2
+        assert_admin_2_wait({
+          method = "GET",
+          path   = "/cache/plugins_iterator:version",
+        }, 200, iterator_id_before)
 
         -- no need to wait for workers propagation (lua-resty-events)
         -- because our test instance only has 1 worker
@@ -1057,6 +1122,7 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(res.headers["Dummy-Plugin"])
         end
 
+        local iterator_id_before = get_admin_2_plugins_iterator_id()
         local admin_res_plugin = assert(admin_client_1:send {
           method = "POST",
           path   = "/plugins",
@@ -1075,6 +1141,12 @@ for _, strategy in helpers.each_strategy() do
           forced_admin_port = 8001,
           forced_proxy_port = 8000,
         })
+
+        -- wait for new plugins iterator version on node 2
+        assert_admin_2_wait({
+          method = "GET",
+          path   = "/cache/plugins_iterator:version",
+        }, 200, iterator_id_before)
 
         -- no need to wait for workers propagation (lua-resty-events)
         -- because our test instance only has 1 worker
@@ -1109,6 +1181,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res_1)
         assert.equal("1", res_1.headers["Dummy-Plugin"])
 
+        local iterator_id_before = get_admin_2_plugins_iterator_id()
         local admin_res = assert(admin_client_1:send {
           method = "DELETE",
           path   = "/plugins/" .. global_dummy_plugin_id,
@@ -1119,6 +1192,12 @@ for _, strategy in helpers.each_strategy() do
           forced_admin_port = 8001,
           forced_proxy_port = 8000,
         })
+
+        -- wait for new plugins iterator version on node 2
+        assert_admin_2_wait({
+          method = "GET",
+          path   = "/cache/plugins_iterator:version",
+        }, 200, iterator_id_before)
 
         -- no need to wait for workers propagation (lua-resty-events)
         -- because our test instance only has 1 worker
