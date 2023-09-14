@@ -482,6 +482,7 @@ for _, strategy in helpers.each_strategy() do
     describe("AWS_REGION environment is not set", function()
 
       lazy_setup(function()
+        helpers.stop_kong()
         assert(helpers.start_kong({
           database   = strategy,
           plugins = "aws-lambda",
@@ -497,8 +498,6 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("invokes a Lambda function with GET", function()
-        print(require("pl.utils").readfile("/home/runner/work/kong/kong/servroot/logs/error.log"))
-        assert.logfile().has.line("TTTESTING!", true)
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
