@@ -281,7 +281,12 @@ function OICHandler.access(_, conf)
     end
   end
 
-  local response = responses.new(args, ctx, iss, client, anonymous, session)
+  local response
+  if not session_present then
+    response = responses.new(args, ctx, iss, client, anonymous)
+  else
+    response = responses.new(args, ctx, iss, client, anonymous, session)
+  end
 
   local expose_error_code = args.get_conf_arg("expose_error_code", false)
 

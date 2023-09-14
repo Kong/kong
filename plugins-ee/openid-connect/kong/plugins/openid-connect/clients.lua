@@ -108,18 +108,19 @@ local function find_client(args)
   end
 
   local client = {
-    clients                    = clients,
-    secrets                    = secrets,
-    auths                      = auths,
-    algs                       = algs,
-    jwks                       = jwks,
-    redirects                  = redirects,
-    login_redirect_uris        = login_redirect_uris,
-    logout_redirect_uris       = logout_redirect_uris,
-    forbidden_redirect_uris    = forbidden_redirect_uris,
-    forbidden_destroy_session  = args.get_conf_arg("forbidden_destroy_session", true),
-    unauthorized_redirect_uris = unauthorized_redirect_uris,
-    unexpected_redirect_uris   = unexpected_redirect_uris,
+    clients                      = clients,
+    secrets                      = secrets,
+    auths                        = auths,
+    algs                         = algs,
+    jwks                         = jwks,
+    redirects                    = redirects,
+    login_redirect_uris          = login_redirect_uris,
+    logout_redirect_uris         = logout_redirect_uris,
+    forbidden_redirect_uris      = forbidden_redirect_uris,
+    forbidden_destroy_session    = args.get_conf_arg("forbidden_destroy_session", true),
+    unauthorized_destroy_session = args.get_conf_arg("unauthorized_destroy_session", true),
+    unauthorized_redirect_uris   = unauthorized_redirect_uris,
+    unexpected_redirect_uris     = unexpected_redirect_uris,
   }
 
   if client_id then

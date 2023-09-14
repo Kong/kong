@@ -24,7 +24,7 @@ local function unauthorized(error_o, ctx, issuer, client, anonymous, session)
     log.notice(err)
   end
 
-  if session and session.present then
+  if session and client.unauthorized_destroy_session then
     session:destroy()
   end
 
@@ -55,7 +55,7 @@ local function forbidden(error_o, ctx, issuer, client, anonymous, session)
     log.notice(err)
   end
 
-  if session and session.present and client.forbidden_destroy_session then
+  if session and client.forbidden_destroy_session then
     session:destroy()
   end
 

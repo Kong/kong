@@ -198,6 +198,7 @@ return {
     -- Enterprise plugins
     openid_connect = {
       "using_pseudo_issuer",
+      "unauthorized_destroy_session",
     },
   },
 

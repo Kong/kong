@@ -3357,8 +3357,179 @@ for _, strategy in helpers.all_strategies() do
           end)
         end)
       end
+
+      describe("unauthorized_destroy_session", function()
+        lazy_setup(function ()
+          local bp = helpers.get_db_utils(strategy, {
+            "routes",
+            "services",
+            "plugins",
+          }, {
+            PLUGIN_NAME
+          })
+
+          local service = bp.services:insert {
+            name = "service1",
+            path = "/anything"
+          }
+          local route1 = bp.routes:insert {
+            service = service,
+            paths   = { "/true" },
+          }
+
+          local config = {
+            issuer    = ISSUER_URL,
+            client_id = {
+              KONG_CLIENT_ID,
+            },
+            client_secret = {
+              KONG_CLIENT_SECRET,
+            },
+            auth_methods = {
+              "session",
+              "password",
+            },
+            logout_uri_suffix = "/logout",
+            logout_methods = {
+              "POST",
+            },
+            scopes = {
+              "openid",
+            },
+            logout_revoke = true,
+            display_errors = true,
+            preserve_query_args = true,
+            cache_tokens_salt = "same",
+            unauthorized_destroy_session = true,
+            refresh_tokens = true,
+            upstream_refresh_token_header = "refresh_token",
+            refresh_token_param_name      = "refresh_token",
+          }
+
+          bp.plugins:insert {
+            route   = route1,
+            name    = PLUGIN_NAME,
+            config  = config,
+          }
+
+          local route2 = bp.routes:insert {
+            service = service,
+            paths   = { "/false" },
+          }
+
+          config.unauthorized_destroy_session = false
+
+          bp.plugins:insert {
+            route   = route2,
+            name    = PLUGIN_NAME,
+            config  = config,
+          }
+
+          local route3 = bp.routes:insert {
+            service = service,
+            paths   = { "/nil" },
+          }
+
+          config.unauthorized_destroy_session = nil
+
+          bp.plugins:insert {
+            route   = route3,
+            name    = PLUGIN_NAME,
+            config  = config,
+          }
+
+          -- can't update 'plugins' entities in DBless mode
+          -- so use different plugin instances to construct 401 responses
+          config.issuers_allowed = { "http://invalid/", }
+
+          config.unauthorized_destroy_session = true
+
+          local route4 = bp.routes:insert {
+            service = service,
+            paths   = { "/true_invalid" },
+          }
+
+          bp.plugins:insert {
+            route   = route4,
+            name    = PLUGIN_NAME,
+            config  = config,
+          }
+
+          config.unauthorized_destroy_session = false
+
+          local route5 = bp.routes:insert {
+            service = service,
+            paths   = { "/false_invalid" },
+          }
+
+          bp.plugins:insert {
+            route   = route5,
+            name    = PLUGIN_NAME,
+            config  = config,
+          }
+
+          config.unauthorized_destroy_session = nil
+
+          local route6 = bp.routes:insert {
+            service = service,
+            paths   = { "/nil_invalid" },
+          }
+
+          bp.plugins:insert {
+            route   = route6,
+            name    = PLUGIN_NAME,
+            config  = config,
+          }
+
+          assert(helpers.start_kong({
+            database   = strategy,
+            nginx_conf = "spec/fixtures/custom_nginx.template",
+            plugins    = "bundled," .. PLUGIN_NAME,
+          }))
+        end)
+        lazy_teardown(function()
+          helpers.stop_kong()
+        end)
+
+        before_each(function()
+          proxy_client = helpers.proxy_client()
+        end)
+
+        local cases = { "true" , "false", "nil", }
+        local invalids = { "true_invalid" , "false_invalid", "nil_invalid", }
+        for i, v in ipairs(cases) do
+          it("=" .. v, function()
+            local res = assert(proxy_client:send({
+              method = "GET",
+              path = "/" .. v,
+              headers = {
+                ["Host"] = "kong",
+                ["Authorization"] = PASSWORD_CREDENTIALS,
+              }
+            }))
+            assert.response(res).has.status(200)
+            local cookies = res.headers["Set-Cookie"]
+            local valid_session = sub(cookies, 0, find(cookies, ";") -1)
+
+            res = assert(proxy_client:send({
+              method = "GET",
+              path = "/" .. invalids[i],
+              headers = {
+                ["Host"] = "kong",
+                ["Cookie"] = valid_session,
+              }
+            }))
+            assert.response(res).has.status(401)
+
+            if v == "true" or v == "nil" then
+              assert.response(res).has.header("set-cookie")
+              assert.match("session=;", res.headers["set-cookie"], nil, true)
+            else
+              assert.response(res).has.no.header("set-cookie")
+            end
+          end)
+        end
+      end)
     end)
-
   end)
-
 end
