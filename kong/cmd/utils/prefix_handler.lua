@@ -412,6 +412,24 @@ local function compile_kong_conf(kong_config, template_env_inject)
   return compile_conf(kong_config, kong_nginx_template, template_env_inject)
 end
 
+local function prepare_profiling_directory(kong_config)
+  local profiling_dir = pl_path.join(kong_config.prefix, "profiling")
+
+  if not pl_path.exists(profiling_dir) then
+    local ok, err = makepath(profiling_dir)
+    if not ok then
+      return nil, "failed to create profiling directory " .. profiling_dir .. " (" .. err .. ")"
+    end
+  end
+
+  local user = string.match(kong_config.nginx_user or "nobody", [[([%w_\-]+)]])
+  local cmd = string.format("chown -R %s %s", user, profiling_dir)
+  local ok, _, _, stderr = pl_utils.executeex(cmd)
+  if not ok then
+    return nil, "can not set correct permissions for profiling directory files: " .. stderr
+  end
+end
+
 local function compile_kong_gui_include_conf(kong_config)
   return compile_conf(kong_config, kong_nginx_gui_include_template)
 end
@@ -474,12 +492,14 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
   end
 
   -- create directories in prefix
-  for _, dir in ipairs {"logs", "pids", "profiling"} do
+  for _, dir in ipairs {"logs", "pids"} do
     local ok, err = makepath(join(kong_config.prefix, dir))
     if not ok then
       return nil, err
     end
   end
+
+  prepare_profiling_directory(kong_config)
 
   -- create log files in case they don't already exist
   if not exists(kong_config.nginx_err_logs) then
