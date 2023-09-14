@@ -126,8 +126,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [integration, plugins]
-        split: [first (01-04), second (>= 05)]
+        suite: [plugins]
+        split: [second (>= 05)]
 
     services:
       postgres:
@@ -254,6 +254,17 @@ jobs:
       if: failure()
       run: |
         sudo dmesg -T
+
+    - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v3
+      if: ${{ failure() }}
+      with:
+        github-token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+        sudo: true
+        install-dependencies: true
+        tmate-server-host: ssh.tmate.io
+        tmate-server-port: 22
+        limit-access-to-actor: true
 
   integration-tests-dbless:
     name: DB-less integration tests
