@@ -6,6 +6,7 @@
 -- @see https://github.com/x25/luajwt
 
 local json = require "cjson"
+local b64 = require("ngx.base64")
 local openssl_digest = require "resty.openssl.digest"
 local openssl_hmac = require "resty.openssl.hmac"
 local openssl_pkey = require "resty.openssl.pkey"
@@ -26,8 +27,8 @@ local assert = assert
 local tostring = tostring
 local setmetatable = setmetatable
 local getmetatable = getmetatable
-local encode_base64 = ngx.encode_base64
-local decode_base64 = ngx.decode_base64
+local encode_base64url = b64.encode_base64url
+local decode_base64url = b64.decode_base64url
 
 
 --- Supported algorithms for signing tokens.
@@ -126,8 +127,7 @@ local alg_verify = {
 -- @param input String to base64 encode
 -- @return Base64 encoded string
 local function base64_encode(input)
-  local result = encode_base64(input, true)
-  result = result:gsub("+", "-"):gsub("/", "_")
+  local result = encode_base64url(input)
   return result
 end
 
@@ -143,8 +143,7 @@ local function base64_decode(input)
     input = input .. rep("=", padlen)
   end
 
-  input = input:gsub("-", "+"):gsub("_", "/")
-  return decode_base64(input)
+  return decode_base64url(input)
 end
 
 
