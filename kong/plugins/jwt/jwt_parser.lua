@@ -154,14 +154,15 @@ end
 -- @param len Number of parts to retrieve
 -- @return A table of strings
 local function tokenize(str, div, len)
-  local result, pos = {}, 0
+  local result, idx, pos = {}, 1, 0
 
   local iter = function()
     return find(str, div, pos, true)
   end
 
   for st, sp in iter do
-    result[#result + 1] = sub(str, pos, st-1)
+    result[idx] = sub(str, pos, st - 1)
+    idx = idx + 1
     pos = sp + 1
     len = len - 1
     if len <= 1 then
@@ -169,7 +170,7 @@ local function tokenize(str, div, len)
     end
   end
 
-  result[#result + 1] = sub(str, pos)
+  result[idx] = sub(str, pos)
   return result
 end
 
