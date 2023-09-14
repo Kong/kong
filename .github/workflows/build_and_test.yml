@@ -41,7 +41,7 @@ jobs:
 
   lint-doc-and-unit-tests:
     name: Lint, Doc and Unit tests
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-23.04
     needs: build
 
     services:
