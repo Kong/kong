@@ -519,10 +519,11 @@ function _mt:query(sql, operation)
   end
 
   local phase = get_phase()
+  local in_admin_api = phase == "content" and ngx.ctx.KONG_PHASE == ADMIN_API_PHASE
 
   if not operation or
-     not self.config_ro or
-     (phase == "content" and ngx.ctx.KONG_PHASE == ADMIN_API_PHASE)
+          not self.config_ro or
+          in_admin_api
   then
     -- admin API requests skips the replica optimization
     -- to ensure all its results are always strongly consistent
@@ -552,6 +553,9 @@ function _mt:query(sql, operation)
 
   res, err, partial, num_queries = conn:query(sql)
 
+  if in_admin_api and operation == "write" and res and res[1] and res[1]._pg_transaction_id then
+    kong.response.set_header('X-Kong-Transaction-ID', res[1]._pg_transaction_id)
+  end
   -- if err is string then either it is a SQL error
   -- or it is a socket error, here we abort connections
   -- that encounter errors instead of reusing them, for
