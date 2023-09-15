@@ -2,6 +2,7 @@ local concurrency = require("kong.concurrency")
 
 -- require resty.aws.config to have it capture any pertinent environment variables
 require("resty.aws.config")
+local _ = require "resty.luasocket.http"
 
 local resty_aws = require("resty.aws")
 
