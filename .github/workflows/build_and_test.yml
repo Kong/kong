@@ -298,16 +298,16 @@ jobs:
         path: |
           /tmp/cores
 
-    - name: Setup tmate session
-      uses: mxschmitt/action-tmate@v3
-      if: ${{ failure() }}
-      with:
-        github-token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
-        sudo: true
-        install-dependencies: true
-        tmate-server-host: ssh.tmate.io
-        tmate-server-port: 22
-        limit-access-to-actor: true
+    # - name: Setup tmate session
+    #   uses: mxschmitt/action-tmate@v3
+    #   if: ${{ failure() }}
+    #   with:
+    #     github-token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+    #     sudo: true
+    #     install-dependencies: true
+    #     tmate-server-host: ssh.tmate.io
+    #     tmate-server-port: 22
+    #     limit-access-to-actor: true
 
   integration-tests-dbless:
     name: DB-less integration tests

@@ -80,7 +80,7 @@ if [ "$TEST_SUITE" == "plugins" ]; then
         # Note that the split here is chosen carefully to result
         # in a similar run time between the two batches, and should
         # be adjusted if imbalance become significant in the future
-        PLUGINS=$(ls -d spec/03-plugins/27-aws-lambda* | tail -n+23)
+        PLUGINS=$(ls -d spec/03-plugins/27-aws-lambda*)
 
     else
         # Non GitHub Actions
