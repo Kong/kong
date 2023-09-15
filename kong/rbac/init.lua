@@ -34,6 +34,8 @@ local setmetatable = setmetatable
 local getmetatable = getmetatable
 local register_hook = hooks.register_hook
 local to_hex = resty_str.to_hex
+local ipairs = ipairs
+local EMPTY_T = {}
 
 
 local function log(lvl, ...)
@@ -208,11 +210,19 @@ function _M.register_dao_hooks(db)
     return true
   end)
 
-  register_hook("dao:delete_by:post", function(entity, name)
+  register_hook("dao:delete_by:post", function(entity, name, _, ws_id, cascade_entities)
     local err = _M.delete_role_entity_permission(name, entity)
     if err then
       return nil, db.errors:database_error("could not delete Route relationship " ..
           "with Role: " .. err)
+    end
+
+    for _, cascade_entity in ipairs(cascade_entities or EMPTY_T) do
+      local err = _M.delete_role_entity_permission(cascade_entity.dao.schema.table_name, cascade_entity.entity)
+      if err then
+        return nil, db.errors:database_error("could not delete Route relationship " ..
+          "with Role: " .. err)
+      end
     end
 
     return entity
@@ -1687,7 +1697,7 @@ function _M.check_cascade(entities, rbac_ctx)
   --  }
   -- }
   for _, table_info in pairs(entities) do
-    for _, entity in ipairs(table_info.entities) do
+    for _, entity in ipairs(table_info.entities or EMPTY_T) do
       if not authorize_request_entity(rbac_ctx.entities_perms,
                                       entity[table_info.schema.primary_key[1]],
                                       rbac_ctx.action) then
