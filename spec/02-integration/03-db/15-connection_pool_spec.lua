@@ -22,6 +22,7 @@ for pool_size, backlog_size in ipairs({ 0, 3 }) do
         nginx_worker_processes = 1,
         pg_pool_size = pool_size,
         pg_backlog = backlog_size,
+        log_level = "info",
       }))
       client = helpers.admin_client()
     end)

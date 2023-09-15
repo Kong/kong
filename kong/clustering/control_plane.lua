@@ -11,6 +11,7 @@ local compat = require("kong.clustering.compat")
 local constants = require("kong.constants")
 local events = require("kong.clustering.events")
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
+local global = require("kong.global")
 
 
 local string = string
@@ -123,6 +124,12 @@ function _M:export_deflated_reconfigure_payload()
     hashes = hashes,
   }
 
+  local current_transaction_id
+  if kong.configuration.log_level == "debug" then
+    current_transaction_id = global.get_current_transaction_id()
+    payload.current_transaction_id = current_transaction_id
+  end
+
   self.reconfigure_payload = payload
 
   payload, err = cjson_encode(payload)
@@ -142,6 +149,10 @@ function _M:export_deflated_reconfigure_payload()
   self.current_hashes = hashes
   self.current_config_hash = config_hash
   self.deflated_reconfigure_payload = payload
+
+  if kong.configuration.log_level == "debug" then
+    ngx_log(ngx_DEBUG, _log_prefix, "exported configuration with transaction id " .. current_transaction_id)
+  end
 
   return payload, nil, config_hash
 end
