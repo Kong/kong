@@ -195,6 +195,9 @@ return {
 
   -- Any dataplane older than 3.5.0
   [3005000000] = {
+    cors = {
+      "private_network",
+    },
     -- Enterprise plugins
     openid_connect = {
       "using_pseudo_issuer",
@@ -202,9 +205,4 @@ return {
     },
   },
 
-  [3005000000] = {
-    cors = {
-      "private_network",
-    }
-  }
 }
