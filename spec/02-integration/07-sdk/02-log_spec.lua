@@ -125,8 +125,9 @@ describe("PDK: kong.log", function()
 end)
 
 for _, strategy in helpers.each_strategy() do
-  describe("PDK: kong.log.serialize [#" .. strategy .. "]", function()
-    describe("http subsystem 1", function()
+  describe("PDK: make sure kong.log.serialize() will not modify ctx which's lifecycle " ..
+           "is across request [#" .. strategy .. "]", function()
+    describe("ctx.authenticated_consumer", function()
       local proxy_client
       local bp
 
@@ -207,7 +208,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
       end)
 
-      it("use the deep copy of Consumer object in serialize function", function()
+      it("use the deep copy of Consumer object", function()
         for i = 1, 3 do
           local res = proxy_client:send {
             method  = "GET",
@@ -221,7 +222,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("http subsystem 2", function()
+    describe("ctx.service", function()
       local proxy_client
       local bp
 
@@ -285,7 +286,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
       end)
 
-      it("use the deep copy of Service object in serialize function", function()
+      it("use the deep copy of Service object", function()
         for i = 1, 3 do
           local res = proxy_client:send {
             method  = "GET",
@@ -299,7 +300,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("http subsystem 3", function()
+    describe("ctx.route", function()
       local proxy_client
       local bp
 
@@ -366,7 +367,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
       end)
 
-      it("use the deep copy of Route object in serialize function", function()
+      it("use the deep copy of Route object", function()
         for i = 1, 3 do
           local res = proxy_client:send {
             method  = "GET",
@@ -380,7 +381,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("strean subsystem", function()
+    describe("in strean subsystem# ctx.authenticated_consumer", function()
       local proxy_client
       local bp
 
@@ -446,7 +447,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
       end)
 
-      it("use the deep copy of Service object in serialize function", function()
+      it("use the deep copy of Service object", function()
         for i = 1, 3 do
           local tcp_client = ngx.socket.tcp()
           assert(tcp_client:connect(helpers.get_proxy_ip(false), 19000))

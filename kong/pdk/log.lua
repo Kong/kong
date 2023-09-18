@@ -16,7 +16,7 @@ local inspect = require "inspect"
 local ngx_ssl = require "ngx.ssl"
 local phase_checker = require "kong.pdk.private.phases"
 local utils = require "kong.tools.utils"
-
+local cycle_aware_deep_copy = utils.cycle_aware_deep_copy
 
 local sub = string.sub
 local type = type
@@ -802,7 +802,7 @@ do
         end
       end
 
-      -- The value of upstream_status is a string, and status codes may be 
+      -- The value of upstream_status is a string, and status codes may be
       -- seperated by comma or grouped by colon, according to
       -- the nginx doc: http://nginx.org/en/docs/http/ngx_http_upstream_module.html#upstream_status
       local upstream_status = var.upstream_status or ""
@@ -832,9 +832,9 @@ do
         },
         tries = (ctx.balancer_data or {}).tries,
         authenticated_entity = build_authenticated_entity(ctx),
-        route = utils.cycle_aware_deep_copy(ctx.route),
-        service = utils.cycle_aware_deep_copy(ctx.service),
-        consumer = utils.cycle_aware_deep_copy(ctx.authenticated_consumer),
+        route = cycle_aware_deep_copy(ctx.route),
+        service = cycle_aware_deep_copy(ctx.service),
+        consumer = cycle_aware_deep_copy(ctx.authenticated_consumer),
         client_ip = var.remote_addr,
         started_at = okong.request.get_start_time(),
       }
@@ -873,9 +873,9 @@ do
         },
         tries = (ctx.balancer_data or {}).tries,
         authenticated_entity = build_authenticated_entity(ctx),
-        route = utils.cycle_aware_deep_copy(ctx.route),
-        service = utils.cycle_aware_deep_copy(ctx.service),
-        consumer = utils.cycle_aware_deep_copy(ctx.authenticated_consumer),
+        route = cycle_aware_deep_copy(ctx.route),
+        service = cycle_aware_deep_copy(ctx.service),
+        consumer = cycle_aware_deep_copy(ctx.authenticated_consumer),
         client_ip = var.remote_addr,
         started_at = okong.request.get_start_time(),
       }
