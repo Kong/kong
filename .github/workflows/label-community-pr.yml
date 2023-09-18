@@ -17,7 +17,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set +e
-          gh api orgs/Kong/members --paginate -q '.[].login' | grep -q "^${{ github.event.pull_request.user.login }}$"
+          gh api orgs/Kong/members --paginate -q '.[].login' | grep -q '${{ github.event.pull_request.user.login }}'
           echo $?
           echo "exitcode=$?" >> $GITHUB_OUTPUT
           cat $GITHUB_OUTPUT
