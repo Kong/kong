@@ -381,7 +381,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("in strean subsystem# ctx.authenticated_consumer", function()
+    describe("in stream subsystem# ctx.authenticated_consumer", function()
       local proxy_client
       local bp
 
