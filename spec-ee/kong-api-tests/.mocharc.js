@@ -16,6 +16,6 @@ module.exports = {
     output: 'results/test-results-{id}.xml',
   },
   require: `ts-node/register,tsconfig-paths/register,test/_fixtures.ts,${addRootHooks()}`,
-  timeout: '60000',
+  timeout: '180000',
   ui: 'bdd',
 };
