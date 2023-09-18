@@ -13,10 +13,12 @@ jobs:
     steps:
       - name: Check PR Author Membership
         id: check_membership
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo ${{ github.event.pull_request.user.login }}
           set +e
-          gh api orgs/Kong/members --paginate -q '.[].login' | grep -q '^${{ github.event.pull_request.user.login }}$'
+          gh api orgs/Kong/members --paginate -q '.[].login' | grep -q '^1${{ github.event.pull_request.user.login }}$'
           echo $?
           echo "exitcode=$?" >> $GITHUB_OUTPUT
           cat $GITHUB_OUTPUT
@@ -28,4 +30,3 @@ jobs:
             author/community
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
