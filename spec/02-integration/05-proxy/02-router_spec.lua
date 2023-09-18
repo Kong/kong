@@ -1417,7 +1417,7 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
 
-      it_trad_only("matches a Route based on its 'snis' attribute", function()
+      it("matches a Route based on its 'snis' attribute", function()
         -- config propagates to stream subsystems not instantly
         -- try up to 10 seconds with step of 2 seconds
         -- in vagrant it takes around 6 seconds

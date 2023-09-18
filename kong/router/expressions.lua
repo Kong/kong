@@ -39,7 +39,9 @@ local function get_exp_and_priority(route)
   -- give the chance for http redirection (301/302/307/308/426)
   -- and allow tcp works with tls
   if protocols and #protocols == 1 and
-    (protocols[1] == "https" or protocols[1] == "tls")
+    (protocols[1] == "https" or
+     protocols[1] == "tls" or
+     protocols[1] == "tls_passthrough")
   then
     return exp, route.priority
   end
