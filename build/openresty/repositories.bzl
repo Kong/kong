@@ -36,6 +36,7 @@ def openresty_repositories():
         strip_prefix = "openresty-" + openresty_version,
         urls = [
             "https://openresty.org/download/openresty-" + openresty_version + ".tar.gz",
+            "https://github.com/Kong/openresty-release-mirror/releases/download/" + openresty_version + "/openresty-" + openresty_version + ".tar.gz",
         ],
         patches = KONG_VAR["OPENRESTY_PATCHES"],
         patch_args = ["-p1"],
