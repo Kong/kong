@@ -221,7 +221,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("proxy ssl verify", function()
-      it("prevents requests to upstream that does not possess a trusted certificate", function()
+      it("#flaky prevents requests to upstream that does not possess a trusted certificate", function()
         helpers.clean_logfile()
 
         local res = assert(proxy_client:send {
