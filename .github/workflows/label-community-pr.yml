@@ -16,8 +16,8 @@ jobs:
         run: |
           echo ${{ github.event.pull_request.user.login }}
           set +e
-          gh api orgs/Kong/members --paginate -q '.[].login' | grep '^${{ github.event.pull_request.user.login }}$'
           gh api orgs/Kong/members --paginate -q '.[].login' | grep -q '^${{ github.event.pull_request.user.login }}$'
+          echo $?
           echo "exitcode=$?" >> $GITHUB_OUTPUT
           cat $GITHUB_OUTPUT
       - name: Add Label if Author is not a member
