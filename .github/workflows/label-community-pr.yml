@@ -19,7 +19,7 @@ jobs:
           gh api orgs/Kong/members --paginate -q '.[].login' | grep -q '^${{ github.event.pull_request.user.login }}$'
           echo "exitcode=$?" >> $GITHUB_OUTPUT
       - name: Add Label if Author is not a member
-        if: steps.check_membership.outputs.exitcode == '0'
+        if: steps.check_membership.outputs.exitcode == '1'
         uses: christianvuerings/add-labels@v1
         with:
           labels: |
