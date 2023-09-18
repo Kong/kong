@@ -339,8 +339,7 @@ function _M.runloop_log_before(ctx)
   local active_span = tracer.active_span()
   -- check root span type to avoid encounter error
   if active_span and type(active_span.finish) == "function" then
-    local end_time = ctx.KONG_BODY_FILTER_ENDED_AT
-                  and ctx.KONG_BODY_FILTER_ENDED_AT * 1e6
+    local end_time = ctx.KONG_BODY_FILTER_ENDED_AT_NS
     active_span:finish(end_time)
   end
 end

@@ -14,6 +14,14 @@ local TCP_PORT = helpers.get_available_port()
 local tcp_trace_plugin_name = "tcp-trace-exporter"
 
 
+local function get_parent(span, spans)
+  for _, s in ipairs(spans) do
+    if s.span_id == span.parent_id then
+      return s
+    end
+  end
+end
+
 for _, strategy in helpers.each_strategy() do
   local proxy_client
 
@@ -81,6 +89,40 @@ for _, strategy in helpers.each_strategy() do
 
           local spans = cjson.decode(res)
           assert.True(#spans == 0 or #spans == #instrumentations)
+        end
+      end)
+    end)
+
+    describe("spans start/end times are consistent with their hierarchy", function ()
+      lazy_setup(function()
+        setup_instrumentations("all", false, 1)
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+      end)
+
+      it("sets child lifespan within parent's lifespan", function ()
+        for _ = 1, 100 do
+          local thread = helpers.tcp_server(TCP_PORT)
+          local r = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/",
+          })
+          assert.res_status(200, r)
+
+          local ok, res = thread:join()
+          assert.True(ok)
+          assert.is_string(res)
+
+          local spans = cjson.decode(res)
+          for i = 2, #spans do -- skip the root span (no parent)
+            local span = spans[i]
+            local parent = get_parent(span, spans)
+            assert.is_not_nil(parent)
+            assert.True(span.start_time_ns >= parent.start_time_ns)
+            assert.True(span.end_time_ns <= parent.end_time_ns)
+          end
         end
       end)
     end)
