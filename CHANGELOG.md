@@ -19,6 +19,11 @@
   `nginx_http_proxy_wasm_isolation` configuration value from taking effect.
   [#11407](https://github.com/Kong/kong/pull/11407)
 
+#### Kong Manager
+
+- Fixed entity docs link.
+  [#92](https://github.com/Kong/kong-manager/pull/92)
+
 ## 3.4.0
 
 ### Breaking Changes
