@@ -13,6 +13,7 @@ https://github.com/Kong/kong/blob/master/CONTRIBUTING.md#contributing
 - [ ] The Pull Request has tests
 - [ ] A changelog file has been added to `CHANGELOG/unreleased/kong` or adding `skip-changelog` label on PR if unnecessary. [README.md](https://github.com/Kong/kong/blob/master/CHANGELOG/README.md)
 - [ ] The Pull Request has backports to all the versions it needs to cover
+- [ ] There is a user-facing docs PR against https://github.com/Kong/docs.konghq.com - PUT DOCS PR HERE
 
 ### Full changelog
 

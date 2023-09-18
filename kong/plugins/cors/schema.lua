@@ -54,6 +54,7 @@ return {
           }, }, },
           { max_age = { description = "Indicates how long the results of the preflight request can be cached, in `seconds`.", type = "number" }, },
           { credentials = { description = "Flag to determine whether the `Access-Control-Allow-Credentials` header should be sent with `true` as the value.", type = "boolean", required = true, default = false }, },
+          { private_network = { description = "Flag to determine whether the `Access-Control-Allow-Private-Network` header should be sent with `true` as the value.", type = "boolean", required = true, default = false }, },
           { preflight_continue = { description = "A boolean value that instructs the plugin to proxy the `OPTIONS` preflight request to the Upstream service.", type = "boolean", required = true, default = false }, },
     }, }, },
   },

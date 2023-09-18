@@ -201,4 +201,10 @@ return {
       "unauthorized_destroy_session",
     },
   },
+
+  [3005000000] = {
+    cors = {
+      "private_network",
+    }
+  }
 }

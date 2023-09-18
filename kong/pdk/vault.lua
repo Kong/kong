@@ -190,7 +190,6 @@ end
 local function new(self)
   -- Don't put this onto the top level of the file unless you're prepared for a surprise
   local Schema = require "kong.db.schema"
-  
   local ROTATION_MUTEX_OPTS = {
     name = "vault-rotation",
     exptime = ROTATION_INTERVAL * 1.5, -- just in case the lock is not properly released
@@ -1112,7 +1111,7 @@ local function new(self)
       -- We cannot retry, so let's just call the callback and return
       return callback(options)
     end
-    
+
     local name = "vault.try:" .. calculate_hash(concat(references, "."))
     local old_updated_at = RETRY_LRU:get(name) or 0
 

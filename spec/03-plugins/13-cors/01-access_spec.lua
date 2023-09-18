@@ -290,6 +290,10 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "cors12.com" },
       })
 
+      local route13 = bp.routes:insert({
+        hosts = { "cors13.com" },
+      })
+
       local mock_upstream = bp.services:insert {
         host = helpers.mock_upstream_hostname,
         port = helpers.mock_upstream_port,
@@ -441,6 +445,16 @@ for _, strategy in helpers.each_strategy() do
             "a.xxx.com",
             "allowed-domain.test"
           },
+        }
+      }
+
+      bp.plugins:insert {
+        name = "cors",
+        route = { id = route13.id },
+        config = {
+          preflight_continue = false,
+          private_network = true,
+          origins = { 'allowed-domain.test' }
         }
       }
 
@@ -711,6 +725,20 @@ for _, strategy in helpers.each_strategy() do
 
         assert.res_status(200, res)
         assert.is_nil(res.headers["Access-Control-Allow-Origin"])
+      end)
+
+      it("support private-network", function()
+        local res = assert(proxy_client:send {
+          method  = "OPTIONS",
+          headers = {
+            ["Host"]   = "cors13.com",
+            ["Origin"] = "allowed-domain.test",
+            ["Access-Control-Request-Private-Network"] = "true",
+            ["Access-Control-Request-Method"] = "PUT",
+          }
+        })
+        assert.res_status(200, res)
+        assert.equal("true", res.headers["Access-Control-Allow-Private-Network"])
       end)
     end)
 

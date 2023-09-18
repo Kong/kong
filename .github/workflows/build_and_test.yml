@@ -7,7 +7,6 @@ on:  # yamllint disable-line rule:truthy
     - '**/*.md'
     - '.github/workflows/release.yml'
     - 'CHANGELOG/**'
-    
   push:
     branches:
     - master
@@ -474,7 +473,7 @@ jobs:
         export XML_OUTPUT=$(realpath $TEST_RESULTS_XML_OUTPUT)
         source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
         .ci/run_tests_github.sh
-        
+
 
     - name: Archive coverage stats file
       uses: actions/upload-artifact@v3

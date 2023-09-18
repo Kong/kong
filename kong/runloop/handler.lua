@@ -788,7 +788,6 @@ do
       local plugins_iterator
       if plugins_hash ~= CURRENT_PLUGINS_HASH then
         local start = get_monotonic_ms()
-
         plugins_iterator, err = new_plugins_iterator()
         if not plugins_iterator then
           return nil, err

@@ -19,7 +19,7 @@ Kong runs natively on Kubernetes thanks to its official [Kubernetes Ingress Cont
 
 Let’s test drive Kong by adding authentication to an API in under 5 minutes.
 
-We suggest using the docker-compose distribution via the instructions below, but there is also a [docker installation](https://docs.konghq.com/gateway/latest/install/docker/#install-kong-gateway-in-db-less-mode) procedure if you’d prefer to run the Kong API Gateway in DB-less mode. 
+We suggest using the docker-compose distribution via the instructions below, but there is also a [docker installation](https://docs.konghq.com/gateway/latest/install/docker/#install-kong-gateway-in-db-less-mode) procedure if you’d prefer to run the Kong API Gateway in DB-less mode.
 
 Whether you’re running in the cloud, on bare metal, or using containers, you can find every supported distribution on our [official installation](https://konghq.com/install/#kong-community) page.
 
@@ -34,17 +34,18 @@ Whether you’re running in the cloud, on bare metal, or using containers, you c
   $ KONG_DATABASE=postgres docker-compose --profile database up
 ```
 
-The Gateway will be available on the following ports on localhost:
+The Gateway is now available on the following ports on localhost:
 
-`:8000` on which Kong listens for incoming HTTP traffic from your clients, and forwards it to your upstream services.
-`:8001` on which the Admin API used to configure Kong listens.
+- `:8000` - send traffic to your service via Kong
+- `:8001` - configure Kong using Admin API or via [decK](https://github.com/kong/deck)
+- `:8002` - access Kong's management Web UI (Kong Manager) on [localhost:8002](http://localhost:8002)
 
 Next, follow the [quick start guide](https://docs.konghq.com/gateway-oss/latest/getting-started/configuring-a-service/
 ) to tour the Gateway features.
 
 ## Features
 
-By centralizing common API functionality across all your organization's services, the Kong API Gateway creates more freedom for engineering teams to focus on the challenges that matter most. 
+By centralizing common API functionality across all your organization's services, the Kong API Gateway creates more freedom for engineering teams to focus on the challenges that matter most.
 
 The top Kong features include:
 - Advanced routing, load balancing, health checking - all configurable via a RESTful admin API or declarative configuration.
@@ -57,7 +58,7 @@ The top Kong features include:
 [![][kong-benefits]][kong-url]
 
 ### Plugin Hub
-Plugins provide advanced functionality that extends the use of the Gateway. Many of the Kong Inc. and community-developed plugins like AWS Lambda, Correlation ID, and Response Transformer are showcased at the [Plugin Hub](https://docs.konghq.com/hub/). 
+Plugins provide advanced functionality that extends the use of the Gateway. Many of the Kong Inc. and community-developed plugins like AWS Lambda, Correlation ID, and Response Transformer are showcased at the [Plugin Hub](https://docs.konghq.com/hub/).
 
 Contribute to the Plugin Hub and ensure your next innovative idea is published and available to the broader community!
 

@@ -22,7 +22,7 @@ jobs:
 
       - name: Retrives changed files in CHANGELOG/unreleased/**/*.yaml
         id: changelog-check
-        uses: tj-actions/changed-files@5817a9efb0d7cc34b917d8146ea10b9f32044968 # v37
+        uses: tj-actions/changed-files@2f7246cb26e8bb6709b6cbfc1fec7febfe82e96a # v38.2.1
         with:
           files: 'CHANGELOG/unreleased/**/*.yaml'
 
