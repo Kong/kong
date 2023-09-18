@@ -50,7 +50,7 @@ return {
           }},
           { sync_rate = { description = "How often to sync counter data to the central data store. A value of 0 results in synchronous behavior; a value of -1 ignores sync behavior entirely and only stores counters in node memory. A value greater than 0 will sync the counters in the specified number of seconds. The minimum allowed interval is 0.02 seconds (20ms).", type = "number",
           }},
-          { namespace = { description = "The rate limiting library namespace to use for this plugin instance. Counter data and sync configuration is isolated in each namespace.", type = "string",
+          { namespace = { description = "The rate limiting library namespace to use for this plugin instance. Counter data and sync configuration is isolated in each namespace. NOTE: For the plugin instances sharing the same namespace, all the configurations that are required for synchronizing counters, e.g. `strategy`, `redis`, `sync_rate`, `window_size`, `dictionary_name`, need to be the same.", type = "string",
             auto = true,
             required = true,
           }},
