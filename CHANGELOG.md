@@ -1,5 +1,5 @@
 # Table of Contents
-
+- [2.8.4](#284)
 - [2.8.3](#283)
 - [2.8.2](#282)
 - [2.8.1](#281)
@@ -65,6 +65,13 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
+## [2.8.4]
+
+> Released 2023/09/22
+
+### Fixes
+
+- Fixed a bug where internal redirects (i.e. those produced by the error_page directive) could interfere with worker process handling the request when buffered proxying is being used.
 
 ## [2.8.3]
 
