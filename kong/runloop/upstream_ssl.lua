@@ -88,26 +88,30 @@ local function fallback_upstream_client_cert(ctx, upstream)
     return
   end
 
-  if ctx.service and not ctx.service.client_certificate then
-    -- service level client_certificate is not set
-    local cert, res, err
-    local client_certificate = upstream.client_certificate
+  if ctx.service and ctx.service.client_certificate then
+    return
+  end
 
-    -- does the upstream object contains a client certificate?
-    if client_certificate then
-      cert, err = get_certificate(client_certificate)
-      if not cert then
-        log(ERR, "unable to fetch upstream client TLS certificate ",
-                 client_certificate.id, ": ", err)
-        return
-      end
+  -- service level client_certificate is not set
+  local cert, res, err
+  local client_certificate = upstream.client_certificate
 
-      res, err = set_upstream_cert_and_key(cert.cert, cert.key)
-      if not res then
-        log(ERR, "unable to apply upstream client TLS certificate ",
-                 client_certificate.id, ": ", err)
-      end
-    end
+  -- does the upstream object contains a client certificate?
+  if not client_certificate then
+    return
+  end
+
+  cert, err = get_certificate(client_certificate)
+  if not cert then
+    log(ERR, "unable to fetch upstream client TLS certificate ",
+             client_certificate.id, ": ", err)
+    return
+  end
+
+  res, err = set_upstream_cert_and_key(cert.cert, cert.key)
+  if not res then
+    log(ERR, "unable to apply upstream client TLS certificate ",
+             client_certificate.id, ": ", err)
   end
 end
 
