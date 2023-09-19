@@ -89,6 +89,20 @@ local function gen_route(flavor, r)
   return r
 end
 
+local function gen_plugin(route)
+  return {
+    name = "pre-function",
+    route = { id = route.id },
+    config = {
+      access = {
+        [[
+          kong.service.request.enable_buffering()
+        ]]
+      }
+    }
+  }
+end
+
 
 for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
 for _, strategy in helpers.each_strategy() do
@@ -103,6 +117,8 @@ for _, strategy in helpers.each_strategy() do
     local tls_service_mtls, tls_service_tls
     local tls_upstream
     local tls_service_mtls_upstream
+
+    local route_mtls_buffered_proxying, route_tls_buffered_proxying, route_mtls_upstream_buffered_proxying
 
     reload_router(flavor)
 
@@ -171,6 +187,30 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "example.com", },
         paths = { "/mtls-upstream", },
       })))
+
+      route_mtls_buffered_proxying = assert(bp.routes:insert(gen_route(flavor,{
+        service = { id = service_mtls.id, },
+        hosts = { "example.com", },
+        paths = { "/mtls-buffered-proxying", },
+      })))
+
+      route_tls_buffered_proxying = assert(bp.routes:insert(gen_route(flavor,{
+        service = { id = service_tls.id, },
+        hosts = { "example.com", },
+        paths = { "/tls-buffered-proxying", },
+      })))
+
+      route_mtls_upstream_buffered_proxying = assert(bp.routes:insert(gen_route(flavor,{
+        service = { id = service_mtls_upstream.id, },
+        hosts = { "example.com", },
+        paths = { "/mtls-upstream-buffered-proxying", },
+      })))
+
+      -- use pre-function to enable buffered_proxying in order to trigger the
+      -- `ngx.location.capture("/kong_buffered_http")` in `Kong.response()`
+      assert(bp.plugins:insert(gen_plugin(route_mtls_buffered_proxying)))
+      assert(bp.plugins:insert(gen_plugin(route_tls_buffered_proxying)))
+      assert(bp.plugins:insert(gen_plugin(route_mtls_upstream_buffered_proxying)))
 
       -- tls
       tls_service_mtls = assert(bp.services:insert({
@@ -294,6 +334,23 @@ for _, strategy in helpers.each_strategy() do
           assert.matches("400 No required SSL certificate was sent", body, nil, true)
           assert(proxy_client:close())
         end)
+
+        -- buffered_proxying
+        if subsystems == "http" then
+          it("accessing protected upstream, buffered_proxying = true", function()
+            local proxy_client = get_proxy_client(subsystems, 19000)
+            local res = assert(proxy_client:send {
+              path    = "/mtls-buffered-proxying",
+              headers = {
+                ["Host"] = "example.com",
+              }
+            })
+
+            local body = assert.res_status(400, res)
+            assert.matches("400 No required SSL certificate was sent", body, nil, true)
+            assert(proxy_client:close())
+          end)
+        end
       end)
 
       describe(subsystems .. " #db client certificate supplied via service.client_certificate", function()
@@ -332,6 +389,28 @@ for _, strategy in helpers.each_strategy() do
           end, 10)
         end)
 
+        -- buffered_proxying
+        if subsystems == "http" then
+          it("accessing protected upstream, buffered_proxying = true", function()
+            helpers.wait_until(function()
+              local proxy_client = get_proxy_client(subsystems, 19000)
+              local path = "/mtls-buffered-proxying"
+              local res = assert(proxy_client:send {
+                path    = path,
+                headers = {
+                  ["Host"] = "example.com",
+                }
+              })
+
+              return pcall(function()
+                local body = assert.res_status(200, res)
+                assert.equals("it works", body)
+                assert(proxy_client:close())
+              end)
+            end, 10)
+          end)
+        end
+
         it("send updated client certificate", function ()
           local proxy_client = get_proxy_client(subsystems, 19000)
           local path
@@ -349,6 +428,21 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(200, res)
           local res_cert = res.headers["X-Cert"]
           assert(proxy_client:close())
+
+          -- buffered_proxying
+          local res_cert_buffered
+          if subsystems == "http" then
+            local proxy_client = get_proxy_client(subsystems, 19000)
+            local res = assert(proxy_client:send {
+              path    = "/mtls-buffered-proxying",
+              headers = {
+                ["Host"] = "example.com",
+              }
+            })
+            assert.res_status(200, res)
+            res_cert_buffered = res.headers["X-Cert"]
+            assert(proxy_client:close())
+          end
 
           res = admin_client:patch("/certificates/" .. certificate.id, {
             body = {
@@ -376,6 +470,21 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(200, res)
           local res_cert2 = res.headers["X-Cert"]
           assert.not_equals(res_cert, res_cert2)
+
+          -- buffered_proxying
+          local res_cert2_buffered
+          if subsystems == "http" then
+            res = assert(proxy_client2:send {
+              path    = "/mtls-buffered-proxying",
+              headers = {
+                ["Host"] = "example.com",
+              }
+            })
+            assert.res_status(200, res)
+            res_cert2_buffered = res.headers["X-Cert"]
+            assert.not_equals(res_cert_buffered, res_cert2_buffered)
+          end
+
           -- restore old
           res = admin_client:patch("/certificates/" .. certificate.id, {
             body = {
@@ -416,6 +525,26 @@ for _, strategy in helpers.each_strategy() do
           end, 10)
 
           assert.matches("400 No required SSL certificate was sent", body, nil, true)
+
+          -- buffered_proxying
+          if subsystems == "http" then
+            helpers.wait_until(function()
+              local proxy_client= get_proxy_client(subsystems, 19000)
+              res = assert(proxy_client:send {
+                path    = "/mtls-buffered-proxying",
+                headers = {
+                  ["Host"] = "example.com",
+                }
+              })
+
+              return pcall(function()
+                body = assert.res_status(400, res)
+                assert(proxy_client:close())
+              end)
+            end, 10)
+
+            assert.matches("400 No required SSL certificate was sent", body, nil, true)
+          end
         end)
       end)
     end)
@@ -435,6 +564,23 @@ for _, strategy in helpers.each_strategy() do
           assert.matches("400 No required SSL certificate was sent", body, nil, true)
           assert(proxy_client:close())
         end)
+
+        -- buffered_proxying
+        if subsystems == "http" then
+          it("accessing protected upstream, buffered_proxying = true", function()
+            local proxy_client= get_proxy_client(subsystems, 19002)
+            local res = assert(proxy_client:send {
+              path    = "/mtls-upstream-buffered-proxying",
+              headers = {
+                ["Host"] = "example.com",
+              }
+            })
+
+            local body = assert.res_status(400, res)
+            assert.matches("400 No required SSL certificate was sent", body, nil, true)
+            assert(proxy_client:close())
+          end)
+        end
       end)
 
       describe("#db client certificate supplied via upstream.client_certificate", function()
@@ -479,6 +625,28 @@ for _, strategy in helpers.each_strategy() do
           end, 10)
         end)
 
+        -- buffered_proxying
+        if subsystems == "http" then
+          it("accessing protected upstream, buffered_proxying = true", function()
+            helpers.wait_until(function()
+              local proxy_client = get_proxy_client(subsystems, 19002)
+              local path = "/mtls-upstream-buffered-proxying"
+              local res = assert(proxy_client:send {
+                path    = path,
+                headers = {
+                  ["Host"] = "example.com",
+                }
+              })
+
+              return pcall(function()
+                local body = assert.res_status(200, res)
+                assert.equals("it works", body)
+                assert(proxy_client:close())
+              end)
+            end, 10)
+          end)
+        end
+
         it("remove client_certificate removes access", function()
           local upstream_id
           if subsystems == "http" then
@@ -514,6 +682,26 @@ for _, strategy in helpers.each_strategy() do
           end, 10)
 
           assert.matches("400 No required SSL certificate was sent", body, nil, true)
+
+          -- buffered_proxying
+          if subsystems == "http" then
+            helpers.wait_until(function()
+              local proxy_client = get_proxy_client(subsystems, 19002)
+              res = assert(proxy_client:send {
+                path    = "/mtls-upstream-buffered-proxying",
+                headers = {
+                  ["Host"] = "example.com",
+                }
+              })
+
+              return pcall(function()
+                body = assert.res_status(400, res)
+                assert(proxy_client:close())
+              end)
+            end, 10)
+
+            assert.matches("400 No required SSL certificate was sent", body, nil, true)
+          end
         end)
       end)
 
@@ -572,6 +760,28 @@ for _, strategy in helpers.each_strategy() do
             end)
           end, 10)
         end)
+
+        -- buffered_proxying
+        if subsystems == "http" then
+          it("access is allowed because Service.client_certificate overrides Upstream.client_certificate, buffered_proxy = true", function()
+            helpers.wait_until(function()
+              local proxy_client = get_proxy_client(subsystems, 19002)
+              local path = "/mtls-upstream-buffered-proxying"
+              local res = assert(proxy_client:send {
+                path    = path,
+                headers = {
+                  ["Host"] = "example.com",
+                }
+              })
+
+              return pcall(function()
+                local body = assert.res_status(200, res)
+                assert.equals("it works", body)
+                assert(proxy_client:close())
+              end)
+            end, 10)
+          end)
+        end
       end)
     end)
 
@@ -595,6 +805,23 @@ for _, strategy in helpers.each_strategy() do
           assert.equals("it works", body)
           assert(proxy_client:close())
         end)
+
+        -- buffered_proxying
+        if subsystems == "http" then
+          it("default is off, buffered_proxying = true", function()
+            local proxy_client = get_proxy_client(subsystems, 19001)
+            local path = "/tls-buffered-proxying"
+            local res = proxy_client:send {
+              path    = path,
+              headers = {
+                ["Host"] = "example.com",
+              }
+            }
+            local body = assert.res_status(200, res)
+            assert.equals("it works", body)
+            assert(proxy_client:close())
+          end)
+        end
 
         it("#db turn it on, request is blocked", function()
           local service_tls_id
@@ -638,6 +865,25 @@ for _, strategy in helpers.each_strategy() do
           end, 10)
           
           if subsystems == "http" then
+            assert.equals("An invalid response was received from the upstream server", body)
+          end
+
+          -- buffered_proxying
+          if subsystems == "http" then
+            helpers.wait_until(function()
+              local proxy_client = get_proxy_client(subsystems, 19001)
+              res = proxy_client:send {
+                path    = "/tls-buffered-proxying",
+                headers = {
+                  ["Host"] = "example.com",
+                }
+              }
+              return pcall(function()
+                body = assert.res_status(502, res)
+                assert(proxy_client:close())
+              end)
+            end, 10)
+
             assert.equals("An invalid response was received from the upstream server", body)
           end
         end)
@@ -685,6 +931,26 @@ for _, strategy in helpers.each_strategy() do
           end, 10)
 
           assert.equals("it works", body)
+
+          -- buffered_proxying
+          if subsystems == "http" then
+            helpers.wait_until(function()
+              local proxy_client = get_proxy_client(subsystems, 19001)
+              local path = "/tls-buffered-proxying"
+              local res = proxy_client:send {
+                path    = path,
+                headers = {
+                  ["Host"] = "example.com",
+                }
+              }
+              return pcall(function()
+                body = assert.res_status(200, res)
+                assert(proxy_client:close())
+              end)
+            end, 10)
+
+            assert.equals("it works", body)
+          end
         end)
       end)
 
@@ -755,6 +1021,25 @@ for _, strategy in helpers.each_strategy() do
           if subsystems == "http" then
             assert.equals("An invalid response was received from the upstream server", body)
           end
+
+          -- buffered_proxying
+          if subsystems == "http" then
+            helpers.wait_until(function()
+              local proxy_client = get_proxy_client(subsystems, 19001)
+              local res = proxy_client:send {
+                path    = "/tls-buffered-proxying",
+                headers = {
+                  ["Host"] = "example.com",
+                }
+              }
+
+              return pcall(function()
+                 body = assert.res_status(502, res)
+                 assert(proxy_client:close())
+              end)
+            end, 10)
+            assert.equals("An invalid response was received from the upstream server", body)
+          end
         end)
 
         it("request is allowed through if depth limit is sufficient", function()
@@ -798,6 +1083,27 @@ for _, strategy in helpers.each_strategy() do
           end, 10)
 
           assert.equals("it works", body)
+
+          -- buffered_proxying
+          if subsystems == "http" then
+            helpers.wait_until(function()
+              local proxy_client = get_proxy_client(subsystems, 19001)
+              local path = "/tls-buffered-proxying"
+              res = assert(proxy_client:send {
+                path    = path,
+                headers = {
+                  ["Host"] = "example.com",
+                }
+              })
+
+              return pcall(function()
+                body = assert.res_status(200, res)
+                assert(proxy_client:close())
+              end)
+            end, 10)
+
+            assert.equals("it works", body)
+          end
         end)
       end)
     end)
