@@ -1,10 +1,11 @@
 name: Label community PRs
 
 on:
-  pull_request:
+  schedule:
+    - cron: '*/3 * * * *'
 
 permissions:
-  pull-requests: write
+  actions: write
 
 jobs:
   check_author:
