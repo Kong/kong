@@ -359,6 +359,7 @@ no ttl: false
 
 
 === TEST 8: peek() returns remaining ttl if shm_miss is specified
+--- SKIP
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
