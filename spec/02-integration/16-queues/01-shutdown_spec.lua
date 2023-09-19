@@ -107,7 +107,7 @@ for _, strategy in helpers.each_strategy() do
 
     end)
 
-    it("DNS queries can be performed when shutting down", function()
+    it("#flaky DNS queries can be performed when shutting down", function()
 
       local res = assert(proxy_client:send({
         method = "GET",
