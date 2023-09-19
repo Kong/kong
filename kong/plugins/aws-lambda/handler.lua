@@ -8,6 +8,7 @@ local ngx_update_time = ngx.update_time
 local kong = kong
 local meta = require "kong.meta"
 local constants = require "kong.constants"
+local aws_config = require "resty.aws.config" -- reads environment variables, thus specified here
 local VIA_HEADER = constants.HEADERS.VIA
 local VIA_HEADER_VALUE = meta._NAME .. "/" .. meta._VERSION
 
@@ -30,18 +31,24 @@ local function get_now()
 end
 
 
+local function initialize()
+  AWS_GLOBAL_CONFIG = aws_config.global
+  AWS = aws()
+  initialize = nil
+end
+
+
 local AWSLambdaHandler = {
   PRIORITY = 750,
   VERSION = meta.version
 }
 
-function AWSLambdaHandler:init()
-  AWS_GLOBAL_CONFIG = require("resty.aws.config").global
-  AWS = aws()
-end
-
 
 function AWSLambdaHandler:access(conf)
+  if initialize then
+    initialize()
+  end
+
   -- The region in plugin configuraion has higher priority
   -- than the one in environment variable
   local region = conf.aws_region or AWS_REGION
