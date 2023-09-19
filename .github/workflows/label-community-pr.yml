@@ -14,16 +14,14 @@ jobs:
       - name: Check PR Author Membership
         id: check_membership
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set +e
-          gh api orgs/Kong/members --paginate -q '.[].login' | grep -q '^${{ github.event.pull_request.user.login }}$'
-          echo "exitcode=$?" >> $GITHUB_OUTPUT
-      - name: Add Label if Author is not a member
-        if: steps.check_membership.outputs.exitcode == '1'
-        uses: christianvuerings/add-labels@v1
-        with:
-          labels: |
-            author/community
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          for id in `gh pr list -S 'draft:false' -s 'open'|awk '{print $1}'`
+          do
+            name=`gh pr view $id --json author -q '.author.login'`
+            gh api orgs/Kong/members --paginate -q '.[].login'|grep -q "^${name}$"
+            if [ $? -ne 0 ]; then
+              gh pr edit $id --add-label "author/community"
+            fi
+          done
