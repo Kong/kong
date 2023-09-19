@@ -22,7 +22,7 @@ jobs:
             name=`gh pr view $id --json author -q '.author.login'`
             echo $name
             #gh api orgs/Kong/members --paginate -q '.[].login'|grep -q "^${name}$"
-            gh api orgs/Kong/members --paginate -q '.[].login'|grep '$name'
+            gh api orgs/Kong/members --paginate -q '.[].login'
             #if [ $? -ne 0 ]; then
             #  gh pr edit $id --add-label "author/community"
             #fi
