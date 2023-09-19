@@ -12,7 +12,8 @@ jobs:
 
     steps:
       - name: Check PR Author Membership
-        id: check_membership
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr list -S 'draft:false' -s 'open'|awk '{print $1}'
           #for id in `gh pr list -S 'draft:false' -s 'open'|awk '{print $1}'`
