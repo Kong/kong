@@ -1,0 +1,7 @@
+"message": "Use `require` implementation written in Lua to enable cosocket calls on the module level of libraries"
+"type": "feature"
+"scope": "Core"
+"prs":
+  - 11610
+jiras:
+  - "KAG-2595"

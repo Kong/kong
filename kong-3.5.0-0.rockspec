@@ -157,6 +157,7 @@ build = {
     ["kong.tools.stream_api"] = "kong/tools/stream_api.lua",
     ["kong.tools.queue"] = "kong/tools/queue.lua",
     ["kong.tools.queue_schema"] = "kong/tools/queue_schema.lua",
+    ["kong.tools.require"] = "kong/tools/require.lua",
     ["kong.tools.sandbox"] = "kong/tools/sandbox.lua",
     ["kong.tools.uri"] = "kong/tools/uri.lua",
     ["kong.tools.kong-lua-sandbox"] = "kong/tools/kong-lua-sandbox.lua",

@@ -59,14 +59,6 @@ require("kong.globalpatches")({
   rbusted = true
 })
 
--- some libraries used in test like spec/helpers
--- calls cosocket in module level, and as LuaJIT's
--- `require` is implemented in C, this throws
--- "attempt to yield across C-call boundary" error
--- the following pure-lua implementation is to bypass
--- this limitation, without need to modify all tests
-_G.require = require "spec.require".require
-
 -- Busted command-line runner
 require 'busted.runner'({ standalone = false })
 

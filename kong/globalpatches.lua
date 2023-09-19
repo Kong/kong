@@ -583,6 +583,14 @@ return function(options)
       return sock
     end
 
+    -- Some libraries call cosocket on the module level, and as
+    -- LuaJIT's `require` is implemented in C, this throws "attempt to
+    -- yield across C-call boundary" error.  We're replacing require
+    -- with an implementation written in Lua that does not have the
+    -- restriction.
+    _G.native_require = require
+    _G.require = require "kong.tools.require".require
+
     -- STEP 5: load code that should be using the patched versions, if any (because of dependency chain)
     do
       local client = package.loaded["kong.resty.dns.client"]
