@@ -11,12 +11,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v4
       - name: Check PR Author Membership
         id: check_membership
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set +e
+          gh pr list -S 'draft:false' -s 'open'|awk '{print $1}'
           for id in `gh pr list -S 'draft:false' -s 'open'|awk '{print $1}'`
           do
             echo $id
