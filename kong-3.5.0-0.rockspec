@@ -168,6 +168,7 @@ build = {
     ["kong.runloop.log_level"] = "kong/runloop/log_level.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",
     ["kong.runloop.plugins_iterator"] = "kong/runloop/plugins_iterator.lua",
+    ["kong.runloop.upstream_ssl"] = "kong/runloop/upstream_ssl.lua",
     ["kong.runloop.balancer"] = "kong/runloop/balancer/init.lua",
     ["kong.runloop.balancer.balancers"] = "kong/runloop/balancer/balancers.lua",
     ["kong.runloop.balancer.consistent_hashing"] = "kong/runloop/balancer/consistent_hashing.lua",

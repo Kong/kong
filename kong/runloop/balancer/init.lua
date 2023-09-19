@@ -1,11 +1,11 @@
 local pl_tablex = require "pl.tablex"
 local utils = require "kong.tools.utils"
 local hooks = require "kong.hooks"
-local get_certificate = require("kong.runloop.certificate").get_certificate
 local recreate_request = require("ngx.balancer").recreate_request
 
 local healthcheckers = require "kong.runloop.balancer.healthcheckers"
 local balancers = require "kong.runloop.balancer.balancers"
+local upstream_ssl = require "kong.runloop.upstream_ssl"
 local upstreams = require "kong.runloop.balancer.upstreams"
 local targets = require "kong.runloop.balancer.targets"
 
@@ -38,7 +38,7 @@ local EMPTY_T = pl_tablex.readonly {}
 
 local set_authority
 
-local set_upstream_cert_and_key = require("resty.kong.tls").set_upstream_cert_and_key
+local fallback_upstream_client_cert = upstream_ssl.fallback_upstream_client_cert
 
 if ngx.config.subsystem ~= "stream" then
   set_authority = require("resty.kong.grpc").set_authority
@@ -321,6 +321,8 @@ local function execute(balancer_data, ctx)
 
       -- store for retries
       balancer_data.balancer = balancer
+      -- store for use in subrequest `ngx.location.capture("kong_buffered_http")`
+      balancer_data.upstream = upstream
 
       -- calculate hash-value
       -- only add it if it doesn't exist, in case a plugin inserted one
@@ -330,27 +332,7 @@ local function execute(balancer_data, ctx)
         balancer_data.hash_value = hash_value
       end
 
-      if ctx and ctx.service and not ctx.service.client_certificate then
-        -- service level client_certificate is not set
-        local cert, res, err
-        local client_certificate = upstream.client_certificate
-
-        -- does the upstream object contains a client certificate?
-        if client_certificate then
-          cert, err = get_certificate(client_certificate)
-          if not cert then
-            log(ERR, "unable to fetch upstream client TLS certificate ",
-                     client_certificate.id, ": ", err)
-            return
-          end
-
-          res, err = set_upstream_cert_and_key(cert.cert, cert.key)
-          if not res then
-            log(ERR, "unable to apply upstream client TLS certificate ",
-                     client_certificate.id, ": ", err)
-          end
-        end
-      end
+      fallback_upstream_client_cert(ctx, upstream)
     end
   end
 
