@@ -3373,38 +3373,47 @@
                                   # valid UUID. When empty, node ID is
                                   # automatically generated.
 
-#cluster_fallback_config_import = off    # Enable fallback configuration imports
+#-------------------------------------------------------------------------------
+# CLUSTER FALLBACK CONFIGURATION
+#-------------------------------------------------------------------------------
+#cluster_fallback_config_import = off    # Enable fallback configuration imports.
                                          #
-                                         # This should only be enabled for data plane
+                                         # This should only be enabled for data planes.
 
 #cluster_fallback_config_storage =     # Storage definition used by `cluster_fallback_config_import`
-                                       # and `cluster_fallback_config_export`
+                                       # and `cluster_fallback_config_export`.
                                        #
-                                       # Currently supported storage type:
-                                       # S3-like storages and GCP storage service.
+                                       # Supported storage types:
+                                       # - S3-like storages
+                                       # - GCP storage service
+                                       #
                                        # To use S3 with a bucket named b and place all configs
                                        # to with a key prefix named p, set it to:
-                                       # s3://b/p
+                                       # `s3://b/p`
                                        # To use GCP for the same bucket and prefix, set it to:
-                                       # gcs://b/p
+                                       # `gcs://b/p`
                                        #
-                                       # The credentials (and endpoint URL for S3-like) for S3
-                                       # are passing with environment variables:
-                                       # `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
-                                       # and `AWS_CONFIG_STORAGE_ENDPOINT` (extension), where `AWS_CONFIG_STORAGE_ENDPOINT`
+                                       # The credentials (and the endpoint URL for S3-like) for S3
+                                       # are passed with environment variables:
+                                       # `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
+                                       # and `AWS_CONFIG_STORAGE_ENDPOINT` (extension), where 
+                                       # `AWS_CONFIG_STORAGE_ENDPOINT`
                                        # is the endpoint that hosts S3-like storage.
-                                       # The credentials for GCP is provided via the environment variable `GCP_SERVICE_ACCOUNT`
+                                       #
+                                       # The credentials for GCP are provided via the environment 
+                                       # variable `GCP_SERVICE_ACCOUNT`.
 
 #cluster_fallback_config_export = off    # Enable fallback configuration exports.
 
 #cluster_fallback_config_export_delay = 60    # The fallback configuration export interval.
-                                              # If it's set to 60 and configuration A is exported
-                                              # and there're new configurations B, C and D in the next 60 seconds,
+                                              #
+                                              # If the interval is set to 60 and configuration A is exported
+                                              # and there are new configurations B, C, and D in the next 60 seconds,
                                               # it will wait until 60 seconds passed and export D, skipping B and C.
 
 
 #------------------------------------------------------------------------------
-# WASM
+# WEBASSEMBLY (WASM)
 #------------------------------------------------------------------------------
 
 #wasm = off             # Enable/disable wasm support. This must be enabled in
