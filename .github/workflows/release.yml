@@ -511,7 +511,7 @@ jobs:
     - name: Scan AMD64 Image digest
       if: ${{ steps.image_manifest_metadata.outputs.amd64_image_sha != '' }}
       id: sbom_action_amd64
-      uses: Kong/public-shared-actions/security-actions/scan-docker-image@v1.8.0
+      uses: Kong/public-shared-actions/security-actions/scan-docker-image@v1.13.0
       with:
         asset_prefix: kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-amd64
         image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}
@@ -519,7 +519,7 @@ jobs:
     - name: Scan ARM64 Image digest
       if: ${{ steps.image_manifest_metadata.outputs.arm64_image_sha != '' }}
       id: sbom_action_arm64
-      uses: Kong/public-shared-actions/security-actions/scan-docker-image@v1.8.0
+      uses: Kong/public-shared-actions/security-actions/scan-docker-image@v1.13.0
       with:
         asset_prefix: kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-arm64
         image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}
