@@ -15,6 +15,7 @@ local re_match = ngx.re.match
 local re_gmatch = ngx.re.gmatch
 
 local encode_json = cjson.encode
+local decode_json = cjson.decode
 local pcall = pcall
 
 local deco = {}
@@ -226,7 +227,7 @@ function deco:upstream(body)
   local body_variable = self.endpoint.body_variable
   if body_variable then
     if body and #body > 0 then
-      local body_decoded = cjson.decode(body)
+      local body_decoded = decode_json(body)
       if body_variable ~= "*" then
         --[[
           // For HTTP methods that allow a request body, the `body` field
