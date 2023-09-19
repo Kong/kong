@@ -16,13 +16,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          gh api orgs/Kong/members --paginate -q '.[].login' >> $GITHUB_OUTPUT
           #for id in `gh pr list -S 'draft:false' -s 'open'|awk '{print $1}'`
           for id in `gh pr list -S 'draft:true' -s 'open'|awk '{print $1}'`
           do
             name=`gh pr view $id --json author -q '.author.login'`
+            cat $GITHUB_OUTPUT|grep "^${name}$"
             #gh api orgs/Kong/members --paginate -q '.[].login'|grep -q "^${name}$"
-            gh api orgs/Kong/members --paginate -q '.[].login' >> $GITHUB_OUTPUT
-            cat $GITHUB_OUTPUT
             #if [ $? -ne 0 ]; then
             #  gh pr edit $id --add-label "author/community"
             #fi
