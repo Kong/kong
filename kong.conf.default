@@ -1579,7 +1579,7 @@
                                  # Services updates.
 
 #worker_state_update_frequency = 5
-                                 # Defines how often the worker state changes are
+                                 # Defines (in seconds) how often the worker state changes are
                                  # checked with a background job. When a change
                                  # is detected, a new router or balancer will be
                                  # built, as needed. Raising this value will
