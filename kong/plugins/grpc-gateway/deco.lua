@@ -1,6 +1,7 @@
 -- Copyright (c) Kong Inc. 2020
 
 local cjson = require "cjson"
+local buffer = require "string.buffer"
 local pb = require "pb"
 local grpc_tools = require "kong.tools.grpc"
 local grpc_frame = grpc_tools.frame
@@ -285,19 +286,18 @@ end
 function deco:downstream(chunk)
   local body = (self.downstream_body or "") .. chunk
 
-  local out, n = {}, 1
+  local out = buffer.new()
   local msg, body = grpc_unframe(body)
 
   while msg do
     msg = encode_json(pb.decode(self.endpoint.output_type, msg))
 
-    out[n] = msg
-    n = n + 1
+    out:put(msg)
     msg, body = grpc_unframe(body)
   end
 
   self.downstream_body = body
-  chunk = table.concat(out)
+  chunk = out:get()
 
   return chunk
 end
