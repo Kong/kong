@@ -8,25 +8,40 @@ contributors and maintainers.
 
 Consult the Table of Contents below, and jump to the desired section.
 
-## Table of Contents
+# Table of Contents
 
-- [Where to seek for help?](#where-to-seek-for-help)
-  - [Enterprise Edition](#enterprise-edition)
-  - [Community Edition](#community-edition)
-- [Where to report bugs?](#where-to-report-bugs)
-- [Where to submit feature requests?](#where-to-submit-feature-requests)
-- [Contributing](#contributing)
-  - [Improving the documentation](#improving-the-documentation)
-  - [Proposing a new plugin](#proposing-a-new-plugin)
-  - [Submitting a patch](#submitting-a-patch)
-    - [Git branches](#git-branches)
-    - [Commit atomicity](#commit-atomicity)
-    - [Commit message format](#commit-message-format)
-    - [Static linting](#static-linting)
-    - [Writing tests](#writing-tests)
-    - [Writing performant code](#writing-performant-code)
-  - [Contributor T-shirt](#contributor-t-shirt)
-- [Code style](#code-style)
+* [Contributing to Kong :monkey_face:](#contributing-to-kong-monkey_face)
+    * [Where to seek for help?](#where-to-seek-for-help)
+        * [Enterprise Edition](#enterprise-edition)
+        * [Community Edition](#community-edition)
+    * [Where to report bugs?](#where-to-report-bugs)
+    * [Where to submit feature requests?](#where-to-submit-feature-requests)
+    * [Contributing](#contributing)
+        * [Improving the documentation](#improving-the-documentation)
+        * [Proposing a new plugin](#proposing-a-new-plugin)
+        * [Submitting a patch](#submitting-a-patch)
+            * [Git branches](#git-branches)
+            * [Commit atomicity](#commit-atomicity)
+            * [Commit message format](#commit-message-format)
+                * [Type](#type)
+                * [Scope](#scope)
+                * [Subject](#subject)
+                * [Body](#body)
+                * [Footer](#footer)
+                * [Examples](#examples)
+            * [Static linting](#static-linting)
+            * [Writing tests](#writing-tests)
+            * [Writing changelog](#writing-changelog)
+            * [Writing performant code](#writing-performant-code)
+        * [Contributor T-shirt](#contributor-t-shirt)
+    * [Code style](#code-style)
+        * [Table of Contents - Code style](#table-of-contents---code-style)
+        * [Modules](#modules)
+        * [Variables](#variables)
+        * [Tables](#tables)
+        * [Strings](#strings)
+        * [Functions](#functions)
+        * [Conditional expressions](#conditional-expressions)
 
 ## Where to seek for help?
 
@@ -256,6 +271,8 @@ Here is a template of what your commit message should look like:
 <footer>
 ```
 
+[Back to TOC](#table-of-contents)
+
 ##### Type
 
 The type of your commit indicates what type of change this commit is about. The
@@ -275,6 +292,8 @@ accepted types are:
 - **chore**: Maintenance changes related to code cleaning that isn't
   considered part of a refactor, build process updates, dependency bumps, or
   auxiliary tools and libraries updates (LuaRocks, Travis-ci, etc...).
+
+[Back to TOC](#table-of-contents)
 
 ##### Scope
 
@@ -298,6 +317,8 @@ it is at your discretion, but here are some of the most frequent ones:
 - `*`: When the change affects too many parts of the codebase at once (this
   should be rare and avoided)
 
+[Back to TOC](#table-of-contents)
+
 ##### Subject
 
 Your subject should contain a succinct description of the change. It should be
@@ -306,6 +327,8 @@ written so that:
 - It uses the present, imperative tense: "fix typo", and not "fixed" or "fixes"
 - It is **not** capitalized: "fix typo", and not "Fix typo"
 - It does **not** include a period. :smile:
+
+[Back to TOC](#table-of-contents)
 
 ##### Body
 
@@ -316,10 +339,14 @@ motivation, the chosen implementation, and justify it.
 As previously mentioned, lines in the commit messages should not exceed 72
 characters.
 
+[Back to TOC](#table-of-contents)
+
 ##### Footer
 
 The footer is the ideal place to link to related material about the change:
 related GitHub issues, Pull Requests, fixed bug reports, etc...
+
+[Back to TOC](#table-of-contents)
 
 ##### Examples
 
@@ -415,6 +442,13 @@ assert.equal(t1, t2)
 -- good
 assert.same(t1, t2)
 ```
+
+[Back to TOC](#table-of-contents)
+
+#### Writing changelog
+
+Please follow the guidelines in [Changelog Readme](https://github.com/Kong/kong/blob/master/CHANGELOG/README.md)
+on how to write changelog for your change.
 
 [Back to TOC](#table-of-contents)
 
@@ -546,6 +580,8 @@ the recommended style are welcome!**
 - [Functions](#functions)
 - [Conditional expressions](#conditional-expressions)
 
+[Back to TOC](#table-of-contents)
+
 ### Modules
 
 When writing a module (a Lua file), separate logical blocks of code with
@@ -573,6 +609,8 @@ return _M
 
 [Back to code style TOC](#table-of-contents---code-style)
 
+[Back to TOC](#table-of-contents)
+
 ### Variables
 
 When naming a variable or function, **do** use snake_case:
@@ -596,6 +634,8 @@ local MAX_LEN = 100
 ```
 
 [Back to code style TOC](#table-of-contents---code-style)
+
+[Back to TOC](#table-of-contents)
 
 ### Tables
 
@@ -641,6 +681,8 @@ end
 ```
 
 [Back to code style TOC](#table-of-contents---code-style)
+
+[Back to TOC](#table-of-contents)
 
 ### Strings
 
@@ -688,6 +730,8 @@ local str = "It is a very very very long string, " ..
 ```
 
 [Back to code style TOC](#table-of-contents---code-style)
+
+[Back to TOC](#table-of-contents)
 
 ### Functions
 
@@ -769,6 +813,8 @@ local str = string.format("SELECT * FROM users WHERE first_name = '%s'",
 ```
 
 [Back to code style TOC](#table-of-contents---code-style)
+
+[Back to TOC](#table-of-contents)
 
 ### Conditional expressions
 
@@ -897,3 +943,6 @@ end
 ```
 
 [Back to code style TOC](#table-of-contents---code-style)
+
+[Back to TOC](#table-of-contents)
+
