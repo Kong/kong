@@ -1,5 +1,6 @@
 local to_hex = require "resty.string".to_hex
 local openssl_bignum = require "resty.openssl.bn"
+local request_id = require "kong.tracing.request_id"
 local table_merge = require "kong.tools.utils".table_merge
 local split = require "kong.tools.utils".split
 local strip = require "kong.tools.utils".strip
@@ -589,9 +590,12 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
 
   found_header_type = found_header_type or conf_default_header_type or "b3"
 
+  local request_trace_id
+
   if conf_header_type == "b3" or found_header_type == "b3"
   then
-    set_header("x-b3-traceid", to_hex(proxy_span.trace_id))
+    request_trace_id = to_hex(proxy_span.trace_id)
+    set_header("x-b3-traceid", request_trace_id)
     set_header("x-b3-spanid", to_hex(proxy_span.span_id))
     if proxy_span.parent_id then
       set_header("x-b3-parentspanid", to_hex(proxy_span.parent_id))
@@ -605,7 +609,8 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
   end
 
   if conf_header_type == "b3-single" or found_header_type == "b3-single" then
-    set_header("b3", to_hex(proxy_span.trace_id) ..
+    request_trace_id = to_hex(proxy_span.trace_id)
+    set_header("b3", request_trace_id ..
         "-" .. to_hex(proxy_span.span_id) ..
         "-" .. (proxy_span.should_sample and "1" or "0") ..
         (proxy_span.parent_id and "-" .. to_hex(proxy_span.parent_id) or ""))
@@ -613,15 +618,17 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
 
   if conf_header_type == "w3c" or found_header_type == "w3c" then
     -- OTEL uses w3c trace context format so to_ot_trace_id works here
+    request_trace_id = to_hex(to_w3c_trace_id(proxy_span.trace_id))
     set_header("traceparent", fmt("00-%s-%s-%s",
-        to_hex(to_w3c_trace_id(proxy_span.trace_id)),
+        request_trace_id,
         to_hex(proxy_span.span_id),
         proxy_span.should_sample and "01" or "00"))
   end
 
   if conf_header_type == "jaeger" or found_header_type == "jaeger" then
+    request_trace_id = to_hex(proxy_span.trace_id)
     set_header("uber-trace-id", fmt("%s:%s:%s:%s",
-        to_hex(proxy_span.trace_id),
+        request_trace_id,
         to_hex(proxy_span.span_id),
         proxy_span.parent_id and to_hex(proxy_span.parent_id) or "0",
       proxy_span.should_sample and "01" or "00"))
@@ -629,7 +636,8 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
 
   if conf_header_type == "ot" or found_header_type == "ot" then
     to_ot_trace_id = to_ot_trace_id or require "kong.plugins.opentelemetry.otlp".to_ot_trace_id
-    set_header("ot-tracer-traceid", to_hex(to_ot_trace_id(proxy_span.trace_id)))
+    request_trace_id = to_hex(to_ot_trace_id(proxy_span.trace_id))
+    set_header("ot-tracer-traceid", request_trace_id)
     set_header("ot-tracer-spanid", to_hex(proxy_span.span_id))
     set_header("ot-tracer-sampled", proxy_span.should_sample and "1" or "0")
 
@@ -644,20 +652,29 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
   end
 
   if conf_header_type == "aws" or found_header_type == "aws" then
-    local trace_id = to_hex(proxy_span.trace_id)
+    request_trace_id = to_hex(proxy_span.trace_id)
+
     set_header("x-amzn-trace-id", "Root=" .. AWS_TRACE_ID_VERSION .. "-" ..
-        sub(trace_id, 1, AWS_TRACE_ID_TIMESTAMP_LEN) .. "-" ..
-        sub(trace_id, AWS_TRACE_ID_TIMESTAMP_LEN + 1, #trace_id) ..
+        sub(request_trace_id, 1, AWS_TRACE_ID_TIMESTAMP_LEN) .. "-" ..
+        sub(request_trace_id, AWS_TRACE_ID_TIMESTAMP_LEN + 1, #request_trace_id) ..
         ";Parent=" .. to_hex(proxy_span.span_id) .. ";Sampled=" ..
         (proxy_span.should_sample and "1" or "0")
     )
   end
 
   if conf_header_type == "gcp" or found_header_type == "gcp" then
-    set_header("x-cloud-trace-context", to_gcp_trace_id(to_hex(proxy_span.trace_id)) .. 
+    request_trace_id = to_gcp_trace_id(to_hex(proxy_span.trace_id))
+    set_header("x-cloud-trace-context", request_trace_id .. 
       "/" .. openssl_bignum.from_binary(proxy_span.span_id):to_dec() .. 
       ";o=" .. (proxy_span.should_sample and "1" or "0")
     )
+  end
+
+  if request_trace_id then
+    local _, err = request_id.set(request_trace_id, request_id.TYPES.TRACE)
+    if err then
+      kong.log.notice(err)
+    end
   end
 end
 

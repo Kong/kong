@@ -49,7 +49,7 @@ local function set_ctx_request_id(id, type)
 end
 
 
---- Function `should_overwrite_id` determines whether the new request id
+-- Function `should_overwrite_id` determines whether the new request id
 -- should overwrite the current one.
 --
 -- This function uses the provided (new) request id type to compare it with the
@@ -82,10 +82,9 @@ local function get()
   if not rid then
     -- first access to the request id for this request:
     -- try to initialize with the value of $kong_request_id
-    local ok
-    ok, rid = pcall(function() return ngx.var.kong_request_id end)
+    rid = ngx.var.kong_request_id
 
-    if ok and rid then
+    if rid then
       set_ctx_request_id(rid, TYPES.INIT)
     end
   end
@@ -97,7 +96,10 @@ end
 local function set(id, type)
   -- phase and input checks
   local phase = ngx.get_phase()
-  assert(NGX_VAR_PHASES[phase], "cannot set request_id in '" .. phase .. "' phase")
+  if not NGX_VAR_PHASES[phase] then
+    return nil, "cannot set request_id in '" .. phase .. "' phase"
+  end
+
   if not id or not type then
     return nil, "both id and type are required"
   end

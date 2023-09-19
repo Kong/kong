@@ -51,10 +51,10 @@ exit_worker_by_lua_block {
 }
 
 > if (role == "traditional" or role == "data_plane") and #proxy_listeners > 0 then
-log_format request_id_access_log_format '[$kong_request_id] '
-                                        '$remote_addr - $remote_user [$time_local] '
+log_format request_id_access_log_format '$remote_addr - $remote_user [$time_local] '
                                         '"$request" $status $body_bytes_sent '
-                                        '"$http_referer" "$http_user_agent"';
+                                        '"$http_referer" "$http_user_agent" '
+                                        'request_id: "$kong_request_id"';
 
 # Load variable indexes
 lua_kong_load_var_index default;

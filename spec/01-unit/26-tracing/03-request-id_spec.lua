@@ -73,9 +73,7 @@ describe("Request ID unit tests", function()
         return invalid_phase
       end
 
-      local ok, err = pcall(request_id.set, "abcd", request_id.TYPES.INIT)
-
-      assert.is_false(ok)
+      local _, err = request_id.set( "abcd", request_id.TYPES.INIT)
       assert.matches("cannot set request_id in '" .. invalid_phase .. "' phase", err)
     end)
 
