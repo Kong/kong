@@ -21,10 +21,9 @@ jobs:
           do
             name=`gh pr view $id --json author -q '.author.login'`
             if [ $name = 'Water-Melon' ]; then ######@@@@@@@@@
-            echo $name
-            #gh api orgs/Kong/members --paginate -q '.[].login'|grep -q "^${name}$"
-            #if [ $? -ne 0 ]; then
-            #  gh pr edit $id --add-label "author/community"
-            #fi
+            gh api orgs/Kong/members --paginate -q '.[].login'|grep -q "^${name}$"
+            if [ $? -ne 0 ]; then
+              gh pr edit $id --add-label "author/community"
+            fi
             fi ####@@@@@
           done
