@@ -1,0 +1,19 @@
+message: >
+  Fix several issues in Vault and refactor the Vault code base:
+  - Make DAOs to fallback to empty string when resolving Vault references fail
+  - Use node level mutex when rotation references 
+  - Refresh references on config changes
+  - Update plugin referenced values only once per request
+  - Pass only the valid config options to vault implementations
+  - Resolve multi-value secrets only once when rotating them
+  - Do not start vault secrets rotation timer on control planes
+  - Re-enable negative caching
+  - Reimplement the kong.vault.try function
+  - Remove references from rotation in case their configuration has changed
+
+type: bugfix
+scope: PDK
+prs:
+  - 11402
+jiras:
+  - "KAG-2273"
