@@ -189,7 +189,7 @@ describe("vault ttl and rotation (#" .. attachment_point .. "_" .. vault.name ..
     check_no_plugin_secret(10)
   end)
 
-  it("respects resurrect_ttl times", function ()
+  it("#flaky respects resurrect_ttl times", function ()
     -- If we create a secret with a high resurrect time, we expect that it
     -- does not expire, even when we delete the secret from the vault
     -- inbetween
