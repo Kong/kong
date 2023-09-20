@@ -18,3 +18,4 @@ jobs:
         run: |
           set +e
           gh api orgs/Kong/members --paginate -q '.[].login'
+
