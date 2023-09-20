@@ -32,7 +32,7 @@ describe("kong.log.serialize", function()
           bytes_sent = "99",
           request_time = "2",
           remote_addr = "1.1.1.1",
-          -- may be a non-numeric string, 
+          -- may be a non-numeric string,
           -- see http://nginx.org/en/docs/http/ngx_http_upstream_module.html#var_upstream_addr
           upstream_status = "500, 200 : 200, 200",
         },
@@ -123,7 +123,7 @@ describe("kong.log.serialize", function()
       end)
 
       it("serializes the Consumer object", function()
-        ngx.ctx.authenticated_consumer = {id = "someconsumer"}
+        ngx.ctx.authenticated_consumer = { id = "someconsumer" }
 
         local res = kong.log.serialize({ngx = ngx, kong = kong, })
         assert.is_table(res)
@@ -192,6 +192,20 @@ describe("kong.log.serialize", function()
         assert.is_table(res)
 
         assert.equal("/upstream_uri" .. "?" .. args, res.upstream_uri)
+      end)
+
+      it("use the deep copies of the Route, Service, Consumer object avoid " ..
+         "modify ctx.authenticated_consumer, ctx.route, ctx.service", function()
+        ngx.ctx.authenticated_consumer = { id = "someconsumer" }
+        ngx.ctx.route = { id = "my_route" }
+        ngx.ctx.service = { id = "my_service" }
+        local res = kong.log.serialize({ngx = ngx, kong = kong, })
+        assert.not_equal(tostring(ngx.ctx.authenticated_consumer),
+                         tostring(res.consumer))
+        assert.not_equal(tostring(ngx.ctx.route),
+                         tostring(res.route))
+        assert.not_equal(tostring(ngx.ctx.service),
+                         tostring(res.service))
       end)
     end)
   end)
@@ -290,7 +304,7 @@ describe("kong.log.serialize", function()
       end)
 
       it("serializes the Consumer object", function()
-        ngx.ctx.authenticated_consumer = {id = "someconsumer"}
+        ngx.ctx.authenticated_consumer = { id = "someconsumer" }
 
         local res = kong.log.serialize({ngx = ngx, kong = kong, })
         assert.is_table(res)
@@ -347,6 +361,20 @@ describe("kong.log.serialize", function()
         assert.is_table(res)
 
         assert.is_nil(res.tries)
+      end)
+
+      it("use the deep copies of the Route, Service, Consumer object avoid " ..
+         "modify ctx.authenticated_consumer, ctx.route, ctx.service", function()
+        ngx.ctx.authenticated_consumer = { id = "someconsumer "}
+        ngx.ctx.route = { id = "my_route" }
+        ngx.ctx.service = { id = "my_service" }
+        local res = kong.log.serialize({ngx = ngx, kong = kong, })
+        assert.not_equal(tostring(ngx.ctx.authenticated_consumer),
+                         tostring(res.consumer))
+        assert.not_equal(tostring(ngx.ctx.route),
+                         tostring(res.route))
+        assert.not_equal(tostring(ngx.ctx.service),
+                         tostring(res.service))
       end)
     end)
   end)
