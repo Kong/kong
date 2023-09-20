@@ -1,4 +1,4 @@
-message: "allow the 'start' field be a past time but print a warning message"
+message: "allow the 'start' field be a past time"
 type: bugfix
 prs:
 - 6423

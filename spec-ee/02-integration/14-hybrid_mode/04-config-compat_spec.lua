@@ -14,12 +14,14 @@ local FIELDS = require("kong.clustering.compat.removed_fields")
 local admin = require "spec.fixtures.admin_api"
 
 local fmt = string.format
-local ngx_time = ngx.time
 
 local CP_HOST = "127.0.0.1"
 local CP_PORT = 9005
 
 local PLUGIN_LIST
+
+local EMPTY = {}
+
 
 local function cluster_client(opts)
   opts = opts or {}
@@ -35,7 +37,11 @@ local function cluster_client(opts)
     node_plugins_list = PLUGIN_LIST,
   })
 
-  assert.is_truthy(ok)
+  if ok and res and res.config then
+    local inflated = assert(utils.inflate_gzip(res.config))
+    res.config = cjson.decode(inflated)
+  end
+
   return res
 end
 
@@ -66,17 +72,18 @@ end
 local function get_plugin(node_id, node_version, name)
   local res = cluster_client({ id = node_id, version = node_version })
 
-  local plugin_config
-  if res and res.config_table and res.config_table.plugins then
-    for _, p in ipairs(res.config_table.plugins) do
+  local plugin
+  if ((res or EMPTY).config or EMPTY).plugins then
+    for _, p in ipairs(res.config.plugins) do
       if p.name == name then
-        plugin_config = p.config
+        plugin = p.config
         break
       end
     end
+    assert.not_nil(plugin, "plugin " .. name .. " not found in config")
   end
 
-  return plugin_config, get_sync_status(node_id)
+  return plugin, get_sync_status(node_id)
 end
 
 
@@ -107,9 +114,6 @@ describe("CP/DP config compat #" .. strategy, function()
       "services",
       "plugins",
       "clustering_data_planes",
-    },
-    {
-      "canary",
     })
 
     PLUGIN_LIST = helpers.get_plugins_list()
@@ -130,7 +134,7 @@ describe("CP/DP config compat #" .. strategy, function()
       db_update_frequency = 0.1,
       cluster_listen = CP_HOST .. ":" .. CP_PORT,
       nginx_conf = "spec/fixtures/custom_nginx.template",
-      plugins = "bundled,canary",
+      plugins = "bundled",
     }))
   end)
 
@@ -265,45 +269,6 @@ describe("CP/DP config compat #" .. strategy, function()
       end)
     end
   end)
-
-  describe("canary plugin past 'start' time", function()
-    local canary_instance
-    local time = ngx_time() - 1000
-
-    lazy_setup(function()
-      canary_instance = admin.plugins:insert {
-        name = "canary",
-        enabled = true,
-        config = {
-          start = time,
-          duration = 300,
-          upstream_host = "mocking-balancer",
-        },
-      }
-    end)
-
-    lazy_teardown(function()
-      admin.plugins:remove({ id = canary_instance.id })
-    end)
-
-    it("compatible with 3.5.x.x", function()
-      local id = utils.uuid()
-      local canary_conf, sync_status = get_plugin(id, "3.5.0.0", canary_instance.name)
-
-      assert.equals(time, canary_conf.start)
-      assert.same(canary_conf, canary_instance.config)
-      assert.equals(STATUS.NORMAL, sync_status)
-    end)
-
-    it("incompatible with 3.4.x.x", function()
-      local id = utils.uuid()
-      local canary_conf, sync_status = get_plugin(id, "3.4.0.0", canary_instance.name)
-
-      assert.is_nil(canary_conf)
-      assert.equals(STATUS.NORMAL, sync_status)
-    end)
-  end)
-
 end)
 
 end -- each strategy
