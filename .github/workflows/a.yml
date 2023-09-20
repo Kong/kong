@@ -1,0 +1,20 @@
+name: Label community PRs
+
+on:
+  pull_request:
+    types:
+      - opened
+
+permissions:
+  pull-requests: write
+
+jobs:
+  check_author:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check PR Author Membership
+        id: check_membership
+        run: |
+          set +e
+          gh api orgs/Kong/members --paginate -q '.[].login'
