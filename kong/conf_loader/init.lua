@@ -198,6 +198,11 @@ local DYNAMIC_KEY_NAMESPACES = {
     ignore = EMPTY,
   },
   {
+    injected_conf_name = "nginx_location_directives",
+    prefix = "nginx_location_",
+    ignore = EMPTY,
+  },
+  {
     injected_conf_name = "nginx_status_directives",
     prefix = "nginx_status_",
     ignore = EMPTY,

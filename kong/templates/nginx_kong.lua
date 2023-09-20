@@ -157,6 +157,11 @@ server {
         proxy_buffering          on;
         proxy_request_buffering  on;
 
+        # injected nginx_location_* directives
+> for _, el in ipairs(nginx_location_directives) do
+        $(el.name) $(el.value);
+> end
+
         proxy_set_header      TE                 $upstream_te;
         proxy_set_header      Host               $upstream_host;
         proxy_set_header      Upgrade            $upstream_upgrade;
