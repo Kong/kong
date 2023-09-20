@@ -414,29 +414,5 @@ function Plugins:get_handlers()
   return list
 end
 
-function Plugins:execute_plugin_init()
-  local handlers, err = self:get_handlers()
-  if not handlers then
-    return nil, err
-  end
-
-  local errors
-
-  for _, handler in ipairs(handlers) do
-    if implements(handler.handler, "init") then
-      local ok, err = pcall(handler.handler.init, handler.handler)
-      if not ok then
-        errors = errors or {}
-        errors[#errors + 1] = "on plugin '" .. handler.name .. "': " .. tostring(err)
-      end
-    end
-  end
-
-  if errors then
-    return nil, "error executing plugin init: " .. table.concat(errors, "; ")
-  end
-
-  return true
-end
 
 return Plugins
