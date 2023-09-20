@@ -1,4 +1,4 @@
-name: Label community PRs
+name: Label TEST TEST
 
 on:
   pull_request:
