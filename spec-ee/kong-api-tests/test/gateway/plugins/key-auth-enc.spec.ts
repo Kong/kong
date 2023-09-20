@@ -64,6 +64,8 @@ describe('Gateway Plugins: key-auth-enc', function () {
         id: routeId,
       },
     };
+
+    await waitForConfigRebuild();
   });
 
   it('key-auth-enc: should proxy request without supplying apiKey', async function () {
@@ -97,7 +99,7 @@ describe('Gateway Plugins: key-auth-enc', function () {
     );
 
     pluginId = resp.data.id;
-    await wait(waitTime);
+    await waitForConfigRebuild();
   });
 
   // This test case captures:
@@ -203,9 +205,6 @@ describe('Gateway Plugins: key-auth-enc', function () {
 
     expect(resp.status, 'Status should be 200').to.equal(200);
     expect(resp.data.enabled, 'Should be false').to.be.false;
-    await wait(
-      isHybrid ? hybridWaitTime + (isLocalDb ? 0 : waitTime) : waitTime
-    );
     await waitForConfigRebuild();
   });
 
