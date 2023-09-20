@@ -10,9 +10,9 @@ Reported and analyzed by Zhongwei Yao. Fix by Peter Cawley. #1075
 
 diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_emit_arm64.h b/bundle/LuaJIT-2.1-20220411/src/lj_emit_arm64.h
 index d4c542557..9161c9582 100644
---- a/bundle/LuaJIT-2.1-20220411/src/lj_emit_arm64.h
-+++ b/bundle/LuaJIT-2.1-20220411/src/lj_emit_arm64.h
-@@ -113,6 +113,17 @@ static int emit_checkofs(A64Ins ai, int64_t ofs)
+--- a/bundle/LuaJIT-2.1-20230410/src/lj_emit_arm64.h
++++ b/bundle/LuaJIT-2.1-20230410/src/lj_emit_arm64.h
+@@ -121,6 +121,17 @@ static int emit_checkofs(A64Ins ai, int64_t ofs)
    }
  }
  
@@ -30,7 +30,7 @@ index d4c542557..9161c9582 100644
  static void emit_lso(ASMState *as, A64Ins ai, Reg rd, Reg rn, int64_t ofs)
  {
    int ot = emit_checkofs(ai, ofs), sc = (ai >> 30) & 3;
-@@ -124,11 +135,9 @@ static void emit_lso(ASMState *as, A64Ins ai, Reg rd, Reg rn, int64_t ofs)
+@@ -132,11 +143,9 @@ static void emit_lso(ASMState *as, A64Ins ai, Reg rd, Reg rn, int64_t ofs)
      uint32_t prev = *as->mcp & ~A64F_D(31);
      int ofsm = ofs - (1<<sc), ofsp = ofs + (1<<sc);
      A64Ins aip;
