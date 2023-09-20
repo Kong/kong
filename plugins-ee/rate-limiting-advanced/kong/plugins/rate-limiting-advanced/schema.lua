@@ -73,10 +73,10 @@ return {
           { header_name = typedefs.header_name, },
           { path = typedefs.path },
           { redis = redis.config_schema},
-          { enforce_consumer_groups = { description = "List of consumer groups allowed to override the rate limiting settings for the given Route or Service. Required if `enforce_consumer_groups` is set to `true`. Flipping `enforce_consumer_groups` from `true` to `false` disables the group override, but does not clear the list of consumer groups. You can then flip `enforce_consumer_groups` to `true` to re-enforce the groups.", type = "boolean",
+          { enforce_consumer_groups = { description = "Determines if consumer groups are allowed to override the rate limiting settings for the given Route or Service. Flipping `enforce_consumer_groups` from `true` to `false` disables the group override, but does not clear the list of consumer groups. You can then flip `enforce_consumer_groups` to `true` to re-enforce the groups.", type = "boolean",
             default = false,
           }},
-          { consumer_groups = { description = "List of consumer groups allowed to override the rate limiting settings for the given Route or Service. Required if `enforce_consumer_groups` is set to `true`. Flipping `enforce_consumer_groups` from `true` to `false` disables the group override, but does not clear the list of consumer groups. You can then flip `enforce_consumer_groups` to `true` to re-enforce the groups.", type = "array",
+          { consumer_groups = { description = "List of consumer groups allowed to override the rate limiting settings for the given Route or Service. Required if `enforce_consumer_groups` is set to `true`.", type = "array",
             elements = {
               type = "string",
             },
