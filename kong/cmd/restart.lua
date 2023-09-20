@@ -1,6 +1,6 @@
 local log = require "kong.cmd.utils.log"
 local stop = require "kong.cmd.stop"
-local process = require "kong.cmd.utils.process"
+local kill = require "kong.cmd.utils.kill"
 local start = require "kong.cmd.start"
 local pl_path = require "pl.path"
 local conf_loader = require "kong.conf_loader"
@@ -27,7 +27,7 @@ local function execute(args)
   local running
   repeat
     ngx.sleep(0.1)
-    running = process.exists(conf.nginx_pid)
+    running = kill.is_running(conf.nginx_pid)
   until not running or ngx.time() >= texp
 
   start.execute(args)

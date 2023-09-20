@@ -3,7 +3,7 @@ local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local conf_loader = require "kong.conf_loader"
 local kong_global = require "kong.global"
-local process = require "kong.cmd.utils.process"
+local kill = require "kong.cmd.utils.kill"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
 local lfs = require "lfs"
@@ -53,7 +53,7 @@ local function execute(args)
 
   conf.pg_timeout = args.db_timeout -- connect + send + read
 
-  assert(not process.exists(conf.nginx_pid),
+  assert(not kill.is_running(conf.nginx_pid),
          "Kong is already running in " .. conf.prefix)
 
   assert(prefix_handler.prepare_prefix(conf, args.nginx_conf, nil, nil,
