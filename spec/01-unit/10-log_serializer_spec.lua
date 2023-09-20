@@ -48,6 +48,7 @@ describe("kong.log.serialize", function()
         resp = {
           get_headers = function() return {header1 = "respheader1", header2 = "respheader2", ["set-cookie"] = "delicious=delicacy"} end
         },
+        get_phase = function() return "access" end,
       }
 
       package.loaded["kong.pdk.request"] = nil

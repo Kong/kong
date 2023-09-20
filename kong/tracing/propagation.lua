@@ -558,20 +558,6 @@ local function add_trace_id_formats(trace_id_new_fmt)
 end
 
 
-local function serialize_trace_ids(trace_ids)
-  local formats_str = ""
-
-  for k, v in pairs(trace_ids) do
-    if formats_str ~= "" then
-      formats_str = formats_str .. " "
-    end
-    formats_str = formats_str .. "trace_id_" .. k .. ": '" .. v .. "'"
-  end
-
-  return formats_str
-end
-
-
 local function parse(headers, conf_header_type)
   if conf_header_type == "ignore" then
     return nil

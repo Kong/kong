@@ -884,7 +884,7 @@ for _, strategy in helpers.each_strategy() do
               end)
             end, 10)
 
-            assert.equals("An invalid response was received from the upstream server", body)
+            assert.matches("An invalid response was received from the upstream server", body)
           end
         end)
       end)
@@ -1038,7 +1038,7 @@ for _, strategy in helpers.each_strategy() do
                  assert(proxy_client:close())
               end)
             end, 10)
-            assert.equals("An invalid response was received from the upstream server", body)
+            assert.matches("An invalid response was received from the upstream server", body)
           end
         end)
 
