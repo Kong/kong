@@ -23,7 +23,7 @@ local inspect = require "inspect"
 local ngx_ssl = require "ngx.ssl"
 local phase_checker = require "kong.pdk.private.phases"
 local utils = require "kong.tools.utils"
-
+local cycle_aware_deep_copy = utils.cycle_aware_deep_copy
 
 local sub = string.sub
 local type = type
@@ -850,9 +850,9 @@ do
         auth_type = ctx.auth_type,
         tries = (ctx.balancer_data or {}).tries,
         authenticated_entity = build_authenticated_entity(ctx),
-        route = ctx.route,
-        service = ctx.service,
-        consumer = ctx.authenticated_consumer,
+        route = cycle_aware_deep_copy(ctx.route),
+        service = cycle_aware_deep_copy(ctx.service),
+        consumer = cycle_aware_deep_copy(ctx.authenticated_consumer),
         client_ip = var.remote_addr,
 
         -- XXX EE
@@ -895,9 +895,9 @@ do
         },
         tries = (ctx.balancer_data or {}).tries,
         authenticated_entity = build_authenticated_entity(ctx),
-        route = ctx.route,
-        service = ctx.service,
-        consumer = ctx.authenticated_consumer,
+        route = cycle_aware_deep_copy(ctx.route),
+        service = cycle_aware_deep_copy(ctx.service),
+        consumer = cycle_aware_deep_copy(ctx.authenticated_consumer),
         client_ip = var.remote_addr,
 
         -- XXX EE

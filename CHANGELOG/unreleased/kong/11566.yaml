@@ -1,0 +1,7 @@
+message: "use deep copies of Route, Service, and Consumer objects when log serializing"
+type: bugfix
+scope: PDK
+prs:
+  - 11566
+jiras:
+  - "FTI-5357"

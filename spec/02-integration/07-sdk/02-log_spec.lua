@@ -6,6 +6,8 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
+local cjson   = require "cjson"
+local FILE_LOG_PATH = os.tmpname()
 
 
 local function find_in_file(f, pat)
@@ -128,3 +130,340 @@ describe("PDK: kong.log", function()
     f:close()
   end)
 end)
+
+for _, strategy in helpers.each_strategy() do
+  describe("PDK: make sure kong.log.serialize() will not modify ctx which's lifecycle " ..
+           "is across request [#" .. strategy .. "]", function()
+    describe("ctx.authenticated_consumer", function()
+      local proxy_client
+      local bp
+
+      lazy_setup(function()
+        bp, _ = helpers.get_db_utils(strategy, {
+          "routes",
+          "services",
+          "plugins",
+          "consumers",
+          "acls",
+          "keyauth_credentials",
+        })
+
+        local consumer = bp.consumers:insert( {
+          username = "foo",
+        })
+
+        bp.keyauth_credentials:insert {
+          key      = "test",
+          consumer = { id = consumer.id },
+        }
+
+        bp.acls:insert {
+          group    = "allowed",
+          consumer = consumer,
+        }
+
+        local route1 = bp.routes:insert {
+          paths = { "/status/200" },
+        }
+
+        bp.plugins:insert {
+          name = "acl",
+          route = { id = route1.id },
+          config = {
+            allow = { "allowed" },
+          },
+        }
+
+        bp.plugins:insert {
+          name     = "key-auth",
+          route = { id = route1.id },
+        }
+
+        bp.plugins:insert {
+          name     = "file-log",
+          route   = { id = route1.id },
+          config   = {
+            path   = FILE_LOG_PATH,
+            reopen = false,
+            custom_fields_by_lua = {
+              ["consumer.id"] = "return nil",
+            },
+          },
+          protocols = {
+            "http"
+          },
+        }
+
+        assert(helpers.start_kong({
+          plugins    = "bundled",
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          db_cache_warmup_entities = "keyauth_credentials,consumers,acls",
+          nginx_worker_processes = 1,
+        }))
+      end)
+
+      before_each(function()
+        proxy_client = helpers.proxy_client()
+      end)
+
+      after_each(function ()
+        proxy_client:close()
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+      end)
+
+      it("use the deep copy of Consumer object", function()
+        for i = 1, 3 do
+          local res = proxy_client:send {
+            method  = "GET",
+            path    = "/status/200",
+            headers = {
+              ["apikey"] = "test",
+            }
+          }
+          assert.res_status(200, res)
+        end
+      end)
+    end)
+
+    describe("ctx.service", function()
+      local proxy_client
+      local bp
+
+      lazy_setup(function()
+        bp, _ = helpers.get_db_utils(strategy, {
+          "routes",
+          "services",
+          "plugins",
+        },{
+          "error-handler-log",
+        })
+
+        local service = bp.services:insert {
+          name = "example",
+          host = helpers.mock_upstream_host,
+          port = helpers.mock_upstream_port,
+        }
+
+        local route1 = bp.routes:insert {
+          paths = { "/status/200" },
+          service   = service,
+        }
+
+        bp.plugins:insert {
+          name = "error-handler-log",
+          config = {},
+        }
+
+        bp.plugins:insert {
+          name     = "file-log",
+          route   = { id = route1.id },
+          config   = {
+            path   = FILE_LOG_PATH,
+            reopen = false,
+            custom_fields_by_lua = {
+              ["service.name"] = "return nil",
+            },
+          },
+          protocols = {
+            "http"
+          },
+        }
+
+        assert(helpers.start_kong({
+          plugins    = "bundled, error-handler-log",
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          nginx_worker_processes = 1,
+        }))
+      end)
+
+      before_each(function()
+        proxy_client = helpers.proxy_client()
+      end)
+
+      after_each(function ()
+        proxy_client:close()
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+      end)
+
+      it("use the deep copy of Service object", function()
+        for i = 1, 3 do
+          local res = proxy_client:send {
+            method  = "GET",
+            path    = "/status/200",
+          }
+          assert.res_status(200, res)
+
+          local service_matched_header = res.headers["Log-Plugin-Service-Matched"]
+          assert.equal(service_matched_header, "example")
+        end
+      end)
+    end)
+
+    describe("ctx.route", function()
+      local proxy_client
+      local bp
+
+      lazy_setup(function()
+        bp, _ = helpers.get_db_utils(strategy, {
+          "routes",
+          "services",
+          "plugins",
+        })
+
+        local service = bp.services:insert {
+          host = helpers.mock_upstream_host,
+          port = helpers.mock_upstream_port,
+        }
+
+        local route1 = bp.routes:insert {
+          name = "route1",
+          paths = { "/status/200" },
+          service   = service,
+        }
+
+        assert(bp.plugins:insert {
+          name = "request-termination",
+          route = { id = route1.id },
+          config = {
+            status_code = 418,
+            message = "No coffee for you. I'm a teapot.",
+            echo = true,
+          },
+        })
+
+        bp.plugins:insert {
+          name     = "file-log",
+          route   = { id = route1.id },
+          config   = {
+            path   = FILE_LOG_PATH,
+            reopen = false,
+            custom_fields_by_lua = {
+              ["route.name"] = "return nil",
+            },
+          },
+          protocols = {
+            "http"
+          },
+        }
+
+        assert(helpers.start_kong({
+          plugins    = "bundled, error-handler-log",
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          nginx_worker_processes = 1,
+        }))
+      end)
+
+      before_each(function()
+        proxy_client = helpers.proxy_client()
+      end)
+
+      after_each(function ()
+        proxy_client:close()
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+      end)
+
+      it("use the deep copy of Route object", function()
+        for i = 1, 3 do
+          local res = proxy_client:send {
+            method  = "GET",
+            path    = "/status/200",
+          }
+
+          local body = assert.res_status(418, res)
+          local json = cjson.decode(body)
+          assert.equal(json["matched_route"]["name"], "route1")
+        end
+      end)
+    end)
+
+    describe("in stream subsystem# ctx.authenticated_consumer", function()
+      local proxy_client
+      local bp
+
+      local MESSAGE = "echo, ping, pong. echo, ping, pong. echo, ping, pong.\n"
+      lazy_setup(function()
+        bp, _ = helpers.get_db_utils(strategy, {
+          "routes",
+          "services",
+          "plugins",
+        })
+
+        local service = assert(bp.services:insert {
+          host     = helpers.mock_upstream_host,
+          port     = helpers.mock_upstream_stream_port,
+          protocol = "tcp",
+        })
+
+        local route1 = bp.routes:insert({
+          destinations = {
+            { port = 19000 },
+          },
+          protocols = {
+            "tcp",
+          },
+          service = service,
+        })
+
+        bp.plugins:insert {
+          name     = "file-log",
+          route = { id = route1.id },
+          config   = {
+            path   = FILE_LOG_PATH,
+            reopen = false,
+            custom_fields_by_lua = {
+              ["service.port"] = "return nil",
+              ["service.host"] = "return nil",
+            },
+          },
+          protocols = {
+            "tcp"
+          },
+        }
+
+        assert(helpers.start_kong({
+          plugins    = "bundled, error-handler-log",
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          nginx_worker_processes = 1,
+          stream_listen = helpers.get_proxy_ip(false) .. ":19000",
+          proxy_stream_error_log = "logs/error.log",
+        }))
+      end)
+
+      before_each(function()
+        proxy_client = helpers.proxy_client()
+      end)
+
+      after_each(function ()
+        proxy_client:close()
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+      end)
+
+      it("use the deep copy of Service object", function()
+        for i = 1, 3 do
+          local tcp_client = ngx.socket.tcp()
+          assert(tcp_client:connect(helpers.get_proxy_ip(false), 19000))
+          assert(tcp_client:send(MESSAGE))
+          local body = assert(tcp_client:receive("*a"))
+          assert.equal(MESSAGE, body)
+          assert(tcp_client:close())
+        end
+      end)
+    end)
+  end)
+end
