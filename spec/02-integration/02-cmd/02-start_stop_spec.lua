@@ -545,7 +545,7 @@ describe("kong start/stop #" .. strategy, function()
     end)
 
     it("should not start Kong if already running in prefix", function()
-      local kill = require "kong.cmd.utils.kill"
+      local process = require "kong.cmd.utils.process"
 
       assert(helpers.kong_exec("start --prefix " .. PREFIX, {
         pg_database = TEST_CONF.pg_database,
@@ -557,7 +557,7 @@ describe("kong start/stop #" .. strategy, function()
       assert.False(ok)
       assert.matches("Kong is already running in " .. PREFIX, stderr, nil, true)
 
-      assert(kill.is_running(TEST_CONF.nginx_pid))
+      assert(process.exists(TEST_CONF.nginx_pid))
     end)
 
     it("does not prepare the prefix directory if Kong is already running", function()

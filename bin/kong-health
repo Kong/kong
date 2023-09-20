@@ -3,7 +3,7 @@
 setmetatable(_G, nil)
 package.path = (os.getenv("KONG_LUA_PATH_OVERRIDE") or "") .. "./?.lua;./?/init.lua;" .. package.path
 
-local kill = require "kong.cmd.utils.kill"
+local process = require "kong.cmd.utils.process"
 local kong_default_conf = require "kong.templates.kong_defaults"
 local pl_app = require "pl.lapp"
 local pl_config = require "pl.config"
@@ -42,8 +42,7 @@ local function execute(args)
 
   print("")
   local pid_file = pl_path.join(prefix, "pids", "nginx.pid")
-  kill.is_running(pid_file)
-  assert(kill.is_running(pid_file), "Kong is not running at " .. prefix)
+  assert(process.exists(pid_file), "Kong is not running at " .. prefix)
   print("Kong is healthy at ", prefix)
 end
 
