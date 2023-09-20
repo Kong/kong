@@ -6,10 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local typedefs = require "kong.db.schema.typedefs"
-
 local null = ngx.null
-local log  = ngx.log
-local WARN = ngx.WARN
 
 local function is_null_value(value)
   if value == null or value == nil then
@@ -17,15 +14,6 @@ local function is_null_value(value)
   end
 
   return false
-end
-
-local function check_start(start)
-  local time = math.floor(ngx.now())
-  if start and start < time then
-    log(WARN, "'start' is set to a past time: " .. start - time .. "s")
-  end
-
-  return true
 end
 
 local function validate_steps(config)
@@ -68,7 +56,6 @@ return {
         custom_validator = validate_steps,
         fields = {
           { start = { description = "Future time in seconds since epoch, when the canary release will start. Ignored when `percentage` is set, or when using `allow` or `deny` in `hash`.", type = "number",
-              custom_validator = check_start
           }},
           { hash = {
               description = "Hash algorithm to be used for canary release.\n\n* `consumer`: The hash will be based on the consumer.\n* `ip`: The hash will be based on the client IP address.\n* `none`: No hash will be applied.\n* `allow`: Allows the specified groups to access the canary release.\n* `deny`: Denies the specified groups from accessing the canary release.\n* `header`: The hash will be based on the specified header value.",
