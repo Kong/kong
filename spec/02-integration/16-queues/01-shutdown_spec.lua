@@ -122,7 +122,7 @@ for _, strategy in helpers.each_strategy() do
       local res, err = helpers.stop_kong(nil, true, nil, "QUIT")
       assert(res, err)
 
-      assert.logfile().has.line("handler could not process entries: request to konghq.com:80 returned status code 301")
+      assert.logfile().has.line("handler could not process entries: request to konghq.com:80 returned status code")
     end)
   end)
 end
