@@ -4,7 +4,8 @@ on:
   pull_request:
 
 permissions:
-  pull-requests: write|read
+  pull-requests: write
+  pull-requests: read
 
 jobs:
   check_author:
