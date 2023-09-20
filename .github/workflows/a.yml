@@ -4,7 +4,7 @@ on:
   pull_request:
 
 permissions:
-  pull-requests: write|read
+  pull-requests: write
 
 jobs:
   check_author:
@@ -18,6 +18,6 @@ jobs:
         id: check_membership
         run: |
           set +e
-          cat ${{ github.actor }}
+          echo ${{ github.actor }}
           gh api orgs/Kong/members --paginate -q '.[].login'
 
