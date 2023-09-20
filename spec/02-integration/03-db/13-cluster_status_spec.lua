@@ -30,6 +30,10 @@ for _, strategy in helpers.each_strategy() do
                                                  { config_hash = "a9a166c59873245db8f1a747ba9a80a7",
                                                    hostname = "localhost",
                                                    ip = "127.0.0.1",
+                                                   labels = {
+                                                     deployment = "mycloud",
+                                                     region = "us-east-1",
+                                                   }
                                                  })
 
         assert.is_truthy(p)
@@ -39,7 +43,9 @@ for _, strategy in helpers.each_strategy() do
       it(":update()", function()
         -- this time update instead of insert
         local p, err = db.clustering_data_planes:update({ id = "eb51145a-aaaa-bbbb-cccc-22087fb081db", },
-                                          { config_hash = "a9a166c59873245db8f1a747ba9a80a7", })
+                                          { config_hash = "a9a166c59873245db8f1a747ba9a80a7",
+                                            labels = { deployment = "aws", region = "us-east-2" }
+                                          })
         assert.is_truthy(p)
         assert.is_nil(err)
       end)

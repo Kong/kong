@@ -234,6 +234,7 @@ function _M:handle_cp_websocket()
       ip = dp_ip,
       version = dp_version,
       sync_status = sync_status, -- TODO: import may have been failed though
+      labels = data.labels,
     }, { ttl = purge_delay })
     if not ok then
       ngx_log(ngx_ERR, _log_prefix, "unable to update clustering data plane status: ", err, log_suffix)

@@ -37,6 +37,7 @@ describe("CP/DP communication #" .. strategy, function()
       cluster_control_plane = "127.0.0.1:9005",
       proxy_listen = "0.0.0.0:9002",
       nginx_conf = "spec/fixtures/custom_nginx.template",
+      cluster_dp_labels="deployment:mycloud,region:us-east-1",
     }))
 
     for _, plugin in ipairs(helpers.get_plugins_list()) do
@@ -69,7 +70,9 @@ describe("CP/DP communication #" .. strategy, function()
             assert.near(14 * 86400, v.ttl, 3)
             assert.matches("^(%d+%.%d+)%.%d+", v.version)
             assert.equal(CLUSTERING_SYNC_STATUS.NORMAL, v.sync_status)
-
+            assert.equal(CLUSTERING_SYNC_STATUS.NORMAL, v.sync_status)
+            assert.equal("mycloud", v.labels.deployment)
+            assert.equal("us-east-1", v.labels.region)
             return true
           end
         end
