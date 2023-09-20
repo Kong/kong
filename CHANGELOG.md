@@ -6894,6 +6894,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.8.4]: https://github.com/Kong/kong/compare/2.8.3...2.8.4
 [2.8.3]: https://github.com/Kong/kong/compare/2.8.2...2.8.3
 [2.8.2]: https://github.com/Kong/kong/compare/2.8.1...2.8.2
 [2.8.1]: https://github.com/Kong/kong/compare/2.8.0...2.8.1
