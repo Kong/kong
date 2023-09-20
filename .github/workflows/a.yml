@@ -12,6 +12,8 @@ jobs:
 
     steps:
       - name: Check PR Author Membership
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         id: check_membership
         run: |
           set +e
