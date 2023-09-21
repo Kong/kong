@@ -17,59 +17,61 @@ local set_upstream_ssl_trusted_store = ktls.set_upstream_ssl_trusted_store
 
 
 local function set_service_ssl(ctx)
-  local service = ctx and ctx.service 
+  local service = ctx and ctx.service
 
-  if service then
-    local res, err
-    local client_certificate = service.client_certificate
+  if not service then
+    return
+  end
 
-    if client_certificate then
-      local cert, err = get_certificate(client_certificate)
-      if not cert then
-        log(ERR, "unable to fetch upstream client TLS certificate ",
-                 client_certificate.id, ": ", err)
-        return
-      end
+  local res, err
+  local client_certificate = service.client_certificate
 
-      res, err = set_upstream_cert_and_key(cert.cert, cert.key)
-      if not res then
-        log(ERR, "unable to apply upstream client TLS certificate ",
-                 client_certificate.id, ": ", err)
-      end
+  if client_certificate then
+    local cert, err = get_certificate(client_certificate)
+    if not cert then
+      log(ERR, "unable to fetch upstream client TLS certificate ",
+               client_certificate.id, ": ", err)
+      return
     end
 
-    local tls_verify = service.tls_verify
-    if tls_verify then
-      res, err = set_upstream_ssl_verify(tls_verify)
-      if not res then
-        log(CRIT, "unable to set upstream TLS verification to: ",
-                 tls_verify, ", err: ", err)
-      end
+    res, err = set_upstream_cert_and_key(cert.cert, cert.key)
+    if not res then
+      log(ERR, "unable to apply upstream client TLS certificate ",
+               client_certificate.id, ": ", err)
     end
+  end
 
-    local tls_verify_depth = service.tls_verify_depth
-    if tls_verify_depth then
-      res, err = set_upstream_ssl_verify_depth(tls_verify_depth)
-      if not res then
-        log(CRIT, "unable to set upstream TLS verification to: ",
-                 tls_verify, ", err: ", err)
-        -- in case verify can not be enabled, request can no longer be
-        -- processed without potentially compromising security
-        return kong.response.exit(500)
-      end
+  local tls_verify = service.tls_verify
+  if tls_verify then
+    res, err = set_upstream_ssl_verify(tls_verify)
+    if not res then
+      log(CRIT, "unable to set upstream TLS verification to: ",
+                tls_verify, ", err: ", err)
     end
+  end
 
-    local ca_certificates = service.ca_certificates
-    if ca_certificates then
-      res, err = get_ca_certificate_store(ca_certificates)
+  local tls_verify_depth = service.tls_verify_depth
+  if tls_verify_depth then
+    res, err = set_upstream_ssl_verify_depth(tls_verify_depth)
+    if not res then
+      log(CRIT, "unable to set upstream TLS verification to: ",
+                tls_verify, ", err: ", err)
+      -- in case verify can not be enabled, request can no longer be
+      -- processed without potentially compromising security
+      return kong.response.exit(500)
+    end
+  end
+
+  local ca_certificates = service.ca_certificates
+  if ca_certificates then
+    res, err = get_ca_certificate_store(ca_certificates)
+    if not res then
+      log(CRIT, "unable to get upstream TLS CA store, err: ", err)
+
+    else
+      res, err = set_upstream_ssl_trusted_store(res)
       if not res then
-        log(CRIT, "unable to get upstream TLS CA store, err: ", err)
-
-      else
-        res, err = set_upstream_ssl_trusted_store(res)
-        if not res then
-          log(CRIT, "unable to set upstream TLS CA store, err: ", err)
-        end
+        log(CRIT, "unable to set upstream TLS CA store, err: ", err)
       end
     end
   end
@@ -86,26 +88,30 @@ local function fallback_upstream_client_cert(ctx, upstream)
     return
   end
 
-  if ctx.service and not ctx.service.client_certificate then
-    -- service level client_certificate is not set
-    local cert, res, err
-    local client_certificate = upstream.client_certificate
+  if ctx.service and ctx.service.client_certificate then
+    return
+  end
 
-    -- does the upstream object contains a client certificate?
-    if client_certificate then
-      cert, err = get_certificate(client_certificate)
-      if not cert then
-        log(ERR, "unable to fetch upstream client TLS certificate ",
-                 client_certificate.id, ": ", err)
-        return
-      end
+  -- service level client_certificate is not set
+  local cert, res, err
+  local client_certificate = upstream.client_certificate
 
-      res, err = set_upstream_cert_and_key(cert.cert, cert.key)
-      if not res then
-        log(ERR, "unable to apply upstream client TLS certificate ",
-                 client_certificate.id, ": ", err)
-      end
-    end
+  -- does the upstream object contains a client certificate?
+  if not client_certificate then
+    return
+  end
+
+  cert, err = get_certificate(client_certificate)
+  if not cert then
+    log(ERR, "unable to fetch upstream client TLS certificate ",
+             client_certificate.id, ": ", err)
+    return
+  end
+
+  res, err = set_upstream_cert_and_key(cert.cert, cert.key)
+  if not res then
+    log(ERR, "unable to apply upstream client TLS certificate ",
+             client_certificate.id, ": ", err)
   end
 end
 
