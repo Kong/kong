@@ -32,7 +32,7 @@ jobs:
 
     steps:
     - name: Checkout Kong source code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v3
 
     - name: Generate cache key
       id: cache-key
@@ -110,7 +110,7 @@ jobs:
         repo-token: ${{ secrets.PAT }}
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v3
       with:
         # Fetch all history for all tags and branches
         fetch-depth: 0
