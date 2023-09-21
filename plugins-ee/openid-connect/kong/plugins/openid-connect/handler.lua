@@ -351,53 +351,28 @@ function OICHandler.access(_, conf)
 
           if type(session_data.tokens) == "table" then
             id_token = session_data.tokens.id_token
-
             if args.get_conf_arg("logout_revoke", false) then
               local revocation_endpoint = args.get_conf_arg("revocation_endpoint")
               local revocation_endpoint_auth_method = args.get_conf_arg("revocation_endpoint_auth_method")
               if session_data.tokens.refresh_token and args.get_conf_arg("logout_revoke_refresh_token", false) then
-                if revocation_endpoint then
-                  log("revoking refresh token")
-                  ok, err = oic.token:revoke(session_data.tokens.refresh_token, "refresh_token", {
-                    revocation_endpoint = revocation_endpoint,
-                    revocation_endpoint_auth_method = revocation_endpoint_auth_method,
-                  })
-                  if not ok and err then
-                    log("revoking refresh token failed: ", err)
-                  end
-
-                else
-                  ok, err = oic.token:revoke(session_data.tokens.refresh_token, "refresh_token", {
-                    revocation_endpoint_auth_method = revocation_endpoint_auth_method,
-                  })
-                  -- call revoke here but without the user-defined recovation_endpoint
-                  -- if fails, log that
-                  if not ok and err then
-                    log("unable to revoke refresh token: ", err)
-                  end
+                log("revoking refresh token")
+                ok, err = oic.token:revoke(session_data.tokens.refresh_token, "refresh_token", {
+                  revocation_endpoint = revocation_endpoint,
+                  revocation_endpoint_auth_method = revocation_endpoint_auth_method,
+                })
+                if not ok and err then
+                  log("revoking refresh token failed: ", err)
                 end
               end
 
               if session_data.tokens.access_token and args.get_conf_arg("logout_revoke_access_token", true) then
-                if revocation_endpoint then
-                  log("revoking access token")
-                  ok, err = oic.token:revoke(session_data.tokens.access_token, "access_token", {
-                    revocation_endpoint = revocation_endpoint,
-                    revocation_endpoint_auth_method = revocation_endpoint_auth_method,
-                  })
-                  if not ok and err then
-                    log("revoking access token failed: ", err)
-                  end
-
-                else
-                  ok, err = oic.token:revoke(session_data.tokens.refresh_token, "refresh_token", {
-                    revocation_endpoint_auth_method = revocation_endpoint_auth_method,
-                  })
-                  -- call revoke here but without the user-defined recovation_endpoint
-                  -- if fails, log that
-                  if not ok and err then
-                    log("unable to revoke refresh token: ", err)
-                  end
+                log("revoking access token")
+                ok, err = oic.token:revoke(session_data.tokens.access_token, "access_token", {
+                  revocation_endpoint = revocation_endpoint,
+                  revocation_endpoint_auth_method = revocation_endpoint_auth_method,
+                })
+                if not ok and err then
+                  log("revoking access token failed: ", err)
                 end
               end
             end
