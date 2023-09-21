@@ -65,6 +65,7 @@ Contribute to the Plugin Hub and ensure your next innovative idea is published a
 ## Contributing
 
 We ❤️ pull requests, and we’re continually working hard to make it as easy as possible for developers to contribute. Before beginning development with the Kong API Gateway, please familiarize yourself with the following developer resources:
+- Community Pledge ([COMMUNITY_PLEDGE.md](COMMUNITY_PLEDGE.md)) for our pledge to interact with you, the open source community.
 - Contributor Guide ([CONTRIBUTING.md](CONTRIBUTING.md)) to learn about how to contribute to Kong.
 - Development Guide ([DEVELOPER.md](DEVELOPER.md)): Setting up your development environment.
 - [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md) and [COPYRIGHT](COPYRIGHT)
@@ -77,12 +78,14 @@ Please see the [Changelog](CHANGELOG.md) for more details about a given release.
 
 ## Join the Community
 
+- Check out the [docs](https://docs.konghq.com/)
+- Join the [Kong discussions forum](https://github.com/Kong/kong/discussions)
 - Join the Kong discussions at the Kong Nation forum: [https://discuss.konghq.com/](https://discuss.konghq.com/)
-- Follow us on Twitter: [https://twitter.com/thekonginc](https://twitter.com/thekonginc)
-- Check out the docs: [https://docs.konghq.com/](https://docs.konghq.com/)
-- Keep updated on YouTube by subscribing: [https://www.youtube.com/c/KongInc/videos](https://www.youtube.com/c/KongInc/videos)
-- Read up on the latest happenings at our blog: [https://konghq.com/blog/](https://konghq.com/blog/)
-- Visit our homepage to learn more: [https://konghq.com/](https://konghq.com/)
+- Join our [Community Slack](http://kongcommunity.slack.com/)
+- Read up on the latest happenings at our [blog](https://konghq.com/blog/)
+- Follow us on [X](https://x.com/thekonginc)
+- Subscribe to our [YouTube channel](https://www.youtube.com/c/KongInc/videos)
+- Visit our [homepage](https://konghq.com/) to learn more
 
 ## Konnect Cloud
 

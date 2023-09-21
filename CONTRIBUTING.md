@@ -6,6 +6,9 @@ document is for you! It intends to be both an entry point for newcomers to
 the community (with various technical backgrounds), and a guide/reference for
 contributors and maintainers.
 
+Please have a look at our [Community Pledge](./COMMUNITY_PLEDGE.md) to
+understand how we work with our open source contributors!
+
 Consult the Table of Contents below, and jump to the desired section.
 
 ## Table of Contents
@@ -48,21 +51,18 @@ https://konghq.com/kong-enterprise-edition/ or contact us at
 
 ### Community Edition
 
-There are multiple channels where you can get answers from the community
-or the maintainers of this project:
-
-- Our public forum, [Kong Nation](https://discuss.konghq.com) is great for
-  asking questions, giving advice, and staying up-to-date with the latest
-  announcements. Kong Nation is frequented by Kong maintainers.
-- Two chat channels are used by the community, but are rarely visited by Kong
-  maintainers:
-  - [Gitter](https://gitter.im/Kong/kong)
-  - IRC, registered on freenode as
-    [#kong](https://webchat.freenode.net/?channels=kong)
+For questions around the use of the Community Edition, please use
+[GitHub Discussions](https://github.com/Kong/kong/discussions).  You
+can also join our [Community Slack](http://kongcommunity.slack.com/)
+for real-time conversations around Kong Gateway.
 
 **Please avoid opening GitHub issues for general questions or help**, as those
 should be reserved for actual bug reports. The Kong community is welcoming and
 more than willing to assist you on those channels!
+
+Our public forum, [Kong Nation](https://discuss.konghq.com) is great
+for asking questions, giving advice, and staying up-to-date with the
+latest announcements.
 
 [Back to TOC](#table-of-contents)
 
@@ -95,9 +95,7 @@ on [Submitting a patch](#submitting-a-patch) for details.
 
 ## Contributing
 
-We welcome contributions of all kinds, there is no need to do code to be helpful!
-All of the following tasks are noble and worthy contributions that you can
-make without coding:
+In addition to code enhancements and bug fixes, you can contribute by
 
 - Reporting a bug (see the [report bugs](#where-to-report-bugs) section)
 - Helping other members of the community on the support channels
@@ -126,13 +124,15 @@ https://github.com/Kong/docs.konghq.com/
 
 ### Proposing a new plugin
 
-We **do not** accept new plugins into the core repository. The plugins that are
-currently part of this repository are there because of historical reasons, but
-will be pushed into separate repositories in the foreseeable future.
+We **do not** generally accept new plugins into this repository. The
+plugins that are currently part of it form the foundational set of
+plugins which is available to all installations of Kong Gateway.
+Specialized functionality should be implemented in plugins residing in
+separate repository.
 
-If you are interested in writing a new plugin for your own needs, you should begin by
-reading the [Plugin Development
-Guide](https://docs.konghq.com/latest/plugin-development).
+If you are interested in writing a new plugin for your own needs, you
+should begin by reading the
+[Plugin Development Guide](https://docs.konghq.com/latest/plugin-development).
 
 If you already wrote a plugin, and are thinking about making it available to
 the community, we strongly encourage you to host it on a publicly available
@@ -152,9 +152,12 @@ To give visibility to your plugin, we advise that you:
 
 ### Submitting a patch
 
-Feel free to contribute fixes or minor features, we love to receive Pull
-Requests! If you are planning to develop a larger feature, come talk to us
-first!
+Feel free to contribute fixes or minor features by opening a Pull
+Request.  Small contributions are more likely to be merged quicker
+than changes which require a lot of time to review.  If you are
+planning to develop a larger feature, please talk to us first in the
+[GitHub Discussions](https://github.com/Kong/kong/discussions)
+section!
 
 When contributing, please follow the guidelines provided in this document. They
 will cover topics such as the different Git branches we use, the commit message
@@ -172,8 +175,6 @@ to verify a few things:
   development documentation for additional details)
 - The tests are passing: run `make test`, `make test-all`, or whichever is
   appropriate for your change
-- Do not update CHANGELOG.md yourself. Your change will be included therein
-  due time if it is accepted, no worries!
 
 If the above guidelines are respected, your Pull Request has all its chances
 to be considered and will be reviewed by a maintainer.
