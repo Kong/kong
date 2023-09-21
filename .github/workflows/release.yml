@@ -50,7 +50,7 @@ env:
 jobs:
   metadata:
     name: Metadata
-    runs-on: ${{ vars.RELEASE_RUNS_ON }}
+    runs-on: ubuntu-latest-kong
     outputs:
       kong-version: ${{ steps.build-info.outputs.kong-version }}
       prerelease-docker-repository: ${{ env.PRERELEASE_DOCKER_REPOSITORY }}
@@ -61,6 +61,7 @@ jobs:
       matrix: ${{ steps.build-info.outputs.matrix }}
       gh-release-name: ${{ steps.build-info.outputs.gh-release-name }}
       gh-release-tag-name: ${{ steps.build-info.outputs.gh-release-tag-name }}
+      release-runs-on: ${{ steps.build-info.outputs.release-runs-on }}
 
     steps:
     - uses: actions/checkout@v3
@@ -108,6 +109,8 @@ jobs:
 
         echo "matrix=$(yq e -I=0 -o=json $matrix_file)" >> $GITHUB_OUTPUT
 
+        echo "release-runs-on=${{ github.event_name == 'pull_request' && 'ubuntu-latest-kong' || 'ubuntu-latest' }}" >> $GITHUB_OUTPUT
+
         cat $GITHUB_OUTPUT
 
         echo "### :package: Building and packaging for $release_desc" >> $GITHUB_STEP_SUMMARY
@@ -130,7 +133,7 @@ jobs:
       matrix:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-packages'] }}"
 
-    runs-on: ${{ vars.RELEASE_RUNS_ON }}
+    runs-on: ${{ needs.metadata.outputs.release-runs-on }}
     container:
       image: ${{ matrix.image }}
       options: --privileged
@@ -303,7 +306,7 @@ jobs:
   verify-manifest-packages:
     needs: [metadata, build-packages]
     name: Verify Manifest - Package ${{ matrix.label }}
-    runs-on: ${{ vars.RELEASE_RUNS_ON }}
+    runs-on: ${{ needs.metadata.outputs.release-runs-on }}
 
     strategy:
       fail-fast: false
@@ -357,7 +360,7 @@ jobs:
   build-images:
     name: Build Images - ${{ matrix.label }}
     needs: [metadata, build-packages]
-    runs-on: ${{ vars.RELEASE_RUNS_ON }}
+    runs-on: ${{ needs.metadata.outputs.release-runs-on }}
     strategy:
       fail-fast: false
       matrix:
@@ -439,7 +442,7 @@ jobs:
   verify-manifest-images:
     needs: [metadata, build-images]
     name: Verify Manifest - Image ${{ matrix.label }}
-    runs-on: ${{ vars.RELEASE_RUNS_ON }}
+    runs-on: ${{ needs.metadata.outputs.release-runs-on }}
     if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
 
     strategy:
@@ -473,7 +476,7 @@ jobs:
   scan-images:
     name: Scan Images - ${{ matrix.label }}
     needs: [metadata, build-images]
-    runs-on: ${{ vars.RELEASE_RUNS_ON }}
+    runs-on: ${{ needs.metadata.outputs.release-runs-on }}
     if: github.repository_owner == 'Kong'
     strategy:
       fail-fast: false
@@ -548,7 +551,7 @@ jobs:
   smoke-tests:
     name: Legacy Smoke Tests - ${{ matrix.label }}
     needs: [metadata, build-images]
-    runs-on: ${{ vars.RELEASE_RUNS_ON }}
+    runs-on: ${{ needs.metadata.outputs.release-runs-on }}
 
     # TODO: test packages
     strategy:
@@ -675,7 +678,7 @@ jobs:
   release-packages:
     name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-packages, build-images, smoke-tests, test-packages, test-images-smoke, test-images-e2e]
-    runs-on: ${{ vars.RELEASE_RUNS_ON }}
+    runs-on: ${{ needs.metadata.outputs.release-runs-on }}
     if: github.repository_owner == 'Kong' && fromJSON(needs.metadata.outputs.matrix)['release-packages'] != ''
     timeout-minutes: 5 # PULP takes a while to publish
     environment: ${{ needs.metadata.outputs.deploy-environment }}
@@ -750,7 +753,7 @@ jobs:
   release-images:
     name: Release Images - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-images, smoke-tests, test-packages, test-images-smoke, test-images-e2e]
-    runs-on: ${{ vars.RELEASE_RUNS_ON }}
+    runs-on: ${{ needs.metadata.outputs.release-runs-on }}
     if: github.repository_owner == 'Kong' && fromJSON(needs.metadata.outputs.matrix)['release-images'] != ''
 
     strategy:
