@@ -54,6 +54,11 @@ describe("propagation tests #" .. strategy, function()
       service = service,
     })
 
+    local datadog_route = bp.routes:insert({
+      hosts = { "datadog" },
+      service = service,
+    })
+
     bp.plugins:insert({
       name = "opentelemetry",
       route = {id = bp.routes:insert({
@@ -106,10 +111,20 @@ describe("propagation tests #" .. strategy, function()
       }
     })
 
+    bp.plugins:insert({
+      name = "opentelemetry",
+      route = datadog_route,
+      config = {
+        endpoint = "http://localhost:8080/v1/traces",
+        header_type = "datadog",
+      }
+    })
+
     helpers.start_kong({
       database = strategy,
       plugins = "bundled, trace-propagator",
       nginx_conf = "spec/fixtures/custom_nginx.template",
+      -- tracing_instrumentations = "all",
     })
 
     proxy_client = helpers.proxy_client()
@@ -288,6 +303,34 @@ describe("propagation tests #" .. strategy, function()
     local json = cjson.decode(body)
 
     assert.equals(trace_id, json.headers["ot-tracer-traceid"])
+  end)
+
+  describe("propagates datadog tracing headers", function()
+    it("with datadog headers in client request", function()
+      local trace_id  = "1234567890"
+      local r = proxy_client:get("/", {
+        headers = {
+          ["x-datadog-trace-id"] = trace_id,
+          host = "http-route",
+        },
+      })
+      local body = assert.response(r).has.status(200)
+      local json = cjson.decode(body)
+
+      assert.equals(trace_id, json.headers["x-datadog-trace-id"])
+      assert.is_not_nil(tonumber(json.headers["x-datadog-parent-id"]))
+    end)
+
+    it("without datadog headers in client request", function()
+      local r = proxy_client:get("/", {
+        headers = { host = "datadog" },
+      })
+      local body = assert.response(r).has.status(200)
+      local json = cjson.decode(body)
+
+      assert.is_not_nil(tonumber(json.headers["x-datadog-trace-id"]))
+      assert.is_not_nil(tonumber(json.headers["x-datadog-parent-id"]))
+    end)
   end)
 
   it("propagate spwaned span with ot headers", function()

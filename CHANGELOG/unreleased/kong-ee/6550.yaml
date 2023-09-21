@@ -1,0 +1,7 @@
+message: "**Opentelemetry**: A new value is added to the parameter `header_type`, which allows Kong to inject datadog headers into the headers of requests forwarding to upstream."
+type: feature
+scope: Plugin
+prs:
+  - 6550
+jiras:
+  - "FTI-5351"

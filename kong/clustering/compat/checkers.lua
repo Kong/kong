@@ -36,6 +36,27 @@ end
 
 
 local compatible_checkers = {
+  { 3004001000, --[[3.4.1.0]]
+    function(config_table, dp_version, log_suffix)
+      local has_update
+
+      for _, plugin in ipairs(config_table.plugins or {}) do
+        if plugin.name == 'opentelemetry' then
+          local config = plugin.config
+          if config.header_type == 'datadog' then
+            config.header_type = 'preserve'
+            log_warn_message('contains configuration opentelemetry.header_type == datadog',
+                             'be overwritten with default value `preserve`',
+                             dp_version, log_suffix)
+            has_update = true
+          end
+        end
+      end
+
+      return has_update
+    end
+
+  },
   { 3004000000, --[[ 3.4.0.0 ]]
     function(config_table, dp_version, log_suffix)
       local entity_names = {

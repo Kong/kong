@@ -37,11 +37,6 @@ local function cluster_client(opts)
     node_plugins_list = PLUGIN_LIST,
   })
 
-  if ok and res and res.config then
-    local inflated = assert(utils.inflate_gzip(res.config))
-    res.config = cjson.decode(inflated)
-  end
-
   return res
 end
 
@@ -73,8 +68,8 @@ local function get_plugin(node_id, node_version, name)
   local res = cluster_client({ id = node_id, version = node_version })
 
   local plugin
-  if ((res or EMPTY).config or EMPTY).plugins then
-    for _, p in ipairs(res.config.plugins) do
+  if ((res or EMPTY).config_table or EMPTY).plugins then
+    for _, p in ipairs(res.config_table.plugins) do
       if p.name == name then
         plugin = p.config
         break
@@ -107,6 +102,45 @@ for _, strategy in helpers.each_strategy() do
 
 describe("CP/DP config compat #" .. strategy, function()
   local db
+
+  local function do_assert(case, dp_version)
+    assert(db:truncate("plugins"))
+    assert(db:truncate("clustering_data_planes"))
+
+    local plugin = admin.plugins:insert({
+      name = case.plugin,
+      config = case.config,
+    })
+
+    local id = utils.uuid()
+
+    local conf, status
+    helpers.wait_until(function()
+      conf, status = get_plugin(id, dp_version, case.plugin)
+      return status == case.status
+    end, 5, 0.25)
+
+    assert.equals(case.status, status)
+
+    if case.status == STATUS.NORMAL then
+      for _, field in ipairs(case.removed or {}) do
+        assert.not_nil(get(plugin.config, field),
+                        "field '" .. field .. "' is missing from the " ..
+                        "configured plugin")
+
+        assert.is_nil(get(conf, field),
+                      "field '" .. field .. "' was not removed from the " ..
+                      "data plane copy of the plugin config")
+      end
+    else
+      assert.is_nil(conf, "expected config sync to fail")
+    end
+
+    if case.validator then
+      assert(case.validator(conf), "unexpected config received")
+    end
+  end
+
   lazy_setup(function()
     local bp
     bp, db = helpers.get_db_utils(strategy, {
@@ -235,37 +269,33 @@ describe("CP/DP config compat #" .. strategy, function()
       local test = case.pending and pending or it
 
       test(fmt("%s - %s", case.plugin, case.label), function()
-        assert(db:truncate("plugins"))
-        assert(db:truncate("clustering_data_planes"))
+        do_assert(case, "3.0.0.0")
+      end)
+    end
+  end)
 
-        local plugin = admin.plugins:insert({
-          name = case.plugin,
-          config = case.config,
-        })
-
-        local id = utils.uuid()
-
-        local conf, status
-        helpers.wait_until(function()
-          conf, status = get_plugin(id, "3.0.0.0", case.plugin)
-          return status == case.status
-        end, 5, 0.25)
-
-        assert.equals(case.status, status)
-
-        if case.status == STATUS.NORMAL then
-          for _, field in ipairs(case.removed or {}) do
-            assert.not_nil(get(plugin.config, field),
-                           "field '" .. field .. "' is missing from the " ..
-                           "configured plugin")
-
-            assert.is_nil(get(conf, field),
-                          "field '" .. field .. "' was not removed from the " ..
-                          "data plane copy of the plugin config")
-          end
-        else
-          assert.is_nil(conf, "expected config sync to fail")
+  describe("3.4.x.y", function()
+    local CASES = {
+      {
+        plugin = "opentelemetry",
+        label = "w/ header_type datadog unsupported",
+        pending = false,
+        config = {
+          endpoint = "http://1.1.1.1:12345/v1/trace",
+          header_type = "datadog"
+        },
+        status = STATUS.NORMAL,
+        validator = function(config)
+          return config.header_type == 'preserve'
         end
+      }
+    }
+
+    for _, case in ipairs(CASES) do
+      local test = case.pending and pending or it
+
+      test(fmt("%s - %s", case.plugin, case.label), function()
+        do_assert(case, "3.4.0.0")
       end)
     end
   end)

@@ -34,10 +34,6 @@ local function cluster_client(opts)
   })
 
   assert.is_nil(err)
-  if res and res.config_table then
-    res.config = res.config_table
-  end
-
   return res
 end
 
@@ -45,11 +41,11 @@ local function get_entity(entity_type, node_id, node_version, name, allow_nil)
   allow_nil = allow_nil or false
   local res, err = cluster_client({ id = node_id, version = node_version })
   assert.is_nil(err)
-  assert.is_table(res and res.config and res.config[entity_type .. 's'],
+  assert.is_table(res and res.config_table and res.config_table[entity_type .. 's'],
                   "invalid response from clustering client")
 
   local entity
-  for _, e in ipairs(res.config[entity_type .. 's']) do
+  for _, e in ipairs(res.config_table[entity_type .. 's']) do
     if e.name == name then
       entity = e
       break
