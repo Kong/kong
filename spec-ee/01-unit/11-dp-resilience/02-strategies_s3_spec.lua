@@ -72,7 +72,8 @@ describe("cp outage handling storage support: #s3", function()
     end
 
     -- initialization
-
+    package.loaded["resty.aws"] = nil
+    package.loaded["resty.aws.config"] = nil
     local get_phase = ngx.get_phase
     ngx.get_phase = function() return "init" end -- luacheck: ignore
     s3 = require "kong.clustering.config_sync_backup.strategies.s3"
