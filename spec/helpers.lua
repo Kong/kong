@@ -2112,20 +2112,23 @@ local function wait_for_all_config_update(opts)
   local stream_enabled = opts.stream_enabled or false
   local override_rl = opts.override_global_rate_limiting_plugin or false
   local override_auth = opts.override_global_key_auth_plugin or false
+  local headers = opts.override_default_headers or { ["Content-Type"] = "application/json" }
 
-  local function call_admin_api(method, path, body, expected_status)
+  local function call_admin_api(method, path, body, expected_status, headers)
     local client = admin_client(admin_client_timeout, forced_admin_port)
 
     local res
 
     if string.upper(method) == "POST" then
       res = client:post(path, {
-        headers = {["Content-Type"] = "application/json"},
+        headers = headers,
         body = body,
       })
 
     elseif string.upper(method) == "DELETE" then
-      res = client:delete(path)
+      res = client:delete(path, {
+        headers = headers
+      })
     end
 
     local ok, json_or_nil_or_err = pcall(function ()
@@ -2170,28 +2173,28 @@ local function wait_for_all_config_update(opts)
   local res = assert(call_admin_api("POST",
                              "/upstreams",
                              { name = upstream_name },
-                             201))
+                             201, headers))
   upstream_id = res.id
 
   -- create mocking target to mocking upstream
   res = assert(call_admin_api("POST",
                        string.format("/upstreams/%s/targets", upstream_id),
                        { target = host .. ":" .. port },
-                       201))
+                       201, headers))
   target_id = res.id
 
   -- create mocking service to mocking upstream
   res = assert(call_admin_api("POST",
                        "/services",
                        { name = service_name, url = "http://" .. upstream_name .. "/always_200" },
-                       201))
+                       201, headers))
   service_id = res.id
 
   -- create mocking route to mocking service
   res = assert(call_admin_api("POST",
                        string.format("/services/%s/routes", service_id),
                        { paths = { route_path }, strip_path = true, path_handling = "v0",},
-                       201))
+                       201, headers))
   route_id = res.id
 
   if override_rl then
@@ -2199,7 +2202,7 @@ local function wait_for_all_config_update(opts)
     res = assert(call_admin_api("POST",
                                 string.format("/services/%s/plugins", service_id),
                                 { name = "rate-limiting", config = { minute = 999999, policy = "local" } },
-                                201))
+                                201, headers))
     rl_plugin_id = res.id
   end
 
@@ -2208,21 +2211,21 @@ local function wait_for_all_config_update(opts)
     res = assert(call_admin_api("POST",
                                 string.format("/services/%s/plugins", service_id),
                                 { name = "key-auth", config = { key_names = { key_header_name } } },
-                                201))
+                                201, headers))
     key_auth_plugin_id = res.id
 
     -- create consumer
     res = assert(call_admin_api("POST",
                                 "/consumers",
                                 { username = consumer_name },
-                                201))
+                                201, headers))
       consumer_id = res.id
 
     -- create credential to key-auth plugin
     res = assert(call_admin_api("POST",
                                 string.format("/consumers/%s/key-auth", consumer_id),
                                 { key = test_credentials },
-                                201))
+                                201, headers))
     credential_id = res.id
   end
 
@@ -2231,28 +2234,28 @@ local function wait_for_all_config_update(opts)
     local res = assert(call_admin_api("POST",
                               "/upstreams",
                               { name = stream_upstream_name },
-                              201))
+                              201, headers))
     stream_upstream_id = res.id
 
     -- create mocking target to mocking upstream
     res = assert(call_admin_api("POST",
                         string.format("/upstreams/%s/targets", stream_upstream_id),
                         { target = host .. ":" .. port },
-                        201))
+                        201, headers))
     stream_target_id = res.id
 
     -- create mocking service to mocking upstream
     res = assert(call_admin_api("POST",
                         "/services",
                         { name = stream_service_name, url = "tcp://" .. stream_upstream_name },
-                        201))
+                        201, headers))
     stream_service_id = res.id
 
     -- create mocking route to mocking service
     res = assert(call_admin_api("POST",
                         string.format("/services/%s/routes", stream_service_id),
                         { destinations = { { port = stream_port }, }, protocols = { "tcp" },},
-                        201))
+                        201, headers))
     stream_route_id = res.id
   end
 
@@ -2291,25 +2294,25 @@ local function wait_for_all_config_update(opts)
 
   -- delete mocking configurations
   if override_auth then
-    call_admin_api("DELETE", string.format("/consumers/%s/key-auth/%s", consumer_id, credential_id), nil, 204)
-    call_admin_api("DELETE", string.format("/consumers/%s", consumer_id), nil, 204)
-    call_admin_api("DELETE", "/plugins/" .. key_auth_plugin_id, nil, 204)
+    call_admin_api("DELETE", string.format("/consumers/%s/key-auth/%s", consumer_id, credential_id), nil, 204, headers)
+    call_admin_api("DELETE", string.format("/consumers/%s", consumer_id), nil, 204, headers)
+    call_admin_api("DELETE", "/plugins/" .. key_auth_plugin_id, nil, 204, headers)
   end
 
   if override_rl then
-    call_admin_api("DELETE", "/plugins/" .. rl_plugin_id, nil, 204)
+    call_admin_api("DELETE", "/plugins/" .. rl_plugin_id, nil, 204, headers)
   end
 
-  call_admin_api("DELETE", "/routes/" .. route_id, nil, 204)
-  call_admin_api("DELETE", "/services/" .. service_id, nil, 204)
-  call_admin_api("DELETE", string.format("/upstreams/%s/targets/%s", upstream_id, target_id), nil, 204)
-  call_admin_api("DELETE", "/upstreams/" .. upstream_id, nil, 204)
+  call_admin_api("DELETE", "/routes/" .. route_id, nil, 204, headers)
+  call_admin_api("DELETE", "/services/" .. service_id, nil, 204, headers)
+  call_admin_api("DELETE", string.format("/upstreams/%s/targets/%s", upstream_id, target_id), nil, 204, headers)
+  call_admin_api("DELETE", "/upstreams/" .. upstream_id, nil, 204, headers)
 
   if stream_enabled then
-    call_admin_api("DELETE", "/routes/" .. stream_route_id, nil, 204)
-    call_admin_api("DELETE", "/services/" .. stream_service_id, nil, 204)
-    call_admin_api("DELETE", string.format("/upstreams/%s/targets/%s", stream_upstream_id, stream_target_id), nil, 204)
-    call_admin_api("DELETE", "/upstreams/" .. stream_upstream_id, nil, 204)
+    call_admin_api("DELETE", "/routes/" .. stream_route_id, nil, 204, headers)
+    call_admin_api("DELETE", "/services/" .. stream_service_id, nil, 204, headers)
+    call_admin_api("DELETE", string.format("/upstreams/%s/targets/%s", stream_upstream_id, stream_target_id), nil, 204, headers)
+    call_admin_api("DELETE", "/upstreams/" .. stream_upstream_id, nil, 204, headers)
   end
 
   ok, err = pcall(function ()

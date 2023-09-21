@@ -242,11 +242,25 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("should return 200 if account successfully verifies with auto-approve on", function()
-        configure_portal(db, {
-          portal = true,
-          portal_auth = "basic-auth",
-          portal_auto_approve = false,
+        local claims = {id = unverified_developer.consumer.id, exp = time() + 100000}
+        local valid_jwt = ee_jwt.generate_JWT(claims, secret)
+
+        client_request({
+          method = "PATCH",
+          path = "/workspaces/default",
+          body = {
+            config = {
+              portal = true,
+              portal_auth = "basic-auth",
+              portal_auto_approve = false,
+            }
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
         })
+
+        helpers.wait_for_all_config_update()
 
         local claims = {id = unverified_developer.consumer.id, exp = time() + 100000}
         local valid_jwt = ee_jwt.generate_JWT(claims, secret)
