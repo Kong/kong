@@ -1092,6 +1092,7 @@ for _, strategy in helpers.each_strategy() do
 
           -- buffered_proxying
           if subsystems == "http" then
+            local body
             helpers.wait_until(function()
               local proxy_client = get_proxy_client(subsystems, 19001)
               local path = "/tls-buffered-proxying"
