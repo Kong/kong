@@ -2402,9 +2402,17 @@ local function res_status(state, args)
         return false -- no err logs to read in this prefix
       end
 
-      local str_t = pl_stringx.splitlines(str)
+      local lines_t = pl_stringx.splitlines(str)
+      local str_t = {}
+      -- filter out debugs as they are not usually useful in this context
+      for i = 1, #lines_t do
+        if not lines_t[i]:match(" %[debug%] ") then
+          table.insert(str_t, lines_t[i])
+        end
+      end
+
       local first_line = #str_t - math.min(60, #str_t) + 1
-      local msg_t = {"\nError logs (" .. conf.nginx_err_logs .. "):"}
+      local msg_t = {"\nError logs (" .. conf.nginx_err_logs .. "), only last 60 non-debug logs are displayed:"}
       for i = first_line, #str_t do
         msg_t[#msg_t+1] = str_t[i]
       end
