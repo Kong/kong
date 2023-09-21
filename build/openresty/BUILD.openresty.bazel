@@ -53,10 +53,15 @@ genrule(
     """.format(luajit_version = LUAJIT_VERSION),
 )
 
+rpath_flags = "-Wl,-rpath,%s/kong/lib -Wl,-rpath,%s/openresty/lualib" % (
+    KONG_VAR["INSTALL_DESTDIR"],
+    KONG_VAR["INSTALL_DESTDIR"],
+)
+
 make(
     name = "luajit",
     args = [
-        "LDFLAGS=\"-Wl,-rpath,%s/kong/lib\"" % KONG_VAR["INSTALL_DESTDIR"],  # make ffi.load happy, even when it's invoked without nginx
+        "LDFLAGS=\"%s\"" % rpath_flags,  # make ffi.load happy, even when it's invoked without nginx
         "XCFLAGS=\"$(cat $$EXT_BUILD_ROOT$$/$(execpath :luajit_xcflags))\"",
         "LUA_ROOT=%s/openresty/luajit" % KONG_VAR["INSTALL_DESTDIR"].rstrip("/"),
         "MACOSX_DEPLOYMENT_TARGET=" + KONG_VAR["MACOSX_DEPLOYMENT_TARGET"],
@@ -140,12 +145,12 @@ CONFIGURE_OPTIONS = [
     "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/pcre/lib\"",
     "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/openssl/lib\"",
     "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/luajit/lib\"",
-    # here let's try not having --disable-new-dtags; --disable-new-dtags creates runpath instead of rpath
-    # note runpath can't handle indirect dependency (nginx -> luajit -> dlopen("other")), so each indirect
+    # Here let's try not having --disable-new-dtags; --disable-new-dtags creates rpath instead of runpath
+    # note rpath can't handle indirect dependency (nginx -> luajit -> dlopen("other")), so each indirect
     # dependency should have its rpath set (luajit, libxslt etc); on the other side, rpath is not
-    # overridable by LD_LIBRARY_PATH and it may cause trouble debugging, so we _should_ prefer runpath.
-    # if it doesn't work, then add --disable-new-dtags back
-    "--with-ld-opt=\"-Wl,-rpath,%s/kong/lib\"" % KONG_VAR["INSTALL_DESTDIR"],
+    # overridable by LD_LIBRARY_PATH and it may cause trouble debugging, so we _should_ prefer runpath
+    # whenever available.
+    "--with-ld-opt=\"%s\"" % rpath_flags,
     "-j%s" % KONG_VAR["NPROC"],
 
     # options from our customed patch
