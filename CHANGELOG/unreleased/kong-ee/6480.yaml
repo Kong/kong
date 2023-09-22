@@ -1,0 +1,7 @@
+message: "Fix a keyring issue where a kong node fails to send keyring material when using cluster strategy"
+type: bugfix
+prs:
+  - 6480
+jiras:
+  - "FTI-5326"
+scope: Core

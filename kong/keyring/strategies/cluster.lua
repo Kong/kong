@@ -271,10 +271,10 @@ local function handle_register(data)
 
   -- recipient
   local node_id = msg.host
-  local pkey = msg.pkey
+  local pub_key = msg.pkey
   local key_ids = msg.key_ids
 
-  local node_pub, err = pkey.new(pkey, PUBLIC_KEY_OPTS)
+  local node_pub, err = pkey.new(pub_key, PUBLIC_KEY_OPTS)
   if err then
     error("invalid public key: ", err)
   end
