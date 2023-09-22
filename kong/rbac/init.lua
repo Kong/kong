@@ -502,9 +502,9 @@ local function retrieve_group_roles_ids(db, group_id)
 end
 
 
-local function select_from_cache(dao, id, retrieve_entity)
-  local cache_key = dao:cache_key(id)
-  local entity, err = kong.cache:get(cache_key, nil, retrieve_entity, dao, id)
+local function select_from_cache(dao, name, retrieve_entity)
+  local cache_key = dao:cache_key(name)
+  local entity, err = kong.cache:get(cache_key, nil, retrieve_entity, dao, name)
 
   if err then
     return nil, err
@@ -568,7 +568,10 @@ function _M.get_groups_roles(db, groups)
   local cache = kong.cache
   local relationship_objs = {}
 
-  for k, group_name in ipairs(groups) do
+  for _, group_name in pairs(groups) do
+    if type(group_name) == "number" then
+      group_name = tostring(group_name)
+    end
     local group, err = select_from_cache(db.groups, group_name, retrieve_group)
     if err then
       kong.log.err("err retrieving group by name: ", group_name, err)
