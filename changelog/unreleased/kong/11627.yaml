@@ -1,4 +1,4 @@
-message: Supoort observing the time consumed by some components in the given request.
+message: Support observing the time consumed by some components in the given request.
 type: feature
 scope: Core
 prs:

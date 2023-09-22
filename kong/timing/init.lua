@@ -8,7 +8,7 @@ local ngx_var         = ngx.var
 
 local string_foramt   = string.format
 
-local FILTER_ALL_PAHSES = {
+local FILTER_ALL_PHASES = {
   ssl_cert = nil,   -- NYI
                     -- in this phase, we can't get request headers
                     -- as we are in the layer 4,
@@ -84,7 +84,7 @@ function _M.auth()
     end
   end
 
-  local ctx = context.new(FILTER_ALL_PAHSES, {
+  local ctx = context.new(FILTER_ALL_PHASES, {
     log = http_x_kong_request_debug_log == "true",
     loopback = loopback,
   })
