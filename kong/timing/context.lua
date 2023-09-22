@@ -177,7 +177,7 @@ function _M:mock_upstream_phase()
     return
   end
 
-  error("unexpected phase: " .. ngx_get_phase())
+  error("unexpected phase: " .. phase)
 end
 
 

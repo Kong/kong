@@ -14,7 +14,7 @@ local function before_connect(self, host, port, options)
     destination = host
 
   else
-    destination = "tcp" .. "://" .. host .. ":" .. tostring(port)
+    destination = "tcp://" .. host .. ":" .. tostring(port)
   end
 
   self.__kong_timing_destination__ = destination
@@ -55,7 +55,7 @@ local function before_setpeername(self, host, port)
     destination = host
 
   else
-    destination = "udp" .. "://" .. host .. ":" .. tostring(port)
+    destination = "udp://" .. host .. ":" .. tostring(port)
   end
 
   self.__kong_timing_destination__ = destination

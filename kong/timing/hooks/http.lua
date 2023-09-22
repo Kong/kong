@@ -5,12 +5,13 @@ local timing
 
 local function before_connect_new(self, options)
   local destination
-  if options.scheme == nil then
+  local scheme = options.scheme
+  if scheme == nil then
     destination = "unix://" .. options.path
 
   else
-    local port = options.port or (options.scheme == "http" and 80 or 443)
-    destination = options.scheme .. "://" .. options.host .. ":" .. port
+    local port = options.port or (scheme == "http" and 80 or 443)
+    destination = scheme .. "://" .. options.host .. ":" .. port
   end
 
   self.__kong_timing_destination__ = destination
