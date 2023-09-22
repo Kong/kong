@@ -1,4 +1,4 @@
-message: "use deep copies of Route, Service, and Consumer objects when log serializing"
+message: Fix a bug that cross-request data interference in kong.log.serialize
 type: bugfix
 scope: PDK
 prs:
