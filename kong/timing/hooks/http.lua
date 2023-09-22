@@ -21,6 +21,7 @@ local function before_connect_new(self, options)
 end
 
 
+-- https://github.com/ledgetech/lua-resty-http#TCP-only-connect
 local function before_connect_deprecated(self, host, port, _options)
   local destination
   if type(port) == "number" then
@@ -71,6 +72,16 @@ function _M.register_hooks(timing_module)
   local http = require("resty.http")
   local req_dyn_hook = require("kong.dynamic_hook")
 
+  --[[
+    The `connect()` function can receive <= 4 arguments (including `self`).
+    
+    The `before_connect_deprecated()` is the deprecated version of `connect()`,
+    it can receive 4 arguments (including `self`).
+
+    The `connect()` function can receive 2 arguments (including `self`).
+
+    So the max_args is 4.
+  --]]
   req_dyn_hook.hook_function("timing", http, "connect", 4, {
     befores = { before_connect },
     afters = { after_connect },
