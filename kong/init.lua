@@ -115,7 +115,6 @@ local licensing = require "kong.enterprise_edition.licensing"
 
 local kong             = kong
 local ngx              = ngx
-local now              = ngx.now
 local var              = ngx.var
 local arg              = ngx.arg
 local header           = ngx.header
@@ -129,7 +128,6 @@ local ngx_INFO         = ngx.INFO
 local ngx_DEBUG        = ngx.DEBUG
 local is_http_module   = ngx.config.subsystem == "http"
 local is_stream_module = ngx.config.subsystem == "stream"
-local start_time       = ngx.req.start_time
 local worker_id        = ngx.worker.id
 local type             = type
 local error            = error
@@ -144,7 +142,11 @@ local set_current_peer = ngx_balancer.set_current_peer
 local set_timeouts     = ngx_balancer.set_timeouts
 local set_more_tries   = ngx_balancer.set_more_tries
 local enable_keepalive = ngx_balancer.enable_keepalive
-local time_ns          = utils.time_ns
+
+
+local time_ns            = utils.time_ns
+local get_now_ms         = utils.get_now_ms
+local get_start_time_ms  = utils.get_start_time_ms
 local get_updated_now_ms = utils.get_updated_now_ms
 
 
@@ -1003,11 +1005,11 @@ end
 function Kong.preread()
   local ctx = get_ctx_table(fetch_table(CTX_NS, CTX_NARR, CTX_NREC))
   if not ctx.KONG_PROCESSING_START then
-    ctx.KONG_PROCESSING_START = start_time() * 1000
+    ctx.KONG_PROCESSING_START = get_start_time_ms()
   end
 
   if not ctx.KONG_PREREAD_START then
-    ctx.KONG_PREREAD_START = now() * 1000
+    ctx.KONG_PREREAD_START = get_now_ms()
   end
 
   ctx.KONG_PHASE = PHASES.preread
@@ -1061,7 +1063,7 @@ function Kong.rewrite()
     local ctx = ngx.ctx           -- after an internal redirect. Restore (and restash)
     kong_resty_ctx.stash_ref(ctx) -- context to avoid re-executing phases
 
-    ctx.KONG_REWRITE_ENDED_AT = now() * 1000
+    ctx.KONG_REWRITE_ENDED_AT = get_now_ms()
     ctx.KONG_REWRITE_TIME = ctx.KONG_REWRITE_ENDED_AT - ctx.KONG_REWRITE_START
 
     return
@@ -1076,11 +1078,11 @@ function Kong.rewrite()
   end
 
   if not ctx.KONG_PROCESSING_START then
-    ctx.KONG_PROCESSING_START = start_time() * 1000
+    ctx.KONG_PROCESSING_START = get_start_time_ms()
   end
 
   if not ctx.KONG_REWRITE_START then
-    ctx.KONG_REWRITE_START = now() * 1000
+    ctx.KONG_REWRITE_START = get_now_ms()
   end
 
   ctx.KONG_PHASE = PHASES.rewrite
@@ -1116,7 +1118,7 @@ function Kong.access()
   local ctx = ngx.ctx
   ctx.is_proxy_request = true
   if not ctx.KONG_ACCESS_START then
-    ctx.KONG_ACCESS_START = now() * 1000
+    ctx.KONG_ACCESS_START = get_now_ms()
 
     if ctx.KONG_REWRITE_START and not ctx.KONG_REWRITE_ENDED_AT then
       ctx.KONG_REWRITE_ENDED_AT = ctx.KONG_ACCESS_START
@@ -1184,7 +1186,7 @@ function Kong.balancer()
   local trace = tracing.trace("balancer")
 
   -- This may be called multiple times, and no yielding here!
-  local now_ms = now() * 1000
+  local now_ms = get_now_ms()
   local now_ns = time_ns()
 
   local ctx = ngx.ctx
@@ -1418,7 +1420,7 @@ do
 
     -- fake response phase (this runs after the balancer)
     if not ctx.KONG_RESPONSE_START then
-      ctx.KONG_RESPONSE_START = now() * 1000
+      ctx.KONG_RESPONSE_START = get_now_ms()
 
       if ctx.KONG_BALANCER_START and not ctx.KONG_BALANCER_ENDED_AT then
         ctx.KONG_BALANCER_ENDED_AT = ctx.KONG_RESPONSE_START
@@ -1462,7 +1464,7 @@ function Kong.header_filter()
   local ctx = ngx.ctx
   ctx.is_proxy_request = true
   if not ctx.KONG_PROCESSING_START then
-    ctx.KONG_PROCESSING_START = start_time() * 1000
+    ctx.KONG_PROCESSING_START = get_start_time_ms()
   end
 
   if not ctx.workspace then
@@ -1470,7 +1472,7 @@ function Kong.header_filter()
   end
 
   if not ctx.KONG_HEADER_FILTER_START then
-    ctx.KONG_HEADER_FILTER_START = now() * 1000
+    ctx.KONG_HEADER_FILTER_START = get_now_ms()
 
     if ctx.KONG_REWRITE_START and not ctx.KONG_REWRITE_ENDED_AT then
       ctx.KONG_REWRITE_ENDED_AT = ctx.KONG_BALANCER_START or
@@ -1535,7 +1537,7 @@ end
 function Kong.body_filter()
   local ctx = ngx.ctx
   if not ctx.KONG_BODY_FILTER_START then
-    ctx.KONG_BODY_FILTER_START = now() * 1000
+    ctx.KONG_BODY_FILTER_START = get_now_ms()
 
     if ctx.KONG_REWRITE_START and not ctx.KONG_REWRITE_ENDED_AT then
       ctx.KONG_REWRITE_ENDED_AT = ctx.KONG_ACCESS_START or
@@ -1612,11 +1614,11 @@ end
 function Kong.log()
   local ctx = ngx.ctx
   if not ctx.KONG_LOG_START then
-    ctx.KONG_LOG_START = now() * 1000
+    ctx.KONG_LOG_START = get_now_ms()
     ctx.KONG_LOG_START_NS = time_ns()
     if is_stream_module then
       if not ctx.KONG_PROCESSING_START then
-        ctx.KONG_PROCESSING_START = start_time() * 1000
+        ctx.KONG_PROCESSING_START = get_start_time_ms()
       end
 
       if ctx.KONG_PREREAD_START and not ctx.KONG_PREREAD_ENDED_AT then
@@ -1726,8 +1728,8 @@ end
 
 local function serve_content(module, options)
   local ctx = ngx.ctx
-  ctx.KONG_PROCESSING_START = start_time() * 1000
-  ctx.KONG_ADMIN_CONTENT_START = ctx.KONG_ADMIN_CONTENT_START or now() * 1000
+  ctx.KONG_PROCESSING_START = get_start_time_ms()
+  ctx.KONG_ADMIN_CONTENT_START = ctx.KONG_ADMIN_CONTENT_START or get_now_ms()
   ctx.KONG_PHASE = PHASES.admin_api
 
   log_init_worker_errors(ctx)
@@ -1787,11 +1789,11 @@ function Kong.admin_header_filter()
   local ctx = ngx.ctx
 
   if not ctx.KONG_PROCESSING_START then
-    ctx.KONG_PROCESSING_START = start_time() * 1000
+    ctx.KONG_PROCESSING_START = get_start_time_ms()
   end
 
   if not ctx.KONG_ADMIN_HEADER_FILTER_START then
-    ctx.KONG_ADMIN_HEADER_FILTER_START = now() * 1000
+    ctx.KONG_ADMIN_HEADER_FILTER_START = get_now_ms()
 
     if ctx.KONG_ADMIN_CONTENT_START and not ctx.KONG_ADMIN_CONTENT_ENDED_AT then
       ctx.KONG_ADMIN_CONTENT_ENDED_AT = ctx.KONG_ADMIN_HEADER_FILTER_START
@@ -1902,7 +1904,7 @@ end
 function Kong.ws_handshake()
   local ctx = ngx.ctx
 
-  ctx.KONG_WS_HANDSHAKE_START = now() * 1000
+  ctx.KONG_WS_HANDSHAKE_START = get_now_ms()
   ctx.KONG_PHASE = PHASES.ws_handshake
 
   ee.handlers.ws_handshake.before(ctx)
@@ -1930,7 +1932,7 @@ end
 function Kong.ws_proxy()
   local ctx = ngx.ctx
 
-  ctx.KONG_WS_PROXY_START = now() * 1000
+  ctx.KONG_WS_PROXY_START = get_now_ms()
   ctx.KONG_PHASE = PHASES.ws_proxy
 
   ctx.delay_response = true
@@ -1956,7 +1958,7 @@ end
 function Kong.ws_close()
   local ctx = ngx.ctx
 
-  ctx.KONG_WS_CLOSE_START = now() * 1000
+  ctx.KONG_WS_CLOSE_START = get_now_ms()
   ctx.KONG_PHASE = PHASES.ws_close
 
   ee.handlers.ws_close.before(ctx)
