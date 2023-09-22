@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Label Community PR
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.COMMUNITY_PRS_TOKEN }}
         run: |
           set +e
           for id in `gh pr list -S 'draft:false' -s 'open'|awk '{print $1}'`
