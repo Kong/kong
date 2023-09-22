@@ -135,6 +135,14 @@ return {
           end
         end
 
+        if config.strategy == "redis" then
+          if config.redis.host == ngx.null and
+             config.redis.sentinel_addresses == ngx.null and
+             config.redis.cluster_addresses == ngx.null then
+            return nil, "No redis config provided"
+          end
+        end
+
         if entity.config.strategy == "memory" then
           local ok, err = check_shdict(entity.config.dictionary_name)
           if not ok then
@@ -148,10 +156,6 @@ return {
 
         return true
       end
-    }},
-    {conditional_at_least_one_of = {
-      if_field = "config.strategy", if_match = { eq = "redis" },
-      then_at_least_one_of = {"config.redis.host", "config.redis.sentinel_master"},
     }},
   },
 }

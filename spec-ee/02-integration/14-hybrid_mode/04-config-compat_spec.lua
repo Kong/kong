@@ -148,7 +148,7 @@ describe("CP/DP config compat #" .. strategy, function()
       "services",
       "plugins",
       "clustering_data_planes",
-    })
+    }, {'graphql-rate-limiting-advanced'})
 
     PLUGIN_LIST = helpers.get_plugins_list()
 
@@ -168,7 +168,7 @@ describe("CP/DP config compat #" .. strategy, function()
       db_update_frequency = 0.1,
       cluster_listen = CP_HOST .. ":" .. CP_PORT,
       nginx_conf = "spec/fixtures/custom_nginx.template",
-      plugins = "bundled",
+      plugins = "bundled,graphql-rate-limiting-advanced",
     }))
   end)
 
@@ -262,6 +262,27 @@ describe("CP/DP config compat #" .. strategy, function()
         status = STATUS.PLUGIN_CONFIG_INCOMPATIBLE,
         removed = FIELDS[3001000000].response_ratelimiting,
       },
+
+      {
+        plugin = "graphql-rate-limiting-advanced",
+        label = "sanity",
+        config = {
+          identifier  = 'ip',
+          window_size = { 10 },
+          window_type = 'fixed',
+          limit       = { 10 },
+          sync_rate   = 10,
+          namespace   = 'test',
+          strategy    = 'redis',
+          redis = {
+            cluster_addresses = { '1.1.1.1:6379' }
+          }
+        },
+        status = STATUS.NORMAL,
+        validator = function (config)
+          return config.strategy == 'cluster' and config.sync_rate == -1 and config.redis == nil
+        end
+      }
 
     }
 
