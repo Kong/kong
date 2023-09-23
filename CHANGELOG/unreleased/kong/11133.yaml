@@ -1,0 +1,5 @@
+message: "hmac-auth: Added support for RSA signatures"
+type: feature
+scope: Plugin
+prs:
+    - 11133
