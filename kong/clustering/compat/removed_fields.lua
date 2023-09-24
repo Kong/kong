@@ -101,5 +101,11 @@ return {
     cors = {
       "private_network",
     }
+  },
+
+  [3005000000] = {
+    hmac_auth = {
+      "public_key",
+    }
   }
 }
