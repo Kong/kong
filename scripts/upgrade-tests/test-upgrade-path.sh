@@ -26,7 +26,7 @@ trap "echo exiting because of error" 0
 function get_current_version() {
     local image_tag=$1
     local version_from_rockspec=$(perl -ne 'print "$1\n" if (/^\s*tag = "(.*)"/)' kong*.rockspec)
-    if docker pull $image_tag:$version_from_rockspec 2>/dev/null
+    if docker pull $image_tag:$version_from_rockspec >/dev/null 2>/dev/null
     then
         echo $version_from_rockspec-ubuntu
     else
