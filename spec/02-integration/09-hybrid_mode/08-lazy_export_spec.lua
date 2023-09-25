@@ -80,7 +80,7 @@ describe("lazy_export with #".. strategy, function()
     it("test", function ()
       touch_config()
       assert.logfile().has.line("[clustering] exporting config", true)
-      assert.logfile().has.line("[clustering] config pushed to 1 data-plane nodes", true)
+      assert.logfile().has.line("[clustering] config pushed to 1 data plane nodes", true)
     end)
   end)
 

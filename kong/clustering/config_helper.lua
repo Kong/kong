@@ -29,7 +29,7 @@ local ngx_DEBUG = ngx.DEBUG
 
 
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
-local _log_prefix = "[clustering] "
+local LOG_PREFIX = "[clustering] "
 
 
 local _M = {}
@@ -138,18 +138,18 @@ local function calculate_hash(input, o)
 end
 
 
-local function calculate_config_hash(config_table)
+local function calculate_config_hash(config)
   local o = buffer.new()
-  if type(config_table) ~= "table" then
-    local config_hash = calculate_hash(config_table, o)
+  if type(config) ~= "table" then
+    local config_hash = calculate_hash(config, o)
     return config_hash, { config = config_hash, }
   end
 
-  local routes    = config_table.routes
-  local services  = config_table.services
-  local plugins   = config_table.plugins
-  local upstreams = config_table.upstreams
-  local targets   = config_table.targets
+  local routes    = config.routes
+  local services  = config.services
+  local plugins   = config.plugins
+  local upstreams = config.upstreams
+  local targets   = config.targets
 
   local routes_hash = calculate_hash(routes, o)
   local services_hash = calculate_hash(services, o)
@@ -157,13 +157,13 @@ local function calculate_config_hash(config_table)
   local upstreams_hash = calculate_hash(upstreams, o)
   local targets_hash = calculate_hash(targets, o)
 
-  config_table.routes    = nil
-  config_table.services  = nil
-  config_table.plugins   = nil
-  config_table.upstreams = nil
-  config_table.targets   = nil
+  config.routes    = nil
+  config.services  = nil
+  config.plugins   = nil
+  config.upstreams = nil
+  config.targets   = nil
 
-  local rest_hash = calculate_hash(config_table, o)
+  local rest_hash = calculate_hash(config, o)
   local config_hash = ngx_md5(routes_hash    ..
                               services_hash  ..
                               plugins_hash   ..
@@ -171,11 +171,11 @@ local function calculate_config_hash(config_table)
                               targets_hash   ..
                               rest_hash)
 
-  config_table.routes    = routes
-  config_table.services  = services
-  config_table.plugins   = plugins
-  config_table.upstreams = upstreams
-  config_table.targets   = targets
+  config.routes    = routes
+  config.services  = services
+  config.plugins   = plugins
+  config.upstreams = upstreams
+  config.targets   = targets
 
   return config_hash, {
     config    = config_hash,
@@ -202,11 +202,11 @@ local function fill_empty_hashes(hashes)
   end
 end
 
-function _M.update(declarative_config, config_table, config_hash, hashes)
-  assert(type(config_table) == "table")
+function _M.update(declarative_config, config, config_hash, hashes)
+  assert(type(config) == "table")
 
   if not config_hash then
-    config_hash, hashes = calculate_config_hash(config_table)
+    config_hash, hashes = calculate_config_hash(config)
   end
 
   if hashes then
@@ -215,19 +215,19 @@ function _M.update(declarative_config, config_table, config_hash, hashes)
 
   local current_hash = declarative.get_current_hash()
   if current_hash == config_hash then
-    ngx_log(ngx_DEBUG, _log_prefix, "same config received from control plane, ",
+    ngx_log(ngx_DEBUG, LOG_PREFIX, "same config received from control plane, ",
       "no need to reload")
     return true
   end
 
   local entities, err, _, meta, new_hash =
-  declarative_config:parse_table(config_table, config_hash)
+  declarative_config:parse_table(config, config_hash)
   if not entities then
     return nil, "bad config received from control plane " .. err
   end
 
   if current_hash == new_hash then
-    ngx_log(ngx_DEBUG, _log_prefix, "same config received from control plane, ",
+    ngx_log(ngx_DEBUG, LOG_PREFIX, "same config received from control plane, ",
       "no need to reload")
     return true
   end

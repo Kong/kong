@@ -25,21 +25,17 @@ local function cluster_client(opts)
   })
 
   assert.is_nil(err)
-  if res and res.config_table then
-    res.config = res.config_table
-  end
-
   return res
 end
 
 local function get_plugin(node_id, node_version, name)
   local res, err = cluster_client({ id = node_id, version = node_version })
   assert.is_nil(err)
-  assert.is_table(res and res.config_table and res.config_table.plugins,
+  assert.is_table(res and res.config and res.config.plugins,
                   "invalid response from clustering client")
 
   local plugin
-  for _, p in ipairs(res.config_table.plugins or {}) do
+  for _, p in ipairs(res.config.plugins or {}) do
     if p.name == name then
       plugin = p
       break

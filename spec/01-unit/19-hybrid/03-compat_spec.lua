@@ -1,8 +1,6 @@
 local compat = require("kong.clustering.compat")
 local helpers = require ("spec.helpers")
 local declarative = require("kong.db.declarative")
-local inflate_gzip = require("kong.tools.utils").inflate_gzip
-local cjson_decode = require("cjson.safe").decode
 local ssl_fixtures = require ("spec.fixtures.ssl")
 
 local function reset_fields()
@@ -131,16 +129,11 @@ describe("kong.clustering.compat", function()
 
     lazy_setup(function()
       test_with = function(plugins, dp_version)
-        local has_update, new_conf = compat.update_compatible_payload(
-          { config_table = { plugins = plugins } }, dp_version, ""
+        local new_conf = compat.update_compatible_payload(
+          { config = { plugins = plugins } }, dp_version, ""
         )
 
-        if has_update then
-          new_conf = cjson_decode(inflate_gzip(new_conf))
-          return new_conf.config_table.plugins
-        end
-
-        return plugins
+        return new_conf.config.plugins
       end
 
       compat._set_removed_fields({
@@ -342,9 +335,7 @@ describe("kong.clustering.compat", function()
     end)
   end)
 
-
   for _, strategy in helpers.each_strategy() do
-
     describe("[#" .. strategy .. "]: check compat for entities those have `updated_at` field", function()
       local bp, db, entity_names
 
@@ -376,31 +367,36 @@ describe("kong.clustering.compat", function()
               }
             }
             bp[name]:insert(plugin)
+
           elseif name == "routes" then
             bp[name]:insert({ hosts = { "test1.test" }, })
+
           else
             bp[name]:insert()
           end
         end
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         for _, entity_name in ipairs(entity_names) do
           db[entity_name]:truncate()
         end
       end)
 
-      it(function()
-        local config = { config_table = declarative.export_config() }
-        local has_update = compat.update_compatible_payload(config, "3.0.0", "test_")
-        assert.truthy(has_update)
+      it("updates the payload", function()
+        local config = { config = declarative.export_config() }
+        local result = compat.update_compatible_payload(config, "3.0.0", "test_")
+        assert.not_same(result, config)
+
+        local plugins = result.config.plugins
+        assert.same(1, #plugins)
+        assert.same(ngx.null, plugins[1].service)
       end)
-  end)
+    end)
   end
 
   describe("core entities compatible changes", function()
     local config, db
-
     lazy_setup(function()
       local _
       _, db = helpers.get_db_utils(nil, {
@@ -426,7 +422,6 @@ describe("kong.clustering.compat", function()
         id = "f6c12564-47c8-48b4-b171-0a0d9dbf7cb1",
         cert  = ssl_fixtures.cert_ca,
       }
-
 
       assert(declarative.load_into_db({
         ca_certificates = { [ca_certificate_def.id] = ca_certificate_def },
@@ -559,33 +554,27 @@ describe("kong.clustering.compat", function()
         },
       }, { _transform = true }))
 
-      config = { config_table = declarative.export_config() }
+      config = { config = declarative.export_config() }
     end)
-    it(function()
-      local has_update, result = compat.update_compatible_payload(config, "3.0.0", "test_")
-      assert.truthy(has_update)
-      result = cjson_decode(inflate_gzip(result)).config_table
 
-      local upstreams = assert(assert(assert(result).upstreams))
+    it("upstream.use_srv_name", function()
+      local result = compat.update_compatible_payload(config, "3.0.0", "test_")
+      local upstreams = assert(assert(assert(assert(result).config).upstreams))
       assert.is_nil(assert(upstreams[1]).use_srv_name)
       assert.is_nil(assert(upstreams[2]).use_srv_name)
       assert.is_nil(assert(upstreams[3]).use_srv_name)
     end)
 
     it("plugin.instance_name", function()
-      local has_update, result = compat.update_compatible_payload(config, "3.1.0", "test_")
-      assert.truthy(has_update)
-      result = cjson_decode(inflate_gzip(result)).config_table
-      local plugins = assert(assert(assert(result).plugins))
+      local result = compat.update_compatible_payload(config, "3.1.0", "test_")
+      local plugins = assert(assert(assert(assert(result).config).plugins))
       assert.is_nil(assert(plugins[1]).instance_name)
       assert.is_nil(assert(plugins[2]).instance_name)
     end)
 
     it("plugin.queue_parameters", function()
-      local has_update, result = compat.update_compatible_payload(config, "3.2.0", "test_")
-      assert.truthy(has_update)
-      result = cjson_decode(inflate_gzip(result)).config_table
-      local plugins = assert(assert(assert(result).plugins))
+      local result = compat.update_compatible_payload(config, "3.2.0", "test_")
+      local plugins = assert(assert(assert(assert(result).config).plugins))
       for _, plugin in ipairs(plugins) do
         if plugin.name == "statsd" then
           assert.equals(10, plugin.config.retry_count)
@@ -603,19 +592,15 @@ describe("kong.clustering.compat", function()
     end)
 
     it("upstream.algorithm", function()
-      local has_update, result = compat.update_compatible_payload(config, "3.1.0", "test_")
-      assert.truthy(has_update)
-      result = cjson_decode(inflate_gzip(result)).config_table
-      local upstreams = assert(assert(assert(result).upstreams))
+      local result = compat.update_compatible_payload(config, "3.1.0", "test_")
+      local upstreams = assert(assert(assert(assert(result).config).upstreams))
       assert.equals(assert(upstreams[4]).algorithm, "round-robin")
       assert.equals(assert(upstreams[5]).algorithm, "round-robin")
     end)
 
     it("service.protocol", function()
-      local has_update, result = compat.update_compatible_payload(config, "3.1.0", "test_")
-      assert.truthy(has_update)
-      result = cjson_decode(inflate_gzip(result)).config_table
-      local services = assert(assert(assert(result).services))
+      local result = compat.update_compatible_payload(config, "3.1.0", "test_")
+      local services = assert(assert(assert(assert(result).config).services))
       assert.is_nil(assert(services[1]).client_certificate)
       assert.is_nil(assert(services[1]).tls_verify)
       assert.is_nil(assert(services[1]).tls_verify_depth)
@@ -629,6 +614,5 @@ describe("kong.clustering.compat", function()
       assert.is_nil(assert(services[3]).tls_verify_depth)
       assert.is_nil(assert(services[3]).ca_certificates)
     end)
-
   end)
 end)

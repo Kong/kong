@@ -70,6 +70,7 @@ build = {
 
     ["kong.clustering"] = "kong/clustering/init.lua",
     ["kong.clustering.data_plane"] = "kong/clustering/data_plane.lua",
+    ["kong.clustering.protocol"] = "kong/clustering/protocol.lua",
     ["kong.clustering.control_plane"] = "kong/clustering/control_plane.lua",
     ["kong.clustering.utils"] = "kong/clustering/utils.lua",
     ["kong.clustering.events"] = "kong/clustering/events.lua",

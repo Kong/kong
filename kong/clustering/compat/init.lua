@@ -1,17 +1,18 @@
-local cjson = require("cjson.safe")
 local constants = require("kong.constants")
 local meta = require("kong.meta")
 local version = require("kong.clustering.compat.version")
 local utils = require("kong.tools.utils")
 
+
 local type = type
+local pairs = pairs
 local ipairs = ipairs
+local table_concat = table.concat
 local table_insert = table.insert
 local table_sort = table.sort
 local gsub = string.gsub
 local split = utils.split
-local deflate_gzip = utils.deflate_gzip
-local cjson_encode = cjson.encode
+
 
 local ngx = ngx
 local ngx_log = ngx.log
@@ -19,15 +20,20 @@ local ngx_INFO = ngx.INFO
 local ngx_NOTICE = ngx.NOTICE
 local ngx_WARN = ngx.WARN
 
+
 local version_num = version.string_to_number
 local extract_major_minor = version.extract_major_minor
 
-local _log_prefix = "[clustering] "
+
+local LOG_PREFIX = "[clustering] "
+
 
 local REMOVED_FIELDS = require("kong.clustering.compat.removed_fields")
 local COMPATIBILITY_CHECKERS = require("kong.clustering.compat.checkers")
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local KONG_VERSION = meta.version
+local KONG_VERSION_NUM = version_num(KONG_VERSION)
+
 
 local EMPTY = {}
 
@@ -68,7 +74,7 @@ local function check_kong_version_compatibility(cp_version, dp_version, log_suff
       " is different to control plane minor version " ..
       cp_version
 
-    ngx_log(ngx_INFO, _log_prefix, msg, log_suffix or "")
+    ngx_log(ngx_INFO, LOG_PREFIX, msg, log_suffix or "")
   end
 
   return true, nil, CLUSTERING_SYNC_STATUS.NORMAL
@@ -114,9 +120,9 @@ function _M.check_version_compatibility(cp, dp)
 
     if not dp_plugin then
       if cp_plugin.version then
-        ngx_log(ngx_WARN, _log_prefix, name, " plugin ", cp_plugin.version, " is missing from data plane", log_suffix)
+        ngx_log(ngx_WARN, LOG_PREFIX, name, " plugin ", cp_plugin.version, " is missing from data plane", log_suffix)
       else
-        ngx_log(ngx_WARN, _log_prefix, name, " plugin is missing from data plane", log_suffix)
+        ngx_log(ngx_WARN, LOG_PREFIX, name, " plugin is missing from data plane", log_suffix)
       end
 
     else
@@ -125,18 +131,18 @@ function _M.check_version_compatibility(cp, dp)
                     " is different to control plane plugin version " .. cp_plugin.version
 
         if cp_plugin.major ~= dp_plugin.major then
-          ngx_log(ngx_WARN, _log_prefix, msg, log_suffix)
+          ngx_log(ngx_WARN, LOG_PREFIX, msg, log_suffix)
 
         elseif cp_plugin.minor ~= dp_plugin.minor then
-          ngx_log(ngx_INFO, _log_prefix, msg, log_suffix)
+          ngx_log(ngx_INFO, LOG_PREFIX, msg, log_suffix)
         end
 
       elseif dp_plugin.version then
-        ngx_log(ngx_NOTICE, _log_prefix, "data plane ", name, " plugin version ", dp_plugin.version,
+        ngx_log(ngx_NOTICE, LOG_PREFIX, "data plane ", name, " plugin version ", dp_plugin.version,
                         " has unspecified version on control plane", log_suffix)
 
       elseif cp_plugin.version then
-        ngx_log(ngx_NOTICE, _log_prefix, "data plane ", name, " plugin version is unspecified, ",
+        ngx_log(ngx_NOTICE, LOG_PREFIX, "data plane ", name, " plugin version is unspecified, ",
                         "and is different to control plane plugin version ",
                         cp_plugin.version, log_suffix)
       end
@@ -184,13 +190,13 @@ function _M.check_configuration_compatibility(cp, dp)
     for name in pairs(cp.filters or EMPTY) do
       if not dp_filters[name] then
         missing = missing or {}
-        table.insert(missing, name)
+        table_insert(missing, name)
       end
     end
 
     if missing then
       local msg = "data plane is missing one or more wasm filters "
-                  .. "(" .. table.concat(missing, ", ") .. ")"
+                  .. "(" .. table_concat(missing, ", ") .. ")"
       return nil, msg, CLUSTERING_SYNC_STATUS.FILTER_SET_INCOMPATIBLE
     end
   end
@@ -296,7 +302,7 @@ local function invalidate_keys_from_config(config_plugins, keys, log_suffix, dp_
 
         for _, key in ipairs(keys[name]) do
           if delete_at(config, key) then
-            ngx_log(ngx_WARN, _log_prefix, name, " plugin contains configuration '", key,
+            ngx_log(ngx_WARN, LOG_PREFIX, name, " plugin contains configuration '", key,
               "' which is incompatible with dataplane and will be ignored", log_suffix)
             has_update = true
           end
@@ -360,45 +366,30 @@ end
 
 -- returns has_update, modified_deflated_payload, err
 function _M.update_compatible_payload(payload, dp_version, log_suffix)
-  local cp_version_num = version_num(KONG_VERSION)
   local dp_version_num = version_num(dp_version)
 
   -- if the CP and DP have the same version, avoid the payload
   -- copy and compatibility updates
-  if cp_version_num == dp_version_num then
-    return false
+  if KONG_VERSION_NUM == dp_version_num then
+    return payload
   end
 
-  local has_update
   payload = utils.cycle_aware_deep_copy(payload, true)
-  local config_table = payload["config_table"]
 
   for _, checker in ipairs(COMPATIBILITY_CHECKERS) do
     local ver = checker[1]
     local fn  = checker[2]
-    if dp_version_num < ver and fn(config_table, dp_version, log_suffix) then
-      has_update = true
+    if dp_version_num < ver then
+      fn(payload.config, dp_version, log_suffix)
     end
   end
 
   local fields = get_removed_fields(dp_version_num)
   if fields then
-    if invalidate_keys_from_config(config_table["plugins"], fields, log_suffix, dp_version_num) then
-      has_update = true
-    end
+    invalidate_keys_from_config(payload.config.plugins, fields, log_suffix, dp_version_num)
   end
 
-  if has_update then
-    local deflated_payload, err = deflate_gzip(cjson_encode(payload))
-    if deflated_payload then
-      return true, deflated_payload
-
-    else
-      return true, nil, err
-    end
-  end
-
-  return false, nil, nil
+  return payload
 end
 
 
