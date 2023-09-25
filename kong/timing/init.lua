@@ -9,17 +9,17 @@ local ngx_var         = ngx.var
 local string_foramt   = string.format
 
 local FILTER_ALL_PHASES = {
-  ssl_cert = nil,   -- NYI
-                    -- in this phase, we can't get request headers
-                    -- as we are in the layer 4,
-                    -- so we can't know whether to trace or not.
-  rewrite = true,
-  balancer = true,
-  access = true,
+  ssl_cert      = nil,    -- NYI
+                          -- in this phase, we can't get request headers
+                          -- as we are in the layer 4,
+                          -- so we can't know whether to trace or not.
+  rewrite       = true,
+  balancer      = true,
+  access        = true,
   header_filter = true,
-  body_filter = true,
-  log = true,
-  upstream = true,
+  body_filter   = true,
+  log           = true,
+  upstream      = true,
 }
 
 --[[

@@ -87,6 +87,11 @@ function _M.register_hooks(timing_module)
     afters = { after_connect },
   })
 
+  --[[
+    The `request()` function can receive <= 2 arguments (including `self`).
+    Here is the signature of the `request()` function:
+    function request(self, params)
+  --]]
   req_dyn_hook.hook_function("timing", http, "request", 2, {
     befores = { before_request },
     afters = { after_request },

@@ -25,6 +25,11 @@ end
 function _M.register_hooks(timing_module)
   local req_dyn_hook = require("kong.dynamic_hook")
 
+  --[[
+    The `toip()` function can receive <= 4 arguments (including `self`).
+    Here is the signature of the `toip()` function:
+    function toip(self, qname, port, dnsCacheOnly, try_list)
+  --]]
   req_dyn_hook.hook_function("timing", client, "toip", 4, {
     befores = { before_toip },
     afters = { after_toip },

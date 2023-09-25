@@ -9,6 +9,8 @@ local setmetatable  = setmetatable
 local table_insert  = table.insert
 local table_remove  = table.remove
 
+local get_cur_msec  = utils.get_updated_monotonic_ms
+
 local assert        = assert
 
 local _M            = {}
@@ -28,14 +30,14 @@ function _M:enter_subcontext(name)
   end
 
   self.current_subcontext = self.current_subcontext.child[name]
-  self.current_subcontext.____start____ = utils.get_updated_now_ms()
+  self.current_subcontext.____start____ = get_cur_msec()
 end
 
 
 function _M:leave_subcontext(attributes)
   assert(#self.sub_context_stack > 0, "subcontext stack underflow")
 
-  local elapsed = utils.get_updated_now_ms() - self.current_subcontext.____start____
+  local elapsed = get_cur_msec() - self.current_subcontext.____start____
   local old_total_time = self.current_subcontext.total_time or 0
   self.current_subcontext.total_time = math_floor(old_total_time + elapsed)
   self.current_subcontext.____start____ = nil

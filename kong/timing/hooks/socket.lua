@@ -125,10 +125,12 @@ end
 function _M.register_hooks(timing_module)
   local req_dyn_hook = require("kong.dynamic_hook")
 
+  -- creating a new TCP socket object doesn't need any arguments
   req_dyn_hook.hook_function("timing", ngx.socket, "tcp", 0, {
     afters = { after_tcp },
   })
 
+  -- creating a new UDP socket object doesn't need any arguments
   req_dyn_hook.hook_function("timing", ngx.socket, "udp", 0, {
     afters = { after_udp },
   })
