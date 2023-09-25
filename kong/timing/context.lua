@@ -39,7 +39,7 @@ function _M:leave_subcontext(attributes)
 
   local elapsed = get_cur_msec() - self.current_subcontext.____start____
   local old_total_time = self.current_subcontext.total_time or 0
-  self.current_subcontext.total_time = math_floor(old_total_time + elapsed)
+  self.current_subcontext.total_time = old_total_time + elapsed
   self.current_subcontext.____start____ = nil
 
   if attributes then
