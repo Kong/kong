@@ -2,7 +2,9 @@ local ngx_get_phase = ngx.get_phase
 
 local TEMPLATE = [[
   return function(always_enabled_groups, group_name, original_func, handlers)
+    -- we cannot access upvalue here as this function is generated
     local ngx_get_phase = ngx.get_phase
+
     return function(%s)
       if not always_enabled_groups[group_name] then
         local phase = ngx_get_phase()
