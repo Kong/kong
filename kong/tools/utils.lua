@@ -1648,26 +1648,45 @@ function _M.sort_by_handler_priority(a, b)
   return prio_a > prio_b
 end
 
-do
+---
+-- Check if the phase is yieldable.
+-- @tparam string phase the phase to check, if not specified then
+-- the default value will be the current phase
+-- @treturn boolean true if the phase is yieldable, false otherwise
+local in_yieldable_phase do
   local get_phase = ngx.get_phase
-  local ngx_sleep = _G.native_ngx_sleep or ngx.sleep
 
-  local SLEEP_PHASES = {
+  -- https://github.com/openresty/lua-nginx-module/blob/c89469e920713d17d703a5f3736c9335edac22bf/src/ngx_http_lua_util.h#L35C10-L35C10
+  local LUA_CONTEXT_YIELDABLE_PHASE = {
     rewrite = true,
+    server_rewrite = true,
     access = true,
     content = true,
     timer = true,
+    ssl_client_hello = true,
     ssl_certificate = true,
     ssl_session_fetch = true,
-    ssl_client_hello = true,
     preread = true,
   }
+
+  in_yieldable_phase = function(phase)
+    if LUA_CONTEXT_YIELDABLE_PHASE[phase or get_phase()] == nil then
+      return false
+    end
+    return true
+  end
+end
+
+_M.in_yieldable_phase = in_yieldable_phase
+
+do
+  local ngx_sleep = _G.native_ngx_sleep or ngx.sleep
 
   local YIELD_ITERATIONS = 1000
   local counter = YIELD_ITERATIONS
 
   function _M.yield(in_loop, phase)
-    if ngx.IS_CLI or SLEEP_PHASES[phase or get_phase()] == nil then
+    if ngx.IS_CLI or not in_yieldable_phase(phase) then
       return
     end
     if in_loop then
