@@ -37,7 +37,6 @@ describe("CP/DP communication #" .. strategy, function()
       cluster_control_plane = "127.0.0.1:9005",
       proxy_listen = "0.0.0.0:9002",
       nginx_conf = "spec/fixtures/custom_nginx.template",
-      cluster_dp_labels="deployment:mycloud,region:us-east-1",
     }))
 
     for _, plugin in ipairs(helpers.get_plugins_list()) do
@@ -71,8 +70,6 @@ describe("CP/DP communication #" .. strategy, function()
             assert.matches("^(%d+%.%d+)%.%d+", v.version)
             assert.equal(CLUSTERING_SYNC_STATUS.NORMAL, v.sync_status)
             assert.equal(CLUSTERING_SYNC_STATUS.NORMAL, v.sync_status)
-            assert.equal("mycloud", v.labels.deployment)
-            assert.equal("us-east-1", v.labels.region)
             return true
           end
         end
@@ -722,6 +719,67 @@ describe("CP/DP config sync #" .. strategy, function()
         res = proxy_client:get("/" .. i)
         assert.res_status(404, res)
       end
+    end)
+  end)
+end)
+
+describe("CP/DP labels #" .. strategy, function()
+
+  lazy_setup(function()
+    helpers.get_db_utils(strategy) -- runs migrations
+
+    assert(helpers.start_kong({
+      role = "control_plane",
+      cluster_cert = "spec/fixtures/kong_clustering.crt",
+      cluster_cert_key = "spec/fixtures/kong_clustering.key",
+      database = strategy,
+      db_update_frequency = 0.1,
+      cluster_listen = "127.0.0.1:9005",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
+
+    assert(helpers.start_kong({
+      role = "data_plane",
+      database = "off",
+      prefix = "servroot2",
+      cluster_cert = "spec/fixtures/kong_clustering.crt",
+      cluster_cert_key = "spec/fixtures/kong_clustering.key",
+      cluster_control_plane = "127.0.0.1:9005",
+      proxy_listen = "0.0.0.0:9002",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      cluster_dp_labels="deployment:mycloud,region:us-east-1",
+    }))
+  end)
+
+  lazy_teardown(function()
+    helpers.stop_kong("servroot2")
+    helpers.stop_kong()
+  end)
+
+  describe("status API", function()
+    it("shows DP status", function()
+      helpers.wait_until(function()
+        local admin_client = helpers.admin_client()
+        finally(function()
+          admin_client:close()
+        end)
+
+        local res = assert(admin_client:get("/clustering/data-planes"))
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        for _, v in pairs(json.data) do
+          if v.ip == "127.0.0.1" then
+            assert.near(14 * 86400, v.ttl, 3)
+            assert.matches("^(%d+%.%d+)%.%d+", v.version)
+            assert.equal(CLUSTERING_SYNC_STATUS.NORMAL, v.sync_status)
+            assert.equal(CLUSTERING_SYNC_STATUS.NORMAL, v.sync_status)
+            assert.equal("mycloud", v.labels.deployment)
+            assert.equal("us-east-1", v.labels.region)
+            return true
+          end
+        end
+      end, 10)
     end)
   end)
 end)
