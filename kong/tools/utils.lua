@@ -1653,7 +1653,7 @@ end
 -- @tparam string phase the phase to check, if not specified then
 -- the default value will be the current phase
 -- @treturn boolean true if the phase is yieldable, false otherwise
-local check_phase_yieldable do
+local in_yieldable_phase do
   local get_phase = ngx.get_phase
 
   -- https://github.com/openresty/lua-nginx-module/blob/c89469e920713d17d703a5f3736c9335edac22bf/src/ngx_http_lua_util.h#L35C10-L35C10
@@ -1669,7 +1669,7 @@ local check_phase_yieldable do
     preread = true,
   }
 
-  check_phase_yieldable = function(phase)
+  in_yieldable_phase = function(phase)
     if LUA_CONTEXT_YIELDABLE_PHASE[phase or get_phase()] == nil then
       return false
     end
@@ -1677,7 +1677,7 @@ local check_phase_yieldable do
   end
 end
 
-_M.check_phase_yieldable = check_phase_yieldable
+_M.in_yieldable_phase = in_yieldable_phase
 
 do
   local ngx_sleep = _G.native_ngx_sleep or ngx.sleep
@@ -1686,7 +1686,7 @@ do
   local counter = YIELD_ITERATIONS
 
   function _M.yield(in_loop, phase)
-    if ngx.IS_CLI or not check_phase_yieldable(phase) then
+    if ngx.IS_CLI or not in_yieldable_phase(phase) then
       return
     end
     if in_loop then
