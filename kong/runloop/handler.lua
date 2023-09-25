@@ -1134,6 +1134,9 @@ return {
 
       -- trace router
       local span = instrumentation.router()
+      -- create the balancer span "in advance" so its ID is available
+      -- to plugins in the access phase for doing headers propagation
+      instrumentation.precreate_balancer_span(ctx)
 
       -- routing request
       local router = get_updated_router()
