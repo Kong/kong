@@ -1,7 +1,14 @@
+local ngx_get_phase = ngx.get_phase
+
 local TEMPLATE = [[
   return function(always_enabled_groups, group_name, original_func, handlers)
+    local ngx_get_phase = ngx.get_phase
     return function(%s)
       if not always_enabled_groups[group_name] then
+        local phase = ngx_get_phase()
+        if phase == "init" or phase == "init_worker" then
+          return original_func(%s)
+        end
         local dynamic_hook = ngx.ctx.dynamic_hook
         if not dynamic_hook then
           return original_func(%s)
@@ -34,7 +41,6 @@ local TEMPLATE = [[
         end
       end
       
-      ngx.log(ngx.ERR, debug.traceback())
       local r0, r1, r2, r3, r4, r5, r6, r7 = original_func(%s)
   
       if handlers.after_mut then
@@ -69,6 +75,11 @@ local _M = {}
 local function warp_function_0(always_enabled_groups, group_name, original_func, handlers)
   return function()
     if not always_enabled_groups[group_name] then
+      local phase = ngx_get_phase()
+      if phase == "init" or phase == "init_worker" then
+        return original_func()
+      end
+
       local dynamic_hook = ngx.ctx.dynamic_hook
       if not dynamic_hook then
         return original_func()
@@ -130,6 +141,11 @@ end
 local function wrap_function_varargs(always_enabled_groups, group_name, original_func, handlers)
   return function(...)
     if not always_enabled_groups[group_name] then
+      local phase = ngx_get_phase()
+      if phase == "init" or phase == "init_worker" then
+        return original_func(...)
+      end
+
       local dynamic_hook = ngx.ctx.dynamic_hook
       if not dynamic_hook then
         return original_func(...)
@@ -197,7 +213,7 @@ function _M.generate_wrap_function(max_args)
     args = args .. ", a" .. i
   end
 
-  local func = assert(loadstring(string.format(TEMPLATE, args, args, args, args, args, args, args)))()
+  local func = assert(loadstring(string.format(TEMPLATE, args, args, args, args, args, args, args, args)))()
   assert(type(func) == "function", "failed to generate wrap function: " .. tostring(func))
   return func
 end

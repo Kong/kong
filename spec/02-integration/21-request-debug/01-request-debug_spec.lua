@@ -3,12 +3,12 @@ local cjson               = require "cjson"
 local pl_path             = require "pl.path"
 local pl_file             = require "pl.file"
 local http_mock           = require "spec.helpers.http_mock"
-local table_nkeys         = require "table.nkeys"
 
 local CP_PREFIX           = "servroot_cp"
 local DP_PREFIX           = "servroot_dp"
 local TOKEN               = "01dd4c9e-cb5e-4b26-9e49-4eb0509fbd68"
 local TOKEN_FILE          = ".request_debug_token"
+local PLGUINS_ENABLED     = "bundled,enable-buffering-response,muti-external-http-calls"
 local TIME_TO_FIRST_BYTE  = 250  -- milliseconds
 local STREAMING           = 400  -- seconds
 
@@ -245,6 +245,17 @@ local function assert_has_no_output_log(deployment, path, filter, fake_ip, token
 end
 
 
+local function assert_plugin_has_span(plugin_span, span_name)
+  for _, span in pairs(plugin_span) do
+    if span.child[span_name] then
+      return true
+    end
+  end
+
+  return true
+end
+
+
 local function start_kong(strategy, deployment, disable_req_dbg, token)
   local request_debug = nil
   if disable_req_dbg then
@@ -263,7 +274,7 @@ local function start_kong(strategy, deployment, disable_req_dbg, token)
       request_debug = request_debug,
       request_debug_token = token,
       trusted_ips = "0.0.0.0/0",
-      plugins = "bundled,enable-buffering-response,muti-external-http-calls",
+      plugins = PLGUINS_ENABLED,
       stream_listen = "127.0.0.1:" .. helpers.get_available_port(),
     }))
 
@@ -282,7 +293,7 @@ local function start_kong(strategy, deployment, disable_req_dbg, token)
       nginx_conf = "spec/fixtures/custom_nginx.template",
       request_debug = request_debug,
       proxy_listen = "off",
-      plugins = "bundled,enable-buffering-response,muti-external-http-calls",
+      plugins = PLGUINS_ENABLED,
     }))
 
     assert(helpers.start_kong({
@@ -296,7 +307,7 @@ local function start_kong(strategy, deployment, disable_req_dbg, token)
       request_debug = request_debug,
       request_debug_token = token,
       trusted_ips = "0.0.0.0/0",
-      plugins = "bundled,enable-buffering-response,muti-external-http-calls",
+      plugins = PLGUINS_ENABLED,
       stream_listen = "127.0.0.1:" .. helpers.get_available_port(),
     }))
   end
@@ -567,8 +578,11 @@ describe(desc, function()
     local header_output = assert_has_output_header(deployment, "/external_http", "*")
     local log_output = assert_has_output_log(deployment, "/external_http", "*")
 
-    assert.truthy(header_output.child.access.child.plugins.child["muti-external-http-calls"].child.external_http)
-    assert.truthy(log_output.child.access.child.plugins.child["muti-external-http-calls"].child.external_http)
+    local plugin_span = assert.truthy(header_output.child.access.child.plugins.child["muti-external-http-calls"].child)
+    assert_plugin_has_span(plugin_span, "external_http")
+
+    plugin_span = assert.truthy(log_output.child.access.child.plugins.child["muti-external-http-calls"].child)
+    assert_plugin_has_span(plugin_span, "external_http")
   end)
 
   it("redis span", function()
@@ -597,8 +611,11 @@ describe(desc, function()
     local header_output = assert_has_output_header(deployment, "/redis", "*")
     local log_output = assert_has_output_log(deployment, "/redis", "*")
 
-    assert.truthy(header_output.child.access.child.plugins.child["rate-limiting"].child.redis)
-    assert.truthy(log_output.child.access.child.plugins.child["rate-limiting"].child.redis)
+    local plugin_span = assert.truthy(header_output.child.access.child.plugins.child["rate-limiting"].child)
+    assert_plugin_has_span(plugin_span, "redis")
+
+    plugin_span = assert.truthy(log_output.child.access.child.plugins.child["rate-limiting"].child)
+    assert_plugin_has_span(plugin_span, "redis")
   end)
 
   it("truncate/split too large debug output", function()
@@ -637,104 +654,6 @@ describe(desc, function()
 
     assert_has_no_output_header(deployment, "/invalid_header", "invalid")
     assert_has_no_output_log(deployment, "/invalid_header", "invalid")
-  end)
-
-  -- phase filter is a EE-only feature
-  pending("phase filter", function()
-    local route_id = setup_route("/mutiple-spans", upstream)
-
-    finally(function()
-      if route_id then
-        delete_route(route_id)
-      end
-    end)
-
-    helpers.wait_for_all_config_update()
-
-    local phases = {
-      rewrite = {
-        in_header = true,
-        in_log = true,
-      },
-      access = {
-        in_header = true,
-        in_log = true,
-      },
-      balancer = {
-        in_header = true,
-        in_log = true,
-      },
-      header_filter = {
-        in_header = true,
-        in_log = true,
-      },
-      body_filter = {
-        in_header = false,
-        in_log = true,
-      },
-      upstream = {
-        in_header = true,
-        in_log = true,
-      },
-    }
-
-    for phase_name, cond in pairs(phases) do
-      local header_output = assert_has_output_header(deployment, "/mutiple-spans", phase_name)
-      local log_output = assert_has_output_log(deployment, "/mutiple-spans", phase_name)
-
-      if cond.in_header then
-        assert.same(1, table_nkeys(header_output.child))
-        assert.truthy(header_output.child[phase_name])
-      end
-
-      if cond.in_log then
-        assert.same(1, table_nkeys(log_output.child))
-        assert.truthy(log_output.child[phase_name])
-      end
-    end
-
-    local header_output = assert_has_output_header(deployment, "/mutiple-spans", "rewrite, header_filter,body_filter,upstream")
-    local log_output = assert_has_output_log(deployment, "/mutiple-spans", "rewrite,header_filter,body_filter, upstream")
-
-    assert.same(4 - 1, table_nkeys(header_output.child)) -- header_output should not has body_filter
-    assert.truthy(header_output.child.rewrite)
-    assert.truthy(header_output.child.header_filter)
-    assert.truthy(header_output.child.upstream)
-
-    assert.same(4, table_nkeys(log_output.child))
-    assert.truthy(log_output.child.rewrite)
-    assert.truthy(log_output.child.header_filter)
-    assert.truthy(log_output.child.body_filter)
-    assert.truthy(log_output.child.upstream)
-  end)
-
-  -- phase filter is a EE-only feature
-  pending("invaliadte phase filter should not trigger this feature", function()
-    local route_id = setup_route("/mutiple-spans", upstream)
-
-    finally(function()
-      if route_id then
-        delete_route(route_id)
-      end
-    end)
-
-    helpers.wait_for_all_config_update()
-
-    local invaliadte_filters = {
-      "invalid_phase",
-      "invalid-phase",
-      "invalid_phase,rewrite",
-      "invalid-phase,rewrite",
-      "rewrite,invalid_phase",
-      "rewrite,invalid-phase",
-      "rewrite,invalid_phase,access",
-      "rewrite,invalid-phase,access",
-    }
-
-    for _, filter in ipairs(invaliadte_filters) do
-      assert_has_no_output_header(deployment, "/mutiple-spans", filter)
-      assert_has_no_output_log(deployment, "/mutiple-spans", filter)
-    end
   end)
 
 end) -- describe

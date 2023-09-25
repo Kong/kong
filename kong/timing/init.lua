@@ -291,10 +291,11 @@ function _M.register_hooks()
 
   req_dyn_hook.hook("timing", "before:plugin", function(plugin_name, plugin_id)
     _M.enter_context(plugin_name)
-    _M.set_context_prop("id", plugin_id)
+    _M.enter_context(plugin_id)
   end)
 
   req_dyn_hook.hook("timing", "after:plugin", function()
+    _M.leave_context() -- leave plugin_id
     _M.leave_context() -- leave plugin_name
   end)
 end
