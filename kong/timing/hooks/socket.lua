@@ -55,7 +55,7 @@ local function before_setpeername(self, host, port)
     destination = host
 
   else
-    destination = "udp://" .. host .. ":" .. tostring(port)
+    destination = "udp://" .. host .. ":" .. port
   end
 
   self.__kong_timing_destination__ = destination
