@@ -20,12 +20,11 @@ local ngx_WARN = ngx.WARN
 local ngx_ERR = ngx.ERR
 local ngx_CLOSE = ngx.HTTP_CLOSE
 
-local _log_prefix = "[clustering] "
-
+local LOG_PREFIX = "[clustering] "
 local KONG_VERSION = kong.version
-
-local prefix = kong.configuration.prefix or require("pl.path").abspath(ngx.config.prefix())
-local CLUSTER_PROXY_SSL_TERMINATOR_SOCK = fmt("unix:%s/cluster_proxy_ssl_terminator.sock", prefix)
+local CLUSTER_PROXY_SSL_TERMINATOR_SOCK = fmt("unix:%s/cluster_proxy_ssl_terminator.sock",
+                                              kong.configuration.prefix or
+                                              require("pl.path").abspath(ngx.config.prefix()))
 
 local _M = {}
 
@@ -55,6 +54,8 @@ local function parse_proxy_url(proxy_server)
 
   return ret
 end
+
+_M.parse_proxy_url = parse_proxy_url
 
 
 local WS_OPTS = {
@@ -87,7 +88,7 @@ function _M.connect_cp(dp, endpoint, protocols)
       wss_proxy_authorization = proxy_opts.proxy_authorization,
     }
 
-    ngx_log(ngx_DEBUG, _log_prefix,
+    ngx_log(ngx_DEBUG, LOG_PREFIX,
             "using proxy ", proxy_opts.proxy_url, " to connect control plane")
   end
 
@@ -136,19 +137,19 @@ function _M.connect_dp(dp_id, dp_hostname, dp_ip, dp_version)
   end
 
   if not dp_id then
-    ngx_log(ngx_WARN, _log_prefix, "data plane didn't pass the id", log_suffix)
+    ngx_log(ngx_WARN, LOG_PREFIX, "data plane didn't pass the id", log_suffix)
     return nil, nil, 400
   end
 
   if not dp_version then
-    ngx_log(ngx_WARN, _log_prefix, "data plane didn't pass the version", log_suffix)
+    ngx_log(ngx_WARN, LOG_PREFIX, "data plane didn't pass the version", log_suffix)
     return nil, nil, 400
   end
 
   local wb, err = ws_server:new(WS_OPTS)
 
   if not wb then
-    ngx_log(ngx_ERR, _log_prefix, "failed to perform server side websocket handshake: ", err, log_suffix)
+    ngx_log(ngx_ERR, LOG_PREFIX, "failed to perform server side websocket handshake: ", err, log_suffix)
     return nil, nil, ngx_CLOSE
   end
 

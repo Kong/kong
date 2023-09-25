@@ -3812,23 +3812,66 @@ local function clustering_client(opts)
                                         process_conf = opts.node_process_conf,
                                       }))
   assert(c:send_binary(payload))
-
   assert(c:send_ping(string.rep("0", 32)))
 
-  local data, typ, err
-  data, typ, err = c:recv_frame()
-  c:close()
+  local HASH
+  local META
+  local CONFIG
 
-  if typ == "binary" then
-    local odata = assert(utils.inflate_gzip(data))
-    local msg = assert(cjson.decode(odata))
-    return msg
-
-  elseif typ == "pong" then
-    return "PONG"
+  local function reset_values()
+    HASH = nil
+    META = nil
+    CONFIG = nil
   end
 
-  return nil, "unknown frame from CP: " .. (typ or err)
+  while true do
+    local data, typ, err = c:recv_frame()
+    if typ == "binary" then
+      local msg = assert(cjson.decode(data))
+      if msg.type == "reconfigure:start" then
+        reset_values()
+        HASH = msg.hash
+        META = msg.meta
+        CONFIG = {
+          _transform = false,
+          _format_version = META.format_version
+        }
+
+      elseif msg.type == "entities" then
+        assert(HASH == msg.hash, "reconfigure hash mismatch")
+        local name = msg.name
+        local entities = assert(cjson.decode(assert(utils.inflate_gzip(msg.data))))
+        if CONFIG[name] then
+          local count = #CONFIG[name]
+          for i, entity in ipairs(entities) do
+            CONFIG[name][count + i] = entity
+          end
+
+        else
+          CONFIG[name] = entities
+        end
+
+      elseif msg.type == "reconfigure:end" then
+        assert(HASH == msg.hash, "reconfigure hash mismatch")
+        local data = {
+          config = CONFIG,
+          hashes = META.hashes,
+          timestamp = META.timestamp,
+        }
+        reset_values()
+        c:close()
+        return data
+      end
+
+    elseif typ == "pong" then
+      c:close()
+      return "PONG"
+
+    else
+      c:close()
+      return nil, "unknown frame from CP: " .. (typ or err)
+    end
+  end
 end
 
 

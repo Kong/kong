@@ -494,8 +494,7 @@ describe("CP/DP #version check #" .. strategy, function()
           node_process_conf = harness.process_conf,
         }))
 
-        assert.equals("reconfigure", res.type)
-        assert.is_table(res.config_table)
+        assert.is_table(res.config)
 
         -- needs wait_until for C* convergence
         helpers.wait_until(function()
@@ -515,7 +514,7 @@ describe("CP/DP #version check #" .. strategy, function()
               end
             end
           end
-        end, 500)
+        end, 60)
       end)
     end
     -- ENDS allowed cases

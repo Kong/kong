@@ -27,7 +27,7 @@ local ngx_exit = ngx.exit
 local ngx_ERR = ngx.ERR
 
 
-local _log_prefix = "[clustering] "
+local LOG_PREFIX = "[clustering] "
 
 
 function _M.new(conf)
@@ -65,7 +65,7 @@ end
 function _M:handle_cp_websocket()
   local ok, err = self:validate_client_cert()
   if not ok then
-    ngx_log(ngx_ERR, _log_prefix, err)
+    ngx_log(ngx_ERR, LOG_PREFIX, err)
     return ngx_exit(444)
   end
 
@@ -115,7 +115,6 @@ function _M:init_worker()
   }
 
   local role = self.conf.role
-
   if role == "control_plane" then
     self:init_cp_worker(basic_info)
     return

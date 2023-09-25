@@ -7,7 +7,7 @@ local ngx_ERR = ngx.ERR
 local ngx_DEBUG = ngx.DEBUG
 
 
-local _log_prefix = "[clustering] "
+local LOG_PREFIX = "[clustering] "
 
 
 local cluster_events
@@ -27,14 +27,14 @@ local worker_events
 local function post_push_config_event()
   local res, err = worker_events.post("clustering", "push_config")
   if not res then
-    ngx_log(ngx_ERR, _log_prefix, "unable to broadcast event: ", err)
+    ngx_log(ngx_ERR, LOG_PREFIX, "unable to broadcast event: ", err)
   end
 end
 
 
 -- Handles "clustering:push_config" cluster event
 local function handle_clustering_push_config_event(data)
-  ngx_log(ngx_DEBUG, _log_prefix, "received clustering:push_config event for ", data)
+  ngx_log(ngx_DEBUG, LOG_PREFIX, "received clustering:push_config event for ", data)
   post_push_config_event()
 end
 
