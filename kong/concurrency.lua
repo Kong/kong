@@ -7,14 +7,12 @@
 
 local resty_lock = require "resty.lock"
 local ngx_semaphore = require "ngx.semaphore"
+local in_yieldable_phase = require("kong.tools.utils").in_yieldable_phase
 
 
 local type  = type
 local error = error
 local pcall = pcall
-
-
-local get_phase = ngx.get_phase
 
 
 local concurrency = {}
@@ -98,7 +96,7 @@ function concurrency.with_coroutine_mutex(opts, fn)
     error("invalid value for opts.on_timeout", 2)
   end
 
-  if get_phase() == "init_worker" then
+  if not in_yieldable_phase() then
     return fn()
   end
 
