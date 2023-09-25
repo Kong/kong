@@ -6,7 +6,6 @@ local semaphore = require("ngx.semaphore")
 local cjson = require("cjson.safe")
 local constants = require("kong.constants")
 local protocol = require("kong.clustering.protocol")
-local config_helper = require("kong.clustering.config_helper")
 local get_current_hash = require("kong.db.declarative").get_current_hash
 local get_updated_monotonic_ms = require("kong.tools.utils").get_updated_monotonic_ms
 
@@ -43,7 +42,6 @@ function _M.new(clustering)
   assert(type(clustering.cert_key) == "cdata", "kong.clustering did not provide the cluster certificate private key")
 
   local self = {
-    declarative_config = kong.db.declarative_config,
     conf = clustering.conf,
     cert = clustering.cert,
     cert_key = clustering.cert_key,
@@ -167,7 +165,6 @@ function _M:communicate(premature)
   local config_thread = ngx.thread.spawn(function()
     while not (config_exit or exiting()) do
       local ok, err = config_semaphore:wait(1)
-
       if not ok then
         if err ~= "timeout" then
           ngx.log(ngx.ERR, LOG_PREFIX, "semaphore wait error: ", err)
@@ -177,14 +174,8 @@ function _M:communicate(premature)
       else
         local data = next_data
         if data then
-          ngx.log(ngx.DEBUG, LOG_PREFIX, "received reconfigure frame from control plane",
-                             data.timestamp and " with timestamp: " .. data.timestamp or "",
-                             log_suffix)
-
-          local config = assert(data.config)
           local start = get_updated_monotonic_ms()
-          local pok, res, err = pcall(config_helper.update, self.declarative_config,
-                                      config, data.hashes.config, data.hashes)
+          local pok, res, err = pcall(protocol.reconfigure_end, data)
           if pok then
             ngx.log(ngx.DEBUG, LOG_PREFIX, "importing configuration took: ",
                                get_updated_monotonic_ms() - start, " ms", log_suffix)
@@ -266,8 +257,7 @@ function _M:communicate(premature)
             ngx.log(ngx.DEBUG, LOG_PREFIX, "received updated configuration from control plane: ",
                                get_updated_monotonic_ms()  - receive_start, " ms", log_suffix)
 
-            next_data = protocol.reconfigure_end(msg)
-
+            next_data = msg
             if config_semaphore:count() <= 0 then
               -- the following line always executes immediately after the `if` check
               -- because `:count` will never yield, end result is that the semaphore

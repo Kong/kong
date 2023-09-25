@@ -300,7 +300,7 @@ end
 
 
 local function export()
-  return export_from_db_impl(table_emitter.new(), true, true, false)
+  return export_from_db_impl(table_emitter.new(), true, true, true)
 end
 
 

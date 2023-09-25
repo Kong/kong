@@ -5,6 +5,7 @@ local marshaller = require("kong.db.declarative.marshaller")
 local yield = require("kong.tools.utils").yield
 local unique_field_key = require("kong.db.declarative").unique_field_key
 
+
 local kong = kong
 local fmt = string.format
 local type = type
@@ -15,18 +16,13 @@ local match = string.match
 local assert = assert
 local tostring = tostring
 local tonumber = tonumber
+local get_phase = ngx.get_phase
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
 local null = ngx.null
 local unmarshall = marshaller.unmarshall
 local lmdb_get = lmdb.get
 local get_workspace_id = workspaces.get_workspace_id
-
-
-local PROCESS_AUTO_FIELDS_OPTS = {
-  no_defaults = true,
-  show_ws_id = true,
-}
 
 
 local off = {}
@@ -74,18 +70,20 @@ end
 -- @tparam table tag_names an array of tag names (strings)
 -- @tparam string|nil tags_cond either "or", "and". `nil` means "or"
 -- @treturn table|nil returns a table with entity_ids as values, and `true` as keys
-local function get_entity_ids_tagged(key, tag_names, tags_cond)
+local function get_entity_ids_tagged(key, tag_names, tags_cond, phase)
   local tag_name, list, err
   local dict = {} -- keys are entity_ids, values are true
 
+  phase = phase or get_phase()
+
   for i = 1, #tag_names do
+    yield(true, phase)
+
     tag_name = tag_names[i]
     list, err = unmarshall(lmdb_get("taggings:" .. tag_name .. "|" .. key))
     if err then
       return nil, err
     end
-
-    yield(true)
 
     list = list or {}
 
@@ -151,9 +149,10 @@ local function page_for_key(self, key, size, offset, options)
     offset = 1
   end
 
+  local phase = get_phase()
   local list, err
   if options and options.tags then
-    list, err = get_entity_ids_tagged(key, options.tags, options.tags_cond)
+    list, err = get_entity_ids_tagged(key, options.tags, options.tags_cond, phase)
     if err then
       return nil, err
     end
@@ -167,7 +166,7 @@ local function page_for_key(self, key, size, offset, options)
     list = list or {}
   end
 
-  yield()
+  yield(false, phase)
 
   local ret = {}
   local ret_idx = 1
@@ -176,6 +175,8 @@ local function page_for_key(self, key, size, offset, options)
 
   local item
   for i = offset, offset + size - 1 do
+    yield(true, phase)
+
     item = list[i]
     if not item then
       offset = nil
@@ -213,7 +214,7 @@ local function page_for_key(self, key, size, offset, options)
     end
 
     if item then
-      ret[ret_idx] = schema:process_auto_fields(item, "select", true, PROCESS_AUTO_FIELDS_OPTS)
+      ret[ret_idx] = item
       ret_idx = ret_idx + 1
     end
   end
@@ -238,8 +239,6 @@ local function select_by_key(schema, key)
       return nil
     end
   end
-
-  entity = schema:process_auto_fields(entity, "select", true, PROCESS_AUTO_FIELDS_OPTS)
 
   return entity
 end

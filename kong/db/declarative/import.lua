@@ -23,6 +23,10 @@ local yield = utils.yield
 
 local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
+local PROCESS_AUTO_FIELDS_OPTS = {
+  no_defaults = true,
+  show_ws_id = true,
+}
 
 
 local function find_or_create_current_workspace(name)
@@ -261,6 +265,8 @@ local function load_into_cache(entities, meta, hash)
         end
       end
 
+      item = schema:process_auto_fields(item, "select", true, PROCESS_AUTO_FIELDS_OPTS)
+
       local item_marshalled, err = marshall(item)
       if not item_marshalled then
         return nil, err
@@ -289,7 +295,7 @@ local function load_into_cache(entities, meta, hash)
       for i = 1, #uniques do
         local unique = uniques[i]
         local unique_key = item[unique]
-        if unique_key then
+        if unique_key and unique_key ~= null then
           if type(unique_key) == "table" then
             local _
             -- this assumes that foreign keys are not composite
@@ -305,7 +311,7 @@ local function load_into_cache(entities, meta, hash)
 
       for fname, ref in pairs(foreign_fields) do
         local item_fname = item[fname]
-        if item_fname then
+        if item_fname and item_fname ~= null then
           local fschema = db[ref].schema
 
           local fid = declarative_config.pk_string(fschema, item_fname)
@@ -323,7 +329,7 @@ local function load_into_cache(entities, meta, hash)
       end
 
       local item_tags = item.tags
-      if item_tags then
+      if item_tags and item_tags ~= null then
         local ws = schema.workspaceable and ws_id or ""
         for i = 1, #item_tags do
           local tag_name = item_tags[i]
