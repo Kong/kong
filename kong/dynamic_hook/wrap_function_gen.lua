@@ -209,7 +209,7 @@ function _M.generate_wrap_function(max_args)
   local args = "a0" -- the 1st arg must be named as "a0" as
                     -- it will be used in the error log
 
-  for i = 2, max_args do
+  for i = 1, max_args do
     args = args .. ", a" .. i
   end
 
