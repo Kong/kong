@@ -1648,19 +1648,45 @@ function _M.sort_by_handler_priority(a, b)
   return prio_a > prio_b
 end
 
-do
+---
+-- Check if the phase is yieldable.
+-- @tparam string phase the phase to check, if not specified then
+-- the default value will be the current phase
+-- @treturn boolean true if the phase is yieldable, false otherwise
+local in_yieldable_phase do
   local get_phase = ngx.get_phase
+
+  -- https://github.com/openresty/lua-nginx-module/blob/c89469e920713d17d703a5f3736c9335edac22bf/src/ngx_http_lua_util.h#L35C10-L35C10
+  local LUA_CONTEXT_YIELDABLE_PHASE = {
+    rewrite = true,
+    server_rewrite = true,
+    access = true,
+    content = true,
+    timer = true,
+    ssl_client_hello = true,
+    ssl_certificate = true,
+    ssl_session_fetch = true,
+    preread = true,
+  }
+
+  in_yieldable_phase = function(phase)
+    if LUA_CONTEXT_YIELDABLE_PHASE[phase or get_phase()] == nil then
+      return false
+    end
+    return true
+  end
+end
+
+_M.in_yieldable_phase = in_yieldable_phase
+
+do
   local ngx_sleep = _G.native_ngx_sleep or ngx.sleep
 
   local YIELD_ITERATIONS = 1000
   local counter = YIELD_ITERATIONS
 
   function _M.yield(in_loop, phase)
-    if ngx.IS_CLI then
-      return
-    end
-    phase = phase or get_phase()
-    if phase == "init" or phase == "init_worker" then
+    if ngx.IS_CLI or not in_yieldable_phase(phase) then
       return
     end
     if in_loop then
@@ -1785,15 +1811,30 @@ _M.sha256_hex       = sha256_hex
 _M.sha256_base64    = sha256_base64
 _M.sha256_base64url = sha256_base64url
 
+
+local get_now_ms
 local get_updated_now_ms
+local get_start_time_ms
 do
   local now           = ngx.now
   local update_time   = ngx.update_time
+  local start_time    = ngx.req.start_time
+
+  function get_now_ms()
+    return now() * 1000 -- time is kept in seconds with millisecond resolution.
+  end
+
   function get_updated_now_ms()
     update_time()
     return now() * 1000 -- time is kept in seconds with millisecond resolution.
   end
+
+  function get_start_time_ms()
+    return start_time() * 1000 -- time is kept in seconds with millisecond resolution.
+  end
 end
+_M.get_now_ms         = get_now_ms
 _M.get_updated_now_ms = get_updated_now_ms
+_M.get_start_time_ms  = get_start_time_ms
 
 return _M
