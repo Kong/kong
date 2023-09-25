@@ -145,4 +145,26 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
+
+  if strategy == "postgres" then
+    describe("ENV Vault #" .. strategy, function ()
+      describe("Kong Start", function ()
+        it("can resolve reference in init_phase", function ()
+          helpers.setenv("TEST_ENV_VAULT_LOGLEVEL", "debug")
+
+          assert(helpers.start_kong {
+            database = strategy,
+            prefix = helpers.test_conf.prefix,
+            nginx_conf = "spec/fixtures/custom_nginx.template",
+            vaults = "env",
+            log_level = "{vault://env/TEST_ENV_VAULT_LOGLEVEL}"
+          })
+
+          finally(function ()
+            assert(helpers.stop_kong())
+          end)
+        end)
+      end)
+    end)
+  end
 end

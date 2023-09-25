@@ -23,7 +23,7 @@ def common_suites(expect, libxcrypt_no_obsolete_api: bool = False):
 
     # binary correctness
     expect("/usr/local/openresty/nginx/sbin/nginx", "nginx rpath should contain kong lib") \
-        .rpath.equals("/usr/local/openresty/luajit/lib:/usr/local/kong/lib")
+        .rpath.equals("/usr/local/openresty/luajit/lib:/usr/local/kong/lib:/usr/local/openresty/lualib")
 
     expect("/usr/local/openresty/nginx/sbin/nginx", "nginx binary should contain dwarf info for dynatrace") \
         .has_dwarf_info.equals(True) \
