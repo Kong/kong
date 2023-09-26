@@ -1,0 +1,7 @@
+message: Add a Request ID to error templates and logs and the possibility of setting Correlation and Trace IDs to Access log.
+type: feature
+scope: Core
+prs:
+  - 11624
+jiras:
+  - "KAG-2034"
