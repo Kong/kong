@@ -163,10 +163,11 @@ for _, strategy in strategies() do
             }
           })
 
-          local expected_body = { message = "no Route matched with those values" }
+          local expected_message = "no Route matched with those values"
           local body = res:read_body()
           local json = cjson.decode(body)
-          return res.status == 404 and tablex.deepcompare(json, expected_body)
+          assert.not_nil(json)
+          return res.status == 404 and json.message == expected_message
         end, 10)
 
       end)

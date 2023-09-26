@@ -65,7 +65,8 @@ for _, strategy in helpers.each_strategy() do
       }))
       local body = assert.res_status(500, res)
       local json = cjson.decode(body)
-      assert.same({ message = "An unexpected error occurred" }, json)
+      assert.not_nil(json)
+      assert.matches("An unexpected error occurred", json.message)
       -- the other plugin's phases were executed:
       assert.logfile().has.line("header_filter phase", true)
       assert.logfile().has.line("body_filter phase", true)

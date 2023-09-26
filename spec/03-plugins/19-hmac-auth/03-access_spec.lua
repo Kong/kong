@@ -380,7 +380,8 @@ for proto, conf in ee_helpers.each_protocol() do
         })
         local body = assert.res_status(401, res)
         body = cjson.decode(body)
-        assert.same({ message = "HMAC signature cannot be verified" }, body)
+        assert.not_nil(body.message)
+        assert.matches("HMAC signature cannot be verified", body.message)
       end)
 
       it("should not pass with signature missing", function()
@@ -399,7 +400,8 @@ for proto, conf in ee_helpers.each_protocol() do
         })
         local body = assert.res_status(401, res)
         body = cjson.decode(body)
-        assert.same({ message = "HMAC signature cannot be verified" }, body)
+        assert.not_nil(body.message)
+        assert.matches("HMAC signature cannot be verified", body.message)
       end)
 
       it("should pass with GET", function()

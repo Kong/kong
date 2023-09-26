@@ -504,8 +504,8 @@ for _, strategy in helpers.each_strategy() do
       }))
       assert.res_status(200, res)
 
-      assert.logfile().has.line("[file-log] failed to open the file: " ..
-      "No such file or directory while logging request", true, 30)
+      assert.logfile().has.line("\\[file-log\\] failed to open the file: " ..
+      "No such file or directory.*while logging request", false, 30)
     end)
 
     it("the given path is not a file but a directory", function()
@@ -524,8 +524,8 @@ for _, strategy in helpers.each_strategy() do
       }))
       assert.res_status(200, res)
 
-      assert.logfile().has.line("[file-log] failed to open the file: " ..
-      "Is a directory while logging request", true, 30)
+      assert.logfile().has.line("\\[file-log\\] failed to open the file: " ..
+      "Is a directory.*while logging request", false, 30)
     end)
 
     it("logs are lost if reopen = false and file doesn't exist", function()
@@ -563,8 +563,8 @@ for _, strategy in helpers.each_strategy() do
       }))
       assert.res_status(200, res)
 
-      assert.logfile().has.line("[file-log] failed to open the file: " ..
-      "Permission denied while logging request", true, 30)
+      assert.logfile().has.line("\\[file-log\\] failed to open the file: " ..
+      "Permission denied.*while logging request", false, 30)
     end)
 
     it("the given path is a character device file", function()

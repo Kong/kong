@@ -759,6 +759,7 @@ describe("WebSockets [db #" .. strategy .. "]", function()
           url         = "string",
           querystring = "table",
           tls         = case.route_ssl and "table" or nil,
+          id          = "string",
         }, log.request, "logged request is invalid")
 
         check_table_types({
@@ -879,7 +880,8 @@ describe("WebSockets [db #" .. strategy .. "]", function()
           assert.res_status(426, wc.response)
 
           local json = assert.response(wc.response).has.jsonbody()
-          assert.same({ message = "Please use HTTPS protocol" }, json)
+          assert.not_nil(json)
+          assert.same("Please use HTTPS protocol", json.message)
         end)
       end
     end)

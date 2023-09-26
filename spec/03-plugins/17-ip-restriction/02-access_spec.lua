@@ -325,7 +325,9 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
-        assert.same({ message = "Forbidden" }, json)
+
+        assert.not_nil(json)
+        assert.matches("Forbidden", json.message)
       end)
 
       it("blocks a request when the IP is denied #grpc", function()
@@ -1311,7 +1313,8 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(403, res)
         local json = cjson.decode(body)
-        assert.same({ message = "IP address not allowed: ::1" }, json)
+        assert.not_nil(json)
+        assert.same("IP address not allowed: ::1", json.message)
       end)
       it("allows a request when the IPv6 is not denyed", function()
         local res = assert(proxy_client:send {
@@ -1337,7 +1340,8 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(403, res)
         local json = cjson.decode(body)
-        assert.same({ message = "IP address not allowed: fe80::1" }, json)
+        assert.not_nil(json)
+        assert.same("IP address not allowed: fe80::1", json.message)
       end)
       it("blocks an IPv6 on a allowed IPv6 CIDR range", function()
         local res = assert(proxy_client:send {
@@ -1350,7 +1354,8 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(403, res)
         local json = cjson.decode(body)
-        assert.same({ message = "IP address not allowed: ::1" }, json)
+        assert.not_nil(json)
+        assert.same("IP address not allowed: ::1", json.message)
       end)
       it("takes precedence over an allowed IPv6", function()
         local res = assert(proxy_client:send {
@@ -1363,7 +1368,8 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(403, res)
         local json = cjson.decode(body)
-        assert.same({ message = "IP address not allowed: ::1" }, json)
+        assert.not_nil(json)
+        assert.same("IP address not allowed: ::1", json.message)
       end)
       it("takes precedence over an allowed IPv6 CIDR range", function()
         local res = assert(proxy_client:send {
@@ -1390,7 +1396,8 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(403, res)
         local json = cjson.decode(body)
-        assert.same({ message = "IP address not allowed: ::1" }, json)
+        assert.not_nil(json)
+        assert.same("IP address not allowed: ::1", json.message)
       end)
       it("allows a allowed IPv6", function()
         local res = assert(proxy_client:send {
@@ -1453,7 +1460,8 @@ for _, strategy in helpers.each_strategy() do
       })
       local body = assert.res_status(403, res)
       local json = cjson.decode(body)
-      assert.same({ message = "IP address not allowed: ::1" }, json)
+      assert.not_nil(json)
+      assert.same("IP address not allowed: ::1", json.message)
     end)
 
     describe("#regression", function()
@@ -1555,7 +1563,8 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(403, res)
         local json = cjson.decode(body)
-        assert.same({ message = "IP address not allowed: ::4" }, json)
+        assert.not_nil(json)
+        assert.same("IP address not allowed: ::4", json.message)
       end)
       it("blocks with blocked complex X-Forwarded-For header", function()
         local res = assert(proxy_client:send {
@@ -1596,7 +1605,8 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(403, res)
         local json = cjson.decode(body)
-        assert.same({ message = "IP address not allowed: ::3" }, json)
+        assert.not_nil(json)
+        assert.same("IP address not allowed: ::3", json.message)
       end)
       it("allows with allowed X-Forwarded-For header", function()
         local res = assert(proxy_client:send {

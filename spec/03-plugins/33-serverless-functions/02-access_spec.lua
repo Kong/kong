@@ -351,7 +351,8 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
           })
           local body = assert.res_status(406, res)
           local json = cjson.decode(body)
-          assert.same({ message = "Invalid" }, json)
+          assert.not_nil(json)
+          assert.matches("Invalid", json.message)
         end)
 
         it("cascading functions for a 400 and exit", function()
@@ -363,7 +364,7 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
             }
           })
           local body = assert.res_status(400, res)
-          assert.same("Bad request", body)
+          assert.matches("Bad request", body)
         end)
 
         it("runtime error aborts with a 500", function()
@@ -376,7 +377,8 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
           })
           local body = assert.res_status(500, res)
           local json = cjson.decode(body)
-          assert.same({ message = "An unexpected error occurred" }, json)
+          assert.not_nil(json)
+          assert.matches("An unexpected error occurred", json.message)
         end)
       end)
 

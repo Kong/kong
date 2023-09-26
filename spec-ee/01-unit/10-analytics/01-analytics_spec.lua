@@ -15,6 +15,9 @@ local utils = require "kong.tools.utils"
 local protoc = require "protoc"
 local pb = require "pb"
 local analytics = require "kong.analytics"
+local to_hex = require "resty.string".to_hex
+
+local request_id_value = to_hex(utils.get_rand_bytes(16))
 
 local request_log = {
   auth_type = "key-auth",
@@ -224,19 +227,48 @@ local request_log_rate_limit = {
   started_at = 1614232668342
 }
 
+
+local function set_context(trace_bytes, request_id)
+  if trace_bytes then
+    _G.ngx.ctx["KONG_SPANS"] = {{
+      trace_id = trace_bytes,
+      should_sample = true
+    }}
+  end
+
+  _G.ngx.var = {
+    kong_request_id = request_id,
+  }
+
+  _G.ngx.get_phase = function() -- luacheck: ignore
+    return "access"
+  end
+
+  _G.kong.log = {
+    notice = function() end,
+    info = function() end,
+  }
+end
+
+
 describe("extract request log properly", function()
   local trace_bytes = utils.get_rand_bytes(16)
+  local old_ngx_var
+  local old_get_phase
 
-  before_each(function()
-    ngx.ctx["KONG_SPANS"] = {{
-        trace_id = trace_bytes,
-        should_sample = true
-      }
-    }
+  lazy_setup(function()
+    old_ngx_var = ngx.var
+    old_get_phase = ngx.get_phase
   end)
 
-  after_each(function()
+  before_each(function()
+    set_context(trace_bytes, request_id_value)
+  end)
+
+  lazy_teardown(function()
     ngx.ctx.KONG_SPANS = nil
+    ngx.var = old_ngx_var
+    ngx.get_phase = old_get_phase
   end)
 
   it("extract payload info properly dont sample trace_id", function()
@@ -289,6 +321,7 @@ describe("extract request log properly", function()
         response_ms = 515
       },
       trace_id = "",
+      request_id = request_id_value,
       tries = {
         {
           balancer_latency = 10,
@@ -352,6 +385,7 @@ describe("extract request log properly", function()
         response_ms = 515
       },
       trace_id = trace_bytes,
+      request_id = request_id_value,
       tries = {
         {
           balancer_latency = 10,
@@ -430,6 +464,7 @@ describe("extract request log properly", function()
         response_ms = 515
       },
       trace_id = trace_bytes,
+      request_id = request_id_value,
       tries = {
         {
           balancer_latency = 10,
@@ -490,6 +525,23 @@ describe("filter keywords from uri properly", function()
 end)
 
 describe("proto buffer", function()
+  local old_ngx_var
+  local old_get_phase
+
+  lazy_setup(function()
+    old_ngx_var = ngx.var
+    old_get_phase = ngx.get_phase
+  end)
+
+  before_each(function()
+    set_context(nil, request_id_value)
+  end)
+
+  lazy_teardown(function()
+    ngx.var = old_ngx_var
+    ngx.get_phase = old_get_phase
+  end)
+
   local p = protoc.new()
   p:addpath("kong/include/kong/model/analytics")
   p:loadfile("payload.proto")
@@ -521,6 +573,7 @@ describe("proto buffer", function()
       client_ip = "",
       started_at = 0,
       trace_id = "",
+      request_id = request_id_value,
       response = {
         http_status = 0,
         body_size = 0,
@@ -563,6 +616,7 @@ describe("proto buffer", function()
       client_ip = "",
       started_at = 0,
       trace_id = "",
+      request_id = request_id_value,
       response = {
         http_status = 0,
         body_size = 0,

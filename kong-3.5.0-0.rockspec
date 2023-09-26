@@ -820,6 +820,7 @@ build = {
 
     ["kong.tracing.instrumentation"] = "kong/tracing/instrumentation.lua",
     ["kong.tracing.propagation"] = "kong/tracing/propagation.lua",
+    ["kong.tracing.request_id"] = "kong/tracing/request_id.lua",
 
     ["kong.vaults.gcp"] = "kong/vaults/gcp/init.lua",
     ["kong.vaults.gcp.schema"] = "kong/vaults/gcp/schema.lua",

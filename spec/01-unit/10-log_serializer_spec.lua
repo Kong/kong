@@ -29,6 +29,7 @@ describe("kong.log.serialize", function()
           },
         },
         var = {
+          kong_request_id = "1234",
           request_uri = "/request_uri",
           upstream_uri = "/upstream_uri",
           scheme = "http",
@@ -55,6 +56,7 @@ describe("kong.log.serialize", function()
           get_headers = function() return {header1 = "respheader1", header2 = "respheader2", ["set-cookie"] = "delicious=delicacy"} end
         },
         log = function() end,
+        get_phase = function() return "access" end,
       }
 
       package.loaded["kong.pdk.request"] = nil
@@ -88,6 +90,7 @@ describe("kong.log.serialize", function()
         assert.equal("500, 200 : 200, 200", res.upstream_status)
         assert.equal(200, res.request.size)
         assert.equal("/request_uri", res.request.uri)
+        assert.equal("1234", res.request.id)
 
         -- Response
         assert.is_table(res.response)
