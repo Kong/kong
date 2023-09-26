@@ -1,7 +1,3 @@
 "message": "**CORS**: Support the `Access-Control-Request-Private-Network` header in crossing-origin pre-light requests"
 "type": "feature"
 "scope": "Plugin"
-"prs":
-- 11523
-"jiras":
-- "FTI-5258"

@@ -22,11 +22,11 @@ jobs:
         id: changelog-check
         uses: tj-actions/changed-files@2f7246cb26e8bb6709b6cbfc1fec7febfe82e96a # v37
         with:
-          files: 'CHANGELOG/unreleased/**/*.yaml'
+          files: 'changelog/unreleased/**/*.yml'
 
       - name: asserts changelog added
         run: >
           if [ "${{ steps.changelog-check.outputs.added_files_count }}" = "0" ]; then
-            echo "Should contain at least one changelog file in CHANGELOG/unreleased/*/ directory"
+            echo "Should contain at least one changelog file in changelog/unreleased/*/ directory"
             exit 1
           fi

@@ -1,7 +1,3 @@
 message: Fix upstream ssl failure when plugins use response handler
 type: bugfix
 scope: Core
-prs:
-  - 11502
-jiras:
-  - "FTI-5347"
