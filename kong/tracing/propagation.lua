@@ -546,11 +546,9 @@ local function add_trace_id_formats(trace_id_new_fmt)
   -- TODO: @samugi - move this in the unified tracing context
   local trace_id_all_fmt = ngx.ctx.propagation_trace_id_all_fmt or {}
 
-  -- add new formats to trace ID (if not already present)
+  -- add new formats to trace ID
   for format, value in pairs(trace_id_new_fmt) do
-    if not trace_id_all_fmt[format] then
-      trace_id_all_fmt[format] = value
-    end
+    trace_id_all_fmt[format] = value
   end
 
   ngx.ctx.propagation_trace_id_all_fmt = trace_id_all_fmt

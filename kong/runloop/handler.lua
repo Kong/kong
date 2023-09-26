@@ -1425,7 +1425,7 @@ return {
       -- X-Kong-Request-Id upstream header
       local rid, rid_get_err = request_id.get()
       if not rid then
-        log(WARN, "failed to set X-Kong-Request-Id header: ", rid_get_err)
+        log(WARN, "failed to get Request ID: ", rid_get_err)
       end
 
       local request_id_header = constants.HEADERS.REQUEST_ID
@@ -1530,7 +1530,7 @@ return {
       -- X-Kong-Request-Id downstream header
       local rid, rid_get_err = request_id.get()
       if not rid then
-        log(WARN, "failed to set X-Kong-Request-Id header: ", rid_get_err)
+        log(WARN, "failed to get Request ID: ", rid_get_err)
       end
 
       local request_id_header = constants.HEADERS.REQUEST_ID
