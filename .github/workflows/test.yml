@@ -31,7 +31,10 @@ jobs:
             ret=$?
             if [[ $ret -ne 0 && ! "${BOTS[@]}" =~ $name ]]; then
               echo "add label $name $id $ret"
+              gh api orgs/Kong/members --paginate -q '.[].login'|grep "^${name}$"
             else
               echo "remove label $name $id $ret"
+              gh api orgs/Kong/members --paginate -q '.[].login'|grep "^${name}$"
             fi
+            echo ""
           done
