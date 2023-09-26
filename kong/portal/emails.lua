@@ -494,6 +494,8 @@ function _M:access_request(developer_email, developer_name)
   local subject
   local path = "emails/request-access.txt"
 
+  developer_name = portal_utils.sanitize_developer_name(developer_name)
+
   local file = kong.db.files:select_by_path(path)
   if not file then
     html = fmt(conf.html, developer_name, developer_email, portal_gui_url, admin_gui_url, admin_gui_url)
@@ -538,6 +540,8 @@ function _M:approved(recipient, developer_name)
   local html
   local subject
   local path = "emails/approved-access.txt"
+
+  developer_name = portal_utils.sanitize_developer_name(developer_name)
 
   local file = kong.db.files:select_by_path(path)
   if not file then
@@ -588,6 +592,8 @@ function _M:password_reset(recipient, token, developer_name)
   local subject
   local path = "emails/password-reset.txt"
 
+  developer_name = portal_utils.sanitize_developer_name(developer_name)
+
   local file = kong.db.files:select_by_path(path)
   if not file then
     html = fmt(conf.html, portal_gui_url, token, portal_gui_url, token, exp_string)
@@ -635,6 +641,8 @@ function _M:password_reset_success(recipient, developer_name)
   local subject
   local path = "emails/password-reset-success.txt"
 
+  developer_name = portal_utils.sanitize_developer_name(developer_name)
+
   local file = kong.db.files:select_by_path(path)
   if not file then
     html = fmt(conf.html, portal_gui_url, portal_gui_url, portal_gui_url, portal_gui_url)
@@ -672,6 +680,8 @@ function _M:account_verification_email(recipient, token, developer_name)
   local html
   local subject
   local path = "emails/account-verification.txt"
+
+  developer_name = portal_utils.sanitize_developer_name(developer_name)
 
   local file = kong.db.files:select_by_path(path)
   if not file then
@@ -722,6 +732,8 @@ function _M:account_verification_success_approved(recipient, developer_name)
   local subject
   local path = "emails/account-verification-approved.txt"
 
+  developer_name = portal_utils.sanitize_developer_name(developer_name)
+
   local file = kong.db.files:select_by_path(path)
   if not file then
     html = fmt(conf.html, portal_gui_url, portal_gui_url, portal_gui_url, portal_gui_url)
@@ -759,6 +771,8 @@ function _M:account_verification_success_pending(recipient, developer_name)
   local html
   local subject
   local path = "emails/account-verification-pending.txt"
+
+  developer_name = portal_utils.sanitize_developer_name(developer_name)
 
   local file = kong.db.files:select_by_path(path)
   if not file then
@@ -804,6 +818,8 @@ function _M:application_service_requested(developer_name, developer_email,
   local html
   local subject
   local path = "emails/application-service-requested.txt"
+
+  developer_name = portal_utils.sanitize_developer_name(developer_name)
 
   local file = kong.db.files:select_by_path(path)
   if not file then
@@ -855,6 +871,8 @@ function _M:application_service_status_change(template_path, fallback_template, 
   local html
   local subject
 
+  developer_name = portal_utils.sanitize_developer_name(developer_name)
+
   local file = kong.db.files:select_by_path(template_path)
   if not file then
     html = fmt(conf.html, portal_gui_url, portal_gui_url, application_name)
@@ -883,6 +901,7 @@ function _M:application_service_status_change(template_path, fallback_template, 
 end
 
 function _M:application_service_approved(recipient, developer_name, application_name)
+  developer_name = portal_utils.sanitize_developer_name(developer_name)
   return self:application_service_status_change(
     "emails/application-service-approved.txt",
     self.conf.portal_application_service_approved_email,
@@ -891,6 +910,7 @@ function _M:application_service_approved(recipient, developer_name, application_
 end
 
 function _M:application_service_rejected(recipient, developer_name, application_name)
+  developer_name = portal_utils.sanitize_developer_name(developer_name)
   return self:application_service_status_change(
     "emails/application-service-rejected.txt",
     self.conf.portal_application_service_rejected_email,
@@ -899,6 +919,7 @@ function _M:application_service_rejected(recipient, developer_name, application_
 end
 
 function _M:application_service_pending(recipient, developer_name, application_name)
+  developer_name = portal_utils.sanitize_developer_name(developer_name)
   return self:application_service_status_change(
    "emails/application-service-pending.txt",
    self.conf.portal_application_service_pending_email,
@@ -907,6 +928,7 @@ function _M:application_service_pending(recipient, developer_name, application_n
 end
 
 function _M:application_service_revoked(recipient, developer_name, application_name)
+  developer_name = portal_utils.sanitize_developer_name(developer_name)
   return self:application_service_status_change(
    "emails/application-service-revoked.txt",
    self.conf.portal_application_service_revoked_email,

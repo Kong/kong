@@ -1,0 +1,7 @@
+message: sanitize developer name in portal email
+type: bugfix
+prs:
+  - 6462
+jiras:
+  - FTI-5212
+scope: Portal

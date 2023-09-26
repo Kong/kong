@@ -107,4 +107,36 @@ describe("portal_utils", function()
       assert.equal("0 days 14 hours 59 minutes 0 seconds", res)
     end)
   end)
+
+  describe("should sanitize developer name correctly", function ()
+    it("should replace &, <, >, \", ', / with their HTML entities", function ()
+      local res = portal_utils.sanitize_developer_name("&amp;<script>alert('foo' + \"bar\")</script>")
+      assert.equal(res, "<a href=\"\">&amp;amp;&lt;script&gt;alert(&#39;foo&#39; + &quot;bar&quot;)&lt;&#47;script&gt;</a>")
+    end)
+
+    it("should wrap name with <a> tag if it may be recognized as link", function ()
+      local res = portal_utils.sanitize_developer_name("foo.bar")
+      assert.equal(res, '<a href="">foo.bar</a>')
+
+      res = portal_utils.sanitize_developer_name("https://foo.bar")
+      assert.equal(res, '<a href="">https:&#47;&#47;foo.bar</a>')
+
+      res = portal_utils.sanitize_developer_name("foo//bar")
+      assert.equal(res, '<a href="">foo&#47;&#47;bar</a>')
+
+      res = portal_utils.sanitize_developer_name("username:password@localhost")
+      assert.equal(res, '<a href="">username:password@localhost</a>')
+    end)
+
+    it("should not sanitize non-string values", function ()
+      local res = portal_utils.sanitize_developer_name(123)
+      assert.equal(res, 123)
+
+      res = portal_utils.sanitize_developer_name({ foo = "bar" })
+      assert.same(res, { foo = "bar" })
+
+      res = portal_utils.sanitize_developer_name(nil)
+      assert.equal(res, nil)
+    end)
+  end)
 end)
