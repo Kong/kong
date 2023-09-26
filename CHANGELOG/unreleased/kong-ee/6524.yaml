@@ -1,0 +1,3 @@
+message: "**SAML**: Reduce severity of 'session was not found' messages to 'info'"
+type: bugfix
+scope: Plugin

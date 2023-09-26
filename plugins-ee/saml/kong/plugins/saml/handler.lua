@@ -148,9 +148,9 @@ function SAMLHandler:access(config)
 
   else
     if session_error then
-      log.err("session was not found (", session_error, ")")
+      log.debug("session was not found (", session_error, ")")
     else
-      log.err("session was not found")
+      log.debug("session was not found")
     end
   end
 
