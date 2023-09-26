@@ -14,4 +14,4 @@ jobs:
       - name: Validate changelogs
         uses: Kong/gateway-changelog@main
         with:
-          files: CHANGELOG/unreleased/*/*.yaml
+          files: changelog/unreleased/*/*.yml

@@ -1,7 +1,3 @@
 message: "Fix LDP/STP fusing for unaligned accesses on ARM64"
 type: dependency
 scope: Core
-prs:
-  - 11639
-jiras:
-  - "KAG-2634"
