@@ -6,7 +6,7 @@ local req_dyn_hook    = require("kong.dynamic_hook")
 local ngx             = ngx
 local ngx_var         = ngx.var
 
-local string_foramt   = string.format
+local string_format   = string.format
 
 local FILTER_ALL_PHASES = {
   ssl_cert      = nil,    -- NYI
@@ -185,7 +185,7 @@ function _M.log()
 
     local nparts = #parts
     for no, part in ipairs(parts) do
-      local msg = string_foramt("[reqeust_debug] id: %s parts: %d/%d output: %s",
+      local msg = string_format("[reqeust_debug] id: %s parts: %d/%d output: %s",
                                 debug_id, no, nparts, part)
       ngx.log(ngx.NOTICE, msg)
     end
@@ -193,7 +193,7 @@ function _M.log()
     return
   end
 
-  local msg = string_foramt("[reqeust_debug] id: %s output: %s",
+  local msg = string_format("[reqeust_debug] id: %s output: %s",
                             debug_id, output)
   ngx.log(ngx.NOTICE, msg)
 end

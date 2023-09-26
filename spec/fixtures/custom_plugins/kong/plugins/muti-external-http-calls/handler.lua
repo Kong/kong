@@ -11,7 +11,7 @@ function EnableBuffering:access(conf)
   httpc:set_timeout(1)
 
   for suffix = 0, conf.calls - 1 do
-    local uri = "http://really.really.really.really.really.really.not.exists." .. tostring(suffix)
+    local uri = "http://really.really.really.really.really.really.not.exists." .. suffix
     httpc:request_uri(uri)
   end
 end

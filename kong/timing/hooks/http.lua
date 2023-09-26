@@ -25,7 +25,7 @@ end
 local function before_connect_deprecated(self, host, port, _options)
   local destination
   if type(port) == "number" then
-    destination = "http(s)://" .. host .. ":" .. tostring(port)
+    destination = "http(s)://" .. host .. ":" .. port
 
   else
     destination = "unix://" .. host
