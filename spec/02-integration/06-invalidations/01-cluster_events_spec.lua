@@ -332,6 +332,8 @@ for _, strategy in helpers.each_strategy() do
 
         assert(cluster_events_1:subscribe("nbf_channel", cb, false)) -- false to not start auto polling
 
+        -- we need accurate time, otherwise the test would be flaky
+        ngx.update_time()
         assert(cluster_events_2:broadcast("nbf_channel", "hello world"))
 
         assert(cluster_events_1:poll())

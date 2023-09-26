@@ -241,8 +241,20 @@ describe("Admin API #" .. strategy, function()
 
     describe("GET", function()
       local apis = {}
+      local api_map
 
       local upstream
+
+      local function target_list_to_map(list)
+        local map = {}
+        for _, t in ipairs(list) do
+          map[t.target] = t
+          if t.tags == ngx.null then
+            t.tags = nil
+          end
+        end
+        return map
+      end
 
       before_each(function()
         upstream = bp.upstreams:insert {}
@@ -267,10 +279,12 @@ describe("Admin API #" .. strategy, function()
           weight = 10,
           upstream = { id = upstream.id },
         }
+
+        api_map = target_list_to_map(apis)
       end)
 
-      it("shows all targets", function()
-        for _, append in ipairs({ "", "/" }) do
+      for _, append in ipairs({ "", "/" }) do
+        it("shows all targets with " .. (append == "" and "no" or "") .. " ending slash", function()
           local res = assert(client:send {
             method = "GET",
             path = "/upstreams/" .. upstream.name .. "/targets" .. append,
@@ -281,15 +295,9 @@ describe("Admin API #" .. strategy, function()
           -- we got four active targets for this upstream
           assert.equal(4, #json.data)
 
-          -- when multiple active targets are present, we only see the last one
-          assert.equal(apis[4].id, json.data[1].id)
-
-          -- validate the remaining returned targets
-          assert.equal(apis[3].target, json.data[2].target)
-          assert.equal(apis[2].target, json.data[3].target)
-          assert.equal(apis[1].target, json.data[4].target)
-        end
-      end)
+          assert.same(api_map, target_list_to_map(json.data))
+        end)
+      end
 
       describe("empty results", function()
         it("data property is an empty array", function()
