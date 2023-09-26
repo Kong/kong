@@ -1,0 +1,8 @@
+message: Support HTTP query parameters in expression routes.
+type: feature
+scope: Core
+prs:
+  - 11348
+jiras:
+  - KAG-2050
+  - KAG-2289
