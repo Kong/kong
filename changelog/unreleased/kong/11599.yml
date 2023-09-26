@@ -1,7 +1,3 @@
 message: Fix a bug that will cause a failure of sending tracing data to datadog when value of x-datadog-parent-id header in requests is a short dec string
 type: bugfix
 scope: Core
-prs:
-  - 11599
-jiras:
-  - "FTI-5375"

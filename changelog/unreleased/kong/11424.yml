@@ -1,7 +1,3 @@
 message: Fix response body gets repeated when `kong.response.get_raw_body()` is called multiple times in a request lifecycle.
 type: bugfix
 scope: PDK
-prs:
-  - 11424
-jiras:
-  - "FTI-5296"
