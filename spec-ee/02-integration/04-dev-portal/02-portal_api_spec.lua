@@ -108,17 +108,6 @@ local function close_clients(portal_api_client)
   end
 end
 
-
-local function admin_client_request(params)
-  local client = assert(helpers.admin_client())
-  local res = assert(client:send(params))
-  res.body = res:read_body()
-
-  client:close()
-  return res
-end
-
-
 local rbac_mode = {"off", "on"}
 
 for _, strategy in helpers.each_strategy() do
@@ -594,34 +583,12 @@ for _, strategy in helpers.each_strategy() do
             end)
 
             describe("no meta fields", function()
-              lazy_setup(function()
-                ee_helpers.register_rbac_resources(db)
-                local opt = {
-                  override_default_headers = {
-                    ["Kong-Admin-Token"] = "letmein-default",
-                    ["Content-Type"] = "application/json",
-                  }
-                }
-
-                helpers.wait_for_all_config_update(opt)
-
-                admin_client_request({
-                  method = "PATCH",
-                  path = "/workspaces/default",
-                  body = {
-                    config = {
-                      portal = true,
-                      portal_auth = "basic-auth",
-                      portal_developer_meta_fields = "[]",
-                    }
-                  },
-                  headers = {
-                    ["Kong-Admin-Token"] = "letmein-default",
-                    ["Content-Type"] = "application/json",
-                  }
+              setup(function()
+                configure_portal(db, {
+                  portal = true,
+                  portal_auth = "basic-auth",
+                  portal_developer_meta_fields = "[]",
                 })
-
-                helpers.wait_for_all_config_update(opt)
               end)
 
               it("can register a developer with no meta fields", function()
@@ -845,32 +812,11 @@ for _, strategy in helpers.each_strategy() do
             portal_auth_login_attempts = 3,
           }))
 
-          ee_helpers.register_rbac_resources(db)
-          local opt = {
-            override_default_headers = {
-              ["Kong-Admin-Token"] = "letmein-default",
-              ["Content-Type"] = "application/json",
-            }
-          }
-
-          helpers.wait_for_all_config_update(opt)
-          admin_client_request({
-            method = "PATCH",
-            path = "/workspaces/default",
-            body = {
-              config = {
-                portal = true,
-                portal_auth = "basic-auth",
-                portal_auto_approve = false,
-              }
-            },
-            headers = {
-              ["Kong-Admin-Token"] = "letmein-default",
-              ["Content-Type"] = "application/json",
-            }
+          configure_portal(db, {
+            portal = true,
+            portal_auth = "basic-auth",
+            portal_auto_approve = false,
           })
-
-          helpers.wait_for_all_config_update(opt)
 
           insert_files(db)
 
@@ -884,23 +830,11 @@ for _, strategy in helpers.each_strategy() do
 
           assert.res_status(200, res)
 
-          admin_client_request({
-            method = "PATCH",
-            path = "/workspaces/default",
-            body = {
-              config = {
-                portal = true,
-                portal_auth = "basic-auth",
-                portal_auto_approve = true,
-              }
-            },
-            headers = {
-              ["Kong-Admin-Token"] = "letmein-default",
-              ["Content-Type"] = "application/json",
-            }
+          configure_portal(db, {
+            portal = true,
+            portal_auth = "basic-auth",
+            portal_auto_approve = true,
           })
-
-          helpers.wait_for_all_config_update(opt)
 
           local res = register_developer(portal_api_client, "basic-auth")
           local body = assert.res_status(200, res)
@@ -3042,32 +2976,11 @@ for _, strategy in helpers.each_strategy() do
             admin_gui_url = "http://localhost:8080",
           }))
 
-          ee_helpers.register_rbac_resources(db)
-          local opt = {
-            override_default_headers = {
-              ["Kong-Admin-Token"] = "letmein-default",
-              ["Content-Type"] = "application/json",
-            }
-          }
-
-          helpers.wait_for_all_config_update(opt)
-          admin_client_request({
-            method = "PATCH",
-            path = "/workspaces/default",
-            body = {
-              config = {
-                portal = true,
-                portal_auth = "key-auth",
-                portal_auto_approve = false,
-              }
-            },
-            headers = {
-              ["Kong-Admin-Token"] = "letmein-default",
-              ["Content-Type"] = "application/json",
-            }
+          configure_portal(db, {
+            portal = true,
+            portal_auth = "key-auth",
+            portal_auto_approve = false,
           })
-
-          helpers.wait_for_all_config_update(opt)
 
           insert_files(db)
 
@@ -3081,23 +2994,12 @@ for _, strategy in helpers.each_strategy() do
 
           assert.res_status(200, res)
 
-          admin_client_request({
-            method = "PATCH",
-            path = "/workspaces/default",
-            body = {
-              config = {
-                portal = true,
-                portal_auth = "key-auth",
-                portal_auto_approve = true,
-              }
-            },
-            headers = {
-              ["Kong-Admin-Token"] = "letmein-default",
-              ["Content-Type"] = "application/json",
-            }
+          configure_portal(db, {
+            portal = true,
+            portal_auth = "key-auth",
+            portal_auto_approve = true,
           })
 
-          helpers.wait_for_all_config_update(opt)
 
           local res = register_developer(portal_api_client, "key-auth")
           local body = assert.res_status(200, res)
