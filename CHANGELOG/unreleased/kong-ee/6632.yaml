@@ -1,7 +1,0 @@
-message: fix rbac retrieve group roles with the group name that type is number.
-type: bugfix
-prs:
-  - 6632
-jiras:
-  - "FTI-5408"
-scope: Core

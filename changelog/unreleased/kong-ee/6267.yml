@@ -1,0 +1,3 @@
+message: "**Graphql-rate-limiting-adv**: Fix a bug in the schema validation which prevents from using redis in cluster mode"
+type: breaking_change
+scope: Plugin

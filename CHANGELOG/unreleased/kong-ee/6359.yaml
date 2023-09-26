@@ -1,7 +1,0 @@
-message: mtls-auth should not cache the network failure when doing revocation check
-type: bugfix
-prs:
-  - 6359
-jiras:
-  - "FTI-5327"
-scope: Plugin

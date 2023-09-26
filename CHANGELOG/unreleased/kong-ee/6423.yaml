@@ -1,7 +1,0 @@
-message: "allow the 'start' field be a past time"
-type: bugfix
-scope: Plugin
-prs:
-- 6423
-jiras:
-- "KAG-923"

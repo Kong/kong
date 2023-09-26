@@ -1,0 +1,3 @@
+message: fix flooded json decoding warning logs
+type: bugfix
+scope: Plugin

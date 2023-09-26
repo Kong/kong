@@ -1,0 +1,3 @@
+message: fix rbac retrieve group roles with the group name that type is number.
+type: bugfix
+scope: Core

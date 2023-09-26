@@ -1,7 +1,0 @@
-message: Fix a bug related to data interference between requests in the kong.log.serialize function.
-type: bugfix
-scope: PDK
-prs:
-  - 11566
-jiras:
-  - "FTI-5357"

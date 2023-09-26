@@ -1,0 +1,3 @@
+message: update vitals prometheus grafana dashboard
+type: bugfix
+scope: Core

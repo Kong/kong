@@ -1,7 +1,0 @@
-message: "**Konnect Application Auth**: support multiple consumer_groups"
-type: feature
-prs:
-- 6426
-jiras:
-- "TDX-3393"
-scope: Plugin

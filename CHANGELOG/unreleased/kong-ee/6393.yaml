@@ -1,7 +1,0 @@
-message: Fix an issue that remove FIPS from free mode. Add a check of FIPS state and license type in validate_fips. If no license with FIPS `on` will throw an error and exit.
-type: bugfix
-prs:
-  - 6393
-jiras:
-  - "KAG-1881"
-scope: Configuration

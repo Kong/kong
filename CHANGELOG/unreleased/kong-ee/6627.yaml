@@ -1,7 +1,0 @@
-message: refactor workspace id and name retrieval
-type: performance
-scope: Core
-prs:
-  - 6627
-jiras:
-  - "FTI-5303"

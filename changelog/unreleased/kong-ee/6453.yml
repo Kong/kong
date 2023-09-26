@@ -1,0 +1,3 @@
+message: "**SAML**: When the redis session storage is incorrectly configured, users now receive a 500 error instead of being redirected endlessly"
+type: bugfix
+scope: Plugin

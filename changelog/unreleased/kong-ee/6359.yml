@@ -1,0 +1,3 @@
+message: mtls-auth should not cache the network failure when doing revocation check
+type: bugfix
+scope: Plugin

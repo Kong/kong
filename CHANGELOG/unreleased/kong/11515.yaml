@@ -1,7 +1,0 @@
-message: Bumped the default value of `upstream_keepalive_pool_size` to `512` and `upstream_keepalive_max_requests` to `1000`
-type: performance
-scope: Configuration
-prs:
-  - 11515
-jiras:
-  - "FTI-4868"

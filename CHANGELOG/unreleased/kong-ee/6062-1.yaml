@@ -1,7 +1,0 @@
-message: "**Mocking**: Introduces a new property `include_base_path` to indicate whether to include the base path when performing the path match evaluation."
-type: feature
-prs:
-  - 6062
-jiras:
-  - "FTI-4944"
-scope: Plugin

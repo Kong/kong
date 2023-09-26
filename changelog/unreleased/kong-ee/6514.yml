@@ -1,0 +1,3 @@
+message: "**Openid-Connect**: Fix issue on token revocation on logout where the code was revoking refresh token when it was supposed to revoke access token when using the discovered revocation endpoint."
+type: bugfix
+scope: Plugin

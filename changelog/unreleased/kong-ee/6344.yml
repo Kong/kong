@@ -1,0 +1,3 @@
+message: Fix an issue that made it possible to create colliding routes in different workspaces when using `application/x-www-form-urlencoded` as content type in the admin API
+type: bugfix
+scope: Admin API

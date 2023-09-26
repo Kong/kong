@@ -1,7 +1,0 @@
-"message": "**AWS-Lambda**: let plugin-level proxy take effect on EKS IRSA credential provider"
-"type": "bugfix"
-"scope": "Plugin"
-"prs":
-- 11551
-"jiras":
-- "FTI-5242"

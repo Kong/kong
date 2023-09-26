@@ -1,0 +1,3 @@
+message: "**OpenID-Connect**: New field `using_pseudo_issuer`. When set to true, the plugin instance will not discover configuration from the issuer."
+type: feature
+scope: Plugin

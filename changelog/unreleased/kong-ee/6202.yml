@@ -1,0 +1,3 @@
+message: "**Openid-Connect**: New field `unauthorized_destroy_session`, which when set to true, we destory the session (delete the user's session cookie) when the request is unauthorized. Default to true. Set to false to preserve the session."
+type: feature
+scope: Plugin

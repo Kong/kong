@@ -1,7 +1,0 @@
-message: fix flooded json decoding warning logs
-type: bugfix
-prs:
-  - 6390
-jiras:
-  - "KAG-2424"
-scope: Plugin

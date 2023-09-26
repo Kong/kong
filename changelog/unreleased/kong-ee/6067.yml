@@ -1,0 +1,3 @@
+message: "Fix a bug that when an entity is deleted, the rbac_role_entities records of its cascaded entities are not deleted."
+type: bugfix
+scope: Admin API

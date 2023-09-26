@@ -1,0 +1,3 @@
+message: "allow the 'start' field be a past time"
+type: bugfix
+scope: Plugin

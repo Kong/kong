@@ -1,4 +1,0 @@
-message: "Bumped lua-resty-aws from 1.3.2 to 1.3.5"
-type: dependency
-prs:
-  - 11613

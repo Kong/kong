@@ -1,0 +1,3 @@
+message: "Fix a keyring issue where a kong node fails to send keyring material when using cluster strategy"
+type: bugfix
+scope: Core
