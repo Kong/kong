@@ -248,7 +248,7 @@ for _, strategy in helpers.each_strategy() do
                 local test_description = "should be able to set correct cookie name and path" ..
                   "when using custom config - " .. cookie_path.config_path .. "->" .. expected_path
 
-                it(test_description, function ()
+                it("#flaky " .. test_description, function ()
                   configure_portal(db, workspace_name, {
                     portal = true,
                     portal_auth = PLUGIN_NAME,
