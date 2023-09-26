@@ -1,6 +1,4 @@
-local base = require "resty.core.base"
-
-local get_request = base.get_request
+local ngx = ngx
 
 local NGX_VAR_PHASES = {
   set           = true,
@@ -20,10 +18,6 @@ end
 
 
 local function get()
-  if not get_request() then
-    return nil, "no request found"
-  end
-
   local rid = get_ctx_request_id()
 
   if not rid then
@@ -33,8 +27,8 @@ local function get()
     end
 
     -- first access to the request id for this request:
-    -- initialize with the value of $kong_request_id
-    rid = ngx.var.kong_request_id
+    -- initialize with the value of $request_id
+    rid = ngx.var.request_id
     ngx.ctx.request_id = rid
   end
 

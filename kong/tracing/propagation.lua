@@ -520,40 +520,48 @@ local function find_header_type(headers)
 end
 
 
--- Adds trace ID formats to the current request's and returns a table
--- containing all the formats.
+-- Performs a table merge to add trace ID formats to the current request's
+-- trace ID and returns a table containing all the formats.
 --
 -- Plugins can handle different formats of trace ids depending on their headers
 -- configuration, multiple plugins executions may result in additional formats
 -- of the current request's trace id.
 --
--- Each item in the resulting `trace_id_all_fmt` table represents a
+-- The `propagation_trace_id_all_fmt` table is stored in `ngx.ctx` to keep the
+-- list of formats updated for the current request.
+--
+-- Each item in the resulting `propagation_trace_id_all_fmt` table represents a
 -- format associated with the trace ID for the current request.
 --
 -- @param trace_id_new_fmt table containing the trace ID formats to be added
--- @returns trace_id_all_fmt table contains all the formats for this request
+-- @returns propagation_trace_id_all_fmt table contains all the formats for
+-- the current request
 --
 -- @example
 --
---    existing_formats = { datadog = "1234",
---                         w3c     = "abcd" }
+--    propagation_trace_id_all_fmt = { datadog = "1234",
+--                                     w3c     = "abcd" }
 --
---    trace_id_new_fmt = { ot = "abcd", w3c = "abcd" }
+--    trace_id_new_fmt             = { ot = "abcd",
+--                                     w3c = "abcd" }
 --
---    trace_id_all_fmt = { datadog = "1234", ot = "abcd", w3c = "abcd" }
+--    propagation_trace_id_all_fmt = { datadog = "1234",
+--                                     ot = "abcd",
+--                                     w3c = "abcd" }
 --
 local function add_trace_id_formats(trace_id_new_fmt)
-  -- TODO: @samugi - move this in the unified tracing context
-  local trace_id_all_fmt = ngx.ctx.propagation_trace_id_all_fmt or {}
-
-  -- add new formats to trace ID (if not already present)
-  for format, value in pairs(trace_id_new_fmt) do
-    if not trace_id_all_fmt[format] then
-      trace_id_all_fmt[format] = value
-    end
+  -- TODO: @samugi - move trace ID table in the unified tracing context
+  local trace_id_all_fmt = ngx.ctx.propagation_trace_id_all_fmt
+  if not trace_id_all_fmt then
+    ngx.ctx.propagation_trace_id_all_fmt = trace_id_new_fmt
+    return trace_id_new_fmt
   end
 
-  ngx.ctx.propagation_trace_id_all_fmt = trace_id_all_fmt
+  -- add new formats to trace ID formats table
+  for format, value in pairs(trace_id_new_fmt) do
+    trace_id_all_fmt[format] = value
+  end
+
   return trace_id_all_fmt
 end
 

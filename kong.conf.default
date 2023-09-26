@@ -235,14 +235,17 @@
                                  # setting to specify a certificate authority.
 
 #error_template_html =           # Path to the custom html error template to
-                                 # override the default html kong error template.
+                                 # override the default html kong error
+                                 # template.
                                  #
-                                 # The template may contain up to two `%s` placeholders.
-                                 # The first one will expand to the error message.
-                                 # The second one will expand to the request ID.
-                                 # Both placeholders are optional, but recommended.
-                                 # Adding more than two placeholders will result in a runtime error
-                                 # when trying to render the template:
+                                 # The template may contain up to two `%s`
+                                 # placeholders. The first one will expand to
+                                 # the error message. The second one will
+                                 # expand to the request ID. Both placeholders
+                                 # are optional, but recommended.
+                                 # Adding more than two placeholders will
+                                 # result in a runtime error when trying to
+                                 # render the template:
                                  # ```
                                  # <html>
                                  #   <body>
@@ -254,25 +257,30 @@
                                  # ```
 
 #error_template_json =           # Path to the custom json error template to
-                                 # override the default json kong error template.
+                                 # override the default json kong error
+                                 # template.
                                  #
-                                 # Similarly to `error_template_html`, the template
-                                 # may contain up to two `%s` placeholders for
-                                 # the error message and the request ID respectively.
+                                 # Similarly to `error_template_html`, the
+                                 # template may contain up to two `%s`
+                                 # placeholders for the error message and the
+                                 # request ID respectively.
 
 #error_template_xml =            # Path to the custom xml error template to
                                  # override the default xml kong error template
                                  #
-                                 # Similarly to `error_template_html`, the template
-                                 # may contain up to two `%s` placeholders for
-                                 # the error message and the request ID respectively.
+                                 # Similarly to `error_template_html`, the
+                                 # template may contain up to two `%s`
+                                 # placeholders for the error message and the
+                                 # request ID respectively.
 
 #error_template_plain =          # Path to the custom plain error template to
-                                 # override the default plain kong error template
+                                 # override the default plain kong error
+                                 # template
                                  #
-                                 # Similarly to `error_template_html`, the template
-                                 # may contain up to two `%s` placeholders for
-                                 # the error message and the request ID respectively.
+                                 # Similarly to `error_template_html`, the
+                                 # template may contain up to two `%s`
+                                 # placeholders for the error message and the
+                                 # request ID respectively.
 
 #------------------------------------------------------------------------------
 # HYBRID MODE

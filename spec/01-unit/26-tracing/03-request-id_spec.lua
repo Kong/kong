@@ -1,9 +1,9 @@
 local request_id = require "kong.tracing.request_id"
 
-local function reset_context(id)
+local function reset_globals(id)
   _G.ngx.ctx = {}
   _G.ngx.var = {
-    kong_request_id = id,
+    request_id = id,
   }
   _G.ngx.get_phase = function() -- luacheck: ignore
     return "access"
@@ -19,7 +19,7 @@ end
 
 
 describe("Request ID unit tests", function()
-  local kong_request_id_value = "1234"
+  local ngx_var_request_id = "1234"
 
   describe("get()", function()
     local old_ngx_ctx
@@ -33,7 +33,7 @@ describe("Request ID unit tests", function()
     end)
 
     before_each(function()
-      reset_context(kong_request_id_value)
+      reset_globals(ngx_var_request_id)
     end)
 
     lazy_teardown(function()
@@ -43,19 +43,19 @@ describe("Request ID unit tests", function()
     end)
 
     it("returns the expected Request ID and caches it in ctx", function()
-      local request_id_value, err = request_id.get()
+      local id, err = request_id.get()
       assert.is_nil(err)
-      assert.equal(kong_request_id_value, request_id_value)
+      assert.equal(ngx_var_request_id, id)
 
       local ctx_request_id = request_id._get_ctx_request_id()
-      assert.equal(kong_request_id_value, ctx_request_id)
+      assert.equal(ngx_var_request_id, ctx_request_id)
     end)
 
     it("fails if accessed from phase that cannot read ngx.var", function()
       _G.ngx.get_phase = function() return "init" end
 
-      local request_id_value, err = request_id.get()
-      assert.is_nil(request_id_value)
+      local id, err = request_id.get()
+      assert.is_nil(id)
       assert.equal("cannot access ngx.var in init phase", err)
     end)
   end)

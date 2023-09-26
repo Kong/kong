@@ -22,7 +22,7 @@ describe("kong.log.serialize", function()
           },
         },
         var = {
-          kong_request_id = "1234",
+          request_id = "1234",
           request_uri = "/request_uri",
           upstream_uri = "/upstream_uri",
           scheme = "http",
@@ -50,6 +50,10 @@ describe("kong.log.serialize", function()
         },
         get_phase = function() return "access" end,
       }
+
+      package.loaded["kong.tracing.request_id"] = nil
+      package.loaded["kong.pdk.log"] = nil
+      kong.log = require "kong.pdk.log".new(kong)
 
       package.loaded["kong.pdk.request"] = nil
       local pdk_request = require "kong.pdk.request"

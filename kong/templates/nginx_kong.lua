@@ -54,7 +54,7 @@ exit_worker_by_lua_block {
 log_format kong_log_format '$remote_addr - $remote_user [$time_local] '
                            '"$request" $status $body_bytes_sent '
                            '"$http_referer" "$http_user_agent" '
-                           'kong_request_id: "$kong_request_id"';
+                           'kong_request_id: "$request_id"';
 
 # Load variable indexes
 lua_kong_load_var_index default;
@@ -81,11 +81,9 @@ server {
     error_page 400 404 405 408 411 412 413 414 417 494 /kong_error_handler;
     error_page 500 502 503 504                     /kong_error_handler;
 
-    set $kong_request_id $request_id;
-
     # Append the kong request id to the error log
     # https://github.com/Kong/lua-kong-nginx-module#lua_kong_error_log_request_id
-    lua_kong_error_log_request_id $kong_request_id;
+    lua_kong_error_log_request_id $request_id;
 
     access_log ${{PROXY_ACCESS_LOG}} kong_log_format;
     error_log  ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
