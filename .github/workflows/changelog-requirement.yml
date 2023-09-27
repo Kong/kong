@@ -1,0 +1,32 @@
+name: Changelog Requirement
+
+on:
+  pull_request:
+    types: [ opened, synchronize, labeled, unlabeled ]
+    paths:
+      - 'kong/**'
+      - '**.rockspec'
+      - '.requirements'
+
+jobs:
+  require-changelog:
+    if: ${{ !contains(github.event.*.labels.*.name, 'skip-changelog') }}
+    name: Requires changelog
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: computes changed files
+        id: changelog-check
+        uses: tj-actions/changed-files@2f7246cb26e8bb6709b6cbfc1fec7febfe82e96a # v37
+        with:
+          files: 'changelog/unreleased/**/*.yml'
+
+      - name: asserts changelog added
+        run: >
+          if [ "${{ steps.changelog-check.outputs.added_files_count }}" = "0" ]; then
+            echo "Should contain at least one changelog file in changelog/unreleased/*/ directory"
+            exit 1
+          fi
