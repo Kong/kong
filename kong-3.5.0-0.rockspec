@@ -101,6 +101,8 @@ build = {
     ["kong.resty.mlcache"] = "kong/resty/mlcache/init.lua",
     ["kong.resty.mlcache.ipc"] = "kong/resty/mlcache/ipc.lua",
 
+    ["kong.resty.lmdb.reset-transaction"] = "kong/resty/lmdb/reset-transaction.lua",
+
     ["kong.cmd"] = "kong/cmd/init.lua",
     ["kong.cmd.roar"] = "kong/cmd/roar.lua",
     ["kong.cmd.stop"] = "kong/cmd/stop.lua",
