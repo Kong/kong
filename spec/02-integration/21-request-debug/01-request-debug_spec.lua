@@ -177,7 +177,7 @@ local function get_output_log(deployment, path, filter, fake_ip, token)
   local output = assert(cjson.decode(res.headers["X-Kong-Request-Debug-Output"]))
   local debug_id = assert(output.debug_id)
 
-  local keyword = "[reqeust-debug] id: " .. debug_id
+  local keyword = "[request-debug] id: " .. debug_id
 
   if deployment == "traditional" then
     path = pl_path.join(helpers.test_conf.prefix, "logs/error.log")
