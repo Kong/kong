@@ -8,7 +8,7 @@ import {
   deleteGatewayService,
   createRouteForService,
   deleteGatewayRoute,
-  wait,
+  waitForConfigRebuild,
   updateGatewayService,
   logResponse,
   isGwHybrid,
@@ -66,6 +66,8 @@ describe('Gateway Plugins: gRPC-web', function () {
         id: routeId,
       },
     };
+
+    await waitForConfigRebuild();
   });
 
   it('should create grpc-web plugin', async function () {
@@ -88,7 +90,7 @@ describe('Gateway Plugins: gRPC-web', function () {
       protocols
     );
     pluginId = resp.data.id;
-    await wait(isHybrid ? 7000 : 5000);
+    await waitForConfigRebuild();
   });
 
   it('should validate unary response with greeting', async function () {
@@ -153,6 +155,8 @@ describe('Gateway Plugins: gRPC-web', function () {
     });
 
     expect(patchService.id, 'Service id should match').to.equal(serviceId);
+
+    await waitForConfigRebuild();
   });
 
   it('should validate unary response with greeting using secure connection', async function () {
