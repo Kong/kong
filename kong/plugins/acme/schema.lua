@@ -59,6 +59,7 @@ local REDIS_STORAGE_SCHEMA = {
       custom_validator = validate_namespace
     }
   },
+  { scan_count = { type = "number", required = false, default = 10, description = "The number of keys to return in Redis SCAN calls." } },
 }
 
 local CONSUL_STORAGE_SCHEMA = {
