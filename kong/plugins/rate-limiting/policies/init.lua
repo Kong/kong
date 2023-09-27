@@ -2,7 +2,7 @@ local policy_cluster = require "kong.plugins.rate-limiting.policies.cluster"
 local timestamp = require "kong.tools.timestamp"
 local reports = require "kong.reports"
 local redis = require "resty.redis"
-local table_clear = require "table.clear"
+local request_aware_table = require "kong.tools.request_aware_table"
 
 local kong = kong
 local pairs = pairs
@@ -18,23 +18,26 @@ local EMPTY_UUID = "00000000-0000-0000-0000-000000000000"
 -- for `conf.sync_rate > 0`
 local auto_sync_timer
 
-local cur_usage = {
-  --[[
-    [cache_key] = <integer>
-  --]]
-}
+local cur_usage = request_aware_table.new()
+-- {
+--     [[
+--     [cache_key] = <integer>
+--     ]]
+-- }
 
-local cur_usage_expire_at = {
-  --[[
-    [cache_key] = <integer>
-  --]]
-}
+local cur_usage_expire_at = request_aware_table.new()
+-- {
+--     [[
+--     [cache_key] = <integer>
+--     ]]
+-- }
 
-local cur_delta = {
-  --[[
-    [cache_key] = <integer>
-  --]]
-}
+local cur_delta = request_aware_table.new()
+-- {
+--     [[
+--     [cache_key] = <integer>
+--     ]]
+-- }
 
 
 local function is_present(str)
@@ -138,9 +141,9 @@ local function get_redis_connection(conf)
 end
 
 local function clear_local_counter()
-  table_clear(cur_usage)
-  table_clear(cur_usage_expire_at)
-  table_clear(cur_delta)
+  cur_usage:clear()
+  cur_usage_expire_at:clear()
+  cur_delta:clear()
 end
 
 local function sync_to_redis(premature, conf)
