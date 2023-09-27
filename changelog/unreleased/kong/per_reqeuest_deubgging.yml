@@ -1,7 +1,3 @@
 message: Support observing the time consumed by some components in the given request.
 type: feature
 scope: Core
-prs:
-  - 11627
-jiras:
-  - "KAG-1902"
