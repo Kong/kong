@@ -531,5 +531,16 @@ build = {
 
     ["kong.tracing.instrumentation"] = "kong/tracing/instrumentation.lua",
     ["kong.tracing.propagation"] = "kong/tracing/propagation.lua",
+
+    ["kong.timing"] = "kong/timing/init.lua",
+    ["kong.timing.context"] = "kong/timing/context.lua",
+    ["kong.timing.hooks"] = "kong/timing/hooks/init.lua",
+    ["kong.timing.hooks.dns"] = "kong/timing/hooks/dns.lua",
+    ["kong.timing.hooks.http"] = "kong/timing/hooks/http.lua",
+    ["kong.timing.hooks.redis"] = "kong/timing/hooks/redis.lua",
+    ["kong.timing.hooks.socket"] = "kong/timing/hooks/socket.lua",
+
+    ["kong.dynamic_hook"] = "kong/dynamic_hook/init.lua",
+    ["kong.dynamic_hook.wrap_function_gen"] = "kong/dynamic_hook/wrap_function_gen.lua",
   }
 }

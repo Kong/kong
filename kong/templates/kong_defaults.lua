@@ -200,4 +200,7 @@ tracing_sampling_rate = 0.01
 wasm = off
 wasm_filters_path = NONE
 wasm_dynamic_module = NONE
+
+request_debug = on
+request_debug_token = 
 ]]

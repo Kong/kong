@@ -1815,10 +1815,12 @@ _M.sha256_base64url = sha256_base64url
 local get_now_ms
 local get_updated_now_ms
 local get_start_time_ms
+local get_updated_monotonic_ms
 do
-  local now           = ngx.now
-  local update_time   = ngx.update_time
-  local start_time    = ngx.req.start_time
+  local now             = ngx.now
+  local update_time     = ngx.update_time
+  local start_time      = ngx.req.start_time
+  local monotonic_msec  = require("resty.core.time").monotonic_msec
 
   function get_now_ms()
     return now() * 1000 -- time is kept in seconds with millisecond resolution.
@@ -1832,9 +1834,16 @@ do
   function get_start_time_ms()
     return start_time() * 1000 -- time is kept in seconds with millisecond resolution.
   end
+
+  function get_updated_monotonic_ms()
+    update_time()
+    return monotonic_msec()
+  end
 end
 _M.get_now_ms         = get_now_ms
 _M.get_updated_now_ms = get_updated_now_ms
 _M.get_start_time_ms  = get_start_time_ms
+_M.get_updated_monotonic_ms = get_updated_monotonic_ms
+
 
 return _M
