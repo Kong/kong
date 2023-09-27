@@ -722,13 +722,13 @@ function Kong.init()
     if pl_path.exists(request_debug_token_file) then
       local ok, err = pl_file.delete(request_debug_token_file)
       if not ok then
-        error("failed to delete old .request_debug_token file: " .. err)
+        ngx.log(ngx.ERR, "failed to delete old .request_debug_token file: ", err)
       end
     end
 
     local ok, err = pl_file.write(request_debug_token_file, token)
     if not ok then
-      error("failed to write .request_debug_token file: " .. err)
+      ngx.log(ngx.ERR, "failed to write .request_debug_token file: ", err)
     end
 
     kong.request_debug_token = token

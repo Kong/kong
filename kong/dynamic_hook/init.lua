@@ -1,5 +1,7 @@
 local warp_function_gen = require("kong.dynamic_hook.wrap_function_gen")
 
+local ngx               = ngx
+
 local _M                = {
   TYPE = {
     BEFORE = 1,
