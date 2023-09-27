@@ -2,6 +2,7 @@ local context         = require("kong.timing.context")
 local utils           = require("kong.tools.utils")
 local cjson           = require("cjson.safe")
 local req_dyn_hook    = require("kong.dynamic_hook")
+local constants       = require("kong.constants")
 
 local ngx             = ngx
 local ngx_var         = ngx.var
@@ -44,8 +45,8 @@ end
 
 
 local function is_loopback(binary_addr)
-  -- ipv4 127.0.0.1 or ipv6 ::1
-  if (#binary_addr == 4 and binary_addr:sub(1, 1) == "\x7f") or
+  -- ipv4 127.0.0.0/8 or ipv6 ::1
+  if (#binary_addr == 4 and binary_addr:byte(1) == 127) or
      binary_addr == "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01"
   then
     return true
@@ -185,7 +186,8 @@ function _M.log()
 
     local nparts = #parts
     for no, part in ipairs(parts) do
-      local msg = string_format("[reqeust_debug] id: %s parts: %d/%d output: %s",
+      local msg = string_format("%s id: %s parts: %d/%d output: %s",
+                                constants.REQUEST_DEBUG_LOG_PREFIX,
                                 debug_id, no, nparts, part)
       ngx.log(ngx.NOTICE, msg)
     end
@@ -193,7 +195,8 @@ function _M.log()
     return
   end
 
-  local msg = string_format("[reqeust_debug] id: %s output: %s",
+  local msg = string_format("%s id: %s output: %s",
+                            constants.REQUEST_DEBUG_LOG_PREFIX,
                             debug_id, output)
   ngx.log(ngx.NOTICE, msg)
 end

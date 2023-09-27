@@ -732,7 +732,10 @@ function Kong.init()
     end
 
     kong.request_debug_token = token
-    ngx.log(ngx.NOTICE, "request_debug_token: ", kong.request_debug_token)
+    ngx.log(ngx.NOTICE,
+            constants.REQUEST_DEBUG_LOG_PREFIX,
+            " token for request debugging: ",
+            kong.request_debug_token)
   end
 end
 
