@@ -36,6 +36,7 @@ Consult the Table of Contents below, and jump to the desired section.
             * [Writing tests](#writing-tests)
             * [Writing changelog](#writing-changelog)
             * [Writing performant code](#writing-performant-code)
+            * [Adding Changelog](#adding-changelog)
         * [Contributor T-shirt](#contributor-t-shirt)
     * [Code style](#code-style)
         * [Table of Contents - Code style](#table-of-contents---code-style)
@@ -543,6 +544,8 @@ Every patch, except those
 documentation-only changes, requires a changelog entry to present.
 
 Please follow [instruction](#https://github.com/Kong/kong/tree/master/CHANGELOG) to include in your Pull Request.
+
+[Back to TOC](#table-of-contents)
 
 ### Contributor T-shirt
 
