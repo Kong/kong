@@ -171,7 +171,6 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
-        headers_upstream = "off",
       }))
     end)
 

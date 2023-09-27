@@ -8,7 +8,6 @@
 local reports = require "kong.reports"
 local new_tab = require "table.new"
 local math = require "math"
-local request_id = require "kong.tracing.request_id"
 local log = ngx.log
 local INFO = ngx.INFO
 local DEBUG = ngx.DEBUG
@@ -225,7 +224,6 @@ function _M:create_payload(message)
     client_ip = "",
     started_at = 0,
     trace_id = "",
-    request_id = "",
     upstream = {
       upstream_uri = ""
     },
@@ -296,18 +294,12 @@ function _M:create_payload(message)
 
   local root_span = ngx.ctx.KONG_SPANS and ngx.ctx.KONG_SPANS[1]
   local trace_id = root_span and root_span.trace_id
+
   if trace_id and root_span.should_sample then
     log(DEBUG, _log_prefix, "Attaching raw trace_id of to_hex(trace_id): ", to_hex(trace_id))
     payload.trace_id = trace_id
   end
 
-  local request_id_value, err = request_id.get()
-  if request_id_value then
-    payload.request_id = request_id_value
-
-  else
-    log(WARN, _log_prefix, "failed to get request id: ", err)
-  end
 
   if message.upstream_uri ~= nil then
     payload.upstream.upstream_uri = self:split(message.upstream_uri, "?")[1]

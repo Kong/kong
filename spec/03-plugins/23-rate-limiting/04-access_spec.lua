@@ -782,8 +782,7 @@ if limit_by == "ip" then
         local res2 = GET(test_path, { headers = { ["X-Real-IP"] = "127.0.0.3" }})
         local body2 = assert.res_status(429, res2)
         local json2 = cjson.decode(body2)
-        assert.not_nil(json2.message)
-        assert.matches("API rate limit exceeded", json2.message)
+        assert.same({ message = "API rate limit exceeded" }, json2)
 
         ngx_sleep(1)
         local res3 = GET(test_path, { headers = { ["X-Real-IP"] = "127.0.0.3" }})
@@ -831,7 +830,7 @@ if limit_by == "ip" then
 
     res = GET(test_path)
     local json = cjson.decode(assert.res_status(404, res))
-    assert.matches("Fake Not Found", json.message)
+    assert.equal("Fake Not Found", json.message)
 
   end)      -- it("blocks with a custom error code and message", function()
 end         -- if limit_by == "ip" then
@@ -1128,8 +1127,7 @@ if policy == "cluster" then
     local res = assert(GET(test_path))
     local body = assert.res_status(500, res)
     local json = cjson.decode(body)
-    assert.not_nil(json)
-    assert.matches("An unexpected error occurred", json.message)
+    assert.same({ message = "An unexpected error occurred" }, json)
 
     assert.falsy(res.headers["X-Ratelimit-Limit-Minute"])
     assert.falsy(res.headers["X-Ratelimit-Remaining-Minute"])
@@ -1200,8 +1198,7 @@ if policy == "redis" then
     local res = assert(GET(test_path))
     local body = assert.res_status(500, res)
     local json = cjson.decode(body)
-    assert.not_nil(json)
-    assert.matches("An unexpected error occurred", json.message)
+    assert.same({ message = "An unexpected error occurred" }, json)
 
     assert.falsy(res.headers["X-Ratelimit-Limit-Minute"])
     assert.falsy(res.headers["X-Ratelimit-Remaining-Minute"])

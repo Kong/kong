@@ -21,7 +21,6 @@ message RequestMetadata {
   ConsumerInfo consumer = 10;
   AuthInfo auth = 11;
   bytes trace_id = 12;
-  string request_id = 13;
 }
 
 message RequestInfo {

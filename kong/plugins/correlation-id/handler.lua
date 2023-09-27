@@ -73,8 +73,6 @@ function CorrelationIdHandler:access(conf)
     end
   end
 
-  kong.log.set_serialize_value("correlation_id", correlation_id)
-
   if conf.echo_downstream then
     -- For later use, to echo it back downstream
     kong.ctx.plugin.correlation_id = correlation_id

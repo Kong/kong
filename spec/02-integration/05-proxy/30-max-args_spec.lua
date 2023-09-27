@@ -201,8 +201,6 @@ for _, strategy in helpers.each_strategy() do
           lua_max_uri_args = n ~= 100 and n or nil,
           lua_max_post_args = n ~= 100 and n or nil,
           log_level = "debug",
-          headers_upstream = "off",
-          headers = "off"
         })
       end)
 

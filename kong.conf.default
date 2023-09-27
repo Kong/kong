@@ -250,18 +250,14 @@
 #error_template_html =           # Path to the custom html error template to
                                  # override the default html kong error template.
                                  #
-                                 # The template may contain up to two `%s` placeholders.
-                                 # The first one will expand to the error message.
-                                 # The second one will expand to the request ID.
-                                 # Both placeholders are optional, but recommended.
-                                 # Adding more than two placeholders will result in a runtime error
-                                 # when trying to render the template:
+                                 # The template is required to contain one single `%s`
+                                 # placeholder for the error message, as in the
+                                 # following example:
                                  # ```
                                  # <html>
                                  #   <body>
                                  #     <h1>My custom error template</h1>
-                                 #     <p>error: %s</p>
-                                 #     <p>request_id: %s</p>
+                                 #     <p>%s.</p>
                                  #   </body>
                                  # </html>
                                  # ```
@@ -270,22 +266,22 @@
                                  # override the default json kong error template.
                                  #
                                  # Similarly to `error_template_html`, the template
-                                 # may contain up to two `%s` placeholders for
-                                 # the error message and the request ID respectively.
+                                 # is required to contain one single `%s` placeholder for
+                                 # the error message.
 
 #error_template_xml =            # Path to the custom xml error template to
                                  # override the default xml kong error template
                                  #
                                  # Similarly to `error_template_html`, the template
-                                 # may contain up to two `%s` placeholders for
-                                 # the error message and the request ID respectively.
+                                 # is required to contain one single `%s` placeholder for
+                                 # the error message.
 
 #error_template_plain =          # Path to the custom plain error template to
                                  # override the default plain kong error template
                                  #
                                  # Similarly to `error_template_html`, the template
-                                 # may contain up to two `%s` placeholders for
-                                 # the error message and the request ID respectively.
+                                 # is required to contain one single `%s` placeholder for
+                                 # the error message.
 
 #------------------------------------------------------------------------------
 # HYBRID MODE
@@ -962,7 +958,7 @@
                                  #
                                  # See docs for `ssl_cert_key` for detailed usage.
 
-#headers = server_tokens, latency_tokens, X-Kong-Request-Id
+#headers = server_tokens, latency_tokens
                                  # Comma-separated list of headers Kong should
                                  # inject in client responses.
                                  #
@@ -992,8 +988,6 @@
                                  #   This is particularly useful for clients to
                                  #   distinguish upstream statuses if the
                                  #   response is rewritten by a plugin.
-                                 # - `X-Kong-Request-Id`: Unique identifier of
-                                 #   the request.
                                  # - `server_tokens`: Same as specifying both
                                  #   `Server` and `Via`.
                                  # - `latency_tokens`: Same as specifying
@@ -1009,20 +1003,6 @@
                                  # headers of their own.
                                  #
                                  # Example: `headers = via, latency_tokens`
-
-#headers_upstream = X-Kong-Request-Id
-                                 # Comma-separated list of headers Kong should
-                                 # inject in requests to upstream.
-                                 #
-                                 # At this time, the only accepted value is:
-                                 # - `X-Kong-Request-Id`: Unique identifier of
-                                 #   the request.
-                                 #
-                                 # In addition, this value can be set
-                                 # to `off`, which prevents Kong from injecting
-                                 # the above header. Note that this
-                                 # does not prevent plugins from injecting
-                                 # headers of their own.
 
 #trusted_ips =                   # Defines trusted IP addresses blocks that are
                                  # known to send correct `X-Forwarded-*`

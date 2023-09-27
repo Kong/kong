@@ -6,7 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local pdk_tracer = require "kong.pdk.tracing".new()
-local request_id = require "kong.tracing.request_id"
 local buffer = require "string.buffer"
 local utils = require "kong.tools.utils"
 local tablepool = require "tablepool"
@@ -255,7 +254,6 @@ function _M.request(ctx)
       ["http.flavor"] = http_flavor,
       ["http.client_ip"] = client.get_forwarded_ip(),
       ["net.peer.ip"] = client.get_ip(),
-      ["kong.request.id"] = request_id.get(),
     },
   })
 
