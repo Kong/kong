@@ -493,7 +493,7 @@ server {
         etag off;
     }
 
-    location ~* \.(jpg|jpeg|png|gif|ico|css|ttf|js)$ {
+    location ~* \.(jpg|jpeg|png|gif|ico|css|ttf|js|svg)$ {
         root portal;
 
         header_filter_by_lua_block {
@@ -508,6 +508,7 @@ server {
 
         expires 90d;
         add_header Cache-Control 'public';
+        add_header Content-Security-Policy "default-src 'none'";
         add_header X-Frame-Options 'sameorigin';
         add_header X-XSS-Protection '1; mode=block';
         add_header X-Content-Type-Options 'nosniff';

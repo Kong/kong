@@ -1,0 +1,8 @@
+message: "Enforce Content Security Policy (CSP) headers while serving static resources via Dev Portal and Kong Manager"
+type: bugfix
+prs:
+  - 6543
+jiras:
+  - "KAG-1671"
+  - "SEC-910"
+scope: Core

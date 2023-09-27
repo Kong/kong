@@ -89,10 +89,11 @@ location ~* ^$(admin_gui_path_prefix)(?<path>/.*\.(jpg|jpeg|png|gif|svg|ico|css|
 
     expires 90d;
     add_header Cache-Control 'public';
-    add_header X-Frame-Options 'sameorigin';
-    add_header X-XSS-Protection '1; mode=block';
+    add_header Content-Security-Policy "default-src 'none'";
     add_header X-Content-Type-Options 'nosniff';
+    add_header X-Frame-Options 'sameorigin';
     add_header X-Permitted-Cross-Domain-Policies 'master-only';
+    add_header X-XSS-Protection '1; mode=block';
     etag off;
 
 > if admin_gui_rewrite then
