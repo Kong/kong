@@ -1,0 +1,3 @@
+message: bump submodule kong-openid-connect to 2.5.7
+type: dependency
+scope: Core
