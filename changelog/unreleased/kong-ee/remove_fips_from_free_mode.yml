@@ -1,0 +1,5 @@
+message: |
+  lazily enable FIPS mode after a valid license is received and only emit a warning
+  instead of blocking Kong to start.
+type: bugfix
+scope: Configuration

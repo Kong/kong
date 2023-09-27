@@ -23,6 +23,8 @@ local counters = require "kong.workspaces.counters"
 local workspace_config = require "kong.portal.workspace_config"
 local websocket = require "kong.enterprise_edition.runloop.websocket"
 local admin_gui_utils = require "kong.admin_gui.utils"
+local openssl = require "resty.openssl"
+local openssl_version = require "resty.openssl.version"
 
 local cjson = require "cjson.safe"
 
@@ -226,6 +228,24 @@ function _M.license_hooks(config)
     app:before_filter(license_helpers.license_can_proceed)
 
     return true
+  end)
+
+  -- fips validation
+  hooks.register_hook("fips:kong:validate", function(l_type)
+    if l_type == 'free' then
+      kong.log.warn("FIPS mode is not supported in Free mode. Please reach out to " ..
+                    "Kong if you are interested in using Kong FIPS compliant artifacts")
+      return
+    end
+
+    local ok, err = openssl.set_fips_mode(true)
+    if not ok or not openssl.get_fips_mode() then
+      kong.log.err("cannot enable FIPS mode: " .. (err or "nil"))
+      return
+    end
+
+    kong.log.warn("enabling FIPS mode on ", openssl_version.version_text,
+                  " (", openssl_version.version(openssl_version.CFLAGS), ")")
   end)
 
   -- add license info

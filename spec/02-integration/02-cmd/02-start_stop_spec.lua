@@ -183,11 +183,11 @@ describe("kong start/stop #" .. strategy, function()
     }))
   end)
 
-  it("kong startup failed when no license and fips is on" , function()
+  it("kong reports FIPS not supported warning when no license and fips is on" , function()
     local license_env = os.getenv("KONG_LICENSE_DATA")
     helpers.setenv("KONG_LICENSE_DATA", "")
 
-    local ok, stderr = kong_exec("start", {
+    local _, stderr = kong_exec("start", {
       fips = "on",
     })
     kong_exec("stop", {})
@@ -197,7 +197,7 @@ describe("kong start/stop #" .. strategy, function()
     end
 
     assert.is_string(stderr)
-    assert.matches("FIPS mode is not supported in Free mode. Please reach out to Kong if you are interested in using Kong FIPS compliant artifacts", stderr, nil, true)
+    assert.matches("Kong is started without a valid license while FIPS mode is set", stderr, nil, true)
   end)
 
   it("kong startup success with a valid license and configuration fips" , function()
@@ -205,7 +205,7 @@ describe("kong start/stop #" .. strategy, function()
 
     helpers.setenv("KONG_LICENSE_DATA", pl_file.read("spec-ee/fixtures/mock_license.json"))
 
-    local ok, stderr = kong_exec("start", {
+    local _, stderr = kong_exec("start", {
       fips = "on",
     })
     kong_exec("stop", {})
@@ -215,7 +215,27 @@ describe("kong start/stop #" .. strategy, function()
     end
 
     if type(stderr) == "string" then
-        assert.not_matches("FIPS mode is not supported in Free mode. Please reach out to Kong if you are interested in using Kong FIPS compliant artifacts", stderr, nil, true)
+        assert.not_matches("Kong is started without a valid license while FIPS mode is set", stderr, nil, true)
+    end
+  end)
+
+  it("should issues a FIPS enabling log when starting with valid license and fips-on" , function()
+    local license_env = os.getenv("KONG_LICENSE_DATA")
+
+    helpers.setenv("KONG_LICENSE_DATA", pl_file.read("spec-ee/fixtures/mock_license.json"))
+
+    local _, stderr = kong_exec("start", {
+      fips = "on",
+      role = "control_plane",
+    })
+    kong_exec("stop", {})
+
+    if type(license_env) == "string" then
+      helpers.setenv("KONG_LICENSE_DATA", license_env)
+    end
+
+    if type(stderr) == "string" then
+        assert.not_matches("enabling FIPS mode on OpenSSL", stderr, nil, true)
     end
   end)
 

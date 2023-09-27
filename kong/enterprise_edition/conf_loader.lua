@@ -775,21 +775,22 @@ local function validate_fips(conf, errors)
 
   local license = licensing(conf)
 
+  conf.ssl_cipher_suite = "fips"
+
   if conf.fips and license.l_type == "free" then
-    error("FIPS mode is not supported in Free mode. Please reach out to " ..
-          "Kong if you are interested in using Kong FIPS compliant artifacts")
-  end
-
-  log.debug("enabling FIPS mode %s on %s (%s)",
-            (license.l_type == "full_expired" and "with expired license" or ""),
-            openssl_version.version_text,
-            openssl_version.version(openssl_version.CFLAGS))
-
-  local ok, err = openssl.set_fips_mode(true)
-  if not ok or not openssl.get_fips_mode() then
-    errors[#errors + 1] = "cannot enable FIPS mode: " .. (err or "nil")
+    ngx.log(ngx.WARN, "Kong is started without a valid license while FIPS mode is set. " ..
+                      "Kong will not operate in FIPS mode until a license is received from " ..
+                      "Control Plane. Please reach out to Kong if you are interested in " ..
+                      "using Kong FIPS compliant artifacts. ")
   else
-    conf.ssl_cipher_suite = "fips"
+    log.debug("enabling FIPS mode on %s (%s)",
+              openssl_version.version_text,
+              openssl_version.version(openssl_version.CFLAGS))
+
+    local ok, err = openssl.set_fips_mode(true)
+    if not ok or not openssl.get_fips_mode() then
+      errors[#errors + 1] = "cannot enable FIPS mode: " .. (err or "nil")
+    end
   end
 
   return errors
