@@ -429,6 +429,14 @@ jobs:
           PACKAGE_DISTRO=${{ matrix.package-distro }}
           EE_PORTS=8002 8445 8003 8446 8004 8447
 
+        # these 2 options are needed so that the MediaType of the manifest is
+        # OCI-compliant for other downstream integrations
+        # see also:
+        #   - https://github.com/docker/buildx/issues/1507
+        #   - https://github.com/docker/buildx/issues/1509#issuecomment-1378538197
+        provenance: false
+        outputs: type=image,oci-mediatypes=true
+
     - name: Comment on commit
       if: github.event_name == 'push' && matrix.label == 'ubuntu'
       uses: peter-evans/commit-comment@76d2ae14b83cd171cd38507097b9616bb9ca7cb6 # v2.0.1
