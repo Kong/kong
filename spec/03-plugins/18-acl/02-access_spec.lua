@@ -822,8 +822,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("Unauthorized", json.message)
+        assert.same({ message = "Unauthorized" }, json)
       end)
 
       it("should fail when an authentication plugin is missing (with credential)", function()
@@ -834,8 +833,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         local body = assert.res_status(403, res)
         local json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("You cannot consume this service", json.message)
+        assert.same({ message = "You cannot consume this service" }, json)
       end)
 
       it("should fail when not allowed", function()
@@ -846,8 +844,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         local body = assert.res_status(403, res)
         local json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("You cannot consume this service", json.message)
+        assert.same({ message = "You cannot consume this service" }, json)
       end)
 
       it("should fail when not allowed with authenticated groups", function()
@@ -858,8 +855,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         local body = assert.res_status(403, res)
         local json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("You cannot consume this service", json.message)
+        assert.same({ message = "You cannot consume this service" }, json)
       end)
 
       it("should work when allowed", function()
@@ -954,8 +950,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         local body = assert.res_status(403, res)
         local json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("You cannot consume this service", json.message)
+        assert.same({ message = "You cannot consume this service" }, json)
       end)
 
       it("should fail when denied with authenticated groups", function()
@@ -966,8 +961,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         local body = assert.res_status(403, res)
         local json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("You cannot consume this service", json.message)
+        assert.same({ message = "You cannot consume this service" }, json)
       end)
 
       it("should fail denied and with no authenticated groups", function()
@@ -978,8 +972,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("Unauthorized", json.message)
+        assert.same({ message = "Unauthorized" }, json)
       end)
     end)
 
@@ -1014,8 +1007,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         local body = assert.res_status(403, res)
         local json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("You cannot consume this service", json.message)
+        assert.same({ message = "You cannot consume this service" }, json)
       end)
 
       it("should fail when not allowed with authenticated groups", function()
@@ -1026,8 +1018,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         local body = assert.res_status(403, res)
         local json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("You cannot consume this service", json.message)
+        assert.same({ message = "You cannot consume this service" }, json)
       end)
 
       it("should fail when denied", function()
@@ -1038,8 +1029,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         local body = assert.res_status(403, res)
         local json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("You cannot consume this service", json.message)
+        assert.same({ message = "You cannot consume this service" }, json)
       end)
 
       it("should fail when denied with authenticated groups", function()
@@ -1050,8 +1040,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         local body = assert.res_status(403, res)
         local json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("You cannot consume this service", json.message)
+        assert.same({ message = "You cannot consume this service" }, json)
       end)
 
 
@@ -1081,8 +1070,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         local body = assert.res_status(403, res)
         local json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("You cannot consume this service", json.message)
+        assert.same({ message = "You cannot consume this service" }, json)
       end)
 
       it("should not work when one of the ACLs denied with authenticated groups", function()
@@ -1093,8 +1081,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         local body = assert.res_status(403, res)
         local json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("You cannot consume this service", json.message)
+        assert.same({ message = "You cannot consume this service" }, json)
       end)
 
       it("should work when one of the ACLs is allowed", function()
@@ -1123,8 +1110,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         local body = assert.res_status(403, res)
         local json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("You cannot consume this service", json.message)
+        assert.same({ message = "You cannot consume this service" }, json)
       end)
 
       it("should not work when at least one of the ACLs denied with authenticated groups", function()
@@ -1135,8 +1121,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         local body = assert.res_status(403, res)
         local json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("You cannot consume this service", json.message)
+        assert.same({ message = "You cannot consume this service" }, json)
       end)
     end)
 
@@ -1345,8 +1330,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         local body = assert.res_status(403, res)
         local json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("You cannot consume this service", json.message)
+        assert.same({ message = "You cannot consume this service" }, json)
       end)
 
       it("authorized groups even when anonymous consumer is present", function()
@@ -1357,8 +1341,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         local body = assert.res_status(403, res)
         local json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("You cannot consume this service", json.message)
+        assert.same({ message = "You cannot consume this service" }, json)
       end)
     end)
 

@@ -12,7 +12,6 @@ local constants    = require "kong.constants"
 local concurrency  = require "kong.concurrency"
 local lrucache     = require "resty.lrucache"
 local ktls         = require "resty.kong.tls"
-local request_id   = require "kong.tracing.request_id"
 
 
 
@@ -43,7 +42,6 @@ local log               = ngx.log
 local exit              = ngx.exit
 local exec              = ngx.exec
 local header            = ngx.header
-local set_header        = ngx.req.set_header
 local timer_at          = ngx.timer.at
 local subsystem         = ngx.config.subsystem
 local clear_header      = ngx.req.clear_header
@@ -1421,17 +1419,6 @@ return {
       if var.http_proxy_connection then
         clear_header("Proxy-Connection")
       end
-
-      -- X-Kong-Request-Id upstream header
-      local rid, rid_get_err = request_id.get()
-      if not rid then
-        log(WARN, "failed to get Request ID: ", rid_get_err)
-      end
-
-      local request_id_header = constants.HEADERS.REQUEST_ID
-      if kong.configuration.enabled_headers_upstream[request_id_header] and rid then
-        set_header(request_id_header, rid)
-      end
     end
   },
   header_filter = {
@@ -1525,17 +1512,6 @@ return {
             header[headers.SERVER] = nil
           end
         end
-      end
-
-      -- X-Kong-Request-Id downstream header
-      local rid, rid_get_err = request_id.get()
-      if not rid then
-        log(WARN, "failed to get Request ID: ", rid_get_err)
-      end
-
-      local request_id_header = constants.HEADERS.REQUEST_ID
-      if kong.configuration.enabled_headers[request_id_header] and rid then
-        header[request_id_header] = rid
       end
     end
   },

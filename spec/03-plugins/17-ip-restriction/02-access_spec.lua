@@ -318,9 +318,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
-
-        assert.not_nil(json)
-        assert.matches("Forbidden", json.message)
+        assert.same({ message = "Forbidden" }, json)
       end)
 
       it("blocks a request when the IP is denied #grpc", function()

@@ -116,7 +116,6 @@ local constants = {
     FORWARDED_PATH = "X-Forwarded-Path",
     FORWARDED_PREFIX = "X-Forwarded-Prefix",
     ANONYMOUS = "X-Anonymous-Consumer",
-    REQUEST_ID = "X-Kong-Request-Id",
     VIA = "Via",
     SERVER = "Server"
   },

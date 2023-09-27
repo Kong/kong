@@ -362,8 +362,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(401, res)
         body = cjson.decode(body)
-        assert.not_nil(body.message)
-        assert.matches("HMAC signature cannot be verified", body.message)
+        assert.same({ message = "HMAC signature cannot be verified" }, body)
       end)
 
       it("should not pass with signature missing", function()
@@ -382,8 +381,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(401, res)
         body = cjson.decode(body)
-        assert.not_nil(body.message)
-        assert.matches("HMAC signature cannot be verified", body.message)
+        assert.same({ message = "HMAC signature cannot be verified" }, body)
       end)
 
       it("should pass with GET", function()
