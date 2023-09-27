@@ -39,5 +39,11 @@ return {
                       default = "unknown",
                     }
     },
+    { labels = { type = "map",
+                 keys = { type = "string" },
+                 values = { type = "string" },
+                 description = "Custom key value pairs as meta-data for DPs.",
+               },
+    },
   },
 }

@@ -60,4 +60,17 @@ describe("plugins", function()
     assert.is_true(ok)
     assert.is_nil(err)
   end)
+
+  it("accepts labels", function()
+    local ok, err = validate({
+      ip = "127.0.0.1",
+      hostname = "dp.example.com",
+      labels = {
+        deployment = "mycloud",
+        region = "us-east-1"
+      }
+    })
+    assert.is_true(ok)
+    assert.is_nil(err)
+  end)
 end)
