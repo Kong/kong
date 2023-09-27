@@ -206,9 +206,7 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(401, res)
         local body = assert.res_status(401, res)
-        local json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("No API key found in request", json.message)
+        assert.same({message = "No API key found in request"}, cjson.decode(body))
       end)
       it("returns Unauthorized on missing credentials", function()
         local res = assert(proxy_client:send {
@@ -220,8 +218,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("No API key found in request", json.message)
+        assert.same({ message = "No API key found in request" }, json)
       end)
       it("returns Unauthorized on empty key header", function()
         local res = assert(proxy_client:send {
@@ -234,8 +231,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("No API key found in request", json.message)
+        assert.same({ message = "No API key found in request" }, json)
       end)
       it("returns Unauthorized on empty key querystring", function()
         local res = assert(proxy_client:send {
@@ -247,8 +243,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("No API key found in request", json.message)
+        assert.same({ message = "No API key found in request" }, json)
       end)
       it("returns WWW-Authenticate header on missing credentials", function()
         local res = assert(proxy_client:send {
@@ -284,8 +279,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("Invalid authentication credentials", json.message)
+        assert.same({ message = "Invalid authentication credentials" }, json)
       end)
       it("handles duplicated key in querystring", function()
         local res = assert(proxy_client:send {
@@ -297,8 +291,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("Duplicate API key found", json.message)
+        assert.same({ message = "Duplicate API key found" }, json)
       end)
     end)
 
@@ -358,8 +351,7 @@ for _, strategy in helpers.each_strategy() do
             })
             local body = assert.res_status(401, res)
             local json = cjson.decode(body)
-            assert.not_nil(json)
-            assert.matches("Invalid authentication credentials", json.message)
+            assert.same({ message = "Invalid authentication credentials" }, json)
           end)
 
           -- lua-multipart doesn't currently handle duplicates at all.
@@ -379,8 +371,7 @@ for _, strategy in helpers.each_strategy() do
               })
               local body = assert.res_status(401, res)
               local json = cjson.decode(body)
-              assert.not_nil(json)
-              assert.matches("Duplicate API key found", json.message)
+              assert.same({ message = "Duplicate API key found" }, json)
             end)
           end
 
@@ -395,8 +386,7 @@ for _, strategy in helpers.each_strategy() do
               })
               local body = assert.res_status(401, res)
               local json = cjson.decode(body)
-              assert.not_nil(json)
-              assert.matches("Duplicate API key found", json.message)
+              assert.same({ message = "Duplicate API key found" }, json)
             end)
 
             it("does not identify apikey[] as api keys", function()
@@ -409,8 +399,7 @@ for _, strategy in helpers.each_strategy() do
               })
               local body = assert.res_status(401, res)
               local json = cjson.decode(body)
-              assert.not_nil(json)
-              assert.matches("No API key found in request", json.message)
+              assert.same({ message = "No API key found in request" }, json)
             end)
 
             it("does not identify apikey[1] as api keys", function()
@@ -423,8 +412,7 @@ for _, strategy in helpers.each_strategy() do
               })
               local body = assert.res_status(401, res)
               local json = cjson.decode(body)
-              assert.not_nil(json)
-              assert.matches("No API key found in request", json.message)
+              assert.same({ message = "No API key found in request" }, json)
             end)
           end
         end)
@@ -454,8 +442,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("Invalid authentication credentials", json.message)
+        assert.same({ message = "Invalid authentication credentials" }, json)
       end)
     end)
 
@@ -514,8 +501,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("Invalid authentication credentials", json.message)
+        assert.same({ message = "Invalid authentication credentials" }, json)
 
         res = assert(proxy_client:send {
           method  = "GET",
@@ -527,8 +513,7 @@ for _, strategy in helpers.each_strategy() do
         })
         body = assert.res_status(401, res)
         json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("Invalid authentication credentials", json.message)
+        assert.same({ message = "Invalid authentication credentials" }, json)
       end)
     end)
 
@@ -657,8 +642,7 @@ for _, strategy in helpers.each_strategy() do
 
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("No API key found in request", json.message)
+        assert.same({ message = "No API key found in request" }, json)
       end)
     end)
 

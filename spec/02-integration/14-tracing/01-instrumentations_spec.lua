@@ -438,15 +438,14 @@ for _, strategy in helpers.each_strategy() do
 
         -- span attributes check
         assert_has_attributes(kong_span, {
-          ["http.method"]     = "GET",
-          ["http.url"]        = "http://status/status/200",
-          ["http.route"]      = "/status",
-          ["http.host"]       = "status",
-          ["http.scheme"]     = "http",
-          ["http.flavor"]     = "1.1",
-          ["http.client_ip"]  = "127.0.0.1",
-          ["net.peer.ip"]     = "127.0.0.1",
-          ["kong.request.id"] = "^[0-9a-f]+$",
+          ["http.method"]    = "GET",
+          ["http.url"]       = "http://status/status/200",
+          ["http.route"]     = "/status",
+          ["http.host"]      = "status",
+          ["http.scheme"]    = "http",
+          ["http.flavor"]    = "1.1",
+          ["http.client_ip"] = "127.0.0.1",
+          ["net.peer.ip"]    = "127.0.0.1",
         })
 
         assert_has_attributes(dns_span, {

@@ -152,7 +152,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         },
       })
       body = assert.res_status(502, res)
-      assert.matches("An invalid response was received from the upstream server", body)
+      assert.equal("An invalid response was received from the upstream server", body)
       assert.logfile().has.no.line([[upstream SSL certificate does not match]] ..
         [[ "127.0.0.1" while SSL handshaking to upstream]], true, 2)
 
@@ -203,7 +203,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         },
       })
       body = assert.res_status(502, res)
-      assert.matches("An invalid response was received from the upstream server", body)
+      assert.equal("An invalid response was received from the upstream server", body)
       assert.logfile().has.line([[upstream SSL certificate does not match]] ..
         [[ "127.0.0.1" while SSL handshaking to upstream]], true, 2)
 
@@ -582,7 +582,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         },
       })
       body = assert.res_status(502, res)
-      assert.matches("An invalid response was received from the upstream server", body)
+      assert.equal("An invalid response was received from the upstream server", body)
       assert.logfile().has.no.line([[upstream SSL certificate does not match]] ..
         [[ "127.0.0.1" while SSL handshaking to upstream]], true, 2)
 
@@ -621,7 +621,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         },
       })
       body = assert.res_status(502, res)
-      assert.matches("An invalid response was received from the upstream server", body)
+      assert.equal("An invalid response was received from the upstream server", body)
       assert.logfile().has.line([[upstream SSL certificate does not match]] ..
         [[ "127.0.0.1" while SSL handshaking to upstream]], true, 2)
 

@@ -492,7 +492,7 @@ describe("NGINX conf compiler", function()
           nginx_stream_tcp_nodelay = "on",
         }))
         local nginx_conf = prefix_handler.compile_kong_conf(conf)
-        assert.matches("access_log%s/dev/stdout%skong_log_format;", nginx_conf)
+        assert.matches("access_log%s/dev/stdout;", nginx_conf)
         local nginx_conf = prefix_handler.compile_kong_stream_conf(conf)
         assert.matches("access_log%slogs/access.log%sbasic;", nginx_conf)
 
@@ -502,7 +502,7 @@ describe("NGINX conf compiler", function()
           nginx_stream_tcp_nodelay = "on",
         }))
         local nginx_conf = prefix_handler.compile_kong_conf(conf)
-        assert.matches("access_log%slogs/access.log%skong_log_format;", nginx_conf)
+        assert.matches("access_log%slogs/access.log;", nginx_conf)
         local nginx_conf = prefix_handler.compile_kong_stream_conf(conf)
         assert.matches("access_log%s/dev/stdout%scustom;", nginx_conf)
       end)
