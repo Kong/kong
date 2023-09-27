@@ -1,0 +1,28 @@
+name: Close inactive issues
+on:
+  schedule:
+    - cron: "30 1 * * *"
+
+jobs:
+  close-issues:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/stale@v5
+        with:
+          days-before-stale: 14
+          days-before-close: 7
+          stale-issue-label: "stale"
+          stale-issue-message: "This issue is marked as stale because it has been open for 14 days with no activity."
+          close-issue-message: |
+            **This issue is being closed automatically because of lack of activity for 21 days(3 weeks).**
+            We're sorry if your issue is not solved. We apperciate your contribution to the community. Please referer to [our pledge to community](https://github.com/Kong/kong/blob/master/COMMUNITY_PLEDGE.md).
+            Feel free to reopen the issue if you still want to update/get updated.
+          stale-pr-message: "This PR is marked as stale because it has been open for 14 days with no activity."
+          close-pr-message: |
+            **This PR is being closed automatically because of lack of activity for 21 days(3 weeks).**
+            We're sorry for we can not merge your PR. We apperciate your contribution to the community. Please referer to [our pledge to community](https://github.com/Kong/kong/blob/master/COMMUNITY_PLEDGE.md).
+            Feel free to reopen the PR if you still want to maintain the PR.
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
