@@ -82,7 +82,7 @@ describe("cp outage handling storage support: #s3", function()
   end)
 
   lazy_teardown(function()
-    -- luaeck:ignore
+    -- luacheck:ignore
     ngx.time = original_time
   end)
 
