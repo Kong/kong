@@ -11,38 +11,94 @@ local cjson = require("cjson.safe").new()
 
 
 local aws = require("resty.aws")
-local EnvironmentCredentials = require "resty.aws.credentials.EnvironmentCredentials"
-
+local aws_config = require("resty.aws.config")
+local http = require("resty.http")
+local lrucache = require "resty.lrucache"
 
 local fmt = string.format
 local type = type
 local encode_json = cjson.encode
-local getenv = os.getenv
 
 local AWS
-local AWS_REGION
+local AWS_GLOBAL_CONFIG
+local SECRETS_MANAGER_SERVICE_LRU
+
+
+local function get_service_cache_key(conf)
+  -- conf table cannot be used directly because
+  -- it is generated every time when resolving
+  -- reference
+  return fmt("%s:%s:%s:%s", conf.region,
+             conf.endpoint_url,
+             conf.assume_role_arn,
+             conf.role_session_name)
+end
 
 
 local function init()
-  -- might call API and can cause 5 secs latency on startup if not on AWS
-  -- aws_utils.getCurrentRegion()
-  AWS_REGION = getenv("AWS_REGION") or getenv("AWS_DEFAULT_REGION")
+  SECRETS_MANAGER_SERVICE_LRU = lrucache.new(20)
+end
 
-  -- AWS_SECRET_ACCESS_KEY and AWS_ACCESS_KEY_ID will be read
-  -- TODO: validate if they are set. Also allow to have different Credentials. Out of scope for alpha
-  AWS = aws({ credentials = EnvironmentCredentials.new() })
+
+local function initialize_aws()
+  AWS_GLOBAL_CONFIG = aws_config.global
+  -- Initializing with CredentialProviderChain(default) and let it
+  -- auto-detect the credentials for IAM Role.
+  AWS = aws()
+  initialize_aws = nil
 end
 
 
 local function get(conf, resource, version)
-  local region = conf.region or AWS_REGION
+  if initialize_aws then
+    initialize_aws()
+  end
+
+  local region = conf.region or AWS_GLOBAL_CONFIG.region
   if not region then
     return nil, "aws secret manager requires region"
   end
 
-  local sm, err = AWS:SecretsManager({ region = region })
-  if not sm then
-    return nil, fmt("unable to create aws secret manager (%s)", err)
+  local scheme, host, port, _, _ = unpack(http:parse_uri(conf.endpoint_url or fmt("https://secretsmanager.%s.amazonaws.com", region)))
+  local endpoint = scheme .. "://" .. host
+
+  local service_cache_key = get_service_cache_key(conf)
+  local sm_service = SECRETS_MANAGER_SERVICE_LRU:get(service_cache_key)
+  if not sm_service then
+    local credentials = AWS.config.credentials
+    -- Assume role if specified
+    if conf.assume_role_arn then
+      local sts, err = AWS:STS({
+        region = region,
+        stsRegionalEndpoints = AWS_GLOBAL_CONFIG.sts_regional_endpoints,
+      })
+      if not sts then
+        return nil, fmt("unable to create AWS STS (%s)", err)
+      end
+
+      local sts_creds = AWS:ChainableTemporaryCredentials {
+        params = {
+          RoleArn = conf.assume_role_arn,
+          RoleSessionName = conf.role_session_name,
+        },
+        sts = sts,
+      }
+
+      credentials = sts_creds
+    end
+
+    local err
+    sm_service, err = AWS:SecretsManager({
+      credentials = credentials,
+      region = region,
+      endpoint = endpoint,
+      port = port,
+    })
+    if not sm_service then
+      return nil, fmt("unable to create aws secret manager (%s)", err)
+    end
+
+    SECRETS_MANAGER_SERVICE_LRU:set(service_cache_key, sm_service)
   end
 
   if not version or version == 1 then
@@ -53,8 +109,7 @@ local function get(conf, resource, version)
     return nil, "invalid version for aws secret manager"
   end
 
-  local res
-  res, err = sm:getSecretValue({
+  local res, err = sm_service:getSecretValue({
     SecretId = resource,
     VersionStage = version,
   })

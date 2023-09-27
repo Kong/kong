@@ -1,0 +1,3 @@
+message: aws vault backend use credential provider chain and support role assuming
+type: feature
+scope: Core

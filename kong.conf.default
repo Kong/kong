@@ -1678,6 +1678,26 @@
 
 #vault_aws_region =              # The AWS region your vault is located in.
 
+#vault_aws_endpoint_url =        # The AWS SecretsManager service endpoint url.
+                                 # If not specified, the value used by vault will
+                                 # be the official AWS SecretsManager service url
+                                 # which is
+                                 # `https://secretsmanager.<region>.amazonaws.com`
+                                 # You can specify a complete URL(including
+                                 # the "http/https" scheme) to override the
+                                 # endpoint that vault will connect to.
+
+#vault_aws_assume_role_arn =     # The target AWS IAM role ARN that will be
+                                 # assumed. Typically this is used for
+                                 # operating between multiple roles
+                                 # or cross-accounts.
+                                 # If you are not using assume role
+                                 # you should not specify this value.
+
+#vault_aws_role_session_name = KongVault  # The role session name used for role
+                                          # assuming. The default value is
+                                          # `KongVault`.
+
 #vault_aws_ttl = 0               # Time-to-live (in seconds) of a secret from
                                  # the AWS vault when cached by this node.
                                  #

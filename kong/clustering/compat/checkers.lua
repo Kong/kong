@@ -36,8 +36,31 @@ end
 
 
 local compatible_checkers = {
-  { 3004001000, --[[ 3.4.1.0 ]]
-    function (config_table, dp_version, log_suffix)
+  { 3005000000, --[[ 3.5.0.0 ]]
+    function(config_table, dp_version, log_suffix)
+      local has_update
+
+      for _, vault in ipairs(config_table.vaults or {}) do
+        local name = vault.name
+        if name == "aws" then
+          for _, parameter in ipairs({ "endpoint_url", "assume_role_arn", "role_session_name" }) do
+            if vault.config[parameter] then
+              log_warn_message('contains configuration vaults.aws.' .. parameter,
+                               'be removed',
+                               dp_version, log_suffix)
+              vault.config[parameter] = nil
+              has_update = true
+            end
+          end
+        end
+      end
+
+      return has_update
+    end
+  },
+
+  { 3004001000, --[[3.4.1.0]]
+    function(config_table, dp_version, log_suffix)
       local has_update
       -- redis in cluster mode is not suppported until 3.4.1.0
       for _, plugin in ipairs(config_table.plugins or {}) do
