@@ -209,4 +209,7 @@ admin_gui_api_url =
 wasm = off
 wasm_filters_path = NONE
 wasm_dynamic_module = NONE
+
+request_debug = on
+request_debug_token = 
 ]]
