@@ -191,6 +191,8 @@ to verify a few things:
   development documentation for additional details)
 - The tests are passing: run `make test`, `make test-all`, or whichever is
   appropriate for your change
+- Do not update `CHANGELOG.md` inside your Pull Request. This file is automatically regenerated
+  and maintained during the release process.
 
 If the above guidelines are respected, your Pull Request has all its chances
 to be considered and will be reviewed by a maintainer.
@@ -541,9 +543,10 @@ language you are using. :smile:
 #### Adding Changelog
 
 Every patch, except those 
-documentation-only changes, requires a changelog entry to present.
+documentation-only changes, requires a changelog entry to be present inside your Pull Request.
 
-Please follow [instruction](#https://github.com/Kong/kong/tree/master/CHANGELOG) to include in your Pull Request.
+Please follow [the changelog instructions](https://github.com/Kong/gateway-changelog)
+to create the appropriate changelog file your Pull Request.
 
 [Back to TOC](#table-of-contents)
 
