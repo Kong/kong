@@ -4,11 +4,12 @@
 local table_new = require "table.new"
 local table_clear = require "table.clear"
 
-local debug_mode  = kong.configuration.log_level == "debug"
-local error       = error
-local get_phase   = ngx.get_phase
-local var         = ngx.var
-local log         = ngx.log
+local debug_mode   = kong.configuration.log_level == "debug"
+local error        = error
+local rawset       = rawset
+local setmetatable = setmetatable
+local get_phase    = ngx.get_phase
+local var          = ngx.var
 
 
 local NGX_VAR_PHASES = {
