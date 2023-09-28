@@ -16,7 +16,6 @@ local inspect = require "inspect"
 local ngx_ssl = require "ngx.ssl"
 local phase_checker = require "kong.pdk.private.phases"
 local utils = require "kong.tools.utils"
-local request_id = require "kong.tracing.request_id"
 local cycle_aware_deep_copy = utils.cycle_aware_deep_copy
 
 local sub = string.sub
@@ -37,6 +36,7 @@ local kong = kong
 local check_phase = phase_checker.check
 local split = utils.split
 local byte = string.byte
+local request_id_get = require "kong.tracing.request_id".get
 
 
 local _PREFIX = "[kong] "
@@ -817,7 +817,7 @@ do
 
       local root = {
         request = {
-          id = request_id.get() or "",
+          id = request_id_get() or "",
           uri = request_uri,
           url = var.scheme .. "://" .. var.host .. ":" .. host_port .. request_uri,
           querystring = okong.request.get_query(), -- parameters, as a table

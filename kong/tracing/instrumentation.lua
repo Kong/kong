@@ -1,5 +1,4 @@
 local pdk_tracer = require "kong.pdk.tracing".new()
-local request_id = require "kong.tracing.request_id"
 local buffer = require "string.buffer"
 local utils = require "kong.tools.utils"
 local tablepool = require "tablepool"
@@ -27,6 +26,7 @@ local setmetatable = setmetatable
 local cjson_encode = cjson.encode
 local _log_prefix = "[tracing] "
 local split = ngx_re.split
+local request_id_get = require "kong.tracing.request_id".get
 
 local _M = {}
 local tracer = pdk_tracer
@@ -248,7 +248,7 @@ function _M.request(ctx)
       ["http.flavor"] = http_flavor,
       ["http.client_ip"] = client.get_forwarded_ip(),
       ["net.peer.ip"] = client.get_ip(),
-      ["kong.request.id"] = request_id.get(),
+      ["kong.request.id"] = request_id_get(),
     },
   })
 
