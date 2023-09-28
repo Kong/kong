@@ -16,6 +16,7 @@ local cjson = require "cjson.safe"
 local checks = require "kong.pdk.private.checks"
 local phase_checker = require "kong.pdk.private.phases"
 local utils = require "kong.tools.utils"
+local request_id = require "kong.tracing.request_id"
 
 
 local ngx = ngx
@@ -1169,7 +1170,8 @@ local function new(self, major_version)
     local body
     if content_type ~= CONTENT_TYPE_GRPC then
       local actual_message = message or get_http_error_message(status)
-      body = fmt(utils.get_error_template(content_type), actual_message)
+      local rid = request_id.get() or ""
+      body = fmt(utils.get_error_template(content_type), actual_message, rid)
     end
 
     local ctx = ngx.ctx
