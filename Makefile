@@ -8,7 +8,7 @@ BUSTED_ARGS ?= -v
 TEST_CMD ?= bin/busted $(BUSTED_ARGS)
 
 BUILD_NAME ?= kong-dev
-BAZEL_ARGS ?= --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME) --//:skip_webui=true
+BAZEL_ARGS ?= --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME) --//:skip_webui=true  --//:skip_tools=true
 
 ifeq ($(OS), darwin)
 HOMEBREW_DIR ?= /opt/homebrew

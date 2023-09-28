@@ -10,9 +10,11 @@
 /usr/local/share/lua/**
 /etc/kong/kong.conf.default
 /etc/kong/kong.logrotate
+/usr/local/kong-tools/bin/curl
 /usr/local/kong/include/kong/pluginsocket.proto
 /usr/local/kong/include/google/protobuf/**.proto
 /usr/local/kong/include/openssl/**.h
+/usr/local/kong-tools/ssl/**
 /etc/ssl/certs/ca-certificates.crt
 /etc/pki/tls/certs/ca-bundle.crt
 /etc/ssl/ca-bundle.pem

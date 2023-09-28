@@ -114,6 +114,8 @@ def ee_suites(expect, fips: bool = False):
             .text_content.matches("\[fips_sect\]") \
             .text_content.matches("module-mac = [A-F:\d]+")
 
+    expect("/usr/local/kong-tools/bin/curl", "included curl binary exists")\
+        .mode.equals('0755')
 
 def libc_libcpp_suites(expect, libc_max_version: str = None, libcxx_max_version: str = None, cxxabi_max_version: str = None):
     if libc_max_version:
@@ -164,12 +166,15 @@ def docker_suites(expect):
             .uid.equals(kong_uid) \
             .gid.equals(kong_gid)
 
-    expect((
-        "/etc/ssl/certs/ca-certificates.crt", #Debian/Ubuntu/Gentoo
-        "/etc/pki/tls/certs/ca-bundle.crt", #Fedora/RHEL 6
-        "/etc/ssl/ca-bundle.pem", #OpenSUSE
-        "/etc/pki/tls/cacert.pem", #OpenELEC
-        "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem", #CentOS/RHEL 7
-        "/etc/ssl/cert.pem", #OpenBSD, Alpine
-    ), "ca-certiticates exists") \
-        .exists()
+    expect(
+        (
+            "/usr/local/kong/ssl/cacerts*.pem",
+            "/etc/ssl/certs/ca-certificates.crt", #Debian/Ubuntu/Gentoo
+            "/etc/pki/tls/certs/ca-bundle.crt", #Fedora/RHEL 6
+            "/etc/ssl/ca-bundle.pem", #OpenSUSE
+            "/etc/pki/tls/cacert.pem", #OpenELEC
+            "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem", #CentOS/RHEL 7
+            "/etc/ssl/cert.pem", #OpenBSD, Alpine
+        ),
+        "ca-certificates exists"
+    ).exists()

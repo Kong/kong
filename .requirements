@@ -36,5 +36,9 @@ OPENSSL_FIPS_PROVIDER=3.0.8
 
 KONGROCKS=v1.2.4
 
-# EE dependencies >
+# EE Debugging tools
+CURL=8.3.0
+CA_CERTS=2023-08-22
+NGHTTP2=1.56.0
 
+# EE dependencies >

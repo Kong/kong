@@ -50,6 +50,9 @@ contents:
   dst: /usr/share/doc/kong-enterprise-edition/copyright
 - src: kong/portal/migrations/portal_manifest.json
   dst: /usr/local/kong/portal_manifest.json
+- src: nfpm-prefix/kong-tools
+  dst: /usr/local/kong-tools
+  type: tree
 scripts:
   postinstall: ./build/package/postinstall.sh
 replaces:

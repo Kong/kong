@@ -172,7 +172,7 @@ jobs:
           yum groupinstall -y 'Development Tools'
           yum install -y wget zlib-devel openssl-devel curl-devel expat-devel gettext-devel perl-CPAN perl-devel
         fi
-        wget https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.41.0.tar.gz
+        wget -nv https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.41.0.tar.gz
         tar xf git-2.41.0.tar.gz
         cd git-2.41.0
 
@@ -275,6 +275,10 @@ jobs:
       run: |
         bazel build --config release :kong_${{ matrix.package }} --verbose_failures ${{ matrix.bazel-args }}
 
+        for package in bazel-bin/pkg/*.*; do
+          dpkg-deb -f "${package}" || tar -Oxf "${package}" .PKGINFO || true
+        done
+
     - name: Package Kong - rpm
       if: matrix.package == 'rpm' && steps.cache-deps.outputs.cache-hit != 'true'
       env:
@@ -289,12 +293,17 @@ jobs:
 
         bazel build --config release :kong_${{ matrix.package-type }} --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel-args }}
 
+        for package in bazel-bin/pkg/*.*; do
+          rpm -qipR "${package}" || true
+        done
+
     - name: Bazel Debug Outputs
       if: failure()
       run: |
-        cat bazel-out/_tmp/actions/stderr-*
+        tail -n500 git-*/config.log || true
+        tail -n500 bazel-out/_tmp/actions/std* || true
         sudo dmesg || true
-        tail -n500 bazel-out/**/*/CMake.log || true
+        find bazel-*/ -name '*.log' | xargs tail -n500 || true
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v3

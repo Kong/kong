@@ -67,3 +67,7 @@ toolchain_repositories()
 load("//build/toolchain:managed_toolchain.bzl", "register_all_toolchains")
 
 register_all_toolchains()
+
+load("//build/curl:repositories.bzl", "curl_repositories")
+
+curl_repositories()

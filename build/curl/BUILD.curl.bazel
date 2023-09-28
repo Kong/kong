@@ -1,0 +1,98 @@
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make")
+load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
+load("@kong_bindings//:variables.bzl", "KONG_VAR")
+
+filegroup(
+    name = "all_srcs",
+    srcs = glob(
+        include = ["**"],
+        exclude = ["*.bazel"],
+    ),
+)
+
+copy_file(
+    name = "cacerts",
+    src = "@cacerts-bundle//file",
+    out = "ssl/cacerts-%s.pem" % KONG_VAR["CA_CERTS"],
+    visibility = ["//visibility:public"],
+)
+
+configure_make(
+    name = "curl",
+    autoconf = True,
+    configure_in_place = True,
+    configure_options = [
+        "--disable-debug",
+        "--disable-dependency-tracking",
+        "--disable-ldap",
+        "--disable-shared",
+        "--disable-silent-rules",
+        "--enable-static",
+        "--enable-websockets",
+        "--with-ca-bundle=%s/kong-tools/ssl/cacerts.pem" % KONG_VAR["INSTALL_DESTDIR"],
+        "--with-ca-fallback",
+        "--with-default-ssl-backend=openssl",
+        "--with-nghttp2=$$EXT_BUILD_DEPS$$/nghttp2",
+        "--with-ssl=$$EXT_BUILD_DEPS$$/openssl",
+        "--without-brotli",
+        "--without-ca-path",
+        "--without-libidn2",
+        "--without-libpsl",
+        "--without-librtmp",
+        "--without-libssh",
+        "--without-libssh2",
+        "--without-zstd",
+    ] + select({
+        "@kong//:aarch64-linux-anylibc-cross": [
+            "--host=aarch64-linux",
+        ],
+        "@kong//:x86_64-linux-musl-cross": [
+            "--host=x86_64-linux-musl",
+        ],
+        "//conditions:default": [],
+    }) + select({
+        "@kong//:any-cross": [
+            "--with-zlib=$$EXT_BUILD_DEPS$$/zlib",
+        ],
+        "//conditions:default": [],
+    }),
+    data = ["ssl/cacerts-%s.pem" % KONG_VAR["CA_CERTS"]],
+    env = {
+        "LT_SYS_LIBRARY_PATH": "%s/kong-tools/lib:%s/kong/lib" % (
+            KONG_VAR["INSTALL_DESTDIR"],
+            KONG_VAR["INSTALL_DESTDIR"],
+        ),
+    } | select({
+        "@platforms//os:macos": {
+            "AR": "/usr/bin/ar",
+        },
+        "//conditions:default": {},
+    }),
+    lib_source = ":all_srcs",
+    out_binaries = [
+        "curl",
+        "curl-config",
+    ],
+    targets = [
+        "-j" + KONG_VAR["NPROC"],
+        "install -j" + KONG_VAR["NPROC"],
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@nghttp2",
+        "@openssl",
+    ] + select({
+        "@kong//:any-cross": [
+            "@cross_deps_zlib//:zlib",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+filegroup(
+    name = "curl_dir",
+    srcs = [
+        ":curl",
+    ],
+    output_group = "gen_dir",
+)

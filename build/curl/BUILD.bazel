@@ -1,0 +1,11 @@
+load("@kong_bindings//:variables.bzl", "KONG_VAR")
+
+# mostly copied from https://github.com/bazelbuild/rules_foreign_cc/tree/main/examples/third_party/curl
+
+exports_files(
+    [
+        "BUILD.curl.bazel",
+        "cacerts-" + KONG_VAR["CA_CERTS"] + ".pem",
+    ],
+    visibility = ["//visibility:public"],
+)

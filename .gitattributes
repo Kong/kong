@@ -1,4 +1,4 @@
 kong/portal/migrations/01_initial_files.json binary
 kong/portal/migrations/01_initial_files.lua binary
-Jenkinsfilev2 linguist-language=Groovy
-.jenkins/* linguist-language=Groovy
+*.bazel linguist-language=Starlark
+*.bzl linguist-language=Starlark

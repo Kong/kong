@@ -129,6 +129,15 @@
 - Path      : /usr/local/kong/portal
   Type      : directory
 
+- Path      : /usr/local/kong-tools/bin/curl
+  Needed    :
+  - libstdc++.so.6
+  - libm.so.6
+  - libssl.so.3
+  - libcrypto.so.3
+  - libz.so.1
+  - libc.so.6
+
 - Path      : /usr/local/lib/lua/5.1/bcrypt.so
   Needed    :
   - libc.so.6

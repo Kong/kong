@@ -256,6 +256,20 @@ string_flag(
     visibility = ["//visibility:public"],
 )
 
+# --//:skip_tools=false
+bool_flag(
+    name = "skip_tools",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "skip_tools_flag",
+    flag_values = {
+        ":skip_tools": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
 ##### constraints, platforms and config_settings for cross-compile
 
 constraint_setting(name = "cross_build_setting")

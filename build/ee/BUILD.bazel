@@ -170,7 +170,7 @@ genrule(
         _luarocks="$(location @luarocks//:luarocks_exec)"
         _jq="$${WORKSPACE_PATH}/$$(echo $(locations @jq//:libjq) | awk '{print $$1}')/bin/jq"
 
-        "$$_luarocks" list --porcelain \
+        "$$_luarocks" list --porcelain | grep 'installed' \
             | while read -r _name _version _unused; do
 
             # iterate through luarocks outputting a json object per package

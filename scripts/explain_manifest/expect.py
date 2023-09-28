@@ -320,7 +320,7 @@ class ExpectChain():
             return
 
         diff_result = subprocess.run(
-            ['diff', "-BbNaur", suite.manifest, '-'], input=manifest, stdout=subprocess.PIPE)
+            ['diff', "-U10", "-BbNaur", suite.manifest, '-'], input=manifest, stdout=subprocess.PIPE)
         if diff_result.returncode != 0:
             self._print_fail("manifest is not up-to-date:")
             if diff_result.stdout:

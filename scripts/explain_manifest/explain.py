@@ -63,7 +63,7 @@ class FileInfo():
             self.directory = True
 
         # use lstat to get the mode, uid, gid of the symlink itself
-        self.mode = os.lstat(path).st_mode
+        self.mode = oct(os.lstat(path).st_mode)[-4:]
         self.uid = os.lstat(path).st_uid
         self.gid = os.lstat(path).st_gid
 

@@ -95,6 +95,27 @@ install_wasm_deps_cmd = select({
     "//conditions:default": "\n",
 })
 
+install_curl_cmd = select({
+    "//conditions:default": """
+        mkdir -p ${BUILD_DESTDIR}/kong-tools/lib ${BUILD_DESTDIR}/kong-tools/include ${BUILD_DESTDIR}/kong-tools/bin
+        CURL=${WORKSPACE_PATH}/$(echo '$(locations @curl//:curl)' | awk '{print $1}')
+        copy_with_filter ${CURL} ${BUILD_DESTDIR}/kong-tools/
+        cp ${CURL}/bin/curl ${BUILD_DESTDIR}/kong-tools/bin/
+        cp ${CURL}/bin/curl-config ${BUILD_DESTDIR}/kong-tools/bin/
+        chmod -R "+rxw" ${BUILD_DESTDIR}/kong-tools/bin
+
+        CACERTS=${WORKSPACE_PATH}/$(echo '$(locations @curl//:cacerts)' | awk '{print $1}')
+        mkdir -p ${BUILD_DESTDIR}/kong-tools/ssl/
+        cp -r ${CACERTS} ${BUILD_DESTDIR}/kong-tools/ssl/
+        (
+            cd ${BUILD_DESTDIR}/kong-tools/ssl/
+            LN cacerts-*.pem cacerts.pem
+        )
+        chmod -R "+r" ${BUILD_DESTDIR}/kong-tools/ssl
+    """,
+    "@kong//:skip_tools_flag": "\n",
+})
+
 ##### dynamic modules
 selects.config_setting_group(
     name = "nginx_dynamic_module_support",
@@ -139,6 +160,13 @@ kong_directory_genrule(
             "@kong_admin_gui//:dist_files",
             "@kong_portal//:dist_files",
         ],
+    }) + select({
+        "//conditions:default": [
+            "@curl",
+            "@curl//:cacerts",
+            "@nghttp2",
+        ],
+        "@kong//:skip_tools_flag": [],
     }) + select({
         "@kong//:wasmx_flag": [
             "@ngx_wasm_module//:lua_libs",
@@ -209,6 +237,7 @@ kong_directory_genrule(
         install_lualib_deps_cmd +
         install_fips_cmd +
         install_webui_cmd +
+        install_curl_cmd +
         link_modules_dir +
         install_wasm_deps_cmd +
         """
