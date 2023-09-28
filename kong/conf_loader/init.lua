@@ -107,6 +107,11 @@ local HEADER_KEY_TO_NAME = {
   [string.lower(HEADERS.ADMIN_LATENCY)] = HEADERS.ADMIN_LATENCY,
   [string.lower(HEADERS.UPSTREAM_LATENCY)] = HEADERS.UPSTREAM_LATENCY,
   [string.lower(HEADERS.UPSTREAM_STATUS)] = HEADERS.UPSTREAM_STATUS,
+  [string.lower(HEADERS.REQUEST_ID)] = HEADERS.REQUEST_ID,
+}
+
+local UPSTREAM_HEADER_KEY_TO_NAME = {
+  [string.lower(HEADERS.REQUEST_ID)] = HEADERS.REQUEST_ID,
 }
 
 
@@ -407,6 +412,7 @@ local CONF_INFERENCES = {
   upstream_keepalive_idle_timeout = { typ = "number" },
 
   headers = { typ = "array" },
+  headers_upstream = { typ = "array" },
   trusted_ips = { typ = "array" },
   real_ip_header = {
     typ = "string",
@@ -965,6 +971,15 @@ local function check_and_infer(conf, opts)
     for _, token in ipairs(conf.headers) do
       if token ~= "off" and not HEADER_KEY_TO_NAME[string.lower(token)] then
         errors[#errors + 1] = fmt("headers: invalid entry '%s'",
+                                  tostring(token))
+      end
+    end
+  end
+
+  if conf.headers_upstream then
+    for _, token in ipairs(conf.headers_upstream) do
+      if token ~= "off" and not UPSTREAM_HEADER_KEY_TO_NAME[string.lower(token)] then
+        errors[#errors + 1] = fmt("headers_upstream: invalid entry '%s'",
                                   tostring(token))
       end
     end
@@ -1689,8 +1704,9 @@ local function load(path, custom_conf, opts)
 
   do
     -- load headers configuration
-    local enabled_headers = {}
 
+    -- (downstream)
+    local enabled_headers = {}
     for _, v in pairs(HEADER_KEY_TO_NAME) do
       enabled_headers[v] = false
     end
@@ -1716,6 +1732,23 @@ local function load(path, custom_conf, opts)
     end
 
     conf.enabled_headers = setmetatable(enabled_headers, _nop_tostring_mt)
+
+
+    -- (upstream)
+    local enabled_headers_upstream = {}
+    for _, v in pairs(UPSTREAM_HEADER_KEY_TO_NAME) do
+      enabled_headers_upstream[v] = false
+    end
+
+    if #conf.headers_upstream > 0 and conf.headers_upstream[1] ~= "off" then
+      for _, token in ipairs(conf.headers_upstream) do
+        if token ~= "off" then
+          enabled_headers_upstream[UPSTREAM_HEADER_KEY_TO_NAME[string.lower(token)]] = true
+        end
+      end
+    end
+
+    conf.enabled_headers_upstream = setmetatable(enabled_headers_upstream, _nop_tostring_mt)
   end
 
   -- load absolute paths

@@ -2,6 +2,7 @@ local kong = kong
 local find = string.find
 local fmt  = string.format
 local utils = require "kong.tools.utils"
+local request_id = require "kong.tracing.request_id"
 
 
 local CONTENT_TYPE    = "Content-Type"
@@ -45,7 +46,8 @@ return function(ctx)
 
   else
     local mime_type = utils.get_mime_type(accept_header)
-    message = fmt(utils.get_error_template(mime_type), message)
+    local rid = request_id.get() or ""
+    message = fmt(utils.get_error_template(mime_type), message, rid)
     headers = { [CONTENT_TYPE] = mime_type }
 
   end

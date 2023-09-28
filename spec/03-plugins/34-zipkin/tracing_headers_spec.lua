@@ -557,7 +557,8 @@ describe("tracing_headers.set", function()
     log = {
       warn = function(msg)
         warnings[#warnings + 1] = msg
-      end
+      end,
+      set_serialize_value = function() end,
     }
   }
 

@@ -472,5 +472,7 @@ build = {
 
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
+
+    ["kong.tracing.request_id"] = "kong/tracing/request_id.lua",
   }
 }

@@ -177,7 +177,7 @@ for _, strategy in helpers.each_strategy() do
           })
 
           local body = assert.res_status(200, res)
-          assert.equals("it works", body)
+          assert.matches("it works", body)
         end)
 
         it("remove client_certificate removes access", function()
@@ -239,7 +239,7 @@ for _, strategy in helpers.each_strategy() do
           })
 
           local body = assert.res_status(200, res)
-          assert.equals("it works", body)
+          assert.matches("it works", body)
         end)
 
         it("remove client_certificate removes access", function()
@@ -294,7 +294,7 @@ for _, strategy in helpers.each_strategy() do
           })
 
           local body = assert.res_status(200, res)
-          assert.equals("it works", body)
+          assert.matches("it works", body)
         end)
       end)
     end)
@@ -310,7 +310,7 @@ for _, strategy in helpers.each_strategy() do
           })
 
           local body = assert.res_status(200, res)
-          assert.equals("it works", body)
+          assert.matches("it works", body)
         end)
 
         it("#db turn it on, request is blocked", function()
@@ -331,7 +331,7 @@ for _, strategy in helpers.each_strategy() do
           })
 
           local body = assert.res_status(502, res)
-          assert.equals("An invalid response was received from the upstream server", body)
+          assert.matches("An invalid response was received from the upstream server", body)
         end)
       end)
 
@@ -355,7 +355,7 @@ for _, strategy in helpers.each_strategy() do
           })
 
           local body = assert.res_status(200, res)
-          assert.equals("it works", body)
+          assert.matches("it works", body)
         end)
       end)
 
@@ -390,7 +390,7 @@ for _, strategy in helpers.each_strategy() do
           })
 
           local body = assert.res_status(502, res)
-          assert.equals("An invalid response was received from the upstream server", body)
+          assert.matches("An invalid response was received from the upstream server", body)
         end)
 
         it("request is allowed through if depth limit is sufficient", function()
@@ -411,7 +411,7 @@ for _, strategy in helpers.each_strategy() do
           })
 
           local body = assert.res_status(200, res)
-          assert.equals("it works", body)
+          assert.matches("it works", body)
         end)
       end)
     end)

@@ -333,7 +333,8 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(true, reset <= 60 and reset > 0)
 
           local json = cjson.decode(body)
-          assert.same({ message = "API rate limit exceeded" }, json)
+          assert.not_nil(json.message)
+          assert.matches("API rate limit exceeded", json.message)
         end)
 
         it_with_retry("blocks if exceeding limit, only if done via same path", function()
@@ -393,7 +394,8 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(true, reset <= 60 and reset > 0)
 
           local json = cjson.decode(body)
-          assert.same({ message = "API rate limit exceeded" }, json)
+          assert.not_nil(json.message)
+          assert.matches("API rate limit exceeded", json.message)
         end)
 
         it_with_retry("counts against the same service register from different routes", function()
@@ -438,7 +440,8 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(true, reset <= 60 and reset > 0)
 
           local json = cjson.decode(body)
-          assert.same({ message = "API rate limit exceeded" }, json)
+          assert.not_nil(json.message)
+          assert.matches("API rate limit exceeded", json.message)
         end)
 
         it_with_retry("handles multiple limits #flaky", function()
@@ -479,7 +482,8 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(true, reset <= 60 and reset > 0)
 
           local json = cjson.decode(body)
-          assert.same({ message = "API rate limit exceeded" }, json)
+          assert.not_nil(json.message)
+          assert.matches("API rate limit exceeded", json.message)
         end)
       end)
       describe("Without authentication (IP address)", function()
@@ -516,8 +520,8 @@ for _, strategy in helpers.each_strategy() do
           assert.matches("ratelimit%-limit: 6", res)
           assert.matches("ratelimit%-remaining: 0", res)
 
-          local retry = tonumber(string.match(res, "retry%-after: (%d+)"))
-          assert.equal(true, retry <= 60 and retry > 0)
+      local retry = tonumber(string.match(res, "retry%-after: (%d+)"))
+      assert.equal(true, retry <= 60 and retry > 0)
 
 
           local reset = tonumber(string.match(res, "ratelimit%-reset: (%d+)"))
@@ -555,7 +559,8 @@ for _, strategy in helpers.each_strategy() do
             assert.equal(true, reset <= 60 and reset > 0)
 
             local json = cjson.decode(body)
-            assert.same({ message = "API rate limit exceeded" }, json)
+            assert.not_nil(json.message)
+            assert.matches("API rate limit exceeded", json.message)
 
             -- Using a different key of the same consumer works
             GET("/status/200?apikey=apikey333", {
@@ -592,7 +597,8 @@ for _, strategy in helpers.each_strategy() do
             assert.equal(true, reset <= 60 and reset > 0)
 
             local json = cjson.decode(body)
-            assert.same({ message = "API rate limit exceeded" }, json)
+            assert.not_nil(json.message)
+            assert.matches("API rate limit exceeded", json.message)
           end)
 
           it_with_retry("blocks if the only rate-limiting plugin existing is per consumer and not per API", function()
@@ -623,7 +629,8 @@ for _, strategy in helpers.each_strategy() do
             assert.equal(true, reset <= 60 and reset > 0)
 
             local json = cjson.decode(body)
-            assert.same({ message = "API rate limit exceeded" }, json)
+            assert.not_nil(json.message)
+            assert.matches("API rate limit exceeded", json.message)
           end)
         end)
       end)
@@ -702,7 +709,8 @@ for _, strategy in helpers.each_strategy() do
             }, 500)
 
             local json = cjson.decode(body)
-            assert.same({ message = "An unexpected error occurred" }, json)
+            assert.not_nil(json.message)
+            assert.matches("An unexpected error occurred", json.message)
 
             db:reset()
             bp, db = helpers.get_db_utils(strategy)
@@ -792,7 +800,8 @@ for _, strategy in helpers.each_strategy() do
             }, 500)
 
             local json = cjson.decode(body)
-            assert.same({ message = "An unexpected error occurred" }, json)
+            assert.not_nil(json.message)
+            assert.matches("An unexpected error occurred", json.message)
           end)
 
           it_with_retry("keeps working if an error occurs", function()
@@ -950,7 +959,8 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(true, reset <= 60 and reset > 0)
 
         local json = cjson.decode(body)
-        assert.same({ message = "API rate limit exceeded" }, json)
+        assert.not_nil(json.message)
+        assert.matches("API rate limit exceeded", json.message)
       end)
     end)
 
@@ -1026,7 +1036,8 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(true, reset <= 60 and reset > 0)
 
         local json = cjson.decode(body)
-        assert.same({ message = "API rate limit exceeded" }, json)
+        assert.not_nil(json.message)
+        assert.matches("API rate limit exceeded", json.message)
       end)
     end)
 
@@ -1113,7 +1124,8 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(true, reset <= 60 and reset > 0)
 
           local json = cjson.decode(body)
-          assert.same({ message = "API rate limit exceeded" }, json)
+          assert.not_nil(json.message)
+          assert.matches("API rate limit exceeded", json.message)
         end
       end)
     end)
@@ -1184,7 +1196,8 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(true, reset <= 60 and reset > 0)
 
         local json = cjson.decode(body)
-        assert.same({ message = "API rate limit exceeded" }, json)
+        assert.not_nil(json.message)
+        assert.matches("API rate limit exceeded", json.message)
       end)
     end)
 
@@ -1260,7 +1273,8 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(true, reset <= 60 and reset > 0)
 
         local json = cjson.decode(body)
-        assert.same({ message = "API rate limit exceeded" }, json)
+        assert.not_nil(json.message)
+        assert.matches("API rate limit exceeded", json.message)
       end)
     end)
   end

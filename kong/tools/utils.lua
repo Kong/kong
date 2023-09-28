@@ -1289,18 +1289,21 @@ do
   <body>
     <h1>Kong Error</h1>
     <p>%s.</p>
+    <p>request_id: %s</p>
   </body>
 </html>
 ]],
     [CONTENT_TYPE_JSON]   = [[
 {
-  "message":"%s"
+  "message":"%s",
+  "request_id":"%s"
 }]],
-    [CONTENT_TYPE_PLAIN]  = "%s\n",
+    [CONTENT_TYPE_PLAIN]  = "%s\nrequest_id: %s\n",
     [CONTENT_TYPE_XML]    = [[
 <?xml version="1.0" encoding="UTF-8"?>
 <error>
   <message>%s</message>
+  <requestid>%s</requestid>
 </error>
 ]],
   }

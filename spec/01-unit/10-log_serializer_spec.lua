@@ -20,6 +20,7 @@ describe("kong.log.serialize", function()
           },
         },
         var = {
+          request_id = "1234",
           request_uri = "/request_uri",
           upstream_uri = "/upstream_uri",
           scheme = "http",
@@ -42,7 +43,13 @@ describe("kong.log.serialize", function()
         resp = {
           get_headers = function() return {header1 = "respheader1", header2 = "respheader2", ["set-cookie"] = "delicious=delicacy"} end
         },
+        get_phase = function() return "access" end,
+        WARN = ngx.WARN,
       }
+
+      package.loaded["kong.tracing.request_id"] = nil
+      package.loaded["kong.pdk.log"] = nil
+      kong.log = require "kong.pdk.log".new(kong)
 
       package.loaded["kong.pdk.request"] = nil
       local pdk_request = require "kong.pdk.request"
@@ -74,6 +81,7 @@ describe("kong.log.serialize", function()
         assert.equal("/upstream_uri", res.upstream_uri)
         assert.equal(200, res.request.size)
         assert.equal("/request_uri", res.request.uri)
+        assert.equal("1234", res.request.id)
 
         -- Response
         assert.is_table(res.response)
