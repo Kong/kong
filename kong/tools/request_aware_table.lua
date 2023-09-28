@@ -5,9 +5,11 @@ local table_new = require "table.new"
 local table_clear = require "table.clear"
 
 local debug_mode  = kong.configuration.log_level == "debug"
+local error       = error
 local get_phase   = ngx.get_phase
 local var         = ngx.var
 local log         = ngx.log
+
 
 local NGX_VAR_PHASES = {
   set           = true,
@@ -65,8 +67,7 @@ local __proxy_mt = {
 
   __newindex = function(t, k, v)
     if k == "clear" then
-      log(ngx.WARN, "cannot overwrite 'clear' method")
-      return
+      error("cannot set the 'clear' method of request aware table", 2)
     end
 
     enforce_sequential_access(t)
@@ -80,8 +81,7 @@ local __direct_mt = {
 
   __newindex = function(t, k, v)
     if k == "clear" then
-      log(ngx.WARN, "cannot overwrite 'clear' method")
-      return
+      error("cannot set the 'clear' method of request aware table", 2)
     end
 
     rawset(t, k, v)
