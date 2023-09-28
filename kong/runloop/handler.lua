@@ -611,7 +611,6 @@ local reconfigure_handler
 do
   local get_monotonic_ms = utils.get_updated_monotonic_ms
 
-  local update_time = ngx.update_time
   local ngx_worker_id = ngx.worker.id
   local exiting = ngx.worker.exiting
 
