@@ -1,3 +1,4 @@
 {
-  "custom_template_message":"%s"
+  "custom_template_message":"%s",
+  "request_id":"%s"
 }

@@ -531,6 +531,7 @@ build = {
 
     ["kong.tracing.instrumentation"] = "kong/tracing/instrumentation.lua",
     ["kong.tracing.propagation"] = "kong/tracing/propagation.lua",
+    ["kong.tracing.request_id"] = "kong/tracing/request_id.lua",
 
     ["kong.timing"] = "kong/timing/init.lua",
     ["kong.timing.context"] = "kong/timing/context.lua",
