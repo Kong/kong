@@ -15,6 +15,7 @@ local ipairs = ipairs
 local pack = table.pack
 local unpack = table.unpack
 local insert = table.insert
+local EMPTY = require("pl.tablex").readonly({})
 
 
 local function wrap_hook(f)
@@ -64,7 +65,7 @@ function _M.run_hook(name, ...)
 
   local acc
 
-  for _, f in ipairs(hooks[name] or {}) do
+  for _, f in ipairs(hooks[name] or EMPTY) do
     acc = f(acc, ...)
   end
 

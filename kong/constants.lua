@@ -288,6 +288,9 @@ local constants = {
   DYN_LOG_LEVEL_TIMEOUT_AT_KEY = "kong:dyn_log_level_timeout_at",
 
   ADMIN_GUI_KCONFIG_CACHE_KEY = "admin:gui:kconfig",
+
+  REQUEST_DEBUG_TOKEN_FILE = ".request_debug_token",
+  REQUEST_DEBUG_LOG_PREFIX = "[request-debug]",
 }
 
 -- XXX EE: add enterprise-specific CLUSTERING_SYNC_STATUS enum values before

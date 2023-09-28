@@ -27,6 +27,7 @@ local workspaces   = require "kong.workspaces"
 local PluginsIterator = require "kong.runloop.plugins_iterator"
 local log_level       = require "kong.runloop.log_level"
 local instrumentation = require "kong.tracing.instrumentation"
+local req_dyn_hook   = require "kong.dynamic_hook"
 
 
 local kong              = kong
@@ -1247,8 +1248,10 @@ return {
       instrumentation.precreate_balancer_span(ctx)
 
       -- routing request
+      req_dyn_hook.run_hooks("timing", "before:router")
       local router = get_updated_router()
       local match_t = router:exec(ctx)
+      req_dyn_hook.run_hooks("timing", "after:router")
       if not match_t then
         -- tracing
         if span then
@@ -1268,6 +1271,8 @@ return {
 
       ctx.workspace        = route and route.ws_id
       ctx.workspace_name   = WORKSPACE_NAMES[ctx.workspace]
+
+      req_dyn_hook.run_hooks("timing", "workspace_id:got", ctx.workspace)
 
       local host           = var.host
       local port           = tonumber(ctx.host_port, 10)

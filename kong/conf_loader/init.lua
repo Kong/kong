@@ -665,6 +665,9 @@ local CONF_PARSERS = {
   cluster_fallback_config_export = { typ = "boolean" },
   cluster_fallback_config_export_delay = { typ = "number" },
   cluster_fallback_config_import = { typ = "boolean" },
+
+  request_debug = { typ = "boolean" },
+  request_debug_token = { typ = "string" },
 }
 
 

@@ -33,6 +33,7 @@ local semaphore = require("ngx.semaphore").new
 local lrucache = require("resty.lrucache")
 local resolver = require("resty.dns.resolver")
 local cycle_aware_deep_copy = require("kong.tools.utils").cycle_aware_deep_copy
+local req_dyn_hook = require("kong.dynamic_hook")
 local time = ngx.now
 local log = ngx.log
 local ERR = ngx.ERR
@@ -143,6 +144,8 @@ local cachelookup = function(qname, qtype)
   local now = time()
   local key = qtype..":"..qname
   local cached = dnscache:get(key)
+
+  req_dyn_hook.run_hooks("timing", "dns:cache_lookup", cached ~= nil)
 
   if cached then
     cached.touch = now

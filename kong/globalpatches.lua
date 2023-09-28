@@ -29,7 +29,7 @@ return function(options)
 
   local cjson = require("cjson.safe")
   cjson.encode_sparse_array(nil, nil, 2^15)
-  
+
   local pb = require "pb"
 
   -- let pb decode arrays to table cjson.empty_array_mt metatable
@@ -521,8 +521,6 @@ return function(options)
     end
   end
 
-
-
   do -- cosockets connect patch for dns resolution for: cli, rbusted and OpenResty
     local sub = string.sub
 
@@ -601,6 +599,11 @@ return function(options)
       sock.setpeername = udp_resolve_setpeername
 
       return sock
+    end
+
+    if not options.cli and not options.rbusted then
+      local timing = require "kong.timing"
+      timing.register_hooks()
     end
 
     -- STEP 5: load code that should be using the patched versions, if any (because of dependency chain)

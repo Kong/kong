@@ -296,4 +296,9 @@ function _GLOBAL.init_core_cache(kong_config, cluster_events, worker_events)
 end
 
 
+function _GLOBAL.init_timing()
+  return require("kong.timing")
+end
+
+
 return _GLOBAL
