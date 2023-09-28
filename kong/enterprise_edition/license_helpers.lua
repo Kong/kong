@@ -30,8 +30,12 @@ local timer_at = ngx.timer.at
 local split = require('kong.tools.utils').split
 local re_find = ngx.re.find
 local kong_dict = ngx.shared.kong
+local ceil = math.ceil
+local min = math.min
 local DAY = 24 * 3600
 local PLEASE_CONTACT_STR = "Please contact <support@konghq.com> to renew your license."
+local GRACE_PERIOD_DAYS = 30
+local IS_IN_GRACE_PERIOD = false
 local WARNING_NOTICE_DAYS = 90
 local ERROR_NOTICE_DAYS = 30
 local ERROR_NOTICE_DAYS_KONNECT = 16
@@ -253,8 +257,25 @@ local function log_license_state_konnect(expiration_time, now)
   end
 end
 
+local function is_in_grace_period()
+  return IS_IN_GRACE_PERIOD
+end
+_M.is_in_grace_period = is_in_grace_period
+
 local function log_license_state(expiration_time, now, konnect_mode)
   if expiration_time < now then
+    -- grace period
+    if now < expiration_time + (GRACE_PERIOD_DAYS * DAY) then
+      IS_IN_GRACE_PERIOD = true
+
+      ngx.log(ngx.CRIT, string.format("Your license is expired. You have %d days left in the renewal grace period. "..
+                                    PLEASE_CONTACT_STR, GRACE_PERIOD_DAYS - min(ceil((now - expiration_time)/DAY), GRACE_PERIOD_DAYS)))
+      return
+    end
+
+    -- after the grace period
+    IS_IN_GRACE_PERIOD = false
+
     ngx.log(ngx.CRIT, string.format("The Kong Enterprise license expired on %s. "..
                                     PLEASE_CONTACT_STR, os.date("%Y-%m-%d", expiration_time)))
     return
@@ -285,12 +306,18 @@ local function license_notification_handler(premature, expiration_time, konnect_
            license_notification_handler,
            expiration_time, konnect_mode)
 
+  -- need to be updated on all workers
+  local now = ngx.time()
+  if expiration_time < now then
+    kong.licensing:update_featureset()
+  end
+
   if not get_lock(LICENSE_NOTIFICATION_LOCK_KEY,
                   LICENSE_NOTIFICATION_INTERVAL) then
     return
   end
 
-  log_license_state(expiration_time, ngx.time(), konnect_mode)
+  log_license_state(expiration_time, now, konnect_mode)
 end
 
 local function report_expired_license(konnect_mode)
@@ -318,17 +345,6 @@ function _M.license_can_proceed(self)
   end
 
   if (deny[route] and (deny[route][method] or deny[route]["*"]))
-    and not (allow[route] and (allow[route][method] or allow[route]["*"]))
-  then
-    return kong.response.exit(403, { message = "Enterprise license missing or expired" })
-  end
-
-  if not kong.licensing:can("write_admin_api")
-    and (method == "POST" or
-         method == "PUT" or
-         method == "PATCH" or
-         method == "DELETE")
-    -- Maybe this operation is allowed even with write_admin_api off
     and not (allow[route] and (allow[route][method] or allow[route]["*"]))
   then
     return kong.response.exit(403, { message = "Enterprise license missing or expired" })

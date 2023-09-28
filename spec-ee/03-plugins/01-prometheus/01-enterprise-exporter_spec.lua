@@ -44,8 +44,8 @@ describe("Plugin: prometheus (exporter) enterprise licenses", function()
 
     assert.matches('kong_enterprise_license_signature %d+', body)
     assert.matches('kong_enterprise_license_expiration %d+', body)
-    assert.matches('kong_enterprise_license_features{feature="ee_plugins"}', body, nil, true)
-    assert.matches('kong_enterprise_license_features{feature="write_admin_api"}', body, nil, true)
+    assert.matches('kong_enterprise_license_features{feature="ee_entity_read"}', body, nil, true)
+    assert.matches('kong_enterprise_license_features{feature="ee_entity_write"}', body, nil, true)
 
     assert.matches('kong_enterprise_license_errors 0', body, nil, true)
     assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
@@ -61,11 +61,11 @@ for _, strategy in helpers.each_strategy() do
     before_each(function()
       local bp
       bp, db = helpers.get_db_utils(strategy)
-    
+
       bp.plugins:insert {
         name = "prometheus",
       }
-  
+
       for i = 1, 2 do
         local ws = bp.workspaces:insert()
 

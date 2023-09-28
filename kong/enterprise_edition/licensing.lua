@@ -249,6 +249,24 @@ function _M:update(license)
   _M.configuration:update(_M.features.conf or {}, true)
 end
 
+function _M:update_featureset()
+  local license
+  if kong then
+    license = kong.license
+  end
+
+  if not license then
+    return nil
+  end
+
+  -- It's already been switched.
+  if _M.l_type == license_helpers.get_type(license) then
+    return nil
+  end
+
+  _M:update(license)
+  _M:post_conf_change_worker_event()
+end
 
 -- boolean shortcut
 -- licensing:can("ee_plugins") always true | false
@@ -256,6 +274,20 @@ function _M:can(what)
   return _M.features[what] ~= false
 end
 
+function _M:can_ee_entity(op)
+  local can_ee_entity = _M.features["can_ee_entity"]
+
+  if not can_ee_entity then
+    return true
+  end
+
+  -- should be allowed during the grace period
+  if license_helpers.is_in_grace_period() then
+    return true
+  end
+
+  return can_ee_entity[op] ~= false
+end
 
 function _M:license_type()
   return _M.l_type

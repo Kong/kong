@@ -1,0 +1,3 @@
+message: Allows the Kong-CE admin endpoint to continue to read and write after the license has expired while the Kong-EE admin endpoint is read-only.
+type: feature
+scope: Core

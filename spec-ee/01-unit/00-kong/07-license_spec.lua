@@ -53,6 +53,12 @@ describe("licensing", function()
     assert.stub(ngx.log).was.called_with(ngx.CRIT, match._)
   end)
 
+  it("does CRIT in grace period from expiration date", function()
+    lic_helper.log_license_state(os.time()-3600*24*30, os.time())
+    assert.stub(ngx.log).was.called(1)
+    assert.stub(ngx.log).was.called_with(ngx.CRIT, match._)
+  end)
+
   it("does ERR from 16 days on from expiration date if konnect mode", function ()
     lic_helper.log_license_state(os.time()+15*3600*24, os.time(), true)
     assert.stub(ngx.log).was.called(1)
@@ -262,62 +268,6 @@ describe("licensing", function()
           assert.is_nil(lic_helper.license_can_proceed({route_name = "/identity"}))
         end
         assert.stub(kong.response.exit).was_called(0)
-      end)
-    end)
-
-    describe("write_admin_api", function()
-      describe("false", function()
-        setup(function()
-          featureset = {
-            deny_admin_api = {},
-            allow_admin_api = {
-              ["/workspaces"] = { ["*"] = true },
-            },
-            write_admin_api = false,
-          }
-        end)
-
-        for _, method in ipairs({"POST", "PUT", "PATCH", "DELETE"}) do
-          it("denies ".. method, function()
-            assert(stub(ngx.req, "get_method").returns(method))
-            assert.is_nil(lic_helper.license_can_proceed({route_name = "/foo"}))
-            assert.stub(kong.response.exit).was.called_with(403,  { message = "Enterprise license missing or expired" })
-          end)
-        end
-
-        for _, method in ipairs({"GET", "OPTION"}) do
-          it("allows ".. method, function()
-            assert(stub(ngx.req, "get_method").returns(method))
-            assert.is_nil(lic_helper.license_can_proceed({route_name = "/foo"}))
-            assert.stub(kong.response.exit).was_called(0)
-          end)
-        end
-
-        for _, method in ipairs({"POST", "PUT", "PATCH", "DELETE"}) do
-          it("+ allow_admin_api allows " .. method .. " anyway", function()
-            assert(stub(ngx.req, "get_method").returns(method))
-            assert.is_nil(lic_helper.license_can_proceed({route_name = "/workspaces"}))
-            assert.stub(kong.response.exit).was_called(0)
-          end)
-        end
-      end)
-
-      describe("true", function()
-        setup(function()
-          featureset = {
-            deny_admin_api = {},
-            allow_admin_api = {},
-            write_admin_api = true,
-          }
-        end)
-
-        for _, method in ipairs({"GET", "OPTION", "POST", "PUT", "PATCH", "DELETE"}) do
-          it("allows ".. method, function()
-            assert(stub(ngx.req, "get_method").returns(method))
-            assert.is_nil(lic_helper.license_can_proceed({route_name = "/foo"}))
-            assert.stub(kong.response.exit).was_called(0)
-          end)
-        end
       end)
     end)
   end)

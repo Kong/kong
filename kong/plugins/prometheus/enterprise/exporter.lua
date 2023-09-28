@@ -152,11 +152,10 @@ local function metric_data()
   metrics.license_expiration:set(tm - 86400)
 
 
-  metrics.license_features:set(kong.licensing:can("ee_plugins") and 1 or 0,
-                              { "ee_plugins" })
-
-  metrics.license_features:set(kong.licensing:can("write_admin_api") and 1 or 0,
-                              { "write_admin_api" })
+  metrics.license_features:set(kong.licensing:can_ee_entity("READ") and 1 or 0,
+                              { "ee_entity_read" })
+  metrics.license_features:set(kong.licensing:can_ee_entity("WRITE") and 1 or 0,
+                              { "ee_entity_write" })
 end
 
 local function init_worker()

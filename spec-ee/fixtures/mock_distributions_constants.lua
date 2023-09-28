@@ -8,6 +8,9 @@
 local c = {}
 
 c.plugins = {
+  -- HACK: when adding a plugin through the admin api
+  -- restrict it as an enterprise plugin
+  "correlation-id",
 }
 
 c.featureset = {
@@ -20,7 +23,11 @@ c.featureset = {
     allow_admin_api = {
       ["/licenses"] = { ["*"] = true },
       ["/licenses/:licenses"] = { ["*"] = true },
-    }
+    },
+    can_ee_entity = { READ = true, WRITE = false },
+    handled_as_ee_entity = {
+      ["workspaces"] = true,
+    },
   },
   free = {
     conf = {
@@ -43,26 +50,14 @@ c.featureset = {
       -- Deny any other
       ["/workspaces"] = { ["*"] = true },
       ["/workspaces/:workspaces"] = { ["*"] = true },
-      ["/event-hooks"] = { ["*"] = true },
-      ["/event-hooks/:event_hooks"] = { ["*"] = true },
-      ["/event-hooks/:event_hooks/test"] = { ["*"] = true },
-      ["/event-hooks/:event_hooks/ping"] = { ["*"] = true },
-      ["/event-hooks/sources"] = { ["*"] = true },
-      ["/event-hooks/sources/:source"] = { ["*"] = true },
-      ["/event-hooks/sources/:source/:event"] = { ["*"] = true },
-      ["/consumer_groups"] = { ["*"] = true },
-      ["/consumer_groups/:consumer_groups"] = { ["*"] = true },
-      ["/consumer_groups/:consumer_groups/consumers"] = { ["*"] = true },
-      ["/consumer_groups/:consumer_groups/consumers/:consumers"] = { ["*"] = true },
-      ["/consumer_groups/:consumer_groups/overrides/plugins/rate-limiting-advanced"] = { ["*"] = true },
-      ["/consumers/:consumers/consumer_groups"] = { ["*"] = true },
-      ["/consumers/:consumers/consumer_groups/:consumer_groups"] = { ["*"] = true },
-
     },
     -- deny a particular entity (and related api methods)
     -- deny_entity = { ["some_entity_name"] = true },
     -- disable running of enterprise plugins
-    ee_plugins = false,
+    can_ee_entity = { READ = false, WRITE = false },
+    handled_as_ee_entity = {
+      ["workspaces"] = false,
+    },
   }
 }
 

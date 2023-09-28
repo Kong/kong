@@ -1,0 +1,16 @@
+{
+    "license": {
+        "version": 1,
+        "payload": {
+            "customer": "ee-build-test",
+            "product_subscription": "Kong Only",
+            "support_plan": "None",
+            "admin_seats": "1",
+            "dataplanes": "1",
+            "license_creation_date": "2020-9-23",
+            "license_expiration_date": "%s",
+            "license_key": "ASDASDASDASDASDASDASDASDASD_a1VASASD"
+        },
+        "signature": "DUMMY"
+    }
+}

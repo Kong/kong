@@ -635,6 +635,9 @@ function Kong.init()
 
   tracing.init(config)
 
+  -- EE **MUST** register license hooks as early as possible.
+  -- Hook handlers won't run unless the hook runs (on which case, we want that
+  -- to happen).
   ee.license_hooks(config)
 
   local db = assert(DB.new(config))
@@ -671,8 +674,6 @@ function Kong.init()
   kong.licensing           = licensing(config)
   config                   = kong.licensing.configuration
   kong.configuration       = kong.licensing.configuration
-
-  ee.license_hooks(config)
   -- EE licensing ]]
 
 
