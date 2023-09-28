@@ -232,7 +232,7 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         local body = assert.res_status(502, res)
-        assert.equal("An invalid response was received from the upstream server", body)
+        assert.matches("An invalid response was received from the upstream server", body)
         assert.logfile().has.line("upstream SSL certificate verify error: " ..
                                   "(20:unable to get local issuer certificate) " ..
                                   "while SSL handshaking to upstream", true, 2)
@@ -322,7 +322,8 @@ for _, strategy in helpers.each_strategy() do
 
         local body = assert.res_status(426, res)
         local json = cjson.decode(body)
-        assert.same({ message = "Please use HTTPS protocol" }, json)
+        assert.not_nil(json)
+        assert.matches("Please use HTTPS protocol", json.message)
         assert.contains("Upgrade", res.headers.connection)
         assert.equal("TLS/1.2, HTTP/1.1", res.headers.upgrade)
 
@@ -337,7 +338,8 @@ for _, strategy in helpers.each_strategy() do
 
         body = assert.res_status(426, res)
         json = cjson.decode(body)
-        assert.same({ message = "Please use HTTPS protocol" }, json)
+        assert.not_nil(json)
+        assert.matches("Please use HTTPS protocol", json.message)
         assert.contains("Upgrade", res.headers.connection)
         assert.equal("TLS/1.2, HTTP/1.1", res.headers.upgrade)
       end)

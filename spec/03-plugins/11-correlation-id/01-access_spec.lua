@@ -1,10 +1,23 @@
-local helpers = require "spec.helpers"
-local cjson   = require "cjson"
-
+local helpers    = require "spec.helpers"
+local cjson      = require "cjson"
+local pl_path    = require "pl.path"
+local pl_file    = require "pl.file"
+local pl_stringx = require "pl.stringx"
 
 local UUID_PATTERN         = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 local UUID_COUNTER_PATTERN = UUID_PATTERN .. "#%d"
 local TRACKER_PATTERN      = "%d+%.%d+%.%d+%.%d+%-%d+%-%d+%-%d+%-%d+%-%d%d%d%d%d%d%d%d%d%d%.%d%d%d"
+local FILE_LOG_PATH        = os.tmpname()
+
+
+local function wait_json_log()
+  helpers.wait_until(function()
+    return pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0
+  end, 10)
+
+  local log = pl_file.read(FILE_LOG_PATH)
+  return cjson.decode(pl_stringx.strip(log):match("%b{}"))
+end
 
 
 for _, strategy in helpers.each_strategy() do
@@ -56,6 +69,10 @@ for _, strategy in helpers.each_strategy() do
           url = "grpc://localhost:15002",
         }),
       })
+
+      local route_serializer = bp.routes:insert {
+        hosts = { "correlation-serializer.com" },
+      }
 
       bp.plugins:insert {
         name     = "correlation-id",
@@ -136,6 +153,20 @@ for _, strategy in helpers.each_strategy() do
         config   = {
           echo_downstream = true,
         },
+      }
+
+      bp.plugins:insert {
+        name   = "file-log",
+        route = { id = route_serializer.id },
+        config = {
+          path   = FILE_LOG_PATH,
+          reopen = true,
+        },
+      }
+
+      bp.plugins:insert {
+        name  = "correlation-id",
+        route = { id = route_serializer.id },
       }
 
       assert(helpers.start_kong({
@@ -414,6 +445,35 @@ for _, strategy in helpers.each_strategy() do
       assert.response(res).has.status(418, res)
       local downstream_id = assert.response(res).has.header("kong-request-id")
       assert.equals("my very personal id", downstream_id)
+    end)
+
+    describe("log serializer", function()
+      before_each(function()
+        os.remove(FILE_LOG_PATH)
+      end)
+
+      after_each(function()
+        os.remove(FILE_LOG_PATH)
+      end)
+
+      it("contains the Correlation ID", function()
+        local correlation_id = "1234"
+        local r = proxy_client:get("/", {
+          headers = {
+            host = "correlation-serializer.com",
+            ["Kong-Request-ID"] = correlation_id,
+          },
+        })
+        assert.response(r).has.status(200)
+
+        local json_log = wait_json_log()
+        local request_id = json_log and json_log.request and json_log.request.id
+        assert.matches("^[a-f0-9]+$", request_id)
+        assert.True(request_id:len() == 32)
+
+        local logged_id = json_log and json_log.correlation_id
+        assert.equals(correlation_id, logged_id)
+      end)
     end)
   end)
 end

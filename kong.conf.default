@@ -667,7 +667,7 @@
                                  #
                                  # See docs for `ssl_cert_key` for detailed usage.
 
-#headers = server_tokens, latency_tokens
+#headers = server_tokens, latency_tokens, X-Kong-Request-Id
                                  # Comma-separated list of headers Kong should
                                  # inject in client responses.
                                  #
@@ -697,6 +697,8 @@
                                  #   This is particularly useful for clients to
                                  #   distinguish upstream statuses if the
                                  #   response is rewritten by a plugin.
+                                 # - `X-Kong-Request-Id`: Unique identifier of
+                                 #   the request.
                                  # - `server_tokens`: Same as specifying both
                                  #   `Server` and `Via`.
                                  # - `latency_tokens`: Same as specifying
@@ -712,6 +714,20 @@
                                  # headers of their own.
                                  #
                                  # Example: `headers = via, latency_tokens`
+
+#headers_upstream = X-Kong-Request-Id
+                                 # Comma-separated list of headers Kong should
+                                 # inject in requests to upstream.
+                                 #
+                                 # At this time, the only accepted value is:
+                                 # - `X-Kong-Request-Id`: Unique identifier of
+                                 #   the request.
+                                 #
+                                 # In addition, this value can be set
+                                 # to `off`, which prevents Kong from injecting
+                                 # the above header. Note that this
+                                 # does not prevent plugins from injecting
+                                 # headers of their own.
 
 #trusted_ips =                   # Defines trusted IP addresses blocks that are
                                  # known to send correct `X-Forwarded-*`
