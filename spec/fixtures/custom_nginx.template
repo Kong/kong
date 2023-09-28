@@ -224,6 +224,9 @@ http {
             proxy_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
             proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
             proxy_set_header      X-Real-IP          $remote_addr;
+> if enabled_headers_upstream["X-Kong-Request-Id"] then
+            proxy_set_header      X-Kong-Request-Id  $kong_request_id;
+> end
             proxy_pass_header     Server;
             proxy_pass_header     Date;
             proxy_ssl_name        $upstream_host;
@@ -255,6 +258,9 @@ http {
             proxy_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
             proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
             proxy_set_header      X-Real-IP          $remote_addr;
+> if enabled_headers_upstream["X-Kong-Request-Id"] then
+            proxy_set_header      X-Kong-Request-Id  $kong_request_id;
+> end
             proxy_pass_header     Server;
             proxy_pass_header     Date;
             proxy_ssl_name        $upstream_host;
@@ -285,6 +291,9 @@ http {
             proxy_set_header      X-Forwarded-Port   $upstream_x_forwarded_port;
             proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
             proxy_set_header      X-Real-IP          $remote_addr;
+> if enabled_headers_upstream["X-Kong-Request-Id"] then
+            proxy_set_header      X-Kong-Request-Id  $kong_request_id;
+> end
             proxy_pass_header     Server;
             proxy_pass_header     Date;
             proxy_ssl_name        $upstream_host;
@@ -315,6 +324,9 @@ http {
             proxy_set_header      X-Forwarded-Port   $upstream_x_forwarded_port;
             proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
             proxy_set_header      X-Real-IP          $remote_addr;
+> if enabled_headers_upstream["X-Kong-Request-Id"] then
+            proxy_set_header      X-Kong-Request-Id  $kong_request_id;
+> end
             proxy_pass_header     Server;
             proxy_pass_header     Date;
             proxy_ssl_name        $upstream_host;
@@ -382,6 +394,9 @@ http {
             proxy_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
             proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
             proxy_set_header      X-Real-IP          $remote_addr;
+> if enabled_headers_upstream["X-Kong-Request-Id"] then
+            proxy_set_header      X-Kong-Request-Id  $kong_request_id;
+> end
             proxy_pass_header     Server;
             proxy_pass_header     Date;
             proxy_ssl_name        $upstream_host;

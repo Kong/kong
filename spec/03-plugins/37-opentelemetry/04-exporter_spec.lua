@@ -414,6 +414,7 @@ for _, strategy in helpers.each_strategy() do
       it("#propagate w3c traceparent", function ()
         local trace_id = gen_trace_id()
         local parent_id = gen_span_id()
+        local request_id
 
         local headers, body
         helpers.wait_until(function()
@@ -432,6 +433,8 @@ for _, strategy in helpers.each_strategy() do
 
           local lines
           lines, body, headers = mock()
+
+          request_id = r.headers["X-Kong-Request-Id"]
 
           return lines
         end, 10)
@@ -458,6 +461,7 @@ for _, strategy in helpers.each_strategy() do
           { key = "http.scheme", value = { string_value = "http", value = "string_value" } },
           { key = "http.status_code", value = { int_value = 200, value = "int_value" } },
           { key = "http.url", value = { string_value = "http://0.0.0.0/", value = "string_value" } },
+          { key = "kong.request.id", value = { string_value = request_id, value = "string_value" } },
           { key = "net.peer.ip", value = { string_value = "127.0.0.1", value = "string_value" } },
         }, attr)
       end)
