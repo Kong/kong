@@ -95,18 +95,13 @@ end
 
 
 function _M:export_deflated_reconfigure_payload()
-  local config_table, err = declarative.export_config()
+  local config_table, err, plugins_configured = declarative.export()
   if not config_table then
     return nil, err
   end
 
   -- update plugins map
-  self.plugins_configured = {}
-  if config_table.plugins then
-    for _, plugin in pairs(config_table.plugins) do
-      self.plugins_configured[plugin.name] = true
-    end
-  end
+  self.plugins_configured = plugins_configured
 
   -- store serialized plugins map for troubleshooting purposes
   local shm_key_name = "clustering:cp_plugins_configured:worker_" .. worker_id()

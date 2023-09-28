@@ -59,11 +59,7 @@ function _M.new(clustering)
   assert(type(clustering.cert_key) == "cdata",
          "kong.clustering did not provide the cluster certificate private key")
 
-  assert(kong.db.declarative_config,
-         "kong.db.declarative_config was not initialized")
-
   local self = {
-    declarative_config = kong.db.declarative_config,
     conf = clustering.conf,
     cert = clustering.cert,
     cert_key = clustering.cert_key,
@@ -209,16 +205,24 @@ function _M:communicate(premature)
         goto continue
       end
 
+      ngx_log(ngx_INFO, _log_prefix, "declarative import was started", log_suffix)
+
+      local import_started_at = utils.get_updated_monotonic_ms()
+
       ngx_log(ngx_DEBUG, _log_prefix, "received reconfigure frame from control plane",
                          msg.timestamp and " with timestamp: " .. msg.timestamp or "",
                          log_suffix)
 
       local config_table = assert(msg.config_table)
 
-      local pok, res, err = pcall(config_helper.update, self.declarative_config,
-                                  config_table, msg.config_hash, msg.hashes)
+      local pok, res, err = pcall(config_helper.update, config_table,
+                                  msg.config_hash, msg.hashes)
       if pok then
         ping_immediately = true
+        ngx_log(ngx_INFO, _log_prefix, "declarative import took ",
+                utils.get_updated_monotonic_ms() - import_started_at, " ms",
+                log_suffix)
+
       end
 
       if not pok or not res then

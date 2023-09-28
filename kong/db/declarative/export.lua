@@ -8,6 +8,7 @@ local assert = assert
 local type = type
 local pcall = pcall
 local pairs = pairs
+local ipairs = ipairs
 local insert = table.insert
 local io_open = io.open
 local null = ngx.null
@@ -15,6 +16,8 @@ local null = ngx.null
 
 local REMOVE_FIRST_LINE_PATTERN = "^[^\n]+\n(.+)$"
 local GLOBAL_QUERY_OPTS = { nulls = true, workspace = null }
+local TOPOLOGICALLY_SORTED_SCHEMA_NAMES = {}
+local FOREIGN_KEY_NAMES = {}
 
 
 local function convert_nulls(tbl, from, to)
@@ -68,6 +71,69 @@ local function to_yaml_file(entities, filename)
 end
 
 
+local function get_foreign_key_names(name)
+  if FOREIGN_KEY_NAMES[name] then
+    return FOREIGN_KEY_NAMES[name]
+  end
+
+  local dao = kong.db.daos[name]
+  if not dao then
+    kong.log.err("unable to find dao with name '", name, "'")
+    return {}
+  end
+
+  local schema = dao.schema
+
+  local fks = {}
+  for field_name, field in schema:each_field() do
+    if field.type == "foreign" then
+      insert(fks, field_name)
+    end
+  end
+
+  FOREIGN_KEY_NAMES[name] = fks
+
+  return fks
+end
+
+
+local function get_topologically_sorted_schema_names(skip_ws)
+  if skip_ws == nil then
+    skip_ws = false
+  end
+
+  if TOPOLOGICALLY_SORTED_SCHEMA_NAMES[skip_ws] then
+    return TOPOLOGICALLY_SORTED_SCHEMA_NAMES[skip_ws]
+  end
+
+  local schemas = {}
+  for _, dao in pairs(kong.db.daos) do
+    local schema = dao.schema
+    if schema.db_export == false or (skip_ws and schema.name == "workspaces") then
+      goto continue
+    end
+
+    insert(schemas, schema)
+
+    ::continue::
+  end
+
+  local schemas, err = schema_topological_sort(schemas)
+  if not schemas then
+    kong.log.err("topological sort of schemas failed (", err, ")")
+    return {}
+  end
+
+  for i, schema in ipairs(schemas) do
+    schemas[i] = schema.name
+  end
+
+  TOPOLOGICALLY_SORTED_SCHEMA_NAMES[skip_ws] = schemas
+
+  return schemas
+end
+
+
 local function begin_transaction(db)
   if db.strategy == "postgres" then
     local ok, err = db.connector:connect("read")
@@ -96,23 +162,8 @@ end
 
 
 local function export_from_db_impl(emitter, skip_ws, skip_disabled_entities, expand_foreigns)
-  local schemas = {}
-
   local db = kong.db
-
-  for _, dao in pairs(db.daos) do
-    if not (skip_ws and dao.schema.name == "workspaces") then
-      insert(schemas, dao.schema)
-    end
-  end
-
-  local sorted_schemas, err = schema_topological_sort(schemas)
-  if not sorted_schemas then
-    return nil, err
-  end
-
-  local ok
-  ok, err = begin_transaction(db)
+  local ok, err = begin_transaction(db)
   if not ok then
     return nil, err
   end
@@ -122,22 +173,12 @@ local function export_from_db_impl(emitter, skip_ws, skip_disabled_entities, exp
     _transform = false,
   })
 
+  local schema_names = get_topologically_sorted_schema_names(skip_ws)
+  local plugins_configured = {}
   local disabled_services = {}
   local disabled_routes = {}
-  for i = 1, #sorted_schemas do
-    local schema = sorted_schemas[i]
-    if schema.db_export == false then
-      goto continue
-    end
-
-    local name = schema.name
-    local fks = {}
-    for field_name, field in schema:each_field() do
-      if field.type == "foreign" then
-        insert(fks, field_name)
-      end
-    end
-
+  for _, name in ipairs(schema_names) do
+    local fks = get_foreign_key_names(name)
     local page_size
     if db[name].pagination then
       page_size = db[name].pagination.max_page_size
@@ -150,7 +191,7 @@ local function export_from_db_impl(emitter, skip_ws, skip_disabled_entities, exp
       end
 
       -- do not export disabled services and disabled plugins when skip_disabled_entities
-      -- as well do not export plugins and routes of dsiabled services
+      -- as well do not export plugins and routes of disabled services
       if skip_disabled_entities and name == "services" and not row.enabled then
         disabled_services[row.id] = true
 
@@ -162,8 +203,7 @@ local function export_from_db_impl(emitter, skip_ws, skip_disabled_entities, exp
         goto skip_emit
 
       else
-        for j = 1, #fks do
-          local foreign_name = fks[j]
+        for _, foreign_name in ipairs(fks) do
           if type(row[foreign_name]) == "table" then
             local id = row[foreign_name].id
             if id ~= nil then
@@ -177,17 +217,19 @@ local function export_from_db_impl(emitter, skip_ws, skip_disabled_entities, exp
           end
         end
 
+        if name == "plugins" then
+          plugins_configured[row.name] = true
+        end
+
         emitter:emit_entity(name, row)
       end
       ::skip_emit::
     end
-
-    ::continue::
   end
 
   end_transaction(db)
 
-  return emitter:done()
+  return (emitter:done()), nil, plugins_configured
 end
 
 
@@ -256,6 +298,11 @@ function table_emitter.new()
 end
 
 
+local function export()
+  return export_from_db_impl(table_emitter.new(), false, true, true)
+end
+
+
 local function export_config(skip_ws, skip_disabled_entities)
   -- default skip_ws=false and skip_disabled_services=true
   if skip_ws == nil then
@@ -266,7 +313,7 @@ local function export_config(skip_ws, skip_disabled_entities)
     skip_disabled_entities = true
   end
 
-  return export_from_db_impl(table_emitter.new(), skip_ws, skip_disabled_entities)
+  return export_from_db_impl(table_emitter.new(), skip_ws, skip_disabled_entities, false)
 end
 
 
@@ -344,9 +391,12 @@ return {
   to_yaml_string = to_yaml_string,
   to_yaml_file = to_yaml_file,
 
+  export = export,
   export_from_db = export_from_db,
   export_config = export_config,
   export_config_proto = export_config_proto,
 
   sanitize_output = sanitize_output,
+
+  get_topologically_sorted_schema_names = get_topologically_sorted_schema_names,
 }
