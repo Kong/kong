@@ -43,6 +43,7 @@ local kong = kong
 local check_phase = phase_checker.check
 local split = utils.split
 local byte = string.byte
+local request_id_get = require "kong.tracing.request_id".get
 
 
 local _PREFIX = "[kong] "
@@ -752,6 +753,7 @@ do
   -- The following fields are included in the returned table:
   -- * `client_ip` - client IP address in textual format.
   -- * `latencies` - request/proxy latencies.
+  -- * `request.id` - request id.
   -- * `request.headers` - request headers.
   -- * `request.method` - request method.
   -- * `request.querystring` - request query strings.
@@ -775,6 +777,12 @@ do
   -- * `request.tls.version` - TLS/SSL version used by the connection.
   -- * `request.tls.cipher` - TLS/SSL cipher used by the connection.
   -- * `request.tls.client_verify` - mTLS validation result. Contents are the same as described in [$ssl_client_verify](https://nginx.org/en/docs/http/ngx_http_ssl_module.html#var_ssl_client_verify).
+  --
+  -- The following field is only present in requests where a tracing plugin (OpenTelemetry or Zipkin) is executed:
+  -- * `trace_id` - trace ID.
+  --
+  -- The following field is only present in requests where the Correlation ID plugin is executed:
+  -- * `correlation_id` - correlation ID.
   --
   -- **Warning:** This function may return sensitive data (e.g., API keys).
   -- Consider filtering before writing it to unsecured locations.
@@ -826,6 +834,7 @@ do
 
       local root = {
         request = {
+          id = request_id_get() or "",
           uri = request_uri,
           url = var.scheme .. "://" .. var.host .. ":" .. host_port .. request_uri,
           querystring = okong.request.get_query(), -- parameters, as a table

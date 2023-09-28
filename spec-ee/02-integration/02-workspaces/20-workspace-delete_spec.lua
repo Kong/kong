@@ -7,6 +7,7 @@
 
 local fmt = string.format
 local helpers = require "spec.helpers"
+local cjson = require "cjson"
 
 local fixtures = {
   http_mock = {
@@ -157,7 +158,9 @@ for _, strategy in helpers.each_strategy() do
     it("router should be rebuilt", function()
       local res = proxy_client:get("/hello")
       local body = assert.res_status(404, res)
-      assert.equal('{\n  "message":"no Route matched with those values"\n}', body)
+      local json = cjson.decode(body)
+      assert.not_nil(json)
+      assert.equals('no Route matched with those values', json.message)
     end)
 
     it("should not touch other workspaces", function()
@@ -245,7 +248,9 @@ for _, strategy in helpers.each_strategy() do
       helpers.pwait_until(function()
         local res = proxy_client:get("/hello")
         local body = assert.res_status(404, res)
-        assert.equal('{\n  "message":"no Route matched with those values"\n}', body)
+        local json = cjson.decode(body)
+        assert.not_nil(json)
+        assert.equals('no Route matched with those values', json.message)
         return true
       end, 30)
     end)

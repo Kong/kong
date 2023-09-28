@@ -579,6 +579,52 @@ local function find_header_type(headers)
 end
 
 
+-- Performs a table merge to add trace ID formats to the current request's
+-- trace ID and returns a table containing all the formats.
+--
+-- Plugins can handle different formats of trace ids depending on their headers
+-- configuration, multiple plugins executions may result in additional formats
+-- of the current request's trace id.
+--
+-- The `propagation_trace_id_all_fmt` table is stored in `ngx.ctx` to keep the
+-- list of formats updated for the current request.
+--
+-- Each item in the resulting `propagation_trace_id_all_fmt` table represents a
+-- format associated with the trace ID for the current request.
+--
+-- @param trace_id_new_fmt table containing the trace ID formats to be added
+-- @returns propagation_trace_id_all_fmt table contains all the formats for
+-- the current request
+--
+-- @example
+--
+--    propagation_trace_id_all_fmt = { datadog = "1234",
+--                                     w3c     = "abcd" }
+--
+--    trace_id_new_fmt             = { ot = "abcd",
+--                                     w3c = "abcd" }
+--
+--    propagation_trace_id_all_fmt = { datadog = "1234",
+--                                     ot = "abcd",
+--                                     w3c = "abcd" }
+--
+local function add_trace_id_formats(trace_id_new_fmt)
+  -- TODO: @samugi - move trace ID table in the unified tracing context
+  local trace_id_all_fmt = ngx.ctx.propagation_trace_id_all_fmt
+  if not trace_id_all_fmt then
+    ngx.ctx.propagation_trace_id_all_fmt = trace_id_new_fmt
+    return trace_id_new_fmt
+  end
+
+  -- add new formats to trace ID formats table
+  for format, value in pairs(trace_id_new_fmt) do
+    trace_id_all_fmt[format] = value
+  end
+
+  return trace_id_all_fmt
+end
+
+
 local function parse(headers, conf_header_type)
   if conf_header_type == "ignore" then
     return nil
@@ -650,9 +696,24 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
 
   found_header_type = found_header_type or conf_default_header_type or "b3"
 
+  -- contains all the different formats of the current trace ID, with zero or
+  -- more of the following entries:
+  -- {
+  --   ["b3"] = "<b3_trace_id>", -- the trace_id when the request has a b3 or X-B3-TraceId (zipkin) header
+  --   ["w3c"] = "<w3c_trace_id>", -- the trace_id when the request has a W3C header
+  --   ["jaeger"] = "<jaeger_trace_id>", -- the trace_id when the request has a jaeger tracing header
+  --   ["ot"] = "<ot_trace_id>", -- the trace_id when the request has an OpenTelemetry tracing header
+  --   ["aws"] = "<aws_trace_id>", -- the trace_id when the request has an aws tracing header
+  --   ["gcp"] = "<gcp_trace_id>", -- the trace_id when the request has a gcp tracing header
+  -- }
+  local trace_id_formats = {}
+
   if conf_header_type == "b3" or found_header_type == "b3"
   then
-    set_header("x-b3-traceid", to_hex(proxy_span.trace_id))
+    local trace_id = to_hex(proxy_span.trace_id)
+    trace_id_formats.b3 = trace_id
+
+    set_header("x-b3-traceid", trace_id)
     set_header("x-b3-spanid", to_hex(proxy_span.span_id))
     if proxy_span.parent_id then
       set_header("x-b3-parentspanid", to_hex(proxy_span.parent_id))
@@ -666,7 +727,10 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
   end
 
   if conf_header_type == "b3-single" or found_header_type == "b3-single" then
-    set_header("b3", to_hex(proxy_span.trace_id) ..
+    local trace_id = to_hex(proxy_span.trace_id)
+    trace_id_formats.b3 = trace_id
+
+    set_header("b3", trace_id ..
         "-" .. to_hex(proxy_span.span_id) ..
         "-" .. (proxy_span.should_sample and "1" or "0") ..
         (proxy_span.parent_id and "-" .. to_hex(proxy_span.parent_id) or ""))
@@ -674,15 +738,21 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
 
   if conf_header_type == "w3c" or found_header_type == "w3c" then
     -- OTEL uses w3c trace context format so to_ot_trace_id works here
+    local trace_id = to_hex(to_w3c_trace_id(proxy_span.trace_id))
+    trace_id_formats.w3c = trace_id
+
     set_header("traceparent", fmt("00-%s-%s-%s",
-        to_hex(to_w3c_trace_id(proxy_span.trace_id)),
+        trace_id,
         to_hex(proxy_span.span_id),
         proxy_span.should_sample and "01" or "00"))
   end
 
   if conf_header_type == "jaeger" or found_header_type == "jaeger" then
+    local trace_id = to_hex(proxy_span.trace_id)
+    trace_id_formats.jaeger = trace_id
+
     set_header("uber-trace-id", fmt("%s:%s:%s:%s",
-        to_hex(proxy_span.trace_id),
+        trace_id,
         to_hex(proxy_span.span_id),
         proxy_span.parent_id and to_hex(proxy_span.parent_id) or "0",
       proxy_span.should_sample and "01" or "00"))
@@ -690,7 +760,10 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
 
   if conf_header_type == "ot" or found_header_type == "ot" then
     to_ot_trace_id = to_ot_trace_id or require "kong.plugins.opentelemetry.otlp".to_ot_trace_id
-    set_header("ot-tracer-traceid", to_hex(to_ot_trace_id(proxy_span.trace_id)))
+    local trace_id = to_hex(to_ot_trace_id(proxy_span.trace_id))
+    trace_id_formats.ot = trace_id
+
+    set_header("ot-tracer-traceid", trace_id)
     set_header("ot-tracer-spanid", to_hex(proxy_span.span_id))
     set_header("ot-tracer-sampled", proxy_span.should_sample and "1" or "0")
 
@@ -700,7 +773,10 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
   end
 
   if conf_header_type == "datadog" or found_header_type == "datadog" then
-    set_header("x-datadog-trace-id", from_binary(proxy_span.trace_id:sub(-8)):to_dec())
+    local trace_id = from_binary(proxy_span.trace_id:sub(-8)):to_dec()
+    trace_id_formats.datadog = trace_id
+
+    set_header("x-datadog-trace-id", trace_id)
     set_header("x-datadog-parent-id", from_binary(proxy_span.span_id):to_dec())
     set_header("x-datadog-sampling-priority", proxy_span.should_sample and "1" or "0")
   end
@@ -712,6 +788,8 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
 
   if conf_header_type == "aws" or found_header_type == "aws" then
     local trace_id = to_hex(proxy_span.trace_id)
+    trace_id_formats.aws = trace_id
+
     set_header("x-amzn-trace-id", "Root=" .. AWS_TRACE_ID_VERSION .. "-" ..
         sub(trace_id, 1, AWS_TRACE_ID_TIMESTAMP_LEN) .. "-" ..
         sub(trace_id, AWS_TRACE_ID_TIMESTAMP_LEN + 1, #trace_id) ..
@@ -721,11 +799,18 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
   end
 
   if conf_header_type == "gcp" or found_header_type == "gcp" then
-    set_header("x-cloud-trace-context", to_gcp_trace_id(to_hex(proxy_span.trace_id)) ..
-      "/" .. bn.from_binary(proxy_span.span_id):to_dec() ..
+    local trace_id = to_gcp_trace_id(to_hex(proxy_span.trace_id))
+    trace_id_formats.gcp = trace_id
+
+    set_header("x-cloud-trace-context", trace_id ..
+      "/" .. from_binary(proxy_span.span_id):to_dec() ..
       ";o=" .. (proxy_span.should_sample and "1" or "0")
     )
   end
+
+  trace_id_formats = add_trace_id_formats(trace_id_formats)
+  -- add trace IDs to log serializer output
+  kong.log.set_serialize_value("trace_id", trace_id_formats)
 end
 
 

@@ -5,13 +5,38 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local helpers = require "spec.helpers"
-local cjson   = require "cjson"
-
+local helpers    = require "spec.helpers"
+local cjson      = require "cjson"
+local pl_file    = require "pl.file"
+local pl_stringx = require "pl.stringx"
 
 local UUID_PATTERN         = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 local UUID_COUNTER_PATTERN = UUID_PATTERN .. "#%d"
 local TRACKER_PATTERN      = "%d+%.%d+%.%d+%.%d+%-%d+%-%d+%-%d+%-%d+%-%d%d%d%d%d%d%d%d%d%d%.%d%d%d"
+local FILE_LOG_PATH        = os.tmpname()
+
+
+local function wait_json_log()
+  local json
+
+  assert
+      .with_timeout(10)
+      .ignore_exceptions(true)
+      .eventually(function()
+        local data = assert(pl_file.read(FILE_LOG_PATH))
+
+        data = pl_stringx.strip(data)
+        assert(#data > 0, "log file is empty")
+
+        data = data:match("%b{}")
+        assert(data, "log file does not contain JSON")
+
+        json = cjson.decode(data)
+      end)
+      .has_no_error("log file contains a valid JSON entry")
+
+  return json
+end
 
 
 for _, strategy in helpers.each_strategy() do
@@ -63,6 +88,10 @@ for _, strategy in helpers.each_strategy() do
           url = helpers.grpcbin_url,
         }),
       })
+
+      local route_serializer = bp.routes:insert {
+        hosts = { "correlation-serializer.com" },
+      }
 
       bp.plugins:insert {
         name     = "correlation-id",
@@ -143,6 +172,20 @@ for _, strategy in helpers.each_strategy() do
         config   = {
           echo_downstream = true,
         },
+      }
+
+      bp.plugins:insert {
+        name   = "file-log",
+        route = { id = route_serializer.id },
+        config = {
+          path   = FILE_LOG_PATH,
+          reopen = true,
+        },
+      }
+
+      bp.plugins:insert {
+        name  = "correlation-id",
+        route = { id = route_serializer.id },
       }
 
       assert(helpers.start_kong({
@@ -421,6 +464,35 @@ for _, strategy in helpers.each_strategy() do
       assert.response(res).has.status(418, res)
       local downstream_id = assert.response(res).has.header("kong-request-id")
       assert.equals("my very personal id", downstream_id)
+    end)
+
+    describe("log serializer", function()
+      before_each(function()
+        os.remove(FILE_LOG_PATH)
+      end)
+
+      after_each(function()
+        os.remove(FILE_LOG_PATH)
+      end)
+
+      it("contains the Correlation ID", function()
+        local correlation_id = "1234"
+        local r = proxy_client:get("/", {
+          headers = {
+            host = "correlation-serializer.com",
+            ["Kong-Request-ID"] = correlation_id,
+          },
+        })
+        assert.response(r).has.status(200)
+
+        local json_log = wait_json_log()
+        local request_id = json_log and json_log.request and json_log.request.id
+        assert.matches("^[a-f0-9]+$", request_id)
+        assert.True(request_id:len() == 32)
+
+        local logged_id = json_log and json_log.correlation_id
+        assert.equals(correlation_id, logged_id)
+      end)
     end)
   end)
 end
