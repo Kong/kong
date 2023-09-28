@@ -258,6 +258,13 @@ jobs:
           HTTP2: true
           STATUS_LISTEN: true
 
+      - name: Logs from Gateway Start
+        if: failure()
+        working-directory: gateway-docker-compose-generator
+        run: |
+          make logs || true
+          make logs_package || true
+
       - name: Install Packages
         run: npm install && ls ..
 
@@ -388,6 +395,13 @@ jobs:
           CUSTOM_CONFIG_ALL: "RLA_REDISU: redisuser; RLA_REDISP: redispassword; AWS_REGION: us-east-2; AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID }}; AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY }}; GCP_SERVICE_ACCOUNT: '${{ env.GCP_SERVICE_ACCOUNT }}'"
           STATUS_LISTEN: true
           HTTP2: true
+
+      - name: Logs from Gateway Start
+        if: failure()
+        working-directory: gateway-docker-compose-generator
+        run: |
+          make logs || true
+          make logs_package || true
 
       - name: Install Packages
         run: npm install && ls ..
@@ -524,6 +538,13 @@ jobs:
           JAEGER: true
           CUSTOM_CONFIG_ALL: "RLA_REDISU: redisuser; RLA_REDISP: redispassword; AWS_REGION: us-east-2; AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID }}; AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY }}; GCP_SERVICE_ACCOUNT: '${{ secrets.TEST_API_GCP_SERVICE_ACCOUNT }}'"
           HTTP2: true
+
+      - name: Logs from Gateway Start
+        if: failure()
+        working-directory: gateway-docker-compose-generator
+        run: |
+          make logs || true
+          make logs_package || true
 
       - name: Install decK
         uses: kong/setup-deck@v1

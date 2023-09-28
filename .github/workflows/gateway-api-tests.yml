@@ -137,6 +137,13 @@ jobs:
           HTTP2: true
           STATUS_LISTEN: true
 
+      - name: Logs from Gateway Start
+        if: failure()
+        working-directory: gateway-docker-compose-generator
+        run: |
+          make logs || true
+          make logs_package || true
+
       - name: Install Packages
         run: npm install && ls ..
 
@@ -146,7 +153,7 @@ jobs:
       - name: Execute Gateway API Tests
         id: execute_tests
         run: |
-          if [[ $RUN_SPEC == 'all' ]]; then 
+          if [[ $RUN_SPEC == 'all' ]]; then
             npm run test-gateway;
           elif [[ $RUN_SPEC == 'smoke' ]]; then
             npm run test-smoke;
