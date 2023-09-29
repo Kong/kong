@@ -721,7 +721,9 @@
 
 #mem_cache_size = 128m           # Size of each of the two shared memory caches
                                  # for traditional mode database entities
-                                 # and runtime data.
+                                 # and runtime data, `kong_core_cache` and 
+                                 # `kong_cache`.
+                                 #
                                  # The accepted units are `k` and `m`, with a minimum
                                  # recommended value of a few MBs.
                                  #
