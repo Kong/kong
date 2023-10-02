@@ -1,3 +1,3 @@
-message: Allows the Kong-CE admin endpoint to continue to read and write after the license has expired while the Kong-EE admin endpoint is read-only.
+message: Allow OSS features to continue working with an expired license and configured Kong Enterprise features to continue operating in read-only mode. Kong Gateway now logs a daily critical message when a license is expired and within the 30 days grace period.
 type: feature
 scope: Core

@@ -274,19 +274,19 @@ function _M:can(what)
   return _M.features[what] ~= false
 end
 
-function _M:can_ee_entity(op)
-  local can_ee_entity = _M.features["can_ee_entity"]
+function _M:allow_ee_entity(op)
+  local allow_ee_entity = _M.features["allow_ee_entity"]
 
-  if not can_ee_entity then
+  if not allow_ee_entity then
     return true
   end
 
   -- should be allowed during the grace period
-  if license_helpers.is_in_grace_period() then
+  if license_helpers.is_exceeds_grace_period() then
     return true
   end
 
-  return can_ee_entity[op] ~= false
+  return allow_ee_entity[op] ~= false
 end
 
 function _M:license_type()

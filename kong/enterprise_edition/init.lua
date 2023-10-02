@@ -262,7 +262,7 @@ function _M.license_hooks(config)
   hooks.register_hook("api:kong:info", function(info)
 
     -- do nothing
-    if kong.licensing:can_ee_entity("READ") then
+    if kong.licensing:allow_ee_entity("READ") then
       info.plugins.disabled_on_server = {}
 
       return info
@@ -308,7 +308,7 @@ function _M.license_hooks(config)
         wrap_method(handler, phase, function(parent)
           return function(...)
             ngx.log(ngx.DEBUG, fmt("calling patched method '%s:%s'", name, phase))
-            if not kong.licensing:can_ee_entity("READ") then
+            if not kong.licensing:allow_ee_entity("READ") then
               ngx.log(ngx.DEBUG, fmt("nop'ing '%s:%s, ee_plugins[READ]=false", name, phase))
               return
             end
@@ -361,7 +361,7 @@ function _M.license_hooks(config)
 
         local name = input.name
 
-        if not kong.licensing:can_ee_entity("WRITE") and constants.EE_PLUGINS_MAP[name] then
+        if not kong.licensing:allow_ee_entity("WRITE") and constants.EE_PLUGINS_MAP[name] then
           return nil, { name = err(name, "plugin") }
         end
 
@@ -390,22 +390,12 @@ function _M.license_hooks(config)
   end
 
 
-  -- disable EE entities and plugins entities
-  local disabled_enterprise_entities = {
-    ["event_hooks"] = true,
-    ["consumer_groups"] = true,
-    ["consumer_group_plugins"] = true,
-    ["rbac_role_endpoints"] = true,
-    ["rbac_role_entities"] = true,
-    ["rbac_roles"] = true,
-    ["rbac_user_roles"] = true,
-    ["rbac_users"] = true,
-  }
-
   -- disable EE plugins entities and custom api endpoints
+  local enterprise_plugin_entities = {}
+
   for _, plugin in ipairs(constants.EE_PLUGINS) do
     for _, schema in get_plugin_entities(plugin) do
-      disabled_enterprise_entities[schema.name] = true
+      enterprise_plugin_entities[schema.name] = true
     end
   end
 
@@ -433,14 +423,14 @@ function _M.license_hooks(config)
 
   hooks.register_hook("api:helpers:attach_new_db_routes:before", function(app, route_path, methods, schema)
 
-    local is_disabled = disabled_enterprise_entities[schema.name]
+    local is_disabled = enterprise_plugin_entities[schema.name]
 
     wrap_method(methods, "before", function(parent)
       return function(...)
 
-        local handled_as_ee_entity = kong.licensing.handled_as_ee_entity
+        local disabled_ee_entities = kong.licensing.disabled_ee_entities
 
-        if is_disabled or (handled_as_ee_entity and handled_as_ee_entity[schema.name]) then
+        if is_disabled or (disabled_ee_entities and disabled_ee_entities[schema.name]) then
           local method = ngx.req.get_method()
           local operator = "WRITE"
 
@@ -448,7 +438,7 @@ function _M.license_hooks(config)
             operator = "READ"
           end
 
-          if not kong.licensing:can_ee_entity(operator) then
+          if not kong.licensing:allow_ee_entity(operator) then
             return forbidden()
           end
         end
@@ -466,12 +456,12 @@ function _M.license_hooks(config)
     return true
   end)
 
-  local function validate_ee_plugins(entity, name, options)
+  local function validate_ee_plugins(entity, name)
     if name ~= "plugins" then
       return entity
     end
 
-    if constants.EE_PLUGINS_MAP[entity.name] and not kong.licensing:can_ee_entity("WRITE") then
+    if constants.EE_PLUGINS_MAP[entity.name] and not kong.licensing:allow_ee_entity("WRITE") then
       return forbidden()
     end
 

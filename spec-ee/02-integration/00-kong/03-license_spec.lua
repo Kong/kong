@@ -724,3 +724,233 @@ describe("Admin API - Kong routes", function()
     end)
   end)
 end)
+
+describe("Admin API #off", function()
+  local valid_license, expired_license, grace_period_license
+
+  local declarative_config_ee = [[
+    _format_version: '3.0'
+    plugins:
+    - enabled: true
+      name: correlation-id
+      protocols:
+      - http
+      - https
+    services:
+    - host: localhost
+      name: local
+      port: 80
+      protocol: http
+      routes:
+      - name: headers
+        paths:
+        - /headers
+        strip_path: false
+  ]]
+
+  local declarative_config_ce = [[
+    _format_version: '3.0'
+    plugins:
+    - enabled: true
+      name: cors
+      protocols:
+      - http
+      - https
+    services:
+    - host: localhost
+      name: local
+      port: 80
+      protocol: http
+      routes:
+      - name: headers
+        paths:
+        - /headers
+        strip_path: false
+  ]]
+
+  lazy_setup(function()
+    local f = assert(io.open("spec-ee/fixtures/mock_license.json"))
+    valid_license = f:read("*a")
+    f:close()
+
+    f = assert(io.open("spec-ee/fixtures/mock_expired_license.json"))
+    expired_license = f:read("*a")
+    f:close()
+
+    f = assert(io.open("spec-ee/fixtures/mock_grace_period_license_tmpl.json"))
+    local tmpl = f:read("*a")
+    grace_period_license = string.format(tmpl, os.date("%Y-%m-%d", os.time()-5*3600*24))
+    f:close()
+
+  end)
+
+  describe("with an expired license is configured and the grace period is exceeded", function()
+    local client, reset_distribution
+
+    lazy_setup(function()
+      reset_distribution = setup_distribution()
+
+      helpers.unsetenv("KONG_LICENSE_DATA")
+      helpers.unsetenv("KONG_TEST_LICENSE_DATA")
+      assert(helpers.start_kong({
+        database = "off",
+        mem_cache_size = "15m",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        license_data = expired_license,
+      }))
+      client = helpers.admin_client()
+    end)
+
+    lazy_teardown(function()
+      if client then
+        client:close()
+      end
+      helpers.stop_kong()
+      reset_distribution()
+    end)
+
+    -- We already recognize correlation-id as an EE plugin in distributions_constants.lua
+    it("add EE plugin is not allowed from /config", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+        body = {
+          config = declarative_config_ee,
+        },
+      })
+      local body = assert.res_status(400, res)
+      local json = cjson.decode(body)
+      assert.equal("declarative config is invalid: {plugins={{name=\"'correlation-id' is an enterprise only plugin\"}}}",
+                  json["message"])
+    end)
+
+    it("add CE plugin is allowed", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+        body = {
+          config = declarative_config_ce,
+        },
+      })
+      assert.res_status(201, res)
+    end)
+  end)
+
+  describe("with an expired license is configured but within the grace period", function()
+    local client, reset_distribution
+
+    lazy_setup(function()
+      reset_distribution = setup_distribution()
+
+      helpers.unsetenv("KONG_LICENSE_DATA")
+      helpers.unsetenv("KONG_TEST_LICENSE_DATA")
+      assert(helpers.start_kong({
+        database = "off",
+        mem_cache_size = "15m",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        license_data = grace_period_license,
+      }))
+      client = helpers.admin_client()
+    end)
+
+    lazy_teardown(function()
+      if client then
+        client:close()
+      end
+      helpers.stop_kong()
+      reset_distribution()
+    end)
+
+    -- We already recognize correlation-id as an EE plugin in distributions_constants.lua
+    it("add EE plugin is allowed from /config", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+        body = {
+          config = declarative_config_ee,
+        },
+      })
+      assert.res_status(201, res)
+    end)
+
+    it("add CE plugin is allowed from /config", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+        body = {
+          config = declarative_config_ce,
+        },
+      })
+      assert.res_status(201, res)
+    end)
+  end)
+
+  describe("with no license is configured", function()
+    local client, reset_distribution
+
+    lazy_setup(function()
+      reset_distribution = setup_distribution()
+
+      helpers.unsetenv("KONG_LICENSE_DATA")
+      helpers.unsetenv("KONG_TEST_LICENSE_DATA")
+      assert(helpers.start_kong({
+        database = "off",
+        mem_cache_size = "15m",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+      client = helpers.admin_client()
+    end)
+
+    lazy_teardown(function()
+      if client then
+        client:close()
+      end
+      helpers.stop_kong()
+      reset_distribution()
+    end)
+
+    -- We already recognize correlation-id as an EE plugin in distributions_constants.lua
+    it("add EE plugin is not allowed from /config", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+        body = {
+          config = declarative_config_ee,
+        },
+      })
+      local body = assert.res_status(400, res)
+      local json = cjson.decode(body)
+      assert.equal("declarative config is invalid: {plugins={{name=\"'correlation-id' is an enterprise only plugin\"}}}",
+                  json["message"])
+    end)
+
+    it("add CE plugin is allowed from /config", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+        body = {
+          config = declarative_config_ce,
+        },
+      })
+      assert.res_status(201, res)
+    end)
+  end)
+end)

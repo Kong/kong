@@ -58,9 +58,17 @@ c.featureset = {
       ["/licenses"] = { ["*"] = true },
       ["/licenses/:licenses"] = { ["*"] = true },
     },
-    can_ee_entity = { READ = true, WRITE = false },
-    handled_as_ee_entity = {
+    allow_ee_entity = { READ = true, WRITE = false },
+    disabled_ee_entities = {
       ["workspaces"] = true,
+      ["event_hooks"] = true,
+      ["consumer_groups"] = true,
+      ["consumer_group_plugins"] = true,
+      ["rbac_role_endpoints"] = true,
+      ["rbac_role_entities"] = true,
+      ["rbac_roles"] = true,
+      ["rbac_user_roles"] = true,
+      ["rbac_users"] = true,
     },
   },
   free = {
@@ -88,9 +96,17 @@ c.featureset = {
     -- deny a particular entity (and related api methods)
     -- deny_entity = { ["some_entity_name"] = true },
     -- disable running of enterprise plugins
-    can_ee_entity = { READ = false, WRITE = false },
-    handled_as_ee_entity = {
+    allow_ee_entity = { READ = false, WRITE = false },
+    disabled_ee_entities = {
       ["workspaces"] = false,
+      ["event_hooks"] = true,
+      ["consumer_groups"] = true,
+      ["consumer_group_plugins"] = true,
+      ["rbac_role_endpoints"] = true,
+      ["rbac_role_entities"] = true,
+      ["rbac_roles"] = true,
+      ["rbac_user_roles"] = true,
+      ["rbac_users"] = true,
     },
   }
 }

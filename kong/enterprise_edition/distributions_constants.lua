@@ -42,7 +42,8 @@ local constants = {
       -- -- deny a particular entity (and related api methods)
       -- deny_entity = { ["some_entity_name"] = true },
       -- -- disable EE plugins, does not apply on data_plane
-      -- can_ee_entity = { READ = false, WRITE = false },
+      -- allow_ee_entity = { READ = false, WRITE = false },
+      -- disabled_ee_entities = {},
     },
   },
 
