@@ -108,7 +108,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
   end)
 
   describe("plugin config fields", function()
-    local rate_limit, cors
+    local rate_limit, cors, opentelemetry, zipkin
 
     lazy_setup(function()
       rate_limit = admin.plugins:insert {
@@ -193,6 +193,93 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
       it("does not remove `config.private_network` from DP nodes that are already compatible", function()
         do_assert(utils.uuid(), "3.5.0", cors)
+      end)
+    end)
+
+    describe("compatibility tests for opentelemetry plugin", function()
+      it("replaces `aws` values of `header_type` property with default `preserve`", function()
+        -- [[ 3.5.x ]] --
+        opentelemetry = admin.plugins:insert {
+          name = "opentelemetry",
+          enabled = true,
+          config = {
+            endpoint = "http://1.1.1.1:12345/v1/trace",
+            -- [[ new value 3.5.0
+            header_type = "gcp"
+            -- ]]
+          }
+        }
+
+        local expected_otel_prior_35 = utils.cycle_aware_deep_copy(opentelemetry)
+        expected_otel_prior_35.config.header_type = "preserve"
+        do_assert(utils.uuid(), "3.4.0", expected_otel_prior_35)
+
+        -- cleanup
+        admin.plugins:remove({ id = opentelemetry.id })
+
+        -- [[ 3.4.x ]] --
+        opentelemetry = admin.plugins:insert {
+          name = "opentelemetry",
+          enabled = true,
+          config = {
+            endpoint = "http://1.1.1.1:12345/v1/trace",
+            -- [[ new value 3.4.0
+            header_type = "aws"
+            -- ]]
+          }
+        }
+
+        local expected_otel_prior_34 = utils.cycle_aware_deep_copy(opentelemetry)
+        expected_otel_prior_34.config.header_type = "preserve"
+        do_assert(utils.uuid(), "3.3.0", expected_otel_prior_34)
+
+        -- cleanup
+        admin.plugins:remove({ id = opentelemetry.id })
+      end)
+
+    end)
+
+    describe("compatibility tests for zipkin plugin", function()
+      it("replaces `aws` and `gcp` values of `header_type` property with default `preserve`", function()
+        -- [[ 3.5.x ]] --
+        zipkin = admin.plugins:insert {
+          name = "zipkin",
+          enabled = true,
+          config = {
+            http_endpoint = "http://1.1.1.1:12345/v1/trace",
+            -- [[ new value 3.5.0
+            header_type = "gcp"
+            -- ]]
+          }
+        }
+
+        local expected_zipkin_prior_35 = utils.cycle_aware_deep_copy(zipkin)
+        expected_zipkin_prior_35.config.header_type = "preserve"
+        expected_zipkin_prior_35.config.default_header_type = "b3"
+        do_assert(utils.uuid(), "3.4.0", expected_zipkin_prior_35)
+
+        -- cleanup
+        admin.plugins:remove({ id = zipkin.id })
+
+        -- [[ 3.4.x ]] --
+        zipkin = admin.plugins:insert {
+          name = "zipkin",
+          enabled = true,
+          config = {
+            http_endpoint = "http://1.1.1.1:12345/v1/trace",
+            -- [[ new value 3.4.0
+            header_type = "aws"
+            -- ]]
+          }
+        }
+
+        local expected_zipkin_prior_34 = utils.cycle_aware_deep_copy(zipkin)
+        expected_zipkin_prior_34.config.header_type = "preserve"
+        expected_zipkin_prior_34.config.default_header_type = "b3"
+        do_assert(utils.uuid(), "3.3.0", expected_zipkin_prior_34)
+
+        -- cleanup
+        admin.plugins:remove({ id = zipkin.id })
       end)
     end)
   end)
