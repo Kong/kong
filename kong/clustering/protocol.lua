@@ -225,7 +225,7 @@ local function validate_entity(schema, entity)
   if ws_id then
     entity.ws_id = nil
   end
-  local ok, errors = schema:validate_insert(entity)
+  local ok, errors = schema:validate_fields(entity)
   if not ok then
     local err_t = kong.db.errors:schema_violation(errors)
     error(tostring(err_t))

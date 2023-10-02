@@ -2518,6 +2518,9 @@ function Schema.new_subschema(self, key, definition)
 end
 
 
+Schema.validate_fields = validate_fields
+
+
 function Schema.define(tbl)
   return setmetatable(tbl, {
     __call = function(t, arg)
