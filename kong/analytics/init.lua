@@ -7,6 +7,7 @@
 
 local reports = require "kong.reports"
 local new_tab = require "table.new"
+local cjson = require "cjson.safe"
 local math = require "math"
 local request_id = require "kong.tracing.request_id"
 local log = ngx.log
@@ -207,6 +208,10 @@ function _M:flush_data()
     -- send a dummy to keep the connection open.
     self.ws_send_func(EMPTY_PAYLOAD)
     return
+  end
+
+  if kong.configuration.analytics_debug then
+    log(INFO, _log_prefix, "analytics_debug: " .. cjson.encode(self.requests_buffer))
   end
 
   log(DEBUG, _log_prefix, "flushing analytics request log data: " .. #self.requests_buffer .. ". worker id: " .. ngx.worker.id())

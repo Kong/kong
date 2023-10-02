@@ -64,6 +64,7 @@ local EE_CONF_INFERENCES = {
 
   analytics_flush_interval = {typ = "number"},
   analytics_buffer_size_limit = {typ = "number"},
+  analytics_debug = {typ = "boolean"},
 
   konnect_mode = {typ = "boolean"},
 

@@ -1,0 +1,3 @@
+message: add analytics_debug option to output requests to logs.
+type: feature
+scope: Core

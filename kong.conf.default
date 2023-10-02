@@ -2397,6 +2397,9 @@
                                            # before dropping data in case there is no
                                            # network connection to Konnect.
 
+#analytics_debug = off                     # Outputs analytics payload to Kong logs.
+
+
 #------------------------------------------------------------------------------
 # DEVELOPER PORTAL
 #------------------------------------------------------------------------------

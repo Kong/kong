@@ -53,6 +53,7 @@ vitals_prometheus_scrape_interval = 5
 
 analytics_flush_interval = 1
 analytics_buffer_size_limit = 100000
+analytics_debug = off
 
 konnect_mode = off
 
