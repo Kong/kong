@@ -3454,6 +3454,16 @@
                                        # The credentials for GCP are provided via the environment 
                                        # variable `GCP_SERVICE_ACCOUNT`.
 
+#cluster_fallback_export_s3_config =   # fallback config export S3 config
+                                       # This is used only when `cluster_fallback_config_storage` is S3-like schema.
+                                       # If set, it will add config table to kong exporter config S3 putObject request.
+                                       # The config table should be in JSON format and can be unserialized into a table. 
+                                       # It should contain the necessary parameters as described in the documentation.
+                                       #  https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#putObject-property.
+                                       # For example, if you want to set the ServerSideEncryption headers / KMS Key ID
+                                       # for the S3 putObject request, you can set the config table to:
+                                       # `{"ServerSideEncryption": "aws:kms", "SSEKMSKeyId": "your-kms-key-id"}`
+
 #cluster_fallback_config_export = off    # Enable fallback configuration exports.
 
 #cluster_fallback_config_export_delay = 60    # The fallback configuration export interval.

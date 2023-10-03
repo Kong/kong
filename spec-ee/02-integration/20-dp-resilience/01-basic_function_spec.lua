@@ -109,10 +109,16 @@ local function verify_aws_request(headers)
   assert.same("127.0.0.1:4566", headers.Host)
 end
 
+local function verify_aws_sse_request(header)
+  assert(header["X-Amz-Server-Side-Encryption"] == "aws:kms")
+  assert(header["X-Amz-Server-Side-Encryption-Aws-Kms-Key-Id"] == "arn:aws:kms:eu-west-1:412431539555:key/7f57fdbd-646d-4cc7-ae1c-4f29bd4319fd")
+end
+
 for _, strategy in helpers.all_strategies() do
 describe("cp outage handling", function ()
   local mock_server
   local cluster_fallback_config_storage = "s3://test_bucket/test_prefix"
+  local cluster_fallback_export_s3_config = [[{"ServerSideEncryption":"aws:kms","SSEKMSKeyId":"arn:aws:kms:eu-west-1:412431539555:key/7f57fdbd-646d-4cc7-ae1c-4f29bd4319fd"}]]
   lazy_setup(function()
     helpers.setenv("AWS_REGION", "us-east-1")
     helpers.setenv("AWS_DEFAULT_REGION", "us-east-1")
@@ -188,6 +194,76 @@ describe("cp outage handling", function ()
             local lines, body, headers = mock_server()
             response_line_match(lines[1], "PUT", "/test_bucket/test_prefix/" .. KONG_VERSION .. "/config.json")
             verify_aws_request(headers)
+            verify_body(body)
+          end)
+          if ok then break end
+        end
+        assert(ok, err)
+      end)
+    end)
+  end
+
+  for _, exporter_role in ipairs{"CP", "DP"} do
+    describe("upload from " .. exporter_role .. " with s3 cluster_fallback_export_s3_config", function()
+      local client
+
+      before_each(function()
+        -- clean up database
+        helpers.get_db_utils(strategy, {
+          "services",
+          "routes",
+        })
+
+        -- start cp&dp
+        assert(helpers.start_kong({
+          role = "control_plane",
+          database = strategy,
+          cluster_cert = "spec/fixtures/kong_clustering.crt",
+          cluster_cert_key = "spec/fixtures/kong_clustering.key",
+          lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+          cluster_fallback_config_storage = exporter_role == "CP" and  cluster_fallback_config_storage or nil,
+          cluster_fallback_config_export = exporter_role == "CP" and "on" or "off",
+          cluster_fallback_export_s3_config = exporter_role == "CP" and cluster_fallback_export_s3_config or nil,
+          cluster_fallback_config_export_delay = 2,
+          db_update_frequency = 0.1,
+          cluster_listen = "127.0.0.1:9005",
+        }))
+        assert(helpers.start_kong({
+          role = "data_plane",
+          database = "off",
+          prefix = "servroot2",
+          cluster_cert = "spec/fixtures/kong_clustering.crt",
+          cluster_cert_key = "spec/fixtures/kong_clustering.key",
+          lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+          cluster_fallback_config_storage = exporter_role == "DP" and  cluster_fallback_config_storage or nil,
+          cluster_fallback_config_export = exporter_role == "DP" and "on" or "off",
+          cluster_fallback_export_s3_config = exporter_role == "DP" and cluster_fallback_export_s3_config or nil,
+          cluster_fallback_config_export_delay = 2,
+          cluster_control_plane = "127.0.0.1:9005",
+          proxy_listen = "127.0.0.1:9006", -- otherwise it won't start
+          stream_listen = "off",
+        }))
+        client = helpers.admin_client()
+      end)
+    
+      after_each(function ()
+        helpers.stop_kong("servroot2")
+        helpers.stop_kong()
+      end)
+
+      it("test", function()
+        configure(client)
+
+        local ok, err
+        -- try at most 2 times. 
+        -- the first time we expect to get an empty config
+        -- as the CP is sending out its first config when starting up
+        for _ = 1, 2 do
+          ok, err = pcall(function()
+            local lines, body, headers = mock_server()
+            response_line_match(lines[1], "PUT", "/test_bucket/test_prefix/" .. KONG_VERSION .. "/config.json")
+            verify_aws_request(headers)
+            verify_aws_sse_request(headers)
             verify_body(body)
           end)
           if ok then break end

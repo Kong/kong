@@ -375,6 +375,7 @@ tracing_sampling_rate = 0.01
 
 cluster_fallback_config_import = off
 cluster_fallback_config_storage =
+cluster_fallback_export_s3_config =
 cluster_fallback_config_export = off
 cluster_fallback_config_export_delay = 60
 

@@ -1,0 +1,7 @@
+message: Add cluster_fallback_export_s3_config option to config s3 config backup `putObject` request
+type: feature
+prs:
+  - 6615
+jiras:
+  - "KAG-2155"
+scope: Clustering

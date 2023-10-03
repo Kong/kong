@@ -9,6 +9,8 @@ local AWS = require("resty.aws")
 local normalize = require("kong.tools.uri").normalize
 local socket_url = require("socket.url")
 local xmlua = require("xmlua")
+local tablex = require("pl.tablex")
+local kong = kong
 
 
 local xml_parse = xmlua.XML.parse
@@ -112,12 +114,19 @@ end
 
 
 function _M:backup_config(config)
-  local res, err = aws_call(s3_instance, "putObject", {
-    Bucket = self.bucket,
-    Key = self.key,
-    Body = config,
-    ContentType = "application/json",
-  })
+  local call_config
+  if kong.configuration.cluster_fallback_export_s3_config then
+    call_config = tablex.deepcopy(kong.configuration.cluster_fallback_export_s3_config)
+  else
+    call_config = {}
+  end
+
+  call_config.Bucket = self.bucket
+  call_config.Key = self.key
+  call_config.Body = config
+  call_config.ContentType = "application/json"
+
+  local res, err = aws_call(s3_instance, "putObject", call_config)
 
   if not res then
     return nil, err .. " uploading to bucket: " .. self.bucket .. " key: " .. self.key

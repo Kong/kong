@@ -668,6 +668,7 @@ local CONF_PARSERS = {
   admin_gui_api_url = {typ = "string"},
 
   cluster_fallback_config_storage = { typ = "string" },
+  cluster_fallback_export_s3_config = { typ = "string" },
   cluster_fallback_config_export = { typ = "boolean" },
   cluster_fallback_config_export_delay = { typ = "number" },
   cluster_fallback_config_import = { typ = "boolean" },
@@ -1478,6 +1479,30 @@ local function check_and_parse(conf, opts)
       "cluster_fallback_config_import and cluster_fallback_config_export can only be enabled for hybrid mode"
   end
 
+  if conf.cluster_fallback_export_s3_config then
+    if not conf.cluster_fallback_config_storage then
+      errors[#errors + 1] = "cluster_fallback_config_storage must be set when cluster_fallback_export_s3_config is enabled"
+    else
+      local scheme = conf.cluster_fallback_config_storage:match("^[^:]+")
+      if scheme ~= "s3" then
+        errors[#errors + 1] =
+          "cluster_fallback_config_storage must be set to an S3 storage location (the scheme must be s3)"
+      else
+        local cluster_fallback_export_s3_config, err = cjson.decode(tostring(conf.cluster_fallback_export_s3_config))
+        if err then
+          errors[#errors+1] = "cluster_fallback_export_s3_config must be valid json or not set: "
+            .. err .. " - " .. conf.cluster_fallback_config_storage
+        end
+        conf.cluster_fallback_export_s3_config = cluster_fallback_export_s3_config
+        setmetatable(conf.cluster_fallback_export_s3_config, {
+          __tostring = function (v)
+            return assert(cjson.encode(v))
+          end
+        })
+      end
+    end
+  end
+
   if (conf.cluster_fallback_config_import or conf.cluster_fallback_config_export) and conf.role ~= "traditional" then
     if conf.cluster_fallback_config_import and conf.cluster_fallback_config_export then
       errors[#errors + 1] =
@@ -1487,7 +1512,6 @@ local function check_and_parse(conf, opts)
     if conf.cluster_fallback_config_import and conf.role ~= "data_plane" then
       errors[#errors + 1] = "cluster_fallback_config_import can only be enabled when role = \"data_plane\""
     end
-
     if not conf.cluster_fallback_config_storage then
       errors[#errors + 1] = "cluster_fallback_config_storage must be set when either cluster_fallback_config_import" ..
                             " or cluster_fallback_config_export is enabled"
