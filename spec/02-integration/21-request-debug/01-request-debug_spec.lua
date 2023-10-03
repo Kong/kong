@@ -146,6 +146,7 @@ local function get_output_header(_deployment, path, filter, fake_ip, token)
   })
   assert.not_same(500, res.status)
   res:read_body() -- discard body
+  proxy_client:close()
 
   if not res.headers["X-Kong-Request-Debug-Output"] then
     return nil
@@ -153,7 +154,6 @@ local function get_output_header(_deployment, path, filter, fake_ip, token)
 
   local json = assert(cjson.decode(res.headers["X-Kong-Request-Debug-Output"]))
   assert.falsy(json.dangling)
-  proxy_client:close()
   return json
 end
 
@@ -184,6 +184,7 @@ local function get_output_log(deployment, path, filter, fake_ip, token)
   })
   assert.not_same(500, res.status)
   res:read_body() -- discard body
+  proxy_client:close()
 
   if not res.headers["X-Kong-Request-Debug-Output"] then
     return nil
@@ -254,8 +255,6 @@ local function get_output_log(deployment, path, filter, fake_ip, token)
   end
 
   assert.falsy(json.dangling)
-  proxy_client:close()
-
   assert.same(debug_id, json.debug_id)
 
   return json, truncated
