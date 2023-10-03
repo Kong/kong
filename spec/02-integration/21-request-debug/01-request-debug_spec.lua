@@ -157,6 +157,18 @@ end
 
 
 local function get_output_log(deployment, path, filter, fake_ip, token)
+  local errlog
+
+  if deployment == "traditional" then
+    errlog = pl_path.join(helpers.test_conf.prefix, "logs/error.log")
+
+  else
+    assert(deployment == "hybrid", "unknown deploy mode")
+    errlog = pl_path.join(DP_PREFIX, "logs/error.log")
+  end
+
+  helpers.clean_logfile(errlog)
+
   local proxy_client = helpers.proxy_client()
   local res = assert(proxy_client:send {
     method = "GET",
@@ -194,7 +206,7 @@ local function get_output_log(deployment, path, filter, fake_ip, token)
   pcall(function()
     helpers.pwait_until(function()
       json = ""
-      local content = assert(pl_file.read(path))
+      local content = assert(pl_file.read(errlog))
       local start_idx = assert(content:find(keyword, nil, true))
       start_idx = assert(content:find("output: ", start_idx, true))
       local end_idx
