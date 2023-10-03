@@ -3,6 +3,8 @@ local cjson               = require "cjson"
 local pl_path             = require "pl.path"
 local pl_file             = require "pl.file"
 local http_mock           = require "spec.helpers.http_mock"
+local string_buffer       = require "string.buffer"
+local clear_tab           = require "table.clear"
 
 local CP_PREFIX           = "servroot_cp"
 local DP_PREFIX           = "servroot_dp"
@@ -190,42 +192,62 @@ local function get_output_log(deployment, path, filter, fake_ip, token)
   local output = assert(cjson.decode(res.headers["X-Kong-Request-Debug-Output"]))
   local debug_id = assert(output.debug_id)
 
-  local keyword = "[request-debug] id: " .. debug_id
-
-  if deployment == "traditional" then
-    path = pl_path.join(helpers.test_conf.prefix, "logs/error.log")
-
-  else
-    assert(deployment == "hybrid", "unknown deploy mode")
-    path = pl_path.join(DP_PREFIX, "logs/error.log")
-  end
-
   local json
   local truncated = false
 
-  pcall(function()
-    helpers.pwait_until(function()
-      json = ""
-      local content = assert(pl_file.read(errlog))
-      local start_idx = assert(content:find(keyword, nil, true))
-      start_idx = assert(content:find("output: ", start_idx, true))
-      local end_idx
+  local buf = string_buffer.new()
 
-      while true do
-        end_idx = assert(content:find(" while logging request", start_idx, true))
-        json = json .. content:sub(start_idx + #"output: ", end_idx - 1)
-        start_idx = content:find(keyword, end_idx, true)
-        if not start_idx then
+  local keyword = "[request-debug] id: " .. debug_id
+  local single_pattern = [[ output: (?<data>.+) while logging request, client]]
+  local multi_pattern = [[ parts: (?<part>\d+)/(?<parts>\d+) output: (?<data>.+) while logging request, client]]
+
+  local deadline = ngx.now() + 5
+
+  while ngx.now() < deadline do
+    buf:reset()
+
+    local fh = assert(io.open(errlog, "r"))
+    local captures = {}
+
+    for line in fh:lines() do
+      if line:find(keyword, nil, true) then
+        clear_tab(captures)
+
+        if ngx.re.match(line, multi_pattern, "oj", nil, captures) then
+          truncated = true
+
+          local part_num = assert(tonumber(captures.part))
+          local parts_total = assert(tonumber(captures.parts))
+
+          assert(part_num <= parts_total)
+
+          local data = assert(captures.data)
+          buf:put(data)
+
+          if part_num == parts_total then
+            json = cjson.decode(buf:get())
+            break
+          end
+
+        elseif ngx.re.match(line, single_pattern, "oj", nil, captures) then
+          local data = assert(captures.data)
+          json = cjson.decode(data)
           break
+
+        else
+          error("unexpected error.log line: " .. line)
         end
-
-        truncated = true
-        start_idx = assert(content:find("output: ", start_idx, true))
       end
+    end
 
-      json = assert(cjson.decode(json))
-    end, 10)
-  end)
+    fh:close()
+
+    if json ~= nil then
+      break
+    end
+
+    ngx.sleep(0.05)
+  end
 
   if not json then
     return nil
@@ -233,6 +255,8 @@ local function get_output_log(deployment, path, filter, fake_ip, token)
 
   assert.falsy(json.dangling)
   proxy_client:close()
+
+  assert.same(debug_id, json.debug_id)
 
   return json, truncated
 end
@@ -412,7 +436,7 @@ describe(desc, function()
           ngx.sleep(%s / 1000)
           ngx.print("Hello")
           ngx.flush(true)
-  
+
           ngx.sleep(%s / 1000)
           ngx.print(" World!")
           ngx.flush(true)
