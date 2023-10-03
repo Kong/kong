@@ -1,0 +1,7 @@
+message: "Fix incorrect LuaJIT register allocation for IR_*LOAD on ARM64"
+type: dependency
+scope: Core
+prs:
+  - 11638
+jiras:
+  - "KAG-2634"
