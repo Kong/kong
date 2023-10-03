@@ -513,7 +513,13 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
   end
 
   local suffix = token and "_next" or "_first"
-  if foreign_entity_name then
+  
+  if foreign_entity_name and has_search then
+    statement_name = "page_for_" .. foreign_entity_name .. "_search" .. suffix
+    attributes[foreign_entity_name] = foreign_key
+    attributes.search_fields = gen_search_query(self, options)
+  
+  elseif foreign_entity_name then
     statement_name = "page_for_" .. foreign_entity_name .. suffix
     attributes[foreign_entity_name] = foreign_key
 
@@ -1448,10 +1454,15 @@ function _M.new(connector, schema, errors)
       local argn_first = {}
       local argv_next  = {}
       local argn_next  = {}
+      
+      local argn_search_first = {}
+      local argn_search_next = {}
 
       for i, fk_name in ipairs(fk_names) do
         insert(argn_first, fk_name)
         insert(argn_next, fk_name)
+        insert(argn_search_first, fk_name)
+        insert(argn_search_next, fk_name)
         insert(fk_placeholders, placeholder(i))
       end
 
@@ -1459,6 +1470,11 @@ function _M.new(connector, schema, errors)
         insert(argn_next, primary_key_name)
         insert(pk_placeholders, placeholder(i + #fk_names))
       end
+
+      insert(argn_search_first, "search_fields")
+      insert(argn_search_next, "search_fields")
+      insert(argn_search_first, LIMIT)
+      insert(argn_search_next, LIMIT)
 
       insert(argn_first, LIMIT)
       insert(argn_next, LIMIT)
@@ -1498,6 +1514,38 @@ function _M.new(connector, schema, errors)
                        ws_id_select_where),
           "ORDER BY ", pk_escaped, "\n",
           "   LIMIT ", placeholder(#argn_next), ";"
+        }
+      })
+
+      add_statement_for_export(statement_name .. "_search_first", {
+        operation = "read",
+        argn = argn_search_first,
+        argv = {},
+        code = {
+          "  SELECT ", select_expressions, "\n",
+          "    FROM ", table_name_escaped, "\n",
+          where_clause(
+            "   WHERE ", "(" .. foreign_key_names .. ") = (" .. fk_placeholders .. ")",
+            ttl_select_where,
+            ws_id_select_where, placeholder(#argn_search_first - 1)),
+          "ORDER BY ", pk_escaped, "\n",
+          "   LIMIT ", placeholder(#argn_search_first), ";",
+        }
+      })
+
+      add_statement_for_export(statement_name .. "_search_next", {
+        operation = "read",
+        argn = argn_search_next,
+        argv = {},
+        code = {
+          "  SELECT ", select_expressions, "\n",
+          "    FROM ", table_name_escaped, "\n",
+          where_clause(
+            "   WHERE ", "(" .. foreign_key_names .. ") = (" .. fk_placeholders .. ")",
+            ttl_select_where,
+            ws_id_select_where, placeholder(#argn_search_next - 1)),
+          "ORDER BY ", pk_escaped, "\n",
+          "   LIMIT ", placeholder(#argn_search_next), ";",
         }
       })
 

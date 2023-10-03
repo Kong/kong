@@ -44,7 +44,6 @@ for _, strategy in helpers.each_strategy() do
 
       -- these need to be set so that setup and before hooks have the correct conf
       kong.configuration = { portal_auth = "basic-auth",  portal_app_auth = "external-oauth2"}
-      kong.configuration = { portal_auth = "basic-auth",  portal_app_auth = "external-oauth2" }
     end)
 
     lazy_teardown(function()
@@ -757,7 +756,7 @@ for _, strategy in helpers.each_strategy() do
           local res = assert(client:send({
             method = "GET",
             path = "/applications/" .. application_one.id .. "/application_instances",
-            headers = {["Content-Type"] = "application/json"}
+            headers = { ["Content-Type"] = "application/json" }
           }))
 
           local body = assert.res_status(200, res)
@@ -765,11 +764,12 @@ for _, strategy in helpers.each_strategy() do
 
           assert.equal(#json.data, 1)
           assert.equal(json.data[1].id, application_instance_one.id)
+          assert.equal(json.data[1].service.display_name, "dope plugin one")
 
           local res = assert(client:send({
             method = "GET",
             path = "/applications/" .. application_two.id .. "/application_instances",
-            headers = {["Content-Type"] = "application/json"}
+            headers = { ["Content-Type"] = "application/json" }
           }))
 
           local body = assert.res_status(200, res)
@@ -777,6 +777,7 @@ for _, strategy in helpers.each_strategy() do
 
           assert.equal(#json.data, 1)
           assert.equal(json.data[1].id, application_instance_two.id)
+          assert.equal(json.data[1].service.display_name, "dope plugin one")
         end)
 
         it("paginates properly", function()

@@ -664,6 +664,37 @@ function _M.delete_application_instance(self, db, helpers)
   return kong.response.exit(204)
 end
 
+local function build_developer(db, application, row)
+  if not application then
+    return row
+  end
+  local developer, err = db.developers:select({ id = application.developer.id })
+  if err then
+    ngx.log(ngx.DEBUG, err)
+  end
+
+  if developer then
+    application.developer = developer
+    row.application = application
+  end
+
+  return row
+end
+
+local function build_service_display_name(db, row)
+  local plugin_name = "application-registration"
+  for plugin, err in db.plugins:each_for_service({ id = row.service.id }, nil, { search_fields = { name = plugin_name } }) do
+    if err then
+      ngx.log(ngx.DEBUG, err)
+    end
+    if plugin and plugin.enabled then
+      row.service.display_name = plugin.config.display_name
+      break
+    end
+  end
+
+  return row
+end
 
 local function get_application_instances(self, db, helpers, opts)
   local status = tonumber(self.params.status)
@@ -678,30 +709,34 @@ local function get_application_instances(self, db, helpers, opts)
     end
   end
 
-  local post_process = function(row)
-    local application, err = db.applications:select({ id = row.application.id })
-    if err then
-      ngx.log(ngx.DEBUG, err)
-    end
-
-    if application then
-      local developer, err = db.developers:select({ id = application.developer.id })
+  local post_process = {
+    ["application"] = function(row)
+      local application = self.entity
+      row.application = application
+      if application.developer then
+        build_developer(db, application, row)
+      end
+      build_service_display_name(db, row)
+     
+      return row
+    end,
+    ["service"] = function(row)
+      row.service = self.entity
+      local application, err = db.applications:select({ id = row.application.id })
       if err then
         ngx.log(ngx.DEBUG, err)
       end
 
-      if developer then
-        application.developer = developer
-        row.application = application
+      if application.developer then
+        build_developer(db, application, row)
       end
+      return row
     end
-
-    return row
-  end
+  }
 
   setmetatable(application_instances, cjson.empty_array_mt)
 
-  local res, _, err_t = _M.paginate(self, application_instances, post_process)
+  local res, _, err_t = _M.paginate(self, application_instances, post_process[opts.search_entity])
   if not res then
     return endpoints.handle_error(err_t)
   end
@@ -844,7 +879,6 @@ function _M.get_application_services(self, db, helpers)
 
   local application_services = setmetatable({}, cjson.empty_array_mt)
   local application
-  local app_instances
 
   local matches_plugin_filters = function(row)
     if name_filter and not _M.contains_substring(row.config.display_name, name_filter) then
@@ -884,19 +918,20 @@ function _M.get_application_services(self, db, helpers)
   end
 
   local app_reg_plugins = {}
-  for plugin, err in db.plugins:each() do
+  for plugin, err in db.plugins:each(nil, { search_fields = { name = "application-registration" } }) do
     if err then
       return kong.response.exit(500, { message = "An unexpected error occurred" })
     end
 
-    if plugin.name == "application-registration" and matches_plugin_filters(plugin) then
+    if matches_plugin_filters(plugin) then
       table.insert(app_reg_plugins, plugin)
     end
   end
 
   -- get all instances for the given application
+  local app_instances = {}
   if application then
-    app_instances = {}
+    
     for instance, err in db.application_instances:each_for_application({ id = application.id }) do
       if err then
         return endpoints.handle_error(err)
@@ -912,14 +947,13 @@ function _M.get_application_services(self, db, helpers)
   local app_auth_strategy = app_auth_strategies[app_auth_type]
   local auth_config
   for i, v in ipairs(app_reg_plugins) do
+    local instance = app_instances[v.service.id]
+    if not matches_instance_filters(instance) then
+      goto continue
+    end
     local service, _, err_t = db.services:select(v.service)
     if err_t then
       return endpoints.handle_error(err_t)
-    end
-
-    local instance = app_instances and app_instances[service.id]
-    if not matches_instance_filters(instance) then
-      goto continue
     end
 
     auth_config = app_auth_strategy.build_service_auth_config(service, v)

@@ -1133,6 +1133,48 @@ for _, strategy in helpers.each_strategy() do
           end, db)
         end)
 
+        it("lists Routes associated to a Service by search route name", function()
+          with_current_ws({ foo_ws }, function()
+            local service = bp.services:insert()
+
+            local route1 = bp.routes:insert {
+              name = "route1",
+              methods = { "GET" },
+              service = service,
+            }
+
+            local route2 = bp.routes:insert {
+              name = "route2",
+              methods = { "GET" },
+              service = service,
+            }
+
+            -- query all routes by service
+            local rows = {}
+            for row, err in db.routes:each_for_service { id = service.id, } do
+              rows[#rows + 1] = row
+              assert.is_nil(err)
+            end
+            assert.equal(#rows, 2)
+
+            -- query routes associated to a Service by search route name `route2`
+            rows = {}
+            for row, err in db.routes:each_for_service ({ id = service.id }, nil, { search_fields = { name = "route2" } }) do
+              rows[#rows + 1] = row
+              assert.is_nil(err)
+            end
+            assert.same({ route2 }, rows)
+
+            -- query routes associated to a Service by search route name `route1`
+            rows = {}
+            for row, err in db.routes:each_for_service({ id = service.id }, nil, { search_fields = { name = "route1" } }) do
+              rows[#rows + 1] = row
+              assert.is_nil(err)
+            end
+            assert.same({ route1 }, rows)
+          end, db)
+        end)
+
         it("invokes schema post-processing", function()
           with_current_ws( {foo_ws},function()
             local service = bp.services:insert {

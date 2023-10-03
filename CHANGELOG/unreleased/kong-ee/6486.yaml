@@ -1,0 +1,8 @@
+message: "optimize the performance of querying plugins when access application_services/application_instances endpoint."
+type: bugfix
+prs:
+- 6486
+jiras:
+- "FTI-4027"
+- "FTI-5087"
+scope: Admin API
