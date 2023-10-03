@@ -11,6 +11,7 @@ local TOKEN_FILE          = ".request_debug_token"
 local PLGUINS_ENABLED     = "bundled,enable-buffering-response,muti-external-http-calls"
 local TIME_TO_FIRST_BYTE  = 250  -- milliseconds
 local STREAMING           = 400  -- seconds
+local DB_INIT             = {}
 
 
 
@@ -262,10 +263,13 @@ local function start_kong(strategy, deployment, disable_req_dbg, token)
     request_debug = "off"
   end
 
-  helpers.get_db_utils(strategy, nil, {
-    "enable-buffering-response",
-    "muti-external-http-calls",
-  })
+  if not DB_INIT[strategy] then
+    helpers.get_db_utils(strategy, nil, {
+      "enable-buffering-response",
+      "muti-external-http-calls",
+    })
+    DB_INIT[strategy] = true
+  end
 
   if deployment == "traditional" then
     assert(helpers.start_kong({
