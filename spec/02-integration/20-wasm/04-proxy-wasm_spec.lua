@@ -2,7 +2,6 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 
-local DATABASE = "postgres"
 local HEADER_NAME_PHASE = "X-PW-Phase"
 local HEADER_NAME_TEST = "X-PW-Test"
 local HEADER_NAME_INPUT = "X-PW-Input"
@@ -13,8 +12,9 @@ local HEADER_NAME_ADD_RESP_HEADER = "X-PW-Add-Resp-Header"
 local DNS_HOSTNAME = "wasm.test"
 local MOCK_UPSTREAM_DNS_ADDR = DNS_HOSTNAME .. ":" .. helpers.mock_upstream_port
 
+for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
 
-describe("proxy-wasm filters (#wasm)", function()
+describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
   local r_single, mock_service
   local hosts_file
 
@@ -25,7 +25,7 @@ describe("proxy-wasm filters (#wasm)", function()
       },
     })
 
-    local bp, db = helpers.get_db_utils(DATABASE, {
+    local bp = helpers.get_db_utils(strategy, {
       "routes",
       "services",
       "filter_chains",
@@ -48,14 +48,14 @@ describe("proxy-wasm filters (#wasm)", function()
       service = mock_service,
     })
 
-    assert(db.filter_chains:insert {
+    assert(bp.filter_chains:insert {
       route = r_single,
       filters = {
         { name = "tests" },
       },
     })
 
-    assert(db.filter_chains:insert {
+    assert(bp.filter_chains:insert {
       route = r_double,
       filters = {
         { name = "tests" },
@@ -69,7 +69,7 @@ describe("proxy-wasm filters (#wasm)", function()
                               "127.0.0.1 " .. DNS_HOSTNAME .. "\n"))
 
     assert(helpers.start_kong({
-      database = DATABASE,
+      database = strategy,
       nginx_conf = "spec/fixtures/custom_nginx.template",
       wasm = true,
       dns_hostsfile = hosts_file,
@@ -77,7 +77,7 @@ describe("proxy-wasm filters (#wasm)", function()
   end)
 
   lazy_teardown(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
     os.remove(hosts_file)
   end)
 
@@ -397,3 +397,5 @@ describe("proxy-wasm filters (#wasm)", function()
     end)
   end)
 end)
+
+end -- each strategy

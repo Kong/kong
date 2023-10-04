@@ -47,6 +47,30 @@ local function expect_entity_error(res, err)
   assert.is_true(found, "expected '" .. err .. "' message in response")
 end
 
+local function expect_field_error(res, field, err)
+  assert.response(res).has.status(400)
+
+  local json = assert.response(res).has.jsonbody()
+  assert.is_table(json.flattened_errors)
+
+  local found = false
+
+  for _, entity in ipairs(json.flattened_errors) do
+    assert.is_table(entity.errors)
+    for _, elem in ipairs(entity.errors) do
+      if elem.type == "field"
+        and elem.field == field
+        and elem.message == err
+      then
+        found = true
+        break
+      end
+    end
+  end
+
+  assert.is_true(found, "expected '" .. err .. "' for field " .. field .. " in response")
+end
+
 
 describe("#wasm declarative config", function()
   local admin
@@ -143,104 +167,176 @@ describe("#wasm declarative config", function()
       },
     })
 
-    assert.response(res).has.status(400)
-
-    local json = assert.response(res).has.jsonbody()
-
-    assert.is_table(json.flattened_errors)
-
-    assert.same(1, #json.flattened_errors)
-    assert.is_table(json.flattened_errors[1])
-
-    assert.is_table(json.flattened_errors[1].errors)
-    assert.same(1, #json.flattened_errors[1].errors)
-
-    local err = assert.is_table(json.flattened_errors[1].errors[1])
-
-    assert.same("filters.1.name", err.field)
-    assert.same("field", err.type)
-    assert.same("no such filter", err.message)
+    expect_field_error(res, "filters.1.name", "no such filter")
   end)
 end)
 
 
 describe("#wasm declarative config (no installed filters)", function()
-  local client
   local tmp_dir
 
   lazy_setup(function()
     tmp_dir = helpers.make_temp_dir()
-
-    assert(helpers.start_kong({
-      database = "off",
-      nginx_conf = "spec/fixtures/custom_nginx.template",
-      wasm = true,
-      wasm_filters_path = tmp_dir,
-    }))
-
-    client = helpers.admin_client()
   end)
 
   lazy_teardown(function()
-    if client then client:close() end
-    helpers.stop_kong()
     helpers.dir.rmtree(tmp_dir)
   end)
 
-  it("warns clients that no filters are installed", function()
-    local res = post_config(client, {
-      services = {
-        { name = "test",
-          url = "http://wasm.test/",
-          filter_chains = {
-            { name = "test",
-              filters = {
-                { name = "i_do_not_exist" }
+  describe("POST /config", function()
+    local client
+
+    lazy_setup(function()
+      assert(helpers.start_kong({
+        database = "off",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        wasm = true,
+        wasm_filters_path = tmp_dir,
+      }))
+
+      client = helpers.admin_client()
+    end)
+
+    lazy_teardown(function()
+      if client then client:close() end
+      helpers.stop_kong()
+    end)
+
+    it("warns clients that no filters are installed", function()
+      local res = post_config(client, {
+        services = {
+          { name = "test",
+            url = "http://wasm.test/",
+            filter_chains = {
+              { name = "test",
+                filters = {
+                  { name = "i_do_not_exist" }
+                },
               },
             },
           },
         },
-      },
-    })
+      })
 
-    expect_entity_error(res, "no wasm filters are available")
+      expect_entity_error(res, "no wasm filters are available")
+    end)
+  end)
+
+  describe("kong start", function()
+    local kong_yaml
+
+    lazy_teardown(function()
+      if kong_yaml then
+        helpers.file.delete(kong_yaml)
+      end
+    end)
+
+    it("fails when attempting to use a filter chain", function()
+      kong_yaml = helpers.make_yaml_file([[
+        _format_version: "3.0"
+        services:
+          - name: test
+            url: http://127.0.0.1/
+            routes:
+              - name: test
+                hosts:
+                  - wasm.test
+            filter_chains:
+              - name: test
+                filters:
+                  - name: i_do_not_exist
+      ]])
+
+      local ok, err = helpers.start_kong({
+        database = "off",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        wasm = true,
+        wasm_filters_path = tmp_dir,
+        declarative_config = kong_yaml,
+      })
+
+      assert.falsy(ok)
+      assert.is_string(err)
+      assert.matches("no wasm filters are available", err)
+    end)
+
   end)
 end)
 
 describe("#wasm declarative config (wasm = off)", function()
-  local client
+  describe("POST /config", function()
+    local client
 
-  lazy_setup(function()
-    assert(helpers.start_kong({
-      database = "off",
-      nginx_conf = "spec/fixtures/custom_nginx.template",
-      wasm = "off",
-    }))
+    lazy_setup(function()
+      assert(helpers.start_kong({
+        database = "off",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        wasm = "off",
+      }))
 
-    client = helpers.admin_client()
-  end)
+      client = helpers.admin_client()
+    end)
 
-  lazy_teardown(function()
-    if client then client:close() end
-    helpers.stop_kong()
-  end)
+    lazy_teardown(function()
+      if client then client:close() end
+      helpers.stop_kong()
+    end)
 
-  it("warns clients that wasm is disabled", function()
-    local res = post_config(client, {
-      services = {
-        { name = "test",
-          url = "http://wasm.test/",
-          filter_chains = {
-            { name = "test",
-              filters = {
-                { name = "i_do_not_exist" }
+    it("warns clients that wasm is disabled", function()
+      local res = post_config(client, {
+        services = {
+          { name = "test",
+            url = "http://wasm.test/",
+            filter_chains = {
+              { name = "test",
+                filters = {
+                  { name = "i_do_not_exist" }
+                },
               },
             },
           },
         },
-      },
-    })
+      })
 
-    expect_entity_error(res, "wasm support is not enabled")
+      expect_entity_error(res, "wasm support is not enabled")
+    end)
+  end)
+
+  describe("kong start", function()
+    local kong_yaml
+
+    lazy_teardown(function()
+      if kong_yaml then
+        helpers.file.delete(kong_yaml)
+      end
+    end)
+
+    it("fails when attempting to use a filter chain", function()
+      kong_yaml = helpers.make_yaml_file([[
+        _format_version: "3.0"
+        services:
+          - name: test
+            url: http://127.0.0.1/
+            routes:
+              - name: test
+                hosts:
+                  - wasm.test
+            filter_chains:
+              - name: test
+                filters:
+                  - name: i_do_not_exist
+      ]])
+
+      local ok, err = helpers.start_kong({
+        database = "off",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        wasm = "off",
+        declarative_config = kong_yaml,
+      })
+
+      assert.falsy(ok)
+      assert.is_string(err)
+      assert.matches("wasm support is not enabled", err)
+    end)
   end)
 end)

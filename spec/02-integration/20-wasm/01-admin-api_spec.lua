@@ -61,7 +61,7 @@ describe("wasm admin API [#" .. strategy .. "]", function()
 
   lazy_teardown(function()
     if admin then admin:close() end
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
 
@@ -568,7 +568,7 @@ describe("wasm admin API - wasm = off [#" .. strategy .. "]", function()
 
   lazy_teardown(function()
     if admin then admin:close() end
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
   describe("/filter-chains", function()
