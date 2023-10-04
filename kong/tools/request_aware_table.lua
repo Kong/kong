@@ -22,24 +22,26 @@ local NGX_VAR_PHASES = {
   log           = true,
   balancer      = true,
 }
+local ALLOWED_REQUEST_ID_K = "__allowed_request_id"
+
 
 -- Check if access is allowed for table, based on the request ID
 local function enforce_sequential_access(table)
   if not NGX_VAR_PHASES[get_phase()] then
-    -- not in a request context: allow access and reset allowed request ID
-    rawset(table, "__allowed_request_id", nil)
+    -- allow access and reset allowed request ID
+    rawset(table, ALLOWED_REQUEST_ID_K, nil)
     return
   end
 
   local curr_request_id = var.request_id
-  local allowed_request_id = rawget(table, "__allowed_request_id")
+  local allowed_request_id = rawget(table, ALLOWED_REQUEST_ID_K)
   if not allowed_request_id then
     -- first access. Set allowed request ID and allow access
-    rawset(table, "__allowed_request_id", curr_request_id)
+    rawset(table, ALLOWED_REQUEST_ID_K, curr_request_id)
     return
   end
 
-  if curr_request_id ~= table.__allowed_request_id then
+  if curr_request_id ~= table[ALLOWED_REQUEST_ID_K] then
     error("race condition detected; access to table forbidden", 2)
   end
 end
@@ -52,7 +54,7 @@ local function clear_table(self)
   end
 
   table_clear(self.__data)
-  rawset(self, "__allowed_request_id", nil)
+  rawset(self, ALLOWED_REQUEST_ID_K, nil)
 end
 
 

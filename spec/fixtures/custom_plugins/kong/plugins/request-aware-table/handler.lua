@@ -22,16 +22,18 @@ function _M:access(conf)
   if query.new_tab == "true" then
     -- new table
     tab = RAT.new()
+    ngx.exit(200)
   end
-
-  -- access multiple times during same request
-  access_table()
-  access_table()
-  access_table()
 
   if query.clear == "true" then
     -- clear table
     tab:clear()
+    ngx.exit(200)
+  end
+
+  -- access multiple times during same request
+  for _ = 1, 3 do
+    access_table()
   end
 end
 

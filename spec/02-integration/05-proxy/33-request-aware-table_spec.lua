@@ -7,11 +7,22 @@ local LOG_LEVELS = {
 }
 
 
-local function new_table()
+local function trigger_plugin_new_table()
   local client = helpers.proxy_client()
   local res = client:get("/", {
     query = {
       new_tab = true,
+    }
+  })
+  assert.response(res).has.status(200)
+  assert.logfile().has.no.line("[error]", true)
+  client:close()
+end
+
+local function trigger_plugin_clear_table()
+  local client = helpers.proxy_client()
+  local res = client:get("/", {
+    query = {
       clear = true,
     }
   })
@@ -63,7 +74,7 @@ for _, log_level in ipairs(LOG_LEVELS) do
 
       before_each(function()
         helpers.clean_logfile()
-        new_table()
+        trigger_plugin_new_table()
         client = helpers.proxy_client()
       end)
 
@@ -95,21 +106,14 @@ for _, log_level in ipairs(LOG_LEVELS) do
 
       it("allows access when table is cleared between requests", function()
         -- access from request 1 (clear)
-        local r = client:get("/", {
-          query = {
-            clear = true,
-          }
-        })
+        local r = client:get("/")
         assert.response(r).has.status(200)
+        trigger_plugin_clear_table()
 
         -- access from request 2 (clear)
-        r = client:get("/", {
-          query = {
-            clear = true,
-          }
-        })
+        r = client:get("/")
         assert.response(r).has.status(200)
-        assert.logfile().has.no.line("[error]", true)
+        trigger_plugin_clear_table()
 
         -- access from request 3
         r = client:get("/")
