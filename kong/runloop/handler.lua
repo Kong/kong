@@ -716,9 +716,8 @@ end
 
 local reconfigure_handler
 do
-  local cur_msec = require("resty.core.time").monotonic_msec
+  local get_monotonic_ms = utils.get_updated_monotonic_ms
 
-  local update_time = ngx.update_time
   local ngx_worker_id = ngx.worker.id
   local exiting = ngx.worker.exiting
 
@@ -728,11 +727,6 @@ do
   local CURRENT_ROUTER_HASH   = 0
   local CURRENT_PLUGINS_HASH  = 0
   local CURRENT_BALANCER_HASH = 0
-
-  local function get_monotonic_ms()
-    update_time()
-    return cur_msec()
-  end
 
   reconfigure_handler = function(data)
     local worker_id = ngx_worker_id()
