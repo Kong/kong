@@ -33,7 +33,18 @@ jobs:
             Your Kong Gateway team
           stale-pr-message: "This PR is marked as stale because it has been open for 14 days with no activity."
           close-pr-message: |
-            **This PR is being closed automatically because of lack of activity for 21 days(3 weeks).**
-            We're sorry for we can not merge your PR. We apperciate your contribution to the community. Please referer to [our pledge to community](https://github.com/Kong/kong/blob/master/COMMUNITY_PLEDGE.md).
-            Feel free to reopen the PR if you still want to maintain the PR.
+            Dear contributor,
+            
+            We are automatically closing this pull request because it has not seen any activity for three weeks.
+            We're sorry that we could not merge it.  If you still want to pursure your patch, please feel free to 
+            reopen it and address any remaining issues.
+            
+            Your contribution is greatly appreciated!
+            
+            Please have a look
+            [our pledge to the community](https://github.com/Kong/kong/blob/master/COMMUNITY_PLEDGE.md)
+            for more information.
+            
+            Sincerely,
+            Your Kong Gateway team
           repo-token: ${{ secrets.GITHUB_TOKEN }}
