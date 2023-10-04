@@ -20,8 +20,7 @@ local constants = require "kong.constants"
 ---
 ---@field name        string
 ---@field enabled     boolean
----@field config      string|nil
----@field json_config any|nil
+---@field config      any|nil
 
 
 local filter = {
@@ -29,27 +28,24 @@ local filter = {
   fields = {
     { name       = { type = "string", required = true, one_of = wasm.filter_names,
                      err = "no such filter", }, },
-    { config     = { type = "string", required = false, }, },
     { enabled    = { type = "boolean", default = true, required = true, }, },
 
-    { json_config = {
+    { config = {
         type = "json",
         required = false,
         json_schema = {
           parent_subschema_key = "name",
           namespace = constants.SCHEMA_NAMESPACES.PROXY_WASM_FILTERS,
           optional = true,
+          default = {
+            -- filters with no user-defined JSON schema may accept an optional
+            -- config, but only as a string
+            type = { "string", "null" },
+          },
         },
       },
     },
 
-  },
-  entity_checks = {
-    { mutually_exclusive = {
-        "config",
-        "json_config",
-      },
-    },
   },
 }
 

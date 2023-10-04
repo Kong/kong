@@ -371,7 +371,13 @@ describe("wasm DB entities [#" .. strategy .. "]", function()
       end)
 
       describe(".config", function()
-        it("is an optional string", function()
+        local schema_name = "proxy-wasm-filters/test"
+
+        lazy_teardown(function()
+          schema_lib.remove_schema(schema_name)
+        end)
+
+        it("is an optional string when no json schema exists", function()
           local service = assert(db.services:insert({
             url = "http://example.test",
           }))
@@ -381,7 +387,7 @@ describe("wasm DB entities [#" .. strategy .. "]", function()
             filters = {
               {
                 name = "test",
-                config = "foo",
+                config = nil,
               }
             }
           }))
@@ -395,18 +401,40 @@ describe("wasm DB entities [#" .. strategy .. "]", function()
             filters = {
               {
                 name = "test",
-                config = nil,
+                config = "my config",
               }
             }
           }))
-        end)
-      end)
 
-      describe(".json_config", function()
-        local schema_name = "proxy-wasm-filters/test"
+          assert.falsy(dao:insert({
+            service = { id = service.id },
+            filters = {
+              {
+                name = "test",
+                config = 123,
+              }
+            }
+          }))
 
-        lazy_teardown(function()
-          schema_lib.remove_schema(schema_name)
+          assert.falsy(dao:insert({
+            service = { id = service.id },
+            filters = {
+              {
+                name = "test",
+                config = true,
+              }
+            }
+          }))
+
+          assert.falsy(dao:insert({
+            service = { id = service.id },
+            filters = {
+              {
+                name = "test",
+                config = { a = 1, b = 2 },
+              }
+            }
+          }))
         end)
 
         it("is validated against user schema", function()
@@ -414,7 +442,7 @@ describe("wasm DB entities [#" .. strategy .. "]", function()
             url = "http://example.test",
           }))
 
-          schema_lib.add_schema("proxy-wasm-filters/test", {
+          schema_lib.add_schema(schema_name, {
             type = "object",
             properties = {
               foo = { type = "string" },
@@ -429,7 +457,7 @@ describe("wasm DB entities [#" .. strategy .. "]", function()
             filters = {
               {
                 name = "test",
-                json_config = {
+                config = {
                   foo = "foo string",
                   bar = { a = 1, b = 2 },
                 },
@@ -446,7 +474,7 @@ describe("wasm DB entities [#" .. strategy .. "]", function()
             filters = {
               {
                 name = "test",
-                json_config = {
+                config = {
                   foo = 123,
                   bar = { a = 1, b = 2 },
                 },
@@ -465,7 +493,7 @@ describe("wasm DB entities [#" .. strategy .. "]", function()
             filters = {
               {
                 name = "test",
-                json_config = ngx.null,
+                config = ngx.null,
               }
             }
           })
@@ -481,7 +509,7 @@ describe("wasm DB entities [#" .. strategy .. "]", function()
             filters = {
               {
                 name = "test",
-                json_config = nil,
+                config = nil,
               }
             }
           })
