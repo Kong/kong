@@ -17,9 +17,20 @@ jobs:
           stale-issue-label: "stale"
           stale-issue-message: "This issue is marked as stale because it has been open for 14 days with no activity."
           close-issue-message: |
-            **This issue is being closed automatically because of lack of activity for 21 days(3 weeks).**
-            We're sorry if your issue is not solved. We apperciate your contribution to the community. Please referer to [our pledge to community](https://github.com/Kong/kong/blob/master/COMMUNITY_PLEDGE.md).
-            Feel free to reopen the issue if you still want to update/get updated.
+            Dear contributor,
+            
+            We are automatically closing this issue because it has not seen any activity for three weeks.
+            We're sorry that your issue could not be resolved.  If any new information comes up that could
+            help resolving it, please feel free to reopen it.
+            
+            Your contribution is greatly appreciated!
+            
+            Please have a look
+            [our pledge to the community](https://github.com/Kong/kong/blob/master/COMMUNITY_PLEDGE.md)
+            for more information.
+            
+            Sincerely,
+            Your Kong Gateway team
           stale-pr-message: "This PR is marked as stale because it has been open for 14 days with no activity."
           close-pr-message: |
             **This PR is being closed automatically because of lack of activity for 21 days(3 weeks).**
