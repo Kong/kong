@@ -107,9 +107,7 @@ local function generate_token(conf, service, credential, authenticated_userid,
   local refresh_token
   local token, err
   if existing_token and conf.reuse_refresh_token then
-    token, err = kong.db.oauth2_tokens:update({
-      id = existing_token.id
-    }, {
+    token, err = kong.db.oauth2_tokens:update(existing_token, {
       access_token = random_string(),
       expires_in = token_expiration,
       created_at = timestamp.get_utc() / 1000
@@ -676,7 +674,7 @@ local function issue_token(conf)
               auth_code.scope, state)
 
             -- Delete authorization code so it cannot be reused
-            kong.db.oauth2_authorization_codes:delete({ id = auth_code.id })
+            kong.db.oauth2_authorization_codes:delete(auth_code)
           end
         end
 
@@ -785,7 +783,7 @@ local function issue_token(conf)
                                              token.scope, state, false, token)
             -- Delete old token if refresh token not persisted
             if not conf.reuse_refresh_token then
-              kong.db.oauth2_tokens:delete({ id = token.id })
+              kong.db.oauth2_tokens:delete(token)
             end
           end
         end
@@ -894,7 +892,7 @@ end
 
 
 local function load_oauth2_credential_into_memory(credential_id)
-  local result, err = kong.db.oauth2_credentials:select { id = credential_id }
+  local result, err = kong.db.oauth2_credentials:select({ id = credential_id })
   if err then
     return nil, err
   end

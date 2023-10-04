@@ -814,7 +814,7 @@ for _, strategy in helpers.each_strategy() do
               assert.same(cjson.null, json.methods)
               assert.equal(route.id, json.id)
 
-              local in_db = assert(db.routes:select({ id = route.id }, { nulls = true }))
+              local in_db = assert(db.routes:select(route, { nulls = true }))
               assert.same(json, in_db)
             end
           end)
@@ -850,7 +850,7 @@ for _, strategy in helpers.each_strategy() do
               local in_db = assert(db.routes:select_by_name(route.name, { nulls = true }))
               assert.same(json, in_db)
 
-              db.routes:delete({ id = route.id })
+              db.routes:delete(route)
             end
           end)
 
@@ -1058,7 +1058,7 @@ for _, strategy in helpers.each_strategy() do
               assert.same(cjson.null, json.methods)
               assert.equal(route.id, json.id)
 
-              local in_db = assert(db.routes:select({ id = route.id }, { nulls = true }))
+              local in_db = assert(db.routes:select(route, { nulls = true }))
               assert.same(json, in_db)
             end
           end)
@@ -1091,10 +1091,10 @@ for _, strategy in helpers.each_strategy() do
               assert.same(cjson.null, json.methods)
               assert.equal(route.id, json.id)
 
-              local in_db = assert(db.routes:select({ id = route.id }, { nulls = true }))
+              local in_db = assert(db.routes:select(route, { nulls = true }))
               assert.same(json, in_db)
 
-              db.routes:delete({ id = route.id })
+              db.routes:delete(route)
             end
           end)
 
@@ -1114,7 +1114,7 @@ for _, strategy in helpers.each_strategy() do
               assert.True(json.strip_path)
               assert.equal(route.id, json.id)
 
-              local in_db = assert(db.routes:select({id = route.id}, { nulls = true }))
+              local in_db = assert(db.routes:select(route, { nulls = true }))
               assert.same(json, in_db)
             end
           end)
@@ -1144,7 +1144,7 @@ for _, strategy in helpers.each_strategy() do
               assert.same(cjson.null, json.methods)
               assert.equal(route.id, json.id)
 
-              local in_db = assert(db.routes:select({id = route.id}, { nulls = true }))
+              local in_db = assert(db.routes:select(route, { nulls = true }))
               assert.same(json, in_db)
             end
           end)
@@ -1168,7 +1168,7 @@ for _, strategy in helpers.each_strategy() do
             assert.same(cjson.null, json.methods)
             assert.equal(route.id, json.id)
 
-            local in_db = assert(db.routes:select({id = route.id}, { nulls = true }))
+            local in_db = assert(db.routes:select(route, { nulls = true }))
             assert.same(json, in_db)
           end)
 
@@ -1227,10 +1227,10 @@ for _, strategy in helpers.each_strategy() do
               assert.same(cjson.null, json.service)
               assert.equal(route.id, json.id)
 
-              local in_db = assert(db.routes:select({ id = route.id }, { nulls = true }))
+              local in_db = assert(db.routes:select(route, { nulls = true }))
               assert.same(json, in_db)
 
-              db.routes:delete({ id = route.id })
+              db.routes:delete(route)
             end
           end)
 
@@ -1288,7 +1288,7 @@ for _, strategy in helpers.each_strategy() do
             local body = assert.res_status(204, res)
             assert.equal("", body)
 
-            local in_db, err = db.routes:select({id = route.id}, { nulls = true })
+            local in_db, err = db.routes:select(route, { nulls = true })
             assert.is_nil(err)
             assert.is_nil(in_db)
           end)
@@ -1302,7 +1302,7 @@ for _, strategy in helpers.each_strategy() do
             local body = assert.res_status(204, res)
             assert.equal("", body)
 
-            local in_db, err = db.routes:select({id = route.id}, { nulls = true })
+            local in_db, err = db.routes:select(route, { nulls = true })
             assert.is_nil(err)
             assert.is_nil(in_db)
           end)
@@ -1393,7 +1393,7 @@ for _, strategy in helpers.each_strategy() do
               assert.same(cjson.null,   json.path)
 
 
-              local in_db = assert(db.services:select({ id = service.id }, { nulls = true }))
+              local in_db = assert(db.services:select(service, { nulls = true }))
               assert.same(json, in_db)
             end
           end)
@@ -1426,11 +1426,11 @@ for _, strategy in helpers.each_strategy() do
               assert.same(cjson.null,   json.path)
 
 
-              local in_db = assert(db.services:select({ id = service.id }, { nulls = true }))
+              local in_db = assert(db.services:select(service, { nulls = true }))
               assert.same(json, in_db)
 
-              db.routes:delete({ id = route.id })
-              db.services:delete({ id = service.id })
+              db.routes:delete(route)
+              db.services:delete(service)
             end
           end)
 
@@ -1453,7 +1453,7 @@ for _, strategy in helpers.each_strategy() do
               assert.equal("/foo",        json.path)
 
 
-              local in_db = assert(db.services:select({ id = service.id }, { nulls = true }))
+              local in_db = assert(db.services:select(service, { nulls = true }))
               assert.same(json, in_db)
             end
           end)
@@ -1544,7 +1544,7 @@ for _, strategy in helpers.each_strategy() do
             local json = cjson.decode(body)
             assert.same("konghq.com", json.host)
 
-            local in_db = assert(db.services:select({ id = json.id }, { nulls = true }))
+            local in_db = assert(db.services:select(json, { nulls = true }))
             assert.same(json, in_db)
           end
         end)
@@ -1577,7 +1577,7 @@ for _, strategy in helpers.each_strategy() do
             assert.same(cjson.null,   json.path)
 
 
-            local in_db = assert(db.services:select({ id = service.id }, { nulls = true }))
+            local in_db = assert(db.services:select(service, { nulls = true }))
             assert.same(json, in_db)
           end
         end)
@@ -1610,11 +1610,11 @@ for _, strategy in helpers.each_strategy() do
             assert.same(cjson.null,   json.path)
 
 
-            local in_db = assert(db.services:select({ id = service.id }, { nulls = true }))
+            local in_db = assert(db.services:select(service, { nulls = true }))
             assert.same(json, in_db)
 
-            db.routes:delete({ id = route.id })
-            db.services:delete({ id = service.id })
+            db.routes:delete(route)
+            db.services:delete(service)
           end
         end)
 
@@ -1637,7 +1637,7 @@ for _, strategy in helpers.each_strategy() do
             assert.equal("/foo",        json.path)
 
 
-            local in_db = assert(db.services:select({ id = service.id }, { nulls = true }))
+            local in_db = assert(db.services:select(service, { nulls = true }))
             assert.same(json, in_db)
           end
         end)
@@ -1835,7 +1835,7 @@ for _, strategy in helpers.each_strategy() do
             local route = bp.routes:insert({ paths = { "/my-route" } })
             assert(db.plugins:insert {
               name = "key-auth",
-              route = { id = route.id },
+              route = route,
             })
             local res = assert(client:send {
               method = "GET",
@@ -1850,7 +1850,7 @@ for _, strategy in helpers.each_strategy() do
             local route = bp.routes:insert({ name = "my-plugins-route", paths = { "/my-route" } })
             assert(db.plugins:insert {
               name = "key-auth",
-              route = { id = route.id },
+              route = route,
             })
             local res = assert(client:send {
               method = "GET",
@@ -1860,7 +1860,7 @@ for _, strategy in helpers.each_strategy() do
             local json = cjson.decode(body)
             assert.equal(1, #json.data)
 
-            db.routes:delete({ id = route.id })
+            db.routes:delete(route)
           end)
 
           it("ignores an invalid body", function()
@@ -1892,7 +1892,7 @@ for _, strategy in helpers.each_strategy() do
             local res = client:get("/routes/" .. route.id .. "/plugins/" .. plugin.id)
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
-            local in_db = assert(db.plugins:select({ id = plugin.id }, { nulls = true }))
+            local in_db = assert(db.plugins:select(plugin, { nulls = true }))
             assert.same(json, in_db)
           end)
           it("retrieves a plugin by instance_name", function()
@@ -1908,7 +1908,7 @@ for _, strategy in helpers.each_strategy() do
             local res = client:get("/routes/" .. route.id .. "/plugins/" .. plugin.instance_name)
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
-            local in_db = assert(db.plugins:select({ id = plugin.id }, { nulls = true }))
+            local in_db = assert(db.plugins:select(plugin, { nulls = true }))
             assert.same(json, in_db)
           end)
         end)
@@ -1922,7 +1922,7 @@ for _, strategy in helpers.each_strategy() do
             local res = assert(client:delete("/routes/" .. route.id .. "/plugins/" .. plugin.id))
             assert.res_status(204, res)
 
-            local in_db, err = db.plugins:select({id = plugin.id}, { nulls = true })
+            local in_db, err = db.plugins:select(plugin, { nulls = true })
             assert.is_nil(err)
             assert.is_nil(in_db)
           end)
@@ -1935,7 +1935,7 @@ for _, strategy in helpers.each_strategy() do
             local res = assert(client:delete("/routes/" .. route.id .. "/plugins/" .. plugin.instance_name))
             assert.res_status(204, res)
 
-            local in_db, err = db.plugins:select({id = plugin.id}, { nulls = true })
+            local in_db, err = db.plugins:select(plugin, { nulls = true })
             assert.is_nil(err)
             assert.is_nil(in_db)
           end)

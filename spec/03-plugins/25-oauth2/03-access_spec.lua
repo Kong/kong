@@ -2883,7 +2883,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         local db_code, err = db.oauth2_authorization_codes:select_by_code(code)
         assert.is_nil(err)
         db_code.plugin = ngx.null
-        local _, _, err = db.oauth2_authorization_codes:update({ id = db_code.id }, db_code)
+        local _, _, err = db.oauth2_authorization_codes:update(db_code, db_code)
         assert.is_nil(err)
         local res = assert(proxy_ssl_client:send {
           method  = "POST",
@@ -3732,9 +3732,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
 
 
         -- check refreshing sets created_at so access token doesn't expire
-        db.oauth2_tokens:update({
-          id = new_refresh_token.id
-        }, {
+        db.oauth2_tokens:update(new_refresh_token, {
           created_at = 123, -- set time as expired
         })
 

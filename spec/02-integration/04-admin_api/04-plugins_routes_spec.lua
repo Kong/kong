@@ -276,7 +276,7 @@ for _, strategy in helpers.each_strategy() do
             local json = cjson.decode(body)
             assert.False(json.enabled)
 
-            local in_db = assert(db.plugins:select({ id = plugins[1].id }, { nulls = true }))
+            local in_db = assert(db.plugins:select(plugins[1], { nulls = true }))
             assert.same(json, in_db)
           end)
           it("updates a plugin by instance_name", function()
@@ -290,11 +290,11 @@ for _, strategy in helpers.each_strategy() do
             local json = cjson.decode(body)
             assert.False(json.enabled)
 
-            local in_db = assert(db.plugins:select({ id = plugins[2].id }, { nulls = true }))
+            local in_db = assert(db.plugins:select(plugins[2], { nulls = true }))
             assert.same(json, in_db)
           end)
           it("updates a plugin bis", function()
-            local plugin = assert(db.plugins:select({ id = plugins[2].id }, { nulls = true }))
+            local plugin = assert(db.plugins:select(plugins[2], { nulls = true }))
 
             plugin.enabled = not plugin.enabled
             plugin.created_at = nil
@@ -325,7 +325,7 @@ for _, strategy in helpers.each_strategy() do
             local json = cjson.decode(body)
             assert.same(ngx.null, json.service)
 
-            local in_db = assert(db.plugins:select({ id = plugins[2].id }, { nulls = true }))
+            local in_db = assert(db.plugins:select(plugins[2], { nulls = true }))
             assert.same(json, in_db)
           end)
           it("does not infer json input", function()
@@ -341,7 +341,7 @@ for _, strategy in helpers.each_strategy() do
           end)
           describe("errors", function()
             it("handles invalid input", function()
-              local before = assert(db.plugins:select({ id = plugins[1].id }, { nulls = true }))
+              local before = assert(db.plugins:select(plugins[1], { nulls = true }))
               local res = assert(client:send {
                 method = "PATCH",
                 path = "/plugins/" .. plugins[1].id,
@@ -358,12 +358,12 @@ for _, strategy in helpers.each_strategy() do
                 code = 2,
               }, body)
 
-              local after = assert(db.plugins:select({ id = plugins[1].id }, { nulls = true }))
+              local after = assert(db.plugins:select(plugins[1], { nulls = true }))
               assert.same(before, after)
               assert.same({"testkey"}, after.config.key_names)
             end)
             it("handles invalid config, see #9224", function()
-              local before = assert(db.plugins:select({ id = plugins[1].id }, { nulls = true }))
+              local before = assert(db.plugins:select(plugins[1], { nulls = true }))
               local res = assert(client:send {
                 method = "PATCH",
                 path = "/plugins/" .. plugins[1].id,
@@ -380,7 +380,7 @@ for _, strategy in helpers.each_strategy() do
                 code = 2,
               }, body)
 
-              local after = assert(db.plugins:select({ id = plugins[1].id }, { nulls = true }))
+              local after = assert(db.plugins:select(plugins[1], { nulls = true }))
               assert.same(before, after)
               assert.same({"testkey"}, after.config.key_names)
             end)

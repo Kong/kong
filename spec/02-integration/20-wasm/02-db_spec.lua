@@ -264,7 +264,7 @@ describe("wasm DB entities [#" .. strategy .. "]", function()
 
         assert.is_nil(chain.tags)
 
-        chain = assert(dao:update({ id = chain.id }, { tags = { "foo" } }))
+        chain = assert(dao:update(chain, { tags = { "foo" } }))
         assert.same({ "foo" }, chain.tags)
       end)
     end)

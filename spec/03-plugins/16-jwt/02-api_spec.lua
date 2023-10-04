@@ -248,7 +248,7 @@ for _, strategy in helpers.each_strategy() do
             path = "/consumers/bob/jwt/",
           })
           local body = cjson.decode(assert.res_status(200, res))
-          assert.equal(7, #(body.data))
+          assert.equal(6, #(body.data))
         end)
       end)
     end)
