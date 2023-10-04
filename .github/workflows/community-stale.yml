@@ -1,0 +1,50 @@
+name: Close inactive issues
+on:
+  schedule:
+    - cron: "30 1 * * *"
+
+jobs:
+  close-issues:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/stale@v5
+        with:
+          days-before-stale: 14
+          days-before-close: 7
+          stale-issue-label: "stale"
+          stale-issue-message: "This issue is marked as stale because it has been open for 14 days with no activity."
+          close-issue-message: |
+            Dear contributor,
+            
+            We are automatically closing this issue because it has not seen any activity for three weeks.
+            We're sorry that your issue could not be resolved.  If any new information comes up that could
+            help resolving it, please feel free to reopen it.
+            
+            Your contribution is greatly appreciated!
+            
+            Please have a look
+            [our pledge to the community](https://github.com/Kong/kong/blob/master/COMMUNITY_PLEDGE.md)
+            for more information.
+            
+            Sincerely,
+            Your Kong Gateway team
+          stale-pr-message: "This PR is marked as stale because it has been open for 14 days with no activity."
+          close-pr-message: |
+            Dear contributor,
+            
+            We are automatically closing this pull request because it has not seen any activity for three weeks.
+            We're sorry that we could not merge it.  If you still want to pursure your patch, please feel free to 
+            reopen it and address any remaining issues.
+            
+            Your contribution is greatly appreciated!
+            
+            Please have a look
+            [our pledge to the community](https://github.com/Kong/kong/blob/master/COMMUNITY_PLEDGE.md)
+            for more information.
+            
+            Sincerely,
+            Your Kong Gateway team
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
