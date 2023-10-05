@@ -1,0 +1,7 @@
+message: fix the building failure when applying patches
+type: bugfix
+scope: Core
+prs:
+  - 11696
+jiras:
+  - KAG-2712
