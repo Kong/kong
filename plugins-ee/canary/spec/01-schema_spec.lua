@@ -181,6 +181,43 @@ describe("canary schema", function()
     assert.is_nil(err)
     assert.equals(ok.config.steps, 1000)
   end)
+  it("allow setting steps to 'ngx.null' or 'nil' when 'canary_by_header_name' is enabled", function()
+    local ok, err = validate_entity({ canary_by_header_name = "X-Split", upstream_host = "balancer_a", steps = ngx_null }, canary_schema)
+
+    assert.is_truthy(ok)
+    assert.is_nil(err)
+    assert.equals(ok.config.steps, ngx_null)
+
+    local ok, err = validate_entity({ canary_by_header_name = "X-Split", upstream_host = "balancer_a", steps = nil }, canary_schema)
+
+    assert.is_truthy(ok)
+    assert.is_nil(err)
+    assert.equals(ok.config.steps, 1000)
+  end)
+  it("allow setting steps to 'ngx.null' or 'nil' when 'hash' is 'allow' or 'deny'", function()
+    local ok, err = validate_entity({ hash = "allow", groups = { "foo", "bar" }, upstream_host = "balancer_a", steps = ngx_null }, canary_schema)
+
+    assert.is_truthy(ok)
+    assert.is_nil(err)
+    assert.equals(ok.config.steps, ngx_null)
+
+    local ok, err = validate_entity({ hash = "deny", groups = { "foo", "bar" }, upstream_host = "balancer_a", steps = nil }, canary_schema)
+
+    assert.is_truthy(ok)
+    assert.is_nil(err)
+    assert.equals(ok.config.steps, 1000)
+  end)
+  it("config.consumer not a valid field", function()
+    local ok, err = validate_entity({ consumer = "allow", groups = { "foo", "bar" }, upstream_host = "balancer_a", steps = ngx_null }, canary_schema)
+
+    assert.is_nil(ok)
+    assert.equals(err.config.consumer, "unknown field")
+
+    local ok, err = validate_entity({ consumer = "deny", groups = { "foo", "bar" }, upstream_host = "balancer_a", steps = nil }, canary_schema)
+
+    assert.is_nil(ok)
+    assert.equals(err.config.consumer, "unknown field")
+  end)
 
   local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
   for _, strategy in strategies() do

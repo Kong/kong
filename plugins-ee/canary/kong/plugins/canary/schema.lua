@@ -18,8 +18,8 @@ end
 
 local function validate_steps(config)
   if not is_null_value(config.canary_by_header_name) or
-                          config.consumer == "allow" or
-                           config.consumer == "deny" or
+                              config.hash == "allow" or
+                               config.hash == "deny" or
                      not is_null_value(config.steps)
   then
 
