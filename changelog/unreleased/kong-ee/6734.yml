@@ -1,0 +1,3 @@
+message: workspaces.get_workspace() now tries to get workspace from cache instead of querying database directly
+type: performance
+scope: Core

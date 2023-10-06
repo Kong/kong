@@ -50,7 +50,7 @@ local function auth_conf(workspace_name, subdomain_mode, mixin)
     conf[k] = v
   end
 
-  return cjson.encode(conf)
+  return cjson.encode(conf), conf
 end
 
 local function configure_portal(db, workspace_name, config)
@@ -58,6 +58,15 @@ local function configure_portal(db, workspace_name, config)
     name = workspace_name,
     config = config,
   })
+end
+
+local function admin_client_request(params)
+  local client = assert(helpers.admin_client())
+  local res = assert(client:send(params))
+  res.body = res:read_body()
+
+  client:close()
+  return res
 end
 
 local function authentication(workspace_name)
@@ -249,17 +258,39 @@ for _, strategy in helpers.each_strategy() do
                   "when using custom config - " .. cookie_path.config_path .. "->" .. expected_path
 
                 it(test_description, function ()
-                  configure_portal(db, workspace_name, {
-                    portal = true,
-                    portal_auth = PLUGIN_NAME,
-                    portal_auth_conf = auth_conf(workspace_name, use_subdomain_for_workspace, {
-                      session_cookie_name = "my_session_cookie",
-                      session_cookie_path = cookie_path.config_path,
-                      by_username_ignore_case = by_username_ignore_case,
-                    }),
-                    portal_is_legacy = true,
-                    portal_auto_approve = true,
+                  ee_helpers.register_rbac_resources(db)
+                  local opt = {
+                    override_default_headers = {
+                      ["Kong-Admin-Token"] = "letmein-default",
+                      ["Content-Type"] = "application/json",
+                    },
+                    disable_ipv6 = true,
+                  }
+
+                  local _, portal_auth_conf = auth_conf(workspace_name, use_subdomain_for_workspace, {
+                    session_cookie_name = "my_session_cookie",
+                    session_cookie_path = cookie_path.config_path,
+                    by_username_ignore_case = by_username_ignore_case,
                   })
+
+                  assert(admin_client_request({
+                    method = "PATCH",
+                    path = "/workspaces/" .. workspace_name,
+                    body = {
+                      config = {
+                        portal = true,
+                        portal_auth = PLUGIN_NAME,
+                        portal_auth_conf = portal_auth_conf,
+                        portal_is_legacy = true,
+                        portal_auto_approve = true,
+                      }
+                    },
+                    headers = {
+                      ["Content-Type"] = "application/json",
+                    }
+                  }))
+
+                  helpers.wait_for_all_config_update(opt)
 
                   local _, cookie_jar = authentication(workspace_name)
                   local cookie = cookie_jar:get("my_session_cookie")

@@ -38,10 +38,24 @@ function workspaces.upsert_default()
 end
 
 
+-- XXX EE [[
 function workspaces.get_workspace()
-  local ws_id = ngx.ctx.workspace or kong.default_workspace
-  return kong.db.workspaces:select({ id = ws_id })
+  local ws_id = workspaces.get_workspace_id()
+  -- if using the kong command, such as kong db_import,
+  -- no initialization of the cache module, so kong.cache is nil.
+  if not kong.cache then
+    return kong.db.workspaces:select({ id = ws_id })
+  end
+
+  return workspaces.select_workspace_by_id_with_cache(ws_id)
 end
+
+
+function workspaces.get_workspace_name()
+  local ws = workspaces.get_workspace()
+  return ws and ws.name
+end
+-- EE ]]
 
 
 function workspaces.set_workspace(ws)

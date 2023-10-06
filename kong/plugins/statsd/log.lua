@@ -139,8 +139,7 @@ local get_workspace_id = {
     return ws.get_workspace_id()
   end,
   workspace_name = function()
-    local workspace = ws.get_workspace()
-    return workspace.name
+    return ws.get_workspace_name()
   end
 }
 

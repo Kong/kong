@@ -34,9 +34,18 @@ local mock_kong = {
     workspaces = {
       select = function()
         return { id = DEFAULT_WORKSPACE }
-      end
+      end,
+      cache_key = function()
+        return "workspaces:".. DEFAULT_WORKSPACE .. ":::::"
+      end,
     }
-  }
+  },
+
+  cache = {
+    get = function()
+      return { id = DEFAULT_WORKSPACE }
+    end,
+  },
 }
 
 
