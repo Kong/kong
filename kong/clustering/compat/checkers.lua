@@ -55,6 +55,32 @@ local compatible_checkers = {
         end
       end
 
+      for _, plugin in ipairs(config_table.plugins or {}) do
+        if plugin.name == 'opentelemetry' or plugin.name == 'zipkin' then
+          local config = plugin.config
+          if config.header_type == 'gcp' then
+            config.header_type = 'preserve'
+            log_warn_message('configures ' .. plugin.name .. ' plugin with:' ..
+                             ' header_type == gcp',
+                             'overwritten with default value `preserve`',
+                             dp_version, log_suffix)
+            has_update = true
+          end
+        end
+
+        if plugin.name == 'zipkin' then
+          local config = plugin.config
+          if config.default_header_type == 'gcp' then
+            config.default_header_type = 'b3'
+            log_warn_message('configures ' .. plugin.name .. ' plugin with:' ..
+                             ' default_header_type == gcp',
+                             'overwritten with default value `b3`',
+                             dp_version, log_suffix)
+            has_update = true
+          end
+        end
+      end
+
       return has_update
     end
   },
@@ -138,6 +164,32 @@ local compatible_checkers = {
               vault.config[parameter] = nil
               has_update = true
             end
+          end
+        end
+      end
+
+      for _, plugin in ipairs(config_table.plugins or {}) do
+        if plugin.name == 'opentelemetry' or plugin.name == 'zipkin' then
+          local config = plugin.config
+          if config.header_type == 'aws' then
+            config.header_type = 'preserve'
+            log_warn_message('configures ' .. plugin.name .. ' plugin with:' ..
+                             ' header_type == aws',
+                             'overwritten with default value `preserve`',
+                             dp_version, log_suffix)
+            has_update = true
+          end
+        end
+
+        if plugin.name == 'zipkin' then
+          local config = plugin.config
+          if config.default_header_type == 'aws' then
+            config.default_header_type = 'b3'
+            log_warn_message('configures ' .. plugin.name .. ' plugin with:' ..
+                             ' default_header_type == aws',
+                             'overwritten with default value `b3`',
+                             dp_version, log_suffix)
+            has_update = true
           end
         end
       end
