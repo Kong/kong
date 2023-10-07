@@ -1,3 +1,4 @@
+local buffer = require("string.buffer")
 local declarative = require("kong.db.declarative")
 local reports = require("kong.reports")
 local errors = require("kong.db.errors")
@@ -93,9 +94,9 @@ return {
       end
 
       local file = {
-        buffer = {},
+        buf = buffer.new(),
         write = function(self, str)
-          self.buffer[#self.buffer + 1] = str
+          self.buf:put(str)
         end,
       }
 
@@ -105,7 +106,7 @@ return {
         return kong.response.exit(500, { message = "An unexpected error occurred" })
       end
 
-      return kong.response.exit(200, { config = table.concat(file.buffer) })
+      return kong.response.exit(200, { config = file.buf:get() })
     end,
     POST = function(self, db)
       if kong.db.strategy ~= "off" then
