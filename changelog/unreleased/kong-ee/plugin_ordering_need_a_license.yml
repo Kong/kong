@@ -1,0 +1,3 @@
+message: Require a license to use Dynamic Plugin Ordering
+type: bugfix
+scope: Plugin

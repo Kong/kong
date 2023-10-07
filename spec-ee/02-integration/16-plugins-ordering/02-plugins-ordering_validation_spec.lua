@@ -18,6 +18,7 @@ for _, strategy in helpers.all_strategies({"postgres", "off"}) do
       assert(helpers.start_kong {
         database = strategy,
         plugins = "bundled",
+        license_path = "spec-ee/fixtures/mock_license.json",
       })
       client = helpers.admin_client(10000)
     end)
@@ -218,6 +219,57 @@ for _, strategy in helpers.all_strategies({"postgres", "off"}) do
         headers = {["Content-Type"] = "application/json"}
       }))
       assert.res_status(400, res)
+    end)
+  end)
+end
+
+for _, strategy in helpers.each_strategy() do
+  describe("Dynamic Plugin Ordering - Free License #" .. strategy, function()
+
+    lazy_setup(function()
+      helpers.stop_kong()
+
+      helpers.get_db_utils(strategy)
+
+      -- No license is present
+      helpers.unsetenv("KONG_LICENSE_DATA")
+
+      assert(helpers.start_kong({
+        database  = strategy,
+      }))
+      client = assert(helpers.admin_client())
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+      if client then
+        client:close()
+      end
+    end)
+
+    it("POST to setup a plugin with ordering but Kong is in free-mode", function()
+      local res, _ = assert.res_status(400, assert(client:send {
+        method = "POST",
+        path = "/plugins",
+        body = {
+          name = "key-auth",
+          ordering = {
+            after = {
+              access = {
+                "basic-auth"
+              }
+            }
+          },
+          config = {
+            key_names = {"foo"},
+          },
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      }))
+      local dres = cjson.decode(res)
+      assert.same("schema violation (ordering requires a license to be used)", dres.message)
     end)
   end)
 end

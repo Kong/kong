@@ -54,5 +54,16 @@ return {
         return true
       end
     } },
+    { custom_entity_check = {
+      field_sources = { "ordering" },
+      fn = function (entity)
+        if kong and kong.licensing then
+          if kong.licensing:license_type() == "free" and entity.ordering ~= ngx.null then
+            return nil, "ordering requires a license to be used"
+          end
+        end
+        return true
+      end
+    } },
   }
 }
