@@ -7,7 +7,6 @@ local errors = require("kong.db.errors")
 local kong = kong
 local ngx = ngx
 local type = type
-local table = table
 local tostring = tostring
 
 
