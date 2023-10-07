@@ -27,14 +27,15 @@ end
 local function truthy(val)
   if type(val) == "string" then
     val = val:lower()
+
+    return val == "true"
+        or val == "1"
+        or val == "on"
+        or val == "yes"
   end
 
   return val == true
       or val == 1
-      or val == "true"
-      or val == "1"
-      or val == "on"
-      or val == "yes"
 end
 
 
