@@ -470,3 +470,65 @@ X-Non-Service-Header: nil
 X-Non-Service-Header: test
 --- no_error_log
 [error]
+
+
+
+=== TEST 11: service.response.get_headers() # and pairs works with returned table
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
+    server {
+        listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock;
+
+        location / {
+            content_by_lua_block {
+                ngx.header["test"] = "test"
+            }
+        }
+    }
+}
+--- config
+    location = /t {
+        access_by_lua_block {
+            ngx.header["X-Non-Service-Header"] = "test"
+        }
+
+        proxy_pass http://unix:$TEST_NGINX_NXSOCK/nginx.sock;
+
+        header_filter_by_lua_block {
+            ngx.header.content_length = nil
+        }
+
+        body_filter_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            local headers = pdk.service.response.get_headers()
+
+            local ordered_headers = {}
+
+            for k, v in pairs(headers) do
+                table.insert(ordered_headers, k)
+            end
+
+            table.sort(ordered_headers)
+
+            for _, k in ipairs(ordered_headers) do
+                ngx.arg[1] = ngx.arg[1] .. k .. ": " .. headers[k] .. "\n"
+            end
+
+            ngx.arg[1] = ngx.arg[1] .. "#headers: " .. #headers
+
+            ngx.arg[2] = true
+        }
+    }
+--- request
+GET /t
+--- response_body chop
+connection: close
+content-type: text/plain
+test: test
+#headers: 3
+--- no_error_log
+[error]

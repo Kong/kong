@@ -10,7 +10,6 @@ local phase_checker = require "kong.pdk.private.phases"
 
 local ngx = ngx
 local sub = string.sub
-local fmt = string.format
 local gsub = string.gsub
 local find = string.find
 local type = type
@@ -18,7 +17,6 @@ local error = error
 local lower = string.lower
 local pairs = pairs
 local tonumber = tonumber
-local getmetatable = getmetatable
 local setmetatable = setmetatable
 local check_phase = phase_checker.check
 
@@ -35,85 +33,104 @@ local header_body_log = phase_checker.new(PHASES.response,
                                           PHASES.log)
 
 
-local attach_resp_headers_mt
-
+local make_resp_headers_aliases
 
 do
-  local resp_headers_orig_mt_index
+  local EMPTY = {}
+  local resp_header_alias_mt = {}
+  local index_caches = setmetatable({}, { __mode = "k" })
 
+  local function normalize_header_name(name)
+    return gsub(lower(name), "-", "_")
+  end
 
-  local resp_headers_mt = {
-    __index = function(t, name)
-      if type(name) == "string" then
-        local var = fmt("upstream_http_%s", gsub(lower(name), "-", "_"))
-        if not ngx.var[var] then
-          return nil
-        end
-      end
-
-      return resp_headers_orig_mt_index(t, name)
-    end,
-  }
-
-
-  attach_resp_headers_mt = function(response_headers, err)
-    if not resp_headers_orig_mt_index then
-      local mt = getmetatable(response_headers)
-      resp_headers_orig_mt_index = mt.__index
+  function resp_header_alias_mt.__index(t, name)
+    if type(name) ~= "string" then
+      return rawget(t, name)
     end
 
-    setmetatable(response_headers, resp_headers_mt)
+    name = normalize_header_name(name)
 
-    return response_headers, err
+    local value = rawget(t, name)
+    if value ~= nil then
+      return value
+    end
+
+    local index_cache = index_caches[t]
+
+    if index_cache == nil then
+      index_cache = {}
+      for n, v in pairs(t) do
+        local normalized_n = normalize_header_name(n)
+        index_cache[normalized_n] = v
+      end
+      index_caches[t] = index_cache
+    end
+
+    return index_cache[name]
+  end
+
+  function resp_header_alias_mt.__newindex(t, name, value)
+    local normalized_header_name = normalize_header_name(name)
+
+    -- update index cache
+    local index_cache = index_caches[t]
+    if index_cache then
+      index_cache[normalized_header_name] = value
+    end
+
+    -- quick path
+    if type(name) ~= "string" or t[name] == nil then
+      rawset(t, name, value)
+      return
+    end
+
+    for n, _ in pairs(t) do
+      local normalized_n = normalize_header_name(n)
+      if normalized_n == normalized_header_name then
+        rawset(t, n, value)
+        return
+      end
+    end
+
+    error("unreachable")
+  end
+
+  function make_resp_headers_aliases(t, err)
+    if not t then
+      return EMPTY, err
+    end
+
+    local ret = setmetatable(t, resp_header_alias_mt)
+
+    return ret, err
   end
 end
 
 
-local attach_buffered_headers_mt
+local add_fast_path_headers
 
 do
-  local EMPTY = {}
+  local FAST_PATH_HEADERS = {
+    ["Location"] = "upstream_http_location",
+    ["Last_Modified"] = "upstream_http_last_modified",
+    ["Keep_Alive"] = "upstream_http_keep_alive",
+    ["Cache_Control"] = "upstream_http_cache_control",
+    ["Link"] = "upstream_http_link",
+    ["Date"] = "upstream_http_date",
+    ["Server"] = "upstream_http_server",
+  }
 
-  attach_buffered_headers_mt = function(response_headers, max_headers)
-    if not response_headers then
-      return EMPTY
+  -- we do not drop headers exceeding the limit as they are already there
+  function add_fast_path_headers(t, _)
+    for header_name, var_name in pairs(FAST_PATH_HEADERS) do
+      local value = ngx.var[var_name]
+      if value and t[header_name] == nil then
+        t[header_name] = value
+      end
     end
 
-    return setmetatable({}, { __index = function(_, name)
-      if type(name) ~= "string" then
-        return nil
-      end
-
-      if response_headers[name] then
-        return response_headers[name]
-      end
-
-      name = lower(name)
-
-      if response_headers[name] then
-        return response_headers[name]
-      end
-
-      name = gsub(name, "-", "_")
-
-      if response_headers[name] then
-        return response_headers[name]
-      end
-
-      local i = 1
-      for n, v in pairs(response_headers) do
-        if i > max_headers then
-          return nil
-        end
-
-        n = gsub(lower(n), "-", "_")
-        if n == name then
-          return v
-        end
-
-        i = i + 1
-      end
-    end })
+    return t
   end
 end
 
@@ -199,16 +216,11 @@ local function new(pdk, major_version)
 
     local buffered_headers = ngx.ctx.buffered_headers
 
-    if max_headers == nil then
-      if buffered_headers then
-        if not MAX_HEADERS_CONFIGURED then
-          MAX_HEADERS_CONFIGURED = pdk and pdk.configuration and pdk.configuration.lua_max_resp_headers
-        end
-        return attach_buffered_headers_mt(buffered_headers, MAX_HEADERS_CONFIGURED or MAX_HEADERS_DEFAULT)
-      end
-
-      return attach_resp_headers_mt(ngx.resp.get_headers())
+    if not MAX_HEADERS_CONFIGURED then
+      MAX_HEADERS_CONFIGURED = pdk and pdk.configuration and pdk.configuration.lua_max_resp_headers
     end
+
+    max_headers = max_headers or MAX_HEADERS_CONFIGURED or MAX_HEADERS_DEFAULT
 
     if type(max_headers) ~= "number" then
       error("max_headers must be a number", 2)
@@ -220,11 +232,12 @@ local function new(pdk, major_version)
       error("max_headers must be <= " .. MAX_HEADERS, 2)
     end
 
-    if buffered_headers then
-      return attach_buffered_headers_mt(buffered_headers, max_headers)
+    if not buffered_headers then
+      -- we let get_headers to validate the max_headers
+      return make_resp_headers_aliases(ngx.resp.get_headers(max_headers))
     end
 
-    return attach_resp_headers_mt(ngx.resp.get_headers(max_headers))
+    return make_resp_headers_aliases(add_fast_path_headers(buffered_headers, max_headers))
   end
 
   ---

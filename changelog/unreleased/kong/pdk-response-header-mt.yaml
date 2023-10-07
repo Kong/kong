@@ -1,0 +1,8 @@
+message: "Fix behavior of kong.service.response.get_headers() when using # and pairs()"
+type: bugfix
+scope: Core
+prs:
+  - 11708
+jiras:
+  - "#11546"
+  - "KAG-2602"
