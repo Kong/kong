@@ -762,6 +762,8 @@ if limit_by == "ip" then
     assert
       .with_timeout(15)
       .with_max_tries(10)
+      .with_step(0.5) -- the windows is 1 second, we wait 0.5 seconds between each retry,
+                      -- that can avoid some unlucky case (we are at the end of the window)
       .ignore_exceptions(false)
       .eventually(function()
         local res1 = GET(test_path, { headers = { ["X-Real-IP"] = "127.0.0.3" }})
