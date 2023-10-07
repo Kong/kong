@@ -194,7 +194,7 @@ describe("worker respawn", function()
       path = "/config",
       body = {
         config = string.format([[
-        _format_version: "1.1"
+        _format_version: "3.0"
         services:
         - name: my-service
           host: %s
