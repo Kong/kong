@@ -21,6 +21,7 @@ local INTROSPECTION_ENDPOINT_AUTH_METHOD = "private_key_jwt"
 local INTROSPECTION_HINT = "hint_val"
 local INTROSPECTION_RESULTS = { active = true }
 local TTL = 10
+local INTROSPECTION_TOKEN_PARAM_NAME = "mytoken"
 
 
 -- mock openid
@@ -44,6 +45,7 @@ describe(PLUGIN_NAME .. ": (introspect-token-helper)", function()
       introspection_hint                 = INTROSPECTION_HINT,
       introspection_headers_names        = { "h1" },
       introspection_headers_values       = { "h1val1" },
+      introspection_token_param_name     = INTROSPECTION_TOKEN_PARAM_NAME
     }
 
     local args = arguments(conf, {})
@@ -62,13 +64,14 @@ describe(PLUGIN_NAME .. ": (introspect-token-helper)", function()
     assert.spy(CACHE.introspection.load).was.called(1)
 
     -- get_conf_arg
-    assert.spy(args.get_conf_arg).was.called(7)
+    assert.spy(args.get_conf_arg).was.called(8)
     assert.spy(args.get_conf_arg).was.called_with("introspection_endpoint")
     assert.spy(args.get_conf_arg).was.called_with("introspection_endpoint_auth_method")
     assert.spy(args.get_conf_arg).was.called_with("introspection_hint", "access_token")
     assert.spy(args.get_conf_arg).was.called_with("cache_introspection")
     assert.spy(args.get_conf_arg).was.called_with("introspection_post_args_client")
     assert.spy(args.get_conf_arg).was.called_with("introspection_accept", "application/json")
+    assert.spy(args.get_conf_arg).was.called_with("introspection_token_param_name")
 
     -- get_conf_args
     assert.spy(args.get_conf_args).was.called(2)
@@ -83,6 +86,7 @@ describe(PLUGIN_NAME .. ": (introspect-token-helper)", function()
       introspection_endpoint = INTROSPECTION_ENDPOINT,
       introspection_endpoint_auth_method = INTROSPECTION_ENDPOINT_AUTH_METHOD,
       introspection_format = "string",
+      token_param_name = INTROSPECTION_TOKEN_PARAM_NAME,
     }
 
     assert.spy(CACHE.introspection.load).was.called_with(

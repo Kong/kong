@@ -1682,6 +1682,12 @@ local config = {
             token_cache_key_include_scope = { description = "Include the scope in the token cache key, so token with different scopes are considered diffrent tokens.",
               type = "boolean",
               default = false,
+            },
+          },
+          {
+            introspection_token_param_name = { description = "Designate token's parameter name for introspection.", required = false,
+              type = "string",
+              default = "token",
             }
           },
           {
@@ -1689,6 +1695,12 @@ local config = {
               type = "boolean",
               default = false,
             }
+          },
+          {
+            revocation_token_param_name = { description = "Designate token's parameter name for revocation.", required = false,
+              type = "string",
+              default = "token",
+            },
           },
         },
         shorthand_fields = {

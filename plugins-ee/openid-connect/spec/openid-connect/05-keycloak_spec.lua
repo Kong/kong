@@ -10,6 +10,7 @@ local cjson = require "cjson.safe"
 local helpers = require "spec.helpers"
 local redis = require "resty.redis"
 local version = require "version"
+local http_mock = require "spec.helpers.http_mock"
 
 
 local encode_base64 = ngx.encode_base64
@@ -49,6 +50,36 @@ local REDIS_PORT = 6379
 local REDIS_PORT_ERR = 6480
 local REDIS_USER_VALID = "openid-connect-user"
 local REDIS_PASSWORD = "secret"
+
+local HTTP_SERVER_PORT = helpers.get_available_port()
+local mock = http_mock.new(HTTP_SERVER_PORT, {
+  ["/"] = {
+    directives = [[
+      set $target "";
+      proxy_pass $target;
+    ]],
+    access = [[
+      local body = ngx.ctx.req.body
+      if body then
+        -- change the custom token param name back into the default name
+        local modified_body = body:gsub("mytoken=", "token=")
+        ngx.req.set_body_data(modified_body)
+      end
+
+      local socket = require "socket"
+      local host = "]] .. KEYCLOAK_HOST .. [["
+      local ip = socket.dns.toip(host)
+      local ipport = ip .. ":" .. ]] .. KEYCLOAK_PORT .. [[
+      ngx.ctx.ipport = ipport
+      ngx.var.target = "http://" .. ipport .. ngx.var.request_uri
+    ]],
+  },}, {
+    log_opts = {
+      req = true,
+      req_body = true,
+    }
+  })
+local MOCK_ISSUER_URL = "http://localhost:" .. HTTP_SERVER_PORT .. REALM_PATH
 
 local function error_assert(res, code, desc)
   local header = res.headers["WWW-Authenticate"]
@@ -165,6 +196,31 @@ for _, strategy in helpers.all_strategies() do
           name    = PLUGIN_NAME,
           config  = {
             issuer    = ISSUER_URL,
+            scopes = {
+              -- this is the default
+              "openid",
+            },
+            client_id = {
+              KONG_CLIENT_ID,
+            },
+            client_secret = {
+              KONG_CLIENT_SECRET,
+            },
+            upstream_refresh_token_header = "refresh_token",
+            refresh_token_param_name      = "refresh_token",
+          },
+        }
+
+        local route_custom = bp.routes:insert {
+          service = service,
+          paths   = { "/custom" },
+        }
+
+        bp.plugins:insert {
+          route   = route_custom,
+          name    = PLUGIN_NAME,
+          config  = {
+            issuer    = MOCK_ISSUER_URL,
             scopes = {
               -- this is the default
               "openid",
@@ -310,6 +366,11 @@ for _, strategy in helpers.all_strategies() do
           paths   = { "/introspection" },
         }
 
+        local introspection_custom = bp.routes:insert {
+          service = service,
+          paths   = { "/introspection_custom" },
+        }
+
         bp.plugins:insert {
           route   = introspection,
           name    = PLUGIN_NAME,
@@ -325,6 +386,26 @@ for _, strategy in helpers.all_strategies() do
             auth_methods = {
               "introspection",
             },
+          },
+        }
+
+        bp.plugins:insert {
+          route   = introspection_custom,
+          name    = PLUGIN_NAME,
+          config  = {
+            issuer    = MOCK_ISSUER_URL,
+            client_id = {
+              KONG_CLIENT_ID,
+            },
+            client_secret = {
+              KONG_CLIENT_SECRET,
+            },
+            -- Types of credentials/grants to enable. Limit to introspection for this case
+            auth_methods = {
+              "introspection",
+            },
+	    introspection_endpoint = MOCK_ISSUER_URL .. "/protocol/openid-connect/token/introspect",
+            introspection_token_param_name = "mytoken",
           },
         }
 
@@ -573,6 +654,7 @@ for _, strategy in helpers.all_strategies() do
           },
         }
 
+	assert(mock:start())
         assert(helpers.start_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -582,6 +664,7 @@ for _, strategy in helpers.all_strategies() do
 
       lazy_teardown(function()
         helpers.stop_kong()
+	mock:stop()
       end)
 
       before_each(function()
@@ -1141,6 +1224,84 @@ for _, strategy in helpers.all_strategies() do
 
         it("is allowed with valid client token", function()
           local res = proxy_client:get("/introspection", {
+            headers = {
+              Authorization = "Bearer " .. client_token,
+            },
+          })
+
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          assert.is_not_nil(json.headers.authorization)
+          assert.equal(client_token, sub(json.headers.authorization, 8))
+        end)
+      end)
+
+      describe("introspection (specify custom token param name)", function()
+        local user_token
+        local client_token
+        local invalid_token
+
+        lazy_setup(function()
+          local client = helpers.proxy_client()
+          local res = client:get("/custom", {
+            headers = {
+              Authorization = PASSWORD_CREDENTIALS,
+            },
+          })
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          assert.equal("Bearer", sub(json.headers.authorization, 1, 6))
+
+          user_token = sub(json.headers.authorization, 8)
+
+          if sub(user_token, -4) == "7oig" then
+            invalid_token = sub(user_token, 1, -5) .. "cYe8"
+          else
+            invalid_token = sub(user_token, 1, -5) .. "7oig"
+          end
+
+          res = client:get("/custom", {
+            headers = {
+              Authorization = CLIENT_CREDENTIALS,
+            },
+          })
+          assert.response(res).has.status(200)
+          json = assert.response(res).has.jsonbody()
+          assert.equal("Bearer", sub(json.headers.authorization, 1, 6))
+
+          client_token = sub(json.headers.authorization, 8)
+
+          client:close()
+        end)
+
+        it("is not allowed with invalid token", function()
+          local res = proxy_client:get("/introspection_custom", {
+            headers = {
+              Authorization = "Bearer " .. invalid_token,
+            },
+          })
+
+          assert.response(res).has.status(401)
+          local json = assert.response(res).has.jsonbody()
+          assert.same("Unauthorized", json.message)
+          error_assert(res, "invalid_token")
+        end)
+
+        it("is allowed with valid user token", function()
+          local res = proxy_client:get("/introspection_custom", {
+            headers = {
+              Authorization = "Bearer " .. user_token,
+            },
+          })
+
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          assert.is_not_nil(json.headers.authorization)
+          assert.equal(user_token, sub(json.headers.authorization, 8))
+        end)
+
+        it("is allowed with valid client token", function()
+          local res = proxy_client:get("/introspection_custom", {
             headers = {
               Authorization = "Bearer " .. client_token,
             },
@@ -2435,6 +2596,140 @@ for _, strategy in helpers.all_strategies() do
 
       lazy_teardown(function()
         helpers.stop_kong()
+      end)
+
+      before_each(function()
+        proxy_client = helpers.proxy_client()
+      end)
+
+      after_each(function()
+        if proxy_client then
+          proxy_client:close()
+        end
+      end)
+
+      describe("from session |", function ()
+
+        local user_session
+        local user_session_header_table = {}
+        local user_token
+
+        lazy_setup(function()
+          local client = helpers.proxy_client()
+          local res = client:get("/", {
+            headers = {
+              Authorization = PASSWORD_CREDENTIALS,
+            },
+          })
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          local cookies = res.headers["Set-Cookie"]
+          if type(cookies) == "table" then
+            -- multiple cookies can be expected
+            for i, cookie in ipairs(cookies) do
+              user_session = sub(cookie, 0, find(cookie, ";") -1)
+              user_session_header_table[i] = user_session
+            end
+          else
+              user_session = sub(cookies, 0, find(cookies, ";") -1)
+              user_session_header_table[1] = user_session
+          end
+
+          user_token = sub(json.headers.authorization, 8, -1)
+        end)
+
+        it("validate logout", function ()
+          local res = proxy_client:get("/", {
+            headers = {
+              Cookie = user_session_header_table
+            },
+          })
+          -- Test that the session auth works
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          assert.equal(user_token, sub(json.headers.authorization, 8))
+          -- logout
+          local lres = proxy_client:post("/logout", {
+            headers = {
+              Cookie = user_session_header_table,
+            },
+          })
+          assert.response(lres).has.status(302)
+          -- test if Expires=beginningofepoch
+          local cookie = lres.headers["Set-Cookie"]
+          local expected_header_name = "Expires="
+          -- match from Expires= until next ; divider
+          local expiry_init = find(cookie, expected_header_name)
+          local expiry_date = sub(cookie, expiry_init + #expected_header_name, find(cookie, ';', expiry_init)-1)
+          assert(expiry_date, "Thu, 01 Jan 1970 00:00:01 GMT")
+          -- follow redirect
+          local redirect = lres.headers["Location"]
+          local rres = proxy_client:post(redirect, {
+            headers = {
+              Cookie = user_session_header_table,
+            },
+          })
+          assert.response(rres).has.status(200)
+        end)
+      end)
+    end)
+
+    describe("logout (specify custom token param name)", function()
+      local proxy_client
+      lazy_setup(function()
+        local bp = helpers.get_db_utils(strategy, {
+          "routes",
+          "services",
+          "plugins",
+        }, {
+          PLUGIN_NAME
+        })
+
+        local service = bp.services:insert {
+          name = PLUGIN_NAME,
+          path = "/anything"
+        }
+        local route = bp.routes:insert {
+          service = service,
+          paths   = { "/" },
+        }
+        bp.plugins:insert {
+          route   = route,
+          name    = PLUGIN_NAME,
+          config  = {
+            issuer    = MOCK_ISSUER_URL,
+            client_id = {
+              KONG_CLIENT_ID,
+            },
+            client_secret = {
+              KONG_CLIENT_SECRET,
+            },
+            auth_methods = {
+              "session",
+              "password"
+            },
+            logout_uri_suffix = "/logout",
+            logout_methods = {
+              "POST",
+            },
+	    revocation_endpoint = MOCK_ISSUER_URL .. "/protocol/openid-connect/revoke",
+            revocation_token_param_name = "mytoken",
+            logout_revoke = true,
+            display_errors = true
+          },
+        }
+
+	assert(mock:start())
+        assert(helpers.start_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          plugins    = "bundled," .. PLUGIN_NAME,
+        }))
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+	mock:stop()
       end)
 
       before_each(function()

@@ -1,0 +1,3 @@
+message: OpenID-Connect now support designate parameter name of token for introspection and revocation with `introspection_token_param_name` and `revocation_token_param_name` respectively.
+type: feature
+scope: Plugin

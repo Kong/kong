@@ -17,7 +17,7 @@ dependencies = {
   "lua >= 5.1",
   "lua-resty-session >= 3.10",
   "lua-resty-http >= 0.15",
-  "kong-openid-connect == 2.5.5",
+  "kong-openid-connect == 2.5.7",
 }
 
 build = {

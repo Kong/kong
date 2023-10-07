@@ -205,6 +205,8 @@ return {
     openid_connect = {
       "using_pseudo_issuer",
       "unauthorized_destroy_session",
+      "introspection_token_param_name",
+      "revocation_token_param_name",
     },
   },
 

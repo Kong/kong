@@ -1,0 +1,4 @@
+message: bump the dependency `kong-openid-connect` of oidc plugin from 2.5.5 to 2.5.7.
+type: dependency
+scope: Plugin
+

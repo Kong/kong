@@ -354,11 +354,13 @@ function OICHandler.access(_, conf)
             if args.get_conf_arg("logout_revoke", false) then
               local revocation_endpoint = args.get_conf_arg("revocation_endpoint")
               local revocation_endpoint_auth_method = args.get_conf_arg("revocation_endpoint_auth_method")
+              local revocation_token_param_name = args.get_conf_arg("revocation_token_param_name")
               if session_data.tokens.refresh_token and args.get_conf_arg("logout_revoke_refresh_token", false) then
                 log("revoking refresh token")
                 ok, err = oic.token:revoke(session_data.tokens.refresh_token, "refresh_token", {
                   revocation_endpoint = revocation_endpoint,
                   revocation_endpoint_auth_method = revocation_endpoint_auth_method,
+                  token_param_name = revocation_token_param_name,
                 })
                 if not ok and err then
                   log("revoking refresh token failed: ", err)
@@ -370,6 +372,7 @@ function OICHandler.access(_, conf)
                 ok, err = oic.token:revoke(session_data.tokens.access_token, "access_token", {
                   revocation_endpoint = revocation_endpoint,
                   revocation_endpoint_auth_method = revocation_endpoint_auth_method,
+                  token_param_name = revocation_token_param_name,
                 })
                 if not ok and err then
                   log("revoking access token failed: ", err)

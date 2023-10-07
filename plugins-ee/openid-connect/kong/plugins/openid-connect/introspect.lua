@@ -27,6 +27,7 @@ local function new(args, oic, cache, ignore_signature)
       local client_args    = args.get_conf_arg("introspection_post_args_client")
       local headers        = args.get_conf_args("introspection_headers_names", "introspection_headers_values")
       local pargs          = args.get_conf_args("introspection_post_args_names", "introspection_post_args_values")
+      local token_param_name = args.get_conf_arg("introspection_token_param_name")
 
       if client_headers then
         log("parsing client headers for introspection request")
@@ -80,6 +81,7 @@ local function new(args, oic, cache, ignore_signature)
         introspection_format               = "string",
         headers                            = headers,
         args                               = pargs,
+        token_param_name                   = token_param_name,
       }
     end
 
