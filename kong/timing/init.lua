@@ -1,5 +1,4 @@
 local context         = require("kong.timing.context")
-local utils           = require("kong.tools.utils")
 local cjson           = require("cjson.safe")
 local req_dyn_hook    = require("kong.dynamic_hook")
 local constants       = require("kong.constants")
@@ -8,6 +7,8 @@ local ngx             = ngx
 local ngx_var         = ngx.var
 
 local string_format   = string.format
+
+local request_id_get  = require("kong.tracing.request_id").get
 
 local FILTER_ALL_PHASES = {
   ssl_cert      = nil,    -- NYI
@@ -89,7 +90,7 @@ function _M.auth()
     log = http_x_kong_request_debug_log == "true",
     loopback = loopback,
   })
-  ctx:set_context_prop("debug_id", utils.uuid())
+  ctx:set_context_prop("request_id", request_id_get())
   ngx.ctx.req_trace_ctx = ctx
   req_dyn_hook.enable_on_this_request("timing")
 end
@@ -149,8 +150,8 @@ function _M.header_filter()
   if #output >= HEADER_JSON_TRUNCATE_LENGTH and not req_tr_ctx:from_loopback() then
     output = assert(cjson.encode({
       truncated = true,
-      debug_id = ngx.ctx.req_trace_ctx:get_root_context_kv("debug_id"),
-      message = "Output is truncated, please check the error_log for full output by filtering with the debug_id.",
+      request_id = ngx.ctx.req_trace_ctx:get_root_context_kv("request_id"),
+      message = "Output is truncated, please check the error_log for full output by filtering with the request_id.",
     }))
 
     ngx.ctx.req_trace_ctx.log = true
@@ -169,7 +170,6 @@ function _M.log()
 
   req_tr_ctx:mock_upstream_phase()
   local output = req_tr_ctx:to_json()
-  local debug_id = req_tr_ctx:get_root_context_kv("debug_id")
 
   if #output >= LOG_JSON_TRUNCATE_LENGTH then
     -- split the output into N parts
@@ -186,18 +186,18 @@ function _M.log()
 
     local nparts = #parts
     for no, part in ipairs(parts) do
-      local msg = string_format("%s id: %s parts: %d/%d output: %s",
+      local msg = string_format("%s parts: %d/%d output: %s",
                                 constants.REQUEST_DEBUG_LOG_PREFIX,
-                                debug_id, no, nparts, part)
+                                no, nparts, part)
       ngx.log(ngx.NOTICE, msg)
     end
 
     return
   end
 
-  local msg = string_format("%s id: %s output: %s",
+  local msg = string_format("%s output: %s",
                             constants.REQUEST_DEBUG_LOG_PREFIX,
-                            debug_id, output)
+                            output)
   ngx.log(ngx.NOTICE, msg)
 end
 
