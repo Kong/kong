@@ -85,7 +85,7 @@
   - libc.so.6
   Rpath     : /usr/local/kong/lib
 
-- Path      : /usr/local/kong/lib/libxml2.so.2.10.3
+- Path      : /usr/local/kong/lib/libxml2.so.2.11.5
   Needed    :
   - libz.so.1
   - libm.so.6

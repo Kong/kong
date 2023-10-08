@@ -17,7 +17,7 @@ def libxml2_repositories():
             "https://download.gnome.org/sources/libxml2/" + version_major_minor + "/libxml2-" + version + ".tar.xz",
             "https://ftp.osuosl.org/pub/blfs/conglomeration/libxml2/" + "/libxml2-" + version + ".tar.xz",
         ],
-        sha256 = "5d2cc3d78bec3dbe212a9d7fa629ada25a7da928af432c93060ff5c17ee28a9c",
+        sha256 = "3727b078c360ec69fa869de14bd6f75d7ee8d36987b071e6928d4720a28df3a6",
         strip_prefix = "libxml2-" + version,
         build_file = "//build/ee/libxml2:BUILD.libxml2.bazel",
     )
