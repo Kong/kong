@@ -201,16 +201,16 @@ local function get_output_log(deployment, path, filter, fake_ip, token)
   end
 
   local output = assert(cjson.decode(res.headers["X-Kong-Request-Debug-Output"]))
-  local debug_id = assert(output.debug_id)
+  local request_id = assert(output.request_id)
 
   local json
   local truncated = false
 
   local buf = string_buffer.new()
 
-  local keyword = "[request-debug] id: " .. debug_id
-  local single_pattern = [[ output: (?<data>.+) while logging request, client]]
-  local multi_pattern = [[ parts: (?<part>\d+)/(?<parts>\d+) output: (?<data>.+) while logging request, client]]
+  local keyword = "[request-debug] "
+  local single_pattern = [[output: (?<data>.+) while logging request, client.+request_id: "]] .. request_id .. [["]]
+  local multi_pattern = [[parts: (?<part>\d+)/(?<parts>\d+) output: (?<data>.+) while logging request, client.+request_id: "]] .. request_id .. [["]]
 
   local deadline = ngx.now() + 5
 
@@ -244,9 +244,6 @@ local function get_output_log(deployment, path, filter, fake_ip, token)
           local data = assert(captures.data)
           json = cjson.decode(data)
           break
-
-        else
-          error("unexpected error.log line: " .. line)
         end
       end
     end
@@ -265,7 +262,7 @@ local function get_output_log(deployment, path, filter, fake_ip, token)
   end
 
   assert.falsy(json.dangling)
-  assert.same(debug_id, json.debug_id)
+  assert.same(request_id, json.request_id)
 
   return json, truncated
 end
@@ -482,7 +479,7 @@ describe(desc, function()
     assert_has_output_header(deployment, "/", "*", "1.1.1.1", TOKEN)
   end)
 
-  it("has debug_id and workspace_id", function()
+  it("has request_id and workspace_id", function()
     local route_id = setup_route("/dummy", upstream)
 
     finally(function()
@@ -496,10 +493,10 @@ describe(desc, function()
     local header_output = assert_has_output_header(deployment, "/dummy", "*")
     local log_output = assert_has_output_log(deployment, "/dummy", "*")
 
-    assert.truthy(header_output.debug_id)
+    assert.truthy(header_output.request_id)
     assert.truthy(header_output.workspace_id)
 
-    assert.truthy(log_output.debug_id)
+    assert.truthy(log_output.request_id)
     assert.truthy(log_output.workspace_id)
   end)
 
