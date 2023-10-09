@@ -83,6 +83,7 @@ local vaults = {
   "env",
   -- Vault EE [[
   "aws",
+  "azure",
   "gcp",
   "hcv",
   -- ]]

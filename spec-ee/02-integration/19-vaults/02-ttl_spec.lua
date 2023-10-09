@@ -186,7 +186,7 @@ describe("vault ttl and rotation (#" .. attachment_point .. "_" .. vault.name ..
 
     -- Does it disappear when we delete it from the vault?
     vault:delete_secret(secret)
-    check_no_plugin_secret(10)
+    check_no_plugin_secret(100)
   end)
 
   it("#flaky respects resurrect_ttl times", function ()

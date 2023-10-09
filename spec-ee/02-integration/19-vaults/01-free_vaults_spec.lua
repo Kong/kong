@@ -56,6 +56,10 @@ describe("License restrictions in \"free\" mode", function()
     },
     aws = {
       region = "us-east-1"
+    },
+    azure = {
+      vault_uri = "http://example.com",
+      location = "eu-west"
     }
   }
 

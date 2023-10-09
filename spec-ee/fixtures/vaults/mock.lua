@@ -13,9 +13,15 @@ local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local assert = require("luassert")
 
+
 -- AWS dependencies
 local aws = require "resty.aws"
 local EnvironmentCredentials = require "resty.aws.credentials.EnvironmentCredentials"
+
+
+-- Azure dependencies
+local azure = require "resty.azure"
+
 
 -- GCP dependencies
 local gcp = require "resty.gcp"
@@ -24,8 +30,6 @@ local access_token = require "resty.gcp.request.credentials.accesstoken"
 
 -- HCV dependencies
 local hcv = require "kong.vaults.hcv"
-
-
 
 
 --- A vault test harness is a driver for vault backends, which implements
@@ -169,6 +173,77 @@ local VAULTS = {
       assert.is_equal(200, res.status)
     end
   },
+
+  {
+    name = "azure",
+
+    -- lua-resty-azure sdk object
+    AZURE = nil,
+
+    -- lua-resty-azure secrets-manager client object
+    sm = nil,
+
+    -- secrets that were created during the test run, for cleanup purposes
+    secrets = {},
+
+    setup = function(self)
+      assert(os.getenv("AZURE_TENANT_ID"),
+              "missing AZURE_TENANT_ID environment variable")
+
+      assert(os.getenv("AZURE_CLIENT_ID"),
+              "missing AZURE_CLIENT_ID environment variable")
+
+      assert(os.getenv("AZURE_CLIENT_SECRET"),
+              "missing AZURE_CLIENT_SECRET environment variable")
+
+      local uri = assert(os.getenv("AZURE_VAULT_URI"),
+              "missing AZURE_VAULT_URI environment variable")
+
+      self.config = {
+        location = "eastus",
+        type = "secrets",
+        vault_uri = uri,
+      }
+
+      self.AZURE = azure:new(self.config)
+      self.sm = assert(self.AZURE:secrets(uri))
+    end,
+
+    create_secret = function(self, secret, value, _)
+      assert(self.sm, "secrets manager is not initialized")
+      local err, res
+      assert
+        .with_timeout(360)
+        .with_step(5)
+        .eventually(function()
+          res, err = self.sm:create(secret, cjson.encode({secret = value}))
+          if res and
+             res.error and
+             res.error.innererror and
+             res.error.innererror.code == "ObjectIsDeletedButRecoverable" then
+            -- We need to purge or recover a secret after it has been deleted.
+            -- This is the azure way of accidential deletion protection.
+            self.sm:purge(secret)
+          end
+          return err == nil and res.value ~= nil
+        end).is_truthy("Could not create secret in time " .. (err or ""))
+      assert.is_nil(err)
+      -- assert.is_equal(res.value, value)
+      assert.is_table(res.attributes)
+      assert.is_true(res.attributes.enabled)
+    end,
+
+    -- Azure does not have a concept of updating a secret, you rather increment the
+    -- version number of the secret by "creating" a new one
+    update_secret = function(self, secret, value, _)
+      self:create_secret(secret, value)
+    end,
+
+    delete_secret = function(self, secret)
+      self.sm:delete(secret)
+    end
+  },
+
 
   {
     name = "gcp",

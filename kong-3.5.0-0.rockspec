@@ -36,6 +36,7 @@ dependencies = {
   "lua-protobuf == 0.5.0",
   "lua-resty-healthcheck == 1.6.3",
   "lua-messagepack == 0.5.2",
+  "lua-resty-azure == 1.4.1",
   "lua-resty-aws == 1.3.5",
   "lua-resty-openssl == 0.8.25",
   "lua-resty-mail == 1.0.2",
@@ -815,11 +816,13 @@ build = {
 
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
+    ["kong.vaults.aws"] = "kong/vaults/aws/init.lua",
+    ["kong.vaults.aws.schema"]  = "kong/vaults/aws/schema.lua",
+    ["kong.vaults.azure"] = "kong/vaults/azure/init.lua",
+    ["kong.vaults.azure.schema"]  = "kong/vaults/azure/schema.lua",
     ["kong.vaults.hcv"] = "kong/vaults/hcv/init.lua",
     ["kong.vaults.hcv.schema"] = "kong/vaults/hcv/schema.lua",
     ["kong.vaults.hcv.kube"] = "kong/vaults/hcv/kube.lua",
-    ["kong.vaults.aws"] = "kong/vaults/aws/init.lua",
-    ["kong.vaults.aws.schema"]  = "kong/vaults/aws/schema.lua",
 
     ["kong.tracing.instrumentation"] = "kong/tracing/instrumentation.lua",
     ["kong.tracing.propagation"] = "kong/tracing/propagation.lua",
