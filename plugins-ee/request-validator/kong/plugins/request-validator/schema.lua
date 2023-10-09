@@ -136,12 +136,18 @@ return {
             elements = {
               type = "record",
               fields = {
-                { ["in"] = { type = "string", one_of = PARAM_TYPES, required = true }, },
-                { name = { type = "string", required = true }, },
-                { required = { type = "boolean", required = true }, },
-                { style = { type = "string", one_of = SERIALIZATION_STYLES}, },
-                { explode = { type = "boolean"}, },
-                { schema = { type = "string", custom_validator = validate_param_schema }}
+                { ["in"] = { description = "The location of the parameter.",
+                  type = "string", one_of = PARAM_TYPES, required = true }, },
+                { name = { description = "The name of the parameter. Parameter names are case-sensitive, and correspond to the parameter name used by the `in` property. If `in` is `path`, the `name` field MUST correspond to the named capture group from the configured `route`.",
+                  type = "string", required = true }, },
+                { required = { description = "Determines whether this parameter is mandatory.",
+                  type = "boolean", required = true }, },
+                { style = { description = "Required when `schema` and `explode` are set. Describes how the parameter value will be deserialized depending on the type of the parameter value.",
+                  type = "string", one_of = SERIALIZATION_STYLES}, },
+                { explode = { description = "Required when `schema` and `style` are set. When `explode` is `true`, parameter values of type `array` or `object` generate separate parameters for each value of the array or key-value pair of the map. For other types of parameters, this property has no effect.",
+                  type = "boolean"}, },
+                { schema = { description = "Requred when `style` and `explode` are set. This is the schema defining the type used for the parameter. It is validated using `draft4` for JSON Schema draft 4 compliant validator. In addition to being a valid JSON Schema, the parameter schema MUST have a top-level `type` property to enable proper deserialization before validating.",
+                  type = "string", custom_validator = validate_param_schema }}
               },
               entity_checks = {
                 {
