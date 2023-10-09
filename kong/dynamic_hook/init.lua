@@ -74,9 +74,9 @@ function _M.hook(group_name, hook_name, handler)
 end
 
 
-function _M.run_hooks(group_name, hook_name, ...)
+function _M.run_hooks(ctx, group_name, hook_name, ...)
   if not always_enabled_groups[group_name] then
-    local dynamic_hook = ngx.ctx.dynamic_hook
+    local dynamic_hook = ctx.dynamic_hook
     if not dynamic_hook then
       return
     end
