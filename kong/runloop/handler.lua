@@ -61,6 +61,7 @@ local http_version      = ngx.req.http_version
 local request_id_get    = request_id.get
 local escape            = require("kong.tools.uri").escape
 local encode            = require("string.buffer").encode
+local req_dyn_hook_run_hooks = req_dyn_hook.run_hooks
 
 
 local is_http_module   = subsystem == "http"
@@ -1245,11 +1246,20 @@ return {
       -- to plugins in the access phase for doing headers propagation
       instrumentation.precreate_balancer_span(ctx)
 
+      local has_timing = ctx.has_timing
+
+      if has_timing then
+        req_dyn_hook_run_hooks(ctx, "timing", "before:router")
+      end
+
       -- routing request
-      req_dyn_hook.run_hooks("timing", "before:router")
       local router = get_updated_router()
       local match_t = router:exec(ctx)
-      req_dyn_hook.run_hooks("timing", "after:router")
+
+      if has_timing then
+        req_dyn_hook_run_hooks(ctx, "timing", "after:router")
+      end
+
       if not match_t then
         -- tracing
         if span then
@@ -1270,7 +1280,9 @@ return {
       ctx.workspace        = route and route.ws_id
       ctx.workspace_name   = WORKSPACE_NAMES[ctx.workspace]
 
-      req_dyn_hook.run_hooks("timing", "workspace_id:got", ctx.workspace)
+      if has_timing then
+        req_dyn_hook_run_hooks(ctx, "timing", "workspace_id:got", ctx.workspace)
+      end
 
       local host           = var.host
       local port           = tonumber(ctx.host_port, 10)

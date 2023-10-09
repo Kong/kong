@@ -10,8 +10,9 @@ local cjson           = require("cjson.safe")
 local req_dyn_hook    = require("kong.dynamic_hook")
 local constants       = require("kong.constants")
 
-local ngx             = ngx
-local ngx_var         = ngx.var
+local ngx                 = ngx
+local ngx_var             = ngx.var
+local ngx_req_set_header  = ngx.req.set_header
 
 local string_format   = string.format
 
@@ -85,11 +86,6 @@ local function parse_phase_filter(x_kong_request_debug)
     Only EE has phase filter, CE just accept "*".
   --]]
 
-  if x_kong_request_debug == nil or x_kong_request_debug == "" then
-    -- disabled this feature
-    return nil
-  end
-
   if x_kong_request_debug == "*" then
     return FILTER_ALL_PHASES
   end
@@ -127,9 +123,21 @@ function _M.auth()
   local http_x_kong_request_debug_token = ngx_var.http_x_kong_request_debug_token
   local http_x_kong_request_debug_log = ngx_var.http_x_kong_request_debug_log
 
-  ngx.req.set_header("X-Kong-Request-Debug", nil)
-  ngx.req.set_header("X-Kong-Request-Debug-Token", nil)
-  ngx.req.set_header("X-Kong-Request-Debug-Log", nil)
+  if http_x_kong_request_debug then
+    ngx_req_set_header("X-Kong-Request-Debug", nil)
+  end
+
+  if http_x_kong_request_debug_token then
+    ngx_req_set_header("X-Kong-Request-Debug-Token", nil)
+  end
+
+  if http_x_kong_request_debug_log then
+    ngx_req_set_header("X-Kong-Request-Debug-Log", nil)
+  end
+
+  if not http_x_kong_request_debug then
+    return
+  end
 
   local loopback = is_loopback(ngx_var.binary_remote_addr)
 
