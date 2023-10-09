@@ -130,7 +130,12 @@ server {
     # https://github.com/Kong/lua-kong-nginx-module#lua_kong_error_log_request_id
     lua_kong_error_log_request_id $kong_request_id;
 
+> if proxy_access_log_enabled then
     access_log ${{PROXY_ACCESS_LOG}} kong_log_format;
+> else
+    access_log off;
+> end
+
     error_log  ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
 > if proxy_ssl_enabled then
