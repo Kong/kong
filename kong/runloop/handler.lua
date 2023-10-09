@@ -1145,7 +1145,8 @@ return {
       if not match_t then
         -- tracing
         if span then
-          span:set_attribute("http.status_code", 404)
+          local root_span = ctx.KONG_SPANS and ctx.KONG_SPANS[1]
+          root_span:set_attribute("http.status_code", 404)
           span:set_status(2)
           span:finish()
         end

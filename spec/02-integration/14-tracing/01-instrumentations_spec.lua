@@ -210,7 +210,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_string(res)
 
         local spans = cjson.decode(res)
-        local span = assert_has_span("kong.router", spans)
+        local span = assert_has_span("kong", spans)
         assert_has_attributes(span, {
           ["http.status_code"] = "404",}
         )
