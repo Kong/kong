@@ -57,7 +57,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.routes:insert({ service = http_srv,
                          protocols = { "http" },
-                         paths = { "/" }})
+                         paths = { "/proxy" }})
 
       bp.routes:insert({ service = http_srv,
                          protocols = { "http" },
@@ -114,7 +114,7 @@ for _, strategy in helpers.each_strategy() do
         local thread = helpers.tcp_server(TCP_PORT)
         local r = assert(proxy_client:send {
           method  = "GET",
-          path    = "/",
+          path    = "/proxy",
         })
         assert.res_status(200, r)
 
@@ -142,7 +142,7 @@ for _, strategy in helpers.each_strategy() do
         local thread = helpers.tcp_server(TCP_PORT)
         local r = assert(proxy_client:send {
           method  = "GET",
-          path    = "/",
+          path    = "/proxy",
         })
         assert.res_status(200, r)
 
@@ -176,7 +176,7 @@ for _, strategy in helpers.each_strategy() do
         local thread = helpers.tcp_server(TCP_PORT)
         local r = assert(proxy_client:send {
           method  = "GET",
-          path    = "/",
+          path    = "/proxy",
         })
         assert.res_status(200, r)
 
@@ -195,6 +195,26 @@ for _, strategy in helpers.each_strategy() do
         assert_has_no_span("kong.rewrite.plugin." .. tcp_trace_plugin_name, spans)
         assert_has_no_span("kong.header_filter.plugin." .. tcp_trace_plugin_name, spans)
       end)
+
+      it("http.status_code 404 when no route matched", function()
+        local thread = helpers.tcp_server(TCP_PORT)
+        local r = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/404",
+        })
+        assert.res_status(404, r)
+
+        -- Getting back the TCP server input
+        local ok, res = thread:join()
+        assert.True(ok)
+        assert.is_string(res)
+
+        local spans = cjson.decode(res)
+        local span = assert_has_span("kong.router", spans)
+        assert_has_attributes(span, {
+          ["http.status_code"] = "404",}
+        )
+      end)
     end)
 
     describe("http_client", function ()
@@ -210,7 +230,7 @@ for _, strategy in helpers.each_strategy() do
         local thread = helpers.tcp_server(TCP_PORT)
         local r = assert(proxy_client:send {
           method  = "GET",
-          path    = "/",
+          path    = "/proxy",
         })
         assert.res_status(200, r)
 
@@ -244,7 +264,7 @@ for _, strategy in helpers.each_strategy() do
         local thread = helpers.tcp_server(TCP_PORT)
         local r = assert(proxy_client:send {
           method  = "GET",
-          path    = "/",
+          path    = "/proxy",
         })
         assert.res_status(200, r)
 
@@ -278,7 +298,7 @@ for _, strategy in helpers.each_strategy() do
         local thread = helpers.tcp_server(TCP_PORT)
         local r = assert(proxy_client:send {
           method  = "GET",
-          path    = "/",
+          path    = "/proxy",
         })
         assert.res_status(200, r)
 
@@ -312,7 +332,7 @@ for _, strategy in helpers.each_strategy() do
         local thread = helpers.tcp_server(TCP_PORT)
         local r = assert(proxy_client:send {
           method  = "GET",
-          path    = "/",
+          path    = "/proxy",
         })
         assert.res_status(200, r)
 
@@ -380,7 +400,7 @@ for _, strategy in helpers.each_strategy() do
         local thread = helpers.tcp_server(TCP_PORT)
         local r = assert(proxy_client:send {
           method  = "GET",
-          path    = "/",
+          path    = "/proxy",
         })
         assert.res_status(200, r)
 
@@ -489,7 +509,7 @@ for _, strategy in helpers.each_strategy() do
         local thread = helpers.tcp_server(TCP_PORT)
         local r = assert(proxy_client:send {
           method  = "GET",
-          path    = "/",
+          path    = "/proxy",
         })
         assert.res_status(200, r)
 
