@@ -183,6 +183,7 @@ function https_server.start(self)
     http_port = self.http_port,
     protocol = self.protocol,
     worker_num = self.worker_num,
+    disable_ipv6 = self.disable_ipv6,
   }
 
   local file, err = create_conf(conf_params)
@@ -246,7 +247,7 @@ function https_server.shutdown(self)
 end
 
 -- **DEPRECATED**: please use `spec.helpers.http_mock` instead.
-function https_server.new(port, hostname, protocol, check_hostname, workers, delay)
+function https_server.new(port, hostname, protocol, check_hostname, workers, delay, disable_ipv6)
   local self = setmetatable({}, https_server)
   local host
   local hosts
@@ -270,6 +271,7 @@ function https_server.new(port, hostname, protocol, check_hostname, workers, del
   self.logs_dir = "logs"
   self.protocol = protocol or "http"
   self.worker_num = workers or 2
+  self.disable_ipv6 = disable_ipv6
 
   return self
 end
