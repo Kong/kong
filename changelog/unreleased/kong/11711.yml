@@ -1,0 +1,3 @@
+message: "set attribute `http.status_code` to 404 in tracing span when no route is matched"
+type: bugfix
+scope: Core
