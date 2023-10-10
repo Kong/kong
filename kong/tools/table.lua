@@ -274,7 +274,6 @@ end
 --- Concatenates lists into a new table.
 function _M.concat(...)
   local result = {}
-  local insert = table.insert
   for _, t in ipairs({...}) do
     for _, v in ipairs(t) do insert(result, v) end
   end
