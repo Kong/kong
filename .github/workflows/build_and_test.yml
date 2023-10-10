@@ -38,6 +38,7 @@ env:
   BUILD_ROOT: ${{ github.workspace }}/bazel-bin/build
   KONG_TEST_COVERAGE: ${{ inputs.coverage == true || github.event_name == 'schedule' }}
   AWS_EC2_METADATA_DISABLED: true
+  ENABLE_COREDUMP_DEBUG: true
 
 # cancel previous runs if new commits are pushed to the PR, but run for each commit on master
 concurrency:
@@ -246,12 +247,14 @@ jobs:
         KONG_TEST_PG_DATABASE: kong
         KONG_TEST_PG_USER: kong
       run: |
-        ulimit -c unlimited
-        mkdir -p /tmp/cores
-        chmod 777 /tmp/cores
-        echo '/tmp/cores/core.%e.%p' | sudo tee /proc/sys/kernel/core_pattern
-        sudo sysctl -w fs.suid_dumpable=2
-        sudo sysctl -p
+        if [[ $ENABLE_COREDUMP_DEBUG = true ]]; then
+          ulimit -c unlimited
+          mkdir -p /tmp/cores
+          chmod 777 /tmp/cores
+          echo '/tmp/cores/core.%e.%p' | sudo tee /proc/sys/kernel/core_pattern
+          sudo sysctl -w fs.suid_dumpable=2
+          sudo sysctl -p
+        fi
         source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
         mkdir $TEST_RESULTS_XML_OUTPUT
         export XML_OUTPUT=$(realpath $TEST_RESULTS_XML_OUTPUT)
@@ -285,10 +288,12 @@ jobs:
       if: failure()
       run: |
         sudo dmesg -T
-        sudo chmod -R 777 /tmp/cores
+        if [[ $ENABLE_COREDUMP_DEBUG = true ]]; then
+          sudo chmod -R 777 /tmp/cores
+        fi
 
     - name: Upload core dumps
-      if: failure()
+      if: failure() && env.ENABLE_COREDUMP_DEBUG == true
       uses: actions/upload-artifact@v3
       with:
         name: core-dumps-${{ github.job }}-${{ github.run_id }}
@@ -501,10 +506,12 @@ jobs:
       if: failure()
       run: |
         sudo dmesg -T
-        sudo chmod -R 777 /tmp/cores
+        if [[ $ENABLE_COREDUMP_DEBUG = true ]]; then
+          sudo chmod -R 777 /tmp/cores
+        fi
 
     - name: Upload core dumps
-      if: failure()
+      if: failure() && env.ENABLE_COREDUMP_DEBUG == true
       uses: actions/upload-artifact@v3
       with:
         name: core-dumps-${{ github.job }}-${{ matrix.suite }}-${{ matrix.split }}}-${{ github.run_id }}
@@ -625,10 +632,12 @@ jobs:
       if: failure()
       run: |
         sudo dmesg -T
-        sudo chmod -R 777 /tmp/cores
+        if [[ $ENABLE_COREDUMP_DEBUG = true ]]; then
+          sudo chmod -R 777 /tmp/cores
+        fi
 
     - name: Upload core dumps
-      if: failure()
+      if: failure() && env.ENABLE_COREDUMP_DEBUG == true
       uses: actions/upload-artifact@v3
       with:
         name: core-dumps-${{ github.job }}-${{ github.run_id }}
@@ -712,10 +721,12 @@ jobs:
       if: failure()
       run: |
         sudo dmesg -T
-        sudo chmod -R 777 /tmp/cores
+        if [[ $ENABLE_COREDUMP_DEBUG = true ]]; then
+          sudo chmod -R 777 /tmp/cores
+        fi
 
     - name: Upload core dumps
-      if: failure()
+      if: failure() && env.ENABLE_COREDUMP_DEBUG == true
       uses: actions/upload-artifact@v3
       with:
         name: core-dumps-${{ github.job }}-${{ github.run_id }}

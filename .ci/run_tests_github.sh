@@ -2,12 +2,14 @@
 
 set -e
 
-ulimit -c unlimited
-mkdir -p /tmp/cores
-chmod 777 /tmp/cores
-echo '/tmp/cores/core.%e.%p' | sudo tee /proc/sys/kernel/core_pattern
-sudo sysctl -w fs.suid_dumpable=2
-sudo sysctl -p
+if [[ $ENABLE_COREDUMP_DEBUG = true ]]; then
+    ulimit -c unlimited
+    mkdir -p /tmp/cores
+    chmod 777 /tmp/cores
+    echo '/tmp/cores/core.%e.%p' | sudo tee /proc/sys/kernel/core_pattern
+    sudo sysctl -w fs.suid_dumpable=2
+    sudo sysctl -p
+fi
 
 function cyan() {
     echo -e "\033[1;36m$*\033[0m"
