@@ -28,7 +28,7 @@ local function get()
 
     -- first access to the request id for this request:
     -- initialize with the value of $request_id
-    rid = ngx.var.request_id
+    rid = ngx.var.kong_request_id
     ngx.ctx.request_id = rid
   end
 
