@@ -85,11 +85,7 @@ local function new(self)
     end
   end
 
-  local replace_dashes do
-    if is_http_subsystem then
-      replace_dashes = require("kong.tools.utils").replace_dashes
-    end
-  end
+  local replace_dashes = require("kong.tools.utils").replace_dashes
 
 
   ---
