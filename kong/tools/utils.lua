@@ -1859,7 +1859,7 @@ do
   -- str_replace_char:   14ms
   local str_replace_char = require("resty.core.utils").str_replace_char
   replace_dashes = function(str)
-    return str_replace_char(str, "-", "_")
+    return str_replace_char(str or "", "-", "_")
   end
 end
 _M.replace_dashes = replace_dashes
