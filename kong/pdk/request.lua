@@ -86,16 +86,8 @@ local function new(self)
   end
 
   local replace_dashes do
-    -- 1.000.000 iterations with input of "my-header":
-    -- string.gsub:        81ms
-    -- ngx.re.gsub:        74ms
-    -- loop/string.buffer: 28ms
-    -- str_replace_char:   14ms
     if is_http_subsystem then
-      local str_replace_char = require("resty.core.utils").str_replace_char
-      replace_dashes = function(str)
-        return str_replace_char(str, "-", "_")
-      end
+      replace_dashes = require("kong.tools.utils").replace_dashes
     end
   end
 
