@@ -41,9 +41,6 @@ local get_body_file = req.get_body_file
 local decode_args = ngx.decode_args
 
 
-local is_http_subsystem = ngx and ngx.config.subsystem == "http"
-
-
 local PHASES = phase_checker.phases
 
 
