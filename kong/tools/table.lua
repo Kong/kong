@@ -2,6 +2,7 @@ local type          = type
 local pairs         = pairs
 local ipairs        = ipairs
 local tostring      = tostring
+local insert        = table.insert
 local setmetatable  = setmetatable
 local getmetatable  = getmetatable
 
