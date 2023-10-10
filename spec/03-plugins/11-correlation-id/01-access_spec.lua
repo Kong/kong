@@ -481,7 +481,7 @@ for _, strategy in helpers.each_strategy() do
         local json_log = wait_json_log()
         local request_id = json_log and json_log.request and json_log.request.id
         assert.matches("^[a-f0-9]+$", request_id)
-        assert.True(request_id:len() == 32)
+        assert.True(request_id:len() == 16)
 
         local logged_id = json_log and json_log.correlation_id
         assert.equals(correlation_id, logged_id)
