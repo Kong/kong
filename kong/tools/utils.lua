@@ -22,7 +22,6 @@ local ffi_new       = ffi.new
 local type          = type
 local pairs         = pairs
 local ipairs        = ipairs
-local select        = select
 local tostring      = tostring
 local tonumber      = tonumber
 local sort          = table.sort
