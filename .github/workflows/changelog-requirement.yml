@@ -20,7 +20,7 @@ jobs:
 
       - name: computes changed files
         id: changelog-check
-        uses: tj-actions/changed-files@8238a4103220c636f2dad328ead8a7c8dbe316a3 # v37
+        uses: tj-actions/changed-files@db153baf731265ad02cd490b07f470e2d55e3345 # v37
         with:
           files: 'changelog/unreleased/**/*.yml'
 
