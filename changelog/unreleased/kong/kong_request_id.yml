@@ -1,0 +1,3 @@
+message: Bumped lua-kong-nginx-module from 0.7.1 to 0.7.x
+type: dependency
+scope: Core
