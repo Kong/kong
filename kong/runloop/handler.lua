@@ -1144,9 +1144,12 @@ return {
       req_dyn_hook.run_hooks("timing", "after:router")
       if not match_t then
         -- tracing
-        if span then
-          local root_span = ctx.KONG_SPANS and ctx.KONG_SPANS[1]
+        local root_span = ctx.KONG_SPANS and ctx.KONG_SPANS[1]
+        if root_span then
           root_span:set_attribute("http.status_code", 404)
+        end
+
+        if span then
           span:set_status(2)
           span:finish()
         end
