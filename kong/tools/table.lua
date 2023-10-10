@@ -10,6 +10,16 @@ local getmetatable  = getmetatable
 local _M = {}
 
 
+--- packs a set of arguments in a table.
+-- Explicitly sets field `n` to the number of arguments, so it is `nil` safe
+_M.pack = function(...) return {n = select("#", ...), ...} end
+
+
+--- unpacks a table to a list of arguments.
+-- Explicitly honors the `n` field if given in the table, so it is `nil` safe
+_M.unpack = function(t, i, j) return unpack(t, i or 1, j or t.n or #t) end
+
+
 --- Merges two table together.
 -- A new table is created with a non-recursive copy of the provided tables
 -- @param t1 The first table
