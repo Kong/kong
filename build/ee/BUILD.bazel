@@ -32,10 +32,8 @@ genrule(
         "@luarocks//:luarocks_exec",
         "@luarocks//:luarocks_make",  # don't let them run concurrently
         "@kong//:plugins_ee_rockspec_srcs",
-    ] + select({
-        "@kong//:private_luarocks_flag": [],
-        "//conditions:default": ["//build/ee:luarocks_install_ee_plugin_dependencies"],
-    }),
+        "//build/ee:luarocks_install_ee_plugin_dependencies",
+    ],
     outs = ["luarocks_install_ee_plugins.log"],
     cmd = """
         touch $@.tmp
