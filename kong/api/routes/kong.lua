@@ -183,6 +183,19 @@ return {
       return validate_schema(db_entity_name, self.params)
     end
   },
+
+  ["/schemas/vaults/:name"] = {
+    GET = function(self, db, helpers)
+      local subschema = kong.db.vaults.schema.subschemas[self.params.name]
+      if not subschema then
+        return kong.response.exit(404, { message = "No vault named '"
+                                  .. self.params.name .. "'" })
+      end
+      local copy = api_helpers.schema_to_jsonable(subschema)
+      strip_foreign_schemas(copy.fields)
+      return kong.response.exit(200, copy)
+    end
+  },
   ["/schemas/plugins/:name"] = {
     GET = function(self, db, helpers)
       local subschema = kong.db.plugins.schema.subschemas[self.params.name]
