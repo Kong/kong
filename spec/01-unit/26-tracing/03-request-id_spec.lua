@@ -3,7 +3,7 @@ local request_id = require "kong.tracing.request_id"
 local function reset_globals(id)
   _G.ngx.ctx = {}
   _G.ngx.var = {
-    request_id = id,
+    kong_request_id = id,
   }
   _G.ngx.get_phase = function() -- luacheck: ignore
     return "access"
