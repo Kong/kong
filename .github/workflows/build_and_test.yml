@@ -5,7 +5,6 @@ on:
     # ignore markdown files (CHANGELOG.md, README.md, etc.)
     - '**/*.md'
     - '.github/workflows/release.yml'
-    - 'CHANGELOG/**'
     - 'changelog/**'
   push:
     paths-ignore:
