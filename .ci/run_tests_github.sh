@@ -141,6 +141,10 @@ if [ "$TEST_SUITE" == "fips" ]; then
     # FIXME: sable tests for spec-ee and spec/01-unit are disabled because of resty.http new() return nil problem.
 fi
 
+if [ "$TEST_SUITE" == "aws-integration" ]; then
+    eval "$TEST_CMD" spec-ee/thirdparty-integration/aws
+fi
+
 if [ "$TEST_SUITE" == "plugins" ]; then
     set +ex
     rm -f .failed

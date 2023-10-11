@@ -1,0 +1,137 @@
+name: Integration Test on AWS
+
+on:  # yamllint disable-line rule:truthy
+  pull_request:
+    paths:
+    - '*.rockspec'
+    - 'kong/clustering/config_sync_backup/**'
+    - 'kong/db/strategies/postgres/**'
+    - 'kong/plugins/aws-lambda/**'
+    - 'kong/vaults/**'
+  push:
+    branches:
+    - master
+    - release/*
+    - next/*
+    - test-please/*
+    paths:
+    - '*.rockspec'
+    - 'kong/clustering/config_sync_backup/**'
+    - 'kong/db/strategies/postgres/**'
+    - 'kong/plugins/aws-lambda/**'
+    - 'kong/vaults/**'
+  workflow_dispatch:
+
+env:
+  LIBRARY_PREFIX: /usr/local/kong
+  PULP_USERNAME: admin
+  TEST_RESULTS_XML_OUTPUT: test-results
+  # if this is a push event, or it is pull request but not from a fork, and not from dependabot (dependabot does not use forks), then this PR will have access to secrets
+  HAS_ACCESS_TO_SECRETS: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && !contains(github.actor, 'dependabot')) }}
+  RELATIVE_BUILD_ROOT: bazel-bin/build
+  BUILD_ROOT: ${{ github.workspace }}/bazel-bin/build
+  ENABLE_COREDUMP_DEBUG: false
+
+# cancel previous runs if new commits are pushed to the PR, but run for each commit on master
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    secrets: inherit
+
+    with:
+      relative-build-root: bazel-bin/build
+      label: normal-aws
+      run_on: arm64
+
+  integration-test-aws:
+    name: Gateway AWS Integration test
+    runs-on: [ubuntu-22.04-arm64, self-hosted]
+    needs: build
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: kong
+          POSTGRES_DB: kong
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
+
+    steps:
+      - name: Install packages
+        run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev postgresql-client jq
+
+      - name: Checkout Kong source code
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+          token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: build-normal-aws
+          path: .
+
+      - name: Extract the artifact contents
+        run: |
+          sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
+          sudo mkdir -p ${{ env.BUILD_ROOT }}/kong-dev
+          sudo tar -C ${{ env.BUILD_ROOT }}/kong-dev -xzvf artifacts/build.tar.gz
+
+      - name: Install Kong dev
+        env:
+          GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+        run: make dev LIBRARY_PREFIX=/usr/local/kong
+
+      - name: Update PATH
+        run: |
+          echo "$BUILD_ROOT/kong-dev/bin" >> $GITHUB_PATH
+          echo "$BUILD_ROOT/kong-dev/openresty/nginx/sbin" >> $GITHUB_PATH
+          echo "$BUILD_ROOT/kong-dev/openresty/bin" >> $GITHUB_PATH
+
+      - name: Debug (nginx)
+        run: |
+          echo nginx: $(which nginx)
+          nginx -V 2>&1 | sed -re 's/ --/\n--/g'
+          ldd $(which nginx)
+
+      - name: Debug (luarocks)
+        run: |
+          echo luarocks: $(which luarocks)
+          luarocks --version || true
+          luarocks config || true
+
+      - name: Tests
+        env:
+          KONG_TEST_PG_DATABASE: kong
+          KONG_TEST_PG_USER: kong
+          KONG_TEST_DATABASE: postgres
+          PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
+          TEST_SUITE: aws-integration
+          # TODO: remove those when the runner has correct permission
+          AWS_ACCESS_KEY_ID: ${{ secrets.TEST_API_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.TEST_API_AWS_SECRET_ACCESS_KEY }}
+        run: |
+          # Fetch runner account and region
+          export RUNNER_AWS_REGION=$(aws configure list | grep -E '^\s+region' | awk '{print $2}')
+          export RUNNER_AWS_ACCOUNT_ID=$(aws sts get-caller-identity --output json | jq -r '.Account')
+          mkdir $TEST_RESULTS_XML_OUTPUT
+          export XML_OUTPUT=$(realpath $TEST_RESULTS_XML_OUTPUT)
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+          .ci/run_tests_github.sh
+
+      - uses: datadog/junit-upload-github-action@056dec14f19687cd7d1e97f2009df81f8e64d621
+        continue-on-error: true
+        if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }} # upload test results even if the job fails
+        with:
+          api-key: ${{ secrets.DATADOG_API_KEY }}
+          service: kong-ee-github-actions-ci
+          files: ${{ env.TEST_RESULTS_XML_OUTPUT }}
+          extra-args: --xpath-tag test.suite=/testcase/@filename
