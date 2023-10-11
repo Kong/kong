@@ -4,7 +4,6 @@ local utils = require "kong.tools.utils"
 local fmt = string.format
 
 local FILTER_PATH = assert(helpers.test_conf.wasm_filters_path)
-local NULL = ngx.null
 
 local function json(body)
   return {
@@ -207,9 +206,9 @@ describe("wasm admin API [#" .. strategy .. "]", function()
         assert.same({ "foo", "bar" }, patched.tags)
         assert.is_false(patched.enabled)
         assert.equals(2, #patched.filters)
-        assert.same({ name = "tests", config = "123", enabled = true, json_config = NULL },
+        assert.same({ name = "tests", config = "123", enabled = true },
                     patched.filters[1])
-        assert.same({ name = "tests", config = "456", enabled = false, json_config = NULL },
+        assert.same({ name = "tests", config = "456", enabled = false },
                     patched.filters[2])
       end)
     end)
@@ -366,9 +365,9 @@ describe("wasm admin API [#" .. strategy .. "]", function()
         assert.same({ "foo", "bar" }, patched.tags)
         assert.is_false(patched.enabled)
         assert.equals(2, #patched.filters)
-        assert.same({ name = "tests", config = "123", enabled = true, json_config = NULL },
+        assert.same({ name = "tests", config = "123", enabled = true },
                     patched.filters[1])
-        assert.same({ name = "tests", config = "456", enabled = false, json_config = NULL },
+        assert.same({ name = "tests", config = "456", enabled = false },
                     patched.filters[2])
       end)
     end)
@@ -428,7 +427,7 @@ describe("wasm admin API [#" .. strategy .. "]", function()
       fcs = {
         assert(bp.filter_chains:insert({
           filters = {
-            { name = "tests", config = ngx.null, enabled = true },
+            { name = "tests", config = nil, enabled = true },
             { name = "response_transformer", config = "{}", enabled = false },
           },
           service = { id = service.id },

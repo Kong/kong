@@ -128,6 +128,30 @@ local validators = {
 -- means that input validation will fail. When `optional` is `true`, the input
 -- is always accepted.
 --
+-- Schemas which use this dynamic reference format can also optionally supply
+-- a default inline schema, which will be evaluated when the dynamic schema
+-- does not exist:
+--
+-- ```lua
+-- local record = {
+--   type = "record",
+--   fields = {
+--     { name = { type = "string" } },
+--     { config = {
+--         type = "json",
+--         json_schema = {
+--           namespace = "my-record-type",
+--           parent_subschema_key = "name",
+--           default = {
+--             { type = { "string", "null" } },
+--           },
+--         },
+--       },
+--     },
+--   },
+-- }
+-- ```
+--
 local json_metaschema = {
   type = "record",
   fields = {
@@ -135,6 +159,7 @@ local json_metaschema = {
     { parent_subschema_key = { type = "string" }, },
     { optional = { type = "boolean", }, },
     { inline = { type = "any", custom_validator = json_lib.validate_schema, }, },
+    { default = { type = "any", custom_validator = json_lib.validate_schema, }, },
   },
   entity_checks = {
     { at_least_one_of = { "inline", "namespace", "parent_subschema_key" }, },
