@@ -462,6 +462,30 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
     end)
   end)
 
+  describe("/schemas/vaults/:name", function()
+    it("returns schema of all vaults", function()
+      for _, vault in ipairs({"env"}) do
+        local res = assert(client:send {
+          method = "GET",
+          path = "/schemas/vaults/" .. vault,
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.is_table(json.fields)
+      end
+    end)
+
+    it("returns 404 on a non-existent vault", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/schemas/vaults/not-present",
+      })
+      local body = assert.res_status(404, res)
+      local json = cjson.decode(body)
+      assert.same({ message = "No vault named 'not-present'" }, json)
+    end)
+  end)
+
   describe("/schemas/:entity", function()
     it("returns schema of all plugins", function()
       for plugin, _ in pairs(helpers.test_conf.loaded_plugins) do
