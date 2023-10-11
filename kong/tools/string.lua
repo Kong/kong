@@ -29,7 +29,7 @@ do
   end
 
   replace_dashes = function(str)
-    return str_replace_char(str or "", "-", "_")
+    return str_replace_char(str, "-", "_")
   end
 end
 _M.replace_dashes = replace_dashes
