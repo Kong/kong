@@ -12,11 +12,9 @@ import {
   expect,
   getBasePath,
   getNegative,
-  isGwHybrid,
-  isLocalDatabase,
   logResponse,
   postNegative,
-  wait,
+  waitForConfigRebuild,
 } from '@support';
 import axios from 'axios';
 
@@ -24,10 +22,6 @@ describe('Gateway Plugins: jwe-decrypt PEM', function () {
   const pemPath = '/jwedecryptpem';
   const serviceName = 'jwe-decrypt-service';
   const pemKeySetsName = 'pem-key-sets';
-  const isHybrid = isGwHybrid();
-  const isLocalDb = isLocalDatabase();
-  const hybridWaitTime = 8000;
-  const waitTime = 5000;
   const invalidTokenHeaders = {
     Authorization: `${authDetails.jwe['invalid-token']}`,
   };
@@ -119,9 +113,7 @@ describe('Gateway Plugins: jwe-decrypt PEM', function () {
     );
 
     pluginId = resp.data.id;
-    await wait(
-      isHybrid ? hybridWaitTime + (isLocalDb ? 0 : hybridWaitTime) : waitTime
-    );
+    await waitForConfigRebuild();
   });
 
   it('PEM: should not proxy request without a token', async function () {
@@ -186,7 +178,7 @@ describe('Gateway Plugins: jwe-decrypt PEM', function () {
     logResponse(resp);
 
     expect(resp.status, 'Status should be 200').to.equal(200);
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+    await waitForConfigRebuild();
   });
 
   it('PEM: should proxy request without supplying a token', async function () {
