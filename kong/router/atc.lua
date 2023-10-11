@@ -571,7 +571,7 @@ do
 
     -- NOTE: DO NOT yield until str_buf:get()
     for name, value in pairs(headers) do
-      local name = replace_dashes():lower()
+      local name = replace_dashes(name):lower()
 
       if type(value) == "table" then
         for i, v in ipairs(value) do
