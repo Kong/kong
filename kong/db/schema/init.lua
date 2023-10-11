@@ -1142,7 +1142,7 @@ validate_fields = function(self, input)
 
         if json_subschema_key then
           local schema_name = json_schema.namespace .. "/" .. json_subschema_key
-          inline_schema = json.get_schema(schema_name)
+          inline_schema = json.get_schema(schema_name) or json_schema.default
 
           if inline_schema then
             _, errors[k] = json_validate(v, inline_schema)

@@ -405,10 +405,18 @@ local function rebuild_state(db, version, old_state)
 
       for _, filter in ipairs(chain.filters) do
         if filter.enabled then
-          -- serialize all JSON configurations up front
-          if not filter.config and filter.json_config ~= nil then
-            filter.config = cjson_encode(filter.json_config)
-            filter.json_config = nil
+          -- Serialize all JSON configurations up front
+          --
+          -- NOTE: there is a subtle difference between a raw, non-JSON filter
+          -- configuration which requires no encoding (e.g. `my config bytes`)
+          -- and a JSON filter configuration of type=string, which should be
+          -- JSON-encoded (e.g. `"my config string"`).
+          --
+          -- Properly disambiguating between the two cases requires an
+          -- inspection of the filter metadata, which is not guaranteed to be
+          -- present on data-plane/proxy nodes.
+          if filter.config ~= nil and type(filter.config) ~= "string" then
+            filter.config = cjson_encode(filter.config)
           end
         end
       end
