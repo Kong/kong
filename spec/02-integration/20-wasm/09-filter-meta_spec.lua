@@ -276,6 +276,55 @@ describe("filter metadata [#" .. strategy .. "]", function()
     end)
   end)
 
+  describe("API", function()
+    describe("GET /schemas/filters/:name", function()
+      it("returns a 404 for unknown filters", function()
+        local res = admin:get("/schemas/filters/i-do-not-exist")
+        assert.response(res).has.status(404)
+        local json = assert.response(res).has.jsonbody()
+        assert.same({ message = "Filter 'i-do-not-exist' not found" }, json)
+      end)
+
+      it("returns a schema for filters that have it", function()
+        local res = admin:get("/schemas/filters/rt_with_validation")
+        assert.response(res).has.status(200)
+        local json = assert.response(res).has.jsonbody()
+
+        assert.same(
+          {
+            ["$schema"] = "http://json-schema.org/draft-04/schema#",
+            type = "object",
+            properties = {
+              add = {
+                type = "object",
+                properties = {
+                  headers = {
+                    type = "array",
+                    elements = { type = "string" },
+                  },
+                },
+                required = { "headers" },
+              },
+            },
+            required = { "add" },
+          },
+          json
+        )
+      end)
+
+      it("returns the default schema for filters without schemas", function()
+        local res = admin:get("/schemas/filters/rt_no_validation")
+        assert.response(res).has.status(200)
+        local json = assert.response(res).has.jsonbody()
+
+        assert.same({
+          ["$schema"] = "http://json-schema.org/draft-04/schema#",
+          type = { "string", "null" }
+        }, json)
+      end)
+    end)
+  end)
+
 end)
 
 describe("filter metadata [#" .. strategy .. "] startup errors -", function()
