@@ -1066,7 +1066,6 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
 
           local body = assert.res_status(200, res)
           local resp_body_json = cjson.decode(body)
-
           assert.same(expected_email, resp_body_json.email)
         end)
 
@@ -1114,7 +1113,7 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
     end)
 
     describe("DELETE", function()
-      it("deletes a developer", function()
+      it("deletes a developer by primary_key", function()
         local other_developer = assert(db.developers:insert({
           email = "other_doggo@konghq.com",
           password = "blep",
@@ -1131,6 +1130,50 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
 
         res = client:get("/developers/" .. other_developer.id)
         assert.res_status(404, res)
+      end)
+      
+      it("deletes a developer by email", function()
+        local email = "other_doggo@konghq.com"
+        -- first insert 
+        local res = client:post("/developers", {
+          body = {
+            email = email,
+            meta = '{"full_name":"a"}',
+            password = "test",
+            status = enums.CONSUMERS.STATUS.APPROVED,
+            custom_id = "friendo",
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        res = assert.res_status(200, res)
+
+        local res = client:get("/developers/" .. email)
+        assert.res_status(200, res)
+
+        -- delete developer by email
+        res = client:delete("/developers/" .. email)
+        assert.res_status(204, res)
+
+        -- check if delete success
+        local res = client:get("/developers/" .. email)
+        assert.res_status(404, res)
+        
+        -- second insert with email
+        local res = client:post("/developers", {
+          body = {
+            email = email,
+            meta = '{"full_name":"a"}',
+            password = "test",
+            status = enums.CONSUMERS.STATUS.APPROVED,
+            custom_id = "friendo",
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        res = assert.res_status(200, res)
+        
+        -- check developer insert success
+        res = client:get("/developers/" .. email)
+        assert.res_status(200, res)
       end)
 
       it("deletes a developer who has a role assigned to it (regression)", function()

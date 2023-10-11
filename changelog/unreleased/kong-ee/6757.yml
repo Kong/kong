@@ -1,0 +1,3 @@
+message: Fix an issue where users cannot completely delete a developer by email via Admin API.
+type: bugfix
+scope: Admin API

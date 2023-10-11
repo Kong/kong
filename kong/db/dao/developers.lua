@@ -133,14 +133,6 @@ function _Developers:update_by_email(developer_email, entity, options)
     return nil, err, err_t
   end
 
-  -- local ok, err = validate_update(entity)
-  -- if not ok then
-  --   local code = Errors.codes.SCHEMA_VIOLATION
-  --   local err_t = { code = code, fields = err }
-  --   ngx.log(ngx.DEBUG, err, err_t)
-  --   return nil, err, err_t
-  -- end
-
   local developer, err, err_t =
     dao_helpers.update_developer(self, developer, entity, options)
 
@@ -155,56 +147,39 @@ end
 
 -- deletes consumer associated with developer, as well as developer
 function _Developers:delete(developer_pk, options)
-  local developer, err, err_t = self.db.developers:select({ id = developer_pk.id })
-  if not developer then
-    return nil, err, err_t
-  end
-
+  local developer = self.db.developers:select({ id = developer_pk.id })
   local consumer_id = developer.consumer.id
 
-  for row, err in self.db.applications:each_for_developer({ id = developer.id }) do
+  local ok, err, err_t
+  for row, err in self.db.applications:each_for_developer(developer) do
     if err then
       return nil, err
     end
 
-    local _, err, err_t = self.db.applications:delete({ id = row.id })
-    if err then
+    ok, err, err_t = self.db.applications:delete({ id = row.id })
+    if not ok then
       return nil, err, err_t
     end
   end
-
-  for row, err in self.db.credentials:each_for_consumer({ id = consumer_id }) do
-    if err then
-      return nil, err
-    end
-
-    local _, err, err_t = self.db.credentials:delete({ id = row.id })
-    if err then
-      return nil, err, err_t
-    end
-  end
-
-  local ok, err, err_t = self.super.delete(self, developer_pk, options)
+  ok, err, err_t = self.super.delete(self, { id = developer.id }, options)
   if not ok then
     return nil, err, err_t
   end
 
-  local ok, err, err_t = self.db.consumers:delete({ id = consumer_id })
+  ok, err, err_t = self.db.consumers:delete({ id = consumer_id })
   if not ok then
     return nil, err, err_t
   end
 
   local rbac_user_id = developer.rbac_user and developer.rbac_user.id
   if rbac_user_id then
-    local ok, err, err_t = self.db.rbac_users:delete({ id = rbac_user_id })
+    ok, err, err_t = self.db.rbac_users:delete({ id = rbac_user_id })
     if not ok then
       return nil, err, err_t
     end
   end
 
-
-  return ok, err, err_t
+  return true, nil, nil
 end
-
 
 return _Developers

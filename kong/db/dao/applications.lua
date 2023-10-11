@@ -189,10 +189,6 @@ function _Applications:select(application_pk, options)
     return nil, err, err_t
   end
 
-  if options and options.with_consumer then
-    return application
-  end
-
   return application
 end
 
