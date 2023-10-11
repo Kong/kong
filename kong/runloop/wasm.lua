@@ -641,6 +641,7 @@ local function discover_filter_metadata(filters)
   for name, meta in pairs(_M.filter_meta) do
     if meta.config_schema then
       local schema_name = namespace .. "/" .. name
+      meta.config_schema["$schema"] = json_schema.DRAFT_4
       json_schema.add_schema(schema_name, meta.config_schema)
     end
   end
