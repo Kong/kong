@@ -3,6 +3,7 @@ local api_helpers = require "kong.api.api_helpers"
 local Schema = require "kong.db.schema"
 local Errors = require "kong.db.errors"
 local process = require "ngx.process"
+local wasm = require "kong.runloop.wasm"
 
 local kong = kong
 local meta = require "kong.meta"
@@ -42,6 +43,29 @@ local function validate_schema(db_entity_name, params)
     return kong.response.exit(400, errors:schema_violation(err_t))
   end
   return kong.response.exit(200, { message = "schema validation successful" })
+end
+
+local default_filter_config_schema
+do
+  local default
+
+  function default_filter_config_schema(db)
+    if default then
+      return default
+    end
+
+    local dao = db.filter_chains or kong.db.filter_chains
+    for key, field in dao.schema:each_field() do
+      if key == "filters" then
+        for _, ffield in ipairs(field.elements.fields) do
+          if ffield.config and ffield.config.json_schema then
+            default = ffield.config.json_schema.default
+            return default
+          end
+        end
+      end
+    end
+  end
 end
 
 
@@ -207,6 +231,22 @@ return {
       local copy = api_helpers.schema_to_jsonable(subschema)
       strip_foreign_schemas(copy.fields)
       return kong.response.exit(200, copy)
+    end
+  },
+  ["/schemas/filters/:name"] = {
+    GET = function(self, db)
+      local name = self.params.name
+
+      if not wasm.filters_by_name[name] then
+        local msg = "Filter '" .. name .. "' not found"
+        return kong.response.exit(404, { message = msg })
+      end
+
+      local schema = wasm.filter_meta[name]
+                 and wasm.filter_meta[name].config_schema
+                  or default_filter_config_schema(db)
+
+      return kong.response.exit(200, schema)
     end
   },
   ["/timers"] = {

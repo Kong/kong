@@ -32,6 +32,8 @@ assert(type(metaschema.id) == "string",
 local DRAFT_4_NO_FRAGMENT = metaschema.id:gsub("#$", "")
 local DRAFT_4 = DRAFT_4_NO_FRAGMENT .. "#"
 
+_M.DRAFT_4 = DRAFT_4
+
 
 ---@type table<string, table>
 local schemas = {}
@@ -154,7 +156,7 @@ end
 ---@param name   string
 ---@param schema kong.db.schema.json.schema_doc
 function _M.add_schema(name, schema)
-  schemas[name] = schema
+  schemas[name] = utils.cycle_aware_deep_copy(schema, true)
 end
 
 
