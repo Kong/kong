@@ -1,0 +1,3 @@
+message: "Add a new endpoint `/schemas/vaults/:name` to retrieve the schema of a vault."
+type: feature
+scope: Core
