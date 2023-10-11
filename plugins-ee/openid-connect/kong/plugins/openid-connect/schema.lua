@@ -373,7 +373,7 @@ local config = {
             },
           },
           {
-            scopes_claim = { description = "The claim that contains the scopes.", required = false,
+            scopes_claim = { description = "The claim that contains the scopes. If multiple values are set, it means the claim is inside a nested object of the token payload.", required = false,
               type     = "array",
               default  = { "scope" },
               elements = {
@@ -391,7 +391,7 @@ local config = {
             },
           },
           {
-            audience_claim = { description = "The claim that contains the audience.", required = false,
+            audience_claim = { description = "The claim that contains the audience. If multiple values are set, it means the claim is inside a nested object of the token payload.", required = false,
               type     = "array",
               default  = { "aud" },
               elements = {
@@ -409,7 +409,7 @@ local config = {
             },
           },
           {
-            groups_claim = { description = "The claim that contains the groups.", required = false,
+            groups_claim = { description = "The claim that contains the groups. If multiple values are set, it means the claim is inside a nested object of the token payload.", required = false,
               type     = "array",
               default  = { "groups" },
               elements = {
@@ -427,7 +427,7 @@ local config = {
             },
           },
           {
-            roles_claim = { description = "The claim that contains the roles.", required = false,
+            roles_claim = { description = "The claim that contains the roles. If multiple values are set, it means the claim is inside a nested object of the token payload.", required = false,
               type     = "array",
               default  = { "roles" },
               elements = {
@@ -449,7 +449,7 @@ local config = {
             },
           },
           {
-            authenticated_groups_claim = { description = "The claim that contains authenticated groups. This setting can be used together with ACL plugin, but it also enables IdP managed groups with other applications and integrations.", required = false,
+            authenticated_groups_claim = { description = "The claim that contains authenticated groups. This setting can be used together with ACL plugin, but it also enables IdP managed groups with other applications and integrations. If multiple values are set, it means the claim is inside a nested object of the token payload.", required = false,
               type     = "array",
               elements = {
                 type = "string",
@@ -1197,7 +1197,7 @@ local config = {
             },
           },
           {
-            upstream_headers_claims = { description = "The upstream header claims.", required = false,
+            upstream_headers_claims = { description = "The upstream header claims. If multiple values are set, it means the claim is inside a nested object of the token payload.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -1265,7 +1265,7 @@ local config = {
             },
           },
           {
-            downstream_headers_claims = { description = "The downstream header claims.", required = false,
+            downstream_headers_claims = { description = "The downstream header claims. If multiple values are set, it means the claim is inside a nested object of the token payload.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -1443,7 +1443,7 @@ local config = {
             },
           },
           {
-            consumer_claim = { description = "The claim used for consumer mapping.", required = false,
+            consumer_claim = { description = "The claim used for consumer mapping. If multiple values are set, it means the claim is inside a nested object of the token payload.", required = false,
               type     = "array",
               elements = {
                 type   = "string",
@@ -1474,7 +1474,7 @@ local config = {
             },
           },
           {
-            credential_claim = { description = "The claim used to derive virtual credentials (e.g. to be consumed by the rate-limiting plugin), in case the consumer mapping is not used.", required = false,
+            credential_claim = { description = "The claim used to derive virtual credentials (e.g. to be consumed by the rate-limiting plugin), in case the consumer mapping is not used. If multiple values are set, it means the claim is inside a nested object of the token payload.", required = false,
               type     = "array",
               default  = {
                 "sub",
