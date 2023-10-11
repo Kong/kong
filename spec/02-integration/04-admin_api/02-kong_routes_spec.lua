@@ -475,7 +475,7 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       end
     end)
 
-    it("returns 404 on a non-existent plugin", function()
+    it("returns 404 on a non-existent vault", function()
       local res = assert(client:send {
         method = "GET",
         path = "/schemas/vaults/not-present",
