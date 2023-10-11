@@ -1,4 +1,8 @@
-local request_id = require "kong.tracing.request_id"
+local function reload_module(name)
+  package.loaded[name] = nil
+  return require(name)
+end
+
 
 local function reset_globals(id)
   _G.ngx.ctx = {}
@@ -44,8 +48,7 @@ describe("Request ID unit tests", function()
 
     it("returns the expected Request ID and caches it in ctx", function()
 
-      package.loaded["kong.tracing.request_id"] = nil
-      request_id = require "kong.tracing.request_id"
+      local request_id = reload_module("kong.tracing.request_id")
 
       local id, err = request_id.get()
       assert.is_nil(err)
@@ -58,8 +61,7 @@ describe("Request ID unit tests", function()
     it("fails if accessed from phase that cannot read ngx.var", function()
       _G.ngx.get_phase = function() return "init" end
 
-      package.loaded["kong.tracing.request_id"] = nil
-      request_id = require "kong.tracing.request_id"
+      local request_id = reload_module("kong.tracing.request_id")
 
       local id, err = request_id.get()
       assert.is_nil(id)
