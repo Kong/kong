@@ -61,7 +61,7 @@ describe('Gateway Plugins: basic-auth using plugin instance name', function () {
       id: consumer.id,
       username: consumer.username,
     };
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+    await wait(isHybrid ? hybridWaitTime : waitTime); // eslint-disable-line no-restricted-syntax
 
     basePayload = {
       name: plugin,
@@ -118,7 +118,7 @@ describe('Gateway Plugins: basic-auth using plugin instance name', function () {
     );
 
     pluginId = resp.data.id;
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+    await wait(isHybrid ? hybridWaitTime : waitTime); // eslint-disable-line no-restricted-syntax
   });
 
   it('should not enable basic-auth plugin if instance name exists', async function () {
@@ -151,7 +151,7 @@ describe('Gateway Plugins: basic-auth using plugin instance name', function () {
       `${consumerDetails.username}:${basicAuthPassword}`
     ).toString('base64');
 
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+    await wait(isHybrid ? hybridWaitTime : waitTime); // eslint-disable-line no-restricted-syntax
   });
 
   it('should proxy request using consumer credentials', async function () {
@@ -222,7 +222,7 @@ describe('Gateway Plugins: basic-auth using plugin instance name', function () {
       resp.data.instance_name,
       'Should equal plugin patch instance name'
     ).to.eq(patchInstanceNameOnPlugin);
-    await wait(isHybrid ? hybridWaitTime : shortWaitTime);
+    await wait(isHybrid ? hybridWaitTime : shortWaitTime); // eslint-disable-line no-restricted-syntax
   });
 
   it('should get plugin using updated instance name', async function () {
@@ -253,7 +253,7 @@ describe('Gateway Plugins: basic-auth using plugin instance name', function () {
       resp.data.instance_name,
       'Should equal plugin patch instance name'
     ).to.eq(patchInstanceNameOnService);
-    await wait(isHybrid ? hybridWaitTime : shortWaitTime);
+    await wait(isHybrid ? hybridWaitTime : shortWaitTime); // eslint-disable-line no-restricted-syntax
   });
 
   it('should get plugin using updated instance name on service', async function () {
@@ -287,7 +287,7 @@ describe('Gateway Plugins: basic-auth using plugin instance name', function () {
       resp.data.instance_name,
       'Should equal plugin patch instance name'
     ).to.eq(patchInstanceNameOnRoute);
-    await wait(isHybrid ? hybridWaitTime : shortWaitTime);
+    await wait(isHybrid ? hybridWaitTime : shortWaitTime); // eslint-disable-line no-restricted-syntax
   });
 
   it('should get plugin using updated instance name on route', async function () {
@@ -332,7 +332,7 @@ describe('Gateway Plugins: basic-auth using plugin instance name', function () {
       'Should equal plugin patch instance name'
     ).to.eq(patchInstanceNameOnRoute);
     expect(resp.data.config.hide_credentials, 'Should be true').to.be.true;
-    await wait(isHybrid ? hybridWaitTime : shortWaitTime);
+    await wait(isHybrid ? hybridWaitTime : shortWaitTime); // eslint-disable-line no-restricted-syntax
   });
 
   it('should proxy request while hiding credentials from upstream service', async function () {

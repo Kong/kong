@@ -135,11 +135,11 @@ describe('Mocking Plugin Tests', function () {
     pluginId = resp.data.id;
 
     // give plugin time to take effect
-    await wait(longWait);
+    await wait(longWait); // eslint-disable-line no-restricted-syntax
   });
 
   it('should return expected mock response', async function () {
-    await wait(isLocalDb ? shortWait : longWait);
+    await wait(isLocalDb ? shortWait : longWait); // eslint-disable-line no-restricted-syntax
     const resp = await axios(`${proxyUrl}/planets`);
     logResponse(resp);
 
@@ -168,7 +168,7 @@ describe('Mocking Plugin Tests', function () {
       200
     );
 
-    await wait(shortWait);
+    await wait(shortWait); // eslint-disable-line no-restricted-syntax
 
     // send 5 requests and ensure each time we get an expected example
     for (let i = 0; i < 5; i++) {
@@ -205,7 +205,7 @@ describe('Mocking Plugin Tests', function () {
       200
     );
 
-    await wait(longWait);
+    await wait(longWait); // eslint-disable-line no-restricted-syntax
 
     // send 5 requests and ensure each has expected delay
     for (let i = 0; i < 5; i++) {
@@ -289,7 +289,7 @@ describe('Mocking Plugin Tests', function () {
 
     expect(update.status, 'Should update plugin successfully').to.equal(200);
 
-    await wait(shortWait);
+    await wait(shortWait); // eslint-disable-line no-restricted-syntax
 
     for (let i = 0; i < 5; i++) {
       const resp = await getNegative(`${proxyUrl}/planets/random`);

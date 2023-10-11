@@ -1,0 +1,19 @@
+name: End-to-end test lint checks
+on:
+  push:
+    paths:
+      - 'spec-ee/kong-api-tests/**/*.[tj]s'
+
+jobs:
+  run-tests:
+    name: end-to-end test lint checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - run: npm ci
+        working-directory: spec-ee/kong-api-tests
+      - run: npm run lint
+        working-directory: spec-ee/kong-api-tests

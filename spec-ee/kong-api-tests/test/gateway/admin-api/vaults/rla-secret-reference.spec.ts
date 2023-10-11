@@ -113,7 +113,7 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
       }
     }
 
-    await wait((window_size + 0.5) * 1000);
+    await wait((window_size + 0.5) * 1000); // eslint-disable-line no-restricted-syntax
 
     for (let i = 0; i < 2; i++) {
       const resp: any = await getNegative(`${proxyUrl}/${path}`);
@@ -193,7 +193,7 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
   });
 
   it('should rate limit with redis password hcv vault entity referenced', async function () {
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRateLimitCheck();
   });
 
@@ -219,7 +219,7 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
       'Should replace redis password with reference'
     ).to.equal('{vault://my-hcv/secret/redisHcvPassword}');
 
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRateLimitCheck();
   });
 
@@ -246,7 +246,7 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
       'Should replace redis password with hcv reference'
     ).to.equal('{vault://hcv/secret/redisHcvPassword}');
 
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRateLimitCheck();
   });
 
@@ -269,7 +269,7 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
 
     expect(patchResp.status, 'Status should be 200').to.equal(200);
 
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRateLimitCheck();
   });
 
@@ -295,7 +295,7 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
       'Should replace redis password with reference'
     ).to.equal('{vault://env/rla_redisp}');
 
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRateLimitCheck();
   });
 
@@ -321,7 +321,7 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
       'Should replace redis password with reference'
     ).to.equal('{vault://aws/gateway-secret-test/rla_redisp}');
 
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRateLimitCheck();
   });
 
@@ -347,7 +347,7 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
       'Should replace redis username with reference'
     ).to.equal('{vault://env/rla_redisu}');
 
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRateLimitCheck();
   });
 
@@ -389,7 +389,7 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
       'Should replace redis password with reference'
     ).to.equal('{vault://my-aws/gateway-secret-test/rla_redisp}');
 
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRateLimitCheck();
   });
 
@@ -420,7 +420,7 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
       'Should replace redis password with reference'
     ).to.equal('{vault://my-aws/gateway-secret-test/rla_redisp}');
 
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRateLimitCheck();
   });
 
@@ -452,7 +452,7 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
       'Should replace redis password with reference'
     ).to.equal(`{vault://gcp/rla_redisp?project_id=${gcpProjectId}}`);
 
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRateLimitCheck();
   });
 
@@ -484,7 +484,7 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
       'Should replace redis password with reference'
     ).to.equal('{vault://my-aws/gateway-secret-test/rla_redisp}');
 
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRateLimitCheck();
   });
 

@@ -12,11 +12,8 @@ import {
   expect,
   getBasePath,
   getNegative,
-  isGwHybrid,
-  isLocalDatabase,
   logResponse,
   postNegative,
-  wait,
   waitForConfigRebuild,
 } from '@support';
 import axios from 'axios';
@@ -25,10 +22,6 @@ describe('Gateway Plugins: jwe-decrypt JWK', function () {
   const jwkPath = '/jwedecryptjwk';
   const serviceName = 'jwe-decrypt-service';
   const jwkKeySetsName = 'jwk-key-sets';
-  const isHybrid = isGwHybrid();
-  const isLocalDb = isLocalDatabase();
-  const hybridWaitTime = 8000;
-  const waitTime = 5000;
   const invalidTokenHeaders = {
     Authorization: `${authDetails.jwe['invalid-token']}`,
   };

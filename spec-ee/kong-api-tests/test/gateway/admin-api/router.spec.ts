@@ -112,7 +112,7 @@ describe('@smoke: Router Functionality Tests', function () {
       'Should have correct route header key'
     ).to.have.property('testHeader');
 
-    await wait(
+    await wait( // eslint-disable-line no-restricted-syntax
       isHybrid ? hybridWaitTime + (isLocalDb ? 0 : hybridWaitTime) : waitTime
     );
   });
@@ -247,7 +247,7 @@ describe('@smoke: Router Functionality Tests', function () {
     expect(resp.status, 'Status should be 200').equal(200);
     expect(resp.data.headers, 'Should have empty headers').to.be.empty;
     expect(resp.data.paths[0], 'Should have correct path').to.equal(regexPath);
-    await wait(isLocalDb ? waitTime : longWaitTime);
+    await wait(isLocalDb ? waitTime : longWaitTime); // eslint-disable-line no-restricted-syntax
   });
 
   regexWrongPatterns.forEach((wrongPattern) => {
@@ -292,7 +292,7 @@ describe('@smoke: Router Functionality Tests', function () {
 
     expect(resp.status, 'Status should be 200').equal(200);
     expect(resp.data.hosts[0], 'Should have correct host').to.equal('test');
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
   });
 
   it('should not route a request with wrong host', async function () {
@@ -362,7 +362,7 @@ describe('@smoke: Router Functionality Tests', function () {
 
     expect(resp.status, 'Status should be 201').to.equal(201);
 
-    await wait(4000);
+    await wait(4000); // eslint-disable-line no-restricted-syntax
     const currentLogs = getGatewayContainerLogs(kongContainerName, 15);
     const panickLog = findRegex('panicked', currentLogs);
     const outOfRangeLog = findRegex('out of range', currentLogs);

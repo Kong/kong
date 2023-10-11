@@ -146,7 +146,7 @@ describe('Gateway Plugins: jwt-signer', function () {
       resp.data.config.access_token_jwks_uri,
       'Jwks uri should not be null'
     ).to.equal(jwksUri);
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+    await wait(isHybrid ? hybridWaitTime : waitTime); // eslint-disable-line no-restricted-syntax
   });
 
   it.skip('should proxy request with a valid token', async function () {
@@ -194,7 +194,7 @@ describe('Gateway Plugins: jwt-signer', function () {
     expect(resp.data.config.access_token_optional, 'Should be true').to.be.true;
     expect(resp.data.config.channel_token_optional, 'Should be true').to.be
       .true;
-    await wait(waitTime + (islocalDb ? 0 : waitTime));
+    await wait(waitTime + (islocalDb ? 0 : waitTime)); // eslint-disable-line no-restricted-syntax
   });
 
   it('should proxy request without token', async function () {

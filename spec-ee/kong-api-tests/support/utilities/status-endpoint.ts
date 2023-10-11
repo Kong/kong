@@ -74,7 +74,7 @@ export const waitForTargetStatus = async (
       logResponse(response);
       return true;
     }
-    await wait(1000);
+    await wait(1000); // eslint-disable-line no-restricted-syntax
     timeout -= 1000;
   }
   // log last response received

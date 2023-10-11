@@ -11,7 +11,6 @@ import {
   wait,
   logResponse,
   postNegative,
-  isGwHybrid,
   randomString,
   waitForConfigRebuild,
 } from '@support';
@@ -22,8 +21,6 @@ describe('Gateway Plugins: oas-validation', function () {
   const path = '/oas-validation';
   const serviceName = randomString();
   const apiSpec = JSON.stringify(openApiSchemas);
-  const isHybrid = isGwHybrid();
-  const waitTime = 5000;
   const hybridWaitTime = 7000;
   let serviceId: string;
   let routeId: string;
@@ -51,7 +48,7 @@ describe('Gateway Plugins: oas-validation', function () {
     const route = await createRouteForService(serviceId, [path]);
     routeId = route.id;
 
-    await wait(hybridWaitTime);
+    await wait(hybridWaitTime); // eslint-disable-line no-restricted-syntax
 
     petPayload = {
       id: 1,

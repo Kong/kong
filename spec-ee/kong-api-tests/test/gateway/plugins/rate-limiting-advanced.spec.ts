@@ -190,7 +190,7 @@ describe('Gateway RLA Plugin Tests', function () {
 
   it('should rate limit on 2nd request', async function () {
     await resetRedisDB();
-    await wait(isHybrid ? 8000 : 7000);
+    await wait(isHybrid ? 8000 : 7000); // eslint-disable-line no-restricted-syntax
 
     for (let i = 0; i < 2; i++) {
       const resp: any = await getNegative(`${proxyUrl}/apitest`);
@@ -223,7 +223,7 @@ describe('Gateway RLA Plugin Tests', function () {
   });
 
   it('should have correct redis key data after data update', async function () {
-    await wait(2000);
+    await wait(2000); // eslint-disable-line no-restricted-syntax
     await resetRedisDB();
 
     for (let i = 0; i < 6; i++) {

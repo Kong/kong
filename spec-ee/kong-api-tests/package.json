@@ -5,7 +5,7 @@
   "author": "Kong Inc.",
   "scripts": {
     "format": "prettier --write \"**/*.{js,ts}\"",
-    "lint": "eslint \"**/*.{js,ts}\" --fix",
+    "lint": "eslint \"**/*.{js,ts}\"",
     "test-spec": "mocha \"test/gateway/**/${npm_config_spec}.spec.ts\"",
     "test-gateway": "mocha \"test/gateway/**/*.spec.ts\"",
     "test-multiple": "mocha ${npm_config_spec}",

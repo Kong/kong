@@ -9,8 +9,6 @@ import {
   expect,
   getBasePath,
   getNegative,
-  isGwHybrid,
-  isLocalDatabase,
   logResponse,
   wait,
   waitForConfigRebuild,
@@ -21,9 +19,6 @@ import axios from 'axios';
 describe('Gateway Plugins: key-auth-enc', function () {
   const path = '/key-auth-enc';
   const serviceName = 'key-auth-enc-service';
-  const isHybrid = isGwHybrid();
-  const hybridWaitTime = 10000;
-  const isLocalDb = isLocalDatabase();
   const waitTime = 5000;
   const consumerName = 'ted';
   const key = 'apiKey';
@@ -118,7 +113,7 @@ describe('Gateway Plugins: key-auth-enc', function () {
     expect(resp.data.ttl, 'Should contain ttl value').to.be.a('number');
 
     keyId = resp.data.key;
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
   });
 
   it('key-auth-enc: should not proxy request without supplying apiKey', async function () {
@@ -161,7 +156,7 @@ describe('Gateway Plugins: key-auth-enc', function () {
     logResponse(resp);
 
     expect(resp.status, 'Status should be 200').to.equal(200);
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
   });
 
   // This test case captures:

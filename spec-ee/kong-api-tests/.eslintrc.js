@@ -13,6 +13,14 @@ module.exports = {
   ],
   ignorePatterns: ['packages/**'],
   rules: {
+    'prettier/prettier': 0,
+    'no-restricted-syntax': [
+      'error',
+      {
+        selector: "AwaitExpression[argument.type='CallExpression'][argument.callee.name='wait']",
+        message: "Don't use `await wait()` due to it's flakiness, prefer `eventually`",
+      },
+    ],
     '@typescript-eslint/no-var-requires': 'warn',
     '@typescript-eslint/no-explicit-any': 'off',
   },

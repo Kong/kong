@@ -328,7 +328,7 @@ describe('Gateway Admin API: Targets', function () {
     if (isHybrid) {
       this.skip();
     }
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     const resp = await axios({
       url: `${url}/${upstreamData.id}/targets/${targetData.id}/healthy`,
       method: 'put',

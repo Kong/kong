@@ -50,7 +50,7 @@ describe('@smoke: Gateway Plugins: key-auth', function () {
     routeId = route.id;
     const consumer = await createConsumer(consumerName);
     consumerId = consumer.id;
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+    await wait(isHybrid ? hybridWaitTime : waitTime); // eslint-disable-line no-restricted-syntax
 
     basePayload = {
       name: plugin,
@@ -93,7 +93,7 @@ describe('@smoke: Gateway Plugins: key-auth', function () {
     );
 
     pluginId = resp.data.id;
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+    await wait(isHybrid ? hybridWaitTime : waitTime); // eslint-disable-line no-restricted-syntax
   });
 
   it('should create key and add tag using consumer under-test', async function () {
@@ -109,7 +109,7 @@ describe('@smoke: Gateway Plugins: key-auth', function () {
     expect(resp.data.ttl, 'Should contain ttl value').to.be.a('number');
 
     keyId = resp.data.key;
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+    await wait(isHybrid ? hybridWaitTime : waitTime); // eslint-disable-line no-restricted-syntax
   });
 
   it('should not proxy request without supplying apiKey', async function () {
@@ -152,7 +152,7 @@ describe('@smoke: Gateway Plugins: key-auth', function () {
     logResponse(resp);
 
     expect(resp.status, 'Status should be 200').to.equal(200);
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+    await wait(isHybrid ? hybridWaitTime : waitTime); // eslint-disable-line no-restricted-syntax
   });
 
   // This test case captures:
@@ -196,7 +196,7 @@ describe('@smoke: Gateway Plugins: key-auth', function () {
 
     expect(resp.status, 'Status should be 200').to.equal(200);
     expect(resp.data.enabled, 'Should be false').to.be.false;
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+    await wait(isHybrid ? hybridWaitTime : waitTime); // eslint-disable-line no-restricted-syntax
   });
 
   it('should proxy request without supplying apiKey after disabling plugin', async function () {

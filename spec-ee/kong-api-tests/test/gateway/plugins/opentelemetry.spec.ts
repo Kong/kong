@@ -11,7 +11,6 @@ import {
   isGwHybrid,
   isLocalDatabase,
   wait,
-  waitForConfigRebuild,
   logResponse,
   deletePlugin,
   createRouteForService,
@@ -72,13 +71,13 @@ describe('Gateway Plugins: OpenTelemetry', function () {
     }
 
     //  wait longer if running kong natively
-    await wait(gwContainerName === 'kong-cp' ? 2000 : 5000);
+    await wait(gwContainerName === 'kong-cp' ? 2000 : 5000); // eslint-disable-line no-restricted-syntax
     const service = await createGatewayService(randomString());
     serviceId = service.id;
     const route = await createRouteForService(serviceId, ['/']);
     routeId = route.id;
 
-    await wait(jaegerWait);
+    await wait(jaegerWait); // eslint-disable-line no-restricted-syntax
   });
 
   it('should not create opel plugin with invalid config.endpoint', async function () {
@@ -116,7 +115,7 @@ describe('Gateway Plugins: OpenTelemetry', function () {
     pluginId = resp.data.id;
     expect(resp.status, 'Status should be 201').to.equal(201);
 
-    await wait(hybridWaitTime + (isLocalDb ? 0 : hybridWaitTime));
+    await wait(hybridWaitTime + (isLocalDb ? 0 : hybridWaitTime)); // eslint-disable-line no-restricted-syntax
   });
 
   it('should send proxy request traces to jaeger', async function () {
@@ -124,7 +123,7 @@ describe('Gateway Plugins: OpenTelemetry', function () {
     let urlObj;
     let resp = await axios(`${proxyUrl}${paths[0]}`);
     logResponse(resp);
-    await wait(jaegerWait + (isLocalDb ? 0 : 10000));
+    await wait(jaegerWait + (isLocalDb ? 0 : 10000)); // eslint-disable-line no-restricted-syntax
 
     resp = await axios(jaegerTracesEndpoint);
     logResponse(resp);
@@ -159,10 +158,10 @@ describe('Gateway Plugins: OpenTelemetry', function () {
       'Should have correct serviceName'
     ).to.equal(`kong`);
 
-    let instance_id = targetDataset.processes.p1.tags.find((obj) => {
+    const instance_id = targetDataset.processes.p1.tags.find((obj) => {
       return obj.key === 'service.instance.id';
     });
-    let version = targetDataset.processes.p1.tags.find((obj) => {
+    const version = targetDataset.processes.p1.tags.find((obj) => {
       return obj.key === 'service.version';
     });
     expect(
@@ -209,7 +208,7 @@ describe('Gateway Plugins: OpenTelemetry', function () {
       'Should see updated instance id'
     ).to.equal('kongtest');
 
-    await wait(
+    await wait( // eslint-disable-line no-restricted-syntax
       isHybrid
         ? hybridWaitTime + (isLocalDb ? 0 : hybridWaitTime)
         : waitTime + (isLocalDb ? 0 : waitTime)
@@ -219,7 +218,7 @@ describe('Gateway Plugins: OpenTelemetry', function () {
   it('should send updated service instance.id and version metadata to jaeger', async function () {
     let resp = await axios(`${proxyUrl}${paths[1]}`);
     logResponse(resp);
-    await wait(jaegerWait + (isLocalDb ? 0 : hybridWaitTime));
+    await wait(jaegerWait + (isLocalDb ? 0 : hybridWaitTime)); // eslint-disable-line no-restricted-syntax
 
     resp = await axios(jaegerTracesEndpoint);
     logResponse(resp);

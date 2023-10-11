@@ -75,7 +75,7 @@ describe('Gateway /licenses API tests', function () {
     logResponse(resp);
 
     expect(resp.status, 'Status should be 204').to.equal(204);
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
   });
 
   it('should not POST an invalid license', async function () {
@@ -130,7 +130,7 @@ describe('Gateway /licenses API tests', function () {
 
   if (isCIrun) {
     it('should enable key-auth-enc ee plugin with license', async function () {
-      await wait(waitTime);
+      await wait(waitTime); // eslint-disable-line no-restricted-syntax
 
       const pluginPayload = {
         ...basePayload,

@@ -165,7 +165,7 @@ describe('Gateway Consumer Groups with RLA', function () {
 
     rtPluginId = resp.id;
 
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
   });
 
   it('should trigger RT plugin with the correct plugin config', async function () {
@@ -203,7 +203,7 @@ describe('Gateway Consumer Groups with RLA', function () {
   });
 
   it('should apply overwritten RT plugin consumer group settings to a group consumer', async function () {
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
 
     const req = () =>
       axios({
@@ -226,7 +226,7 @@ describe('Gateway Consumer Groups with RLA', function () {
   });
 
   it('should not apply overwritten RT plugin consumer group settings to a non-group consumer', async function () {
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
 
     const resp = await axios({
       url: `${proxyUrl}${path}`,

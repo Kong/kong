@@ -120,7 +120,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
   });
 
   it('should reference with aws access key hcv vault entity', async function () {
-    await wait(waitTime + 3000);
+    await wait(waitTime + 3000); // eslint-disable-line no-restricted-syntax
     await doBasicRequestCheck();
   });
 
@@ -144,7 +144,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
       'Should replace aws_secret with secret key reference'
     ).to.equal('{vault://my-hcv/secret/aws_secret_key}');
 
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRequestCheck();
   });
 
@@ -169,7 +169,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
       'Should replace aws_secret with hcv secret key reference'
     ).to.equal('{vault://hcv/secret/aws_secret_key}');
 
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRequestCheck();
   });
 
@@ -194,7 +194,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
       'Should replace aws_secret with hcv secret key reference'
     ).to.equal('{vault://my-hcv/secret/aws_secret_key}');
 
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRequestCheck();
   });
 
@@ -214,7 +214,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
 
     expect(patchResp.status, 'Status should be 200').to.equal(200);
 
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRequestCheck();
   });
 
@@ -238,7 +238,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
       'Should replace aws_secret with secret key reference'
     ).to.equal('{vault://aws/gateway-secret-test/aws_secret_key}');
 
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRequestCheck();
   });
 
@@ -269,7 +269,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
 
     expect(patchResp.status, 'Status should be 200').to.equal(200);
 
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRequestCheck();
   });
 
@@ -288,7 +288,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
 
     expect(patchResp.status, 'Status should be 200').to.equal(200);
 
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRequestCheck();
   });
 
@@ -308,7 +308,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
 
     expect(patchResp.status, 'Status should be 200').to.equal(200);
 
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRequestCheck();
   });
 
@@ -328,7 +328,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
 
     expect(patchResp.status, 'Status should be 200').to.equal(200);
 
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRequestCheck();
   });
 
@@ -348,7 +348,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
 
     expect(patchResp.status, 'Status should be 200').to.equal(200);
 
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRequestCheck();
   });
 
@@ -368,7 +368,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
 
     expect(patchResp.status, 'Status should be 200').to.equal(200);
 
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRequestCheck();
   });
 
@@ -387,7 +387,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
 
     expect(patchResp.status, 'Status should be 200').to.equal(200);
 
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRequestCheck();
   });
 
@@ -407,7 +407,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
 
     expect(patchResp.status, 'Status should be 200').to.equal(200);
 
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRequestCheck();
   });
 

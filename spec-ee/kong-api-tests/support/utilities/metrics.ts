@@ -63,7 +63,7 @@ export const waitForConfigHashUpdate = async (
     currentHash === configHash ||
     timesHashChanged !== options.targetNumberOfConfigHashChanges
   ) {
-    await wait(interval);
+    await wait(interval); // eslint-disable-line no-restricted-syntax
   }
 
   // return current hash value only when timeout is reached or the amount of hash changes

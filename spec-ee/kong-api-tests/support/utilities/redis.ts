@@ -36,7 +36,7 @@ export const getDbSize = async (options: any = {}) => {
     console.log(
       `Getting redis db size one more time as previous one was non-expected: ${dbSize}`
     );
-    await wait(4000);
+    await wait(4000); // eslint-disable-line no-restricted-syntax
     dbSize = await client.DBSIZE();
   }
 

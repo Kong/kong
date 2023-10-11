@@ -125,7 +125,7 @@ kvEngineVersions.forEach((kvVersion) => {
         'Should have correct vault id'
       ).to.equal(vaultEntityId);
 
-      await wait(islocalDB ? 0 : longWaitTime);
+      await wait(islocalDB ? 0 : longWaitTime); // eslint-disable-line no-restricted-syntax
     });
 
     it('should not proxy a request without access/secret token pair', async function () {
@@ -157,7 +157,7 @@ kvEngineVersions.forEach((kvVersion) => {
       credentials['access_token'] = resp.data.data.access_token;
       credentials['secret_token'] = resp.data.data.secret_token;
 
-      await wait(islocalDB ? 0 : longWaitTime);
+      await wait(islocalDB ? 0 : longWaitTime); // eslint-disable-line no-restricted-syntax
     });
 
     it('should proxy a request with correct secrets as querystring parameters', async function () {
@@ -225,7 +225,7 @@ kvEngineVersions.forEach((kvVersion) => {
 
       expect(resp.status, 'Status should be 204').to.equal(204);
 
-      await wait(islocalDB ? waitTime : longWaitTime);
+      await wait(islocalDB ? waitTime : longWaitTime); // eslint-disable-line no-restricted-syntax
     });
 
     it('should not see access/secret credentials when they have been deleted', async function () {
@@ -244,7 +244,7 @@ kvEngineVersions.forEach((kvVersion) => {
     });
 
     it('should not proxy a request after secrets have been deleted', async function () {
-      await wait(longWaitTime);
+      await wait(longWaitTime); // eslint-disable-line no-restricted-syntax
       const resp = await getNegative(
         `${proxyUrl}${path}?access_token=${credentials.access_token}&secret_token=${credentials.secret_token}`
       );
@@ -346,7 +346,7 @@ kvEngineVersions.forEach((kvVersion) => {
         'should see tokens_in_body enabled'
       ).to.be.true;
 
-      await wait(islocalDB ? waitTime : longWaitTime);
+      await wait(islocalDB ? waitTime : longWaitTime); // eslint-disable-line no-restricted-syntax
 
       resp = await axios({
         method: 'get',
@@ -395,7 +395,7 @@ kvEngineVersions.forEach((kvVersion) => {
         'should see updated access_token_name'
       ).to.eq('test');
 
-      await wait(islocalDB ? waitTime : longWaitTime);
+      await wait(islocalDB ? waitTime : longWaitTime); // eslint-disable-line no-restricted-syntax
 
       resp = await axios({
         method: 'get',
@@ -425,7 +425,7 @@ kvEngineVersions.forEach((kvVersion) => {
       );
 
       // wait for ttl to expire which is 1 second
-      await wait(2000);
+      await wait(2000); // eslint-disable-line no-restricted-syntax
 
       const resp = await getNegative(
         `${proxyUrl}${path}`,
@@ -465,7 +465,7 @@ kvEngineVersions.forEach((kvVersion) => {
         '3f840fe4-583b-4747-8a90-adec2e2bbb22'
       );
 
-      await wait(islocalDB ? waitTime : longWaitTime);
+      await wait(islocalDB ? waitTime : longWaitTime); // eslint-disable-line no-restricted-syntax
 
       resp = await getNegative(
         `${proxyUrl}${path}?access_token=${customCredentials.access_token}&secret_token=${customCredentials.secret_token}`

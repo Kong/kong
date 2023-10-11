@@ -38,7 +38,6 @@ describe('Vitals with InfluxDB Tests', function () {
   let routeId2: string;
   let defaultWorkspaceId: string;
   let hostname: string;
-  let kongLatency: number;
 
   before(async function () {
     // skip classic mode test run due to https://konghq.atlassian.net/browse/KAG-363
@@ -69,7 +68,7 @@ describe('Vitals with InfluxDB Tests', function () {
     }
 
     await waitForConfigRebuild();
-    await wait(flushWait);
+    await wait(flushWait); // eslint-disable-line no-restricted-syntax
     await deleteAllDataFromKongRequest();
     await deleteAllDataFromKongDatastoreCache();
   });
@@ -102,7 +101,7 @@ describe('Vitals with InfluxDB Tests', function () {
   it('should add entry in influxdb kong_request after request', async function () {
     await axios(`${proxyUrl}/${routePath}/200`);
     // wait for request metric to be added to influxdb
-    await wait(flushWait);
+    await wait(flushWait); // eslint-disable-line no-restricted-syntax
 
     const requestEntries: any = await getAllEntriesFromKongRequest(1);
 
@@ -115,7 +114,6 @@ describe('Vitals with InfluxDB Tests', function () {
     );
 
     hostname = requestEntries[0].hostname;
-    kongLatency = requestEntries[0].kong_latency;
   });
 
   it('should add entry in influxdb kong_datastore_cache after request', async function () {
@@ -198,7 +196,7 @@ describe('Vitals with InfluxDB Tests', function () {
     await getNegative(`${proxyUrl}/${routePath}/500`);
     await getNegative(`${proxyUrl}/${routePath}/200`);
 
-    await wait(flushWait);
+    await wait(flushWait); // eslint-disable-line no-restricted-syntax
 
     const requestEntries: any = await getAllEntriesFromKongRequest(4);
 
@@ -230,12 +228,12 @@ describe('Vitals with InfluxDB Tests', function () {
     routeId2 = route.id;
 
     await waitForConfigRebuild();
-    await wait(flushWait);
+    await wait(flushWait); // eslint-disable-line no-restricted-syntax
     await deleteAllDataFromKongRequest();
     await deleteAllDataFromKongDatastoreCache();
 
     await axios(`${proxyUrl}/influxdb`);
-    await wait(flushWait);
+    await wait(flushWait); // eslint-disable-line no-restricted-syntax
 
     const requestEntries: any = await getAllEntriesFromKongRequest(1);
 

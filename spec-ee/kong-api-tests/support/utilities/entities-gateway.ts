@@ -569,7 +569,6 @@ export const clearAllKongResources = async () => {
 
 export const clearKongResource = async (endpoint: string) => {
   const tasks: (() => AxiosPromise)[] = [];
-  const deletePromises: AxiosPromise[] = [];
   const url = getUrl(endpoint);
   try {
     const items: ItemProps[] = [];

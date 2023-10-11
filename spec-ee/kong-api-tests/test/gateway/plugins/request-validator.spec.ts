@@ -123,7 +123,7 @@ describe('Gateway Plugins: Request Validator', function () {
         targetNumberOfConfigHashChanges: 2,
       });
     } else {
-      await wait(classicWait);
+      await wait(classicWait); // eslint-disable-line no-restricted-syntax
     }
   });
 
@@ -218,7 +218,7 @@ describe('Gateway Plugins: Request Validator', function () {
     if (isHybrid) {
       configHash = await waitForConfigHashUpdate(configHash);
     } else {
-      await wait(classicWait);
+      await wait(classicWait); // eslint-disable-line no-restricted-syntax
     }
 
     resp = await axios(`${url}/${pluginId}`);
@@ -251,7 +251,7 @@ describe('Gateway Plugins: Request Validator', function () {
     if (isHybrid) {
       configHash = await waitForConfigHashUpdate(configHash);
     } else {
-      await wait(classicWait);
+      await wait(classicWait); // eslint-disable-line no-restricted-syntax
     }
 
     expect(resp.status, 'Status should be 200').to.equal(200);

@@ -10,7 +10,6 @@ import {
   deleteGatewayRoute,
   getMockbinLogs,
   randomString,
-  isGwHybrid,
   wait,
   logResponse,
   createMockbinBin,
@@ -125,7 +124,7 @@ describe('Gateway Plugins: http-log', function () {
     ).to.eq(mockbinUrl);
 
     pluginId = resp.data.id;
-    await wait(hybridWaitTime);
+    await wait(hybridWaitTime); // eslint-disable-line no-restricted-syntax
   });
 
   it('should send http request logs to http_endpoint', async function () {
@@ -197,7 +196,7 @@ describe('Gateway Plugins: http-log', function () {
         resp.data.config.method,
         'Should see correct patched method'
       ).to.eq(pluginConfigHeader);
-      await wait(hybridWaitTime);
+      await wait(hybridWaitTime); // eslint-disable-line no-restricted-syntax
     });
 
     it(`should see request logs in http_endpoint with the new ${pluginConfigHeader} method`, async function () {
@@ -239,7 +238,7 @@ describe('Gateway Plugins: http-log', function () {
       resp.data.config.custom_fields_by_lua.kong,
       'Should see correct patched method'
     ).to.eq(`return 'http-log plugin api test'`);
-    await wait(hybridWaitTime);
+    await wait(hybridWaitTime); // eslint-disable-line no-restricted-syntax
 
     resp = await axios(`${proxyUrl}${path}`);
     logResponse(resp);

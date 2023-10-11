@@ -36,7 +36,6 @@ describe('Websocket Size Limit Plugin Tests', function () {
       let routeId: string;
       let pluginBasePayload: any;
       let pluginId: string;
-      let server: any;
 
       before(async function () {
         const service = await createGatewayService(servicePayload.name, servicePayload);

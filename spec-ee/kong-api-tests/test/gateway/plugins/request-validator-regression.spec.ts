@@ -102,7 +102,7 @@ describe('Gateway Plugins: Request Validator Regression Tests', function () {
 
   it('should pass request body with maxItems 2600 and more', async function () {
     const arrayOf2600 = Array.from(new Array(2600), () => 'a');
-    await wait(isHybrid ? 12000 : 6000);
+    await wait(isHybrid ? 12000 : 6000); // eslint-disable-line no-restricted-syntax
 
     const reqBody = {
       where: {
@@ -179,7 +179,7 @@ describe('Gateway Plugins: Request Validator Regression Tests', function () {
     ).to.haveOwnProperty('explode', true);
 
     // give some time for changes to take effect and avoid flakiness
-    await wait(1000);
+    await wait(1000); // eslint-disable-line no-restricted-syntax
   });
 
   it('should validate with explode true in parameter_schema and query params', async function () {
@@ -193,7 +193,7 @@ describe('Gateway Plugins: Request Validator Regression Tests', function () {
   });
 
   it('should update the request validator plugin with put request', async function () {
-    await wait(isHybrid ? 6000 : 3000);
+    await wait(isHybrid ? 6000 : 3000); // eslint-disable-line no-restricted-syntax
 
     const resp = await axios({
       method: 'put',
@@ -220,7 +220,7 @@ describe('Gateway Plugins: Request Validator Regression Tests', function () {
   });
 
   it('should validate invalid date format', async function () {
-    await wait(waitTime + (isLocalDb ? 0 : hybridWaitTime));
+    await wait(waitTime + (isLocalDb ? 0 : hybridWaitTime)); // eslint-disable-line no-restricted-syntax
 
     const resp = await getNegative(
       `${proxyUrl}${path}`,
@@ -235,7 +235,7 @@ describe('Gateway Plugins: Request Validator Regression Tests', function () {
   });
 
   it('should validate correct date format', async function () {
-    await wait(waitTime + 1000);
+    await wait(waitTime + 1000); // eslint-disable-line no-restricted-syntax
 
     const resp = await axios({
       url: `${proxyUrl}${path}`,

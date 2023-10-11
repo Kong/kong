@@ -11,7 +11,6 @@ import {
   waitForConfigRebuild,
   updateGatewayService,
   logResponse,
-  isGwHybrid,
 } from '@support';
 
 describe('Gateway Plugins: gRPC-web', function () {
@@ -26,7 +25,6 @@ describe('Gateway Plugins: gRPC-web', function () {
   const grpcMessage = 'Kong3.0.x.x.x';
   const protocols = ['grpc', 'grpcs', 'http', 'https'];
   const serviceName = 'grpcbin-web-service';
-  const isHybrid = isGwHybrid();
 
   let serviceId: string;
   let routeId: string;

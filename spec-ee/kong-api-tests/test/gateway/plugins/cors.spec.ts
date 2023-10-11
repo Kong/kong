@@ -9,9 +9,7 @@ import {
   deleteGatewayRoute,
   createRouteForService,
   logResponse,
-  isGwHybrid,
   waitForConfigRebuild,
-  wait,
   postNegative,
 } from '@support';
 
@@ -22,9 +20,6 @@ describe('Gateway Plugins: CORS', function () {
   const proxyUrl = `${getBasePath({
     environment: Environment.gateway.proxy,
   })}`;
-  const isHybrid = isGwHybrid();
-  const waitTime = 5000;
-  const hybridWaitTime = 7000;
   const path = `/${randomString()}`;
   let serviceId: string;
   let routeId: string;

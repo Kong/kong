@@ -83,7 +83,7 @@ describe('Dynamic Log Level Tests', function () {
       'update'
     );
 
-    await wait(isHybrid ? 7000 : 5000);
+    await wait(isHybrid ? 7000 : 5000); // eslint-disable-line no-restricted-syntax
   });
 
   it('should get current log level', async function () {
@@ -141,7 +141,7 @@ describe('Dynamic Log Level Tests', function () {
   });
 
   it('should see debug logs in container', async function () {
-    await wait(3000);
+    await wait(3000); // eslint-disable-line no-restricted-syntax
     const logs = getGatewayContainerLogs(kongContainerName);
     const isLogFound = findRegex('\\[debug\\]', logs);
     expect(isLogFound, 'Should see debug logs').to.be.true;
@@ -169,7 +169,7 @@ describe('Dynamic Log Level Tests', function () {
   });
 
   it('should not see debug logs in container after log is set to notice', async function () {
-    await wait(isKongNative ? 8000 : 4000);
+    await wait(isKongNative ? 8000 : 4000); // eslint-disable-line no-restricted-syntax
     // read the last 2 lines of logs for package tests to avoid flakiness
     currentLogs = getGatewayContainerLogs(
       kongContainerName,
@@ -278,7 +278,7 @@ describe('Dynamic Log Level Tests', function () {
       'log level changed'
     );
 
-    await wait(2000);
+    await wait(2000); // eslint-disable-line no-restricted-syntax
 
     resp = await axios(`${url}/node/log-level`);
     logResponse(resp);
@@ -337,7 +337,7 @@ describe('Dynamic Log Level Tests', function () {
     const resp = await getNegative(`${proxyUrl}${path}`);
     logResponse(resp);
 
-    await wait(isHybrid ? 7000 : 2000);
+    await wait(isHybrid ? 7000 : 2000); // eslint-disable-line no-restricted-syntax
     const logs = getGatewayContainerLogs(
       isHybrid ? 'kong-dp1' : kongContainerName
     );
@@ -347,7 +347,7 @@ describe('Dynamic Log Level Tests', function () {
   });
 
   it('should change log-level back to info with timeout of 0 seconds', async function () {
-    let resp = await axios({
+    const resp = await axios({
       method: 'put',
       url: `${url}/node/log-level/notice?timeout=0`,
     });

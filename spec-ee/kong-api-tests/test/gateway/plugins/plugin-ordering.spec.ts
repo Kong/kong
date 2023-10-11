@@ -269,7 +269,7 @@ describe('Plugin Ordering: featuring RTA,basic-auth,RV plugins', function () {
 
   it('should pass after adding correct header for RV', async function () {
     // Current plugin ordering is: RTA > RV > basic-auth
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     const resp = await getNegative(`${proxyUrl}${path}`, {
       headerToBeAdded: '5',
     });
@@ -314,7 +314,7 @@ describe('Plugin Ordering: featuring RTA,basic-auth,RV plugins', function () {
 
   it('should fail as RV now runs the first and header is not in the request', async function () {
     // Current plugin ordering is: RV > RTA > basic-auth
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     const resp = await getNegative(`${proxyUrl}${path}`);
     logResponse(resp);
 
@@ -327,7 +327,7 @@ describe('Plugin Ordering: featuring RTA,basic-auth,RV plugins', function () {
 
   it('should fully pass the ordering chain after adding correct header', async function () {
     // Current plugin ordering is: RV > RTA > basic-auth
-    await wait(waitTime);
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
     const resp = await getNegative(`${proxyUrl}${path}`, {
       headerToBeAdded: '5',
     });
@@ -366,7 +366,7 @@ describe('Plugin Ordering: featuring RTA,basic-auth,RV plugins', function () {
     expect(resp.status, 'Status should be 200').to.equal(200);
 
     // Current plugin ordering is: basic-auth > RV > RTA
-    await wait(isHybrid ? hybridWaitTime : waitTime);
+    await wait(isHybrid ? hybridWaitTime : waitTime); // eslint-disable-line no-restricted-syntax
     resp = await getNegative(`${proxyUrl}${path}`);
 
     expect(resp.status, 'Status should be 401').to.equal(401);

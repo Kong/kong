@@ -349,7 +349,7 @@ describe('Gateway RBAC: E2E User Permissions', function () {
     logResponse(resp);
 
     expect(resp.status, 'Status should be 403').to.equal(403);
-    await wait(isHybrid ? 4000 : 100);
+    await wait(isHybrid ? 4000 : 100); // eslint-disable-line no-restricted-syntax
   });
 
   it('should have permission to read the routes endpoint after updating the user token', async function () {

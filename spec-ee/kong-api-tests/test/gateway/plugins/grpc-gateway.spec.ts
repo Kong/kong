@@ -89,7 +89,7 @@ describe('Gateway Plugins: gRPC-gateway', function () {
       protocols
     );
     pluginId = resp.data.id;
-    await wait(isLocalDb ? 7000 : longWait);
+    await wait(isLocalDb ? 7000 : longWait); // eslint-disable-line no-restricted-syntax
   });
 
   it('should validate mapping rule 1', async function () {
@@ -177,7 +177,7 @@ describe('Gateway Plugins: gRPC-gateway', function () {
       protocols
     );
     expect(resp.status, 'Status should be 200').to.equal(200);
-    await wait(isLocalDb ? shortWait : longWait);
+    await wait(isLocalDb ? shortWait : longWait); // eslint-disable-line no-restricted-syntax
   });
 
   it('should validate new proto POST bindings', async function () {

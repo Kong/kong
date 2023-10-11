@@ -2,7 +2,6 @@ import axios from 'axios';
 import {
   Environment,
   expect,
-  isGwHybrid,
   getBasePath,
   createGatewayService,
   createRouteForService,
@@ -22,7 +21,6 @@ import {
 } from '@support';
 
 describe.skip('Plugin Scope Precedence Model', () => {
-  const isHybrid = isGwHybrid();
   const url = `${getBasePath({
     environment: Environment.gateway.admin,
   })}`;
@@ -84,7 +82,7 @@ describe.skip('Plugin Scope Precedence Model', () => {
       },
     });
 
-    await wait(3000);
+    await wait(3000); // eslint-disable-line no-restricted-syntax
   });
 
   function buildPayload(scope) {
@@ -129,7 +127,7 @@ describe.skip('Plugin Scope Precedence Model', () => {
       if (id) await deletePlugin(id);
     });
     // wait a couple seconds to ensure deletion
-    await wait(3000);
+    await wait(3000); // eslint-disable-line no-restricted-syntax
   }
 
   it('should check that consumer group exists', async function () {
@@ -165,7 +163,7 @@ describe.skip('Plugin Scope Precedence Model', () => {
 
         pluginIdList = [firstPluginId, secondPluginId];
 
-        await wait(8000);
+        await wait(8000); // eslint-disable-line no-restricted-syntax
 
         const resp = await getNegative(`${proxyUrl}/precedence_test`, {
           authorization: `Basic ${Buffer.from('test:test').toString('base64')}`,
@@ -194,7 +192,7 @@ describe.skip('Plugin Scope Precedence Model', () => {
       expect(resp.status, 'Status should be 201').equal(201);
     });
 
-    await wait(8000);
+    await wait(8000); // eslint-disable-line no-restricted-syntax
 
     const resp = await getNegative(`${proxyUrl}/precedence_test`, {
       authorization: `Basic ${Buffer.from('test:test').toString('base64')}`,
