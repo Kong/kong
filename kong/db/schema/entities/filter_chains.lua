@@ -1,6 +1,7 @@
 local typedefs = require "kong.db.schema.typedefs"
 local wasm = require "kong.runloop.wasm"
 local constants = require "kong.constants"
+local json_schema = require "kong.db.schema.json"
 
 
 ---@class kong.db.schema.entities.filter_chain : table
@@ -38,6 +39,7 @@ local filter = {
           namespace = constants.SCHEMA_NAMESPACES.PROXY_WASM_FILTERS,
           optional = true,
           default = {
+            ["$schema"] = json_schema.DRAFT_4,
             -- filters with no user-defined JSON schema may accept an optional
             -- config, but only as a string
             type = { "string", "null" },
