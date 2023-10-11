@@ -17,7 +17,7 @@ ATC_ROUTER=b0d5e7e2a2ca59bb051959385d3e42d96c93bb98 # 1.2.0
 # Please leave this untouched and use KONG_ADMIN in EE version instead
 KONG_MANAGER=DO_NOT_USE
 
-NGX_WASM_MODULE=abd6a40790e019495de0f1532a8f2312bbdbc820 # prerelease-0.1.0
+NGX_WASM_MODULE=21732b18fc46f409962ae77ddf01c713b568d078 # prerelease-0.1.1
 WASMER=3.1.1
 WASMTIME=8.0.1
 V8=10.5.18
