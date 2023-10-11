@@ -82,7 +82,7 @@ local function new(self)
     end
   end
 
-  local replace_dashes = require("kong.tools.utils").replace_dashes
+  local replace_dashes = require("kong.tools.string").replace_dashes
 
 
   ---

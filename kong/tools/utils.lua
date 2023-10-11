@@ -1849,12 +1849,4 @@ _M.get_start_time_ms  = get_start_time_ms
 _M.get_updated_monotonic_ms = get_updated_monotonic_ms
 
 
-do
-  local str = require "kong.tools.string"
-  for name, func in pairs(str) do
-    _M[name] = func
-  end
-end
-
-
 return _M

@@ -562,7 +562,7 @@ local get_queries_key
 do
   local tb_sort = table.sort
   local tb_concat = table.concat
-  local replace_dashes = require("kong.tools.utils").replace_dashes
+  local replace_dashes = require("kong.tools.string").replace_dashes
 
   local str_buf = buffer.new(64)
 
