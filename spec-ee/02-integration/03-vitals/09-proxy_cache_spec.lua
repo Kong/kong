@@ -92,6 +92,9 @@ for _, strategy in helpers.each_strategy() do
       -- start Kong instance with our services and plugins
       assert(helpers.start_kong {
         plugins = "bundled,proxy-cache-advanced",
+        portal = true,
+        portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
+        license_path = "spec-ee/fixtures/mock_license.json",
         vitals = true,
         database = strategy,
       })
@@ -99,7 +102,8 @@ for _, strategy in helpers.each_strategy() do
       --  start mock httpbin instance
       assert(helpers.start_kong {
         plugins = "bundled,proxy-cache-advanced",
-        vitals = true,
+        portal = false,
+        vitals = false,
         database = strategy,
         admin_listen = "127.0.0.1:9011",
         proxy_listen = "127.0.0.1:9010",

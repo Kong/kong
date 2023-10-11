@@ -7,6 +7,7 @@
 
 local constants = require "kong.constants"
 local helpers = require "spec.helpers"
+local pl_file = require "pl.file"
 
 
 for _, strategy in helpers.each_strategy() do
@@ -125,6 +126,7 @@ for _, strategy in helpers.each_strategy() do
     describe("anonymous reports in Vitals backed by database #" .. strategy, function()
       local dns_hostsfile
       local reports_server
+      local license_env
 
       local reports_send_ping = function()
         ngx.sleep(0.01) -- hand over the CPU so other threads can do work (processing the sent data)
@@ -136,6 +138,9 @@ for _, strategy in helpers.each_strategy() do
 
 
       lazy_setup(function()
+        license_env = os.getenv("KONG_LICENSE_DATA")
+        helpers.setenv("KONG_LICENSE_DATA", pl_file.read("spec-ee/fixtures/mock_license.json"))
+
         dns_hostsfile = assert(os.tmpname()  .. ".hosts")
         local fd = assert(io.open(dns_hostsfile, "w"))
         assert(fd:write("127.0.0.1 " .. constants.REPORTS.ADDRESS))
@@ -192,6 +197,7 @@ for _, strategy in helpers.each_strategy() do
           dns_hostsfile = dns_hostsfile,
           anonymous_reports = true,
           vitals = true,
+          portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
           vitals_strategy = vitals_strategy,
           vitals_tsdb_address = "a-valid-address:9000",
           vitals_statsd_address = "another-valid-address:9000",
@@ -207,6 +213,10 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
 
         os.remove(dns_hostsfile)
+
+        if type(license_env) == "string" then
+          helpers.setenv("KONG_LICENSE_DATA", license_env)
+        end
       end)
 
       before_each(function()

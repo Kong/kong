@@ -27,6 +27,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
     assert(helpers.start_kong({
       database = strategy,
       portal = true,
+      portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
     }))
   end)
 
@@ -367,6 +368,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         assert(helpers.start_kong({
           database = strategy,
           portal = true,
+          portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
         }))
       end)
 

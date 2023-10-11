@@ -11,6 +11,7 @@ local uuid    = require("kong.tools.utils").uuid
 local ee_jwt  = require "kong.enterprise_edition.jwt"
 local ee_helpers = require "spec-ee.helpers"
 local enums = require "kong.enterprise_edition.dao.enums"
+local clear_license_env = require("spec-ee.02-integration.04-dev-portal.utils").clear_license_env
 
 local time = ngx.time
 
@@ -84,13 +85,17 @@ for _, strategy in helpers.each_strategy() do
   describe("Account Verification [#" .. strategy .. "]", function()
     local db
     local secret
+    local reset_license_data
 
     lazy_setup(function()
+      reset_license_data = clear_license_env()
       _, db, _ = helpers.get_db_utils(strategy)
 
       assert(helpers.start_kong({
         database    = strategy,
+        license_path = "spec-ee/fixtures/mock_license.json",
         portal      = true,
+        portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
         enforce_rbac = "off",
         validate_portal_emails = true,
         portal_email_verification = true,
@@ -106,6 +111,7 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_teardown(function()
       helpers.stop_kong(nil, true)
+      reset_license_data()
     end)
 
     describe("/verify-account", function()

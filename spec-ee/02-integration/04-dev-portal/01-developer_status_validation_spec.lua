@@ -131,6 +131,7 @@ describe("Developer status validation for " .. auth_type .. " [#" .. strategy ..
     assert(helpers.start_kong({
       database = strategy,
       portal = true,
+      portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
       portal_auth = auth_type,
       portal_session_conf = "{ \"cookie_name\": \"portal_session\", \"secret\": \"super-secret\", \"cookie_secure\": false, \"storage\": \"kong\" }",
     }))

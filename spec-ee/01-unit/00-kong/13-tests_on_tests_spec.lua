@@ -20,6 +20,7 @@ describe("testing directory", function()
          and not f:find("/helpers.lua$")
          and not f:find("/06%-proxies%-spec.lua$")
          and not f:find("_spec.lua$")
+         and not f:find("/04%-dev%-portal/utils.lua$")
       then
         table.insert(wrong_filename, f)
       end

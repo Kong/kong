@@ -7,6 +7,7 @@
 
 local helpers      = require "spec.helpers"
 local enums       = require "kong.enterprise_edition.dao.enums"
+local clear_license_env = require("spec-ee.02-integration.04-dev-portal.utils").clear_license_env
 
 local tostring = tostring
 
@@ -53,6 +54,7 @@ local configs = {
   {true, true} -- portal on in both
 }
 
+
 for _, strategy in helpers.each_strategy() do
   for _, conf in ipairs(configs) do
     local conf_on = conf[1]
@@ -62,22 +64,22 @@ for _, strategy in helpers.each_strategy() do
       local _, db, _ = helpers.get_db_utils(strategy)
 
       local developer, file
+      local reset_license_data
 
       lazy_setup(function()
-        kong.configuration = {
-          database = strategy,
-          portal = conf_on,
-          portal_auth = "basic-auth",
-        }
+        reset_license_data = clear_license_env()
 
         assert(helpers.start_kong({
           database = strategy,
+          license_path = "spec-ee/fixtures/mock_license.json",
           portal = conf_on,
+          portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
           portal_is_legacy = true,
           portal_auth = "basic-auth",
           portal_session_conf = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }",
         }))
 
+        configure_portal(db, ws_on)
         developer = assert(db.developers:insert {
           email = "gruce@konghq.com",
           password = "kong",
@@ -91,12 +93,13 @@ for _, strategy in helpers.each_strategy() do
           type = "page"
         })
 
-        configure_portal(db, ws_on)
+
       end)
 
       lazy_teardown(function()
         helpers.stop_kong()
         assert(db:truncate())
+        reset_license_data()
       end)
 
       describe("Developers Admin API respects portal enabled configs", function()
@@ -188,16 +191,16 @@ for _, strategy in helpers.each_strategy() do
 
     describe("With SSL config", function()
       local _, db, _ = helpers.get_db_utils(strategy)
+      local reset_license_data
 
       lazy_setup(function()
-        kong.configuration = {
-          database = strategy,
-          portal = conf_on
-        }
+        reset_license_data = clear_license_env()
 
         assert(helpers.start_kong({
           database = strategy,
+          license_path = "spec-ee/fixtures/mock_license.json",
           portal = conf_on,
+          portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
           ssl_cipher_suite = "modern"
         }))
 
@@ -207,6 +210,7 @@ for _, strategy in helpers.each_strategy() do
       lazy_teardown(function()
         helpers.stop_kong()
         assert(db:truncate())
+        reset_license_data()
       end)
 
       it("load config properly when ssl_cipher_suite is set to modern", function()

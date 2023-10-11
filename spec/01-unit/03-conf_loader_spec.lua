@@ -9,6 +9,7 @@ local conf_loader = require "kong.conf_loader"
 local utils = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 local tablex = require "pl.tablex"
+local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local ffi = require "ffi"
 
@@ -1595,6 +1596,7 @@ describe("Configuration loader", function()
         it("does not check SSL cert and key if SSL is off", function()
           local conf, err = conf_loader(nil, {
             portal = "on",
+            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
             portal_api_listen = "127.0.0.1:123",
             portal_api_ssl_cert = "/path/cert.pem"
           })
@@ -1603,6 +1605,7 @@ describe("Configuration loader", function()
           -- specific case with 'ssl' in the name
           local conf, err = conf_loader(nil, {
             portal = "on",
+            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
             portal_api_listen = "ssl:23",
             portal_api_ssl_cert = "/path/cert.pem"
           })
@@ -1612,6 +1615,7 @@ describe("Configuration loader", function()
         it("requires both portal_api SSL cert and key", function()
           local conf, err = conf_loader(nil, {
             portal = "on",
+            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
             portal_api_listen = "127.0.0.1:123 ssl",
             portal_api_ssl_cert = "/path/cert.pem"
           })
@@ -1620,6 +1624,7 @@ describe("Configuration loader", function()
 
           conf, err = conf_loader(nil, {
             portal = "on",
+            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
             portal_api_listen = "127.0.0.1:123 ssl",
             portal_api_ssl_cert_key = "/path/key.pem"
           })
@@ -1628,6 +1633,7 @@ describe("Configuration loader", function()
 
           conf, err = conf_loader(nil, {
             portal = "on",
+            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
             portal_api_listen = "127.0.0.1:123 ssl",
             portal_api_ssl_cert = "spec/fixtures/kong_spec.crt",
             portal_api_ssl_cert_key = "spec/fixtures/kong_spec.key"
@@ -1638,6 +1644,7 @@ describe("Configuration loader", function()
         it("requires SSL cert and key to exist", function()
           local conf, _, errors = conf_loader(nil, {
             portal = "on",
+            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
             portal_api_listen = "127.0.0.1:123 ssl",
             portal_api_ssl_cert = "/path/cert.pem",
             portal_api_ssl_cert_key = "/path/cert_key.pem"
@@ -1649,6 +1656,7 @@ describe("Configuration loader", function()
 
           conf, _, errors = conf_loader(nil, {
             portal = "on",
+            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
             portal_api_listen = "127.0.0.1:123 ssl",
             portal_api_ssl_cert = "spec/fixtures/kong_spec.crt",
             portal_api_ssl_cert_key = "/path/cert_key.pem"
@@ -1658,8 +1666,12 @@ describe("Configuration loader", function()
           assert.is_nil(conf)
         end)
         it("resolves SSL cert/key to absolute path", function()
+          local license_env = os.getenv("KONG_LICENSE_DATA")
+          helpers.setenv("KONG_LICENSE_DATA", pl_file.read("spec-ee/fixtures/mock_license.json"))
+
           local conf, err = conf_loader(nil, {
             portal = "on",
+            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
             portal_api_listen = "127.0.0.1:123 ssl",
             portal_api_ssl_cert = "spec/fixtures/kong_spec.crt",
             portal_api_ssl_cert_key = "spec/fixtures/kong_spec.key"
@@ -1670,6 +1682,10 @@ describe("Configuration loader", function()
             assert.True(helpers.path.isabs(conf.portal_api_ssl_cert[i]))
             assert.True(helpers.path.isabs(conf.portal_api_ssl_cert_key[i]))
           end
+
+          if type(license_env) == "string" then
+            helpers.setenv("KONG_LICENSE_DATA", license_env)
+          end
         end)
       end)
 
@@ -1677,6 +1693,7 @@ describe("Configuration loader", function()
         it("does not check SSL cert and key if SSL is off", function()
           local conf, err = conf_loader(nil, {
             portal = "on",
+            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
             portal_gui_listen = "127.0.0.1:123",
             portal_gui_ssl_cert = "/path/cert.pem"
           })
@@ -1685,6 +1702,7 @@ describe("Configuration loader", function()
           -- specific case with 'ssl' in the name
           local conf, err = conf_loader(nil, {
             portal = "on",
+            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
             portal_gui_listen = "ssl:23",
             portal_gui_ssl_cert = "/path/cert.pem"
           })
@@ -1694,6 +1712,7 @@ describe("Configuration loader", function()
         it("requires both portal_gui SSL cert and key", function()
           local conf, err = conf_loader(nil, {
             portal = "on",
+            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
             portal_gui_listen = "127.0.0.1:123 ssl",
             portal_gui_ssl_cert = "/path/cert.pem"
           })
@@ -1702,6 +1721,7 @@ describe("Configuration loader", function()
 
           conf, err = conf_loader(nil, {
             portal = "on",
+            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
             portal_gui_listen = "127.0.0.1:123 ssl",
             portal_gui_ssl_cert_key = "/path/key.pem"
           })
@@ -1710,6 +1730,7 @@ describe("Configuration loader", function()
 
           conf, err = conf_loader(nil, {
             portal = "on",
+            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
             portal_gui_listen = "127.0.0.1:123 ssl",
             portal_gui_ssl_cert = "spec/fixtures/kong_spec.crt",
             portal_gui_ssl_cert_key = "spec/fixtures/kong_spec.key"
@@ -1720,6 +1741,7 @@ describe("Configuration loader", function()
         it("requires SSL cert and key to exist", function()
           local conf, _, errors = conf_loader(nil, {
             portal = "on",
+            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
             portal_gui_listen = "127.0.0.1:123 ssl",
             portal_gui_ssl_cert = "/path/cert.pem",
             portal_gui_ssl_cert_key = "/path/cert_key.pem"
@@ -1731,6 +1753,7 @@ describe("Configuration loader", function()
 
           conf, _, errors = conf_loader(nil, {
             portal = "on",
+            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
             portal_gui_listen = "127.0.0.1:123 ssl",
             portal_gui_ssl_cert = "spec/fixtures/kong_spec.crt",
             portal_gui_ssl_cert_key = "/path/cert_key.pem"
@@ -1740,8 +1763,12 @@ describe("Configuration loader", function()
           assert.is_nil(conf)
         end)
         it("resolves SSL cert/key to absolute path", function()
+          local license_env = os.getenv("KONG_LICENSE_DATA")
+          helpers.setenv("KONG_LICENSE_DATA", pl_file.read("spec-ee/fixtures/mock_license.json"))
+
           local conf, err = conf_loader(nil, {
             portal = "on",
+            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
             portal_gui_listen = "127.0.0.1:123 ssl",
             portal_gui_ssl_cert = "spec/fixtures/kong_spec.crt",
             portal_gui_ssl_cert_key = "spec/fixtures/kong_spec.key"
@@ -1751,6 +1778,10 @@ describe("Configuration loader", function()
           for i = 1, #conf.portal_gui_ssl_cert do
             assert.True(helpers.path.isabs(conf.portal_gui_ssl_cert[i]))
             assert.True(helpers.path.isabs(conf.portal_gui_ssl_cert_key[i]))
+          end
+
+          if type(license_env) == "string" then
+            helpers.setenv("KONG_LICENSE_DATA", license_env)
           end
         end)
       end)

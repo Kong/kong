@@ -121,14 +121,18 @@ end
 for _, strategy in helpers.each_strategy() do
 
 describe("Admin API RBAC with #" .. strategy, function()
-  local bp, db
+  local bp, db, license_env
 
   lazy_setup(function()
     bp, db = helpers.get_db_utils(strategy)
 
+    license_env = os.getenv("KONG_LICENSE_DATA")
+    helpers.setenv("KONG_LICENSE_DATA", pl_file.read("spec-ee/fixtures/mock_license.json"))
+
     assert(helpers.start_kong({
       database = strategy,
       portal = true,
+      portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
       portal_auth = "basic-auth",
       portal_session_conf = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }",
     }))
@@ -173,6 +177,10 @@ describe("Admin API RBAC with #" .. strategy, function()
     end
 
     helpers.stop_kong()
+
+    if type(license_env) == "string" then
+      helpers.setenv("KONG_LICENSE_DATA", license_env)
+    end
   end)
 
   describe("/rbac/users", function()

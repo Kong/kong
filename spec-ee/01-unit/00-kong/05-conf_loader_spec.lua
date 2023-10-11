@@ -91,9 +91,13 @@ describe("Configuration loader - enterprise", function()
     end)
 
     it("#flaky enforces listen addresses format", function()
+      local license_env = os.getenv("KONG_LICENSE_DATA")
+      helpers.setenv("KONG_LICENSE_DATA", pl_file.read("spec-ee/fixtures/mock_license.json"))
+
       local err_str = "must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+] [ipv6only=on] [ipv6only=off] [so_keepalive=on] [so_keepalive=off] [so_keepalive=%w*:%w*:%d*], [... next entry ...]"
       local conf, err = conf_loader(nil, {
         portal = "on",
+        portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
         smtp_mock = "on",
         portal_gui_listen = "127.0.0.1",
         portal_token_exp = 21600,
@@ -103,17 +107,23 @@ describe("Configuration loader - enterprise", function()
 
       conf, err = conf_loader(nil, {
         portal = "on",
+        portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
         smtp_mock = "on",
         portal_api_listen = "127.0.0.1",
         portal_token_exp = 21600,
       })
       assert.is_nil(conf)
       assert.equal("portal_api_listen " .. err_str, err)
+
+      if type(license_env) == "string" then
+        helpers.setenv("KONG_LICENSE_DATA", license_env)
+      end
     end)
 
     it("enforces positive number for portal_token_exp ", function()
       local conf, err = conf_loader(nil, {
         portal = "on",
+        portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
         smtp_mock = "on",
         portal_api_listen = "0.0.0.0:8004, 0.0.0.0:8447 ssl",
         portal_token_exp = 0,
@@ -123,6 +133,7 @@ describe("Configuration loader - enterprise", function()
 
       conf, err = conf_loader(nil, {
         portal = "on",
+        portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
         smtp_mock = "on",
         portal_api_listen = "0.0.0.0:8004, 0.0.0.0:8447 ssl",
         portal_token_exp = "whut",
@@ -132,6 +143,7 @@ describe("Configuration loader - enterprise", function()
 
       conf, err = conf_loader(nil, {
         portal = "on",
+        portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
         smtp_mock = "on",
         portal_api_listen = "0.0.0.0:8004, 0.0.0.0:8447 ssl",
         portal_token_exp = -1,
@@ -141,6 +153,7 @@ describe("Configuration loader - enterprise", function()
 
       conf, err = conf_loader(nil, {
         portal = "on",
+        portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
         smtp_mock = "on",
         portal_api_listen = "0.0.0.0:8004, 0.0.0.0:8447 ssl",
         portal_token_exp = false,
@@ -246,6 +259,7 @@ describe("Configuration loader - enterprise", function()
       assert.is_nil(conf)
       assert.equal("portal_session_conf 'secret' must be type 'string'", err)
     end)
+
 
     it("enforces ssl when pg_iam_auth is enabled", function ()
       local conf = conf_loader(nil, {

@@ -35,7 +35,7 @@ node_id = NONE
 
 enforce_rbac = off
 rbac_auth_header = Kong-Admin-Token
-vitals = on
+vitals = off
 vitals_flush_interval = 10
 vitals_delete_interval_pg = 30
 vitals_ttl_seconds = 3600
@@ -58,6 +58,7 @@ analytics_debug = off
 konnect_mode = off
 
 portal = off
+portal_and_vitals_key =
 portal_is_legacy = off
 portal_gui_listen = 0.0.0.0:8003, 0.0.0.0:8446 ssl
 portal_gui_protocol = http

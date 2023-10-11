@@ -19,7 +19,7 @@ local secrets            = require "kong.enterprise_edition.consumer_reset_secre
 local dao_helpers        = require "kong.portal.dao_helpers"
 local workspace_config = require "kong.portal.workspace_config"
 local kong = kong
-
+local portal_and_vitals_allowed = require "kong.enterprise_edition.license_helpers".portal_and_vitals_allowed
 
 local PORTAL_DEVELOPER_META_FIELDS = constants.WORKSPACE_CONFIG.PORTAL_DEVELOPER_META_FIELDS
 local PORTAL_AUTH = constants.WORKSPACE_CONFIG.PORTAL_AUTH
@@ -1069,7 +1069,7 @@ return {
   ["/vitals/status_codes/by_consumer"] = {
     before = function(self, db, helpers)
       auth.authenticate_api_session(self, db, helpers)
-      if not kong.configuration.vitals then
+      if not kong.configuration.vitals or not portal_and_vitals_allowed() then
         return kong.response.exit(404, { message = "Not found" })
       end
     end,
@@ -1091,7 +1091,7 @@ return {
   ["/vitals/status_codes/by_consumer_and_route"] = {
     before = function(self, db, helpers)
       auth.authenticate_api_session(self, db, helpers)
-      if not kong.configuration.vitals then
+      if not kong.configuration.vitals or not portal_and_vitals_allowed() then
         return kong.response.exit(404, { message = "Not found" })
       end
     end,
@@ -1114,7 +1114,7 @@ return {
   ["/vitals/consumers/cluster"] = {
     before = function(self, db, helpers)
       auth.authenticate_api_session(self, db, helpers)
-      if not kong.configuration.vitals then
+      if not kong.configuration.vitals or not portal_and_vitals_allowed() then
         return kong.response.exit(404, { message = "Not found" })
       end
     end,

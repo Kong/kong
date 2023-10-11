@@ -10,6 +10,7 @@ local pl_stringx = require "pl.stringx"
 local helpers    = require "spec.helpers"
 local utils      = require "kong.tools.utils"
 local ee_helpers = require "spec-ee.helpers"
+local clear_license_env = require("spec-ee.02-integration.04-dev-portal.utils").clear_license_env
 
 
 local PORTAL_SESSION_CONF = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }"
@@ -128,6 +129,7 @@ local function timestamp_to_date(ts)
     return os.date("!%Y-%m-%d", ts)
 end
 
+
 local rbac_mode = {"off", "on"}
 
 for _, strategy in helpers.each_strategy() do
@@ -136,10 +138,16 @@ for _, strategy in helpers.each_strategy() do
       local portal_api_client
       local admin_client
       local _, db, _ = helpers.get_db_utils(strategy)
+      local reset_license_data
+
+      lazy_setup(function()
+        reset_license_data = clear_license_env()
+      end)
 
       lazy_teardown(function()
         helpers.stop_kong()
         assert(db:truncate())
+        reset_license_data()
       end)
 
       describe("/applications", function()
@@ -149,8 +157,10 @@ for _, strategy in helpers.each_strategy() do
 
           assert(helpers.start_kong({
             database   = strategy,
+            license_path = "spec-ee/fixtures/mock_license.json",
             portal_session_conf = PORTAL_SESSION_CONF,
             portal = true,
+            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
             portal_auth = "basic-auth",
             portal_app_auth = "kong-oauth2",
             enforce_rbac = rbac,
@@ -1063,8 +1073,10 @@ for _, strategy in helpers.each_strategy() do
 
           assert(helpers.start_kong({
             database = strategy,
+            license_path = "spec-ee/fixtures/mock_license.json",
             portal_session_conf = PORTAL_SESSION_CONF,
             portal = true,
+            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
             portal_auth = "basic-auth",
             portal_app_auth = "kong-oauth2",
             portal_auto_approve = true,
@@ -1520,8 +1532,10 @@ for _, strategy in helpers.each_strategy() do
 
           assert(helpers.start_kong({
             database = strategy,
+            license_path = "spec-ee/fixtures/mock_license.json",
             portal_session_conf = PORTAL_SESSION_CONF,
             portal = true,
+            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
             portal_auth = "basic-auth",
             portal_app_auth = "kong-oauth2",
             portal_auto_approve = true,
@@ -2031,8 +2045,10 @@ for _, strategy in helpers.each_strategy() do
 
           assert(helpers.start_kong({
             database = strategy,
+            license_path = "spec-ee/fixtures/mock_license.json",
             portal_session_conf = PORTAL_SESSION_CONF,
             portal = true,
+            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
             portal_auth = "basic-auth",
             portal_app_auth = "kong-oauth2",
             portal_auto_approve = true,
@@ -2236,8 +2252,10 @@ for _, strategy in helpers.each_strategy() do
 
           assert(helpers.start_kong({
             database = strategy,
+            license_path = "spec-ee/fixtures/mock_license.json",
             portal_session_conf = PORTAL_SESSION_CONF,
             portal = true,
+            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
             portal_auth = "basic-auth",
             portal_app_auth = "kong-oauth2",
             portal_auto_approve = true,
@@ -2625,8 +2643,10 @@ for _, strategy in helpers.each_strategy() do
 
           assert(helpers.start_kong({
             database = strategy,
+            license_path = "spec-ee/fixtures/mock_license.json",
             portal_session_conf = PORTAL_SESSION_CONF,
             portal = true,
+            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
             portal_auth = "basic-auth",
             portal_app_auth = "kong-oauth2",
             portal_auto_approve = true,
@@ -2925,8 +2945,10 @@ for _, strategy in helpers.each_strategy() do
 
           assert(helpers.start_kong({
             database = strategy,
+            license_path = "spec-ee/fixtures/mock_license.json",
             portal_session_conf = PORTAL_SESSION_CONF,
             portal = true,
+            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
             portal_auth = "basic-auth",
             portal_app_auth = "kong-oauth2",
             portal_auto_approve = true,
