@@ -49,6 +49,9 @@ local table_concat = table.concat
 local string_lower = string.lower
 local string_byte  = string.byte
 
+local req_dyn_hook_run_hooks = req_dyn_hook.run_hooks
+
+
 local DOT   = string_byte(".")
 local COLON = string_byte(":")
 
@@ -138,7 +141,10 @@ local cachelookup = function(qname, qtype)
   local key = qtype..":"..qname
   local cached = dnscache:get(key)
 
-  req_dyn_hook.run_hooks("timing", "dns:cache_lookup", cached ~= nil)
+  local ctx = ngx.ctx
+  if ctx and ctx.is_timing_enabled then
+    req_dyn_hook_run_hooks(ctx, "timing", "dns:cache_lookup", cached ~= nil)
+  end
 
   if cached then
     cached.touch = now
