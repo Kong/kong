@@ -104,10 +104,7 @@ local __direct_mt = {
 -- @param nrec (optional) pre allocated hash elements
 -- @return The newly created table with request-aware access
 local function new(narr, nrec)
-  if not narr then narr = 0 end
-  if not nrec then nrec = 0 end
-
-  local data = table_new(narr, nrec)
+  local data = table_new(narr or 0, nrec or 0)
 
   -- return table without proxy when debug_mode is disabled
   if not debug_mode then
