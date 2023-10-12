@@ -13,10 +13,8 @@ local tablex  = require "pl.tablex"
 
 local version = require "version"
 local helpers = require "spec.helpers"
+local split   = require("kong.tools.utils").split
 
-
-local sub               = string.sub
-local find              = string.find
 
 local PLUGIN_NAME        = "saml"
 local USERNAME           = "samluser1"
@@ -38,25 +36,31 @@ local REDIS_PASSWORD     = "secret"
 local MEMCACHED_HOST     = "memcached"
 
 
-local function extract_cookie(cookies)
-  local client_session
-  local client_session_header_table = {}
-  -- extract session cookies
-  for i, cookie in ipairs(cookies) do
-    client_session = sub(cookie, 0, find(cookie, ";") -1)
-    -- making session cookie invalid
-    client_session = client_session .. "invalid"
-    client_session_header_table[i] = client_session
-  end
-  return client_session_header_table
-end
+-- Updates the cookie stored in `current_cookies` (k-v pairs) in-place
+-- according to the Set-Cookie header `set_cookie_headers`
+-- and return an array of cookies that is consumable by lua-resty-http
+local function extract_and_update_cookies(current_cookies, set_cookie_headers)
+  local function make_cookie_str(coo)
+    local ret = {}
+    for k, v in pairs(coo) do
+      table.insert(ret, k .. "=" .. v)
+    end
 
-
-local function re_first_group(text, re)
-  local match = ngx.re.match(text, re)
-  if match then
-    return match[1]
+    return ret
   end
+
+  current_cookies = current_cookies or {}
+  if not set_cookie_headers then
+    return make_cookie_str(current_cookies)
+  end
+
+  for i, cookie in ipairs(set_cookie_headers) do
+    cookie = unpack(split(cookie, ";"))
+    local key, value = unpack(split(cookie, "="))
+    current_cookies[key] = value
+  end
+
+  return make_cookie_str(current_cookies)
 end
 
 
@@ -92,21 +96,31 @@ local function remove_redis_user(redis, redis_version)
 end
 
 
-local ENTITIES = {
-  lt = "<",
-  gt = ">",
-  amp = "&",
-  quot = '"',
-  apos = "'",
-}
+local extract_from_html
 
-local function decode_html_entities(string)
-  return ngx.re.gsub(string, "&([a-z]+);", function(match) return ENTITIES[match[1]] or "" end)
-end
+do
+  local function re_first_group(text, re)
+    local match = ngx.re.match(text, re)
+    if match then
+      return match[1]
+    end
+  end
 
+  local ENTITIES = {
+    lt = "<",
+    gt = ">",
+    amp = "&",
+    quot = '"',
+    apos = "'",
+  }
+  
+  local function decode_html_entities(string)
+    return ngx.re.gsub(string, "&([a-z]+);", function(match) return ENTITIES[match[1]] or "" end)
+  end
 
-local function extract_from_html(html, re)
-  return decode_html_entities(re_first_group(html, re))
+  extract_from_html = function(html, re)
+    return decode_html_entities(re_first_group(html, re))
+  end
 end
 
 
@@ -141,12 +155,14 @@ local function sp_init_flow(res, username, password)
   assert.is_nil(err)
   assert.equal(302, login_page.status)
 
+  local cookies = {}
+
   -- after sending login data to the login action page, expect a redirect
   local upstream_url = login_page.headers["Location"]
   local login_page_redirect, err = client:request_uri(upstream_url, {
       headers = {
         -- send session cookie
-        Cookie = extract_cookie(login_page.headers["Set-Cookie"])
+        Cookie = extract_and_update_cookies(cookies, login_page.headers["Set-Cookie"])
       }
   })
   assert.is_nil(err)
@@ -163,7 +179,7 @@ local function sp_init_flow(res, username, password)
         -- due to form_data
         ["Content-Type"] = "application/x-www-form-urlencoded",
         -- send session cookie
-        Cookie = extract_cookie(login_page_redirect.headers["Set-Cookie"])
+        Cookie = extract_and_update_cookies(cookies, login_page.headers["Set-Cookie"])
       },
       body = "username=" .. username .. "&password=" .. password,
   })
