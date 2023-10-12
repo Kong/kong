@@ -30,6 +30,7 @@ describe("[AWS Lambda] aws-gateway input", function()
 
 
     -- make sure to reload the module
+    package.loaded["kong.tracing.request_id"] = nil
     package.loaded["kong.plugins.aws-lambda.request-util"] = nil
     aws_serialize = require "kong.plugins.aws-lambda.request-util".aws_serializer
   end)
