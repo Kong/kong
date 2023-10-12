@@ -3,7 +3,7 @@
 
 local table_new = require("table.new")
 local table_clear = require("table.clear")
-local get_request_id = require("tracing.request_id").get
+local get_request_id = require("kong.tracing.request_id").get
 
 local is_not_debug_mode = (kong.configuration.log_level ~= "debug")
 
