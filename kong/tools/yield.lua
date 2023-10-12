@@ -1,5 +1,6 @@
 local _M = {}
 
+
 ---
 -- Check if the phase is yieldable.
 -- @tparam string phase the phase to check, if not specified then
@@ -23,25 +24,24 @@ do
   }
 
   in_yieldable_phase = function(phase)
-    if LUA_CONTEXT_YIELDABLE_PHASE[phase or get_phase()] == nil then
-      return false
-    end
-    return true
+    return LUA_CONTEXT_YIELDABLE_PHASE[phase or get_phase()] ~= nil
   end
 end
-
 _M.in_yieldable_phase = in_yieldable_phase
 
+
+local yield
 do
   local ngx_sleep = _G.native_ngx_sleep or ngx.sleep
 
   local YIELD_ITERATIONS = 1000
   local counter = YIELD_ITERATIONS
 
-  function _M.yield(in_loop, phase)
+  yield = function(in_loop, phase)
     if ngx.IS_CLI or not in_yieldable_phase(phase) then
       return
     end
+
     if in_loop then
       counter = counter - 1
       if counter > 0 then
@@ -49,9 +49,11 @@ do
       end
       counter = YIELD_ITERATIONS
     end
-    ngx_sleep(0)
+
+    ngx_sleep(0)  -- yield
   end
 end
+_M.yield = yield
 
 
 return _M
