@@ -1,0 +1,3 @@
+message: "**Rate Limiting Advanced:** to use the new Plugin:configure for building namespaces without looping through all the plugins"
+type: performance
+scope: Plugin
