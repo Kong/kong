@@ -58,6 +58,7 @@ log_format kong_log_format '$remote_addr - $remote_user [$time_local] '
 
 # Load variable indexes
 lua_kong_load_var_index default;
+lua_kong_load_var_index $request_id;
 
 upstream kong_upstream {
     server 0.0.0.1;
