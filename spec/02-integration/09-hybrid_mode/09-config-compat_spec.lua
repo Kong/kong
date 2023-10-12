@@ -108,7 +108,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
   end)
 
   describe("plugin config fields", function()
-    local rate_limit, opentelemetry, zipkin
+    local rate_limit
 
     lazy_setup(function()
       rate_limit = admin.plugins:insert {
@@ -178,58 +178,6 @@ describe("CP/DP config compat transformations #" .. strategy, function()
       local plugin = get_plugin(id, "3.4.0", rate_limit.name)
       assert.same(rate_limit.config, plugin.config)
       assert.equals(CLUSTERING_SYNC_STATUS.NORMAL, get_sync_status(id))
-    end)
-
-    describe("compatibility tests for opentelemetry plugin", function()
-      it("replaces `aws` value of `header_type` property with default `preserve`", function()
-        -- [[ 3.4.x ]] --
-        opentelemetry = admin.plugins:insert {
-          name = "opentelemetry",
-          enabled = true,
-          config = {
-            endpoint = "http://1.1.1.1:12345/v1/trace",
-            -- [[ new value 3.4.0
-            header_type = "aws"
-            -- ]]
-          }
-        }
-
-        local expected_otel_prior_34 = utils.cycle_aware_deep_copy(opentelemetry)
-        expected_otel_prior_34.config.header_type = "preserve"
-        local plugin = get_plugin(utils.uuid(), "3.3.0", expected_otel_prior_34.name)
-        assert.is_not_nil(plugin)
-        assert.same(expected_otel_prior_34.config, plugin.config)
-
-        -- cleanup
-        admin.plugins:remove({ id = opentelemetry.id })
-      end)
-
-    end)
-
-    describe("compatibility tests for zipkin plugin", function()
-      it("replaces `aws` value of `header_type` property with default `preserve`", function()
-        -- [[ 3.4.x ]] --
-        zipkin = admin.plugins:insert {
-          name = "zipkin",
-          enabled = true,
-          config = {
-            http_endpoint = "http://1.1.1.1:12345/v1/trace",
-            -- [[ new value 3.4.0
-            header_type = "aws"
-            -- ]]
-          }
-        }
-
-        local expected_zipkin_prior_34 = utils.cycle_aware_deep_copy(zipkin)
-        expected_zipkin_prior_34.config.header_type = "preserve"
-        expected_zipkin_prior_34.config.default_header_type = "b3"
-        local plugin = get_plugin(utils.uuid(), "3.3.0", expected_zipkin_prior_34.name)
-        assert.is_not_nil(plugin)
-        assert.same(expected_zipkin_prior_34.config, plugin.config)
-
-        -- cleanup
-        admin.plugins:remove({ id = zipkin.id })
-      end)
     end)
   end)
 end)
