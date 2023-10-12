@@ -157,6 +157,84 @@ for _, strategy in helpers.each_strategy() do
           close_clients(portal_api_client)
         end)
 
+        describe("portal_and_vitals_key: missing", function()
+          lazy_setup(function()
+            assert(helpers.start_kong({
+              database   = strategy,
+              portal     = "on",
+              -- portal_and_vitals_key is missing
+              enforce_rbac = rbac,
+              license_path = "spec-ee/fixtures/mock_license.json",
+              portal_cors_origins = "http://foo.example"
+            }))
+          end)
+
+          lazy_teardown(function()
+            helpers.stop_kong()
+          end)
+
+          it("/auth should respond with 404", function()
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/auth",
+            })
+
+            assert.res_status(404, res)
+          end)
+        end)
+
+        describe("portal_and_vitals_key: invalid", function()
+          lazy_setup(function()
+            assert(helpers.start_kong({
+              database   = strategy,
+              portal     = "on",
+              portal_and_vitals_key = "i_am_an_invalid_key",
+              enforce_rbac = rbac,
+              license_path = "spec-ee/fixtures/mock_license.json",
+              portal_cors_origins = "http://foo.example"
+            }))
+          end)
+
+          lazy_teardown(function()
+            helpers.stop_kong()
+          end)
+
+          it("/auth should respond with 404", function()
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/auth",
+            })
+
+            assert.res_status(404, res)
+          end)
+        end)
+
+        describe("portal_and_vitals_key: valid", function()
+          lazy_setup(function()
+            assert(helpers.start_kong({
+              database   = strategy,
+              portal     = "on",
+              portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
+              enforce_rbac = rbac,
+              license_path = "spec-ee/fixtures/mock_license.json",
+              portal_cors_origins = "http://foo.example"
+            }))
+          end)
+
+          lazy_teardown(function()
+            helpers.stop_kong()
+          end)
+
+          it("/auth should respond with 401", function()
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/auth",
+            })
+
+            assert.res_status(401, res)
+          end)
+        end)
+
         describe("single portal_cors_origins", function()
           lazy_setup(function()
             assert(helpers.start_kong({

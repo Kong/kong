@@ -2054,11 +2054,8 @@ end
 function Kong.serve_portal_api()
   ngx.ctx.KONG_PHASE = PHASES.admin_api
 
-  if not license_helpers.portal_and_vitals_allowed() then
-    return
-  end
-
-  return lapis.serve("kong.portal")
+  local portal = require("kong.portal")
+  return lapis.serve(portal)
 end
 
 function Kong.serve_portal_gui()
