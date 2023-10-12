@@ -12,7 +12,6 @@ local error        = error
 local rawset       = rawset
 local setmetatable = setmetatable
 local get_phase    = ngx.get_phase
-local var          = ngx.var
 
 
 local NGX_VAR_PHASES = {
