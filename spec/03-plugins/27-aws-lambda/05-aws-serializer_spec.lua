@@ -7,6 +7,15 @@ describe("[AWS Lambda] aws-gateway input", function()
   local old_ngx
   local aws_serialize
 
+
+  local function reload_module()
+    -- make sure to reload the module
+    package.loaded["kong.tracing.request_id"] = nil
+    package.loaded["kong.plugins.aws-lambda.request-util"] = nil
+    aws_serialize = require "kong.plugins.aws-lambda.request-util".aws_serializer
+  end
+
+
   setup(function()
     old_ngx = ngx
     local body_data
@@ -30,12 +39,6 @@ describe("[AWS Lambda] aws-gateway input", function()
         return mock_request and mock_request[key]
       end,
     })
-
-
-    -- make sure to reload the module
-    package.loaded["kong.tracing.request_id"] = nil
-    package.loaded["kong.plugins.aws-lambda.request-util"] = nil
-    aws_serialize = require "kong.plugins.aws-lambda.request-util".aws_serializer
   end)
 
   teardown(function()
@@ -79,6 +82,8 @@ describe("[AWS Lambda] aws-gateway input", function()
         },
       },
     }
+
+    reload_module()
 
     local out = aws_serialize()
 
@@ -154,6 +159,8 @@ describe("[AWS Lambda] aws-gateway input", function()
         },
       },
     }
+
+    reload_module()
 
     local out = aws_serialize()
 
@@ -249,6 +256,8 @@ describe("[AWS Lambda] aws-gateway input", function()
             },
           },
         }
+
+        reload_module()
 
         local out = aws_serialize()
 
