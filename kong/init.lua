@@ -113,6 +113,7 @@ local admin_emails = require "kong.enterprise_edition.admin.emails"
 local portal_router = require "kong.portal.router"
 local invoke_plugin = require "kong.enterprise_edition.invoke_plugin"
 local licensing = require "kong.enterprise_edition.licensing"
+local license_helpers = require("kong.enterprise_edition.license_helpers")
 
 
 local kong             = kong
@@ -2052,6 +2053,11 @@ end
 
 function Kong.serve_portal_api()
   ngx.ctx.KONG_PHASE = PHASES.admin_api
+
+  if not license_helpers.portal_and_vitals_allowed() then
+    return
+  end
+
   return lapis.serve("kong.portal")
 end
 
