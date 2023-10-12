@@ -63,8 +63,17 @@ local function wait_for_spans(zipkin_client, number_of_spans, remoteServiceName,
   local spans = {}
   helpers.wait_until(function()
     if trace_id then
-      local res = assert(zipkin_client:get("/api/v2/trace/" .. trace_id))
-      spans = cjson.decode(assert.response(res).has.status(200))
+      local res, err = zipkin_client:get("/api/v2/trace/" .. trace_id)
+      if err then
+        return false, err
+      end
+
+      local body = res:read_body()
+      if res.status ~= 200 then
+        return false
+      end
+
+      spans = cjson.decode(body)
       return #spans == number_of_spans
     end
 
@@ -75,7 +84,12 @@ local function wait_for_spans(zipkin_client, number_of_spans, remoteServiceName,
       }
     })
 
-    local all_spans = cjson.decode(assert.response(res).has.status(200))
+    local body = res:read_body()
+    if res.status ~= 200 then
+      return false
+    end
+
+    local all_spans = cjson.decode(body)
     if #all_spans > 0 then
       spans = all_spans[1]
       return #spans == number_of_spans
