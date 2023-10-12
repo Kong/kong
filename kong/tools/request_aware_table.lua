@@ -4,7 +4,9 @@
 local table_new = require "table.new"
 local table_clear = require "table.clear"
 
-local debug_mode   = (kong.configuration.log_level == "debug")
+local is_not_debug_mode = (kong.configuration.log_level ~= "debug")
+
+
 local error        = error
 local rawset       = rawset
 local setmetatable = setmetatable
@@ -48,7 +50,7 @@ end
 
 
 local function clear_table(self)
-  if not debug_mode then
+  if is_not_debug_mode then
     table_clear(self)
     return
   end
@@ -107,7 +109,7 @@ local function new(narr, nrec)
   local data = table_new(narr or 0, nrec or 0)
 
   -- return table without proxy when debug_mode is disabled
-  if not debug_mode then
+  if is_not_debug_mode then
     return setmetatable(data, __direct_mt)
   end
 
