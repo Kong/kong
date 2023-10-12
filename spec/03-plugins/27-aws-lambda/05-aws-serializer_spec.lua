@@ -20,6 +20,9 @@ describe("[AWS Lambda] aws-gateway input", function()
         start_time = function() return mock_request.start_time end,
       },
       log = function() end,
+      get_phase = function() -- luacheck: ignore
+        return "access"
+      end,
       encode_base64 = old_ngx.encode_base64
     }, {
       -- look up any unknown key in the mock request, eg. .var and .ctx tables
