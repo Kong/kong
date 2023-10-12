@@ -60,7 +60,7 @@ describe("[AWS Lambda] aws-gateway input", function()
       var = {
         request_method = "GET",
         upstream_uri = "/123/strip/more?boolean=;multi-query=first;single-query=hello%20world;multi-query=second",
-        request_id = "1234567890",
+        kong_request_id = "1234567890",
         host = "abc.myhost.com",
         remote_addr = "123.123.123.123"
       },
