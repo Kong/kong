@@ -58,7 +58,6 @@ log_format kong_log_format '$remote_addr - $remote_user [$time_local] '
 
 # Load variable indexes
 lua_kong_load_var_index default;
-lua_kong_load_var_index $request_id;
 lua_kong_load_var_index $http_x_kong_request_debug;
 lua_kong_load_var_index $http_x_kong_request_debug_token;
 lua_kong_load_var_index $http_x_kong_request_debug_log;
