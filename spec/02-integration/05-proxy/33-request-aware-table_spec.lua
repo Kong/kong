@@ -98,7 +98,7 @@ for _, log_level in ipairs(LOG_LEVELS) do
         -- access from request 2
         r = client:get("/")
         if concurrency_checks then
-          assert.logfile().has.line("race condition detected", true)
+          assert.logfile().has.line("concurrent access from different request to shared table detected", true)
         else
           assert.response(r).has.status(200)
         end

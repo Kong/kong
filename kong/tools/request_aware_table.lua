@@ -4,7 +4,7 @@
 local table_new = require "table.new"
 local table_clear = require "table.clear"
 
-local debug_mode   = kong.configuration.log_level == "debug"
+local debug_mode   = (kong.configuration.log_level == "debug")
 local error        = error
 local rawset       = rawset
 local setmetatable = setmetatable
@@ -42,13 +42,13 @@ local function enforce_sequential_access(table)
   end
 
   if curr_request_id ~= table[ALLOWED_REQUEST_ID_K] then
-    error("race condition detected; access to table forbidden", 2)
+    error("concurrent access from different request to shared table detected", 2)
   end
 end
 
 
 local function clear_table(self)
-  if debug_mode == false then
+  if not debug_mode then
     table_clear(self)
     return
   end
@@ -110,7 +110,7 @@ local function new(narr, nrec)
   local data = table_new(narr, nrec)
 
   -- return table without proxy when debug_mode is disabled
-  if debug_mode == false then
+  if not debug_mode then
     return setmetatable(data, __direct_mt)
   end
 
