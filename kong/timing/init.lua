@@ -1,14 +1,15 @@
-local context         = require("kong.timing.context")
-local cjson           = require("cjson.safe")
-local req_dyn_hook    = require("kong.dynamic_hook")
-local constants       = require("kong.constants")
+local context             = require("kong.timing.context")
+local cjson               = require("cjson.safe")
+local req_dyn_hook        = require("kong.dynamic_hook")
+local constants           = require("kong.constants")
 
-local ngx             = ngx
-local ngx_var         = ngx.var
+local ngx                 = ngx
+local ngx_var             = ngx.var
+local ngx_req_set_header  = ngx.req.set_header
 
-local string_format   = string.format
+local string_format       = string.format
 
-local request_id_get  = require("kong.tracing.request_id").get
+local request_id_get      = require("kong.tracing.request_id").get
 
 local FILTER_ALL_PHASES = {
   ssl_cert      = nil,    -- NYI
@@ -67,9 +68,17 @@ function _M.auth()
   local http_x_kong_request_debug_token = ngx_var.http_x_kong_request_debug_token
   local http_x_kong_request_debug_log = ngx_var.http_x_kong_request_debug_log
 
-  ngx.req.set_header("X-Kong-Request-Debug", nil)
-  ngx.req.set_header("X-Kong-Request-Debug-Token", nil)
-  ngx.req.set_header("X-Kong-Request-Debug-Log", nil)
+  if http_x_kong_request_debug then
+    ngx_req_set_header("X-Kong-Request-Debug", nil)
+  end
+
+  if http_x_kong_request_debug_token then
+    ngx_req_set_header("X-Kong-Request-Debug-Token", nil)
+  end
+
+  if http_x_kong_request_debug_log then
+    ngx_req_set_header("X-Kong-Request-Debug-Log", nil)
+  end
 
   if http_x_kong_request_debug == nil or
      http_x_kong_request_debug ~= "*"
