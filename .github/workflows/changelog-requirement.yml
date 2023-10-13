@@ -46,7 +46,7 @@ jobs:
           echo "Bad file(s): ${{ steps.changelog-list.outputs.upper_case_all_changed_files }}"
           exit 1
 
-      - name: Check incorrect case for changelog directory
+      - name: Check numbered filename for changelog entry
         if: steps.changelog-list.outputs.numbered_any_changed == 'true'
         run: |
           echo "Please use short descriptive name for changelog files instead of numbers."
