@@ -51,6 +51,10 @@ genrule(
     echo "$$flags" >$@
 
     """.format(luajit_version = LUAJIT_VERSION),
+    # make sure to include `toolchain` so that this rule executes in target configuration
+    toolchains = [
+        "@bazel_tools//tools/cpp:current_cc_toolchain",
+    ],
 )
 
 rpath_flags = "-Wl,-rpath,%s/kong/lib -Wl,-rpath,%s/openresty/lualib" % (
@@ -75,7 +79,7 @@ make(
         "//conditions:default": [
         ],
     }),
-    build_data = [
+    data = [
         ":luajit_xcflags",
     ],
     lib_source = ":luajit_srcs",
