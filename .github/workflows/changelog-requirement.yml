@@ -23,16 +23,16 @@ jobs:
         id: changelog-list
         uses: tj-actions/changed-files@db153baf731265ad02cd490b07f470e2d55e3345 # v37
         with:
-          all_yml: |
-          changelogs:
-            - 'changelog/unreleased/**/*.yml'
-          upper_case:
-            - 'CHANGELOG/**'
-          numbered:
-            - 'CHANGELOG/unreleased/**/[0-9]+.yml'
+          files_yaml: |
+            changelogs:
+              - 'changelog/unreleased/**/*.yml'
+            upper_case:
+              - 'CHANGELOG/**'
+            numbered:
+              - 'CHANGELOG/unreleased/**/[0-9]+.yml'
 
       - name: Check changelog existence
-        if: steps.changelog-list.outputs.all_yml_any_changed == 'true'
+        if: steps.changelog-list.outputs.changelogs_any_changed == 'false'
         run: >
           echo "Changelog file expected but found none. If you believe this PR requires no changelog entry, attach the \"skip-changelog\" tag to the PR."
           echo "Refer to https://github.com/Kong/gateway-changelog for format guidelines."
@@ -56,11 +56,10 @@ jobs:
           exit 1
 
       - name: Check deprecated YAML keys
-        if: steps.changelog-list.outputs.all_yml_any_changed == 'true'
         run: >
-          for file in ${{ steps.changelog-list.outputs.all_yml_all_changed_files }}; do
+          for file in ${{ steps.changelog-list.outputs.changelogs_all_changed_files }}; do
             if grep -q "prs:" $file || grep -q "jiras:" $file; then
-              echo "Please do not include prs or jiras keys in new changelogs, put the JIRA number inside commit message and PR description instead."
+              echo "Please do not include \"prs\" or \"jiras\" keys in new changelogs, put the JIRA number inside commit message and PR description instead."
               echo "Refer to https://github.com/Kong/gateway-changelog for format guidelines."
               echo "Bad file: $file"
               exit 1
