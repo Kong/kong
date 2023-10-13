@@ -918,14 +918,14 @@ local function new_log(namespace, format)
     if not buf then
       error(err, 2)
     end
-    
+
     for log_lvl_name, log_lvl in pairs(_LEVELS) do
-            self[log_lvl_name] = gen_log_func(log_lvl, buf)
+      self[log_lvl_name] = gen_log_func(log_lvl, buf)
     end
 
     self.deprecation = new_deprecation(gen_log_func(_LEVELS.warn, buf, nil, 5))
   end
-  
+
   self.set_format(format)
 
   self.inspect = new_inspect(namespace)

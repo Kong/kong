@@ -20,7 +20,7 @@ describe("kong.log.serialize", function()
           },
         },
         var = {
-          request_id = "1234",
+          kong_request_id = "1234",
           request_uri = "/request_uri",
           upstream_uri = "/upstream_uri",
           scheme = "http",
