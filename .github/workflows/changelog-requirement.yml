@@ -34,7 +34,7 @@ jobs:
       - name: Check changelog existence
         if: steps.changelog-list.outputs.changelogs_any_changed == 'false'
         run: >
-          echo "Changelog file expected but found none. If you believe this PR requires no changelog entry, attach the \"skip-changelog\" tag to the PR."
+          echo "Changelog file expected but found none. If you believe this PR requires no changelog entry, label it with \"skip-changelog\"."
           echo "Refer to https://github.com/Kong/gateway-changelog for format guidelines."
           exit 1
 
