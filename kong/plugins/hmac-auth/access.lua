@@ -276,6 +276,10 @@ local function set_consumer(consumer, credential)
   end
 end
 
+local function unauthorized(message)
+  return { status = 401, message = message, headers = { ["WWW-Authenticate"] = 'hmac' } }
+end
+
 
 local function do_authentication(conf)
   local authorization = kong_request.get_header(AUTHORIZATION)
@@ -283,17 +287,16 @@ local function do_authentication(conf)
 
   -- If both headers are missing, return 401
   if not (authorization or proxy_authorization) then
-    return false, { status = 401, message = "Unauthorized" }
+    return false, unauthorized("Unauthorized")
   end
 
   -- validate clock skew
   if not (validate_clock_skew(X_DATE, conf.clock_skew) or
           validate_clock_skew(DATE, conf.clock_skew)) then
-    return false, {
-      status = 401,
-      message = "HMAC signature cannot be verified, a valid date or " ..
-                "x-date header is required for HMAC Authentication"
-    }
+    return false, unauthorized(
+      "HMAC signature cannot be verified, a valid date or " ..
+      "x-date header is required for HMAC Authentication"
+    )
   end
 
   -- retrieve hmac parameter from Proxy-Authorization header
@@ -313,26 +316,26 @@ local function do_authentication(conf)
   local ok, err = validate_params(hmac_params, conf)
   if not ok then
     kong.log.debug(err)
-    return false, { status = 401, message = SIGNATURE_NOT_VALID }
+    return false, unauthorized(SIGNATURE_NOT_VALID)
   end
 
   -- validate signature
   local credential = load_credential(hmac_params.username)
   if not credential then
     kong.log.debug("failed to retrieve credential for ", hmac_params.username)
-    return false, { status = 401, message = SIGNATURE_NOT_VALID }
+    return false, unauthorized(SIGNATURE_NOT_VALID)
   end
 
   hmac_params.secret = credential.secret
 
   if not validate_signature(hmac_params) then
-    return false, { status = 401, message = SIGNATURE_NOT_SAME }
+    return false, unauthorized(SIGNATURE_NOT_SAME)
   end
 
   -- If request body validation is enabled, then verify digest.
   if conf.validate_request_body and not validate_body() then
     kong.log.debug("digest validation failed")
-    return false, { status = 401, message = SIGNATURE_NOT_SAME }
+    return false, unauthorized(SIGNATURE_NOT_SAME)
   end
 
   -- Retrieve consumer

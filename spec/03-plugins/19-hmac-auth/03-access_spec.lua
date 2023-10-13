@@ -3,6 +3,7 @@ local openssl_hmac = require "resty.openssl.hmac"
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 local resty_sha256 = require "resty.sha256"
+local meta = require "kong.meta"
 
 local fmt = string.format
 
@@ -188,6 +189,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         body = cjson.decode(body)
         assert.equal("Unauthorized", body.message)
+        assert.equal('hmac', res.headers["WWW-Authenticate"])
       end)
 
       it("rejects gRPC call without credentials", function()
@@ -213,6 +215,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         body = cjson.decode(body)
         assert.equal(SIGNATURE_NOT_VALID, body.message)
+        assert.equal('hmac', res.headers["WWW-Authenticate"])
       end)
 
       it("should not be authorized when the HMAC signature is not properly base64 encoded", function()
@@ -230,6 +233,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         body = cjson.decode(body)
         assert.equal("HMAC signature does not match", body.message)
+        assert.equal('hmac', res.headers["WWW-Authenticate"])
       end)
 
       it("should not be authorized when date header is missing", function()
@@ -246,6 +250,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal([[HMAC signature cannot be verified, ]]
                     .. [[a valid date or x-date header is]]
                     .. [[ required for HMAC Authentication]], body.message)
+        assert.equal('hmac', res.headers["WWW-Authenticate"])
       end)
 
       it("should not be authorized with signature is wrong in proxy-authorization", function()
@@ -312,6 +317,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         body = cjson.decode(body)
         assert.equal(SIGNATURE_NOT_VALID, body.message)
+        assert.equal('hmac', res.headers["WWW-Authenticate"])
       end)
 
       it("should not be authorized when passing only the username", function()
@@ -328,6 +334,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         body = cjson.decode(body)
         assert.equal(SIGNATURE_NOT_VALID, body.message)
+        assert.equal('hmac', res.headers["WWW-Authenticate"])
       end)
 
       it("should not be authorized when authorization header is missing", function()
@@ -343,6 +350,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         body = cjson.decode(body)
         assert.equal("Unauthorized", body.message)
+        assert.equal('hmac', res.headers["WWW-Authenticate"])
       end)
 
       it("should not pass with username missing", function()
@@ -364,6 +372,7 @@ for _, strategy in helpers.each_strategy() do
         body = cjson.decode(body)
         assert.not_nil(body.message)
         assert.matches("HMAC signature cannot be verified", body.message)
+        assert.equal('hmac', res.headers["WWW-Authenticate"])
       end)
 
       it("should not pass with signature missing", function()
@@ -384,6 +393,7 @@ for _, strategy in helpers.each_strategy() do
         body = cjson.decode(body)
         assert.not_nil(body.message)
         assert.matches("HMAC signature cannot be verified", body.message)
+        assert.equal('hmac', res.headers["WWW-Authenticate"])
       end)
 
       it("should pass with GET", function()
@@ -1073,6 +1083,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         body = cjson.decode(body)
         assert.equal("HMAC signature does not match", body.message)
+        assert.equal('hmac', res.headers["WWW-Authenticate"])
       end)
 
       it("should return 200 when body validation enabled and no body and no digest header is present", function()
@@ -1255,6 +1266,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         body = cjson.decode(body)
         assert.equal("HMAC signature does not match", body.message)
+        assert.equal('hmac', res.headers["WWW-Authenticate"])
       end)
 
       it("should not pass with POST when body validation enabled and postBody is tampered", function()
@@ -1282,6 +1294,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         body = cjson.decode(body)
         assert.equal("HMAC signature does not match", body.message)
+        assert.equal('hmac', res.headers["WWW-Authenticate"])
       end)
 
       it("should not pass with POST when body validation enabled and digest header is tampered", function()
@@ -1309,6 +1322,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         body = cjson.decode(body)
         assert.equal("HMAC signature does not match", body.message)
+        assert.equal('hmac', res.headers["WWW-Authenticate"])
       end)
 
       it("should pass with GET with request-line", function()
@@ -1831,6 +1845,7 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         assert.response(res).has.status(401)
+        assert.equal('hmac', res.headers["WWW-Authenticate"])
       end)
 
       it("fails 401, with only the second credential provided", function()
@@ -1844,6 +1859,7 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         assert.response(res).has.status(401)
+        assert.equal('Key realm="' .. meta._NAME .. '"', res.headers["WWW-Authenticate"])
       end)
 
       it("fails 401, with no credential provided", function()
