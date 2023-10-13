@@ -7,6 +7,7 @@ on:
       - 'kong/**'
       - '**.rockspec'
       - '.requirements'
+      - 'changelog/**'
 
 jobs:
   require-changelog:
@@ -18,15 +19,50 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: computes changed files
-        id: changelog-check
+      - name: Find changelog files
+        id: changelog-list
         uses: tj-actions/changed-files@db153baf731265ad02cd490b07f470e2d55e3345 # v37
         with:
-          files: 'changelog/unreleased/**/*.yml'
+          all_yml: |
+          changelogs:
+            - 'changelog/unreleased/**/*.yml'
+          upper_case:
+            - 'CHANGELOG/**'
+          numbered:
+            - 'CHANGELOG/unreleased/**/[0-9]+.yml'
 
-      - name: asserts changelog added
+      - name: Check changelog existence
+        if: steps.changelog-list.outputs.all_yml_any_changed == 'true'
         run: >
-          if [ "${{ steps.changelog-check.outputs.all_changed_and_modified_files_count }}" = "0" ]; then
-            echo "Should contain at least one changelog file in changelog/unreleased/*/ directory"
-            exit 1
-          fi
+          echo "Changelog file expected but found none. If you believe this PR requires no changelog entry, attach the \"skip-changelog\" tag to the PR."
+          echo "Refer to https://github.com/Kong/gateway-changelog for format guidelines."
+          exit 1
+
+      - name: Check incorrect case for changelog directory
+        if: steps.changelog-list.outputs.upper_case_any_changed == 'true'
+        run: |
+          echo "Please use \"changelog\" (all lowercase) for changelog modifications."
+          echo "Refer to https://github.com/Kong/gateway-changelog for format guidelines."
+          echo "Bad file(s): ${{ steps.changelog-list.outputs.upper_case_all_changed_files }}"
+          exit 1
+
+      - name: Check incorrect case for changelog directory
+        if: steps.changelog-list.outputs.numbered_any_changed == 'true'
+        run: |
+          echo "Please use short descriptive name for changelog files instead of numbers."
+          echo "E.g. bump_openresty.yml instead of 12345.yml."
+          echo "Refer to https://github.com/Kong/gateway-changelog for format guidelines."
+          echo "Bad file(s): ${{ steps.changelog-list.outputs.numbered_all_changed_files }}"
+          exit 1
+
+      - name: Check deprecated YAML keys
+        if: steps.changelog-list.outputs.all_yml_any_changed == 'true'
+        run: >
+          for file in ${{ steps.changelog-list.outputs.all_yml_all_changed_files }}; do
+            if grep -q "prs:" $file || grep -q "jiras:" $file; then
+              echo "Please do not include prs or jiras keys in new changelogs, put the JIRA number inside commit message and PR description instead."
+              echo "Refer to https://github.com/Kong/gateway-changelog for format guidelines."
+              echo "Bad file: $file"
+              exit 1
+            fi
+          done
