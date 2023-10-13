@@ -2,12 +2,13 @@ load("//build:build_system.bzl", "kong_rules_group")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 
 genrule(
-    name = "luarocks_install_ee_plugin_dependencies",
+    name = "luarocks_install_ee_plugins",
     srcs = [
         "@luarocks//:luarocks_exec",
         "@luarocks//:luarocks_make",  # don't let them run concurrently
+        "@kong//:plugins_ee_rockspec_srcs",
     ],
-    outs = ["luarocks_install_ee_plugin_dependencies.log"],
+    outs = ["luarocks_install_ee_plugins.log"],
     cmd = """
         touch $@.tmp
 
@@ -19,26 +20,6 @@ genrule(
             popd >> $$cwd/$@.tmp
         done
 
-        # only generate the output when the command succeeds
-        mv $@.tmp $@
-    """,
-    message = "Luarocks: Install EE plugins' dependencies",
-    visibility = ["//visibility:public"],
-)
-
-genrule(
-    name = "luarocks_install_ee_plugins",
-    srcs = [
-        "@luarocks//:luarocks_exec",
-        "@luarocks//:luarocks_make",  # don't let them run concurrently
-        "@kong//:plugins_ee_rockspec_srcs",
-        "//build/ee:luarocks_install_ee_plugin_dependencies",
-    ],
-    outs = ["luarocks_install_ee_plugins.log"],
-    cmd = """
-        touch $@.tmp
-
-        cwd=$$(pwd)
         for plugin_ee in plugins-ee/*; do
             if [ -d "$$plugin_ee" ]; then
                 echo "Installing plugin: $$(basename $$plugin_ee)" >> $$cwd/$@.tmp
