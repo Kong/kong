@@ -32,7 +32,7 @@ describe("dbless persistence #off", function()
   end)
 
   it("loads the lmdb config on restarts", function()
-    local buffer = {"_format_version: '1.1'", "services:"}
+    local buffer = {"_format_version: '3.0'", "services:"}
     for i = 1, 1001 do
       buffer[#buffer + 1] = fmt(SERVICE_YML, i, i, i, i)
     end
@@ -69,7 +69,7 @@ describe("dbless persistence with a declarative config #off", function()
 
   lazy_setup(function()
     yaml_file = helpers.make_yaml_file([[
-      _format_version: "1.1"
+      _format_version: "3.0"
       services:
       - name: my-service
         url: https://example1.dev
@@ -94,7 +94,7 @@ describe("dbless persistence with a declarative config #off", function()
     assert.res_status(401, res)
     proxy_client:close()
 
-    local buffer = {"_format_version: '1.1'", "services:"}
+    local buffer = {"_format_version: '3.0'", "services:"}
     local i = 500
     buffer[#buffer + 1] = fmt(SERVICE_YML, i, i, i, i)
     local config = table.concat(buffer, "\n")
