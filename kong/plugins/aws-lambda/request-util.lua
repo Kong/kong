@@ -4,7 +4,8 @@ local ngx_decode_base64 = ngx.decode_base64
 local cjson = require "cjson.safe"
 
 local pl_stringx = require("pl.stringx")
-local date = require "date"
+local date = require("date")
+local get_request_id = require("kong.tracing.request_id").get
 
 local EMPTY = {}
 
@@ -221,7 +222,7 @@ local function aws_serializer(ctx, config)
       sourceIp = var.realip_remote_addr or var.remote_addr,
       userAgent = headers["user-agent"],
     }
-    local requestId = var.request_id
+    local requestId = get_request_id()
     local start_time = ngx_req_start_time()
     -- The CLF-formatted request time (dd/MMM/yyyy:HH:mm:ss +-hhmm).
     local requestTime = date(start_time):fmt("%d/%b/%Y:%H:%M:%S %z")
