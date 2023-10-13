@@ -2,6 +2,7 @@ local ngx = ngx
 local var = ngx.var
 local get_phase = ngx.get_phase
 
+
 local NGX_VAR_PHASES = {
   set           = true,
   rewrite       = true,
@@ -19,12 +20,17 @@ local function get_ctx_request_id()
 end
 
 
+local function var_available(phase)
+  return NGX_VAR_PHASES[phase]
+end
+
+
 local function get()
   local rid = get_ctx_request_id()
 
   if not rid then
     local phase = get_phase()
-    if not NGX_VAR_PHASES[phase] then
+    if not var_available(phase) then
       return nil, "cannot access ngx.var in " .. phase .. " phase"
     end
 
@@ -40,6 +46,8 @@ end
 
 return {
   get = get,
+
+  var_available = var_available,
 
   -- for unit testing
   _get_ctx_request_id = get_ctx_request_id,
