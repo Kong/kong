@@ -154,5 +154,8 @@ return {
     ldap_auth = {
       "realm",
     },
+    hmac_auth = {
+      "realm",
+    },
   },
 }

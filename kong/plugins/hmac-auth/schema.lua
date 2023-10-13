@@ -29,6 +29,7 @@ return {
               elements = { type = "string", one_of = ALGORITHMS },
               default = ALGORITHMS,
           }, },
+          { realm = { description = "When authentication fails the plugin sends `WWW-Authenticate` header with `realm` attribute value.", type = "string", required = false }, },
         },
       },
     },
