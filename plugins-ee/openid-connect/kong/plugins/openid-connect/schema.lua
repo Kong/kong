@@ -44,6 +44,53 @@ local function validate_issuer(conf)
   return true
 end
 
+local function check_auth_method_for_mtls_pop(conf)
+  if not conf.proof_of_possession_auth_methods_validation then
+    return true
+  end
+
+  -- default auth method contain other auth methods
+  if not conf.auth_methods then
+    return false
+  end
+
+  for _, auth_method in ipairs(conf.auth_methods) do
+    if auth_method ~= "bearer" and auth_method ~= "introspection" and auth_method ~= "session" then
+      return false
+    end
+  end
+
+  return true
+end
+
+
+local function validate_proof_of_possession(conf)
+  local self_signed_verify_support = kong.configuration.loaded_plugins["tls-handshake-modifier"]
+  local ca_chain_verify_support = kong.configuration.loaded_plugins["mtls-auth"]
+
+  if conf.proof_of_possession_mtls == "strict" or conf.proof_of_possession_mtls == "optional" then
+    if not (self_signed_verify_support or ca_chain_verify_support) then
+      return false, "mTLS-proof-of-possession requires client certificate authentication. " ..
+        "'tls-handshake-modifier' or 'mtls-auth' plugin could be used for this purpose."
+    end
+
+    if not check_auth_method_for_mtls_pop(conf) then
+      return false, "mTLS-proof-of-possession only supports 'bearer', 'introspection', 'session' auth methods when proof_of_possession_auth_methods_validation is set to true."
+    end
+  end
+
+  return true
+end
+
+local function validate(conf)
+  local ok, err = validate_issuer(conf)
+  if not ok then
+    return false, err
+  end
+
+  return validate_proof_of_possession(conf)
+end
+
 
 local session_headers = Schema.define({
   type = "set",
@@ -70,7 +117,7 @@ local config = {
     { consumer_group = typedefs.no_consumer_group },
     { config    = {
         type             = "record",
-        custom_validator = validate_issuer,
+        custom_validator = validate,
         fields           = {
           {
             issuer = typedefs.url {
@@ -1700,7 +1747,22 @@ local config = {
             revocation_token_param_name = { description = "Designate token's parameter name for revocation.", required = false,
               type = "string",
               default = "token",
-            },
+            }
+          },
+          {
+            proof_of_possession_mtls = { description = "Enable mtls proof of possession. If set to strict, all tokens (from supported auth_methods: bearer, introspection, and session granted with bearer or introspection) are verified, if set to optional, only tokens that contain the certificate hash claim are verified. If the verification fails, the request will be rejected with 401.",
+              type = "string",
+              one_of = {
+                "off", "strict", "optional",
+              },
+              default = "off",
+            }
+          },
+          {
+            proof_of_possession_auth_methods_validation = { description = "If set to true, only the auth_methods that are compatible with Proof of Possession (PoP) can be configured when PoP is enabled. If set to false, all auth_methods will be configurable and PoP checks will be silently skipped for those auth_methods that are not compatible with PoP.",
+              type = "boolean",
+              default = true,
+            }
           },
         },
         shorthand_fields = {

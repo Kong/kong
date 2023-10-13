@@ -12,7 +12,7 @@ local find = string.find
 local admin_client
 local PLUGIN_NAME = "openid-connect"
 local KEYCLOAK_HOST = "keycloak:8080"
-local ISSUER_URL = "http://" .. KEYCLOAK_HOST .. "/auth/realms/demo/"
+local ISSUER_URL = "http://" .. KEYCLOAK_HOST .. "/realms/demo/"
 local USERNAME = "john.doe@konghq.com"
 local PASSWORD = "doe"
 local KONG_CLIENT_ID = "kong-client-secret"

@@ -18,7 +18,7 @@ local cookie_helper       = require "spec-ee.fixtures.cookie_helper"
 local portal_client
 local PLUGIN_NAME         = "openid-connect"
 local KEYCLOAK_HOST       = "keycloak:8080"
-local ISSUER_URL          = fmt("http://%s/auth/realms/demo/", KEYCLOAK_HOST)
+local ISSUER_URL          = fmt("http://%s/realms/demo/", KEYCLOAK_HOST)
 local USERNAME            = "john.doe@konghq.com"
 local PASSWORD            = "doe"
 local KONG_CLIENT_ID      = "kong-client-secret"
@@ -212,7 +212,9 @@ for _, strategy in helpers.each_strategy() do
             portal              = true,
             portal_auth         = PLUGIN_NAME,
             portal_session_conf = PORTAL_SESSION_CONF,
-            portal_cors_origins = "*"
+            portal_cors_origins = "*",
+            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
+            license_path = "spec-ee/fixtures/mock_license.json",
           }))
 
           if workspace ~= "default" then

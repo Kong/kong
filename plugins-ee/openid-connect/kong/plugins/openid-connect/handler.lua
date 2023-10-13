@@ -152,33 +152,35 @@ function OICHandler.access(_, conf)
     end
 
     options = args.get_http_opts({
-      client_id                  = client.id,
-      client_secret              = client.secret,
-      client_auth                = client.auth,
-      client_alg                 = client.alg,
-      client_jwk                 = client.jwk,
-      redirect_uri               = client.redirect_uri,
-      issuers                    = args.get_conf_arg("issuers_allowed"),
-      scope                      = args.get_conf_arg("scopes", {}),
-      response_mode              = args.get_conf_arg("response_mode"),
-      response_type              = args.get_conf_arg("response_type"),
-      audience                   = args.get_conf_arg("audience"),
-      domains                    = args.get_conf_arg("domains"),
-      max_age                    = args.get_conf_arg("max_age"),
-      leeway                     = args.get_conf_arg("leeway", 0),
-      authorization_endpoint     = args.get_conf_arg("authorization_endpoint"),
-      token_endpoint             = args.get_conf_arg("token_endpoint"),
-      introspection_endpoint     = args.get_conf_arg("introspection_endpoint"),
-      userinfo_endpoint          = args.get_conf_arg("userinfo_endpoint"),
-      verify_parameters          = args.get_conf_arg("verify_parameters"),
-      verify_nonce               = args.get_conf_arg("verify_nonce"),
-      verify_signature           = args.get_conf_arg("verify_signature"),
-      verify_claims              = args.get_conf_arg("verify_claims"),
-      enable_hs_signatures       = args.get_conf_arg("enable_hs_signatures"),
+      client_id = client.id,
+      client_secret = client.secret,
+      client_auth = client.auth,
+      client_alg = client.alg,
+      client_jwk = client.jwk,
+      redirect_uri = client.redirect_uri,
+      issuers = args.get_conf_arg("issuers_allowed"),
+      scope = args.get_conf_arg("scopes", {}),
+      response_mode = args.get_conf_arg("response_mode"),
+      response_type = args.get_conf_arg("response_type"),
+      audience = args.get_conf_arg("audience"),
+      domains = args.get_conf_arg("domains"),
+      max_age = args.get_conf_arg("max_age"),
+      leeway = args.get_conf_arg("leeway", 0),
+      authorization_endpoint = args.get_conf_arg("authorization_endpoint"),
+      token_endpoint = args.get_conf_arg("token_endpoint"),
+      introspection_endpoint = args.get_conf_arg("introspection_endpoint"),
+      userinfo_endpoint = args.get_conf_arg("userinfo_endpoint"),
+      verify_parameters = args.get_conf_arg("verify_parameters"),
+      verify_nonce = args.get_conf_arg("verify_nonce"),
+      verify_signature = args.get_conf_arg("verify_signature"),
+      verify_claims = args.get_conf_arg("verify_claims"),
+      enable_hs_signatures = args.get_conf_arg("enable_hs_signatures"),
       -- not yet implemented
       -- resolve_aggregated_claims  = args.get_conf_arg("resolve_aggregated_claims"),
       resolve_distributed_claims = args.get_conf_arg("resolve_distributed_claims"),
-      rediscover_keys            = rediscover_keys(issuer_uri, discovery_options),
+      rediscover_keys = rediscover_keys(issuer_uri, discovery_options),
+      proof_of_possession_mtls = args.get_conf_arg("proof_of_possession_mtls", "off"),
+      client_cert_pem = ngx.var.ssl_client_raw_cert,
     })
 
     log("initializing library")
@@ -1042,7 +1044,7 @@ function OICHandler.access(_, conf)
            not auth_methods.kong_oauth2
         then
           log("unable to verify bearer token")
-          return unauthorized(err or "invalid jwt token")
+          return unauthorized(err or "invalid jwt token", "invalid_token")
         end
 
         if err then
@@ -1187,6 +1189,7 @@ function OICHandler.access(_, conf)
         client  = client.index,
         tokens  = tokens_encoded,
         expires = exp,
+        auth_method = auth_method,
       })
     end
 
@@ -1316,6 +1319,7 @@ function OICHandler.access(_, conf)
         client  = client.index,
         tokens  = tokens_encoded,
         expires = exp,
+        auth_method = auth_method,
       })
     end
 
@@ -1340,6 +1344,41 @@ function OICHandler.access(_, conf)
 
   else
     log("found access token")
+  end
+
+  local original_auth_method = auth_method ~= "session" and auth_method or
+                               session_data and session_data.auth_method
+  -- only do proof of possession validation for bearer and introspection auth methods
+  if conf.proof_of_possession_mtls ~= "off" and (original_auth_method == "bearer" or original_auth_method == "introspection") then
+    local access_token
+
+    -- check if access token is a structured token or a (not yet introspected) opaque token
+    if tokens_decoded and (type(tokens_decoded.access_token) == "table" or not introspected) then
+      access_token = tokens_decoded.access_token
+
+    -- if introspection was already performed, use the introspection data
+    elseif introspection_data or introspection_jwt then
+      access_token = introspection_data or introspection_jwt
+
+    elseif session_data and session_data.tokens then
+      access_token = session_data.tokens.access_token
+    end
+
+    -- do introspection of opaque token
+    if not introspected and type(access_token) == "string" then
+      log("introspecting token to verify client bound certificate")
+      introspection_data, err, introspection_jwt = introspect_token(access_token, ttl)
+      introspected = true
+      if err then
+        log("error introspecting token to verify client bound certificate ", " (", err, ")")
+      end
+      access_token = introspection_data or introspection_jwt
+    end
+
+    ok, err = oic.token:verify_client(access_token)
+    if not ok then
+      return unauthorized(err, "invalid_token")
+    end
   end
 
   if not exp then
@@ -1523,6 +1562,7 @@ function OICHandler.access(_, conf)
           client  = client.index,
           tokens  = tokens_encoded,
           expires = exp,
+          auth_method = auth_method,
         })
       end
     end

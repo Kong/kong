@@ -207,7 +207,8 @@ return {
       "unauthorized_destroy_session",
       "introspection_token_param_name",
       "revocation_token_param_name",
+      "proof_of_possession_mtls",
+      "proof_of_possession_auth_methods_validation",
     },
   },
-
 }

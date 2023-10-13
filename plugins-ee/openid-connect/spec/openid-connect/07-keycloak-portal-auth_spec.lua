@@ -14,7 +14,7 @@ local find = string.find
 local portal_client
 local PLUGIN_NAME = "openid-connect"
 local KEYCLOAK_HOST = "keycloak:8080"
-local ISSUER_URL = "http://" .. KEYCLOAK_HOST .. "/auth/realms/demo/"
+local ISSUER_URL = "http://" .. KEYCLOAK_HOST .. "/realms/demo/"
 local USERNAME = "john.doe@konghq.com"
 local PASSWORD = "doe"
 local KONG_CLIENT_ID = "kong-client-secret"
@@ -169,6 +169,8 @@ for _, strategy in helpers.each_strategy() do
                 portal_gui_protocol    = "http",
                 portal_gui_host        = KONG_HOST .. ":9003",
                 portal_gui_use_subdomains = use_subdomain_for_workspace,
+                portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
+                license_path = "spec-ee/fixtures/mock_license.json",
               }))
 
               if workspace_name ~= "default" then

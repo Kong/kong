@@ -1,0 +1,6 @@
+message: "**OpenID Connect:** Added support for mTLS proof of possession. The feature is available by enabling `proof_of_possession_mtls`"
+type: feature
+prs:
+  - 6446
+jiras:
+  - "KAG-2189"
