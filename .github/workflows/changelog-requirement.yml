@@ -26,7 +26,7 @@ jobs:
 
       - name: asserts changelog added
         run: >
-          if [ "${{ steps.changelog-check.outputs.added_files_count }}" = "0" ]; then
+          if [ "${{ steps.changelog-check.outputs.all_changed_and_modified_files_count }}" = "0" ]; then
             echo "Should contain at least one changelog file in changelog/unreleased/*/ directory"
             exit 1
           fi
