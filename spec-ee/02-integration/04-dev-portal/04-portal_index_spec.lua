@@ -8,7 +8,6 @@
 local ee_helpers = require "spec-ee.helpers"
 local helpers    = require "spec.helpers"
 
-local clear_license_env = require("spec-ee.02-integration.04-dev-portal.utils").clear_license_env
 local parse_url = require("socket.url").parse
 
 local escape_uri = ngx.escape_uri
@@ -229,21 +228,9 @@ local function create_workspace_files(workspace_name)
 end
 
 
-
-local reset_license_data
-
 for _, strategy in helpers.each_strategy() do
 
   describe("router #" .. strategy, function ()
-
-    setup(function()
-      reset_license_data = clear_license_env()
-    end)
-
-    teardown(function()
-      reset_license_data()
-    end)
-
     describe("portal_gui_use_subdomains = off", function()
       local db
 
@@ -252,8 +239,6 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.start_kong({
           database    = strategy,
           portal      = true,
-          portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
-          license_path = "spec-ee/fixtures/mock_license.json",
           portal_gui_use_subdomains = false,
           portal_is_legacy = false,
           portal_auth = "basic-auth",
@@ -399,8 +384,6 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.start_kong({
           database    = strategy,
           portal      = true,
-          portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
-          license_path = "spec-ee/fixtures/mock_license.json",
           portal_auth = "basic-auth",
           portal_auto_approve = true,
           portal_is_legacy = false,
@@ -570,8 +553,6 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.start_kong({
           database    = strategy,
           portal      = true,
-          portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
-          license_path = "spec-ee/fixtures/mock_license.json",
           portal_is_legacy = false,
         }))
 
@@ -678,8 +659,6 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.start_kong({
           database    = strategy,
           portal      = true,
-          portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
-          license_path = "spec-ee/fixtures/mock_license.json",
           portal_is_legacy = false,
         }))
 
@@ -715,8 +694,6 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.start_kong({
           database    = strategy,
           portal      = true,
-          portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
-          license_path = "spec-ee/fixtures/mock_license.json",
           portal_gui_use_subdomains = false,
           portal_is_legacy = false,
           portal_auth = "basic-auth",

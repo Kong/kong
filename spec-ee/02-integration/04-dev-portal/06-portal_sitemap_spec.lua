@@ -7,7 +7,7 @@
 
 local ee_helpers = require "spec-ee.helpers"
 local helpers    = require "spec.helpers"
-local clear_license_env = require("spec-ee.02-integration.04-dev-portal.utils").clear_license_env
+
 
 local function close_clients(clients)
   for idx, client in ipairs(clients) do
@@ -139,22 +139,17 @@ local function create_workspace_files(workspace_name, files, portal_conf)
   ngx.sleep(1)
 end
 
-
 for _, strategy in helpers.each_strategy() do
 for _, workspace in ipairs({ "default", "doggos"}) do
 
   describe("sitemap #" .. strategy, function()
     local db
-    local reset_license_data
 
       setup(function()
-        reset_license_data = clear_license_env()
         _, db, _ = helpers.get_db_utils(strategy, { "files" })
         assert(helpers.start_kong({
           database    = strategy,
-          license_path = "spec-ee/fixtures/mock_license.json",
           portal      = true,
-          portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
           portal_gui_use_subdomains = false,
           portal_is_legacy = false,
         }))
@@ -163,7 +158,6 @@ for _, workspace in ipairs({ "default", "doggos"}) do
 
       teardown(function()
         helpers.stop_kong(nil, true)
-        reset_license_data()
       end)
 
       before_each(function()

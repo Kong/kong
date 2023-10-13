@@ -21,7 +21,6 @@ local file_helpers = require "kong.portal.file_helpers"
 local app_auth_strategies = require "kong.portal.app_auth_strategies"
 local portal_smtp_client  = require "kong.portal.emails"
 local dao_helpers         = require "kong.portal.dao_helpers"
-local portal_and_vitals_allowed = require "kong.enterprise_edition.license_helpers".portal_and_vitals_allowed
 
 
 local kong = kong
@@ -842,7 +841,7 @@ end
 function _M.check_initialized(workspace, db)
   -- if portal is not enabled, return early
   local config = workspace.config
-  if not config.portal or not portal_and_vitals_allowed() then
+  if not config.portal then
     return workspace
   end
 
@@ -862,7 +861,7 @@ function _M.exit_if_portal_disabled()
   local opts = { explicitly_ws = true }
   local enabled_in_ws = workspace_config.retrieve(PORTAL, ws, opts)
   local enabled_in_conf = kong.configuration.portal
-  if not enabled_in_conf or not enabled_in_ws or not portal_and_vitals_allowed() then
+  if not enabled_in_conf or not enabled_in_ws then
     return kong.response.exit(404, { message = "Not Found" })
   end
 end

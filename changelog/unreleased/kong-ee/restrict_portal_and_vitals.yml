@@ -1,4 +1,0 @@
-message: |
-  Removed support for Developer Portal and Vitals, which were deprecated in Kong 3.4.
-type: bugfix
-scope: Configuration

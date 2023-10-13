@@ -83,7 +83,6 @@ for _, strategy in helpers.all_strategies({ "postgres" }) do
         database            = strategy,
         nginx_conf          = "spec/fixtures/custom_nginx.template",
         portal              = true,
-        portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
         portal_cors_origins = "*",
         portal_gui_protocol = "http",
         portal_auth         = "basic-auth",

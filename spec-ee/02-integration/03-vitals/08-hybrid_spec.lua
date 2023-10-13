@@ -61,8 +61,6 @@ for _, strategy in helpers.each_strategy() do
           cluster_listen = "127.0.0.1:9005",
           cluster_telemetry_listen = "127.0.0.1:9006",
           nginx_conf = "spec/fixtures/custom_nginx.template",
-          portal = true,
-          portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
           vitals = true,
         }))
 
@@ -222,8 +220,6 @@ for _, strategy in helpers.each_strategy() do
           cluster_listen = "127.0.0.1:9005",
           cluster_telemetry_listen = "127.0.0.1:9006",
           nginx_conf = "spec/fixtures/custom_nginx.template",
-          portal = true,
-          portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
           vitals = true,
           log_level = "debug",
         }))
@@ -471,8 +467,6 @@ for _, strategy in helpers.each_strategy() do
           cluster_listen = "127.0.0.1:9005",
           cluster_telemetry_listen = "127.0.0.1:9006",
           nginx_conf = "spec/fixtures/custom_nginx.template",
-          portal = true,
-          portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
           vitals = true,
           vitals_flush_interval = 3,
         }))

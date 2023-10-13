@@ -8,7 +8,6 @@
 local helpers = require "spec.helpers"
 local pl_file   = require "pl.file"
 local cjson = require "cjson.safe"
-local clear_license_env = require("spec-ee.02-integration.04-dev-portal.utils").clear_license_env
 
 local function find_in_file(filepath, pat)
   local f = assert(io.open(filepath, "r"))
@@ -30,15 +29,13 @@ local function find_in_file(filepath, pat)
 end
 
 describe("CP/DP FIPS avaiability test", function()
-  local reset_license_data
-
   lazy_setup(function()
     local _, db = helpers.get_db_utils(nil, {})
 
     assert(db.licenses:truncate())
     helpers.clean_logfile("servroot-cp/logs/error.log")
     helpers.clean_logfile("servroot-dp/logs/error.log")
-    reset_license_data = clear_license_env()
+    helpers.unsetenv("KONG_LICENSE_DATA")
 
     assert(helpers.start_kong({
       prefix = "servroot-cp",
@@ -70,7 +67,6 @@ describe("CP/DP FIPS avaiability test", function()
   lazy_teardown(function()
     helpers.stop_kong("servroot-cp")
     helpers.stop_kong("servroot-dp")
-    reset_license_data()
   end)
 
   it("should be failed with fips-on", function()

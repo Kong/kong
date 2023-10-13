@@ -12,7 +12,6 @@ local cjson       = require "cjson"
 local time        = ngx.time
 local fmt         = string.format
 
-local pl_file = require "pl.file"
 local compare_no_order = require "pl.tablex".compare_no_order
 
 -- unsets kong license env vars and returns a function to restore their values
@@ -74,18 +73,9 @@ for _, db_strategy in helpers.each_strategy() do
 
     describe("when vitals is enabled", function()
       describe("in development package", function ()
-        local kld
-
         setup(function()
           bp, db = helpers.get_db_utils(db_strategy)
           connector = db.connector
-
-          kld = os.getenv("KONG_LICENSE_DATA")
-          helpers.unsetenv("KONG_LICENSE_DATA")
-
-          -- vitals only works with a valid license that matches the portal_and_vitals_key
-          helpers.setenv("KONG_LICENSE_DATA", pl_file.read("spec-ee/fixtures/mock_license.json"))
-
 
           -- to insert test data
           if db.strategy == "postgres" then
@@ -118,8 +108,6 @@ for _, db_strategy in helpers.each_strategy() do
 
           assert(helpers.start_kong({
             database = db_strategy,
-            portal = true,
-            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
             vitals   = true,
           }))
 
@@ -132,10 +120,6 @@ for _, db_strategy in helpers.each_strategy() do
           end
 
           helpers.stop_kong()
-
-          if kld then
-            helpers.setenv("KONG_LICENSE_DATA", kld)
-          end
         end)
 
         describe("/vitals", function()
@@ -2174,8 +2158,6 @@ for _, db_strategy in helpers.each_strategy() do
 
           assert(helpers.start_kong({
             database = db_strategy,
-            portal = true,
-            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
             vitals = true,
             nginx_conf = "spec/fixtures/custom_nginx.template",
             lua_package_path = "./?.lua;./?/init.lua;./spec/fixtures/?.lua",

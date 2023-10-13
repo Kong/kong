@@ -24,8 +24,6 @@ local dist_constants = require "kong.enterprise_edition.distributions_constants"
 local license_utils  = require "kong.enterprise_edition.license_utils"
 local base64         = require "ngx.base64"
 local hooks          = require "kong.hooks"
-local sha256_bin = require "kong.tools.utils".sha256_bin
-local str_to_hex = require "resty.string".to_hex
 
 
 local timer_at = ngx.timer.at
@@ -381,37 +379,6 @@ local function is_valid_license(license)
   end
 
   return false, "Unable to validate license: " .. license_utils.validation_error_to_string(result)
-end
-
-function _M.portal_and_vitals_allowed()
-  local license_info = _M.read_license_info()
-
-  if not license_info or not license_info.license or
-     not license_info.license.payload
-  then
-    return false
-  end
-
-  local license_key = license_info.license.payload.license_key
-  local portal_and_vitals_key = kong and kong.configuration and
-                                kong.configuration.portal_and_vitals_key
-
-  if license_key and portal_and_vitals_key then
-    local PORTAL_VITALS_SECRET_KEY = "6ZTggSLSREF853ArkiLm94AewPoOEU"
-    local digest_gen_str = license_key .. PORTAL_VITALS_SECRET_KEY
-    local digest = sha256_bin(digest_gen_str)
-    local key = str_to_hex(digest)
-    if key == portal_and_vitals_key then
-      return true
-    end
-    ngx.log(ngx.ERR, "portal_and_vitals_key is invalid. please contact your support representative.")
-
-  else
-    -- not saying out loud there's a special key for using this feature
-    ngx.log(ngx.ERR, "portal and vitals are deprecated")
-  end
-
-  return false
 end
 
 _M.validate_kong_license = validate_kong_license

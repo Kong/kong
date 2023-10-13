@@ -33,9 +33,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         database = strategy,
-        license_path = "spec-ee/fixtures/mock_license.json",
         portal = true,
-        portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
         portal_auth = "basic-auth",
         portal_app_auth = "kong-oauth2",
         portal_session_conf = "{ \"secret\": \"super-secret\" }",

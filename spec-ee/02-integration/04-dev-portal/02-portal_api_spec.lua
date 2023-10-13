@@ -14,17 +14,16 @@ local time         = ngx.time
 local uuid         = require("kong.tools.utils").uuid
 local ee_helpers   = require "spec-ee.helpers"
 local type         = type
-local clear_license_env = require("spec-ee.02-integration.04-dev-portal.utils").clear_license_env
 
 local PORTAL_SESSION_CONF = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }"
 local DEFAULT_CONSUMER = {
   ["basic-auth"] = {
     headers = {
-      ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:Kong-Strong"),
+      ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
     },
     body = {
       email = "gruce@konghq.com",
-      password = "Kong-Strong",
+      password = "kong",
       meta = "{\"full_name\":\"I Like Turtles\"}",
     },
   },
@@ -128,15 +127,9 @@ for _, strategy in helpers.each_strategy() do
       local portal_api_client
       local _, db, _ = helpers.get_db_utils(strategy)
 
-      local reset_license_data
-
-      lazy_setup(function()
-        reset_license_data = clear_license_env()
-      end)
-
       lazy_teardown(function()
+        helpers.stop_kong()
         assert(db:truncate())
-        reset_license_data()
       end)
 
       describe("CORS", function()
@@ -149,37 +142,34 @@ for _, strategy in helpers.each_strategy() do
           })
         end)
 
-        before_each(function()
-          portal_api_client = assert(ee_helpers.portal_api_client())
-        end)
-
-        after_each(function()
+         after_each(function()
           close_clients(portal_api_client)
+          helpers.stop_kong()
         end)
 
-        describe("single portal_cors_origins", function()
+        lazy_teardown(function()
+          helpers.stop_kong()
+        end)
+
+         describe("single portal_cors_origins", function()
           lazy_setup(function()
             assert(helpers.start_kong({
               database   = strategy,
-              portal     = "on",
-              portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
+              portal     = true,
               enforce_rbac = rbac,
-              license_path = "spec-ee/fixtures/mock_license.json",
               portal_cors_origins = "http://foo.example"
             }))
+
+             portal_api_client = assert(ee_helpers.portal_api_client())
           end)
 
-          lazy_teardown(function()
-            helpers.stop_kong()
-          end)
-
-          it("sets the correct Access-Control-Allow-Origin header", function()
+           it("sets the correct Access-Control-Allow-Origin header", function()
             local res = assert(portal_api_client:send {
               method = "GET",
               path = "/files",
             })
 
-            local origin = assert.response(res).has.header("Access-Control-Allow-Origin")
+             local origin = assert.response(res).has.header("Access-Control-Allow-Origin")
             assert.equals("http://foo.example", origin)
           end)
         end)
@@ -188,19 +178,15 @@ for _, strategy in helpers.each_strategy() do
           lazy_setup(function()
             assert(helpers.start_kong({
               database   = strategy,
-              portal     = "on",
-              portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
+              portal     = true,
               enforce_rbac = rbac,
-              license_path = "spec-ee/fixtures/mock_license.json",
               portal_cors_origins = "http://foo.example, http://bar.example"
             }))
+
+             portal_api_client = assert(ee_helpers.portal_api_client())
           end)
 
-          lazy_teardown(function()
-            helpers.stop_kong()
-          end)
-
-          it("sets the correct Access-Control-Allow-Origin header", function()
+           it("sets the correct Access-Control-Allow-Origin header", function()
             local res = assert(portal_api_client:send {
               method = "GET",
               path = "/files",
@@ -209,7 +195,7 @@ for _, strategy in helpers.each_strategy() do
               },
             })
 
-            local origin = assert.response(res).has.header("Access-Control-Allow-Origin")
+             local origin = assert.response(res).has.header("Access-Control-Allow-Origin")
             assert.equals("http://bar.example", origin)
           end)
         end)
@@ -218,16 +204,12 @@ for _, strategy in helpers.each_strategy() do
           lazy_setup(function()
             assert(helpers.start_kong({
               database   = strategy,
-              portal     = "on",
-              portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
-              license_path = "spec-ee/fixtures/mock_license.json",
+              portal     = true,
               enforce_rbac = rbac,
               portal_cors_origins = "*"
             }))
-          end)
 
-          lazy_teardown(function()
-            helpers.stop_kong()
+             portal_api_client = assert(ee_helpers.portal_api_client())
           end)
 
            it("sets the correct Access-Control-Allow-Origin header", function()
@@ -245,15 +227,11 @@ for _, strategy in helpers.each_strategy() do
           lazy_setup(function()
             assert(helpers.start_kong({
               database   = strategy,
-              portal     = "on",
-              portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
-              license_path = "spec-ee/fixtures/mock_license.json",
+              portal     = true,
               enforce_rbac = rbac,
             }))
-          end)
 
-          lazy_teardown(function()
-            helpers.stop_kong()
+             portal_api_client = assert(ee_helpers.portal_api_client())
           end)
 
            it("sets the correct Access-Control-Allow-Origin header", function()
@@ -271,17 +249,13 @@ for _, strategy in helpers.each_strategy() do
           lazy_setup(function()
             assert(helpers.start_kong({
               database   = strategy,
-              portal     = "on",
-              portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
+              portal     = true,
               enforce_rbac = rbac,
-              license_path = "spec-ee/fixtures/mock_license.json",
               portal_gui_protocol = "http",
               portal_gui_host = "example.foo"
             }))
-          end)
 
-          lazy_teardown(function()
-            helpers.stop_kong()
+             portal_api_client = assert(ee_helpers.portal_api_client())
           end)
 
            it("sets the correct Access-Control-Allow-Origin header", function()
@@ -299,18 +273,14 @@ for _, strategy in helpers.each_strategy() do
           lazy_setup(function()
             assert(helpers.start_kong({
               database   = strategy,
-              portal     = "on",
-              portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
+              portal     = true,
               enforce_rbac = rbac,
-              license_path = "spec-ee/fixtures/mock_license.json",
               portal_gui_protocol = "http",
               portal_gui_host = "example.foo",
               portal_gui_use_subdomains = true,
             }))
-          end)
 
-          lazy_teardown(function()
-            helpers.stop_kong()
+             portal_api_client = assert(ee_helpers.portal_api_client())
           end)
 
            it("sets the correct Access-Control-Allow-Origin header", function()
@@ -328,16 +298,12 @@ for _, strategy in helpers.each_strategy() do
           lazy_setup(function()
             assert(helpers.start_kong({
               database   = strategy,
-              portal     = "on",
-              portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
-              license_path = "spec-ee/fixtures/mock_license.json",
+              portal     = true,
               enforce_rbac = rbac,
               portal_gui_use_subdomains = true,
             }))
-          end)
 
-          lazy_teardown(function()
-            helpers.stop_kong()
+             portal_api_client = assert(ee_helpers.portal_api_client())
           end)
 
            it("sets the correct Access-Control-Allow-Origin header", function()
@@ -354,6 +320,7 @@ for _, strategy in helpers.each_strategy() do
 
       describe("/files without auth", function()
         lazy_setup(function()
+          helpers.stop_kong()
           db:truncate()
           configure_portal(db, {
             portal = true,
@@ -362,9 +329,7 @@ for _, strategy in helpers.each_strategy() do
 
           assert(helpers.start_kong({
             database   = strategy,
-            portal     = "on",
-            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
-            license_path = "spec-ee/fixtures/mock_license.json",
+            portal     = true,
             enforce_rbac = rbac,
           }))
 
@@ -454,13 +419,12 @@ for _, strategy in helpers.each_strategy() do
           local password = "tHiSPasSw0rDiSTr*ng"
 
           lazy_setup(function()
+            helpers.stop_kong()
             assert(db:truncate())
 
             assert(helpers.start_kong({
               database = strategy,
-              portal = "on",
-              portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
-              license_path = "spec-ee/fixtures/mock_license.json",
+              portal = true,
               portal_auth = "basic-auth",
               enforce_rbac = rbac,
               portal_session_conf = PORTAL_SESSION_CONF,
@@ -674,14 +638,13 @@ for _, strategy in helpers.each_strategy() do
 
         describe("key-auth", function()
           lazy_setup(function()
+            helpers.stop_kong()
             assert(db:truncate())
 
             assert(helpers.start_kong({
               database = strategy,
-              portal = "on",
-              portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
+              portal = true,
               portal_auth = "key-auth",
-              license_path = "spec-ee/fixtures/mock_license.json",
               enforce_rbac = rbac,
               portal_session_conf = PORTAL_SESSION_CONF,
               admin_gui_url = "http://localhost:8080",
@@ -864,22 +827,22 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("Authenticated Routes [basic-auth]", function()
-        local default_developer, approved_developer, locked_out_developer
+        local approved_developer, locked_out_developer
 
         lazy_setup(function()
+          helpers.stop_kong()
+          assert(db:truncate())
+
           assert(helpers.start_kong({
             database   = strategy,
             portal_session_conf = PORTAL_SESSION_CONF,
-            portal = "on",
-            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
-            license_path = "spec-ee/fixtures/mock_license.json",
+            portal = true,
             portal_auth = "basic-auth",
             enforce_rbac = rbac,
-            portal_auto_approve = "on",
+            portal_auto_approve = "off",
             portal_is_legacy = true,
             admin_gui_url = "http://localhost:8080",
             portal_auth_login_attempts = 3,
-            portal_auth_password_complexity = [[{"kong-preset": "min_8"}]],
           }))
 
           ee_helpers.register_rbac_resources(db)
@@ -891,7 +854,6 @@ for _, strategy in helpers.each_strategy() do
           }
 
           helpers.wait_for_all_config_update(opt)
-
           admin_client_request({
             method = "PATCH",
             path = "/workspaces/default",
@@ -910,16 +872,18 @@ for _, strategy in helpers.each_strategy() do
 
           helpers.wait_for_all_config_update(opt)
 
+          insert_files(db)
+
           portal_api_client = assert(ee_helpers.portal_api_client())
 
           local res = register_developer(portal_api_client, {
-            email = "pending@konghq.com",
-            password = "Pending-Developer",
-            meta = "{\"full_name\":\"Dr. Forgotten Developer\"}",
+            email = "dale@konghq.com",
+            password = "kong",
+            meta = "{\"full_name\":\"1337\"}",
           })
+
           assert.res_status(200, res)
 
-          -- enable auto approve
           admin_client_request({
             method = "PATCH",
             path = "/workspaces/default",
@@ -938,29 +902,14 @@ for _, strategy in helpers.each_strategy() do
 
           helpers.wait_for_all_config_update(opt)
 
-          -- register default developer
           local res = register_developer(portal_api_client, "basic-auth")
-          local body = assert.res_status(200, res)
-          local resp_body_json = cjson.decode(body)
-          default_developer = resp_body_json.developer
-
-          insert_files(db)
-
-          local res = register_developer(portal_api_client, {
-            email = "dale@konghq.com",
-            password = "Kong-Strong",
-            meta = "{\"full_name\":\"1337\"}",
-          })
-
           local body = assert.res_status(200, res)
           local resp_body_json = cjson.decode(body)
           approved_developer = resp_body_json.developer
 
-          helpers.wait_for_all_config_update(opt)
-
           local res = register_developer(portal_api_client, {
             email = "lockout@konghq.com",
-            password = "locked-Developer",
+            password = "locked",
             meta = "{\"full_name\":\"YEE\"}",
           })
           local body = assert.res_status(200, res)
@@ -971,7 +920,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         lazy_teardown(function()
-          assert(helpers.stop_kong())
+          helpers.stop_kong()
         end)
 
         before_each(function()
@@ -1034,7 +983,7 @@ for _, strategy in helpers.each_strategy() do
               assert.res_status(200, res)
 
               local rows = {}
-              for secret in db.consumer_reset_secrets:each_for_consumer({ id = default_developer.consumer.id}) do
+              for secret in db.consumer_reset_secrets:each_for_consumer({ id = approved_developer.consumer.id}) do
                 rows[#rows + 1] = secret
               end
 
@@ -1057,7 +1006,7 @@ for _, strategy in helpers.each_strategy() do
               assert.res_status(200, res)
 
               local rows = {}
-              for secret in db.consumer_reset_secrets:each_for_consumer({ id = default_developer.consumer.id}) do
+              for secret in db.consumer_reset_secrets:each_for_consumer({ id = approved_developer.consumer.id}) do
                 rows[#rows + 1] = secret
               end
 
@@ -1076,7 +1025,7 @@ for _, strategy in helpers.each_strategy() do
               assert.res_status(200, res)
 
               local pending = {}
-              for secret in db.consumer_reset_secrets:each_for_consumer({ id = default_developer.consumer.id}) do
+              for secret in db.consumer_reset_secrets:each_for_consumer({ id = approved_developer.consumer.id}) do
                 if secret.status == enums.TOKENS.STATUS.PENDING then
                   pending[#pending + 1] = secret
                 end
@@ -1087,7 +1036,7 @@ for _, strategy in helpers.each_strategy() do
               db.consumer_reset_secrets:delete({ id = pending[1].id })
 
               local invalidated = {}
-              for secret in db.consumer_reset_secrets:each_for_consumer({ id = default_developer.consumer.id}) do
+              for secret in db.consumer_reset_secrets:each_for_consumer({ id = approved_developer.consumer.id}) do
                 if secret.status == enums.TOKENS.STATUS.INVALIDATED then
                   invalidated[#invalidated + 1] = secret
                 end
@@ -1105,7 +1054,7 @@ for _, strategy in helpers.each_strategy() do
           describe("GET", function()
             it("returns 401 when consumer is not approved", function()
               local res = authenticate(portal_api_client, {
-                ["Authorization"] = "Basic " .. ngx.encode_base64("pending@konghq.com:Pending-Developer"),
+                ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
               })
 
               local body = assert.res_status(401, res)
@@ -1154,7 +1103,7 @@ for _, strategy in helpers.each_strategy() do
 
             it("account locks after portal_auth_login_attempts, resets on password reset", function()
               local cookie = authenticate(portal_api_client, {
-                ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:Kong-Strong"),
+                ["Authorization"] = "Basic " .. ngx.encode_base64("lockout@konghq.com:locked"),
               }, true)
 
               -- login succeeds
@@ -1171,7 +1120,7 @@ for _, strategy in helpers.each_strategy() do
               -- 3 unsuccessful attempts
               for i = 1, 3 do
                 local res = authenticate(portal_api_client, {
-                  ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:wrong"),
+                  ["Authorization"] = "Basic " .. ngx.encode_base64("lockout@konghq.com:wrong"),
                 })
 
                 local body = assert.res_status(401, res)
@@ -1181,7 +1130,7 @@ for _, strategy in helpers.each_strategy() do
 
               -- valid password now fails
               local res = authenticate(portal_api_client, {
-                ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:Kong-Strong"),
+                ["Authorization"] = "Basic " .. ngx.encode_base64("lockout@konghq.com:locked"),
               })
 
               local body = assert.res_status(401, res)
@@ -1193,7 +1142,7 @@ for _, strategy in helpers.each_strategy() do
                 method = "POST",
                 path = "/forgot-password",
                 body = {
-                  email = default_developer.email,
+                  email = locked_out_developer.email,
                 },
                 headers = {["Content-Type"] = "application/json"}
               })
@@ -1201,7 +1150,7 @@ for _, strategy in helpers.each_strategy() do
               assert.res_status(200, res)
 
               local pending = {}
-              for secret in db.consumer_reset_secrets:each_for_consumer({ id = default_developer.consumer.id}) do
+              for secret in db.consumer_reset_secrets:each_for_consumer({ id = locked_out_developer.consumer.id}) do
                 if secret.status == enums.TOKENS.STATUS.PENDING then
                   pending[#pending + 1] = secret
                 end
@@ -1209,7 +1158,7 @@ for _, strategy in helpers.each_strategy() do
 
               local secret = pending[1].secret
 
-              local claims = {id = default_developer.consumer.id, exp = time() + 100000}
+              local claims = {id = locked_out_developer.consumer.id, exp = time() + 100000}
               local valid_jwt = ee_jwt.generate_JWT(claims, secret)
 
               local res = assert(portal_api_client:send {
@@ -1217,7 +1166,7 @@ for _, strategy in helpers.each_strategy() do
                 path = "/reset-password",
                 body = {
                   token = valid_jwt,
-                  password = "Kong-Strong",
+                  password = "unlocked",
                 },
                 headers = {["Content-Type"] = "application/json"}
               })
@@ -1226,7 +1175,7 @@ for _, strategy in helpers.each_strategy() do
 
               -- new password auths
               cookie = authenticate(portal_api_client, {
-                ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:Kong-Strong"),
+                ["Authorization"] = "Basic " .. ngx.encode_base64("lockout@konghq.com:unlocked"),
               }, true)
 
               local res = assert(portal_api_client:send {
@@ -1509,7 +1458,7 @@ for _, strategy in helpers.each_strategy() do
 
             it("retrieves a basic-auth credential", function()
               local credential = assert(kong.db.daos["basicauth_credentials"]:insert({
-                consumer = { id = default_developer.consumer.id },
+                consumer = { id = approved_developer.consumer.id },
                 username = "dude",
                 password = "hunter1",
               }))
@@ -1530,7 +1479,7 @@ for _, strategy in helpers.each_strategy() do
 
             it("retrieves a key-auth credential", function()
               local credential = assert(kong.db.daos["keyauth_credentials"]:insert({
-                consumer = { id = default_developer.consumer.id },
+                consumer = { id = approved_developer.consumer.id },
                 key = "asdf",
               }))
 
@@ -1580,7 +1529,7 @@ for _, strategy in helpers.each_strategy() do
 
             it("updates a basic-auth credential", function()
               local credential = assert(kong.db.daos["basicauth_credentials"]:insert({
-                consumer = { id = default_developer.consumer.id },
+                consumer = { id = approved_developer.consumer.id },
                 username = "dude",
                 password = "hunter1",
               }))
@@ -1612,7 +1561,7 @@ for _, strategy in helpers.each_strategy() do
 
             it("updates a key-auth credential", function()
               local credential = assert(kong.db.daos["keyauth_credentials"]:insert({
-                consumer = { id = default_developer.consumer.id },
+                consumer = { id = approved_developer.consumer.id },
                 key = "asdf",
               }))
 
@@ -1639,7 +1588,7 @@ for _, strategy in helpers.each_strategy() do
 
             it("updates a basic-auth credential by id", function()
               local credential = assert(kong.db.daos["basicauth_credentials"]:insert({
-                consumer = { id = default_developer.consumer.id },
+                consumer = { id = approved_developer.consumer.id },
                 username = "dude",
                 password = "hunter1",
               }))
@@ -1670,7 +1619,7 @@ for _, strategy in helpers.each_strategy() do
 
             it("updates a key-auth credential by id", function()
               local credential = assert(kong.db.daos["keyauth_credentials"]:insert({
-                consumer = { id = default_developer.consumer.id },
+                consumer = { id = approved_developer.consumer.id },
                 key = "asdf",
               }))
 
@@ -1697,7 +1646,7 @@ for _, strategy in helpers.each_strategy() do
             it("does not allow patch with body-path mismatched id", function()
               local res = register_developer(portal_api_client, {
                   email = "attackerdev@konghq.com",
-                  password = "s<r1P7-k1Ddi3++",
+                  password = "attackerdev",
                   meta = "{\"full_name\":\"Kong Dev\"}",
                 })
 
@@ -1707,12 +1656,12 @@ for _, strategy in helpers.each_strategy() do
 
               local attacker_credential = assert(kong.db.daos["keyauth_credentials"]:insert({
                 consumer = { id = attacker_dev.consumer.id },
-                key = "Attacker_key",
+                key = "attackerkey",
               }))
 
               local victm_credential = assert(kong.db.daos["keyauth_credentials"]:insert({
                 consumer = { id = approved_developer.consumer.id },
-                key = "Victmkey1",
+                key = "victmkey",
               }))
 
 
@@ -1736,16 +1685,15 @@ for _, strategy in helpers.each_strategy() do
           describe("DELETE", function()
             it("deletes a basic-auth credential", function()
               local credential = assert(kong.db.daos["basicauth_credentials"]:insert({
-                consumer = { id = default_developer.consumer.id },
+                consumer = { id = approved_developer.consumer.id },
                 username = "dude",
-                password = "Tfgsd223P!_",
+                password = "hunter1",
               }))
 
               local res = assert(portal_api_client:send {
                 method = "DELETE",
                 path = "/credentials/basic-auth/" .. credential.id,
                 headers = {
-                  ["Content-Type"] = "application/json",
                   ["Cookie"] = cookie,
                 },
               })
@@ -1765,7 +1713,7 @@ for _, strategy in helpers.each_strategy() do
 
             it("deletes a key-auth credential", function()
               local credential = assert(kong.db.daos["keyauth_credentials"]:insert({
-                consumer = { id = default_developer.consumer.id },
+                consumer = { id = approved_developer.consumer.id },
                 key = "asdf",
               }))
 
@@ -1968,7 +1916,7 @@ for _, strategy in helpers.each_strategy() do
             assert.res_status(200, res)
 
             local pending = {}
-            for secret in db.consumer_reset_secrets:each_for_consumer({ id = default_developer.consumer.id}) do
+            for secret in db.consumer_reset_secrets:each_for_consumer({ id = approved_developer.consumer.id}) do
               if secret.status == enums.TOKENS.STATUS.PENDING then
                 pending[#pending + 1] = secret
               end
@@ -2074,7 +2022,7 @@ for _, strategy in helpers.each_strategy() do
             end)
 
             it("should return 200 if called with a valid token", function()
-              local claims = {id = default_developer.consumer.id, exp = time() + 100000}
+              local claims = {id = approved_developer.consumer.id, exp = time() + 100000}
               local valid_jwt = ee_jwt.generate_JWT(claims, secret)
 
               local res = assert(portal_api_client:send {
@@ -2096,17 +2044,11 @@ for _, strategy in helpers.each_strategy() do
           local cookie
 
           lazy_setup(function()
-            configure_portal(db, {
-              portal = true,
-              portal_auth = "basic-auth",
-              portal_auto_approve = true,
-            })
-
             portal_api_client = assert(ee_helpers.portal_api_client())
 
             local res = register_developer(portal_api_client, {
               email = "devdevdev@konghq.com",
-              password = "Developing-is-Cool!",
+              password = "developer",
               meta = "{\"full_name\":\"Kong Dev\"}",
             })
 
@@ -2115,7 +2057,7 @@ for _, strategy in helpers.each_strategy() do
             developer = resp_body_json.developer
 
             cookie = authenticate(portal_api_client, {
-              ["Authorization"] = "Basic " .. ngx.encode_base64("devdevdev@konghq.com:Developing-is-Cool!"),
+              ["Authorization"] = "Basic " .. ngx.encode_base64("devdevdev@konghq.com:developer"),
             }, true)
 
             close_clients(portal_api_client)
@@ -2205,24 +2147,18 @@ for _, strategy in helpers.each_strategy() do
           local cookie
 
           lazy_setup(function()
-            configure_portal(db, {
-              portal = true,
-              portal_auth = "basic-auth",
-              portal_auto_approve = true,
-            })
-
             portal_api_client = assert(ee_helpers.portal_api_client())
 
             local res = register_developer(portal_api_client, {
               email = "metachange@konghq.com",
-              password = "Bloodsport-1988",
+              password = "bloodsport",
               meta = "{\"full_name\":\"I will change\"}",
             })
 
             assert.res_status(200, res)
 
             cookie = authenticate(portal_api_client, {
-              ["Authorization"] = "Basic " .. ngx.encode_base64("metachange@konghq.com:Bloodsport-1988"),
+              ["Authorization"] = "Basic " .. ngx.encode_base64("metachange@konghq.com:bloodsport"),
             }, true)
 
             close_clients(portal_api_client)
@@ -2365,6 +2301,20 @@ for _, strategy in helpers.each_strategy() do
           local password = "tHiSPasSw0rDiSTr*ng"
 
           lazy_setup(function()
+            helpers.stop_kong()
+            assert(db:truncate())
+
+            assert(helpers.start_kong({
+              database   = strategy,
+              portal_session_conf = PORTAL_SESSION_CONF,
+              portal_auth_password_complexity = [[{"kong-preset": "min_8"}]],
+              portal = true,
+              portal_auth = "basic-auth",
+              enforce_rbac = rbac,
+              portal_auto_approve = true,
+              portal_is_legacy = true,
+              admin_gui_url = "http://localhost:8080",
+            }))
 
             configure_portal(db, {
               portal = true,
@@ -2404,6 +2354,10 @@ for _, strategy in helpers.each_strategy() do
 
             secret = pending[1].secret
             close_clients(portal_api_client)
+          end)
+
+          lazy_teardown(function()
+            helpers.stop_kong()
           end)
 
           before_each(function()
@@ -2636,6 +2590,19 @@ for _, strategy in helpers.each_strategy() do
           local cookie
 
           lazy_setup(function()
+            helpers.stop_kong()
+            assert(db:truncate())
+
+            assert(helpers.start_kong({
+              database   = strategy,
+              portal_session_conf = PORTAL_SESSION_CONF,
+              portal = true,
+              portal_auth = "basic-auth",
+              enforce_rbac = rbac,
+              portal_auto_approve = true,
+              portal_is_legacy = true,
+              admin_gui_url = "http://localhost:8080",
+            }))
 
             configure_portal(db, {
               portal = true,
@@ -2647,7 +2614,7 @@ for _, strategy in helpers.each_strategy() do
 
             local res = register_developer(portal_api_client, {
               email = "changeme@konghq.com",
-              password = "I-like-pancakes",
+              password = "pancakes",
               meta = "{\"full_name\":\"Bowser\"}",
             })
 
@@ -2655,7 +2622,7 @@ for _, strategy in helpers.each_strategy() do
 
             res = register_developer(portal_api_client, {
               email = "otherdeveloper@konghq.com",
-              password = "pancakesareRAD!",
+              password = "rad",
               meta = "{\"full_name\":\"Toad\"}",
             })
 
@@ -2664,7 +2631,7 @@ for _, strategy in helpers.each_strategy() do
             other_developer = resp_body_json.developer
 
             cookie = authenticate(portal_api_client, {
-              ["Authorization"] = "Basic " .. ngx.encode_base64("changeme@konghq.com:I-like-pancakes"),
+              ["Authorization"] = "Basic " .. ngx.encode_base64("changeme@konghq.com:pancakes"),
             }, true)
 
             close_clients(portal_api_client)
@@ -2674,7 +2641,7 @@ for _, strategy in helpers.each_strategy() do
             portal_api_client = assert(ee_helpers.portal_api_client())
 
             cookie = authenticate(portal_api_client, {
-              ["Authorization"] = "Basic " .. ngx.encode_base64("new_email@whodis.com:I-like-pancakes"),
+              ["Authorization"] = "Basic " .. ngx.encode_base64("new_email@whodis.com:pancakes"),
             }, true)
 
             local res = assert(portal_api_client:send {
@@ -2688,7 +2655,7 @@ for _, strategy in helpers.each_strategy() do
             assert.res_status(204, res)
 
             cookie = authenticate(portal_api_client, {
-              ["Authorization"] = "Basic " .. ngx.encode_base64("otherdeveloper@konghq.com:pancakesareRAD!"),
+              ["Authorization"] = "Basic " .. ngx.encode_base64("otherdeveloper@konghq.com:rad"),
             }, true)
 
             local res = assert(portal_api_client:send {
@@ -2791,7 +2758,7 @@ for _, strategy in helpers.each_strategy() do
 
               -- old email fails
               local res = authenticate(portal_api_client, {
-                ["Authorization"] = "Basic " .. ngx.encode_base64("changeme@konghq.com:I-like-pancakes"),
+                ["Authorization"] = "Basic " .. ngx.encode_base64("changeme@konghq.com:pancakes"),
               })
 
               assert.res_status(401, res)
@@ -2800,7 +2767,7 @@ for _, strategy in helpers.each_strategy() do
 
               -- new email auths
               cookie = authenticate(portal_api_client, {
-                ["Authorization"] = "Basic " .. ngx.encode_base64("new_email@whodis.com:I-like-pancakes"),
+                ["Authorization"] = "Basic " .. ngx.encode_base64("new_email@whodis.com:pancakes"),
               }, true)
 
               local res = assert(portal_api_client:send {
@@ -2825,7 +2792,20 @@ for _, strategy in helpers.each_strategy() do
           local password = "tHiSPasSw0rDiSTr*ng"
 
           lazy_setup(function()
+            helpers.stop_kong()
             assert(db:truncate())
+
+            assert(helpers.start_kong({
+              database   = strategy,
+              portal_session_conf = PORTAL_SESSION_CONF,
+              portal_auth_password_complexity = [[{"kong-preset": "min_8"}]],
+              portal = true,
+              portal_auth = "basic-auth",
+              enforce_rbac = rbac,
+              portal_auto_approve = true,
+              portal_is_legacy = true,
+              admin_gui_url = "http://localhost:8080",
+            }))
 
             configure_portal(db, {
               portal = true,
@@ -3048,14 +3028,13 @@ for _, strategy in helpers.each_strategy() do
         local approved_developer
 
         lazy_setup(function()
+          helpers.stop_kong()
           assert(db:truncate())
 
           assert(helpers.start_kong({
             database   = strategy,
             portal_session_conf = PORTAL_SESSION_CONF,
-            portal = "on",
-            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
-            license_path = "spec-ee/fixtures/mock_license.json",
+            portal = true,
             portal_auth = "key-auth",
             portal_is_legacy = true,
             enforce_rbac = rbac,
@@ -4228,14 +4207,14 @@ for _, strategy in helpers.each_strategy() do
 
             local res = register_developer(portal_api_client, {
               email = "metachange@konghq.com",
-              key = "Bloodsport-1988",
+              key = "bloodsport",
               meta = "{\"full_name\":\"I will change\"}",
             })
 
             assert.res_status(200, res)
 
             cookie = authenticate(portal_api_client, {
-              ["apikey"] = "Bloodsport-1988",
+              ["apikey"] = "bloodsport",
             }, true)
 
             close_clients(portal_api_client)
@@ -4817,15 +4796,14 @@ for _, strategy in helpers.each_strategy() do
         local cookie
 
         lazy_setup(function()
+          helpers.stop_kong()
           assert(db:truncate())
 
           assert(helpers.start_kong({
             database   = strategy,
             portal_session_conf = PORTAL_SESSION_CONF,
-            portal = "on",
-            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
-            license_path = "spec-ee/fixtures/mock_license.json",
-            vitals  = "off",
+            portal = true,
+            vitals  = false,
             portal_auth = "basic-auth",
             enforce_rbac = rbac,
             portal_auto_approve = "on",
@@ -4933,15 +4911,14 @@ for _, strategy in helpers.each_strategy() do
         local cookie
 
         lazy_setup(function()
+          helpers.stop_kong()
           assert(db:truncate())
 
           assert(helpers.start_kong({
             database   = strategy,
             portal_session_conf = PORTAL_SESSION_CONF,
-            portal = "on",
-            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
-            license_path = "spec-ee/fixtures/mock_license.json",
-            vitals  = "on",
+            portal = true,
+            vitals  = true,
             portal_auth = "basic-auth",
             enforce_rbac = rbac,
             portal_auto_approve = "on",
@@ -5261,15 +5238,14 @@ for _, strategy in helpers.each_strategy() do
         local cookie
 
         lazy_setup(function()
+          helpers.stop_kong()
           assert(db:truncate())
 
           assert(helpers.start_kong({
             database   = strategy,
             portal_session_conf = PORTAL_SESSION_CONF,
-            portal = "on",
-            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
-            license_path = "spec-ee/fixtures/mock_license.json",
-            vitals  = "on",
+            portal = true,
+            vitals  = true,
             portal_auth = "basic-auth",
             enforce_rbac = rbac,
             portal_auto_approve = "on",
@@ -5343,13 +5319,12 @@ for _, strategy in helpers.each_strategy() do
 
       describe("Default Route", function()
         lazy_setup(function()
+          helpers.stop_kong()
           assert(db:truncate())
 
           assert(helpers.start_kong({
             database = strategy,
-            portal = "on",
-            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
-            license_path = "spec-ee/fixtures/mock_license.json",
+            portal = true,
             portal_auth = "basic-auth",
             enforce_rbac = rbac,
             portal_session_conf = PORTAL_SESSION_CONF,

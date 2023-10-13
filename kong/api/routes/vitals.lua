@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local endpoints = require "kong.api.endpoints"
-local portal_and_vitals_allowed = require "kong.enterprise_edition.license_helpers".portal_and_vitals_allowed
+
 
 local kong = kong
 
@@ -25,9 +25,8 @@ local function fetch_consumer(self, helpers, db, consumer_id)
   end
 end
 
-
 local function enabled_only()
-  if not kong.configuration.vitals or not portal_and_vitals_allowed() then
+  if not kong.configuration.vitals then
     return kong.response.exit(404, { message = "Not found" })
   end
 end
