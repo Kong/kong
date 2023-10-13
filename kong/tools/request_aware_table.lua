@@ -12,7 +12,6 @@ local is_not_debug_mode = (kong.configuration.log_level ~= "debug")
 local error        = error
 local rawset       = rawset
 local setmetatable = setmetatable
-local get_phase    = ngx.get_phase
 
 
 local get_request_id = request_id.get
@@ -24,7 +23,7 @@ local ALLOWED_REQUEST_ID_K = "__allowed_request_id"
 
 -- Check if access is allowed for table, based on the request ID
 local function enforce_sequential_access(table)
-  if not var_available(get_phase()) then
+  if not var_available() then
     -- allow access and reset allowed request ID
     rawset(table, ALLOWED_REQUEST_ID_K, nil)
     return
