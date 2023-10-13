@@ -17,7 +17,6 @@ local workspaces = require "kong.workspaces"
 local Errors = require "kong.db.errors"
 local crud_helpers = require "kong.portal.crud_helpers"
 local workspace_config = require "kong.portal.workspace_config"
-local portal_and_vitals_allowed = require "kong.enterprise_edition.license_helpers".portal_and_vitals_allowed
 
 
 local kong = kong
@@ -256,12 +255,12 @@ local function attach_routes(routes)
   end
 end
 
-if portal_and_vitals_allowed() then
-  -- Load core routes
-  for _, v in ipairs({"api"}) do
-    local routes = require("kong.portal." .. v)
-    attach_routes(routes)
-  end
+
+-- Load core routes
+for _, v in ipairs({"api"}) do
+  local routes = require("kong.portal." .. v)
+  attach_routes(routes)
 end
+
 
 return app
