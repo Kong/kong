@@ -1,8 +1,9 @@
 --- NOTE: tool is designed to assist with **detecting** request contamination
 -- issues on CI, during test runs. It does not offer security safeguards.
 
-local table_new = require "table.new"
-local table_clear = require "table.clear"
+local table_new = require("table.new")
+local table_clear = require("table.clear")
+local get_request_id = require("kong.tracing.request_id").get
 
 local is_not_debug_mode = (kong.configuration.log_level ~= "debug")
 
@@ -11,7 +12,6 @@ local error        = error
 local rawset       = rawset
 local setmetatable = setmetatable
 local get_phase    = ngx.get_phase
-local var          = ngx.var
 
 
 local NGX_VAR_PHASES = {
@@ -35,7 +35,7 @@ local function enforce_sequential_access(table)
     return
   end
 
-  local curr_request_id = var.request_id
+  local curr_request_id = get_request_id()
   local allowed_request_id = rawget(table, ALLOWED_REQUEST_ID_K)
   if not allowed_request_id then
     -- first access. Set allowed request ID and allow access
