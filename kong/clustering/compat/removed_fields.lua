@@ -330,6 +330,9 @@ return {
     ldap_auth = {
       "realm",
     },
+    hmac_auth = {
+      "realm",
+    },
     -- Enterprise plugins
     openid_connect = {
       "claims_forbidden",
