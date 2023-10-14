@@ -20,8 +20,8 @@ local function get_ctx_request_id()
 end
 
 
-local function var_available()
-  return NGX_VAR_PHASES[get_phase()]
+local function var_available(phase)
+  return NGX_VAR_PHASES[phase or get_phase()]
 end
 
 
@@ -29,8 +29,9 @@ local function get()
   local rid = get_ctx_request_id()
 
   if not rid then
-    if not var_available() then
-      return nil, "cannot access ngx.var in " .. get_phase() .. " phase"
+    local phase = get_phase()
+    if not var_available(phase) then
+      return nil, "cannot access ngx.var in " .. phase .. " phase"
     end
 
     -- first access to the request id for this request:
