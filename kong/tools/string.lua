@@ -19,12 +19,12 @@ do
     str_replace_char = require("resty.core.utils").str_replace_char
 
   else    -- stream subsystem
-    str_replace_char = function(str, f, replace)
-      if not find(str, f, nil, true) then
+    str_replace_char = function(str, ch, replace)
+      if not find(str, ch, nil, true) then
         return str
       end
 
-      return gsub(str, f, replace)
+      return gsub(str, ch, replace)
     end
   end
 
