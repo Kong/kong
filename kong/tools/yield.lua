@@ -24,7 +24,7 @@ do
   }
 
   in_yieldable_phase = function(phase)
-    return LUA_CONTEXT_YIELDABLE_PHASE[phase or get_phase()] ~= nil
+    return LUA_CONTEXT_YIELDABLE_PHASE[phase or get_phase()]
   end
 end
 _M.in_yieldable_phase = in_yieldable_phase
