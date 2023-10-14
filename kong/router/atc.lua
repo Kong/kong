@@ -562,7 +562,7 @@ local get_queries_key
 do
   local tb_sort = table.sort
   local tb_concat = table.concat
-  local replace_dashes = require("kong.tools.string").replace_dashes
+  local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
 
   local str_buf = buffer.new(64)
 
@@ -571,7 +571,7 @@ do
 
     -- NOTE: DO NOT yield until str_buf:get()
     for name, value in pairs(headers) do
-      local name = replace_dashes(name):lower()
+      local name = replace_dashes_lower(name)
 
       if type(value) == "table" then
         for i, v in ipairs(value) do

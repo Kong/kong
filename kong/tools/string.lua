@@ -6,6 +6,7 @@ local _M = {}
 
 
 local replace_dashes
+local replace_dashes_lower
 do
   local str_replace_char
 
@@ -31,8 +32,13 @@ do
   replace_dashes = function(str)
     return str_replace_char(str, "-", "_")
   end
+
+  replace_dashes_lower = function(str)
+    return str_replace_char(str:lower(), "-", "_")
+  end
 end
 _M.replace_dashes = replace_dashes
+_M.replace_dashes_lower = replace_dashes_lower
 
 
 return _M
