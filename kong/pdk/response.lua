@@ -178,6 +178,12 @@ local function new(self, major_version)
     end
   end
 
+  local function check_headers_sent()
+    if ngx.headers_sent then
+      error("headers have already been sent", 2)
+    end
+  end
+
 
   ---
   -- Returns the HTTP status code currently set for the downstream response (as
@@ -377,9 +383,7 @@ local function new(self, major_version)
   function _RESPONSE.set_status(status)
     check_phase(rewrite_access_header)
 
-    if ngx.headers_sent then
-      error("headers have already been sent", 2)
-    end
+    check_headers_sent()
 
     if type(status) ~= "number" then
       error("code must be a number", 2)
@@ -418,9 +422,7 @@ local function new(self, major_version)
   function _RESPONSE.set_header(name, value)
     check_phase(rewrite_access_header)
 
-    if ngx.headers_sent then
-      error("headers have already been sent", 2)
-    end
+    check_headers_sent()
 
     validate_header(name, value)
     local lower_name = lower(name)
@@ -455,9 +457,7 @@ local function new(self, major_version)
     -- to show
     check_phase(rewrite_access_header)
 
-    if ngx.headers_sent then
-      error("headers have already been sent", 2)
-    end
+    check_headers_sent()
 
     validate_header(name, value)
 
@@ -482,9 +482,7 @@ local function new(self, major_version)
   function _RESPONSE.clear_header(name)
     check_phase(rewrite_access_header)
 
-    if ngx.headers_sent then
-      error("headers have already been sent", 2)
-    end
+    check_headers_sent()
 
     if type(name) ~= "string" then
       error("header name must be a string", 2)
@@ -529,9 +527,7 @@ local function new(self, major_version)
   function _RESPONSE.set_headers(headers)
     check_phase(rewrite_access_header)
 
-    if ngx.headers_sent then
-      error("headers have already been sent", 2)
-    end
+    check_headers_sent()
 
     validate_headers(headers)
 
@@ -662,9 +658,7 @@ local function new(self, major_version)
   end
 
   local function send(status, body, headers)
-    if ngx.headers_sent then
-      error("headers have already been sent", 2)
-    end
+    check_headers_sent()
 
     ngx.status = status
 
@@ -958,9 +952,7 @@ local function new(self, major_version)
 
       check_phase(rewrite_access_header)
 
-      if ngx.headers_sent then
-        error("headers have already been sent", 2)
-      end
+      check_headers_sent()
 
       if type(status) ~= "number" then
         error("code must be a number", 2)
@@ -1113,9 +1105,7 @@ local function new(self, major_version)
 
     check_phase(rewrite_access_header)
 
-    if ngx.headers_sent then
-      error("headers have already been sent", 2)
-    end
+    check_headers_sent()
 
     if type(status) ~= "number" then
       error("code must be a number", 2)
