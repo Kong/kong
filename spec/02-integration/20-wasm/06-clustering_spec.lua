@@ -4,9 +4,12 @@ local cjson = require "cjson.safe"
 local STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 local admin = require "spec.fixtures.admin_api"
 
+
 local HEADER = "X-Proxy-Wasm"
+local FILTER_SRC = "spec/fixtures/proxy_wasm_filters/build/response_transformer.wasm"
 
 local json = cjson.encode
+local file = helpers.file
 
 local function get_node_id(prefix)
   local data = helpers.wait_for_file_contents(prefix .. "/kong.id")
@@ -69,10 +72,19 @@ local function expect_status(prefix, exp)
     .is_truthy(msg)
 end
 
+local function new_wasm_filter_directory()
+  local dir = helpers.make_temp_dir()
+  assert(file.copy(FILTER_SRC, dir .. "/response_transformer.wasm"))
 
-describe("#wasm - hybrid mode", function()
+  assert(file.copy(FILTER_SRC, dir .. "/response_transformer_with_schema.wasm"))
+  return dir
+end
+
+
+describe("#wasm - hybrid mode #postgres", function()
   local cp_prefix = "cp"
   local cp_errlog = cp_prefix .. "/logs/error.log"
+  local cp_filter_path
 
   local dp_prefix = "dp"
 
@@ -86,6 +98,13 @@ describe("#wasm - hybrid mode", function()
 
     db.clustering_data_planes:truncate()
 
+    cp_filter_path = new_wasm_filter_directory()
+    assert(file.write(cp_filter_path .. "/response_transformer_with_schema.meta.json", json {
+      config_schema = {
+        type = "object",
+      },
+    }))
+
     assert(helpers.start_kong({
       role                = "control_plane",
       database            = "postgres",
@@ -96,17 +115,24 @@ describe("#wasm - hybrid mode", function()
       cluster_listen      = "127.0.0.1:9005",
       nginx_conf          = "spec/fixtures/custom_nginx.template",
       wasm                = true,
+      wasm_filters_path   = cp_filter_path,
     }))
   end)
 
   lazy_teardown(function()
     helpers.stop_kong(cp_prefix)
+    if cp_filter_path then
+      helpers.dir.rmtree(cp_filter_path)
+    end
   end)
 
   describe("[happy path]", function()
     local client
+    local dp_filter_path
 
     lazy_setup(function()
+      dp_filter_path = new_wasm_filter_directory()
+
       assert(helpers.start_kong({
         role                  = "data_plane",
         database              = "off",
@@ -117,6 +143,7 @@ describe("#wasm - hybrid mode", function()
         admin_listen          = "off",
         nginx_conf            = "spec/fixtures/custom_nginx.template",
         wasm                  = true,
+        wasm_filters_path     = dp_filter_path,
       }))
 
       client = helpers.proxy_client()
@@ -125,6 +152,9 @@ describe("#wasm - hybrid mode", function()
     lazy_teardown(function()
       if client then client:close() end
       helpers.stop_kong(dp_prefix)
+      if dp_filter_path then
+        helpers.dir.rmtree(dp_filter_path)
+      end
     end)
 
     it("syncs wasm filter chains to the data plane", function()
@@ -163,11 +193,23 @@ describe("#wasm - hybrid mode", function()
             config = json {
               append = {
                 headers = {
-                  HEADER .. ":" .. value,
+                  HEADER .. ":response_transformer",
                 },
               },
             }
-          }
+          },
+
+          {
+            name = "response_transformer_with_schema",
+            config = {
+              append = {
+                headers = {
+                  HEADER .. ":response_transformer_with_schema",
+                },
+              },
+            }
+          },
+
         }
       })
 
@@ -185,15 +227,19 @@ describe("#wasm - hybrid mode", function()
             }
           end
 
-          if res.headers[HEADER] ~= value then
-            return nil, {
-              msg = "missing/incorrect " .. HEADER .. " header",
-              exp = value,
-              got = res.headers[HEADER] or "<NIL>",
-            }
+          if res.headers[HEADER]
+            and type(res.headers[HEADER]) == "table"
+            and res.headers[HEADER][1] == "response_transformer"
+            and res.headers[HEADER][2] == "response_transformer_with_schema"
+          then
+            return true
           end
 
-          return true
+          return nil, {
+            msg = "missing/incorrect " .. HEADER .. " header",
+            exp = value,
+            got = res.headers[HEADER] or "<NIL>",
+          }
         end)
         .is_truthy("wasm filter is configured on the data plane")
 

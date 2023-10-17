@@ -24,6 +24,34 @@ local json_schema = require "kong.db.schema.json"
 ---@field config      any|nil
 
 
+local filter_config_schema = {
+  parent_subschema_key = "name",
+  namespace = constants.SCHEMA_NAMESPACES.PROXY_WASM_FILTERS,
+  optional = true,
+  default = {
+    ["$schema"] = json_schema.DRAFT_4,
+    -- filters with no user-defined JSON schema may accept an optional
+    -- config, but only as a string
+    type = { "string", "null" },
+  },
+}
+
+
+if kong and kong.configuration and kong.configuration.role == "data_plane" then
+  -- data plane nodes are not guaranteed to have access to filter metadata, so
+  -- they will use a JSON schema that permits all data types
+  --
+  -- this branch can be removed if we decide to turn off entity validation in
+  -- the data plane altogether
+  filter_config_schema = {
+    inline = {
+      ["$schema"] = json_schema.DRAFT_4,
+      type = { "array", "boolean", "integer", "null", "number", "object", "string" },
+    },
+  }
+end
+
+
 local filter = {
   type = "record",
   fields = {
@@ -34,17 +62,7 @@ local filter = {
     { config = {
         type = "json",
         required = false,
-        json_schema = {
-          parent_subschema_key = "name",
-          namespace = constants.SCHEMA_NAMESPACES.PROXY_WASM_FILTERS,
-          optional = true,
-          default = {
-            ["$schema"] = json_schema.DRAFT_4,
-            -- filters with no user-defined JSON schema may accept an optional
-            -- config, but only as a string
-            type = { "string", "null" },
-          },
-        },
+        json_schema = filter_config_schema,
       },
     },
 

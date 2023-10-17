@@ -60,6 +60,13 @@ function Blueprint:insert_n(n, overrides, options)
   return res
 end
 
+function Blueprint:truncate()
+  local _, err = self.dao:truncate()
+  if err then
+    error(err, 2)
+  end
+  return true
+end
 
 local function new_blueprint(dao, build_function)
   return setmetatable({
