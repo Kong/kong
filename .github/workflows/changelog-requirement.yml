@@ -38,7 +38,7 @@ jobs:
           echo "Refer to https://github.com/Kong/gateway-changelog for format guidelines."
           exit 1
 
-      - name: Check incorrect case for changelog directory
+      - name: Check correct case for changelog directory
         if: steps.changelog-list.outputs.upper_case_any_changed == 'true'
         run: |
           echo "Please use \"changelog\" (all lowercase) for changelog modifications."
