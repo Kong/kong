@@ -83,8 +83,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: |
-        bazel build //build:kong --verbose_failures --action_env=INSTALL_DESTDIR=/usr/local ${{ inputs.bazel_args }}
-        bazel build //build:venv --verbose_failures --action_env=INSTALL_DESTDIR=/usr/local ${{ inputs.bazel_args }}
+        bazel build //build:kong --verbose_failures --action_env=INSTALL_DESTDIR=/usr/local --//:skip_tools=true ${{ inputs.bazel_args }}
+        bazel build //build:venv --verbose_failures --action_env=INSTALL_DESTDIR=/usr/local --//:skip_tools=true ${{ inputs.bazel_args }}
         # debian package for Pongo
         bazel build :kong_deb --verbose_failures --action_env=INSTALL_DESTDIR=/usr/local ${{ inputs.bazel_args }}
 

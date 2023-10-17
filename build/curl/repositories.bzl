@@ -16,9 +16,9 @@ def curl_repositories():
         http_archive,
         name = "curl",
         urls = [
-            "https://mirror.bazel.build/curl.haxx.se/download/" + tarball,
             "https://curl.se/download/" + tarball,
             "https://github.com/curl/curl/releases/download/%s/%s" % (tag, tarball),
+            "https://mirror.bazel.build/curl.haxx.se/download/" + tarball,
         ],
         type = "tar.gz",
         sha256 = "d3a19aeea301085a56c32bc0f7d924a818a7893af253e41505d1e26d7db8e95a",

@@ -113,7 +113,10 @@ install_curl_cmd = select({
         )
         chmod -R "+r" ${BUILD_DESTDIR}/kong-tools/ssl
     """,
-    "@kong//:skip_tools_flag": "\n",
+    "@kong//:skip_tools_flag": """
+        mkdir -p ${BUILD_DESTDIR}/kong-tools
+        touch ${BUILD_DESTDIR}/kong-tools/.empty
+    """,
 })
 
 ##### dynamic modules
