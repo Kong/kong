@@ -1,3 +1,7 @@
+---
+# The guide here might be outdated. Please check
+#   https://github.com/Kong/gateway-changelog
+# for details.
 message: # "Description of your change" (required)
 type: # One of "feature", "bugfix", "dependency", "deprecation", "breaking_change", "performance" (required)
 scope: # One of "Core", "Plugin", "PDK", "Admin API", "Performance", "Configuration", "Clustering", "Portal", "CLI Command" (optional)
