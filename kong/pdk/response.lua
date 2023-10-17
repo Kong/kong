@@ -388,10 +388,6 @@ local function new(self, major_version)
       error(fmt("code must be a number between %u and %u", MIN_STATUS_CODE, MAX_STATUS_CODE), 2)
     end
 
-    if ngx.headers_sent then
-      error("headers have already been sent", 2)
-    end
-
     ngx.status = status
   end
 
