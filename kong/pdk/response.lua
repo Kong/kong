@@ -952,7 +952,9 @@ local function new(self, major_version)
 
       check_phase(rewrite_access_header)
 
-      check_headers_sent()
+      if ngx.headers_sent then
+        error("headers have already been sent", 2)
+      end
 
       if type(status) ~= "number" then
         error("code must be a number", 2)
