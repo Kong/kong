@@ -276,7 +276,7 @@ for _, strategy in strategies() do
         })
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
-        assert.same({ message = "Invalid authentication credentials" }, json)
+        assert.same({ message = "Unauthorized" }, json)
       end)
       it("handles duplicated key in querystring", function()
         local res = assert(proxy_client:send {
@@ -321,7 +321,7 @@ for _, strategy in strategies() do
             })
             local body = assert.res_status(401, res)
             local json = cjson.decode(body)
-            assert.same({ message = "Invalid authentication credentials" }, json)
+            assert.same({ message = "Unauthorized" }, json)
           end)
 
           -- lua-multipart doesn't currently handle duplicates at all.
@@ -412,7 +412,7 @@ for _, strategy in strategies() do
         })
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
-        assert.same({ message = "Invalid authentication credentials" }, json)
+        assert.same({ message = "Unauthorized" }, json)
       end)
     end)
 

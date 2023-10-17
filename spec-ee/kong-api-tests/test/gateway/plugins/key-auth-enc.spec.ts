@@ -132,7 +132,7 @@ describe('Gateway Plugins: key-auth-enc', function () {
 
     expect(resp.status, 'Status should be 401').to.equal(401);
     expect(resp.data.message, 'Should indicate invalid credentials').to.equal(
-      'Invalid authentication credentials'
+      'Unauthorized'
     );
   });
 
@@ -170,7 +170,7 @@ describe('Gateway Plugins: key-auth-enc', function () {
 
     expect(resp.status, 'Status should be 401').to.equal(401);
     expect(resp.data.message, 'Should indicate invalid credentials').to.equal(
-      'Invalid authentication credentials'
+      'Unauthorized'
     );
   });
 
@@ -184,7 +184,7 @@ describe('Gateway Plugins: key-auth-enc', function () {
 
     expect(resp.status, 'Status should be 401').to.equal(401);
     expect(resp.data.message, 'Should indicate invalid credentials').to.equal(
-      'Invalid authentication credentials'
+      'Unauthorized'
     );
   });
 

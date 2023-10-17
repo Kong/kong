@@ -1083,7 +1083,7 @@ for _, strategy in helpers.each_strategy() do
 
               local body = assert.res_status(401, res)
               local json = cjson.decode(body)
-              assert.equals("Invalid authentication credentials", json.message)
+              assert.equals("Unauthorized", json.message)
 
               local cookie = res.headers["Set-Cookie"]
               assert.is_nil(cookie)
@@ -1098,7 +1098,7 @@ for _, strategy in helpers.each_strategy() do
 
               local body = assert.res_status(401, res)
               local json = cjson.decode(body)
-              assert.equals("Invalid authentication credentials", json.message)
+              assert.equals("Unauthorized", json.message)
             end)
 
             it("account locks after portal_auth_login_attempts, resets on password reset", function()
@@ -1125,7 +1125,7 @@ for _, strategy in helpers.each_strategy() do
 
                 local body = assert.res_status(401, res)
                 local json = cjson.decode(body)
-                assert.equals("Invalid authentication credentials", json.message)
+                assert.equals("Unauthorized", json.message)
               end
 
               -- valid password now fails
@@ -1135,7 +1135,7 @@ for _, strategy in helpers.each_strategy() do
 
               local body = assert.res_status(401, res)
               local json = cjson.decode(body)
-              assert.equals("Invalid authentication credentials", json.message)
+              assert.equals("Unauthorized", json.message)
 
               -- reset password flow
               local res = assert(portal_api_client:send {
@@ -1196,7 +1196,7 @@ for _, strategy in helpers.each_strategy() do
 
               local body = assert.res_status(401, res)
               local json = cjson.decode(body)
-              assert.equals("Invalid authentication credentials", json.message)
+              assert.equals("Unauthorized", json.message)
 
               local cookie = res.headers["Set-Cookie"]
               assert.is_nil(cookie)
@@ -1211,7 +1211,7 @@ for _, strategy in helpers.each_strategy() do
 
               local body = assert.res_status(401, res)
               local json = cjson.decode(body)
-              assert.equals("Invalid authentication credentials", json.message)
+              assert.equals("Unauthorized", json.message)
             end)
 
             it("returns 200 and session cookie with valid credentials", function()
@@ -1265,7 +1265,7 @@ for _, strategy in helpers.each_strategy() do
               local body = assert.res_status(401, res)
               local json = cjson.decode(body)
 
-              assert.equals("Invalid authentication credentials", json.message)
+              assert.equals("Unauthorized", json.message)
             end)
           end)
         end)
@@ -2562,7 +2562,7 @@ for _, strategy in helpers.each_strategy() do
 
               local body = assert.res_status(401, res)
               local json = cjson.decode(body)
-              assert.equals("Invalid authentication credentials", json.message)
+              assert.equals("Unauthorized", json.message)
 
               local cookie = res.headers["Set-Cookie"]
               assert.is_nil(cookie)
@@ -3152,7 +3152,7 @@ for _, strategy in helpers.each_strategy() do
 
               local body = assert.res_status(401, res)
               local json = cjson.decode(body)
-              assert.equals("Invalid authentication credentials", json.message)
+              assert.equals("Unauthorized", json.message)
 
               local cookie = res.headers["Set-Cookie"]
               assert.is_nil(cookie)
@@ -3167,7 +3167,7 @@ for _, strategy in helpers.each_strategy() do
 
               local body = assert.res_status(401, res)
               local json = cjson.decode(body)
-              assert.equals("Invalid authentication credentials", json.message)
+              assert.equals("Unauthorized", json.message)
             end)
 
             it("returns 200 and session cookie with valid apikey", function()
@@ -3221,7 +3221,7 @@ for _, strategy in helpers.each_strategy() do
               local body = assert.res_status(401, res)
               local json = cjson.decode(body)
 
-              assert.equals("Invalid authentication credentials", json.message)
+              assert.equals("Unauthorized", json.message)
             end)
           end)
         end)
@@ -3631,7 +3631,7 @@ for _, strategy in helpers.each_strategy() do
 
               local body = assert.res_status(401, res)
               local json = cjson.decode(body)
-              assert.equals("Invalid authentication credentials", json.message)
+              assert.equals("Unauthorized", json.message)
 
               local cookie = res.headers["Set-Cookie"]
               assert.is_nil(cookie)

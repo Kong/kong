@@ -687,7 +687,7 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
 
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
-        assert.equals("Invalid authentication credentials", json.message)
+        assert.equals("Unauthorized", json.message)
 
         local cookie = res.headers["Set-Cookie"]
         assert.is_nil(cookie)

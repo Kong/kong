@@ -162,7 +162,7 @@ end
 
 
 local function fail_authentication()
-  return false, { status = 401, message = "Invalid authentication credentials" }
+  return false, { status = 401, message = "Unauthorized" }
 end
 
 

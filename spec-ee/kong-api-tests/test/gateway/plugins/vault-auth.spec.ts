@@ -252,7 +252,7 @@ kvEngineVersions.forEach((kvVersion) => {
 
       expect(resp.status, 'Status should be 401').to.equal(401);
       expect(resp.data.message, 'should have correct error message').to.eq(
-        'Invalid authentication credentials'
+        'Unauthorized'
       );
     });
 

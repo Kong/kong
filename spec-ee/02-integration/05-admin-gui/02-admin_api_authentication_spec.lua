@@ -283,7 +283,10 @@ for _, strategy in helpers.each_strategy() do
               }
             })
 
-            assert.res_status(401, res)
+            local body = assert.res_status(401, res)
+            local json = cjson.decode(body)
+
+            assert.equals("Unauthorized", json.message)
           end)
 
           it("returns 401 when authenticated with invalid password", function()
@@ -297,7 +300,28 @@ for _, strategy in helpers.each_strategy() do
               }
             })
 
-            assert.res_status(401, res)
+            local body = assert.res_status(401, res)
+            local json = cjson.decode(body)
+
+            assert.equals("Unauthorized", json.message)
+          end)
+
+          it("returns 401 when authenticated with non-existent username", function()
+            local res = assert(client:send {
+              method = "GET",
+              path = "/auth",
+              headers = {
+                ["Authorization"] = "Basic "
+                .. ngx.encode_base64("non-existent-username:40404040404"),
+                ["Kong-Admin-User"] = 'non-existent-username',
+              }
+            })
+
+            local body = assert.res_status(401, res)
+            local json = cjson.decode(body)
+
+            -- SEC-912: should respond with the same message when non-existent usernames are used
+            assert.equals("Unauthorized", json.message)
           end)
 
           it("returns 401 when authenticated with mismatched user/credentials",
@@ -311,7 +335,10 @@ for _, strategy in helpers.each_strategy() do
               }
             })
 
-            assert.res_status(401, res)
+            local body = assert.res_status(401, res)
+            local json = cjson.decode(body)
+
+            assert.equals("Unauthorized", json.message)
           end)
 
 
@@ -1276,7 +1303,7 @@ for _, strategy in helpers.each_strategy() do
 
                 local body = assert.res_status(401, res)
                 local json = cjson.decode(body)
-                assert.equals("Invalid authentication credentials", json.message)
+                assert.equals("Unauthorized", json.message)
               end)
 
               it("attempts are reset after successful login", function ()

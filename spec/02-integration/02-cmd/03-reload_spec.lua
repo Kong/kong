@@ -704,7 +704,7 @@ describe("key-auth plugin invalidation on dbless reload #off", function()
       })
       local body = res:read_body()
       proxy_client:close()
-      return body ~= [[{"message":"Invalid authentication credentials"}]]
+      return body ~= [[{"message":"Unauthorized"}]]
     end, 5)
 
     admin_client = assert(helpers.admin_client())

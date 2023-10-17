@@ -193,7 +193,7 @@ local function do_authentication(conf)
 
   -- no credential in Vault, for this key, it is invalid, HTTP 401
   if not credential then
-    return nil, { status = 401, message = "Invalid authentication credentials" }
+    return nil, { status = 401, message = "Unauthorized" }
   end
 
   if credential.secret_token ~= secret_token then

@@ -139,7 +139,7 @@ function _M.successful_login_attempt(entity, max)
     local user = entity.username or entity.email
     kong.log.warn("Authorized: login attempts exceed max for user " .. user)
     -- use the same response from basic-auth plugin
-    kong.response.exit(401, { message = "Invalid authentication credentials" })
+    kong.response.exit(401, { message = "Unauthorized" })
   end
 
   -- Successful login before hitting max clears the counter

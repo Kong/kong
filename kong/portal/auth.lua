@@ -26,7 +26,7 @@ local re_match = ngx.re.match
 local DEVELOPER_TYPE = enums.CONSUMERS.TYPE.DEVELOPER
 
 local UNEXPECTED_ERR = { message = "An unexpected error occurred" }
-local UNAUTHED_ERR = { message = "Invalid authentication credentials" }
+local UNAUTHED_ERR = { message = "Unauthorized" }
 
 local kong = kong
 
