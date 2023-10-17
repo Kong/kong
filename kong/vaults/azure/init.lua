@@ -10,6 +10,7 @@ local meta = require "kong.meta"
 local azure = require "resty.azure"
 local lrucache = require "resty.lrucache"
 local fmt = string.format
+local getenv = os.getenv
 
 local AZURE_CLIENTS
 
@@ -43,10 +44,14 @@ local function get(conf, resource, version)
     })
     AZURE_CLIENTS:set(cache_key, azure_client)
   end
-  secrets_client = azure_client:secrets(conf.vault_uri)
+  local vault_uri = conf.vault_uri or getenv("AZURE_VAULT_URI")
+  if not vault_uri then
+    return nil, "azure vault uri is required"
+  end
+  secrets_client = azure_client:secrets(vault_uri)
 
   local response, err = secrets_client:get(resource, conf.version or version)
-  if err then
+  if err or not response then
     return nil, err
   end
   return response.value
