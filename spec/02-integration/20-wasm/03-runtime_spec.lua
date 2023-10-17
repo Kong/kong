@@ -41,7 +41,7 @@ describe("#wasm filter execution (#" .. strategy .. ")", function()
       },
     })
 
-    local bp = helpers.get_db_utils("postgres", {
+    local bp = helpers.get_db_utils(strategy, {
       "routes",
       "services",
       "filter_chains",
@@ -365,19 +365,14 @@ describe("#wasm filter execution (#" .. strategy .. ")", function()
 
     assert(helpers.start_kong({
       database = strategy,
-      declarative_config = strategy == "off"
-                       and helpers.make_yaml_file()
-                        or nil,
-
       nginx_conf = "spec/fixtures/custom_nginx.template",
-
       wasm = true,
     }))
   end)
 
 
   lazy_teardown(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
 

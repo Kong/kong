@@ -243,11 +243,30 @@ describe("filter metadata [#" .. strategy .. "]", function()
 
       assert.response(res).has.status(400)
       local body = assert.response(res).has.jsonbody()
-      assert.same({
-        filters = {
-          { config = "wrong type: expected one of string, null, got object" }
-        }
-      }, body.fields)
+
+      if strategy == "off" then
+        assert.is_table(body.flattened_errors)
+        assert.same(1, #body.flattened_errors)
+
+        local err = body.flattened_errors[1]
+        assert.is_table(err)
+        assert.same("filter_chain", err.entity_type)
+        assert.same({
+          {
+            field = "filters.1.config",
+            message = "wrong type: expected one of string, null, got object",
+            type = "field"
+          }
+        }, err.errors)
+
+      else
+        assert.same({
+          filters = {
+            { config = "wrong type: expected one of string, null, got object" }
+          }
+        }, body.fields)
+      end
+
     end)
 
     it("filters without config schemas are not validated", function()
@@ -257,11 +276,7 @@ describe("filter metadata [#" .. strategy .. "]", function()
         filters = {
           {
             name = "rt_no_validation",
-            config = cjson.encode({
-              add = {
-                headers = 123,
-              },
-            }),
+            config = [[{ "add": { "headers": 1234 } }]],
           },
         },
       })
@@ -410,3 +425,85 @@ describe("filter metadata [#" .. strategy .. "] startup errors -", function()
 end)
 
 end -- each strategy
+
+
+describe("filter metadata [#off] yaml config", function()
+  local tmp_dir
+  local kong_yaml
+  local client
+
+  lazy_setup(function()
+    tmp_dir = helpers.make_temp_dir()
+    assert(file.copy(TEST_FILTER_SRC, tmp_dir .. "/response_transformer.wasm"))
+    assert(file.copy(TEST_FILTER_SRC, tmp_dir .. "/response_transformer_with_schema.wasm"))
+    assert(file.write(tmp_dir .. "/response_transformer_with_schema.meta.json", cjson.encode({
+      config_schema = {
+        type = "object",
+      },
+    })))
+
+    kong_yaml = helpers.make_yaml_file(([[
+      _format_version: "3.0"
+      services:
+      - url: http://127.0.0.1:%s
+        routes:
+        - hosts:
+          - wasm.test
+          filter_chains:
+          - filters:
+            - name: response_transformer
+              config: '{
+                  "append": {
+                    "headers": [
+                      "x-response-transformer-1:TEST"
+                    ]
+                  }
+                }'
+            - name: response_transformer_with_schema
+              config:
+                append:
+                  headers:
+                  - x-response-transformer-2:TEST
+                rename: ~
+                remove: null
+    ]]):format(helpers.mock_upstream_port))
+
+    assert(helpers.start_kong({
+      database = "off",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      plugins = "off",
+      wasm = true,
+      wasm_filters_path = tmp_dir,
+      nginx_main_worker_processes = 1,
+      declarative_config = kong_yaml,
+    }))
+
+    client = helpers.proxy_client()
+  end)
+
+  lazy_teardown(function()
+    if client then client:close() end
+    helpers.stop_kong()
+    if tmp_dir then helpers.dir.rmtree(tmp_dir) end
+  end)
+
+  it("accepts filters with JSON and string configs", function()
+    assert.eventually(function()
+      local res = client:get("/", { headers = { host = "wasm.test" } })
+
+      assert.response(res).has.status(200)
+
+      if res.headers["x-response-transformer-1"] == "TEST"
+        and res.headers["x-response-transformer-2"] == "TEST"
+      then
+        return true
+      end
+
+      return nil, {
+        message = "missing or incorrect x-response-transformer-{1,2} headers",
+        headers = res.headers,
+      }
+
+    end).is_truthy()
+  end)
+end)
