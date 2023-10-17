@@ -198,6 +198,7 @@ build = {
     ["kong.runloop.plugin_servers.mp_rpc"] = "kong/runloop/plugin_servers/mp_rpc.lua",
     ["kong.runloop.plugin_servers.pb_rpc"] = "kong/runloop/plugin_servers/pb_rpc.lua",
     ["kong.runloop.wasm"] = "kong/runloop/wasm.lua",
+    ["kong.runloop.wasm.properties"] = "kong/runloop/wasm/properties.lua",
 
     ["kong.workspaces"] = "kong/workspaces/init.lua",
 
