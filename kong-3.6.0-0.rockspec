@@ -345,6 +345,7 @@ build = {
     ["kong.runloop.plugin_servers.mp_rpc"] = "kong/runloop/plugin_servers/mp_rpc.lua",
     ["kong.runloop.plugin_servers.pb_rpc"] = "kong/runloop/plugin_servers/pb_rpc.lua",
     ["kong.runloop.wasm"] = "kong/runloop/wasm.lua",
+    ["kong.runloop.wasm.properties"] = "kong/runloop/wasm/properties.lua",
 
     ["kong.db.schema.entities.credentials"] = "kong/db/schema/entities/credentials.lua",
     ["kong.db.schema.entities.files"] = "kong/db/schema/entities/files.lua",
