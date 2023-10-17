@@ -55,7 +55,7 @@ jobs:
           echo "Bad file(s): ${{ steps.changelog-list.outputs.numbered_all_changed_files }}"
           exit 1
 
-      - name: Check deprecated YAML keys
+      - name: Fail when deprecated YAML keys are used
         run: >
           for file in ${{ steps.changelog-list.outputs.changelogs_all_changed_files }}; do
             if grep -q "prs:" $file || grep -q "jiras:" $file; then
