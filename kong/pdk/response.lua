@@ -568,21 +568,17 @@ local function new(self, major_version)
   function _RESPONSE.get_raw_body()
     check_phase(PHASES.body_filter)
 
-    local body_buffer
+    local body_buffer = ngx.ctx.KONG_BODY_BUFFER
     local chunk = arg[1]
     local eof = arg[2]
+
     if eof then
-      body_buffer = ngx.ctx.KONG_BODY_BUFFER
       if not body_buffer then
         return chunk
       end
     end
 
     if type(chunk) == "string" and chunk ~= "" then
-      if not eof then
-        body_buffer = ngx.ctx.KONG_BODY_BUFFER
-      end
-
       if not body_buffer then
         body_buffer = buffer.new()
 
