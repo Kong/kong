@@ -5,10 +5,13 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local fmt = string.format
 local pl_file = require "pl.file"
 local helpers = require "spec.helpers"
 
 local aws_region = os.getenv("RUNNER_AWS_REGION")
+local aws_account_id = os.getenv("RUNNER_AWS_ACCOUNT_ID")
+
 for _, strategy in helpers.each_strategy() do
 
 describe("Kong startup with AWS Vault: ", function ()
@@ -47,7 +50,7 @@ describe("Kong startup with AWS Vault: ", function ()
         plugins = "bundled",
         vaults = "bundled",
         vault_aws_region = aws_region,
-        vault_aws_assume_role_arn = "arn:aws:iam::267914366688:role/gw-test-test-sm-read-role", -- TODO: change to the correct role
+        vault_aws_assume_role_arn = fmt("arn:aws:iam::%s:role/gw-test-test-sm-read-role", aws_account_id)
       }, nil, nil, nil))
 
       finally(function ()
@@ -193,7 +196,7 @@ describe("Kong Vault Command with AWS Vault: ", function ()
       log_level = "error",
       prefix = helpers.test_conf.prefix,
       vault_aws_region = aws_region,
-      vault_aws_assume_role_arn = "arn:aws:iam::267914366688:role/gw-test-test-sm-read-role", -- TODO: change to the correct role
+      vault_aws_assume_role_arn = fmt("arn:aws:iam::%s:role/gw-test-test-sm-read-role", aws_account_id)
     })
     assert.matches("secret_value", stdout, nil, true)
     assert.is_true(ok)

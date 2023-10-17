@@ -47,9 +47,9 @@ jobs:
       label: normal-aws
       run_on: arm64
 
-  integration-test-aws:
-    name: Gateway AWS Integration test
-    runs-on: [ubuntu-22.04-arm64, self-hosted]
+  integration-test-aws-ec2:
+    name: Gateway AWS Integration test on EC2
+    runs-on: [ubuntu-22.04-arm64, ubuntu-22.04-arm64-ec2, self-hosted]
     needs: build
     timeout-minutes: 30
     services:
@@ -115,9 +115,6 @@ jobs:
           KONG_TEST_DATABASE: postgres
           PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
           TEST_SUITE: aws-integration
-          # TODO: remove those when the runner has correct permission
-          AWS_ACCESS_KEY_ID: ${{ secrets.TEST_API_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.TEST_API_AWS_SECRET_ACCESS_KEY }}
         run: |
           # Fetch runner account and region
           export RUNNER_AWS_REGION=$(aws configure list | grep -E '^\s+region' | awk '{print $2}')
