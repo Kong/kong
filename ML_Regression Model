@@ -1,0 +1,60 @@
+import java.util.Arrays;
+
+public class LinearRegression {
+
+    public static void main(String[] args) {
+        double[] x = {1, 2, 3, 4, 5};
+        double[] y = {2, 4, 6, 8, 10};
+
+        double theta0 = 0; // bias
+        double theta1 = 0; // weight
+
+        double alpha = 0.01; // learning rate
+        int numIterations = 1000;
+
+        for (int i = 0; i < numIterations; i++) {
+            double[] predictions = predict(theta0, theta1, x);
+            double cost = computeCost(predictions, y);
+            System.out.println("Iteration " + i + ", Cost: " + cost);
+            double[] gradients = computeGradients(predictions, x, y);
+            theta0 = theta0 - alpha * gradients[0];
+            theta1 = theta1 - alpha * gradients[1];
+        }
+
+        System.out.println("Learned Model: y = " + theta1 + "x + " + theta0);
+    }
+
+    private static double[] predict(double theta0, double theta1, double[] x) {
+        double[] predictions = new double[x.length];
+        for (int i = 0; i < x.length; i++) {
+            predictions[i] = theta1 * x[i] + theta0;
+        }
+        return predictions;
+    }
+
+    private static double computeCost(double[] predictions, double[] y) {
+        int m = y.length;
+        double sumSquaredError = 0;
+        for (int i = 0; i < m; i++) {
+            sumSquaredError += Math.pow(predictions[i] - y[i], 2);
+        }
+        return sumSquaredError / (2 * m);
+    }
+
+    private static double[] computeGradients(double[] predictions, double[] x, double[] y) {
+        int m = y.length;
+        double sumError = 0;
+        double sumErrorX = 0;
+
+        for (int i = 0; i < m; i++) {
+            sumError += predictions[i] - y[i];
+            sumErrorX += (predictions[i] - y[i]) * x[i];
+        }
+
+        double[] gradients = new double[2];
+        gradients[0] = sumError / m; // partial derivative with respect to theta0 (bias)
+        gradients[1] = sumErrorX / m; // partial derivative with respect to theta1 (weight)
+
+        return gradients;
+    }
+}
