@@ -333,15 +333,21 @@ jobs:
       fail-fast: false
       matrix:
         gateway_mode: ['classic', 'hybrid']
-        postgres_version: ['latest', '14.6', '13.9', 'rds-15.3']
+        postgres_version: ['latest', '15', '14.6', '13.9', 'rds-15.3']
         pg_ssl_version: ['tlsv1_3', 'tlsv1_2']
         # run only 'latest' postgres_version in conjunction with pg_ssl_versions
         exclude:
+          - gateway_mode: 'classic'
+            postgres_version: '15'
+            pg_ssl_version: 'tlsv1_2'
           - gateway_mode: 'classic'
             postgres_version: '14.6'
             pg_ssl_version: 'tlsv1_2'
           - gateway_mode: 'classic'
             postgres_version: '13.9'
+            pg_ssl_version: 'tlsv1_2'
+          - gateway_mode: 'hybrid'
+            postgres_version: '15'
             pg_ssl_version: 'tlsv1_2'
           - gateway_mode: 'hybrid'
             postgres_version: '14.6'
