@@ -21,7 +21,7 @@ def curl_repositories():
             "https://mirror.bazel.build/curl.haxx.se/download/" + tarball,
         ],
         type = "tar.gz",
-        sha256 = "d3a19aeea301085a56c32bc0f7d924a818a7893af253e41505d1e26d7db8e95a",
+        sha256 = "816e41809c043ff285e8c0f06a75a1fa250211bbfb2dc0a037eeef39f1a9e427",
         strip_prefix = prefix,
         build_file = "//build/curl:BUILD.curl.bazel",
     )
@@ -38,7 +38,7 @@ def curl_repositories():
             "https://github.com/nghttp2/nghttp2/releases/download/%s/%s" % (tag, tarball),
         ],
         type = "tar.gz",
-        sha256 = "eb00ded354db1159dcccabc11b0aaeac893b7c9b154f8187e4598c4b8f3446b5",
+        sha256 = "1e3258453784d3b7e6cc48d0be087b168f8360b5d588c66bfeda05d07ad39ffd",
         strip_prefix = prefix,
         build_file = Label("//build/curl:BUILD.nghttp2.bazel"),
     )
