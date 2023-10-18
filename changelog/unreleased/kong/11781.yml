@@ -1,0 +1,3 @@
+message: "Expose metrics in no service route"
+type: fix
+scope: Plugin
