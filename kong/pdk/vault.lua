@@ -190,6 +190,7 @@ end
 local function new(self)
   -- Don't put this onto the top level of the file unless you're prepared for a surprise
   local Schema = require "kong.db.schema"
+
   local ROTATION_MUTEX_OPTS = {
     name = "vault-rotation",
     exptime = ROTATION_INTERVAL * 1.5, -- just in case the lock is not properly released
@@ -688,7 +689,7 @@ local function new(self)
       return nil, err
     end
 
-    if kong and kong.licensing and kong.licensing:license_type() == "free" and strategy.license_required then
+    if strategy.license_required and self.licensing and self.licensing:license_type() == "free" then
       return nil, "vault " .. name .. " requires a license to be used"
     end
 
@@ -744,6 +745,35 @@ local function new(self)
     return value, nil, ttl
   end
 
+  ---
+  -- Function `get_cache_value_and_ttl` returns a value for caching and its ttl
+  --
+  -- @local
+  -- @function get_from_vault
+  -- @tparam string value the vault returned value for a reference
+  -- @tparam table config the configuration settings to be used
+  -- @tparam[opt] number ttl the possible vault returned ttl
+  -- @treturn string value to be stored in shared dictionary
+  -- @treturn number shared dictionary ttl
+  -- @treturn number lru ttl
+  -- @usage local value, err = get_from_vault(reference, strategy, config, cache_key, parsed_reference)
+  local function get_cache_value_and_ttl(value, config, ttl)
+    local cache_value, shdict_ttl, lru_ttl
+    if value then
+      -- adjust ttl to the minimum and maximum values configured
+      lru_ttl = adjust_ttl(ttl, config)
+      shdict_ttl = max(lru_ttl + (config.resurrect_ttl or DAO_MAX_TTL), SECRETS_CACHE_MIN_TTL)
+      cache_value = value
+
+    else
+      -- negatively cached values will be rotated on each rotation interval
+      shdict_ttl = max(config.neg_ttl or 0, SECRETS_CACHE_MIN_TTL)
+      cache_value = NEGATIVELY_CACHED_VALUE
+    end
+
+    return cache_value, shdict_ttl, lru_ttl
+  end
+
 
   ---
   -- Function `get_from_vault` retrieves a value from the vault using the provided strategy.
@@ -765,19 +795,7 @@ local function new(self)
   -- @usage local value, err = get_from_vault(reference, strategy, config, cache_key, parsed_reference)
   local function get_from_vault(reference, strategy, config, cache_key, parsed_reference)
     local value, err, ttl = invoke_strategy(strategy, config, parsed_reference)
-    local cache_value, shdict_ttl
-    if value then
-      -- adjust ttl to the minimum and maximum values configured
-      ttl = adjust_ttl(ttl, config)
-      shdict_ttl = max(ttl + (config.resurrect_ttl or DAO_MAX_TTL), SECRETS_CACHE_MIN_TTL)
-      cache_value = value
-
-    else
-      -- negatively cached values will be rotated on each rotation interval
-      shdict_ttl = max(config.neg_ttl or 0, SECRETS_CACHE_MIN_TTL)
-      cache_value = NEGATIVELY_CACHED_VALUE
-    end
-
+    local cache_value, shdict_ttl, lru_ttl = get_cache_value_and_ttl(value, config, ttl)
     local ok, cache_err = SECRETS_CACHE:safe_set(cache_key, cache_value, shdict_ttl)
     if not ok then
       return nil, cache_err
@@ -788,7 +806,7 @@ local function new(self)
       return nil, fmt("could not get value from external vault (%s)", err)
     end
 
-    LRU:set(reference, value, ttl)
+    LRU:set(reference, value, lru_ttl)
 
     return value
   end
@@ -872,6 +890,46 @@ local function new(self)
 
 
   ---
+  -- Recurse over config and calls the callback for each found reference.
+  --
+  -- @local
+  -- @function recurse_config_refs
+  -- @tparam table config config table to recurse.
+  -- @tparam function callback callback to call on each reference.
+  -- @treturn table config that might have been updated, depending on callback.
+  local function recurse_config_refs(config, callback)
+    -- silently ignores other than tables
+    if type(config) ~= "table" then
+      return config
+    end
+
+    for key, value in pairs(config) do
+      if key ~= "$refs" and type(value) == "table" then
+        recurse_config_refs(value, callback)
+      end
+    end
+
+    local references = config["$refs"]
+    if type(references) ~= "table" or isempty(references) then
+      return config
+    end
+
+    for name, reference in pairs(references) do
+      if type(reference) == "string" then -- a string reference
+        callback(reference, config, name)
+
+      elseif type(reference) == "table" then -- array, set or map of references
+        for key, ref in pairs(reference) do
+          callback(ref, config[name], key)
+        end
+      end
+    end
+
+    return config
+  end
+
+
+  ---
   -- Function `update` recursively updates a configuration table.
   --
   -- This function recursively in-place updates a configuration table by
@@ -892,34 +950,7 @@ local function new(self)
   -- OR
   -- update(config)
   local function update(config)
-    -- silently ignores other than tables
-    if type(config) ~= "table" then
-      return config
-    end
-
-    for key, value in pairs(config) do
-      if key ~= "$refs" and type(value) == "table" then
-        update(value)
-      end
-    end
-
-    local references = config["$refs"]
-    if type(references) ~= "table" or isempty(references) then
-      return config
-    end
-
-    for name, reference in pairs(references) do
-      if type(reference) == "string" then -- a string reference
-        update_from_cache(reference, config, name)
-
-      elseif type(reference) == "table" then -- array, set or map of references
-        for key, ref in pairs(reference) do
-          update_from_cache(ref, config[name], key)
-        end
-      end
-    end
-
-    return config
+    return recurse_config_refs(config, update_from_cache)
   end
 
 
@@ -1302,10 +1333,6 @@ local function new(self)
 
     initialized = true
 
-    if self.configuration.role == "control_plane" then
-      return
-    end
-
     if self.configuration.database ~= "off" then
       self.worker_events.register(handle_vault_crud_event, "crud", "vaults")
     end
@@ -1314,6 +1341,61 @@ local function new(self)
     if err then
       self.log.err("could not schedule timer to rotate vault secret references: ", err)
     end
+  end
+
+
+  ---
+  -- Called on `init` phase, and stores value in secrets cache.
+  --
+  -- @local
+  -- @function init_in_cache_from_value
+  -- @tparam string reference a vault reference.
+  -- @tparan value string value that is stored in secrets cache.
+  local function init_in_cache_from_value(reference, value)
+    local strategy, err, config, cache_key = get_strategy(reference)
+    if not strategy then
+      return nil, err
+    end
+
+    -- doesn't support vault returned ttl, but none of the vaults supports it,
+    -- and the support for vault returned ttl might be removed later.
+    local cache_value, shdict_ttl, lru_ttl = get_cache_value_and_ttl(value, config)
+
+    local ok, cache_err = SECRETS_CACHE:safe_set(cache_key, cache_value, shdict_ttl)
+    if not ok then
+      return nil, cache_err
+    end
+
+    if value then
+      LRU:set(reference, value, lru_ttl)
+    end
+
+    return true
+  end
+
+
+  ---
+  -- Called on `init` phase, and used to warmup secrets cache.
+  --
+  -- @local
+  -- @function init_in_cache
+  -- @tparam string reference a vault reference.
+  -- @tparan table record a table that is a container for de-referenced value.
+  -- @tparam field string field name in a record to which to store the de-referenced value.
+  local function init_in_cache(reference, record, field)
+    local value, err = init_in_cache_from_value(reference, record[field])
+    if not value then
+      self.log.warn("error caching secret reference ", reference, ": ", err)
+    end
+  end
+
+
+  ---
+  -- Called on `init` phase, and used to warmup secrets cache.
+  -- @local
+  -- @function init
+  local function init()
+    recurse_config_refs(self.configuration, init_in_cache)
   end
 
 
@@ -1488,6 +1570,9 @@ local function new(self)
     init_worker()
   end
 
+  if get_phase() == "init" then
+    init()
+  end
 
   return _VAULT
 end

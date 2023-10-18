@@ -251,6 +251,8 @@ describe("kong start/stop #" .. strategy, function()
     }))
 
     assert.not_matches("failed to dereference {vault://env/pg_password}", stderr, nil, true)
+    assert.logfile().has.no.line("[warn]", true)
+    assert.logfile().has.no.line("env/pg_password", true)
     assert.matches("Kong started", stdout, nil, true)
     assert(kong_exec("stop", {
       prefix = PREFIX,
