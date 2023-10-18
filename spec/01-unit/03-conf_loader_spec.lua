@@ -71,6 +71,9 @@ describe("Configuration loader", function()
     assert.same({}, conf.admin_gui_ssl_cert_key)
     assert.same({}, conf.status_ssl_cert)
     assert.same({}, conf.status_ssl_cert_key)
+    assert.same(nil, conf.privileged_agent)
+    assert.same(true, conf.dedicated_config_processing)
+    assert.same(false, conf.allow_debug_header)
     assert.is_nil(getmetatable(conf))
   end)
   it("loads a given file, with higher precedence", function()
@@ -2199,6 +2202,48 @@ describe("Configuration loader", function()
         worker_consistency = "strict"
       }))
       assert.equal("strict", conf.worker_consistency)
+      assert.equal(nil, err)
+    end)
+
+    it("privileged_agent -> dedicated_config_processing", function()
+      local conf, err = assert(conf_loader(nil, {
+        privileged_agent = "on",
+      }))
+      assert.same(nil, conf.privileged_agent)
+      assert.same(true, conf.dedicated_config_processing)
+      assert.equal(nil, err)
+
+      -- no clobber
+      conf, err = assert(conf_loader(nil, {
+        privileged_agent = "on",
+        dedicated_config_processing = "on",
+      }))
+      assert.same(true, conf.dedicated_config_processing)
+      assert.same(nil, conf.privileged_agent)
+      assert.equal(nil, err)
+
+      conf, err = assert(conf_loader(nil, {
+        privileged_agent = "off",
+        dedicated_config_processing = "on",
+      }))
+      assert.same(true, conf.dedicated_config_processing)
+      assert.same(nil, conf.privileged_agent)
+      assert.equal(nil, err)
+
+      conf, err = assert(conf_loader(nil, {
+        privileged_agent = "on",
+        dedicated_config_processing = "off",
+      }))
+      assert.same(false, conf.dedicated_config_processing)
+      assert.same(nil, conf.privileged_agent)
+      assert.equal(nil, err)
+
+      conf, err = assert(conf_loader(nil, {
+        privileged_agent = "off",
+        dedicated_config_processing = "off",
+      }))
+      assert.same(false, conf.dedicated_config_processing)
+      assert.same(nil, conf.privileged_agent)
       assert.equal(nil, err)
     end)
 

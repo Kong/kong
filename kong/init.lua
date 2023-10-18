@@ -819,7 +819,7 @@ function Kong.init()
 
   require("resty.kong.var").patch_metatable()
 
-  if config.privileged_agent and is_data_plane(config) then
+  if config.dedicated_config_processing and is_data_plane(config) then
     -- TODO: figure out if there is better value than 2048
     local ok, err = process.enable_privileged_agent(2048)
     if not ok then

@@ -273,7 +273,7 @@ dns_not_found_ttl = 30
 dns_error_ttl = 1
 dns_no_sync = off
 
-privileged_agent = off
+dedicated_config_processing = on
 worker_consistency = eventual
 worker_state_update_frequency = 5
 
@@ -385,5 +385,5 @@ wasm_filters_path = NONE
 wasm_dynamic_module = NONE
 
 request_debug = on
-request_debug_token = 
+request_debug_token =
 ]]
