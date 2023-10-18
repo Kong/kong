@@ -237,7 +237,7 @@ local function set_context(trace_bytes, request_id)
   end
 
   _G.ngx.var = {
-    request_id = request_id,
+    kong_request_id = request_id,
   }
 
   _G.ngx.get_phase = function() -- luacheck: ignore
@@ -248,6 +248,11 @@ local function set_context(trace_bytes, request_id)
     notice = function() end,
     info = function() end,
   }
+
+  -- make sure to reload the module
+  package.loaded["kong.tracing.request_id"] = nil
+  package.loaded["kong.analytics"] = nil
+  analytics = require("kong.analytics")
 end
 
 

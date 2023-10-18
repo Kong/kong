@@ -6,6 +6,8 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local ngx = ngx
+local var = ngx.var
+local get_phase = ngx.get_phase
 
 local NGX_VAR_PHASES = {
   set           = true,
@@ -28,14 +30,14 @@ local function get()
   local rid = get_ctx_request_id()
 
   if not rid then
-    local phase = ngx.get_phase()
+    local phase = get_phase()
     if not NGX_VAR_PHASES[phase] then
       return nil, "cannot access ngx.var in " .. phase .. " phase"
     end
 
     -- first access to the request id for this request:
-    -- initialize with the value of $request_id
-    rid = ngx.var.request_id
+    -- initialize with the value of $kong_request_id
+    rid = var.kong_request_id
     ngx.ctx.request_id = rid
   end
 
