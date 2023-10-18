@@ -180,8 +180,15 @@ function _M.new(db)
   end)
 
   res.routes = new_blueprint(db.routes, function(overrides)
+    local service
+    if overrides.no_service then
+      service = nil
+      overrides.no_service = nil
+    else
+      service = overrides.service or res.services:insert()
+    end
     return {
-      service = overrides.service or res.services:insert(),
+      service = service,
     }
   end)
 

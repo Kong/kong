@@ -273,12 +273,9 @@ local function log(message, serialized)
     return
   end
 
-  local service_name
+  local service_name = ""
   if message and message.service then
     service_name = message.service.name or message.service.host
-  else
-    -- do not record any stats if the service is not present
-    return
   end
 
   local route_name
