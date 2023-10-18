@@ -11,8 +11,13 @@ local LoggerHandler =  {
 }
 
 
-function LoggerHandler:init_worker(conf)
+function LoggerHandler:init_worker()
   kong.log("init_worker phase")
+end
+
+
+function LoggerHandler:configure(configs)
+  kong.log("configure phase")
 end
 
 

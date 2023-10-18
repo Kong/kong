@@ -84,6 +84,7 @@ end
 
 local phrases = {
   ["%[logger%] init_worker phase"] = 1,
+  ["%[logger%] configure phase"] = 1,
   ["%[logger%] rewrite phase"] = 1,
   ["%[logger%] access phase"] = 1,
   ["%[logger%] header_filter phase"] = 1,
@@ -93,6 +94,7 @@ local phrases = {
 
 local phrases_ssl = {
   ["%[logger%] init_worker phase"] = 1,
+  ["%[logger%] configure phase"] = 1,
   ["%[logger%] certificate phase"] = 1,
   ["%[logger%] rewrite phase"] = 1,
   ["%[logger%] access phase"] = 1,
@@ -116,6 +118,7 @@ local phrases_ssl = {
 
 local phrases_reflection = {
   ["%[logger%] init_worker phase"] = 1,
+  ["%[logger%] configure phase"] = 1,
   ["%[logger%] rewrite phase"] = 2,
   ["%[logger%] access phase"] = 2,
   ["%[logger%] header_filter phase"] = 2,
@@ -125,6 +128,7 @@ local phrases_reflection = {
 
 local phrases_ssl_reflection = {
   ["%[logger%] init_worker phase"] = 1,
+  ["%[logger%] configure phase"] = 1,
   ["%[logger%] certificate phase"] = 1,
   ["%[logger%] rewrite phase"] = 2,
   ["%[logger%] access phase"] = 2,

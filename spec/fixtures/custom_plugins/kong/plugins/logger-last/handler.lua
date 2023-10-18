@@ -14,6 +14,7 @@ local LoggerLastHandler =  {
 
 
 LoggerLastHandler.init_worker   = LoggerHandler.init_worker
+LoggerLastHandler.configure     = LoggerHandler.configure
 LoggerLastHandler.certificate   = LoggerHandler.certificate
 LoggerLastHandler.preread       = LoggerHandler.preread
 LoggerLastHandler.rewrite       = LoggerHandler.rewrite

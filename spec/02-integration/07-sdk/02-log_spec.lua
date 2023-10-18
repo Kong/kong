@@ -102,6 +102,7 @@ describe("PDK: kong.log", function()
 
     local phrases = {
       "%[logger%] init_worker phase",    "%[logger%-last%] init_worker phase",
+      "%[logger%] configure phase",      "%[logger%-last%] configure phase",
 
       "%[logger%] certificate phase",    "%[logger%-last%] certificate phase",
 
