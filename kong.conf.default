@@ -2109,7 +2109,7 @@
 #-------------------------------------------------------------------------------
 # REQUEST DEBUGGING
 #-------------------------------------------------------------------------------
-# Request debugging is a mechanism that allows admin to reveal the timing of
+# Request debugging is a mechanism that allows admin to collect the timing of
 # proxy path request in the response header (X-Kong-Request-Debug-Output)
 # and optionally, the error log.
 #
@@ -2123,7 +2123,7 @@
                                  # - `X-Kong-Request-Debug`:
                                  #   If the value is set to `*`,
                                  #   timing information will be collected and exported for the current request.
-                                 #   If this header is not present or contains unknown value
+                                 #   If this header is not present or contains unknown value,
                                  #   timing information will not be collected for the current request.
                                  #
                                  # - `X-Kong-Request-Debug-Log`:
@@ -2140,7 +2140,8 @@
                                  # `X-Kong-Request-Debug-Token` header to prevent abuse.
                                  # If this value is not set (the default),
                                  # a random token will be generated
-                                 # when Kong starts, restarts, or reloads.
+                                 # when Kong starts, restarts, or reloads. If a token is
+                                 # specified manually, then the provided token will be used.
                                  #
                                  # You can locate the generated debug token in two locations:
                                  # - Kong error log:
