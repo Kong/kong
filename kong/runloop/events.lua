@@ -534,7 +534,7 @@ do
 
     local reconfigure_data, err = buffer.decode(data)
     if not reconfigure_data then
-      ngx.log(ngx.ERR, "failed to json decode reconfigure data: ", err)
+      ngx.log(ngx.ERR, "failed to decode reconfigure data: ", err)
       return
     end
 
