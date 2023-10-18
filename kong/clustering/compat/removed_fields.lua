@@ -179,16 +179,7 @@ return {
     rate_limiting = {
       "sync_rate",
     },
-    mocking = {
-      "include_base_path",
-    },
-    oas_validation = {
-      "include_base_path",
-    },
     proxy_cache = {
-      "response_headers",
-    },
-    proxy_cache_advanced = {
       "response_headers",
     },
   },
@@ -212,6 +203,15 @@ return {
       "revocation_token_param_name",
       "proof_of_possession_mtls",
       "proof_of_possession_auth_methods_validation",
+    },
+    mocking = {
+      "include_base_path",
+    },
+    oas_validation = {
+      "include_base_path",
+    },
+    proxy_cache_advanced = {
+      "response_headers",
     },
   },
 }
