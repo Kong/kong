@@ -32,6 +32,30 @@ local function assert_has_span(name, spans)
   return span
 end
 
+local function get_span_by_id(spans, id)
+  for _, span in ipairs(spans) do
+    if span.span_id == id then
+      return span
+    end
+  end
+end
+
+local function assert_correct_trace_hierarchy(spans, incoming_span_id)
+  for _, span in ipairs(spans) do
+    if span.name == "kong" then
+      -- if there is an incoming span id, it should be the parent of the root span
+      if incoming_span_id then
+        assert.equals(incoming_span_id, span.parent_id)
+      end
+
+    else
+      -- all other spans in this trace should have a local span as parent
+      assert.not_equals(incoming_span_id, span.parent_id)
+      assert.is_truthy(get_span_by_id(spans, span.parent_id))
+    end
+  end
+end
+
 for _, strategy in helpers.each_strategy() do
 describe("propagation tests #" .. strategy, function()
   local service
@@ -321,7 +345,7 @@ describe("propagation tests #" .. strategy, function()
   end)
 end)
 
-for _, instrumentation in ipairs({ "request", "request,balancer" }) do
+for _, instrumentation in ipairs({ "request", "request,balancer", "all" }) do
 describe("propagation tests with enabled " .. instrumentation .. " instrumentation (issue #11294) #" .. strategy, function()
   local service, route
   local proxy_client
@@ -370,12 +394,12 @@ describe("propagation tests with enabled " .. instrumentation .. " instrumentati
 
   it("sets the outgoint parent span's ID correctly", function()
     local trace_id = gen_trace_id()
-    local span_id = gen_span_id()
+    local incoming_span_id = gen_span_id()
     local thread = helpers.tcp_server(TCP_PORT)
 
     local r = proxy_client:get("/", {
       headers = {
-        traceparent = fmt("00-%s-%s-01", trace_id, span_id),
+        traceparent = fmt("00-%s-%s-01", trace_id, incoming_span_id),
         host = "http-route"
       },
     })
@@ -398,6 +422,8 @@ describe("propagation tests with enabled " .. instrumentation .. " instrumentati
 
     local json = cjson.decode(body)
     assert.matches("00%-" .. trace_id .. "%-" .. parent_span.span_id .. "%-01", json.headers.traceparent)
+
+    assert_correct_trace_hierarchy(spans, incoming_span_id)
   end)
 end)
 end
