@@ -4,6 +4,11 @@ name: Package & Release
 
 on:  # yamllint disable-line rule:truthy
   pull_request:
+    paths-ignore:
+    - '**/*.md'
+    - '.github/workflows/build_and_test.yml'
+    - 'changelog/**'
+    - 'kong.conf.default'
   schedule:
   - cron:  '0 0 * * *'
   push:
