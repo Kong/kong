@@ -185,7 +185,7 @@ for _, strategy in helpers.each_strategy() do
           ["Host"] = "status.example.com"
         }
       })
-      local body = assert.res_status(200, res)
+      assert.res_status(200, res)
 
       local res = assert(proxy_ssl_client:send{
         method = "GET",

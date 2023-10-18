@@ -281,6 +281,8 @@ local function log(message, serialized)
   local route_name
   if message and message.route then
     route_name = message.route.name or message.route.id
+  else
+    return
   end
 
   local consumer = ""
