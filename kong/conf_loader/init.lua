@@ -434,7 +434,18 @@ local CONF_PARSERS = {
   dns_not_found_ttl = { typ = "number" },
   dns_error_ttl = { typ = "number" },
   dns_no_sync = { typ = "boolean" },
-  privileged_agent = { typ = "boolean" },
+  privileged_worker = {
+    typ = "boolean",
+    deprecated = {
+      replacement = "dedicated_config_processing",
+      alias = function(conf)
+        if conf.dedicated_config_processing == nil and
+           conf.privileged_worker ~= nil then
+          conf.dedicated_config_processing = conf.privileged_worker
+        end
+      end,
+  }},
+  dedicated_config_processing = { typ = "boolean" },
   worker_consistency = { enum = { "strict", "eventual" },
     -- deprecating values for enums
     deprecated = {

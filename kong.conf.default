@@ -182,6 +182,15 @@
                                  # cache (i.e. when the configured
                                  # `mem_cache_size`) is full.
 
+#dedicated_config_processing = on  # Enables or disables a special worker
+                                   # process for configuration processing. This process
+                                   # increases memory usage a little bit while
+                                   # allowing to reduce latencies by moving some
+                                   # background tasks, such as CP/DP connection
+                                   # handling, to an additional worker process specific
+                                   # to handling these background tasks.
+                                   # Currently this has effect only on data planes.
+
 #pluginserver_names =            # Comma-separated list of names for pluginserver
                                  # processes.  The actual names are used for
                                  # log messages and to relate the actual settings.
@@ -746,7 +755,7 @@
                                  # the pattern defined by `openssl ciphers`.
                                  # This value is ignored if `ssl_cipher_suite`
                                  # is not `custom`.
-                                 # If you use DHE ciphers, you must also 
+                                 # If you use DHE ciphers, you must also
                                  # configure the `ssl_dhparam` parameter.
 
 #ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
