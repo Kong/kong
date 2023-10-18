@@ -10,6 +10,7 @@ on:
     - '.github/workflows/upgrade-tests.yml'
     - 'kong/plugins/*/migrations/**'
     - 'plugins-ee/**/migrations/**'
+    - 'kong/templates/**'
   push:
     paths-ignore:
     # ignore markdown files (CHANGELOG.md, README.md, etc.)
