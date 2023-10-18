@@ -572,10 +572,8 @@ local function new(self, major_version)
     local chunk = arg[1]
     local eof = arg[2]
 
-    if eof then
-      if not body_buffer then
-        return chunk
-      end
+    if eof and not body_buffer then
+      return chunk
     end
 
     if type(chunk) == "string" and chunk ~= "" then
