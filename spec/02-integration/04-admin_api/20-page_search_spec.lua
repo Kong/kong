@@ -26,7 +26,8 @@ describe("Admin API - search", function()
         "routes",
         "services",
         "consumers",
-        "vaults"
+        "vaults",
+        "workspaces",
         }, nil, {
         "env"
       })
@@ -69,6 +70,10 @@ describe("Admin API - search", function()
           description = fmt("description-%s", i)
         }
         local _, err, err_t = bp.vaults:insert(vault)
+        assert.is_nil(err)
+        assert.is_nil(err_t)
+        
+        local _, err, err_t = bp.workspaces:insert { name = "workspace-" .. i }
         assert.is_nil(err)
         assert.is_nil(err_t)
 
@@ -180,7 +185,32 @@ describe("Admin API - search", function()
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
       assert.same('env-100', json.data[1].prefix)
-
+      
+      -- workspaces
+      res = assert(client:send {
+        method = "GET",
+        path = "/workspaces?size=100"
+      })
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.same(100, #json.data)
+      
+      res = assert(client:send {
+        method = "GET",
+        path = "/workspaces?size=200&sort_by=name"
+      })
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.same(101, #json.data)
+      assert.same("workspace-1", json.data[2].name)
+      
+      res = assert(client:send {
+        method = "GET",
+        path = "/workspaces?name=workspace-100"
+      })
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.same('workspace-100', json.data[1].name)
       -- plugin
       res = assert(client:send {
         method = "GET",

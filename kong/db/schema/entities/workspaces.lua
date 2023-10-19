@@ -113,8 +113,8 @@ return {
 
   fields = {
     { id          = typedefs.uuid },
-    { name        = typedefs.utf8_name { required = true, not_one_of = { table.unpack(constants.CORE_ENTITIES) }, } },
-    { comment = { description = "A description or additional information about the workspace.", type = "string" } },
+    { name        = typedefs.utf8_name { required = true, not_one_of = { table.unpack(constants.CORE_ENTITIES) }, indexed = true, } },
+    { comment     = { description = "A description or additional information about the workspace.", type = "string" } },
     { created_at  = typedefs.auto_timestamp_s },
     { updated_at  = typedefs.auto_timestamp_s },
     { meta        = config_meta },
