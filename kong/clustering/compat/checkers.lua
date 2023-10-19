@@ -81,6 +81,16 @@ local compatible_checkers = {
         end
       end
 
+      for _, vault in ipairs(config_table.vaults or {}) do
+        local name = vault.name
+        if name == "hcv" then
+          if vault.config.kube_auth_path then
+            vault.config.kube_auth_path = nil
+            has_update = true
+          end
+        end
+      end
+
       return has_update
     end
   },

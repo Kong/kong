@@ -1822,6 +1822,10 @@
                                  # pod. `vault_hcv_auth_method` must be
                                  # set to `kubernetes` for this to activate.
 
+#vault_hcv_kube_auth_path = kubernetes
+                                 # Place where the Kubernetes auth method will be
+                                 # accessible: /v1/auth/<vault_hcv_kube_auth_path>
+
 #vault_hcv_kube_api_token_file = # Defines where the Kubernetes service account
                                  # token should be read from the pod's
                                  # filesystem, if using a non-standard
@@ -3463,17 +3467,17 @@
                                        # The credentials (and the endpoint URL for S3-like) for S3
                                        # are passed with environment variables:
                                        # `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
-                                       # and `AWS_CONFIG_STORAGE_ENDPOINT` (extension), where 
+                                       # and `AWS_CONFIG_STORAGE_ENDPOINT` (extension), where
                                        # `AWS_CONFIG_STORAGE_ENDPOINT`
                                        # is the endpoint that hosts S3-like storage.
                                        #
-                                       # The credentials for GCP are provided via the environment 
+                                       # The credentials for GCP are provided via the environment
                                        # variable `GCP_SERVICE_ACCOUNT`.
 
 #cluster_fallback_export_s3_config =   # fallback config export S3 config
                                        # This is used only when `cluster_fallback_config_storage` is S3-like schema.
                                        # If set, it will add config table to kong exporter config S3 putObject request.
-                                       # The config table should be in JSON format and can be unserialized into a table. 
+                                       # The config table should be in JSON format and can be unserialized into a table.
                                        # It should contain the necessary parameters as described in the documentation.
                                        #  https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#putObject-property.
                                        # For example, if you want to set the ServerSideEncryption headers / KMS Key ID
@@ -3613,7 +3617,7 @@
 # information such as domain name tried during these processes.
 #
 #request_debug = on              # When enabled, Kong will provide detailed timing information
-                                 # for its components to the client and the error log 
+                                 # for its components to the client and the error log
                                  # if the following headers are present in the proxy request:
                                  # - `X-Kong-Request-Debug`:
                                  #   If the value is set to `*`,

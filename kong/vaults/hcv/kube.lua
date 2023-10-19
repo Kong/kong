@@ -10,12 +10,15 @@
 -- It should be moved to its own utils package ASAP.
 ----
 
+
 local pl_file = require "pl.file"
 
+
 local function get_service_account_token(token_file)
-  -- return the kubernetes serviceaccount jwt or err
+  -- return the kubernetes service account jwt or err
   return pl_file.read(token_file or "/run/secrets/kubernetes.io/serviceaccount/token")
 end
+
 
 return {
   get_service_account_token = get_service_account_token,

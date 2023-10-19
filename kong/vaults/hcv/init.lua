@@ -8,52 +8,70 @@
 
 local meta = require "kong.meta"
 local kube = require "kong.vaults.hcv.kube"
+local utils = require "kong.tools.utils"
 local cjson = require("cjson.safe").new()
 local http = require "resty.luasocket.http"
-local tablex = require "pl.tablex"
 
 
 local decode_json = cjson.decode
 local encode_json = cjson.encode
+local pairs = pairs
 local type = type
 local fmt = string.format
+local log = ngx.log
+
+
+local DEBUG = ngx.DEBUG
+local ERR = ngx.ERR
+local LOG_PREFIX = "[hcv] "
 
 
 local function kube_vault_token_exchange(config)
-  kong.log.debug("no vault token in cache - getting one")
+  log(DEBUG, "no vault token in cache - getting one")
 
   local kube_role = config.kube_role or "default"
-  ngx.log(ngx.DEBUG, "using kubernetes serviceaccount vault authentication mechanism for role: ", kube_role)
+  log(DEBUG, LOG_PREFIX, "using kubernetes service account vault authentication mechanism for role: ", kube_role)
 
-  -- get the current kube serviceaccount context JWT
+  -- get the current kube service account context JWT
   local kube_jwt, err = kube.get_service_account_token(config.kube_api_token_file)
   if err then
-    ngx.log(ngx.ERR, "error loading kubernetes serviceaccount jwt from filesystem: ", err)
-    return nil, nil, nil
+    log(ERR, LOG_PREFIX, "error loading kubernetes service account jwt from filesystem: ", err)
+    return
   end
 
   -- exchange the jwt for a vault token
   local c = http.new()
 
-  local req_path = config.vault_host .. "/v1/auth/kubernetes/login"
+  local kube_auth_path = config.kube_auth_path
+  if kube_auth_path then
+    kube_auth_path = kube_auth_path:gsub("^/", ""):gsub("/$", "")
+  else
+    kube_auth_path = "kubernetes"
+  end
+
+  local req_path = config.vault_host .. "/v1/auth/" .. kube_auth_path .. "/login"
   local req_data = {
-    ["jwt"] = kube_jwt,
-    ["role"] = kube_role,
+    jwt = kube_jwt,
+    role = kube_role,
   }
 
   local res, err = c:request_uri(req_path, {
+    -- add a namespace to authenticate to, else use root.
+    headers = {
+      ["X-Vault-Namespace"] = config.auth_namespace or "root",
+    },
     method = "POST",
     body = cjson.encode(req_data),
   })
 
   if err then
-    ngx.log(ngx.ERR, "failure when exchanging kube service account jwt for vault token: ", err)
-    return nil, nil, nil
+    log(ERR, LOG_PREFIX, "failure when exchanging kube service account jwt for vault token: ", err)
+    return
   end
 
   if res.status ~= 200 then
-    ngx.log(ngx.ERR, "invalid response code ", res.status, " received when exchanging kube serviceaccount jwt for vault token: ", res.body)
-    return nil, nil, nil
+    log(ERR, LOG_PREFIX, "invalid response code ", res.status, " received when exchanging kube service account jwt for vault token: ", res.body)
+    return
   end
 
   -- capture the current token and ttl
@@ -64,29 +82,31 @@ end
 
 local function get_vault_token(config)
   if config.auth_method == "token" then
-    ngx.log(ngx.DEBUG, "using static env token vault authentication mechanism")
-    return config.token, nil
+    log(DEBUG, LOG_PREFIX, "using static env token vault authentication mechanism")
+    return config.token
 
   elseif config.auth_method == "kubernetes" then
     local cache_key = fmt("vaults:credentials:hcv:%s:%s", config.vault_host, config.kube_role)
 
+    local cache = kong.cache
     local token
-    if kong.cache then
-      token = kong.cache:get(cache_key, nil, kube_vault_token_exchange, config)
+    if cache then
+      token = cache:get(cache_key, nil, kube_vault_token_exchange, config)
     else
       token = kube_vault_token_exchange(config)
     end
 
     if not token then
-      kong.cache:invalidate(cache_key)
-      return nil, nil
+      if cache then
+        cache:invalidate(cache_key)
+      end
+      return
     end
 
-    return token, nil
+    return token
   end
 
-  ngx.log(ngx.ERR, "vault authentication mechanism ", config.auth_method, " is not supported for hashicorp vault")
-  return nil, nil
+  log(ERR, LOG_PREFIX, "vault authentication mechanism ", config.auth_method, " is not supported for hashicorp vault")
 end
 
 
@@ -106,7 +126,7 @@ local function request(conf, resource, version, request_conf)
 
   for k, v in pairs(request_conf or {}) do
     if type(v) == "table" then
-      request[v] = tablex.deepcopy(v)
+      request[v] = utils.cycle_aware_deep_copy(v)
     else
       request_opts[k] = v
     end
@@ -130,23 +150,23 @@ local function request(conf, resource, version, request_conf)
   end
 
   local token_params = {
-    ["token"]               = conf.token, -- pass this even though we know it already, for future compatibility
-    ["auth_method"]         = conf.auth_method or "token",
-    ["vault_host"]          = fmt("%s://%s:%d", protocol, host, port),
-    ["kube_api_token_file"] = conf.kube_api_token_file,
-    ["kube_role"]           = conf.kube_role,
+    token               = conf.token, -- pass this even though we know it already, for future compatibility
+    auth_method         = conf.auth_method or "token",
+    auth_namespace      = conf.namespace,
+    vault_host          = fmt("%s://%s:%d", protocol, host, port),
+    kube_api_token_file = conf.kube_api_token_file,
+    kube_role           = conf.kube_role,
+    kube_auth_path      = conf.kube_auth_path,
   }
 
-  -- check kong.cache is nil so that we can run from CLI mode
   local token = get_vault_token(token_params)
   if not token then
-    return false, "no authentication mechanism worked for vault"
+    return nil, "no authentication mechanism worked for vault"
   end
 
   request_opts.headers["X-Vault-Token"] = token
 
   local res
-
   res, err = client:request_uri(path, request_opts)
   if err then
     return nil, err
