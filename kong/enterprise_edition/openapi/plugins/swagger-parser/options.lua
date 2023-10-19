@@ -8,29 +8,40 @@
 local pl_tablex = require "pl.tablex"
 local socket_url = require "socket.url"
 
+local type = type
 local pairs = pairs
 local string_byte = string.byte
 local string_sub = string.sub
-local copy = pl_tablex.copy
+local deepcopy = pl_tablex.deepcopy
 
 local SLASH_BYTE = string_byte("/")
 local EMPTY_T = {}
 
-local DEFAULT_PARSER_OPTIONS = {
+local DEFAULT_OPTIONS = {
   resolve_base_path = false,
+  dereference = {
+    circular = false, -- Don't allow circular $refs
+  }
 }
 
 
-local function resolve_options(opts)
-  local options = copy(DEFAULT_PARSER_OPTIONS)
-  opts = opts or EMPTY_T
-  for key in pairs(options) do
-    local v = opts[key]
-    if v ~= nil then
-      options[key] = v
+local function merge(opts, customize_opts)
+  for k, v in pairs(opts) do
+    if type(v) == "table" and type(customize_opts[k]) == "table" then
+      merge(v, customize_opts[k])
+    else
+      if customize_opts[k] ~= nil then
+        opts[k] = customize_opts[k]
+      end
     end
   end
-  return options
+  return opts
+end
+
+
+local function resolve_options(opts)
+  local default_options = deepcopy(DEFAULT_OPTIONS)
+  return merge(default_options, opts or EMPTY_T)
 end
 
 
@@ -98,8 +109,6 @@ end
 
 
 local function apply(spec, options)
-  options = resolve_options(options)
-
   if options.resolve_base_path == true then
     resolve_paths(spec)
   end
@@ -108,5 +117,6 @@ end
 
 
 return {
-  apply = apply
+  apply = apply,
+  resolve_options = resolve_options,
 }

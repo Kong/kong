@@ -5,75 +5,147 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local split = require("pl.utils").split
-local utils = require("kong.tools.utils")
+local split = require "pl.stringx".split
+local utils = require "kong.tools.utils"
 local clone = require "table.clone"
 
 local type = type
 local pairs = pairs
-local assert = assert
-local table_remove = table.remove
+local byte = string.byte
+local sub = string.sub
 
 local _M = {}
 
-local function walk_tree(path, tree)
-  assert(type(path) == "string", "path must be a string")
-  assert(type(tree) == "table", "tree must be a table")
 
-  local segments = split(path, "%/")
-  if path == "/" then
-    -- top level reference, to full document
-    return tree
-  elseif segments[1] == "" then
-    -- starts with a '/', so remove first empty segment
-    table_remove(segments, 1)
-  else
-    -- first segment is not empty, so we had a relative path
-    return nil, "only absolute references are supported, not " .. path
-  end
-
-  local position = tree
-  for i = 1, #segments do
-    position = position[segments[i]]
-    if position == nil then
-      return nil, "not found"
-    end
-    if i < #segments and type(position) ~= "table" then
-      return nil, "next level cannot be dereferenced, expected table, got " .. type(position)
-    end
-  end
-  return position
+local function is_ref(obj)
+  return type(obj) == "table" and obj["$ref"]
 end
 
-local function dereference_single_level(full_spec, schema, parent_ref)
-  for key, value in pairs(schema) do
-    local curr_parent_ref = clone(parent_ref)
-    while type(value) == "table" and value["$ref"] do
-      local reference = value["$ref"]
-      if curr_parent_ref[reference] then
-        return nil, "recursion detected in schema dereferencing"
-      end
-      curr_parent_ref[reference] = true
 
-      local file, path = reference:match("^(.-)#(.-)$")
-      if not file then
-        return nil, "bad reference: " .. reference
-      elseif file ~= "" then
-        return nil, "only local references are supported, not " .. reference
-      end
+local function has_ref(schema)
+  if is_ref(schema) then
+    return true
+  end
 
-      local ref_target, err = walk_tree(path, full_spec)
-      if not ref_target then
-        return nil, "failed dereferencing schema: " .. err
+  if type(schema) == "table" then
+    for _, value in pairs(schema) do
+      if has_ref(value) then
+        return true
       end
-      value = utils.cycle_aware_deep_copy(ref_target)
-      schema[key] = value
+    end
+  end
+
+  return false
+end
+
+
+local function by_ref(obj, ref)
+  if type(ref) ~= "string" then
+    return nil, "invalid ref: ref must be a string"
+  end
+  if byte(ref) ~= byte("/") then
+    return nil, "invalid ref: " .. ref
+  end
+
+  if ref == "/" then
+    -- root reference
+    return obj
+  end
+
+  local segments = split(sub(ref, 2), "/")
+
+  for i = 1, #segments do
+    local segment = segments[i]
+    if obj[segment] == nil then
+      return nil, "invalid ref: " .. segment
+    end
+    obj = obj[segment]
+  end
+
+  return obj
+end
+
+
+local function is_circular(refs, schema)
+  local visited = {}
+
+  while is_ref(schema) do
+    local ref = schema["$ref"]
+    if visited[ref] then
+      return true
     end
 
-    if type(value) == "table" then
-      local ok, err = dereference_single_level(full_spec, value, curr_parent_ref)
-      if not ok then
-        return nil, err
+    visited[ref] = true
+    ref = sub(ref, 2) -- remove #
+    schema = by_ref(refs, ref)
+  end
+
+  return false
+end
+
+local reference_mt = {}
+function reference_mt:is_ref()
+  return true
+end
+
+local function resolve_ref(spec, schema, opts, parent_ref)
+  if type(schema) ~= "table" then
+    return schema
+  end
+
+  for key, value in pairs(schema) do
+    if key == "schema"
+      ---[[ mocking compatibility
+      and opts.dereference.circular
+      --]]
+    then
+      if has_ref(value) then
+        -- attach a metatable to indicate it's a reference schema
+        setmetatable(value, {
+          __index = reference_mt,
+          refs = {
+            definitions = spec.definitions,
+            components = spec.components,
+          }
+        })
+        if is_circular(spec, value) then
+          return nil, "recursion detected in schema dereferencing: " .. value["$ref"]
+        end
+      end
+
+    else
+      ---[[ mocking compatibility
+      local curr_parent_ref = clone(parent_ref)
+      --]]
+
+      -- only resolve $ref that does not belong to jsonschema(the key is not 'schema')
+      while is_ref(value) do
+        local ref = value["$ref"]
+        if byte(ref, 1) ~= byte("#") then
+          return nil, "only local references are supported, not " .. ref
+        end
+
+        ---[[ mocking compatibility
+        if curr_parent_ref[ref] then
+          return nil, "recursion detected in schema dereferencing"
+        end
+        curr_parent_ref[ref] = true
+        --]]
+
+        local ref_target, err = by_ref(spec, sub(ref, 2))
+        if not ref_target then
+          return nil, "failed dereferencing schema: " .. err
+        end
+
+        value = utils.cycle_aware_deep_copy(ref_target)
+        schema[key] = value
+      end
+
+      if type(value) == "table" then
+        local ok, err = resolve_ref(spec, value, opts, curr_parent_ref)
+        if not ok then
+          return nil, err
+        end
       end
     end
   end
@@ -81,20 +153,15 @@ local function dereference_single_level(full_spec, schema, parent_ref)
   return schema
 end
 
-local function get_dereferenced_schema(full_spec)
-  -- wrap to also deref top level
-  local schema = utils.cycle_aware_deep_copy(full_spec)
-  local wrapped_schema, err = dereference_single_level(full_spec, { schema }, {})
-  if not wrapped_schema then
+_M.resolve = function(spec, opts)
+  local resolved_paths, err = resolve_ref(spec, spec.paths, opts, {})
+  if err then
     return nil, err
   end
 
-  return wrapped_schema[1]
-end
+  spec.paths = resolved_paths
 
-
-_M.dereference = function(schema)
-  return get_dereferenced_schema(schema)
+  return spec
 end
 
 return _M

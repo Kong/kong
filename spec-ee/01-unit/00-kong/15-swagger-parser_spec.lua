@@ -8,6 +8,12 @@
 local swagger_parser = require "kong.enterprise_edition.openapi.plugins.swagger-parser.parser"
 local lyaml = require "lyaml"
 
+local opts = {
+  dereference = {
+    circular = true,
+  }
+}
+
 describe("swagger-parser", function()
 
   describe("parse()", function()
@@ -95,330 +101,6 @@ describe("swagger-parser", function()
       local spec, err = swagger_parser.parse(spec_str)
       assert.truthy(spec)
       assert.is_nil(err)
-    end)
-
-    it("should dereference reference", function ()
-      local spec_str = [[
-        {
-          "openapi": "3.0.3",
-          "info": {
-            "title": "Swagger Petstore - OpenAPI 3.0",
-            "description": "",
-            "termsOfService": "http://swagger.io/terms/",
-            "contact": {
-              "email": "apiteam@swagger.io"
-            },
-            "license": {
-              "name": "Apache 2.0",
-              "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
-            },
-            "version": "1.0.11"
-          },
-          "externalDocs": {
-            "description": "Find out more about Swagger",
-            "url": "http://swagger.io"
-          },
-          "servers": [
-            {
-              "url": "https://petstore3.swagger.io/api/v3"
-            }
-          ],
-          "paths": {
-            "/pet": {
-              "put": {
-                "summary": "Update an existing pet",
-                "description": "Update an existing pet by Id",
-                "operationId": "updatePet",
-                "requestBody": {
-                  "description": "Update an existent pet in the store",
-                  "content": {
-                    "application/json": {
-                      "schema": {
-                        "$ref": "#/components/schemas/Pet"
-                      }
-                    },
-                    "application/xml": {
-                      "schema": {
-                        "$ref": "#/components/schemas/Pet"
-                      }
-                    },
-                    "application/x-www-form-urlencoded": {
-                      "schema": {
-                        "$ref": "#/components/schemas/Pet"
-                      }
-                    }
-                  },
-                  "required": true
-                },
-                "responses": {
-                  "200": {
-                    "description": "Successful operation",
-                    "content": {
-                      "application/json": {
-                        "schema": {
-                          "$ref": "#/components/schemas/Pet"
-                        }
-                      },
-                      "application/xml": {
-                        "schema": {
-                          "$ref": "#/components/schemas/Pet"
-                        }
-                      }
-                    }
-                  },
-                  "400": {
-                    "description": "Invalid ID supplied"
-                  },
-                  "404": {
-                    "description": "Pet not found"
-                  },
-                  "405": {
-                    "description": "Validation exception"
-                  }
-                }
-              }
-            }
-          },
-          "components": {
-            "schemas": {
-              "Tag": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "integer",
-                    "format": "int64"
-                  },
-                  "name": {
-                    "type": "string"
-                  }
-                },
-                "xml": {
-                  "name": "tag"
-                }
-              },
-              "Pet": {
-                "required": [
-                  "name",
-                  "photoUrls"
-                ],
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "integer",
-                    "format": "int64",
-                    "example": 10
-                  },
-                  "name": {
-                    "type": "string",
-                    "example": "doggie"
-                  },
-                  "photoUrls": {
-                    "type": "array",
-                    "xml": {
-                      "wrapped": true
-                    },
-                    "items": {
-                      "type": "string",
-                      "xml": {
-                        "name": "photoUrl"
-                      }
-                    }
-                  },
-                  "tags": {
-                    "type": "array",
-                    "xml": {
-                      "wrapped": true
-                    },
-                    "items": {
-                      "$ref": "#/components/schemas/Tag"
-                    }
-                  },
-                  "status": {
-                    "type": "string",
-                    "description": "pet status in the store",
-                    "enum": [
-                      "available",
-                      "pending",
-                      "sold"
-                    ]
-                  }
-                },
-                "xml": {
-                  "name": "pet"
-                }
-              }
-            }
-          }
-        }
-          ]]
-
-      local spec, err = swagger_parser.parse(spec_str)
-      assert.truthy(spec)
-      assert.is_nil(err)
-      assert.is_not_nil(spec.spec["components"]["schemas"]["Pet"]["properties"]["tags"]["items"])
-      assert.is_not_nil(spec.spec["paths"]["/pet"]["put"]["requestBody"]["content"]["application/json"]["schema"]["properties"])
-    end)
-
-    it("should fail when contains recursive reference", function ()
-      local spec_str = [[
-        {
-          "openapi": "3.0.3",
-          "info": {
-            "title": "Swagger Petstore - OpenAPI 3.0",
-            "description": "",
-            "termsOfService": "http://swagger.io/terms/",
-            "contact": {
-              "email": "apiteam@swagger.io"
-            },
-            "license": {
-              "name": "Apache 2.0",
-              "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
-            },
-            "version": "1.0.11"
-          },
-          "externalDocs": {
-            "description": "Find out more about Swagger",
-            "url": "http://swagger.io"
-          },
-          "servers": [
-            {
-              "url": "https://petstore3.swagger.io/api/v3"
-            }
-          ],
-          "paths": {
-            "/pet": {
-              "put": {
-                "summary": "Update an existing pet",
-                "description": "Update an existing pet by Id",
-                "operationId": "updatePet",
-                "requestBody": {
-                  "description": "Update an existent pet in the store",
-                  "content": {
-                    "application/json": {
-                      "schema": {
-                        "$ref": "#/components/schemas/Pet"
-                      }
-                    },
-                    "application/xml": {
-                      "schema": {
-                        "$ref": "#/components/schemas/Pet"
-                      }
-                    },
-                    "application/x-www-form-urlencoded": {
-                      "schema": {
-                        "$ref": "#/components/schemas/Pet"
-                      }
-                    }
-                  },
-                  "required": true
-                },
-                "responses": {
-                  "200": {
-                    "description": "Successful operation",
-                    "content": {
-                      "application/json": {
-                        "schema": {
-                          "$ref": "#/components/schemas/Pet"
-                        }
-                      },
-                      "application/xml": {
-                        "schema": {
-                          "$ref": "#/components/schemas/Pet"
-                        }
-                      }
-                    }
-                  },
-                  "400": {
-                    "description": "Invalid ID supplied"
-                  },
-                  "404": {
-                    "description": "Pet not found"
-                  },
-                  "405": {
-                    "description": "Validation exception"
-                  }
-                }
-              }
-            }
-          },
-          "components": {
-            "schemas": {
-              "Tag": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "integer",
-                    "format": "int64"
-                  },
-                  "name": {
-                    "type": "string"
-                  },
-                  "recursivepet": {
-                    "$ref": "#/components/schemas/Tag"
-                  }
-                },
-                "xml": {
-                  "name": "tag"
-                }
-              },
-              "Pet": {
-                "required": [
-                  "name",
-                  "photoUrls"
-                ],
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "integer",
-                    "format": "int64",
-                    "example": 10
-                  },
-                  "name": {
-                    "type": "string",
-                    "example": "doggie"
-                  },
-                  "photoUrls": {
-                    "type": "array",
-                    "xml": {
-                      "wrapped": true
-                    },
-                    "items": {
-                      "type": "string",
-                      "xml": {
-                        "name": "photoUrl"
-                      }
-                    }
-                  },
-                  "tags": {
-                    "type": "array",
-                    "xml": {
-                      "wrapped": true
-                    },
-                    "items": {
-                      "$ref": "#/components/schemas/Tag"
-                    }
-                  },
-                  "status": {
-                    "type": "string",
-                    "description": "pet status in the store",
-                    "enum": [
-                      "available",
-                      "pending",
-                      "sold"
-                    ]
-                  }
-                },
-                "xml": {
-                  "name": "pet"
-                }
-              }
-            }
-          }
-        }
-      ]]
-      local res, err = swagger_parser.parse(spec_str)
-      assert.is_nil(res)
-      assert.same(err, "recursion detected in schema dereferencing")
     end)
   end)
 
@@ -755,72 +437,65 @@ describe("swagger-parser", function()
 
   describe("dereference()", function()
     it("dereference", function()
+      -- only resolve spec $ref, does not touch the $ref in schema(jsonschema)
       local expected_schema_yaml = [[
         openapi: 3.0.1
         paths:
-          "/api":
+          /api:
             get:
               responses:
-                '200':
+                '404':
+                  content:
+                    application/json:
+                      schema:
+                        $ref: '#/components/schemas/APIResponse'
+                  description: NotFound response
+                '500':
                   description: success
                   content:
                     application/json:
                       schema:
-                        allOf:
-                        - type: object
-                          properties:
-                            code:
-                              type: string
-                            msg:
-                              type: string
-                        - type: object
-                          properties:
-                            data:
-                              type: object
-                              properties:
-                                id:
-                                  type: string
-                                name:
-                                  type: string
-                                releaseDate:
-                                  type: string
+                        type: array
+                        items:
+                          "$ref": "#/components/schemas/GetApiDto"
+                '200':
+                  content:
+                    application/json:
+                      schema:
+                        $ref: '#/components/schemas/GetApiDto'
+                  description: success
         components:
+          responses:
+            NotFound:
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/APIResponse'
+              description: NotFound response
           schemas:
             APIResponse:
-              type: object
               properties:
                 code:
                   type: string
                 msg:
                   type: string
-            GetInventoryItemResponse:
-              allOf:
-              - type: object
-                properties:
-                  code:
-                    type: string
-                  msg:
-                    type: string
-              - type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                      name:
-                        type: string
-                      releaseDate:
-                        type: string
-            InventoryItem:
               type: object
+            GetApiDto:
+              allOf:
+              - $ref: '#/components/schemas/APIResponse'
+              - properties:
+                  data:
+                    $ref: '#/components/schemas/InventoryItem'
+                type: object
+            InventoryItem:
               properties:
-                id:
-                  type: string
                 name:
+                  type: string
+                id:
                   type: string
                 releaseDate:
                   type: string
+              type: object
       ]]
       local schema_yaml = [[
         openapi: 3.0.1
@@ -832,9 +507,26 @@ describe("swagger-parser", function()
                   description: success
                   content:
                     application/json:
-                      schema:
-                        "$ref": "#/components/schemas/GetInventoryItemResponse"
+                      schema: # should not be resolved
+                        "$ref": "#/components/schemas/GetApiDto"
+                '500':
+                  description: success
+                  content:
+                    application/json:
+                      schema: # should not be resolved
+                        type: array
+                        items:
+                          "$ref": "#/components/schemas/GetApiDto"
+                '404':
+                  "$ref": "#/components/responses/NotFound" # should be resolved
         components:
+          responses:
+            NotFound:
+              description: NotFound response
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/APIResponse'
           schemas:
             APIResponse:
               type: object
@@ -843,7 +535,7 @@ describe("swagger-parser", function()
                   type: string
                 msg:
                   type: string
-            GetInventoryItemResponse:
+            GetApiDto:
               allOf:
               - "$ref": "#/components/schemas/APIResponse"
               - type: object
@@ -860,12 +552,12 @@ describe("swagger-parser", function()
                 releaseDate:
                   type: string
       ]]
-      local deref_schema, err = swagger_parser.dereference(lyaml.load(schema_yaml))
+      local deref_schema, err = swagger_parser.dereference(lyaml.load(schema_yaml), opts)
       assert.is_nil(err)
       assert.same(lyaml.load(expected_schema_yaml), deref_schema)
     end)
 
-    it("should fail when contains recursive reference", function()
+    it("should succeed when contians recursive reference", function()
       local schema_yaml = [[
         openapi: 3.0.1
         paths:
@@ -877,27 +569,46 @@ describe("swagger-parser", function()
                   content:
                     application/json:
                       schema:
-                        "$ref": "#/components/schemas/GetInventoryItemResponse"
+                        "$ref": "#/components/schemas/Person"
         components:
           schemas:
-            APIResponse:
+            Person:
               type: object
               properties:
-                code:
+                name:
                   type: string
-                msg:
-                  type: string
-            GetInventoryItemResponse:
-              allOf:
-              - "$ref": "#/components/schemas/APIResponse"
-              - type: object
-                properties:
-                  data:
-                    "$ref": "#/components/schemas/GetInventoryItemResponse"
+                children:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/Person"
       ]]
-      local _, err = swagger_parser.dereference(lyaml.load(schema_yaml))
+      local _, err = swagger_parser.dereference(lyaml.load(schema_yaml), opts)
+      assert.is_nil(err)
+    end)
+
+    it("should fail when contains circle reference", function()
+      local schema_yaml = [[
+        openapi: 3.0.1
+        paths:
+          "/api":
+            get:
+              responses:
+                '200':
+                  description: success
+                  content:
+                    application/json:
+                      schema:
+                        "$ref": "#/components/schemas/ItemCycle1"
+        components:
+          schemas:
+            ItemCycle1:
+              $ref: "#/components/schemas/ItemCycle2"
+            ItemCycle2:
+              $ref: "#/components/schemas/ItemCycle1"
+      ]]
+      local _, err = swagger_parser.dereference(lyaml.load(schema_yaml), opts)
       assert.not_nil(err)
-      assert.equal("recursion detected in schema dereferencing", err)
+      assert.equal("recursion detected in schema dereferencing: #/components/schemas/ItemCycle1", err)
     end)
 
     it("should fail when contains recursive reference", function()
@@ -921,9 +632,9 @@ describe("swagger-parser", function()
               $ref: "#/components/schemas/InventoryItem1"
       ]]
 
-      local _, err = swagger_parser.dereference(lyaml.load(schema_yaml))
+      local _, err = swagger_parser.dereference(lyaml.load(schema_yaml), opts)
       assert.not_nil(err)
-      assert.equal("recursion detected in schema dereferencing", err)
+      assert.equal("recursion detected in schema dereferencing: #/components/schemas/InventoryItem1", err)
     end)
   end)
 end)

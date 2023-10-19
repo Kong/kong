@@ -18,24 +18,32 @@ local pairs = pairs
 
 local _M = {}
 
-_M.dereference = function(schema)
-  return dereference.dereference(schema)
+-- Dereference spec
+-- @param spec
+-- @param opts options.DEFAULT_OPTIONS
+_M.dereference = function(spec, opts)
+  opts = options.resolve_options(opts)
+  return dereference.resolve(spec, opts)
 end
 
-_M.parse = function(spec_content, opts)
-  spec_content = ngx.unescape_uri(spec_content)
-  local parsed_spec, decode_err = cjson.decode(spec_content)
+--- Parse spec
+-- @param spec_str
+-- @param opts options.DEFAULT_OPTIONS
+_M.parse = function(spec_str, opts)
+  spec_str = ngx.unescape_uri(spec_str)
+  local parsed_spec, decode_err = cjson.decode(spec_str)
   if decode_err then
     -- fallback to YAML
     local pok
-    pok, parsed_spec = pcall(lyaml.load, spec_content)
+    pok, parsed_spec = pcall(lyaml.load, spec_str)
     if not pok or type(parsed_spec) ~= "table" then
       return nil, fmt("api specification is neither valid json ('%s') nor valid yaml ('%s')",
         decode_err, parsed_spec)
     end
   end
 
-  local deferenced_schema, err = _M.dereference(parsed_spec)
+  opts = options.resolve_options(opts)
+  local deferenced_schema, err = dereference.resolve(parsed_spec, opts)
   if err then
     return nil, err
   end

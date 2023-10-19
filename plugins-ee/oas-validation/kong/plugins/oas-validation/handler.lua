@@ -67,13 +67,26 @@ local OASValidationPlugin = {
   PRIORITY = 850, -- priority after security & rate limiting plugins
 }
 
+local function resolve_schema(schema)
+  local metatable = getmetatable(schema)
+  if not metatable then
+    return schema
+  end
+  if type(schema.is_ref) == "function" and schema:is_ref() then
+    schema.definitions = metatable.refs.definitions
+    schema.components = metatable.refs.components
+  end
+  return schema
+end
 
 local validator_cache = setmetatable({}, {
   __mode = "k",
   __index = function(self, parameter)
-      -- it was not found, so here we generate it
-      local validator_func = assert(generator(json_encode(parameter.schema)))
-      self[parameter] = validator_func
+    -- it was not found, so here we generate it
+    local schema = resolve_schema(parameter.schema)
+    local json = assert(json_encode(schema))
+    local validator_func = assert(generator(json))
+    self[parameter] = validator_func
     return validator_func
   end
 })
@@ -83,7 +96,9 @@ local validator_param_cache = setmetatable({}, {
   __mode = "k",
   __index = function(self, parameter)
     -- it was not found, so here we generate it
-    local validator_func = assert(generator(json_encode(parameter.schema), {
+    local schema = resolve_schema(parameter.schema)
+    local json = assert(json_encode(schema))
+    local validator_func = assert(generator(json, {
       coercion = true,
     }))
     parameter.decoded_schema = assert(parameter.schema)
@@ -434,7 +449,8 @@ local function parse_spec(conf)
   local parsed_spec = spec_cache:get(spec_cache_key)
   if not parsed_spec then
     local opts = {
-      resolve_base_path = conf.include_base_path
+      resolve_base_path = conf.include_base_path,
+      dereference = { circular = true },
     }
     spec_content = ngx.unescape_uri(spec_content)
     local spec, err = swagger_parser.parse(spec_content, opts)

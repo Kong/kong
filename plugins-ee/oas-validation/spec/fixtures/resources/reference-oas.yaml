@@ -1,0 +1,104 @@
+openapi: 3.0.1
+info:
+  title: Sample API
+  description: A Sample OpenAPI Spec
+  version: 1.0.0
+
+paths:
+  /ref-case-1:
+    post:
+      requestBody:
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/Simple'
+        required: true
+      responses:
+        200:
+          description: OK
+          content: {}
+  /ref-case-2:
+    post:
+      requestBody:
+        content:
+          'application/json':
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Simple'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content: {}
+  /ref-case-3:
+    post:
+      requestBody:
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                key_integer:
+                  type: integer
+                key_boolean:
+                  type: boolean
+                simple:
+                  $ref: '#/components/schemas/Simple'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content: {}
+  /recursive-ref-request-case-1:
+    post:
+      requestBody:
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/ComparedTcmAgreementsDto'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content: {}
+  /recursive-ref-response-case-1:
+    post:
+      responses:
+        '200':
+          description: OK
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/ComparedTcmAgreementsDto'
+components:
+  schemas:
+    Simple:
+      type: object
+      properties:
+        key_string:
+          type: string
+    ComparedTcmAgreementsDto:
+      type: object
+      properties:
+        differentFields:
+          type: array
+          items:
+            type: string
+        securityEligibilityRules:
+          $ref: '#/components/schemas/ConstraintTree'
+    ConstraintTree:
+      type: object
+      properties:
+        constraint:
+          type: string
+        leaves:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConstraintTree'
+        operation:
+          type: string
+          enum:
+            - IS
+            - AND
+            - OR
