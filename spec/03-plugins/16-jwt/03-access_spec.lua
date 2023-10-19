@@ -133,7 +133,10 @@ for _, strategy in helpers.each_strategy() do
       plugins:insert({
         name     = "jwt",
         route = { id = routes[9].id },
-        config   = { cookie_names = { "silly", "crumble" } },
+        config   = {
+          cookie_names = { "silly", "crumble" },
+          realm = "test-jwt"
+        },
       })
 
       plugins:insert({
@@ -298,6 +301,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.res_status(401, res)
+        assert.equal('Bearer', res.headers["WWW-Authenticate"])
       end)
       it("returns 401 if the claims do not contain the key to identify a secret", function()
         PAYLOAD.iss = nil
@@ -314,6 +318,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ message = "No mandatory 'iss' in claims" }, json)
+        assert.equal('Bearer error="invalid_token"', res.headers["WWW-Authenticate"])
       end)
       it("returns 401 if the claims do not contain a valid key to identify a secret", function()
         PAYLOAD.iss = ""
@@ -330,6 +335,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ message = "Invalid 'iss' in claims" }, json)
+        assert.equal('Bearer error="invalid_token"', res.headers["WWW-Authenticate"])
       end)
       it("returns 401 Unauthorized if the iss does not match a credential", function()
         PAYLOAD.iss = "123456789"
@@ -346,6 +352,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ message = "No credentials found for given 'iss'" }, json)
+        assert.equal('Bearer error="invalid_token"', res.headers["WWW-Authenticate"])
       end)
       it("returns 401 Unauthorized if the signature is invalid", function()
         PAYLOAD.iss = jwt_secret.key
@@ -362,6 +369,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ message = "Invalid signature" }, json)
+        assert.equal('Bearer error="invalid_token"', res.headers["WWW-Authenticate"])
       end)
       it("returns 401 Unauthorized if the alg does not match the credential", function()
         local header = {typ = "JWT", alg = 'RS256'}
@@ -378,6 +386,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ message = "Invalid algorithm" }, json)
+        assert.equal('Bearer error="invalid_token"', res.headers["WWW-Authenticate"])
       end)
       it("returns 200 on OPTIONS requests if run_on_preflight is false", function()
         local res = assert(proxy_client:send {
@@ -399,6 +408,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(401, res)
         assert.equal([[{"message":"Unauthorized"}]], body)
+        assert.equal('Bearer', res.headers["WWW-Authenticate"])
       end)
       it("returns 401 if the token exceeds the maximum allowed expiration limit", function()
         local payload = {
@@ -416,6 +426,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(401, res)
         assert.equal('{"exp":"exceeds maximum allowed expiration"}', body)
+        assert.equal('Bearer error="invalid_token"', res.headers["WWW-Authenticate"])
       end)
       it("accepts a JWT token within the maximum allowed expiration limit", function()
         local payload = {
@@ -456,6 +467,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = cjson.decode(assert.res_status(401, res))
         assert.same({ message = "Multiple tokens provided" }, body)
+        assert.equal('Bearer error="invalid_token"', res.headers["WWW-Authenticate"])
       end)
     end)
 
@@ -595,6 +607,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ message = "No credentials found for given 'iss'" }, json)
+        assert.equal('Bearer realm="test-jwt" error="invalid_token"', res.headers["WWW-Authenticate"])
       end)
       it("returns a 401 if the JWT in the cookie is corrupted", function()
         PAYLOAD.iss = jwt_secret.key
@@ -609,6 +622,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(401, res)
         assert.equal([[{"message":"Bad token; invalid JSON"}]], body)
+        assert.equal('Bearer realm="test-jwt" error="invalid_token"', res.headers["WWW-Authenticate"])
       end)
       it("reports a 200 without cookies but with a JWT token in the Authorization header", function()
         PAYLOAD.iss = jwt_secret.key
@@ -632,6 +646,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.res_status(401, res)
+        assert.equal('Bearer realm="test-jwt"', res.headers["WWW-Authenticate"])
       end)
       it("returns 200 without cookies but with a JWT token in the CustomAuthorization header", function()
         PAYLOAD.iss = jwt_secret.key
@@ -1100,6 +1115,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = cjson.decode(assert.res_status(401, res))
         assert.same({ nbf="must be a number", exp="must be a number" }, body)
+        assert.equal('Bearer error="invalid_token"', res.headers["WWW-Authenticate"])
       end)
       it("checks if the fields are valid: `exp` claim", function()
         local payload = {
@@ -1117,6 +1133,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(401, res)
         assert.equal('{"exp":"token expired"}', body)
+        assert.equal('Bearer error="invalid_token"', res.headers["WWW-Authenticate"])
       end)
       it("checks if the fields are valid: `nbf` claim", function()
         local payload = {
@@ -1134,6 +1151,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(401, res)
         assert.equal('{"nbf":"token not valid yet"}', body)
+        assert.equal('Bearer error="invalid_token"', res.headers["WWW-Authenticate"])
       end)
     end)
 
@@ -1348,6 +1366,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(401)
+        assert.equal('Bearer', res.headers["WWW-Authenticate"])
       end)
 
       it("fails 401, with only the second credential provided", function()
@@ -1360,6 +1379,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(401)
+        assert.equal('Key', res.headers["WWW-Authenticate"])
       end)
 
       it("fails 401, with no credential provided", function()
@@ -1371,6 +1391,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(401)
+        assert.equal('Bearer', res.headers["WWW-Authenticate"])
       end)
 
     end)

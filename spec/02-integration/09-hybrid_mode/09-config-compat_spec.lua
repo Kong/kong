@@ -690,6 +690,20 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         -- cleanup
         admin.plugins:remove({ id = hmac_auth.id })
       end)
+
+      it("[jwt] removes realm for versions below 3.8", function()
+        local jwt = admin.plugins:insert {
+          name = "jwt",
+          config = {
+            realm = "test",
+          }
+        }
+        local expected_jwt_prior_38 = cycle_aware_deep_copy(jwt)
+        expected_jwt_prior_38.config.realm = nil
+        do_assert(uuid(), "3.7.0", expected_jwt_prior_38)
+        -- cleanup
+        admin.plugins:remove({ id = jwt.id })
+      end)
     end)
 
     describe("compatibility test for response-transformer plugin", function()

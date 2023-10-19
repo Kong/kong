@@ -157,5 +157,8 @@ return {
     hmac_auth = {
       "realm",
     },
+    jwt = {
+      "realm",
+    },
   },
 }
