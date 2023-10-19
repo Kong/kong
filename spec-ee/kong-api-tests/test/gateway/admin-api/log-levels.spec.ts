@@ -91,7 +91,7 @@ describe('Dynamic Log Level Tests', function () {
     logResponse(resp);
     expect(resp.status, 'Status should be 200').to.equal(200);
     expect(resp.data.message, 'Should have correct log-level').to.equal(
-      'log level: info'
+      'Current log level: info'
     );
   });
 
@@ -105,7 +105,7 @@ describe('Dynamic Log Level Tests', function () {
 
       expect(resp.status, 'Status should be 200').to.equal(200);
       expect(resp.data.message, 'Should change log level').to.equal(
-        'log level changed'
+        `Log level changed to ${logLevel}`
       );
 
       resp = await axios(`${url}/node/log-level`);
@@ -113,7 +113,7 @@ describe('Dynamic Log Level Tests', function () {
 
       expect(resp.status, 'Status should be 200').to.equal(200);
       expect(resp.data.message, 'Should have correct log-level').to.equal(
-        `log level: ${logLevel}`
+        `Current log level: ${logLevel}`
       );
     });
   });
@@ -129,7 +129,7 @@ describe('Dynamic Log Level Tests', function () {
 
     expect(resp.status, 'Status should be 200').to.equal(200);
     expect(resp.data.message, 'Should have correct error message').to.include(
-      `log level is already ${lastLogLevelInTheList}`
+      `Log level is already ${lastLogLevelInTheList}`
     );
   });
 
@@ -156,7 +156,7 @@ describe('Dynamic Log Level Tests', function () {
 
     expect(resp.status, 'Status should be 200').to.equal(200);
     expect(resp.data.message, 'Should change log level').to.equal(
-      'log level changed'
+      `Log level changed to notice`
     );
 
     resp = await axios(`${url}/node/log-level`);
@@ -164,7 +164,7 @@ describe('Dynamic Log Level Tests', function () {
 
     expect(resp.status, 'Status should be 200').to.equal(200);
     expect(resp.data.message, 'Should have correct log-level').to.equal(
-      `log level: notice`
+      `Current log level: notice`
     );
   });
 
@@ -202,7 +202,7 @@ describe('Dynamic Log Level Tests', function () {
 
       expect(resp.status, 'Status should be 400').to.equal(400);
       expect(resp.data.message, 'Should have correct message').to.include(
-        `unknown log level: ${wrongLogLevel}`
+        `Unknown log level: ${wrongLogLevel}`
       );
     });
   });
@@ -214,7 +214,7 @@ describe('Dynamic Log Level Tests', function () {
 
     expect(resp.status, 'Status should be 200').to.equal(200);
     expect(resp.data.message, 'Should change log level').to.equal(
-      'log level changed'
+      `Log level changed to ${logLevel}`
     );
   });
 
@@ -225,7 +225,7 @@ describe('Dynamic Log Level Tests', function () {
 
     expect(resp.status, 'Status should be 200').to.equal(200);
     expect(resp.data.message, 'Should have correct error message').to.include(
-      `log level is already ${logLevel}`
+      `Log level is already ${logLevel}`
     );
   });
 
@@ -240,7 +240,7 @@ describe('Dynamic Log Level Tests', function () {
 
     expect(resp.status, 'Status should be 200').to.equal(200);
     expect(resp.data.message, 'Should have correct message').to.include(
-      `log level is already ${logLevel}`
+      `Log level is already ${logLevel}`
     );
   });
 
@@ -251,7 +251,7 @@ describe('Dynamic Log Level Tests', function () {
 
     expect(resp.status, 'Status should be 200').to.equal(200);
     expect(resp.data.message, 'Should have correct log-level').to.equal(
-      `log level: ${logLevel}`
+      `Current log level: ${logLevel}`
     );
   });
 
@@ -275,7 +275,7 @@ describe('Dynamic Log Level Tests', function () {
 
     expect(resp.status, 'Status should be 200').to.equal(200);
     expect(resp.data.message, 'Should change log level').to.equal(
-      'log level changed'
+      `Log level changed to alert`
     );
 
     await wait(2000); // eslint-disable-line no-restricted-syntax
@@ -285,7 +285,7 @@ describe('Dynamic Log Level Tests', function () {
 
     expect(resp.status, 'Status should be 200').to.equal(200);
     expect(resp.data.message, 'Should have correct log-level').to.equal(
-      `log level: alert`
+      `Current log level: alert`
     );
   });
 
@@ -315,7 +315,7 @@ describe('Dynamic Log Level Tests', function () {
     const assertions = (resp) => {
       expect(resp.status, 'Status should be 200').to.equal(200);
       expect(resp.data.message, 'Should have correct log-level').to.equal(
-        `log level: info`
+        `Current log level: info`
       );
     };
 
@@ -363,7 +363,7 @@ describe('Dynamic Log Level Tests', function () {
     const assertions = (resp) => {
       expect(resp.status, 'Status should be 200').to.equal(200);
       expect(resp.data.message, 'Should have correct log-level').to.equal(
-        `log level: info`
+        `Current log level: info`
       );
     };
 
@@ -380,7 +380,7 @@ describe('Dynamic Log Level Tests', function () {
 
       expect(resp.status, 'Status should be 200').to.equal(200);
       expect(resp.data.message, 'Should have correct log-level').to.equal(
-        `log level: info`
+        `Current log level: info`
       );
     });
 
@@ -405,7 +405,7 @@ describe('Dynamic Log Level Tests', function () {
 
       expect(resp.status, 'Status should be 200').to.equal(200);
       expect(resp.data.message, 'Should change log level').to.equal(
-        'log level changed'
+        `Log level changed to ${logLevel}`
       );
 
       resp = await axios(`${url}/node/log-level`);
@@ -413,7 +413,7 @@ describe('Dynamic Log Level Tests', function () {
 
       expect(resp.status, 'Status should be 200').to.equal(200);
       expect(resp.data.message, 'Should have correct log-level').to.equal(
-        `log level: ${logLevel}`
+        `Current log level: ${logLevel}`
       );
     });
 
@@ -443,7 +443,7 @@ describe('Dynamic Log Level Tests', function () {
 
       expect(resp.status, 'Status should be 200').to.equal(200);
       expect(resp.data.message, 'Should change log level').to.equal(
-        'log level changed'
+        `Log level changed to ${logLevel}`
       );
 
       resp = await axios(`${url}/node/log-level`);
@@ -451,7 +451,7 @@ describe('Dynamic Log Level Tests', function () {
 
       expect(resp.status, 'Status should be 200').to.equal(200);
       expect(resp.data.message, 'Should have correct log-level').to.equal(
-        `log level: ${logLevel}`
+        `Current log level: ${logLevel}`
       );
     });
 
@@ -467,7 +467,7 @@ describe('Dynamic Log Level Tests', function () {
 
       expect(resp.status, 'Status should be 200').to.equal(200);
       expect(resp.data.message, 'Should change log level').to.equal(
-        'log level changed'
+        `Log level changed to ${logLevel}`
       );
 
       resp = await axios(`${url}/node/log-level`);
@@ -475,7 +475,7 @@ describe('Dynamic Log Level Tests', function () {
 
       expect(resp.status, 'Status should be 200').to.equal(200);
       expect(resp.data.message, 'Should have correct log-level').to.equal(
-        `log level: ${logLevel}`
+        `Current log level: ${logLevel}`
       );
     });
   });

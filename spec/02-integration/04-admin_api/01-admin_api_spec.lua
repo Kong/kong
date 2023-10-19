@@ -56,8 +56,8 @@ describe("Admin API listeners", function()
       admin_gui_listen = "off",
     }))
     -- XXX EE
-    -- extra listeners (portal, etc) can affect this count
-    assert.equals(2, count_server_blocks(helpers.test_conf.nginx_kong_conf))
+    -- extra listeners (portal, debug_listen, etc) can affect this count
+    assert.equals(3, count_server_blocks(helpers.test_conf.nginx_kong_conf))
     assert.is_nil(get_listeners(helpers.test_conf.nginx_kong_conf).kong_admin)
   end)
 
@@ -69,8 +69,8 @@ describe("Admin API listeners", function()
     }))
 
     -- XXX EE
-    -- extra listeners (portal, etc) can affect this count
-    assert.equals(3, count_server_blocks(helpers.test_conf.nginx_kong_conf))
+    -- extra listeners (portal, debug_listen, etc) can affect this count
+    assert.equals(4, count_server_blocks(helpers.test_conf.nginx_kong_conf))
     assert.same({
       ["127.0.0.1:9001"] = 1,
       ["127.0.0.1:9002"] = 2,

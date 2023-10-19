@@ -168,8 +168,8 @@ for __, deploy in ipairs({ "traditional", "hybrid" }) do
     local json = cjson.decode(body)
 
     assert.same("error", json.status)
-    local found = string.find(json.message, "profiling is already active at pid: ", 0, true)
-    assert(found, "expected message to start with 'profiling is already active at pid: '")
+    local found = string.find(json.message, "Profiling is already active on pid: ", 0, true)
+    assert(found, "expected message to start with 'Profiling is already active on pid: '")
 
     res = assert(admin_client:send {
       method = "DELETE",
@@ -300,6 +300,9 @@ for __, deploy in ipairs({ "traditional", "hybrid" }) do
       })
 
       assert.res_status(204, res)
+      local state = assert(cjson.decode(res.headers["X-Kong-Profiling-State"]), "missing X-Kong-Profiling-State header")
+      assert.same(path, state.path)
+      assert.truthy(state.pid)
 
       helpers.wait_for_file("file", path, 5)
     end
@@ -313,7 +316,7 @@ for __, deploy in ipairs({ "traditional", "hybrid" }) do
         },
         response_body = {
           status = "error",
-          message = "invalid mode (must be 'time' or 'instruction'): invalid",
+          message = "Invalid mode (must be 'time' or 'instruction'): invalid",
         },
       },
       {
@@ -322,7 +325,7 @@ for __, deploy in ipairs({ "traditional", "hybrid" }) do
         },
         response_body = {
           status = "error",
-          message = "invalid pid: 1",
+          message = "Invalid pid: 1",
         },
       },
       {
@@ -331,7 +334,7 @@ for __, deploy in ipairs({ "traditional", "hybrid" }) do
         },
         response_body = {
           status = "error",
-          message = "invalid timeout (must be between 1 and 600): 0",
+          message = "Invalid timeout (must be between 1 and 600): 0",
         },
       },
       {
@@ -340,7 +343,7 @@ for __, deploy in ipairs({ "traditional", "hybrid" }) do
         },
         response_body = {
           status = "error",
-          message = "invalid timeout (must be between 1 and 600): 601",
+          message = "Invalid timeout (must be between 1 and 600): 601",
         },
       },
     }
@@ -386,7 +389,7 @@ for __, deploy in ipairs({ "traditional", "hybrid" }) do
 
       assert.same({
         status = "error",
-        message = "invalid step (must be between 50 and 1000): " .. steps
+        message = "Invalid step (must be between 50 and 1000): " .. steps
       }, json)
     end
   end)
@@ -410,10 +413,8 @@ for __, deploy in ipairs({ "traditional", "hybrid" }) do
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
 
-        assert.same({
-          status = "error",
-          message = "invalid interval (must be between 1 and 1000000): " .. interval
-        }, json)
+        assert.same("error", json.status)
+        assert.same("Invalid interval (must be between 1 and 1000000): " .. interval, json.message)
       end
   end)
 
@@ -475,9 +476,7 @@ for __, deploy in ipairs({ "traditional", "hybrid" }) do
 
       admin_client:close()
 
-      assert.same({
-        status = "stopped",
-      }, json)
+      assert.same("stopped", json.status)
     end, 5 + 10 + 5) -- 5 seconds for the profiling timeout
                      -- 10 seconds for the key in shdict timeout
                      -- 5 seconds for the tolerance
@@ -545,10 +544,8 @@ for __, deploy in ipairs({ "traditional", "hybrid" }) do
     local body = assert.res_status(400, res)
     local json = cjson.decode(body)
 
-    assert.same({
-      status = "error",
-      message = "profiling is not active",
-    }, json)
+    assert.same("error", json.status)
+    assert.same("Profiling is not active", json.message)
   end)
 end)
 

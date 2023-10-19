@@ -776,6 +776,12 @@
                          #
                          # Example: `debug_listen = 0.0.0.0:8200 ssl http2`
 
+#debug_listen_local = on # Expose `debug_listen` functionalities via a
+                         # Unix domain socket under the Kong prefix.
+                         #
+                         # This option allows local user to use "kong debug" command
+                         # to invoke various debug functionalities without needing to
+                         # enable `debug_listen` ahead of time.
 
 #nginx_user = kong kong          # Defines user and group credentials used by
                                  # worker processes. If group is omitted, a
@@ -831,7 +837,7 @@
                                  # the pattern defined by `openssl ciphers`.
                                  # This value is ignored if `ssl_cipher_suite`
                                  # is not `custom`.
-                                 # If you use DHE ciphers, you must also 
+                                 # If you use DHE ciphers, you must also
                                  # configure the `ssl_dhparam` parameter.
 
 #ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
@@ -1158,7 +1164,8 @@
 # - `nginx_status_<directive>`: Injects `<directive>` in Kong's Status API
 #   `server {}` block  (only effective if `status_listen` is enabled).
 # - `nginx_debug_<directive>`: Injects `<directive>` in Kong's Debug API
-#   `server {}` block  (only effective if `debug_listen` is enabled).
+#   `server {}` block  (only effective if `debug_listen` or `debug_listen_local`
+#   is enabled).
 # - `nginx_stream_<directive>`: Injects `<directive>` in Kong's stream module
 #   `stream {}` block (only effective if `stream_listen` is enabled).
 # - `nginx_sproxy_<directive>`: Injects `<directive>` in Kong's stream module

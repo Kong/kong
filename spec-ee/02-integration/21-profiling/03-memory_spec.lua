@@ -165,8 +165,8 @@ describe("Memory tracing #" .. strategy .. " #" .. deploy, function ()
     local json = cjson.decode(body)
 
     assert.same("error", json.status)
-    local found = string.find(json.message, "memory tracing is already active at pid: ", 0, true)
-    assert(found, "expected message to start with 'memory tracing is already active at pid: '")
+    local found = string.find(json.message, "Profiling is already active on pid: ", 0, true)
+    assert(found, "expected message to start with 'Profiling is already active on pid: '")
 
     res = assert(admin_client:send {
       method = "DELETE",
@@ -238,7 +238,7 @@ describe("Memory tracing #" .. strategy .. " #" .. deploy, function ()
         },
         response_body = {
           status = "error",
-          message = "invalid pid: 1",
+          message = "Invalid pid: 1",
         },
       },
       {
@@ -247,7 +247,7 @@ describe("Memory tracing #" .. strategy .. " #" .. deploy, function ()
         },
         response_body = {
           status = "error",
-          message = "invalid timeout (must be greater than 1): 0",
+          message = "Invalid timeout (must be greater than 1): 0",
         },
       },
       {
@@ -256,7 +256,7 @@ describe("Memory tracing #" .. strategy .. " #" .. deploy, function ()
         },
         response_body = {
           status = "error",
-          message = "invalid stack depth (must be between 1 and 64): 0",
+          message = "Invalid stack depth (must be between 1 and 64): 0",
         },
       },
       {
@@ -265,7 +265,7 @@ describe("Memory tracing #" .. strategy .. " #" .. deploy, function ()
         },
         response_body = {
           status = "error",
-          message = "invalid stack depth (must be between 1 and 64): 65",
+          message = "Invalid stack depth (must be between 1 and 64): 65",
         },
       },
       {
@@ -274,7 +274,7 @@ describe("Memory tracing #" .. strategy .. " #" .. deploy, function ()
         },
         response_body = {
           status = "error",
-          message = string.format("invalid block size (must be between %d and %d): %d",
+          message = string.format("Invalid block size (must be between %d and %d): %d",
                                   2^20 * 512, 2^30 * 5, 1),
         },
       },
@@ -284,7 +284,7 @@ describe("Memory tracing #" .. strategy .. " #" .. deploy, function ()
         },
         response_body = {
           status = "error",
-          message = string.format("invalid block size (must be between %d and %d): %d",
+          message = string.format("Invalid block size (must be between %d and %d): %d",
                                   2^20 * 512, 2^30 * 5, 2^30 * 6),
         },
       },
@@ -346,10 +346,8 @@ describe("Memory tracing #" .. strategy .. " #" .. deploy, function ()
     local body = assert.res_status(400, res)
     local json = cjson.decode(body)
 
-    assert.same({
-      status = "error",
-      message = "memory tracing is not active",
-    }, json)
+    assert.same("error", json.status)
+    assert.same("Profiling is not active", json.message)
   end)
 end)
 

@@ -207,6 +207,7 @@ build = {
     ["kong.cmd.version"] = "kong/cmd/version.lua",
     ["kong.cmd.runner"] = "kong/cmd/runner.lua",
     ["kong.cmd.hybrid"] = "kong/cmd/hybrid.lua",
+    ["kong.cmd.debug"] = "kong/cmd/debug.lua",
     ["kong.cmd.utils.log"] = "kong/cmd/utils/log.lua",
     ["kong.cmd.utils.kill"] = "kong/cmd/utils/kill.lua",
     ["kong.cmd.utils.env"] = "kong/cmd/utils/env.lua",

@@ -55,7 +55,7 @@ local function mark_active(opt)
   assert(current_state_lock:lock(STATE_LOCK_KEY))
 
   assert(shm:set(STATUS_KEY, "started", expire), "failed to set profiling state")
-  assert(shm:set(PID_KEY, ngx_worker_pid(), expire))
+  assert(shm:set(PID_KEY, ngx_worker_pid(), 0))
   assert(shm:set(TIMEOUT_AT_KEY, timeout_at, expire))
   assert(shm:set(BLOCK_SIZE_KEY, opt.block_size, expire))
   assert(shm:set(STACK_DEPTH_KEY, opt.stack_depth, expire))

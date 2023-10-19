@@ -382,6 +382,7 @@ local CONF_PARSERS = {
   admin_gui_listen = {typ = "array"},
   status_listen = { typ = "array" },
   debug_listen = { typ = "array" },
+  debug_listen_local = { typ = "boolean" },
   stream_listen = { typ = "array" },
   cluster_listen = { typ = "array" },
   ssl_cert = { typ = "array" },

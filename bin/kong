@@ -33,6 +33,7 @@ local cmds = {
   vault = true,
   -- [=[ EE
   runner = true,
+  debug = true,
   --]=]
 }
 
@@ -45,6 +46,7 @@ local skip_inject_cmds = {
   quit = true,
   health = true,
   hybrid = true,
+  debug = true,
 }
 
 for k in pairs(cmds) do

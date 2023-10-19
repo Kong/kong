@@ -1,0 +1,3 @@
+message: New kong command `kong debug COMMAND [OPTIONS]`
+type: feature
+scope: CLI Command

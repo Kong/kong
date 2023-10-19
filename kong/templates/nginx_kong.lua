@@ -701,22 +701,30 @@ server {
 }
 > end
 
-> if #debug_listeners > 0 then
+> if #debug_listeners > 0 or debug_listen_local then
 server {
     server_name kong_debug;
+> if #debug_listeners > 0 then
 > for _, entry in ipairs(debug_listeners) do
     listen $(entry.listener);
+> end
+> end
+
+> if debug_listen_local then
+    listen unix:${{PREFIX}}/kong_debug.sock;
 > end
 
     access_log ${{DEBUG_ACCESS_LOG}};
     error_log  ${{DEBUG_ERROR_LOG}} ${{LOG_LEVEL}};
 
+> if #debug_listeners > 0 then
 > if status_ssl_enabled then
 > for i = 1, #status_ssl_cert do
     ssl_certificate     $(debug_ssl_cert[i]);
     ssl_certificate_key $(debug_ssl_cert_key[i]);
 > end
     ssl_session_cache   shared:DebugSSL:1m;
+> end
 > end
 
     # injected nginx_debug_* directives

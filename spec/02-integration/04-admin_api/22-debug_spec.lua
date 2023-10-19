@@ -108,7 +108,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
 
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      local message = "log level: debug"
+      local message = "Current log level: debug"
       assert(json.message == message)
     end)
 
@@ -134,7 +134,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
 
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      local message = "log level changed"
+      local message = "Log level changed to alert"
       assert(json.message == message)
 
       -- make sure we changed to alert
@@ -145,7 +145,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         })
         body = assert.res_status(200, res)
         json = cjson.decode(body)
-        message = "log level: alert"
+        message = "Current log level: alert"
         return json.message == message
       end, 30)
 
@@ -183,7 +183,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
       })
       body = assert.res_status(200, res)
       json = cjson.decode(body)
-      message = "log level changed"
+      message = "Log level changed to debug"
       assert(json.message == message)
 
       -- make sure we changed to debug
@@ -194,7 +194,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         })
         body = assert.res_status(200, res)
         json = cjson.decode(body)
-        message = "log level: debug"
+        message = "Current log level: debug"
         return json.message == message
       end, 30)
 
@@ -236,7 +236,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
 
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      local message = "log level changed"
+      local message = "Log level changed to notice"
       assert(json.message == message)
 
       -- make sure we changed to notice
@@ -247,7 +247,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         })
         body = assert.res_status(200, res)
         json = cjson.decode(body)
-        message = "log level: notice"
+        message = "Current log level: notice"
         return json.message == message
       end, 30)
 
@@ -258,7 +258,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
       })
       body = assert.res_status(200, res)
       json = cjson.decode(body)
-      message = "log level changed"
+      message = "Log level changed to debug"
       assert(json.message == message)
 
       -- make sure we changed to debug
@@ -269,7 +269,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         })
         body = assert.res_status(200, res)
         json = cjson.decode(body)
-        message = "log level: debug"
+        message = "Current log level: debug"
         return json.message == message
       end, 30)
     end)
@@ -281,7 +281,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
       })
       local body = assert.res_status(400, res)
       local json = cjson.decode(body)
-      local message = "unknown log level: stderr"
+      local message = "Unknown log level: stderr"
       assert(json.message == message)
     end)
 
@@ -292,7 +292,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
       })
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      local message = "log level is already debug"
+      local message = "Log level is already debug"
       assert(json.message == message)
     end)
 
@@ -304,7 +304,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
 
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      local message = "log level changed"
+      local message = "Log level changed to emerg"
       assert(json.message == message)
 
       -- make sure we changed to emerg on NODE 1
@@ -315,7 +315,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         })
         body = assert.res_status(200, res)
         json = cjson.decode(body)
-        message = "log level: emerg"
+        message = "Current log level: emerg"
         return json.message == message
       end, 30)
 
@@ -327,7 +327,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         })
         body = assert.res_status(200, res)
         json = cjson.decode(body)
-        message = "log level: emerg"
+        message = "Current log level: emerg"
         return json.message == message
       end, 30)
 
@@ -338,7 +338,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
       })
       body = assert.res_status(200, res)
       json = cjson.decode(body)
-      message = "log level changed"
+      message = "Log level changed to debug"
       assert(json.message == message)
 
       -- make sure we changed to debug on NODE 1
@@ -349,7 +349,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         })
         body = assert.res_status(200, res)
         json = cjson.decode(body)
-        message = "log level: debug"
+        message = "Current log level: debug"
         return json.message == message
       end, 30)
 
@@ -361,7 +361,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         })
         body = assert.res_status(200, res)
         json = cjson.decode(body)
-        message = "log level: debug"
+        message = "Current log level: debug"
         return json.message == message
       end, 30)
     end)
@@ -374,7 +374,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
 
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      local message = "log level: debug"
+      local message = "Current log level: debug"
       assert(json.message == message)
     end)
 
@@ -386,7 +386,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
 
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      local message = "log level changed"
+      local message = "Log level changed to notice"
       assert(json.message == message)
 
       -- make sure we changed to notice
@@ -397,7 +397,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         })
         body = assert.res_status(200, res)
         json = cjson.decode(body)
-        message = "log level: notice"
+        message = "Current log level: notice"
         return json.message == message
       end, 30)
 
@@ -408,7 +408,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
       })
       body = assert.res_status(200, res)
       json = cjson.decode(body)
-      message = "log level changed"
+      message = "Log level changed to debug"
       assert(json.message == message)
 
       -- make sure we changed to debug
@@ -419,7 +419,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         })
         body = assert.res_status(200, res)
         json = cjson.decode(body)
-        message = "log level: debug"
+        message = "Current log level: debug"
         return json.message == message
       end, 30)
     end)
@@ -432,7 +432,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
 
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      local message = "log level changed"
+      local message = "Log level changed to emerg"
       assert(json.message == message)
 
       -- make sure we changed to emerg on CP 1
@@ -443,7 +443,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         })
         body = assert.res_status(200, res)
         json = cjson.decode(body)
-        message = "log level: emerg"
+        message = "Current log level: emerg"
         return json.message == message
       end, 30)
 
@@ -455,7 +455,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         })
         body = assert.res_status(200, res)
         json = cjson.decode(body)
-        message = "log level: emerg"
+        message = "Current log level: emerg"
         return json.message == message
       end, 30)
 
@@ -466,7 +466,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
       })
       body = assert.res_status(200, res)
       json = cjson.decode(body)
-      message = "log level changed"
+      message = "Log level changed to debug"
       assert(json.message == message)
 
       -- make sure we changed to debug on CP 1
@@ -477,7 +477,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         })
         body = assert.res_status(200, res)
         json = cjson.decode(body)
-        message = "log level: debug"
+        message = "Current log level: debug"
         return json.message == message
       end, 30)
 
@@ -490,7 +490,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         })
         body = assert.res_status(200, res)
         json = cjson.decode(body)
-        message = "log level: debug"
+        message = "Current log level: debug"
         return json.message == message
       end, 30)
     end)
@@ -511,7 +511,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
 
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      local message = "log level changed"
+      local message = "Log level changed to crit"
       assert(json.message == message)
 
       -- make sure we changed to crit
@@ -522,7 +522,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         })
         body = assert.res_status(200, res)
         json = cjson.decode(body)
-        message = "log level: crit"
+        message = "Current log level: crit"
         assert.same(message, json.message)
       end, 3)
 
@@ -541,7 +541,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         body = assert.res_status(200, res)
         json = cjson.decode(body)
 
-        message = "log level: crit"
+        message = "Current log level: crit"
         assert.same(message, json.message)
       end, 7)
 
@@ -553,7 +553,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         })
         body = assert.res_status(200, res)
         json = cjson.decode(body)
-        message = "log level: debug"
+        message = "Current log level: debug"
         assert.same(message, json.message)
       end, 16)
     end)
@@ -566,7 +566,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
 
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      local message = "log level changed"
+      local message = "Log level changed to alert"
       assert(json.message == message)
 
       -- make sure we changed to alert
@@ -577,7 +577,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         })
         body = assert.res_status(200, res)
         json = cjson.decode(body)
-        message = "log level: alert"
+        message = "Current log level: alert"
         return json.message == message
       end, 3)
 
@@ -616,7 +616,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         })
         body = assert.res_status(200, res)
         json = cjson.decode(body)
-        message = "log level: debug"
+        message = "Current log level: debug"
         return json.message == message
       end, 6)
 
@@ -656,7 +656,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
 
       local body = assert.res_status(400, res)
       local json = cjson.decode(body)
-      assert.same("timeout must be greater than or equal to 0", json.message)
+      assert.same("Timeout must be greater than or equal to 0", json.message)
   end)
 end)
 

@@ -56,7 +56,7 @@ local function mark_active(path, timeout)
   assert(current_lock:lock(LOCK_KEY))
 
   assert(shm:set(STATUS_KEY, "started", expire), "failed to set status")
-  assert(shm:set(PID_ID_KEY, ngx_worker_pid(), expire))
+  assert(shm:set(PID_ID_KEY, ngx_worker_pid(), 0))
   assert(shm:set(TIMEOUT_AT_KEY, timeout_at, expire))
   -- path should not be expired, because user needs to know where the file is
   assert(shm:set(PATH_KEY, path, 0))
@@ -111,6 +111,8 @@ function _M.state()
     return {
       status = "stopped",
       path = path,
+      timeout_at = timeout_at,
+      pid = pid,
     }
   end
 
