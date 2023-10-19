@@ -280,7 +280,7 @@ local function handle_cp_websocket()
     {
       on_message = {
         node_id = node_id,
-        host_name = node_hostname,
+        node_hostname = node_hostname,
       },
     }
   )

@@ -147,6 +147,13 @@ for _, strategy in helpers.each_strategy() do
           local body = assert(res:read_body())
           local metrics = cjson.decode(body)
 
+          if metrics.meta then
+            local nodes = metrics.meta.nodes
+            for _, node in pairs(nodes) do
+              assert.is_not_nil(node.hostname)
+            end
+          end
+
           if metrics.stats then
             metrics = metrics.stats
             --[[
