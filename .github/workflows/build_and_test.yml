@@ -301,8 +301,8 @@ jobs:
         path: |
           /tmp/cores
 
-  integration-tests-postgres:
-    name: Postgres ${{ matrix.suite }} - ${{ matrix.split }} tests
+  integration-tests:
+    name: ${{ matrix.suite }} - ${{ matrix.split }} tests
     runs-on: ubuntu-latest-kong
     timeout-minutes: ${{ inputs.coverage == false && github.event_name != 'schedule' && 30 || 480 }}
     needs: build
@@ -735,7 +735,7 @@ jobs:
           /tmp/cores
 
   build-image:
-    name: Build Pongo Base Image - ${{ matrix.label }}
+    name: Build Kong Base Image - ${{ matrix.label }}
     needs: build
     runs-on: ubuntu-latest-kong
 
@@ -774,7 +774,7 @@ jobs:
         file: build/dockerfiles/deb.Dockerfile
         context: .
         push: false
-        tags: "pongo-local/kong-ee:${{ matrix.label }}"
+        tags: "kong-local/kong-ee:${{ matrix.label }}"
         labels: org.opencontainers.image.revision=${{ steps.commit-sha.outputs.sha }}
         build-args: |
           KONG_BASE_IMAGE=ubuntu:22.04
@@ -784,7 +784,7 @@ jobs:
     - name: Export Docker Image
       run: |
         mkdir docker-image
-        docker image save -o docker-image/image.tar pongo-local/kong-ee:${{ matrix.label }}
+        docker image save -o docker-image/image.tar kong-local/kong-ee:${{ matrix.label }}
 
     - name: Upload artifact
       uses: actions/upload-artifact@v3
@@ -792,6 +792,49 @@ jobs:
         name: docker-image-${{matrix.label}}
         path: docker-image/**
         retention-days: 3
+
+
+  upgrade-tests:
+    name: Database migration and upgrade tests
+    runs-on: ubuntu-latest-kong
+    timeout-minutes: 60
+    needs: build-image
+
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: kong
+          POSTGRES_DB: kong
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
+
+    steps:
+      - name: Install packages
+        run: sudo apt update && sudo apt install -y jq net-tools
+
+      - name: Download docker image
+        uses: actions/download-artifact@v3
+        with:
+          name: docker-image-normal
+          path: docker-images
+
+      - name: Import docker image
+        run: |
+          docker load --input docker-images/image.tar
+
+      - name: Clone Kong source code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+
+      - name: Run upgrade tests
+        run: |
+          bash ./scripts/upgrade-tests/test-upgrade-path.sh -i kong-local/kong-ee:normal
+
 
   plugins-ee-tests:
     name: plugins EE - ${{ matrix.split }} tests
@@ -852,7 +895,7 @@ jobs:
       # is hardcoded to use $DOCKER_IMAGE_NAME
       # The image name is a local only image that's built on CI, it doesn't belong to
       # any public docker registry.
-      DOCKER_IMAGE_NAME: pongo-local/kong-ee:${{ matrix.label }}
+      DOCKER_IMAGE_NAME: kong-local/kong-ee:${{ matrix.label }}
       # this is also required
       KONG_VERSION: dev-ee
 
@@ -919,7 +962,7 @@ jobs:
         sudo dmesg -T
 
   aggregator:
-    needs: [sca-doc-and-unit-tests,pdk-tests,integration-tests-postgres,integration-tests-dbless]
+    needs: [sca-doc-and-unit-tests,pdk-tests,integration-tests,integration-tests-dbless]
     name: Luacov stats aggregator
     if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
     runs-on: ubuntu-latest-kong
