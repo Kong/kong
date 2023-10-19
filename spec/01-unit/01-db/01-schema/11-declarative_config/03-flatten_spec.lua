@@ -573,7 +573,8 @@ describe("declarative config: flatten", function()
             plugins = { {
                 config = {
                   anonymous = null,
-                  hide_credentials = false
+                  hide_credentials = false,
+                  realm = "service"
                 },
                 consumer = null,
                 created_at = 1234567890,
@@ -1088,7 +1089,8 @@ describe("declarative config: flatten", function()
             plugins = { {
                 config = {
                   anonymous = null,
-                  hide_credentials = false
+                  hide_credentials = false,
+                  realm = "service"
                 },
                 consumer = null,
                 created_at = 1234567890,

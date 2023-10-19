@@ -375,6 +375,7 @@ describe("declarative config: process_auto_fields", function()
                     protocols = { "grpc", "grpcs", "http", "https" },
                     config = {
                       hide_credentials = false,
+                      realm = "service",
                     }
                   },
                   {
@@ -709,6 +710,7 @@ describe("declarative config: process_auto_fields", function()
                         protocols = { "grpc", "grpcs", "http", "https" },
                         config = {
                           hide_credentials = false,
+                          realm = "service",
                         }
                       },
                       {
