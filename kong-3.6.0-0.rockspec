@@ -144,6 +144,7 @@ build = {
     ["kong.api.routes.tags"] = "kong/api/routes/tags.lua",
     ["kong.api.routes.targets"] = "kong/api/routes/targets.lua",
     ["kong.api.routes.upstreams"] = "kong/api/routes/upstreams.lua",
+    ["kong.api.routes.ca_certificates"] = "kong/api/routes/ca_certificates.lua",
 
     ["kong.admin_gui"] = "kong/admin_gui/init.lua",
     ["kong.admin_gui.utils"] = "kong/admin_gui/utils.lua",

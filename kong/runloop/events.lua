@@ -319,6 +319,32 @@ local function crud_wasm_handler(data, schema_name)
 end
 
 
+local function crud_ca_certificates_handler(data)
+  if data.operation ~= "update" then
+    return
+  end
+
+  log(DEBUG, "[events] Ca_certificates updated, invalidating ca certificate store caches for services")
+
+  local elements, err = certificate.get_ca_certificate_references(data.entity.id, "services")
+  if err then
+    log(ERR, "[events] failed to get ca certificate references, ", err)
+  end
+
+  if elements then
+    local done_keys = {}
+    for _, e in ipairs(elements) do
+      local key = certificate.ca_ids_cache_key(e.ca_certificates)
+
+      if not done_keys[key] then
+        done_keys[key] = true
+        kong.core_cache:invalidate(key)
+      end
+    end
+  end
+end
+
+
 local LOCAL_HANDLERS = {
   { "dao:crud", nil         , dao_crud_handler },
 
@@ -338,6 +364,9 @@ local LOCAL_HANDLERS = {
   { "crud"    , "filter_chains"  , crud_wasm_handler },
   { "crud"    , "services"       , crud_wasm_handler },
   { "crud"    , "routes"         , crud_wasm_handler },
+
+  -- ca certificate store caches invalidations
+  { "crud"    , "ca_certificates" , crud_ca_certificates_handler },
 }
 
 
