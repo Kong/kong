@@ -168,6 +168,12 @@ server {
         proxy_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
         proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
         proxy_set_header      X-Real-IP          $remote_addr;
+> for _, name in ipairs(headers_upstream) do
+>   if name:lower() == "x-kong-request-id" then
+        proxy_set_header      X-Kong-Request-Id  $kong_request_id;
+>     break
+>   end
+> end
         proxy_pass_header     Server;
         proxy_pass_header     Date;
         proxy_ssl_name        $upstream_host;
@@ -199,6 +205,12 @@ server {
         proxy_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
         proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
         proxy_set_header      X-Real-IP          $remote_addr;
+> for _, name in ipairs(headers_upstream) do
+>   if name:lower() == "x-kong-request-id" then
+        proxy_set_header      X-Kong-Request-Id  $kong_request_id;
+>     break
+>   end
+> end
         proxy_pass_header     Server;
         proxy_pass_header     Date;
         proxy_ssl_name        $upstream_host;
@@ -230,6 +242,12 @@ server {
         proxy_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
         proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
         proxy_set_header      X-Real-IP          $remote_addr;
+> for _, name in ipairs(headers_upstream) do
+>   if name:lower() == "x-kong-request-id" then
+        proxy_set_header      X-Kong-Request-Id  $kong_request_id;
+>     break
+>   end
+> end
         proxy_pass_header     Server;
         proxy_pass_header     Date;
         proxy_ssl_name        $upstream_host;
@@ -261,6 +279,12 @@ server {
         proxy_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
         proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
         proxy_set_header      X-Real-IP          $remote_addr;
+> for _, name in ipairs(headers_upstream) do
+>   if name:lower() == "x-kong-request-id" then
+        proxy_set_header      X-Kong-Request-Id  $kong_request_id;
+>     break
+>   end
+> end
         proxy_pass_header     Server;
         proxy_pass_header     Date;
         proxy_ssl_name        $upstream_host;
@@ -285,6 +309,12 @@ server {
         grpc_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
         grpc_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
         grpc_set_header      X-Real-IP          $remote_addr;
+> for _, name in ipairs(headers_upstream) do
+>   if name:lower() == "x-kong-request-id" then
+        grpc_set_header      X-Kong-Request-Id  $kong_request_id;
+>     break
+>   end
+> end
         grpc_pass_header     Server;
         grpc_pass_header     Date;
         grpc_ssl_name        $upstream_host;
@@ -328,6 +358,12 @@ server {
         proxy_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
         proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
         proxy_set_header      X-Real-IP          $remote_addr;
+> for _, name in ipairs(headers_upstream) do
+>   if name:lower() == "x-kong-request-id" then
+        proxy_set_header      X-Kong-Request-Id  $kong_request_id;
+>     break
+>   end
+> end
         proxy_pass_header     Server;
         proxy_pass_header     Date;
         proxy_ssl_name        $upstream_host;
