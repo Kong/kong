@@ -3584,3 +3584,60 @@
 # - `resolver_add`
 # - `proxy_wasm_request_headers_in_access`
 # - `shm_queue`
+
+#-------------------------------------------------------------------------------
+# REQUEST DEBUGGING
+#-------------------------------------------------------------------------------
+# Request debugging is a mechanism that allows admin to collect the timing of
+# proxy path request in the response header (X-Kong-Request-Debug-Output)
+# and optionally, the error log.
+#
+# This feature provides insights into the time spent within various components of Kong,
+# such as plugins, DNS resolution, load balancing, and more. It also provides contextual
+# information such as domain name tried during these processes.
+#
+#request_debug = on              # When enabled, Kong will provide detailed timing information
+                                 # for its components to the client and the error log 
+                                 # if the following headers are present in the proxy request:
+                                 # - `X-Kong-Request-Debug`:
+                                 #   If the value is set to `*`,
+                                 #   timing information will be collected and exported for the current request.
+                                 #   If this header is not present or contains unknown value,
+                                 #   timing information will not be collected for the current request.
+                                 #   You can also specify a list of filters, separated by commas,
+                                 #   to filter the scope of the time information that is collected.
+                                 #   The following filters are supported:
+                                 #   - `rewrite`: Collect timing information from the `rewrite` phase.
+                                 #   - `access`: Collect timing information from the `access` phase.
+                                 #   - `balancer`: Collect timing information from the `balancer` phase.
+                                 #   - `response`: Collect timing information from the `response` phase.
+                                 #   - `header_filter`: Collect timing information from the `header_filter` phase.
+                                 #   - `body_filter`: Collect timing information from the `body_filter` phase.
+                                 #   - `log`: Collect timing information from the `log` phase.
+                                 #
+                                 # - `X-Kong-Request-Debug-Log`:
+                                 #   If set to `true`, timing information will also be logged
+                                 #   in the Kong error log with a log level of `notice`.
+                                 #   Defaults to `false`.
+                                 #
+                                 # - `X-Kong-Request-Debug-Token`:
+                                 #   Token for authenticating the client making the debug
+                                 #   request to prevent abuse. Debug requests originating from loopback
+                                 #   addresses do not require this header.
+                                 #
+#request_debug_token = <random>  # The Request Debug Token is used in the
+                                 # `X-Kong-Request-Debug-Token` header to prevent abuse.
+                                 # If this value is not set (the default),
+                                 # a random token will be generated
+                                 # when Kong starts, restarts, or reloads. If a token is
+                                 # specified manually, then the provided token will be used.
+                                 #
+                                 # You can locate the generated debug token in two locations:
+                                 # - Kong error log:
+                                 #   Debug token will be logged in the error log (notice level)
+                                 #   when Kong starts, restarts, or reloads.
+                                 #   The log line will have the: `[request-debug]` prefix to aid searching.
+                                 # - Filesystem:
+                                 #   Debug token will also be stored in a file located at
+                                 #   `{prefix}/.request_debug_token` and updated
+                                 #   when Kong starts, restarts, or reloads.
