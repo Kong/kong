@@ -47,7 +47,7 @@ local function retrieve_credentials(authorization_header_value, conf)
       return nil
     end
 
-    if m and type(m) == "table" and (m[1] and m[2]) then
+    if type(m) == "table" and #m == 2 then
       username = m[1]
       password = m[2]
     else
