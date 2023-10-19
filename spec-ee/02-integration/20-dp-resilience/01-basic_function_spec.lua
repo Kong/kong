@@ -158,6 +158,7 @@ describe("cp outage handling", function ()
           cluster_fallback_config_export = exporter_role == "CP" and "on" or "off",
           cluster_fallback_config_export_delay = 2,
           db_update_frequency = 0.1,
+          dedicated_config_processing = "off",
           cluster_listen = "127.0.0.1:9005",
         }))
         assert(helpers.start_kong({
@@ -172,11 +173,12 @@ describe("cp outage handling", function ()
           cluster_fallback_config_export_delay = 2,
           cluster_control_plane = "127.0.0.1:9005",
           proxy_listen = "127.0.0.1:9006", -- otherwise it won't start
+          dedicated_config_processing = "off",
           stream_listen = "off",
         }))
         client = helpers.admin_client()
       end)
-    
+
       after_each(function ()
         helpers.stop_kong("servroot2")
         helpers.stop_kong()
@@ -186,12 +188,15 @@ describe("cp outage handling", function ()
         configure(client)
 
         local ok, err
-        -- try at most 2 times. 
+        -- try at most 2 times.
         -- the first time we expect to get an empty config
         -- as the CP is sending out its first config when starting up
         for _ = 1, 2 do
           ok, err = pcall(function()
             local lines, body, headers = mock_server()
+            print("lines = " .. require("inspect")(lines))
+            print("body = " .. require("inspect")(body))
+            print("headers = " .. require("inspect")(headers))
             response_line_match(lines[1], "PUT", "/test_bucket/test_prefix/" .. KONG_VERSION .. "/config.json")
             verify_aws_request(headers)
             verify_body(body)
@@ -226,6 +231,7 @@ describe("cp outage handling", function ()
           cluster_fallback_export_s3_config = exporter_role == "CP" and cluster_fallback_export_s3_config or nil,
           cluster_fallback_config_export_delay = 2,
           db_update_frequency = 0.1,
+          dedicated_config_processing = "off",
           cluster_listen = "127.0.0.1:9005",
         }))
         assert(helpers.start_kong({
@@ -241,11 +247,12 @@ describe("cp outage handling", function ()
           cluster_fallback_config_export_delay = 2,
           cluster_control_plane = "127.0.0.1:9005",
           proxy_listen = "127.0.0.1:9006", -- otherwise it won't start
+          dedicated_config_processing = "off",
           stream_listen = "off",
         }))
         client = helpers.admin_client()
       end)
-    
+
       after_each(function ()
         helpers.stop_kong("servroot2")
         helpers.stop_kong()
@@ -255,7 +262,7 @@ describe("cp outage handling", function ()
         configure(client)
 
         local ok, err
-        -- try at most 2 times. 
+        -- try at most 2 times.
         -- the first time we expect to get an empty config
         -- as the CP is sending out its first config when starting up
         for _ = 1, 2 do
