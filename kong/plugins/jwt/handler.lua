@@ -153,6 +153,10 @@ local function set_consumer(consumer, credential, token)
   kong.ctx.shared.authenticated_jwt_token = token -- TODO: wrap in a PDK function?
 end
 
+local function unauthorized(message, www_auth_content, errors)
+  return { status = 401, message = message, headers = { ["WWW-Authenticate"] = www_auth_content }, errors = errors }
+end
+
 
 local function do_authentication(conf)
   local token, err = retrieve_tokens(conf)
@@ -160,21 +164,23 @@ local function do_authentication(conf)
     return error(err)
   end
 
+  local www_authenticate_base = conf.realm and fmt('Bearer realm="%s"', conf.realm) or 'Bearer'
+  local www_authenticate_with_error = www_authenticate_base .. ' error="invalid_token"'
   local token_type = type(token)
   if token_type ~= "string" then
     if token_type == "nil" then
-      return false, { status = 401, message = "Unauthorized" }
+      return false, unauthorized("Unauthorized", www_authenticate_base)
     elseif token_type == "table" then
-      return false, { status = 401, message = "Multiple tokens provided" }
+      return false, unauthorized("Multiple tokens provided", www_authenticate_with_error)
     else
-      return false, { status = 401, message = "Unrecognizable token" }
+      return false, unauthorized("Unrecognizable token", www_authenticate_with_error)
     end
   end
 
   -- Decode token to find out who the consumer is
   local jwt, err = jwt_decoder:new(token)
   if err then
-    return false, { status = 401, message = "Bad token; " .. tostring(err) }
+    return false, unauthorized("Bad token; " .. tostring(err), www_authenticate_with_error)
   end
 
   local claims = jwt.claims
@@ -182,9 +188,9 @@ local function do_authentication(conf)
 
   local jwt_secret_key = claims[conf.key_claim_name] or header[conf.key_claim_name]
   if not jwt_secret_key then
-    return false, { status = 401, message = "No mandatory '" .. conf.key_claim_name .. "' in claims" }
+    return false, unauthorized("No mandatory '" .. conf.key_claim_name .. "' in claims", www_authenticate_with_error)
   elseif jwt_secret_key == "" then
-    return false, { status = 401, message = "Invalid '" .. conf.key_claim_name .. "' in claims" }
+    return false, unauthorized("Invalid '" .. conf.key_claim_name .. "' in claims", www_authenticate_with_error)
   end
 
   -- Retrieve the secret
@@ -196,14 +202,14 @@ local function do_authentication(conf)
   end
 
   if not jwt_secret then
-    return false, { status = 401, message = "No credentials found for given '" .. conf.key_claim_name .. "'" }
+    return false, unauthorized("No credentials found for given '" .. conf.key_claim_name .. "'", www_authenticate_with_error)
   end
 
   local algorithm = jwt_secret.algorithm or "HS256"
 
   -- Verify "alg"
   if jwt.header.alg ~= algorithm then
-    return false, { status = 401, message = "Invalid algorithm" }
+    return false, unauthorized("Invalid algorithm", www_authenticate_with_error)
   end
 
   local jwt_secret_value = algorithm ~= nil and algorithm:sub(1, 2) == "HS" and
@@ -214,25 +220,25 @@ local function do_authentication(conf)
   end
 
   if not jwt_secret_value then
-    return false, { status = 401, message = "Invalid key/secret" }
+    return false, unauthorized("Invalid key/secret", www_authenticate_with_error)
   end
 
   -- Now verify the JWT signature
   if not jwt:verify_signature(jwt_secret_value) then
-    return false, { status = 401, message = "Invalid signature" }
+    return false, unauthorized("Invalid signature", www_authenticate_with_error)
   end
 
   -- Verify the JWT registered claims
   local ok_claims, errors = jwt:verify_registered_claims(conf.claims_to_verify)
   if not ok_claims then
-    return false, { status = 401, errors = errors }
+    return false, unauthorized(nil, www_authenticate_with_error, errors)
   end
 
   -- Verify the JWT registered claims
   if conf.maximum_expiration ~= nil and conf.maximum_expiration > 0 then
     local ok, errors = jwt:check_maximum_expiration(conf.maximum_expiration)
     if not ok then
-      return false, { status = 401, errors = errors }
+      return false, unauthorized(nil, www_authenticate_with_error, errors)
     end
   end
 
@@ -259,35 +265,55 @@ local function do_authentication(conf)
 end
 
 
+local function set_anonymous_consumer(anonymous)
+  local consumer_cache_key = kong.db.consumers:cache_key(anonymous)
+  local consumer, err = kong.cache:get(consumer_cache_key, nil,
+                                        kong.client.load_consumer,
+                                        anonymous, true)
+  if err then
+    return error(err)
+  end
+
+  set_consumer(consumer)
+end
+
+
+--- When conf.anonymous is enabled we are in "logical OR" authentication flow.
+--- Meaning - either anonymous consumer is enabled or there are multiple auth plugins
+--- and we need to passthrough on failed authentication.
+local function logical_OR_authentication(conf)
+  if kong.client.get_credential() then
+    -- we're already authenticated and in "logical OR" between auth methods -- early exit
+    return
+  end
+
+  local ok, _ = do_authentication(conf)
+  if not ok then
+    set_anonymous_consumer(conf.anonymous)
+  end
+end
+
+--- When conf.anonymous is not set we are in "logical AND" authentication flow.
+--- Meaning - if this authentication fails the request should not be authorized
+--- even though other auth plugins might have successfully authorized user.
+local function logical_AND_authentication(conf)
+  local ok, err = do_authentication(conf)
+  if not ok then
+    return kong.response.exit(err.status, err.errors or { message = err.message }, err.headers)
+  end
+end
+
+
 function JwtHandler:access(conf)
   -- check if preflight request and whether it should be authenticated
   if not conf.run_on_preflight and kong.request.get_method() == "OPTIONS" then
     return
   end
 
-  if conf.anonymous and kong.client.get_credential() then
-    -- we're already authenticated, and we're configured for using anonymous,
-    -- hence we're in a logical OR between auth methods and we're already done.
-    return
-  end
-
-  local ok, err = do_authentication(conf)
-  if not ok then
-    if conf.anonymous then
-      -- get anonymous user
-      local consumer_cache_key = kong.db.consumers:cache_key(conf.anonymous)
-      local consumer, err      = kong.cache:get(consumer_cache_key, nil,
-                                                kong.client.load_consumer,
-                                                conf.anonymous, true)
-      if err then
-        return error(err)
-      end
-
-      set_consumer(consumer)
-
-    else
-      return kong.response.exit(err.status, err.errors or { message = err.message })
-    end
+  if conf.anonymous then
+    return logical_OR_authentication(conf)
+  else
+    return logical_AND_authentication(conf)
   end
 end
 

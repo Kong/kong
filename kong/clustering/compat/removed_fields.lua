@@ -333,6 +333,9 @@ return {
     hmac_auth = {
       "realm",
     },
+    jwt = {
+      "realm",
+    },
     -- Enterprise plugins
     openid_connect = {
       "claims_forbidden",
