@@ -523,6 +523,7 @@ jobs:
     # EE only
     - name: Stop Redis Cluster
       if: ${{ always() }}
+      continue-on-error: true
       run: |
           docker compose -p redis-cluster down -v
 
@@ -649,6 +650,7 @@ jobs:
     # EE only
     - name: Stop Redis Cluster
       if: ${{ always() }}
+      continue-on-error: true
       run: |
           docker compose -p redis-cluster down -v
 
