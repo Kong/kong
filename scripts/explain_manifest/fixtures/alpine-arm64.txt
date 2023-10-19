@@ -37,11 +37,6 @@
   - libc.so
   Rpath     : /usr/local/kong/lib
 
-- Path      : /usr/local/lib/lua/5.1/cjson.so
-  Needed    :
-  - libc.so.6
-  Runpath   : /usr/local/kong/lib
-
 - Path      : /usr/local/lib/lua/5.1/lfs.so
   Needed    :
   - libc.so
