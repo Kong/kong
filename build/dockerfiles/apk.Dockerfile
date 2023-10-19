@@ -33,6 +33,12 @@ RUN apk upgrade --update-cache \
     && ln -sf /usr/local/openresty/luajit/bin/luajit /usr/local/bin/lua \
     && ln -sf /usr/local/openresty/nginx/sbin/nginx /usr/local/bin/nginx \
     && apk del .build-deps \
+    && apk add --virtual .tools-deps \
+        bind-utils \
+        lsof \
+        nano \
+        net-tools \
+    && rm -rf /var/cache/apk/* \
     && kong version
 
 COPY build/dockerfiles/entrypoint.sh /entrypoint.sh

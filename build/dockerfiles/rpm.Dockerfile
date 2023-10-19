@@ -41,6 +41,12 @@ RUN yum update -y \
     && ln -sf /usr/local/openresty/luajit/bin/luajit /usr/local/bin/luajit \
     && ln -sf /usr/local/openresty/luajit/bin/luajit /usr/local/bin/lua \
     && ln -sf /usr/local/openresty/nginx/sbin/nginx /usr/local/bin/nginx \
+    && yum install -y \
+        bind-utils \
+        lsof \
+        nano \
+        net-tools \
+    && yum clean all \
     && kong version
 
 COPY build/dockerfiles/entrypoint.sh /entrypoint.sh

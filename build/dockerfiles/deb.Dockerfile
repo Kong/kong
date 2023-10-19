@@ -21,7 +21,6 @@ RUN apt-get update \
     && apt-get -y upgrade \
     && apt-get -y autoremove \
     && apt-get install -y --no-install-recommends /tmp/kong.deb \
-    && rm -rf /var/lib/apt/lists/* \
     && rm -rf /tmp/kong.deb \
     && chown kong:0 /usr/local/bin/kong \
     && chown -R kong:0 ${KONG_PREFIX} \
@@ -29,6 +28,12 @@ RUN apt-get update \
     && ln -sf /usr/local/openresty/luajit/bin/luajit /usr/local/bin/luajit \
     && ln -sf /usr/local/openresty/luajit/bin/luajit /usr/local/bin/lua \
     && ln -sf /usr/local/openresty/nginx/sbin/nginx /usr/local/bin/nginx \
+    && apt-get install -y --no-install-recommends \
+        bind9-utils \
+        lsof \
+        nano \
+        net-tools \
+    && rm -rf /var/lib/apt/lists/* \
     && kong version
 
 COPY build/dockerfiles/entrypoint.sh /entrypoint.sh
