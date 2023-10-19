@@ -237,7 +237,7 @@ local function set_context(trace_bytes, request_id)
   end
 
   _G.ngx.var = {
-    request_id = request_id,
+    kong_request_id = request_id,
   }
 
   _G.ngx.get_phase = function() -- luacheck: ignore
@@ -248,6 +248,11 @@ local function set_context(trace_bytes, request_id)
     notice = function() end,
     info = function() end,
   }
+
+  -- make sure to reload the module
+  package.loaded["kong.tracing.request_id"] = nil
+  package.loaded["kong.analytics"] = nil
+  analytics = require("kong.analytics")
 end
 
 
@@ -268,7 +273,7 @@ describe("extract request log properly", function()
   lazy_teardown(function()
     ngx.ctx.KONG_SPANS = nil
     ngx.var = old_ngx_var
-    ngx.get_phase = old_get_phase
+    ngx.get_phase = old_get_phase -- luacheck: ignore
   end)
 
   it("extract payload info properly dont sample trace_id", function()
@@ -539,7 +544,7 @@ describe("proto buffer", function()
 
   lazy_teardown(function()
     ngx.var = old_ngx_var
-    ngx.get_phase = old_get_phase
+    ngx.get_phase = old_get_phase -- luacheck: ignore
   end)
 
   local p = protoc.new()

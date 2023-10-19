@@ -22,6 +22,8 @@ local jws        = require "kong.openid-connect.jws"
 local set        = require "kong.openid-connect.set"
 local jwt_ee     = require "kong.enterprise_edition.jwt"
 
+local get_request_id = require("kong.tracing.request_id").get
+
 local find_claim = jwt_ee.find_claim
 local ngx        = ngx
 local kong       = kong
@@ -244,7 +246,7 @@ local function instrument()
     return ngx.now()
   end
   local worker  = ngx.worker.id()
-  local request = ngx.var.request_id
+  local request = get_request_id()
   local started = updated_now()
   local elapsed = function()
     return fmt("%.3f" , updated_now() - started)
