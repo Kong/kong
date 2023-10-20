@@ -205,11 +205,11 @@ local function full_metric_name(name, label_names, label_values)
       end
 
       if string.find(label_value, slash, 1, true) then
-        label_value = ngx_re_gsub(label_value, reg_slash, double_slash, "jo")
+        label_value = ngx_re_gsub(label_value, reg_slash, double_slash, "j")
       end
 
       if string.find(label_value, quote, 1, true) then
-        label_value = ngx_re_gsub(label_value, reg_quote, slash_quote, "jo")
+        label_value = ngx_re_gsub(label_value, reg_quote, slash_quote, "j")
       end
     end
 
@@ -316,7 +316,7 @@ local function construct_bucket_format(buckets)
     assert(type(bucket) == "number", "bucket boundaries should be numeric")
 
     -- floating point number with all trailing zeros removed
-    local as_string = ngx_re_gsub(string.format("%f", bucket), "0*$", "", "jo")
+    local as_string = ngx_re_gsub(string.format("%f", bucket), "0*$", "", "j")
 
     local dot_idx = as_string:find(".", 1, true)
     max_order = math.max(max_order, dot_idx - 1)
@@ -820,13 +820,13 @@ local function register(self, name, help, label_names, buckets, typ, local_stora
   local name_maybe_historgram = name
 
   if string.find(name_maybe_historgram, "_bucket", 1, true) then
-    name_maybe_historgram = ngx_re_gsub(name_maybe_historgram, "_bucket$", "", "jo")
+    name_maybe_historgram = ngx_re_gsub(name_maybe_historgram, "_bucket$", "", "j")
   end
   if string.find(name_maybe_historgram, "_count", 1, true) then
-    name_maybe_historgram = ngx_re_gsub(name_maybe_historgram, "_count$", "", "jo")
+    name_maybe_historgram = ngx_re_gsub(name_maybe_historgram, "_count$", "", "j")
   end
   if string.find(name_maybe_historgram, "_sum", 1, true) then
-    name_maybe_historgram = ngx_re_gsub(name_maybe_historgram, "_sum$", "", "jo")
+    name_maybe_historgram = ngx_re_gsub(name_maybe_historgram, "_sum$", "", "j")
   end
 
   if (typ ~= TYPE_HISTOGRAM and (
