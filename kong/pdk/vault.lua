@@ -183,7 +183,7 @@ end
 local function new(self)
   -- Don't put this onto the top level of the file unless you're prepared for a surprise
   local Schema = require "kong.db.schema"
-  
+
   local ROTATION_MUTEX_OPTS = {
     name = "vault-rotation",
     exptime = ROTATION_INTERVAL * 1.5, -- just in case the lock is not properly released
@@ -1105,7 +1105,7 @@ local function new(self)
       -- We cannot retry, so let's just call the callback and return
       return callback(options)
     end
-    
+
     local name = "vault.try:" .. calculate_hash(concat(references, "."))
     local old_updated_at = RETRY_LRU:get(name) or 0
 
@@ -1296,11 +1296,11 @@ local function new(self)
 
     initialized = true
 
-    if self.configuration.role == "control_plane" then
+    if self.node.is_control_plane() then
       return
     end
 
-    if self.configuration.database ~= "off" then
+    if self.node.is_not_dbless() then
       self.worker_events.register(handle_vault_crud_event, "crud", "vaults")
     end
 

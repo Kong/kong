@@ -158,7 +158,7 @@ function ACMEHandler:certificate(conf)
 
   -- cert not found, get a new one and serve default cert for now
   if not certkey then
-    if kong.configuration.role == "data_plane" and conf.storage == "kong" then
+    if kong.node.is_data_plane() and conf.storage == "kong" then
       kong.log.err("creating new certificate through proxy side with ",
                     "\"kong\" storage in Hybrid mode is not supported; ",
                     "consider create certificate using Admin API or ",

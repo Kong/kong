@@ -223,7 +223,7 @@ local api_routes = {
 }
 
 -- upstream targets' healthcheck management is not available in the hybrid mode
-if kong.configuration.role ~= "control_plane" then
+if kong.node.is_not_control_plane() then
   api_routes["/upstreams/:upstreams/targets/:targets/healthy"] = {
     PUT = function(self, db)
       return set_target_health(self, db, true)

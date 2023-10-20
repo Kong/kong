@@ -193,26 +193,6 @@ do
 end
 
 
-local is_data_plane
-local is_control_plane
-local is_dbless
-do
-  is_data_plane = function(config)
-    return config.role == "data_plane"
-  end
-
-
-  is_control_plane = function(config)
-    return config.role == "control_plane"
-  end
-
-
-  is_dbless = function(config)
-    return config.database == "off"
-  end
-end
-
-
 local reset_kong_shm
 do
   local preserve_keys = {
@@ -240,7 +220,7 @@ do
 
     local preserved = {}
 
-    if is_dbless(config) then
+    if config.database == "off" then
       if not (config.declarative_config or config.declarative_config_string) then
         preserved[DECLARATIVE_LOAD_KEY] = kong_shm:get(DECLARATIVE_LOAD_KEY)
       end
@@ -478,7 +458,7 @@ end
 
 
 local function execute_cache_warmup(kong_config)
-  if is_dbless(kong_config) then
+  if kong.node.is_dbless() then
     return true
   end
 
@@ -656,7 +636,7 @@ function Kong.init()
   assert(db:init_connector())
 
   -- check state of migration only if there is an external database
-  if not is_dbless(config) then
+  if kong.node.is_not_dbless() then
     ngx_log(ngx_DEBUG, "checking database schema state")
     local migrations_utils = require "kong.cmd.utils.migrations"
     schema_state = assert(db:schema_state())
@@ -684,8 +664,7 @@ function Kong.init()
     certificate.init()
   end
 
-  if is_http_module and (is_data_plane(config) or is_control_plane(config))
-  then
+  if is_http_module and kong.node.is_hybrid() then
     kong.clustering = require("kong.clustering").new(config)
   end
 
@@ -698,7 +677,7 @@ function Kong.init()
     stream_api.load_handlers()
   end
 
-  if is_dbless(config) then
+  if kong.node.is_dbless() then
     local dc, err = declarative.new_config(config)
     if not dc then
       error(err)
@@ -707,9 +686,9 @@ function Kong.init()
     kong.db.declarative_config = dc
 
     if is_http_module or
-       (#config.proxy_listeners == 0 and
-        #config.admin_listeners == 0 and
-        #config.status_listeners == 0)
+       (kong.node.is_not_serving_http_traffic() and
+        kong.node.is_not_serving_admin_apis()   and
+        kong.node.is_not_serving_status_apis())
     then
       declarative_entities, err, declarative_meta, declarative_hash =
         parse_declarative_config(kong.configuration, dc)
@@ -728,7 +707,7 @@ function Kong.init()
       error("error building initial plugins: " .. tostring(err))
     end
 
-    if not is_control_plane(config) then
+    if kong.node.is_not_control_plane() then
       assert(runloop.build_router("init"))
 
       ok, err = runloop.set_init_versions_in_cache()
@@ -743,7 +722,7 @@ function Kong.init()
 
   require("resty.kong.var").patch_metatable()
 
-  if config.dedicated_config_processing and is_data_plane(config) then
+  if config.dedicated_config_processing and kong.node.is_data_plane() then
     -- TODO: figure out if there is better value than 2048
     local ok, err = process.enable_privileged_agent(2048)
     if not ok then
@@ -751,7 +730,7 @@ function Kong.init()
     end
   end
 
-  if config.request_debug and config.role ~= "control_plane" and is_http_module then
+  if config.request_debug and kong.node.is_not_control_plane() and is_http_module then
     local token = config.request_debug_token or utils.uuid()
 
     local request_debug_token_file = pl_path.join(config.prefix,
@@ -804,7 +783,7 @@ function Kong.init_worker()
     return
   end
 
-  if worker_id() == 0 and not is_dbless(kong.configuration) then
+  if worker_id() == 0 and kong.node.is_not_dbless() then
     if schema_state.missing_migrations then
       ngx_log(ngx_WARN, "missing migrations: ",
               list_migrations(schema_state.missing_migrations))
@@ -852,7 +831,7 @@ function Kong.init_worker()
 
   kong.db:set_events_handler(worker_events)
 
-  if kong.configuration.admin_gui_listeners then
+  if kong.node.is_serving_admin_gui() then
     kong.cache:invalidate_local(constants.ADMIN_GUI_KCONFIG_CACHE_KEY)
   end
 
@@ -868,7 +847,7 @@ function Kong.init_worker()
   kong.timing = kong_global.init_timing()
   kong.timing.init_worker(kong.configuration.request_debug)
 
-  if is_dbless(kong.configuration) then
+  if kong.node.is_dbless() then
     -- databases in LMDB need to be explicitly created, otherwise `get`
     -- operations will return error instead of `nil`. This ensures the default
     -- namespace always exists in the
@@ -917,8 +896,7 @@ function Kong.init_worker()
     end
   end
 
-  local is_not_control_plane = not is_control_plane(kong.configuration)
-  if is_not_control_plane then
+  if kong.node.is_not_control_plane() then
     ok, err = execute_cache_warmup(kong.configuration)
     if not ok then
       ngx_log(ngx_ERR, "failed to warm up the DB cache: " .. err)
@@ -931,7 +909,7 @@ function Kong.init_worker()
     return
   end
 
-  if is_not_control_plane then
+  if kong.node.is_not_control_plane() then
     ok, err = runloop.update_router()
     if not ok then
       stash_init_worker_error("failed to build the router: " .. err)
@@ -952,7 +930,7 @@ function Kong.init_worker()
     end
   end
 
-  if is_not_control_plane then
+  if kong.node.is_not_control_plane() then
     plugin_servers.start()
   end
 
@@ -972,7 +950,7 @@ end
 
 
 function Kong.exit_worker()
-  if process.type() ~= "privileged agent" and not is_control_plane(kong.configuration) then
+  if process.type() ~= "privileged agent" and kong.node.is_not_control_plane() then
     plugin_servers.stop()
   end
 end

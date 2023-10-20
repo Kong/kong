@@ -7,10 +7,6 @@ local knode  = (kong and kong.node) and kong.node or
                require "kong.pdk.node".new()
 
 
-local dbless = kong.configuration.database == "off"
-local data_plane_role = kong.configuration.role == "data_plane"
-
-
 return {
   ["/status"] = {
     GET = function(self, dao, helpers)
@@ -49,7 +45,7 @@ return {
       -- to make decisions when something changes in the data-plane (e.g.
       -- if the gateway gets unexpectedly restarted and its configuration
       -- has been reset to empty).
-      if dbless or data_plane_role then
+      if kong.node.is_dbless() then
         status_response.configuration_hash = declarative.get_current_hash()
         -- remove the meanless database entry when in dbless mode or data plane
         status_response.database = nil

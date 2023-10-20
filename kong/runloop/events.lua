@@ -426,7 +426,7 @@ local function register_events(reconfigure_handler)
   -- initialize local local_events hooks
   db = kong.db
 
-  if db.strategy == "off" then
+  if kong.node.is_dbless() then
     -- declarative config updates
     register_for_dbless(reconfigure_handler)
     return
@@ -452,7 +452,7 @@ do
                  kong.configuration.prefix or
                  require("pl.path").abspath(ngx.config.prefix())
   local STREAM_CONFIG_SOCK = "unix:" .. PREFIX .. "/stream_config.sock"
-  local IS_HTTP_SUBSYSTEM  = ngx.config.subsystem == "http"
+  local IS_NOT_HTTP_SUBSYSTEM = ngx.config.subsystem ~= "http"
 
   local function broadcast_reconfigure_event(data)
     return kong.worker_events.post("declarative", "reconfigure", data)
@@ -467,9 +467,7 @@ do
     end
 
     -- only http should notify stream
-    if not IS_HTTP_SUBSYSTEM or
-       #kong.configuration.stream_listeners == 0
-    then
+    if IS_NOT_HTTP_SUBSYSTEM or kong.node.is_not_serving_stream_traffic() then
       return true
     end
 

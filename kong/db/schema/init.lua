@@ -1692,7 +1692,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
   local resolve_references
   if is_select and not nulls then
     if kong and kong.configuration then
-      resolve_references = kong.configuration.role ~= "control_plane"
+      resolve_references = kong.node.is_not_control_plane()
     else
       resolve_references = true
     end

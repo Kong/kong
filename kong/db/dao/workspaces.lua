@@ -3,7 +3,7 @@ local Workspaces = {}
 
 function Workspaces:truncate()
   self.super.truncate(self)
-  if kong.configuration.database == "off" then
+  if kong.node.is_dbless() then
     return true
   end
 

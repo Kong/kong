@@ -257,6 +257,344 @@ local function new(self)
     return gsub(hostname, "\n$", "")
   end
 
+  ---
+  -- Returns `true` if a node is a data plane node.
+  --
+  -- @function kong.node.is_data_plane
+  -- @treturn boolean `true` if a node is a data plane node, otherwise `false`.
+  -- @usage
+  -- if kong.node.is_data_plane() then
+  --   ...
+  -- end
+  local function is_data_plane()
+    return self.configuration.role == "data_plane"
+  end
+  _NODE.is_data_plane = is_data_plane
+
+
+  ---
+  -- Returns `true` if a node is not a data plane node.
+  --
+  -- @function kong.node.is_not_data_plane
+  -- @treturn boolean `true` if a node is not a data plane node, otherwise `false`.
+  -- @usage
+  -- if kong.node.is_not_data_plane() then
+  --   ...
+  -- end
+  local function is_not_data_plane()
+    return not is_data_plane()
+  end
+  _NODE.is_not_data_plane = is_not_data_plane
+
+
+  ---
+  -- Returns `true` if a node is a control plane node.
+  --
+  -- @function kong.node.is_control_plane
+  -- @treturn boolean `true` if a node is a control plane node, otherwise `false`.
+  -- @usage
+  -- if kong.node.is_control_plane() then
+  --   ...
+  -- end
+  local function is_control_plane()
+    return self.configuration.role == "control_plane"
+  end
+  _NODE.is_control_plane = is_control_plane
+
+
+  ---
+  -- Returns `true` if a node is not a control plane node.
+  --
+  -- @function kong.node.is_not_control_plane
+  -- @treturn boolean `true` if a node is not a control plane node, otherwise `false`.
+  -- @usage
+  -- if kong.node.is_not_control_plane() then
+  --   ...
+  -- end
+  local function is_not_control_plane()
+    return not is_control_plane()
+  end
+  _NODE.is_not_control_plane = is_not_control_plane
+
+
+  ---
+  -- Returns `true` if a node is a traditional node.
+  --
+  -- @function kong.node.is_traditional
+  -- @treturn boolean `true` if a node is a traditional node, otherwise `false`.
+  -- @usage
+  -- if kong.node.is_traditional() then
+  --   ...
+  -- end
+  local function is_traditional()
+    return self.configuration.role == "traditional"
+  end
+  _NODE.is_traditional = is_traditional
+
+
+  -- Returns `true` if a node is not a traditional node.
+  --
+  -- @function kong.node.is_not_traditional
+  -- @treturn boolean `true` if a node is not a traditional node, otherwise `false`.
+  -- @usage
+  -- if kong.node.is_not_traditional() then
+  --   ...
+  -- end
+  local function is_not_traditional()
+    return not is_traditional()
+  end
+  _NODE.is_not_traditional = is_not_traditional
+
+
+  ---
+  -- Returns `true` if a node is a dbless node.
+  --
+  -- *Note:* both data plane and non-hybrid dbless nodes are considered as dbless.
+  --
+  -- @function kong.node.is_dbless
+  -- @treturn boolean `true` if a node is a dbless node, otherwise `false`.
+  -- @usage
+  -- if kong.node.is_dbless() then
+  --   ...
+  -- end
+  local function is_dbless()
+    return self.configuration.database == "off"
+  end
+  _NODE.is_dbless = is_dbless
+
+
+  ---
+  -- Returns `true` if a node is not a dbless node.
+  --
+  -- *Note:* both data plane and non-hybrid dbless nodes are considered as dbless.
+  --
+  -- @function kong.node.is_not_dbless
+  -- @treturn boolean `true` if a node is not a dbless node, otherwise `false`.
+  -- @usage
+  -- if kong.node.is_not_dbless() then
+  --   ...
+  -- end
+  local function is_not_dbless()
+    return not is_dbless()
+  end
+  _NODE.is_not_dbless = is_not_dbless
+
+
+  ---
+  -- Returns `true` if a node is either a control plane node or a data plane node.
+  --
+  -- @function kong.node.is_hybrid
+  -- @treturn boolean `true` if a node is a hybrid node, otherwise `false`.
+  -- @usage
+  -- if kong.node.is_hybrid() then
+  --   ...
+  -- end
+  local function is_hybrid()
+    return is_data_plane() or is_control_plane()
+  end
+  _NODE.is_hybrid = is_hybrid
+
+
+  ---
+  -- Returns `true` if a node is neither a control plane node or a data plane node.
+  --
+  -- @function kong.node.is_not_hybrid
+  -- @treturn boolean `true` if a node is not a hybrid node, otherwise `false`.
+  -- @usage
+  -- if kong.node.is_not_hybrid() then
+  --   ...
+  -- end
+  local function is_not_hybrid()
+    return not is_hybrid()
+  end
+  _NODE.is_not_hybrid = is_not_hybrid
+
+
+  ---
+  -- Returns `true` if a node is serving (or proxying) http traffic.
+  --
+  -- @function kong.node.is_serving_http_traffic
+  -- @treturn boolean `true` if a node is serving http traffic, otherwise `false`.
+  -- @usage
+  -- if kong.node.is_serving_http_traffic() then
+  --   ...
+  -- end
+  local function is_serving_http_traffic()
+    return (is_data_plane() or is_traditional()) and #self.configuration.proxy_listeners > 0
+  end
+  _NODE.is_serving_http_traffic = is_serving_http_traffic
+
+
+  ---
+  -- Returns `true` if a node is not serving (or proxying) http traffic.
+  --
+  -- @function kong.node.is_not_serving_http_traffic
+  -- @treturn boolean `true` if a node is not serving http traffic, otherwise `false`.
+  -- @usage
+  -- if kong.node.is_not_serving_http_traffic() then
+  --   ...
+  -- end
+  local function is_not_serving_http_traffic()
+    return not is_serving_http_traffic()
+  end
+  _NODE.is_not_serving_http_traffic = is_not_serving_http_traffic
+
+
+  ---
+  -- Returns `true` if a node is serving (or proxying) stream (tcp/udp) traffic.
+  --
+  -- @function kong.node.is_serving_stream_traffic
+  -- @treturn boolean `true` if a node is serving stream (tcp/udp) traffic, otherwise `false`.
+  -- @usage
+  -- if kong.node.is_serving_stream_traffic() then
+  --   ...
+  -- end
+  local function is_serving_stream_traffic()
+    return (is_data_plane() or is_traditional()) and #self.configuration.stream_listeners > 0
+  end
+  _NODE.is_serving_stream_traffic = is_serving_stream_traffic
+
+
+  ---
+  -- Returns `true` if a node is not serving (or proxying) stream (tcp/udp) traffic.
+  --
+  -- @function kong.node.is_not_serving_stream_traffic
+  -- @treturn boolean `true` if a node is not able to proxy stream (tcp/udp) traffic, otherwise `false`.
+  -- @usage
+  -- if kong.node.is_not_serving_stream_traffic() then
+  --   ...
+  -- end
+  local function is_not_serving_stream_traffic()
+    return not is_serving_stream_traffic()
+  end
+  _NODE.is_not_serving_stream_traffic = is_not_serving_stream_traffic
+
+
+  ---
+  -- Returns `true` if a node is serving (or proxying) http and/or stream (tcp/udp) traffic.
+  --
+  -- @function kong.node.is_serving_proxy_traffic
+  -- @treturn boolean `true` if a node is serving (or proxying) http and/or stream (tcp/udp) traffic, otherwise `false`.
+  -- @usage
+  -- if kong.node.is_serving_proxy_traffic() then
+  --   ...
+  -- end
+  local function is_serving_proxy_traffic()
+    return is_serving_http_traffic() or is_serving_stream_traffic()
+  end
+  _NODE.is_serving_proxy_traffic = is_serving_proxy_traffic
+
+
+  ---
+  -- Returns `true` if a node is not serving (or proxying) http or stream (tcp/udp) traffic.
+  --
+  -- @function kong.node.is_not_serving_proxy_traffic
+  -- @treturn boolean `true` if a node is not serving (or proxying) http or stream (tcp/udp) traffic, otherwise `false`.
+  -- @usage
+  -- if kong.node.is_not_serving_proxy_traffic() then
+  --   ...
+  -- end
+  local function is_not_serving_proxy_traffic()
+    return not is_serving_proxy_traffic()
+  end
+  _NODE.is_not_serving_proxy_traffic = is_not_serving_proxy_traffic
+
+
+  ---
+  -- Returns `true` if a node is serving admin APIs.
+  --
+  -- *Note:* Non-hybrid dbless nodes can also serve (mostly read-only) admin APIs
+  -- in addition to control plane and traditional admin nodes.
+  --
+  -- @function kong.node.is_serving_admin_apis
+  -- @treturn boolean `true` if a node is serving admin APIs, otherwise `false`.
+  -- @usage
+  -- if kong.node.is_serving_admin_apis() then
+  --   ...
+  -- end
+  local function is_serving_admin_apis()
+    return (is_control_plane() or is_traditional()) and #self.configuration.admin_listeners > 0
+  end
+  _NODE.is_serving_admin_apis = is_serving_admin_apis
+
+
+  ---
+  -- Returns `true` if a node is not serving admin APIs.
+  --
+  -- *Note:* Non-hybrid dbless nodes can also serve (mostly read-only) admin APIs
+  -- in addition to control plane and traditional admin nodes.
+  --
+  -- @function kong.node.is_not_serving_admin_apis
+  -- @treturn boolean `true` if a node is not serving admin APIs, otherwise `false`.
+  -- @usage
+  -- if kong.node.is_not_serving_admin_apis() then
+  --   ...
+  -- end
+  local function is_not_serving_admin_apis()
+    return not is_serving_admin_apis()
+  end
+  _NODE.is_not_serving_admin_apis = is_not_serving_admin_apis
+
+
+  ---
+  -- Returns `true` if a node is serving admin GUI.
+  --
+  -- @function kong.node.is_serving_admin_gui
+  -- @treturn boolean `true` if a node is serving admin GUI, otherwise `false`.
+  -- @usage
+  -- if kong.node.is_serving_admin_gui() then
+  --   ...
+  -- end
+  local function is_serving_admin_gui()
+    return is_serving_admin_apis() and #self.configuration.admin_gui_listeners > 0
+  end
+  _NODE.is_serving_admin_gui = is_serving_admin_gui
+
+
+  ---
+  -- Returns `true` if a node is not serving admin GUI.
+  --
+  -- @function kong.node.is_not_serving_admin_gui
+  -- @treturn boolean `true` if a node is not serving admin GUI, otherwise `false`.
+  -- @usage
+  -- if kong.node.is_not_serving_admin_gui() then
+  --   ...
+  -- end
+  local function is_not_serving_admin_gui()
+    return not is_serving_admin_gui()
+  end
+  _NODE.is_not_serving_admin_gui = is_not_serving_admin_gui
+
+
+  ---
+  -- Returns `true` if a node is serving status APIs.
+  --
+  -- @function kong.node.is_serving_status_apis
+  -- @treturn boolean `true` if a node is serving admin APIs, otherwise `false`.
+  -- @usage
+  -- if kong.node.is_serving_status_apis() then
+  --   ...
+  -- end
+  local function is_serving_status_apis()
+    return #self.configuration.status_listeners > 0
+  end
+  _NODE.is_serving_status_apis = is_serving_status_apis
+
+
+  ---
+  -- Returns `true` if a node is not serving status APIs.
+  --
+  -- @function kong.node.is_not_serving_status_apis
+  -- @treturn boolean `true` if a node is not serving admin APIs, otherwise `false`.
+  -- @usage
+  -- if kong.node.is_not_serving_status_apis() then
+  --   ...
+  -- end
+  local function is_not_serving_status_apis()
+    return not is_serving_status_apis()
+  end
+  _NODE.is_not_serving_status_apis = is_not_serving_status_apis
+
 
   -- the PDK can be even when there is no configuration (for docs/tests)
   -- so execute below block only when running under correct context

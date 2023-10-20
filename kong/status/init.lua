@@ -29,7 +29,7 @@ api_helpers.attach_routes(app, require "kong.api.routes.health")
 api_helpers.attach_routes(app, require "kong.status.ready")
 
 
-if kong.configuration.database == "off" then
+if kong.node.is_dbless() then
   -- Load core upstream readonly routes
   -- Customized routes in upstreams doesn't call `parent`, otherwise we will need
   -- api/init.lua:customize_routes to pass `parent`.

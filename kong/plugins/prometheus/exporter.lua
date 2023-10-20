@@ -15,8 +15,6 @@ local CLUSTERING_SYNC_STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 
 local stream_available, stream_api = pcall(require, "kong.tools.stream_api")
 
-local role = kong.configuration.role
-
 local KONG_LATENCY_BUCKETS = { 1, 2, 5, 7, 10, 15, 20, 30, 50, 75, 100, 200, 500, 750, 1000}
 local UPSTREAM_LATENCY_BUCKETS = {25, 50, 80, 100, 250, 400, 700, 1000, 2000, 5000, 10000, 30000, 60000 }
 local IS_PROMETHEUS_ENABLED
@@ -67,7 +65,7 @@ local function init()
                                        prometheus.LOCAL_STORAGE)
   metrics.node_info:set(1, {node_id, kong.version})
   -- only export upstream health metrics in traditional mode and data plane
-  if role ~= "control_plane" then
+  if kong.node.is_not_control_plane() then
     metrics.upstream_target_health = prometheus:gauge("upstream_target_health",
                                             "Health status of targets of upstream. " ..
                                             "States = healthchecks_off|healthy|unhealthy|dns_error, " ..
@@ -146,7 +144,7 @@ local function init()
   end
 
   -- Hybrid mode status
-  if role == "control_plane" then
+  if kong.node.is_control_plane() then
     metrics.data_plane_last_seen = prometheus:gauge("data_plane_last_seen",
                                               "Last time data plane contacted control plane",
                                               {"node_id", "hostname", "ip"},
@@ -160,7 +158,7 @@ local function init()
                                               "Version compatible status of the data plane, 0 is incompatible",
                                               {"node_id", "hostname", "ip", "kong_version"},
                                               prometheus.LOCAL_STORAGE)
-  elseif role == "data_plane" then
+  elseif kong.node.is_data_plane() then
     local data_plane_cluster_cert_expiry_timestamp = prometheus:gauge(
       "data_plane_cluster_cert_expiry_timestamp",
       "Unix timestamp of Data Plane's cluster_cert expiry time",
@@ -359,7 +357,7 @@ local function metric_data(write_fn)
   local phase = get_phase()
 
   -- only export upstream health metrics in traditional mode and data plane
-  if role ~= "control_plane" and should_export_upstream_health_metrics then
+  if kong.node.is_not_control_plane() and should_export_upstream_health_metrics then
     -- erase all target/upstream metrics, prevent exposing old metrics
     metrics.upstream_target_health:reset()
 
@@ -409,7 +407,7 @@ local function metric_data(write_fn)
   end
 
   -- Hybrid mode status
-  if role == "control_plane" then
+  if kong.node.is_control_plane() then
     -- Cleanup old metrics
     metrics.data_plane_last_seen:reset()
     metrics.data_plane_config_hash:reset()
@@ -453,7 +451,7 @@ local function collect()
 
   -- only gather stream metrics if stream_api module is available
   -- and user has configured at least one stream listeners
-  if stream_available and #kong.configuration.stream_listeners > 0 then
+  if stream_available and kong.node.is_serving_stream_traffic() then
     local res, err = stream_api.request("prometheus", "")
     if err then
       kong.log.err("failed to collect stream metrics: ", err)

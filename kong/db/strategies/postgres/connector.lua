@@ -313,7 +313,7 @@ end
 
 
 function _mt:init_worker(strategies)
-  if ngx.worker.id() == 0 and #kong.configuration.admin_listeners > 0 then
+  if ngx.worker.id() == 0 and kong.node.is_serving_admin_apis() then
     local table_names = get_names_of_tables_with_ttl(strategies)
     local ttl_escaped = self:escape_identifier("ttl")
     local expire_at_escaped = self:escape_identifier("expire_at")

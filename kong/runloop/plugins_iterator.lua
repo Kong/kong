@@ -449,11 +449,9 @@ local function create_configure(configurable)
   -- we only want the plugin_iterator:configure to be only available on proxying
   -- nodes (or data planes), thus we disable it if this code gets executed on control
   -- plane or on a node that does not listen any proxy ports.
-  --
-  -- TODO: move to PDK, e.g. kong.node.is_proxying()
-  if kong.configuration.role == "control_plane"
-  or ((subsystem == "http"   and #kong.configuration.proxy_listeners == 0) or
-      (subsystem == "stream" and #kong.configuration.stream_listeners == 0))
+  if kong.node.is_control_plane()
+  or ((subsystem == "http"   and kong.node.is_not_serving_http_traffic()) or
+      (subsystem == "stream" and kong.node.is_not_serving_stream_traffic()))
   then
     return function() end
   end
@@ -470,7 +468,7 @@ end
 
 
 function PluginsIterator.new(version)
-  local is_not_dbless = kong.db.strategy ~= "off"
+  local is_not_dbless = kong.node.is_not_dbless()
   if is_not_dbless then
     if not version then
       error("version must be given", 2)

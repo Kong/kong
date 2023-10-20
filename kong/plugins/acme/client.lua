@@ -18,9 +18,8 @@ local ngx_time = ngx.time
 local ngx_localtime = ngx.localtime
 local ngx_re_match = ngx.re.match
 
-local dbless = kong.configuration.database == "off"
-local hybrid_mode = kong.configuration.role == "control_plane" or
-                    kong.configuration.role == "data_plane"
+local is_dbless = kong.node.is_dbless()
+local is_hybrid = kong.node.is_hybrid()
 
 local RENEW_KEY_PREFIX = reserved_words.RENEW_KEY_PREFIX
 local RENEW_LAST_RUN_KEY = reserved_words.RENEW_LAST_RUN_KEY
@@ -128,7 +127,7 @@ local function new(conf)
     storage_config = conf.storage_config[conf.storage],
     eab_kid = conf.eab_kid,
     eab_hmac_key = conf.eab_hmac_key,
-    challenge_start_callback = hybrid_mode and function()
+    challenge_start_callback = is_hybrid and function()
       -- The delayed-push mechanism in hybrid mode may result in up to
       -- 2 times of db_update_frequency (the time push delayed) duration
       local wait = kong.configuration.db_update_frequency * 2
@@ -335,7 +334,7 @@ local function update_certificate(conf, host, key)
   end
   cert, key, err = order(acme_client, host, key, conf.cert_type, conf.rsa_key_size)
   if not err then
-    if dbless or hybrid_mode then
+    if is_dbless or is_hybrid then
       -- in dbless mode, we don't actively release lock
       -- since we don't implement an IPC to purge potentially negatively
       -- cached cert/key in other node, we set the cache to be same as
@@ -377,7 +376,7 @@ end
 
 -- loads existing cert and key for host from storage or Kong database
 local function load_certkey(conf, host)
-  if dbless or hybrid_mode then
+  if is_dbless or is_hybrid then
     local _, st, err = new_storage_adapter(conf)
     if err then
       return nil, err
@@ -548,6 +547,6 @@ return {
   _certkey_key_prefix = CERTKEY_KEY_PREFIX,
   _renew_certificate_storage = renew_certificate_storage,
   _check_expire = check_expire,
-  _set_is_dbless = function(d) dbless = d end,
+  _set_is_dbless = function(d) is_dbless = d end,
   _create_account = create_account,
 }

@@ -114,14 +114,12 @@ function _M:init_worker()
     filters = filters,
   }
 
-  local role = self.conf.role
-
-  if role == "control_plane" then
+  if kong.node.is_control_plane() then
     self:init_cp_worker(basic_info)
     return
   end
 
-  if role == "data_plane" then
+  if kong.node.is_data_plane() then
     self:init_dp_worker(basic_info)
   end
 end

@@ -69,7 +69,7 @@ end
 
 
 local function begin_transaction(db)
-  if db.strategy == "postgres" then
+  if kong.node.is_not_dbless() then
     local ok, err = db.connector:connect("read")
     if not ok then
       return nil, err
@@ -86,7 +86,7 @@ end
 
 
 local function end_transaction(db)
-  if db.strategy == "postgres" then
+  if kong.node.is_not_dbless() then
     -- just finish up the read-only transaction,
     -- either COMMIT or ROLLBACK is fine.
     db.connector:query("ROLLBACK;", "read")

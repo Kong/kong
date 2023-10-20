@@ -226,11 +226,10 @@ function _GLOBAL.init_cluster_events(kong_config, db)
 end
 
 
-local function get_lru_size(kong_config)
-  if (process.type() == "privileged agent")
-  or (kong_config.role == "control_plane")
-  or (kong_config.role == "traditional" and #kong_config.proxy_listeners  == 0
-                                        and #kong_config.stream_listeners == 0)
+local function get_lru_size()
+  if process.type() == "privileged agent"
+  or kong.node.is_control_plane()
+  or (kong.node.is_traditional() and kong.node.is_not_serving_proxy_traffic())
   then
     return 1000
   end
@@ -243,7 +242,7 @@ function _GLOBAL.init_cache(kong_config, cluster_events, worker_events)
   local page = 1
   local cache_pages = 1
 
-  if kong_config.database == "off" then
+  if kong.node.is_dbless() then
     db_cache_ttl = 0
     db_cache_neg_ttl = 0
    end
@@ -258,7 +257,7 @@ function _GLOBAL.init_cache(kong_config, cluster_events, worker_events)
     page            = page,
     cache_pages     = cache_pages,
     resty_lock_opts = LOCK_OPTS,
-    lru_size        = get_lru_size(kong_config),
+    lru_size        = get_lru_size(),
   })
 end
 
@@ -269,7 +268,7 @@ function _GLOBAL.init_core_cache(kong_config, cluster_events, worker_events)
   local page = 1
   local cache_pages = 1
 
-  if kong_config.database == "off" then
+  if kong.node.is_dbless() then
     db_cache_ttl = 0
     db_cache_neg_ttl = 0
   end
@@ -284,7 +283,7 @@ function _GLOBAL.init_core_cache(kong_config, cluster_events, worker_events)
     page            = page,
     cache_pages     = cache_pages,
     resty_lock_opts = LOCK_OPTS,
-    lru_size        = get_lru_size(kong_config),
+    lru_size        = get_lru_size(),
   })
 end
 

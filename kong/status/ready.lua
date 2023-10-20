@@ -16,8 +16,6 @@ local get_current_hash = declarative.get_current_hash
 local worker_count = ngx.worker.count()
 local kong_shm     = ngx.shared.kong
 
-local is_dbless = kong.configuration.database == "off"
-local is_control_plane = kong.configuration.role == "control_plane"
 
 local PLUGINS_REBUILD_COUNTER_KEY = constants.PLUGINS_REBUILD_COUNTER_KEY
 local ROUTERS_REBUILD_COUNTER_KEY = constants.ROUTERS_REBUILD_COUNTER_KEY
@@ -75,21 +73,21 @@ local function is_ready()
   if not ok then
     return false, "failed to connect to database"
   end
-  
+
   kong.db:close()
 
-  if is_control_plane then
+  if kong.node.is_control_plane() then
     return true
   end
 
-  local router_rebuilds = 
+  local router_rebuilds =
       tonumber(kong_shm:get(ROUTERS_REBUILD_COUNTER_KEY)) or 0
-  local plugins_iterator_rebuilds = 
+  local plugins_iterator_rebuilds =
       tonumber(kong_shm:get(PLUGINS_REBUILD_COUNTER_KEY)) or 0
 
   local err
   -- full check for dbless mode
-  if is_dbless then
+  if kong.node.is_dbless() then
     ok, err = is_dbless_ready(router_rebuilds, plugins_iterator_rebuilds)
 
   else

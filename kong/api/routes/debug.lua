@@ -20,7 +20,7 @@ local DEFAULT_LOG_LEVEL_TIMEOUT    = 60 -- 60s
 
 
 local function handle_put_log_level(self, broadcast)
-  if kong.configuration.database == "off" then
+  if kong.node.is_dbless() then
     local message = "cannot change log level when not using a database"
     return kong.response.exit(405, { message = message })
   end
@@ -113,18 +113,16 @@ local routes = {
 }
 
 
-local cluster_name
+local cluster_name = kong.node.is_control_plane()
+        and "/debug/cluster/control-planes-nodes/log-level/:log_level"
+         or "/debug/cluster/log-level/:log_level"
 
-if kong.configuration.role == "control_plane" then
-  cluster_name = "/debug/cluster/control-planes-nodes/log-level/:log_level"
-else
-  cluster_name = "/debug/cluster/log-level/:log_level"
-end
 
 routes[cluster_name] = {
   PUT = function(self)
     return handle_put_log_level(self, CLUSTER_LEVEL_BROADCAST)
   end
 }
+
 
 return routes

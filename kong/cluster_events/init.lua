@@ -85,18 +85,9 @@ function _M.new(opts)
   local poll_delay    = max(opts.poll_delay    or 0, 0)
 
   do
-    local db_strategy
-
-    if opts.db.strategy == "postgres" then
-      db_strategy = require "kong.cluster_events.strategies.postgres"
-
-    elseif opts.db.strategy == "off" then
-      db_strategy = require "kong.cluster_events.strategies.off"
-
-    else
-      return error("no cluster_events strategy for " ..
-                   opts.db.strategy)
-    end
+    local db_strategy = kong.node.is_dbless()
+                    and require("kong.cluster_events.strategies.off")
+                     or require("kong.cluster_events.strategies.postgres")
 
     local event_ttl_in_db = max(poll_offset * 10, MIN_EVENT_TTL_IN_DB)
 

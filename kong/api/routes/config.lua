@@ -86,7 +86,7 @@ end
 return {
   ["/config"] = {
     GET = function(self, db)
-      if kong.db.strategy ~= "off" then
+      if kong.node.is_not_dbless() then
         return kong.response.exit(400, {
           message = "this endpoint is only available when Kong is " ..
                     "configured to not use a database"
@@ -109,7 +109,7 @@ return {
       return kong.response.exit(200, { config = file.buf:get() })
     end,
     POST = function(self, db)
-      if kong.db.strategy ~= "off" then
+      if kong.node.is_not_dbless() then
         return kong.response.exit(400, {
           message = "this endpoint is only available when Kong is " ..
                     "configured to not use a database"

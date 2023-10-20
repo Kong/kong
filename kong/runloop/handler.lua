@@ -296,7 +296,7 @@ local function get_service_for_route(db, route, services_init_cache)
   local err
 
   -- kong.core_cache is available, not in init phase
-  if kong.core_cache and db.strategy ~= "off" then
+  if kong.core_cache and kong.node.is_not_dbless() then
     local cache_key = db.services:cache_key(service_pk.id, nil, nil, nil, nil,
                                             route.ws_id)
     service, err = kong.core_cache:get(cache_key, TTL_ZERO,
@@ -346,7 +346,7 @@ local function new_router(version)
   -- still not ready. For those cases, use a plain Lua table as a cache
   -- instead
   local services_init_cache = {}
-  if not kong.core_cache and db.strategy ~= "off" then
+  if not kong.core_cache and kong.node.is_not_dbless() then
     services_init_cache, err = build_services_init_cache(db)
     if err then
       services_init_cache = {}
@@ -354,7 +354,7 @@ local function new_router(version)
     end
   end
 
-  local detect_changes = db.strategy ~= "off" and kong.core_cache
+  local detect_changes = kong.node.is_not_dbless() and kong.core_cache
   local counter = 0
   local page_size = db.routes.pagination.max_page_size
   for route, err in db.routes:each(page_size, GLOBAL_QUERY_OPTS) do
@@ -465,7 +465,7 @@ end
 
 
 local function get_updated_router()
-  if kong.db.strategy ~= "off" and kong.configuration.worker_consistency == "strict" then
+  if kong.node.is_not_dbless() and kong.configuration.worker_consistency == "strict" then
     local ok, err = rebuild_router(ROUTER_SYNC_OPTS)
     if not ok then
       -- If an error happens while updating, log it and return non-updated
@@ -558,7 +558,7 @@ end
 
 
 local function get_updated_plugins_iterator()
-  if kong.db.strategy ~= "off" and kong.configuration.worker_consistency == "strict" then
+  if kong.node.is_not_dbless() and kong.configuration.worker_consistency == "strict" then
     local ok, err = rebuild_plugins_iterator(PLUGINS_ITERATOR_SYNC_OPTS)
     if not ok then
       -- If an error happens while updating, log it and return non-updated
@@ -607,7 +607,7 @@ local function wasm_attach(ctx)
     return
   end
 
-  if kong.db.strategy ~= "off" and kong.configuration.worker_consistency == "strict" then
+  if kong.node.is_not_dbless() and kong.configuration.worker_consistency == "strict" then
     local ok, err = rebuild_wasm_state(WASM_STATE_SYNC_OPTS)
     if not ok then
       log(ERR, "could not update wasm filter chain state: ", err,
@@ -846,7 +846,7 @@ end
 local function set_init_versions_in_cache()
   -- because of worker events, kong.cache can not be initialized in `init` phase
   -- therefore, we need to use the shdict API directly to set the initial value
-  assert(kong.configuration.role ~= "control_plane")
+  assert(kong.node.is_not_control_plane())
   assert(ngx.get_phase() == "init")
   local core_cache_shm = ngx.shared["kong_core_db_cache"]
 
@@ -917,7 +917,7 @@ return {
 
       update_lua_mem(true)
 
-      if kong.configuration.role == "control_plane" then
+      if kong.node.is_control_plane() then
         return
       end
 
@@ -928,16 +928,14 @@ return {
         balancer.init()
       end)
 
-      local strategy = kong.db.strategy
-
       do
         local rebuild_timeout = 60
 
-        if strategy == "postgres" then
+        if kong.node.is_not_dbless() then
           rebuild_timeout = kong.configuration.pg_timeout / 1000
         end
 
-        if strategy == "off" then
+        if kong.node.is_dbless() then
           RECONFIGURE_OPTS = {
             name = "reconfigure",
             timeout = rebuild_timeout,
@@ -964,7 +962,7 @@ return {
         end
       end
 
-      if strategy ~= "off" then
+      if kong.node.is_not_dbless() then
         local worker_state_update_frequency = kong.configuration.worker_state_update_frequency or 1
 
         local router_async_opts = {
