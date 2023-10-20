@@ -156,6 +156,9 @@ server {
         proxy_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
         proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
         proxy_set_header      X-Real-IP          $remote_addr;
+> if enabled_headers_upstream["X-Kong-Request-Id"] then
+        proxy_set_header      X-Kong-Request-Id  $kong_request_id;
+> end
         proxy_pass_header     Server;
         proxy_pass_header     Date;
         proxy_ssl_name        $upstream_host;
@@ -187,6 +190,9 @@ server {
         proxy_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
         proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
         proxy_set_header      X-Real-IP          $remote_addr;
+> if enabled_headers_upstream["X-Kong-Request-Id"] then
+        proxy_set_header      X-Kong-Request-Id  $kong_request_id;
+> end
         proxy_pass_header     Server;
         proxy_pass_header     Date;
         proxy_ssl_name        $upstream_host;
@@ -218,6 +224,9 @@ server {
         proxy_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
         proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
         proxy_set_header      X-Real-IP          $remote_addr;
+> if enabled_headers_upstream["X-Kong-Request-Id"] then
+        proxy_set_header      X-Kong-Request-Id  $kong_request_id;
+> end
         proxy_pass_header     Server;
         proxy_pass_header     Date;
         proxy_ssl_name        $upstream_host;
@@ -249,6 +258,9 @@ server {
         proxy_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
         proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
         proxy_set_header      X-Real-IP          $remote_addr;
+> if enabled_headers_upstream["X-Kong-Request-Id"] then
+        proxy_set_header      X-Kong-Request-Id  $kong_request_id;
+> end
         proxy_pass_header     Server;
         proxy_pass_header     Date;
         proxy_ssl_name        $upstream_host;
@@ -273,6 +285,9 @@ server {
         grpc_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
         grpc_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
         grpc_set_header      X-Real-IP          $remote_addr;
+> if enabled_headers_upstream["X-Kong-Request-Id"] then
+        grpc_set_header      X-Kong-Request-Id  $kong_request_id;
+> end
         grpc_pass_header     Server;
         grpc_pass_header     Date;
         grpc_ssl_name        $upstream_host;
@@ -316,6 +331,9 @@ server {
         proxy_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
         proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
         proxy_set_header      X-Real-IP          $remote_addr;
+> if enabled_headers_upstream["X-Kong-Request-Id"] then
+        proxy_set_header      X-Kong-Request-Id  $kong_request_id;
+> end
         proxy_pass_header     Server;
         proxy_pass_header     Date;
         proxy_ssl_name        $upstream_host;
