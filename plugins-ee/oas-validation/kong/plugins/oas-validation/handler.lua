@@ -396,14 +396,13 @@ function OASValidationPlugin:response(conf)
     return
   end
 
-  local data = ngx.ctx._oas_validation_data
-  local spec_method = data.spec_method
+  local data = ngx.ctx._oas_validation_data or EMPTY_T
 
   local resp_status_code = kong.service.response.get_status()
 
   local content_type = extract_media_type(kong.service.response.get_header("Content-Type"))
 
-  local schema, err = locate_response_body_schema(data.spec_version or OPEN_API, spec_method, resp_status_code, content_type)
+  local schema, err = locate_response_body_schema(data.spec_version or OPEN_API, data.spec_method, resp_status_code, content_type)
 
   -- no response schema found, skip validation
   if not schema then
@@ -507,6 +506,11 @@ function OASValidationPlugin:access(conf)
     interrupt_request = not conf.notify_only_request_validation_failure,
   }
 
+  local plugin_data = {}
+  if conf.validate_response_body then
+    ngx.ctx._oas_validation_data = plugin_data
+  end
+
   local parsed_spec, err = parse_spec(conf)
   if err then
     err = "validation failed, Unable to parse the api specification: " .. err
@@ -518,6 +522,9 @@ function OASValidationPlugin:access(conf)
     local err = "validation failed, path not found in api specification"
     return handle_validate_error(err, DENY_REQUEST_MESSAGE, 400, error_options)
   end
+
+  plugin_data.spec_method = method_spec
+  plugin_data.spec_version = parsed_spec.swagger
 
   -- check content-type matches the spec
   local content_type = extract_media_type(request_get_header("Content-Type"))
@@ -585,14 +592,6 @@ function OASValidationPlugin:access(conf)
     end
   end
 
-  if conf.validate_response_body then
-    -- used ngx.ctx instead of kong.ctx since kong.ctx used in response phase is not thread safe
-    local data = {
-      spec_method = method_spec,
-      spec_version = parsed_spec.swagger,
-    }
-    ngx.ctx._oas_validation_data = data
-  end
 end
 
 
