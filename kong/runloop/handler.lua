@@ -44,7 +44,6 @@ local log               = ngx.log
 local exit              = ngx.exit
 local exec              = ngx.exec
 local header            = ngx.header
-local set_header        = ngx.req.set_header
 local timer_at          = ngx.timer.at
 local get_phase         = ngx.get_phase
 local subsystem         = ngx.config.subsystem
@@ -1355,9 +1354,6 @@ return {
     end,
     -- Only executed if the `router` module found a route and allows nginx to proxy it.
     after = function(ctx)
-      local enabled_headers_upstream = kong.configuration.enabled_headers_upstream
-      local headers = constants.HEADERS
-
       -- Nginx's behavior when proxying a request with an empty querystring
       -- `/foo?` is to keep `$is_args` an empty string, hence effectively
       -- stripping the empty querystring.
@@ -1449,16 +1445,6 @@ return {
 
       if var.http_proxy_connection then
         clear_header("Proxy-Connection")
-      end
-
-      -- X-Kong-Request-Id upstream header
-      local rid, rid_get_err = request_id_get()
-      if not rid then
-        log(WARN, "failed to get Request ID: ", rid_get_err)
-      end
-
-      if enabled_headers_upstream[headers.REQUEST_ID] and rid then
-        set_header(headers.REQUEST_ID, rid)
       end
     end
   },
