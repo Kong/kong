@@ -95,7 +95,7 @@ install_wasm_deps_cmd = select({
     "//conditions:default": "\n",
 })
 
-install_curl_cmd = select({
+install_curl_cmd = selects.with_or({
     "//conditions:default": """
         mkdir -p ${BUILD_DESTDIR}/kong-tools/lib ${BUILD_DESTDIR}/kong-tools/include ${BUILD_DESTDIR}/kong-tools/bin
         CURL=${WORKSPACE_PATH}/$(echo '$(locations @curl//:curl)' | awk '{print $1}')
@@ -113,7 +113,10 @@ install_curl_cmd = select({
         )
         chmod -R "+r" ${BUILD_DESTDIR}/kong-tools/ssl
     """,
-    "@kong//:skip_tools_flag": """
+    (
+        "@kong//:skip_tools_flag",
+        "@platforms//os:macos",
+    ): """
         mkdir -p ${BUILD_DESTDIR}/kong-tools
         touch ${BUILD_DESTDIR}/kong-tools/.empty
     """,
@@ -163,13 +166,16 @@ kong_directory_genrule(
             "@kong_admin_gui//:dist_files",
             "@kong_portal//:dist_files",
         ],
-    }) + select({
+    }) + selects.with_or({
         "//conditions:default": [
             "@curl",
             "@curl//:cacerts",
             "@nghttp2",
         ],
-        "@kong//:skip_tools_flag": [],
+        (
+            "@kong//:skip_tools_flag",
+            "@platforms//os:macos",
+        ): [],
     }) + select({
         "@kong//:wasmx_flag": [
             "@ngx_wasm_module//:lua_libs",
