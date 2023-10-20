@@ -470,7 +470,7 @@ local function execute_collected_plugins_iterator(plugins_iterator, phase, ctx)
       span:finish()
     end
   end
-  
+
   if is_timing_enabled then
     req_dyn_hook_run_hooks(ctx, "timing", "after:plugin_iterator")
   end
@@ -743,7 +743,7 @@ function Kong.init()
 
   require("resty.kong.var").patch_metatable()
 
-  if config.privileged_agent and is_data_plane(config) then
+  if config.dedicated_config_processing and is_data_plane(config) then
     -- TODO: figure out if there is better value than 2048
     local ok, err = process.enable_privileged_agent(2048)
     if not ok then
@@ -946,8 +946,8 @@ function Kong.init_worker()
   local errors = execute_init_worker_plugins_iterator(plugins_iterator, ctx)
   if errors then
     for _, e in ipairs(errors) do
-      local err = "failed to execute the \"init_worker\" " ..
-                  "handler for plugin \"" .. e.plugin .."\": " .. e.err
+      local err = 'failed to execute the "init_worker" ' ..
+                  'handler for plugin "' .. e.plugin ..'": ' .. e.err
       stash_init_worker_error(err)
     end
   end
@@ -966,6 +966,8 @@ function Kong.init_worker()
     stash_init_worker_error(err)
     return
   end
+
+  plugins_iterator:configure(ctx)
 end
 
 

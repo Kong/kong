@@ -40,18 +40,21 @@ end
 
 local phases = {
   ["%[logger%] init_worker phase"] = 1,
+  ["%[logger%] configure phase"] = 1,
   ["%[logger%] preread phase"] = 1,
   ["%[logger%] log phase"] = 1,
 }
 
 local phases_2 = {
   ["%[logger%] init_worker phase"] = 1,
+  ["%[logger%] configure phase"] = 1,
   ["%[logger%] preread phase"] = 0,
   ["%[logger%] log phase"] = 1,
 }
 
 local phases_tls = {
   ["%[logger%] init_worker phase"] = 1,
+  ["%[logger%] configure phase"] = 1,
   ["%[logger%] certificate phase"] = 1,
   ["%[logger%] preread phase"] = 1,
   ["%[logger%] log phase"] = 1,
@@ -59,6 +62,7 @@ local phases_tls = {
 
 local phases_tls_2 = {
   ["%[logger%] init_worker phase"] = 1,
+  ["%[logger%] configure phase"] = 1,
   ["%[logger%] certificate phase"] = 1,
   ["%[logger%] preread phase"] = 0,
   ["%[logger%] log phase"] = 1,

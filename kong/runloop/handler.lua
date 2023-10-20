@@ -46,6 +46,7 @@ local exec              = ngx.exec
 local header            = ngx.header
 local set_header        = ngx.req.set_header
 local timer_at          = ngx.timer.at
+local get_phase         = ngx.get_phase
 local subsystem         = ngx.config.subsystem
 local clear_header      = ngx.req.clear_header
 local http_version      = ngx.req.http_version
@@ -519,6 +520,14 @@ local function build_plugins_iterator(version)
   if not plugins_iterator then
     return nil, err
   end
+
+  local phase = get_phase()
+  -- skip calling plugins_iterator:configure on init/init_worker
+  -- as it is explicitly called on init_worker
+  if phase ~= "init" and phase ~= "init_worker" then
+    plugins_iterator:configure()
+  end
+
   PLUGINS_ITERATOR = plugins_iterator
   return true
 end
@@ -719,6 +728,11 @@ do
       end
 
       if plugins_iterator then
+        -- Before we replace plugin iterator we need to call configure handler
+        -- of each plugin. There is a slight chance that plugin configure handler
+        -- would yield, and that should be considered a bad practice.
+        plugins_iterator:configure()
+
         PLUGINS_ITERATOR = plugins_iterator
         CURRENT_PLUGINS_HASH = plugins_hash or 0
       end
