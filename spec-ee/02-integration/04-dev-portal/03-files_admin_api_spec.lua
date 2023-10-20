@@ -8,6 +8,8 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local escape = require("socket.url").escape
+local clear_license_env = require("spec-ee.helpers").clear_license_env
+local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 
 local match = string.match
 
@@ -48,6 +50,8 @@ local function configure_portal(db, config)
 end
 
 
+local reset_license_data
+
 for _, strategy in helpers.each_strategy() do
   describe("files API (#" .. strategy .. ")({portal_is_legacy = false}): ", function()
     local db
@@ -74,11 +78,17 @@ for _, strategy in helpers.each_strategy() do
       return res
     end
 
+
     lazy_setup(function()
+
+      reset_license_data = clear_license_env()
+
       _, db, _ = helpers.get_db_utils(strategy, most_common_affected_tables)
       assert(helpers.start_kong({
         database = strategy,
+        license_path = "spec-ee/fixtures/mock_license.json",
         portal = true,
+        portal_and_vitals_key = get_portal_and_vitals_key(),
         portal_is_legacy = false,
       }))
 
@@ -94,6 +104,7 @@ for _, strategy in helpers.each_strategy() do
       if client then
         client:close()
       end
+      reset_license_data()
     end)
 
     describe('files', function()
@@ -1477,10 +1488,13 @@ for _, strategy in helpers.each_strategy() do
     local fileSlashStub
 
     lazy_setup(function()
+      reset_license_data = clear_license_env()
       _, db, _ = helpers.get_db_utils(strategy, most_common_affected_tables)
       assert(helpers.start_kong({
         database = strategy,
+        license_path = "spec-ee/fixtures/mock_license.json",
         portal = true,
+        portal_and_vitals_key = get_portal_and_vitals_key(),
         portal_is_legacy = true,
       }))
 
@@ -1498,6 +1512,7 @@ for _, strategy in helpers.each_strategy() do
       if client then
         client:close()
       end
+      reset_license_data()
     end)
 
     describe("/files", function()

@@ -17,11 +17,14 @@ local TEST_PREFIX = "servroot_prepared_test"
 
 -- XXX EE workaround for license warning madness
 local function assert_no_stderr(logs)
+
   for line in logs:gmatch("[^\r\n]+") do
-    assert.truthy(
-      line:find("Using development (e.g. not a release) license validation", nil, true),
-      "expected no stderr, found:\n" .. tostring(line)
-    )
+    if not line:find("portal and vitals are deprecated") then 
+      assert.truthy(
+        line:find("Using development (e.g. not a release) license validation", nil, true),
+        "expected no stderr, found:\n" .. tostring(line)
+      )
+    end
   end
 end
 

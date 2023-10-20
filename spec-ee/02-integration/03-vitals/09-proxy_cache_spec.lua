@@ -7,6 +7,8 @@
 local cjson = require("cjson")
 local helpers = require("spec.helpers")
 local inspect = require("inspect")
+local clear_license_env = require("spec-ee.helpers").clear_license_env
+local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 
 -- number of 200s we expect to see show up in vitals on the route
 local num_iterations = 5
@@ -50,16 +52,17 @@ local function wait_until_admin_client_2_finds(total_sent,
 end
 
 for _, strategy in helpers.each_strategy() do
-  describe("proxy-cache plugin works with vitals #" ..
-            strategy, function()
+  describe("proxy-cache plugin works with vitals #" .. strategy, function()
     local bp
     local db
     local admin_client
     local proxy_client
     local service1
     local route1
+    local reset_license_data
 
     lazy_setup(function()
+      reset_license_data = clear_license_env()
       bp, db = helpers.get_db_utils(strategy, {
         "routes",
         "services",
@@ -92,6 +95,9 @@ for _, strategy in helpers.each_strategy() do
       -- start Kong instance with our services and plugins
       assert(helpers.start_kong {
         plugins = "bundled,proxy-cache-advanced",
+        portal = true,
+        portal_and_vitals_key = get_portal_and_vitals_key(),
+        license_path = "spec-ee/fixtures/mock_license.json",
         vitals = true,
         database = strategy,
       })
@@ -99,7 +105,8 @@ for _, strategy in helpers.each_strategy() do
       --  start mock httpbin instance
       assert(helpers.start_kong {
         plugins = "bundled,proxy-cache-advanced",
-        vitals = true,
+        portal = false,
+        vitals = false,
         database = strategy,
         admin_listen = "127.0.0.1:9011",
         proxy_listen = "127.0.0.1:9010",
@@ -113,6 +120,7 @@ for _, strategy in helpers.each_strategy() do
     lazy_teardown(function()
       helpers.stop_kong("servroot2")
       helpers.stop_kong(nil, true)
+      reset_license_data()
     end)
 
     before_each(function()

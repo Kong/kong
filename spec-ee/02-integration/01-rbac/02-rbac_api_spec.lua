@@ -12,6 +12,8 @@ local ee_helpers = require "spec-ee.helpers"
 local pl_file = require "pl.file"
 local constants = require "kong.constants"
 local escape_uri = ngx.escape_uri
+local clear_license_env = require("spec-ee.helpers").clear_license_env
+local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 
 
 local PORTAL_PREFIX = constants.PORTAL_PREFIX
@@ -122,15 +124,19 @@ for _, strategy in helpers.each_strategy() do
 
 describe("Admin API RBAC with #" .. strategy, function()
   local bp, db
+  local reset_license_data
 
   lazy_setup(function()
+    reset_license_data = clear_license_env()
     bp, db = helpers.get_db_utils(strategy)
 
     assert(helpers.start_kong({
       database = strategy,
       portal = true,
+      portal_and_vitals_key = get_portal_and_vitals_key(),
       portal_auth = "basic-auth",
       portal_session_conf = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }",
+      license_path = "spec-ee/fixtures/mock_license.json",
     }))
 
     bp.workspaces:insert({ name = "mock-workspace" })
@@ -173,6 +179,7 @@ describe("Admin API RBAC with #" .. strategy, function()
     end
 
     helpers.stop_kong()
+    reset_license_data()
   end)
 
   describe("/rbac/users", function()

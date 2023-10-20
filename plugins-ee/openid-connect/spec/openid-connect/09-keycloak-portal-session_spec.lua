@@ -14,6 +14,8 @@ local find                = string.find
 local fmt                 = string.format
 
 local cookie_helper       = require "spec-ee.fixtures.cookie_helper"
+local clear_license_env   = require("spec-ee.helpers").clear_license_env
+local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 
 local portal_client
 local PLUGIN_NAME         = "openid-connect"
@@ -199,7 +201,9 @@ for _, strategy in helpers.each_strategy() do
     for _, workspace in ipairs({ "default", "demo" }) do
       describe("With the workspace is " .. workspace, function()
         local db
+        local reset_license_data
         lazy_setup(function()
+          reset_license_data = clear_license_env()
           db = select(2, helpers.get_db_utils(strategy, {
             "consumers",
             "plugins",
@@ -213,8 +217,8 @@ for _, strategy in helpers.each_strategy() do
             portal_auth         = PLUGIN_NAME,
             portal_session_conf = PORTAL_SESSION_CONF,
             portal_cors_origins = "*",
-            portal_and_vitals_key = "753252c37f163b4bb601f84f25f0ab7609878673019082d50776196b97536880",
             license_path = "spec-ee/fixtures/mock_license.json",
+            portal_and_vitals_key = get_portal_and_vitals_key(),
           }))
 
           if workspace ~= "default" then
@@ -233,6 +237,7 @@ for _, strategy in helpers.each_strategy() do
 
         lazy_teardown(function()
           helpers.stop_kong()
+          reset_license_data()
         end)
 
         before_each(function()

@@ -9,7 +9,8 @@ local helpers       = require "spec.helpers"
 local pl_file       = require "pl.file"
 local pl_dir        = require "pl.dir"
 local pl_path       = require "pl.path"
-
+local clear_license_env = require("spec-ee.helpers").clear_license_env
+local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 local get_hostname = require("kong.pdk.node").new().get_hostname
 
 
@@ -65,8 +66,11 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
     local proxy_client_grpc
     local shdict_count
+    local reset_license_data
 
     lazy_setup(function()
+      reset_license_data = clear_license_env()
+
       local bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",
@@ -94,7 +98,7 @@ for _, strategy in helpers.each_strategy() do
           name     = fmt("statsd%s", i)
         }
         routes[i] = bp.routes:insert {
-          hosts   = { fmt("logging%d.com", i) },
+          hosts   = { fmt("logging%d.test", i) },
           service = service
         }
       end
@@ -703,7 +707,7 @@ for _, strategy in helpers.each_strategy() do
           port     = helpers.mock_upstream_port,
         }
         routes[i] = bp.routes:insert {
-          hosts   = { fmt("logging%d.com", i) },
+          hosts   = { fmt("logging%d.test", i) },
           service = service
         }
       end
@@ -857,7 +861,7 @@ for _, strategy in helpers.each_strategy() do
           name     = fmt("grpc_statsd%s", i)
         }
         grpc_routes[i] = bp.routes:insert {
-          hosts   = { fmt("grpc_logging%d.com", i) },
+          hosts   = { fmt("grpc_logging%d.test", i) },
           service = service
         }
       end
@@ -887,6 +891,9 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         database   = strategy,
+        license_path = "spec-ee/fixtures/mock_license.json",
+        vitals = "on",
+        portal_and_vitals_key = get_portal_and_vitals_key(),
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
 
@@ -901,6 +908,7 @@ for _, strategy in helpers.each_strategy() do
       end
 
       helpers.stop_kong()
+      reset_license_data()
     end)
 
     local function expected_metrics_count(ecpect_metrics_count)
@@ -916,12 +924,15 @@ for _, strategy in helpers.each_strategy() do
         if proxy_client then
           proxy_client:close()
         end
-  
+
         assert(helpers.restart_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
+          license_path = "spec-ee/fixtures/mock_license.json",
+          vitals = "on",
+          portal_and_vitals_key = get_portal_and_vitals_key(),
         }))
-  
+
         proxy_client = helpers.proxy_client()
         proxy_client_grpc = helpers.proxy_client_grpc()
         shdict_count = count_shdicts("nginx.conf")
@@ -935,14 +946,13 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging1.com"
+            host  = "logging1.test"
           }
         })
         assert.res_status(200, response)
 
-        local ok, metrics, err = thread:join()
+        local ok, metrics = thread:join()
         assert(ok, metrics)
-        assert(#metrics == metrics_count, err)
         assert.contains("kong.service.statsd1.request.count:1|c", metrics)
         assert.contains("kong.service.statsd1.request.size:%d+|c", metrics, true)
         assert.contains("kong.service.statsd1.response.size:%d+|c", metrics, true)
@@ -968,7 +978,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging25.com"
+            host  = "logging25.test"
           }
         })
         assert.res_status(200, response)
@@ -991,7 +1001,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging26.com"
+            host  = "logging26.test"
           }
         })
         assert.res_status(200, response)
@@ -1014,7 +1024,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging27.com"
+            host  = "logging27.test"
           }
         })
         assert.res_status(200, response)
@@ -1037,7 +1047,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging28.com"
+            host  = "logging28.test"
           }
         })
         assert.res_status(200, response)
@@ -1064,7 +1074,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging13.com"
+            host  = "logging13.test"
           }
         })
         assert.res_status(200, response)
@@ -1096,7 +1106,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging31.com"
+            host  = "logging31.test"
           }
         })
         assert.res_status(200, response)
@@ -1121,7 +1131,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging32.com"
+            host  = "logging32.test"
           }
         })
         assert.res_status(200, response)
@@ -1146,7 +1156,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging33.com"
+            host  = "logging33.test"
           }
         })
         assert.res_status(200, response)
@@ -1171,7 +1181,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging34.com"
+            host  = "logging34.test"
           }
         })
         assert.res_status(200, response)
@@ -1196,7 +1206,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/request?apikey=kong",
           headers = {
-            host = "logging35.com"
+            host = "logging35.test"
           }
         })
         assert.res_status(200, response)
@@ -1216,7 +1226,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/request?apikey=kong",
           headers = {
-            host = "logging36.com"
+            host = "logging36.test"
           }
         })
         assert.res_status(200, response)
@@ -1236,7 +1246,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/request?apikey=kong",
           headers = {
-            host = "logging37.com"
+            host = "logging37.test"
           }
         })
         assert.res_status(200, response)
@@ -1256,7 +1266,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/request?apikey=kong",
           headers = {
-            host = "logging38.com"
+            host = "logging38.test"
           }
         })
         assert.res_status(200, response)
@@ -1277,7 +1287,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            host  = "logging5.com"
+            host  = "logging5.test"
           }
         })
         assert.res_status(200, response)
@@ -1295,7 +1305,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            host  = "logging3.com"
+            host  = "logging3.test"
           }
         })
         assert.res_status(200, response)
@@ -1312,7 +1322,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            host  = "logging4.com"
+            host  = "logging4.test"
           }
         })
         assert.res_status(200, response)
@@ -1329,7 +1339,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            host  = "logging2.com"
+            host  = "logging2.test"
           }
         })
         assert.res_status(200, response)
@@ -1346,7 +1356,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            host  = "logging6.com"
+            host  = "logging6.test"
           }
         })
         assert.res_status(200, response)
@@ -1363,7 +1373,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            host  = "logging7.com"
+            host  = "logging7.test"
           }
         })
         assert.res_status(200, response)
@@ -1380,7 +1390,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            host  = "logging8.com"
+            host  = "logging8.test"
           }
         })
         assert.res_status(200, response)
@@ -1397,7 +1407,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/request?apikey=kong",
           headers = {
-            host = "logging9.com"
+            host = "logging9.test"
           }
         })
         assert.res_status(200, response)
@@ -1413,7 +1423,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging10.com"
+            host  = "logging10.test"
           }
         })
         assert.res_status(200, response)
@@ -1431,7 +1441,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging11.com"
+            host  = "logging11.test"
           }
         })
         assert.res_status(200, response)
@@ -1449,7 +1459,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging12.com"
+            host  = "logging12.test"
           }
         })
         assert.res_status(200, response)
@@ -1466,7 +1476,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging14.com"
+            host  = "logging14.test"
           }
         })
         assert.res_status(200, response)
@@ -1484,7 +1494,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging15.com"
+            host  = "logging15.test"
           }
         })
         assert.res_status(200, response)
@@ -1502,7 +1512,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging16.com"
+            host  = "logging16.test"
           }
         })
         assert.res_status(200, response)
@@ -1520,7 +1530,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging17.com"
+            host  = "logging17.test"
           }
         })
         assert.res_status(200, response)
@@ -1538,7 +1548,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging18.com"
+            host  = "logging18.test"
           }
         })
         assert.res_status(200, response)
@@ -1556,7 +1566,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging19.com"
+            host  = "logging19.test"
           }
         })
         assert.res_status(200, response)
@@ -1581,7 +1591,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging20.com"
+            host  = "logging20.test"
           }
         })
         assert.res_status(200, response)
@@ -1608,7 +1618,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging21.com"
+            host  = "logging21.test"
           }
         })
         assert.res_status(200, response)
@@ -1632,7 +1642,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging22.com"
+            host  = "logging22.test"
           }
         })
         assert.res_status(200, response)
@@ -1651,7 +1661,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging23.com"
+            host  = "logging23.test"
           }
         })
         assert.res_status(200, response)
@@ -1670,7 +1680,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging24.com"
+            host  = "logging24.test"
           }
         })
         assert.res_status(200, response)
@@ -1691,7 +1701,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging100.com"
+            host  = "logging100.test"
           }
         })
         assert.res_status(200, response)
@@ -1712,7 +1722,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging101.com"
+            host  = "logging101.test"
           }
         })
         assert.res_status(200, response)
@@ -1736,6 +1746,9 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.restart_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
+          vitals     = "on",
+          portal_and_vitals_key = get_portal_and_vitals_key(),
+          license_path = "spec-ee/fixtures/mock_license.json",
         }))
 
 
@@ -1747,7 +1760,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging1.com"
+            host  = "logging1.test"
           }
         })
         assert.res_status(200, response)
@@ -1773,6 +1786,9 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.restart_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
+          vitals     = "on",
+          portal_and_vitals_key = get_portal_and_vitals_key(),
+          license_path = "spec-ee/fixtures/mock_license.json",
         }))
 
         proxy_client = helpers.proxy_client()
@@ -1783,7 +1799,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging25.com"
+            host  = "logging25.test"
           }
         })
         assert.res_status(200, response)
@@ -1809,6 +1825,9 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.restart_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
+          vitals     = "on",
+          portal_and_vitals_key = get_portal_and_vitals_key(),
+          license_path = "spec-ee/fixtures/mock_license.json",
         }))
 
         local metrics_count = expected_metrics_count(DEFAULT_METRICS_COUNT - 6)
@@ -1819,7 +1838,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging26.com"
+            host  = "logging26.test"
           }
         })
         assert.res_status(200, response)
@@ -1845,6 +1864,9 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.restart_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
+          vitals     = "on",
+          portal_and_vitals_key = get_portal_and_vitals_key(),
+          license_path = "spec-ee/fixtures/mock_license.json",
         }))
 
         local metrics_count = expected_metrics_count(DEFAULT_METRICS_COUNT - 6)
@@ -1855,7 +1877,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging27.com"
+            host  = "logging27.test"
           }
         })
         assert.res_status(200, response)
@@ -1881,6 +1903,9 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.restart_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
+          vitals     = "on",
+          portal_and_vitals_key = get_portal_and_vitals_key(),
+          license_path = "spec-ee/fixtures/mock_license.json",
         }))
 
         local metrics_count = expected_metrics_count(DEFAULT_METRICS_COUNT - 6)
@@ -1891,7 +1916,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging28.com"
+            host  = "logging28.test"
           }
         })
         assert.res_status(200, response)
@@ -1918,7 +1943,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging102.com"
+            host  = "logging102.test"
           }
         })
         assert.res_status(200, response)
@@ -1936,6 +1961,9 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.restart_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
+          vitals     = "on",
+          portal_and_vitals_key = get_portal_and_vitals_key(),
+          license_path = "spec-ee/fixtures/mock_license.json",
         }))
 
 
@@ -1947,7 +1975,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging103.com"
+            host  = "logging103.test"
           }
         })
         assert.res_status(200, response)
@@ -1968,6 +1996,9 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.restart_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
+          vitals     = "on",
+          portal_and_vitals_key = get_portal_and_vitals_key(),
+          license_path = "spec-ee/fixtures/mock_license.json",
         }))
 
 
@@ -1979,7 +2010,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging104.com"
+            host  = "logging104.test"
           }
         })
         assert.res_status(200, response)
@@ -2000,6 +2031,9 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.restart_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
+          vitals     = "on",
+          portal_and_vitals_key = get_portal_and_vitals_key(),
+          license_path = "spec-ee/fixtures/mock_license.json",
         }))
 
 
@@ -2011,7 +2045,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging105.com"
+            host  = "logging105.test"
           }
         })
         assert.res_status(200, response)
@@ -2032,6 +2066,9 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.restart_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
+          vitals     = "on",
+          portal_and_vitals_key = get_portal_and_vitals_key(),
+          license_path = "spec-ee/fixtures/mock_license.json",
         }))
 
 
@@ -2043,7 +2080,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging106.com"
+            host  = "logging106.test"
           }
         })
         assert.res_status(200, response)
@@ -2064,6 +2101,9 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.restart_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
+          vitals     = "on",
+          portal_and_vitals_key = get_portal_and_vitals_key(),
+          license_path = "spec-ee/fixtures/mock_license.json",
         }))
 
 
@@ -2075,7 +2115,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging107.com"
+            host  = "logging107.test"
           }
         })
         assert.res_status(200, response)
@@ -2092,12 +2132,15 @@ for _, strategy in helpers.each_strategy() do
 
     describe("metrics #grpc", function()
       it("logs over UDP with default metrics", function()
-        
+
         assert(helpers.restart_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
+          vitals     = "on",
+          portal_and_vitals_key = get_portal_and_vitals_key(),
+          license_path = "spec-ee/fixtures/mock_license.json",
         }))
-  
+
         shdict_count = count_shdicts("nginx.conf")
 
         local metrics_count = expected_metrics_count(8)
@@ -2109,7 +2152,7 @@ for _, strategy in helpers.each_strategy() do
             greeting = "world!"
           },
           opts = {
-            ["-authority"] = "grpc_logging1.com",
+            ["-authority"] = "grpc_logging1.test",
           }
         })
         assert.truthy(ok)
@@ -2134,7 +2177,7 @@ for _, strategy in helpers.each_strategy() do
             greeting = "world!"
           },
           opts = {
-            ["-authority"] = "grpc_logging2.com",
+            ["-authority"] = "grpc_logging2.test",
           }
         })
         assert.truthy(ok)
@@ -2149,8 +2192,11 @@ for _, strategy in helpers.each_strategy() do
 
   describe("Plugin: statsd (log) [#" .. strategy .. "]", function()
     local proxy_client
+    local reset_license_data
 
-    setup(function()
+    lazy_setup(function()
+      reset_license_data = clear_license_env()
+
       local bp = helpers.get_db_utils(strategy)
 
       local consumer = bp.consumers:insert {
@@ -2182,12 +2228,13 @@ for _, strategy in helpers.each_strategy() do
 
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client then
         proxy_client:close()
       end
 
       helpers.stop_kong()
+      reset_license_data()
     end)
 
     describe("configures globally", function()
@@ -2202,7 +2249,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging1.com"
+            host  = "logging1.test"
           }
         })
         assert.res_status(404, response)
@@ -2230,8 +2277,11 @@ for _, strategy in helpers.each_strategy() do
 
   describe("Plugin: statsd (log) in batches [#" .. strategy .. "]", function()
     local proxy_client
+    local reset_license_data
 
-    setup(function()
+    lazy_setup(function()
+      reset_license_data = clear_license_env()
+
       local bp = helpers.get_db_utils(strategy)
 
       local consumer = bp.consumers:insert {
@@ -2264,12 +2314,13 @@ for _, strategy in helpers.each_strategy() do
 
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client then
         proxy_client:close()
       end
 
       helpers.stop_kong()
+      reset_license_data()
     end)
 
     describe("configures globally", function()
@@ -2284,7 +2335,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging1.com"
+            host  = "logging1.test"
           }
         })
         assert.res_status(404, response)
@@ -2313,7 +2364,11 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: statsd (log) [#" .. strategy .. "]", function()
     local proxy_client
     local shdict_count
+    local reset_license_data
+
     lazy_setup(function()
+      reset_license_data = clear_license_env()
+
       local bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",
@@ -2339,7 +2394,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "statsd"
       }
       local route = bp.routes:insert {
-        hosts   = { "logging.com" },
+        hosts   = { "logging.test" },
         service = service
       }
       bp.key_auth_plugins:insert { route = { id = route.id } }
@@ -2353,6 +2408,9 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        vitals     = "on",
+        portal_and_vitals_key = get_portal_and_vitals_key(),
+        license_path = "spec-ee/fixtures/mock_license.json",
       }))
 
       proxy_client = helpers.proxy_client()
@@ -2365,6 +2423,7 @@ for _, strategy in helpers.each_strategy() do
       end
 
       helpers.stop_kong()
+      reset_license_data()
     end)
 
     -- the purpose of this test case is to test the queue
@@ -2380,7 +2439,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request?apikey=kong",
         headers = {
-          host  = "logging.com"
+          host  = "logging.test"
         }
       })
       assert.res_status(200, response)

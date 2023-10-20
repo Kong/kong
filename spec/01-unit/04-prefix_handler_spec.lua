@@ -11,7 +11,10 @@ local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local ffi = require "ffi"
 local tablex = require "pl.tablex"
 local ssl_fixtures = require "spec.fixtures.ssl"
+local pl_file = require "pl.file"
 local pl_path = require "pl.path"
+local clear_license_env = require("spec-ee.helpers").clear_license_env
+local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 
 local exists = helpers.path.exists
 local join = helpers.path.join
@@ -1262,6 +1265,10 @@ describe("NGINX conf compiler", function()
         assert.falsy(exists(join(conf.prefix, "ssl")))
       end)
       it("generates default SSL cert", function()
+        local reset_license_data = clear_license_env()
+
+        helpers.setenv("KONG_LICENSE_DATA", pl_file.read("spec-ee/fixtures/mock_license.json"))
+
         local conf = conf_loader(nil, {
           prefix = tmp_config.prefix,
           proxy_listen  = "127.0.0.1:8000 ssl",
@@ -1271,6 +1278,7 @@ describe("NGINX conf compiler", function()
 
           -- [[ XXX EE: portal_api, portal_gui
           portal = "on",
+          portal_and_vitals_key = get_portal_and_vitals_key(),
           portal_api_listen = "127.0.0.1:8004 ssl",
           portal_admin_listen = "127.0.0.1:8005 ssl",
           -- ]]
@@ -1295,6 +1303,8 @@ describe("NGINX conf compiler", function()
           assert.truthy(exists(conf["portal_gui_ssl_cert_key_default" .. suffix]))
           -- ]]
         end
+
+        reset_license_data()
       end)
       it("generates default SSL certs with correct permissions #flaky on Travis due to umask", function()
         local conf = conf_loader(nil, {

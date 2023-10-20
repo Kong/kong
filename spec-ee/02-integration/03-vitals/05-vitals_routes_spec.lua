@@ -9,35 +9,21 @@ local helpers     = require "spec.helpers"
 local utils       = require "kong.tools.utils"
 local postgres    = require "kong.vitals.postgres.strategy"
 local cjson       = require "cjson"
+local clear_license_env = require("spec-ee.helpers").clear_license_env
+local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 local time        = ngx.time
 local fmt         = string.format
 
 local compare_no_order = require "pl.tablex".compare_no_order
 
--- unsets kong license env vars and returns a function to restore their values
--- on test teardown
---
--- replace distributions_constants.lua to mock a GA release distribution
+-- replace distributions_constants.lua to mock a GA release distribution and
+-- returns a function to restore their values on test teardown
 local function setup_distribution()
-  local kld = os.getenv("KONG_LICENSE_DATA")
-  helpers.unsetenv("KONG_LICENSE_DATA")
-
-  local klp = os.getenv("KONG_LICENSE_PATH")
-  helpers.unsetenv("KONG_LICENSE_PATH")
-
   local tmp_filename = "/tmp/distributions_constants.lua"
   assert(helpers.file.copy("kong/enterprise_edition/distributions_constants.lua", tmp_filename, true))
   assert(helpers.file.copy("spec-ee/fixtures/mock_distributions_constants.lua", "kong/enterprise_edition/distributions_constants.lua", true))
 
   return function()
-    if kld then
-      helpers.setenv("KONG_LICENSE_DATA", kld)
-    end
-
-    if klp then
-      helpers.setenv("KONG_LICENSE_PATH", klp)
-    end
-
     if helpers.path.exists(tmp_filename) then
       -- restore and delete backup
       assert(helpers.file.copy(tmp_filename, "kong/enterprise_edition/distributions_constants.lua", true))
@@ -73,7 +59,10 @@ for _, db_strategy in helpers.each_strategy() do
 
     describe("when vitals is enabled", function()
       describe("in development package", function ()
+        local reset_license_data
+
         setup(function()
+          reset_license_data = clear_license_env()
           bp, db = helpers.get_db_utils(db_strategy)
           connector = db.connector
 
@@ -108,7 +97,9 @@ for _, db_strategy in helpers.each_strategy() do
 
           assert(helpers.start_kong({
             database = db_strategy,
-            vitals   = true,
+            portal_and_vitals_key = get_portal_and_vitals_key(),
+            vitals = true,
+            license_path = "spec-ee/fixtures/mock_license.json",
           }))
 
           client = helpers.admin_client()
@@ -120,6 +111,7 @@ for _, db_strategy in helpers.each_strategy() do
           end
 
           helpers.stop_kong()
+          reset_license_data()
         end)
 
         describe("/vitals", function()
@@ -2151,13 +2143,16 @@ for _, db_strategy in helpers.each_strategy() do
 
       describe("in release package", function()
         local reset_distribution
+        local reset_license_data
 
         setup(function()
+          reset_license_data = clear_license_env()
           bp, db = helpers.get_db_utils(db_strategy, {"licenses"})
           reset_distribution = setup_distribution()
 
           assert(helpers.start_kong({
             database = db_strategy,
+            portal_and_vitals_key = get_portal_and_vitals_key(),
             vitals = true,
             nginx_conf = "spec/fixtures/custom_nginx.template",
             lua_package_path = "./?.lua;./?/init.lua;./spec/fixtures/?.lua",
@@ -2173,6 +2168,7 @@ for _, db_strategy in helpers.each_strategy() do
 
           helpers.stop_kong()
           reset_distribution()
+          reset_license_data()
         end)
 
         it("responds 404 without a license", function()

@@ -247,6 +247,7 @@ describe("Configuration loader - enterprise", function()
       assert.equal("portal_session_conf 'secret' must be type 'string'", err)
     end)
 
+
     it("enforces ssl when pg_iam_auth is enabled", function ()
       local conf = conf_loader(nil, {
         pg_iam_auth = "on",
@@ -638,15 +639,17 @@ describe("ee conf loader", function()
   describe("#fips", function()
     local license_env
 
-    setup(function()                                                                                                                             
-      license_env = os.getenv("KONG_LICENSE_DATA")                                                                                               
-      helpers.setenv("KONG_LICENSE_DATA", pl_file.read("spec-ee/fixtures/mock_license.json"))                                                    
+    setup(function()
+      license_env = os.getenv("KONG_LICENSE_DATA")
+      helpers.setenv("KONG_LICENSE_DATA", pl_file.read("spec-ee/fixtures/mock_license.json"))
     end)
-                                                                                                                                                 
-    teardown(function()                                                                                                                          
-      if type(license_env) == "string" then                                                                                                      
-        helpers.setenv("KONG_LICENSE_DATA", license_env)                                                                                         
-      end                                                                                                                                        
+
+    teardown(function()
+      if license_env then
+        helpers.setenv("KONG_LICENSE_DATA", license_env)
+      else
+        helpers.unsetenv("KONG_LICENSE_DATA")
+      end
     end)
 
     fips_test("with fips: validates correctly", function()
@@ -747,7 +750,6 @@ describe("portal_api_ssl_protocols", function()
     })
     assert.is_nil(err)
     assert.is_table(conf)
-    
     assert.equal("TLSv1.1", conf.portal_api_ssl_protocols)
   end)
 end)

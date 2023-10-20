@@ -11,6 +11,8 @@ local pl_file = require "pl.file"
 local stringx = require "pl.stringx"
 local helpers = require "spec.helpers"
 local ee_helpers = require "spec-ee.helpers"
+local clear_license_env = require("spec-ee.helpers").clear_license_env
+local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 
 local legacy_files = require "kong.portal.migrations.01_legacy_files"
 
@@ -152,18 +154,23 @@ local function create_portal_sitemap()
   pl_file.write(sitemap_filename, sitemap_str)
 end
 
+
 for _, strategy in helpers.each_strategy() do
   describe("Portal Rendering [#" .. strategy .. "]", function()
     local db
     local cookie
     local cookie_2
+    local reset_license_data
 
     lazy_setup(function()
+      reset_license_data = clear_license_env()
       _, db, _ = helpers.get_db_utils(strategy)
 
       assert(helpers.start_kong({
         database    = strategy,
+        license_path = "spec-ee/fixtures/mock_license.json",
         portal      = true,
+        portal_and_vitals_key = get_portal_and_vitals_key(),
         enforce_rbac = "off",
         portal_auth = "key-auth",
         portal_is_legacy = true,
@@ -177,6 +184,7 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_teardown(function()
       helpers.stop_kong()
+      reset_license_data()
     end)
 
     describe("pages", function()

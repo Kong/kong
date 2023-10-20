@@ -8,6 +8,8 @@
 local cjson = require "cjson.safe"
 local helpers = require "spec.helpers"
 local ee_helpers = require "spec-ee.helpers"
+local clear_license_env = require("spec-ee.helpers").clear_license_env
+local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 
 local function configure_portal(db, config)
   db.workspaces:upsert_by_name("default", {
@@ -39,8 +41,18 @@ local function decode_html_entities(str)
   return str
 end
 
+
 for _, strategy in helpers.each_strategy() do
   describe("Spec page rendering [#" .. strategy .. "]", function()
+    local reset_license_data
+
+    lazy_setup(function()
+      reset_license_data = clear_license_env()
+    end)
+
+    lazy_teardown(function()
+      reset_license_data()
+    end)
 
     describe("App registration", function()
 
@@ -56,6 +68,8 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.start_kong({
           database            = strategy,
           portal              = true,
+          portal_and_vitals_key = get_portal_and_vitals_key(),
+          license_path = "spec-ee/fixtures/mock_license.json",
           portal_auth         = "basic-auth",
           portal_session_conf = cjson.encode({
             cookie_name   = "portal_session",

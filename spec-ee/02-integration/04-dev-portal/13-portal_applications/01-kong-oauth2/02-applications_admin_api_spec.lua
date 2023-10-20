@@ -7,9 +7,10 @@
 
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-
 local enums = require "kong.enterprise_edition.dao.enums"
 local utils = require "kong.tools.utils"
+local clear_license_env = require("spec-ee.helpers").clear_license_env
+local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 
 local statuses = enums.CONSUMERS.STATUS
 
@@ -26,17 +27,22 @@ local function configure_portal(db, config)
   })
 end
 
+
 for _, strategy in helpers.each_strategy() do
   describe("Admin API - Applications #" .. strategy, function()
     local client
     local db
+    local reset_license_data
 
     lazy_setup(function()
+      reset_license_data = clear_license_env()
       _, db = helpers.get_db_utils(strategy)
 
       assert(helpers.start_kong({
         database = strategy,
+        license_path = "spec-ee/fixtures/mock_license.json",
         portal = true,
+        portal_and_vitals_key = get_portal_and_vitals_key(),
         portal_app_auth = "kong-oauth2",
         portal_auth = "basic-auth",
         portal_session_conf = "{ \"secret\": \"super-secret\" }",
@@ -49,6 +55,7 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_teardown(function()
       helpers.stop_kong(nil, true, true)
+      reset_license_data()
     end)
 
     before_each(function()

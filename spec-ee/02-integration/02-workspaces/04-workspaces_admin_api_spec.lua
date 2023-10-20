@@ -9,6 +9,8 @@ local helpers     = require "spec.helpers"
 local cjson       = require "cjson"
 local utils       = require "kong.tools.utils"
 local workspaces  = require "kong.workspaces"
+local clear_license_env = require("spec-ee.helpers").clear_license_env
+local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 
 local PORTAL_SESSION_CONF = {
   storage = "kong",
@@ -19,14 +21,18 @@ for _, strategy in helpers.each_strategy() do
 
 describe("Workspaces Admin API (#" .. strategy .. "): ", function()
   local client,  db, bp
+  local reset_license_data
 
   lazy_setup(function()
+    reset_license_data = clear_license_env()
     bp, db = helpers.get_db_utils(strategy)
 
     db:truncate("workspaces")
     assert(helpers.start_kong({
       database = strategy,
       portal = true,
+      portal_and_vitals_key = get_portal_and_vitals_key(),
+      license_path = "spec-ee/fixtures/mock_license.json",
     }))
   end)
 
@@ -42,6 +48,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
       client:close()
     end
     helpers.stop_kong()
+    reset_license_data()
   end)
 
   describe("/workspaces", function()
@@ -159,7 +166,6 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
           local res = assert(client:get("/ws-with-portal/files"))
           if res.status ~= 200 then
             client:close()
-            print(res.status)
             return false
           end
           local body = assert.res_status(200, res)
@@ -367,6 +373,8 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         assert(helpers.start_kong({
           database = strategy,
           portal = true,
+          portal_and_vitals_key = get_portal_and_vitals_key(),
+          license_path = "spec-ee/fixtures/mock_license.json",
         }))
       end)
 

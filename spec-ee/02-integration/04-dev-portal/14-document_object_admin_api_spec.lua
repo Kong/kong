@@ -7,6 +7,8 @@
 
 local helpers      = require "spec.helpers"
 local cjson        = require "cjson"
+local clear_license_env = require("spec-ee.helpers").clear_license_env
+local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 
 local function close_clients(clients)
   for idx, client in ipairs(clients) do
@@ -56,17 +58,22 @@ local function truncate_tables(db)
   assert(db:truncate("services"))
 end
 
+
 for _, strategy in helpers.each_strategy() do
   describe("Document Objects [#" .. strategy .. "]", function()
     local db, service_id
+    local reset_license_data
 
     lazy_setup(function()
       _, db = helpers.get_db_utils(strategy)
+      reset_license_data = clear_license_env()
 
       assert(helpers.start_kong({
         database    = strategy,
         portal      = true,
+        portal_and_vitals_key = get_portal_and_vitals_key(),
         portal_is_legacy = false,
+        license_path = "spec-ee/fixtures/mock_license.json",
         enforce_rbac = "off",
       }))
 
@@ -98,6 +105,7 @@ for _, strategy in helpers.each_strategy() do
     lazy_teardown(function()
       truncate_tables(db)
       helpers.stop_kong(nil, true)
+      reset_license_data()
     end)
 
     describe("/document_objects", function()

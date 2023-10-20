@@ -11,6 +11,8 @@ local pl_path    = require "pl.path"
 local pl_file    = require "pl.file"
 local kong       =  kong
 local parse_url = require("socket.url").parse
+local clear_license_env = require("spec-ee.helpers").clear_license_env
+local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 
 
 local PORTAL_SESSION_CONF = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }"
@@ -124,17 +126,34 @@ local function create_workspace_files(workspace_name)
 end
 
 
+local reset_license_data
+
 for _, strategy in helpers.each_strategy() do
 
   describe("router #" .. strategy, function ()
+
+
+
+    setup(function()
+      reset_license_data = clear_license_env()
+    end)
+
+    teardown(function()
+      reset_license_data()
+    end)
+
+
     describe("portal_gui_use_subdomains = off", function()
       local db
 
       setup(function()
+
         _, db, _ = helpers.get_db_utils(strategy)
         assert(helpers.start_kong({
           database    = strategy,
           portal      = true,
+          portal_and_vitals_key = get_portal_and_vitals_key(),
+          license_path = "spec-ee/fixtures/mock_license.json",
           portal_is_legacy = true,
           portal_auth = "basic-auth",
           portal_auto_approve = true,
@@ -269,6 +288,8 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.start_kong({
           database    = strategy,
           portal      = true,
+          portal_and_vitals_key = get_portal_and_vitals_key(),
+          license_path = "spec-ee/fixtures/mock_license.json",
           portal_auth = "basic-auth",
           portal_auto_approve = true,
           portal_is_legacy = true,

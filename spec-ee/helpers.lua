@@ -20,6 +20,7 @@ local cjson = require "cjson.safe"
 local assert = require "luassert"
 local utils = require "kong.tools.utils"
 local admins_helpers = require "kong.enterprise_edition.admins_helpers"
+local pl_file = require "pl.file"
 
 
 local _M = {}
@@ -1124,6 +1125,44 @@ do
     return pairs(protos)
   end
 end
+
+
+-- This function clears the license envs, avoiding to break the tests
+-- that use license data.
+-- It returns a function to set the envs back.
+function _M.clear_license_env()
+  local kld = os.getenv("KONG_LICENSE_DATA")
+  helpers.unsetenv("KONG_LICENSE_DATA")
+
+  local klp = os.getenv("KONG_LICENSE_PATH")
+  helpers.unsetenv("KONG_LICENSE_PATH")
+
+  return function()
+    if kld then
+      helpers.setenv("KONG_LICENSE_DATA", kld)
+    else
+      helpers.unsetenv("KONG_LICENSE_DATA")
+    end
+
+    if klp then
+      helpers.setenv("KONG_LICENSE_PATH", klp)
+    else
+      helpers.unsetenv("KONG_LICENSE_PATH")
+    end
+  end
+end
+
+
+function _M.get_portal_and_vitals_key()
+  local key, err = pl_file.read("spec-ee/fixtures/mock_portal_and_vitals_key.txt")
+
+  if err then
+    return nil, err
+  end
+
+  return key
+end
+
 
 ----------------
 -- Variables/constants

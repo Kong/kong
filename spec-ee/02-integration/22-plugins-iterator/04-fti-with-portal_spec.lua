@@ -9,6 +9,8 @@ local helpers = require "spec.helpers"
 local ee_helpers = require "spec-ee.helpers"
 local conf_loader = require "kong.conf_loader"
 local cjson = require("cjson")
+local clear_license_env = require("spec-ee.helpers").clear_license_env
+local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 
 local function configure_portal(db, workspace_name, config)
   assert(db.workspaces:upsert_by_name(workspace_name, {
@@ -20,8 +22,10 @@ end
 for _, strategy in helpers.all_strategies({ "postgres" }) do
   describe("FTI-4945 return intermittent 401 strategy-" .. strategy, function()
     local bp, db, service, portal_api_client, proxy_client
+    local reset_license_data
 
     lazy_setup(function()
+      reset_license_data = clear_license_env()
       helpers.kill_all()
 
       assert(conf_loader(nil, {
@@ -83,10 +87,12 @@ for _, strategy in helpers.all_strategies({ "postgres" }) do
         database            = strategy,
         nginx_conf          = "spec/fixtures/custom_nginx.template",
         portal              = true,
+        portal_and_vitals_key = get_portal_and_vitals_key(),
         portal_cors_origins = "*",
         portal_gui_protocol = "http",
         portal_auth         = "basic-auth",
         portal_session_conf = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }",
+        license_path = "spec-ee/fixtures/mock_license.json",
       })
 
       configure_portal(db, "default", {
@@ -102,7 +108,8 @@ for _, strategy in helpers.all_strategies({ "postgres" }) do
 
     lazy_teardown(function()
       proxy_client:close()
-      -- helpers.stop_kong()
+      helpers.stop_kong()
+      reset_license_data()
     end)
 
     after_each(function()

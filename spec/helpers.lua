@@ -3023,11 +3023,15 @@ do
   -- This code attempts to filter out license warnings.
   local license_warning = "Please contact <support@konghq.com> to renew your license."
   local license_warning_dev = "Using development (e.g. not a release) license validation"
+  local portal_vitals_deprecated = "portal and vitals are deprecated"
+  local portal_and_vitals_key_invalid = "portal_and_vitals_key is invalid. please contact your support representative."
 
   local function is_ee_license_warning(line)
     return line
        and (substr(line, license_warning)
-            or substr(line, license_warning_dev))
+            or substr(line, license_warning_dev)
+            or substr(line, portal_vitals_deprecated)
+            or substr(line, portal_and_vitals_key_invalid))
   end
   -- ]] EE
 

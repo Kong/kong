@@ -99,6 +99,7 @@ local EE_CONF_INFERENCES = {
   },
 
   portal = {typ = "boolean"},
+  portal_and_vitals_key = {typ = "string"},
   portal_is_legacy = {typ = "boolean"},
   portal_gui_listen = {typ = "array"},
   portal_gui_host = {typ = "string"},

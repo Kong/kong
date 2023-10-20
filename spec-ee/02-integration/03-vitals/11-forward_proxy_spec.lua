@@ -9,6 +9,8 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson.safe"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
+local clear_license_env = require("spec-ee.helpers").clear_license_env
+local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 
 local fixtures = {
   stream_mock = {
@@ -78,8 +80,11 @@ local proxy_configs = {
 for _, strategy in helpers.each_strategy() do
   for proxy_desc, proxy_opts in pairs(proxy_configs) do
     describe("Hybrid vitals works throgh proxy (" .. proxy_desc .. ") with #" .. strategy .. " backend", function()
+      local reset_license_data
 
       lazy_setup(function()
+        reset_license_data = clear_license_env()
+
         helpers.get_db_utils(strategy, {
           "routes",
           "services",
@@ -95,6 +100,9 @@ for _, strategy in helpers.each_strategy() do
           cluster_telemetry_listen = "127.0.0.1:9006",
           nginx_conf = "spec/fixtures/custom_nginx.template",
           vitals = true,
+          portal = false,
+          portal_and_vitals_key = get_portal_and_vitals_key(),
+          license_path = "spec-ee/fixtures/mock_license.json",
         }))
 
         assert(helpers.start_kong({
@@ -107,6 +115,9 @@ for _, strategy in helpers.each_strategy() do
           cluster_telemetry_endpoint = "127.0.0.1:9006",
           proxy_listen = "0.0.0.0:9002",
           vitals = true,
+          portal = false,
+          portal_and_vitals_key = get_portal_and_vitals_key(),
+          license_path = "spec-ee/fixtures/mock_license.json",
           log_level = "debug",
 
           -- used to render the mock fixture
@@ -125,6 +136,7 @@ for _, strategy in helpers.each_strategy() do
       lazy_teardown(function()
         helpers.stop_kong("servroot2")
         helpers.stop_kong()
+        reset_license_data()
       end)
 
       describe("sync works", function()
@@ -133,28 +145,28 @@ for _, strategy in helpers.each_strategy() do
           finally(function()
             admin_client:close()
           end)
-  
+
           local res = assert(admin_client:post("/services", {
             body = { name = "mockbin-service", url = "https://127.0.0.1:15556/request", },
             headers = {["Content-Type"] = "application/json"}
           }))
           assert.res_status(201, res)
-  
+
           res = assert(admin_client:post("/services/mockbin-service/routes", {
             body = { paths = { "/" }, },
             headers = {["Content-Type"] = "application/json"}
           }))
-  
+
           assert.res_status(201, res)
-  
+
           helpers.wait_until(function()
             local proxy_client = helpers.http_client("127.0.0.1", 9002)
-  
+
             res = proxy_client:send({
               method  = "GET",
               path    = "/",
             })
-  
+
             local status = res and res.status
             proxy_client:close()
             if status == 200 then

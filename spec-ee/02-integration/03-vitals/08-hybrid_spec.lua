@@ -8,31 +8,17 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson.safe"
 local pl_file = require "pl.file"
+local clear_license_env = require("spec-ee.helpers").clear_license_env
+local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 
--- unsets kong license env vars and returns a function to restore their values
--- on test teardown
---
--- replace distributions_constants.lua to mock a GA release distribution
+-- replace distributions_constants.lua to mock a GA release distribution and
+-- returns a function to restore their values on test teardown
 local function setup_distribution()
-  local kld = os.getenv("KONG_LICENSE_DATA")
-  helpers.unsetenv("KONG_LICENSE_DATA")
-
-  local klp = os.getenv("KONG_LICENSE_PATH")
-  helpers.unsetenv("KONG_LICENSE_PATH")
-
   local tmp_filename = "/tmp/distributions_constants.lua"
   assert(helpers.file.copy("kong/enterprise_edition/distributions_constants.lua", tmp_filename, true))
   assert(helpers.file.copy("spec-ee/fixtures/mock_distributions_constants.lua", "kong/enterprise_edition/distributions_constants.lua", true))
 
   return function()
-    if kld then
-      helpers.setenv("KONG_LICENSE_DATA", kld)
-    end
-
-    if klp then
-      helpers.setenv("KONG_LICENSE_PATH", klp)
-    end
-
     if helpers.path.exists(tmp_filename) then
       -- restore and delete backup
       assert(helpers.file.copy(tmp_filename, "kong/enterprise_edition/distributions_constants.lua", true))
@@ -44,7 +30,10 @@ end
 for _, strategy in helpers.each_strategy() do
   describe("Hybrid vitals works with #" .. strategy .. " backend", function()
     describe("sync works", function()
+      local reset_license_data
+
       lazy_setup(function()
+        reset_license_data = clear_license_env()
         helpers.get_db_utils(strategy, {
           "routes",
           "services",
@@ -61,6 +50,8 @@ for _, strategy in helpers.each_strategy() do
           cluster_listen = "127.0.0.1:9005",
           cluster_telemetry_listen = "127.0.0.1:9006",
           nginx_conf = "spec/fixtures/custom_nginx.template",
+          portal_and_vitals_key = get_portal_and_vitals_key(),
+          license_path = "spec-ee/fixtures/mock_license.json",
           vitals = true,
         }))
 
@@ -75,12 +66,15 @@ for _, strategy in helpers.each_strategy() do
           cluster_telemetry_endpoint = "127.0.0.1:9006",
           proxy_listen = "0.0.0.0:9002",
           vitals = true,
+          portal_and_vitals_key = get_portal_and_vitals_key(),
+          license_path = "spec-ee/fixtures/mock_license.json",
         }))
       end)
 
       lazy_teardown(function()
         helpers.stop_kong("servroot2")
         helpers.stop_kong()
+        reset_license_data()
       end)
 
       -- this is copied from spec/02-integration/09-hybrid-mode/01-sync_spec.lua
@@ -210,8 +204,10 @@ for _, strategy in helpers.each_strategy() do
 
     describe("allowing vitals to be initialized/started during license preload", function()
       local db, client, reset_distribution
+      local reset_license_data
 
       lazy_setup(function()
+        reset_license_data = clear_license_env()
         _, db = helpers.get_db_utils(strategy, {"licenses"})
         reset_distribution = setup_distribution()
 
@@ -227,6 +223,7 @@ for _, strategy in helpers.each_strategy() do
           cluster_listen = "127.0.0.1:9005",
           cluster_telemetry_listen = "127.0.0.1:9006",
           nginx_conf = "spec/fixtures/custom_nginx.template",
+          portal_and_vitals_key = get_portal_and_vitals_key(),
           vitals = true,
           log_level = "debug",
         }))
@@ -257,6 +254,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong("servroot2")
         helpers.stop_kong()
         reset_distribution()
+        reset_license_data()
       end)
 
       it("sends back vitals metrics to CP", function()
@@ -359,7 +357,9 @@ for _, strategy in helpers.each_strategy() do
       local db_proxy_port = "16797"
       local pg_port = "5432"
       local api_server_port, trigger_server_port  = "16000", "18000"
+      local reset_license_data
       setup(function()
+        reset_license_data = clear_license_env()
         local fixtures = {
           http_mock = {
             delay_trigger = [[
@@ -474,8 +474,10 @@ for _, strategy in helpers.each_strategy() do
           cluster_listen = "127.0.0.1:9005",
           cluster_telemetry_listen = "127.0.0.1:9006",
           nginx_conf = "spec/fixtures/custom_nginx.template",
+          portal_and_vitals_key = get_portal_and_vitals_key(),
           vitals = true,
           vitals_flush_interval = 3,
+          license_path = "spec-ee/fixtures/mock_license.json",
         }))
 
         assert(helpers.start_kong({
@@ -490,6 +492,8 @@ for _, strategy in helpers.each_strategy() do
           proxy_listen = "0.0.0.0:9002",
           vitals = true,
           vitals_flush_interval = 3,
+          portal_and_vitals_key = get_portal_and_vitals_key(),
+          license_path = "spec-ee/fixtures/mock_license.json",
         }))
       end)
 
@@ -498,12 +502,13 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.stop_kong("servroot2", true))  -- dp
         assert(helpers.stop_kong("servroot", true))   -- cp
         assert(helpers.stop_kong("servroot3", true))  -- proxy
+        reset_license_data()
       end)
 
       it("", function()
         -- wait for vitals starts to flush
         helpers.pwait_until(function()
-          assert.logfile("servroot2/logs/error.log").has.line("[vitals] flush")
+          assert.logfile("servroot2/logs/error.log").has.line([[\[vitals\] flush]])
           return true
         end, 3)
 
