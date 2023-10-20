@@ -241,6 +241,8 @@ kong_directory_genrule(
 
         cp $(location //build/ee:luarocks_license) ${BUILD_DESTDIR}/kong/manifest.json
 
+        cp -r scripts/tools ${BUILD_DESTDIR}/kong/scripts/
+
     """ + install_licensing_cmd +
         install_lib_deps_cmd +
         install_lualib_deps_cmd +
