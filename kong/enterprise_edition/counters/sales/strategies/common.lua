@@ -64,20 +64,25 @@ end
 
 local function get_request_buckets(count)
   local buckets = {}
+  local total = 0
 
   for bucket_label, bucket_count in pairs(count) do
     local entry = {}
     entry["bucket"] = bucket_label
     entry["request_count"] = bucket_count
+    total = total + bucket_count
     table.insert(buckets, entry)
   end
 
-  return buckets
+  return {
+    total_requests = total,
+    buckets = buckets,
+  }
 end
 
 
 return {
-  MONTHS_TO_REPORT    = 23,
+  MONTHS_TO_REPORT    = 11,
   get_year_month      = get_year_month,
   get_count_by_month  = get_count_by_month,
   get_request_buckets = get_request_buckets,

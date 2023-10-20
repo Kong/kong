@@ -9,7 +9,7 @@ local time = ngx.time
 local cjson = require "cjson.safe"
 
 local helpers = require "spec.helpers"
-local kong_counters = require "kong.counters"
+local kong_counters = require "kong.enterprise_edition.counters"
 
 local FLUSH_LIST_KEY = "counters:flush_list"
 local FLUSH_LOCK_KEY = "counters:flush_lock"
@@ -195,10 +195,10 @@ for _, strategy in helpers.each_strategy() do
         assert.equals(0, total)
       end)
 
-      it("should reset counters data, remain keys and set different start_at", function()        
+      it("should reset counters data, remain keys and set different start_at", function()
         local KEY_FOO = "foo"
         local KEY_BAR = "bar"
-        
+
         ngx.update_time()
         counters:add_key(KEY_FOO)
         counters:add_key(KEY_BAR)

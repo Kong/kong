@@ -105,7 +105,7 @@ local req_dyn_hook = require "kong.dynamic_hook"
 local internal_proxies = require "kong.enterprise_edition.proxies"
 local vitals = require "kong.vitals"
 local analytics = require "kong.analytics"
-local sales_counters = require "kong.counters.sales"
+local sales_counters = require "kong.enterprise_edition.counters.sales"
 local ee = require "kong.enterprise_edition"
 local portal_auth = require "kong.portal.auth"
 local portal_emails = require "kong.portal.emails"
@@ -740,7 +740,7 @@ function Kong.init()
 
   kong.analytics = analytics.new(config)
 
-  local counters_strategy = require("kong.counters.sales.strategies." .. kong.db.strategy):new(kong.db)
+  local counters_strategy = require("kong.enterprise_edition.counters.sales.strategies." .. kong.db.strategy):new(kong.db)
   kong.sales_counters = sales_counters.new({ strategy = counters_strategy })
   -- ]]
 

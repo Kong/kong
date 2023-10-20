@@ -11,6 +11,7 @@ c.plugins = {
   -- HACK: when adding correlation-id plugin through the admin api
   -- restrict it as an enterprise plugin
   "correlation-id",
+  "kafka-upstream",
 }
 
 c.featureset = {
@@ -19,7 +20,6 @@ c.featureset = {
   },
   full_expired = {
     conf = {},
-    write_admin_api = false,
     allow_admin_api = {
       ["/licenses"] = { ["*"] = true },
       ["/licenses/:licenses"] = { ["*"] = true },

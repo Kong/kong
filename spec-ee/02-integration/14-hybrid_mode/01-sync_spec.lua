@@ -265,7 +265,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         local report = assert.response(res).has.jsonbody()
-        assert.not_nil(report.license_key, "missing license_key in /license/report response")
+        assert.not_nil(report.license.license_key, "missing license_key in /license/report response")
         return report
       end
 
@@ -279,7 +279,7 @@ for _, strategy in helpers.each_strategy() do
         }, list)
 
         local report = get_license_report(client)
-        assert.equals("UNLICENSED", report.license_key)
+        assert.equals("UNLICENSED", report.license.license_key)
       end
 
 
@@ -312,7 +312,7 @@ for _, strategy in helpers.each_strategy() do
 
         helpers.wait_until(function()
           local report = get_license_report(client)
-          return report.license_key == mock_license_key
+          return report.license.license_key == mock_license_key
         end, 10, 0.5)
       end
 

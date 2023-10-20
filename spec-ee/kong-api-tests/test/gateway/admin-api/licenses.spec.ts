@@ -221,14 +221,26 @@ describe('Gateway /licenses API tests', function () {
     logResponse(resp);
 
     expect(resp.status, 'Status should be 200').to.equal(200);
-    expect(resp.data.license_key, 'Should see correct license key').to.eq(
+    expect(resp.data.license.license_key, 'Should see correct license key').to.eq(
       licenseKey
     );
+    expect(resp.data.plugins_count, 'Should see plugins_count in response').to
+      .exist;
+    expect(resp.data.deployment_info, 'Should see deployment_info in response').to
+      .exist;
+    expect(resp.data.timestamp, 'Should see timestamp in response').to
+      .exist;
+    expect(resp.data.checksum, 'Should see checksum in response').to
+      .exist;
     expect(resp.data.system_info, 'Should see system_info in response').to
       .exist;
     expect(
-      resp.data.counters[0].request_count,
+      resp.data.counters.buckets[0].request_count,
       'Should see request_count'
+    ).to.be.greaterThanOrEqual(0);
+    expect(
+      resp.data.counters.total_requests,
+      'Should see total_requests'
     ).to.be.greaterThanOrEqual(0);
 
     expect(

@@ -1,0 +1,3 @@
+message: Add counters such as routes, plugins, licenses, deployment info, etc. to the report component. Also, add a checksum and timestamp to the output.
+type: feature
+scope: Admin API

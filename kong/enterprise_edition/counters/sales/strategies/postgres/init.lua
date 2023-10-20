@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local sales_counters = require "kong.counters.sales.strategies.common"
+local sales_counters = require "kong.enterprise_edition.counters.sales.strategies.common"
 
 
 local fmt = string.format
