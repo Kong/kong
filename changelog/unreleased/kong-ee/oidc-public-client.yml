@@ -1,0 +1,3 @@
+message: "'openid-connect' plugin now supports public client"
+type: feature
+scope: Plugin

@@ -1291,7 +1291,9 @@ local function get_token_cache_key(iss, salt, args)
     return nil
   end
 
-  buffer:put("&", salt)
+  if salt then
+    buffer:put("&", salt)
+  end
 
   local scope = args.args and args.args.scope
   if args.token_cache_key_include_scope and scope

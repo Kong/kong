@@ -263,6 +263,7 @@
         "attributes" : { }
       } ],
       "kong-client-secret" : [ ],
+      "kong-public" : [ ],
       "admin-cli" : [ ],
       "account-console" : [ ],
       "broker" : [ {
@@ -665,6 +666,73 @@
     } ],
     "defaultClientScopes" : [ "web-origins", "roles", "profile", "email" ],
     "optionalClientScopes" : [ "address", "phone", "offline_access", "microprofile-jwt" ]
+  }, {
+    "id": "282f042f-1de3-48dd-b103-df280d97b742",
+    "clientId": "kong-public",
+    "surrogateAuthRequired": false,
+    "enabled": true,
+    "alwaysDisplayInConsole": false,
+    "clientAuthenticatorType": "client-secret",
+    "redirectUris": [
+      "https://localhost:9443/*",
+      "http://localhost:9000/*",
+      "https://kong:9443/*",
+      "http://kong:9000/*",
+      "https://localhost:8443/*",
+      "http://localhost:8000/*",
+      "https://kong:8443/*",
+      "http://kong:8000/*"
+    ],
+    "webOrigins": [],
+    "notBefore": 0,
+    "bearerOnly": false,
+    "consentRequired": false,
+    "standardFlowEnabled": true,
+    "implicitFlowEnabled": false,
+    "directAccessGrantsEnabled": true,
+    "serviceAccountsEnabled": false,
+    "publicClient": true,
+    "frontchannelLogout": false,
+    "protocol": "openid-connect",
+    "attributes": {
+      "id.token.as.detached.signature": "false",
+      "saml.assertion.signature": "false",
+      "saml.force.post.binding": "false",
+      "saml.multivalued.roles": "false",
+      "saml.encrypt": "false",
+      "oauth2.device.authorization.grant.enabled": "false",
+      "backchannel.logout.revoke.offline.tokens": "false",
+      "saml.server.signature": "false",
+      "saml.server.signature.keyinfo.ext": "false",
+      "use.refresh.tokens": "true",
+      "exclude.session.state.from.auth.response": "false",
+      "oidc.ciba.grant.enabled": "false",
+      "saml.artifact.binding": "false",
+      "backchannel.logout.session.required": "true",
+      "client_credentials.use_refresh_token": "false",
+      "saml_force_name_id_format": "false",
+      "require.pushed.authorization.requests": "false",
+      "saml.client.signature": "false",
+      "tls.client.certificate.bound.access.tokens": "false",
+      "saml.authnstatement": "false",
+      "display.on.consent.screen": "false",
+      "saml.onetimeuse.condition": "false"
+    },
+    "authenticationFlowBindingOverrides": {},
+    "fullScopeAllowed": true,
+    "nodeReRegistrationTimeout": -1,
+    "defaultClientScopes": [
+      "web-origins",
+      "profile",
+      "roles",
+      "email"
+    ],
+    "optionalClientScopes": [
+      "address",
+      "phone",
+      "offline_access",
+      "microprofile-jwt"
+    ]
   }, {
     "id" : "f3495d7e-c928-4fa0-a8e9-80b455379ea6",
     "clientId" : "kong-es256-client",

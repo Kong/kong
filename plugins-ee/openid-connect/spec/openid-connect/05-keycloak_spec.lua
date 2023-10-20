@@ -45,6 +45,8 @@ local CLIENT_CREDENTIALS = "Basic " .. encode_base64(CLIENT_ID .. ":" .. CLIENT_
 local KONG_CLIENT_ID = "kong-client-secret"
 local KONG_CLIENT_SECRET = "38beb963-2786-42b8-8e14-a5f391b4ba93"
 
+local PUBLIC_CLIENT_ID = "kong-public"
+
 local REDIS_HOST = helpers.redis_host
 local REDIS_PORT = 6379
 local REDIS_PORT_ERR = 6480
@@ -3826,5 +3828,172 @@ for _, strategy in helpers.all_strategies() do
         end
       end)
     end)
+
+    describe("FTI-5247 public client support", function()
+      local proxy_client
+
+      lazy_setup(function()
+        local bp = helpers.get_db_utils(strategy,{
+          "routes",
+            "services",
+            "plugins",
+        }, {
+          PLUGIN_NAME,
+        })
+
+        local service = bp.services:insert {
+          name = "FTI-5247",
+          path = "/anything"
+        }
+
+        local route_1 = bp.routes:insert {
+          service = service,
+          paths   = { "/FTI-5247-1" },
+        }
+
+        bp.plugins:insert {
+          route   = route_1,
+          name    = PLUGIN_NAME,
+          config  = {
+            display_errors = true,
+            issuer = ISSUER_URL,
+            auth_methods = {
+              "password",
+            },
+            password_param_type = {
+              "body",
+            },
+            client_id = {
+              PUBLIC_CLIENT_ID,
+            },
+            client_auth = {
+              "none"
+            },
+          },
+        }
+
+        local route_2 = bp.routes:insert {
+          service = service,
+          paths   = { "/FTI-5247-2" },
+        }
+
+        bp.plugins:insert {
+          route   = route_2,
+          name    = PLUGIN_NAME,
+          config  = {
+            display_errors = true,
+            issuer = ISSUER_URL,
+            auth_methods = {
+              "password",
+            },
+            password_param_type = {
+              "body",
+            },
+            client_id = {
+              PUBLIC_CLIENT_ID,
+            },
+            token_endpoint_auth_method  = "none",
+          },
+        }
+
+        local route_3 = bp.routes:insert {
+          service = service,
+          paths   = { "/FTI-5247-3" },
+        }
+
+        bp.plugins:insert {
+          route   = route_3,
+          name    = PLUGIN_NAME,
+          config  = {
+            display_errors = true,
+            issuer = ISSUER_URL,
+            auth_methods = {
+              "password",
+            },
+            password_param_type = {
+              "body",
+            },
+            client_id = {
+              PUBLIC_CLIENT_ID,
+            },
+          },
+        }
+
+        assert(helpers.start_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          plugins    = "bundled," .. PLUGIN_NAME,
+        }))
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+      end)
+
+      before_each(function()
+        proxy_client = helpers.proxy_client()
+      end)
+
+      after_each(function()
+        if proxy_client then
+          proxy_client:close()
+        end
+      end)
+
+      it("works when client_auth is 'none'", function()
+        local res = proxy_client:post("/FTI-5247-1", {
+          headers = {
+            ["Content-Type"] = "application/x-www-form-urlencoded",
+          },
+          body = {
+            username = USERNAME,
+            password = PASSWORD,
+          },
+        })
+
+        local body = assert.res_status(200, res)
+        local json_body = cjson.decode(body)
+
+        assert.is_not_nil(json_body.headers.authorization)
+        assert.equal("Bearer", sub(json_body.headers.authorization, 1, 6))
+      end)
+
+      it("works when token_endpoint_auth_method is 'none'", function()
+        local res = proxy_client:post("/FTI-5247-2", {
+          headers = {
+            ["Content-Type"] = "application/x-www-form-urlencoded",
+          },
+          body = {
+            username = USERNAME,
+            password = PASSWORD,
+          },
+        })
+
+        local body = assert.res_status(200, res)
+        local json_body = cjson.decode(body)
+
+        assert.is_not_nil(json_body.headers.authorization)
+        assert.equal("Bearer", sub(json_body.headers.authorization, 1, 6))
+      end)
+
+      it("error when neither client_auth nor token_endpoint_auth_method is 'none'", function()
+        local res = proxy_client:post("/FTI-5247-3", {
+          headers = {
+            ["Content-Type"] = "application/x-www-form-urlencoded",
+          },
+          body = {
+            username = USERNAME,
+            password = PASSWORD,
+          },
+        })
+
+        local body = assert.res_status(401, res)
+        local json_body = cjson.decode(body)
+        assert.matches('Unauthorized %(failed to get from node cache: invalid status code received from the token endpoint %(400%)%)', json_body.message)
+        error_assert(res, "invalid_token")
+      end)
+
+    end)
+
   end)
 end
