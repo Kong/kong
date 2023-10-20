@@ -44,8 +44,8 @@ jobs:
 
     with:
       relative-build-root: bazel-bin/build
-      label: normal-aws
-      run_on: arm64
+      label: normal
+      aarch64: true
 
   integration-test-aws-ec2:
     name: Gateway AWS Integration test on EC2
@@ -76,7 +76,7 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v3
         with:
-          name: build-normal-aws
+          name: build-normal
           path: .
 
       - name: Extract the artifact contents

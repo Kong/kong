@@ -8,10 +8,12 @@ on:
       label:
         type: string
         default: normal
-      bazel_args:
-        type: string
-      run_on:
-        type: string
+      fips:
+        type: boolean
+        default: false
+      aarch64:
+        type: boolean
+        default: false
     outputs:
       cache-key:
         description: 'Computed cache key, used for restoring cache in other workflows'
@@ -23,8 +25,8 @@ env:
 
 jobs:
   build:
-    name: Build dependencies - ${{ inputs.label }}
-    runs-on: ${{ inputs.run_on == 'arm64' && fromJson('["ubuntu-22.04-arm64", "self-hosted"]') || vars.RUNS_ON }}
+    name: Build Kong - ${{ inputs.label }} - ${{ inputs.aarch64 && 'aarch64' || 'x86_64' }}
+    runs-on: ${{ vars.RUNS_ON }}
 
     outputs:
       cache-key: ${{ steps.cache-key.outputs.cache-key }}
@@ -49,7 +51,7 @@ jobs:
       id: cache-key
       uses: ./.github/actions/build-cache-key
       with:
-        prefix: ci-build-${{ inputs.label }}
+        prefix: ci-build-${{ inputs.fips && 'fips' || 'normal' }}-${{ inputs.aarch64 && 'aarch64' || 'x86_64' }}
 
     - name: Lookup build cache
       id: cache-deps
@@ -76,17 +78,26 @@ jobs:
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
         sudo apt-get update
-        sudo apt-get install libyaml-dev valgrind libprotobuf-dev -y
+        sudo apt-get install libyaml-dev valgrind libprotobuf-dev crossbuild-essential-arm64 -y
 
     - name: Build Kong and package
       if: steps.cache-deps.outputs.cache-hit != 'true'
       env:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: |
-        bazel build //build:kong --verbose_failures --action_env=INSTALL_DESTDIR=/usr/local --//:skip_tools=true ${{ inputs.bazel_args }}
-        bazel build //build:venv --verbose_failures --action_env=INSTALL_DESTDIR=/usr/local --//:skip_tools=true ${{ inputs.bazel_args }}
-        # debian package for Docker image
-        bazel build :kong_deb --verbose_failures --action_env=INSTALL_DESTDIR=/usr/local ${{ inputs.bazel_args }}
+        bazel_args="--verbose_failures --action_env=INSTALL_DESTDIR=/usr/local --//:skip_tools=true"
+        if [[ "${{ inputs.aarch64 }}" == "true" ]]; then
+          bazel_args="$bazel_args --platforms=//:generic-crossbuild-aarch64"
+        fi
+
+        if [[ "${{ inputs.fips }}" == "true" ]]; then
+          bazel_args="$bazel_args --//:fips=true"
+        fi
+
+        bazel build //build:kong $bazel_args
+        bazel build //build:venv $bazel_args
+        # debian package for Pongo
+        bazel build :kong_deb $bazel_args
 
     - name: Bazel Outputs
       uses: actions/upload-artifact@v3
@@ -98,12 +109,10 @@ jobs:
         retention-days: 3
 
     - name: Collect artifacts
-      env:
-        ARTIFACT_NAME: ${{ inputs.run_on == 'arm64' && 'kong.arm64.deb' || 'kong.amd64.deb' }}
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
         mkdir artifacts
-        cp bazel-bin/pkg/$ARTIFACT_NAME artifacts/
+        cp bazel-bin/pkg/kong.*.deb artifacts/
 
         # bazel output directory without write access, we add it when creating archive
         tar -zcvf artifacts/build.tar.gz -C bazel-bin/build/kong-dev --mode="a+rw" .
@@ -129,8 +138,8 @@ jobs:
         find -name libluajit-5.1.so.2
         find -name luajit
         echo nginx: $(which nginx)
-        nginx -V 2>&1 | sed -re 's/ --/\n--/g'
-        ldd $(which nginx)
+        nginx -V 2>&1 | sed -re 's/ --/\n--/g' || true
+        readelf -d $(which nginx) 
 
     - name: Debug (luarocks)
       run: |

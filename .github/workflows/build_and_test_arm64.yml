@@ -1,0 +1,23 @@
+name: Build & Test (arm64)
+on:
+  pull_request:
+    paths:
+    - 'build/**'
+    - '.requirements.txt'
+  push:
+    branches:
+    - master
+    - test-please/*
+    paths-ignore:
+    # ignore markdown files (CHANGELOG.md, README.md, etc.)
+    - '**/*.md'
+    # ignore PRs for the generated COPYRIGHT file
+    - 'COPYRIGHT'
+
+jobs:
+  run:
+    uses: ./.github/workflows/build_and_test.yml
+    secrets: inherit
+
+    with:
+      arm64: true

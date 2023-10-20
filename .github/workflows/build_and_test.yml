@@ -28,6 +28,13 @@ on:  # yamllint disable-line rule:truthy
         required: false
         type: boolean
         default: false
+  workflow_call:
+    inputs:
+      arm64:
+        description: 'Test with arm64 instead of x86_64'
+        required: false
+        type: boolean
+        default: false
 
 env:
   LIBRARY_PREFIX: /usr/local/kong
@@ -55,17 +62,19 @@ jobs:
       matrix:
         include:
         - label: normal
+          fips: false
         - label: fips
-          bazel_args: --//:fips=true
+          fips: true
 
     with:
       relative-build-root: bazel-bin/build
-      label: ${{ matrix.label }}
-      bazel_args: ${{ matrix.bazel_args }}
+      label: "${{ matrix.label }}"
+      fips: ${{ matrix.fips }}
+      aarch64: ${{ inputs.arm64 == true }}
 
   cp-dp-compatibility-test:
     name: CP/DP compatibility
-    runs-on: ubuntu-latest-kong
+    runs-on: ${{ inputs.arm64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
     timeout-minutes: 30
     needs: build
     if: false # FIXME(@flrgh): re-enable with FT-3478
@@ -181,7 +190,7 @@ jobs:
 
   sca-doc-and-unit-tests:
     name: Static Code Analysis, Doc and Unit tests
-    runs-on: ubuntu-latest-kong
+    runs-on: ${{ inputs.arm64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
     needs: build
 
     services:
@@ -288,9 +297,9 @@ jobs:
     - name: Get kernel message
       if: failure()
       run: |
-        sudo dmesg -T
+        sudo dmesg -T || true
         if [[ $ENABLE_COREDUMP_DEBUG = true ]]; then
-          sudo chmod -R 777 /tmp/cores
+          sudo chmod -R 777 /tmp/cores || true
         fi
 
     - name: Upload core dumps
@@ -302,10 +311,10 @@ jobs:
         path: |
           /tmp/cores
 
-  integration-tests:
+  integration-tests-postgres:
     name: ${{ matrix.suite }} - ${{ matrix.split }} tests
-    runs-on: ubuntu-latest-kong
-    timeout-minutes: ${{ inputs.coverage == false && github.event_name != 'schedule' && 30 || 480 }}
+    runs-on: ${{ inputs.arm64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
+    timeout-minutes: ${{ inputs.coverage == false && github.event_name != 'schedule' && inputs.arm64 == false && 30 || 45 }}
     needs: build
     strategy:
       fail-fast: false
@@ -449,6 +458,7 @@ jobs:
         luarocks config || true
 
     - name: Tune up postgres max_connections
+      if: ${{ inputs.arm64 == true }}
       run: |
         # arm64 runners may use more connections due to more worker cores
         psql -hlocalhost -Ukong kong -tAc 'alter system set max_connections = 5000;'
@@ -478,7 +488,6 @@ jobs:
         source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
         .ci/run_tests_github.sh
 
-
     - name: Archive coverage stats file
       uses: actions/upload-artifact@v3
       if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
@@ -500,9 +509,9 @@ jobs:
     - name: Get kernel message
       if: failure()
       run: |
-        sudo dmesg -T
+        sudo dmesg -T || true
         if [[ $ENABLE_COREDUMP_DEBUG = true ]]; then
-          sudo chmod -R 777 /tmp/cores
+          sudo chmod -R 777 /tmp/cores || true
         fi
 
     - name: Upload core dumps
@@ -520,11 +529,11 @@ jobs:
       continue-on-error: true
       run: |
           docker compose -p redis-cluster down -v
-
+    
   integration-tests-dbless:
     name: DB-less integration tests
-    runs-on: ubuntu-latest-kong
-    timeout-minutes: ${{ inputs.coverage == false && github.event_name != 'schedule' && 25 || 480 }}
+    runs-on: ${{ inputs.arm64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
+    timeout-minutes: ${{ inputs.coverage == false && github.event_name != 'schedule' && inputs.arm64 == false && 25 || 40 }}
     needs: build
 
     services:
@@ -627,9 +636,9 @@ jobs:
     - name: Get kernel message
       if: failure()
       run: |
-        sudo dmesg -T
+        sudo dmesg -T || true
         if [[ $ENABLE_COREDUMP_DEBUG = true ]]; then
-          sudo chmod -R 777 /tmp/cores
+          sudo chmod -R 777 /tmp/cores || true
         fi
 
     - name: Upload core dumps
@@ -650,8 +659,8 @@ jobs:
 
   pdk-tests:
     name: PDK tests
-    runs-on: ubuntu-latest-kong
-    timeout-minutes: ${{ inputs.coverage == false && github.event_name != 'schedule' && 10 || 480 }}
+    runs-on: ${{ inputs.arm64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
+    timeout-minutes: ${{ inputs.coverage == false && github.event_name != 'schedule' && inputs.arm64 == false && 10 || 30 }}
     needs: build
 
     steps:
@@ -717,9 +726,9 @@ jobs:
     - name: Get kernel message
       if: failure()
       run: |
-        sudo dmesg -T
+        sudo dmesg -T || true
         if [[ $ENABLE_COREDUMP_DEBUG = true ]]; then
-          sudo chmod -R 777 /tmp/cores
+          sudo chmod -R 777 /tmp/cores || true
         fi
 
     - name: Upload core dumps
@@ -734,7 +743,7 @@ jobs:
   build-image:
     name: Build Kong Base Image - ${{ matrix.label }}
     needs: build
-    runs-on: ubuntu-latest-kong
+    runs-on: ${{ inputs.arm64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
 
     strategy:
       matrix:
@@ -796,6 +805,8 @@ jobs:
     runs-on: ubuntu-latest-kong
     timeout-minutes: 60
     needs: build-image
+    # enable this step if migration starts to be architecture-dependent
+    if: ${{ inputs.arm64 != true }}
 
     services:
       postgres:
@@ -835,8 +846,8 @@ jobs:
 
   plugins-ee-tests:
     name: plugins EE - ${{ matrix.split }} tests
-    runs-on: ubuntu-latest-kong
-    timeout-minutes: ${{ inputs.coverage == false && github.event_name != 'schedule' && 30 || 480 }}
+    runs-on: ${{ inputs.arm64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
+    timeout-minutes: ${{ inputs.coverage == false && github.event_name != 'schedule' && inputs.arm64 == false && 30 || 45 }}
     needs: build-image
 
     strategy:
@@ -956,13 +967,13 @@ jobs:
     - name: Get kernel message
       if: failure()
       run: |
-        sudo dmesg -T
+        sudo dmesg -T || true
 
   aggregator:
-    needs: [sca-doc-and-unit-tests,pdk-tests,integration-tests,integration-tests-dbless]
+    needs: [sca-doc-and-unit-tests, pdk-tests, integration-tests-postgres, integration-tests-dbless]
     name: Luacov stats aggregator
     if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
-    runs-on: ubuntu-latest-kong
+    runs-on: 'ubuntu-latest-kong'
 
     steps:
     - name: Checkout source code
