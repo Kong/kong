@@ -3829,7 +3829,7 @@ for _, strategy in helpers.all_strategies() do
       end)
     end)
 
-    describe("FTI-5247 public client support", function()
+    describe("#flaky FTI-5247 public client support", function()
       local proxy_client
 
       lazy_setup(function()
