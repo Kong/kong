@@ -1,0 +1,3 @@
+message: Support boolean token in portal email template and fix 500 error
+type: bugfix
+scope: Portal

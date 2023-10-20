@@ -512,5 +512,16 @@ describe("ee portal emails", function()
       local expected = "park place and boardwalk"
       assert.same(expected, emails:replace_tokens(view, tokens))
     end)
+
+    it("should replace tokens in number/boolean form", function()
+      local tokens = {
+        ["updated_at"] = 1697534572,
+        ["is_admin_workspace"] = true,
+        ["portal"] = false,
+      }
+      local view = "{{ updated_at }} and {{ is_admin_workspace }} and {{ portal }}"
+      local expected = "1697534572 and true and false"
+      assert.same(expected, emails:replace_tokens(view, tokens))
+    end)
   end)
 end)

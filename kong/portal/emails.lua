@@ -358,6 +358,12 @@ end
 function _M:replace_tokens(view, tokens)
   for match, replacement in pairs(tokens) do
     match =  "{{%s*" .. match .. "%s*}}"
+    if type(replacement) ~= "string"
+       and type(replacement) ~= "table"
+       and type(replacement) ~= "function"
+    then
+      replacement = tostring(replacement)
+    end
     view = string.gsub(view, match, replacement)
   end
   return view
