@@ -1271,7 +1271,7 @@ for _, strategy in helpers.each_strategy() do
         local authorization_header = body.headers.authorization
         local second_aws_key = string.match(authorization_header, "Credential=(.+)/")
 
-        return not (first_aws_key == second_aws_key)
+        return first_aws_key ~= second_aws_key
       end).ignore_exceptions(true).with_timeout(ttl_time * 2).is_truthy()
     end)
   end)
