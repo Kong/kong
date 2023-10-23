@@ -158,7 +158,6 @@ describe("cp outage handling", function ()
           cluster_fallback_config_export = exporter_role == "CP" and "on" or "off",
           cluster_fallback_config_export_delay = 2,
           db_update_frequency = 0.1,
-          dedicated_config_processing = "off",
           cluster_listen = "127.0.0.1:9005",
         }))
         assert(helpers.start_kong({
@@ -173,7 +172,6 @@ describe("cp outage handling", function ()
           cluster_fallback_config_export_delay = 2,
           cluster_control_plane = "127.0.0.1:9005",
           proxy_listen = "127.0.0.1:9006", -- otherwise it won't start
-          dedicated_config_processing = "off",
           stream_listen = "off",
         }))
         client = helpers.admin_client()
@@ -231,7 +229,6 @@ describe("cp outage handling", function ()
           cluster_fallback_export_s3_config = exporter_role == "CP" and cluster_fallback_export_s3_config or nil,
           cluster_fallback_config_export_delay = 2,
           db_update_frequency = 0.1,
-          dedicated_config_processing = "off",
           cluster_listen = "127.0.0.1:9005",
         }))
         assert(helpers.start_kong({
@@ -247,7 +244,6 @@ describe("cp outage handling", function ()
           cluster_fallback_config_export_delay = 2,
           cluster_control_plane = "127.0.0.1:9005",
           proxy_listen = "127.0.0.1:9006", -- otherwise it won't start
-          dedicated_config_processing = "off",
           stream_listen = "off",
         }))
         client = helpers.admin_client()

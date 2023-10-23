@@ -585,7 +585,7 @@ function _M:init_worker(basic_info)
   self.filters = basic_info.filters
 
   self.is_exporter = self.conf.cluster_fallback_config_export
-                     and worker_id() == 0
+                     and clustering_utils.is_dp_worker_process()
 
   local push_config_semaphore = semaphore.new()
 
