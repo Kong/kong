@@ -205,7 +205,7 @@ local function telemetry_communicate(premature, self, uri, server_name, on_conne
 
   local conf = kong and kong.configuration or {}
   if conf.cluster_use_proxy then
-    local proxy_opts = clustering_utils.parse_proxy_url(conf)
+    local proxy_opts = clustering_utils.parse_proxy_url(conf.proxy_server)
     opts.proxy_opts = {
       wss_proxy = proxy_opts.proxy_url,
       wss_proxy_authorization = proxy_opts.proxy_authorization,
