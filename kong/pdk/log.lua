@@ -321,11 +321,11 @@ local function gen_log_func(lvl_const, imm_buf, to_string, stack_level, sep)
     end
 
     if serializers[n] then
-      serializers[n](variadic_buf, sep, to_string, ...)
+      serializers[n](variadic_buf, sep or "" , to_string, ...)
 
     else
       for i = 1, n - 1 do
-        variadic_buf:put(to_string((select(i, ...)))):put(sep)
+        variadic_buf:put(to_string((select(i, ...)))):put(sep or "" )
       end
       variadic_buf:put(to_string((select(n, ...))))
     end
