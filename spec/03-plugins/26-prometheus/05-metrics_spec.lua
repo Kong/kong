@@ -64,6 +64,25 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      local route1 = bp.routes:insert{
+        name = "serverless",
+        protocols = {"https"},
+        hosts = {"status.example.com"},
+        paths = {"/serverless"},
+        no_service = true,
+      }
+
+      assert(bp.plugins:insert {
+        name = "request-termination",
+        route = { id = route1.id },
+        config = {
+          status_code = 200,
+          message = "request terminated by request-termination plugin",
+          echo = true,
+        },
+      })
+
+
       bp.plugins:insert{
         name = "prometheus", -- globally enabled
         config = {
@@ -156,6 +175,39 @@ for _, strategy in helpers.each_strategy() do
 
       assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
       assert.matches('kong_nginx_connections_total{node_id="' .. UUID_PATTERN .. '",subsystem="' .. ngx.config.subsystem .. '",state="%w+"} %d+', body)
+    end)
+
+    it("expose metrics in no service route", function()
+      local res = assert(proxy_ssl_client:send{
+        method = "GET",
+        path = "/serverless",
+        headers = {
+          ["Host"] = "status.example.com"
+        }
+      })
+      assert.res_status(200, res)
+
+      local res = assert(proxy_ssl_client:send{
+        method = "GET",
+        path = "/metrics",
+        headers = {
+          ["Host"] = "status.example.com"
+        }
+      })
+      assert.res_status(200, res)
+
+      helpers.wait_until(function()
+        local res = assert(admin_ssl_client:send{
+          method = "GET",
+          path = "/metrics"
+        })
+        local body = assert.res_status(200, res)
+
+        assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
+        return body:find('kong_http_requests_total{service="",route="serverless",code="200",source="kong",consumer=""} 1',
+          nil, true)
+      end)
     end)
 
   end)

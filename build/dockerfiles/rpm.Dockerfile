@@ -1,5 +1,5 @@
 ARG KONG_BASE_IMAGE=redhat/ubi8
-FROM $KONG_BASE_IMAGE
+FROM --platform=$TARGETPLATFORM $KONG_BASE_IMAGE
 
 LABEL maintainer="Kong Docker Maintainers <docker@konghq.com> (@team-gateway-bot)"
 
