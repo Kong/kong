@@ -7,6 +7,7 @@ local fixtures = require "spec.fixtures.aws-lambda"
 local TEST_CONF = helpers.test_conf
 local server_tokens = meta._SERVER_TOKENS
 local null = ngx.null
+local fmt = string.format
 
 
 
@@ -1180,6 +1181,98 @@ for _, strategy in helpers.each_strategy() do
         assert.is_string(res.headers.age)
         assert.is_array(res.headers["Access-Control-Allow-Origin"])
       end)
+    end)
+  end)
+
+  describe("Plugin: AWS Lambda with #vault [#" .. strategy .. "]", function ()
+    local proxy_client
+    local admin_client
+
+    local ttl_time = 1
+
+    lazy_setup(function ()
+      helpers.setenv("KONG_VAULT_ROTATION_INTERVAL", "1")
+
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "vaults",
+      }, { "aws-lambda" }, { "random" })
+
+      local route1 = bp.routes:insert {
+        hosts = { "lambda-vault.com" },
+      }
+
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route1.id },
+        config   = {
+          port          = 10001,
+          aws_key       = fmt("{vault://random/aws_key?ttl=%s&resurrect_ttl=0}", ttl_time),
+          aws_secret    = "aws_secret",
+          aws_region    = "us-east-1",
+          function_name = "functionEcho",
+        },
+      }
+
+      assert(helpers.start_kong({
+        database       = strategy,
+        prefix = helpers.test_conf.prefix,
+        nginx_conf     = "spec/fixtures/custom_nginx.template",
+        vaults         = "random",
+        plugins        = "bundled",
+        log_level      = "error",
+      }, nil, nil, fixtures))
+    end)
+
+    lazy_teardown(function()
+      helpers.unsetenv("KONG_VAULT_ROTATION_INTERVAL")
+
+      helpers.stop_kong()
+    end)
+
+    before_each(function()
+      proxy_client = helpers.proxy_client()
+      admin_client = helpers.admin_client()
+    end)
+
+    after_each(function ()
+      proxy_client:close()
+      admin_client:close()
+    end)
+
+    it("lambda service should use latest reference value after Vault ttl", function ()
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+        headers = {
+          ["Host"] = "lambda-vault.com"
+        }
+      })
+      assert.res_status(200, res)
+      local body = assert.response(res).has.jsonbody()
+      local authorization_header = body.headers.authorization
+      local first_aws_key = string.match(authorization_header, "Credential=(.+)/")
+
+      assert.eventually(function()
+        proxy_client:close()
+        proxy_client = helpers.proxy_client()
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+          headers = {
+            ["Host"] = "lambda-vault.com"
+          }
+        })
+        assert.res_status(200, res)
+        local body = assert.response(res).has.jsonbody()
+        local authorization_header = body.headers.authorization
+        local second_aws_key = string.match(authorization_header, "Credential=(.+)/")
+
+        return first_aws_key ~= second_aws_key
+      end).ignore_exceptions(true).with_timeout(ttl_time * 2).is_truthy()
     end)
   end)
 end
