@@ -1151,9 +1151,9 @@ return {
       -- to plugins in the access phase for doing headers propagation
       instrumentation.precreate_balancer_span(ctx)
 
-      local is_timing_enabled = ctx.is_timing_enabled
+      local has_timing = ctx.has_timing
 
-      if is_timing_enabled then
+      if has_timing then
         req_dyn_hook_run_hooks(ctx, "timing", "before:router")
       end
 
@@ -1161,7 +1161,7 @@ return {
       local router = get_updated_router()
       local match_t = router:exec(ctx)
 
-      if is_timing_enabled then
+      if has_timing then
         req_dyn_hook_run_hooks(ctx, "timing", "after:router")
       end
 
@@ -1182,7 +1182,7 @@ return {
 
       ctx.workspace = match_t.route and match_t.route.ws_id
 
-      if is_timing_enabled then
+      if has_timing then
         req_dyn_hook_run_hooks(ctx, "timing", "workspace_id:got", ctx.workspace)
       end
 
