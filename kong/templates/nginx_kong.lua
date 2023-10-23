@@ -453,7 +453,7 @@ server {
 }
 > end
 
-> if (role == "control_plane" or role == "traditional") and #admin_listen > 0 and #admin_gui_listeners > 0 then
+> if (role == "control_plane" or role == "traditional") and #admin_listeners > 0 and #admin_gui_listeners > 0 then
 server {
     server_name kong_gui;
 > for i = 1, #admin_gui_listeners do
@@ -496,7 +496,7 @@ server {
 
     include nginx-kong-gui-include.conf;
 }
-> end -- of the (role == "control_plane" or role == "traditional") and #admin_listen > 0 and #admin_gui_listeners > 0
+> end -- of the (role == "control_plane" or role == "traditional") and #admin_listeners > 0 and #admin_gui_listeners > 0
 
 > if role == "control_plane" then
 server {
