@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package targetservice;
+
+option go_package = "./targetservice";
+
+message ExtraType {
+  string greeting = 1 [json_name="blessing"];
+}

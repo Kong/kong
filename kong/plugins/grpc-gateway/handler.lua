@@ -6,7 +6,6 @@ local kong_meta = require "kong.meta"
 local ngx = ngx
 local kong = kong
 
-
 local ngx_arg = ngx.arg
 
 local kong_request_get_path = kong.request.get_path
@@ -24,11 +23,10 @@ local grpc_gateway = {
   VERSION = kong_meta.version,
 }
 
-
 local CORS_HEADERS = {
   ["Content-Type"] = "application/json",
   ["Access-Control-Allow-Origin"] = "*",
-  ["Access-Control-Allow-Methods"] = "GET,POST,PATCH,DELETE",
+  ["Access-Control-Allow-Methods"] = "GET,POST,PUT,PATCH,DELETE",
   ["Access-Control-Allow-Headers"] = "content-type", -- TODO: more headers?
 }
 
@@ -41,7 +39,7 @@ function grpc_gateway:access(conf)
 
 
   local dec, err = deco.new(kong_request_get_method():lower(),
-                            kong_request_get_path(), conf.proto)
+                            kong_request_get_path(), conf)
 
   if not dec then
     kong.log.err(err)
@@ -50,13 +48,14 @@ function grpc_gateway:access(conf)
 
   kong.ctx.plugin.dec = dec
 
-  kong_service_request_set_header("Content-Type", "application/grpc")
-  kong_service_request_set_header("TE", "trailers")
   local body, err = dec:upstream(kong_request_get_raw_body())
   if err then
     kong.log.err(err)
-    return kong_response_exit(400, err)
+    return kong_response_exit(400, err, { ["Content-Type"] = "text/html" })
   end
+  
+  kong_service_request_set_header("Content-Type", "application/grpc")
+  kong_service_request_set_header("TE", "trailers")
   kong_service_request_set_raw_body(body)
 
   ngx.req.set_uri(dec.rewrite_path)
@@ -120,7 +119,7 @@ function grpc_gateway:body_filter(conf)
   if not ret or #ret == 0 then
     if ngx_arg[2] then
       -- it's eof and we still cannot decode, fall through
-      ret = deco:get_raw_downstream_body()
+      ret = dec:get_raw_downstream_body()
     else
       -- clear output if we cannot decode, it could be body is not complete yet
       ret = nil

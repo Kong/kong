@@ -153,6 +153,7 @@ build = {
 
     ["kong.tools.dns"] = "kong/tools/dns.lua",
     ["kong.tools.grpc"] = "kong/tools/grpc.lua",
+    ["kong.tools.protojson"] = "kong/tools/protojson.lua",    
     ["kong.tools.utils"] = "kong/tools/utils.lua",
     ["kong.tools.timestamp"] = "kong/tools/timestamp.lua",
     ["kong.tools.stream_api"] = "kong/tools/stream_api.lua",
