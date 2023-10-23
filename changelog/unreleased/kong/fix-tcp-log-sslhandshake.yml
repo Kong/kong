@@ -1,0 +1,3 @@
+message: fix an issue that repeated ssl handshake in tcp-log plugin
+type: bugfix
+scope: Plugin
