@@ -100,22 +100,22 @@ function _M:handle_cp_websocket()
 end
 
 
-function _M:init_cp_worker(plugins_list)
+function _M:init_cp_worker(basic_info)
 
   events.init()
 
   self.instance = require("kong.clustering.control_plane").new(self)
-  self.instance:init_worker(plugins_list)
+  self.instance:init_worker(basic_info)
 end
 
 
-function _M:init_dp_worker(plugins_list)
+function _M:init_dp_worker(basic_info)
   if not is_dp_worker_process() then
     return
   end
 
   self.instance = require("kong.clustering.data_plane").new(self)
-  self.instance:init_worker(plugins_list)
+  self.instance:init_worker(basic_info)
 end
 
 
