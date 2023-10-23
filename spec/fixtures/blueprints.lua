@@ -226,6 +226,15 @@ function _M.new(db)
       service = service,
     }
 
+    if overrides.no_service then
+      service = nil
+      overrides.no_service = nil
+      return {
+        service = service,
+      }
+    end
+
+
     if type(service) == "table" then
       -- set route.protocols from service
       if service.protocol == "ws" or
