@@ -433,6 +433,11 @@ json_to_message = function( m, m_type, path )
       elseif ( f_label == "repeated" or f_label == "packed" ) then
         pm[ f_name ] = {}
 
+        -- if the input is just a scalar - might happen for single-value table
+        if ( type( m[ name ] ) == "string" or type( m[ name ] ) == "number" )  then
+          m[ name ] = { m[ name ] } -- convert to a table
+        end
+
         for k, v in ipairs( m[ name ] or {} ) do
           table.insert( pm[ f_name ], json_to_field( v, f_type, ( "%s[%d]" ):format( p, k ) ) )
         end
