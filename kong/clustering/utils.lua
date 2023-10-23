@@ -37,9 +37,9 @@ local CLUSTER_PROXY_SSL_TERMINATOR_SOCK = fmt("unix:%s/cluster_proxy_ssl_termina
 local _M = {}
 
 
-local function parse_proxy_url(conf)
+local function parse_proxy_url(proxy_server)
   local ret = {}
-  local proxy_server = conf.proxy_server
+
   if proxy_server then
     -- assume proxy_server is validated in conf_loader
     local parsed = parse_url(proxy_server)
@@ -90,7 +90,7 @@ function _M.connect_cp(dp, endpoint, protocols)
   }
 
   if conf.cluster_use_proxy then
-    local proxy_opts = parse_proxy_url(conf)
+    local proxy_opts = parse_proxy_url(conf.proxy_server)
     opts.proxy_opts = {
       wss_proxy = proxy_opts.proxy_url,
       wss_proxy_authorization = proxy_opts.proxy_authorization,
