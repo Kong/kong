@@ -91,6 +91,10 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             hosts = { "ldap7.test" },
           }
 
+          local route8 = bp.routes:insert {
+            hosts = { "ldap8.test" },
+          }
+
           assert(bp.routes:insert {
             protocols = { "grpc" },
             paths = { "/hello.HelloService/" },
@@ -127,6 +131,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               attribute        = "uid",
               hide_credentials = true,
               cache_ttl        = 2,
+              realm            = "test-ldap",
             }
           }
 
@@ -194,6 +199,20 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             }
           }
 
+          bp.plugins:insert {
+            route = { id = route8.id },
+            name     = "ldap-auth",
+            config   = {
+              ldap_host = ldap_host_aws,
+              ldap_port = 389,
+              start_tls = ldap_strategy.start_tls,
+              base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
+              attribute = "uid",
+              header_type = "Basic",
+              realm = "test-ldap",
+            }
+          }
+
           assert(helpers.start_kong({
             database   = strategy,
             nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -228,8 +247,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             }
           })
           assert.response(res).has.status(401)
-          local value = assert.response(res).has.header("www-authenticate")
-          assert.are.equal('LDAP realm="kong"', value)
+          assert.equal('LDAP', res.headers["WWW-Authenticate"])
           local json = assert.response(res).has.jsonbody()
           assert.equal("Unauthorized", json.message)
         end)
@@ -266,6 +284,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             }
           })
           assert.response(res).has.status(401)
+          assert.equal('LDAP', res.headers["WWW-Authenticate"])
           local json = assert.response(res).has.jsonbody()
           assert.equal("Unauthorized", json.message)
         end)
@@ -279,6 +298,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             }
           })
           assert.response(res).has.status(401)
+          assert.equal('LDAP', res.headers["WWW-Authenticate"])
           local json = assert.response(res).has.jsonbody()
           assert.equal("Unauthorized", json.message)
         end)
@@ -310,7 +330,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
         end)
 
         it("fails if credential type is invalid in post request", function()
-          local r = assert(proxy_client:send {
+          local res = assert(proxy_client:send {
             method = "POST",
             path = "/request",
             body = {},
@@ -320,7 +340,8 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               ["content-type"] = "application/x-www-form-urlencoded",
             }
           })
-          assert.response(r).has.status(401)
+          assert.response(res).has.status(401)
+          assert.equal('LDAP', res.headers["WWW-Authenticate"])
         end)
         it("passes if credential is valid and starts with space in post request", function()
           local res = assert(proxy_client:send {
@@ -368,6 +389,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             }
           })
           assert.response(res).has.status(401)
+          assert.equal('LDAP', res.headers["WWW-Authenticate"])
         end)
         it("authorization fails with correct status with wrong very long password", function()
           local res = assert(proxy_client:send {
@@ -379,6 +401,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             }
           })
           assert.response(res).has.status(401)
+          assert.equal('LDAP', res.headers["WWW-Authenticate"])
         end)
         it("authorization fails if credential has multiple encoded usernames or passwords separated by ':' in get request", function()
           local res = assert(proxy_client:send {
@@ -390,6 +413,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             }
           })
           assert.response(res).has.status(401)
+          assert.equal('LDAP', res.headers["WWW-Authenticate"])
         end)
         it("does not pass if credential is invalid in get request", function()
           local res = assert(proxy_client:send {
@@ -401,6 +425,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             }
           })
           assert.response(res).has.status(401)
+          assert.equal('LDAP', res.headers["WWW-Authenticate"])
         end)
         it("does not hide credential sent along with authorization header to upstream server", function()
           local res = assert(proxy_client:send {
@@ -427,6 +452,18 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           assert.response(res).has.status(200)
           assert.request(res).has.no.header("authorization")
         end)
+        it("does not pass if credential is invalid in get request and passes www-authenticate realm information", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/request",
+            headers = {
+              host          = "ldap2.test",
+              authorization = "ldap " .. ngx.encode_base64("einstein:wrong_password")
+            }
+          })
+          assert.response(res).has.status(401)
+          assert.equal('LDAP realm="test-ldap"', res.headers["WWW-Authenticate"])
+        end)
         it("passes if custom credential type is given in post request", function()
           local r = assert(proxy_client:send {
             method = "POST",
@@ -452,13 +489,28 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           assert.response(res).has.status(401)
 
           local value = assert.response(res).has.header("www-authenticate")
-          assert.equal('Basic realm="kong"', value)
+          assert.equal('Basic', value)
+          local json = assert.response(res).has.jsonbody()
+          assert.equal("Unauthorized", json.message)
+        end)
+        it("injects conf.header_type in WWW-Authenticate header and realm if provided", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get",
+            headers = {
+              host  = "ldap8.test",
+            }
+          })
+          assert.response(res).has.status(401)
+
+          local value = assert.response(res).has.header("www-authenticate")
+          assert.equal('Basic realm="test-ldap"', value)
           local json = assert.response(res).has.jsonbody()
           assert.equal("Unauthorized", json.message)
         end)
         if proto ~= "websocket" then
         it("fails if custom credential type is invalid in post request", function()
-          local r = assert(proxy_client:send {
+          local res = assert(proxy_client:send {
             method = "POST",
             path = "/request",
             body = {},
@@ -468,7 +520,8 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               ["content-type"] = "application/x-www-form-urlencoded",
             }
           })
-          assert.response(r).has.status(401)
+          assert.response(res).has.status(401)
+          assert.equal('Basic', res.headers["WWW-Authenticate"])
         end)
         end
         it("passes if credential is valid in get request using global plugin", function()
@@ -716,6 +769,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               }
             })
             assert.response(res).has.status(401)
+            assert.equal('LDAP', res.headers["WWW-Authenticate"])
           end)
 
           it("fails 401, with only the second credential provided", function()
@@ -728,6 +782,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               }
             })
             assert.response(res).has.status(401)
+            assert.equal('Key', res.headers["WWW-Authenticate"])
           end)
 
           it("fails 401, with no credential provided", function()
@@ -739,6 +794,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               }
             })
             assert.response(res).has.status(401)
+            assert.equal('Key', res.headers["WWW-Authenticate"])
           end)
 
         end)
