@@ -325,7 +325,7 @@ local function gen_log_func(lvl_const, imm_buf, to_string, stack_level, sep)
 
     else
       for i = 1, n - 1 do
-        variadic_buf:put(to_string((select(i, ...)))):put(sep or "" )
+        variadic_buf:put(to_string((select(i, ...)))):put(sep or "")
       end
       variadic_buf:put(to_string((select(n, ...))))
     end
