@@ -142,7 +142,7 @@ local cachelookup = function(qname, qtype)
   local cached = dnscache:get(key)
 
   local ctx = ngx.ctx
-  if ctx and ctx.is_timing_enabled then
+  if ctx and ctx.has_timing then
     req_dyn_hook_run_hooks(ctx, "timing", "dns:cache_lookup", cached ~= nil)
   end
 
