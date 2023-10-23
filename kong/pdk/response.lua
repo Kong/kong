@@ -12,6 +12,7 @@
 -- @module kong.response
 
 
+local buffer = require "string.buffer"
 local cjson = require "cjson.safe"
 local checks = require "kong.pdk.private.checks"
 local phase_checker = require "kong.pdk.private.phases"
@@ -27,7 +28,6 @@ local find = string.find
 local lower = string.lower
 local error = error
 local pairs = pairs
-local concat = table.concat
 local coroutine = coroutine
 local cjson_encode = cjson.encode
 local normalize_header = checks.normalize_header
@@ -568,39 +568,27 @@ local function new(self, major_version)
   function _RESPONSE.get_raw_body()
     check_phase(PHASES.body_filter)
 
-    local body_buffer
+    local body_buffer = ngx.ctx.KONG_BODY_BUFFER
     local chunk = arg[1]
     local eof = arg[2]
-    if eof then
-      body_buffer = ngx.ctx.KONG_BODY_BUFFER
-      if not body_buffer then
-        return chunk
-      end
+
+    if eof and not body_buffer then
+      return chunk
     end
 
     if type(chunk) == "string" and chunk ~= "" then
-      if not eof then
-        body_buffer = ngx.ctx.KONG_BODY_BUFFER
-      end
-
-      if body_buffer then
-        local n = body_buffer.n + 1
-        body_buffer.n = n
-        body_buffer[n] = chunk
-
-      else
-        body_buffer = {
-          chunk,
-          n = 1,
-        }
+      if not body_buffer then
+        body_buffer = buffer.new()
 
         ngx.ctx.KONG_BODY_BUFFER = body_buffer
       end
+
+      body_buffer:put(chunk)
     end
 
     if eof then
       if body_buffer then
-        body_buffer = concat(body_buffer, "", 1, body_buffer.n)
+        body_buffer = body_buffer:get()
       else
         body_buffer = ""
       end
