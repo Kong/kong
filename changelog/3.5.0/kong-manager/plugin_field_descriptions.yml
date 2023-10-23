@@ -1,0 +1,3 @@
+message: Plugin form fields now display descriptions from backend schema.
+type: feature
+githubs: [66]
