@@ -760,11 +760,13 @@ describe(desc, function()
     local log_output = assert_has_output_log(deployment, "/mutiple-spans", "rewrite,header_filter,body_filter, upstream")
 
     assert.same(4 - 1, table_nkeys(header_output.child)) -- header_output should not has body_filter
+    assert.truthy(header_output.workspace_id)
     assert.truthy(header_output.child.rewrite)
     assert.truthy(header_output.child.header_filter)
     assert.truthy(header_output.child.upstream)
 
     assert.same(4, table_nkeys(log_output.child))
+    assert.truthy(header_output.workspace_id)
     assert.truthy(log_output.child.rewrite)
     assert.truthy(log_output.child.header_filter)
     assert.truthy(log_output.child.body_filter)

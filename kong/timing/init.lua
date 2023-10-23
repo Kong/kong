@@ -199,10 +199,6 @@ end
 
 
 function _M.set_root_context_prop(k, v)
-  if not should_run() then
-    return
-  end
-
   ngx.ctx.req_trace_ctx:set_root_context_prop(k, v)
 end
 

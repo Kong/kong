@@ -1,0 +1,3 @@
+message: fix the missing workspace_id in the output of request debugging when using the filter
+type: bugfix
+scope: Core
