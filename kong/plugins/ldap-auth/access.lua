@@ -6,10 +6,10 @@ local kong = kong
 local error = error
 local decode_base64 = ngx.decode_base64
 local tostring =  tostring
-local match = string.match
+local re_find = ngx.re.find
+local re_match = ngx.re.match
 local lower = string.lower
 local upper = string.upper
-local find = string.find
 local sub = string.sub
 local fmt = string.format
 local tcp = ngx.socket.tcp
@@ -24,15 +24,37 @@ local _M = {}
 
 
 local function retrieve_credentials(authorization_header_value, conf)
+  local lower_header_type = lower(conf.header_type)
+  local regex = "^\\s*" .. lower_header_type .. "\\s+"
+  local from, to, err = re_find(lower(authorization_header_value), regex, "jo")
+  if err then
+    kong.log.err("error while find header_type: ", lower_header_type, " in authorization header value")
+    return nil
+  end
+
+  if not from then
+    kong.log.info("header_type: ", lower_header_type, " not found in authorization header value")
+    return nil
+  end
+
   local username, password
-  if authorization_header_value then
-    local s, e = find(lower(authorization_header_value), "^%s*" ..
-                      lower(conf.header_type) .. "%s+")
-    if s == 1 then
-      local cred = sub(authorization_header_value, e + 1)
-      local decoded_cred = decode_base64(cred)
-      username, password = match(decoded_cred, "(.-):(.+)")
+  if from == 1 then
+    local cred = sub(authorization_header_value, to + 1)
+    local decoded_cred = decode_base64(cred)
+    local m, err = re_match(decoded_cred, "^(.*?):(.+)$", "jo")
+    if err then
+      kong.log.err("error while decoding credentials: ", err)
+      return nil
     end
+
+    if type(m) == "table" and #m == 2 then
+      username = m[1]
+      password = m[2]
+    else
+      kong.log.err("no valid credentials found in authorization header value")
+      return nil
+    end
+
   end
 
   return username, password
@@ -231,8 +253,12 @@ local function do_authentication(conf)
     }
   end
 
-  local is_authorized, credential = authenticate(conf, proxy_authorization_value)
-  if not is_authorized then
+  local is_authorized, credential
+  if proxy_authorization_value then
+    is_authorized, credential = authenticate(conf, proxy_authorization_value)
+  end
+
+  if not is_authorized and authorization_value then
     is_authorized, credential = authenticate(conf, authorization_value)
   end
 
