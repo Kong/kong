@@ -61,7 +61,6 @@ do
 end
 
 
-local NEXT_SEQ = 0
 local PLUGINS_NS = "plugins." .. subsystem
 local ENABLED_PLUGINS
 local LOADED_PLUGINS
@@ -170,8 +169,13 @@ local function get_plugin_config(plugin, name, ws_id)
   -- TODO: deprecate usage of __key__ as id of plugin
   if not cfg.__key__ then
     cfg.__key__ = key
-    cfg.__seq__ = NEXT_SEQ
-    NEXT_SEQ = NEXT_SEQ + 1
+    -- generate a unique sequence across workers
+    -- with a seq 0, plugin server generates an unused random instance id
+    local next_seq, err = ngx.shared.kong:incr("plugins_iterator:__seq__", 1, 0, 0)
+    if err then
+      next_seq = 0
+    end
+    cfg.__seq__ = next_seq
   end
 
   return cfg
