@@ -155,14 +155,13 @@ function _M.connect_dp(dp_id, dp_hostname, dp_ip, dp_version)
   return wb, log_suffix
 end
 
-
 function _M.is_dp_worker_process()
-  if kong.configuration.dedicated_config_processing == true then
+  if kong.configuration.role == "data_plane"
+      and kong.configuration.dedicated_config_processing == true then
     return process_type() == "privileged agent"
   end
 
   return worker_id() == 0
 end
-
 
 return _M
