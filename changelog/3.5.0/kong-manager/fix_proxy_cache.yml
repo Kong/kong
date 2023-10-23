@@ -1,2 +1,3 @@
 message: Fix a bug where the `proxy-cache` plugin cannot be installed.
 type: bugfix
+githubs: [104]
