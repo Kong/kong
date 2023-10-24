@@ -23,7 +23,7 @@ local cjson = require("cjson.safe").new()
 
 local yield = utils.yield
 local get_updated_now_ms = utils.get_updated_now_ms
-local replace_dashes     = string_tools.replace_dashes
+local replace_dashes = string_tools.replace_dashes
 
 
 local ngx = ngx
