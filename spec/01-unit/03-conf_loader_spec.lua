@@ -1276,7 +1276,7 @@ describe("Configuration loader", function()
           end
         end)
         it("defines ssl_ciphers by default #fips", function()
-          local conf, err = conf_loader(nil, {})
+          local conf, err = conf_loader(nil, {fips = helpers.is_fips_build()})
           assert.is_nil(err)
           if not helpers.is_fips_build() then
             assert.equal("ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384", conf.ssl_ciphers)
@@ -1318,7 +1318,7 @@ describe("Configuration loader", function()
           assert.same(nil, conf.ssl_ciphers)
         end)
         it("defines ssl_dhparam with default cipher suite #fips", function()
-          local conf, err = conf_loader()
+          local conf, err = conf_loader(nil, {fips = helpers.is_fips_build()})
           assert.is_nil(err)
           if not helpers.is_fips_build() then
             assert.equal("ffdhe2048", conf.nginx_http_ssl_dhparam)
