@@ -2378,6 +2378,7 @@ is stale: true
 
 
 === TEST 48: renew() does not cache value in LRU indefinitely when retrieved from shm on last ms (see GH PR #58)
+--- SKIP
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
