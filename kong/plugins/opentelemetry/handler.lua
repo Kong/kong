@@ -115,16 +115,18 @@ function OpenTelemetryHandler:access(conf)
   -- overwrite trace id
   -- as we are in a chain of existing trace
   if trace_id then
+    -- to propagate the correct trace ID we have to set it here
+    -- before passing this span to propagation.set()
     injected_parent_span.trace_id = trace_id
     kong.ctx.plugin.trace_id = trace_id
   end
 
-  -- overwrite parent span's parent_id
+  -- overwrite root span's parent_id
   if span_id then
-    injected_parent_span.parent_id = span_id
+    root_span.parent_id = span_id
 
   elseif parent_id then
-    injected_parent_span.parent_id = parent_id
+    root_span.parent_id = parent_id
   end
 
   propagation_set(conf.header_type, header_type, injected_parent_span, "w3c")
