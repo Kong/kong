@@ -109,7 +109,7 @@ jobs:
 
         echo "matrix=$(yq e -I=0 -o=json $matrix_file)" >> $GITHUB_OUTPUT
 
-        echo "release-runs-on=${{ github.event_name == 'pull_request' && 'ubuntu-latest-kong' || 'ubuntu-latest' }}" >> $GITHUB_OUTPUT
+        echo "release-runs-on=${{ github.event_name == 'pull_request' && 'ubuntu-latest-kong' || vars.RELEASE_RUNS_ON }}" >> $GITHUB_OUTPUT
 
         cat $GITHUB_OUTPUT
 
