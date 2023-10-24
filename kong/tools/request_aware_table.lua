@@ -3,7 +3,7 @@
 
 local table_new = require("table.new")
 local table_clear = require("table.clear")
-local request_id = require("kong.tracing.request_id")
+local get_request_id = require("kong.tracing.request_id").get
 
 
 local is_not_debug_mode = (kong.configuration.log_level ~= "debug")
@@ -12,9 +12,6 @@ local is_not_debug_mode = (kong.configuration.log_level ~= "debug")
 local error        = error
 local rawset       = rawset
 local setmetatable = setmetatable
-
-
-local get_request_id = request_id.get
 
 
 local ALLOWED_REQUEST_ID_K = "__allowed_request_id"
