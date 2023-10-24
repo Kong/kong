@@ -473,6 +473,75 @@ export const deletePlugin = async (pluginId: string) => {
   expect(resp.status, 'Status should be 204').to.equal(204);
 };
 
+
+/**
+ * Create a filter chain on a service
+ * @param {object} filterChainPayload - request body for filter chain creation
+ * @param {string} serviceNameOrId - service name or id to attach the filter chain
+ * @param {string} workspace - optional name of the workspace to create filter chain
+ * @returns {AxiosResponse}
+ */
+export const createFilterChainForService = async (
+  filterChainPayload: object,
+  serviceNameOrId: string,
+  workspace?: string
+) => {
+  workspace = workspace ? workspace : 'default';
+  const endpoint = `${workspace}/services/${serviceNameOrId}/filter-chains`;
+
+  const resp = await axios({
+    method: 'post',
+    url: `${getUrl(endpoint)}`,
+    data: filterChainPayload,
+  });
+  logResponse(resp);
+  expect(resp.status, 'Status should be 201').to.equal(201);
+
+  return resp.data;
+};
+
+/**
+ * Create a filter chain on a route
+ * @param {object} filterChainPayload - request body for filter chain creation
+ * @param {string} routeNameOrId - route name or id to attach the filter chain
+ * @param {string} workspace - optional name of the workspace to create filter chain
+ * @returns {AxiosResponse}
+ */
+export const createFilterChainForRoute = async (
+  filterChainPayload: object,
+  routeNameOrId: string,
+  workspace?: string
+) => {
+  workspace = workspace ? workspace : 'default';
+  const endpoint = `${workspace}/routes/${routeNameOrId}/filter-chains`;
+
+  const resp = await axios({
+    method: 'post',
+    url: `${getUrl(endpoint)}`,
+    data: filterChainPayload,
+  });
+  logResponse(resp);
+  expect(resp.status, 'Status should be 201').to.equal(201);
+
+  return resp.data;
+};
+
+/**
+ * Delete a filter chain
+ * @param {string} filterChainNameOrId
+ * @returns {AxiosResponse}
+ */
+export const deleteFilterChain = async (filterChainNameOrId: string) => {
+  const resp = await axios({
+    method: 'delete',
+    url: `${getUrl('filter-chains')}/${filterChainNameOrId}`,
+  });
+  logResponse(resp);
+  expect(resp.status, 'Status should be 204').to.equal(204);
+};
+
+
+
 /**
  * Delete kong cache
  */
