@@ -181,7 +181,7 @@ function AWSLambdaHandler:access(conf)
 
   local content = res.body
   if res.status >= 400 then
-    return error(content)
+    return error(content.Message)
   end
 
   -- TRACING: set KONG_WAITING_TIME stop
