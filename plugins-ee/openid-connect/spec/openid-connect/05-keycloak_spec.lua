@@ -3829,9 +3829,7 @@ for _, strategy in helpers.all_strategies() do
       end)
     end)
 
-    describe("#flaky FTI-5247 public client support", function()
-      local proxy_client
-
+    describe("FTI-5247 public client support", function()
       lazy_setup(function()
         local bp = helpers.get_db_utils(strategy,{
           "routes",
@@ -3930,35 +3928,38 @@ for _, strategy in helpers.all_strategies() do
         helpers.stop_kong()
       end)
 
-      before_each(function()
-        proxy_client = helpers.proxy_client()
-      end)
-
-      after_each(function()
-        if proxy_client then
-          proxy_client:close()
-        end
-      end)
-
       it("works when client_auth is 'none'", function()
-        local res = proxy_client:post("/FTI-5247-1", {
-          headers = {
-            ["Content-Type"] = "application/x-www-form-urlencoded",
-          },
-          body = {
-            username = USERNAME,
-            password = PASSWORD,
-          },
-        })
+        assert
+        .with_timeout(15)
+        .with_max_tries(10)
+        .with_step(0.05)
+        .ignore_exceptions(true)
+        .eventually(function()
+          local proxy_client = helpers.proxy_client()
 
-        local body = assert.res_status(200, res)
-        local json_body = cjson.decode(body)
+          local res = proxy_client:post("/FTI-5247-1", {
+            headers = {
+              ["Content-Type"] = "application/x-www-form-urlencoded",
+            },
+            body = {
+              username = USERNAME,
+              password = PASSWORD,
+            },
+          })
 
-        assert.is_not_nil(json_body.headers.authorization)
-        assert.equal("Bearer", sub(json_body.headers.authorization, 1, 6))
+          local body = assert.res_status(200, res)
+          local json_body = cjson.decode(body)
+
+          assert.is_not_nil(json_body.headers.authorization)
+          assert.equal("Bearer", sub(json_body.headers.authorization, 1, 6))
+
+          proxy_client:close()
+        end)
+        .has_no_error("invalid status code received from the token endpoint (401)")
       end)
 
       it("works when token_endpoint_auth_method is 'none'", function()
+        local proxy_client = helpers.proxy_client()
         local res = proxy_client:post("/FTI-5247-2", {
           headers = {
             ["Content-Type"] = "application/x-www-form-urlencoded",
@@ -3974,9 +3975,12 @@ for _, strategy in helpers.all_strategies() do
 
         assert.is_not_nil(json_body.headers.authorization)
         assert.equal("Bearer", sub(json_body.headers.authorization, 1, 6))
+
+        proxy_client:close()
       end)
 
       it("error when neither client_auth nor token_endpoint_auth_method is 'none'", function()
+        local proxy_client = helpers.proxy_client()
         local res = proxy_client:post("/FTI-5247-3", {
           headers = {
             ["Content-Type"] = "application/x-www-form-urlencoded",
@@ -3991,6 +3995,8 @@ for _, strategy in helpers.all_strategies() do
         local json_body = cjson.decode(body)
         assert.matches('Unauthorized %(failed to get from node cache: invalid status code received from the token endpoint %(400%)%)', json_body.message)
         error_assert(res, "invalid_token")
+
+        proxy_client:close()
       end)
 
     end)

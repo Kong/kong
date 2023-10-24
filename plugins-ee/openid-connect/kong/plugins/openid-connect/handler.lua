@@ -1121,7 +1121,7 @@ function OICHandler.access(_, conf)
         if auth_methods.userinfo then
           log("trying to validate token with user info endpoint")
           if type(userinfo_data) ~= "table" then
-            userinfo_data, err, userinfo_jwt = userinfo_load(access_token, ttl, ignore_signature.userinfo)
+            userinfo_data, err, userinfo_jwt = userinfo_load(access_token, ttl)
             userinfo_loaded = true
 
             if type(userinfo_data) == "table" then

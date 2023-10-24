@@ -1,0 +1,3 @@
+message: "**OpenID-Connect**: remove unwanted argument `ignore_signature.userinfo` from the `userinfo_load` function"
+type: bugfix
+scope: Plugin
