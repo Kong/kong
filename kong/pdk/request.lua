@@ -48,9 +48,6 @@ local get_body_file = req.get_body_file
 local decode_args = ngx.decode_args
 
 
-local is_http_subsystem = ngx and ngx.config.subsystem == "http"
-
-
 local PHASES = phase_checker.phases
 
 
@@ -92,19 +89,7 @@ local function new(self)
     end
   end
 
-  local replace_dashes do
-    -- 1.000.000 iterations with input of "my-header":
-    -- string.gsub:        81ms
-    -- ngx.re.gsub:        74ms
-    -- loop/string.buffer: 28ms
-    -- str_replace_char:   14ms
-    if is_http_subsystem then
-      local str_replace_char = require("resty.core.utils").str_replace_char
-      replace_dashes = function(str)
-        return str_replace_char(str, "-", "_")
-      end
-    end
-  end
+  local replace_dashes = require("kong.tools.string").replace_dashes
 
 
   ---

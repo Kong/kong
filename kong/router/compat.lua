@@ -17,7 +17,8 @@ local tb_nkeys = require("table.nkeys")
 local uuid = require("resty.jit-uuid")
 
 
-local shallow_copy    = require("kong.tools.utils").shallow_copy
+local shallow_copy          = require("kong.tools.utils").shallow_copy
+local replace_dashes_lower  = require("kong.tools.string").replace_dashes_lower
 
 
 local is_regex_magic  = utils.is_regex_magic
@@ -258,7 +259,7 @@ local function get_expression(route)
       single_header_buf:reset():put("(")
 
       for i, value in ipairs(v) do
-        local name = "any(http.headers." .. h:gsub("-", "_"):lower() .. ")"
+        local name = "any(http.headers." .. replace_dashes_lower(h) .. ")"
         local op = OP_EQUAL
 
         -- value starts with "~*"
