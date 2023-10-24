@@ -153,6 +153,10 @@ function NewRLHandler:init_worker()
   self.gql_schema = {}
   self.costs = {}
 
+  if kong.configuration.database == "off" or not (kong.worker_events and kong.worker_events.register) then
+    return
+  end
+
   local worker_events = kong.worker_events
 
   -- event handlers to update recurring sync timers

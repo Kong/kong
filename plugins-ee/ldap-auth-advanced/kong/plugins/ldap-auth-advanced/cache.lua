@@ -20,7 +20,7 @@ end
 
 
 function _M.init_worker()
-  if not kong.worker_events or not kong.worker_events.register then
+  if kong.configuration.database == "off" or not (kong.worker_events and kong.worker_events.register) then
     return
   end
 

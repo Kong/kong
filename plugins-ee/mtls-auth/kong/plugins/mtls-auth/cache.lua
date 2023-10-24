@@ -53,7 +53,7 @@ function _M.init_worker()
     kong.log.err("unable to warmup SNI filter: ", err)
   end
 
-  if not kong.worker_events or not kong.worker_events.register then
+  if kong.configuration.database == "off" or not (kong.worker_events and kong.worker_events.register) then
     return
   end
 

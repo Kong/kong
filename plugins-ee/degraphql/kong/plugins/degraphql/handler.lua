@@ -44,6 +44,11 @@ end
 -- semaphores and stuff
 function DeGraphQLHandler:init_worker()
   self:init_router()
+
+  if kong.configuration.database == "off" or not (kong.worker_events and kong.worker_events.register) then
+    return
+  end
+
   kong.worker_events.register(function(data)
     workspaces.set_workspace(data.workspace)
     self:init_router()

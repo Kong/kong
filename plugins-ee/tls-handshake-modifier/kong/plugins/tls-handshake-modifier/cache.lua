@@ -17,6 +17,10 @@ local function invalidate_sni_cache()
 end
 
 function _M.init_worker()
+  if kong.configuration.database == "off" or not (kong.worker_events and kong.worker_events.register) then
+    return
+  end
+
   local worker_events = kong.worker_events
   if not worker_events or not worker_events.register then
     return

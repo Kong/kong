@@ -252,63 +252,9 @@ local function init_worker()
     end
   end
 
-  if not kong.worker_events or not kong.worker_events.register then
+  if not (kong.worker_events and kong.worker_events.register) then
     return
   end
-
-  kong.worker_events.register(function(data)
-    workspaces.set_workspace(data.workspace)
-    local operation = data.operation
-    log("consumer ", operation or "update", "d, invalidating cache")
-
-    local old_entity = data.old_entity
-    local old_username
-    local old_custom_id
-    if old_entity then
-      old_custom_id = old_entity.custom_id
-      if old_custom_id and old_custom_id ~= null and old_custom_id ~= "" then
-        kong.cache:invalidate(kong.db.consumers:cache_key("custom_id", old_custom_id))
-      end
-
-      old_username = old_entity.username
-      if old_username and old_username ~= null and old_username ~= "" then
-        kong.cache:invalidate(kong.db.consumers:cache_key("username", old_username))
-        kong.cache:invalidate(kong.db.consumers:cache_key("username_lower", old_username))
-      end
-    end
-
-    local entity = data.entity
-    if entity then
-      local custom_id = entity.custom_id
-      if custom_id and custom_id ~= null and custom_id ~= "" and custom_id ~= old_custom_id then
-        kong.cache:invalidate(kong.db.consumers:cache_key("custom_id", custom_id))
-      end
-
-      local username = entity.username
-      if username and username ~= null and username ~= "" and username ~= old_username then
-        kong.cache:invalidate(kong.db.consumers:cache_key("username", username))
-        kong.cache:invalidate(kong.db.consumers:cache_key("username_lower", username))
-      end
-    end
-  end, "crud", "consumers")
-
-  kong.worker_events.register(function(data)
-    workspaces.set_workspace(data.workspace)
-    local operation = data.operation
-    log("issuer ", operation or "update", "d, invalidating cache")
-
-    local old_issuer
-    local old_entity = data.old_entity
-    if old_entity then
-      old_issuer = old_entity.issuer
-      kong.cache:invalidate(cache_key(old_issuer, "oic_issuers"))
-    end
-
-    local entity = data.entity
-    if entity and entity.issuer ~= old_issuer then
-      kong.cache:invalidate(cache_key(entity.issuer, "oic_issuers"))
-    end
-  end, "crud", "oic_issuers")
 
   if kong.configuration.database == "off" then
     local remove = table.remove
@@ -341,6 +287,61 @@ local function init_worker()
         end
       end
     end, "openid-connect", "delete-discovery")
+
+  else
+    kong.worker_events.register(function(data)
+      workspaces.set_workspace(data.workspace)
+      local operation = data.operation
+      log("consumer ", operation or "update", "d, invalidating cache")
+
+      local old_entity = data.old_entity
+      local old_username
+      local old_custom_id
+      if old_entity then
+        old_custom_id = old_entity.custom_id
+        if old_custom_id and old_custom_id ~= null and old_custom_id ~= "" then
+          kong.cache:invalidate(kong.db.consumers:cache_key("custom_id", old_custom_id))
+        end
+
+        old_username = old_entity.username
+        if old_username and old_username ~= null and old_username ~= "" then
+          kong.cache:invalidate(kong.db.consumers:cache_key("username", old_username))
+          kong.cache:invalidate(kong.db.consumers:cache_key("username_lower", old_username))
+        end
+      end
+
+      local entity = data.entity
+      if entity then
+        local custom_id = entity.custom_id
+        if custom_id and custom_id ~= null and custom_id ~= "" and custom_id ~= old_custom_id then
+          kong.cache:invalidate(kong.db.consumers:cache_key("custom_id", custom_id))
+        end
+
+        local username = entity.username
+        if username and username ~= null and username ~= "" and username ~= old_username then
+          kong.cache:invalidate(kong.db.consumers:cache_key("username", username))
+          kong.cache:invalidate(kong.db.consumers:cache_key("username_lower", username))
+        end
+      end
+    end, "crud", "consumers")
+
+    kong.worker_events.register(function(data)
+      workspaces.set_workspace(data.workspace)
+      local operation = data.operation
+      log("issuer ", operation or "update", "d, invalidating cache")
+
+      local old_issuer
+      local old_entity = data.old_entity
+      if old_entity then
+        old_issuer = old_entity.issuer
+        kong.cache:invalidate(cache_key(old_issuer, "oic_issuers"))
+      end
+
+      local entity = data.entity
+      if entity and entity.issuer ~= old_issuer then
+        kong.cache:invalidate(cache_key(entity.issuer, "oic_issuers"))
+      end
+    end, "crud", "oic_issuers")
   end
 end
 
