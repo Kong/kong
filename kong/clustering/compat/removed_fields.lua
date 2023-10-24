@@ -160,5 +160,8 @@ return {
     jwt = {
       "realm",
     },
+    oauth2 = {
+      "realm",
+    },
   },
 }
