@@ -311,27 +311,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [integration, plugins, fips]
-        split: [first-CE, second-CE, first-EE, second-EE, third-EE, fips]
-        exclude:
-        - suite: integration
-          split: fips
-        - suite: plugins
-          split: fips
-        - suite: plugins
-          split: second-EE
-        - suite: plugins
-          split: third-EE
-        - suite: fips
-          split: first-CE
-        - suite: fips
-          split: second-CE
-        - suite: fips
-          split: first-EE
-        - suite: fips
-          split: second-EE
-        - suite: fips
-          split: third-EE
+        suite: [integration, plugins]
+        split: [first-CE, second-CE, first-EE]
+        include:
+          - suite: integration
+            split: second-EE
+          - suite: integration
+            split: third-EE
+          - suite: fips
+            split: first-fips
+          - suite: fips
+            split: second-fips
 
     services:
       postgres:
