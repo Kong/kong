@@ -15,7 +15,6 @@ local setmetatable = setmetatable
 
 
 local get_request_id = request_id.get
-local var_available = request_id.var_available
 
 
 local ALLOWED_REQUEST_ID_K = "__allowed_request_id"
@@ -23,13 +22,14 @@ local ALLOWED_REQUEST_ID_K = "__allowed_request_id"
 
 -- Check if access is allowed for table, based on the request ID
 local function enforce_sequential_access(table)
-  if not var_available() then
+  local curr_request_id = get_request_id()
+
+  if not curr_request_id then
     -- allow access and reset allowed request ID
     rawset(table, ALLOWED_REQUEST_ID_K, nil)
     return
   end
 
-  local curr_request_id = get_request_id()
   local allowed_request_id = rawget(table, ALLOWED_REQUEST_ID_K)
   if not allowed_request_id then
     -- first access. Set allowed request ID and allow access

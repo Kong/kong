@@ -47,8 +47,6 @@ end
 return {
   get = get,
 
-  var_available = var_available,
-
   -- for unit testing
   _get_ctx_request_id = get_ctx_request_id,
 }
