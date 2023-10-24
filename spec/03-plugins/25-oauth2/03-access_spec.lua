@@ -478,6 +478,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         config   = {
           enable_password_grant     = true,
           enable_authorization_code = false,
+          realm = "test-oauth2",
         },
       })
 
@@ -1541,7 +1542,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           local json = cjson.decode(body)
           assert.same({ error_description = "Invalid client authentication", error = "invalid_client" }, json)
         end)
-        it("returns an error when empty client_id and empty client_secret is sent regardless of method", function()
+        it("returns an error when empty client_id and empty client_secret is sent regardless of method - without realm", function()
           local res = assert(proxy_ssl_client:send {
             method  = "GET",
             path    = "/oauth2/token?client_id&grant_type=client_credentials&client_secret",
@@ -1555,6 +1556,23 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           local json = cjson.decode(body)
           assert.same({ error_description = "The HTTP method GET is invalid for the token endpoint",
                         error = "invalid_method" }, json)
+          assert.are.equal('Bearer error="invalid_method" error_description="The HTTP method GET is invalid for the token endpoint"', res.headers["www-authenticate"])
+        end)
+        it("returns an error when empty client_id and empty client_secret is sent regardless of method - with realm", function()
+          local res = assert(proxy_ssl_client:send {
+            method  = "GET",
+            path    = "/oauth2/token?client_id&grant_type=client_credentials&client_secret",
+            body    = {},
+            headers = {
+              ["Host"]         = "oauth2_5.test",
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(405, res)
+          local json = cjson.decode(body)
+          assert.same({ error_description = "The HTTP method GET is invalid for the token endpoint",
+                        error = "invalid_method" }, json)
+          assert.are.equal('Bearer realm="test-oauth2" error="invalid_method" error_description="The HTTP method GET is invalid for the token endpoint"', res.headers["www-authenticate"])
         end)
         it("returns an error when grant_type is not sent", function()
           local res = assert(proxy_ssl_client:send {
@@ -1880,7 +1898,20 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       end)
 
       describe("Password Grant", function()
-        it("blocks unauthorized requests", function()
+        it("blocks unauthorized requests - with no realm set", function()
+          local res = assert(proxy_ssl_client:send {
+            method  = "GET",
+            path    = "/request",
+            headers = {
+              ["Host"] = "oauth2_4.test"
+            }
+          })
+          local body = assert.res_status(401, res)
+          local json = cjson.decode(body)
+          assert.same({ error_description = "The access token is missing", error = "invalid_request" }, json)
+          assert.are.equal('Bearer', res.headers["www-authenticate"])
+        end)
+        it("blocks unauthorized requests - with realm set", function()
           local res = assert(proxy_ssl_client:send {
             method  = "GET",
             path    = "/request",
@@ -1891,6 +1922,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           local body = assert.res_status(401, res)
           local json = cjson.decode(body)
           assert.same({ error_description = "The access token is missing", error = "invalid_request" }, json)
+          assert.are.equal('Bearer realm="test-oauth2"', res.headers["www-authenticate"])
         end)
         it("returns an error when client_secret is not sent", function()
           local res = assert(proxy_ssl_client:send {
@@ -3035,6 +3067,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ error_description = "The access token is missing", error = "invalid_request" }, json)
+        assert.are.equal("Bearer", res.headers["www-authenticate"])
       end)
       it("works when a correct access_token is being sent in the querystring", function()
         local token = provision_token()
@@ -3084,6 +3117,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           }
         })
         assert.res_status(401, res)
+        assert.are.equal("Bearer", res.headers["www-authenticate"])
       end)
 
       it("refreshing token fails when scope is mismatching", function ()
@@ -3238,8 +3272,9 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           }
         })
         assert.res_status(401, res)
+        assert.are.equal("Bearer", res.headers["www-authenticate"])
       end)
-      it("does not work when requesting a different API", function()
+      it("does not work when requesting a different API - with no realm set", function()
         local token = provision_token()
 
         local res = assert(proxy_ssl_client:send {
@@ -3252,6 +3287,22 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ error_description = "The access token is invalid or has expired", error = "invalid_token" }, json)
+        assert.are.equal("Bearer error=\"invalid_token\" error_description=\"The access token is invalid or has expired\"", res.headers["www-authenticate"])
+      end)
+      it("does not work when requesting a different API - with realm set", function()
+        local token = provision_token()
+
+        local res = assert(proxy_ssl_client:send {
+          method  = "GET",
+          path    = "/request?access_token=" .. token.access_token,
+          headers = {
+            ["Host"] = "oauth2_4.test"
+          }
+        })
+        local body = assert.res_status(401, res)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "The access token is invalid or has expired", error = "invalid_token" }, json)
+        assert.are.equal("Bearer error=\"invalid_token\" error_description=\"The access token is invalid or has expired\"", res.headers["www-authenticate"])
       end)
       it("works when a correct access_token is being sent in a form body", function()
         local token = provision_token()
@@ -3518,6 +3569,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             }
           })
           assert.res_status(401, res)
+          assert.are.equal("Bearer error=\"invalid_token\" error_description=\"The access token is invalid or has expired\"", res.headers["WWW-Authenticate"])
         end)
         it("does not access two different APIs that are not sharing global credentials 2", function()
           local token = provision_token("oauth2.test")
@@ -3531,6 +3583,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             }
           })
           assert.res_status(401, res)
+          assert.are.equal('Bearer error="invalid_token" error_description="The access token is invalid or has expired"', res.headers['www-authenticate'])
 
           local res = assert(proxy_ssl_client:send {
             method  = "POST",
@@ -3580,7 +3633,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ error_description = "The access token is missing", error = "invalid_request" }, json)
-        assert.are.equal('Bearer realm="service"', res.headers['www-authenticate'])
+        assert.are.equal('Bearer', res.headers['www-authenticate'])
       end)
       it("returns 401 Unauthorized when an invalid access token is being sent via url parameter", function()
         local res = assert(proxy_ssl_client:send {
@@ -3593,7 +3646,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ error_description = "The access token is invalid or has expired", error = "invalid_token" }, json)
-        assert.are.equal('Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"', res.headers['www-authenticate'])
+        assert.are.equal('Bearer error="invalid_token" error_description="The access token is invalid or has expired"', res.headers['www-authenticate'])
       end)
       it("returns 401 Unauthorized when an invalid access token is being sent via the Authorization header", function()
         local res = assert(proxy_ssl_client:send {
@@ -3607,7 +3660,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ error_description = "The access token is invalid or has expired", error = "invalid_token" }, json)
-        assert.are.equal('Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"', res.headers['www-authenticate'])
+        assert.are.equal('Bearer error="invalid_token" error_description="The access token is invalid or has expired"', res.headers['www-authenticate'])
       end)
       it("returns 401 Unauthorized when token has expired", function()
         local token = provision_token()
@@ -3632,7 +3685,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           return status == 401
         end, 7)
         assert.same({ error_description = "The access token is invalid or has expired", error = "invalid_token" }, json)
-        assert.are.equal('Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"', headers['www-authenticate'])
+        assert.are.equal('Bearer error="invalid_token" error_description="The access token is invalid or has expired"', headers['www-authenticate'])
       end)
     end)
 
@@ -3787,10 +3840,10 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         assert.truthy(db.oauth2_tokens:select({ id = id }))
 
         -- But waiting after the cache expiration (5 seconds) should block the request
-        local status, json
+        local status, json, res2
         helpers.wait_until(function()
           local client = helpers.proxy_client()
-          local res = assert(client:send {
+          res2 = assert(client:send {
             method  = "POST",
             path    = "/request",
             headers = {
@@ -3798,12 +3851,13 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               authorization = "bearer " .. token.access_token
             }
           })
-          status = res.status
-          local body = res:read_body()
+          status = res2.status
+          local body = res2:read_body()
           json = body and cjson.decode(body)
           return status == 401
         end, 7)
         assert.same({ error_description = "The access token is invalid or has expired", error = "invalid_token" }, json)
+        assert.are.equal("Bearer error=\"invalid_token\" error_description=\"The access token is invalid or has expired\"", res2.headers["WWW-Authenticate"])
 
         -- Refreshing the token
         local res = assert(proxy_ssl_client:send {
@@ -3874,7 +3928,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           return status == 401
         end, 7)
         assert.same({ error_description = "The access token is invalid or has expired", error = "invalid_token" }, json)
-        assert.are.equal('Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"', headers['www-authenticate'])
+        assert.are.equal('Bearer error="invalid_token" error_description="The access token is invalid or has expired"', headers['www-authenticate'])
 
         local final_refreshed_token = refresh_token("oauth2_13.test", refreshed_token.refresh_token)
         local last_res = assert(proxy_client:send {
@@ -4098,6 +4152,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         config   = {
           scopes    = { "email", "profile", "user.email" },
           anonymous = anonymous.id,
+          realm     = "test-oauth2"
         },
       })
 
@@ -4179,6 +4234,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           }
         })
         assert.response(res).has.status(401)
+        assert.are.equal("Bearer", res.headers["www-authenticate"])
       end)
 
       it("fails 401, with only the second credential provided", function()
@@ -4195,6 +4251,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           }
         })
         assert.response(res).has.status(401)
+        assert.are.equal("Key", res.headers["www-authenticate"])
       end)
 
       it("fails 401, with no credential provided", function()
@@ -4206,6 +4263,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           }
         })
         assert.response(res).has.status(401)
+        assert.are.equal("Bearer", res.headers["www-authenticate"])
       end)
 
     end)
@@ -4471,6 +4529,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
                             "plugin is configured without 'global_credentials'",
         error = "invalid_token",
       }, json)
+      assert.are.equal("Bearer error=\"invalid_token\" error_description=\"The access token is invalid or has expired\"", res.headers["www-authenticate"])
     end)
   end)
 end)

@@ -336,6 +336,9 @@ return {
     jwt = {
       "realm",
     },
+    oauth2 = {
+      "realm",
+    },
     -- Enterprise plugins
     openid_connect = {
       "claims_forbidden",
