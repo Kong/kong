@@ -750,14 +750,14 @@ local function new(self)
   -- Function `get_cache_value_and_ttl` returns a value for caching and its ttl
   --
   -- @local
-  -- @function get_from_vault
+  -- @function get_cache_value_and_ttl
   -- @tparam string value the vault returned value for a reference
   -- @tparam table config the configuration settings to be used
   -- @tparam[opt] number ttl the possible vault returned ttl
   -- @treturn string value to be stored in shared dictionary
   -- @treturn number shared dictionary ttl
   -- @treturn number lru ttl
-  -- @usage local value, err = get_from_vault(reference, strategy, config, cache_key, parsed_reference)
+  -- @usage local cache_value, shdict_ttl, lru_ttl = get_cache_value_and_ttl(value, config, ttl)
   local function get_cache_value_and_ttl(value, config, ttl)
     local cache_value, shdict_ttl, lru_ttl
     if value then
