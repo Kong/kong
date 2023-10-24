@@ -1110,13 +1110,11 @@ end
 
 
 function DAO:each_for_export(size, options)
-  if self.strategy.schema.ttl then
-    if not options then
-      options = get_pagination_options(self, options)
-    else
-      options = utils.cycle_aware_deep_copy(options, true)
-    end
-
+  if not options then
+    options = { export = true }
+    
+  elseif options.export == nil then
+    options = utils.cycle_aware_deep_copy(options, true)
     options.export = true
   end
 
@@ -1411,7 +1409,7 @@ end
 
 
 function DAO:row_to_entity(row, options)
-  local transform, nulls
+  local transform, nulls, opts
   if options ~= nil then
     validate_options_type(options)
     local ok, errors = validate_options_value(self, options)
@@ -1421,6 +1419,9 @@ function DAO:row_to_entity(row, options)
     end
     transform = options.transform
     nulls = options.nulls
+    if options.export then
+      opts = { export = true }
+    end
   end
 
   if transform == nil then
@@ -1439,7 +1440,7 @@ function DAO:row_to_entity(row, options)
     end
   end
 
-  local entity, errors = self.schema:process_auto_fields(transformed_entity or row, "select", nulls)
+  local entity, errors = self.schema:process_auto_fields(transformed_entity or row, "select", nulls, opts)
   if not entity then
     local err_t = self.errors:schema_violation(errors)
     return nil, tostring(err_t), err_t

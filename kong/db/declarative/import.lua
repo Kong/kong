@@ -1,5 +1,5 @@
 local lmdb = require("resty.lmdb")
-local txn = require("kong.resty.lmdb.reset-transaction")
+local txn = require("resty.lmdb.transaction")
 local constants = require("kong.constants")
 local workspaces = require("kong.workspaces")
 local utils = require("kong.tools.utils")
@@ -185,7 +185,8 @@ local function load_into_cache(entities, meta, hash)
 
   local db = kong.db
 
-  local t = txn.begin()
+  local t = txn.begin(128)
+  t:db_drop(false)
 
   local phase = get_phase()
   local transform = meta._transform == nil and true or meta._transform

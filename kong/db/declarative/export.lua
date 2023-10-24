@@ -1,5 +1,7 @@
 local schema_topological_sort = require "kong.db.schema.topological_sort"
+local constants = require "kong.constants"
 local protobuf = require "kong.tools.protobuf"
+local buffer = require "string.buffer"
 local lyaml = require "lyaml"
 
 
@@ -12,12 +14,17 @@ local ipairs = ipairs
 local insert = table.insert
 local io_open = io.open
 local null = ngx.null
+local md5 = ngx.md5
 
 
 local REMOVE_FIRST_LINE_PATTERN = "^[^\n]+\n(.+)$"
-local GLOBAL_QUERY_OPTS = { nulls = true, workspace = null }
+local GLOBAL_QUERY_OPTS = { nulls = true, workspace = null, export = false }
+local EXPORT_OPTS = { nulls = true, workspace = null, export = true }
 local TOPOLOGICALLY_SORTED_SCHEMA_NAMES = {}
 local FOREIGN_KEY_NAMES = {}
+
+
+local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
 
 local function convert_nulls(tbl, from, to)
@@ -161,7 +168,9 @@ local function end_transaction(db)
 end
 
 
-local function export_from_db_impl(emitter, skip_ws, skip_disabled_entities, expand_foreigns)
+local function export_from_db_impl(emitter, skip_ws, skip_disabled_entities, expand_foreigns, opts)
+  opts = opts or GLOBAL_QUERY_OPTS
+
   local db = kong.db
   local daos = db.daos
   local ok, err = begin_transaction(db)
@@ -178,13 +187,23 @@ local function export_from_db_impl(emitter, skip_ws, skip_disabled_entities, exp
   local plugins_configured = {}
   local disabled_services = {}
   local disabled_routes = {}
+
+  local config_hash
+  local hashes
+  local o
+  if opts.export then
+    config_hash = DECLARATIVE_EMPTY_CONFIG_HASH
+    hashes = {}
+    o = buffer.new()
+  end
+
   for _, name in ipairs(schema_names) do
     local fks = get_foreign_key_names(name)
     local page_size
     if daos[name].pagination then
       page_size = daos[name].pagination.max_page_size
     end
-    for row, err in daos[name]:each_for_export(page_size, GLOBAL_QUERY_OPTS) do
+    for row, err in daos[name]:each_for_export(page_size, opts) do
       if not row then
         end_transaction(db)
         kong.log.err(err)
@@ -222,15 +241,40 @@ local function export_from_db_impl(emitter, skip_ws, skip_disabled_entities, exp
           plugins_configured[row.name] = true
         end
 
+        if opts.export then
+          o:put(row._hash)
+        end
+
         emitter:emit_entity(name, row)
       end
       ::skip_emit::
+    end
+
+    if opts.export then
+      local hash = o:get()
+      if hash == "" then
+        hash = DECLARATIVE_EMPTY_CONFIG_HASH
+        if config_hash ~= DECLARATIVE_EMPTY_CONFIG_HASH then
+          config_hash = md5(config_hash .. hash)
+        end
+      elseif hash:byte(33) then
+        hash = md5(hash)
+        config_hash = md5(config_hash .. hash)
+      else
+        config_hash = md5(config_hash .. hash)
+      end
+      hashes[name] = hash
+      o:reset()
     end
   end
 
   end_transaction(db)
 
-  return (emitter:done()), nil, plugins_configured
+  if opts.export then
+    hashes._config = config_hash
+  end
+
+  return (emitter:done()), nil, plugins_configured, hashes
 end
 
 
@@ -300,7 +344,7 @@ end
 
 
 local function export()
-  return export_from_db_impl(table_emitter.new(), true, true, true)
+  return export_from_db_impl(table_emitter.new(), true, true, true, EXPORT_OPTS)
 end
 
 

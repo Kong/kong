@@ -1891,8 +1891,9 @@ function Schema:process_auto_fields(data, context, nulls, opts)
   if self.ttl and data.ttl == null and not nulls then
     data.ttl = nil
   end
-
+  
   local show_ws = opts and opts.show_ws_id
+  local export = opts and opts.export
   for key in pairs(data) do
     local field = self.fields[key]
     if field then
@@ -1902,7 +1903,9 @@ function Schema:process_auto_fields(data, context, nulls, opts)
       end
 
     elseif not ((key == "ttl"   and self.ttl) or
-                (key == "ws_id" and show_ws)) then
+                (key == "ws_id" and show_ws)  or
+                (key == "_hash" and export))
+    then
       data[key] = nil
     end
   end

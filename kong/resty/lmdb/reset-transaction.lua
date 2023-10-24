@@ -36,12 +36,27 @@ local function set(self, key, value)
 end
 
 
+local function del(self, key)
+  if key == nil then
+    return
+  end
+
+  if #key > MAX_KEY_SIZE then
+    key = sha256(key)
+  end
+
+  local n = self.n + 1
+  self.n = n
+  self.k[n] = key
+end
+
+
 local function commit(self, db)
   local n = self.n
-  local k = self.k
-  local v = self.v
-  local opn = n + 1
-  local ops = ffi_new(OPS_T, opn)
+
+  if n == 0 then
+    return
+  end
 
   local dbi, err = get_dbi(true, db or DEFAULT_DB)
   if err then
@@ -50,21 +65,28 @@ local function commit(self, db)
     return nil, "DB " .. db .. " does not exist"
   end
 
-  ops[0].opcode = C.NGX_LMDB_OP_DB_DROP
-  ops[0].dbi = dbi
-  ops[0].flags = 0
+  local ops = ffi_new(OPS_T, n)
+  for i = 0, n - 1 do
+    local k = self.k[i + 1]
+    local v = self.v[i + 1]
 
-  for i = 1, n do
     ops[i].opcode = C.NGX_LMDB_OP_SET
-    ops[i].key.data = k[i]
-    ops[i].key.len = #k[i]
-    ops[i].value.data = v[i]
-    ops[i].value.len = #v[i]
+    ops[i].key.data = k
+    ops[i].key.len = #k
+
+    if v then
+      ops[i].value.data = v
+      ops[i].value.len = #v
+    else
+      ops[i].value.data = nil
+      ops[i].value.len = 0
+    end
+
     ops[i].dbi = dbi
     ops[i].flags = 0
   end
 
-  local ret = C.ngx_lua_resty_lmdb_ffi_execute(ops, opn, 1, nil, 0, ERR_P)
+  local ret = C.ngx_lua_resty_lmdb_ffi_execute(ops, n, 1, nil, 0, ERR_P)
   if ret == ERROR then
     return nil, ffi_string(ERR_P[0])
   end
@@ -81,6 +103,7 @@ return {
       n = 0,
       commit = commit,
       set = set,
+      del = del,
     }
   end
 }

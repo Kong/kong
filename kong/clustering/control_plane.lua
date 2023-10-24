@@ -9,7 +9,6 @@ local constants = require("kong.constants")
 
 
 local export = require("kong.db.declarative.export").export
-local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
 local send_configuration_payload = require("kong.clustering.protocol").send_configuration_payload
 local get_updated_monotonic_ms = require("kong.tools.utils").get_updated_monotonic_ms
 
@@ -80,7 +79,7 @@ end
 
 function _M:export_reconfigure_payload()
   local start = get_updated_monotonic_ms()
-  local config, err, plugins_configured = export()
+  local config, err, plugins_configured, hashes = export()
   if not config then
     return nil, err
   end
@@ -90,10 +89,6 @@ function _M:export_reconfigure_payload()
   local shm_key_name = "clustering:cp_plugins_configured:worker_" .. worker_id()
   KONG_DICT:set(shm_key_name, cjson_encode(plugins_configured))
   ngx.log(ngx.DEBUG, LOG_PREFIX, "plugin configuration map key: " .. shm_key_name .. " configuration: ", KONG_DICT:get(shm_key_name))
-
-  start = get_updated_monotonic_ms()
-  local _, hashes = calculate_config_hash(config)
-  ngx.log(ngx.DEBUG, LOG_PREFIX, "configuration hash calculation took: ", get_updated_monotonic_ms() - start, " ms")
 
   self.plugins_configured = plugins_configured
   self.reconfigure_payload = {

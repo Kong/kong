@@ -1052,6 +1052,9 @@ function _M.new(connector, schema, errors)
     ttl_select_where = concat {
       "(", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC')"
     }
+    
+  else
+    select_for_export_expressions = select_expressions
   end
 
   insert_expressions = concat(insert_expressions,  ", ")
@@ -1122,10 +1125,8 @@ function _M.new(connector, schema, errors)
 
     add_statement_for_export = function(name, opts)
       add_statement(name, opts)
-      if has_ttl then
-        opts.code[2] = select_for_export_expressions
-        add_statement(name .. "_for_export", opts)
-      end
+      opts.code[2] = select_for_export_expressions
+      add_statement(name .. "_for_export", opts)
     end
   end
 
@@ -1207,7 +1208,7 @@ function _M.new(connector, schema, errors)
     argn = { LIMIT },
     argv = single_args,
     code = {
-      "  SELECT ",  select_expressions, "\n",
+      "  SELECT ",  select_expressions, ", MD5(", table_name_escaped, "::text) AS _hash\n",
       "    FROM ",  table_name_escaped, "\n",
       where_clause(
       "   WHERE ", ttl_select_where,
@@ -1222,7 +1223,7 @@ function _M.new(connector, schema, errors)
     argn = page_next_names,
     argv = page_next_args,
     code = {
-      "  SELECT ",  select_expressions, "\n",
+      "  SELECT ",  select_expressions, ", MD5(", table_name_escaped, "::text) AS _hash\n",
       "    FROM ",  table_name_escaped, "\n",
       where_clause(
       "   WHERE ", "(" .. pk_escaped .. ") > (" .. primary_key_placeholders .. ")",
