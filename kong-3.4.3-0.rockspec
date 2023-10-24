@@ -161,6 +161,7 @@ build = {
     ["kong.tools.kong-lua-sandbox"] = "kong/tools/kong-lua-sandbox.lua",
     ["kong.tools.protobuf"] = "kong/tools/protobuf.lua",
     ["kong.tools.mime_type"] = "kong/tools/mime_type.lua",
+    ["kong.tools.string"] = "kong/tools/string.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.events"] = "kong/runloop/events.lua",
