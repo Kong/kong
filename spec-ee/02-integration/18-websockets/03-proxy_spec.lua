@@ -341,22 +341,6 @@ describe("WebSocket proxying behavior", function()
         end)
       end)
     end)
-
-    describe("(#proxy) #flaky", function()
-      it("it ends the session when the NGINX worker is stopping", function()
-        local status = ws.const.status.GOING_AWAY
-
-        assert(helpers.signal(nil, "-HUP"))
-
-        session:assert({
-          action.set_recv_timeout(2000),
-          client.recv.close(status.REASON, status.CODE),
-          server.recv.close(status.REASON, status.CODE),
-        })
-
-        await_file(fname)
-      end)
-    end)
   end)
 
   describe("#limits", function()
@@ -530,5 +514,109 @@ describe("WebSocket proxying behavior", function()
         }
       }, "invalid/missing 'Sec-WebSocket-Version' header")
     end)
+  end)
+end)
+describe("(#proxy) close frame test when worker exiting", function()
+  setup(function()
+    local bp = helpers.get_db_utils(
+      "off",
+      {
+        "routes",
+        "services",
+        "plugins",
+      },
+      { "pre-function" }
+    )
+
+
+    local service = bp.services:insert {
+      name = "ws",
+      protocol = "ws",
+      port = ws.const.ports.ws,
+    }
+
+    bp.routes:insert {
+      hosts = { "ws.test" },
+      protocols = { "ws" },
+      service = service,
+    }
+
+    bp.plugins:insert {
+      name = "pre-function",
+      service = service,
+      config = RPC.plugin_conf({
+        ws_handshake = {[[
+            ngx.ctx.KONG_WEBSOCKET_JANITOR_TIMEOUT = 0.1
+            ngx.ctx.KONG_WEBSOCKET_RECV_TIMEOUT = 100
+            ngx.ctx.KONG_WEBSOCKET_SEND_TIMEOUT = 1000
+            ngx.ctx.KONG_WEBSOCKET_LINGERING_TIME = 4000
+            ngx.ctx.KONG_WEBSOCKET_LINGERING_TIMEOUT = 2000
+            ngx.ctx.KONG_WEBSOCKET_DEBUG = true
+        ]]},
+      }),
+    }
+
+    assert(helpers.start_kong({
+      database = "off",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      untrusted_lua = "on",
+      log_level = "debug",
+    }, nil, nil, { http_mock = { ws = ws.mock_upstream() } }))
+  end)
+
+  teardown(function()
+    helpers.stop_kong()
+  end)
+
+  local session
+  local fname
+
+  before_each(function()
+    helpers.clean_logfile()
+
+    session = ws_session({
+      host = "ws.test",
+      read_timeout = 1000,
+      write_timeout = 1000,
+      connect_timeout = 1000,
+    })
+
+
+    -- add a log writer hook to ws_close so we can verify that this handler
+    -- has been invoked by checking if the file exists
+    local write
+    fname, write = RPC.log_writer()
+
+    session:assert({
+      server.echo.enable(),
+      action.echo.text("sanity"),
+      server.echo.disable(),
+      RPC.close.eval(write),
+    })
+  end)
+
+  after_each(function()
+    session:close()
+  end)
+
+  it("it ends the session when the NGINX worker is stopping", function()
+    local status = ws.const.status.GOING_AWAY
+
+    --[[
+      test janitor exiting logic
+      (enterprise_edition/runloop/websocket.lua: janitor),
+      but SIGHUP will not be successful in websocket proxy.
+      Because worker will not exit until websocket closed
+      no matter it is closed actively or passively.
+    ]]
+    assert(helpers.signal(nil, "-QUIT"))
+
+    session:assert({
+      action.set_recv_timeout(2000),
+      client.recv.close(status.REASON, status.CODE),
+      server.recv.close(status.REASON, status.CODE),
+    })
+
+    await_file(fname)
   end)
 end)
