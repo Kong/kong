@@ -22,6 +22,7 @@ local clustering = require "kong.clustering"
 local function create_self_signed(cn)
   local key = pkey.new({
     type = 'EC',
+    curve = 'prime256v1',
   })
 
   local cert = x509.new()
