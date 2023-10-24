@@ -23,6 +23,8 @@ local mock_config = {
 describe("Postgres IAM token handler", function()
   local origin_time
   setup(function()
+    package.loaded["resty.aws"] = nil
+    package.loaded["resty.aws.config"] = nil
     origin_time = ngx.time
     ngx.time = function () --luacheck: ignore
       return 1667543171
