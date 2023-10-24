@@ -126,7 +126,7 @@ server {
 > end
 
     # injected nginx_proxy_* directives
-> for _, el in ipairs(nginx_proxy_directives)  do
+> for _, el in ipairs(nginx_proxy_directives) do
     $(el.name) $(el.value);
 > end
 > for _, ip in ipairs(trusted_ips) do
@@ -425,7 +425,7 @@ server {
 }
 > end -- (role == "traditional" or role == "data_plane") and #proxy_listeners > 0
 
-> if (role == "control_plane" or role == "traditional") and #admin_listen > 0 and #admin_gui_listeners > 0 then
+> if (role == "control_plane" or role == "traditional") and #admin_listeners > 0 and #admin_gui_listeners > 0 then
 server {
     server_name kong_gui;
 > for i = 1, #admin_gui_listeners do
@@ -468,7 +468,7 @@ server {
 
     include nginx-kong-gui-include.conf;
 }
-> end -- of the (role == "control_plane" or role == "traditional") and #admin_listen > 0 and #admin_gui_listeners > 0
+> end -- of the (role == "control_plane" or role == "traditional") and #admin_listeners > 0 and #admin_gui_listeners > 0
 
 
 > if (role == "control_plane" or role == "traditional") and portal then
@@ -651,7 +651,7 @@ server {
 > end
 
     # injected nginx_admin_* directives
-> for _, el in ipairs(nginx_admin_directives)  do
+> for _, el in ipairs(nginx_admin_directives) do
     $(el.name) $(el.value);
 > end
 
