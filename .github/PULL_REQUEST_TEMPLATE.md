@@ -16,6 +16,7 @@ https://github.com/Kong/kong/blob/master/COMMUNITY_PLEDGE.md
 
 - [ ] The Pull Request has tests
 - [ ] A changelog file has been created under `changelog/unreleased/kong` or `skip-changelog` label added on PR if changelog is unnecessary. [README.md](https://github.com/Kong/gateway-changelog/README.md)
+- [ ] A CE2EE cherry-pick PR is required and created - PUT cherry-pick PR HERE
 - [ ] There is a user-facing docs PR against https://github.com/Kong/docs.konghq.com - PUT DOCS PR HERE
 
 ### Full changelog
