@@ -33,10 +33,10 @@ function _M:access(conf)
   end
 
   if span_id then
-    injected_parent_span.parent_id = span_id
+    root_span.parent_id = span_id
 
   elseif parent_id then
-    injected_parent_span.parent_id = parent_id
+    root_span.parent_id = parent_id
   end
 
   local type = header_type and "preserve" or "w3c"
