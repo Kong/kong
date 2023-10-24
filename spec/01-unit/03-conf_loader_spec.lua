@@ -343,6 +343,42 @@ describe("Configuration loader", function()
     assert.is_not_nil(conf.admin_gui_origin)
     assert.equal("http://localhost:8002", conf.admin_gui_origin)
   end)
+
+  it("should populate correct admin_gui_session_conf while admin_gui_auth is openid-connect", function()
+    local conf = conf_loader(nil, {
+      admin_gui_auth = "openid-connect",
+      enforce_rbac = "on",
+      admin_gui_session_conf = {},
+      admin_gui_auth_conf = {
+        issuer = "issuer",
+        admin_claim = "email",
+        client_id = { "client_id" },
+        client_secret = { "client_secret" },
+      }
+    })
+
+    assert.same({ "authorization_code" }, conf.admin_gui_auth_conf.auth_methods)
+    assert.equal("query", conf.admin_gui_auth_conf.response_mode)
+    assert.same({ "client_id" }, conf.admin_gui_auth_conf.client_id)
+    assert.same({ "client_secret" }, conf.admin_gui_auth_conf.client_secret)
+
+    conf = conf_loader(nil, {
+      admin_gui_auth = "openid-connect",
+      enforce_rbac = "on",
+      admin_gui_session_conf = {},
+      admin_gui_auth_conf = {
+        issuer = "issuer",
+        auth_methods = { "authorization_code", "session" },
+        response_mode = "form_post",
+        admin_claim = "email",
+        client_id = { "client_id" },
+        client_secret = { "client_secret" },
+      }
+    })
+    assert.same({ "authorization_code" }, conf.admin_gui_auth_conf.auth_methods)
+    assert.equal("query", conf.admin_gui_auth_conf.response_mode)
+  end)
+
   it("strips comments ending settings", function()
     local _os_getenv = os.getenv
     finally(function()

@@ -607,10 +607,10 @@
     "clientAuthenticatorType" : "client-secret",
     "secret" : "38beb963-2786-42b8-8e14-a5f391b4ba93",
     "redirectUris" : [
-      "https://kong:8443/*", "http://kong:8000/*", "http://kong:9000/*", "https://kong:9443/*", "http://kong:9003/*", "http://kong:9004/*", "http://kong:9001/*",
-      "https://localhost:8443/*", "http://localhost:8000/*", "http://localhost:9000/*", "https://localhost:9443/*", "http://localhost:9003/*", "http://localhost:9004/*", "http://localhost:9001/*",
-      "https://default.localhost:8443/*", "http://default.localhost:8000/*", "http://default.localhost:9000/*", "https://default.localhost:9443/*", "http://default.localhost:9003/*", "http://default.localhost:9004/*", "http://default.localhost:9001/*",
-      "https://demo.localhost:8443/*", "http://demo.localhost:8000/*", "http://demo.localhost:9000/*", "https://demo.localhost:9443/*", "http://demo.localhost:9003/*", "http://demo.localhost:9004/*", "http://demo.localhost:9001/*"
+      "https://kong:8443/*", "http://kong:8000/*", "http://kong:9000/*", "https://kong:9443/*", "http://kong:9003/*", "http://kong:9004/*", "http://kong:9001/*", "http://kong:9008/*",
+      "https://localhost:8443/*", "http://localhost:8000/*", "http://localhost:9000/*", "https://localhost:9443/*", "http://localhost:9003/*", "http://localhost:9004/*", "http://localhost:9001/*", "http://localhost:9008/*",
+      "https://default.localhost:8443/*", "http://default.localhost:8000/*", "http://default.localhost:9000/*", "https://default.localhost:9443/*", "http://default.localhost:9003/*", "http://default.localhost:9004/*", "http://default.localhost:9001/*", "http://default.localhost:9008/*",
+      "https://demo.localhost:8443/*", "http://demo.localhost:8000/*", "http://demo.localhost:9000/*", "https://demo.localhost:9443/*", "http://demo.localhost:9003/*", "http://demo.localhost:9004/*", "http://demo.localhost:9001/*", "http://demo.localhost:9008/*"
     ],
     "webOrigins" : [ ],
     "notBefore" : 0,

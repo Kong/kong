@@ -1,0 +1,3 @@
+message: "Hardcode part settings of `admin_gui_auth_conf` while `admin_gui_auth` is `openid-connect`"
+type: bugfix
+scope: Core

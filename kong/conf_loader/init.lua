@@ -179,6 +179,17 @@ local DEFAULT_PATHS = {
   "/etc/kong.conf",
 }
 
+local ADMIN_GUI_AUTH_CONFIGS = {
+  ["openid-connect"] = {
+    response_mode = { default_value = "query", override = true },
+    logout_methods = { default_value = { "DELETE" }, override = true },
+    auth_methods = { default_value = { "authorization_code" }, override = true },
+    authenticated_groups_claim = { default_value = { "groups" }, override = false },
+    scopes = { default_value = { "openid", "profile", "email" }, override = false },
+    admin_auto_create = { default_value = true, override = false },
+    leeway = { default_value = 60, override = false },
+  }
+}
 
 local HEADERS = constants.HEADERS
 local HEADER_KEY_TO_NAME = {
@@ -2438,6 +2449,39 @@ local function load(path, custom_conf, opts)
   if conf.admin_gui_url then
     local parsed_url = socket_url.parse(conf.admin_gui_url)
     conf.admin_gui_origin = parsed_url.scheme .. "://" .. parsed_url.authority
+  end
+
+  local admin_gui_auth = conf.admin_gui_auth
+  local admin_gui_auth_conf = conf.admin_gui_auth_conf
+
+  if admin_gui_auth == "openid-connect" then  
+    if admin_gui_auth_conf.response_mode ~= "query" then
+      log.warn(
+        [[admin_gui_auth_conf.response_mode only accept "query" when admin_gui_auth is "openid-connect"]])
+    end
+    local auth_methods = admin_gui_auth_conf.auth_methods
+    if auth_methods then
+      for index, value in ipairs(auth_methods) do
+        if value ~= "authorization_code" then
+          log.warn(
+            [[admin_gui_auth_conf.auth_methods only accept "authorization_code" when admin_gui_auth is "openid-connect"]])
+          break
+        end
+      end
+    end
+  end
+  
+  if admin_gui_auth and admin_gui_auth_conf then
+    local configs = ADMIN_GUI_AUTH_CONFIGS[admin_gui_auth] or {}
+    for key, value in pairs(configs) do
+      if value.override then
+        admin_gui_auth_conf[key] = value.default_value
+      elseif not admin_gui_auth_conf[key] then
+        admin_gui_auth_conf[key] = value.default_value
+      end
+    end
+
+    conf.admin_gui_auth_conf = admin_gui_auth_conf
   end
 
   ok, err = ee_conf_loader.load(conf)
