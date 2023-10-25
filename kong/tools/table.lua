@@ -125,19 +125,7 @@ end
 -- *** NOTE *** string-keys containing integers are considered valid array entries!
 -- @param t The table to check
 -- @return Returns `true` if the table is an array, `false` otherwise
-function _M.is_lapis_array(t)
-  if type(t) ~= "table" then
-    return false
-  end
-  local i = 0
-  for _ in pairs(t) do
-    i = i + 1
-    if t[i] == nil and t[tostring(i)] == nil then
-      return false
-    end
-  end
-  return true
-end
+_M.is_lapis_array = is_array_lapis
 
 
 --- Deep copies a table into a new table.
