@@ -295,7 +295,7 @@ accepted types are:
   is too big to be considered just `perf`
 - **chore**: Maintenance changes related to code cleaning that isn't
   considered part of a refactor, build process updates, dependency bumps, or
-  auxiliary tools and libraries updates (LuaRocks, Travis-ci, etc...).
+  auxiliary tools and libraries updates (LuaRocks, GitHub Actions, etc...).
 
 [Back to TOC](#table-of-contents)
 
