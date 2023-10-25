@@ -375,14 +375,13 @@ end
 
 
 -- ordinary entities that reference ca certificates
--- the value denotes which cache (kong.cache or kong.core_cache) is used
 local CA_CERT_REFERENCE_ENTITIES = {
   "services",
 }
 
 -- plugins that reference ca certificates
--- Format:
--- mtls-auth = true
+-- For Example:
+-- mtls-auth
 local CA_CERT_REFERENCE_PLUGINS = {
 }
 
@@ -460,14 +459,14 @@ local function check_ca_references(ca_id)
     reference_plugins = {}
     loaded_plugins = loaded_plugins or kong.configuration.loaded_plugins
 
-    for k, _ in pairs(CA_CERT_REFERENCE_PLUGINS) do
-      if loaded_plugins[k] then
-        reference_plugins[k] = true
+    for _, name in ipairs(CA_CERT_REFERENCE_PLUGINS) do
+      if loaded_plugins[name] then
+        tb_insert(reference_plugins, name)
       end
     end
   end
 
-  for plugin_name, _ in pairs(reference_plugins) do
+  for _, plugin_name in ipairs(reference_plugins) do
     local entity = "plugins"
     for element, err in gen_iterator(entity, plugin_name) do
       if err then
