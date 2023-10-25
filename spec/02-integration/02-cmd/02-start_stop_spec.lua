@@ -691,7 +691,7 @@ describe("kong start/stop #" .. strategy, function()
         local ok, err = helpers.start_kong({
           database = "off",
           declarative_config = yaml_file,
-          vaults = "mock",
+          vaults = "mocksocket",
           plugins = "session"
         })
 
