@@ -1,6 +1,9 @@
 name: Package & Release
 
 # The workflow to build and release official Kong packages and images.
+#
+# TODO:
+# Do not bump the version of actions/checkout to v4 before dropping rhel7 and amazonlinux2.
 
 on:  # yamllint disable-line rule:truthy
   pull_request:
