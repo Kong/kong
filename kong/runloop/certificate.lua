@@ -416,7 +416,7 @@ local function gen_iterator(entity, plugin_name)
     else
       if entity == "plugins" then
         -- double check, in case the filter doesn't take effect
-        if plugin_name and plugin_name == element.name and
+        if (not plugin_name or plugin_name == element.name) and
           element.config.ca_certificates and next(element.config.ca_certificates) then
           return element
         else
