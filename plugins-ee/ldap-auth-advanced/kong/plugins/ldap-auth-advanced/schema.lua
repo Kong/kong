@@ -108,6 +108,7 @@ return {
             type = "string",
           }
         }},
+        { realm = { description = "When authentication fails the plugin sends `WWW-Authenticate` header with `realm` attribute value.", type = "string", required = false }, },
       }
     }}
   },

@@ -35,6 +35,9 @@ local RETURN_CODE = ldap.RETURN_CODE
 
 local ldap_config_cache = setmetatable({}, { __mode = "k" })
 
+local ERR_UNAUTHORIZED = "Unauthorized"
+local ERR_UNEXPECTED = "An unexpected error occurred"
+
 local _M = {}
 
 local function retrieve_credentials(authorization_header_value, conf)
@@ -392,6 +395,17 @@ local function load_consumers(value, consumer_by)
   return nil, err
 end
 
+local function unauthorized(message, authorization_scheme)
+  return {
+    status = 401,
+    message = message,
+    headers = { ["WWW-Authenticate"] = authorization_scheme }
+  }
+end
+
+local function server_error(message)
+  return { status = 500, body = { message = message } }
+end
 
 local function do_authentication(conf)
   local headers = request.get_headers()
@@ -400,16 +414,16 @@ local function do_authentication(conf)
   local anonymous = conf.anonymous
   local consumer, err
 
+  local scheme = conf.header_type
+  if scheme == "ldap" then
+      -- RFC 7617 says auth-scheme is case-insentitive
+      -- ensure backwards compatibility (see GH PR #3656)
+    scheme = upper(scheme)
+  end
+
+  local www_auth_content = conf.realm and fmt('%s realm="%s"', scheme, conf.realm) or scheme
   -- If both headers are missing, check anonymous
   if not (authorization_value or proxy_authorization_value) then
-    local scheme = conf.header_type
-    if scheme == "ldap" then
-       -- RFC 7617 says auth-scheme is case-insentitive
-       -- ensure backwards compatibility (see GH PR #3656)
-      scheme = upper(scheme)
-    end
-    ngx.header["WWW-Authenticate"] = scheme .. ' realm="kong"'
-
     if anonymous ~= "" then
       local consumer_cache_key = kong.db.consumers:cache_key(anonymous)
       consumer, err = kong.cache:get(consumer_cache_key, nil,
@@ -420,7 +434,7 @@ local function do_authentication(conf)
     if err then
       kong.log.err('error fetching anonymous user with conf.anonymous="' ..
                    (anonymous or '') .. '"', err)
-      return false, { status = 500, message = "An unexpected error occurred" }
+      return false, server_error(ERR_UNEXPECTED)
     end
 
     if consumer then
@@ -432,10 +446,10 @@ local function do_authentication(conf)
     if anonymous ~= "" and not consumer then
       kong.log.err('anonymous user not found with conf.anonymous="' ..
                    (anonymous or '') .. '"', err)
-      return false, { status = 500, message = "An unexpected error occurred" }
+      return false, server_error(ERR_UNEXPECTED)
     end
 
-    return false, { status = 401, message = "Unauthorized" }
+    return false, unauthorized(ERR_UNAUTHORIZED, www_auth_content)
   end
 
   local is_authenticated, credential = authenticate(conf, proxy_authorization_value)
@@ -458,10 +472,10 @@ local function do_authentication(conf)
 
     if err then
       kong.log.err("load consumer error when 'not authorized' ", err)
-      return false, { status = 500, message = "An unexpected error occurred" }
+      return false, server_error(ERR_UNEXPECTED)
     end
 
-    return false, { status = 401, message = "Unauthorized" }
+    return false, unauthorized(ERR_UNAUTHORIZED, www_auth_content)
   end
 
   if conf.bind_dn then
@@ -498,7 +512,7 @@ local function do_authentication(conf)
       kong.log.debug("consumer not found, checking anonymous")
       if err then
         kong.log.err("load consumer error when not 'conf.consumer_optional'", err)
-        return false, { status = 500, message = "An unexpected error occurred" }
+        return false, server_error(ERR_UNEXPECTED)
       end
 
       if anonymous ~= "" then
@@ -509,7 +523,7 @@ local function do_authentication(conf)
       end
       if err then
         kong.log.err("load anonymous consumer error", err)
-        return false, { status = 500, message = "An unexpected error occurred" }
+        return false, server_error(ERR_UNEXPECTED)
       end
 
     else
@@ -535,7 +549,7 @@ function _M.execute(conf)
 
   local ok, err = do_authentication(conf)
   if not ok then
-    return kong.response.exit(err.status, { message = err.message })
+    return kong.response.exit(err.status, { message = err.message }, err.headers)
   end
 end
 

@@ -358,5 +358,8 @@ return {
     key_auth_enc = {
       "realm",
     },
+    ldap_auth_advanced = {
+      "realm",
+    },
   },
 }

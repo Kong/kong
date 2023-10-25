@@ -98,7 +98,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
       "services",
       "consumer_groups",
       "vaults",
-    })
+    }, {"ldap-auth-advanced"})
 
     PLUGIN_LIST = helpers.get_plugins_list()
 
@@ -123,7 +123,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
       db_update_frequency = 0.1,
       cluster_listen = CP_HOST .. ":" .. CP_PORT,
       nginx_conf = "spec/fixtures/custom_nginx.template",
-      plugins = "bundled",
+      plugins = "bundled,ldap-auth-advanced",
       vaults = "gcp,hcv,aws",
     }))
   end)
@@ -775,6 +775,23 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         do_assert(uuid(), "3.7.0", expected_key_auth_enc_prior_38)
         -- cleanup
         admin.plugins:remove({ id = key_auth_enc.id })
+      end)
+
+      it("[ldap-auth-adv] removes realm for versions below 3.8", function()
+        local ldap_auth_adv = admin.plugins:insert {
+          name = "ldap-auth-advanced",
+          config = {
+            ldap_host = "localhost",
+            base_dn = "test",
+            attribute = "test",
+            realm = "test"
+          }
+        }
+        local expected_ldap_auth_adv_prior_38 = cycle_aware_deep_copy(ldap_auth_adv)
+        expected_ldap_auth_adv_prior_38.config.realm = nil
+        do_assert(uuid(), "3.7.0", expected_ldap_auth_adv_prior_38)
+        -- cleanup
+        admin.plugins:remove({ id = ldap_auth_adv.id })
       end)
     end)
   end)
