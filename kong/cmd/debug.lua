@@ -22,6 +22,10 @@ local log_levels = {
   crit = true, alert = true, emerg = true,
 }
 
+local NEEDS_DEBUG_LISTEN_MSG =
+  "To use `kong debug`, you need to enable domain socket based debug server\n" ..
+  "by setting \"debug_listen_local\" to \"on\" in the kong.conf.\n\n"
+
 
 -- We implement a wrapper for making a request to the unix domain socket
 -- as the API httpc:request_uri() doesn't support it.
@@ -35,7 +39,8 @@ local function request_unix_domain_socket(params)
   })
 
   if not ok then
-    error("Failed to connect to the debug endpoint: " .. err)
+    error("Failed to connect to the debug endpoint: " .. err .. "\n\n" ..
+          NEEDS_DEBUG_LISTEN_MSG)
   end
 
   if params.verbose then
@@ -316,30 +321,45 @@ The available commands are:
     --interval  (optional number)       Sampling interval in microseconds.
                                         (only for mode=time)
 
+    --timeout (optional number)         Profiling will be stopped automatically
+                                        after the timeout (in seconds).
+                                        default: 10
+
   profiling memory <start|stop|status>  Generating the Lua GC heap memory
                                         tracing data (on-the-fly tracing).
 
     --stack_depth (optional number)     The maximum depth of the Lua stack.
 
+    --timeout (optional number)         Profiling will be stopped automatically
+                                        after the timeout (in seconds).
+                                        default: 10
+
   profiling gc-snapshot                 Generate a Lua GC heap snapshot.
 
+    --timeout (optional number)         Profiling will be stopped automatically
+                                        after the timeout (in seconds).
+                                        default: 120
 
   log_level set --level <log_level>     Set the logging level.
+                                        It cannot work while not using a
+                                        database because it needs to be
+                                        protected by RBAC and RBAC is not
+                                        available in DB-less.
 
     --level (optional string)           It can be one of the following: debug,
                                         info, notice, warn, error, crit, alert,
                                         or emerg.
+
+    --timeout (optional number)         The log level will be restored to the
+                                        original level after the timeout (in
+                                        seconds).
+                                        default: 60
 
   log_level get                         Get the logging level.
 
 
 Options:
  --pid            (optional number)     The worker’s PID for profiling.
-
- --timeout        (optional number default 10)
-                                        Profiling will be stopped automatically
-                                        after the timeout (in seconds).
-                                        default: 10 s
 
  -f                                     Follow mode for certain commands, such
                                         as 'profiling {cpu|memory} status'.
