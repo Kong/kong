@@ -13,12 +13,12 @@
 local cjson = require "cjson.safe".new()
 local multipart = require "multipart"
 local phase_checker = require "kong.pdk.private.phases"
+local string_tools = require "kong.tools.string"
 
 
 local ngx = ngx
 local sub = string.sub
 local fmt = string.format
-local gsub = string.gsub
 local find = string.find
 local type = type
 local error = error
@@ -31,6 +31,10 @@ local check_phase = phase_checker.check
 
 
 cjson.decode_array_with_array_mt(true)
+
+
+local replace_dashes       = string_tools.replace_dashes
+local replace_dashes_lower = string_tools.replace_dashes_lower
 
 
 local PHASES = phase_checker.phases
@@ -52,7 +56,7 @@ do
   local resp_headers_mt = {
     __index = function(t, name)
       if type(name) == "string" then
-        local var = fmt("upstream_http_%s", gsub(lower(name), "-", "_"))
+        local var = fmt("upstream_http_%s", replace_dashes_lower(name))
         if not ngx.var[var] then
           return nil
         end
@@ -101,7 +105,7 @@ do
         return response_headers[name]
       end
 
-      name = gsub(name, "-", "_")
+      name = replace_dashes(name)
 
       if response_headers[name] then
         return response_headers[name]
@@ -113,7 +117,7 @@ do
           return nil
         end
 
-        n = gsub(lower(n), "-", "_")
+        n = replace_dashes_lower(n)
         if n == name then
           return v
         end

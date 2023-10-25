@@ -24,11 +24,13 @@ local isempty = require "table.isempty"
 local buffer = require "string.buffer"
 local clone = require "table.clone"
 local utils = require "kong.tools.utils"
+local string_tools = require "kong.tools.string"
 local cjson = require("cjson.safe").new()
 
 
 local yield = utils.yield
 local get_updated_now_ms = utils.get_updated_now_ms
+local replace_dashes = string_tools.replace_dashes
 
 
 local ngx = ngx
@@ -37,7 +39,6 @@ local max = math.max
 local fmt = string.format
 local sub = string.sub
 local byte = string.byte
-local gsub = string.gsub
 local type = type
 local sort = table.sort
 local pcall = pcall
@@ -546,7 +547,7 @@ local function new(self)
       base_config = {}
       if self and self.configuration then
         local configuration = self.configuration
-        local env_name = gsub(name, "-", "_")
+        local env_name = replace_dashes(name)
         local _, err, schema = get_vault_strategy_and_schema(name)
         if not schema then
           return nil, err
@@ -560,7 +561,7 @@ local function new(self)
           -- then you would configure it with KONG_VAULT_MY_VAULT_<setting>
           -- or in kong.conf, where it would be called
           -- "vault_my_vault_<setting>".
-          local n = lower(fmt("vault_%s_%s", env_name, gsub(k, "-", "_")))
+          local n = lower(fmt("vault_%s_%s", env_name, replace_dashes(k)))
           local v = configuration[n]
           v = arguments.infer_value(v, f)
           -- TODO: should we be more visible with validation errors?
