@@ -761,6 +761,21 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         -- cleanup
         admin.plugins:remove({ id = oauth2.id })
       end)
+
+      -- EE plugins
+      it("[key-auth-enc] removes realm for versions below 3.8", function()
+        local key_auth_enc = admin.plugins:insert {
+          name = "key-auth-enc",
+          config = {
+            realm = "test"
+          }
+        }
+        local expected_key_auth_enc_prior_38 = cycle_aware_deep_copy(key_auth_enc)
+        expected_key_auth_enc_prior_38.config.realm = nil
+        do_assert(uuid(), "3.7.0", expected_key_auth_enc_prior_38)
+        -- cleanup
+        admin.plugins:remove({ id = key_auth_enc.id })
+      end)
     end)
   end)
 

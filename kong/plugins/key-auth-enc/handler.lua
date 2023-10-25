@@ -12,9 +12,7 @@ local workspaces = require "kong.workspaces"
 
 local kong = kong
 local type = type
-
-
-local _realm = 'Key realm="' .. _KONG._NAME .. '"'
+local fmt = string.format
 
 
 local KeyAuthHandler = {}
@@ -23,6 +21,11 @@ local KeyAuthHandler = {}
 KeyAuthHandler.PRIORITY = 1250
 KeyAuthHandler.VERSION = meta.core_version
 
+local ERR_DUPLICATE_API_KEY   = "Duplicate API key found"
+local ERR_NO_API_KEY          = "No API key found in request"
+local ERR_INVALID_AUTH_CRED   = "Unauthorized"
+local ERR_INVALID_PLUGIN_CONF = "Invalid plugin configuration"
+local ERR_UNEXPECTED          = "An unexpected error occurred"
 
 local function load_credential_ids(key)
   return kong.db.keyauth_enc_credentials:select_ids_by_ident(key)
@@ -130,13 +133,22 @@ local function set_consumer(consumer, credential)
   end
 end
 
+local function unauthorized(message, www_auth_content)
+  return { status = 401, body = { message = message }, headers = { ["WWW-Authenticate"] = www_auth_content } }
+end
+
+
+local function server_error(message)
+  return { status = 500, body = { message = message } }
+end
 
 local function do_authentication(conf)
   if type(conf.key_names) ~= "table" then
     kong.log.err("no conf.key_names set, aborting plugin execution")
-    return nil, { status = 500, message = "Invalid plugin configuration" }
+    return nil, server_error(ERR_INVALID_PLUGIN_CONF)
   end
 
+  local www_auth_content = conf.realm and fmt('Key realm="%s"', conf.realm) or 'Key'
   local headers = kong.request.get_headers()
   local query = kong.request.get_query()
   local key
@@ -195,14 +207,13 @@ local function do_authentication(conf)
 
     elseif type(v) == "table" then
       -- duplicate API key
-      return nil, { status = 401, message = "Duplicate API key found" }
+      return nil, unauthorized(ERR_DUPLICATE_API_KEY, www_auth_content)
     end
   end
 
   -- this request is missing an API key, HTTP 401
   if not key or key == "" then
-    kong.response.set_header("WWW-Authenticate", _realm)
-    return nil, { status = 401, message = "No API key found in request" }
+    return nil, unauthorized(ERR_NO_API_KEY, www_auth_content)
   end
 
   -- retrieve our consumer linked to this API key
@@ -211,12 +222,12 @@ local function do_authentication(conf)
 
   if err then
     kong.log.err(err)
-    return kong.response.exit(500, "An unexpected error occurred")
+    return nil, server_error(ERR_UNEXPECTED)
   end
 
   -- no credential in DB, for this key, it is invalid, HTTP 401
   if not credential then
-    return nil, { status = 401, message = "Unauthorized" }
+    return nil, unauthorized(ERR_INVALID_AUTH_CRED, www_auth_content)
   end
 
   -----------------------------------------
@@ -231,7 +242,7 @@ local function do_authentication(conf)
                                  credential.consumer.id)
   if err then
     kong.log.err(err)
-    return nil, { status = 500, message = "An unexpected error occurred" }
+    return nil, server_error(ERR_UNEXPECTED)
   end
 
   set_consumer(consumer, credential)
@@ -274,35 +285,57 @@ function KeyAuthHandler:init_worker()
 end
 
 
+local function set_anonymous_consumer(anonymous)
+  local consumer_cache_key = kong.db.consumers:cache_key(anonymous)
+  local consumer, err = kong.cache:get(consumer_cache_key, nil,
+                                        kong.client.load_consumer,
+                                        anonymous, true)
+  if err then
+    kong.log.err("failed to load anonymous consumer:", err)
+    return kong.response.exit(500, { message = ERR_UNEXPECTED })
+  end
+
+  set_consumer(consumer)
+end
+
+
+--- When conf.anonymous is enabled we are in "logical OR" authentication flow.
+--- Meaning - either anonymous consumer is enabled or there are multiple auth plugins
+--- and we need to passthrough on failed authentication.
+local function logical_OR_authentication(conf)
+  if kong.client.get_credential() then
+    -- we're already authenticated and in "logical OR" between auth methods -- early exit
+    return
+  end
+
+  local ok, _ = do_authentication(conf)
+  if not ok then
+    set_anonymous_consumer(conf.anonymous)
+  end
+end
+
+
+--- When conf.anonymous is not set we are in "logical AND" authentication flow.
+--- Meaning - if this authentication fails the request should not be authorized
+--- even though other auth plugins might have successfully authorized user.
+local function logical_AND_authentication(conf)
+  local ok, err = do_authentication(conf)
+  if not ok then
+    return kong.response.exit(err.status, err.body, err.headers)
+  end
+end
+
+
 function KeyAuthHandler:access(conf)
   -- check if preflight request and whether it should be authenticated
   if not conf.run_on_preflight and kong.request.get_method() == "OPTIONS" then
     return
   end
 
-  if conf.anonymous and kong.client.get_credential() then
-    -- we're already authenticated, and we're configured for using anonymous,
-    -- hence we're in a logical OR between auth methods and we're already done.
-    return
-  end
-
-  local ok, err = do_authentication(conf)
-  if not ok then
-    if conf.anonymous then
-      -- get anonymous user
-      local consumer_cache_key = kong.db.consumers:cache_key(conf.anonymous)
-      local consumer, err = kong.cache:get(consumer_cache_key, nil,
-                                           kong.client.load_consumer, conf.anonymous, true)
-      if err then
-        kong.log.err("failed to load anonymous consumer:", err)
-        return kong.response.exit(500, { message = "An unexpected error occurred" })
-      end
-
-      set_consumer(consumer, nil)
-
-    else
-      return kong.response.exit(err.status, { message = err.message }, err.headers)
-    end
+  if conf.anonymous then
+    return logical_OR_authentication(conf)
+  else
+    return logical_AND_authentication(conf)
   end
 end
 
