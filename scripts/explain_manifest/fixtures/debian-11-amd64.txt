@@ -180,7 +180,7 @@
   - lua-resty-events
   - lua-resty-lmdb
   - ngx_wasm_module
-  OpenSSL   : OpenSSL 3.1.1 30 May 2023
+  OpenSSL   : OpenSSL 3.1.4 24 Oct 2023
   DWARF     : True
   DWARF - ngx_http_request_t related DWARF DIEs: True
 
