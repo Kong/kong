@@ -118,14 +118,14 @@ do
 
     return is_array_strict(t)
   end
+
+
+  --- Checks if a table is an array and not an associative array.
+  -- *** NOTE *** string-keys containing integers are considered valid array entries!
+  -- @param t The table to check
+  -- @return Returns `true` if the table is an array, `false` otherwise
+  _M.is_lapis_array = is_array_lapis
 end
-
-
---- Checks if a table is an array and not an associative array.
--- *** NOTE *** string-keys containing integers are considered valid array entries!
--- @param t The table to check
--- @return Returns `true` if the table is an array, `false` otherwise
-_M.is_lapis_array = is_array_lapis
 
 
 --- Deep copies a table into a new table.
