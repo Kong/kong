@@ -1,6 +1,9 @@
 name: Package & Release
 
 # The workflow to build and release official Kong packages and images.
+#
+# TODO:
+# Do not bump the version of actions/checkout to v4 before dropping rhel7 and amazonlinux2.
 
 on:  # yamllint disable-line rule:truthy
   pull_request:
@@ -56,7 +59,7 @@ jobs:
       arch: ${{ steps.build-info.outputs.arch }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v3
     - name: Build Info
       id: build-info
       run: |
@@ -173,7 +176,7 @@ jobs:
         apt install -y wget libz-dev libssl-dev libcurl4-gnutls-dev libexpat1-dev sudo
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v3
 
     - name: Swap git with https
       run: git config --global url."https://github".insteadOf git://github
@@ -284,7 +287,7 @@ jobs:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-packages'] }}"
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v3
 
     - name: Download artifact
       uses: actions/download-artifact@v3
@@ -316,7 +319,7 @@ jobs:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-images'] }}"
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v3
 
     - name: Download artifact
       uses: actions/download-artifact@v3
