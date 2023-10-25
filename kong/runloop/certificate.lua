@@ -391,13 +391,18 @@ local reference_plugins
 
 -- Examples:
 -- gen_iterator("services")
--- gen_iterator("plugins", { mtls-auth = true })
 -- gen_iterator("plugins", "mtls-auth")
 -- We assume the field name is always `ca_certificates`
-local function gen_iterator(entity, plugins)
+local function gen_iterator(entity, plugin_name)
   local options = {
     workspace = null,
   }
+
+  if plugin_name then
+    options.search_fields = {
+      name = plugin_name,
+    }
+  end
 
   local iter = kong.db[entity]:each(1000, options)
 
@@ -410,17 +415,15 @@ local function gen_iterator(entity, plugins)
       return nil
 
     else
-      if plugins then
-        if type(plugins) ~= "table" then
-          plugins = { [plugins] = true }
-        end
-
-        if plugins[element.name] and element.config.ca_certificates and
-          next(element.config.ca_certificates) then
+      if entity == "plugins" then
+        -- double check, in case the filter doesn't take effect
+        if plugin_name and plugin_name == element.name and
+          element.config.ca_certificates and next(element.config.ca_certificates) then
           return element
         else
           return iterator()
         end
+
       else
         if element.ca_certificates and next(element.ca_certificates) then
           return element
@@ -464,9 +467,9 @@ local function check_ca_references(ca_id)
     end
   end
 
-  if next(reference_plugins) then
+  for plugin_name, _ in pairs(reference_plugins) do
     local entity = "plugins"
-    for element, err in gen_iterator(entity, reference_plugins) do
+    for element, err in gen_iterator(entity, plugin_name) do
       if err then
         local msg = fmt("failed to list plugins: %s", err)
         return nil, msg
@@ -492,10 +495,10 @@ end
 -- different entities use different caches (kong.cache or kong.core_cache)
 -- and use different functions to calculate the ca store cache key.
 -- And it's not a good idea to depend on the plugin implementations in Core.
-local function get_ca_certificate_references(ca_id, entity, plugin)
+local function get_ca_certificate_references(ca_id, entity, plugin_name)
   local elements = {}
 
-  for element, err in gen_iterator(entity, plugin) do
+  for element, err in gen_iterator(entity, plugin_name) do
     if err then
       local msg = fmt("failed to list %s: %s", entity, err)
       return nil, msg

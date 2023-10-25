@@ -324,11 +324,12 @@ local function crud_ca_certificates_handler(data)
     return
   end
 
-  log(DEBUG, "[events] Ca_certificates updated, invalidating ca certificate store caches for services")
+  log(DEBUG, "[events] CA certificate updated, invalidating ca certificate store caches for services")
 
   local elements, err = certificate.get_ca_certificate_references(data.entity.id, "services")
   if err then
     log(ERR, "[events] failed to get ca certificate references, ", err)
+    return
   end
 
   if elements then
