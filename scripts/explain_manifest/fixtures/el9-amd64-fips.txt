@@ -71,12 +71,11 @@
 
 - Path      : /usr/local/kong/lib/libjq.so.1.0.4
   Needed    :
-  - libonig.so.4
   - libstdc++.so.6
   - libm.so.6
+  - libonig.so.5
   - libc.so.6
-  - ld-linux-x86-64.so.2
-  Rpath     : /usr/local/kong/lib
+  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/kong/lib/liblicense_utils.so
   Needed    :
@@ -84,7 +83,7 @@
   - libc.so.6
   Rpath     : /usr/local/kong/lib
 
-- Path      : /usr/local/kong/lib/libonig.so.4.0.0
+- Path      : /usr/local/kong/lib/libonig.so.5.3.0
   Needed    :
   - libstdc++.so.6
   - libm.so.6

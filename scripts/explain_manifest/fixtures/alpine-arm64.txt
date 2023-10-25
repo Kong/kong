@@ -62,7 +62,7 @@
 
 - Path      : /usr/local/kong/lib/libjq.so.1.0.4
   Needed    :
-  - libonig.so.4
+  - libonig.so.5
   - libc.so
   Rpath     : /usr/local/kong/lib
 
@@ -77,7 +77,7 @@
   - libc.so
   Rpath     : /usr/local/kong/lib
 
-- Path      : /usr/local/kong/lib/libonig.so.4.0.0
+- Path      : /usr/local/kong/lib/libonig.so.5.3.0
   Needed    :
   - libc.so
   Rpath     : /usr/local/kong/lib
