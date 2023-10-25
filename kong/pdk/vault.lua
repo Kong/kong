@@ -1103,7 +1103,7 @@ local function new(self)
       -- We cannot retry, so let's just call the callback and return
       return callback(options)
     end
-    
+
     local name = "vault.try:" .. calculate_hash(concat(references, "."))
     local old_updated_at = RETRY_LRU:get(name) or 0
 
@@ -1478,6 +1478,29 @@ local function new(self)
   -- @function kong.vault.init_worker
   function _VAULT.init_worker()
     init_worker()
+  end
+
+
+  ---
+  -- Warmups vault caches from config.
+  --
+  -- @local
+  -- @function kong.vault.warmup
+  function _VAULT.warmup(input)
+    for k, v in pairs(input) do
+      local kt = type(k)
+      if kt == "table" then
+        _VAULT.warmup(k)
+      elseif kt == "string" and is_reference(k) then
+        get(k)
+      end
+      local vt = type(v)
+      if vt == "table" then
+        _VAULT.warmup(v)
+      elseif vt == "string" and is_reference(v) then
+        get(v)
+      end
+    end
   end
 
 
