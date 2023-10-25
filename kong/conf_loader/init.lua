@@ -750,6 +750,10 @@ local CONF_BASIC = {
   vault_hcv_auth_method = true,
   vault_hcv_kube_role = true,
   vault_hcv_kube_api_token_file = true,
+  vault_azure_client_id = true,
+  vault_azure_tenant_id = true,
+  vault_azure_type = true,
+  vault_azure_vault_uri = true
 }
 
 

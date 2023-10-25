@@ -1,0 +1,4 @@
+message: |
+  Allow to specify azure_vault config options in the `kong.conf` file.
+type: bugfix
+scope: Core

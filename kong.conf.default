@@ -1856,6 +1856,40 @@
                                  # expires, a new attempt to refresh the stale
                                  # secrets will be made.
 
+#vault_azure_vault_uri =         # The URI the vault is reachable from.
+
+#vault_azure_client_id =         # The client ID from your registered Application. Visit your Azure Dashboard and select *App Registrations* to check your client ID.
+#vault_azure_tenant_id =         # The DirectoryId and TenantId both equate to the GUID representing the ActiveDirectory Tenant. Depending on context, either term may be used by Microsoft documentation and products, which can be confusing. In other words, the "Tenant ID" IS the "Directory ID"
+
+#vault_azure_type = secrets      # Azure Key Vault enables Microsoft Azure applications and users to store and use several types of secret/key data: keys, secrets, and certificates. Kong currently only supports the `Secrets`
+
+#vault_azure_ttl = 0             # Time-to-live (in seconds) of a secret from
+                                 # the Azure Key Vault when cached by this node.
+                                 #
+                                 # Key Vault misses (no secret) are also
+                                 # cached according to this setting if you do not
+                                 # configure `vault_azure_neg_ttl`.
+                                 #
+                                 # If set to 0 (default), such cached secrets
+                                 # or misses never expire.
+
+#vault_azure_neg_ttl =           # Time-to-live (in seconds) of a Azure Key Vault
+                                 # miss (no secret).
+                                 #
+                                 # If not specified (default), `vault_azure_ttl`
+                                 # value will be used instead.
+                                 #
+                                 # If set to 0, misses will never expire.
+
+#vault_azure_resurrect_ttl =     # Time (in seconds) for which stale secrets
+                                 # from the Azure Key Vault should be resurrected
+                                 # for when they cannot be refreshed (e.g., the
+                                 # the vault is unreachable). When this TTL
+                                 # expires, a new attempt to refresh the stale
+                                 # secrets will be made.
+
+
+
 #------------------------------------------------------------------------------
 # TUNING & BEHAVIOR
 #------------------------------------------------------------------------------
