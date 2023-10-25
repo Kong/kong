@@ -274,7 +274,7 @@ dns_not_found_ttl = 30
 dns_error_ttl = 1
 dns_no_sync = off
 
-dedicated_config_processing = on
+dedicated_config_processing = off
 worker_consistency = eventual
 worker_state_update_frequency = 5
 
