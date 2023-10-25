@@ -397,12 +397,6 @@ local function gen_iterator(entity, plugin_name)
     workspace = null,
   }
 
-  if plugin_name then
-    options.search_fields = {
-      name = plugin_name,
-    }
-  end
-
   local iter = kong.db[entity]:each(1000, options)
 
   local function iterator()
