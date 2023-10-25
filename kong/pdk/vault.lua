@@ -1563,6 +1563,28 @@ local function new(self)
     init_worker()
   end
 
+  ---
+  -- Warmups vault caches from config.
+  --
+  -- @local
+  -- @function kong.vault.warmup
+  function _VAULT.warmup(input)
+    for k, v in pairs(input) do
+      local kt = type(k)
+      if kt == "table" then
+        _VAULT.warmup(k)
+      elseif kt == "string" and is_reference(k) then
+        get(k)
+      end
+      local vt = type(v)
+      if vt == "table" then
+        _VAULT.warmup(v)
+      elseif vt == "string" and is_reference(v) then
+        get(v)
+      end
+    end
+  end
+
   if get_phase() == "init" then
     init()
   end

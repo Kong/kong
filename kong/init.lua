@@ -717,6 +717,8 @@ function Kong.init()
       if not declarative_entities then
         error(err)
       end
+
+      kong.vault.warmup(declarative_entities)
     end
 
   else
