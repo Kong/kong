@@ -270,7 +270,7 @@ local function check_required_parameter(parameter, path_spec)
     local request_path = normalize(kong.request.get_path(), true)
     local path_pattern = gsub(path_spec, "/", "\\/")
     path_pattern = gsub(path_pattern, "{(.-)}", function(str)
-      return "(?<" .. str .. ">[A-Za-z0-9._-]+)"
+      return "(?<" .. str .. ">[^/]+)"
     end)
     local m, err = re_match(request_path, path_pattern)
     if err then

@@ -33,6 +33,9 @@ local fixtures = {
             return 200;
           }
 
+          location / {
+             return 301;
+          }
         }
     ]]
   }
@@ -162,5 +165,41 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    it("Encoded path parameter", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/user/你好?",
+        headers = {
+          host = "petstore1.com",
+        },
+      })
+      assert.response(res).has.status(301)
+      local res = assert(client:send {
+        method = "GET",
+        path = "/user/%E4%BD%A0%E5%A5%BD",
+        headers = {
+          host = "petstore1.com",
+        },
+      })
+      assert.response(res).has.status(301)
+
+      local res = assert(client:send {
+        method = "GET",
+        path = "/user/%E4%BD%A0%E5%A5%BD/report.世界",
+        headers = {
+          host = "petstore1.com",
+        },
+      })
+
+      assert.response(res).has.status(301)
+      local res = assert(client:send {
+        method = "GET",
+        path = "/user/%E4%BD%A0%E5%A5%BD/report.%E4%B8%96%E7%95%8C",
+        headers = {
+          host = "petstore1.com",
+        },
+      })
+      assert.response(res).has.status(301)
+    end)
   end)
 end

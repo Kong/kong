@@ -46,7 +46,6 @@ paths:
               - pdf
               - txt
               - word
-              - 世界
       responses:
         201:
           description: Created

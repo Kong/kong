@@ -55,7 +55,7 @@ end
 function _M.retrieve_operation(spec, path, method)
   for _, spec_path in pairs(spec.sorted_paths or EMPTY_T) do
     local formatted_path = gsub(spec_path, "[-.]", "%%%1")
-    formatted_path = "^" .. gsub(formatted_path, "{(.-)}", "[A-Za-z0-9._-]+") .. "$"
+    formatted_path = "^" .. gsub(formatted_path, "{(.-)}", "[^/]+") .. "$"
     if match(path, formatted_path) then
       return spec.paths[spec_path], spec_path, spec.paths[spec_path][lower(method)]
     end
