@@ -182,7 +182,7 @@
                                  # cache (i.e. when the configured
                                  # `mem_cache_size`) is full.
 
-#dedicated_config_processing = on  # Enables or disables a special worker
+#dedicated_config_processing = off # Enables or disables a special worker
                                    # process for configuration processing. This process
                                    # increases memory usage a little bit while
                                    # allowing to reduce latencies by moving some
@@ -2127,7 +2127,7 @@
 # information such as domain name tried during these processes.
 #
 #request_debug = on              # When enabled, Kong will provide detailed timing information
-                                 # for its components to the client and the error log 
+                                 # for its components to the client and the error log
                                  # if the following headers are present in the proxy request:
                                  # - `X-Kong-Request-Debug`:
                                  #   If the value is set to `*`,
