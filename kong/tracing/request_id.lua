@@ -9,6 +9,7 @@ local ngx = ngx
 local var = ngx.var
 local get_phase = ngx.get_phase
 
+
 local NGX_VAR_PHASES = {
   set           = true,
   rewrite       = true,
