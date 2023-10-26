@@ -80,6 +80,17 @@ build = {
     ["kong.clustering.config_helper"] = "kong/clustering/config_helper.lua",
     ["kong.clustering.tls"] = "kong/clustering/tls.lua",
 
+    ["kong.clustering.rpc.callbacks"] = "kong/clustering/rpc/callbacks.lua",
+    ["kong.clustering.rpc.connector"] = "kong/clustering/rpc/connector.lua",
+    ["kong.clustering.rpc.constants"] = "kong/clustering/rpc/constants.lua",
+    ["kong.clustering.rpc.cp"] = "kong/clustering/rpc/cp.lua",
+    ["kong.clustering.rpc.dp"] = "kong/clustering/rpc/dp.lua",
+    ["kong.clustering.rpc.handler"] = "kong/clustering/rpc/handler.lua",
+    ["kong.clustering.rpc.peer"] = "kong/clustering/rpc/peer.lua",
+    ["kong.clustering.rpc.queue"] = "kong/clustering/rpc/queue.lua",
+    ["kong.clustering.rpc.serializer"] = "kong/clustering/rpc/serializer.lua",
+    ["kong.clustering.rpc.threads"] = "kong/clustering/rpc/threads.lua",
+
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.postgres"] = "kong/cluster_events/strategies/postgres.lua",
     ["kong.cluster_events.strategies.off"] = "kong/cluster_events/strategies/off.lua",
