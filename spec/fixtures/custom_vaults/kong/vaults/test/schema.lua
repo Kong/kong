@@ -6,6 +6,9 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 
+local typedefs = require "kong.db.schema.typedefs"
+
+
 return {
   name = "test",
   fields = {
@@ -15,6 +18,9 @@ return {
         fields = {
           { default_value     = { type = "string", required = false } },
           { default_value_ttl = { type = "number", required = false } },
+          { ttl                 = typedefs.ttl },
+          { neg_ttl             = typedefs.ttl },
+          { resurrect_ttl       = typedefs.ttl },
         },
       },
     },

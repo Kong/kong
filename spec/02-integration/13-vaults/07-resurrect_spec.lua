@@ -5,6 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+
 local helpers = require "spec.helpers"
 
 -- using the full path so that we don't have to modify package.path in
@@ -84,6 +85,10 @@ local VAULTS = {
       return test_vault.client.put(secret, value, opts)
     end,
 
+    delete_secret = function(_, secret)
+      return test_vault.client.delete(secret)
+    end,
+
     fixtures = function()
       return {
         http_mock = {
@@ -112,7 +117,8 @@ end
 for _, strategy in helpers.each_strategy() do
 for _, vault in ipairs(VAULTS) do
 
-describe("vault ttl and rotation (#" .. strategy .. ") #" .. vault.name, function()
+
+describe("vault resurrect_ttl and rotation (#" .. strategy .. ") #" .. vault.name, function()
   local client
   local secret = "my-secret"
 
@@ -144,9 +150,9 @@ describe("vault ttl and rotation (#" .. strategy .. ") #" .. vault.name, functio
     vault:create_secret(secret, "init")
 
     local bp = helpers.get_db_utils(strategy,
-                                    { "vaults", "routes", "services", "plugins" },
-                                    { "dummy" },
-                                    { vault.name })
+            { "vaults", "routes", "services", "plugins" },
+            { "dummy" },
+            { vault.name })
 
 
     assert(bp.vaults:insert({
@@ -167,8 +173,8 @@ describe("vault ttl and rotation (#" .. strategy .. ") #" .. vault.name, functio
     assert(bp.plugins:insert({
       name = "dummy",
       config = {
-        resp_header_value = fmt("{vault://%s/%s?ttl=%s}",
-                                vault.prefix, secret, 10),
+        resp_header_value = fmt("{vault://%s/%s?ttl=%d&resurrect_ttl=%d}",
+                                vault.prefix, secret, 2, 2),
       },
       route = { id = route.id },
     }))
@@ -197,36 +203,46 @@ describe("vault ttl and rotation (#" .. strategy .. ") #" .. vault.name, functio
   end)
 
 
-  it("updates plugin config references (backend: #" .. vault.name .. ")", function()
+  it("resurrects plugin config references when secret is deleted (backend: #" .. vault.name .. ")", function()
     local function check_plugin_secret(expect, ttl, leeway)
-      leeway = leeway or 0.25 -- 25%
+    leeway = leeway or 0.25 -- 25%
 
-      local timeout = ttl + (ttl * leeway)
+    local timeout = ttl + (ttl * leeway)
 
-      assert
-        .with_timeout(timeout)
-        .with_step(0.5)
-        .eventually(function()
-          local res = http_get("/")
-          local value = assert.response(res).has.header(DUMMY_HEADER)
+    assert
+            .with_timeout(timeout)
+            .with_step(0.5)
+            .eventually(function()
+      local res = http_get("/")
+      local value
+      if expect == "" then
+        value = res.headers[DUMMY_HEADER] or ""
+        if value == "" then
+          return true
+        end
 
-          if value == expect then
-            return true
-          end
+      else
+        value = assert.response(res).has.header(DUMMY_HEADER)
+        if value == expect then
+          return true
+        end
+      end
 
-          return nil, { expected = expect, got = value }
-        end)
-        .is_truthy("expected plugin secret to be updated to '" .. expect .. "' "
-                .. "' within " .. tostring(timeout) .. "seconds")
-    end
+      return nil, { expected = expect, got = value }
+    end)
+    .is_truthy("expected plugin secret to be updated to '" .. tostring(expect) .. "' "
+            .. "within " .. tostring(timeout) .. " seconds")
+  end
 
-    vault:update_secret(secret, "old", { ttl = 5 })
+    vault:update_secret(secret, "old", { ttl = 2, resurrect_ttl = 2 })
     check_plugin_secret("old", 5)
-
-    vault:update_secret(secret, "new", { ttl = 5 })
-    check_plugin_secret("new", 5)
+    vault:delete_secret(secret)
+    ngx.sleep(2.5)
+    check_plugin_secret("old", 5)
+    check_plugin_secret("", 5)
   end)
 end)
+
 
 end -- each vault backend
 end -- each strategy
