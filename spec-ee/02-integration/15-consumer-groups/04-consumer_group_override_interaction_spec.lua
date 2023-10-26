@@ -7,11 +7,14 @@
 
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
+local cjson = require "cjson"
 
 
 for _, strategy in helpers.each_strategy() do
   describe("Consumer Groups Plugin Scoping and `override` interaction", function()
     local db, bp, admin_client, proxy_client
+    local a_cg = "a_test_group_" .. utils.uuid()
+    local b_cg = "b_test_group_" .. utils.uuid()
 
     lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy, {
@@ -52,9 +55,25 @@ for _, strategy in helpers.each_strategy() do
         proxy_client:close()
       end
     end)
+    local function check_cache(cache_key, status)
+      local json = assert.res_status(status, assert(admin_client:send {
+        method = "GET",
+        path = "/cache/" .. cache_key,
+        headers = {
+          ["Content-Type"] = "application/json",
+        }
+      }))
+
+      return cjson.decode(json)
+    end
+
+    local function delete_consumer_group(key)
+      assert.res_status(204, assert(admin_client:send {
+        method = "DELETE",
+        path = "/consumer_groups/" .. key,
+      }))
+    end
     local function insert_entities()
-      local a_cg = "a_test_group_" .. utils.uuid()
-      local b_cg = "b_test_group_" .. utils.uuid()
 
       local a_consumer = assert(db.consumers:insert { username = 'username' .. utils.uuid() })
       local b_consumer = assert(db.consumers:insert { username = 'username' .. utils.uuid() })
@@ -151,6 +170,26 @@ for _, strategy in helpers.each_strategy() do
       -- Expect that the override for a_consumer_group applies as it was defined
       -- as the first item in the `consumer_groups` array
       assert.response(res).has.header("X-RateLimit-Limit-10")
+    end)
+
+    it("verify that the consumer_group cache is flushed on deletion", function ()
+        local cg_obj = db.consumer_groups:select_by_name(a_cg)
+        -- check if cache_key is present for `name`
+        local cache_key_name = db.consumer_groups:cache_key(cg_obj.name)
+        assert.is_table(check_cache(cache_key_name, 200))
+        -- check if cache_key is present for `id`
+        local cache_key_id = db.consumer_groups:cache_key(cg_obj.id)
+        assert.is_table(check_cache(cache_key_id, 200))
+
+        -- delete the consumer_group (by id)
+        delete_consumer_group(cg_obj.id)
+        assert
+          .with_timeout(10)
+          .ignore_exceptions(true)
+          .eventually(function()
+          -- verify that the cache invalidated for `name` and `id`
+          return check_cache(cache_key_name, 404) and check_cache(cache_key_id, 404)
+        end).is_truthy("consumer_group cache was not flushed on deletion")
     end)
   end)
 end

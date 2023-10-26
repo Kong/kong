@@ -1,0 +1,3 @@
+message: "Correctly invalidate caches based on names and ids for Consumer Groups"
+type: bugfix
+scope: Core

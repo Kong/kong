@@ -269,6 +269,14 @@ local function crud_plugins_handler(data)
   core_cache:invalidate("plugins_iterator:version")
 end
 
+local function crud_consumer_groups_handler(data)
+  log(DEBUG, "[events] Consumer Groups updated")
+  local cache_key_name_based = db.consumer_groups:cache_key(data.entity.name)
+  local cache_key_id_based = db.consumer_groups:cache_key(data.entity.id)
+  kong_cache:invalidate(cache_key_name_based)
+  kong_cache:invalidate(cache_key_id_based)
+end
+
 
 local function crud_snis_handler(data)
   workspaces.set_workspace(data.workspace)  -- XX EE
@@ -347,6 +355,8 @@ local LOCAL_HANDLERS = {
   -- As we support conifg.anonymous to be configured as Consumer.username,
   -- so add an event handler to invalidate the extra cache in case of data inconsistency
   { "crud"    , "consumers" , crud_consumers_handler },
+  --
+  { "crud"    , "consumer_groups" , crud_consumer_groups_handler },
 
   { "crud"    , "filter_chains"  , crud_wasm_handler },
   { "crud"    , "services"       , crud_wasm_handler },
