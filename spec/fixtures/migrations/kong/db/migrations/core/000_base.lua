@@ -17,8 +17,65 @@ return {
         "channel"    TEXT,
         "data"       TEXT
       );
+
+      CREATE TABLE IF NOT EXISTS "services" (
+        "id"    UUID PRIMARY KEY,
+        "ws_id" UUID NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS "routes" (
+        "id"    UUID PRIMARY KEY,
+        "ws_id" UUID NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS "certificates" (
+        "id"    UUID PRIMARY KEY,
+        "ws_id" UUID NULL
+      );
+
       CREATE TABLE IF NOT EXISTS "consumers" (
-        "id"         UUID                       PRIMARY KEY
+        "id"    UUID PRIMARY KEY,
+        "ws_id" UUID NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS "snis" (
+        "id"    UUID PRIMARY KEY,
+        "ws_id" UUID NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS "plugins" (
+        "id"    UUID PRIMARY KEY,
+        "ws_id" UUID NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS "upstreams" (
+        "id"    UUID PRIMARY KEY,
+        "ws_id" UUID NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS "targets" (
+        "id"    UUID PRIMARY KEY,
+        "ws_id" UUID NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS "filter_chains" (
+        "id"    UUID PRIMARY KEY,
+        "ws_id" UUID NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS "key_sets" (
+        "id"    UUID PRIMARY KEY,
+        "ws_id" UUID NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS "keys" (
+        "id"    UUID PRIMARY KEY,
+        "ws_id" UUID NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS "sm_vaults" (
+        "id"    UUID PRIMARY KEY,
+        "ws_id" UUID NULL
       );
 
       CREATE OR REPLACE FUNCTION batch_delete_expired_rows() RETURNS trigger
