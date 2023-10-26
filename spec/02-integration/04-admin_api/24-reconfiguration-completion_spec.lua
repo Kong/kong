@@ -10,10 +10,22 @@ describe("Admin API - Reconfiguration Completion -", function()
 
   local function run_tests()
 
-    local res = admin_client:post("/services", {
+    local res = admin_client:post("/plugins", {
+      body = {
+        name = "request-termination",
+        config = {
+          status_code = 200,
+          body = "kong terminated the request",
+        }
+      },
+      headers = { ["Content-Type"] = "application/json" },
+    })
+    assert.res_status(201, res)
+
+    res = admin_client:post("/services", {
       body = {
         name = "test-service",
-        url = "http://example.com",
+        url = "http://127.0.0.1",
       },
       headers = { ["Content-Type"] = "application/json" },
     })
@@ -67,7 +79,8 @@ describe("Admin API - Reconfiguration Completion -", function()
                   ["X-If-Kong-Transaction-Id"] = kong_transaction_id
                 }
               })
-      assert.res_status(200, res)
+      body = assert.res_status(200, res)
+      assert.equals("kong terminated the request", body)
     end)
             .has_no_error()
   end
