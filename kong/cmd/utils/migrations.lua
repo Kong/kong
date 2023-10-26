@@ -39,7 +39,13 @@ local function check_state(schema_state)
   end
 end
 
-local function bootstrap(schema_state, db, ttl)
+local function reinitialize_entity_counters(db, loaded_plugins)
+  local counters = require "kong.workspaces.counters"
+  db.plugins:load_plugin_schemas(loaded_plugins)
+  counters.initialize_counters(db)
+end
+
+local function bootstrap(schema_state, db, opts)
   if schema_state.needs_bootstrap then
     log("Bootstrapping database...")
     assert(db:schema_bootstrap())
@@ -49,16 +55,15 @@ local function bootstrap(schema_state, db, ttl)
     return
   end
 
-  local opts = {
-    ttl = ttl,
-    no_wait = true, -- exit the mutex if another node acquired it
-  }
+  opts.no_wait = true -- exit the mutex if another node acquired it
 
   local ok, err = db:cluster_mutex(MIGRATIONS_MUTEX_KEY, opts, function()
     assert(db:run_migrations(schema_state.new_migrations, {
       run_up = true,
       run_teardown = true,
     }))
+
+    reinitialize_entity_counters(db, opts.conf.loaded_plugins)
     log("Database is up-to-date")
   end)
   if err then
@@ -83,6 +88,8 @@ local function up(schema_state, db, opts)
   if not opts.force and schema_state.pending_migrations then
     error("Database has pending migrations; run 'kong migrations finish'")
   end
+
+  opts.no_wait = true -- exit the mutex if another node acquired it
 
   local ok, err = db:cluster_mutex(MIGRATIONS_MUTEX_KEY, opts, function()
     schema_state = assert(db:schema_state())
@@ -110,6 +117,7 @@ local function up(schema_state, db, opts)
       }))
 
       schema_state = assert(db:schema_state())
+      reinitialize_entity_counters(db, opts.conf.loaded_plugins)
       if schema_state.pending_migrations then
         log("\nDatabase has pending migrations; run 'kong migrations finish' when ready")
         return
@@ -131,6 +139,7 @@ local function up(schema_state, db, opts)
     }))
 
     schema_state = assert(db:schema_state())
+    reinitialize_entity_counters(db, opts.conf.loaded_plugins)
     if schema_state.pending_migrations then
       log("\nDatabase has pending migrations; run 'kong migrations finish' when ready")
       return
@@ -165,6 +174,7 @@ local function finish(schema_state, db, opts)
       }))
 
       schema_state = assert(db:schema_state())
+      reinitialize_entity_counters(db, opts.conf.loaded_plugins)
     end
 
     if schema_state.pending_migrations then
@@ -176,6 +186,7 @@ local function finish(schema_state, db, opts)
     }))
 
       schema_state = assert(db:schema_state())
+      reinitialize_entity_counters(db, opts.conf.loaded_plugins)
     end
 
     if schema_state.new_migrations then
@@ -252,6 +263,7 @@ local function migrate_core_entities(schema_state, db, opts)
 
   local ok, err = db:cluster_mutex(MIGRATIONS_MUTEX_KEY, opts, function()
     assert(ee_db.run_core_entity_migrations(opts))
+    reinitialize_entity_counters(db, opts.conf.loaded_plugins)
   end)
   if err then
     error(err)
@@ -272,6 +284,7 @@ return {
   bootstrap = bootstrap,
   check_state = check_state,
   migrate_core_entities = migrate_core_entities,
+  reinitialize_entity_counters= reinitialize_entity_counters,
   NEEDS_BOOTSTRAP_MSG = NEEDS_BOOTSTRAP_MSG,
   EE_NEEDS_UPGRADE = EE_NEEDS_UPGRADE,
 }

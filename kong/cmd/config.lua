@@ -13,7 +13,7 @@ local kong_global = require "kong.global"
 local declarative = require "kong.db.declarative"
 local conf_loader = require "kong.conf_loader"
 local kong_yml = require "kong.templates.kong_yml"
-
+local migrations_utils = require "kong.cmd.utils.migrations"
 
 local DEFAULT_FILE = "./kong.yml"
 
@@ -122,6 +122,8 @@ local function execute(args)
       if not ok then
         error("Failed importing:\n" .. err)
       end
+
+      migrations_utils.reinitialize_entity_counters(db, conf.loaded_plugins)
 
       log("import successful")
 

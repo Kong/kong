@@ -210,6 +210,7 @@ local function execute(args)
 
   local db = assert(DB.new(conf))
   assert(db:init_connector())
+  _G.kong.db = db
 
   if args.command == "bootstrap" then -- Needs to be here cause
                                       -- schema_state loads the
@@ -300,7 +301,10 @@ local function execute(args)
       migrations_utils.reset(schema_state, db, args.lock_timeout)
       schema_state = assert(db:schema_state())
     end
-    migrations_utils.bootstrap(schema_state, db, args.lock_timeout)
+    migrations_utils.bootstrap(schema_state, db, {
+      conf = conf,
+      ttl = args.lock_timeout,
+    })
 
   elseif args.command == "reset" then
     if not args.yes then
@@ -323,13 +327,14 @@ local function execute(args)
 
   elseif args.command == "up" then
     migrations_utils.up(schema_state, db, {
+      conf = conf,
       ttl = args.lock_timeout,
       force = args.force,
-      abort = true, -- exit the mutex if another node acquired it
     })
 
   elseif args.command == "finish" then
     migrations_utils.finish(schema_state, db, {
+      conf = conf,
       ttl = args.lock_timeout,
       force = args.force,
     })
@@ -366,10 +371,7 @@ local function execute(args)
     end
 
   elseif args.command == "reinitialize-workspace-entity-counters" then
-    local counters = require "kong.workspaces.counters"
-    db.plugins:load_plugin_schemas(conf.loaded_plugins)
-    kong.db=db
-    counters.initialize_counters(db)
+    migrations_utils.reinitialize_entity_counters(db, conf.loaded_plugins)
 
   else
     error("unreachable")
