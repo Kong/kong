@@ -3231,10 +3231,18 @@
                                     # workspaces.
                                     # - `smart` is the default option and uses the
                                     #   algorithm described in
-                                    #   https://docs.konghq.com/enterprise/latest/admin-api/workspaces/examples/#important-note-conflicting-services-or-routes-in-workspaces
-                                    # - `off` disables any check
+                                    #   https://docs.konghq.com/gateway/latest/admin-api/workspaces/examples/#important-note-conflicting-services-or-routes-in-workspaces.
+                                    # - `off` disables any check.
                                     # - `path` enforces routes to comply with the pattern
-                                    #   described in config enforce_route_path_pattern
+                                    #   described in config `enforce_route_path_pattern`.
+                                    # - `static` relies on the PostgreSQL database. 
+                                    # Before creating a new route, it checks if the 
+                                    # route is unique across all workspaces based on 
+                                    # the following params: `paths`, `methods`, and 
+                                    # `hosts`. If all fields of the new route overlap 
+                                    # with an existing one, a 409 is returned with the 
+                                    # route of the collision. The array order is not 
+                                    # important for the overlap filter.
 
 #enforce_route_path_pattern =   # Specifies the Lua pattern which will
                                 # be enforced on the `paths` attribute of a
