@@ -6,35 +6,25 @@ local _MT = { __index = _M, }
 
 
 function _M.new(clustering)
-  assert(type(clustering) == "table",
-         "kong.clustering is not instantiated")
-
-  assert(type(clustering.conf) == "table",
-         "kong.clustering did not provide configuration")
-
   local self = {
     plugins_map = {},
     conf = clustering.conf,
-
   }
 
   -- init rpc cp side
   local cp = rpc_cp.new({ "kong.sync.v1", "kong.test.v1", })
   kong.rpc = cp
 
+  ngx.log(ngx.ERR, "rpc cp new ok")
   return setmetatable(self, _MT)
 end
 
 
 
 function _M:handle_rpc_websocket()
-  --local dp_id = ngx_var.arg_node_id
-  --local dp_hostname = ngx_var.arg_node_hostname
-  --local dp_ip = ngx_var.remote_addr
-  --local dp_version = ngx_var.arg_node_version
-
   local rpc = assert(kong.rpc)
 
+  ngx.log(ngx.ERR, "rpc cp run")
   rpc:run()
 end
 

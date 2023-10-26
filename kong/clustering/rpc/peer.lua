@@ -1,5 +1,5 @@
-local constants = require("constants")
-local serializer = require("serializer")
+local constants = require("kong.clustering.rpc.constants")
+local serializer = require("kong.clustering.rpc.serializer")
 
 
 local type = type

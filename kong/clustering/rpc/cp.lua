@@ -1,9 +1,9 @@
-local constants = require("constants")
-local callbacks = require("callbacks")
-local connector = require("connector")
-local handler = require("handler")
-local threads = require("threads")
-local peer = require("peer")
+local constants = require("kong.clustering.rpc.constants")
+local callbacks = require("kong.clustering.rpc.callbacks")
+local connector = require("kong.clustering.rpc.connector")
+local handler = require("kong.clustering.rpc.handler")
+local threads = require("kong.clustering.rpc.threads")
+local peer = require("kong.clustering.rpc.peer")
 
 
 local META_HELLO_METHOD = constants.META_HELLO_METHOD

@@ -1,9 +1,9 @@
 --local cjson = require("cjson.safe")
-local constants = require("constants")
-local connector = require("connector")
-local handler = require("handler")
-local threads = require("threads")
-local peer = require("peer")
+local constants = require("kong.clustering.rpc.constants")
+local connector = require("kong.clustering.rpc.connector")
+local handler = require("kong.clustering.rpc.handler")
+local threads = require("kong.clustering.rpc.threads")
+local peer = require("kong.clustering.rpc.peer")
 
 
 local timer_at = ngx.timer.at
@@ -33,11 +33,7 @@ local function meta_capabilities(pr, capabilities)
 end
 
 
-function _M.new(uri, capabilities)
-  local conf = {
-    uri = uri,
-  }
-
+function _M.new(conf, capabilities)
   local self = {
     connector = connector.new(conf),
     conf = conf,

@@ -2,10 +2,10 @@
 local semaphore = require("ngx.semaphore")
 
 
-local constants = require("constants")
-local queue = require("queue")
-local serializer = require("serializer")
-local callbacks = require("callbacks")
+local constants = require("kong.clustering.rpc.constants")
+local queue = require("kong.clustering.rpc.queue")
+local serializer = require("kong.clustering.rpc.serializer")
+local callbacks = require("kong.clustering.rpc.callbacks")
 
 
 local type = type

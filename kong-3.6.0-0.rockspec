@@ -80,6 +80,8 @@ build = {
     ["kong.clustering.config_helper"] = "kong/clustering/config_helper.lua",
     ["kong.clustering.tls"] = "kong/clustering/tls.lua",
 
+    ["kong.clustering.rpc_data_plane"] = "kong/clustering/rpc_data_plane.lua",
+    ["kong.clustering.rpc_control_plane"] = "kong/clustering/rpc_control_plane.lua",
     ["kong.clustering.rpc.callbacks"] = "kong/clustering/rpc/callbacks.lua",
     ["kong.clustering.rpc.connector"] = "kong/clustering/rpc/connector.lua",
     ["kong.clustering.rpc.constants"] = "kong/clustering/rpc/constants.lua",

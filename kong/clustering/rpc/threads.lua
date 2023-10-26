@@ -1,4 +1,4 @@
-local constants = require("constants")
+local constants = require("kong.clustering.rpc.constants")
 
 
 local setmetatable = setmetatable

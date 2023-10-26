@@ -90,10 +90,16 @@ function _M:init_cp_worker(basic_info)
 
   self.instance = require("kong.clustering.control_plane").new(self)
   self.instance:init_worker(basic_info)
+
+  self.rpc = require("kong.clustering.rpc_control_plane").new(self)
+  self.rpc:init_worker(basic_info)
 end
 
 
 function _M:init_dp_worker(basic_info)
+  self.rpc = require("kong.clustering.rpc_data_plane").new(self)
+  self.rpc:init_worker(basic_info)
+
   if not is_dp_worker_process() then
     return
   end
