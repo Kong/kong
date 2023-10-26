@@ -6,8 +6,6 @@ local kong_meta     = require "kong.meta"
 
 local kong          = kong
 local fmt           = string.format
-local sub           = string.sub
-local find          = string.find
 local byte          = string.byte
 local match         = string.match
 local var           = ngx.var
