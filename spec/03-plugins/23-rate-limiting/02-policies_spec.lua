@@ -176,42 +176,41 @@ describe("Plugin: rate-limiting (policies)", function()
     end)
   end
 
-  for _, sync_rate in ipairs{1, SYNC_RATE_REALTIME} do
-    describe("redis with sync rate: " .. sync_rate, function()
-      local identifier = uuid()
-      local conf       = {
-        route_id = uuid(),
-        service_id = uuid(),
-        redis_host = helpers.redis_host,
-        redis_port = helpers.redis_port,
-        redis_database = 0,
-        sync_rate = sync_rate,
-      }
+  for _, sync_rate in ipairs{0.5, SYNC_RATE_REALTIME} do
+    local current_timestamp = 1424217600
+    local periods = timestamp.get_timestamps(current_timestamp)
 
-      before_each(function()
-        local red = require "resty.redis"
-        local redis = assert(red:new())
-        redis:set_timeout(1000)
-        assert(redis:connect(conf.redis_host, conf.redis_port))
-        redis:flushall()
-        redis:close()
-      end)
+    for period in pairs(periods) do
+      describe("redis with sync rate: " .. sync_rate .. " period: " .. period, function()
+        local identifier = uuid()
+        local conf       = {
+          route_id = uuid(),
+          service_id = uuid(),
+          redis_host = helpers.redis_host,
+          redis_port = helpers.redis_port,
+          redis_database = 0,
+          sync_rate = sync_rate,
+        }
 
-      it("increase & usage", function()
-        --[[
-          Just a simple test:
-          - increase 1
-          - check usage == 1
-          - increase 1
-          - check usage == 2
-          - increase 1 (beyond the limit)
-          - check usage == 3
-        --]]
+        before_each(function()
+          local red = require "resty.redis"
+          local redis = assert(red:new())
+          redis:set_timeout(1000)
+          assert(redis:connect(conf.redis_host, conf.redis_port))
+          redis:flushall()
+          redis:close()
+        end)
 
-        local current_timestamp = 1424217600
-        local periods = timestamp.get_timestamps(current_timestamp)
-
-        for period in pairs(periods) do
+        it("increase & usage", function()
+          --[[
+            Just a simple test:
+            - increase 1
+            - check usage == 1
+            - increase 1
+            - check usage == 2
+            - increase 1 (beyond the limit)
+            - check usage == 3
+          --]]
 
           local metric = assert(policies.redis.usage(conf, identifier, period, current_timestamp))
           assert.equal(0, metric)
@@ -232,8 +231,8 @@ describe("Plugin: rate-limiting (policies)", function()
               assert.equal(i, metric)
             end
           end
-        end
+        end)
       end)
-    end)
+    end
   end
 end)
