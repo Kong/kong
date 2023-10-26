@@ -3647,9 +3647,9 @@ for _, strategy in helpers.all_strategies() do
               }
             }))
             if using_pseudo_issuer then
-              assert.logfile().has.no.line("[error]", true)
+              assert.logfile().has.no.line("loading configuration for http://unreachable using discovery failed", true)
             else
-              assert.logfile().has.line("unreachable", true)
+              assert.logfile().has.line("loading configuration for http://unreachable using discovery failed", true)
             end
           end)
         end)

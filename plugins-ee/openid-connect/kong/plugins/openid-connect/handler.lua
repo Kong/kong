@@ -144,6 +144,7 @@ function OICHandler.access(_, conf)
       headers               = args.get_conf_args("discovery_headers_names", "discovery_headers_values"),
       rediscovery_lifetime  = args.get_conf_arg("rediscovery_lifetime", 30),
       extra_jwks_uris       = args.get_conf_arg("extra_jwks_uris"),
+      using_pseudo_issuer   = args.get_conf_arg("using_pseudo_issuer", false),
     })
 
     issuer, err = cache.issuers.load(issuer_uri, discovery_options)

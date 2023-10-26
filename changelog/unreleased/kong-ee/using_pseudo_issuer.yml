@@ -1,0 +1,3 @@
+message: "**Openid Connect**: Fix the issue where `using_pseudo_issuer` does not work."
+type: bugfix
+scope: Plugin
