@@ -27,6 +27,7 @@ local get_updated_now_ms = utils.get_updated_now_ms
 local ngx = ngx
 local get_phase = ngx.get_phase
 local max = math.max
+local min = math.min
 local fmt = string.format
 local sub = string.sub
 local byte = string.byte
@@ -753,15 +754,25 @@ local function new(self)
   local function get_cache_value_and_ttl(value, config, ttl)
     local cache_value, shdict_ttl, lru_ttl
     if value then
-      -- adjust ttl to the minimum and maximum values configured
-      lru_ttl = adjust_ttl(ttl, config)
-      shdict_ttl = max(lru_ttl + (config.resurrect_ttl or DAO_MAX_TTL), SECRETS_CACHE_MIN_TTL)
       cache_value = value
 
+      -- adjust ttl to the minimum and maximum values configured
+      ttl = adjust_ttl(ttl, config)
+
+      if config.resurrect_ttl then
+        lru_ttl = min(ttl + config.resurrect_ttl, DAO_MAX_TTL)
+        shdict_ttl = max(lru_ttl, SECRETS_CACHE_MIN_TTL)
+
+      else
+        lru_ttl = ttl
+        shdict_ttl = DAO_MAX_TTL
+      end
+
     else
+      cache_value = NEGATIVELY_CACHED_VALUE
+
       -- negatively cached values will be rotated on each rotation interval
       shdict_ttl = max(config.neg_ttl or 0, SECRETS_CACHE_MIN_TTL)
-      cache_value = NEGATIVELY_CACHED_VALUE
     end
 
     return cache_value, shdict_ttl, lru_ttl
@@ -794,14 +805,13 @@ local function new(self)
       return nil, cache_err
     end
 
-    if not value then
-      LRU:delete(reference)
+    if cache_value == NEGATIVELY_CACHED_VALUE then
       return nil, fmt("could not get value from external vault (%s)", err)
     end
 
-    LRU:set(reference, value, lru_ttl)
+    LRU:set(reference, cache_value, lru_ttl)
 
-    return value
+    return cache_value
   end
 
 
@@ -823,8 +833,7 @@ local function new(self)
   -- @usage
   -- local value, err = get(reference, cache_only)
   local function get(reference, cache_only)
-    -- the LRU stale value is ignored as the resurrection logic
-    -- is deferred to the shared dictionary
+    -- the LRU stale value is ignored
     local value = LRU:get(reference)
     if value then
       return value
@@ -1359,8 +1368,8 @@ local function new(self)
       return nil, cache_err
     end
 
-    if value then
-      LRU:set(reference, value, lru_ttl)
+    if cache_value ~= NEGATIVELY_CACHED_VALUE then
+      LRU:set(reference, cache_value, lru_ttl)
     end
 
     return true
