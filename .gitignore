@@ -30,6 +30,7 @@ bin/grpcurl
 *.so
 *.bak
 *.rock
+*.swp
 
 bazel-*
 

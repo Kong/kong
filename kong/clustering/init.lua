@@ -73,6 +73,17 @@ function _M:handle_cp_websocket()
 end
 
 
+function _M:handle_rpc_websocket()
+  local ok, err = self:validate_client_cert()
+  if not ok then
+    ngx_log(ngx_ERR, _log_prefix, err)
+    return ngx_exit(444)
+  end
+
+  return self.instance:handle_rpc_websocket()
+end
+
+
 function _M:init_cp_worker(basic_info)
 
   events.init()

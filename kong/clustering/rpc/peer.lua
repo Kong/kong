@@ -29,6 +29,7 @@ local _M = {}
 local _MT = { __index = _M, }
 
 
+-- 1 is used by meta.v1.hello
 local function gen_id()
     return random(2, 1e6)
 end
