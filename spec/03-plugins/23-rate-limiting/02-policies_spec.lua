@@ -217,9 +217,20 @@ describe("Plugin: rate-limiting (policies)", function()
           assert.equal(0, metric)
 
           for i = 1, 3 do
-            assert(policies.redis.increment(conf, { [period] = 2 }, identifier, current_timestamp, 1))
-            metric = assert(policies.redis.usage(conf, identifier, period, current_timestamp))
-            assert.equal(i, metric)
+            -- "second" keys expire too soon to check the async increment.
+            -- Let's verify all the other scenarios:
+            if not (period == "second" and sync_rate ~= SYNC_RATE_REALTIME) then
+              assert(policies.redis.increment(conf, { [period] = 2 }, identifier, current_timestamp, 1))
+
+              -- give time to the async increment to happen
+              if sync_rate ~= SYNC_RATE_REALTIME then
+                local sleep_time = 1 + (sync_rate > 0 and sync_rate or 0)
+                ngx.sleep(sleep_time)
+              end
+
+              metric = assert(policies.redis.usage(conf, identifier, period, current_timestamp))
+              assert.equal(i, metric)
+            end
           end
         end
       end)
