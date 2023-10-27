@@ -985,6 +985,13 @@ do
   if not pcall(ffi.typeof, "ngx_uint_t") then
     ffi.cdef [[
       typedef uintptr_t ngx_uint_t;
+      typedef intptr_t ngx_int_t;
+    ]]
+  end
+
+  if not pcall(ffi.typeof, "ngx_int_t") then
+    ffi.cdef [[
+      typedef intptr_t ngx_int_t;
     ]]
   end
 
