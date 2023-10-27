@@ -44,7 +44,7 @@ local function response(id, res, is_failing)
   RESPONSE_T.error  = is_failing and res or nil
   RESPONSE_T.result = not is_failing and res or nil
 
-  ngx.log(ngx.ERR, "rpc return: ", cjson.encode(RESPONSE_T))
+  --ngx.log(ngx.ERR, "rpc return: ", cjson.encode(RESPONSE_T))
 
   return encode(RESPONSE_T)
 end

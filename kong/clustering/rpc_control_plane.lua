@@ -6,6 +6,11 @@ local _M = {}
 local _MT = { __index = _M, }
 
 
+local function push_config(self)
+  ngx.log(ngx.ERR, "try to push config to dp with rpc")
+end
+
+
 function _M.new(clustering)
   local self = {
     plugins_map = {},
@@ -50,6 +55,8 @@ function _M:init_worker(basic_info)
 
   self.filters = basic_info.filters
   --]]
+
+  kong.worker_events.register(push_config, "clustering", "push_config")
 end
 
 

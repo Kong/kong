@@ -104,8 +104,9 @@ function _M:init_dp_worker(basic_info)
     return
   end
 
-  self.instance = require("kong.clustering.data_plane").new(self)
-  self.instance:init_worker(basic_info)
+  -- disable traditional cp/dp protocol
+  --self.instance = require("kong.clustering.data_plane").new(self)
+  --self.instance:init_worker(basic_info)
 end
 
 
