@@ -4,7 +4,6 @@ local utils = require("kong.tools.utils")
 
 local deflate_gzip = utils.deflate_gzip
 local inflate_gzip = utils.inflate_gzip
-local yield = utils.yield
 
 
 local cjson_encode = cjson.encode
@@ -15,6 +14,16 @@ local BIG_DATA_LEN = 8 * 1024
 
 
 local _M = {}
+
+
+local yield --= utils.yield
+do
+  local ngx_sleep = _G.native_ngx_sleep or ngx.sleep
+
+  yield = function()
+    ngx_sleep(0)  -- yield
+  end
+end
 
 
 -- TODO: error check
