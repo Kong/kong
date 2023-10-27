@@ -97,7 +97,7 @@ end
 
 
 function _M:init_dp_worker(basic_info)
-  self.rpc = require("kong.clustering.rpc_data_plane").new(self)
+  self.rpc = require("kong.clustering.data_plane.rpc").new(self)
   self.rpc:init_worker(basic_info)
 
   if not is_dp_worker_process() then
