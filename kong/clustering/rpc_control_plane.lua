@@ -115,7 +115,7 @@ function _M:push_config()
 
   local res, err = rpc:call("kong.sync.v1.push_all", { data = payload })
   if not res then
-    ngx.log(ngx.ERR, "sync call error: ", err)
+    ngx.log(ngx.ERR, "sync call error: ", err.message)
   end
   ngx.log(ngx.ERR, "receive from dp: ", res.msg)
 
