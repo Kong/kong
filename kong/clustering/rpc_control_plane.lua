@@ -109,14 +109,14 @@ end
 -- below are sync feature related
 
 
-local cjson = require("cjson.safe")
+--local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
-local utils = require("kong.tools.utils")
+--local utils = require("kong.tools.utils")
 
 
-local deflate_gzip = utils.deflate_gzip
-local yield = utils.yield
+--local deflate_gzip = utils.deflate_gzip
+--local yield = utils.yield
 
 
 function _M:push_config()
@@ -160,7 +160,7 @@ function _M:export_deflated_reconfigure_payload()
   local config_hash, hashes = calculate_config_hash(config_table)
 
   local payload = {
-    type = "reconfigure",
+    --type = "reconfigure",
     timestamp = ngx.now(),
     config_table = config_table,
     config_hash = config_hash,
@@ -169,23 +169,19 @@ function _M:export_deflated_reconfigure_payload()
 
   --ngx.log(ngx.ERR, "xxx get payload")
 
-  self.reconfigure_payload = payload
+  --payload, err = cjson.encode(payload)
+  --if not payload then
+  --  return nil, err
+  --end
 
-  payload, err = cjson.encode(payload)
-  if not payload then
-    return nil, err
-  end
+  --yield()
 
-  --ngx.log(ngx.ERR, "xxx encode payload")
-  yield()
+  --payload, err = deflate_gzip(payload)
+  --if not payload then
+  --  return nil, err
+  --end
 
-  payload, err = deflate_gzip(payload)
-  if not payload then
-    return nil, err
-  end
-
-  --ngx.log(ngx.ERR, "xxx gzip payload")
-  yield()
+  --yield()
 
   --self.current_hashes = hashes
   --self.current_config_hash = config_hash

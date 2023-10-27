@@ -4,11 +4,11 @@ local cjson = require("cjson.safe")
 local config_helper = require("kong.clustering.config_helper")
 local constants = require("kong.clustering.rpc.constants")
 local callbacks = require("kong.clustering.rpc.callbacks")
-local utils = require("kong.tools.utils")
+--local utils = require("kong.tools.utils")
 
 
-local inflate_gzip = utils.inflate_gzip
-local yield = utils.yield
+--local inflate_gzip = utils.inflate_gzip
+--local yield = utils.yield
 
 
 local _M = {}
@@ -24,14 +24,14 @@ end
 
 function _M:init()
   callbacks.register("kong.sync.v1.push_all", function(params)
-    ngx.log(ngx.ERR, "xxx sync push all, data len=", #params.data)
+    ngx.log(ngx.ERR, "xxx sync push all, data type=", type(params.data))
 
-    local data = assert(params.data)
+    local msg = assert(params.data)
 
-    local msg = assert(inflate_gzip(data))
-    yield()
-    msg = assert(cjson.decode(msg))
-    yield()
+    --local msg = assert(inflate_gzip(data))
+    --yield()
+    --msg = assert(cjson.decode(msg))
+    --yield()
 
     ngx.log(ngx.ERR, "received reconfigure frame from control plane",
                      msg.timestamp and " with timestamp: " .. msg.timestamp or "")
