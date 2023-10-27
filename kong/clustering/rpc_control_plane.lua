@@ -60,13 +60,87 @@ function _M:init_worker(basic_info)
 end
 
 
+local cjson = require("cjson.safe")
+local declarative = require("kong.db.declarative")
+local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
+local utils = require("kong.tools.utils")
+
+
+local deflate_gzip = utils.deflate_gzip
+local yield = utils.yield
+
+
 function _M:push_config()
   ngx.log(ngx.ERR, "try to push config to dp with rpc")
 
+  local ok, payload, err = pcall(self.export_deflated_reconfigure_payload, self)
+  if not ok then
+    ngx.log(ngx.ERR, "unable to export initial config from database: ", err)
+  end
+  ngx.log(ngx.ERR, "export initial config from database ok, len=", #payload)
+
+  -- check_configuration_compatibility
+  -- update_compatible_payload
+
   local rpc = kong.rpc
 
-  local res, _ = rpc:call("kong.sync.v1.push_all")
+  local res, err = rpc:call("kong.sync.v1.push_all", { data = payload })
+  if not res then
+    ngx.log(ngx.ERR, "sync call error: ", err)
+  end
   ngx.log(ngx.ERR, "receive from dp: ", res.msg)
+end
+
+
+function _M:export_deflated_reconfigure_payload()
+  local config_table, err = declarative.export_config()
+  if not config_table then
+    return nil, err
+  end
+
+  -- update plugins map
+  self.plugins_configured = {}
+  if config_table.plugins then
+    for _, plugin in pairs(config_table.plugins) do
+      self.plugins_configured[plugin.name] = true
+    end
+  end
+
+  local config_hash, hashes = calculate_config_hash(config_table)
+
+  local payload = {
+    type = "reconfigure",
+    timestamp = ngx.now(),
+    config_table = config_table,
+    config_hash = config_hash,
+    hashes = hashes,
+  }
+
+  --ngx.log(ngx.ERR, "xxx get payload")
+
+  self.reconfigure_payload = payload
+
+  payload, err = cjson.encode(payload)
+  if not payload then
+    return nil, err
+  end
+
+  --ngx.log(ngx.ERR, "xxx encode payload")
+  yield()
+
+  payload, err = deflate_gzip(payload)
+  if not payload then
+    return nil, err
+  end
+
+  --ngx.log(ngx.ERR, "xxx gzip payload")
+  yield()
+
+  --self.current_hashes = hashes
+  --self.current_config_hash = config_hash
+  --self.deflated_reconfigure_payload = payload
+
+  return payload, nil, config_hash
 end
 
 
