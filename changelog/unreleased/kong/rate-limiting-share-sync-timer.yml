@@ -1,0 +1,3 @@
+message: "**Rate Limiting**: fixed a bug where instances share 1 timer and only 1 instance sync to the datebase"
+type: bugfix
+scope: Plugin
