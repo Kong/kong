@@ -4,6 +4,7 @@ local reports = require "kong.reports"
 local redis = require "resty.redis"
 local table_clear = require "table.clear"
 
+local table_insert = table.insert
 local kong = kong
 local pairs = pairs
 local null = ngx.null
@@ -14,6 +15,7 @@ local fmt = string.format
 local SYNC_RATE_REALTIME = -1
 
 local EMPTY_UUID = "00000000-0000-0000-0000-000000000000"
+local PLUGIN_NAME = "rate-limiting"
 
 -- for `conf.sync_rate > 0`
 local auto_sync_timer
@@ -186,15 +188,56 @@ local function sync_to_redis(premature, conf)
   clear_local_counter()
 end
 
+local function timer_id(id)
+  return "rate-limiting-auto-sync" .. id
+end
+
+-- We need to purge the timer when the plugin is deleted or updated.
+-- And for DB-less mode, we need to purge all the timer when the worker is reconfigured.
+-- To keep track of the timers, we need to store the timer name in a table.
+local registed = false
+local created_timers
+local function register_timer_purger()
+  if registed then
+    return
+  end
+
+  registed = true
+
+  -- catch plugins update and purge the sync timer
+  if kong.configuration.database == "off" then
+    created_timers = {}
+    kong.worker_events.register(function()
+      for _, timer in ipairs(created_timers) do
+        kong.timer:cancel(timer)
+      end
+
+      table_clear(created_timers)
+    end, "declarative", "reconfigure")
+  end
+
+  kong.worker_events.register(function(data)
+    if data.entity.name == PLUGIN_NAME then
+      kong.timer:cancel(timer_id(data.entity.id))
+    end
+  end, "crud", "plugins")
+end
+
 local function periodical_sync(conf, sync_func)
   if not auto_sync_timer then
     local err
+    register_timer_purger()
+    local timer_name = timer_id(conf.__plugin_id)
     -- timer may be initialized after the module's loaded so we need to update the reference
-    auto_sync_timer, err = kong.timer:named_every("rate-limiting-auto-sync" .. conf.__plugin_id , conf.sync_rate, sync_func, conf)
+    auto_sync_timer, err = kong.timer:named_every(timer_name, conf.sync_rate, sync_func, conf)
 
     if not auto_sync_timer then
       kong.log.err("failed to create timer: ", err)
       return nil, err
+    end
+
+    if created_timers then
+      table_insert(created_timers, timer_name)
     end
   end
 
