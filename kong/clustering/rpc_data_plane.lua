@@ -1,4 +1,5 @@
 local rpc_dp = require("kong.clustering.rpc.dp")
+local sync_svc = require("kong.clustering.services.sync")
 
 
 local _M = {}
@@ -26,6 +27,10 @@ function _M.new(clustering)
     cert = clustering.cert,
     cert_key = clustering.cert_key,
   }
+
+  -- init rpc services
+  self.sync_svc = sync_svc.new()
+  self.sync_svc:init()
 
   local address = conf.cluster_control_plane .. "/v2/outlet"
   local uri = "wss://" .. address .. "?node_id=" ..

@@ -6,17 +6,13 @@ local _M = {}
 local _MT = { __index = _M, }
 
 
-local function push_config(self)
-  ngx.log(ngx.ERR, "try to push config to dp with rpc")
-end
-
-
 function _M.new(clustering)
   local self = {
     plugins_map = {},
     conf = clustering.conf,
   }
 
+  -- init rpc services
   self.ping_svc = ping_svc.new()
   self.ping_svc:init()
 
@@ -56,7 +52,21 @@ function _M:init_worker(basic_info)
   self.filters = basic_info.filters
   --]]
 
-  kong.worker_events.register(push_config, "clustering", "push_config")
+  -- invoke rpc call
+  kong.worker_events.register(function()
+    self:push_config()
+    end,
+    "clustering", "push_config")
+end
+
+
+function _M:push_config()
+  ngx.log(ngx.ERR, "try to push config to dp with rpc")
+
+  local rpc = kong.rpc
+
+  local res, _ = rpc:call("kong.sync.v1.push_all")
+  ngx.log(ngx.ERR, "receive from dp: ", res.msg)
 end
 
 
