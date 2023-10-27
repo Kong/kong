@@ -190,7 +190,7 @@ local function periodical_sync(conf, sync_func)
   if not auto_sync_timer then
     local err
     -- timer may be initialized after the module's loaded so we need to update the reference
-    auto_sync_timer, err = kong.timer:named_every("rate-limiting-auto-sync", conf.sync_rate, sync_func, conf)
+    auto_sync_timer, err = kong.timer:named_every("rate-limiting-auto-sync" .. conf.__plugin_id , conf.sync_rate, sync_func, conf)
 
     if not auto_sync_timer then
       kong.log.err("failed to create timer: ", err)
