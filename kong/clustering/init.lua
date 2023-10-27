@@ -88,10 +88,10 @@ function _M:init_cp_worker(basic_info)
 
   events.init()
 
-  self.instance = require("kong.clustering.control_plane").new(self)
+  self.instance = require("kong.clustering.control_plane.traditional").new(self)
   self.instance:init_worker(basic_info)
 
-  self.rpc = require("kong.clustering.rpc_control_plane").new(self)
+  self.rpc = require("kong.clustering.control_plane.rpc").new(self)
   self.rpc:init_worker(basic_info)
 end
 

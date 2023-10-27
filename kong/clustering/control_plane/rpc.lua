@@ -45,7 +45,7 @@ function _M:handle_cp_websocket()
     ngx.log(ngx.ERR, "xxx time.at init push config")
 
     -- post events to push config
-    ngx.timer.at(0.05, function()
+    ngx.timer.at(0.1, function()
       events.post_push_config_event()
     end)
   end

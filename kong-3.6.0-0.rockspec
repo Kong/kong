@@ -70,7 +70,6 @@ build = {
 
     ["kong.clustering"] = "kong/clustering/init.lua",
     ["kong.clustering.data_plane"] = "kong/clustering/data_plane.lua",
-    ["kong.clustering.control_plane"] = "kong/clustering/control_plane.lua",
     ["kong.clustering.utils"] = "kong/clustering/utils.lua",
     ["kong.clustering.events"] = "kong/clustering/events.lua",
     ["kong.clustering.compat"] = "kong/clustering/compat/init.lua",
@@ -81,7 +80,9 @@ build = {
     ["kong.clustering.tls"] = "kong/clustering/tls.lua",
 
     ["kong.clustering.rpc_data_plane"] = "kong/clustering/rpc_data_plane.lua",
-    ["kong.clustering.rpc_control_plane"] = "kong/clustering/rpc_control_plane.lua",
+    ["kong.clustering.control_plane.traditional"] = "kong/clustering/control_plane/traditional.lua",
+    ["kong.clustering.control_plane.rpc"] = "kong/clustering/control_plane/rpc.lua",
+
     ["kong.clustering.rpc.callbacks"] = "kong/clustering/rpc/callbacks.lua",
     ["kong.clustering.rpc.connector"] = "kong/clustering/rpc/connector.lua",
     ["kong.clustering.rpc.constants"] = "kong/clustering/rpc/constants.lua",
