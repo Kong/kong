@@ -1,5 +1,5 @@
 local rpc_dp = require("kong.clustering.rpc.dp")
-local sync_svc = require("kong.clustering.services.sync")
+local sync_svc = require("kong.clustering.data_plane.services.sync")
 
 
 local _M = {}

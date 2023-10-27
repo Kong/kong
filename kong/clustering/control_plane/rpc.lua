@@ -3,7 +3,7 @@ local lrucache = require("resty.lrucache")
 
 local events = require("kong.clustering.events")
 local rpc_cp = require("kong.clustering.rpc.cp")
-local ping_svc = require("kong.clustering.services.ping")
+local ping_svc = require("kong.clustering.control_plane.services.ping")
 
 
 local _M = {}

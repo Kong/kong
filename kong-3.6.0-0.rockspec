@@ -80,8 +80,11 @@ build = {
 
     ["kong.clustering.data_plane.traditional"] = "kong/clustering/data_plane/traditional.lua",
     ["kong.clustering.data_plane.rpc"] = "kong/clustering/data_plane/rpc.lua",
+    ["kong.clustering.data_plane.services.sync"] = "kong/clustering/data_plane/services/sync.lua",
+
     ["kong.clustering.control_plane.traditional"] = "kong/clustering/control_plane/traditional.lua",
     ["kong.clustering.control_plane.rpc"] = "kong/clustering/control_plane/rpc.lua",
+    ["kong.clustering.control_plane.services.ping"] = "kong/clustering/control_plane/services/pings.lua",
 
     ["kong.clustering.rpc.callbacks"] = "kong/clustering/rpc/callbacks.lua",
     ["kong.clustering.rpc.connector"] = "kong/clustering/rpc/connector.lua",
@@ -93,8 +96,6 @@ build = {
     ["kong.clustering.rpc.queue"] = "kong/clustering/rpc/queue.lua",
     ["kong.clustering.rpc.serializer"] = "kong/clustering/rpc/serializer.lua",
     ["kong.clustering.rpc.threads"] = "kong/clustering/rpc/threads.lua",
-
-    ["kong.clustering.services.ping"] = "kong/clustering/service/pings.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.postgres"] = "kong/cluster_events/strategies/postgres.lua",
