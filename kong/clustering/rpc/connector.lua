@@ -2,7 +2,7 @@ local ws_client = require("resty.websocket.client")
 local ws_server = require("resty.websocket.server")
 
 
-local constants = require("constants")
+local constants = require("kong.clustering.rpc.constants")
 
 
 local _M = {}

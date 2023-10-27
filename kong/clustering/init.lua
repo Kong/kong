@@ -80,7 +80,7 @@ function _M:handle_rpc_websocket()
     return ngx_exit(444)
   end
 
-  return self.instance:handle_rpc_websocket()
+  return self.rpc:handle_cp_websocket()
 end
 
 

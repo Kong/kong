@@ -16,7 +16,7 @@ function _M.new(clustering)
     cert_key = clustering.cert_key,
   }
 
-  local addrss = clustering.conf.cluster_control_plane .. "/v2/outlet"
+  local address = clustering.conf.cluster_control_plane .. "/v2/outlet"
   local uri = "wss://" .. address .. "?node_id=" ..
               kong.node.get_id() ..
               "&node_hostname=" .. kong.node.get_hostname() ..
@@ -59,7 +59,7 @@ function _M:init_worker(basic_info)
   self.plugins_list = basic_info.plugins
   self.filters = basic_info.filters
 
-  kong.dp:init_worker()
+  kong.rpc:init_worker()
 end
 
 

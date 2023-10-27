@@ -21,7 +21,7 @@ end
 
 
 
-function _M:handle_rpc_websocket()
+function _M:handle_cp_websocket()
   local rpc = assert(kong.rpc)
 
   ngx.log(ngx.ERR, "rpc cp run")
