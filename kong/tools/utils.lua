@@ -1494,17 +1494,16 @@ _M.get_updated_monotonic_ms = get_updated_monotonic_ms
 
 
 do
-  local tbl = require "kong.tools.table"
-  for name, func in pairs(tbl) do
-    _M[name] = func
-  end
-end
+  local modules = {
+    "kong.tools.table",
+    "kong.tools.yield",
+  }
 
-
-do
-  local yield = require "kong.tools.yield"
-  for name, func in pairs(yield) do
-    _M[name] = func
+  for _, str in ipairs(modules) do
+    local mod = require(str)
+    for name, func in pairs(mod) do
+      _M[name] = func
+    end
   end
 end
 
