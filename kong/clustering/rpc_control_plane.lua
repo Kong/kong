@@ -1,5 +1,5 @@
 local rpc_cp = require("kong.clustering.rpc.cp")
-local rpc_svc = require("kong.clustering.service")
+local ping_svc = require("kong.clustering.services.ping")
 
 
 local _M = {}
@@ -12,10 +12,8 @@ function _M.new(clustering)
     conf = clustering.conf,
   }
 
-  local svc = rpc_svc.new()
-  svc:init()
-
-  self.svc = svc
+  self.ping_svc = ping_svc.new()
+  self.ping_svc:init()
 
   -- init rpc cp side
   local cp = rpc_cp.new({ "kong.sync.v1", "kong.test.v1", })
