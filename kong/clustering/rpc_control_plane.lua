@@ -15,6 +15,9 @@ function _M.new(clustering)
     plugins_map = {},
     conf = clustering.conf,
 
+    -- init push flags
+    init_pushed = {},
+
     -- last push config
     locks = assert(lrucache.new(4)),
   }
@@ -33,6 +36,13 @@ end
 
 
 function _M:handle_cp_websocket()
+  local dp_id = ngx.var.arg_node_id
+
+  if not self.init_pushed[dp_id] then
+    self.init_pushed[dp_id] = true
+    -- post events to push config
+  end
+
   local rpc = assert(kong.rpc)
 
   rpc:run()
@@ -73,8 +83,11 @@ function _M:init_worker(basic_info)
 
     -- already has a schedule
     if flag >= 1 then
+      --ngx.log(ngx.ERR, "xxx too many push, postpone ")
       return
     end
+
+    ngx.log(ngx.ERR, "xxx try push config after some seconds")
 
     -- 1: scheduel a push after delay seconds
     self.locks:set(key, 1, delay)
@@ -104,9 +117,9 @@ function _M:push_config()
 
   local ok, payload, err = pcall(self.export_deflated_reconfigure_payload, self)
   if not ok then
-    ngx.log(ngx.ERR, "unable to export initial config from database: ", err)
+    ngx.log(ngx.ERR, "unable to export config from database: ", err)
   end
-  ngx.log(ngx.ERR, "export initial config from database ok, len=", #payload)
+  ngx.log(ngx.ERR, "export config from database ok, len=", #payload)
 
   -- check_configuration_compatibility
   -- update_compatible_payload
