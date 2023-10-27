@@ -526,14 +526,6 @@ function OASValidationPlugin:access(conf)
   plugin_data.spec_method = method_spec
   plugin_data.spec_version = parsed_spec.swagger
 
-  -- check content-type matches the spec
-  local content_type = extract_media_type(request_get_header("Content-Type"))
-  local ok, err = content_type_allowed(content_type, request_method, method_spec)
-  if not ok then
-    err = fmt("validation failed: %s", err)
-    return handle_validate_error(err, DENY_REQUEST_MESSAGE, 400, error_options)
-  end
-
   local parameters = method_spec.parameters or {}
   if path_spec.parameters then
     -- injects path level parameters
@@ -558,8 +550,18 @@ function OASValidationPlugin:access(conf)
     end
   end
 
+  -- check content-type matches the spec
+  local content_type = extract_media_type(request_get_header("Content-Type"))
+  -- vars are lazy used
+  local content_type_check, content_type_check_err = content_type_allowed(content_type, request_method, method_spec)
+
+
   for _, parameter in ipairs(parameters) do
     if need_validate_parameter(parameter, conf, parsed_spec) then
+      if parameter["in"] == "body" and not content_type_check then
+        err = fmt("validation failed: %s", content_type_check_err)
+        return handle_validate_error(err, DENY_REQUEST_MESSAGE, 400, error_options)
+      end
       local ok, err = validate_parameters(parameter, match_path, parsed_spec.swagger or OPEN_API)
       if not ok then
         -- check for userdata cjson.null and return nicer err message
@@ -573,6 +575,11 @@ function OASValidationPlugin:access(conf)
   -- validate oas body if required
   local request_body = method_spec.requestBody
   if conf.validate_request_body and parsed_spec.openapi and CONTENT_METHODS[request_method] and request_body then
+    if not content_type_check then
+      err = fmt("validation failed: %s", content_type_check_err)
+      return handle_validate_error(err, DENY_REQUEST_MESSAGE, 400, error_options)
+    end
+
     local res_schema, err = locate_request_body_schema(request_body, content_type)
 
     if not res_schema then

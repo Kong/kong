@@ -67,6 +67,13 @@ for _, strategy in helpers.each_strategy() do
           path     = "/pet"
         }
 
+        local service3 = bp.services:insert{
+          protocol = "http",
+          port     = 12345,
+          host     = "127.0.0.1",
+          path     = "/pet"
+        }
+
         local route1 = db.routes:insert({
           hosts = { "petstore1.com" },
           service    = service1,
@@ -76,6 +83,12 @@ for _, strategy in helpers.each_strategy() do
           hosts = { "petstore2.com" },
           service    = service2,
         })
+
+        local route3 = db.routes:insert({
+          hosts = { "petstore3.com" },
+          service    = service3,
+        })
+
 
       db.plugins:insert {
         name = PLUGIN_NAME,
@@ -96,6 +109,18 @@ for _, strategy in helpers.each_strategy() do
           api_spec = fixture_path.read_fixture("petstore-swagger.json"),
           validate_response_body = true,
           verbose_response = true
+        },
+      }
+
+      db.plugins:insert {
+        name = PLUGIN_NAME,
+        service = { id = service3.id },
+        route = { id = route3.id },
+        config = {
+          api_spec = fixture_path.read_fixture("petstore-swagger.json"),
+          validate_response_body = true,
+          verbose_response = true,
+          validate_request_body = false
         },
       }
 
@@ -293,6 +318,18 @@ for _, strategy in helpers.each_strategy() do
        local body = assert.response(res).has.status(400)
        local json = cjson.decode(body)
        assert.same("validation failed: content-type 'application/json+1' is not supported", json.message)
+      end)
+
+      it("should pass the validation when passing a unallowed content-type while validate_request_body is disabled", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/pet",
+          headers = {
+            host = "petstore3.com",
+            ["Content-Type"] = "application/pdf",
+          },
+        })
+        assert.response(res).has.status(200)
       end)
     end)
 

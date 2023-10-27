@@ -100,6 +100,13 @@ for _, strategy in helpers.each_strategy() do
         path     = "/store/order-bad"
       }
 
+      local service5 = bp.services:insert{
+        protocol = "http",
+        port     = 12345,
+        host     = "127.0.0.1",
+        path     = "/pet"
+      }
+
       local route1 = db.routes:insert({
         hosts = { "petstore1.com" },
         service    = service1,
@@ -120,12 +127,17 @@ for _, strategy in helpers.each_strategy() do
         service    = service4,
       })
 
+      local route5 = db.routes:insert({
+        hosts = { "petstore5.com" },
+        service    = service5,
+      })
+
       db.plugins:insert {
         name = PLUGIN_NAME,
         service = { id = service1.id },
         route = { id = route1.id },
         config = {
-          api_spec = fixture_path.read_fixture("petstore-swagger.json"),
+          api_spec = fixture_path.read_fixture("petstore-oas.json"),
           validate_response_body = true,
           verbose_response = true
         },
@@ -136,7 +148,7 @@ for _, strategy in helpers.each_strategy() do
         service = { id = service2.id },
         route = { id = route2.id },
         config = {
-          api_spec = fixture_path.read_fixture("petstore-swagger.json"),
+          api_spec = fixture_path.read_fixture("petstore-oas.json"),
           validate_response_body = true,
           verbose_response = true
         },
@@ -147,7 +159,7 @@ for _, strategy in helpers.each_strategy() do
         service = { id = service3.id },
         route = { id = route3.id },
         config = {
-          api_spec = fixture_path.read_fixture("petstore-swagger.json"),
+          api_spec = fixture_path.read_fixture("petstore-oas.json"),
           validate_response_body = true,
           validate_request_header_params = true,
           validate_request_query_params = true,
@@ -163,9 +175,21 @@ for _, strategy in helpers.each_strategy() do
         service = { id = service4.id },
         route = { id = route4.id },
         config = {
-          api_spec = fixture_path.read_fixture("petstore-swagger.json"),
+          api_spec = fixture_path.read_fixture("petstore-oas.json"),
           validate_response_body = true,
           verbose_response = true
+        },
+      }
+
+      db.plugins:insert {
+        name = PLUGIN_NAME,
+        service = { id = service5.id },
+        route = { id = route5.id },
+        config = {
+          api_spec = fixture_path.read_fixture("petstore-oas.json"),
+          validate_response_body = true,
+          verbose_response = true,
+          validate_request_body = false
         },
       }
 
@@ -283,7 +307,7 @@ for _, strategy in helpers.each_strategy() do
         })
        local body = assert.response(res).has.status(400)
        local json = cjson.decode(body)
-       assert.same("body 'body' validation failed with error: 'property status validation failed: matches none of the enum values'", json.message)
+       assert.same("request body validation failed with error: 'property status validation failed: matches none of the enum values'", json.message)
       end)
 
       it("/pet put - invalid json body - missing name", function()
@@ -307,7 +331,7 @@ for _, strategy in helpers.each_strategy() do
         })
        local body = assert.response(res).has.status(400)
        local json = cjson.decode(body)
-       assert.same("body 'body' validation failed with error: 'property status validation failed: matches none of the enum values'", json.message)
+       assert.same("request body validation failed with error: 'property status validation failed: matches none of the enum values'", json.message)
       end)
 
       it("/store/order/{orderId} - valid response", function()
@@ -334,20 +358,6 @@ for _, strategy in helpers.each_strategy() do
        local body = assert.response(res).has.status(406)
        local json = cjson.decode(body)
        assert.same("response body validation failed with error: property status validation failed: matches none of the enum values", json.message)
-      end)
-
-      it("/store/order/{orderId} - valid response with incorrect content-type", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/store/order/1",
-          headers = {
-            host = "petstore3.com",
-            ["Content-Type"] = "application/none",
-          },
-        })
-        local body = assert.response(res).has.status(400)
-        local json = cjson.decode(body)
-        assert.same("validation failed: content-type 'application/none' is not supported", json.message)
       end)
 
       it("get /pet/1 with extra forward slashes in path", function()
@@ -394,6 +404,42 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.response(res).has.status(400)
         local json = cjson.decode(body)
         assert.same("validation failed with error: query parameter 'q1' does not exist in specification", json.message)
+      end)
+
+      it("/pet put - invalid content-type", function()
+        local res = assert(client:send {
+          method = "PUT",
+          path = "/pet",
+          headers = {
+            host = "petstore2.com",
+            ["Content-Type"] = "application/json+1",
+          },
+          body = {
+            id = 0,
+            category = {
+              id = 99,
+              name = "foo"
+            },
+            name = "doggie",
+            photoUrls = {"string"},
+            status = "available"
+          }
+        })
+        local body = assert.response(res).has.status(400)
+        local json = cjson.decode(body)
+        assert.same("validation failed: content-type 'application/json+1' is not supported", json.message)
+      end)
+
+      it("should pass the validation when passing a unallowed content-type while validate_request_body is disabled", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/pet",
+          headers = {
+            host = "petstore5.com",
+            ["Content-Type"] = "application/pdf",
+          },
+        })
+        assert.response(res).has.status(200)
       end)
 
     end)
