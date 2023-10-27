@@ -1,3 +1,7 @@
+local lrucache = require("resty.lrucache")
+
+
+local events = require("kong.clustering.events")
 local rpc_cp = require("kong.clustering.rpc.cp")
 local ping_svc = require("kong.clustering.services.ping")
 
@@ -10,6 +14,9 @@ function _M.new(clustering)
   local self = {
     plugins_map = {},
     conf = clustering.conf,
+
+    -- last push config
+    locks = assert(lrucache.new(4)),
   }
 
   -- init rpc services
@@ -17,7 +24,7 @@ function _M.new(clustering)
   self.ping_svc:init()
 
   -- init rpc cp side
-  local cp = rpc_cp.new({ "kong.sync.v1", "kong.test.v1", })
+  local cp = rpc_cp.new({ "kong.test.v1", })
   kong.rpc = cp
 
   return setmetatable(self, _MT)
@@ -39,8 +46,6 @@ function _M:init_worker(basic_info)
   self.plugins_list = plugins_list
   self.plugins_map = plugins_list_to_map(plugins_list)
 
-  self.deflated_reconfigure_payload = nil
-  self.reconfigure_payload = nil
   self.plugins_configured = {}
   self.plugin_versions = {}
 
@@ -53,11 +58,35 @@ function _M:init_worker(basic_info)
   --]]
 
   -- invoke rpc call
-  kong.worker_events.register(function()
-    self:push_config()
-    end,
-    "clustering", "push_config")
+  events.clustering_push_config(function()
+    local key = "last_push_config"
+    local delay = self.conf.db_update_frequency
+
+    local flag = self.locks:get(key)
+
+    if not flag then
+      -- 0: init a push
+      self.locks:set(key, 0, delay)
+      self:push_config()
+      return
+    end
+
+    -- already has a schedule
+    if flag >= 1 then
+      return
+    end
+
+    -- 1: scheduel a push after delay seconds
+    self.locks:set(key, 1, delay)
+    ngx.timer.at(delay, function(premature)
+      self:push_config()
+    end)
+
+  end)
 end
+
+
+-- below are sync feature related
 
 
 local cjson = require("cjson.safe")
@@ -89,6 +118,7 @@ function _M:push_config()
     ngx.log(ngx.ERR, "sync call error: ", err)
   end
   ngx.log(ngx.ERR, "receive from dp: ", res.msg)
+
 end
 
 

@@ -64,7 +64,7 @@ function _M.new(clustering)
 
   -- init rpc dp side
   local dp = rpc_dp.new(rpc_conf,
-                        { "kong.sync.v1", "kong.test.v1", "kong.test.status.v1"})
+                        { "kong.sync.v1", "kong.test.v1", "kong.status.v1"})
   kong.rpc = dp
 
   return setmetatable(self, _MT)
