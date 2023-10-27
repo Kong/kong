@@ -1543,7 +1543,7 @@
 
 #dns_error_ttl = 1               # TTL in seconds for error responses.
 
-#dns_no_sync = off               # If enabled, then upon a cache-miss every
+#dns_no_sync = on                # If enabled, then upon a cache-miss every
                                  # request will trigger its own dns query.
                                  # When disabled multiple requests for the
                                  # same name/type will be synchronised to a
