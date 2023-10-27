@@ -112,11 +112,6 @@ end
 --local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
---local utils = require("kong.tools.utils")
-
-
---local deflate_gzip = utils.deflate_gzip
---local yield = utils.yield
 
 
 function _M:push_config()
@@ -126,7 +121,7 @@ function _M:push_config()
   if not ok then
     ngx.log(ngx.ERR, "unable to export config from database: ", err)
   end
-  ngx.log(ngx.ERR, "export config from database ok, len=", #payload)
+  ngx.log(ngx.ERR, "export config from database ok")
 
   -- check_configuration_compatibility
   -- update_compatible_payload
@@ -168,24 +163,6 @@ function _M:export_deflated_reconfigure_payload()
   }
 
   --ngx.log(ngx.ERR, "xxx get payload")
-
-  --payload, err = cjson.encode(payload)
-  --if not payload then
-  --  return nil, err
-  --end
-
-  --yield()
-
-  --payload, err = deflate_gzip(payload)
-  --if not payload then
-  --  return nil, err
-  --end
-
-  --yield()
-
-  --self.current_hashes = hashes
-  --self.current_config_hash = config_hash
-  --self.deflated_reconfigure_payload = payload
 
   return payload, nil, config_hash
 end

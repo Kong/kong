@@ -20,6 +20,9 @@ function _M.new(capabilities)
     -- kong.meta.v1.hello
     capabilities = capabilities or {},
 
+    -- nodes[id] = worker count
+    nodes = {},
+
     -- hold all dps connecting to this cp
     peers = setmetatable({}, { __mode = "k", }),
   }
@@ -71,17 +74,25 @@ function _M:run()
   -- log info of dp connection
   ngx.log(ngx.ERR, "[cp] wb:connect ok")
 
+  -- basic node info
+  local node_id = ngx.var.arg_node_id
+
   -- set rpc peer
   local hdl = handler.new()
   local pr = peer.new(hdl)
   local thds = threads.new(wb, hdl)
 
+  -- store node info
   self.peers[wb] = pr
+  self.nodes[node_id] = (self.nodes[node_id] or 0) + 1
 
   -- cp/dp has almost the same workflow
   thds:run()
 
+  -- dp disconnect
+
   self.peers[wb] = nil
+  self.nodes[node_id] = self.nodes[node_id] - 1
 
   wb:send_close()
 
