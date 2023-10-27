@@ -175,7 +175,7 @@ for _, strategy in helpers.each_strategy() do
           end, 10)
         end)
 
-        it("sends back vitals metrics to DP", function()
+        it("#flaky sends back vitals metrics to DP", function()
           helpers.wait_until(function()
             local pl_file = require "pl.file"
             local s = pl_file.read("servroot2/logs/error.log")
