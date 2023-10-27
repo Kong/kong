@@ -166,6 +166,7 @@ build = {
     ["kong.tools.request_aware_table"] = "kong/tools/request_aware_table.lua",
     ["kong.tools.string"] = "kong/tools/string.lua",
     ["kong.tools.table"] = "kong/tools/table.lua",
+    ["kong.tools.yield"] = "kong/tools/yield.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.events"] = "kong/runloop/events.lua",
