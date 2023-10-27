@@ -1482,8 +1482,8 @@ describe("#regression #" .. strategy, function ()
       url = UPSTREAM_URL,
     })
 
-    -- we have another bug that caches for counters of different route mix up
-    -- so we try to avoid that by using different redis database
+    -- the bug causes all the counters to be synced to the same redis database
+    -- so we set up multiple routes with different redis database
     for i = 1, INSTANCES do
       local route_sync_rate = assert(bp.routes:insert {
         service = { id = service.id },
