@@ -1465,4 +1465,99 @@ describe(desc, function ()
   end)
 end)
 
+describe("#regression #" .. strategy, function ()
+  local LIMIT = 2
+  local INSTANCES = 2
+  local start_config = {
+    database   = strategy,
+    nginx_conf = "spec/fixtures/custom_nginx.template",
+    plugins = "bundled,rate-limiting",
+  }
+
+  -- this function set up the routes and plugins for the sync rate test
+  -- the sync rate is set to a very small interval to ensure that the
+  -- counter will be synced soon.
+  local function setup_shared_timer(bp)
+    local service = assert(bp.services:insert {
+      url = UPSTREAM_URL,
+    })
+
+    -- we have another bug that caches for counters of different route mix up
+    -- so we try to avoid that by using different redis database
+    for i = 1, INSTANCES do
+      local route_sync_rate = assert(bp.routes:insert {
+        service = { id = service.id },
+        hosts = { "syncrate" .. i .. ".com" },
+      })
+
+      assert(bp.plugins:insert {
+        name = "rate-limiting",
+        route = { id = route_sync_rate.id },
+        config = {
+          hour                = LIMIT,
+          policy              = "redis",
+          limit_by            = "ip",
+          redis_host          = REDIS_HOST,
+          redis_port          = REDIS_PORT,
+          redis_password      = REDIS_PASSWORD,
+          redis_database      = i,
+          redis_ssl           = false,
+          sync_rate           = 1,
+        },
+      })
+    end
+  end
+
+  lazy_setup(function()
+    local bp = helpers.get_db_utils(strategy, nil, {
+      "rate-limiting",
+    })
+
+    local https_server = helpers.https_server.new(UPSTREAM_PORT)
+    https_server:start()
+
+    setup_shared_timer(bp)
+
+    assert(helpers.start_kong(start_config))
+  end)
+
+  lazy_teardown(function()
+    helpers.stop_kong()
+  end)
+
+  after_each(function()
+    flush_redis()
+  end)
+
+  -- see configuration in sync_rate_test_setup()
+  it("all instances share the same timer to sync counter to redis", function()
+    for instance = 1, INSTANCES do
+      for _ = 1, LIMIT do
+        local res = assert(GET("/", {
+          headers = {
+            host = "syncrate" .. instance .. ".com",
+          }
+        }))
+        assert.res_status(200, res)
+      end
+    end
+
+    -- wait for the sync timer to sync the counter to redis
+    ngx_sleep(2)
+
+    -- this should clean up the counter in the local cache
+    helpers.restart_kong(start_config)
+
+    for instance = 1, INSTANCES do
+    -- now both route should be blocked
+      local res = assert(GET("/", {
+        headers = {
+          host = "syncrate" .. instance .. ".com",
+        }
+      }))
+      assert.res_status(429, res)
+    end
+  end)
+end)
+
 end     -- for _, strategy in helpers.each_strategy() do
