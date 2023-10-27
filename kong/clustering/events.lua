@@ -82,5 +82,6 @@ end
 return {
   init = init,
 
+  post_push_config_event = post_push_config_event,
   clustering_push_config = clustering_push_config,
 }

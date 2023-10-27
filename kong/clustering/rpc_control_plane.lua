@@ -40,7 +40,13 @@ function _M:handle_cp_websocket()
 
   if not self.init_pushed[dp_id] then
     self.init_pushed[dp_id] = true
+
+    ngx.log(ngx.ERR, "xxx time.at init push config")
+
     -- post events to push config
+    ngx.timer.at(0, function()
+      events.post_push_config_event()
+    end)
   end
 
   local rpc = assert(kong.rpc)
@@ -129,8 +135,9 @@ function _M:push_config()
   local res, err = rpc:call("kong.sync.v1.push_all", { data = payload })
   if not res then
     ngx.log(ngx.ERR, "sync call error: ", err.message)
+  else
+    ngx.log(ngx.ERR, "receive from dp: ", res.msg)
   end
-  ngx.log(ngx.ERR, "receive from dp: ", res.msg)
 
 end
 
