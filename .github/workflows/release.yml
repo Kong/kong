@@ -367,6 +367,12 @@ jobs:
     secrets: inherit
 
   build-images:
+
+    permissions:
+      pull-requests: write
+      contents: write # Comment on Commit
+      id-token: write # needed for signing the images with GitHub OIDC Token
+
     name: Build Images - ${{ matrix.label }}
     needs: [metadata, build-packages]
     runs-on: ${{ needs.metadata.outputs.release-runs-on }}
@@ -402,6 +408,7 @@ jobs:
       uses: docker/metadata-action@v4
       with:
         images: ${{ env.PRERELEASE_DOCKER_REPOSITORY }}
+        sep-tags: ","
         tags: |
           type=raw,${{ github.sha }}-${{ matrix.label }}
           type=raw,enable=${{ matrix.label == 'ubuntu' }},${{ github.sha }}
@@ -424,6 +431,7 @@ jobs:
 
     - name: Build Docker Image
       uses: docker/build-push-action@v4
+      id: image
       with:
         file: build/dockerfiles/${{ matrix.package }}.Dockerfile
         context: .
@@ -445,6 +453,25 @@ jobs:
         #   - https://github.com/docker/buildx/issues/1509#issuecomment-1378538197
         provenance: false
         outputs: type=image,oci-mediatypes=true
+    
+    # Keyless container image signing
+    # Publish signature to the container registry
+    # Publish permanent entry to Sigstore Public Rekor - Transparency log
+    # Note: 
+      ## For private repos, no good solution is available for transparency requirement for SLSA.
+      ## Hence exposing repo name and workflow details and commit details by leveraging public sigstore instance
+    - name: Sign Container Images
+      id: sign_prerelease_images
+      if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' && steps.image.outputs.digest != '' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository)) }}
+      uses: Kong/public-shared-actions/security-actions/sign-docker-image@b7def0b377d98a22f0184651d6d9c93617312d82
+      with:
+        image_digest: ${{ steps.image.outputs.digest }}
+        tags: ${{ steps.meta.outputs.tags }}
+        registry_username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
+        registry_password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
+        signature_registry: ${{ env.NOTARY_REPOSITORY }}
+      env:
+        NOTARY_REPOSITORY: kong/notary-internal
 
     - name: Comment on commit
       if: github.event_name == 'push' && matrix.label == 'ubuntu'
@@ -768,6 +795,9 @@ jobs:
         scripts/release-kong.sh
 
   release-images:
+    permissions:
+      contents: write # Comment on Commit
+      id-token: write # needed for signing the images
     name: Release Images - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-images, smoke-tests, test-packages, test-images-smoke, test-images-e2e]
     runs-on: ${{ needs.metadata.outputs.release-runs-on }}
@@ -827,12 +857,69 @@ jobs:
       uses: regclient/actions/regctl-installer@main
 
     - name: Push Images
+      id: release_images
       env:
         TAGS: "${{ steps.meta.outputs.tags }}"
       run: |
         PRERELEASE_IMAGE=${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}-${{ matrix.label }}
 
+        prerelease_image_digest="$(regctl image digest "${PRERELEASE_IMAGE}")"
+        echo "prerelease_image_digest=$prerelease_image_digest" >> $GITHUB_OUTPUT
+
         docker pull $PRERELEASE_IMAGE
         for tag in $TAGS; do
           regctl -v debug image copy $PRERELEASE_IMAGE $tag
         done
+
+    - name: Set Attestation metadata
+      id: attestation_metadata
+      env:
+        DOCKER_METADATA_JSON: ${{ steps.meta.outputs.json }}
+      run: |
+        set -euox pipefail
+
+        internal_tags=$(echo "${DOCKER_METADATA_JSON}" | jq '.tags[]|select(.|startswith("kong/kong-gateway-dev:"))' | jq -sr '. | join(" ")')
+        echo "INTERNAL TAGS=${internal_tags}"
+        echo "internal_tags=${internal_tags}" >> $GITHUB_OUTPUT
+
+        release_tags=$(echo "${DOCKER_METADATA_JSON}" | jq '.tags[]|select(.|contains("kong/kong-gateway:"))' | jq -sr '. | join(" ")')
+        echo "RELEASE TAGS=${release_tags}"
+        echo "release_tags=${release_tags}" >> $GITHUB_OUTPUT
+    
+    # Keyless container image signing
+    # Publish signature to a central notary docker repository
+    # Publish permanent entry to Sigstore Public Rekor - Transaparency log
+    # Note:
+      ## For private repos, no good solution is available for transparency requirement for SLSA.
+      ## Hence exposing repo name and workflow details and git ref by leveraging public sigstore instance
+    - name: Sign Release Images
+      id: sign_release_images
+      if: ${{ steps.attestation_metadata.outputs.release_tags != '' && env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' && steps.release_images.outputs.prerelease_image_digest != '' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository)) }}
+      uses: Kong/public-shared-actions/security-actions/sign-docker-image@b7def0b377d98a22f0184651d6d9c93617312d82
+      with:
+        image_digest: ${{ steps.release_images.outputs.prerelease_image_digest }}
+        tags: ${{ steps.attestation_metadata.outputs.release_tags }}
+        registry_username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
+        registry_password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
+        signature_registry: ${{ env.NOTARY_REPOSITORY }}
+      env:
+        NOTARY_REPOSITORY: kong/notary
+    
+    # Keyless container image signing
+    # Publish signature to a central notary docker repository
+    # Publish permanent entry to Sigstore Public Rekor - Transparency log
+    # Note: 
+      ## For private repos, no good solution is available for transaprency requirement for SLSA.
+      ## Hence exposing repo name and workflow details and git ref by leveraging public sigstore instance
+    - name: Sign Internal Release Images
+      id: sign_internal_release_images
+      if: ${{ steps.attestation_metadata.outputs.internal_tags != '' && env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' && steps.release_images.outputs.prerelease_image_digest != '' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository)) }}
+      uses: Kong/public-shared-actions/security-actions/sign-docker-image@b7def0b377d98a22f0184651d6d9c93617312d82
+      with:
+        image_digest: ${{ steps.release_images.outputs.prerelease_image_digest }}
+        tags: ${{ steps.attestation_metadata.outputs.internal_tags }}
+        registry_username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
+        registry_password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
+        signature_registry: ${{ env.NOTARY_REPOSITORY }}
+      env:
+        NOTARY_REPOSITORY: kong/notary-internal
