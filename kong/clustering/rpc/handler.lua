@@ -1,4 +1,4 @@
---local cjson = require("cjson.safe")
+local cjson = require("cjson.safe")
 local semaphore = require("ngx.semaphore")
 
 
@@ -104,7 +104,7 @@ function _M:push_recv(data)
        type(payload.params) == "table"
     then
       self.capabilities = payload.params
-      --ngx.log(ngx.ERR, "peer's capabilities is: ", cjson.encode(payload.params))
+      ngx.log(ngx.ERR, "peer's capabilities is: ", cjson.encode(payload.params))
     end
 
     self.req_msgs:push(payload)
@@ -133,7 +133,7 @@ function _M:push_recv(data)
        type(payload.result) == "table"
     then
       self.capabilities = payload.result
-      --ngx.log(ngx.ERR, "peer's capabilities is: ", cjson.encode(payload.result))
+      ngx.log(ngx.ERR, "peer's capabilities is: ", cjson.encode(payload.result))
     end
 
     -- store result

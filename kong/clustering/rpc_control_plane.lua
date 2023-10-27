@@ -15,7 +15,6 @@ function _M.new(clustering)
   local cp = rpc_cp.new({ "kong.sync.v1", "kong.test.v1", })
   kong.rpc = cp
 
-  ngx.log(ngx.ERR, "rpc cp new ok")
   return setmetatable(self, _MT)
 end
 
@@ -24,7 +23,6 @@ end
 function _M:handle_cp_websocket()
   local rpc = assert(kong.rpc)
 
-  ngx.log(ngx.ERR, "rpc cp run")
   rpc:run()
 end
 
