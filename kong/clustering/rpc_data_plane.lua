@@ -8,6 +8,16 @@ local _MT = { __index = _M, }
 local KONG_VERSION = kong.version
 
 
+local function ping_cp_test()
+  ngx.timer.at(1, function(premature)
+    local rpc = kong.rpc
+
+    local res, err = rpc:call("kong.test.v1.ping", { msg = "kong hello"})
+    ngx.log(ngx.ERR, "receive from cp: ", res.msg)
+  end)
+end
+
+
 function _M.new(clustering)
   local conf = clustering.conf
 
@@ -48,7 +58,8 @@ function _M.new(clustering)
   }
 
   -- init rpc dp side
-  local dp = rpc_dp.new(rpc_conf, { "kong.sync.v1", "kong.test.v1", "kong.test.status.v1"})
+  local dp = rpc_dp.new(rpc_conf,
+                        { "kong.sync.v1", "kong.test.v1", "kong.test.status.v1"})
   kong.rpc = dp
 
   return setmetatable(self, _MT)
@@ -62,6 +73,8 @@ function _M:init_worker(basic_info)
   self.filters = basic_info.filters
 
   kong.rpc:init_worker()
+
+  ping_cp_test()
 end
 
 
