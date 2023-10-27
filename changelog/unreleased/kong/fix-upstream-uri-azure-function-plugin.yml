@@ -1,3 +1,3 @@
-message: "**azure-functions**: clear upstream uri and request uri inject plugin logic"
+message: "**azure-functions**: azure-functions plugin now eliminates upstream/request URI and only use `routeprefix` configuration field to construct request path when requesting Azure API"
 type: bugfix
 scope: Plugin
