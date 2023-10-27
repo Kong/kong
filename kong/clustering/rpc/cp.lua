@@ -69,7 +69,7 @@ function _M:run()
   end
 
   -- log info of dp connection
-  ngx.log(ngx.ERR, "[cp] wb:connect ok from: ", ngx.var.request_uri)
+  ngx.log(ngx.ERR, "[cp] wb:connect ok")
 
   -- set rpc peer
   local hdl = handler.new()
