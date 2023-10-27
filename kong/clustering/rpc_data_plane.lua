@@ -12,7 +12,7 @@ local function ping_cp_test()
   ngx.timer.at(1, function(premature)
     local rpc = kong.rpc
 
-    local res, err = rpc:call("kong.test.v1.ping", { msg = "kong hello"})
+    local res, _ = rpc:call("kong.test.v1.ping", { msg = "kong hello"})
     ngx.log(ngx.ERR, "receive from cp: ", res.msg)
   end)
 end

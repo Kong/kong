@@ -93,6 +93,9 @@ build = {
     ["kong.clustering.rpc.serializer"] = "kong/clustering/rpc/serializer.lua",
     ["kong.clustering.rpc.threads"] = "kong/clustering/rpc/threads.lua",
 
+    ["kong.clustering.service"] = "kong/clustering/service/init.lua",
+    ["kong.clustering.service.ping"] = "kong/clustering/service/ping.lua",
+
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.postgres"] = "kong/cluster_events/strategies/postgres.lua",
     ["kong.cluster_events.strategies.off"] = "kong/cluster_events/strategies/off.lua",
