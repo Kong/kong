@@ -26,11 +26,11 @@ function _M.new(clustering)
     conf = conf,
     cert = clustering.cert,
     cert_key = clustering.cert_key,
+
+    -- rpc services
+    sync_svc = sync_svc.new(),
   }
 
-  -- init rpc services
-  self.sync_svc = sync_svc.new()
-  self.sync_svc:init()
 
   local address = conf.cluster_control_plane .. "/v2/outlet"
   local uri = "wss://" .. address .. "?node_id=" ..
@@ -77,6 +77,10 @@ function _M:init_worker(basic_info)
   self.plugins_list = basic_info.plugins
   self.filters = basic_info.filters
 
+  -- init rpc services
+  self.sync_svc:init_worker()
+
+  -- init rpc connection
   kong.rpc:init_worker()
 
   ping_cp_test()

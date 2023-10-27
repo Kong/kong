@@ -20,11 +20,10 @@ function _M.new(clustering)
 
     -- last push config
     locks = assert(lrucache.new(4)),
-  }
 
-  -- init rpc services
-  self.ping_svc = ping_svc.new()
-  self.ping_svc:init()
+    -- rpc services
+    ping_svc = ping_svc.new()
+  }
 
   -- init rpc cp side
   local cp = rpc_cp.new({ "kong.test.v1", })
@@ -74,7 +73,10 @@ function _M:init_worker(basic_info)
   self.filters = basic_info.filters
   --]]
 
-  -- invoke rpc call
+  -- init rpc services
+  self.ping_svc:init_worker()
+
+  -- event to invoke rpc call
   events.clustering_push_config(function()
     local key = "last_push_config"
     local delay = self.conf.db_update_frequency

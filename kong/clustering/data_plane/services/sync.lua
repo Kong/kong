@@ -22,7 +22,7 @@ function _M.new()
 end
 
 
-function _M:init()
+function _M:init_worker()
   callbacks.register("kong.sync.v1.push_all", function(params)
     ngx.log(ngx.ERR, "xxx sync push all, data type=", type(params.data))
 
