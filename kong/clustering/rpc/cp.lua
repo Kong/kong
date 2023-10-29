@@ -41,9 +41,30 @@ function _M:connect()
 end
 
 
+-- choose a node by opts.node_id
+function _M:get_peer(opts)
+  do return next(self.peers) end
+
+  --[[
+  if opts and not opts.node_id then
+    local _, v = next(self.peers)
+    return v.peer
+  end
+
+  for _, v in pairs(self.peers) do
+    if v.node_id == opts.node_id then
+      return v.peer
+    end
+  end
+
+  return nil
+  --]]
+end
+
+
 -- get one dp by opts.node_id
 function _M:notify(method, params, opts)
-  local _, peer = next(self.peers)
+  local _, peer = self:get_peer(opts)
   if not peer then
     return nil, "peer is not available"
   end
@@ -54,7 +75,7 @@ end
 
 -- get one dp by opts.node_id
 function _M:call(method, params, opts)
-  local _, peer = next(self.peers)
+  local _, peer = self:get_peer(opts)
   if not peer then
     return nil,{ code = constants.INTERNAL_ERROR,
                  message = "peer is not available", }
@@ -84,6 +105,7 @@ function _M:run()
 
   -- store node info
   self.peers[wb] = pr
+  --self.peers[wb] = { peer = pr, node_id = node_id, }
   self.nodes[node_id] = (self.nodes[node_id] or 0) + 1
 
   -- cp/dp has almost the same workflow
