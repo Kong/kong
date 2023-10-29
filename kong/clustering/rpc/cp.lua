@@ -58,6 +58,12 @@ function _M:get_peer(opts)
 end
 
 
+-- get all dp nodes connecting to this cp
+function _M:get_nodes()
+  return self.nodes
+end
+
+
 -- get one dp by opts.node_id
 function _M:notify(method, params, opts)
   local peer = self:get_peer(opts)

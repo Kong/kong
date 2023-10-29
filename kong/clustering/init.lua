@@ -88,8 +88,9 @@ function _M:init_cp_worker(basic_info)
 
   events.init()
 
-  self.instance = require("kong.clustering.control_plane.traditional").new(self)
-  self.instance:init_worker(basic_info)
+  -- disable traditional cp/dp protocol
+  --self.instance = require("kong.clustering.control_plane.traditional").new(self)
+  --self.instance:init_worker(basic_info)
 
   self.rpc = require("kong.clustering.control_plane.rpc").new(self)
   self.rpc:init_worker(basic_info)
@@ -100,13 +101,15 @@ function _M:init_dp_worker(basic_info)
   self.rpc = require("kong.clustering.data_plane.rpc").new(self)
   self.rpc:init_worker(basic_info)
 
+  -- disable traditional cp/dp protocol
+  --[[
   if not is_dp_worker_process() then
     return
   end
 
-  -- disable traditional cp/dp protocol
-  --self.instance = require("kong.clustering.data_plane").new(self)
-  --self.instance:init_worker(basic_info)
+  self.instance = require("kong.clustering.data_plane").new(self)
+  self.instance:init_worker(basic_info)
+  --]]
 end
 
 
