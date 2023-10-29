@@ -101,11 +101,11 @@ function _M:init_worker(basic_info)
 
     -- already has a schedule
     if flag >= 1 then
-      --ngx.log(ngx.ERR, "xxx too many push, postpone ")
+      ngx.log(ngx.ERR, "xxx too many push, postpone ")
       return
     end
 
-    ngx.log(ngx.ERR, "xxx try push config after some seconds")
+    ngx.log(ngx.ERR, "xxx try push config after ", delay, " seconds")
 
     -- 1: scheduel a push after delay seconds
     self.locks:set(key, 1, delay)
