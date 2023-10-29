@@ -78,7 +78,7 @@ function _M:init_worker(basic_info)
   self.filters = basic_info.filters
 
   -- init rpc services
-  self.sync_svc:init_worker()
+  self.sync_svc:init_worker(self)
 
   -- init rpc connection
   kong.rpc:init_worker()

@@ -1,9 +1,18 @@
 local lrucache = require("resty.lrucache")
 
 
+local declarative = require("kong.db.declarative")
+local compat = require("kong.clustering.compat")
+local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
+
+
 local events = require("kong.clustering.events")
 local rpc_cp = require("kong.clustering.rpc.cp")
 local ping_svc = require("kong.clustering.control_plane.services.ping")
+
+
+local plugins_list_to_map = compat.plugins_list_to_map
+local check_configuration_compatibility = compat.check_configuration_compatibility
 
 
 local _M = {}
@@ -56,7 +65,6 @@ end
 
 
 function _M:init_worker(basic_info)
-  --[[
   -- ROLE = "control_plane"
   local plugins_list = basic_info.plugins
   self.plugins_list = plugins_list
@@ -71,7 +79,6 @@ function _M:init_worker(basic_info)
   end
 
   self.filters = basic_info.filters
-  --]]
 
   -- init rpc services
   self.ping_svc:init_worker()
@@ -112,10 +119,6 @@ end
 
 
 --local cjson = require("cjson.safe")
-local declarative = require("kong.db.declarative")
-local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
-
-
 local function export_deflated_reconfigure_payload()
   local config_table, err = declarative.export_config()
   if not config_table then
@@ -147,6 +150,26 @@ end
 
 
 function _M:push_config()
+  local rpc = kong.rpc
+
+  -- check_configuration_compatibility
+  ngx.log(ngx.ERR, "try check_configuration_compatibility with rpc")
+
+  local res, err = rpc:call("kong.sync.v1.get_basic_info")
+  if not res then
+    ngx.log(ngx.ERR, "kong.sync.v1.get_basic_info error: ", err.message)
+    return
+  end
+
+  local ok, err, sync_status = check_configuration_compatibility(self, {
+    dp_plugins_map = plugins_list_to_map(res.plugins),
+    filters = res.filters,
+  })
+  if not ok then
+    ngx.log(ngx.WARN, "unable to send updated configuration to data plane: ", err)
+    return
+  end
+
   ngx.log(ngx.ERR, "try to push config to dp with rpc")
 
   local ok, payload, err = pcall(export_deflated_reconfigure_payload)
@@ -155,10 +178,7 @@ function _M:push_config()
   end
   ngx.log(ngx.ERR, "export config from database ok")
 
-  -- check_configuration_compatibility
   -- update_compatible_payload
-
-  local rpc = kong.rpc
 
   local res, err = rpc:call("kong.sync.v1.push_all", { data = payload })
   if not res then

@@ -22,7 +22,9 @@ function _M.new()
 end
 
 
-function _M:init_worker()
+function _M:init_worker(clustering)
+  self.clustering = clustering
+
   callbacks.register("kong.sync.v1.push_all", function(params)
     ngx.log(ngx.ERR, "xxx sync push all, data type=", type(params.data))
 
@@ -50,6 +52,28 @@ function _M:init_worker()
     return { msg = "sync ok" }
   end)
 
+  callbacks.register("kong.sync.v1.get_basic_info", function()
+    local labels
+
+    if kong.configuration.cluster_dp_labels then
+      labels = {}
+      for _, lab in ipairs(kong.configuration.cluster_dp_labels) do
+        local del = lab:find(":", 1, true)
+        labels[lab:sub(1, del - 1)] = lab:sub(del + 1)
+      end
+    end
+
+    local configuration = kong.configuration.remove_sensitive()
+
+    local result = {
+      labels = labels,
+      process_conf = configuration,
+      plugins = clustering.plugins_list,
+      filters = clustering.filters,
+    }
+
+    return result
+  end)
 end
 
 
