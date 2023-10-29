@@ -116,10 +116,40 @@ local declarative = require("kong.db.declarative")
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
 
 
+local function export_deflated_reconfigure_payload()
+  local config_table, err = declarative.export_config()
+  if not config_table then
+    return nil, err
+  end
+
+  -- update plugins map
+  local plugins_configured = {}
+  if config_table.plugins then
+    for _, plugin in pairs(config_table.plugins) do
+      plugins_configured[plugin.name] = true
+    end
+  end
+
+  local config_hash, hashes = calculate_config_hash(config_table)
+
+  local payload = {
+    --type = "reconfigure",
+    timestamp = ngx.now(),
+    config_table = config_table,
+    config_hash = config_hash,
+    hashes = hashes,
+  }
+
+  --ngx.log(ngx.ERR, "xxx get payload")
+
+  return payload, nil, config_hash, plugins_configured
+end
+
+
 function _M:push_config()
   ngx.log(ngx.ERR, "try to push config to dp with rpc")
 
-  local ok, payload, err = pcall(self.export_deflated_reconfigure_payload, self)
+  local ok, payload, err = pcall(export_deflated_reconfigure_payload)
   if not ok then
     ngx.log(ngx.ERR, "unable to export config from database: ", err)
   end
@@ -137,36 +167,6 @@ function _M:push_config()
     ngx.log(ngx.ERR, "receive from dp: ", res.msg)
   end
 
-end
-
-
-function _M:export_deflated_reconfigure_payload()
-  local config_table, err = declarative.export_config()
-  if not config_table then
-    return nil, err
-  end
-
-  -- update plugins map
-  self.plugins_configured = {}
-  if config_table.plugins then
-    for _, plugin in pairs(config_table.plugins) do
-      self.plugins_configured[plugin.name] = true
-    end
-  end
-
-  local config_hash, hashes = calculate_config_hash(config_table)
-
-  local payload = {
-    --type = "reconfigure",
-    timestamp = ngx.now(),
-    config_table = config_table,
-    config_hash = config_hash,
-    hashes = hashes,
-  }
-
-  --ngx.log(ngx.ERR, "xxx get payload")
-
-  return payload, nil, config_hash
 end
 
 
