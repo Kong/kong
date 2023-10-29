@@ -12,6 +12,8 @@ local ping_svc = require("kong.clustering.control_plane.services.ping")
 
 
 local plugins_list_to_map = compat.plugins_list_to_map
+local check_version_compatibility = compat.check_version_compatibility
+--local update_compatible_payload = compat.update_compatible_payload
 local check_configuration_compatibility = compat.check_configuration_compatibility
 
 
@@ -152,14 +154,27 @@ end
 function _M:push_config()
   local rpc = kong.rpc
 
-  -- check_configuration_compatibility
-  ngx.log(ngx.ERR, "try check_configuration_compatibility with rpc")
+  ngx.log(ngx.ERR, "try to check compatibility with rpc")
 
   local res, err = rpc:call("kong.sync.v1.get_basic_info")
   if not res then
     ngx.log(ngx.ERR, "kong.sync.v1.get_basic_info error: ", err.message)
     return
   end
+
+  -- check_version_compatibility
+
+  local _, err, sync_status = check_version_compatibility(self, {
+    dp_version = res.version,
+    dp_plugins_map = plugins_list_to_map(res.plugins),
+    log_suffix = "rpc",
+  })
+  if err then
+    ngx.log(ngx.WARN, "unable to send updated configuration to data plane: ", err)
+    return
+  end
+
+  -- check_configuration_compatibility
 
   local ok, err, sync_status = check_configuration_compatibility(self, {
     dp_plugins_map = plugins_list_to_map(res.plugins),

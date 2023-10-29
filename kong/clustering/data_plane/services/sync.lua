@@ -7,6 +7,8 @@ local callbacks = require("kong.clustering.rpc.callbacks")
 --local utils = require("kong.tools.utils")
 
 
+local KONG_VERSION = kong.version
+
 --local inflate_gzip = utils.inflate_gzip
 --local yield = utils.yield
 
@@ -66,6 +68,7 @@ function _M:init_worker(clustering)
     local configuration = kong.configuration.remove_sensitive()
 
     local result = {
+      version = KONG_VERSION,
       labels = labels,
       process_conf = configuration,
       plugins = clustering.plugins_list,
