@@ -6,7 +6,7 @@ local server_tokens = meta._SERVER_TOKENS
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("Plugin: Azure Functions (access) [#" .. strategy .. "]", function()
+  describe("#flaky Plugin: Azure Functions (access) [#" .. strategy .. "]", function()
     local proxy_client
 
     setup(function()
