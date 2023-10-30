@@ -331,6 +331,14 @@ typedefs.url = Schema.define {
   description = "A string representing a URL, such as https://example.com/path/to/resource?q=search."
 }
 
+
+typedefs.cookie_name = Schema.define {
+  type = "string",
+  custom_validator = utils.validate_cookie_name,
+  description = "A string representing an HTTP token defined by RFC 2616."
+}
+
+-- should we also allow all http token for this?
 typedefs.header_name = Schema.define {
   type = "string",
   custom_validator = utils.validate_header_name,
