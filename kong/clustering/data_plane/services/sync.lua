@@ -1,6 +1,6 @@
 -- CP => DP
 
-local cjson = require("cjson.safe")
+--local cjson = require("cjson.safe")
 local config_helper = require("kong.clustering.config_helper")
 local constants = require("kong.clustering.rpc.constants")
 local callbacks = require("kong.clustering.rpc.callbacks")
@@ -46,7 +46,7 @@ function _M:init_worker(clustering)
     local pok, res, err = pcall(config_helper.update, declarative_config,
                                 config_table, msg.config_hash, msg.hashes)
     if not pok or not res then
-      ngx_log(ngx_ERR, "unable to update running config: ",
+      ngx.log(ngx.ERR, "unable to update running config: ",
                        (not pok and res) or err)
       return nil, {code = constants.INTERNAL_ERROR, message = "error"}
     end

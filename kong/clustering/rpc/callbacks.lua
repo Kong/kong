@@ -1,4 +1,4 @@
-local cjson = require("cjson.safe")
+--local cjson = require("cjson.safe")
 local constants = require("kong.clustering.rpc.constants")
 local serializer = require("kong.clustering.rpc.serializer")
 
