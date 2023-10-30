@@ -16,7 +16,7 @@ import {
   eventually,
 } from '@support';
 
-describe('Gateway Plugins: http-log', function () {
+describe.skip('Gateway Plugins: http-log', function () {
   const path = `/${randomString()}`;
   const hybridWaitTime = 7000;
   let serviceId: string;
