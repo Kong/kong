@@ -5,10 +5,13 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local cjson   = require "cjson"
+local cjson = require "cjson"
 local helpers = require "spec.helpers"
+local http_mock = require "spec.helpers.http_mock"
 
 local enums      = require "kong.enterprise_edition.dao.enums"
+
+local MOCK_PORT = helpers.get_available_port()
 
 local auth_types = {
   "basic-auth",
@@ -38,18 +41,21 @@ for _, strategy in helpers.each_strategy() do
 for _, auth_type in ipairs(auth_types) do
 
 describe("Developer status validation for " .. auth_type .. " [#" .. strategy .. "]", function()
-  local db, _, proxy_client
+  local db, _, proxy_client, mock
   local proxy_consumer, approved_developer, pending_developer
   local rejected_developer, revoked_developer, invited_developer
 
   lazy_setup(function()
+    mock = http_mock.new(MOCK_PORT)
+    mock:start()
     _, db, _ = helpers.get_db_utils(strategy)
 
     kong.configuration = {
       portal_auth = auth_type,
     }
     local service1 = db.services:insert {
-      host = "mockbin.com",
+      host = "localhost",
+      port = MOCK_PORT,
     }
 
     local route1 = db.routes:insert {
@@ -143,6 +149,7 @@ describe("Developer status validation for " .. auth_type .. " [#" .. strategy ..
     end
 
     helpers.stop_kong()
+    mock:stop()
   end)
 
   describe("Proxy Consumer", function()

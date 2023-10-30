@@ -11,9 +11,11 @@ local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local pl_stringx = require "pl.stringx"
 local cjson = require "cjson"
+local http_mock = require "spec.helpers.http_mock"
 
 
 local LOG_WAIT_TIMEOUT = 30
+local MOCK_PORT = helpers.get_available_port()
 
 
 for _, strategy in helpers.each_strategy() do
@@ -591,9 +593,9 @@ for _, strategy in helpers.each_strategy() do
   end)
 
   describe("Plugin execution out of its workspace scope #" .. strategy, function()
-    local proxy_client
+    local proxy_client, mock
 
-    setup(function()
+    lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",
@@ -603,12 +605,15 @@ for _, strategy in helpers.each_strategy() do
         "correlation-id"
       })
 
+      mock = http_mock.new(MOCK_PORT)
+      mock:start()
+
       do
         --local ws_a = bp.workspaces:insert({name = "default"})
         -- setup workspace ws_a [[
         local mock_servce_a = bp.services:insert{
-          host = 'mockbin.org',
-          port = 80,
+          host = 'localhost',
+          port = MOCK_PORT,
         }
 
         bp.routes:insert{
@@ -632,8 +637,8 @@ for _, strategy in helpers.each_strategy() do
         local ws_b = bp.workspaces:insert({ name = "ws_b" })
         -- setup workspace ws_b with no plugins [[
         local mock_service_b = bp.services:insert_ws({
-          host = 'mockbin.org',
-          port = 80,
+          host = 'localhost',
+          port = MOCK_PORT,
         }, ws_b)
 
         bp.routes:insert_ws({
@@ -651,8 +656,9 @@ for _, strategy in helpers.each_strategy() do
       proxy_client = helpers.proxy_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong(nil, true)
+      mock:stop()
     end)
 
     it("Doesn't trigger default workspace's plugin", function()

@@ -8,6 +8,11 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local pl_path = require "pl.path"
+local http_mock = require "spec.helpers.http_mock"
+
+-- avoid port collision with other tests
+-- the port is hardcoded in the yaml config, so we can't use a random port
+local MOCK_PORT = 9036
 
 local fixture_path
 do
@@ -24,9 +29,23 @@ end
 
 -- https://konghq.atlassian.net/browse/FTI-4592
 describe("Plugin: key-auth-enc (access) [#off]", function()
-  local proxy_client
+  local proxy_client, mock
 
   lazy_setup(function()
+    mock = http_mock.new(MOCK_PORT, {
+      ["/request"] = {
+        access = [[
+          local json = require "cjson"
+          ngx.req.read_body()
+          ngx.print(json.encode{
+            headers = ngx.req.get_headers(),
+            body = ngx.req.get_body_data(),
+          })
+          ngx.exit(200)
+        ]]
+      }
+    })
+    mock:start()
     assert(helpers.start_kong({
       database = "off",
       declarative_config = fixture_path .. "FTI-4592.yaml",
@@ -43,6 +62,7 @@ describe("Plugin: key-auth-enc (access) [#off]", function()
     end
 
     helpers.stop_kong()
+    mock:stop()
   end)
 
   it("should successful while using the same key across multiple workspaces in dbless mode", function()

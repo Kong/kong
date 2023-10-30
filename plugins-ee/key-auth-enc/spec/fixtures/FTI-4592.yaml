@@ -28,15 +28,15 @@ keyauth_enc_credentials:
 
 
 services:
-  - host: mockbin.org
+  - host: localhost
     name: example-service-1
-    port: 80
+    port: 9036
     protocol: http
     ws_id: 213e4358-0611-4a0f-8b6a-e1a0df608a04
     id: 6e40e2ba-3a9a-4201-87ef-fd6029005da7
-  - host: mockbin.org
+  - host: localhost
     name: example-service-2
-    port: 80
+    port: 9036
     protocol: http
     ws_id: 84c4e4b7-a307-4478-8875-27a484599159
     id: 9c70e94e-341a-4bd4-b62a-7d1e42778746
