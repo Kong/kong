@@ -83,6 +83,7 @@ function _M:init_worker(basic_info)
   -- init rpc connection
   kong.rpc:init_worker()
 
+  -- a test rpc call
   ping_cp_test()
 end
 

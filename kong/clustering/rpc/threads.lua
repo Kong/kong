@@ -116,8 +116,7 @@ function _M:run()
 
         -- timeout
 
-        local waited = ngx_time() - last_recv
-        if waited > PING_WAIT then
+        if ngx_time() - last_recv > PING_WAIT then
           return nil, "websocket did not receive any data " ..
                       "within " ..  PING_WAIT .. " seconds"
         end
