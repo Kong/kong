@@ -21,6 +21,33 @@ for _, strategy in helpers.each_strategy() do
         protocols  = { "http", "https" },
       }
 
+      -- Mocking lua-resty-http's request_uri function
+      db.plugins:insert {
+        name = "pre-function",
+        route = { id = route2.id },
+        config = {
+          access = {
+            [[
+              local http = require "resty.http"
+              local json = require "cjson"
+              http.request_uri = function (self, uri, params)
+                return {
+                  status = 200,
+                  body = json.encode({
+                    status = 200,
+                    uri = uri,
+                    params = params,
+                  }),
+                  headers = {
+                    ["Content-Type"] = "application/json",
+                  }
+                }
+              end
+            ]]
+          }
+        }
+      }
+
       -- this plugin definition results in an upstream url to
       -- http://mockbin.org/request
       -- which will echo the request for inspection
@@ -40,7 +67,8 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong{
         database = strategy,
-        plugins  = "azure-functions",
+        untrusted_lua = "on",
+        plugins  = "azure-functions,pre-function",
       })
 
     end) -- setup
@@ -70,7 +98,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert.response(res).has.status(200)
       local json = assert.response(res).has.jsonbody()
-      assert.same({ hello ="world" }, json.queryString)
+      assert.same({ hello ="world" }, json.params.query)
     end)
 
     it("passes request body", function()
@@ -87,7 +115,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert.response(res).has.status(200)
       local json = assert.response(res).has.jsonbody()
-      assert.same(body, json.postData.text)
+      assert.same(body, json.params.body)
     end)
 
     it("passes the path parameters", function()
@@ -101,7 +129,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert.response(res).has.status(200)
       local json = assert.response(res).has.jsonbody()
-      assert.matches("mockbin.org/request/test%-func%-name/and/then/some", json.url)
+      assert.matches("/request/test%-func%-name/and/then/some", json.params.path)
     end)
 
     it("passes the method", function()
@@ -115,7 +143,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert.response(res).has.status(200)
       local json = assert.response(res).has.jsonbody()
-      assert.same("POST", json.method)
+      assert.same("POST", json.params.method)
     end)
 
     it("passes the headers", function()
@@ -130,7 +158,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert.response(res).has.status(200)
       local json = assert.response(res).has.jsonbody()
-      assert.same("just a value", json.headers["just-a-header"])
+      assert.same("just a value", json.params.headers["just-a-header"])
     end)
 
     it("injects the apikey and clientid", function()
@@ -145,8 +173,8 @@ for _, strategy in helpers.each_strategy() do
       assert.response(res).has.status(200)
       local json = assert.response(res).has.jsonbody()
       --assert.same({}, json.headers)
-      assert.same("anything_but_an_API_key", json.headers["x-functions-key"])
-      assert.same("and_no_clientid", json.headers["x-functions-clientid"])
+      assert.same("anything_but_an_API_key", json.params.headers["x-functions-key"])
+      assert.same("and_no_clientid", json.params.headers["x-functions-clientid"])
     end)
 
     it("returns server tokens with Via header", function()
