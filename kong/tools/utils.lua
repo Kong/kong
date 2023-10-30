@@ -66,25 +66,6 @@ char *strerror(int errnum);
 
 local _M = {}
 
---- splits a string.
--- just a placeholder to the penlight `pl.stringx.split` function
--- @function split
-_M.split = split
-
---- strips whitespace from a string.
--- @function strip
-_M.strip = function(str)
-  if str == nil then
-    return ""
-  end
-  str = tostring(str)
-  if #str > 200 then
-    return str:gsub("^%s+", ""):reverse():gsub("^%s+", ""):reverse()
-  else
-    return str:match("^%s*(.-)%s*$")
-  end
-end
-
 do
   local _system_infos
 
@@ -476,29 +457,6 @@ function _M.load_module_if_exists(module_name)
   else
     error("error loading module '" .. module_name .. "':\n" .. res)
   end
-end
-
--- Numbers taken from table 3-7 in www.unicode.org/versions/Unicode6.2.0/UnicodeStandard-6.2.pdf
--- find-based solution inspired by http://notebook.kulchenko.com/programming/fixing-malformed-utf8-in-lua
-function _M.validate_utf8(val)
-  local str = tostring(val)
-  local i, len = 1, #str
-  while i <= len do
-    if     i == find(str, "[%z\1-\127]", i) then i = i + 1
-    elseif i == find(str, "[\194-\223][\123-\191]", i) then i = i + 2
-    elseif i == find(str,        "\224[\160-\191][\128-\191]", i)
-        or i == find(str, "[\225-\236][\128-\191][\128-\191]", i)
-        or i == find(str,        "\237[\128-\159][\128-\191]", i)
-        or i == find(str, "[\238-\239][\128-\191][\128-\191]", i) then i = i + 3
-    elseif i == find(str,        "\240[\144-\191][\128-\191][\128-\191]", i)
-        or i == find(str, "[\241-\243][\128-\191][\128-\191][\128-\191]", i)
-        or i == find(str,        "\244[\128-\143][\128-\191][\128-\191]", i) then i = i + 4
-    else
-      return false, i
-    end
-  end
-
-  return true
 end
 
 
@@ -955,51 +913,6 @@ do
 end
 
 
----
--- Converts bytes to another unit in a human-readable string.
--- @tparam number bytes A value in bytes.
---
--- @tparam[opt] string unit The unit to convert the bytes into. Can be either
--- of `b/B`, `k/K`, `m/M`, or `g/G` for bytes (unchanged), kibibytes,
--- mebibytes, or gibibytes, respectively. Defaults to `b` (bytes).
--- @tparam[opt] number scale The number of digits to the right of the decimal
--- point. Defaults to 2.
--- @treturn string A human-readable string.
--- @usage
---
--- bytes_to_str(5497558) -- "5497558"
--- bytes_to_str(5497558, "m") -- "5.24 MiB"
--- bytes_to_str(5497558, "G", 3) -- "5.120 GiB"
---
-function _M.bytes_to_str(bytes, unit, scale)
-  if not unit or unit == "" or lower(unit) == "b" then
-    return fmt("%d", bytes)
-  end
-
-  scale = scale or 2
-
-  if type(scale) ~= "number" or scale < 0 then
-    error("scale must be equal or greater than 0", 2)
-  end
-
-  local fspec = fmt("%%.%df", scale)
-
-  if lower(unit) == "k" then
-    return fmt(fspec .. " KiB", bytes / 2^10)
-  end
-
-  if lower(unit) == "m" then
-    return fmt(fspec .. " MiB", bytes / 2^20)
-  end
-
-  if lower(unit) == "g" then
-    return fmt(fspec .. " GiB", bytes / 2^30)
-  end
-
-  error("invalid unit '" .. unit .. "' (expected 'k/K', 'm/M', or 'g/G')", 2)
-end
-
-
 do
   local NGX_ERROR = ngx.ERROR
 
@@ -1310,39 +1223,67 @@ end
 _M.time_ns = time_ns
 
 
-local try_decode_base64
+local sha256_bin
 do
-  local decode_base64    = ngx.decode_base64
-  local decode_base64url = require "ngx.base64".decode_base64url
+  local digest = require "resty.openssl.digest"
+  local sha256_digest
 
-  local function decode_base64_str(str)
-    if type(str) == "string" then
-      return decode_base64(str)
-             or decode_base64url(str)
-             or nil, "base64 decoding failed: invalid input"
-
-    else
-      return nil, "base64 decoding failed: not a string"
-    end
-  end
-
-  function try_decode_base64(value)
-    if type(value) == "table" then
-      for i, v in ipairs(value) do
-        value[i] = decode_base64_str(v) or v
+  function sha256_bin(key)
+    local _, bin, err
+    if not sha256_digest then
+      sha256_digest, err = digest.new("sha256")
+      if err then
+        return nil, err
       end
-
-      return value
     end
 
-    if type(value) == "string" then
-      return decode_base64_str(value) or value
+    bin, err = sha256_digest:final(key)
+    if err then
+      sha256_digest = nil
+      return nil, err
     end
 
-    return value
+    _, err = sha256_digest:reset()
+    if err then
+      sha256_digest = nil
+    end
+
+    return bin
   end
 end
-_M.try_decode_base64 = try_decode_base64
+_M.sha256_bin = sha256_bin
+
+
+local sha256_hex, sha256_base64, sha256_base64url
+do
+  local to_hex       = require "resty.string".to_hex
+  local to_base64    = ngx.encode_base64
+  local to_base64url = require "ngx.base64".encode_base64url
+
+  local function sha256_encode(encode_alg, key)
+    local bin, err = sha256_bin(key)
+    if err then
+      return nil, err
+    end
+
+    return encode_alg(bin)
+  end
+
+  function sha256_hex(key)
+    return sha256_encode(to_hex, key)
+  end
+
+  function sha256_base64(key)
+    return sha256_encode(to_base64, key)
+  end
+
+  function sha256_base64url(key)
+    return sha256_encode(to_base64url, key)
+  end
+end
+_M.sha256_hex       = sha256_hex
+_M.sha256_base64    = sha256_base64
+_M.sha256_base64url = sha256_base64url
 
 
 local get_now_ms
@@ -1385,6 +1326,7 @@ do
     "kong.tools.table",
     "kong.tools.sha256",
     "kong.tools.yield",
+    "kong.tools.string",
   }
 
   for _, str in ipairs(modules) do
