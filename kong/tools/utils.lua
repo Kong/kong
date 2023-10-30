@@ -601,6 +601,29 @@ _M.format_host = function(p1, p2)
   end
 end
 
+local CONTROLS = [[\x00-\x1F\x7F]]
+local HIGHBIT = [[\x80-\xFF]]
+local SEPARATORS = [==[ \t()<>@,;:\\\"\/?={}\[\]]==]
+local HTTP_TOKEN_FORBID_PATTERN = "[".. CONTROLS .. HIGHBIT .. SEPARATORS .. "]"
+
+--- Validates a token defined by RFC 2616.
+-- @param token (string) the string to verify
+-- @return the valid token, or `nil+error`
+function _M.validate_http_token(token)
+  if token == nil or token == "" then
+    return nil, "no token provided"
+  end
+
+  if not re_match(token, HTTP_TOKEN_FORBID_PATTERN, "jo") then
+    return token
+  end
+
+  return nil, "contains one or more invalid characters. ASCII " ..
+              "control characters (0-31;127), space, tab and the " ..
+              "characters ()<>@,;:\\\"/?={}[] are not allowed."
+end
+
+-- should we also use validate_http_token for this?
 --- Validates a header name.
 -- Checks characters used in a header name to be valid, as per nginx only
 -- a-z, A-Z, 0-9 and '-' are allowed.
@@ -620,22 +643,9 @@ _M.validate_header_name = function(name)
 end
 
 --- Validates a cookie name.
--- Checks characters used in a cookie name to be valid
--- a-z, A-Z, 0-9, '_' and '-' are allowed.
 -- @param name (string) the cookie name to verify
 -- @return the valid cookie name, or `nil+error`
-_M.validate_cookie_name = function(name)
-  if name == nil or name == "" then
-    return nil, "no cookie name provided"
-  end
-
-  if re_match(name, "^[a-zA-Z0-9-_]+$", "jo") then
-    return name
-  end
-
-  return nil, "bad cookie name '" .. name ..
-              "', allowed characters are A-Z, a-z, 0-9, '_', and '-'"
-end
+_M.validate_cookie_name = _M.validate_http_token
 
 
 local validate_labels
