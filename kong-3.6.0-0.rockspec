@@ -84,7 +84,7 @@ build = {
 
     ["kong.clustering.control_plane.traditional"] = "kong/clustering/control_plane/traditional.lua",
     ["kong.clustering.control_plane.rpc"] = "kong/clustering/control_plane/rpc.lua",
-    ["kong.clustering.control_plane.services.ping"] = "kong/clustering/control_plane/services/pings.lua",
+    ["kong.clustering.control_plane.services.ping"] = "kong/clustering/control_plane/services/ping.lua",
 
     ["kong.clustering.rpc.callbacks"] = "kong/clustering/rpc/callbacks.lua",
     ["kong.clustering.rpc.connector"] = "kong/clustering/rpc/connector.lua",
