@@ -665,12 +665,12 @@ describe("Utils", function()
     end
   end)
   it("validate_cookie_name() validates cookie names", function()
-    local header_chars = [[_-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz]]
+    local cookie_chars = [[~`|!#$%&'*+-._-^0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz]]
 
     for i = 1, 255 do
       local c = string.char(i)
 
-      if string.find(header_chars, c, nil, true) then
+      if string.find(cookie_chars, c, nil, true) then
         assert(utils.validate_cookie_name(c) == c,
           "ascii character '" .. c .. "' (" .. i .. ") should have been allowed")
       else
