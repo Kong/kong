@@ -2127,7 +2127,7 @@
 # information such as domain name tried during these processes.
 #
 #request_debug = on              # When enabled, Kong will provide detailed timing information
-                                 # for its components to the client and the error log 
+                                 # for its components to the client and the error log
                                  # if the following headers are present in the proxy request:
                                  # - `X-Kong-Request-Debug`:
                                  #   If the value is set to `*`,
