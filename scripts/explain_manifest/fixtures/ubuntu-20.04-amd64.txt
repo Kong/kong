@@ -74,9 +74,9 @@
 - Path      : /usr/local/kong/lib/libjq.so.1.0.4
   Needed    :
   - libm.so.6
-  - libc.so.6
   - libonig.so.5
   - libpthread.so.0
+  - libc.so.6
   Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/kong/lib/liblicense_utils.so

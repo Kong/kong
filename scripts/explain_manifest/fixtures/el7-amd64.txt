@@ -81,7 +81,7 @@
   - libonig.so.5
   - libpthread.so.0
   - libc.so.6
-  Rpath     : /usr/local/kong/lib
+  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/kong/lib/liblicense_utils.so
   Needed    :
