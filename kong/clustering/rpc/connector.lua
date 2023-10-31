@@ -16,7 +16,10 @@ local WS_OPTS = {
 
 
 local function connect(conf)
-  local wb, _ = ws_client:new(WS_OPTS)
+  local wb, err = ws_client:new(WS_OPTS)
+  if not wb then
+    return nil, err
+  end
 
   local ok, err = wb:connect(conf.uri, conf.opts)
   if not ok then
