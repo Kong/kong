@@ -85,6 +85,9 @@ function _M:init_worker(basic_info)
   -- init rpc services
   self.ping_svc:init_worker()
 
+  -- init rpc connection
+  kong.rpc:init_worker()
+
   -- event to invoke rpc call
   events.clustering_push_config(function()
     local key = "last_push_config"

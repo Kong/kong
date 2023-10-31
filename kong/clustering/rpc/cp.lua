@@ -27,12 +27,15 @@ function _M.new(capabilities)
     peers = setmetatable({}, { __mode = "k", }),
   }
 
+  return setmetatable(self, _MT)
+end
+
+
+function _M:init_worker()
   callbacks.register(META_HELLO_METHOD, function(params)
     --ngx.log(ngx.ERR, "in meta.hello")
     return self.capabilities
   end)
-
-  return setmetatable(self, _MT)
 end
 
 
