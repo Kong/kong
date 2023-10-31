@@ -73,7 +73,6 @@ for _, strategy in helpers.each_strategy() do
                 local mock_server_port = ]] .. mock_http_server_port .. [[
                 -- Replace the port with the mock server port
                 local new_uri = string.format("%s://%s:%d", scheme, host, mock_server_port)
-                ngx.log(ngx.ERR, "REPLACE URI WITH:" .. new_uri)
                 return _request_uri(self, new_uri, params)
               end
             ]]
@@ -81,16 +80,13 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
-      -- this plugin definition results in an upstream url to
-      -- http://mockbin.org/request
-      -- which will echo the request for inspection
       db.plugins:insert {
         name     = "azure-functions",
         route    = { id = route2.id },
         config   = {
           https           = false,
-          appname         = "mockbin",
-          hostdomain      = "org",
+          appname         = "azure",
+          hostdomain      = "example.com",
           routeprefix     = "request",
           functionname    = "test-func-name",
           apikey          = "anything_but_an_API_key",
@@ -103,7 +99,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       fixtures.dns_mock:A({
-        name = "mockbin.org",
+        name = "azure.example.com",
         address = "127.0.0.1",
       })
 
