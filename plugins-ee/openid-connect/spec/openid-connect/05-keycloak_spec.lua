@@ -79,6 +79,7 @@ local mock = http_mock.new(HTTP_SERVER_PORT, {
     log_opts = {
       req = true,
       req_body = true,
+      req_large_body = true,
     }
   })
 local MOCK_ISSUER_URL = "http://localhost:" .. HTTP_SERVER_PORT .. REALM_PATH
@@ -656,7 +657,7 @@ for _, strategy in helpers.all_strategies() do
           },
         }
 
-	assert(mock:start())
+	      assert(mock:start())
         assert(helpers.start_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -666,7 +667,7 @@ for _, strategy in helpers.all_strategies() do
 
       lazy_teardown(function()
         helpers.stop_kong()
-	mock:stop()
+	      mock:stop()
       end)
 
       before_each(function()
@@ -2714,14 +2715,14 @@ for _, strategy in helpers.all_strategies() do
             logout_methods = {
               "POST",
             },
-	    revocation_endpoint = MOCK_ISSUER_URL .. "/protocol/openid-connect/revoke",
+	          revocation_endpoint = MOCK_ISSUER_URL .. "/protocol/openid-connect/revoke",
             revocation_token_param_name = "mytoken",
             logout_revoke = true,
             display_errors = true
           },
         }
 
-	assert(mock:start())
+	      assert(mock:start())
         assert(helpers.start_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -2731,7 +2732,7 @@ for _, strategy in helpers.all_strategies() do
 
       lazy_teardown(function()
         helpers.stop_kong()
-	mock:stop()
+	      mock:stop()
       end)
 
       before_each(function()

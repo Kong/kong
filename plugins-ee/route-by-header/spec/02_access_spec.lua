@@ -6,86 +6,25 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
+local http_mock = require "spec.helpers.http_mock"
 
--- mocked upstream host
-local function http_server(timeout, count, port, ...)
-  local threads = require "llthreads2.ex"
-  local thread = threads.new({
-    function(timeout, count, port)
-      local socket = require "socket"
-      local server = assert(socket.tcp())
-      assert(server:setoption('reuseaddr', true))
-      assert(server:bind("*", port))
-      assert(server:listen())
-
-      local expire = socket.gettime() + timeout
-      assert(server:settimeout(timeout))
-
-      local success = 0
-      while count > 0 do
-        local client, err, _
-        client, err = server:accept()
-        if err == "timeout" then
-          if socket.gettime() > expire then
-            server:close()
-            error("timeout")
-          end
-        elseif not client then
-          server:close()
-          error(err)
-        else
-          count = count - 1
-
-          local err
-          local line_count = 0
-          while line_count < 7 do
-            _, err = client:receive()
-            if err then
-              break
-            else
-              line_count = line_count + 1
-            end
-          end
-
-          if err then
-            client:close()
-            server:close()
-            error(err)
-          end
-          local response_json = '{"vars": {"request_uri": "/requests/path2"}}'
-          local s = client:send(
-            'HTTP/1.1 200 OK\r\n' ..
-              'Connection: close\r\n' ..
-              'Content-Length: '.. #response_json .. '\r\n' ..
-              '\r\n' ..
-              response_json
-          )
-
-          client:close()
-          if s then
-            success = success + 1
-          end
-        end
-      end
-
-      server:close()
-      return success
-    end
-  }, timeout, count, port)
-
-  local server = thread:start(...)
-  ngx.sleep(0.2)
-  return server
-end
+local PORT1, PORT2 = helpers.get_available_port(), helpers.get_available_port()
 
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
 for _, strategy in strategies() do
   describe("Plugin: route-by-header (access) [#" .. strategy .. "]", function()
-    local proxy_client, admin_client, target_foo, target_bar, plugin2
+    local proxy_client, admin_client, plugin2
     local db_strategy = strategy ~= "off" and strategy or nil
+    local mock1, mock2
 
     setup(function()
+      mock1 = http_mock.new(PORT1)
+      mock1:start()
+      mock2 = http_mock.new(PORT2, nil, {
+        prefix = "servroot_mock2",
+      })
+      mock2:start()
       local bp = helpers.get_db_utils(db_strategy, nil, {
         "route-by-header",
       })
@@ -96,7 +35,7 @@ for _, strategy in strategies() do
 
       bp.targets:insert({
         upstream = { id = upstream_foo.id },
-        target = "127.0.0.1:30001"
+        target = "127.0.0.1:" .. PORT1
       })
 
       local upstream_bar = bp.upstreams:insert({
@@ -105,7 +44,7 @@ for _, strategy in strategies() do
 
       bp.targets:insert({
         upstream = { id = upstream_bar.id },
-        target = "127.0.0.1:30002"
+        target = "127.0.0.1:" .. PORT2
       })
 
       local service1 = bp.services:insert {
@@ -169,6 +108,8 @@ for _, strategy in strategies() do
     end)
 
     teardown(function()
+      mock1:stop()
+      mock2:stop()
       if proxy_client then
         proxy_client:close()
       end
@@ -197,8 +138,6 @@ for _, strategy in strategies() do
       assert.res_status(503, res)
     end)
     it("GET requests should route to bar server", function()
-      target_bar = http_server(10, 1, 30002)
-
       local res = assert(proxy_client:send{
         method = "GET",
         headers = {
@@ -208,12 +147,9 @@ for _, strategy in strategies() do
         }
       })
       assert.res_status(200, res)
-      local _, success = target_bar:join()
-      assert.is_equal(1, success)
+      mock2.eventually:has_one_without_error()
     end)
     it("GET requests should route to foo server", function()
-      target_foo = http_server(10, 1, 30001)
-
       local res = assert(proxy_client:send{
         method = "GET",
         headers = {
@@ -222,12 +158,9 @@ for _, strategy in strategies() do
         }
       })
       assert.res_status(200, res)
-      local _, success = target_foo:join()
-      assert.is_equal(1, success)
+      mock1.eventually:has_one_without_error()
     end)
     it("GET requests should route to the matched, bar server", function()
-      target_bar = http_server(10, 1, 30002)
-
       local res = assert(proxy_client:send{
         method = "GET",
         headers = {
@@ -238,12 +171,9 @@ for _, strategy in strategies() do
         }
       })
       assert.res_status(200, res)
-      local _, success = target_bar:join()
-      assert.is_equal(1, success)
+      mock2.eventually:has_one_without_error()
     end)
     it("GET requests should route to the matched, foo server after PATCH", function()
-      target_bar = http_server(10, 1, 30002)
-
       local res = assert(proxy_client:send{
         method = "GET",
         headers = {
@@ -254,8 +184,7 @@ for _, strategy in strategies() do
         }
       })
       assert.res_status(200, res)
-      local _, success = target_bar:join()
-      assert.is_equal(1, success)
+      mock2.eventually:has_one_without_error()
 
       local res = assert(admin_client:send{
         method = "PATCH",
@@ -279,7 +208,9 @@ for _, strategy in strategies() do
       })
       assert.res_status(200, res)
 
-      target_foo = http_server(10, 1, 30001)
+      helpers.wait_for_all_config_update({
+        disable_ipv6 = true,
+      })
 
       local res = assert(proxy_client:send{
         method = "GET",
@@ -290,9 +221,7 @@ for _, strategy in strategies() do
         }
       })
       assert.res_status(200, res)
-      local _, success = target_foo:join()
-      assert.is_equal(1, success)
-
+      mock1.eventually:has_one_without_error()
     end)
   end)
 end

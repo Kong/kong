@@ -6,10 +6,16 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
+local http_mock = require "spec.helpers.http_mock"
 local cjson = require "cjson"
 local redis = require "kong.enterprise_edition.redis"
 local version = require "version"
 
+
+local HTTP_SERVER_PORT_16 = helpers.get_available_port()
+local HTTP_SERVER_PORT_20 = helpers.get_available_port()
+local HTTP_SERVER_PORT = helpers.get_available_port()
+local PROXY_PORT = helpers.get_available_port()
 local REDIS_HOST = helpers.redis_host
 local REDIS_PORT = helpers.redis_port or 6379
 local REDIS_DATABASE = 1
@@ -2078,11 +2084,7 @@ for _, strategy in strategies() do
     if strategy ~= "off" then
       describe("rate-limiting-advanced Hybrid Mode with strategy #" .. strategy .. "#", function()
         local plugin2, plugin4, plugin20, plugin21
-        local ok, thread, proxy_client
-
-        local HTTP_SERVER_PORT_16 = helpers.get_available_port()
-        local HTTP_SERVER_PORT_20 = helpers.get_available_port()
-        local HTTP_SERVER_PORT
+        local proxy_client
 
         lazy_setup(function()
           redis.flush_redis(REDIS_HOST, REDIS_PORT, REDIS_DATABASE, nil, nil)
@@ -2171,7 +2173,7 @@ for _, strategy in strategies() do
             cluster_cert_key = "spec/fixtures/kong_clustering.key",
             lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
             cluster_control_plane = "127.0.0.1:9005",
-            proxy_listen = "0.0.0.0:9102",
+            proxy_listen = "0.0.0.0:" .. PROXY_PORT,
             prefix = "dp1",
             nginx_worker_processes = 1,
             nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -2220,8 +2222,6 @@ for _, strategy in strategies() do
         end)
 
         it("new plugin is created in a new route", function()
-          HTTP_SERVER_PORT = helpers.get_available_port()
-
           helpers.clean_logfile("dp1/logs/error.log")
           helpers.clean_logfile("dp2/logs/error.log")
           helpers.clean_logfile("cp/logs/error.log")
@@ -2272,9 +2272,13 @@ for _, strategy in strategies() do
           -- wait for created entities sync with DP
           ngx_sleep(1)
 
-          thread = helpers.http_server(HTTP_SERVER_PORT, { timeout = 240 })
+          local mock = http_mock.new(HTTP_SERVER_PORT)
+          mock:start()
+          finally(function()
+            mock:stop()
+          end)
           ngx_sleep(1)
-          proxy_client = helpers.proxy_client(nil, 9102)
+          proxy_client = helpers.proxy_client(nil, PROXY_PORT)
           local res = assert(proxy_client:send {
             method = "GET",
             path = "/get",
@@ -2283,11 +2287,8 @@ for _, strategy in strategies() do
             }
           })
           assert.res_status(200, res)
-          proxy_client:close()
-          ok = thread:join()
-          assert.is_truthy(ok)
+          mock.eventually:has_one_without_error()
 
-          thread = helpers.http_server(HTTP_SERVER_PORT, { timeout = 240 })
           ngx_sleep(1)
           proxy_client = helpers.proxy_client(nil, 9104)
           local res = assert(proxy_client:send {
@@ -2299,8 +2300,7 @@ for _, strategy in strategies() do
           })
           assert.res_status(200, res)
           proxy_client:close()
-          ok = thread:join()
-          assert.is_truthy(ok)
+          mock.eventually:has_one_without_error()
 
           helpers.wait_for_file_contents("dp1/logs/error.log")
           helpers.pwait_until(function()
@@ -2340,12 +2340,16 @@ for _, strategy in strategies() do
         end)
 
         it("local strategy works", function()
+          local mock = http_mock.new(HTTP_SERVER_PORT_20)
+          mock:start()
+          finally(function()
+            mock:stop(true)
+          end)
           local window_size = plugin20.config.window_size[1]
           local limit = plugin20.config.limit[1]
           for i = 1, limit do
-            thread = helpers.http_server(HTTP_SERVER_PORT_20, { timeout = 240 })
             ngx_sleep(1)
-            proxy_client = helpers.proxy_client(nil, 9102)
+            proxy_client = helpers.proxy_client(nil, PROXY_PORT)
             local res = assert(proxy_client:send {
               method = "GET",
               path = "/",
@@ -2353,10 +2357,10 @@ for _, strategy in strategies() do
                 ["Host"] = "test20.com",
               }
             })
+            io.read()
             assert.res_status(200, res)
             proxy_client:close()
-            ok = thread:join()
-            assert.is_truthy(ok)
+            mock.eventually:has_one_without_error()
 
             assert.are.same(limit, tonumber(res.headers["x-ratelimit-limit-" .. window_size]))
             assert.are.same(limit, tonumber(res.headers["ratelimit-limit"]))
@@ -2367,7 +2371,7 @@ for _, strategy in strategies() do
           end
 
           -- Additonal request on DP 1, while limit is 2/window
-          proxy_client = helpers.proxy_client(nil, 9102)
+          proxy_client = helpers.proxy_client(nil, PROXY_PORT)
           local res = assert(proxy_client:send {
             method = "GET",
             path = "/",
@@ -2385,7 +2389,6 @@ for _, strategy in strategies() do
           assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
 
           -- Request on DP 2, while limit is 2/window
-          thread = helpers.http_server(HTTP_SERVER_PORT_20, { timeout = 240 })
           ngx_sleep(1)
           proxy_client = helpers.proxy_client(nil, 9104)
           local res = assert(proxy_client:send {
@@ -2397,19 +2400,23 @@ for _, strategy in strategies() do
           })
           assert.res_status(200, res)
           proxy_client:close()
-          ok = thread:join()
-          assert.is_truthy(ok)
+          mock.eventually:has_one_without_error()
         end)
 
         it("sync counters in all DP nodes after PATCH", function()
+          local mock = http_mock.new(HTTP_SERVER_PORT_16)
+          mock:start()
+          finally(function()
+            mock:stop()
+          end)
+
           local window_size = plugin2.config.window_size[1]
           local limit = plugin2.config.limit[1]
 
           -- Hit DP 1
           for i = 1, limit do
-            thread = helpers.http_server(HTTP_SERVER_PORT_16, { timeout = 240 })
             ngx_sleep(1)
-            proxy_client = helpers.proxy_client(nil, 9102)
+            proxy_client = helpers.proxy_client(nil, PROXY_PORT)
             local res = assert(proxy_client:send {
               method = "GET",
               path = "/",
@@ -2419,8 +2426,7 @@ for _, strategy in strategies() do
             })
             assert.res_status(200, res)
             proxy_client:close()
-            ok = thread:join()
-            assert.is_truthy(ok)
+            mock.eventually:has_one_without_error()
 
             assert.are.same(limit, tonumber(res.headers["x-ratelimit-limit-".. window_size]))
             assert.are.same(limit, tonumber(res.headers["ratelimit-limit"]))
@@ -2431,7 +2437,7 @@ for _, strategy in strategies() do
           end
 
           -- Additonal request ON DP 1, while limit is 1/window
-          proxy_client = helpers.proxy_client(nil, 9102)
+          proxy_client = helpers.proxy_client(nil, PROXY_PORT)
           local res = assert(proxy_client:send {
             method = "GET",
             path = "/",
@@ -2493,7 +2499,6 @@ for _, strategy in strategies() do
 
           -- Hit DP 2
           for i = 1, limit do
-            thread = helpers.http_server(HTTP_SERVER_PORT_16, { timeout = 240 })
             ngx_sleep(1)
             proxy_client = helpers.proxy_client(nil, 9104)
             local res = assert(proxy_client:send {
@@ -2505,8 +2510,7 @@ for _, strategy in strategies() do
             })
             assert.res_status(200, res)
             proxy_client:close()
-            ok = thread:join()
-            assert.is_truthy(ok)
+            mock.eventually:has_one_without_error()
 
             assert.are.same(limit, tonumber(res.headers["x-ratelimit-limit-" .. window_size]))
             assert.are.same(limit, tonumber(res.headers["ratelimit-limit"]))
@@ -2539,7 +2543,7 @@ for _, strategy in strategies() do
           ngx_sleep(plugin2.config.sync_rate + 0.1)
 
           -- Hit DP 1, while limit is 1/window
-          proxy_client = helpers.proxy_client(nil, 9102)
+          proxy_client = helpers.proxy_client(nil, PROXY_PORT)
           local res = assert(proxy_client:send {
             method = "GET",
             path = "/",

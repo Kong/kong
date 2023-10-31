@@ -89,7 +89,7 @@ describe("cp outage handling storage support: #s3", function()
         ]=]
       },
     }, {
-      log_opts = { req_body = true }
+      log_opts = { req_body = true, req_large_body = true, }
     })
     mock_s3_server:start()
     s3_instance = s3.new("test_version", "s3://test_bucket/test_prefix")

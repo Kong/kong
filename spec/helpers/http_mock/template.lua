@@ -167,6 +167,10 @@ $(init)
             end
           end
         end
+# else
+        if not body then
+          body = { "body is too large" }
+        end
 # end -- if log_opts.req_large_body
 # end -- if log_opts.req_body
         ngx.ctx.req = {

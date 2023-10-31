@@ -9,6 +9,7 @@ local cjson   = require "cjson"
 local helpers = require "spec.helpers"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
+local http_mock = require "spec.helpers.http_mock"
 
 
 local TRACE_LOG_PATH = os.tmpname()
@@ -546,7 +547,7 @@ describe("tracing [#" .. strategy .. "]", function()
     end)
 
     pending("writes traces to an HTTP server", function()
-      local thread = helpers.http_server(HTTP_PORT)
+      local mock = http_mock.new(HTTP_PORT)
 
       local res = assert(proxy_client:send({
         method = "GET",
@@ -559,21 +560,20 @@ describe("tracing [#" .. strategy .. "]", function()
       -- wait a bit for msg to be sent via timer
       ngx.sleep(0.3)
 
-      local ok, res = thread:join()
-      assert.True(ok)
+      mock.eventually:has_request_satisfy(function (request)
+        local traces = assert(cjson.decode(request.body))
+        assert(has_trace_element(traces, "name", "router"))
 
-      -- seventh index is the body
-      local traces = cjson.decode(res[7])
+        for _, phase in ipairs({"before", "after"}) do
+          assert(has_trace_element(traces, "name", "access." .. phase))
+        end
 
-      assert(has_trace_element(traces, "name", "router"))
+        -- we have at least one db call
+        -- this is the workspace scope lookup
+        assert(has_trace_element(traces, "name", "query"))
+      end)
 
-      for _, phase in ipairs({"before", "after"}) do
-        assert(has_trace_element(traces, "name", "access." .. phase))
-      end
 
-      -- we have at least one db call
-      -- this is the workspace scope lookup
-      assert(has_trace_element(traces, "name", "query"))
     end)
   end)
 end)
