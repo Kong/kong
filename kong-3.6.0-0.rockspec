@@ -280,6 +280,7 @@ build = {
     ["kong.tools.table"] = "kong/tools/table.lua",
     ["kong.tools.sha256"] = "kong/tools/sha256.lua",
     ["kong.tools.yield"] = "kong/tools/yield.lua",
+    ["kong.tools.uuid"] = "kong/tools/uuid.lua",
 
     ["kong.tools.channel"] = "kong/tools/channel.lua",
 
