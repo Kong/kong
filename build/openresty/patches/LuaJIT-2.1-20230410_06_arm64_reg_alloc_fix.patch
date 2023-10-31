@@ -12,7 +12,7 @@ diff --git a/bundle/LuaJIT-2.1-20230410/src/lj_asm_arm64.h b/bundle/LuaJIT-2.1-2
 index 3889883d..c216fced 100644
 --- a/bundle/LuaJIT-2.1-20230410/src/lj_asm_arm64.h
 +++ b/bundle/LuaJIT-2.1-20230410/src/lj_asm_arm64.h
-@@ -1107,6 +1107,8 @@ static void asm_ahuvload(ASMState *as, IRIns *ir)
+@@ -1133,6 +1133,8 @@ static void asm_ahuvload(ASMState *as, IRIns *ir)
    }
    type = ra_scratch(as, rset_clear(gpr, tmp));
    idx = asm_fuseahuref(as, ir->op1, &ofs, rset_clear(gpr, type), A64I_LDRx);
@@ -21,7 +21,7 @@ index 3889883d..c216fced 100644
    if (ir->o == IR_VLOAD) ofs += 8 * ir->op2;
    /* Always do the type check, even if the load result is unused. */
    asm_guardcc(as, irt_isnum(ir->t) ? CC_LS : CC_NE);
-@@ -1114,7 +1116,7 @@ static void asm_ahuvload(ASMState *as, IRIns *ir)
+@@ -1140,7 +1142,7 @@ static void asm_ahuvload(ASMState *as, IRIns *ir)
      lj_assertA(irt_isinteger(ir->t) || irt_isnum(ir->t),
  	       "bad load type %d", irt_type(ir->t));
      emit_nm(as, A64I_CMPx | A64F_SH(A64SH_LSR, 32),
