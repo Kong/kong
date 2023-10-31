@@ -182,7 +182,7 @@
                                  # cache (i.e. when the configured
                                  # `mem_cache_size`) is full.
 
-#dedicated_config_processing = off # Enables or disables a special worker
+#dedicated_config_processing = on  # Enables or disables a special worker
                                    # process for configuration processing. This process
                                    # increases memory usage a little bit while
                                    # allowing to reduce latencies by moving some

@@ -65,7 +65,7 @@ describe("Configuration loader", function()
     assert.same({}, conf.status_ssl_cert)
     assert.same({}, conf.status_ssl_cert_key)
     assert.same(nil, conf.privileged_agent)
-    assert.same(false, conf.dedicated_config_processing)
+    assert.same(true, conf.dedicated_config_processing)
     assert.same(false, conf.allow_debug_header)
     assert.is_nil(getmetatable(conf))
   end)
@@ -2020,7 +2020,7 @@ describe("Configuration loader", function()
         privileged_agent = "on",
       }))
       assert.same(nil, conf.privileged_agent)
-      assert.same(false, conf.dedicated_config_processing)
+      assert.same(true, conf.dedicated_config_processing)
       assert.equal(nil, err)
 
       -- no clobber
@@ -2419,7 +2419,6 @@ describe("Configuration loader", function()
         assert.matches(label.err, err)
       end
     end)
-
   end)
 
 end)
