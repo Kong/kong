@@ -59,7 +59,7 @@ export * from './utilities/gw-vaults';
 export * from './utilities/influxdb';
 export * from './utilities/jwe-keys';
 export { logDebug, logResponse } from './utilities/logging';
-export { createMockbinBin, getMockbinLogs } from './utilities/mockbin';
+export { getHttpLogServerLogs, deleteHttpLogServerLogs } from './utilities/http-log-server';
 export { getNegative, postNegative } from './utilities/negative-axios';
 export { execCustomCommand, checkForArm64 } from './utilities/prog';
 export { findRegex, randomString, wait } from './utilities/random';

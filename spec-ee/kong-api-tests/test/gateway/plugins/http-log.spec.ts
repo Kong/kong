@@ -8,23 +8,22 @@ import {
   deleteGatewayService,
   createRouteForService,
   deleteGatewayRoute,
-  getMockbinLogs,
   randomString,
-  wait,
   logResponse,
-  createMockbinBin,
+  getHttpLogServerLogs,
   eventually,
+  waitForConfigRebuild,
+  deleteHttpLogServerLogs
 } from '@support';
 
-describe.skip('Gateway Plugins: http-log', function () {
+describe('Gateway Plugins: http-log', function () {
   const path = `/${randomString()}`;
-  const hybridWaitTime = 7000;
+
   let serviceId: string;
   let routeId: string;
   let pluginId: string;
   let basePayload: any;
   let mockbinUrl: string;
-  let mockbinBinId: string;
   let mockbinLogs: any;
 
   const url = `${getBasePath({
@@ -43,10 +42,9 @@ describe.skip('Gateway Plugins: http-log', function () {
     serviceId = service.id;
     const route = await createRouteForService(serviceId, [path]);
     routeId = route.id;
+    await deleteHttpLogServerLogs()
 
-    mockbinBinId = await createMockbinBin();
-    mockbinUrl = `https://mockbin.org/bin/${mockbinBinId}`;
-    console.log(`Current mockbin log url is ${`${mockbinUrl}/log`}`);
+    mockbinUrl = 'http://http-log-server:9300/logs';
 
     basePayload = {
       name: 'http-log',
@@ -124,7 +122,7 @@ describe.skip('Gateway Plugins: http-log', function () {
     ).to.eq(mockbinUrl);
 
     pluginId = resp.data.id;
-    await wait(hybridWaitTime); // eslint-disable-line no-restricted-syntax
+    await waitForConfigRebuild()
   });
 
   it('should send http request logs to http_endpoint', async function () {
@@ -134,9 +132,9 @@ describe.skip('Gateway Plugins: http-log', function () {
     expect(resp.status, 'Status should be 200').to.equal(200);
 
     await eventually(async () => {
-      mockbinLogs = await getMockbinLogs(mockbinBinId);
+      mockbinLogs = await getHttpLogServerLogs()
       expect(
-        mockbinLogs.log.entries[0].request.method,
+        mockbinLogs[0].reqMethod,
         'Should use POST method to log request data'
       ).to.eq('POST');
     });
@@ -152,12 +150,9 @@ describe.skip('Gateway Plugins: http-log', function () {
     expect(resp.status, 'Status should be 200').to.equal(200);
 
     await eventually(async () => {
-      mockbinLogs = await getMockbinLogs(mockbinBinId);
+      mockbinLogs = await getHttpLogServerLogs();
       // always take the last item of mockbin entries as it represents the last request logs
-      const requestDetails = JSON.parse(
-        mockbinLogs.log.entries[mockbinLogs.log.entries.length - 1].request
-          .postData.text
-      );
+      const requestDetails = mockbinLogs[mockbinLogs.length - 1].reqBody
 
       expect(
         requestDetails.request.method,
@@ -196,7 +191,8 @@ describe.skip('Gateway Plugins: http-log', function () {
         resp.data.config.method,
         'Should see correct patched method'
       ).to.eq(pluginConfigHeader);
-      await wait(hybridWaitTime); // eslint-disable-line no-restricted-syntax
+
+      await waitForConfigRebuild()
     });
 
     it(`should see request logs in http_endpoint with the new ${pluginConfigHeader} method`, async function () {
@@ -208,11 +204,10 @@ describe.skip('Gateway Plugins: http-log', function () {
       expect(resp.status, 'Status should be 200').to.equal(200);
 
       await eventually(async () => {
-        mockbinLogs = await getMockbinLogs(mockbinBinId);
+        mockbinLogs = await getHttpLogServerLogs();
 
         expect(
-          mockbinLogs.log.entries[mockbinLogs.log.entries.length - 1].request
-            .method,
+          mockbinLogs[mockbinLogs.length - 1].reqMethod,
           `Should use ${pluginConfigHeader} method to log request data`
         ).to.eq(pluginConfigHeader);
       });
@@ -238,7 +233,8 @@ describe.skip('Gateway Plugins: http-log', function () {
       resp.data.config.custom_fields_by_lua.kong,
       'Should see correct patched method'
     ).to.eq(`return 'http-log plugin api test'`);
-    await wait(hybridWaitTime); // eslint-disable-line no-restricted-syntax
+
+    await waitForConfigRebuild()
 
     resp = await axios(`${proxyUrl}${path}`);
     logResponse(resp);
@@ -246,12 +242,8 @@ describe.skip('Gateway Plugins: http-log', function () {
     expect(resp.status, 'Status should be 200').to.equal(200);
 
     await eventually(async () => {
-      mockbinLogs = await getMockbinLogs(mockbinBinId);
-
-      const requestDetails = JSON.parse(
-        mockbinLogs.log.entries[mockbinLogs.log.entries.length - 1].request
-          .postData.text
-      );
+      mockbinLogs = await getHttpLogServerLogs();
+      const requestDetails =  mockbinLogs[mockbinLogs.length - 1].reqBody
 
       expect(
         requestDetails.kong,
@@ -262,9 +254,9 @@ describe.skip('Gateway Plugins: http-log', function () {
 
   // skipped due to https://konghq.atlassian.net/browse/KAG-503
   it.skip('should see http-log plugin X-header log in http_endpoint', async function () {
-    mockbinLogs = await getMockbinLogs(mockbinBinId);
+    mockbinLogs = await getHttpLogServerLogs();
     // always take the last item of mockbin entries as it represents the last request logs
-    const logHeaders = mockbinLogs.log.entries[0].request.headers;
+    const logHeaders = mockbinLogs[mockbinLogs.length - 1].reqBody.request.headers;
 
     expect(
       logHeaders.some((headerObject) => {
@@ -290,5 +282,6 @@ describe.skip('Gateway Plugins: http-log', function () {
   after(async function () {
     await deleteGatewayRoute(routeId);
     await deleteGatewayService(serviceId);
+    await deleteHttpLogServerLogs()
   });
 });
