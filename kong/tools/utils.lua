@@ -9,7 +9,6 @@
 -- @module kong.tools.utils
 
 local ffi = require "ffi"
-local uuid = require "resty.jit-uuid"
 local pl_stringx = require "pl.stringx"
 local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
@@ -31,7 +30,6 @@ local find          = string.find
 local gsub          = string.gsub
 local join          = pl_stringx.join
 local split         = pl_stringx.split
-local re_find       = ngx.re.find
 local re_match      = ngx.re.match
 local setmetatable  = setmetatable
 
@@ -193,11 +191,6 @@ do
   _M.get_rand_bytes = get_rand_bytes
 end
 
---- Generates a v4 uuid.
--- @function uuid
--- @return string with uuid
-_M.uuid = uuid.generate_v4
-
 --- Generates a random unique string
 -- @return string  The random string (a chunk of base64ish-encoded random bytes)
 do
@@ -224,20 +217,6 @@ do
   _M.random_string = random_string
 end
 
-local uuid_regex = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-function _M.is_valid_uuid(str)
-  if type(str) ~= 'string' or #str ~= 36 then
-    return false
-  end
-  return re_find(str, uuid_regex, 'ioj') ~= nil
-end
-
--- function below is more acurate, but invalidates previously accepted uuids and hence causes
--- trouble with existing data during migrations.
--- see: https://github.com/thibaultcha/lua-resty-jit-uuid/issues/8
--- function _M.is_valid_uuid(str)
---  return str == "00000000-0000-0000-0000-000000000000" or uuid.is_valid(str)
---end
 
 do
   local url = require "socket.url"
@@ -922,6 +901,12 @@ do
     ]]
   end
 
+  if not pcall(ffi.typeof, "ngx_int_t") then
+    ffi.cdef [[
+      typedef intptr_t ngx_int_t;
+    ]]
+  end
+
   -- ngx_str_t defined by lua-resty-core
   local s = ffi_new("ngx_str_t[1]")
   s[0].data = "10"
@@ -1264,6 +1249,7 @@ do
     "kong.tools.sha256",
     "kong.tools.yield",
     "kong.tools.string",
+    "kong.tools.uuid",
   }
 
   for _, str in ipairs(modules) do
