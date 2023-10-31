@@ -2,6 +2,9 @@ local cjson = require("cjson.safe")
 local utils = require("kong.tools.utils")
 
 
+local assert = assert
+
+
 local compress   = utils.deflate_gzip
 local uncompress = utils.inflate_gzip
 
@@ -28,14 +31,14 @@ end
 
 -- TODO: error check
 function _M.encode(obj)
-  local data = cjson_encode(obj)
+  local data = assert(cjson_encode(obj))
 
   local is_big = #data > BIG_DATA_LEN
   if is_big then
     yield()
   end
 
-  data = compress(data)
+  data = assert(compress(data))
   if is_big then
     yield()
   end
@@ -47,14 +50,14 @@ end
 
 -- TODO: error check
 function _M.decode(data)
-  local data = uncompress(data)
+  local data = assert(uncompress(data))
 
   local is_big = #data > BIG_DATA_LEN
   if is_big then
     yield()
   end
 
-  local obj = cjson_decode(data)
+  local obj = assert(cjson_decode(data))
 
   if is_big then
     yield()
