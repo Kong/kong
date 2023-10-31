@@ -95,7 +95,7 @@ function _M:run()
       last_send = ngx_time()
 
       ::continue::
-    end -- while not exiting
+    end -- while not aborting
   end)  -- write_thread
 
   -- receive request/response from peer
@@ -155,7 +155,7 @@ function _M:run()
 
       -- ignore others
       ::continue::
-    end -- while not exiting
+    end -- while not aborting
   end)  -- read_thread
 
   -- invoke rpc call
@@ -166,7 +166,7 @@ function _M:run()
 
       -- yield, not block other threads
       sleep(0)
-    end -- while not exiting
+    end -- while not aborting
   end)  -- task_thread
 
   local ok, err, perr = wait(write_thread, read_thread, task_thread)

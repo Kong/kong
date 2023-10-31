@@ -71,6 +71,7 @@ function _M:notify(method, params, opts)
   PAYLOAD_T.method = method
   PAYLOAD_T.params = params
 
+  -- may yield for big data
   local data = encode(PAYLOAD_T)
 
   self.handler:push_send_encoded(data)
@@ -92,6 +93,7 @@ function _M:call(method, params, opts)
   PAYLOAD_T.method = method
   PAYLOAD_T.params = params
 
+  -- may yield for big data
   local data = encode(PAYLOAD_T)
 
   -- send to peer
