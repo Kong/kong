@@ -27,7 +27,9 @@ end
 function _M:init_worker(clustering)
   self.clustering = clustering
 
-  callbacks.register("kong.sync.v1.push_all", function(params)
+  local rpc = kong.rpc
+
+  rpc:register("kong.sync.v1.push_all", function(params)
     ngx.log(ngx.ERR, "xxx sync push all, data type=", type(params.data))
 
     local msg = assert(params.data)
@@ -54,7 +56,7 @@ function _M:init_worker(clustering)
     return { msg = "sync ok" }
   end)
 
-  callbacks.register("kong.sync.v1.get_basic_info", function()
+  rpc:register("kong.sync.v1.get_basic_info", function()
     local labels
 
     if kong.configuration.cluster_dp_labels then

@@ -44,6 +44,16 @@ function _M:connect()
 end
 
 
+function _M:register(method, func)
+  callbacks.register(method, func)
+end
+
+
+function _M:unregister(method)
+  callbacks.unregister(method)
+end
+
+
 -- choose a node by opts.node_id
 function _M:get_peer(opts)
   if not opts or not opts.node_id then

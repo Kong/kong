@@ -1,5 +1,6 @@
 --local cjson = require("cjson.safe")
 local constants = require("kong.clustering.rpc.constants")
+local callbacks = require("kong.clustering.rpc.callbacks")
 local connector = require("kong.clustering.rpc.connector")
 local handler = require("kong.clustering.rpc.handler")
 local threads = require("kong.clustering.rpc.threads")
@@ -48,6 +49,16 @@ end
 
 function _M:connect()
   return self.connector:init()
+end
+
+
+function _M:register(method, func)
+  callbacks.register(method, func)
+end
+
+
+function _M:unregister(method)
+  callbacks.unregister(method)
 end
 
 
