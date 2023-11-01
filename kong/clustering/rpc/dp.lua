@@ -60,7 +60,9 @@ end
 
 
 -- opts.node_id
-function _M:notify(method, params, opts)
+function _M:notify(node_id, method, params, opts)
+  -- ignore node_id now
+
   if not self.peer then
     return nil, "peer is not available"
   end
@@ -70,7 +72,9 @@ end
 
 
 -- opts.node_id
-function _M:call(method, params, opts)
+function _M:call(node_id, method, params, opts)
+  -- ignore node_id now
+
   if not self.peer then
     return nil,{ code = constants.INTERNAL_ERROR,
                  message = "peer is not available", }

@@ -51,15 +51,15 @@ function _M:unregister(method)
 end
 
 
--- choose a node by opts.node_id
-function _M:get_peer(opts)
-  if not opts or not opts.node_id then
+-- choose a node by node_id
+function _M:get_peer(node_id)
+  if not node_id then
     local _, v = next(self.peers)
     return v.peer
   end
 
   for _, v in pairs(self.peers) do
-    if v.node_id == opts.node_id then
+    if v.node_id == node_id then
       return v.peer
     end
   end
@@ -74,9 +74,9 @@ function _M:get_nodes()
 end
 
 
--- get one dp by opts.node_id
-function _M:notify(method, params, opts)
-  local peer = self:get_peer(opts)
+-- get one dp by node_id
+function _M:notify(node_id, method, params, opts)
+  local peer = self:get_peer(node_id)
   if not peer then
     return nil, "peer is not available"
   end
@@ -85,9 +85,9 @@ function _M:notify(method, params, opts)
 end
 
 
--- get one dp by opts.node_id
-function _M:call(method, params, opts)
-  local peer = self:get_peer(opts)
+-- get one dp by node_id
+function _M:call(node_id, method, params, opts)
+  local peer = self:get_peer(node_id)
   if not peer then
     return nil,{ code = constants.INTERNAL_ERROR,
                  message = "peer is not available", }

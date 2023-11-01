@@ -122,7 +122,7 @@ end
 -- below are sync feature related
 
 
-function _M:push_config()
+function _M:push_config(node_id)
   local rpc = kong.rpc
 
   -- update plugins map, export payload
@@ -137,7 +137,7 @@ function _M:push_config()
 
   ngx.log(ngx.ERR, "try to check compatibility with rpc")
 
-  local res, err = rpc:call("kong.sync.v1.get_basic_info")
+  local res, err = rpc:call(node_id, "kong.sync.v1.get_basic_info")
   if not res then
     ngx.log(ngx.ERR, "kong.sync.v1.get_basic_info error: ", err.message)
     return
@@ -170,7 +170,7 @@ function _M:push_config()
 
   -- update_compatible_payload
 
-  local res, err = rpc:call("kong.sync.v1.push_all", { data = payload })
+  local res, err = rpc:call(node_id, "kong.sync.v1.push_all", { data = payload })
   if not res then
     ngx.log(ngx.ERR, "sync call error: ", err.message)
   else
