@@ -1,3 +1,3 @@
-message: Automatically reinitialize the workspace entity counters after executing the cli change migrations command.
+message: Automatically reinitialize the workspace entity counters after executing the cli change migrations commands.
 type: feature
 scope: CLI Command
