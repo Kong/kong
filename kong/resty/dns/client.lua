@@ -25,6 +25,7 @@ local fileexists = require("pl.path").exists
 local semaphore = require("ngx.semaphore").new
 local lrucache = require("resty.lrucache")
 local resolver = require("resty.dns.resolver")
+local in_yieldable_phase = require("kong.tools.yield").in_yieldable_phase
 local cycle_aware_deep_copy = require("kong.tools.utils").cycle_aware_deep_copy
 local req_dyn_hook = require("kong.dynamic_hook")
 local time = ngx.now
@@ -37,7 +38,6 @@ local DEBUG = ngx.DEBUG
 --]]
 local PREFIX = "[dns-client] "
 local timer_at = ngx.timer.at
-local get_phase = ngx.get_phase
 
 local math_min = math.min
 local math_max = math.max
@@ -747,29 +747,7 @@ local queue = setmetatable({}, {__mode = "v"})
 local function executeQuery(premature, item)
   if premature then return end
 
-  local r, err = resolver:new(config)
-  if not r then
-    item.result, item.err = r, "failed to create a resolver: " .. err
-  else
-    --[[
-    log(DEBUG, PREFIX, "Query executing: ", item.qname, ":", item.r_opts.qtype, " ", fquery(item))
-    --]]
-    add_status_to_try_list(item.try_list, "querying")
-    item.result, item.err = r:query(item.qname, item.r_opts)
-    if item.result then
-      --[[
-      log(DEBUG, PREFIX, "Query answer: ", item.qname, ":", item.r_opts.qtype, " ", fquery(item),
-              " ", frecord(item.result))
-      --]]
-      parseAnswer(item.qname, item.r_opts.qtype, item.result, item.try_list)
-      --[[
-      log(DEBUG, PREFIX, "Query parsed answer: ", item.qname, ":", item.r_opts.qtype, " ", fquery(item),
-              " ", frecord(item.result))
-    else
-      log(DEBUG, PREFIX, "Query error: ", item.qname, ":", item.r_opts.qtype, " err=", tostring(err))
-      --]]
-    end
-  end
+  item.result, item.err = individualQuery(item.qname, item.r_opts, item.try_list)
 
   -- query done, but by now many others might be waiting for our result.
   -- 1) stop new ones from adding to our lock/semaphore
@@ -778,10 +756,6 @@ local function executeQuery(premature, item)
   item.semaphore:post(math_max(item.semaphore:count() * -1, 1))
   item.semaphore = nil
   ngx.sleep(0)
-  -- 3) destroy the resolver -- ditto in individualQuery
-  if r then
-    r:destroy()
-  end
 end
 
 
@@ -839,7 +813,37 @@ local function syncQuery(qname, r_opts, try_list)
   local key = qname..":"..r_opts.qtype
   local item = queue[key]
 
-  -- if nothing is in progress, we start a new async query
+  local is_yieldable = in_yieldable_phase()
+
+  -- If nothing is in progress and in the yieldable phase,
+  -- we start a new sync query
+
+  if not item and is_yieldable then
+    item = {
+      key = key,
+      semaphore = semaphore(),
+      qname = qname,
+      r_opts = cycle_aware_deep_copy(r_opts),
+      try_list = try_list,
+    }
+    queue[key] = item
+
+    item.result, item.err = individualQuery(qname, item.r_opts, try_list)
+
+    -- query done, but by now many others might be waiting for our result.
+    -- 1) stop new ones from adding to our lock/semaphore
+    queue[key] = nil
+    -- 2) release all waiting threads
+    item.semaphore:post(math_max(item.semaphore:count() * -1, 1))
+    item.semaphore = nil
+    ngx.sleep(0)
+
+    return item.result, item.err, try_list
+  end
+
+  -- If nothing is in progress and not in the yieldable phase,
+  -- we start a new async query
+
   if not item then
     local err
     item, err = asyncQuery(qname, r_opts, try_list)
@@ -850,18 +854,9 @@ local function syncQuery(qname, r_opts, try_list)
     add_status_to_try_list(try_list, "in progress (sync)")
   end
 
-  local supported_semaphore_wait_phases = {
-    rewrite = true,
-    access = true,
-    content = true,
-    timer = true,
-    ssl_cert = true,
-    ssl_session_fetch = true,
-  }
+  -- If the query is already in progress, we wait for it.
 
-  local ngx_phase = get_phase()
-
-  if not supported_semaphore_wait_phases[ngx_phase] then
+  if not is_yieldable  then
     -- phase not supported by `semaphore:wait`
     -- return existing query (item)
     --
