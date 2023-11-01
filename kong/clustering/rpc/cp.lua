@@ -13,12 +13,12 @@ local _M = {}
 local _MT = { __index = _M, }
 
 
-function _M.new(capabilities)
+function _M.new()
   local self = {
     connector = connector.new(),
 
     -- kong.meta.v1.hello
-    capabilities = capabilities or {},
+    capabilities = {},
 
     -- nodes[id] = worker count
     nodes = {},
@@ -45,6 +45,12 @@ end
 
 
 function _M:register(method, func)
+  local cap = callbacks.split(method)
+  if not cap then
+    return
+  end
+  self.capabilities[cap] = true
+
   callbacks.register(method, func)
 end
 

@@ -1,3 +1,6 @@
+local pl_stringx = require "pl.stringx"
+
+
 --local cjson = require("cjson.safe")
 local constants = require("kong.clustering.rpc.constants")
 local serializer = require("kong.clustering.rpc.serializer")
@@ -11,6 +14,7 @@ local pcall = pcall
 local ERROR_CODE = constants.ERROR_CODE
 local JSONRPC_VERSION = constants.JSONRPC_VERSION
 local encode = serializer.encode
+local rfind = pl_stringx.rfind
 
 
 local RESPONSE_T = {
@@ -86,6 +90,16 @@ function _M.execute(payload)
   end
 
   return response(id, res)
+end
+
+
+function _M.split(method)
+  local pos = rfind(method, ".")
+  if not pos then
+    return nil, nil, "not a valid method name"
+  end
+
+  return method:sub(1, pos), method:sub(pos + 1)
 end
 
 

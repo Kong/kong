@@ -37,32 +37,10 @@ function _M.new(clustering)
   }
 
   -- init rpc cp side
-  local cp = rpc_cp.new({ "kong.test.v1", })
+  local cp = rpc_cp.new()
   kong.rpc = cp
 
   return setmetatable(self, _MT)
-end
-
-
-
-function _M:handle_cp_websocket()
-  local dp_id = ngx.var.arg_node_id
-
-  -- temp solution
-  if not self.init_pushed[dp_id] then
-    self.init_pushed[dp_id] = true
-
-    ngx.log(ngx.ERR, "xxx time.at init push config")
-
-    -- post events to push config
-    ngx.timer.at(0.1, function()
-      events.post_push_config_event()
-    end)
-  end
-
-  local rpc = assert(kong.rpc)
-
-  rpc:run()
 end
 
 
@@ -117,6 +95,27 @@ function _M:init_worker(basic_info)
     end)
 
   end)
+end
+
+
+function _M:handle_cp_websocket()
+  local dp_id = ngx.var.arg_node_id
+
+  -- temp solution
+  if not self.init_pushed[dp_id] then
+    self.init_pushed[dp_id] = true
+
+    ngx.log(ngx.ERR, "xxx time.at init push config")
+
+    -- post events to push config
+    ngx.timer.at(0.1, function()
+      events.post_push_config_event()
+    end)
+  end
+
+  local rpc = assert(kong.rpc)
+
+  rpc:run()
 end
 
 

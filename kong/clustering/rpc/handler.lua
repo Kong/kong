@@ -47,7 +47,7 @@ end
 
 
 function _M:method_available(method)
-  for i, cap in ipairs(self.capabilities) do
+  for cap, _ in pairs(self.capabilities) do
     if method:find(cap, 1, true) then
       return true
     end

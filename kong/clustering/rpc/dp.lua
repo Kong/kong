@@ -34,13 +34,13 @@ local function meta_capabilities(pr, capabilities)
 end
 
 
-function _M.new(conf, capabilities)
+function _M.new(conf)
   local self = {
     connector = connector.new(conf),
     conf = conf,
 
     -- kong.meta.v1.hello
-    capabilities = capabilities or {},
+    capabilities = {},
   }
 
   return setmetatable(self, _MT)
@@ -53,6 +53,12 @@ end
 
 
 function _M:register(method, func)
+  local cap = callbacks.split(method)
+  if not cap then
+    return
+  end
+  self.capabilities[cap] = true
+
   callbacks.register(method, func)
 end
 
