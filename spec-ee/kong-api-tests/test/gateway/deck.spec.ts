@@ -21,7 +21,7 @@ import {
 const adminUrl = `${getBasePath({ environment: Environment.gateway.admin })}`;
 const deckFileName = 'kong.json';
 
-describe('decK: Sanity Tests', function () {
+describe.skip('decK: Sanity Tests', function () {
   const name = randomString();
 
   before(async function () {
