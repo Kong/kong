@@ -34,7 +34,7 @@ import {
 // ********* End **********
 
 describe('Vaults: Secret referencing in RLA Plugin', function () {
-  checkGwVars();
+  checkGwVars('aws');
 
   let serviceId = '';
   let routeId = '';

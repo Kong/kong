@@ -137,6 +137,10 @@ jobs:
           HTTP2: true
           STATUS_LISTEN: true
           WASM: true
+          AZURE_VAULT: true
+          AZURE_TENANT_ID: ${{ secrets.TEST_API_AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.TEST_API_AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.TEST_API_AZURE_CLIENT_SECRET }}
 
       - name: Logs from Gateway Start
         if: failure()
@@ -163,6 +167,8 @@ jobs:
           else
             npm run test-spec --spec=$RUN_SPEC;
           fi
+        env:
+          AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
 
       - uses: datadog/junit-upload-github-action@056dec14f19687cd7d1e97f2009df81f8e64d621 # v1.2.0
         continue-on-error: true

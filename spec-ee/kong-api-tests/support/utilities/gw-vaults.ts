@@ -63,7 +63,7 @@ export const getHcvSecretUrl = async (
  * Creates hcv backend vault
  * @param {string} targetMount - name of the target hcv mount
  * @param {string} targetHcvToken - hcv root token
- * @param {string} vaultPrefix - hcv vault prefix (not config prefix for variables), deafult is 'my-hcv'
+ * @param {string} vaultPrefix - hcv vault prefix (not config prefix for variables), default is 'my-hcv'
  */
 export const createHcvVault = async (
   targetMount = 'secret',
@@ -188,7 +188,7 @@ export const getHcvVaultSecret = async (
 
 /**
  * Create AWS backend vault entity
- * @param {string} vaultPrefix - the backend vault prefix, deafult is 'my-aws'
+ * @param {string} vaultPrefix - the backend vault prefix, default is 'my-aws'
  */
 export const createAwsVaultEntity = async (vaultPrefix = 'my-aws') => {
   const resp = await axios({
@@ -206,8 +206,30 @@ export const createAwsVaultEntity = async (vaultPrefix = 'my-aws') => {
 };
 
 /**
+ * Create Azure backend vault entity
+ * @param {string} vaultPrefix - the backend vault prefix, default is 'my-azure'
+ * @param {object} ttls - to specify ttl, neg_ttl and resurrect_ttl
+ */
+export const createAzureVaultEntity = async (vaultPrefix = 'my-azure', ttls?: object) => {
+  const resp = await axios({
+    method: 'put',
+    url: `${getUrl('vaults')}/${vaultPrefix}`,
+    data: {
+      name: 'azure',
+      config: {
+        location: 'us-east',
+        vault_uri: 'https://kong-vault.vault.azure.net/',
+        ...ttls
+      },
+    },
+  });
+
+  expect(resp.status, 'Status should be 200').to.equal(200);
+};
+
+/**
  * Create ENV backend vault entity
- * @param {string} vaultPrefix - the backend vault prefix, deafult is 'my-env'
+ * @param {string} vaultPrefix - the backend vault prefix, default is 'my-env'
  * @param {object} configPayload - the vault config object payload e.g. {prefix: 'myvar_'}
  */
 export const createEnvVaultEntity = async (
@@ -229,7 +251,7 @@ export const createEnvVaultEntity = async (
 /**
  * Creates GCP backend vault
  * @param {string} projectId - gcp project_id, defaults to 'gcp-sdet-test'
- * @param {string} vaultPrefix - gcp vault prefix (not config prefix for variables), deafult is 'my-gcp'
+ * @param {string} vaultPrefix - gcp vault prefix (not config prefix for variables), default is 'my-gcp'
  */
 export const createGcpVaultEntity = async (
   vaultPrefix = 'my-gcp',

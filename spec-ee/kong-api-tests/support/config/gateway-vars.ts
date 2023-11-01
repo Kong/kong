@@ -1,14 +1,22 @@
 import { constants } from './constants';
 
 export const vars = {
-  AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
-  AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
+  aws: {
+    AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
+    AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
+  },
+  azure: {
+    AZURE_FUNCTION_KEY:  process.env.AZURE_FUNCTION_KEY 
+  }
 };
-
-export const checkGwVars = () => {
+/**
+ * Check that all necessary environment variables are defined before test execution
+ * @param {string} scope - narrow down the scope to a specific set of variables e.g. azure or aws
+ */
+export const checkGwVars = (scope) => {
   const missingVars: string[] = [];
-  for (const envVar in vars) {
-    if (!vars[envVar]) {
+  for (const envVar in vars[scope]) {
+    if (!vars[scope][envVar]) {
       missingVars.push(envVar);
     }
   }

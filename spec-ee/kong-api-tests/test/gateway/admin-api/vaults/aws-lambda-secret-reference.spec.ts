@@ -32,7 +32,7 @@ import {
 // ********* End **********
 
 describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
-  checkGwVars();
+  checkGwVars('aws');
 
   let serviceId = '';
   let routeId = '';
@@ -49,8 +49,8 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
   const awsFunctionName = 'gateway-awsplugin-test';
   const waitTime = 3000;
   // aws credentials to be created in hcv vault
-  const awsAccessKey = vars.AWS_ACCESS_KEY_ID;
-  const awsSecretKey = vars.AWS_SECRET_ACCESS_KEY;
+  const awsAccessKey = vars.aws.AWS_ACCESS_KEY_ID;
+  const awsSecretKey = vars.aws.AWS_SECRET_ACCESS_KEY;
   // env secrets (at this point should already exist in gateway/kong, see above Note) > AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
   // aws secrets > gateway-secret-test/ aws_access_key, aws_secret_key
   // gcp secrets > aws_access_key, aws_secret_key

@@ -783,10 +783,17 @@ describe("CP/DP sync works with #" .. strategy .. " with inconsistant plugins", 
   end)
 
   it("dataplane works", function ()
-    ngx.sleep(5)
-    local proxy_client = helpers.http_client("127.0.0.1", 9002)
-    local res = proxy_client:get("/")
-    assert.same(200, res.status)
+    local proxy_client
+    local res
+    helpers.wait_until(function()
+      pcall(function() 
+        proxy_client = helpers.http_client("127.0.0.1", 9002)
+        res = proxy_client:get("/")
+        proxy_client:close()
+      end)
+      return res and res.status == 200
+    end,20)
+
 
     local admin_client = helpers.admin_client()
     res = assert(admin_client:post("/services/mock_upstream/plugins", {

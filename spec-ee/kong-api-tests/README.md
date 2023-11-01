@@ -54,6 +54,9 @@ There are tests which rely on specific gateway environment variables, make sure 
   `AWS_SECRET_ACCESS_KEY="<aws_secret_access_key>"`
 
   [GCP_SERVICE_ACCOUNT](https://start.1password.com/open/i?a=KJVYOL2OTVGRPAAAHEVOL6MXZE&v=q7r4hh4465zentymwtoonxxp3m&i=w2gvxcep5ffevmiykbfq4ffb64&h=team-kong.1password.com)`="<gcp_service_account_key>"`
+- `azure-functions-secret-reference` test
+
+  [AZURE_FUNCTION_KEY](https://start.1password.com/open/i?a=KJVYOL2OTVGRPAAAHEVOL6MXZE&v=q7r4hh4465zentymwtoonxxp3m&i=e7vip43g3nucwsrb44ijs6qsfa&h=team-kong.1password.com)`="<azure_function_key>"`
 
 - `rla-secret-referene` test
 

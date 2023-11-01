@@ -257,6 +257,10 @@ jobs:
           CUSTOM_CONFIG_ALL: "RLA_REDISU: redisuser; RLA_REDISP: redispassword; AWS_REGION: us-east-2; AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID }}; AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY }}; GCP_SERVICE_ACCOUNT: '${{ env.GCP_SERVICE_ACCOUNT }}'"
           HTTP2: true
           STATUS_LISTEN: true
+          AZURE_VAULT: true
+          AZURE_TENANT_ID: ${{ secrets.TEST_API_AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.TEST_API_AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.TEST_API_AZURE_CLIENT_SECRET }}
           WASM: true
 
       - name: Logs from Gateway Start
@@ -284,6 +288,8 @@ jobs:
             npm run test-spec --spec=$RUN_SPEC;
           fi
         id: execute_tests
+        env:
+          AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
 
       - name: Get Gateway Details
         if: always()
@@ -402,6 +408,10 @@ jobs:
           CUSTOM_CONFIG_ALL: "RLA_REDISU: redisuser; RLA_REDISP: redispassword; AWS_REGION: us-east-2; AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID }}; AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY }}; GCP_SERVICE_ACCOUNT: '${{ env.GCP_SERVICE_ACCOUNT }}'"
           STATUS_LISTEN: true
           HTTP2: true
+          AZURE_VAULT: true
+          AZURE_TENANT_ID: ${{ secrets.TEST_API_AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.TEST_API_AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.TEST_API_AZURE_CLIENT_SECRET }}
           WASM: true
 
       - name: Logs from Gateway Start
@@ -429,6 +439,8 @@ jobs:
           else
             npm run test-spec --spec=$RUN_SPEC;
           fi
+        env:
+          AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
 
       - name: Get Gateway Details
         if: always()
@@ -547,6 +559,10 @@ jobs:
           CUSTOM_CONFIG_ALL: "RLA_REDISU: redisuser; RLA_REDISP: redispassword; AWS_REGION: us-east-2; AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID }}; AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY }}; GCP_SERVICE_ACCOUNT: '${{ secrets.TEST_API_GCP_SERVICE_ACCOUNT }}'"
           HTTP2: true
           WASM: true
+          AZURE_VAULT: true
+          AZURE_TENANT_ID: ${{ secrets.TEST_API_AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.TEST_API_AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.TEST_API_AZURE_CLIENT_SECRET }}
 
       - name: Logs from Gateway Start
         if: failure()
@@ -571,6 +587,8 @@ jobs:
           else
             npm run test-spec --spec=$RUN_SPEC;
           fi
+        env:
+          AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
 
       - name: Send test results to Slack
         if: ${{ env.SEND_SLACK_RESULTS == 'true' && always() && github.ref == 'refs/heads/master' }}
