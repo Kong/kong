@@ -37,6 +37,9 @@ local _M = {}
 -- store all rpc methods
 local _callbacks = {}
 
+-- store all capabilities
+local _capabilities = {}
+
 
 local function response(id, res, is_failing)
   -- notification call
@@ -55,7 +58,16 @@ end
 
 
 function _M.register(method, func)
+  local cap = _M.split(method)
+  if not cap then
+    return nil, "method is invalid"
+  end
+
+  _capabilities[cap] = true
+
   _callbacks[method] = func
+
+  return true
 end
 
 
@@ -99,7 +111,12 @@ function _M.split(method)
     return nil, nil, "not a valid method name"
   end
 
-  return method:sub(1, pos), method:sub(pos + 1)
+  return method:sub(1, pos - 1), method:sub(pos + 1)
+end
+
+
+function _M.capabilities()
+  return _capabilities
 end
 
 

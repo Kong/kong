@@ -24,10 +24,10 @@ local function random_delay()
 end
 
 
-local function meta_capabilities(pr, capabilities)
+local function meta_capabilities(pr)
   -- kong.meta.v1.hello
   assert(timer_at(0, function(premature)
-    pr:call(META_HELLO_METHOD, capabilities)
+    pr:call(META_HELLO_METHOD, callbacks.capabilities())
     --local res, err = pr:call(constants.META_HELLO_METHOD, self.capabilities)
     --ngx.log(ngx.ERR, "meta res = ", cjson.encode(res))
   end))
@@ -38,9 +38,6 @@ function _M.new(conf)
   local self = {
     connector = connector.new(conf),
     conf = conf,
-
-    -- kong.meta.v1.hello
-    capabilities = {},
   }
 
   return setmetatable(self, _MT)
@@ -53,12 +50,6 @@ end
 
 
 function _M:register(method, func)
-  local cap = callbacks.split(method)
-  if not cap then
-    return
-  end
-  self.capabilities[cap] = true
-
   callbacks.register(method, func)
 end
 
@@ -140,7 +131,7 @@ function _M:communicate(premature)
   local thds = threads.new(wb, hdl)
 
   -- kong.meta.v1.hello
-  meta_capabilities(pr, self.capabilities)
+  meta_capabilities(pr)
 
   self.peer = pr
   self.threads = thds

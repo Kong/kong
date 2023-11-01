@@ -17,9 +17,6 @@ function _M.new()
   local self = {
     connector = connector.new(),
 
-    -- kong.meta.v1.hello
-    capabilities = {},
-
     -- nodes[id] = worker count
     nodes = {},
 
@@ -34,7 +31,7 @@ end
 function _M:init_worker()
   callbacks.register(META_HELLO_METHOD, function(params)
     --ngx.log(ngx.ERR, "in meta.hello")
-    return self.capabilities
+    return callbacks.capabilities()
   end)
 end
 
@@ -45,12 +42,6 @@ end
 
 
 function _M:register(method, func)
-  local cap = callbacks.split(method)
-  if not cap then
-    return
-  end
-  self.capabilities[cap] = true
-
   callbacks.register(method, func)
 end
 
