@@ -207,7 +207,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("run in stream subsystem #tag", function()
+    describe("run in stream subsystem", function()
       local domain_name = "www.example.test"
       local address = "127.0.0.1"
 
