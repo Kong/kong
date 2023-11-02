@@ -59,7 +59,7 @@ qq {
 GET /t
 --- response_body
 answers: nil
-err: dns client error: 101 empty record received
+err: API disabled in the unyieldable phase
 --- no_error_log
 [error]
 dns lookup pool exceeded retries

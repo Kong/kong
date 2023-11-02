@@ -811,13 +811,20 @@ end
 local function syncQuery(qname, r_opts, try_list)
   local key = qname..":"..r_opts.qtype
   local item = queue[key]
-
   local is_yieldable = in_yieldable_phase()
+
+  -- If not yieldable, we start a new async query and return nil
+  if not is_yieldable then
+    if not item then
+      asyncQuery(qname, r_opts, try_list)
+    end
+    -- item.result is definitely nil in this situation
+    return nil, "API disabled in the unyieldable phase", try_list
+  end
 
   -- If nothing is in progress and in the yieldable phase,
   -- we start a new sync query
-
-  if not item and is_yieldable then
+  if not item then
     item = {
       key = key,
       semaphore = semaphore(),
@@ -839,30 +846,9 @@ local function syncQuery(qname, r_opts, try_list)
     return item.result, item.err, try_list
   end
 
-  -- If nothing is in progress and not in the yieldable phase,
-  -- we start a new async query
-
-  if not item then
-    local err
-    item, err = asyncQuery(qname, r_opts, try_list)
-    if not item then
-      return item, err, try_list
-    end
-  else
-    add_status_to_try_list(try_list, "in progress (sync)")
-  end
-
   -- If the query is already in progress, we wait for it.
 
-  if not is_yieldable then
-    -- phase not supported by `semaphore:wait`
-    -- return existing query (item)
-    --
-    -- this will avoid:
-    -- "dns lookup pool exceeded retries" (second try and subsequent retries)
-    -- "API disabled in the context of init_worker_by_lua" (first try)
-    return item, nil, try_list
-  end
+  add_status_to_try_list(try_list, "in progress (sync)")
 
   -- block and wait for the async query to complete
   local ok, err = item.semaphore:wait(resolve_max_wait)
