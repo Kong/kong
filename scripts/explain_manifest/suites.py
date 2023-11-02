@@ -60,6 +60,10 @@ def common_suites(expect, libxcrypt_no_obsolete_api: bool = False):
         .contain("ngx_http_lua_kong_ffi_var_set_by_index") \
         .contain("ngx_http_lua_kong_ffi_var_load_indexes")
 
+    expect("/usr/local/openresty/lualib/libatc_router.so", "ATC router so should have ffi module compiled") \
+        .functions \
+        .contain("router_execute")
+
     if libxcrypt_no_obsolete_api:
         expect("/usr/local/openresty/nginx/sbin/nginx", "nginx linked with libxcrypt.so.2") \
             .needed_libraries.contain("libcrypt.so.2")
