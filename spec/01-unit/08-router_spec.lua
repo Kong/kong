@@ -582,6 +582,13 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
         local match_t = router:select("GET", "/", nil, "http", nil, nil, nil, nil, nil, {
           user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36"
         })
+
+        -- expressions is case sensitive for headers
+        if flavor == "expressions" then
+          assert.falsy(match_t)
+          return
+        end
+
         assert.truthy(match_t)
         assert.same(use_case[15].route, match_t.route)
         assert.same(nil, match_t.matches.method)
@@ -1717,7 +1724,15 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
                                         {
                                           user_agent = "FOO",
                                         })
+
+          -- expressions is case sensitive for headers
+          if flavor == "expressions" then
+            assert.falsy(match_t)
+            return
+          end
+
           assert.truthy(match_t)
+
           assert.same(use_case[1].route, match_t.route)
           if flavor == "traditional" then
             assert.same({ user_agent = "foo" }, match_t.matches.headers)
