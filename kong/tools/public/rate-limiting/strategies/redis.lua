@@ -127,7 +127,6 @@ function _M:get_counters(namespace, window_sizes, time)
       res_idx = res_idx + 1
 
       if res_idx > num_hashes then
-        log(DEBUG, "index exceeds number of hash values under namespace ", namespace)
         return
       end
 
