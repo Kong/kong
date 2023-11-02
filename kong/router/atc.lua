@@ -96,7 +96,21 @@ end
 
 
 local function escape_str(str)
-  return "r#\"" .. str .. "\"#"
+  -- rust style raw string
+  if not str:find([["#]], 1, true) then
+    return "r#\"" .. str .. "\"#"
+  end
+
+  -- normal escape string
+  if str:find([[\]], 1, true) then
+    str = str:gsub([[\]], [[\\]])
+  end
+
+  if str:find([["]], 1, true) then
+    str = str:gsub([["]], [[\"]])
+  end
+
+  return "\"" .. str .. "\""
 end
 
 
