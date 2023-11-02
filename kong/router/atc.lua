@@ -406,6 +406,11 @@ local add_debug_headers    = utils.add_debug_headers
 local get_upstream_uri_v0  = utils.get_upstream_uri_v0
 
 
+local is_expressions_flavor = kong and
+                              kong.configuration and
+                              kong.configuration.router_flavor == "expressions"
+
+
 function _M:select(req_method, req_uri, req_host, req_scheme,
                    _, _,
                    _, _,
@@ -461,14 +466,16 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
       local v = req_headers[h]
 
       if type(v) == "string" then
-        local res, err = c:add_value(field, v:lower())
+        local res, err = c:add_value(field,
+                                     is_expressions_flavor and v or v:lower())
         if not res then
           return nil, err
         end
 
       elseif type(v) == "table" then
         for _, v in ipairs(v) do
-          local res, err = c:add_value(field, v:lower())
+          local res, err = c:add_value(field,
+                                       is_expressions_flavor and v or v:lower())
           if not res then
             return nil, err
           end
