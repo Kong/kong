@@ -596,13 +596,13 @@ do
 
       if type(value) == "table" then
         for i, v in ipairs(value) do
-          value[i] = v:lower()
+          value[i] = tuning_header(v)
         end
         tb_sort(value)
         value = tb_concat(value, ", ")
 
       else
-        value = value:lower()
+        value = tuning_header(value)
       end
 
       str_buf:putf("|%s=%s", name, value)
