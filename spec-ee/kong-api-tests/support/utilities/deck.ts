@@ -8,7 +8,7 @@ const { authHeaderKey, authHeaderValue } = gatewayAuthHeader();
  * @param {object} string - the actual deck command
  */
 export const constructDeckCommand = (cmd) => {
-  const finalCommand = `deck ${cmd} --headers "${authHeaderKey}: ${authHeaderValue}"`;
+  const finalCommand = `deck gateway ${cmd} --headers "${authHeaderKey}: ${authHeaderValue}"`;
 
   logDebug(`built deck cmd -> ${finalCommand}`);
   return finalCommand;

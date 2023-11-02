@@ -21,7 +21,7 @@ import {
 const adminUrl = `${getBasePath({ environment: Environment.gateway.admin })}`;
 const deckFileName = 'kong.json';
 
-describe.skip('decK: Sanity Tests', function () {
+describe('decK: Sanity Tests', function () {
   const name = randomString();
 
   before(async function () {
@@ -56,7 +56,7 @@ describe.skip('decK: Sanity Tests', function () {
 
   it('should do a dump', async function () {
     const result = execCustomCommand(
-      constructDeckCommand('dump --format json --yes')
+      constructDeckCommand('dump --format json --yes "-o=kong"')
     );
     expect(result.stderr, 'deck ping error').to.be.undefined;
 
@@ -144,7 +144,7 @@ describe.skip('decK: Sanity Tests', function () {
 
   it('should sync the db', async function () {
     const result = execCustomCommand(
-      constructDeckCommand(`sync -s ./${deckFileName}`)
+      constructDeckCommand(`sync ./${deckFileName}`)
     );
     expect(result.stderr, 'deck ping error').to.be.undefined;
 
@@ -157,7 +157,7 @@ describe.skip('decK: Sanity Tests', function () {
 
   it('should detect drift', async function () {
     let result = execCustomCommand(
-      constructDeckCommand(`diff -s ./${deckFileName} --non-zero-exit-code`)
+      constructDeckCommand(`diff ./${deckFileName} --non-zero-exit-code`)
     );
 
     expect(result.stderr, 'deck ping error').to.be.undefined;
@@ -169,7 +169,7 @@ describe.skip('decK: Sanity Tests', function () {
     fs.writeFileSync(`./${deckFileName}`, JSON.stringify(config));
 
     result = execCustomCommand(
-      constructDeckCommand(`diff -s ./${deckFileName} --non-zero-exit-code`)
+      constructDeckCommand(`diff ./${deckFileName} --non-zero-exit-code`)
     );
 
     expect(result.stderr, 'deck diff failed').to.be.not.undefined;
