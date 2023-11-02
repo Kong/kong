@@ -2289,7 +2289,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           end)
 
           it("should always add lower()", function()
-            use_case[1].route.headers = { test = { "~*quote" }, }
+            use_case[1].route.headers = { test = { "~*Quote" }, }
 
             assert.equal([[(http.method == "GET") && (any(lower(http.headers.test)) ~ "quote")]],
                          get_expression(use_case[1].route))
