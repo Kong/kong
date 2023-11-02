@@ -25,6 +25,7 @@ local fileexists = require("pl.path").exists
 local semaphore = require("ngx.semaphore").new
 local lrucache = require("resty.lrucache")
 local resolver = require("resty.dns.resolver")
+local yield = require("kong.tools.yield").yield
 local in_yieldable_phase = require("kong.tools.yield").in_yieldable_phase
 local cycle_aware_deep_copy = require("kong.tools.utils").cycle_aware_deep_copy
 local req_dyn_hook = require("kong.dynamic_hook")
@@ -755,7 +756,7 @@ local function executeQuery(premature, item)
   -- 2) release all waiting threads
   item.semaphore:post(math_max(item.semaphore:count() * -1, 1))
   item.semaphore = nil
-  ngx.sleep(0)
+  yield()
 end
 
 
@@ -836,7 +837,7 @@ local function syncQuery(qname, r_opts, try_list)
     -- 2) release all waiting threads
     item.semaphore:post(math_max(item.semaphore:count() * -1, 1))
     item.semaphore = nil
-    ngx.sleep(0)
+    yield()
 
     return item.result, item.err, try_list
   end
