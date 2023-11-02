@@ -24,8 +24,8 @@ local worker_events
 
 
 -- Sends "clustering", "push_config" to all workers in the same node, including self
-local function post_push_config_event()
-  local res, err = worker_events.post("clustering", "push_config")
+local function post_push_config_event(data)
+  local res, err = worker_events.post("clustering", "push_config", data)
   if not res then
     ngx_log(ngx_ERR, _log_prefix, "unable to broadcast event: ", err)
   end

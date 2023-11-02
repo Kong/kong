@@ -67,7 +67,7 @@ function _M:init_worker(basic_info)
   kong.rpc:init_worker()
 
   -- event to invoke rpc call
-  events.clustering_push_config(function()
+  events.clustering_push_config(function(node_id)
     local key = "last_push_config"
     local delay = self.conf.db_update_frequency
 
@@ -76,7 +76,7 @@ function _M:init_worker(basic_info)
     if not flag then
       -- 0: init a push
       self.locks:set(key, 0, delay)
-      self:push_config()
+      self:push_config(node_id)
       return
     end
 
@@ -91,7 +91,7 @@ function _M:init_worker(basic_info)
     -- 1: scheduel a push after delay seconds
     self.locks:set(key, 1, delay)
     ngx.timer.at(delay, function(premature)
-      self:push_config()
+      self:push_config(node_id)
     end)
 
   end)
@@ -123,6 +123,10 @@ end
 
 
 function _M:push_config(node_id)
+  --if not node_id then
+  --  node_id = "*"
+  --end
+
   local rpc = kong.rpc
 
   -- update plugins map, export payload
