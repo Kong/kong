@@ -412,9 +412,19 @@ local add_debug_headers    = utils.add_debug_headers
 local get_upstream_uri_v0  = utils.get_upstream_uri_v0
 
 
-local is_expressions_flavor = kong and
-                              kong.configuration and
-                              kong.configuration.router_flavor == "expressions"
+-- traditional_compatible is case insensitive
+local tuning_header = string.lower
+
+
+-- expressions is case sensitive
+if kong and
+   kong.configuration and
+   kong.configuration.router_flavor == "expressions"
+then
+  tuning_header = function(str)
+    return str
+  end
+end
 
 
 function _M:select(req_method, req_uri, req_host, req_scheme,
@@ -472,16 +482,14 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
       local v = req_headers[h]
 
       if type(v) == "string" then
-        local res, err = c:add_value(field,
-                                     is_expressions_flavor and v or v:lower())
+        local res, err = c:add_value(field, tuning_header(v))
         if not res then
           return nil, err
         end
 
       elseif type(v) == "table" then
         for _, v in ipairs(v) do
-          local res, err = c:add_value(field,
-                                       is_expressions_flavor and v or v:lower())
+          local res, err = c:add_value(field, tuning_header(v))
           if not res then
             return nil, err
           end
