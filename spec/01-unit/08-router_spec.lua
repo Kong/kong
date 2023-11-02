@@ -586,7 +586,10 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
         -- expressions is case sensitive for headers
         if flavor == "expressions" then
           assert.falsy(match_t)
-          return
+          -- Linux => linux
+          match_t = router:select("GET", "/", nil, "http", nil, nil, nil, nil, nil, {
+            user_agent = "Mozilla/5.0 (X11; linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36"
+          })
         end
 
         assert.truthy(match_t)
@@ -1728,7 +1731,11 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           -- expressions is case sensitive for headers
           if flavor == "expressions" then
             assert.falsy(match_t)
-            return
+            -- FOO => foo
+            match_t = router:select("GET", "/", nil, "http", nil, nil, nil, nil, nil,
+                                    {
+                                      user_agent = "foo",
+                                    })
           end
 
           assert.truthy(match_t)
