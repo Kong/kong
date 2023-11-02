@@ -2184,6 +2184,39 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           end
         end)
 
+        describe("rust style raw string", function()
+          local use_case
+          local get_expression = atc_compat.get_expression
+
+          before_each(function()
+            use_case = {
+              {
+                service = service,
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  methods = { "GET" },
+                },
+              },
+            }
+          end)
+
+          it("path has '\"'", function()
+            use_case[1].route.paths = { [[~/\"/*$]], }
+
+            assert.equal([[(http.method == r#"GET"#) && (http.path ~ r#"^/\"/*$"#)]],
+                         get_expression(use_case[1].route))
+            assert(new_router(use_case))
+          end)
+
+          it("path has '\"#'", function()
+            use_case[1].route.paths = { [[~/\"#/*$]], }
+
+            assert.equal([[(http.method == r#"GET"#) && (http.path ~ "^/\\\"#/*$")]],
+                         get_expression(use_case[1].route))
+            assert(new_router(use_case))
+          end)
+        end)
+
         describe("check regex with '\\'", function()
           local use_case
           local get_expression = atc_compat.get_expression
