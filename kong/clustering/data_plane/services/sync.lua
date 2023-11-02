@@ -3,7 +3,7 @@
 --local cjson = require("cjson.safe")
 local config_helper = require("kong.clustering.config_helper")
 local constants = require("kong.clustering.rpc.constants")
-local callbacks = require("kong.clustering.rpc.callbacks")
+--local callbacks = require("kong.clustering.rpc.callbacks")
 --local utils = require("kong.tools.utils")
 
 
