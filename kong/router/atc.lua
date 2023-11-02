@@ -96,13 +96,7 @@ end
 
 
 local function escape_str(str)
-  if str:find([[\]], 1, true) or
-     str:find([["]], 1, true)
-  then
-    return "r#\"" .. str .. "\"#"
-  end
-
-  return "\"" .. str .. "\""
+  return "r#\"" .. str .. "\"#"
 end
 
 
