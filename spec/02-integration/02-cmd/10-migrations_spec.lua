@@ -133,6 +133,16 @@ for _, strategy in helpers.each_strategy() do
         assert.match("\nDatabase is up-to-date\n", stdout, 1, true)
       end)
 
+      it("#db migration bootstraps can reinitialize the workspace entity counters automatically", function()
+        run_kong("migrations reset --yes")
+        local code = run_kong("migrations bootstrap")
+        assert.same(0, code)
+
+        local db = init_db()
+        local rows = db.connector:query([[SELECT count(*) FROM workspace_entity_counters;]])
+        assert.same(1, rows[1].count)
+      end)
+
       if strategy == "off" then
         it("always reports as bootstrapped", function()
           local code, stdout = run_kong("migrations bootstrap")
@@ -278,6 +288,24 @@ for _, strategy in helpers.each_strategy() do
         assert.same(1, pending)
       end)
 
+      it("#db migration up can reinitialize the workspace entity counters automatically", function()
+        run_kong("migrations reset --yes")
+        local code = run_kong("migrations bootstrap")
+        assert.same(0, code)
+
+        local db = init_db()
+        local rows = db.connector:query([[SELECT count(*) FROM workspace_entity_counters;]])
+        assert.same(1, rows[1].count)
+
+        code = run_kong("migrations up", {
+          plugins = "with-migrations",
+        })
+        assert.same(0, code)
+
+        rows = db.connector:query([[SELECT count(*) FROM workspace_entity_counters;]])
+        assert.same(2, rows[1].count)
+      end)
+
       if strategy == "off" then
         it("always reports as up-to-date", function()
           local code, stdout = run_kong("migrations up")
@@ -328,6 +356,31 @@ for _, strategy in helpers.each_strategy() do
         --assert.same({}, rows)
         assert.same(nr_migrations + 5, executed)
         assert.same(0, pending)
+      end)
+
+      it("#db migration finish can reinitialize the workspace entity counters automatically", function()
+        run_kong("migrations reset --yes")
+        run_kong("migrations bootstrap")
+
+        local db = init_db()
+        local rows = db.connector:query([[SELECT count(*) FROM workspace_entity_counters;]])
+        assert.same(1, rows[1].count)
+
+        local code = run_kong("migrations up", {
+          plugins = "with-migrations",
+        })
+        assert.same(0, code)
+
+        rows = db.connector:query([[SELECT count(*) FROM workspace_entity_counters;]])
+        assert.same(2, rows[1].count)
+
+        code = run_kong("migrations finish", {
+          plugins = "with-migrations",
+        })
+        assert.same(0, code)
+
+        rows = db.connector:query([[SELECT count(*) FROM workspace_entity_counters;]])
+        assert.same(3, rows[1].count)
       end)
 
       if strategy == "off" then

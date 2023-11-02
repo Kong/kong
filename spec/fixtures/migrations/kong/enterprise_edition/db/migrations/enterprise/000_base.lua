@@ -18,7 +18,7 @@ return {
       );
 
       CREATE TABLE IF NOT EXISTS "workspace_entity_counters" (
-        workspace_id uuid REFERENCES workspaces (id) ON DELETE CASCADE,
+        workspace_id uuid,
         entity_type text,
         count int,
         PRIMARY KEY(workspace_id, entity_type)

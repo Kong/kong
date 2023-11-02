@@ -8,6 +8,10 @@
 return {
   postgres = {
     up = [[
+      INSERT INTO sm_vaults ("id", "ws_id")
+        VALUES ('a79871a2-8bb4-4ed1-9f99-de53d8ad31d0', 'a79871a2-8bb4-4ed1-9f99-de53d8ad31d0')
+      ON CONFLICT DO NOTHING;  -- Hack, mock data
+
       DO $$
       BEGIN
         ALTER TABLE IF EXISTS ONLY "foos" ADD "shape" TEXT UNIQUE;
@@ -18,6 +22,13 @@ return {
     ]],
 
     teardown = function(connector, _)
+      local sql = [[
+        INSERT INTO sm_vaults ("id", "ws_id")
+          VALUES ('ebecaa2d-09f2-4176-9d3d-99826b85c5da', 'ebecaa2d-09f2-4176-9d3d-99826b85c5da')
+        ON CONFLICT DO NOTHING;  -- Hack, mock data
+      ]]
+      assert(connector:query(sql))
+
       -- update shape in all foos
       for row, err in connector:iterate('SELECT * FROM "foos";') do
         if err then

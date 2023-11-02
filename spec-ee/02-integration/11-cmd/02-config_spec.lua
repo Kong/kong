@@ -29,6 +29,8 @@ describe("kong config", function()
 
     assert(helpers.kong_exec("config db_import " .. filename, {
       prefix = helpers.test_conf.prefix,
+      database = helpers.test_conf.database,
+      pg_database = helpers.test_conf.pg_database,
     }))
 
   end)
@@ -71,15 +73,22 @@ describe("kong config", function()
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
 
-    assert(helpers.kong_exec("config db_import " .. filename, {
-      prefix = helpers.test_conf.prefix,
-    }))
-
     local client = helpers.admin_client()
 
     local res = client:get("/workspaces/default/meta")
     local body = assert.res_status(200, res)
     local json = cjson.decode(body)
+    assert.is_nil(json.counts.plugins)
+    assert.is_nil(json.counts.routes)
+    assert.is_nil(json.counts.services)
+
+    assert(helpers.kong_exec("config db_import " .. filename, {
+      prefix = helpers.test_conf.prefix,
+    }))
+
+    res = client:get("/workspaces/default/meta")
+    body = assert.res_status(200, res)
+    json = cjson.decode(body)
     assert.equals(4, json.counts.plugins)
     assert.equals(2, json.counts.routes)
     assert.equals(2, json.counts.services)

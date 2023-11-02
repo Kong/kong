@@ -78,6 +78,10 @@ return {
         "ws_id" UUID NULL
       );
 
+      INSERT INTO sm_vaults ("id", "ws_id")
+        VALUES ('23111c66-8c80-4f8a-8f18-7d6c495bc36e', '23111c66-8c80-4f8a-8f18-7d6c495bc36e')
+      ON CONFLICT DO NOTHING;  -- Hack, mock data
+
       CREATE OR REPLACE FUNCTION batch_delete_expired_rows() RETURNS trigger
       LANGUAGE plpgsql
       AS $$
