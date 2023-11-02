@@ -41,7 +41,7 @@ dependencies = {
   "lua-resty-openssl == 0.8.25",
   "lua-resty-mail == 1.0.2",
   "lua-resty-redis-connector == 0.11.0",
-  "kong-redis-cluster == 1.5.1",
+  "kong-redis-cluster == 1.5.2",
   "bcrypt == 2.3",
   "lpeg_patterns == 0.5",
   --"http == 0.3",

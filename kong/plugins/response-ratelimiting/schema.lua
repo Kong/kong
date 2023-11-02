@@ -122,7 +122,7 @@ return {
           {
             redis_username = {
               description =
-              "When using the `redis` policy, this property specifies the username to connect to the Redis server when ACL authentication is desired.\nThis requires Redis v6.0.0+. The username **cannot** be set to `default`.",
+              "When using the `redis` policy, this property specifies the username to connect to the Redis server when ACL authentication is desired.\nThis requires Redis v6.0.0+. To be compatible with Redis v5.x.y, you can set it to `default`.",
               type = "string",
               referenceable = true
             },

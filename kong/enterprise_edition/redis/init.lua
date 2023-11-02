@@ -66,7 +66,7 @@ _M.config_schema = {
     { connect_timeout = typedefs.timeout },
     { send_timeout = typedefs.timeout },
     { read_timeout = typedefs.timeout },
-    { username = { description = "Username to use for Redis connections. If undefined, ACL authentication won't be performed. This requires Redis v6.0.0+. The username **cannot** be set to `default`.", type = "string",
+    { username = { description = "Username to use for Redis connections. If undefined, ACL authentication won't be performed. This requires Redis v6.0.0+. To be compatible with Redis v5.x.y, you can set it to `default`.", type = "string",
         referenceable = true
       } },
     { password = { description = "Password to use for Redis connections. If undefined, no AUTH commands are sent to Redis.", type = "string",

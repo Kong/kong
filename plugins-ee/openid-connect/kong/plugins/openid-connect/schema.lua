@@ -997,7 +997,7 @@ local config = {
             },
           },
           {
-            session_redis_username = { description = "Username to use for Redis connection when the `redis` session storage is defined and ACL authentication is desired. If undefined, ACL authentication will not be performed. This requires Redis v6.0.0+. The username **cannot** be set to `default`.", required = false,
+            session_redis_username = { description = "Username to use for Redis connection when the `redis` session storage is defined and ACL authentication is desired. If undefined, ACL authentication will not be performed. This requires Redis v6.0.0+. To be compatible with Redis v5.x.y, you can set it to `default`.", required = false,
               type = "string",
               referenceable = true,
             },
