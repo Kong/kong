@@ -1,0 +1,5 @@
+message: |
+  Fix an issue where unique violation errors were reported while trying to update the user_token
+  with the same value on the same RBAC user.
+type: bugfix
+scope: Admin API
