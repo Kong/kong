@@ -126,14 +126,14 @@ else
     table.insert(entity_checks,
       { custom_entity_check = {
         run_with_missing_fields = true,
-        field_sources = { "id", "paths", "protocols", },
+        --field_sources = { "id", "paths", "protocols", },
         fn = function(entity)
-          if has_paths(entity) then
+          --if has_paths(entity) then
             local ok, err = validate_route(entity)
             if not ok then
               return nil, err
             end
-          end
+          --end
 
           return true
         end,
