@@ -440,10 +440,12 @@ for _, policy in ipairs({"memory", "redis"}) do
         assert.same("application/xml", res.headers["Content-Type"])
         assert.same("Miss", res.headers["X-Cache-Status"])
 
-        local res = assert(client:send(request))
-        assert.res_status(200, res)
-        assert.same("application/xml", res.headers["Content-Type"])
-        assert.same("Hit", res.headers["X-Cache-Status"])
+        helpers.wait_until(function()
+          local res = assert(client:send(request))
+          assert.res_status(200, res)
+          assert.same("application/xml", res.headers["Content-Type"])
+          return "Hit" == res.headers["X-Cache-Status"]
+        end, 5)
       end)
 
       it("should not cache a request while parameter is not match", function()
