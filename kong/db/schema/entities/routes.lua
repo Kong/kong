@@ -13,8 +13,9 @@ do
   -- works with both `traditional_compatiable` and `expressions` routes`
   validate_route = function(entity)
     local exp = entity.expression or get_expression(entity)
+    local schema = get_schema(entity.protocols)
 
-    local ok, err = router.validate(get_schema(entity.protocols), exp)
+    local ok, err = router.validate(schema, exp)
     if not ok then
       return nil, "Router Expression failed validation: " .. err
     end
@@ -120,7 +121,6 @@ else
     table.insert(entity_checks,
       { custom_entity_check = {
         run_with_missing_fields = true,
-        --field_sources = { "id", "paths", "protocols", },
         fn = function(entity)
           local ok, err = validate_route(entity)
           if not ok then

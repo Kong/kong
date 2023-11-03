@@ -88,7 +88,7 @@ do
   }
 
   -- http only
-  HTTP_SCHEMA   = schema.new()
+  HTTP_SCHEMA = schema.new()
   for typ, fields in pairs(HTTP_FIELDS) do
     for _, v in ipairs(fields) do
       assert(HTTP_SCHEMA:add_field(v, typ))
