@@ -1,6 +1,6 @@
 message: |
     Enable case sensitive in `expressions` router flavor,
-    and make `traditional_compatible` flavor more compatible
+    and make the `traditional_compatible` flavor more compatible
     with the `traditional` flavor's behavior.
 type: bugfix
 scope: Core
