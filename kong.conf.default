@@ -1176,9 +1176,12 @@
                                             # roughly 2 seconds.
 
 #nginx_http_lua_regex_cache_max_entries = 8192  # Specifies the maximum number of entries allowed
-                                                # in the worker process level compiled regex cache.
+                                                # in the worker process level PCRE JIT compiled regex cache.
                                                 # It is recommended to set it to at least (number of regex paths * 2)
-                                                # to avoid high CPU usages.
+                                                # to avoid high CPU usages if you manually specified `router_flavor` to
+                                                # `traditional`. `expressions` and `traditional_compat` router does
+                                                # not make use of the PCRE library and their behavior
+                                                # is unaffected by this setting.
 
 #nginx_http_keepalive_requests = 1000  # Sets the maximum number of client requests that can be served through one
                                        # keep-alive connection. After the maximum number of requests are made,
