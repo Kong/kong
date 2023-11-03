@@ -739,6 +739,40 @@ describe("Admin API RBAC with #" .. strategy, function()
         assert.equal(new_user_token, json.user_token)
       end)
 
+      it("doesn't report unique violation if updating user_token of the same user with the same token", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/users",
+          body = {
+            name = "bob",
+            user_token = "foo",
+            comment = "bar",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+
+        local body = assert.res_status(201, res)
+        local rbac_user = cjson.decode(body)
+        local user_token = rbac_user.user_token
+
+        res = assert(client:send {
+          method = "PATCH",
+          path = "/rbac/users/bob",
+          body = {
+            user_token = "foo",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+
+        body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.not_equal(user_token, json.user_token)
+      end)
     end)
 
     describe("DELETE", function()

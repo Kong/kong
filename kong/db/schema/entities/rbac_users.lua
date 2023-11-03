@@ -35,7 +35,7 @@ return {
   },
   entity_checks = { {
     custom_entity_check = {
-      field_sources = { "user_token", },
+      field_sources = { "id", "user_token", },
       fn = function(entity)
         -- make sure the token doesn't start or end with a whitespace
         local token = entity.user_token:gsub("%s+", "")
@@ -47,7 +47,10 @@ return {
           return false, err
         end
 
-        if rbac.validate_rbac_token(token_users, token) then
+        -- find the user associated with the token
+        local user = rbac.validate_rbac_token(token_users, token)
+        if user and entity.id ~= user.id then
+          -- throw a unique violation error only if it is used by another user
           return false, Errors:unique_violation({ "user_token" })
         end
 
