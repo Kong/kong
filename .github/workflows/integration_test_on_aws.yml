@@ -85,6 +85,12 @@ jobs:
           sudo mkdir -p ${{ env.BUILD_ROOT }}/kong-dev
           sudo tar -C ${{ env.BUILD_ROOT }}/kong-dev -xzvf artifacts/build.tar.gz
 
+          standard_workspace_path="/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}"
+          if [[ ${{ github.workspace }} != $standard_workspace_path ]]; then # path unification with other github runners
+            sudo mkdir -p "$standard_workspace_path"
+            sudo ln -sv ${{ github.workspace }}/bazel-bin "$standard_workspace_path/"
+          fi
+
       - name: Install Kong dev
         env:
           GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
