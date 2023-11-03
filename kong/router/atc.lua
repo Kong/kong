@@ -55,8 +55,10 @@ local values_buf = buffer.new(64)
 
 
 local CACHED_SCHEMA
+local HTTP_SCHEMA
+local STREAM_SCHEMA
 do
-  local FIELDS = {
+  local HTTP_FIELDS = {
 
     ["String"] = {"net.protocol", "tls.sni",
                   "http.method", "http.host",
@@ -73,14 +75,36 @@ do
                  },
   }
 
-  CACHED_SCHEMA = schema.new()
+  local STREAM_FIELDS = {
 
-  for typ, fields in pairs(FIELDS) do
+    ["String"] = {"net.protocol", "tls.sni",
+                 },
+
+    ["Int"]    = {"net.src.port", "net.dst.port",
+                 },
+
+    ["IpAddr"] = {"net.src.ip", "net.dst.ip",
+                 },
+  }
+
+  -- http only
+  HTTP_SCHEMA   = schema.new()
+  for typ, fields in pairs(HTTP_FIELDS) do
     for _, v in ipairs(fields) do
-      assert(CACHED_SCHEMA:add_field(v, typ))
+      assert(HTTP_SCHEMA:add_field(v, typ))
     end
   end
 
+  -- stream only
+  STREAM_SCHEMA = schema.new()
+  for typ, fields in pairs(STREAM_FIELDS) do
+    for _, v in ipairs(fields) do
+      assert(STREAM_SCHEMA:add_field(v, typ))
+    end
+  end
+
+  -- used by router running
+  CACHED_SCHEMA = is_http and HTTP_SCHEMA or STREAM_SCHEMA
 end
 
 
