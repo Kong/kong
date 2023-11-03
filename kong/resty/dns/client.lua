@@ -741,6 +741,30 @@ local function individualQuery(qname, r_opts, try_list)
 end
 
 local queue = setmetatable({}, {__mode = "v"})
+
+local function queue_get_item(key, qname, r_opts, try_list)
+  local item = {
+    key = key,
+    semaphore = semaphore(),
+    qname = qname,
+    r_opts = cycle_aware_deep_copy(r_opts),
+    try_list = try_list,
+  }
+  queue[key] = item
+  return item
+end
+
+
+local function queue_release_item(item)
+  -- query done, but by now many others might be waiting for our result.
+  -- 1) stop new ones from adding to our lock/semaphore
+  queue[item.key] = nil
+  -- 2) release all waiting threads
+  item.semaphore:post(math_max(item.semaphore:count() * -1, 1))
+  item.semaphore = nil
+end
+
+
 -- to be called as a timer-callback, performs a query and returns the results
 -- in the `item` table.
 local function executeQuery(premature, item)
@@ -748,12 +772,7 @@ local function executeQuery(premature, item)
 
   item.result, item.err = individualQuery(item.qname, item.r_opts, item.try_list)
 
-  -- query done, but by now many others might be waiting for our result.
-  -- 1) stop new ones from adding to our lock/semaphore
-  queue[item.key] = nil
-  -- 2) release all waiting threads
-  item.semaphore:post(math_max(item.semaphore:count() * -1, 1))
-  item.semaphore = nil
+  queue_release_item(item)
 end
 
 
@@ -776,14 +795,7 @@ local function asyncQuery(qname, r_opts, try_list)
     return item    -- already in progress, return existing query
   end
 
-  item = {
-    key = key,
-    semaphore = semaphore(),
-    qname = qname,
-    r_opts = cycle_aware_deep_copy(r_opts),
-    try_list = try_list,
-  }
-  queue[key] = item
+  item = queue_get_item()
 
   local ok, err = timer_at(0, executeQuery, item)
   if not ok then
@@ -813,23 +825,11 @@ local function syncQuery(qname, r_opts, try_list)
 
   -- If nothing is in progress, we start a new sync query
   if not item then
-    item = {
-      key = key,
-      semaphore = semaphore(),
-      qname = qname,
-      r_opts = cycle_aware_deep_copy(r_opts),
-      try_list = try_list,
-    }
-    queue[key] = item
+    item = queue_get_item(key, qname, r_opts, try_list)
 
     item.result, item.err = individualQuery(qname, item.r_opts, try_list)
 
-    -- query done, but by now many others might be waiting for our result.
-    -- 1) stop new ones from adding to our lock/semaphore
-    queue[key] = nil
-    -- 2) release all waiting threads
-    item.semaphore:post(math_max(item.semaphore:count() * -1, 1))
-    item.semaphore = nil
+    queue_release_item(item)
 
     return item.result, item.err, try_list
   end
