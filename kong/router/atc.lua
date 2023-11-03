@@ -482,14 +482,14 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
       local v = req_headers[h]
 
       if type(v) == "string" then
-        local res, err = c:add_value(field, tuning_header(v))
+        local res, err = c:add_value(field, v)
         if not res then
           return nil, err
         end
 
       elseif type(v) == "table" then
         for _, v in ipairs(v) do
-          local res, err = c:add_value(field, tuning_header(v))
+          local res, err = c:add_value(field, v)
           if not res then
             return nil, err
           end
