@@ -3,7 +3,6 @@ local router = require("resty.router.router")
 local deprecation = require("kong.deprecation")
 
 local validate_route
-local has_paths
 do
   local isempty        = require("table.isempty")
   local get_schema     = require("kong.router.atc").schema
@@ -21,11 +20,6 @@ do
     end
 
     return true
-  end
-
-  has_paths = function(entity)
-    local paths = entity.paths
-    return type(paths) == "table" and not isempty(paths)
   end
 end
 
@@ -128,12 +122,10 @@ else
         run_with_missing_fields = true,
         --field_sources = { "id", "paths", "protocols", },
         fn = function(entity)
-          --if has_paths(entity) then
-            local ok, err = validate_route(entity)
-            if not ok then
-              return nil, err
-            end
-          --end
+          local ok, err = validate_route(entity)
+          if not ok then
+            return nil, err
+          end
 
           return true
         end,
