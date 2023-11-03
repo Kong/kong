@@ -66,14 +66,7 @@ if kong_router_flavor == "expressions" then
     entity_checks = {
       { custom_entity_check = {
         field_sources = { "expression", "id", "protocols", },
-        fn = function(entity)
-          local ok, err = validate_route(entity)
-          if not ok then
-            return nil, err
-          end
-
-          return true
-        end,
+        fn = validate_route,
       } },
     },
   }
@@ -118,14 +111,7 @@ else
     table.insert(entity_checks,
       { custom_entity_check = {
         run_with_missing_fields = true,
-        fn = function(entity)
-          local ok, err = validate_route(entity)
-          if not ok then
-            return nil, err
-          end
-
-          return true
-        end,
+        fn = validate_route,
       }}
     )
   end
