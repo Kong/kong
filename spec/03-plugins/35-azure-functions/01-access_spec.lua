@@ -98,22 +98,19 @@ for _, strategy in helpers.each_strategy() do
         dns_mock = helpers.dns_mock.new()
       }
 
-      fixtures.dns_mock:A({
-        name = "azure.example.com",
-        address = "127.0.0.1",
       local route3 = db.routes:insert {
         hosts      = { "azure3.com" },
         protocols  = { "http", "https" },
         service   = db.services:insert(
           {
             name = "azure3",
-            host = "mockbin.org",
+            host = "azure.example.com", -- just mock service, it will not be requested
             port = 80,
             path = "/request",
           }
         ),
       }
-
+      
       -- this plugin definition results in an upstream url to
       -- http://mockbin.org/request
       -- which will echo the request for inspection
@@ -121,9 +118,9 @@ for _, strategy in helpers.each_strategy() do
         name     = "azure-functions",
         route    = { id = route3.id },
         config   = {
-          https           = true,
-          appname         = "mockbin",
-          hostdomain      = "org",
+          https           = false,
+          appname         = "azure",
+          hostdomain      = "example.com",
           routeprefix     = "request",
           functionname    = "test-func-name",
           apikey          = "anything_but_an_API_key",
@@ -131,9 +128,9 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      assert(helpers.start_kong{
-        database = strategy,
-        plugins  = "azure-functions",
+      fixtures.dns_mock:A({
+        name = "azure.example.com",
+        address = "127.0.0.1",
       })
 
       assert(helpers.start_kong({
