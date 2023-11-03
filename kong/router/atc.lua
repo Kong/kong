@@ -412,21 +412,6 @@ local add_debug_headers    = utils.add_debug_headers
 local get_upstream_uri_v0  = utils.get_upstream_uri_v0
 
 
--- traditional_compatible is case insensitive
-local tuning_header = string.lower
-
-
--- expressions is case sensitive
-if kong and
-   kong.configuration and
-   kong.configuration.router_flavor == "expressions"
-then
-  tuning_header = function(str)
-    return str
-  end
-end
-
-
 function _M:select(req_method, req_uri, req_host, req_scheme,
                    _, _,
                    _, _,
@@ -584,6 +569,19 @@ do
   local tb_sort = table.sort
   local tb_concat = table.concat
   local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
+
+  -- traditional_compatible is case insensitive
+  local tuning_header = string.lower
+
+  -- expressions is case sensitive
+  if kong and
+     kong.configuration and
+     kong.configuration.router_flavor == "expressions"
+  then
+    tuning_header = function(str)
+      return str
+    end
+  end
 
   local str_buf = buffer.new(64)
 
