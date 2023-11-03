@@ -25,7 +25,6 @@ local fileexists = require("pl.path").exists
 local semaphore = require("ngx.semaphore").new
 local lrucache = require("resty.lrucache")
 local resolver = require("resty.dns.resolver")
-local in_yieldable_phase = require("kong.tools.yield").in_yieldable_phase
 local cycle_aware_deep_copy = require("kong.tools.utils").cycle_aware_deep_copy
 local req_dyn_hook = require("kong.dynamic_hook")
 local time = ngx.now
@@ -811,16 +810,6 @@ end
 local function syncQuery(qname, r_opts, try_list)
   local key = qname..":"..r_opts.qtype
   local item = queue[key]
-  local is_yieldable = in_yieldable_phase()
-
-  -- If not yieldable, we start a new async query and return nil
-  if not is_yieldable then
-    if not item then
-      asyncQuery(qname, r_opts, try_list)
-    end
-    -- item.result is definitely nil in this situation
-    return nil, "API disabled in the unyieldable phase", try_list
-  end
 
   -- If nothing is in progress and in the yieldable phase,
   -- we start a new sync query
