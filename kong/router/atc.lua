@@ -87,23 +87,23 @@ do
                  },
   }
 
-  -- http only
-  HTTP_SCHEMA = schema.new()
-  for typ, fields in pairs(HTTP_FIELDS) do
-    for _, v in ipairs(fields) do
-      assert(HTTP_SCHEMA:add_field(v, typ))
+  local function generate_schema(fields)
+    local s = schema.new()
+
+    for t, f in pairs(fields) do
+      for _, v in ipairs(f) do
+        assert(s:add_field(v, t))
+      end
     end
+
+    return s
   end
 
-  -- stream only
-  STREAM_SCHEMA = schema.new()
-  for typ, fields in pairs(STREAM_FIELDS) do
-    for _, v in ipairs(fields) do
-      assert(STREAM_SCHEMA:add_field(v, typ))
-    end
-  end
+  -- used by validation
+  HTTP_SCHEMA   = generate_schema(HTTP_FIELDS)
+  STREAM_SCHEMA = generate_schema(STREAM_FIELDS)
 
-  -- used by router running
+  -- used by running router
   CACHED_SCHEMA = is_http and HTTP_SCHEMA or STREAM_SCHEMA
 end
 

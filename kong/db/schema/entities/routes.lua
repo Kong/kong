@@ -4,11 +4,8 @@ local deprecation = require("kong.deprecation")
 
 local validate_route
 do
-  local isempty        = require("table.isempty")
   local get_schema     = require("kong.router.atc").schema
   local get_expression = require("kong.router.compat").get_expression
-
-  local type = type
 
   -- works with both `traditional_compatiable` and `expressions` routes`
   validate_route = function(entity)
