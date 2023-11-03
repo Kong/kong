@@ -1329,7 +1329,7 @@ describe("routes schema (flavor = traditional_compatible)", function()
   reload_flavor("traditional_compatible")
   setup_global_env()
 
-  it("validates a valid route", function()
+  it("validates a valid http route", function()
     local route = {
       id             = a_valid_uuid,
       name           = "my_route",
@@ -1351,6 +1351,21 @@ describe("routes schema (flavor = traditional_compatible)", function()
     assert.falsy(route.strip_path)
   end)
 
+  it("validates a valid stream route", function()
+    local route = {
+      id             = a_valid_uuid,
+      name           = "my_route",
+      protocols      = { "tcp" },
+      sources        = { { ip = "1.2.3.4", port = 80 } },
+      service        = { id = another_uuid },
+    }
+    route = Routes:process_auto_fields(route, "insert")
+    assert.truthy(route.created_at)
+    assert.truthy(route.updated_at)
+    assert.same(route.created_at, route.updated_at)
+    assert.truthy(Routes:validate(route))
+  end)
+
   it("fails when path is invalid", function()
     local route = {
       id             = a_valid_uuid,
@@ -1365,6 +1380,23 @@ describe("routes schema (flavor = traditional_compatible)", function()
     assert.truthy(errs["paths"])
     assert.matches("invalid regex:", errs["paths"][1],
                    nil, true)
+
+    -- verified by `schema/typedefs.lua`
+    assert.falsy(errs["@entity"])
+  end)
+
+  it("fails when ip address is invalid", function()
+    local route = {
+      id             = a_valid_uuid,
+      name           = "my_route",
+      protocols      = { "tcp" },
+      sources        = { { ip = "x.x.x.x", port = 80 } },
+      service        = { id = another_uuid },
+    }
+    route = Routes:process_auto_fields(route, "insert")
+    local ok, errs = Routes:validate_insert(route)
+    assert.falsy(ok)
+    assert.truthy(errs["sources"])
 
     -- verified by `schema/typedefs.lua`
     assert.falsy(errs["@entity"])
