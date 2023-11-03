@@ -895,7 +895,17 @@ function _M._set_ngx(mock_ngx)
 end
 
 
-_M.schema          = CACHED_SCHEMA
+-- for db schema validation
+function _M.schema(protocols)
+  local p = assert(protocols[1]:sub(1, 4))
+
+  if p == "http" or p == "grpc" then
+    return HTTP_SCHEMA
+  else
+    return STREAM_SCHEMA
+  end
+end
+
 
 _M.LOGICAL_OR      = LOGICAL_OR
 _M.LOGICAL_AND     = LOGICAL_AND

@@ -6,7 +6,7 @@ local validate_route
 local has_paths
 do
   local isempty        = require("table.isempty")
-  local CACHED_SCHEMA  = require("kong.router.atc").schema
+  local get_schema     = require("kong.router.atc").schema
   local get_expression = require("kong.router.compat").get_expression
 
   local type = type
@@ -15,7 +15,7 @@ do
   validate_route = function(entity)
     local exp = entity.expression or get_expression(entity)
 
-    local ok, err = router.validate(CACHED_SCHEMA, exp)
+    local ok, err = router.validate(get_schema(entity.protocols), exp)
     if not ok then
       return nil, "Router Expression failed validation: " .. err
     end
@@ -73,7 +73,7 @@ if kong_router_flavor == "expressions" then
 
     entity_checks = {
       { custom_entity_check = {
-        field_sources = { "expression", "id", },
+        field_sources = { "expression", "id", "protocols", },
         fn = function(entity)
           local ok, err = validate_route(entity)
           if not ok then
@@ -126,7 +126,7 @@ else
     table.insert(entity_checks,
       { custom_entity_check = {
         run_with_missing_fields = true,
-        field_sources = { "id", "paths", },
+        field_sources = { "id", "paths", "protocols", },
         fn = function(entity)
           if has_paths(entity) then
             local ok, err = validate_route(entity)
