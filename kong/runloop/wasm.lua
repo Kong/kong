@@ -134,7 +134,7 @@ do
 
     local s = buf:get()
 
-    buf:free()
+    buf:reset()
 
     return sha256(s)
   end
