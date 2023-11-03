@@ -165,9 +165,9 @@ local function get_expression(route)
     -- See #6425, if `net.protocol` is not `https`
     -- then SNI matching should simply not be considered
     if srcs or dsts then
-      gen = "(net.protocol != \"tls\""   .. LOGICAL_OR .. gen .. ")"
+      gen = "(net.protocol != r#\"tls\"#"   .. LOGICAL_OR .. gen .. ")"
     else
-      gen = "(net.protocol != \"https\"" .. LOGICAL_OR .. gen .. ")"
+      gen = "(net.protocol != r#\"https\"#" .. LOGICAL_OR .. gen .. ")"
     end
 
     expression_append(expr_buf, LOGICAL_AND, gen)
