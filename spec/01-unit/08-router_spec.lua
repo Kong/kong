@@ -582,7 +582,6 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
         local match_t = router:select("GET", "/", nil, "http", nil, nil, nil, nil, nil, {
           user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36"
         })
-
         assert.truthy(match_t)
         assert.same(use_case[15].route, match_t.route)
         assert.same(nil, match_t.matches.method)
@@ -5090,5 +5089,59 @@ do
     end)
 
   end)
-end
+
+  describe("Router (flavor = " .. flavor .. ") [http]", function()
+    reload_router(flavor)
+
+    local use_case, router
+
+    lazy_setup(function()
+      use_case = {
+        {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+            expression = [[http.path == "/foo/bar" && http.headers.test == "Quote"]],
+            priority = 100,
+          },
+        },
+      }
+
+      router = assert(new_router(use_case))
+    end)
+
+    it("select() should match with case sensitive", function()
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, {test = "quote"})
+      assert.falsy(match_t)
+
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, {test = "quoTe"})
+      assert.falsy(match_t)
+
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, {test = "Quote"})
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+    end)
+
+    it("select() should match with lower() (case insensitive)", function()
+      use_case[2] =
+        {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+            expression = [[http.path == "/foo/bar" && lower(http.headers.test) == "quote"]],
+            priority = 100,
+          },
+        }
+      router = assert(new_router(use_case))
+
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, {test = "QuoTe"})
+      assert.truthy(match_t)
+      assert.same(use_case[2].route, match_t.route)
+
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, {test = "QUOTE"})
+      assert.truthy(match_t)
+      assert.same(use_case[2].route, match_t.route)
+    end)
+  end)
+end   -- local flavor = "expressions"
 
