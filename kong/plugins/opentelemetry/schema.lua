@@ -22,6 +22,7 @@ end
 
 local resource_attributes = Schema.define {
   type = "map",
+  description = "The attributes specified on this property are added to the OpenTelemetry resource object. Kong follows the OpenTelemetry specification for Semantic Attributes. \nThe following attributes are automatically added to the resource object: \n- `service.name`: The name of the service. This is kong by default. \n- `service.version`: The version of Kong Gateway. \n- service.instance.id: The node id of Kong Gateway. \n\nThe default values for the above attributes can be overridden by specifying them in this property. For example, to override the default value of `service.name` to `my-service`, you can specify `{ \"service.name\": \"my-service\" }`.",
   keys = { type = "string", required = true },
   -- TODO: support [string, number, boolean]
   values = { type = "string", required = true },
@@ -36,7 +37,8 @@ return {
       type = "record",
       fields = {
         { endpoint = typedefs.url { required = true, referenceable = true } }, -- OTLP/HTTP
-        { headers = { description = "The custom headers to be added in the HTTP request sent to the OTLP server. This setting is useful for adding the authentication headers (token) for the APM backend.", type = "map",
+        { headers = { description = "The custom headers to be added in the HTTP request sent to the OTLP server. This setting is useful for adding the authentication headers (token) for the APM backend.",
+          type = "map",
           keys = typedefs.header_name,
           values = {
             type = "string",
@@ -50,9 +52,14 @@ return {
         { connect_timeout = typedefs.timeout { default = 1000 } },
         { send_timeout = typedefs.timeout { default = 5000 } },
         { read_timeout = typedefs.timeout { default = 5000 } },
-        { http_response_header_for_traceid = { type = "string", default = nil }},
-        { header_type = { type = "string", required = false, default = "preserve",
-                          one_of = { "preserve", "ignore", "b3", "b3-single", "w3c", "jaeger", "ot", "aws", "gcp" } } },
+        { http_response_header_for_traceid = { description = "Specifies a custom header for the `trace_id`. If set, the plugin sets the corresponding header in the response.",
+              type = "string",
+              default = nil }},
+        { header_type = { description = "All HTTP requests going through the plugin are tagged with a tracing HTTP request. This property codifies what kind of tracing header the plugin expects on incoming requests.",
+              type = "string",
+              required = false,
+              default = "preserve",
+              one_of = { "preserve", "ignore", "b3", "b3-single", "w3c", "jaeger", "ot", "aws", "gcp" } } },
       },
       entity_checks = {
         { custom_entity_check = {
