@@ -2184,7 +2184,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           end
         end)
 
-        describe("rust style raw string", function()
+        describe("raw string", function()
           local use_case
           local get_expression = atc_compat.get_expression
 
