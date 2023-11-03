@@ -5105,11 +5105,11 @@ do
           },
         },
       }
-
-      router = assert(new_router(use_case))
     end)
 
     it("select() should match with case sensitive", function()
+      router = assert(new_router(use_case))
+
       local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, {test = "quote"})
       assert.falsy(match_t)
 
