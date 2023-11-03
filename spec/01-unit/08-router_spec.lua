@@ -1717,7 +1717,6 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
                                         {
                                           user_agent = "FOO",
                                         })
-
           assert.truthy(match_t)
           assert.same(use_case[1].route, match_t.route)
           if flavor == "traditional" then
