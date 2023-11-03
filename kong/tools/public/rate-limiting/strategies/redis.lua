@@ -10,7 +10,6 @@ local redis = require "kong.enterprise_edition.redis"
 
 local ngx_log  = ngx.log
 local ERR      = ngx.ERR
-local DEBUG    = ngx.DEBUG
 local ngx_time = ngx.time
 local ceil     = math.ceil
 local floor    = math.floor
