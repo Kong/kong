@@ -96,6 +96,12 @@ end
 
 
 local function escape_str(str)
+  -- raw string
+  if not str:find([["#]], 1, true) then
+    return "r#\"" .. str .. "\"#"
+  end
+
+  -- standard string escaping (unlikely case)
   if str:find([[\]], 1, true) then
     str = str:gsub([[\]], [[\\]])
   end
