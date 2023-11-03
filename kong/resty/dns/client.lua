@@ -795,7 +795,7 @@ local function asyncQuery(qname, r_opts, try_list)
     return item    -- already in progress, return existing query
   end
 
-  item = queue_get_item()
+  item = queue_get_item(key, qname, r_opts, try_list)
 
   local ok, err = timer_at(0, executeQuery, item)
   if not ok then
