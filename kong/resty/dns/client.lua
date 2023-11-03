@@ -811,8 +811,7 @@ local function syncQuery(qname, r_opts, try_list)
   local key = qname..":"..r_opts.qtype
   local item = queue[key]
 
-  -- If nothing is in progress and in the yieldable phase,
-  -- we start a new sync query
+  -- If nothing is in progress, we start a new sync query
   if not item then
     item = {
       key = key,
