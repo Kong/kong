@@ -11,19 +11,8 @@ local FILTER_SRC = "spec/fixtures/proxy_wasm_filters/build/response_transformer.
 local json = cjson.encode
 local file = helpers.file
 
-local function get_node_id(prefix)
-  local data = helpers.wait_for_file_contents(prefix .. "/kong.id")
-  data = data:gsub("%s*(.-)%s*", "%1")
-  assert(utils.is_valid_uuid(data), "invalid kong node ID found in " .. prefix)
-  return data
-end
 
-
-local function expect_status(prefix, exp)
-  local id = get_node_id(prefix)
-  local msg = "waiting for clustering sync status to equal"
-              .. " '" .. exp .. "' for data plane"
-
+local function expect_status(id, exp)
   assert
     .eventually(function()
       local cp_client = helpers.admin_client()
@@ -69,7 +58,8 @@ local function expect_status(prefix, exp)
 
       return true
     end)
-    .is_truthy(msg)
+    .is_truthy("waiting for clustering sync status to equal "
+           .. "'filter_set_incompatible' for data plane")
 end
 
 local function new_wasm_filter_directory()
@@ -89,6 +79,9 @@ describe("#wasm - hybrid mode #postgres", function()
   local dp_prefix = "dp"
 
   lazy_setup(function()
+    helpers.clean_prefix(cp_prefix)
+    helpers.clean_prefix(dp_prefix)
+
     local _, db = helpers.get_db_utils("postgres", {
       "services",
       "routes",
@@ -129,9 +122,11 @@ describe("#wasm - hybrid mode #postgres", function()
   describe("[happy path]", function()
     local client
     local dp_filter_path
+    local node_id
 
     lazy_setup(function()
       dp_filter_path = new_wasm_filter_directory()
+      node_id = utils.uuid()
 
       assert(helpers.start_kong({
         role                  = "data_plane",
@@ -144,6 +139,7 @@ describe("#wasm - hybrid mode #postgres", function()
         nginx_conf            = "spec/fixtures/custom_nginx.template",
         wasm                  = true,
         wasm_filters_path     = dp_filter_path,
+        node_id               = node_id,
       }))
 
       client = helpers.proxy_client()
@@ -271,13 +267,16 @@ describe("#wasm - hybrid mode #postgres", function()
         end)
         .is_truthy("wasm filter has been removed from the data plane")
 
-      expect_status(dp_prefix, STATUS.NORMAL)
+      expect_status(node_id, STATUS.NORMAL)
     end)
   end)
 
   describe("data planes with wasm disabled", function()
+    local node_id
+
     lazy_setup(function()
       helpers.clean_logfile(cp_errlog)
+      node_id = utils.uuid()
 
       assert(helpers.start_kong({
         role                  = "data_plane",
@@ -289,6 +288,7 @@ describe("#wasm - hybrid mode #postgres", function()
         admin_listen          = "off",
         nginx_conf            = "spec/fixtures/custom_nginx.template",
         wasm                  = "off",
+        node_id               = node_id,
       }))
     end)
 
@@ -302,16 +302,18 @@ describe("#wasm - hybrid mode #postgres", function()
         [[unable to send updated configuration to data plane: data plane is missing one or more wasm filters]],
         true, 5)
 
-      expect_status(dp_prefix, STATUS.FILTER_SET_INCOMPATIBLE)
+      expect_status(node_id, STATUS.FILTER_SET_INCOMPATIBLE)
     end)
   end)
 
   describe("data planes missing one or more wasm filter", function()
     local tmp_dir
+    local node_id
 
     lazy_setup(function()
       helpers.clean_logfile(cp_errlog)
       tmp_dir = helpers.make_temp_dir()
+      node_id = utils.uuid()
 
       assert(helpers.start_kong({
         role                  = "data_plane",
@@ -324,6 +326,7 @@ describe("#wasm - hybrid mode #postgres", function()
         nginx_conf            = "spec/fixtures/custom_nginx.template",
         wasm                  = true,
         wasm_filters_path     = tmp_dir,
+        node_id               = node_id,
       }))
     end)
 
@@ -338,7 +341,7 @@ describe("#wasm - hybrid mode #postgres", function()
         [[unable to send updated configuration to data plane: data plane is missing one or more wasm filters]],
         true, 5)
 
-      expect_status(dp_prefix, STATUS.FILTER_SET_INCOMPATIBLE)
+      expect_status(node_id, STATUS.FILTER_SET_INCOMPATIBLE)
     end)
   end)
 end)
