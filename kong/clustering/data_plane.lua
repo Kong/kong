@@ -91,7 +91,7 @@ local function send_ping(c, log_suffix)
 
   local hash = declarative.get_current_hash()
 
-  if hash == true then
+  if hash == "" or type(hash) ~= "string" then
     hash = DECLARATIVE_EMPTY_CONFIG_HASH
   end
 
