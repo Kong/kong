@@ -249,8 +249,8 @@ local DYNAMIC_KEY_NAMESPACES = {
     ignore = EMPTY,
   },
   {
-    injected_conf_name = "nginx_wasm_main_shm_directives",
-    prefix = "nginx_wasm_shm_",
+    injected_conf_name = "nginx_wasm_main_shm_kv_directives",
+    prefix = "nginx_wasm_shm_kv_",
     ignore = EMPTY,
   },
   {
