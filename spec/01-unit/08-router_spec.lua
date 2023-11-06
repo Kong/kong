@@ -4916,6 +4916,63 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
 end
 
 do
+  local flavor = "traditional_compatible"
+
+  describe("Router (flavor = " .. flavor .. ")", function()
+    reload_router(flavor)
+
+    local use_case, router
+
+    lazy_setup(function()
+      use_case = {
+        {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+            paths = {
+              "/foo",
+            },
+            headers = {
+              test1 = { "Quote" },
+            },
+          },
+        },
+      }
+    end)
+
+    it("[#only cache hit should be case insensitive]", function()
+      router = assert(new_router(use_case))
+
+      local ctx = {}
+      local _ngx = mock_ngx("GET", "/foo", { test1 = "QUOTE", })
+      router._set_ngx(_ngx)
+
+      -- first match, case insensitive
+      local match_t = router:exec(ctx)
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+      assert.falsy(ctx.route_match_cached)
+
+      -- cache hit, case insensitive
+      local match_t = router:exec(ctx)
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+      assert.same(ctx.route_match_cached, "pos")
+
+      local ctx = {}
+      local _ngx = mock_ngx("GET", "/foo", { test1 = "QuoTe", })
+      router._set_ngx(_ngx)
+
+      -- case insensitive match
+      local match_t = router:exec(ctx)
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+      assert.same(ctx.route_match_cached, "pos")
+    end)
+  end)
+end
+
+do
   local flavor = "expressions"
 
   describe("Router (flavor = " .. flavor .. ") [stream]", function()

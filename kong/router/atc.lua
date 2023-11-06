@@ -570,6 +570,19 @@ do
   local tb_concat = table.concat
   local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
 
+  -- traditional_compatible is case insensitive
+  local tuning_header = string.lower
+
+  -- expressions is case sensitive
+  if kong and
+     kong.configuration and
+     kong.configuration.router_flavor == "expressions"
+  then
+    tuning_header = function(str)
+      return str
+    end
+  end
+
   local str_buf = buffer.new(64)
 
   get_headers_key = function(headers)
@@ -580,8 +593,14 @@ do
       local name = replace_dashes_lower(name)
 
       if type(value) == "table" then
+        for i, v in ipairs(value) do
+          value[i] = tuning_header(v)
+        end
         tb_sort(value)
         value = tb_concat(value, ", ")
+
+      else
+        value = tuning_header(value)
       end
 
       str_buf:putf("|%s=%s", name, value)
