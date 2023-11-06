@@ -238,7 +238,7 @@ for _, strategy in helpers.all_strategies() do
       assert(jwk_t)
 
       local jwk_pub_t, g_err = db.keys:get_pubkey(jwk_t)
-      assert.is_nil(err)
+      assert.is_nil(g_err)
       local jwk_pub_o = cjson.decode(jwk_pub_t)
       assert.is_not_nil(jwk_pub_o.e)
       assert.is_not_nil(jwk_pub_o.kid)
