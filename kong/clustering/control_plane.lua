@@ -11,7 +11,7 @@ local compat = require("kong.clustering.compat")
 local constants = require("kong.constants")
 local events = require("kong.clustering.events")
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
-
+local extract_dp_cert = require("kong.clustering.tls").extract_dp_cert
 
 local string = string
 local setmetatable = setmetatable
@@ -220,6 +220,7 @@ function _M:handle_cp_websocket()
     return ngx_exit(ngx_CLOSE)
   end
 
+  local dp_cert_details = extract_dp_cert(ngx_var.ssl_client_raw_cert)
   local dp_plugins_map = plugins_list_to_map(data.plugins)
   local config_hash = DECLARATIVE_EMPTY_CONFIG_HASH -- initial hash
   local last_seen = ngx_time()
@@ -235,6 +236,7 @@ function _M:handle_cp_websocket()
       version = dp_version,
       sync_status = sync_status, -- TODO: import may have been failed though
       labels = data.labels,
+      cert_details = dp_cert_details,
     }, { ttl = purge_delay })
     if not ok then
       ngx_log(ngx_ERR, _log_prefix, "unable to update clustering data plane status: ", err, log_suffix)

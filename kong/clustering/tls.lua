@@ -13,6 +13,8 @@ local constants = require("kong.constants")
 
 local ngx_log = ngx.log
 local WARN = ngx.WARN
+local tostring = tostring
+
 
 local OCSP_TIMEOUT = constants.CLUSTERING_OCSP_TIMEOUT
 
@@ -227,6 +229,27 @@ function tls.validate_client_cert(kong_config, cp_cert, dp_cert_pem)
   end
 
   return true
+end
+
+
+--- Extract certificate details from the data plane certificate.
+---
+---@param dp_cert_pem string    # data plane cert text
+---
+---@return table? cert_details  # certificate details
+function tls.extract_dp_cert(dp_cert_pem)
+  local cert, err = openssl_x509.new(dp_cert_pem, "PEM")
+  if not cert then
+    return nil, "unable to load data plane client certificate during connection established: " .. err
+  end
+
+  local expiry_timestamp = cert:get_not_after()
+  -- values in cert_details must be strings
+  local cert_details = {
+    expiry_timestamp = expiry_timestamp,
+  }
+
+  return cert_details
 end
 
 

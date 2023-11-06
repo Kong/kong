@@ -38,5 +38,13 @@ return {
                  description = "Custom key value pairs as meta-data for DPs.",
                },
     },
+    { cert_details = {
+        type = "record",
+        fields = {
+          { expiry_timestamp = typedefs.auto_timestamp_s }
+        },
+        description = "Certificate details of the data plane.",
+      },
+    },
   },
 }
