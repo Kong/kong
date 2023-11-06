@@ -4940,7 +4940,7 @@ do
       }
     end)
 
-    it("[#only cache hit should be case insensitive]", function()
+    it("[cache hit should be case insensitive]", function()
       router = assert(new_router(use_case))
 
       local ctx = {}
