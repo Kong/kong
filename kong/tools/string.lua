@@ -75,7 +75,9 @@ end
 -- bytes_to_str(5497558, "G", 3) -- "5.120 GiB"
 --
 function _M.bytes_to_str(bytes, unit, scale)
-  if not unit or unit == "" or lower(unit) == "b" then
+  local u = lower(unit or "")
+
+  if u == "" or u == "b" then
     return fmt("%d", bytes)
   end
 
@@ -87,15 +89,15 @@ function _M.bytes_to_str(bytes, unit, scale)
 
   local fspec = fmt("%%.%df", scale)
 
-  if lower(unit) == "k" then
+  if u == "k" then
     return fmt(fspec .. " KiB", bytes / 2^10)
   end
 
-  if lower(unit) == "m" then
+  if u == "m" then
     return fmt(fspec .. " MiB", bytes / 2^20)
   end
 
-  if lower(unit) == "g" then
+  if u == "g" then
     return fmt(fspec .. " GiB", bytes / 2^30)
   end
 
