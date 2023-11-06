@@ -48,30 +48,6 @@ describe('Gateway Admin API: Keys For jwe-decrypt plugin', function () {
     jwkKeySetsId = jwkKeySets.id;
   });
 
-  it('should not create keys if public key field missing', async function () {
-    keysPayload = {
-      name: keysName,
-      set: {
-        id: pemKeySetsId,
-      },
-      pem: {
-        private_key: authDetails.jwe.private,
-      },
-      kid: '42',
-    };
-    const resp = await postNegative(url, keysPayload);
-    logResponse(resp);
-
-    expect(resp.status, 'Status should be 400').equal(400);
-    expect(resp.data.name, 'Should be schema violation').to.equal(
-      'schema violation'
-    );
-    expect(
-      resp.data.fields.pem,
-      'Should indicate public key field is missing'
-    ).to.equal('could not load public key');
-  });
-
   it('should not create keys if public key field violates schema', async function () {
     keysPayload = {
       name: keysName,
@@ -94,33 +70,7 @@ describe('Gateway Admin API: Keys For jwe-decrypt plugin', function () {
     expect(
       resp.data.fields.pem,
       'Should indicate public key field is missing'
-    ).to.equal('could not load public key');
-  });
-
-  it('should not create keys if private key field missing', async function () {
-    keysPayload = {
-      name: keysName,
-      set: {
-        id: pemKeySetsId,
-      },
-      pem: {
-        public_key: authDetails.jwe.public,
-      },
-      kid: '42',
-    };
-    const resp = await postNegative(url, keysPayload);
-    logResponse(resp);
-
-    expect(resp.status, 'Status should be 400').equal(400);
-    expect(resp.data.name, 'Should be schema violation').to.equal(
-      'schema violation'
-    );
-    expect(
-      resp.data.fields.pem,
-      'Should indicate private key field is missing'
-    ).to.equal(
-      'could not load private keypkey.new: unexpected type userdata at #1'
-    );
+    ).to.match(/could not load public key.+/);
   });
 
   it('should not create keys if private key field violates schema', async function () {
@@ -145,7 +95,7 @@ describe('Gateway Admin API: Keys For jwe-decrypt plugin', function () {
     expect(
       resp.data.fields.pem,
       'Should indicate private key field is missing'
-    ).to.include('could not load private keypkey.new:load_key:');
+    ).to.match(/could not load private key.+/);
   });
 
   it('should not create keys if kid field missing', async function () {

@@ -747,20 +747,34 @@ local function validate_pem_keys(values)
   local private_key = values.private_key
 
   -- unless it's a vault reference
-  if kong.vault.is_reference(private_key) or
-     kong.vault.is_reference(public_key) then
+  if kong and (
+     kong.vault.is_reference(private_key) or
+     kong.vault.is_reference(public_key)) then
     return true
   end
 
-  local pk, err = openssl_pkey.new(public_key, { format = "PEM" })
-  if not pk or err then
-    return false, "could not load public key"
+  local pubkey, privkey, err
+
+  if public_key and public_key ~= null then
+    pubkey, err = openssl_pkey.new(public_key, { format = "PEM", type = "pu" })
+    if err then
+      return false, "could not load public key: " .. err
+    end
   end
 
-  local ppk, perr = openssl_pkey.new(private_key, { format = "PEM" })
-  if not ppk or perr then
-    return false, "could not load private key" .. (perr or "")
+  if private_key and private_key ~= null then
+    privkey, err = openssl_pkey.new(private_key, { format = "PEM", type = "pr" })
+    if err then
+      return false, "could not load private key: " .. err
+    end
   end
+
+  if privkey and pubkey then
+    if privkey:to_PEM("public") ~= pubkey:to_PEM() then
+      return false, "public key does not match private key"
+    end
+  end
+
   return true
 end
 
@@ -819,6 +833,9 @@ typedefs.pem = Schema.define {
         required = false,
       },
     },
+  },
+  entity_checks = {
+    { at_least_one_of = { "private_key", "public_key" } }
   },
   custom_validator = validate_pem_keys,
   description = "A pair of PEM-encoded public and private keys, which can be either a string or a reference to a credential in Kong Vault. If provided as strings, they must be valid PEM-encoded keys."
