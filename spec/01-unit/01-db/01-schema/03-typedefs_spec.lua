@@ -203,4 +203,24 @@ describe("typedefs", function()
     assert.equal(false, uuid2.auto)
  end)
 
+ it("features pem", function()
+  local Test = Schema.new({
+    fields = {
+      { f = typedefs.pem }
+    }
+  })
+  local tmpkey = openssl_pkey.new { type = 'EC', curve = 'prime256v1' }
+  assert.truthy(Test:validate({ f = { public_key = tmpkey:to_PEM("public") }}))
+  assert.truthy(Test:validate({ f = { private_key = tmpkey:to_PEM("private") }}))
+  assert.falsy( Test:validate({ f = { private_key = tmpkey:to_PEM("public") }}))
+  assert.falsy(Test:validate({ f = { public_key = tmpkey:to_PEM("private") }}))
+  assert.truthy(Test:validate({ f = { public_key = tmpkey:to_PEM("public"),
+                                private_key = tmpkey:to_PEM("private") }}))
+  local anotherkey = openssl_pkey.new { type = 'EC', curve = 'prime256v1' }
+  assert.falsy( Test:validate({ f = { public_key = anotherkey:to_PEM("public"),
+                                private_key = tmpkey:to_PEM("private") }}))
+  assert.falsy( Test:validate({ f = { public_key = tmpkey:to_PEM("public"),
+                                private_key = anotherkey:to_PEM("private") }}))
+end)
+
 end)

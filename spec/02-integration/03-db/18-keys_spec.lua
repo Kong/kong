@@ -207,5 +207,47 @@ for _, strategy in helpers.all_strategies() do
       assert.is_not_nil(decoded_jwk.q)
       assert.is_not_nil(decoded_jwk.qi)
     end)
+
+    it(":get_privkey errors if only got pubkey [pem]", function()
+      local pem_t, err = db.keys:insert {
+        name = "pem_key",
+        set = init_key_set,
+        kid = "999",
+        pem = { public_key = pem_pub }
+      }
+      assert.is_nil(err)
+      assert(pem_t)
+
+      local pem_pub_t, g_err = db.keys:get_pubkey(pem_t)
+      assert.is_nil(g_err)
+      assert.matches("-----BEGIN PUBLIC KEY", pem_pub_t)
+
+      local pem_priv, p_err = db.keys:get_privkey(pem_t)
+      assert.is_nil(pem_priv)
+      assert.matches("could not load a private key from public key material", p_err)
+    end)
+
+    it(":get_privkey errors if only got pubkey [jwk]", function()
+      jwk.d = nil
+      local jwk_t, _ = db.keys:insert {
+        name = "jwk_key",
+        set = init_key_set,
+        kid = jwk.kid,
+        jwk = cjson.encode(jwk)
+      }
+      assert(jwk_t)
+
+      local jwk_pub_t, g_err = db.keys:get_pubkey(jwk_t)
+      assert.is_nil(err)
+      local jwk_pub_o = cjson.decode(jwk_pub_t)
+      assert.is_not_nil(jwk_pub_o.e)
+      assert.is_not_nil(jwk_pub_o.kid)
+      assert.is_not_nil(jwk_pub_o.kty)
+      assert.is_not_nil(jwk_pub_o.n)
+
+      local jwk_priv, p_err = db.keys:get_privkey(jwk_t)
+      assert.is_nil(jwk_priv)
+      assert.matches("could not load a private key from public key material", p_err)
+    end)
   end)
 end
