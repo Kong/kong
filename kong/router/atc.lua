@@ -68,10 +68,6 @@ do
                  },
 
     ["Int"]    = {"net.port",
-                  "net.src.port", "net.dst.port",
-                 },
-
-    ["IpAddr"] = {"net.src.ip", "net.dst.ip",
                  },
   }
 
