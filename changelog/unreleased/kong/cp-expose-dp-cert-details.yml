@@ -1,0 +1,5 @@
+message: |
+    **Clustering**: Expose data plane certificate details on the control plane API.
+type: feature
+scope: Clustering
+
