@@ -127,7 +127,7 @@ jobs:
       fail-fast: false
       matrix:
         suite: [integration, plugins]
-        split: [first (01-04), second (>= 05)]
+        split: [first, second]
 
     services:
       postgres:
@@ -231,6 +231,17 @@ jobs:
         # arm64 runners may use more connections due to more worker cores
         psql -hlocalhost -Ukong kong -tAc 'alter system set max_connections = 5000;'
 
+    - name: Generate test rerun filename
+      run: |
+           echo FAILED_TEST_FILES_FILE=$(echo '${{ matrix.suite }}-${{ matrix.split }}' | tr A-Z a-z | sed -Ee 's/[^a-z0-9]+/-/g').txt >> $GITHUB_ENV
+
+
+    - name: Download test rerun information
+      uses: actions/download-artifact@v3
+      continue-on-error: true
+      with:
+        name: ${{ env.FAILED_TEST_FILES_FILE }}
+
     - name: Tests
       env:
         KONG_TEST_PG_DATABASE: kong
@@ -245,6 +256,14 @@ jobs:
           make dev # required to install other dependencies like bin/grpcurl
           source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           .ci/run_tests.sh
+
+    - name: Upload test rerun information
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ env.FAILED_TEST_FILES_FILE }}
+        path: ${{ env.FAILED_TEST_FILES_FILE }}
+        retention-days: 2
 
     - name: Archive coverage stats file
       uses: actions/upload-artifact@v3
