@@ -581,7 +581,7 @@ function _mt:query(sql, operation)
       -- we cannot cleanup the connection
       ngx.log(ngx.ERR, "failed to disconnect: ", err)
     end
-    self.store_connection(nil, operation)
+    self:store_connection(nil, operation)
 
   elseif is_new_conn then
     local keepalive_timeout = self:get_keepalive_timeout(operation)
