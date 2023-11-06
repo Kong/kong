@@ -1494,7 +1494,7 @@ describe("routes schema (flavor = expressions)", function()
     assert.truthy(errs["@entity"])
   end)
 
-  it("fails if invalid field appears", function()
+  it("fails if http route's field appears in stream route", function()
     local route = {
       id             = a_valid_uuid,
       name           = "my_route",
