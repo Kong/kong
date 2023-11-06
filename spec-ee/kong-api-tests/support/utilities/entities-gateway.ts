@@ -2,7 +2,7 @@ import axios, { AxiosRequestHeaders, AxiosPromise, AxiosResponse } from 'axios';
 import { expect } from '../assert/chai-expect';
 import { Environment, getBasePath, isGateway } from '../config/environment';
 import { logResponse } from './logging';
-import { randomString } from './random';
+import { randomString, wait } from './random';
 import { retryRequest } from './retry-axios';
 import { getNegative } from './negative-axios';
 
@@ -735,4 +735,34 @@ export const clearKongResource = async (endpoint: string) => {
   } catch (err) {
     console.log(err);
   }
+};
+
+
+/**
+ * Wait for /status/ready to return given status
+ * @param {string} cacheKey - cache key to wait for
+ * @param {number} timeout - timeout in ms
+ */
+export const waitForCacheInvalidation = async (
+  cacheKey,
+  timeout,
+) => {
+  let response;
+  let wantedTimeout
+  while (timeout > 0) {
+    const response = await getNegative(`${getUrl('cache')}/${cacheKey}`);
+    if (response.status === 404) {
+      // log final response
+      logResponse(response);
+      return true;
+    }
+    await wait(1000); // eslint-disable-line no-restricted-syntax
+    timeout -= 1000;
+  }
+  // log last response received
+  logResponse(response);
+
+  // throw
+  expect(false, `${wantedTimeout}ms exceeded waiting for "${cacheKey}" to invalidate from cache`).to.equal(true);
+  return false;
 };
