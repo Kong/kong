@@ -1,0 +1,3 @@
+message: Fix typo in jwe-decrypt error message
+type: bugfix
+scope: Plugin

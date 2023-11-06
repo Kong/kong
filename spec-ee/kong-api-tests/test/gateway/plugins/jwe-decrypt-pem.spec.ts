@@ -127,7 +127,6 @@ describe('Gateway Plugins: jwe-decrypt PEM', function () {
     );
   });
 
-  // 2nd assertion skipped until https://konghq.atlassian.net/browse/KAG-383 is fixed
   it('PEM: should not proxy request with invalid token', async function () {
     console.log(invalidTokenHeaders, validTokenHeaders);
     const resp = await getNegative(
@@ -138,10 +137,10 @@ describe('Gateway Plugins: jwe-decrypt PEM', function () {
 
     expect(resp.status, 'Status should be 403').to.equal(403);
 
-    // expect(
-    //   resp.data.message,
-    //   'Should indicate token cannot be decrypted'
-    // ).to.equal('failed to decrypt token');
+    expect(
+      resp.data.message,
+      'Should indicate token cannot be decrypted'
+    ).to.equal('failed to decrypt token');
   });
 
   it('PEM: should proxy request with valid token', async function () {
@@ -149,20 +148,6 @@ describe('Gateway Plugins: jwe-decrypt PEM', function () {
     logResponse(resp);
 
     expect(resp.status, 'Status should be 200').to.equal(200);
-  });
-
-  //skipped until https://konghq.atlassian.net/browse/KAG-382 is resolved
-  xit('PEM: should not proxy request with a expired token ', async function () {
-    const resp = await getNegative(
-      `${proxyUrl}${pemPath}`,
-      expiredTokenHeaders
-    );
-    logResponse(resp);
-
-    expect(resp.status, 'Status should be 401').to.equal(401);
-    expect(resp.data.message, 'Should be Unauthorized').to.equal(
-      'Unauthorized'
-    );
   });
 
   it('PEM: should patch jwe-decrypt plugin to disable auth and allow requests', async function () {

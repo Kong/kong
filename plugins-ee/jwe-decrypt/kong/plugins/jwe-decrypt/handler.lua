@@ -19,7 +19,7 @@ local EXIT_CODES = {
 }
 
 local ERROR_MESSAGES = {
-  ["DECRYPT_ERR"] = "failed to decypt token",
+  ["DECRYPT_ERR"] = "failed to decrypt token",
   ["DECODE_ERR"] = "failed to decode token",
   ["NO_TOKEN_ERR"] = "could not find token",
 }
