@@ -20,6 +20,7 @@ import {
   isLocalDatabase,
   logResponse,
   retryRequest,
+  waitForCacheInvalidation,
 } from '@support';
 
 const kvEngineVersions = ['v1', 'v2'];
@@ -194,14 +195,16 @@ kvEngineVersions.forEach((kvVersion) => {
 
     it('should not proxy a request with incorrect secrets in request header', async function () {
       const resp = await getNegative(`${proxyUrl}${path}`, {
-        access_token: credentials.access_token,
-        secret_token: '11XYyybbu3Ty0Qt4ImIshPGQ0WsvjLzl',
+        // vault-auth plugin cache authentication results by access_token
+        // make sure to use a different access_token in this request
+        access_token: '11XYyybbu3Ty0Qt4ImIshPGQ0WsvjLzx',
+        secret_token: credentials.secret_token,
       });
       logResponse(resp);
 
       expect(resp.status, 'Status should be 401').to.equal(401);
       expect(resp.data.message, 'should have correct error message').to.eq(
-        'Invalid secret token'
+        'Unauthorized'
       );
     });
 
@@ -244,7 +247,8 @@ kvEngineVersions.forEach((kvVersion) => {
     });
 
     it('should not proxy a request after secrets have been deleted', async function () {
-      await wait(longWaitTime); // eslint-disable-line no-restricted-syntax
+      await waitForCacheInvalidation(`vault-auth:${credentials.access_token}:${vaultEntityId}`, 8000)
+
       const resp = await getNegative(
         `${proxyUrl}${path}?access_token=${credentials.access_token}&secret_token=${credentials.secret_token}`
       );
