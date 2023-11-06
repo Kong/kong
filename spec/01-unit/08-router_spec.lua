@@ -4970,7 +4970,7 @@ do
       assert.same(ctx.route_match_cached, "pos")
     end)
   end)
-end
+end   -- local flavor = "traditional_compatible"
 
 do
   local flavor = "expressions"
@@ -5211,7 +5211,7 @@ do
       assert.same(use_case[1].route, match_t.route)
       assert.falsy(ctx.route_match_cached)
 
-      -- cache hit
+      -- cache hit pos
       local match_t = router:exec(ctx)
       assert.truthy(match_t)
       assert.same(use_case[1].route, match_t.route)
@@ -5226,7 +5226,7 @@ do
       assert.falsy(match_t)
       assert.falsy(ctx.route_match_cached)
 
-      -- cache miss
+      -- cache hit neg
       local match_t = router:exec(ctx)
       assert.falsy(match_t)
       assert.same(ctx.route_match_cached, "neg")
