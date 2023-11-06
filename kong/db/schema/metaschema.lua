@@ -186,6 +186,7 @@ local field_schema = {
   { required = { type = "boolean" }, },
   { reference = { type = "string" }, },
   { description = { type = "string", len_min = 10, len_max = 500}, },
+  { examples = { type = "array", elements = { type = "any" } } },
   { auto = { type = "boolean" }, },
   { unique = { type = "boolean" }, },
   { unique_across_ws = { type = "boolean" }, },

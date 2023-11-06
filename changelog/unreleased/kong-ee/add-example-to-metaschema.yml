@@ -1,0 +1,3 @@
+message: add the `examples` field to the metaschema
+type: feature
+scope: Core
