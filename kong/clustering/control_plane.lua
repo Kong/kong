@@ -11,7 +11,9 @@ local compat = require("kong.clustering.compat")
 local constants = require("kong.constants")
 local events = require("kong.clustering.events")
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
+local global = require("kong.global")
 local extract_dp_cert = require("kong.clustering.tls").extract_dp_cert
+
 
 local string = string
 local setmetatable = setmetatable
@@ -115,8 +117,10 @@ function _M:export_deflated_reconfigure_payload()
 
   local config_hash, hashes = calculate_config_hash(config_table)
 
+  local current_transaction_id = global.get_current_transaction_id()
   local payload = {
     type = "reconfigure",
+    current_transaction_id = current_transaction_id,
     timestamp = ngx_now(),
     config_table = config_table,
     config_hash = config_hash,
@@ -142,6 +146,8 @@ function _M:export_deflated_reconfigure_payload()
   self.current_hashes = hashes
   self.current_config_hash = config_hash
   self.deflated_reconfigure_payload = payload
+
+  ngx_log(ngx_NOTICE, "exported configuration with transaction id " .. current_transaction_id)
 
   return payload, nil, config_hash
 end

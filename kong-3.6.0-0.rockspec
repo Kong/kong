@@ -170,6 +170,7 @@ build = {
     ["kong.tools.sha256"] = "kong/tools/sha256.lua",
     ["kong.tools.yield"] = "kong/tools/yield.lua",
     ["kong.tools.uuid"] = "kong/tools/uuid.lua",
+    ["kong.tools.rand"] = "kong/tools/rand.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.events"] = "kong/runloop/events.lua",

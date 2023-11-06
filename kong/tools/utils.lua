@@ -34,8 +34,6 @@ local re_match      = ngx.re.match
 local setmetatable  = setmetatable
 
 ffi.cdef[[
-typedef unsigned char u_char;
-
 typedef long time_t;
 typedef int clockid_t;
 typedef struct timespec {
@@ -46,42 +44,9 @@ typedef struct timespec {
 int clock_gettime(clockid_t clk_id, struct timespec *tp);
 
 int gethostname(char *name, size_t len);
-
-int RAND_bytes(u_char *buf, int num);
-
-unsigned long ERR_get_error(void);
-void ERR_load_crypto_strings(void);
-void ERR_free_strings(void);
-
-const char *ERR_reason_error_string(unsigned long e);
-
-int open(const char * filename, int flags, ...);
-size_t read(int fd, void *buf, size_t count);
-int write(int fd, const void *ptr, int numbytes);
-int close(int fd);
-char *strerror(int errnum);
 ]]
 
 local _M = {}
-
---- splits a string.
--- just a placeholder to the penlight `pl.stringx.split` function
--- @function split
-_M.split = split
-
---- strips whitespace from a string.
--- @function strip
-_M.strip = function(str)
-  if str == nil then
-    return ""
-  end
-  str = tostring(str)
-  if #str > 200 then
-    return str:gsub("^%s+", ""):reverse():gsub("^%s+", ""):reverse()
-  else
-    return str:match("^%s*(.-)%s*$")
-  end
-end
 
 do
   local _system_infos
@@ -131,109 +96,6 @@ do
            "lua_ssl_trusted_certificate to an " ..
            "specific filepath instead of `system`"
   end
-end
-
-
-local get_rand_bytes
-
-do
-  local ngx_log = ngx.log
-  local WARN    = ngx.WARN
-
-  local system_constants = require "lua_system_constants"
-  local O_RDONLY = system_constants.O_RDONLY()
-  local ffi_fill    = ffi.fill
-  local ffi_str     = ffi.string
-  local bytes_buf_t = ffi.typeof "char[?]"
-
-  local function urandom_bytes(buf, size)
-    local fd = C.open("/dev/urandom", O_RDONLY, 0) -- mode is ignored
-    if fd < 0 then
-      ngx_log(WARN, "Error opening random fd: ",
-                    ffi_str(C.strerror(ffi.errno())))
-
-      return false
-    end
-
-    local res = C.read(fd, buf, size)
-    if res <= 0 then
-      ngx_log(WARN, "Error reading from urandom: ",
-                    ffi_str(C.strerror(ffi.errno())))
-
-      return false
-    end
-
-    if C.close(fd) ~= 0 then
-      ngx_log(WARN, "Error closing urandom: ",
-                    ffi_str(C.strerror(ffi.errno())))
-    end
-
-    return true
-  end
-
-  -- try to get n_bytes of CSPRNG data, first via /dev/urandom,
-  -- and then falling back to OpenSSL if necessary
-  get_rand_bytes = function(n_bytes, urandom)
-    local buf = ffi_new(bytes_buf_t, n_bytes)
-    ffi_fill(buf, n_bytes, 0x0)
-
-    -- only read from urandom if we were explicitly asked
-    if urandom then
-      local rc = urandom_bytes(buf, n_bytes)
-
-      -- if the read of urandom was successful, we returned true
-      -- and buf is filled with our bytes, so return it as a string
-      if rc then
-        return ffi_str(buf, n_bytes)
-      end
-    end
-
-    if C.RAND_bytes(buf, n_bytes) == 0 then
-      -- get error code
-      local err_code = C.ERR_get_error()
-      if err_code == 0 then
-        return nil, "could not get SSL error code from the queue"
-      end
-
-      -- get human-readable error string
-      C.ERR_load_crypto_strings()
-      local err = C.ERR_reason_error_string(err_code)
-      C.ERR_free_strings()
-
-      return nil, "could not get random bytes (" ..
-                  "reason:" .. ffi_str(err) .. ") "
-    end
-
-    return ffi_str(buf, n_bytes)
-  end
-
-  _M.get_rand_bytes = get_rand_bytes
-end
-
---- Generates a random unique string
--- @return string  The random string (a chunk of base64ish-encoded random bytes)
-do
-  local char = string.char
-  local rand = math.random
-  local encode_base64 = ngx.encode_base64
-
-  -- generate a random-looking string by retrieving a chunk of bytes and
-  -- replacing non-alphanumeric characters with random alphanumeric replacements
-  -- (we dont care about deriving these bytes securely)
-  -- this serves to attempt to maintain some backward compatibility with the
-  -- previous implementation (stripping a UUID of its hyphens), while significantly
-  -- expanding the size of the keyspace.
-  local function random_string()
-    -- get 24 bytes, which will return a 32 char string after encoding
-    -- this is done in attempt to maintain backwards compatibility as
-    -- much as possible while improving the strength of this function
-    return encode_base64(get_rand_bytes(24, true))
-           :gsub("/", char(rand(48, 57)))  -- 0 - 10
-           :gsub("+", char(rand(65, 90)))  -- A - Z
-           :gsub("=", char(rand(97, 122))) -- a - z
-  end
-
-  _M.random_string = random_string
 end
 
 
@@ -455,29 +317,6 @@ function _M.load_module_if_exists(module_name)
   else
     error("error loading module '" .. module_name .. "':\n" .. res)
   end
-end
-
--- Numbers taken from table 3-7 in www.unicode.org/versions/Unicode6.2.0/UnicodeStandard-6.2.pdf
--- find-based solution inspired by http://notebook.kulchenko.com/programming/fixing-malformed-utf8-in-lua
-function _M.validate_utf8(val)
-  local str = tostring(val)
-  local i, len = 1, #str
-  while i <= len do
-    if     i == find(str, "[%z\1-\127]", i) then i = i + 1
-    elseif i == find(str, "[\194-\223][\123-\191]", i) then i = i + 2
-    elseif i == find(str,        "\224[\160-\191][\128-\191]", i)
-        or i == find(str, "[\225-\236][\128-\191][\128-\191]", i)
-        or i == find(str,        "\237[\128-\159][\128-\191]", i)
-        or i == find(str, "[\238-\239][\128-\191][\128-\191]", i) then i = i + 3
-    elseif i == find(str,        "\240[\144-\191][\128-\191][\128-\191]", i)
-        or i == find(str, "[\241-\243][\128-\191][\128-\191][\128-\191]", i)
-        or i == find(str,        "\244[\128-\143][\128-\191][\128-\191]", i) then i = i + 4
-    else
-      return false, i
-    end
-  end
-
-  return true
 end
 
 
@@ -934,51 +773,6 @@ do
 end
 
 
----
--- Converts bytes to another unit in a human-readable string.
--- @tparam number bytes A value in bytes.
---
--- @tparam[opt] string unit The unit to convert the bytes into. Can be either
--- of `b/B`, `k/K`, `m/M`, or `g/G` for bytes (unchanged), kibibytes,
--- mebibytes, or gibibytes, respectively. Defaults to `b` (bytes).
--- @tparam[opt] number scale The number of digits to the right of the decimal
--- point. Defaults to 2.
--- @treturn string A human-readable string.
--- @usage
---
--- bytes_to_str(5497558) -- "5497558"
--- bytes_to_str(5497558, "m") -- "5.24 MiB"
--- bytes_to_str(5497558, "G", 3) -- "5.120 GiB"
---
-function _M.bytes_to_str(bytes, unit, scale)
-  if not unit or unit == "" or lower(unit) == "b" then
-    return fmt("%d", bytes)
-  end
-
-  scale = scale or 2
-
-  if type(scale) ~= "number" or scale < 0 then
-    error("scale must be equal or greater than 0", 2)
-  end
-
-  local fspec = fmt("%%.%df", scale)
-
-  if lower(unit) == "k" then
-    return fmt(fspec .. " KiB", bytes / 2^10)
-  end
-
-  if lower(unit) == "m" then
-    return fmt(fspec .. " MiB", bytes / 2^20)
-  end
-
-  if lower(unit) == "g" then
-    return fmt(fspec .. " GiB", bytes / 2^30)
-  end
-
-  error("invalid unit '" .. unit .. "' (expected 'k/K', 'm/M', or 'g/G')", 2)
-end
-
-
 do
   local NGX_ERROR = ngx.ERROR
 
@@ -1295,41 +1089,6 @@ end
 _M.time_ns = time_ns
 
 
-local try_decode_base64
-do
-  local decode_base64    = ngx.decode_base64
-  local decode_base64url = require "ngx.base64".decode_base64url
-
-  local function decode_base64_str(str)
-    if type(str) == "string" then
-      return decode_base64(str)
-             or decode_base64url(str)
-             or nil, "base64 decoding failed: invalid input"
-
-    else
-      return nil, "base64 decoding failed: not a string"
-    end
-  end
-
-  function try_decode_base64(value)
-    if type(value) == "table" then
-      for i, v in ipairs(value) do
-        value[i] = decode_base64_str(v) or v
-      end
-
-      return value
-    end
-
-    if type(value) == "string" then
-      return decode_base64_str(value) or value
-    end
-
-    return value
-  end
-end
-_M.try_decode_base64 = try_decode_base64
-
-
 local get_now_ms
 local get_updated_now_ms
 local get_start_time_ms
@@ -1370,7 +1129,9 @@ do
     "kong.tools.table",
     "kong.tools.sha256",
     "kong.tools.yield",
+    "kong.tools.string",
     "kong.tools.uuid",
+    "kong.tools.rand",
   }
 
   for _, str in ipairs(modules) do
