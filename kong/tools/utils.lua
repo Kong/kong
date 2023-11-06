@@ -437,7 +437,7 @@ end
 -- @return normalized address (string) + port (number or nil), or alternatively nil+error
 _M.normalize_ipv4 = function(address)
   local a,b,c,d,port
-  if address:find(":") then
+  if address:find(":", 1, true) then
     -- has port number
     a,b,c,d,port = address:match("^(%d%d?%d?)%.(%d%d?%d?)%.(%d%d?%d?)%.(%d%d?%d?):(%d+)$")
   else
@@ -495,7 +495,7 @@ _M.normalize_ipv6 = function(address)
   if check:sub(-1,-1) == ":" then
     check = check .. "0"
   end
-  if check:find("::") then
+  if check:find("::", 1, true) then
     -- expand double colon
     local _, count = gsub(check, ":", "")
     local ins = ":" .. string.rep("0:", 8 - count)
