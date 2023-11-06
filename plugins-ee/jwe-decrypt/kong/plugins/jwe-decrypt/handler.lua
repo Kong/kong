@@ -71,6 +71,7 @@ local function find_key_in_sets(keysets, kid)
       kong.log.warn(msg)
       return nil, msg
     end
+    kong.log.warn("KEY SET IS ", key_sets_cache_key, " KID is ", kid)
     -- load key with kid in set.
     local cache_key = kong.db.keys:cache_key({ kid = kid, set = { id = key_set.id } })
     local key, key_cache_err, hit_level = kong.cache:get(cache_key, nil, load_keys, cache_key)
@@ -79,6 +80,7 @@ local function find_key_in_sets(keysets, kid)
       if hit_level ~= 3 then
         kong.vault.update(key)
       end
+      kong.log.warn("KEY IS ", require("inspect")(key))
       return key, nil
     end
   end
@@ -144,7 +146,7 @@ function JWEDecryptHandler:access(plugin_conf)
   -- get private_key
   local priv_key, privkey_err = kong.db.keys:get_privkey(key)
   if not priv_key or privkey_err then
-    local msg = fmt("could not retrieve private key for kid: %s", kid)
+    local msg = fmt("could not retrieve private key for kid %s: %s", kid, privkey_err or "nil")
     return log_and_exit("err", msg, EXIT_CODES.UNAUTHORIZED, ERROR_MESSAGES.DECRYPT_ERR)
   end
 

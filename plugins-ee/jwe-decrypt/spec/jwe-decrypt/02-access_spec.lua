@@ -6,7 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 local helpers = require "spec.helpers"
 local jwe     = require "kong.pdk.jwe".new()
-local merge   = kong.table.merge
 local cjson   = require "cjson.safe"
 local fmt     = string.format
 
@@ -44,7 +43,7 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
           local jwk_pub, jwk_priv = helpers.generate_keys("JWK")
           pem_pub, pem_priv = helpers.generate_keys("PEM")
 
-          local jwk_raw = merge(cjson.decode(jwk_pub), cjson.decode(jwk_priv))
+          local jwk_raw = cjson.decode(jwk_priv)
           -- overwrite kid with something predictable.
           jwk_raw.kid = "42"
           local key_sets, key_sets_err = db.key_sets:insert({
@@ -72,38 +71,45 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
           assert.is_nil(p_err)
           assert.is_not_nil(pem_key)
 
+          local key_sets_only_public, key_sets_err = db.key_sets:insert({
+            name = KEY_SET_NAME .. "_only_public",
+          })
+          assert.is_nil(key_sets_err)
+          assert.is_not_nil(key_sets)
+          local jwk_raw_pub = cjson.decode(jwk_pub)
+          -- overwrite kid with something predictable.
+          jwk_raw_pub.kid = "42"
+          local jwk_key, err = db.keys:insert({
+            name = "jwk RSA pubkey",
+            jwk = cjson.encode(jwk_raw_pub),
+            kid = jwk_raw_pub.kid,
+            set = key_sets_only_public
+          })
+          assert.is_nil(err)
+          assert.is_not_nil(jwk_key)
+
           local enc_err
           jwt_enc, enc_err = jwe:encrypt(alg, enc, cjson.decode(jwk_key.jwk), PLAINTEXT)
           assert.is_nil(enc_err)
           assert(jwt_enc)
 
-          local route1 = bp.routes:insert({
-            hosts = { "test1.test" },
-          })
-
-          local route2 = bp.routes:insert({
-            hosts = { "test2.test" },
-          })
-          local route3 = bp.routes:insert({
-            hosts = { "test3.test" },
-          })
-          local route4 = bp.routes:insert({
-            hosts = { "test4.test" },
-          })
-          local route5 = bp.routes:insert({
-            hosts = { "test5.test" },
-          })
+          local routes = {}
+          for i=1, 6 do
+            routes[i] = bp.routes:insert({
+              hosts = { string.format("test%d.test", i) },
+            })
+          end
 
           bp.plugins:insert {
             name = PLUGIN_NAME,
-            route = { id = route1.id },
+            route = { id = routes[1].id },
             config = {
               key_sets = { KEY_SET_NAME },
             }
           }
           bp.plugins:insert {
             name = PLUGIN_NAME,
-            route = { id = route2.id },
+            route = { id = routes[2].id },
             config = {
               key_sets = { KEY_SET_NAME },
               lookup_header_name = "test_header_name"
@@ -111,7 +117,7 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
           }
           bp.plugins:insert {
             name = PLUGIN_NAME,
-            route = { id = route3.id },
+            route = { id = routes[3].id },
             config = {
               key_sets = { KEY_SET_NAME },
               forward_header_name = "test_upstream_header"
@@ -119,16 +125,24 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
           }
           bp.plugins:insert {
             name = PLUGIN_NAME,
-            route = { id = route4.id },
+            route = { id = routes[4].id },
             config = {
               key_sets = { "not-found" },
             }
           }
           bp.plugins:insert {
             name = PLUGIN_NAME,
-            route = { id = route5.id },
+            route = { id = routes[5].id },
             config = {
               key_sets = { KEY_SET_NAME },
+              strict = false,
+            }
+          }
+          bp.plugins:insert {
+            name = PLUGIN_NAME,
+            route = { id = routes[6].id },
+            config = {
+              key_sets = { KEY_SET_NAME .. "_only_public" },
               strict = false,
             }
           }
@@ -228,6 +242,20 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
             }
           })
           assert.logfile(err_log_file).has.line("could not load keyset")
+          assert.response(res).has_not.header("test-upstream-header")
+          assert.response(res).has.status(403)
+        end)
+
+      it("logs and aborts if associated key is a pubkey", function()
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/request",
+            headers = {
+              host = "test6.test",
+              ["Authorization"] = jwt_enc
+            }
+          })
+          assert.logfile(err_log_file).has.line("could not retrieve private key for kid 42: could not load a private key from public key material")
           assert.response(res).has_not.header("test-upstream-header")
           assert.response(res).has.status(403)
         end)
