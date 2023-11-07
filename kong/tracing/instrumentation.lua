@@ -287,7 +287,12 @@ do
     if span then
       span:set_attribute("dns.record.domain", host)
       span:set_attribute("dns.record.port", port)
-      span:set_attribute("dns.record.ip", ip_addr)
+      if ip_addr then
+        span:set_attribute("dns.record.ip", ip_addr)
+      else
+        span:record_error(res_port)
+        span:set_status(2)
+      end
       span:finish()
     end
 
