@@ -4940,7 +4940,7 @@ do
       }
     end)
 
-    it("[cache hit should be case insensitive]", function()
+    it("[cache hit should be case sensitive]", function()
       router = assert(new_router(use_case))
 
       local ctx = {}
@@ -4953,7 +4953,7 @@ do
       assert.same(use_case[1].route, match_t.route)
       assert.falsy(ctx.route_match_cached)
 
-      -- cache hit, case insensitive
+      -- cache hit
       local match_t = router:exec(ctx)
       assert.truthy(match_t)
       assert.same(use_case[1].route, match_t.route)
@@ -4967,7 +4967,9 @@ do
       local match_t = router:exec(ctx)
       assert.truthy(match_t)
       assert.same(use_case[1].route, match_t.route)
-      assert.same(ctx.route_match_cached, "pos")
+
+      -- cache miss, case sensitive
+      assert.falsy(ctx.route_match_cached)
     end)
   end)
 end   -- local flavor = "traditional_compatible"
