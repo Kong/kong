@@ -507,7 +507,7 @@ do
   local DECLARATIVE_LOCK_KEY = "declarative:lock"
 
   -- make sure no matter which path it exits, we released the lock.
-  load_into_cache_with_events = function(entities, meta, hash, hashes, transaction_id)
+  load_into_cache_with_events = function(entities, meta, hash, hashes)
     local kong_shm = ngx.shared.kong
 
     local ok, err = kong_shm:add(DECLARATIVE_LOCK_KEY, 0, DECLARATIVE_LOCK_TTL)
@@ -522,11 +522,6 @@ do
     end
 
     ok, err = load_into_cache_with_events_no_lock(entities, meta, hash, hashes)
-
-    if ok and transaction_id then
-      ok, err = kong_shm:set("declarative:current-transaction-id", transaction_id)
-    end
-
     kong_shm:delete(DECLARATIVE_LOCK_KEY)
 
     return ok, err

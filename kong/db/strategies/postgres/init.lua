@@ -987,8 +987,6 @@ function _M.new(connector, schema, errors)
     insert(upsert_expressions, ttl_escaped .. " = "  .. "EXCLUDED." .. ttl_escaped)
   end
 
-  insert(select_expressions, "pg_current_xact_id() as _pg_transaction_id")
-
   local primary_key_escaped = {}
   for i, key in ipairs(primary_key) do
     local primary_key_field = primary_key_fields[key]
