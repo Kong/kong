@@ -891,14 +891,23 @@ function _M._set_ngx(mock_ngx)
 end
 
 
--- for db schema validation
-function _M.schema(protocols)
-  local p = assert(protocols[1]:sub(1, 4))
+do
+  local protocol_to_shcema = {
+    http  = HTTP_SCHEMA,
+    https = HTTP_SCHEMA,
+    grpc  = HTTP_SCHEMA,
+    grpcs = HTTP_SCHEMA,
 
-  if p == "http" or p == "grpc" then
-    return HTTP_SCHEMA
-  else
-    return STREAM_SCHEMA
+    tcp   = STREAM_SCHEMA,
+    udp   = STREAM_SCHEMA,
+    tls   = STREAM_SCHEMA,
+
+    tls_passthrough = STREAM_SCHEMA,
+  }
+
+  -- for db schema validation
+  function _M.schema(protocols)
+    return assert(protocol_to_shcema[protocols[1]])
   end
 end
 
