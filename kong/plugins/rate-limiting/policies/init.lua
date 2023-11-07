@@ -213,11 +213,7 @@ local function update_local_counters(conf, periods, limits, identifier, value)
     if limits[period] then
       local cache_key = get_local_key(conf, identifier, period, period_date)
 
-      if cur_delta[cache_key] then
-        cur_delta[cache_key] = cur_delta[cache_key] + value
-      else
-        cur_delta[cache_key] = value
-      end
+      cur_delta[cache_key] = (cur_delta[cache_key] or 0) + value
     end
   end
 
@@ -353,7 +349,9 @@ return {
       if conf.sync_rate ~= SYNC_RATE_REALTIME then
         cur_usage[cache_key] = current_metric or 0
         cur_usage_expire_at[cache_key] = periods[period] + EXPIRATION[period]
-        cur_delta[cache_key] = 0
+        -- The key was just read from Redis using `incr`, which incremented it
+        -- by 1. Adjust the value to account for the prior increment.
+        cur_delta[cache_key] = -1
       end
 
       return current_metric or 0
