@@ -347,7 +347,7 @@ function Queue.get_plugin_params(plugin_name, config, queue_name)
         .. "configuration to use queue.max_batch_size instead")
   end
 
-  if (config.flush_timeout or null) ~= null and config.flush_timeout ~= 2 then
+  if (config.flush_timeout or null) ~= null and config.flush_timeout ~= 20 then
     queue_config.max_coalescing_delay = config.flush_timeout
     maybe_warn(
       queue_config.name,

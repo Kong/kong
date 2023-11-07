@@ -743,7 +743,7 @@ describe("plugin queue", function()
   it("defaulted legacy parameters are ignored when converting", function()
     local legacy_parameters = {
       queue_size = 1,
-      flush_timeout = 2,
+      flush_timeout = 20,
       batch_span_count = 200,
       batch_flush_delay = 3,
       queue = {

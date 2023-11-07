@@ -93,7 +93,7 @@ for _, strategy in helpers.each_strategy() do
         local parameters = {
           retry_count = 10, -- treated specially below
           queue_size = 1,
-          flush_timeout = 2
+          flush_timeout = 20
         }
 
         if plugin == "opentelemetry" then

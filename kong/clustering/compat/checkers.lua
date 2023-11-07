@@ -125,7 +125,7 @@ local compatible_checkers = {
               has_update = true
 
             else
-              config.flush_timeout = 2
+              config.flush_timeout = 20
               has_update = true
             end
           end
