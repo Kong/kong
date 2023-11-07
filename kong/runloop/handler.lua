@@ -1005,9 +1005,6 @@ return {
           end
 
           if rebuild_transaction_id then
-            -- Yield to process any pending invalidations
-            utils.yield()
-
             log(NOTICE, "configuration processing completed for transaction ID " .. rebuild_transaction_id)
             global.CURRENT_TRANSACTION_ID = rebuild_transaction_id
           end
