@@ -202,12 +202,7 @@ local function fill_empty_hashes(hashes)
   end
 end
 
-function _M.update(declarative_config, msg)
-
-  local config_table = msg.config_table
-  local config_hash = msg.config_hash
-  local hashes = msg.hashes
-
+function _M.update(declarative_config, config_table, config_hash, hashes)
   assert(type(config_table) == "table")
 
   if not config_hash then
@@ -241,12 +236,10 @@ function _M.update(declarative_config, msg)
   -- executed by worker 0
 
   local res
-  res, err = declarative.load_into_cache_with_events(entities, meta, new_hash, hashes, msg.current_transaction_id)
+  res, err = declarative.load_into_cache_with_events(entities, meta, new_hash, hashes)
   if not res then
     return nil, err
   end
-
-  ngx_log(ngx.NOTICE, "loaded configuration with transaction ID " .. msg.current_transaction_id)
 
   return true
 end
