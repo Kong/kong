@@ -134,7 +134,7 @@ describe('Gateway RLA Plugin Tests', function () {
       ...basePayload,
       config: {
         limit: [1],
-        window_size: [7],
+        window_size: [3600],
         window_type: 'fixed',
         sync_rate: 0,
         strategy: 'redis',
@@ -174,8 +174,8 @@ describe('Gateway RLA Plugin Tests', function () {
     );
     expect(
       resp.data.config.window_size,
-      'window_size should be 7'
-    ).to.be.equalTo([7]);
+      'window_size should be 3600'
+    ).to.be.equalTo([3600]);
     expect(resp.data.config.limit, 'Should have correct limit').to.be.equalTo([
       1,
     ]);
