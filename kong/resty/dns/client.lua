@@ -742,7 +742,7 @@ end
 
 local queue = setmetatable({}, {__mode = "v"})
 
-local function queue_get_item(key, qname, r_opts, try_list)
+local function enqueue_query(key, qname, r_opts, try_list)
   local item = {
     key = key,
     semaphore = semaphore(),
@@ -755,7 +755,7 @@ local function queue_get_item(key, qname, r_opts, try_list)
 end
 
 
-local function queue_release_item(item)
+local function dequeue_query(item)
   -- query done, but by now many others might be waiting for our result.
   -- 1) stop new ones from adding to our lock/semaphore
   queue[item.key] = nil
@@ -772,7 +772,7 @@ local function executeQuery(premature, item)
 
   item.result, item.err = individualQuery(item.qname, item.r_opts, item.try_list)
 
-  queue_release_item(item)
+  dequeue_query(item)
 end
 
 
@@ -795,7 +795,7 @@ local function asyncQuery(qname, r_opts, try_list)
     return item    -- already in progress, return existing query
   end
 
-  item = queue_get_item(key, qname, r_opts, try_list)
+  item = enqueue_query(key, qname, r_opts, try_list)
 
   local ok, err = timer_at(0, executeQuery, item)
   if not ok then
@@ -825,11 +825,11 @@ local function syncQuery(qname, r_opts, try_list)
 
   -- If nothing is in progress, we start a new sync query
   if not item then
-    item = queue_get_item(key, qname, r_opts, try_list)
+    item = enqueue_query(key, qname, r_opts, try_list)
 
     item.result, item.err = individualQuery(qname, item.r_opts, try_list)
 
-    queue_release_item(item)
+    dequeue_query(item)
 
     return item.result, item.err, try_list
   end
