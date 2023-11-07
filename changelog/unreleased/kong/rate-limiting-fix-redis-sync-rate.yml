@@ -1,0 +1,3 @@
+message: "**Rate Limiting**: fix to provide better accuracy in counters when sync_rate is used with the redis policy."
+type: bugfix
+scope: Plugin
