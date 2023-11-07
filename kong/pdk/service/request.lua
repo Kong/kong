@@ -3,6 +3,7 @@
 -- @module kong.service.request
 
 local cjson = require "cjson.safe"
+local buffer = require "string.buffer"
 local checks = require "kong.pdk.private.checks"
 local phase_checker = require "kong.pdk.private.phases"
 
@@ -541,26 +542,23 @@ local function new(self)
 
         table_sort(keys)
 
-        local out = {}
-        local i = 1
+        local out = buffer.new()
 
         for _, k in ipairs(keys) do
-          out[i] = "--"
-          out[i + 1] = boundary
-          out[i + 2] = "\r\n"
-          out[i + 3] = 'Content-Disposition: form-data; name="'
-          out[i + 4] = k
-          out[i + 5] = '"\r\n\r\n'
-          local v = args[k]
-          out[i + 6] = v
-          out[i + 7] = "\r\n"
-          i = i + 8
+          out:put("--")
+             :put(boundary)
+             :put("\r\n")
+             :put('Content-Disposition: form-data; name="')
+             :put(k)
+             :put('"\r\n\r\n')
+             :put(args[k])
+             :put("\r\n")
         end
-        out[i] = "--"
-        out[i + 1] = boundary
-        out[i + 2] = "--\r\n"
+        out:put("--")
+           :put(boundary)
+           :put("--\r\n")
 
-        local output = table.concat(out)
+        local output = out:get()
 
         return output, CONTENT_TYPE_FORM_DATA .. "; boundary=" .. boundary
       end,
