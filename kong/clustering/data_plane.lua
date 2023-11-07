@@ -213,7 +213,10 @@ function _M:communicate(premature)
                          msg.timestamp and " with timestamp: " .. msg.timestamp or "",
                          log_suffix)
 
-      local pok, res, err = pcall(config_helper.update, self.declarative_config, msg)
+      local config_table = assert(msg.config_table)
+
+      local pok, res, err = pcall(config_helper.update, self.declarative_config,
+                                  config_table, msg.config_hash, msg.hashes)
       if pok then
         ping_immediately = true
       end

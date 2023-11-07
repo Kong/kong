@@ -68,8 +68,7 @@ end
 
 
 local _GLOBAL = {
-  phases                 = phase_checker.phases,
-  CURRENT_TRANSACTION_ID = 0,
+  phases = phase_checker.phases,
 }
 
 
@@ -292,16 +291,6 @@ end
 
 function _GLOBAL.init_timing()
   return require("kong.timing")
-end
-
-
-function _GLOBAL.get_current_transaction_id()
-  local rows, err = kong.db.connector:query("select pg_current_xact_id() as _pg_transaction_id")
-  if not rows then
-    return nil, "could not query postgres for current transaction id: " .. err
-  else
-    return tonumber(rows[1]._pg_transaction_id)
-  end
 end
 
 
