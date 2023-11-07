@@ -169,7 +169,7 @@ describe('Dynamic Log Level Tests', function () {
   });
 
   it('should not see debug logs in container after log is set to notice', async function () {
-    await wait(isKongNative ? 8000 : 4000); // eslint-disable-line no-restricted-syntax
+    await wait(isKongNative ? 10000 : 8000); // eslint-disable-line no-restricted-syntax
     // read the last 2 lines of logs for package tests to avoid flakiness
     currentLogs = getGatewayContainerLogs(
       kongContainerName,
@@ -322,7 +322,7 @@ describe('Dynamic Log Level Tests', function () {
     /*
       * Adding 5 seconds to the timeout to avoid flakiness
       * as the behavior of the timeout of the log_level is not very exact.
-      * 
+      *
       * For example, if we set the timeout to 10 seconds,
       * the log level will be changed back to info after 10 seconds,
       * but the request to get the log level might be sent at 10.00001 seconds,
