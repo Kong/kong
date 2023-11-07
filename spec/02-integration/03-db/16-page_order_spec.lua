@@ -30,7 +30,8 @@ describe("kong.db [#" .. strategy .. "]", function()
       local service = {
         host = string.format("example-%02d.com", i),
         name = string.format("service%02d", test_entity_count-i+1),
-        tags = { "team_a", "level_"..fmod(i, 5), "service"..i }
+        tags = { "team_a", "level_"..fmod(i, 5), "service"..i },
+        created_at = 1136214245 + i,
       }
       local row, err, err_t = bp.services:insert(service)
       assert.is_nil(err)
@@ -45,7 +46,8 @@ describe("kong.db [#" .. strategy .. "]", function()
       local consumer = {
         username = "consumer" .. i,
         custom_id = string.format("custom_id%02d", test_entity_count-i+1),
-        tags = { "team_a", "level_"..fmod(i, 5), "consumer"..i }
+        tags = { "team_a", "level_"..fmod(i, 5), "consumer"..i },
+        created_at = 1136214245 + i,
       }
       local row, err, err_t = bp.consumers:insert(consumer)
       assert.is_nil(err)
@@ -85,6 +87,25 @@ describe("kong.db [#" .. strategy .. "]", function()
       rows, err = db.consumers:page(nil, nil, { sort_by = "username" })
       assert.is_nil(err)
       assert.same("consumer1", rows[1].username)
+    end)
+
+    it("KAG-2865 paginate when sort_by on created_at", function()
+      local rows, err, offset
+      rows, err, _, offset = db.services:page(2, nil, { sort_by = "created_at" })
+      assert.is_nil(err)
+      assert.same("service10", rows[1].name)
+
+      rows, err = db.services:page(2, offset, { sort_by = "created_at" })
+      assert.is_nil(err)
+      assert.same("service08", rows[1].name)
+
+      rows, err, _, offset = db.consumers:page(2, nil, { sort_by = "created_at" })
+      assert.is_nil(err)
+      assert.same("custom_id10", rows[1].custom_id)
+
+      rows, err = db.consumers:page(2, offset, { sort_by = "created_at" })
+      assert.is_nil(err)
+      assert.same("custom_id08", rows[1].custom_id)
     end)
 
     it("any field desc", function()

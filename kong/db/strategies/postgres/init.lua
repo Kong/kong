@@ -455,10 +455,16 @@ local function execute(strategy, statement_name, attributes, options)
     if options and ((options.search_fields and name == "search_fields") or
                     (options.sort_by and name == "sort_by")) then
       argv[i] = value
+    elseif value == nil and is_update then
+      argv[i] = escape_identifier(connector, name)
     else
-      argv[i] = (value == nil and is_update)
-              and escape_identifier(connector, name)
-              or  escape_literal(connector, value, fields[name])
+      local field = fields[name]
+      if options and options.sort_by and name == "sort_offset" then
+        -- KAG-2865: use the field schema specified by options.sort_by
+        field = fields[options.sort_by]
+      end
+
+      argv[i] = escape_literal(connector, value, field)
     end
   end
 

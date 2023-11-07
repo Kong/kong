@@ -1,0 +1,5 @@
+message: |
+  Fix an issue where HTTP 500 errors were returned when paginating and sorting by timestamp fields
+  (e.g., `created_at`).
+type: bugfix
+scope: Admin API
