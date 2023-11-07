@@ -68,9 +68,10 @@ local function parse_url(host_url)
   if not parsed_url.port then
     if parsed_url.scheme == "http" then
       parsed_url.port = 80
-
     elseif parsed_url.scheme == "https" then
       parsed_url.port = 443
+    else
+      parsed_url.port = 80 -- default port if scheme is not http or https
     end
   end
   if not parsed_url.path then
@@ -123,6 +124,11 @@ local function send_entries(conf, entries)
     for h, v in pairs(conf.headers) do
       headers[h] = headers[h] or v -- don't override Host, Content-Type, Content-Length, Authorization
     end
+  end
+
+  if not parsed_url.scheme or not host or not port or not parsed_url.path then
+    kong.log.err("Failed to parse URL: missing scheme, host, port, or path")
+    return
   end
 
   local log_server_url = fmt("%s://%s:%d%s", parsed_url.scheme, host, port, parsed_url.path)
