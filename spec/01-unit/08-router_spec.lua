@@ -2257,7 +2257,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           end)
         end)
 
-        describe("match http.headers.*", function()
+        describe("generate http expression", function()
           local use_case
           local get_expression = atc_compat.get_expression
 
@@ -2267,16 +2267,24 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
                 service = service,
                 route = {
                   id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
-                  methods = { "GET" },
                 },
               },
             }
           end)
 
-          it("should always add lower()", function()
+          it("should always add lower() when matching http.headers.*", function()
+            use_case[1].route.methods = { "GET" }
             use_case[1].route.headers = { test = { "~*Quote" }, }
 
             assert.equal([[(http.method == r#"GET"#) && (any(lower(http.headers.test)) ~ r#"quote"#)]],
+                         get_expression(use_case[1].route))
+            assert(new_router(use_case))
+          end)
+
+          it("should use 'net.dst.port' when deprecating 'net.port'", function()
+            use_case[1].route.hosts = { "www.example.com:8000" }
+
+            assert.equal([[((http.host == r#"www.example.com"# && net.dst.port == 8000))]],
                          get_expression(use_case[1].route))
             assert(new_router(use_case))
           end)
@@ -5248,6 +5256,83 @@ do
       local match_t = router:exec(ctx)
       assert.falsy(match_t)
       assert.same(ctx.route_match_cached, "neg")
+    end)
+  end)
+
+  describe("Router (flavor = " .. flavor .. ") [http]", function()
+    reload_router(flavor)
+
+    local use_case, router
+
+    lazy_setup(function()
+      use_case = {
+        {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+            expression = [[http.host == "www.example.com" && net.port == 8000]],
+            priority = 100,
+          },
+        },
+        {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+            expression = [[net.src.ip == 1.1.1.1 && net.dst.ip == 2.2.2.2 && http.method == "GET"]],
+            priority = 100,
+          },
+        },
+      }
+    end)
+
+    it("select() should convert 'net.port' to 'net.dst.port' and work well", function()
+      router = assert(new_router(use_case))
+
+      local match_t = router:select("GET", "/", "www.example.com:80")
+      assert.falsy(match_t)
+
+      local match_t = router:select("GET", "/", "www.example.com:8000")
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+    end)
+
+    it("exec() should use var.server_port if host has no port", function()
+      router = assert(new_router(use_case))
+
+      local _ngx = mock_ngx("GET", "/foo", { host = "www.example.com" })
+      router._set_ngx(_ngx)
+
+      -- no port provided
+      local match_t = router:exec()
+      assert.falsy(match_t)
+
+      -- var.server_port
+      _ngx.var.server_port = 8000
+      router._set_ngx(_ngx)
+
+      local match_t = router:exec()
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+    end)
+
+    it("exec() should support net.src.* and net.dst.*", function()
+      router = assert(new_router(use_case))
+
+      local _ngx = mock_ngx("GET", "/foo", { host = "domain.org" })
+      router._set_ngx(_ngx)
+
+      -- no ip address provided
+      local match_t = router:exec()
+      assert.falsy(match_t)
+
+      -- ip address
+      _ngx.var.remote_addr = "1.1.1.1"
+      _ngx.var.server_addr = "2.2.2.2"
+      router._set_ngx(_ngx)
+
+      local match_t = router:exec()
+      assert.truthy(match_t)
+      assert.same(use_case[2].route, match_t.route)
     end)
   end)
 end   -- local flavor = "expressions"

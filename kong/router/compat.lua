@@ -217,10 +217,10 @@ local function get_expression(route)
         host = host:sub(1, -2)
       end
 
-      local exp = "http.host ".. op .. " \"" .. host .. "\""
+      local exp = "http.host ".. op .. " r#\"" .. host .. "\"#"
       if port then
         exp = "(" .. exp .. LOGICAL_AND ..
-              "net.port ".. OP_EQUAL .. " " .. port .. ")"
+              "net.dst.port ".. OP_EQUAL .. " " .. port .. ")"
       end
       expression_append(hosts_buf, LOGICAL_OR, exp, i)
     end -- for route.hosts
