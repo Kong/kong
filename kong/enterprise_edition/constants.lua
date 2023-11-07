@@ -203,4 +203,6 @@ return {
     -- A cost factor of N is equivalent to 2^N iterations/rounds of computations.
     BCRYPT_COST_FACTOR = 9,
   },
+
+  PORTAL_VITALS_ALLOWED_CACHE_KEY = 'kong:portal_vitals_allowed',
 }

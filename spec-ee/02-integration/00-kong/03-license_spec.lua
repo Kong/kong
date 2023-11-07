@@ -7,7 +7,7 @@
 
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local pl_file = require "pl.file"
+local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 
 -- unsets kong license env vars and returns a function to restore their values
 -- on test teardown
@@ -721,6 +721,68 @@ describe("Admin API - Kong routes", function()
       local json = cjson.decode(body)
       assert.equal("Enterprise license missing or expired",
                   json["message"])
+    end)
+  end)
+
+  describe("/", function ()
+    local admin_gui_client, admin_api_client
+
+    lazy_setup(function ()
+      helpers.get_db_utils()
+      helpers.unsetenv("KONG_LICENSE_DATA")
+      helpers.unsetenv("KONG_TEST_LICENSE_DATA")
+      assert(helpers.start_kong({
+        admin_listen = "127.0.0.1:8001",
+        admin_gui_listen = "127.0.0.1:8002",
+        proxy_listen = "off",
+        portal = "on",
+        vitals = "off",
+        portal_and_vitals_key = get_portal_and_vitals_key()
+      }))
+      admin_api_client = helpers.admin_client(nil, 8001)
+      admin_gui_client = helpers.admin_gui_client(nil, 8002)
+    end)
+
+    lazy_teardown(function ()
+      if admin_api_client then
+        admin_api_client:close()
+      end
+      if admin_gui_client then
+        admin_gui_client:close()
+      end
+      helpers.stop_kong()
+    end)
+
+    it('should update license through Admin API will update portal / vitals enabled status', function ()
+      helpers.pwait_until(function()
+        local res = assert(admin_gui_client:send {
+          method = "GET",
+          path = "/kconfig.js",
+        })
+        local kconfig_content = assert.res_status(200, res)
+        assert.matches("'PORTAL': 'false'", kconfig_content, nil, true)
+        assert.matches("'VITALS': 'false'", kconfig_content, nil, true)
+      end, 30)
+
+      local res = assert(admin_api_client:send {
+        method = "POST",
+        path = "/licenses",
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+        body = { payload = valid_license },
+      })
+      assert.res_status(201, res)
+
+      helpers.pwait_until(function()
+        local res = assert(admin_gui_client:send {
+          method = "GET",
+          path = "/kconfig.js",
+        })
+        local kconfig_content = assert.res_status(200, res)
+        assert.matches("'PORTAL': 'true'", kconfig_content, nil, true)
+        assert.matches("'VITALS': 'false'", kconfig_content, nil, true)
+      end, 30)
     end)
   end)
 end)

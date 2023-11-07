@@ -7,6 +7,7 @@
 
 local meta       = require "kong.enterprise_edition.meta"
 local constants  = require "kong.constants"
+local ee_constants = require "kong.enterprise_edition.constants"
 local workspaces = require "kong.workspaces"
 local feature_flags   = require "kong.enterprise_edition.feature_flags"
 local license_helpers = require "kong.enterprise_edition.license_helpers"
@@ -131,6 +132,7 @@ _M.handlers = {
       --     we handle the change (see vitals on kong/init.lua)
       kong.worker_events.register(function(data, event, source, pid)
         kong.cache:invalidate_local(constants.ADMIN_GUI_KCONFIG_CACHE_KEY)
+        kong.cache:invalidate_local(ee_constants.PORTAL_VITALS_ALLOWED_CACHE_KEY)
       end, "kong:configuration", "change")
 
       -- register event_hooks hooks

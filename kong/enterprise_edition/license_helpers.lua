@@ -25,6 +25,7 @@ local license_utils  = require "kong.enterprise_edition.license_utils"
 local base64         = require "ngx.base64"
 local hooks          = require "kong.hooks"
 local sha256_hex     = require "kong.tools.utils".sha256_hex
+local ee_constants   = require "kong.enterprise_edition.constants"
 
 
 local timer_at = ngx.timer.at
@@ -382,7 +383,7 @@ local function is_valid_license(license)
   return false, "Unable to validate license: " .. license_utils.validation_error_to_string(result)
 end
 
-function _M.portal_and_vitals_allowed()
+local function check_portal_and_vitals_allowed(portal_and_vitals_key)
   local license_info = _M.read_license_info()
 
   if not license_info or not license_info.license or
@@ -392,8 +393,6 @@ function _M.portal_and_vitals_allowed()
   end
 
   local license_key = license_info.license.payload.license_key
-  local portal_and_vitals_key = kong and kong.configuration and
-                                kong.configuration.portal_and_vitals_key
 
   if license_key and portal_and_vitals_key then
     local PORTAL_VITALS_SECRET_KEY = "6ZTggSLSREF853ArkiLm94AewPoOEU"
@@ -402,17 +401,41 @@ function _M.portal_and_vitals_allowed()
     if key == portal_and_vitals_key then
       return true
     end
-    ngx.log(ngx.ERR, "portal_and_vitals_key is invalid. please contact your support representative.")
-
-  else
-    -- not saying out loud there's a special key for using this feature
-    ngx.log(ngx.ERR, "portal and vitals are deprecated")
   end
 
   return false
 end
 
+local function portal_and_vitals_allowed()
+  local key = kong and kong.configuration and kong.configuration.portal_and_vitals_key
+
+  local allowed, err = kong.cache:get(
+    ee_constants.PORTAL_VITALS_ALLOWED_CACHE_KEY,
+    nil,
+    check_portal_and_vitals_allowed,
+    key
+  )
+
+  if err then
+    ngx.log(ngx.ERR, "error occurred while retrieving portal/vitals allowed status from cache", err)
+    return false
+  end
+
+  if allowed == false then
+    if key then
+      ngx.log(ngx.ERR, "portal_and_vitals_key is invalid. please contact your support representative.")
+    else
+      -- not saying out loud there's a special key for using this feature
+      ngx.log(ngx.ERR, "portal and vitals are deprecated")
+    end
+  end
+
+  return allowed
+end
+
 _M.validate_kong_license = validate_kong_license
 _M.is_valid_license = is_valid_license
+_M.check_portal_and_vitals_allowed = check_portal_and_vitals_allowed
+_M.portal_and_vitals_allowed = portal_and_vitals_allowed
 
 return _M

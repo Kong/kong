@@ -113,6 +113,7 @@ local admin_emails = require "kong.enterprise_edition.admin.emails"
 local portal_router = require "kong.portal.router"
 local invoke_plugin = require "kong.enterprise_edition.invoke_plugin"
 local licensing = require "kong.enterprise_edition.licensing"
+local ee_constants = require "kong.enterprise_edition.constants"
 
 
 local kong             = kong
@@ -957,6 +958,11 @@ function Kong.init_worker()
   if kong.configuration.admin_gui_listeners then
     kong.cache:invalidate_local(constants.ADMIN_GUI_KCONFIG_CACHE_KEY)
   end
+
+  -- XXX EE [[
+  -- invalidate portal/vitals allowed state cache while executing `kong reload`
+  kong.cache:invalidate_local(ee_constants.PORTAL_VITALS_ALLOWED_CACHE_KEY)
+  -- ]]
 
   if process.type() == "privileged agent" then
     if kong.clustering then

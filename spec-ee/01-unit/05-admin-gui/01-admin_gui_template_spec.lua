@@ -13,6 +13,18 @@ local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local helpers        = require "spec.helpers"
 local ee_helpers     = require("spec-ee.helpers")
 
+local function mock_cache(cache_table)
+  return {
+    get = function(self, k, _, fn, arg)
+      if cache_table[k] == nil then
+        cache_table[k] = fn(arg)
+      end
+      return cache_table[k]
+    end,
+  }
+end
+
+
 describe("admin_gui template", function()
   describe("admin_gui.generate_kconfig() - portal and vitals", function()
     local mock_prefix = "servroot"
@@ -148,13 +160,16 @@ describe("admin_gui template", function()
 
       local save_kong_globals = function()
         local saved_g_kong = _G.kong
+        local saved_kong_cache = kong.cache
         local saved_kong_conf = kong.configuration
 
         _G.kong = {}
+        kong.cache = mock_cache({})
         kong.configuration = {}
 
         return function()
           _G.kong = saved_g_kong
+          kong.cache = saved_kong_cache
           kong.configuration = saved_kong_conf
         end
       end
