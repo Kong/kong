@@ -892,7 +892,7 @@ end
 
 
 do
-  local protocol_to_shcema = {
+  local protocol_to_schema = {
     http  = HTTP_SCHEMA,
     https = HTTP_SCHEMA,
     grpc  = HTTP_SCHEMA,
@@ -907,7 +907,7 @@ do
 
   -- for db schema validation
   function _M.schema(protocols)
-    return assert(protocol_to_shcema[protocols[1]])
+    return assert(protocol_to_schema[protocols[1]])
   end
 end
 
