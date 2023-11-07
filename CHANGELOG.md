@@ -14,67 +14,15 @@
 
 #### Core
 
-- Support HTTP query parameters in expression routes.
-  [#11348](https://github.com/Kong/kong/pull/11348)
-
 #### Plugins
-
-- **AWS-Lambda**: the AWS-Lambda plugin has been refactored by using `lua-resty-aws` as an
-  underlying AWS library. The refactor simplifies the AWS-Lambda plugin code base and
-  adding support for multiple IAM authenticating scenarios.
-  [#11350](https://github.com/Kong/kong/pull/11350)
-- **OpenTelemetry** and **Zipkin**: Support GCP X-Cloud-Trace-Context header
-  The field `header_type` now accepts the value `gcp` to propagate the
-  Google Cloud trace header
-  [#11254](https://github.com/Kong/kong/pull/11254)
 
 ### Fixes
 
 #### Core
 
-- Fixed critical level logs when starting external plugin servers. Those logs cannot be suppressed due to the limitation of OpenResty. We choose to remove the socket availability detection feature.
-  [#11372](https://github.com/Kong/kong/pull/11372)
-- Fix an issue where a crashing Go plugin server process would cause subsequent
-  requests proxied through Kong to execute Go plugins with inconsistent configurations.
-  The issue only affects scenarios where the same Go plugin is applied to different Route
-  or Service entities.
-  [#11306](https://github.com/Kong/kong/pull/11306)
-- Fix an issue where cluster_cert or cluster_ca_cert is inserted into lua_ssl_trusted_certificate before being base64 decoded.
-  [#11385](https://github.com/Kong/kong/pull/11385)
-- Fix cache warmup mechanism not working in `acls` plugin groups config entity scenario.
-  [#11414](https://github.com/Kong/kong/pull/11414)
-- Fix an issue that queue stops processing when a hard error is encountered in the handler function.
-  [#11423](https://github.com/Kong/kong/pull/11423)
-- Fix an issue that query parameters are not forwarded in proxied request.
-  Thanks [@chirag-manwani](https://github.com/chirag-manwani) for contributing this change.
-  [#11328](https://github.com/Kong/kong/pull/11328)
-- Fix an issue that response status code is not real upstream status when using kong.response function.
-  [#11437](https://github.com/Kong/kong/pull/11437)
-- Removed a hardcoded proxy-wasm isolation level setting that was preventing the
-  `nginx_http_proxy_wasm_isolation` configuration value from taking effect.
-  [#11407](https://github.com/Kong/kong/pull/11407)
-
 #### Plugins
 
-- **OAuth2**: For OAuth2 plugin, `scope` has been taken into account as a new criterion of the request validation. When refreshing token with `refresh_token`, the scopes associated with the `refresh_token` provided in the request must be same with or a subset of the scopes configured in the OAuth2 plugin instance hit by the request.
-  [#11342](https://github.com/Kong/kong/pull/11342)
-- When the worker is in shutdown mode and more data is immediately available without waiting for `max_coalescing_delay`, queues are now cleared in batches.
-  Thanks [@JensErat](https://github.com/JensErat) for contributing this change.
-  [#11376](https://github.com/Kong/kong/pull/11376)
-- A race condition in the plugin queue could potentially crash the worker when `max_entries` was set to `max_batch_size`.
-  [#11378](https://github.com/Kong/kong/pull/11378)
-- **AWS-Lambda**: fix an issue that the AWS-Lambda plugin cannot extract a json encoded proxy integration response.
-  [#11413](https://github.com/Kong/kong/pull/11413)
-
 ### Dependencies
-
-- Bumped lua-resty-aws from 1.3.0 to 1.3.1
-  [#11419](https://github.com/Kong/kong/pull/11419)
-- Bumped lua-resty-session from 4.0.4 to 4.0.5
-  [#11416](https://github.com/Kong/kong/pull/11416)
-- Bumped OpenSSL from 3.1.1 to 3.1.2
-  [#11361](https://github.com/Kong/kong/pull/11361)
-
 
 ## 3.4.0
 
