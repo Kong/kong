@@ -1,6 +1,6 @@
 message: |
-    Enable case sensitive in `expressions` router flavor,
-    and make the `traditional_compatible` flavor more compatible
-    with the `traditional` flavor's behavior.
+    Header value matching in `expressions` router flavor are now case sensitive.
+    This change does not have effect on `traditional_compatible` mode
+    where header value match are always performed ignoring the case.
 type: bugfix
 scope: Core
