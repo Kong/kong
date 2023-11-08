@@ -116,9 +116,7 @@ export const createRouteForService = async (
   workspace?: string
 ) => {
   const endpoint = `${workspace}/services`;
-  const url = workspace
-    ? `${getUrl(endpoint)}/${serviceIdOrName}/routes`
-    : `${getUrl('services')}/${serviceIdOrName}/routes`;
+  const url =`${getUrl(workspace ? endpoint : 'services')}/${serviceIdOrName}/routes`;
 
   payload ? (payload = { name: serviceIdOrName, paths, ...payload }) : null;
 
@@ -130,6 +128,36 @@ export const createRouteForService = async (
       paths: paths ? paths : ['/apitest'],
     },
   });
+  logResponse(resp);
+
+  expect(resp.status, 'Status should be 201').to.equal(201);
+  return resp.data;
+};
+
+/**
+ * Adds Expression Route to an existing Gateway Service
+ * @param {string} serviceIdOrName
+ * @param {string} expression - expression to use for route
+ * @param {string} workspace - name of the worksapce
+ * @returns {AxiosResponse}
+ */
+export const createExpressionRouteForService = async (
+  serviceIdOrName: string,
+  expression?: string,
+  workspace?: string
+) => {
+  const endpoint = `${workspace}/services`;
+  const url =`${getUrl(workspace ? endpoint : 'services')}/${serviceIdOrName}/routes`;
+
+  const resp = await axios({
+    method: 'post',
+    url,
+    data: `expression=${expression || '(http.path=="/apitest")'}`,    
+    headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+    },
+  });
+
   logResponse(resp);
 
   expect(resp.status, 'Status should be 201').to.equal(201);
@@ -555,6 +583,13 @@ export const deleteCache = async () => {
 };
 
 /**
+ * 
+ */ 
+export const getRouterFlavor = async () => {
+  return (await axios(getUrl(''))).data.configuration.router_flavor
+};
+
+/**
  * Create a service and a route, send request to route until it is 200
  * after getting 200, delete the service/route, send request again to the route until it is 404
  * This triggers router rebuild making sure all configuration updates have been propagated in kong
@@ -570,7 +605,8 @@ export const waitForConfigRebuild = async (options: any = {}) => {
 
   // create a route for a service
   const routePath = `/routerRebuild-${randomString()}`;
-  const route = await createRouteForService(serviceId, [routePath]);
+  const router_flavor = await getRouterFlavor();
+  const route = router_flavor == 'expressions' ? await createExpressionRouteForService(serviceId, `http.path == "${routePath}"`) : await createRouteForService(serviceId, [routePath]);
   const routeId = route.id;
 
   // send request to route until response is 200
