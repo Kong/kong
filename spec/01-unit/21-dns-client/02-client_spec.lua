@@ -1774,8 +1774,8 @@ describe("[DNS client]", function()
           expire = gettime() + 10,
         }
         -- wait before we return the results
-        -- `+ 1` s ensures that the semaphore:wait() expires
-        sleep(timeout/1000 + 1)
+        -- `+ 2` s ensures that the semaphore:wait() expires
+        sleep(timeout/1000 + 2)
         return entry
       end
 

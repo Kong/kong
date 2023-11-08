@@ -651,7 +651,9 @@ _M.init = function(options)
 
   config = options -- store it in our module level global
 
-  resolve_max_wait = options.timeout / 1000 * options.retrans -- maximum time to wait for the dns resolver to hit its timeouts
+  -- maximum time to wait for the dns resolver to hit its timeouts
+  -- +1s to ensure semaphore:wait() expires after the DNS querying timeout
+  resolve_max_wait = options.timeout / 1000 * options.retrans + 1
 
   return true
 end
