@@ -2255,7 +2255,32 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             assert(new_router(use_case))
           end)
         end)
-      end
+
+        describe("match http.headers.*", function()
+          local use_case
+          local get_expression = atc_compat.get_expression
+
+          before_each(function()
+            use_case = {
+              {
+                service = service,
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  methods = { "GET" },
+                },
+              },
+            }
+          end)
+
+          it("should always add lower()", function()
+            use_case[1].route.headers = { test = { "~*Quote" }, }
+
+            assert.equal([[(http.method == r#"GET"#) && (any(lower(http.headers.test)) ~ r#"quote"#)]],
+                         get_expression(use_case[1].route))
+            assert(new_router(use_case))
+          end)
+        end)
+      end   -- if flavor ~= "traditional"
 
       describe("normalization stopgap measurements", function()
         local use_case, router
@@ -4897,6 +4922,65 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
 end
 
 do
+  local flavor = "traditional_compatible"
+
+  describe("Router (flavor = " .. flavor .. ")", function()
+    reload_router(flavor)
+
+    local use_case, router
+
+    lazy_setup(function()
+      use_case = {
+        {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+            paths = {
+              "/foo",
+            },
+            headers = {
+              test1 = { "Quote" },
+            },
+          },
+        },
+      }
+    end)
+
+    it("[cache hit should be case sensitive]", function()
+      router = assert(new_router(use_case))
+
+      local ctx = {}
+      local _ngx = mock_ngx("GET", "/foo", { test1 = "QUOTE", })
+      router._set_ngx(_ngx)
+
+      -- first match, case insensitive
+      local match_t = router:exec(ctx)
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+      assert.falsy(ctx.route_match_cached)
+
+      -- cache hit
+      local match_t = router:exec(ctx)
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+      assert.same(ctx.route_match_cached, "pos")
+
+      local ctx = {}
+      local _ngx = mock_ngx("GET", "/foo", { test1 = "QuoTe", })
+      router._set_ngx(_ngx)
+
+      -- case insensitive match
+      local match_t = router:exec(ctx)
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+
+      -- cache miss, case sensitive
+      assert.falsy(ctx.route_match_cached)
+    end)
+  end)
+end   -- local flavor = "traditional_compatible"
+
+do
   local flavor = "expressions"
 
   describe("Router (flavor = " .. flavor .. ") [stream]", function()
@@ -5069,5 +5153,92 @@ do
     end)
 
   end)
-end
+
+  describe("Router (flavor = " .. flavor .. ") [http]", function()
+    reload_router(flavor)
+
+    local use_case, router
+
+    lazy_setup(function()
+      use_case = {
+        {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+            expression = [[http.path == "/foo/bar" && http.headers.test1 == "Quote"]],
+            priority = 100,
+          },
+        },
+        {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+            expression = [[http.path == "/foo/bar" && lower(http.headers.test2) == "quote"]],
+            priority = 100,
+          },
+        },
+      }
+    end)
+
+    it("select() should match with case sensitivity", function()
+      router = assert(new_router(use_case))
+
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, {test1 = "quote"})
+      assert.falsy(match_t)
+
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, {test1 = "quoTe"})
+      assert.falsy(match_t)
+
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, {test1 = "Quote"})
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+    end)
+
+    it("select() should match with lower() (case insensitive)", function()
+      router = assert(new_router(use_case))
+
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, {test2 = "QuoTe"})
+      assert.truthy(match_t)
+      assert.same(use_case[2].route, match_t.route)
+
+      local match_t = router:select("GET", "/foo/bar", nil, nil, nil, nil, nil, nil, nil, {test2 = "QUOTE"})
+      assert.truthy(match_t)
+      assert.same(use_case[2].route, match_t.route)
+    end)
+
+    it("exec() should hit cache with case sensitive", function()
+      router = assert(new_router(use_case))
+
+      local ctx = {}
+      local _ngx = mock_ngx("GET", "/foo/bar", { test1 = "Quote", })
+      router._set_ngx(_ngx)
+
+      -- first match
+      local match_t = router:exec(ctx)
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+      assert.falsy(ctx.route_match_cached)
+
+      -- cache hit pos
+      local match_t = router:exec(ctx)
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+      assert.same(ctx.route_match_cached, "pos")
+
+      local ctx = {}
+      local _ngx = mock_ngx("GET", "/foo/bar", { test1 = "QUOTE", })
+      router._set_ngx(_ngx)
+
+      -- case sensitive not match
+      local match_t = router:exec(ctx)
+      assert.falsy(match_t)
+      assert.falsy(ctx.route_match_cached)
+
+      -- cache hit neg
+      local match_t = router:exec(ctx)
+      assert.falsy(match_t)
+      assert.same(ctx.route_match_cached, "neg")
+    end)
+  end)
+end   -- local flavor = "expressions"
 

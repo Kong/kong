@@ -494,14 +494,14 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
       local v = req_headers[h]
 
       if type(v) == "string" then
-        local res, err = c:add_value(field, v:lower())
+        local res, err = c:add_value(field, v)
         if not res then
           return nil, err
         end
 
       elseif type(v) == "table" then
         for _, v in ipairs(v) do
-          local res, err = c:add_value(field, v:lower())
+          local res, err = c:add_value(field, v)
           if not res then
             return nil, err
           end
@@ -607,14 +607,8 @@ do
       local name = replace_dashes_lower(name)
 
       if type(value) == "table" then
-        for i, v in ipairs(value) do
-          value[i] = v:lower()
-        end
         tb_sort(value)
         value = tb_concat(value, ", ")
-
-      else
-        value = value:lower()
       end
 
       str_buf:putf("|%s=%s", name, value)

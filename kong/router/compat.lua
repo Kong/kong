@@ -259,7 +259,7 @@ local function get_expression(route)
       single_header_buf:reset():put("(")
 
       for i, value in ipairs(v) do
-        local name = "any(http.headers." .. replace_dashes_lower(h) .. ")"
+        local name = "any(lower(http.headers." .. replace_dashes_lower(h) .. "))"
         local op = OP_EQUAL
 
         -- value starts with "~*"
