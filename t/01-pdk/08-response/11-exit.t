@@ -1148,6 +1148,7 @@ GET /t
 --- response_body
 test
 --- response_headers
+! Transfer-Encoding
 Content-Length: 5
 X-test: test
 --- error_log
