@@ -660,7 +660,6 @@ local function new(self, major_version)
     local has_content_length
     if headers ~= nil then
       for name, value in pairs(headers) do
-        ngx.header[name] = normalize_multi_header(value)
         local lower_name = lower(name)
         if lower_name == "transfer-encoding" or lower_name == "transfer_encoding" then
           self.log.warn("manually setting Transfer-Encoding. Ignored.")
