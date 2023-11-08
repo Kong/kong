@@ -16,6 +16,8 @@ jobs:
     runs-on: ubuntu-22.04
 
     permissions:
+      # required to create a branch and push commits
+      contents: write
       # required to open a PR for updates
       pull-requests: write
 
@@ -40,6 +42,8 @@ jobs:
     - name: Update .requirements and create a pull request
       if: steps.check-kong.outputs.sha != steps.check-repo.outputs.sha
       run: |
+        gh auth setup-git
+
         readonly BRANCH=chore/deps-bump-ngx-wasm-module
         git switch --create "$BRANCH"
 
