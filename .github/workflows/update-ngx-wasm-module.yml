@@ -44,7 +44,7 @@ jobs:
       if: steps.check-kong.outputs.sha != steps.check-repo.outputs.sha
       run: |
         set -x
-        gh auth login --with-token <<< "$GITHUB_TOKEN"
+        echo "$GITHUB_TOKEN" | gh auth login --with-token
         gh auth setup-git
 
         readonly BRANCH=chore/deps-bump-ngx-wasm-module
