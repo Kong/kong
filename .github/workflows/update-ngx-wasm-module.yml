@@ -6,7 +6,6 @@ name: Update ngx_wasm_module dependency
 #  to run periodically or on-demand.
 
 on:
-  pull_request:
   schedule:
   # run weekly
   - cron: '0 0 * * 0'
