@@ -758,12 +758,14 @@ end
 
 
 local function dequeue_query(item)
-  -- query done, but by now many others might be waiting for our result.
-  -- 1) stop new ones from adding to our lock/semaphore
-  queue[item.key] = nil
-  -- 2) release all waiting threads
-  item.semaphore:post(math_max(item.semaphore:count() * -1, 1))
-  item.semaphore = nil
+  if queue[item.key] == item then
+    -- query done, but by now many others might be waiting for our result.
+    -- 1) stop new ones from adding to our lock/semaphore
+    queue[item.key] = nil
+    -- 2) release all waiting threads
+    item.semaphore:post(math_max(item.semaphore:count() * -1, 1))
+    item.semaphore = nil
+  end
 end
 
 
