@@ -1,0 +1,6 @@
+message: |
+  Now route expressions in `http` and `stream` subsystem have more strict validation,
+  `http.*` fields will not be allowed in `stream` subsystem.
+type: bugfix
+scope: Core
+
