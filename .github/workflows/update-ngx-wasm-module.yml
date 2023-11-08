@@ -42,9 +42,11 @@ jobs:
 
     - name: Update .requirements and create a pull request
       if: steps.check-kong.outputs.sha != steps.check-repo.outputs.sha
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         set -x
-        echo "$GITHUB_TOKEN" | gh auth login --with-token
+        gh auth status
         gh auth setup-git
 
         readonly BRANCH=chore/deps-bump-ngx-wasm-module
