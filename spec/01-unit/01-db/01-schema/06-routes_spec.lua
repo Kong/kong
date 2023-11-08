@@ -1349,7 +1349,7 @@ describe("routes schema (flavor = traditional_compatible)", function()
   reload_flavor("traditional_compatible")
   setup_global_env()
 
-  it("validates a valid route", function()
+  it("validates a valid http route", function()
     local route = {
       id             = a_valid_uuid,
       name           = "my_route",
@@ -1371,6 +1371,21 @@ describe("routes schema (flavor = traditional_compatible)", function()
     assert.falsy(route.strip_path)
   end)
 
+  it("validates a valid stream route", function()
+    local route = {
+      id             = a_valid_uuid,
+      name           = "my_route",
+      protocols      = { "tcp" },
+      sources        = { { ip = "1.2.3.4", port = 80 } },
+      service        = { id = another_uuid },
+    }
+    route = Routes:process_auto_fields(route, "insert")
+    assert.truthy(route.created_at)
+    assert.truthy(route.updated_at)
+    assert.same(route.created_at, route.updated_at)
+    assert.truthy(Routes:validate(route))
+  end)
+
   it("fails when path is invalid", function()
     local route = {
       id             = a_valid_uuid,
@@ -1390,6 +1405,23 @@ describe("routes schema (flavor = traditional_compatible)", function()
     assert.falsy(errs["@entity"])
   end)
 
+  it("fails when ip address is invalid", function()
+    local route = {
+      id             = a_valid_uuid,
+      name           = "my_route",
+      protocols      = { "tcp" },
+      sources        = { { ip = "x.x.x.x", port = 80 } },
+      service        = { id = another_uuid },
+    }
+    route = Routes:process_auto_fields(route, "insert")
+    local ok, errs = Routes:validate_insert(route)
+    assert.falsy(ok)
+    assert.truthy(errs["sources"])
+
+    -- verified by `schema/typedefs.lua`
+    assert.falsy(errs["@entity"])
+  end)
+
   it("won't fail when rust.regex update to 1.8", function()
     local route = {
       id             = a_valid_uuid,
@@ -1402,5 +1434,100 @@ describe("routes schema (flavor = traditional_compatible)", function()
     local ok, errs = Routes:validate_insert(route)
     assert.truthy(ok)
     assert.is_nil(errs)
+  end)
+end)
+
+
+describe("routes schema (flavor = expressions)", function()
+  local a_valid_uuid = "cbb297c0-a956-486d-ad1d-f9b42df9465a"
+  local another_uuid = "64a8670b-900f-44e7-a900-6ec7ef5aa4d3"
+
+  reload_flavor("expressions")
+  setup_global_env()
+
+  it("validates a valid http route", function()
+    local route = {
+      id             = a_valid_uuid,
+      name           = "my_route",
+      protocols      = { "http" },
+      expression     = [[http.method == "GET" && http.host == "example.com" && http.path == "/ovo"]],
+      priority       = 100,
+      strip_path     = false,
+      preserve_host  = true,
+      service        = { id = another_uuid },
+    }
+    route = Routes:process_auto_fields(route, "insert")
+    assert.truthy(route.created_at)
+    assert.truthy(route.updated_at)
+    assert.same(route.created_at, route.updated_at)
+    assert.truthy(Routes:validate(route))
+    assert.falsy(route.strip_path)
+  end)
+
+  it("validates a valid stream route", function()
+    local route = {
+      id             = a_valid_uuid,
+      name           = "my_route",
+      protocols      = { "tcp" },
+      expression     = [[net.src.ip == 1.2.3.4 && net.src.port == 80]],
+      priority       = 100,
+      service        = { id = another_uuid },
+    }
+    route = Routes:process_auto_fields(route, "insert")
+    assert.truthy(route.created_at)
+    assert.truthy(route.updated_at)
+    assert.same(route.created_at, route.updated_at)
+    assert.truthy(Routes:validate(route))
+  end)
+
+  it("fails when path is invalid", function()
+    local route = {
+      id             = a_valid_uuid,
+      name           = "my_route",
+      protocols      = { "http" },
+      expression     = [[http.method == "GET" && http.path ~ "/[abc/*/user$"]],
+      priority       = 100,
+      service        = { id = another_uuid },
+    }
+    route = Routes:process_auto_fields(route, "insert")
+    local ok, errs = Routes:validate_insert(route)
+    assert.falsy(ok)
+
+    -- verified by `schema/typedefs.lua`
+    assert.truthy(errs["@entity"])
+  end)
+
+  it("fails when ip address is invalid", function()
+    local route = {
+      id             = a_valid_uuid,
+      name           = "my_route",
+      protocols      = { "tcp" },
+      expression     = [[net.src.ip in 1.2.3.4/16 && net.src.port == 80]],
+      priority       = 100,
+      service        = { id = another_uuid },
+    }
+    route = Routes:process_auto_fields(route, "insert")
+    local ok, errs = Routes:validate_insert(route)
+    assert.falsy(ok)
+
+    -- verified by `schema/typedefs.lua`
+    assert.truthy(errs["@entity"])
+  end)
+
+  it("fails if http route's field appears in stream route", function()
+    local route = {
+      id             = a_valid_uuid,
+      name           = "my_route",
+      protocols      = { "tcp" },
+      expression     = [[http.method == "GET" && net.src.ip == 1.2.3.4 && net.src.port == 80]],
+      priority       = 100,
+      service        = { id = another_uuid },
+    }
+    route = Routes:process_auto_fields(route, "insert")
+    local ok, errs = Routes:validate_insert(route)
+    assert.falsy(ok)
+
+    -- verified by `schema/typedefs.lua`
+    assert.truthy(errs["@entity"])
   end)
 end)
