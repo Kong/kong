@@ -3228,6 +3228,31 @@ local function prepare_prefix(prefix)
 end
 
 
+local function clean_dir(dir)
+  if pl_path.exists(dir) then
+    local _, err = pl_dir.rmtree(dir)
+    -- Note: gojira mount default kong prefix as a volume so itself can't
+    -- be removed; only throw error if the prefix is indeed not empty
+    if err then
+      local fcnt = #assert(pl_dir.getfiles(dir))
+      local dcnt = #assert(pl_dir.getdirectories(dir))
+      if fcnt + dcnt > 0 then
+        error(err)
+      end
+    end
+  end
+end
+
+local function get_runtime_data_path(prefix)
+  return utils.get_runtime_data_path(prefix)
+end
+
+local function clean_runtime_dir(prefix)
+  prefix = prefix or conf.prefix
+  local runtime_dir = utils.get_runtime_data_path(prefix)
+  clean_dir(runtime_dir)
+end
+
 --- Cleans the Kong environment.
 -- Deletes the working directory if it exists.
 -- @param prefix (optional) path to the working directory, if omitted the test
@@ -3235,18 +3260,7 @@ end
 -- @function clean_prefix
 local function clean_prefix(prefix)
   prefix = prefix or conf.prefix
-  if pl_path.exists(prefix) then
-    local _, err = pl_dir.rmtree(prefix)
-    -- Note: gojira mount default kong prefix as a volume so itself can't
-    -- be removed; only throw error if the prefix is indeed not empty
-    if err then
-      local fcnt = #assert(pl_dir.getfiles(prefix))
-      local dcnt = #assert(pl_dir.getdirectories(prefix))
-      if fcnt + dcnt > 0 then
-        error(err)
-      end
-    end
-  end
+  clean_dir(prefix)
 end
 
 
@@ -4024,6 +4038,9 @@ end
   admin_ssl_client = admin_ssl_client,
   admin_gui_ssl_client = admin_gui_ssl_client,
   prepare_prefix = prepare_prefix,
+  clean_dir = clean_dir,
+  get_runtime_data_path = get_runtime_data_path,
+  clean_runtime_dir = clean_runtime_dir,
   clean_prefix = clean_prefix,
   clean_logfile = clean_logfile,
   wait_for_invalidation = wait_for_invalidation,

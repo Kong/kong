@@ -3,6 +3,7 @@ local ws_client = require("resty.websocket.client")
 local ws_server = require("resty.websocket.server")
 local parse_url = require("socket.url").parse
 local process_type = require("ngx.process").type
+local get_runtime_data_path = require("kong.tools.utils").get_runtime_data_path
 
 local type = type
 local table_insert = table.insert
@@ -25,7 +26,8 @@ local _log_prefix = "[clustering] "
 local KONG_VERSION = kong.version
 
 local prefix = kong.configuration.prefix or require("pl.path").abspath(ngx.config.prefix())
-local CLUSTER_PROXY_SSL_TERMINATOR_SOCK = fmt("unix:%s/cluster_proxy_ssl_terminator.sock", prefix)
+local runtime_data_path = get_runtime_data_path(prefix)
+local CLUSTER_PROXY_SSL_TERMINATOR_SOCK = fmt("unix:%s/cluster_proxy_ssl_terminator.sock", runtime_data_path)
 
 local _M = {}
 

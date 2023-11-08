@@ -25,6 +25,9 @@ local ffi = require "ffi"
 local bit = require "bit"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 
+local utils = require "kong.tools.utils"
+local get_runtime_data_path = utils.get_runtime_data_path
+
 
 local getmetatable = getmetatable
 local makepath = pl_dir.makepath
@@ -490,6 +493,16 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
   end
   if not exists(kong_config.admin_acc_logs) then
     local ok, err = pl_file.write(kong_config.admin_acc_logs, "")
+    if not ok then
+      return nil, err
+    end
+  end
+
+  local runtime_data_path = get_runtime_data_path(kong_config.prefix)
+  if not exists(runtime_data_path) then
+  -- make the runtime directory (used for unix domain socket files)
+  log("runtime directory %s not found, trying to create it", runtime_data_path)
+    local ok, err = makepath(runtime_data_path)
     if not ok then
       return nil, err
     end

@@ -59,7 +59,10 @@ local function execute(args)
   assert(prefix_handler.prepare_prefix(conf, args.nginx_conf, nil, nil,
          args.nginx_conf_flags))
 
-  cleanup_dangling_unix_sockets(conf.prefix)
+  -- log.warn("Hash prefix: ")
+  -- log.warn()
+
+  cleanup_dangling_unix_sockets(conf.runtime_data_path)
 
   _G.kong = kong_global.new()
   kong_global.init_pdk(_G.kong, conf)

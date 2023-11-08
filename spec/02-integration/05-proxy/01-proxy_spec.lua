@@ -101,10 +101,10 @@ describe("#stream proxy interface listeners", function()
       stream_listen = "127.0.0.1:9011, 127.0.0.1:9012",
     }))
 
-    local stream_events_sock_path = "unix:" .. helpers.test_conf.prefix .. "/stream_worker_events.sock"
+    local stream_events_sock_path = "unix:" .. helpers.test_conf.runtime_data_path .. "/stream_worker_events.sock"
 
     if helpers.test_conf.database == "off" then
-      local stream_config_sock_path = "unix:" .. helpers.test_conf.prefix .. "/stream_config.sock"
+      local stream_config_sock_path = "unix:" .. helpers.test_conf.runtime_data_path .. "/stream_config.sock"
 
       assert.equals(3, count_server_blocks(helpers.test_conf.nginx_kong_stream_conf))
       assert.same({

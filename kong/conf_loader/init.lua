@@ -49,6 +49,7 @@ local tostring = tostring
 local tonumber = tonumber
 local setmetatable = setmetatable
 local try_decode_base64 = utils.try_decode_base64
+local get_runtime_data_path = utils.get_runtime_data_path
 
 
 local get_phase do
@@ -1373,6 +1374,9 @@ local function load(path, custom_conf, opts)
   end
 
   log.verbose("prefix in use: %s", conf.prefix)
+
+  -- Path used for runtime data such as unix domain sockets
+  conf.runtime_data_path = get_runtime_data_path(conf.prefix)
 
   -- leave early if we're still at the very early stage before executing
   -- the main `resty` cmd. The rest confs below are unused.

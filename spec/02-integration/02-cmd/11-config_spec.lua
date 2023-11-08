@@ -32,6 +32,7 @@ describe("kong config", function()
   end)
   lazy_teardown(function()
     helpers.clean_prefix()
+    helpers.clean_runtime_dir()
   end)
 
   it("config help", function()

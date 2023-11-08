@@ -11,6 +11,7 @@ describe("kong hybrid", function()
 
   lazy_teardown(function()
     helpers.clean_prefix()
+    helpers.clean_runtime_dir()
   end)
 
   it("help", function()

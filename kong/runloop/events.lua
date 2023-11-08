@@ -12,6 +12,7 @@ local ipairs       = ipairs
 local tonumber     = tonumber
 local fmt          = string.format
 local utils_split  = utils.split
+local get_runtime_data_path = utils.get_runtime_data_path
 
 
 local ngx   = ngx
@@ -504,7 +505,8 @@ do
   local PREFIX = kong and kong.configuration and
                  kong.configuration.prefix or
                  require("pl.path").abspath(ngx.config.prefix())
-  local STREAM_CONFIG_SOCK = "unix:" .. PREFIX .. "/stream_config.sock"
+  local runtime_data_path = get_runtime_data_path(PREFIX)
+  local STREAM_CONFIG_SOCK = fmt("unix:%s/stream_config.sock", runtime_data_path)
   local IS_HTTP_SUBSYSTEM  = ngx.config.subsystem == "http"
 
   local function broadcast_reconfigure_event(data)

@@ -4,7 +4,7 @@
 -- for inter subsystem communication in OpenResty became available.
 
 local lpack = require "lua_pack"
-
+local get_runtime_data_path = require("kong.tools.utils").get_runtime_data_path
 local kong = kong
 local st_pack = lpack.pack
 local st_unpack = lpack.unpack
@@ -20,6 +20,8 @@ local ERR = ngx.ERR
 local DEBUG = ngx.DEBUG
 local WARN = ngx.WARN
 local exiting = ngx.worker.exiting
+local fmt = string.format
+
 
 local CLOSE = 444
 local OK = 0
@@ -36,8 +38,8 @@ local MAX_KEY_LEN = 2^8 - 1
 local MAX_DATA_LEN = 2^22 - 1
 
 local HEADER_LEN = #st_pack(PACK_F, MAX_KEY_LEN, MAX_DATA_LEN)
-
-local SOCKET_PATH = "unix:" .. ngx.config.prefix() .. "/stream_rpc.sock"
+local runtime_data_path  = get_runtime_data_path(ngx.config.prefix())
+local SOCKET_PATH = fmt("unix:%s/stream_rpc.sock", runtime_data_path)
 
 local stream_api = {}
 

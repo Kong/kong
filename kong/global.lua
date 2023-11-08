@@ -6,11 +6,13 @@ local phase_checker = require "kong.pdk.private.phases"
 local kong_cache = require "kong.cache"
 local kong_cluster_events = require "kong.cluster_events"
 local private_node = require "kong.pdk.private.node"
-
+local utils = require "kong.tools.utils"
+local get_runtime_data_path = utils.get_runtime_data_path
 local ngx = ngx
 local type = type
 local error = error
 local setmetatable = setmetatable
+local fmt = string.format
 
 
 local KONG_VERSION = tostring(meta._VERSION)
@@ -187,7 +189,9 @@ function _GLOBAL.init_worker_events()
                "stream_worker_events.sock" or
                "worker_events.sock"
 
-  local listening = "unix:" .. prefix .. "/" .. sock
+  local runtime_data_path = get_runtime_data_path(prefix)
+
+  local listening = fmt("unix:%s/%s", runtime_data_path, sock)
 
   local max_payload_len = configuration and
                           configuration.worker_events_max_payload

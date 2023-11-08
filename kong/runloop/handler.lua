@@ -51,6 +51,7 @@ local http_version      = ngx.req.http_version
 local request_id_get    = request_id.get
 local escape            = require("kong.tools.uri").escape
 local encode            = require("string.buffer").encode
+local get_runtime_data_path = utils.get_runtime_data_path
 
 local req_dyn_hook_run_hooks = req_dyn_hook.run_hooks
 
@@ -898,8 +899,10 @@ return {
       -- TODO: PR #9337 may affect the following line
       local prefix = kong.configuration.prefix or ngx.config.prefix()
 
-      STREAM_TLS_TERMINATE_SOCK = fmt("unix:%s/stream_tls_terminate.sock", prefix)
-      STREAM_TLS_PASSTHROUGH_SOCK = fmt("unix:%s/stream_tls_passthrough.sock", prefix)
+      local runtime_data_path = get_runtime_data_path(prefix)
+
+      STREAM_TLS_TERMINATE_SOCK = fmt("unix:%s/stream_tls_terminate.sock", runtime_data_path)
+      STREAM_TLS_PASSTHROUGH_SOCK = fmt("unix:%s/stream_tls_passthrough.sock", runtime_data_path)
 
       log_level.init_worker()
 

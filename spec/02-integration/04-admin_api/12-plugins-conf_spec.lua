@@ -43,10 +43,17 @@ describe("Plugins conf property" , function()
       local body = assert.res_status(200 , res)
       local json = assert(cjson.decode(body))
       local bundled_plugins_list = json.plugins.available_on_server
-      local rocks_installed_plugins, err = utils.execute([[luarocks show kong | grep -oP 'kong\.plugins\.\K([\w-]+)' | uniq]])
+      local rocks_installed_plugins, err
+      if jit.os == "OSX" then -- can we do this for tests that fail on OSX?
+        rocks_installed_plugins, err = utils.execute([[luarocks show kong | perl -nle 'print $& while m{kong\.plugins\.\K([\w-]+)}g' | uniq]])
+      else
+        rocks_installed_plugins, err = utils.execute([[luarocks show kong | grep -oP 'kong\.plugins\.\K([\w-]+)' | uniq]])
+      end
+      -- local rocks_installed_plugins, err = utils.execute([[luarocks show kong | perl -nle 'print $& while m{kong\.plugins\.\K([\w-]+)}g' | uniq]])
       assert.is_nil(err)
       local rocks_installed_plugins_list = stringx.split(rocks_installed_plugins, "\n")
       for _, plugin in ipairs(rocks_installed_plugins_list) do
+        print(plugin)
         if not NON_BUDLED_PLUGINS[plugin] then
           assert(bundled_plugins_list[plugin] ~= nil,
                  "Found installed plugin not in bundled list: " ..
