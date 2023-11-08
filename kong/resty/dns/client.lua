@@ -771,7 +771,7 @@ local function dequeue_query(item)
 end
 
 
-local function queue_get_query(key)
+local function queue_get_query(key, try_list)
   local item = queue[key]
 
   if not item then
@@ -780,8 +780,10 @@ local function queue_get_query(key)
 
   -- bug checks: release it actively if the waiting query queue is blocked
   if item.expire_time < time() then
+    local err = "query expired, key:" ..  key
+    add_status_to_try_list(try_list, err)
+    log(ALERT, PREFIX, err)
     dequeue_query(item)
-    log(ALERT, PREFIX, "query expired, key:", key)
     return nil
   end
 
@@ -810,7 +812,7 @@ end
 -- the `semaphore` field will be removed). Upon error it returns `nil+error`.
 local function asyncQuery(qname, r_opts, try_list)
   local key = qname..":"..r_opts.qtype
-  local item = queue_get_query(key)
+  local item = queue_get_query(key, try_list)
   if item then
     --[[
     log(DEBUG, PREFIX, "Query async (exists): ", key, " ", fquery(item))
@@ -846,7 +848,7 @@ end
 local function syncQuery(qname, r_opts, try_list)
   local key = qname..":"..r_opts.qtype
 
-  local item = queue_get_query(key)
+  local item = queue_get_query(key, try_list)
 
   -- If nothing is in progress, we start a new sync query
   if not item then
