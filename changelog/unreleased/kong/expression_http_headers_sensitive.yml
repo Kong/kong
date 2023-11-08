@@ -1,0 +1,6 @@
+message: |
+    Header value matching (`http.headers.*`) in `expressions` router flavor are now case sensitive.
+    This change does not affect on `traditional_compatible` mode
+    where header value match are always performed ignoring the case.
+type: bugfix
+scope: Core
