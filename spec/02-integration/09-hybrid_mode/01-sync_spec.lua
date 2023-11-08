@@ -885,7 +885,7 @@ describe("CP/DP cert details(cluster_mtls = pki) #" .. strategy, function()
           admin_client:close()
         end)
 
-        local res = assert(admin_client:get("/clustering/data-planes"))
+        local res = admin_client:get("/clustering/data-planes")
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 

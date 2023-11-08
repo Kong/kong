@@ -1,6 +1,7 @@
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
 local version = require("kong.clustering.compat.version")
-
+local extract_dp_cert = require("kong.clustering.tls").extract_dp_cert
+local ssl_fixtures = require "spec.fixtures.ssl"
 
 describe("kong.clustering.compat.version", function()
   it("correctly parses 3 or 4 digit version numbers", function()
@@ -288,5 +289,10 @@ describe("kong.clustering", function()
       end)
     end)
 
+    it("extract expiry_timestamp from dp cert ", function()
+      local dp_cert_details = extract_dp_cert(ssl_fixtures.cert)
+      assert.table(dp_cert_details)
+      assert.equal(10227738989, dp_cert_details.expiry_timestamp)
+    end)
   end)
 end)
