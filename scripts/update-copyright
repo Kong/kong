@@ -332,7 +332,7 @@ local function find_and_download_license(main_url, alt_url)
 
       local attempt_url = url.build(parsed_url)
       local text = download_file(attempt_url)
-      if text then
+      if #text > 0 then
         parsed_url.host = "github.com"
         parsed_url.path = fmt("/%s/%s/blob/master/%s", user, reponame, attempt)
         local url_for_humans = url.build(parsed_url)
@@ -344,7 +344,7 @@ local function find_and_download_license(main_url, alt_url)
       parsed_url.path = fmt("/%s/%s/master/%s", user, reponame, readme_attempt)
       local readme_url = url.build(parsed_url)
       local readme_markdown = download_file(readme_url)
-      if readme_markdown then
+      if #readme_markdown > 0 then
         local header, text = extract_license_from_markdown(readme_markdown)
         if header then
           parsed_url.host = "github.com"
