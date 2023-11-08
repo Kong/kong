@@ -1,0 +1,3 @@
+message: Bump resty-openssl from 0.8.25 to 1.0.1
+type: dependency
+scope: Core
