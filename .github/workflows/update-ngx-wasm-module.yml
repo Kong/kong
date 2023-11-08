@@ -65,7 +65,7 @@ jobs:
 
         # TODO: handle branch-already-exists
 
-        git push origin "$HEAD"
+        git push origin HEAD
 
         # TODO: handle PR-already-exists
         gh pr create \
