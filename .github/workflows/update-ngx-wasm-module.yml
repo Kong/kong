@@ -49,6 +49,9 @@ jobs:
         gh auth status
         gh auth setup-git
 
+        git config --global user.email "noreply@github.com"
+        git config --global user.name "GitHub Actions"
+
         readonly BRANCH=chore/deps-bump-ngx-wasm-module
         git switch --create "$BRANCH"
 
