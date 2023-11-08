@@ -35,7 +35,7 @@ dependencies = {
   "luaxxhash >= 1.0",
   "lua-protobuf == 0.5.0",
   "lua-resty-healthcheck == 3.0.0",
-  "lua-messagepack == 0.5.2",
+  "lua-messagepack == 0.5.3",
   "lua-resty-azure == 1.4.1",
   "lua-resty-aws == 1.3.5",
   "lua-resty-openssl == 0.8.25",
