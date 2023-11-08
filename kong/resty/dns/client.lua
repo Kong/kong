@@ -31,6 +31,7 @@ local time = ngx.now
 local log = ngx.log
 local ERR = ngx.ERR
 local WARN = ngx.WARN
+local ALERT = ngx.ALERT
 local DEBUG = ngx.DEBUG
 --[[
   DEBUG = ngx.WARN
@@ -749,6 +750,7 @@ local function enqueue_query(key, qname, r_opts, try_list)
     qname = qname,
     r_opts = cycle_aware_deep_copy(r_opts),
     try_list = try_list,
+    expire_time = time() + resolve_max_wait,
   }
   queue[key] = item
   return item
@@ -762,6 +764,24 @@ local function dequeue_query(item)
   -- 2) release all waiting threads
   item.semaphore:post(math_max(item.semaphore:count() * -1, 1))
   item.semaphore = nil
+end
+
+
+local function queue_get_query(key)
+  local item = queue[key]
+
+  if not item then
+    return nil
+  end
+
+  -- bug checks: release it actively if the waiting query queue is blocked
+  if item.expire_time < time() then
+    dequeue_query(item)
+    log(ALERT, PREFIX, "query expired, key:", key)
+    return nil
+  end
+
+  return item
 end
 
 
@@ -786,7 +806,7 @@ end
 -- the `semaphore` field will be removed). Upon error it returns `nil+error`.
 local function asyncQuery(qname, r_opts, try_list)
   local key = qname..":"..r_opts.qtype
-  local item = queue[key]
+  local item = queue_get_query(key)
   if item then
     --[[
     log(DEBUG, PREFIX, "Query async (exists): ", key, " ", fquery(item))
@@ -821,7 +841,8 @@ end
 -- @return `result + nil + try_list`, or `nil + err + try_list` in case of errors
 local function syncQuery(qname, r_opts, try_list)
   local key = qname..":"..r_opts.qtype
-  local item = queue[key]
+
+  local item = queue_get_query(key)
 
   -- If nothing is in progress, we start a new sync query
   if not item then
@@ -839,7 +860,7 @@ local function syncQuery(qname, r_opts, try_list)
   add_status_to_try_list(try_list, "in progress (sync)")
 
   -- block and wait for the async query to complete
-  local ok, err = item.semaphore:wait(resolve_max_wait)
+  local ok, err = item.semaphore:wait(item.expire_time - time())
   if ok and item.result then
     -- we were released, and have a query result from the
     -- other thread, so all is well, return it
@@ -848,6 +869,14 @@ local function syncQuery(qname, r_opts, try_list)
            " result: ", json({ result = item.result, err = item.err}))
     --]]
     return item.result, item.err, try_list
+  end
+
+  -- bug checks
+  if not ok and not item.err then
+    item.err = err  -- only first expired wait() reports error
+    log(ALERT, PREFIX, "semaphore:wait(", resolve_max_wait, ") failed: ", err,
+                       ", count: ", item.semaphore and item.semaphore:count(),
+                       ", qname: ", qname)
   end
 
   err = err or item.err or "unknown"
