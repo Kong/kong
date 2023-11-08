@@ -1,7 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local tablex = require "pl.tablex"
-local stringx = require "pl.stringx"
 local constants = require "kong.constants"
 local utils = require "spec.helpers.perf.utils"
 
