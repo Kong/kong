@@ -1,6 +1,0 @@
-message: "Bumped OpenResty from 1.21.4.1 to 1.21.4.2"
-type: dependency
-prs:
-  - 11360
-jiras:
-  - "KAG-2140"
