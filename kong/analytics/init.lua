@@ -33,6 +33,7 @@ local KONG_VERSION = kong.version
 local to_hex = require "resty.string".to_hex
 
 local table_insert = table.insert
+local table_concat = table.concat
 local table_remove = table.remove
 local clear_tab = require "table.clear"
 
@@ -224,6 +225,21 @@ function _M:flush_data()
   self.requests_count = 0
 end
 
+function _M:safe_string(var)
+  if var == nil then
+    return var
+  end
+
+  local tpe = type(var)
+  if tpe == "string" then
+    return var
+  elseif tpe == "table" then
+    return table_concat(var, ",")
+  end
+
+  return tostring(var)
+end
+
 function _M:create_payload(message)
   -- declare the table here for optimization
   local payload = {
@@ -321,8 +337,8 @@ function _M:create_payload(message)
   if message.request ~= nil then
     local request = payload.request
     local req = message.request
-    request.header_user_agent = req.headers["user-agent"]
-    request.header_host = req.headers["host"]
+    request.header_user_agent = self:safe_string(req.headers["user-agent"])
+    request.header_host = self:safe_string(req.headers["host"])
     request.http_method = req.method
     request.body_size = req.size
     request.uri = self:split(req.uri, "?")[1]
