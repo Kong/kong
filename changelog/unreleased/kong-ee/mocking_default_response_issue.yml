@@ -1,0 +1,3 @@
+message: "**Mocking**: Fix an issue where the plugin failed to return the mock response when `resposnes` contains `default` or wildcard codes like 2XX."
+type: bugfix
+scope: Plugin

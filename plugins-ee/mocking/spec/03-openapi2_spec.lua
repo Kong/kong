@@ -187,18 +187,6 @@ for _, strategy in strategies() do
             assert.same({ id = "d290f1ee-6c54-4b01-90e6-d701748f0851" }, body)
           end)
 
-          it("should return 400", function()
-            local res = assert(client:send {
-              method = "POST",
-              path = "/inventory",
-              headers = {
-                host = "mocking-codes.com"
-              }
-            })
-
-            assert.response(res).has.status(400)
-          end)
-
           describe("include_base_path = true", function()
             it("/v1/inventory GET", function()
               local res = assert(client:send {
@@ -223,6 +211,30 @@ for _, strategy in strategies() do
                   phone = "408-867-5309"
                 }
               }, body)
+            end)
+          end)
+
+          it("should exclude default code", function()
+            local res = assert(client:send {
+              method = "GET",
+              path = "/ping-with-one-default-response",
+              headers = {
+                host = "mocking.com"
+              }
+            })
+            assert.response(res).has.status(404)
+          end)
+
+          describe("config.included_status_codes", function()
+            it("should return 400", function()
+              local res = assert(client:send {
+                method = "POST",
+                path = "/inventory",
+                headers = {
+                  host = "mocking-codes.com"
+                }
+              })
+              assert.response(res).has.status(400)
             end)
           end)
         end)

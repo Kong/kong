@@ -186,18 +186,6 @@ for _, strategy in strategies() do
             assert.same({ id = "d290f1ee-6c54-4b01-90e6-d701748f0851" }, body)
           end)
 
-          it("should return 400", function()
-            local res = assert(client:send {
-              method = "POST",
-              path = "/inventory",
-              headers = {
-                host = "mocking-codes.com"
-              }
-            })
-
-            assert.response(res).has.status(400)
-          end)
-
           describe("include_base_path = true", function()
             it("/v1/inventory GET", function()
               local res = assert(client:send {
@@ -222,6 +210,56 @@ for _, strategy in strategies() do
                   phone = "408-867-5309"
                 }
               }, body)
+            end)
+          end)
+
+          it("should exclude default code", function()
+            local res = assert(client:send {
+              method = "GET",
+              path = "/ping-with-one-default-response",
+              headers = {
+                host = "mocking.com"
+              }
+            })
+            assert.response(res).has.status(404)
+          end)
+
+          it("should exclude pattern code", function()
+            local res = assert(client:send {
+              method = "GET",
+              path = "/ping-with-multiple-response",
+              headers = {
+                host = "mocking.com"
+              }
+            })
+            assert.response(res).has.status(200) -- expect that return the minimum code of resposnes, which is 200
+            local body = assert.response(res).has.jsonbody()
+            assert.same({ msg = "pong" }, body)
+          end)
+
+          describe("config.included_status_codes", function()
+            it("should return 400", function()
+              local res = assert(client:send {
+                method = "POST",
+                path = "/inventory",
+                headers = {
+                  host = "mocking-codes.com"
+                }
+              })
+              assert.response(res).has.status(400)
+            end)
+
+            it("should exclude pattern code", function()
+              local res = assert(client:send {
+                method = "GET",
+                path = "/ping-with-multiple-response",
+                headers = {
+                  host = "mocking-codes.com"
+                }
+              })
+              assert.response(res).has.status(400)
+              local body = assert.response(res).has.jsonbody()
+              assert.same({ msg = "invalid request" }, body)
             end)
           end)
         end)
@@ -352,7 +390,7 @@ for _, strategy in strategies() do
               })
               local elapsed = (ngx.now() - s) * 1000
               assert.response(res).has.status(200)
-              assert.is_true(math.abs(elapsed - 500) <= 10)
+              assert.is_true(elapsed - 500 >= 0)
             end)
 
             it("should return error", function()

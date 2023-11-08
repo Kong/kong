@@ -107,15 +107,18 @@
         "responses": {
           "201": {
             "description": "item created",
-            "content": {}
+            "content": {
+            }
           },
           "400": {
             "description": "invalid input, object invalid",
-            "content": {}
+            "content": {
+            }
           },
           "409": {
             "description": "an existing item already exists",
-            "content": {}
+            "content": {
+            }
           }
         },
         "x-codegen-request-body-name": "inventoryItem"
@@ -141,7 +144,8 @@
     },
     "/inventory_empty_responses": {
       "get": {
-        "responses": {}
+        "responses": {
+        }
       }
     },
     "/inventory_without_content": {
@@ -158,7 +162,8 @@
         "responses": {
           "200": {
             "description": "success",
-            "content": {}
+            "content": {
+            }
           }
         }
       }
@@ -170,7 +175,8 @@
             "description": "success",
             "content": {
               "application/json": {
-                "examples": {}
+                "examples": {
+                }
               }
             }
           }
@@ -198,6 +204,68 @@
         "responses": {
           "400": {
             "$ref": "#/components/responses/InvalidRequestResponse"
+          }
+        }
+      }
+    },
+    "/ping-with-one-default-response": {
+      "get": {
+        "responses": {
+          "default": {
+            "description": "default response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "msg": "pong"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ping-with-multiple-response": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "example": {
+                  "msg": "pong"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "example": {
+                  "msg": "invalid request"
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "error",
+            "content": {
+              "application/json": {
+                "example": {
+                  "msg": "gateway timeout"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "default response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "msg": "unknow error"
+                }
+              }
+            }
           }
         }
       }

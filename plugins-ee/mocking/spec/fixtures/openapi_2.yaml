@@ -137,6 +137,44 @@ paths:
           schema:
             $ref: '#/definitions/InventoryItem'
 
+  /ping-with-one-default-response:
+    get:
+      summary: ''
+      operationId: ping
+      description: ''
+      produces:
+        - application/json
+      responses:
+        default:
+          description: default response
+          examples:
+            application/json:
+              msg: pong
+
+  /ping-with-multiple-response:
+    get:
+      summary: ''
+      operationId: ping
+      description: ''
+      produces:
+        - application/json
+      responses:
+        200:
+          description: OK
+          examples:
+            application/json:
+              msg: pong
+        504:
+          description: error
+          examples:
+            application/json:
+              msg: gateway timeout
+        default:
+          description: default response
+          examples:
+            application/json:
+              msg: unknow error
+
 definitions:
   InventoryItem:
     type: object

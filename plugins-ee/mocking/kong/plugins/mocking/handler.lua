@@ -214,9 +214,15 @@ local function get_sorted_codes(responses, included_codes)
     included_code_set[code] = true
   end
   for code, _ in pairs(responses or EMPTY) do
+    if not tonumber(code) then
+      goto continue
+    end
+
     if included_codes == nil or included_code_set[tonumber(code)] then
       table_insert(codes, code)
     end
+
+    ::continue::
   end
   table_sort(codes, function(o1, o2)
     return tonumber(o1) < tonumber(o2)
