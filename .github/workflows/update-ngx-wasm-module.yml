@@ -1,0 +1,63 @@
+name: Update ngx_wasm_module dependency
+
+#description: >
+#  This workflow updates the NGX_WASM_MODULE dependency in .requirements to the
+#  latest HEAD from Kong/ngx_wasm_module and opens a PR for it. It is designed
+#  to run periodically or on-demand.
+
+on:
+  pull_request:
+  schedule:
+  # run weekly
+  - cron: '0 0 * * 0'
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-22.04
+
+    permissions:
+      # required to open a PR for updates
+      pull-requests: write
+
+    steps:
+    - name: Checkout Kong source code
+      uses: actions/checkout@v4
+
+    - name: Detect current version of NGX_WASM_MODULE in .requirements
+      id: check-kong
+      run: |
+        SHA=$(sed -nre 's/^NGX_WASM_MODULE=([^ ]+) .*/\1/p' < .requirements)
+        echo "sha=$SHA" | tee -a "$GITHUB_OUTPUT"
+
+    - name: Check Kong/ngx_wasm_module HEAD
+      id: check-repo
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        SHA=$(gh api repos/Kong/ngx_wasm_module/commits/main | jq -r .sha)
+        echo "sha=$SHA" | tee -a "$GITHUB_OUTPUT"
+
+    - name: Update .requirements and create a pull request
+      if: check-kong.outputs.sha != check-repo.outputs.sha
+      run: |
+        readonly BRANCH=chore/deps-bump-ngx-wasm-module
+        git switch --create "$BRANCH"
+
+        sed -i \
+          -re 's/^NGX_WASM_MODULE=.*/NGX_WASM_MODULE=${{ check-repo.outputs.sha }}/' \
+          .requirements
+
+        git add .requirements
+        git commit \
+          -m 'chore(deps): bump NGX_WASM_MODULE to ${{ check-repo.outputs.sha }}'
+
+        # TODO: handle branch-already-exists
+
+        git push origin "$HEAD"
+
+        # TODO: handle PR-already-exists
+        gh pr create \
+          --base master \
+          --head "$BRANCH" \
+          --fill
