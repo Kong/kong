@@ -93,6 +93,10 @@ jobs:
     - name: Check labeler configuration
       run: scripts/check-labeler.pl .github/labeler.yml
 
+    - name: Create runtime data dir
+      run: |
+          sudo mkdir -m 777 /var/run/kong
+
     - name: Unit tests
       env:
         KONG_TEST_PG_DATABASE: kong
