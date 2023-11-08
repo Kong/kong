@@ -64,6 +64,9 @@ local fixtures = {
                     elseif string.match(ngx.var.uri, "functionEcho") then
                       require("spec.fixtures.mock_upstream").send_default_json_response()
 
+                    elseif string.match(ngx.var.uri, "functionWithTransferEncodingHeader") then
+                      ngx.say("{\"statusCode\": 200, \"headers\": { \"Transfer-Encoding\": \"chunked\", \"transfer-encoding\": \"chunked\"}}")
+
                     elseif type(res) == 'string' then
                       ngx.header["Content-Length"] = #res + 1
                       ngx.say(res)

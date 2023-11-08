@@ -157,6 +157,12 @@ for _, strategy in helpers.each_strategy() do
         service     = null,
       }
 
+      local route24 = bp.routes:insert {
+        hosts       = { "lambda24.com" },
+        protocols   = { "http", "https" },
+        service     = null,
+      }
+
       bp.plugins:insert {
         name     = "aws-lambda",
         route    = { id = route1.id },
@@ -466,6 +472,19 @@ for _, strategy in helpers.each_strategy() do
           aws_secret           = "mock-secret",
           aws_region           = "us-east-1",
           function_name        = "functionWithNotBase64EncodedResponse",
+          is_proxy_integration = true,
+        }
+      }
+
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route24.id },
+        config                 = {
+          port                 = 10001,
+          aws_key              = "mock-key",
+          aws_secret           = "mock-secret",
+          aws_region           = "us-east-1",
+          function_name        = "functionWithTransferEncodingHeader",
           is_proxy_integration = true,
         }
       }
@@ -1173,6 +1192,24 @@ for _, strategy in helpers.each_strategy() do
         assert.equals("https", req.vars.scheme)
       end)
 
+      it("#test2 works normally by removing transfer encoding header when proxy integration mode", function ()
+        proxy_client:set_timeout(3000)
+        assert.eventually(function ()
+          local res = assert(proxy_client:send({
+            method  = "GET",
+            path    = "/get",
+            headers = {
+              ["Host"] = "lambda24.com"
+            }
+          }))
+
+          assert.res_status(200, res)
+          assert.is_nil(res.headers["Transfer-Encoding"])
+          assert.is_nil(res.headers["transfer-encoding"])
+
+          return true
+        end).with_timeout(3).is_truthy()
+      end)
     end)
 
     describe("AWS_REGION environment is set", function()
