@@ -61,5 +61,7 @@ export LUA_CPATH="$KONG_VENV/openresty/site/lualib/?.so;$KONG_VENV/openresty/lua
 export KONG_PREFIX="$KONG_VENV/kong/servroot"
 export LIBRARY_PREFIX="$KONG_VENV/kong" # let "make dev" happy
 export OPENSSL_DIR="$KONG_VENV/kong" # let "make dev" happy
+export CRYPTO_DIR="$KONG_VENV/kong" # let "update-copyright" happy
+export EXPAT_DIR="$KONG_VENV/kong" # let "update-copyright" happy
 
 EOF
