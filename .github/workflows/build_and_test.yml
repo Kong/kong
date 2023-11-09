@@ -786,22 +786,26 @@ jobs:
 
     - name: Build Docker Image
       uses: docker/build-push-action@v3
-      # This can't be cached, pongo relies on org.opencontainers.image.revision label
-      # which should be set to current commit's SHA. pongo uses this label to clone
-      # kong-ee repo, checkout it and copy into the dev image.
-      # If it there's a way to modify the label after image is built, or pongo has
-      # a way to override it, then we can cache it. But this usually takes 30s, so
-      # we should be fine-ish.
       with:
         file: build/dockerfiles/deb.Dockerfile
+        context: .
+        push: false
+        tags: "kong-local/kong-ee:${{ matrix.label }}-base"
+        build-args: |
+          KONG_BASE_IMAGE=ubuntu:22.04
+          KONG_ARTIFACT_PATH=artifacts/
+          EE_PORTS=8002 8445 8003 8446 8004 8447
+
+    - name: Build Pongo Docker Image
+      uses: docker/build-push-action@v3
+      with:
+        file: build/dockerfiles/deb.pongo.Dockerfile
         context: .
         push: false
         tags: "kong-local/kong-ee:${{ matrix.label }}"
         labels: org.opencontainers.image.revision=${{ steps.commit-sha.outputs.sha }}
         build-args: |
-          KONG_BASE_IMAGE=ubuntu:22.04
-          KONG_ARTIFACT_PATH=artifacts/
-          EE_PORTS=8002 8445 8003 8446 8004 8447
+          PONGO_BASE_IMAGE=kong-local/kong-ee:${{ matrix.label }}-base
 
     - name: Export Docker Image
       run: |
