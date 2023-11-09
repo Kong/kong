@@ -31,11 +31,6 @@ local re_match      = ngx.re.match
 local setmetatable  = setmetatable
 
 
-ffi.cdef[[
-int gethostname(char *name, size_t len);
-]]
-
-
 local _M = {}
 
 
