@@ -455,12 +455,14 @@ jobs:
         outputs: type=image,oci-mediatypes=true
     
     # Keyless container image signing
-    # Publish signature to the container registry
+    # Pre-release tag (kong/kong-gateway-dev) is signed
+    # This will sign images recursively for all platforms by digest and Not per tag for each unique image repository
+    # Publishes signature to the private kong/notary-internal container registry
     # Publish permanent entry to Sigstore Public Rekor - Transparency log
     # Note: 
       ## For private repos, no good solution is available for transparency requirement for SLSA.
       ## Hence exposing repo name and workflow details and commit details by leveraging public sigstore instance
-    - name: Sign Container Images
+    - name: Sign Prerelease Container Images
       id: sign_prerelease_images
       if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' && steps.image.outputs.digest != '' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository)) }}
       uses: Kong/public-shared-actions/security-actions/sign-docker-image@b7def0b377d98a22f0184651d6d9c93617312d82
@@ -871,30 +873,31 @@ jobs:
           regctl -v debug image copy $PRERELEASE_IMAGE $tag
         done
 
+      # Signing metadata for offcial and Internal repositories
+      # `official` tags are calculated
+      # `pre-release` tags pushed to `kong/kong-gateway-dev` is already previously signed and hence skipped to avoid duplicate signing
     - name: Set Attestation metadata
+      if: ${{ github.event.inputs.official  == 'true' }}
       id: attestation_metadata
       env:
         DOCKER_METADATA_JSON: ${{ steps.meta.outputs.json }}
       run: |
         set -euox pipefail
 
-        internal_tags=$(echo "${DOCKER_METADATA_JSON}" | jq '.tags[]|select(.|startswith("kong/kong-gateway-dev:"))' | jq -sr '. | join(" ")')
-        echo "INTERNAL TAGS=${internal_tags}"
-        echo "internal_tags=${internal_tags}" >> $GITHUB_OUTPUT
-
         release_tags=$(echo "${DOCKER_METADATA_JSON}" | jq '.tags[]|select(.|contains("kong/kong-gateway:"))' | jq -sr '. | join(" ")')
         echo "RELEASE TAGS=${release_tags}"
         echo "release_tags=${release_tags}" >> $GITHUB_OUTPUT
     
-    # Keyless container image signing
-    # Publish signature to a central notary docker repository
+    # Keyless container signing
+    # This step will sign official images using digest for every platform
+    # Publish signature to a public kong/notary docker repository
     # Publish permanent entry to Sigstore Public Rekor - Transaparency log
     # Note:
       ## For private repos, no good solution is available for transparency requirement for SLSA.
       ## Hence exposing repo name and workflow details and git ref by leveraging public sigstore instance
     - name: Sign Release Images
       id: sign_release_images
-      if: ${{ steps.attestation_metadata.outputs.release_tags != '' && env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' && steps.release_images.outputs.prerelease_image_digest != '' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository)) }}
+      if: ${{ github.event.inputs.official  == 'true' && steps.attestation_metadata.outputs.release_tags != '' && env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' && steps.release_images.outputs.prerelease_image_digest != '' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository)) }}
       uses: Kong/public-shared-actions/security-actions/sign-docker-image@b7def0b377d98a22f0184651d6d9c93617312d82
       with:
         image_digest: ${{ steps.release_images.outputs.prerelease_image_digest }}
@@ -904,22 +907,3 @@ jobs:
         signature_registry: ${{ env.NOTARY_REPOSITORY }}
       env:
         NOTARY_REPOSITORY: kong/notary
-    
-    # Keyless container image signing
-    # Publish signature to a central notary docker repository
-    # Publish permanent entry to Sigstore Public Rekor - Transparency log
-    # Note: 
-      ## For private repos, no good solution is available for transaprency requirement for SLSA.
-      ## Hence exposing repo name and workflow details and git ref by leveraging public sigstore instance
-    - name: Sign Internal Release Images
-      id: sign_internal_release_images
-      if: ${{ steps.attestation_metadata.outputs.internal_tags != '' && env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' && steps.release_images.outputs.prerelease_image_digest != '' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository)) }}
-      uses: Kong/public-shared-actions/security-actions/sign-docker-image@b7def0b377d98a22f0184651d6d9c93617312d82
-      with:
-        image_digest: ${{ steps.release_images.outputs.prerelease_image_digest }}
-        tags: ${{ steps.attestation_metadata.outputs.internal_tags }}
-        registry_username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
-        registry_password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
-        signature_registry: ${{ env.NOTARY_REPOSITORY }}
-      env:
-        NOTARY_REPOSITORY: kong/notary-internal
