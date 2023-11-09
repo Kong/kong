@@ -780,10 +780,13 @@ do
       if router_hash ~= CURRENT_ROUTER_HASH then
         local start = get_monotonic_ms()
 
-        router, err = new_router()
+        local workspace_names
+        router, err, workspace_names = new_router()
         if not router then
           return nil, err
         end
+
+        WORKSPACE_NAMES = workspace_names
 
         log(INFO, "building a new router took ",  get_monotonic_ms() - start,
                   " ms on worker #", worker_id)
