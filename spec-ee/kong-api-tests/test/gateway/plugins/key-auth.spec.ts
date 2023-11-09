@@ -2,9 +2,6 @@ import {
   createConsumer,
   createGatewayService,
   createRouteForService,
-  deleteConsumer,
-  deleteGatewayRoute,
-  deleteGatewayService,
   Environment,
   expect,
   getBasePath,
@@ -12,6 +9,7 @@ import {
   isGwHybrid,
   logResponse,
   wait,
+  clearAllKongResources
 } from '@support';
 import axios from 'axios';
 
@@ -22,7 +20,7 @@ describe('@smoke: Gateway Plugins: key-auth', function () {
   const hybridWaitTime = 8000;
   const waitTime = 5000;
   const consumerName = 'bill';
-  const key = 'apiKey';
+  const key = 'api_key';
   const tagAndTtlPayload = { tags: ['tag2'], ttl: 10 };
   const plugin = 'key-auth';
 
@@ -33,23 +31,22 @@ describe('@smoke: Gateway Plugins: key-auth', function () {
     environment: Environment.gateway.proxy,
   })}`;
   const inValidTokenHeaders = {
-    apiKey: 'ZnBckx2rSLCccbnCKRp3BEqzYbyRYTAX',
+    api_key: 'ZnBckx2rSLCccbnCKRp3BEqzYbyRYTAX',
   };
 
   let serviceId: string;
   let routeId: string;
   let keyId: string;
-  let consumerId: string;
   let basePayload: any;
   let pluginId: string;
 
   before(async function () {
+    await clearAllKongResources();
     const service = await createGatewayService(serviceName);
     serviceId = service.id;
     const route = await createRouteForService(serviceId, [path]);
     routeId = route.id;
-    const consumer = await createConsumer(consumerName);
-    consumerId = consumer.id;
+    await createConsumer(consumerName);
     await wait(isHybrid ? hybridWaitTime : waitTime); // eslint-disable-line no-restricted-syntax
 
     basePayload = {
@@ -73,7 +70,7 @@ describe('@smoke: Gateway Plugins: key-auth', function () {
   it('should enable key-auth plugin with apiKey in header', async function () {
     const pluginPayload = {
       ...basePayload,
-      config: { key_names: ['apiKey'] },
+      config: { key_names: [key] },
     };
 
     const resp = await axios({
@@ -134,7 +131,7 @@ describe('@smoke: Gateway Plugins: key-auth', function () {
 
   it('should proxy request with apiKey in header', async function () {
     const validTokenHeaders = {
-      apiKey: keyId,
+      api_key: keyId,
     };
     const resp = await getNegative(`${proxyUrl}${path}`, validTokenHeaders);
     logResponse(resp);
@@ -143,7 +140,7 @@ describe('@smoke: Gateway Plugins: key-auth', function () {
   });
 
   it('should proxy request with apiKey in query param', async function () {
-    const queryUrl = `${proxyUrl}${path}?apiKey=${keyId}`;
+    const queryUrl = `${proxyUrl}${path}?api_key=${keyId}`;
 
     const resp = await axios({
       method: 'get',
@@ -159,7 +156,7 @@ describe('@smoke: Gateway Plugins: key-auth', function () {
   // https://konghq.atlassian.net/browse/FTI-4512
   it('should not proxy request with apiKey in header after ttl expiration', async function () {
     const validTokenHeaders = {
-      apiKey: keyId,
+      api_key: keyId,
     };
     const resp = await getNegative(`${proxyUrl}${path}`, validTokenHeaders);
     logResponse(resp);
@@ -173,7 +170,7 @@ describe('@smoke: Gateway Plugins: key-auth', function () {
   // This test case captures:
   // https://konghq.atlassian.net/browse/FTI-4512
   it('should not proxy request with apiKey in query param after ttl expiration', async function () {
-    const queryUrl = `${proxyUrl}${path}?apiKey=${keyId}`;
+    const queryUrl = `${proxyUrl}${path}?api_key=${keyId}`;
 
     const resp = await getNegative(`${queryUrl}`);
     logResponse(resp);
@@ -217,8 +214,6 @@ describe('@smoke: Gateway Plugins: key-auth', function () {
   });
 
   after(async function () {
-    await deleteGatewayRoute(routeId);
-    await deleteGatewayService(serviceId);
-    await deleteConsumer(consumerId);
+    await clearAllKongResources()
   });
 });

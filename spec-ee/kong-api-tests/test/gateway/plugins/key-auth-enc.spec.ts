@@ -2,9 +2,6 @@ import {
   createConsumer,
   createGatewayService,
   createRouteForService,
-  deleteConsumer,
-  deleteGatewayRoute,
-  deleteGatewayService,
   Environment,
   expect,
   getBasePath,
@@ -13,6 +10,7 @@ import {
   wait,
   waitForConfigRebuild,
   retryRequest,
+  clearAllKongResources
 } from '@support';
 import axios from 'axios';
 
@@ -38,17 +36,16 @@ describe('Gateway Plugins: key-auth-enc', function () {
   let serviceId: string;
   let routeId: string;
   let keyId: string;
-  let consumerId: string;
   let basePayload: any;
   let pluginId: string;
 
   before(async function () {
+    await clearAllKongResources();
     const service = await createGatewayService(serviceName);
     serviceId = service.id;
     const route = await createRouteForService(serviceId, [path]);
     routeId = route.id;
-    const consumer = await createConsumer(consumerName);
-    consumerId = consumer.id;
+    await createConsumer(consumerName);
 
     basePayload = {
       name: plugin,
@@ -221,8 +218,6 @@ describe('Gateway Plugins: key-auth-enc', function () {
   });
 
   after(async function () {
-    await deleteGatewayRoute(routeId);
-    await deleteGatewayService(serviceId);
-    await deleteConsumer(consumerId);
+    await clearAllKongResources();
   });
 });
