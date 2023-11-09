@@ -101,7 +101,13 @@ local function remove_redis_user(policy)
   if policy == "redis" then
     local red, red_version = redis_connect()
     if red_version >= version("6.0.0") then
-      assert(red:acl("deluser", REDIS_USERNAME_VALID))
+      if REDIS_USERNAME_VALID == "default" then
+        assert(red:acl("setuser", REDIS_USERNAME_VALID, "nopass"))
+
+      else
+
+        assert(red:acl("deluser", REDIS_USERNAME_VALID))
+      end
     end
     red:close()
   end

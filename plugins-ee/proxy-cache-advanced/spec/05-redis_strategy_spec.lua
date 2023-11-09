@@ -15,7 +15,7 @@ local version = require "version"
 
 local REDIS_HOST = helpers.redis_host
 local REDIS_PORT = 6379
-local REDIS_CLUSTER_ADDRESSES = ee_helpers.parsed_redis_cluster_addresses()
+local REDIS_CLUSTER_ADDRESSES = ee_helpers.redis_cluster_addresses
 local REDIS_DATABASE = 1
 
 local REDIS_USERNAME_VALID = "default"
@@ -32,19 +32,28 @@ local function redis_connect(conf)
       port = REDIS_PORT,
     }))
   end
+
   local red_version = string.match(red:info("server"), 'redis_version:([%g]+)\r\n')
   return red, assert(version(red_version))
 end
 
 local function add_redis_user(red, red_version)
-  if red_version >= version("6.0.0") and REDIS_USERNAME_VALID ~= "default" then
-    assert(red:acl("setuser", REDIS_USERNAME_VALID, "on", "allkeys", "+@all", ">" .. REDIS_PASSWORD_VALID))
+  if red_version >= version("6.0.0") then
+    assert(red:acl("setuser", REDIS_USERNAME_VALID, "on", "allkeys", "allcommands", "allchannels", ">" .. REDIS_PASSWORD_VALID))
+    assert(red:save())
   end
 end
 
 local function remove_redis_user(red, red_version)
-  if red_version >= version("6.0.0") and REDIS_USERNAME_VALID ~= "default" then
-    assert(red:acl("deluser", REDIS_USERNAME_VALID))
+  if red_version >= version("6.0.0") then
+    if REDIS_USERNAME_VALID == "default" then
+      assert(red:acl("setuser", REDIS_USERNAME_VALID, "nopass"))
+
+    else
+
+      assert(red:acl("deluser", REDIS_USERNAME_VALID))
+    end
+    assert(red:save())
   end
 end
 
@@ -79,7 +88,7 @@ end
 require"kong.resty.dns.client".init(nil)
 
 for redis_description, redis_configuration in pairs(redis_test_configurations()) do
-  describe("proxy-cache-advanced: Redis strategy", function()
+  describe("proxy-cache-advanced: Redis #" .. redis_description, function()
     local strategy
     local red, red_version
 
@@ -88,16 +97,14 @@ for redis_description, redis_configuration in pairs(redis_test_configurations())
       red, red_version = redis_connect(strategy.conf)
 
       if red_version >= version("6.0.0") and redis_description ~= "no_auth" then
-        redis_configuration.username = REDIS_USERNAME_VALID
-        redis_configuration.auth = REDIS_PASSWORD_VALID
+        add_redis_user(red, red_version)
+
+        strategy.conf.username = REDIS_USERNAME_VALID
+        strategy.conf.password = REDIS_PASSWORD_VALID
 
         red:close()
-
-        strategy = redis_strategy.new(redis_configuration)
         red, red_version = redis_connect(strategy.conf)
       end
-
-      add_redis_user(red, red_version)
     end)
 
     lazy_teardown(function()

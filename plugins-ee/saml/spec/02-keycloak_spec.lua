@@ -91,7 +91,13 @@ end
 
 local function remove_redis_user(redis, redis_version)
   if redis_version >= version("6.0.0") then
-    assert(redis:acl("deluser", REDIS_USER_VALID))
+    if REDIS_USER_VALID == "default" then
+      assert(redis:acl("setuser", REDIS_USER_VALID, "nopass"))
+
+    else
+
+      assert(redis:acl("deluser", REDIS_USER_VALID))
+    end
   end
 end
 

@@ -177,7 +177,7 @@ end
 local function configure_timeouts(conf)
   local timeout = conf.timeout
 
-  if timeout ~= DEFAULT_TIMEOUT then
+  if timeout then
     -- TODO: Move to a global util once available
     local deprecation = {
       msg = "redis schema field `timeout` is deprecated, " ..
@@ -191,6 +191,10 @@ local function configure_timeouts(conf)
       " (deprecated after ", deprecation.deprecated_after,
       ", scheduled for removal in ", deprecation.version_removed, ")"
     )
+
+  else
+
+    timeout = DEFAULT_TIMEOUT
   end
 
   conf.connect_timeout =

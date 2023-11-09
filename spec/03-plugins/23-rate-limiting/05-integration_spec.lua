@@ -44,8 +44,21 @@ local function add_redis_user(red)
 end
 
 local function remove_redis_user(red)
-  assert(red:acl("deluser", REDIS_USER_VALID))
-  assert(red:acl("deluser", REDIS_USER_INVALID))
+  if REDIS_USER_VALID == "default" then
+    assert(red:acl("setuser", REDIS_USER_VALID, "nopass"))
+
+  else
+
+    assert(red:acl("deluser", REDIS_USER_VALID))
+  end
+
+  if REDIS_USER_INVALID == "default" then
+    assert(red:acl("setuser", REDIS_USER_INVALID, "nopass"))
+
+  else
+
+    assert(red:acl("deluser", REDIS_USER_INVALID))
+  end
 end
 
 describe("Plugin: rate-limiting (integration)", function()
@@ -77,7 +90,7 @@ describe("Plugin: rate-limiting (integration)", function()
   end)
 
   local strategies = {
-    no_ssl = { 
+    no_ssl = {
       redis_port = REDIS_PORT,
     },
     ssl_verify = {

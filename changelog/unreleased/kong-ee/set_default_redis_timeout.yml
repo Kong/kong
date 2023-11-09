@@ -1,0 +1,3 @@
+message: "Print Redis's 'timeout' warning message only if it explicitly set. Use the default timeout value if it is not set."
+type: bugfix
+scope: Core
