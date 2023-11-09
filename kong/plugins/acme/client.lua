@@ -200,9 +200,7 @@ local function save_dao(host, key, cert)
   })
 
   if err then
-    local ok, err_2 = kong.db.certificates:delete({
-      id = cert_entity.id,
-    })
+    local ok, err_2 = kong.db.certificates:delete(cert_entity)
     if not ok then
       kong.log.warn("error cleaning up certificate entity ", cert_entity.id, ": ", err_2)
     end
@@ -210,12 +208,9 @@ local function save_dao(host, key, cert)
   end
 
   if old_sni_entity and old_sni_entity.certificate then
-    local id = old_sni_entity.certificate.id
-    local ok, err = kong.db.certificates:delete({
-      id = id,
-    })
+    local ok, err = kong.db.certificates:delete(old_sni_entity.certificate)
     if not ok then
-      kong.log.warn("error deleting expired certificate entity ", id, ": ", err)
+      kong.log.warn("error deleting expired certificate entity ", old_sni_entity.certificate.id, ": ", err)
     end
   end
 end
@@ -235,7 +230,7 @@ end
 
 local function get_account_key(conf)
   local kid = conf.key_id
-  local lookup = {kid = kid}
+  local lookup = { kid = kid }
 
   if conf.key_set then
     local key_set, key_set_err = kong.db.key_sets:select_by_name(conf.key_set)
@@ -250,7 +245,7 @@ local function get_account_key(conf)
       return nil, error("nil returned by key_sets:select_by_name for key_set ", conf.key_set)
     end
 
-    lookup.set = {id = key_set.id}
+    lookup.set = { id = key_set.id }
   end
 
   local cache_key = kong.db.keys:cache_key(lookup)
@@ -412,7 +407,7 @@ local function load_certkey(conf, host)
     return nil, "DAO returns empty SNI entity or Certificte entity"
   end
 
-  local cert_entity, err = kong.db.certificates:select({ id = sni_entity.certificate.id })
+  local cert_entity, err = kong.db.certificates:select(sni_entity.certificate)
   if err then
     kong.log.info("can't read certificate ", sni_entity.certificate.id, " from db",
                   ", deleting renew config")

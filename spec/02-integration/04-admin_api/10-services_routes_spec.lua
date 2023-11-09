@@ -336,7 +336,7 @@ for _, strategy in helpers.each_strategy() do
               assert.equal("https",    json.protocol)
               assert.equal(service.id, json.id)
 
-              local in_db = assert(db.services:select({ id = service.id }, { nulls = true }))
+              local in_db = assert(db.services:select(service, { nulls = true }))
               assert.same(json, in_db)
             end
           end)
@@ -389,7 +389,7 @@ for _, strategy in helpers.each_strategy() do
               assert.equal(cjson.null,     json.path)
               assert.equal(service.id,     json.id)
 
-              local in_db = assert(db.services:select({ id = service.id }, { nulls = true }))
+              local in_db = assert(db.services:select(service, { nulls = true }))
               assert.same(json, in_db)
 
 
@@ -410,7 +410,7 @@ for _, strategy in helpers.each_strategy() do
               assert.equal("/",             json.path)
               assert.equal(service.id,      json.id)
 
-              local in_db = assert(db.services:select({ id = service.id }, { nulls = true }))
+              local in_db = assert(db.services:select(service, { nulls = true }))
               assert.same(json, in_db)
 
               local res = client:patch("/services/" .. service.id, {
@@ -430,7 +430,7 @@ for _, strategy in helpers.each_strategy() do
               assert.equal(cjson.null,      json.path)
               assert.equal(service.id,      json.id)
 
-              local in_db = assert(db.services:select({ id = service.id }, { nulls = true }))
+              local in_db = assert(db.services:select(service, { nulls = true }))
               assert.same(json, in_db)
             end
           end)
@@ -444,7 +444,7 @@ for _, strategy in helpers.each_strategy() do
             local body = assert.res_status(204, res)
             assert.equal("", body)
 
-            local in_db, err = db.services:select({ id = service.id }, { nulls = true })
+            local in_db, err = db.services:select(service, { nulls = true })
             assert.is_nil(err)
             assert.is_nil(in_db)
           end)
@@ -689,7 +689,7 @@ for _, strategy in helpers.each_strategy() do
             local json = cjson.decode(body)
             assert.False(json.enabled)
 
-            local in_db = assert(db.plugins:select({ id = plugin.id }, { nulls = true }))
+            local in_db = assert(db.plugins:select(plugin, { nulls = true }))
             assert.same(json, in_db)
           end)
           it("updates a plugin bis", function()
@@ -730,7 +730,7 @@ for _, strategy in helpers.each_strategy() do
             local json = cjson.decode(body)
             assert.same(ngx.null, json.service)
 
-            local in_db = assert(db.plugins:select({ id = plugin.id }, { nulls = true }))
+            local in_db = assert(db.plugins:select(plugin, { nulls = true }))
             assert.same(json, in_db)
           end)
 
@@ -746,7 +746,7 @@ for _, strategy in helpers.each_strategy() do
                 config = { key_names = { "testkey" } },
               })
 
-              local before = assert(db.plugins:select({ id = plugin.id }, { nulls = true }))
+              local before = assert(db.plugins:select(plugin, { nulls = true }))
               local res = assert(client:send {
                 method = "PATCH",
                 path = "/services/" .. service.id .. "/plugins/" .. plugin.id,
@@ -762,7 +762,7 @@ for _, strategy in helpers.each_strategy() do
                 },
                 code = 2,
               }, body)
-              local after = assert(db.plugins:select({ id = plugin.id }, { nulls = true }))
+              local after = assert(db.plugins:select(plugin, { nulls = true }))
               assert.same(before, after)
               assert.same({"testkey"}, after.config.key_names)
             end)
@@ -820,7 +820,7 @@ for _, strategy in helpers.each_strategy() do
             local res = client:get("/services/" .. service.id .. "/plugins/" .. plugin.id)
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
-            local in_db = assert(db.plugins:select({ id = plugin.id }, { nulls = true }))
+            local in_db = assert(db.plugins:select(plugin, { nulls = true }))
             assert.same(json, in_db)
           end)
           it("retrieves a plugin by instance_name", function()
@@ -832,7 +832,7 @@ for _, strategy in helpers.each_strategy() do
             local res = client:get("/services/" .. service.id .. "/plugins/" .. plugin.instance_name)
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
-            local in_db = assert(db.plugins:select({ id = plugin.id }, { nulls = true }))
+            local in_db = assert(db.plugins:select(plugin, { nulls = true }))
             assert.same(json, in_db)
           end)
         end)
@@ -846,7 +846,7 @@ for _, strategy in helpers.each_strategy() do
             local res = assert(client:delete("/services/" .. service.id .. "/plugins/" .. plugin.id))
             assert.res_status(204, res)
 
-            local in_db, err = db.plugins:select({id = plugin.id}, { nulls = true })
+            local in_db, err = db.plugins:select(plugin, { nulls = true })
             assert.is_nil(err)
             assert.is_nil(in_db)
           end)
@@ -859,7 +859,7 @@ for _, strategy in helpers.each_strategy() do
             local res = assert(client:delete("/services/" .. service.id .. "/plugins/" .. plugin.instance_name))
             assert.res_status(204, res)
 
-            local in_db, err = db.plugins:select({id = plugin.id}, { nulls = true })
+            local in_db, err = db.plugins:select(plugin, { nulls = true })
             assert.is_nil(err)
             assert.is_nil(in_db)
           end)

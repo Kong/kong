@@ -136,9 +136,7 @@ return {
     resource = "proxy-cache",
 
     GET = function(self)
-      local plugin, err = kong.db.plugins:select {
-        id   = self.params.plugin_id,
-      }
+      local plugin, err = kong.db.plugins:select({ id = self.params.plugin_id })
       if err then
         return kong.response.exit(500, err)
       end
@@ -163,9 +161,7 @@ return {
       return kong.response.exit(200, cache_val)
     end,
     DELETE = function(self)
-      local plugin, err = kong.db.plugins:select {
-        id   = self.params.plugin_id,
-      }
+      local plugin, err = kong.db.plugins:select({ id = self.params.plugin_id })
       if err then
         return kong.response.exit(500, err)
       end

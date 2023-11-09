@@ -25,7 +25,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("can update the row", function()
-        local p, err = db.clustering_data_planes:update({ id = cs.id, }, { config_hash = "a9a166c59873245db8f1a747ba9a80a7", })
+        local p, err = db.clustering_data_planes:update(cs, { config_hash = "a9a166c59873245db8f1a747ba9a80a7", })
         assert.is_truthy(p)
         assert.is_nil(err)
       end)

@@ -380,7 +380,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
             assert.equal(consumer.id, json.id)
             assert.truthy(consumer.updated_at < json.updated_at)
 
-            local in_db = assert(db.consumers:select({ id = consumer.id }, { nulls = true }))
+            local in_db = assert(db.consumers:select(consumer, { nulls = true }))
             assert.same(json, in_db)
           end
         end)
@@ -401,7 +401,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
             assert.equal(new_username, json.username)
             assert.equal(consumer.id, json.id)
 
-            local in_db = assert(db.consumers:select({ id = consumer.id }, { nulls = true }))
+            local in_db = assert(db.consumers:select(consumer, { nulls = true }))
             assert.same(json, in_db)
           end
         end)
@@ -423,7 +423,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
             assert.equal(consumer.custom_id, json.custom_id)
             assert.equal(consumer.id, json.id)
 
-            local in_db = assert(db.consumers:select({ id = consumer.id }, { nulls = true }))
+            local in_db = assert(db.consumers:select(consumer, { nulls = true }))
             assert.same(json, in_db)
           end
         end)
@@ -518,7 +518,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
             local json = cjson.decode(body)
             assert.equal(new_username, json.username)
 
-            local in_db = assert(db.consumers:select({ id = consumer.id }, { nulls = true }))
+            local in_db = assert(db.consumers:select(consumer, { nulls = true }))
             assert.same(json, in_db)
           end
         end)
@@ -842,7 +842,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
           assert.equal("updated", json.config.value)
           assert.equal(plugin.id, json.id)
 
-          local in_db = assert(db.plugins:select({ id = plugin.id }, { nulls = true }))
+          local in_db = assert(db.plugins:select(plugin, { nulls = true }))
           assert.same(json, in_db)
         end)
 
@@ -852,8 +852,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
           local plugin = bp.rewriter_plugins:insert({ consumer = { id = consumer.id }})
 
           local err
-          plugin, err = db.plugins:update(
-            { id = plugin.id },
+          plugin, err = db.plugins:update(plugin,
             {
               name = "rewriter",
               route = plugin.route,
@@ -904,7 +903,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
           local json = cjson.decode(body)
           assert.False(json.enabled)
 
-          plugin = assert(db.plugins:select{ id = plugin.id })
+          plugin = assert(db.plugins:select(plugin))
           assert.False(plugin.enabled)
         end
       end)
@@ -997,9 +996,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
           assert.equal("updated", json.config.value)
           assert.equal(plugin.id, json.id)
 
-          local in_db = assert(db.plugins:select({
-            id = plugin.id,
-          }, { nulls = true }))
+          local in_db = assert(db.plugins:select(plugin, { nulls = true }))
           assert.same(json, in_db)
         end)
       end

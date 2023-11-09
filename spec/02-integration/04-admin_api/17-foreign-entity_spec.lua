@@ -83,8 +83,8 @@ for _, strategy in helpers.each_strategy() do
           local json = cjson.decode(body)
           assert.same(foreign_entity, json)
 
-          assert(db.foreign_references:delete({ id = foreign_reference.id }))
-          assert(db.foreign_entities:delete({ id = foreign_entity.id }))
+          assert(db.foreign_references:delete(foreign_reference))
+          assert(db.foreign_entities:delete(foreign_entity))
         end)
 
         it("retrieves by name", function()
@@ -97,8 +97,8 @@ for _, strategy in helpers.each_strategy() do
           local json = cjson.decode(body)
           assert.same(foreign_entity, json)
 
-          assert(db.foreign_references:delete({ id = foreign_reference.id }))
-          assert(db.foreign_entities:delete({ id = foreign_entity.id }))
+          assert(db.foreign_references:delete(foreign_reference))
+          assert(db.foreign_entities:delete(foreign_entity))
         end)
 
         it("returns 404 if not found", function()
@@ -123,8 +123,8 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.res_status(200, res)
 
-          assert(db.foreign_references:delete({ id = foreign_reference.id }))
-          assert(db.foreign_entities:delete({ id = foreign_entity.id }))
+          assert(db.foreign_references:delete(foreign_reference))
+          assert(db.foreign_entities:delete(foreign_entity))
         end)
       end)
 
@@ -152,11 +152,11 @@ for _, strategy in helpers.each_strategy() do
             local json = cjson.decode(body)
             assert.equal(edited_name, json.name)
 
-            local in_db = assert(db.foreign_entities:select({ id = foreign_entity.id }, { nulls = true }))
+            local in_db = assert(db.foreign_entities:select(foreign_entity, { nulls = true }))
             assert.same(json, in_db)
 
-            assert(db.foreign_references:delete({ id = foreign_reference.id }))
-            assert(db.foreign_entities:delete({ id = foreign_entity.id }))
+            assert(db.foreign_references:delete(foreign_reference))
+            assert(db.foreign_entities:delete(foreign_entity))
           end
         end)
 
@@ -182,11 +182,11 @@ for _, strategy in helpers.each_strategy() do
             local json = cjson.decode(body)
             assert.equal(edited_name, json.name)
 
-            local in_db = assert(db.foreign_entities:select({ id = foreign_entity.id }, { nulls = true }))
+            local in_db = assert(db.foreign_entities:select(foreign_entity, { nulls = true }))
             assert.same(json, in_db)
 
-            assert(db.foreign_references:delete({ id = foreign_reference.id }))
-            assert(db.foreign_entities:delete({ id = foreign_entity.id }))
+            assert(db.foreign_references:delete(foreign_reference))
+            assert(db.foreign_entities:delete(foreign_entity))
           end
         end)
 
@@ -227,8 +227,8 @@ for _, strategy in helpers.each_strategy() do
                 },
               }, cjson.decode(body))
 
-              assert(db.foreign_references:delete({ id = foreign_reference.id }))
-              assert(db.foreign_entities:delete({ id = foreign_entity.id }))
+              assert(db.foreign_references:delete(foreign_reference))
+              assert(db.foreign_entities:delete(foreign_entity))
             end
           end)
         end)
@@ -243,8 +243,8 @@ for _, strategy in helpers.each_strategy() do
             local body = assert.res_status(405, res)
             assert.same({ message = 'Method not allowed' }, cjson.decode(body))
 
-            assert(db.foreign_references:delete({ id = foreign_reference.id }))
-            assert(db.foreign_entities:delete({ id = foreign_entity.id }))
+            assert(db.foreign_references:delete(foreign_reference))
+            assert(db.foreign_entities:delete(foreign_entity))
           end)
 
           it("returns HTTP 404 with non-existing foreign entity ", function()

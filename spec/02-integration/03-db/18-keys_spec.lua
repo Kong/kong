@@ -52,7 +52,7 @@ for _, strategy in helpers.all_strategies() do
       })
       assert(key)
       assert.is_nil(err)
-      local key_o, s_err = db.keys:select({ id = key.id })
+      local key_o, s_err = db.keys:select(key)
       assert.is_nil(s_err)
       assert.same("string", type(key_o.jwk))
     end)
@@ -67,7 +67,7 @@ for _, strategy in helpers.all_strategies() do
           private_key = pem_priv
         }
       })
-      local key_o, err = db.keys:select({ id = init_pem_key.id })
+      local key_o, err = db.keys:select(init_pem_key)
       assert.is_nil(err)
       assert.same('456', key_o.kid)
       assert.same(pem_priv, key_o.pem.private_key)

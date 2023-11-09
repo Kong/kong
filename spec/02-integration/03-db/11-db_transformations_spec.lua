@@ -47,14 +47,14 @@ for _, strategy in helpers.each_strategy() do
             name = "test"
           }))
 
-          local newdao, err = db.transformations:update({ id = dao.id }, {
+          local newdao, err = db.transformations:update(dao, {
             secret = "dog",
           })
 
           assert.equal(nil, newdao)
           assert.equal(errmsg, err)
 
-          assert(db.transformations:delete({ id = dao.id }))
+          assert(db.transformations:delete(dao))
         end)
 
         it("updating hash_secret requires secret", function()
@@ -62,14 +62,14 @@ for _, strategy in helpers.each_strategy() do
             name = "test"
           }))
 
-          local newdao, err = db.transformations:update({ id = dao.id }, {
+          local newdao, err = db.transformations:update(dao, {
             hash_secret = true,
           })
 
           assert.equal(nil, newdao)
           assert.equal(errmsg, err)
 
-          assert(db.transformations:delete({ id = dao.id }))
+          assert(db.transformations:delete(dao))
         end)
       end)
 
@@ -81,12 +81,12 @@ for _, strategy in helpers.each_strategy() do
 
         assert.equal("abc", dao.case)
 
-        local newdao = assert(db.transformations:update({ id = dao.id }, {
+        local newdao = assert(db.transformations:update(dao, {
           case = "aBc",
         }))
 
         assert.equal("abc", newdao.case)
-        assert(db.transformations:delete({ id = dao.id }))
+        assert(db.transformations:delete(dao))
       end)
 
       it("vault references are resolved after transformations", function()
@@ -101,7 +101,7 @@ for _, strategy in helpers.each_strategy() do
           name = "test",
         }))
 
-        local newdao = assert(db.transformations:update({ id = dao.id }, {
+        local newdao = assert(db.transformations:update(dao, {
           meta = "{vault://env/meta-value}",
         }))
 
@@ -109,7 +109,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same({
           meta = "{vault://env/meta-value}",
         }, newdao["$refs"])
-        assert(db.transformations:delete({ id = dao.id }))
+        assert(db.transformations:delete(dao))
       end)
     end)
 

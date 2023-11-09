@@ -92,7 +92,7 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("{vault://unknown/missing-key}", certificate.key_alt)
       assert.is_nil(certificate["$refs"])
 
-      certificate, err = db.certificates:select({ id = certificate.id })
+      certificate, err = db.certificates:select(certificate)
       assert.is_nil(err)
       assert.equal(ssl_fixtures.cert, certificate.cert)
       assert.equal(ssl_fixtures.key, certificate.key)
@@ -110,7 +110,7 @@ for _, strategy in helpers.each_strategy() do
       -- TODO: this is unexpected but schema.process_auto_fields uses currently
       -- the `nulls` parameter to detect if the call comes from Admin API
       -- for performance reasons
-      certificate, err = db.certificates:select({ id = certificate.id }, { nulls = true })
+      certificate, err = db.certificates:select(certificate, { nulls = true })
       assert.is_nil(err)
       assert.equal("{vault://test-vault/cert}", certificate.cert)
       assert.equal("{vault://test-vault/key}", certificate.key)
@@ -149,7 +149,7 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("{vault://unknown/missing-key}", certificate.key_alt)
       assert.is_nil(certificate["$refs"])
 
-      certificate, err = db.certificates:select({ id = certificate.id })
+      certificate, err = db.certificates:select(certificate)
       assert.is_nil(err)
       assert.equal(ssl_fixtures.cert, certificate.cert)
       assert.equal(ssl_fixtures.key, certificate.key)
@@ -163,7 +163,7 @@ for _, strategy in helpers.each_strategy() do
       -- TODO: this is unexpected but schema.process_auto_fields uses currently
       -- the `nulls` parameter to detect if the call comes from Admin API
       -- for performance reasons
-      certificate, err = db.certificates:select({ id = certificate.id }, { nulls = true })
+      certificate, err = db.certificates:select(certificate, { nulls = true })
       assert.is_nil(err)
       assert.equal("{vault://mock-vault/cert}", certificate.cert)
       assert.equal("{vault://mock-vault/key}", certificate.key)

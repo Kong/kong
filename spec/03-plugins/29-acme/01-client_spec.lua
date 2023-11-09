@@ -306,7 +306,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("create new certificate", function()
-        new_cert, err = db.certificates:select({ id = new_sni.certificate.id })
+        new_cert, err = db.certificates:select(new_sni.certificate)
         assert.is_nil(err)
         assert.same(new_cert.key, key)
         assert.same(new_cert.cert, crt)
@@ -331,14 +331,14 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("creates new certificate", function()
-        new_cert, err = db.certificates:select({ id = new_sni.certificate.id })
+        new_cert, err = db.certificates:select(new_sni.certificate)
         assert.is_nil(err)
         assert.same(new_cert.key, key)
         assert.same(new_cert.cert, crt)
       end)
 
       it("deletes old certificate", function()
-        new_cert, err = db.certificates:select({ id = cert.id })
+        new_cert, err = db.certificates:select(cert)
         assert.is_nil(err)
         assert.is_nil(new_cert)
       end)
