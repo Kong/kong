@@ -599,12 +599,14 @@ do
 
   local str_buf = buffer.new(64)
 
-  get_headers_key = function(headers)
+  local function get_headers_or_queries_key(values, lower_func)
     str_buf:reset()
 
     -- NOTE: DO NOT yield until str_buf:get()
-    for name, value in pairs(headers) do
-      local name = replace_dashes_lower(name)
+    for name, value in pairs(values) do
+      if lower_func then
+        name = lower_func(name)
+      end
 
       if type(value) == "table" then
         tb_sort(value)
@@ -617,20 +619,12 @@ do
     return str_buf:get()
   end
 
+  get_headers_key = function(headers)
+    return get_headers_or_queries_key(headers, replace_dashes_lower)
+  end
+
   get_queries_key = function(queries)
-    str_buf:reset()
-
-    -- NOTE: DO NOT yield until str_buf:get()
-    for name, value in pairs(queries) do
-      if type(value) == "table" then
-        tb_sort(value)
-        value = tb_concat(value, ", ")
-      end
-
-      str_buf:putf("|%s=%s", name, value)
-    end
-
-    return str_buf:get()
+    return get_headers_or_queries_key(queries)
   end
 end
 
