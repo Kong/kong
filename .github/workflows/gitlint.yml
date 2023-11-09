@@ -1,0 +1,23 @@
+name: GitLint
+
+concurrency:
+  # for PR's cancel the running task, if another commit is pushed
+  group: ${{ github.workflow }} ${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+on:
+  pull_request: {}
+
+jobs:
+  build:
+    name: Gitlint Conventional Commits
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run gitlint in a container
+        uses: docker://jorisroovers/gitlint:0.19.1
+        with:
+          entrypoint: gitlint
+          options: --ulimit nofile=1024 -v /home/runner/work/kong/kong:/repo
+          args: --debug -C /repo/.gitlint --commits ${{ github.base_ref }}..${{ github.head_ref }}

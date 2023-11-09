@@ -1,0 +1,18 @@
+[general]
+# Enable specific community contributed rules
+contrib=contrib-title-conventional-commits
+ignore=body-is-missing
+
+### Configuring rules ###
+
+[title-max-length]
+line-length=80
+
+[title-min-length]
+min-length=5
+
+[contrib-title-conventional-commits]
+types = fix,feat,chore,docs,style,refactor,perf,test,revert,ci,build,backport,cherry
+
+[body-max-line-length]
+line-length=120
