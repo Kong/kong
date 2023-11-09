@@ -324,22 +324,26 @@ local function crud_ca_certificates_handler(data)
     return
   end
 
-  log(DEBUG, "[events] CA certificate updated, invalidating ca certificate store caches for services")
+  log(DEBUG, "[events] CA certificate updated, invalidating ca certificate store caches")
 
-  local elements, err = certificate.get_ca_certificate_references(data.entity.id, "services")
-  if err then
-    log(ERR, "[events] failed to get ca certificate references, ", err)
-    return
-  end
+  local ca_id = data.entity.id
 
-  if elements then
-    local done_keys = {}
-    for _, e in ipairs(elements) do
-      local key = certificate.ca_ids_cache_key(e.ca_certificates)
+  local done_keys = {}
+  for _, entity in ipairs(certificate.CA_CERT_REFERENCE_ENTITIES) do
+    local elements, err = kong.db[entity]:select_by_ca_certificate(ca_id)
+    if err then
+      log(ERR, "[events] failed to select ", entity, " by ca certificate ", ca_id, ": ", err)
+      return
+    end
 
-      if not done_keys[key] then
-        done_keys[key] = true
-        kong.core_cache:invalidate(key)
+    if elements then
+      for _, e in ipairs(elements) do
+        local key = certificate.ca_ids_cache_key(e.ca_certificates)
+
+        if not done_keys[key] then
+          done_keys[key] = true
+          kong.core_cache:invalidate(key)
+        end
       end
     end
   end

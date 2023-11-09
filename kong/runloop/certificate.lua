@@ -19,7 +19,6 @@ local set_cert = ngx_ssl.set_cert
 local set_priv_key = ngx_ssl.set_priv_key
 local tb_concat   = table.concat
 local tb_sort   = table.sort
-local tb_insert = table.insert
 local kong = kong
 local type = type
 local error = error
@@ -29,7 +28,6 @@ local ipairs = ipairs
 local ngx_md5 = ngx.md5
 local ngx_exit = ngx.exit
 local ngx_ERROR = ngx.ERROR
-local null = ngx.null
 local fmt = string.format
 
 
@@ -385,133 +383,45 @@ local CA_CERT_REFERENCE_ENTITIES = {
 local CA_CERT_REFERENCE_PLUGINS = {
 }
 
-local loaded_plugins
 local reference_plugins
-
--- Examples:
--- gen_iterator("services")
--- gen_iterator("plugins", "mtls-auth")
--- We assume the field name is always `ca_certificates`
-local function gen_iterator(entity, plugin_name)
-  local options = {
-    workspace = null,
-  }
-
-  local iter = kong.db[entity]:each(1000, options)
-
-  local function iterator()
-    local element, err = iter()
-    if err then
-      return nil, err
-
-    elseif element == nil then
-      return nil
-
-    else
-      if entity == "plugins" then
-        -- double check, in case the filter doesn't take effect
-        if (not plugin_name or plugin_name == element.name) and
-          element.config.ca_certificates and next(element.config.ca_certificates) then
-          return element
-        else
-          return iterator()
-        end
-
-      else
-        if element.ca_certificates and next(element.ca_certificates) then
-          return element
-        else
-          return iterator()
-        end
-      end
-    end
-  end
-
-  return iterator
-end
-
 
 -- returns the first encountered entity element that is referencing `ca_id`
 -- otherwise, returns nil, err
 local function check_ca_references(ca_id)
   for _, entity in ipairs(CA_CERT_REFERENCE_ENTITIES) do
-    for element, err in gen_iterator(entity) do
-      if err then
-        local msg = fmt("failed to list %s: %s", entity, err)
-        return nil, msg
-      end
+    local elements, err = kong.db[entity]:select_by_ca_certificate(ca_id, 1)
+    if err then
+      local msg = fmt("failed to select %s by ca certificate %s: %s", entity, ca_id, err)
+      return nil, msg
+    end
 
-      for _, id in ipairs(element.ca_certificates) do
-        if id == ca_id then
-          return entity, element
-        end
-      end
+    if type(elements) == "table" and #elements > 0 then
+      return entity, elements[1]
     end
   end
 
   if not reference_plugins then
     reference_plugins = {}
-    loaded_plugins = loaded_plugins or kong.configuration.loaded_plugins
+    local loaded_plugins = kong.configuration.loaded_plugins
 
     for _, name in ipairs(CA_CERT_REFERENCE_PLUGINS) do
       if loaded_plugins[name] then
-        tb_insert(reference_plugins, name)
+        reference_plugins[name] = true
       end
     end
   end
 
-  for _, plugin_name in ipairs(reference_plugins) do
-    local entity = "plugins"
-    for element, err in gen_iterator(entity, plugin_name) do
-      if err then
-        local msg = fmt("failed to list plugins: %s", err)
-        return nil, msg
-      end
-
-      for _, id in ipairs(element.config.ca_certificates) do
-        if id == ca_id then
-          return entity, element
-        end
-      end
-    end
-  end
-end
-
-
--- returns an array of entities that are referencing `ca_id`
--- return nil, err when error
--- Examples:
--- get_ca_certificate_references(ca_id, "services")
--- get_ca_certificate_references(ca_id, "plugins", "mtls-auth")
---
--- Note we don't invalidate the ca store caches here directly because
--- different entities use different caches (kong.cache or kong.core_cache)
--- and use different functions to calculate the ca store cache key.
--- And it's not a good idea to depend on the plugin implementations in Core.
-local function get_ca_certificate_references(ca_id, entity, plugin_name)
-  local elements = {}
-
-  for element, err in gen_iterator(entity, plugin_name) do
-    if err then
-      local msg = fmt("failed to list %s: %s", entity, err)
-      return nil, msg
-    end
-
-    local ca_certificates
-    if entity == "plugins" then
-      ca_certificates = element.config.ca_certificates
-    else
-      ca_certificates = element.ca_certificates
-    end
-
-    for _, id in ipairs(ca_certificates) do
-      if id == ca_id then
-        tb_insert(elements, element)
-      end
-    end
+  local plugins, err = kong.db.plugins:select_by_ca_certificate(ca_id, 1, reference_plugins)
+  if err then
+    local msg = fmt("failed to select plugins by ca_certificate %s: %s", ca_id, err)
+    return nil, msg
   end
 
-  return elements
+  if type(plugins) == "table" and #plugins > 0 then
+    return "plugins", plugins[1]
+  end
+
+  return nil, nil
 end
 
 
@@ -524,5 +434,5 @@ return {
   get_ca_certificate_store = get_ca_certificate_store,
   ca_ids_cache_key = ca_ids_cache_key,
   check_ca_references = check_ca_references,
-  get_ca_certificate_references = get_ca_certificate_references,
+  CA_CERT_REFERENCE_ENTITIES = CA_CERT_REFERENCE_ENTITIES,
 }
