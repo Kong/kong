@@ -227,7 +227,7 @@ function _M:handle_cp_websocket()
   local purge_delay = self.conf.cluster_data_plane_purge_delay
   local update_sync_status = function()
     local ok
-    ok, err = kong.db.clustering_data_planes:upsert({ id = dp_id, }, {
+    ok, err = kong.db.clustering_data_planes:upsert({ id = dp_id }, {
       last_seen = last_seen,
       config_hash = config_hash ~= ""
                 and config_hash
