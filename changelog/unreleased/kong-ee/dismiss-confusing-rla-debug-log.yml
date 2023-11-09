@@ -1,0 +1,3 @@
+message: "Dismiss confusing debug log from Redis tool of rate limiting #7077 #7101"
+type: bugfix
+scope: Core
