@@ -647,6 +647,8 @@ export const waitForConfigRebuild = async (options: any = {}) => {
     options?.timeout,
     options?.interval
   );
+
+  return true
 };
 
 interface ItemProps {

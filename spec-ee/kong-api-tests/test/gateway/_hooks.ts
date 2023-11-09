@@ -1,8 +1,9 @@
-import { createRedisClient, gatewayAuthHeader, isCI, waitForConfigRebuild } from '@support';
+import { createRedisClient, gatewayAuthHeader, isCI, waitForConfigRebuild, eventually } from '@support';
 import {
   postGatewayEeLicense,
   deleteGatewayEeLicense,
 } from '@shared/gateway_workflows';
+import { expect } from '../../support/assert/chai-expect';
 import axios from 'axios';
 
 export const mochaHooks: Mocha.RootHookObject = {
@@ -11,13 +12,23 @@ export const mochaHooks: Mocha.RootHookObject = {
     const { authHeaderKey, authHeaderValue } = gatewayAuthHeader();
     axios.defaults.headers[authHeaderKey] = authHeaderValue;
 
-    // Gateway for API tests starts without EE_LICENSE in CI, hence, we post license at the beggining of all teststo allow us test the functionality of license endpoint
-    if (isCI()) {
-      await postGatewayEeLicense();
-      // Wait for the license propagation completes before release to the test
-      await waitForConfigRebuild();
+    // Gateway for API tests starts without EE_LICENSE in CI, hence, we post license at the beginning of all tests to allow us test the functionality of license endpoint
+    try {
+      if (isCI()) {
+        await postGatewayEeLicense();
+        // Wait for the license propagation completes before release to the test
+        // configRebuild is wrapped with eventually as sometimes it returns 401 error for route creation
+        await eventually(async () => {
+          const intitialConfigRebuildSuccess = await waitForConfigRebuild();
+          expect(intitialConfigRebuildSuccess).to.be.true
+        }, 20000, 3000, true)
+        
+      }
+      createRedisClient();
+    } catch (err) {
+      console.log(`Something went wrong in beforeAll hook while rebuilding configuration: ${err}`)
+      process.exit(1)
     }
-    createRedisClient();
   },
 
   afterAll: async function (this: Mocha.Context) {
