@@ -1,0 +1,45 @@
+import org.deeplearning4j.nn.conf.MultiLayerConfiguration;
+import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
+import org.deeplearning4j.nn.conf.layers.DenseLayer;
+import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
+import org.deeplearning4j.nn.weights.WeightInit;
+import org.nd4j.linalg.activations.Activation;
+import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.factory.Nd4j;
+import org.nd4j.linalg.lossfunctions.LossFunctions;
+
+public class LanguageTranslation {
+
+    public static void main(String[] args) {
+        INDArray englishSentences = Nd4j.create(new float[][]{{0.2f, 0.4f, 0.6f}, {0.1f, 0.3f, 0.5f}});
+
+        INDArray translatedSentences = Nd4j.create(new float[][]{{0.4f, 0.8f, 1.2f}, {0.2f, 0.6f, 1.0f}});
+
+        MultiLayerConfiguration configuration = new NeuralNetConfiguration.Builder()
+                .seed(12345)
+                .updater(org.deeplearning4j.nn.conf.Updater.ADAM)
+                .list()
+                .layer(new DenseLayer.Builder()
+                        .nIn(englishSentences.columns())
+                        .nOut(50)
+                        .weightInit(WeightInit.XAVIER)
+                        .activation(Activation.RELU)
+                        .build())
+                .layer(new DenseLayer.Builder()
+                        .nIn(50)
+                        .nOut(translatedSentences.columns())
+                        .weightInit(WeightInit.XAVIER)
+                        .activation(Activation.IDENTITY)
+                        .lossFunction(LossFunctions.LossFunction.MSE)
+                        .build())
+                .build();
+
+        MultiLayerNetwork model = new MultiLayerNetwork(configuration);
+        model.init();
+        model.fit(englishSentences, translatedSentences);
+
+        INDArray inputEnglishSentence = Nd4j.create(new float[]{0.3f, 0.5f, 0.7f});
+        INDArray translatedOutput = model.output(inputEnglishSentence);
+        System.out.println("Translated Output: " + translatedOutput);
+    }
+}
