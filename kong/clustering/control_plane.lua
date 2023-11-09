@@ -11,7 +11,6 @@ local compat = require("kong.clustering.compat")
 local constants = require("kong.constants")
 local events = require("kong.clustering.events")
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
-local extract_dp_cert = require("kong.clustering.tls").extract_dp_cert
 
 
 local string = string
@@ -75,6 +74,17 @@ end
 
 local function is_timeout(err)
   return err and sub(err, -7) == "timeout"
+end
+
+
+local function extract_dp_cert()
+  local expiry_timestamp = cert:get_not_after()
+  -- values in cert_details must be strings
+  local cert_details = {
+    expiry_timestamp = expiry_timestamp,
+  }
+
+  return cert_details
 end
 
 
@@ -174,7 +184,7 @@ _M.check_version_compatibility = compat.check_version_compatibility
 _M.check_configuration_compatibility = compat.check_configuration_compatibility
 
 
-function _M:handle_cp_websocket()
+function _M:handle_cp_websocket(cert)
   local dp_id = ngx_var.arg_node_id
   local dp_hostname = ngx_var.arg_node_hostname
   local dp_ip = ngx_var.remote_addr
@@ -221,7 +231,7 @@ function _M:handle_cp_websocket()
     return ngx_exit(ngx_CLOSE)
   end
 
-  local dp_cert_details = extract_dp_cert(ngx_var.ssl_client_raw_cert)
+  local dp_cert_details = extract_dp_cert(cert)
   local dp_plugins_map = plugins_list_to_map(data.plugins)
   local config_hash = DECLARATIVE_EMPTY_CONFIG_HASH -- initial hash
   local last_seen = ngx_time()
