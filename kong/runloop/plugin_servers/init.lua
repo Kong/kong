@@ -220,7 +220,7 @@ function get_instance_id(plugin_name, conf)
 
   if instance_info
     and instance_info.id
-    and instance_info.conf and instance_info.conf.__key__ == key
+    and instance_info.conf and instance_info.conf.__plugin_id == key
   then
     -- exact match, return it
     return instance_info.id
