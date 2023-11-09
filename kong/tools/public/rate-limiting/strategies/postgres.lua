@@ -12,14 +12,7 @@ local ngx_log      = ngx.log
 local ERR          = ngx.ERR
 local type         = type
 local setmetatable = setmetatable
-local new_tab
-do
-  local ok
-  ok, new_tab = pcall(require, "table.new")
-  if not ok then
-    new_tab = function(narr, nrec) return {} end
-  end
-end
+local new_tab      = require("table.new")
 
 
 local DELETE_COUNTER_QUERY = [[

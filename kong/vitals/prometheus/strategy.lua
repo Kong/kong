@@ -23,17 +23,13 @@ local vitals_utils = require "kong.vitals.utils"
 
 local http = require "resty.http"
 local cjson = require "cjson.safe"
+local new_tab = require "table.new"
 local null = cjson.null -- or ngx.null
 local table_insert = table.insert
 local table_concat = table.concat
 local ngx_escape_uri = ngx.escape_uri
 local ngx_time = ngx.time
 
-
-local ok, new_tab = pcall(require, "table.new")
-if not ok or type(new_tab) ~= "function" then
-    new_tab = function (narr, nrec) return {} end
-end
 
 local _log_prefix = "[vitals-strategy] "
 

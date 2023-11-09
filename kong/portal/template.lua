@@ -16,7 +16,6 @@ local concat = table.concat
 local assert = assert
 local prefix
 local write = io.write
-local pcall = pcall
 local phase
 local open = io.open
 local load = load
@@ -75,8 +74,7 @@ local EMPTY  = ""
 
 local VAR_PHASES
 
-local ok, newtab = pcall(require, "table.new")
-if not ok then newtab = function() return {} end end
+local newtab = require("table.new")
 
 local caching = true
 local template = newtab(0, 13)

@@ -28,16 +28,7 @@ local timer_handle
 local TIME_DELTA = 0.001
 
 
-local new_tab
-do
-  local ok
-  ok, new_tab = pcall(require, "table.new")
-  if not ok then
-    new_tab = function(narr, nrec)
-      return {}
-    end
-  end
-end
+local new_tab = require("table.new")
 
 
 local function log(lvl, ...)
@@ -600,4 +591,3 @@ end
 
 
 return _M
-

@@ -12,6 +12,7 @@ local tablex            = require "pl.tablex"
 local pl_stringx        = require "pl.stringx"
 local reports           = require "kong.reports"
 local utils             = require "kong.tools.utils"
+local new_tab           = require "table.new"
 local pg_strat          = require "kong.vitals.postgres.strategy"
 local feature_flags     = require "kong.enterprise_edition.feature_flags"
 local vitals_utils      = require "kong.vitals.utils"
@@ -47,17 +48,6 @@ local utils_unpack      = utils.unpack
 
 local knode             = (kong and kong.node) and kong.node or
                           require "kong.pdk.node".new()
-
-local new_tab
-do
-  local ok
-  ok, new_tab = pcall(require, "table.new")
-  if not ok then
-    new_tab = function(narr, nrec)
-      return {}
-    end
-  end
-end
 
 
 local STAT_LABELS = {

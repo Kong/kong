@@ -16,19 +16,8 @@ local tostring       = tostring
 local fmt            = string.format
 local table_concat   = table.concat
 
-local ok, new_tab = pcall(require, "table.new")
-if not ok or type(new_tab) ~= "function" then
-    new_tab = function (narr, nrec) return {} end
-end
-
-local ok, clear_tab = pcall(require, "table.clear")
-if not ok then
-  clear_tab = function (tab)
-    for k, _ in pairs(tab) do
-      tab[k] = nil
-    end
-  end
-end
+local new_tab = require("table.new")
+local clear_tab = require("table.clear")
 
 local DEFAULT_METRICS_COUNT = 11
 

@@ -11,7 +11,10 @@ local _M = {}
 local cjson = require "cjson"
 local ffi   = require "ffi"
 local http  = require "resty.http"
+local new_tab = require "table.new"
+local clear_tab = require "table.clear"
 local vitals_utils = require "kong.vitals.utils"
+
 
 local ipairs        = ipairs
 local math_floor    = math.floor
@@ -59,22 +62,6 @@ local function gettimeofday()
     ffi.C.gettimeofday(gettimeofday_struct, nil)
     return string.format("%.f", tonumber(gettimeofday_struct.tv_sec) * 1000000 +
       tonumber(gettimeofday_struct.tv_usec))
-end
-
-
-local ok, new_tab = pcall(require, "table.new")
-if not ok or type(new_tab) ~= "function" then
-    new_tab = function (narr, nrec) return {} end
-end
-
-
-local ok, clear_tab = pcall(require, "table.clear")
-if not ok then
-  clear_tab = function(tab)
-    for k in pairs(tab) do
-      tab[k] = nil
-    end
-  end
 end
 
 
