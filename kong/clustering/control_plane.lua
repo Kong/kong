@@ -77,7 +77,7 @@ local function is_timeout(err)
 end
 
 
-local function extract_dp_cert()
+local function extract_dp_cert(cert)
   local expiry_timestamp = cert:get_not_after()
   -- values in cert_details must be strings
   local cert_details = {
