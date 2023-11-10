@@ -138,6 +138,9 @@ local function redis_test_configurations(policy)
 end
 
 
+-- align the time to the begining of a fixed window
+-- so that we are less likely to encounter a window reset
+-- during the test
 local function wait_for_next_fixed_window(window_size)
   local window_start = floor(time() / window_size) * window_size
   local window_elapsed_time = (time() - window_start)
@@ -166,7 +169,7 @@ for _, strategy in strategies() do
       s = s .. " [#" .. redis_description .. "]"
     end
     describe(s, function()
-      local bp, db, consumer1, consumer2, plugin3, plugin5, plugin6, plugin15, consumer_in_group
+      local bp, db, consumer1, consumer2, plugin3, plugin5, plugin6, plugin10, plugin15, consumer_in_group
       local consumer_in_group_no_config
       local proxy_client
 
@@ -357,7 +360,7 @@ for _, strategy in strategies() do
           hosts = { "test10.com" },
         })
 
-        assert(bp.plugins:insert(
+        plugin10 = assert(bp.plugins:insert(
           build_plugin(
             route10.id, 10, 6, 10, nil,
             nil, redis_configuration,
@@ -744,6 +747,8 @@ for _, strategy in strategies() do
           it("sync counters in all nodes after PATCH", function()
             local window_size = plugin15.config.window_size[1]
             local limit = plugin15.config.limit[1]
+
+            wait_for_next_fixed_window(window_size)
 
             for i = 1, limit do
               proxy_client = helpers.proxy_client()
@@ -1173,6 +1178,7 @@ for _, strategy in strategies() do
         end)
 
         it("shares limit data in the same namespace", function()
+          wait_for_next_fixed_window(MOCK_RATE)
           -- decrement the counters in route4
           for i = 1, 3 do
             proxy_client = helpers.proxy_client()
@@ -1332,6 +1338,7 @@ for _, strategy in strategies() do
         end)
 
         it("hides headers if hide_client_headers is true", function()
+          wait_for_next_fixed_window(MOCK_RATE)
           local res
           for i = 1, 6 do
             proxy_client = helpers.proxy_client()
@@ -1778,6 +1785,7 @@ for _, strategy in strategies() do
         end)
         describe("set to `#service`", function()
           it("should be global to service, and independent between services", function()
+            wait_for_next_fixed_window(plugin10.config.window_size[1])
             for i = 1, 6 do
               proxy_client = helpers.proxy_client()
               local res = assert(proxy_client:send {
@@ -1805,6 +1813,7 @@ for _, strategy in strategies() do
             local json = cjson.decode(body)
             assert.same({ message = "API rate limit exceeded" }, json)
 
+            wait_for_next_fixed_window(MOCK_RATE)
             -- service11 should still be able to make request as
             -- limit is set by service
             proxy_client = helpers.proxy_client()
