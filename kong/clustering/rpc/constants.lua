@@ -7,6 +7,12 @@ local ERROR_CODE = {
 }
 
 
+local WS_OPTS = {
+  timeout         = 5000, -- 5 seconds
+  max_payload_len = 64 * 1024,
+}
+
+
 local PING_INTERVAL = 30 -- seconds
 local PING_WAIT     = PING_INTERVAL * 1.5
 
@@ -14,11 +20,9 @@ local PING_WAIT     = PING_INTERVAL * 1.5
 return {
   ERROR_CODE = ERROR_CODE,
 
+  WS_OPTS = WS_OPTS,
+
   JSONRPC_VERSION = "2.0",
-
-  TIMEOUT = 5000, -- 5 seconds
-
-  MAX_PAYLOAD = 64 * 1024,
 
   PING_INTERVAL = PING_INTERVAL,
   PING_WAIT     = PING_WAIT,

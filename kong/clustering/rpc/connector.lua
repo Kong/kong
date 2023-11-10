@@ -9,10 +9,7 @@ local _M = {}
 local _MT = { __index = _M, }
 
 
-local WS_OPTS = {
-  timeout         = constants.TIMEOUT,
-  max_payload_len = constants.MAX_PAYLOAD,
-}
+local WS_OPTS = constants.WS_OPTS
 
 
 local function connect(conf)
