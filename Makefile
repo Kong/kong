@@ -43,16 +43,11 @@ endif
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 KONG_SOURCE_LOCATION ?= $(ROOT_DIR)
-GRPCURL_VERSION ?= 1.8.5
+GRPCURL_VERSION ?= 1.9.2
 BAZLISK_VERSION ?= 1.20.0
 H2CLIENT_VERSION ?= 0.4.4
 BAZEL := $(shell command -v bazel 2> /dev/null)
 VENV = /dev/null # backward compatibility when no venv is built
-
-# Use x86_64 grpcurl v1.8.5 for Apple silicon chips
-ifeq ($(GRPCURL_OS)_$(MACHINE)_$(GRPCURL_VERSION), osx_arm64_1.8.5)
-GRPCURL_MACHINE = x86_64
-endif
 
 PACKAGE_TYPE ?= deb
 

@@ -84,22 +84,22 @@ local phrases_ssl = {
 local phrases_reflection = {
   ["%[logger%] init_worker phase"] = 1,
   ["%[logger%] configure phase"] = 1,
-  ["%[logger%] rewrite phase"] = 2,
-  ["%[logger%] access phase"] = 2,
-  ["%[logger%] header_filter phase"] = 2,
+  ["%[logger%] rewrite phase"] = 3,
+  ["%[logger%] access phase"] = 3,
+  ["%[logger%] header_filter phase"] = 3,
   ["%[logger%] body_filter phase"] = -1,
-  ["%[logger%] log phase"] = 2,
+  ["%[logger%] log phase"] = 3,
 }
 
 local phrases_ssl_reflection = {
   ["%[logger%] init_worker phase"] = 1,
   ["%[logger%] configure phase"] = 1,
   ["%[logger%] certificate phase"] = 1,
-  ["%[logger%] rewrite phase"] = 2,
-  ["%[logger%] access phase"] = 2,
-  ["%[logger%] header_filter phase"] = 2,
+  ["%[logger%] rewrite phase"] = 3,
+  ["%[logger%] access phase"] = 3,
+  ["%[logger%] header_filter phase"] = 3,
   ["%[logger%] body_filter phase"] = -1,
-  ["%[logger%] log phase"] = 2,
+  ["%[logger%] log phase"] = 3,
 }
 
 local function assert_phases(phrases)
