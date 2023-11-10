@@ -1,12 +1,12 @@
 local cjson = require("cjson.safe")
-local utils = require("kong.tools.utils")
+local gzip = require("kong.tools.gzip")
 
 
 local assert = assert
 
 
-local compress   = utils.deflate_gzip
-local uncompress = utils.inflate_gzip
+local compress   = gzip.deflate_gzip
+local uncompress = gzip.inflate_gzip
 
 
 local cjson_encode = cjson.encode
