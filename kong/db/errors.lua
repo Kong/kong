@@ -52,6 +52,7 @@ local ERRORS              = {
   INVALID_FOREIGN_KEY     = 16, -- foreign key is valid for matching a row
   INVALID_WORKSPACE       = 17, -- strategy reports a workspace error
   INVALID_UNIQUE_GLOBAL   = 18, -- unique field value is invalid for global query
+  REFERENCCED_BY_OTHERS   = 19, -- still referenced by other entities
 }
 
 
@@ -77,6 +78,7 @@ local ERRORS_NAMES                 = {
   [ERRORS.INVALID_FOREIGN_KEY]     = "invalid foreign key",
   [ERRORS.INVALID_WORKSPACE]       = "invalid workspace",
   [ERRORS.INVALID_UNIQUE_GLOBAL]   = "invalid global query",
+  [ERRORS.REFERENCCED_BY_OTHERS]   = "referenced by others",
 }
 
 
@@ -514,6 +516,15 @@ function _M:invalid_unique_global(name)
 
   return new_err_t(self, ERRORS.INVALID_UNIQUE_GLOBAL,
                    fmt("unique key %s is invalid for global query", name))
+end
+
+
+function _M:referenced_by_others(err)
+  if type(err) ~= "string" then
+    error("err must be a string", 2)
+  end
+
+  return new_err_t(self, ERRORS.REFERENCCED_BY_OTHERS, err)
 end
 
 

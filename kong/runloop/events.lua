@@ -329,7 +329,7 @@ local function crud_ca_certificates_handler(data)
   local ca_id = data.entity.id
 
   local done_keys = {}
-  for _, entity in ipairs(certificate.CA_CERT_REFERENCE_ENTITIES) do
+  for _, entity in ipairs(certificate.get_ca_certificate_reference_entities()) do
     local elements, err = kong.db[entity]:select_by_ca_certificate(ca_id)
     if err then
       log(ERR, "[events] failed to select ", entity, " by ca certificate ", ca_id, ": ", err)
@@ -344,6 +344,25 @@ local function crud_ca_certificates_handler(data)
           done_keys[key] = true
           kong.core_cache:invalidate(key)
         end
+      end
+    end
+  end
+
+  local plugin_done_keys = {}
+  local plugins, err = kong.db.plugins:select_by_ca_certificate(ca_id, nil,
+    certificate.get_ca_certificate_reference_plugins())
+  if err then
+    log(ERR, "[events] failed to select plugins by ca certificate ", ca_id, ": ", err)
+    return
+  end
+
+  if plugins then
+    for _, e in ipairs(plugins) do
+      local key = certificate.ca_ids_cache_key(e.config.ca_certificates)
+
+      if not plugin_done_keys[key] then
+        plugin_done_keys[key] = true
+        kong.cache:invalidate(key)
       end
     end
   end

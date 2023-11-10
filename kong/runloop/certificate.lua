@@ -2,6 +2,9 @@ local ngx_ssl = require "ngx.ssl"
 local pl_utils = require "pl.utils"
 local mlcache = require "kong.resty.mlcache"
 local new_tab = require "table.new"
+local constants = require "kong.constants"
+local utils = require "kong.tools.utils"
+local plugin_servers = require "kong.runloop.plugin_servers"
 local openssl_x509_store = require "resty.openssl.x509.store"
 local openssl_x509 = require "resty.openssl.x509"
 
@@ -19,6 +22,7 @@ local set_cert = ngx_ssl.set_cert
 local set_priv_key = ngx_ssl.set_priv_key
 local tb_concat   = table.concat
 local tb_sort   = table.sort
+local tb_insert   = table.insert
 local kong = kong
 local type = type
 local error = error
@@ -28,7 +32,6 @@ local ipairs = ipairs
 local ngx_md5 = ngx.md5
 local ngx_exit = ngx.exit
 local ngx_ERROR = ngx.ERROR
-local fmt = string.format
 
 
 local default_cert_and_key
@@ -372,56 +375,64 @@ local function get_ca_certificate_store(ca_ids)
 end
 
 
--- ordinary entities that reference ca certificates
-local CA_CERT_REFERENCE_ENTITIES = {
-  "services",
-}
+local function get_ca_certificate_store_for_plugin(ca_ids)
+  return kong.cache:get(ca_ids_cache_key(ca_ids),
+                        get_ca_store_opts, fetch_ca_certificates,
+                        ca_ids)
+end
 
--- plugins that reference ca certificates
--- For Example:
--- mtls-auth
-local CA_CERT_REFERENCE_PLUGINS = {
-}
 
-local reference_plugins
-
--- returns the first encountered entity element that is referencing `ca_id`
--- otherwise, returns nil, err
-local function check_ca_references(ca_id)
-  for _, entity in ipairs(CA_CERT_REFERENCE_ENTITIES) do
-    local elements, err = kong.db[entity]:select_by_ca_certificate(ca_id, 1)
-    if err then
-      local msg = fmt("failed to select %s by ca certificate %s: %s", entity, ca_id, err)
-      return nil, msg
-    end
-
-    if type(elements) == "table" and #elements > 0 then
-      return entity, elements[1]
-    end
-  end
-
-  if not reference_plugins then
-    reference_plugins = {}
-    local loaded_plugins = kong.configuration.loaded_plugins
-
-    for _, name in ipairs(CA_CERT_REFERENCE_PLUGINS) do
-      if loaded_plugins[name] then
-        reference_plugins[name] = true
+-- here we assume the field name is always `ca_certificates`
+local get_ca_certificate_reference_entities
+do
+  -- ordinary entities that reference ca certificates
+  -- For example: services
+  local CA_CERT_REFERENCE_ENTITIES
+  get_ca_certificate_reference_entities = function()
+    if not CA_CERT_REFERENCE_ENTITIES then
+      CA_CERT_REFERENCE_ENTITIES = {}
+      for _, entity_name in ipairs(constants.CORE_ENTITIES) do
+        local entity_schema = require("kong.db.schema.entities." .. entity_name)
+        if entity_schema.fields.ca_certificates then
+          tb_insert(CA_CERT_REFERENCE_ENTITIES, entity_name)
+        end
       end
     end
-  end
 
-  local plugins, err = kong.db.plugins:select_by_ca_certificate(ca_id, 1, reference_plugins)
-  if err then
-    local msg = fmt("failed to select plugins by ca_certificate %s: %s", ca_id, err)
-    return nil, msg
+    return CA_CERT_REFERENCE_ENTITIES
   end
+end
 
-  if type(plugins) == "table" and #plugins > 0 then
-    return "plugins", plugins[1]
+
+-- here we assume the field name is always `ca_certificates`
+local get_ca_certificate_reference_plugins
+do
+  -- loaded plugins that reference ca certificates
+  -- For example: mtls-auth
+  local CA_CERT_REFERENCE_PLUGINS
+  get_ca_certificate_reference_plugins = function()
+    if not CA_CERT_REFERENCE_PLUGINS then
+      CA_CERT_REFERENCE_PLUGINS = {}
+      local loaded_plugins = kong.configuration.loaded_plugins
+      for name, _ in pairs(loaded_plugins) do
+        local plugin_schema = "kong.plugins." .. name .. ".schema"
+        local ok, schema = utils.load_module_if_exists(plugin_schema)
+        if not ok then
+          ok, schema = plugin_servers.load_schema(name)
+        end
+
+        if not ok then
+          return nil, "no configuration schema found for plugin: " .. name
+        end
+
+        if schema.fields.config.fields.ca_certificates then
+          CA_CERT_REFERENCE_PLUGINS[name] = true
+        end
+      end
+    end
+
+    return CA_CERT_REFERENCE_PLUGINS
   end
-
-  return nil, nil
 end
 
 
@@ -432,7 +443,8 @@ return {
   execute = execute,
   get_certificate = get_certificate,
   get_ca_certificate_store = get_ca_certificate_store,
+  get_ca_certificate_store_for_plugin = get_ca_certificate_store_for_plugin,
   ca_ids_cache_key = ca_ids_cache_key,
-  check_ca_references = check_ca_references,
-  CA_CERT_REFERENCE_ENTITIES = CA_CERT_REFERENCE_ENTITIES,
+  get_ca_certificate_reference_entities = get_ca_certificate_reference_entities,
+  get_ca_certificate_reference_plugins = get_ca_certificate_reference_plugins,
 }

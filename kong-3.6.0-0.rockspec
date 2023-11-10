@@ -144,7 +144,6 @@ build = {
     ["kong.api.routes.tags"] = "kong/api/routes/tags.lua",
     ["kong.api.routes.targets"] = "kong/api/routes/targets.lua",
     ["kong.api.routes.upstreams"] = "kong/api/routes/upstreams.lua",
-    ["kong.api.routes.ca_certificates"] = "kong/api/routes/ca_certificates.lua",
 
     ["kong.admin_gui"] = "kong/admin_gui/init.lua",
     ["kong.admin_gui.utils"] = "kong/admin_gui/utils.lua",
@@ -203,6 +202,7 @@ build = {
     ["kong.db.dao.vaults"] = "kong/db/dao/vaults.lua",
     ["kong.db.dao.workspaces"] = "kong/db/dao/workspaces.lua",
     ["kong.db.dao.services"] = "kong/db/dao/services.lua",
+    ["kong.db.dao.ca_certificates"] = "kong/db/dao/ca_certificates.lua",
     ["kong.db.declarative"] = "kong/db/declarative/init.lua",
     ["kong.db.declarative.marshaller"] = "kong/db/declarative/marshaller.lua",
     ["kong.db.declarative.export"] = "kong/db/declarative/export.lua",
