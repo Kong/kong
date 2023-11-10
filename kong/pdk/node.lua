@@ -27,6 +27,11 @@ local shms = {}
 local n_workers = ngx.worker.count()
 
 
+ffi.cdef[[
+int gethostname(char *name, size_t len);
+]]
+
+
 for shm_name, shm in pairs(shared) do
   insert(shms, {
     zone = shm,

@@ -8,7 +8,6 @@
 -- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
 -- @module kong.tools.utils
 
-local ffi = require "ffi"
 local pl_stringx = require "pl.stringx"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
@@ -29,11 +28,6 @@ local join          = pl_stringx.join
 local split         = pl_stringx.split
 local re_match      = ngx.re.match
 local setmetatable  = setmetatable
-
-
-ffi.cdef[[
-int gethostname(char *name, size_t len);
-]]
 
 
 local _M = {}
