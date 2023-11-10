@@ -283,6 +283,7 @@ build = {
     ["kong.tools.uuid"] = "kong/tools/uuid.lua",
     ["kong.tools.rand"] = "kong/tools/rand.lua",
     ["kong.tools.system"] = "kong/tools/system.lua",
+    ["kong.tools.time"] = "kong/tools/time.lua",
 
     ["kong.tools.channel"] = "kong/tools/channel.lua",
 
