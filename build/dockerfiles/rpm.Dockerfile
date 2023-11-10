@@ -35,6 +35,8 @@ COPY ${KONG_ARTIFACT_PATH}${KONG_ARTIFACT} /tmp/kong.rpm
 RUN yum update -y \
     && yum install -y /tmp/kong.rpm \
     && rm /tmp/kong.rpm \
+    && mkdir /var/run/kong \
+    && chown kong:0 /var/run/kong \
     && chown kong:0 /usr/local/bin/kong \
     && chown -R kong:0 /usr/local/kong \
     && ln -sf /usr/local/openresty/bin/resty /usr/local/bin/resty \
