@@ -17,13 +17,16 @@ local FILE_LOG_PATH = os.tmpname()
 
 for _, strategy in helpers.each_strategy() do
 
-describe("cache the workspace names #" .. strategy, function()
+describe("cache the workspace names in hybrid mode #" .. strategy, function()
+  local admin_client
 
   lazy_setup(function()
     helpers.get_db_utils(strategy, {
       "routes",
       "services",
       "clustering_data_planes",
+      "workspaces",
+      "plugins",
     }) -- runs migrations
 
     assert(helpers.start_kong({
@@ -54,19 +57,8 @@ describe("cache the workspace names #" .. strategy, function()
       cluster_ca_cert = "spec/fixtures/kong_clustering.crt",
       log_level = "info",
     }))
-  end)
 
-  lazy_teardown(function()
-    helpers.stop_kong("servroot2")
-    helpers.stop_kong()
-  end)
-
-  it("dp includes workspace_name in payload", function()
-    local admin_client = helpers.admin_client(10000)
-    finally(function()
-      admin_client:close()
-    end)
-
+    admin_client = helpers.admin_client(10000)
     -- create workspace
     local res = assert(admin_client:post("/workspaces", {
       body   = {
@@ -100,12 +92,21 @@ describe("cache the workspace names #" .. strategy, function()
       },
       headers = {["Content-Type"] = "application/json"}
     }))
+    assert.res_status(201, res)
+  end)
 
+  lazy_teardown(function()
+    admin_client:close()
+    helpers.stop_kong("servroot2")
+    helpers.stop_kong()
+  end)
+
+  it("dp includes workspace_name in payload", function()
     local uuid = utils.random_string()
     helpers.wait_until(function()
       -- Making the request
       local proxy_client = helpers.http_client("127.0.0.1", 9002)
-      res = proxy_client:send({
+      local res = proxy_client:send({
         method  = "GET",
         path    = "/",
         headers = {
