@@ -67,7 +67,7 @@ describe("plugins", function()
     assert.is_nil(err)
   end)
 
-  it("accepts cetr details", function()
+  it("accepts cert details", function()
     local ok, err = validate({
       ip = "127.0.0.1",
       hostname = "dp.example.com",

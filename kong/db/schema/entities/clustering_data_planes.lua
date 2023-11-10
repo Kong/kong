@@ -43,7 +43,7 @@ return {
         fields = {
           { expiry_timestamp = typedefs.auto_timestamp_s }
         },
-        description = "Certificate details of the data plane.",
+        description = "Certificate details of the DPs.",
       },
     },
   },
