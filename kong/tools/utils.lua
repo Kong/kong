@@ -980,22 +980,6 @@ local topological_sort do
 end
 _M.topological_sort = topological_sort
 
----
--- Sort by handler priority and check for collisions. In case of a collision
--- sorting will be applied based on the plugin's name.
--- @tparam table plugin table containing `handler` table and a `name` string
--- @tparam table plugin table containing `handler` table and a `name` string
--- @treturn boolean outcome of sorting
-function _M.sort_by_handler_priority(a, b)
-  local prio_a = a.handler.PRIORITY or 0
-  local prio_b = b.handler.PRIORITY or 0
-  if prio_a == prio_b and not
-      (prio_a == 0 or prio_b == 0) then
-    return a.name > b.name
-  end
-  return prio_a > prio_b
-end
-
 
 function _M.get_request_id()
   local ctx = ngx.ctx
