@@ -20,14 +20,14 @@ busted.subscribe({ 'error' }, function(element, parent, message, debug)
 end)
 
 busted.subscribe({ 'suite', 'end' }, function(suite, count, total)
+  local output = assert(io.open(failed_files_file, "w"))
   if next(FAILED_FILES) then
-    local output = assert(io.open(failed_files_file, "w"))
     for failed_file in pairs(FAILED_FILES) do
       if failed_file:sub(1, 1) == '@' then
         failed_file = failed_file:sub(2)
       end
       assert(output:write(failed_file .. "\n"))
     end
-    output:close()
   end
+  output:close()
 end)
