@@ -33,7 +33,7 @@ include '*.stream_mock';
 
 > if cluster_ssl_tunnel then
 server {
-    listen unix:${{PREFIX}}/cluster_proxy_ssl_terminator.sock;
+    listen unix:${{RUNTIME_DATA_PATH}}/cluster_proxy_ssl_terminator.sock;
 
     proxy_pass ${{cluster_ssl_tunnel}};
     proxy_ssl on;
