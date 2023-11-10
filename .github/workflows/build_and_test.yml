@@ -233,7 +233,7 @@ jobs:
 
     - name: Generate test rerun filename
       run: |
-           echo FAILED_TEST_FILES_FILE=$(echo '${{ matrix.suite }}-${{ matrix.split }}' | tr A-Z a-z | sed -Ee 's/[^a-z0-9]+/-/g').txt >> $GITHUB_ENV
+           echo FAILED_TEST_FILES_FILE=$(echo '${{ github.run_id }}-${{ matrix.suite }}-${{ matrix.split }}' | tr A-Z a-z | sed -Ee 's/[^a-z0-9]+/-/g').txt >> $GITHUB_ENV
 
 
     - name: Download test rerun information
