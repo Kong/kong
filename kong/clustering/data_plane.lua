@@ -233,8 +233,7 @@ function _M:communicate(premature)
       backup_export_config(config_table)
       -- EE ]]
 
-      local pok, res, err = pcall(config_helper.update, self.declarative_config,
-                                  config_table, msg.config_hash, msg.hashes)
+      local pok, res, err = pcall(config_helper.update, self.declarative_config, msg)
       if pok then
         ping_immediately = true
       end

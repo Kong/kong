@@ -1979,6 +1979,10 @@ local function serve_content(module, options)
     return lapis.serve("kong.portal.gui")
   end
 
+  if kong.configuration.log_level == "debug" then
+    ngx.header["Kong-Transaction-Id"] = kong_global.get_current_transaction_id()
+  end
+
   lapis.serve(module)
 
   ctx.KONG_ADMIN_CONTENT_ENDED_AT = get_updated_now_ms()
