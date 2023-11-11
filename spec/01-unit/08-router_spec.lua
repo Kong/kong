@@ -92,7 +92,9 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
     local it_trad_only = (flavor == "traditional") and it or pending
 
     describe("split_port()", function()
-      it("splits port number", function()
+      local router = assert(new_router({}))
+
+      it_trad_only("splits port number", function()
         for _, case in ipairs({
           { { "" }, { "", "", false } },
           { { "localhost" }, { "localhost", "localhost", false } },
@@ -120,7 +122,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           { { "[::1]:80b", 88 }, { "[::1]:80b", "[::1]:80b:88", false } },
           { { "[::1]/96", 88 }, { "[::1]/96", "[::1]/96:88", false } },
         }) do
-          assert.same(case[2], { Router.split_port(unpack(case[1])) })
+          assert.same(case[2], { router.split_port(unpack(case[1])) })
         end
       end)
     end)
