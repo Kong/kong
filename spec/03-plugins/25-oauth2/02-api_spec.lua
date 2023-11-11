@@ -35,7 +35,6 @@ for _, strategy in helpers.each_strategy() do
       if admin_client then admin_client:close() end
       assert(helpers.stop_kong())
       helpers.clean_prefix()
-      helpers.clean_runtime_dir()
     end)
 
     describe("/consumers/:consumer/oauth2/", function()

@@ -802,7 +802,6 @@ describe("kong start/stop #" .. strategy, function()
 
     before_each(function()
       helpers.clean_prefix(PREFIX)
-      helpers.clean_runtime_dir(PREFIX)
 
       assert_start()
 

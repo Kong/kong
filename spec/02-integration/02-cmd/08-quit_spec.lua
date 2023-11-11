@@ -10,7 +10,6 @@ describe("kong quit", function()
   end)
   lazy_teardown(function()
     helpers.clean_prefix()
-    helpers.clean_runtime_dir()
   end)
 
   it("quit help", function()

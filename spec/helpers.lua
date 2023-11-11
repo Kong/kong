@@ -3261,6 +3261,8 @@ end
 local function clean_prefix(prefix)
   prefix = prefix or conf.prefix
   clean_dir(prefix)
+
+  clean_runtime_dir(prefix)
 end
 
 
