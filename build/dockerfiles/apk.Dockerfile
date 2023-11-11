@@ -24,8 +24,6 @@ RUN apk upgrade --update-cache \
     && adduser -S kong \
     && addgroup -S kong \
     && mkdir -p "${KONG_PREFIX}" \
-    && mkdir /var/run/kong \
-    && chown kong:0 /var/run/kong \
     && chown -R kong:0 ${KONG_PREFIX} \
     && chown kong:0 /usr/local/bin/kong \
     && chmod -R g=u ${KONG_PREFIX} \
