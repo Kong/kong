@@ -53,11 +53,9 @@ function _M.new(routes, cache, cache_neg, old_router)
       return nil, err
     end
 
-    -- for unit-tests only
-    _M._set_ngx = router._set_ngx
-
     return setmetatable({
       trad = trad,
+      _set_ngx = trad._set_ngx, -- for unit-testing only
     }, _MT)
   end
 
