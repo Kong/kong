@@ -15,8 +15,8 @@ _M.DEFAULT_MATCH_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
 
 
 local FLAVOR_TO_MODULE = {
-  traditional = "kong.router.traditional",
-  expressions = "kong.router.expressions",
+  traditional            = "kong.router.traditional",
+  expressions            = "kong.router.expressions",
   traditional_compatible = "kong.router.compat",
 }
 
@@ -53,8 +53,8 @@ function _M.new(routes, cache, cache_neg, old_router)
       return nil, err
     end
 
+    -- for unit-tests only
     _M._set_ngx = router._set_ngx
-    _M.split_port = router.split_port
 
     return setmetatable({
       trad = trad,
