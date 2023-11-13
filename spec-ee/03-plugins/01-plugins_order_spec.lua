@@ -5,8 +5,8 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local utils = require "kong.tools.utils"
 local conf_loader = require "kong.conf_loader"
+local dao_plugins = require "kong.db.dao.plugins"
 
 local fmt = string.format
 
@@ -108,7 +108,7 @@ describe("Plugins", function()
         name = "x-plugin-advanced"
       },
     }
-    table.sort(sort_list, utils.sort_by_handler_priority)
+    table.sort(sort_list, dao_plugins.sort_by_handler_priority)
     assert.equal("x-plugin-advanced", sort_list[1].name)
     assert.equal("x-plugin", sort_list[2].name)
   end)
@@ -201,7 +201,7 @@ describe("Plugins", function()
       'post-function',
     }
 
-    table.sort(plugins, utils.sort_by_handler_priority)
+    table.sort(plugins, dao_plugins.sort_by_handler_priority)
 
     local sorted_plugins = {}
 

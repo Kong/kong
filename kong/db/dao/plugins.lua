@@ -410,6 +410,8 @@ local sort_by_handler_priority = function (a, b)
   return prio_a > prio_b
 end
 
+Plugins.sort_by_handler_priority = sort_by_handler_priority
+
 
 -- Requires Plugins:load_plugin_schemas to be loaded first
 -- @return an array where each element has the format { name = "keyauth", handler = function() .. end }. Or nil, error
