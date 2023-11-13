@@ -1111,7 +1111,7 @@ return {
       if kong.configuration.log_level == "debug" then
         -- If this is a version-conditional request, abort it if this dataplane has not processed at least the
         -- specified configuration version yet.
-        local if_kong_transaction_id = kong.request and kong.request.get_header('if-kong-transaction-id')
+        local if_kong_transaction_id = kong.request and kong.request.get_header('if-kong-test-transaction-id')
         if if_kong_transaction_id then
           if_kong_transaction_id = tonumber(if_kong_transaction_id)
           if if_kong_transaction_id and if_kong_transaction_id >= global.CURRENT_TRANSACTION_ID then
