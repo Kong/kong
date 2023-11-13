@@ -57,29 +57,32 @@ end
 
 local function action_bitfield(self)
   local bitfield = 0x0
-
+  local action_names = {}
   if type(self.params.actions) == "string" then
-    local action_names = utils.split(self.params.actions, ",")
+    action_names = utils.split(self.params.actions, ",")
+  end
 
-    for i = 1, #action_names do
-      local action = action_names[i]
+  if type(self.params.actions) == "table" then
+    action_names = self.params.actions
+  end
+  for i = 1, #action_names do
+    local action = action_names[i]
 
-      -- keyword all sets everything
-      if action == "*" then
-        for k in pairs(rbac.actions_bitfields) do
-          bitfield = bxor(bitfield, rbac.actions_bitfields[k])
-        end
-
-        break
+    -- keyword all sets everything
+    if action == "*" then
+      for k in pairs(rbac.actions_bitfields) do
+        bitfield = bxor(bitfield, rbac.actions_bitfields[k])
       end
 
-      if not rbac.actions_bitfields[action] then
-        return kong.response.exit(400, { message = "Undefined RBAC action " ..
-                                               action_names[i] })
-      end
-
-      bitfield = bxor(bitfield, rbac.actions_bitfields[action])
+      break
     end
+
+    if not rbac.actions_bitfields[action] then
+      return kong.response.exit(400, { message = "Undefined RBAC action " ..
+          action_names[i] })
+    end
+
+    bitfield = bxor(bitfield, rbac.actions_bitfields[action])
   end
 
   self.params.actions = bitfield
@@ -591,32 +594,6 @@ return {
         return kong.response.exit(200, post_process_actions(entity))
       end,
     },
-
-  --   GET = function(self, db, helpers)
-  --     crud.get(self.params, db.rbac_role_entities,
-  --              post_process_actions)
-  --   end,
-
-  --   PATCH = function(self, db, helpers)
-  --     if self.params.actions then
-  --       action_bitfield(self)
-  --     end
-
-  --     local filter = {
-  --       role_id = self.params.role_id,
-  --       entity_id = self.params.entity_id,
-  --     }
-
-  --     self.params.role_id = nil
-  --     self.params.entity_id = nil
-
-  --     crud.patch(self.params, db.rbac_role_entities, filter,
-  --                post_process_actions)
-  --   end,
-
-  --   DELETE = function(self, db, helpers)
-  --     crud.delete(self.params, db.rbac_role_entities)
-      --   end,
   },
 
   ["/rbac/roles/:rbac_roles/entities/permissions"] = {

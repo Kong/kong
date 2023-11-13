@@ -1,0 +1,3 @@
+message: Fix an issue where the `/rbac/roles/:role/endpoints` endpoint did not accept `actions` as an array.
+type: bugfix
+scope: "Admin API"

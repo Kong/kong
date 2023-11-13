@@ -2871,6 +2871,24 @@ describe("Admin API RBAC with #" .. strategy, function()
         assert.same({ "read" }, json.actions)
         assert.is_false(json.negative)
         assert.is_nil(json.comment)
+        
+        res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/endpoints",
+          body = {
+            workspace = "mock-workspace",
+            endpoint = "/test",
+            actions = {"read", "create"},
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+
+        assert.same({ "read", "create" }, json.actions)
       end)
 
       it("new endpoint's workspace defaults to the current request's workspace", function()
