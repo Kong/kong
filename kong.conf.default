@@ -1166,6 +1166,8 @@
 # - `nginx_http_<directive>`: Injects `<directive>` in Kong's `http {}` block.
 # - `nginx_proxy_<directive>`: Injects `<directive>` in Kong's proxy
 #   `server {}` block.
+# - `nginx_location_<directive>`: Injects `<directive>` in Kong's proxy `/`
+#    location block (nested under Kong's proxy server {} block).
 # - `nginx_upstream_<directive>`: Injects `<directive>` in Kong's proxy
 #   `upstream {}` block.
 # - `nginx_admin_<directive>`: Injects `<directive>` in Kong's Admin API
