@@ -228,7 +228,7 @@ function tls.validate_client_cert(kong_config, cp_cert, dp_cert_pem)
     return nil, err
   end
 
-  return cert
+  return cert, nil
 end
 
 
