@@ -198,6 +198,8 @@ local function new(pdk, major_version)
   --   kong.log.inspect(headers.x_another[1])    -- "foo bar"
   --   kong.log.inspect(headers["X-Another"][2]) -- "baz"
   -- end
+  -- Note that this function returns a proxy table
+  -- which cannot be iterated with pairs or used as oprand of #.
   function response.get_headers(max_headers)
     check_phase(header_body_log)
 
