@@ -86,6 +86,7 @@ local QUESTION_MARK = byte("?")
 local ARRAY_MT = require("cjson.safe").array_mt
 
 local HOST_PORTS = {}
+local IS_DEBUG = false
 
 
 local SUBSYSTEMS = constants.PROTOCOLS_WITH_SUBSYSTEM
@@ -893,6 +894,7 @@ return {
 
   init_worker = {
     before = function()
+      IS_DEBUG = (kong.configuration.log_level == "debug")
       -- TODO: PR #9337 may affect the following line
       local prefix = kong.configuration.prefix or ngx.config.prefix()
 
@@ -1108,10 +1110,10 @@ return {
   },
   access = {
     before = function(ctx)
-      if kong.configuration.log_level == "debug" then
+      if IS_DEBUG then
         -- If this is a version-conditional request, abort it if this dataplane has not processed at least the
         -- specified configuration version yet.
-        local if_kong_transaction_id = kong.request and kong.request.get_header('if-kong-transaction-id')
+        local if_kong_transaction_id = kong.request and kong.request.get_header('if-kong-test-transaction-id')
         if if_kong_transaction_id then
           if_kong_transaction_id = tonumber(if_kong_transaction_id)
           if if_kong_transaction_id and if_kong_transaction_id >= global.CURRENT_TRANSACTION_ID then
