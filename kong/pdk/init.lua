@@ -110,10 +110,6 @@
 -- @redirect kong.nginx
 
 
---- Singletons
--- @section kong
-
-
 ---
 -- Instance of Kong's DAO (the `kong.db` module). Contains accessor objects
 -- to various entities.
