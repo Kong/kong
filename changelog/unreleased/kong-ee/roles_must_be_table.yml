@@ -1,0 +1,3 @@
+message: "Ensure the `/developers/:developer` endpoint only accepts `roles` as arrays."
+type: "bugfix"
+scope: "Admin API"

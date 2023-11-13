@@ -492,7 +492,22 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
         local json = cjson.decode(res)
         assert.equal("a@a.com", json.email)
         assert.same({ "red" }, json.roles)
-      end)
+        end)
+      
+        it("should return 400 if creates a developer with invalid roles", function()
+          local res = client:post("/developers", {
+            body = {
+              email = "a1@a.com",
+              meta = '{"full_name":"a1"}',
+              password = "test1",
+              roles = "red" ,
+            },
+            headers = { ["Content-Type"] = "application/json" },
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.equal("the roles of developer should be an array.", json.fields.roles)
+        end)
 
       it("creates a developer with custom_id", function()
         local res = client:post("/developers", {
@@ -722,6 +737,23 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
         local body = assert.res_status(200, res)
         local resp_body_json = cjson.decode(body)
         assert.equal("new_email@whodis.com", resp_body_json.email)
+      end)
+      
+      it("return 400 if updates the roles of the developer type is a string", function ()
+          local res = assert(client:send {
+            method = "PATCH",
+            body = {
+              roles = "green",
+            },
+            path = "/developers/" .. developer.id,
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.equal("the roles of developer should be an array.", json.fields.roles)
       end)
 
       it("returns 400 if patched with an invalid email", function()

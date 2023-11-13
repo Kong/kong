@@ -187,6 +187,11 @@ do
       return true
     end
 
+    if type(new_role_names) == "string" then
+      local err = "the roles of developer should be an array."
+      return nil, err, { code = Errors.codes.SCHEMA_VIOLATION, fields = { roles = err } }
+    end
+
     local rbac_user = developer.rbac_user
     if not rbac_user then
       local err, err_t
