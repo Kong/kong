@@ -12,7 +12,7 @@ function red() {
 function get_failed {
     if [ ! -z "$FAILED_TEST_FILES_FILE" -a -f "$FAILED_TEST_FILES_FILE" ]
     then
-        sort -u < $FAILED_TEST_FILES_FILE
+        cat < $FAILED_TEST_FILES_FILE
     else
         echo "$@"
     fi
@@ -44,35 +44,19 @@ else
 fi
 
 if [ "$TEST_SUITE" == "integration" ]; then
-    integration_test_file=/tmp/integration_tests.$$.txt
-    trap "rm -f $integration_test_file" 0
-    # We're sorting the list of tests in a random order based on the
-    # pseudo random number generator (PRNG) of bash.  The PRNG is
-    # seeded with 0 to ensure that it always creates the same "random"
-    # sequence, making the sort order stable across workflow runs.
-    # This should level the run time between the two splits better
-    # than performing a static split based on directory name.
-    # Previously, all 05-proxy tests were run in the second split,
-    # which took three times as long as running all the other tests.
-    find spec/02-integration -name '*_spec.lua' \
-        | (RANDOM=0; while read line ; do echo "$RANDOM $line" ; done) \
-        | sort -n \
-        | awk '{print $2}' > $integration_test_file
-    test_count=$(echo $(wc -l < $integration_test_file))
     if [[ "$TEST_SPLIT" == first* ]]; then
         # GitHub Actions, run first batch of integration tests
-        files=$(head -$(expr $test_count / 2) $integration_test_file)
+        files=$(ls -d spec/02-integration/* | sort | grep -v 05-proxy)
         files=$(get_failed $files)
-        echo running $(echo $files | wc -w) tests:
-        echo $files
         eval "$TEST_CMD" $files
 
     elif [[ "$TEST_SPLIT" == second* ]]; then
         # GitHub Actions, run second batch of integration tests
-        files=$(tail -n +$(expr $test_count / 2 + 1) $integration_test_file)
+        # Note that the split here is chosen carefully to result
+        # in a similar run time between the two batches, and should
+        # be adjusted if imbalance become significant in the future
+        files=$(ls -d spec/02-integration/* | sort | grep 05-proxy)
         files=$(get_failed $files)
-        echo running $(echo $files | wc -w) tests:
-        echo $files
         eval "$TEST_CMD" $files
 
     else
