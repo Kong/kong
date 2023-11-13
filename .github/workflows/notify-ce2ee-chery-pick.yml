@@ -1,0 +1,94 @@
+# to-dos:
+#   1. cover community PRs.
+
+name: Notify CE2EE on PR merge
+
+on:
+  pull_request:
+    types: [closed, labeled, unlabeled]
+
+jobs:
+  get_label:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Get added label
+      if: ${{ github.event_name == 'labeled' }}
+      run: |
+        echo "LABEL_NAME=${{ github.event.label.name }}" >> $GITHUB_ENV
+        echo "LABEL_ACTION=added" >> $GITHUB_ENV
+
+    - name: Get removed label
+      if: ${{ github.event_name == 'unlabeled' }}
+      run: |
+        echo "LABEL_NAME=${{ github.event.label.name }}" >> $GITHUB_ENV
+        echo "LABEL_ACTION=removed" >> $GITHUB_ENV
+
+    - name: Verify label
+      if: ${{ (env.LABEL_NAME == 'skip-cherry-pick' && env.LABEL_ACTION == 'added') || (env.LABEL_NAME != 'skip-cherry-pick' && env.LABEL_ACTION == 'removed') }}
+      run: |
+        exit 1
+
+  check_label:
+    runs-on: ubuntu-latest
+    outputs:
+      exists: ${{ steps.check.result }}
+    steps:
+    - id: check
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const labels = context.payload.pull_request.labels.map(l => l.name);
+          return labels.includes('skip-cherry-pick');
+
+  notify_user:
+    needs: check_label
+    if: ${{ github.event.pull_request.merged == true && needs.check_label.outputs.exists == false }}
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Fetch mapping file
+      id: fetch_mapping
+      uses: actions/github-script@v6
+      env:
+        ACCESS_TOKEN: ${{ secrets.PAT }}
+      with:
+        script: |
+          const url = 'https://raw.githubusercontent.com/Kong/github-slack-mapping/main/mapping.json';
+          const headers = {Authorization: `token ${process.env.ACCESS_TOKEN}`};
+          const response = await fetch(url, {headers});
+          const mapping = await response.json();
+          return mapping;
+
+    - name: Generate Slack Payload
+      id: gen_slack_payload
+      uses: actions/github-script@v6
+      env:
+        SLACK_CHANNEL: gateway-notifications
+        SLACK_MAPPING: ${{ steps.fetch_mapping.outputs.result }}
+      with:
+        script: |
+          const pr = context.payload.pull_request;
+          const pr_number = pr.number;
+          const pr_title = pr.title;
+          const pr_url = pr.html_url;
+
+          const slack_mapping = JSON.parse(process.env.SLACK_MAPPING);
+          const github_handle = pr.user.login;
+          const slack_member_id = slack_mapping[github_handle];
+          const user = slack_member_id ? `<@${slack_member_id}>` : github_handle;
+
+          const payload = {
+            text: `Hello ${user} , PR #${pr_number} - '${pr_title}' was merged. Please cherry-pick to EE or label "skip-cherry-pick". View it here: ${pr_url}.`,
+            channel: "process.env.SLACK_CHANNEL",
+          };
+
+          return JSON.stringify(payload);
+        result-encoding: string
+
+    - name: Send Slack Message
+      uses: slackapi/slack-github-action@e28cf165c92ffef168d23c5c9000cffc8a25e117 # v1.24.0
+      with:
+        payload: ${{ steps.gen_slack_payload.outputs.result }}
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_GATEWAY_NOTIFICATIONS_WEBHOOK }}
