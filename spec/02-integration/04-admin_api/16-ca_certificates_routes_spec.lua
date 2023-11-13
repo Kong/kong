@@ -169,7 +169,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
 
-        assert.equal("ca_certificate " .. ca.id .. " is still referenced by services (id = " .. service.id .. ")", json.message)
+        assert.equal("ca certificate " .. ca.id .. " is still referenced by services (id = " .. service.id .. ")", json.message)
 
         local res = client:delete("/services/" .. service.id)
         assert.res_status(204, res)

@@ -385,6 +385,17 @@ end
 -- here we assume the field name is always `ca_certificates`
 local get_ca_certificate_reference_entities
 do
+  local function is_entity_reference_ca_certificates(name)
+    local entity_schema = require("kong.db.schema.entities." .. name)
+    for _, field in ipairs(entity_schema.fields) do
+      if field.ca_certificates then
+        return true
+      end
+    end
+
+    return false
+  end
+
   -- ordinary entities that reference ca certificates
   -- For example: services
   local CA_CERT_REFERENCE_ENTITIES
@@ -392,8 +403,8 @@ do
     if not CA_CERT_REFERENCE_ENTITIES then
       CA_CERT_REFERENCE_ENTITIES = {}
       for _, entity_name in ipairs(constants.CORE_ENTITIES) do
-        local entity_schema = require("kong.db.schema.entities." .. entity_name)
-        if entity_schema.fields.ca_certificates then
+        local res = is_entity_reference_ca_certificates(entity_name)
+        if res then
           tb_insert(CA_CERT_REFERENCE_ENTITIES, entity_name)
         end
       end
@@ -407,6 +418,30 @@ end
 -- here we assume the field name is always `ca_certificates`
 local get_ca_certificate_reference_plugins
 do
+  local function is_plugin_reference_ca_certificates(name)
+    local plugin_schema = "kong.plugins." .. name .. ".schema"
+    local ok, schema = utils.load_module_if_exists(plugin_schema)
+    if not ok then
+      ok, schema = plugin_servers.load_schema(name)
+    end
+
+    if not ok then
+      return nil, "no configuration schema found for plugin: " .. name
+    end
+
+    for _, field in ipairs(schema.fields) do
+      if field.config then
+        for _, field in ipairs(field.config.fields) do
+          if field.ca_certificates then
+            return true
+          end
+        end
+      end
+    end
+
+    return false
+  end
+
   -- loaded plugins that reference ca certificates
   -- For example: mtls-auth
   local CA_CERT_REFERENCE_PLUGINS
@@ -414,18 +449,13 @@ do
     if not CA_CERT_REFERENCE_PLUGINS then
       CA_CERT_REFERENCE_PLUGINS = {}
       local loaded_plugins = kong.configuration.loaded_plugins
-      for name, _ in pairs(loaded_plugins) do
-        local plugin_schema = "kong.plugins." .. name .. ".schema"
-        local ok, schema = utils.load_module_if_exists(plugin_schema)
-        if not ok then
-          ok, schema = plugin_servers.load_schema(name)
+      for name, v in pairs(loaded_plugins) do
+        local res, err = is_plugin_reference_ca_certificates(name)
+        if err then
+          return nil, err
         end
 
-        if not ok then
-          return nil, "no configuration schema found for plugin: " .. name
-        end
-
-        if schema.fields.config.fields.ca_certificates then
+        if res then
           CA_CERT_REFERENCE_PLUGINS[name] = true
         end
       end
