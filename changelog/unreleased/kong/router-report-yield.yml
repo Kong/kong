@@ -1,0 +1,3 @@
+message: Cooperatively yield when building statistics of routes.
+type: performance
+scope: Performance
