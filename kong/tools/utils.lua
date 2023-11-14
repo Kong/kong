@@ -965,7 +965,6 @@ _M.topological_sort = topological_sort
 
 do
   local modules = {
-    "kong.tools.gzip",
     "kong.tools.table",
     "kong.tools.sha256",
     "kong.tools.yield",

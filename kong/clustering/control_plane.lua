@@ -5,7 +5,6 @@ local _MT = { __index = _M, }
 local semaphore = require("ngx.semaphore")
 local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
-local utils = require("kong.tools.utils")
 local clustering_utils = require("kong.clustering.utils")
 local compat = require("kong.clustering.compat")
 local constants = require("kong.constants")
@@ -41,8 +40,8 @@ local sleep = ngx.sleep
 
 local plugins_list_to_map = compat.plugins_list_to_map
 local update_compatible_payload = compat.update_compatible_payload
-local deflate_gzip = utils.deflate_gzip
-local yield = utils.yield
+local deflate_gzip = require("kong.tools.gzip").deflate_gzip
+local yield = require("kong.tools.yield").yield
 local connect_dp = clustering_utils.connect_dp
 
 

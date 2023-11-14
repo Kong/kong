@@ -1,7 +1,7 @@
 local compat = require("kong.clustering.compat")
 local helpers = require ("spec.helpers")
 local declarative = require("kong.db.declarative")
-local inflate_gzip = require("kong.tools.utils").inflate_gzip
+local inflate_gzip = require("kong.tools.gzip").inflate_gzip
 local cjson_decode = require("cjson.safe").decode
 local ssl_fixtures = require ("spec.fixtures.ssl")
 
