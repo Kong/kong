@@ -866,7 +866,7 @@ local function syncQuery(qname, r_opts, try_list)
   add_status_to_try_list(try_list, "in progress (sync)")
 
   -- block and wait for the async query to complete
-  local ok, err = item.semaphore:wait(math_max(item.expire_time - time(), 0.001))
+  local ok, err = item.semaphore:wait(resolve_max_wait)
   if ok and item.result then
     -- we were released, and have a query result from the
     -- other thread, so all is well, return it
