@@ -1,6 +1,5 @@
 local helpers          = require "spec.helpers"
 local ssl_fixtures     = require "spec.fixtures.ssl"
-local kong             = kong
 
 local ca_cert2 = [[
 -----BEGIN CERTIFICATE-----
@@ -69,7 +68,7 @@ T6nsr9aTE1yghO6GTWEPssw=
 -----END CERTIFICATE-----
 ]]
 
-for _, strategy in helpers.all_strategies() do
+for _, strategy in helpers.each_strategy() do
   describe("db.services #" .. strategy, function()
     local bp, db
     local ca1, ca2, other_ca
@@ -80,7 +79,6 @@ for _, strategy in helpers.all_strategies() do
         "services",
         "ca_certificates",
       })
-      _G.kong.db = db
 
       ca1 = assert(bp.ca_certificates:insert({
         cert = ssl_fixtures.cert_ca,
@@ -140,7 +138,7 @@ for _, strategy in helpers.all_strategies() do
 
     describe("services:select_by_ca_certificate()", function()
       it("selects the correct services", function()
-        local services, err = kong.db.services:select_by_ca_certificate(ca1.id)
+        local services, err = db.services:select_by_ca_certificate(ca1.id)
         local expected = {
           [srv1.id] = true,
           [srv2.id] = true,
@@ -157,7 +155,7 @@ for _, strategy in helpers.all_strategies() do
         end
         assert.are.same(expected, res)
 
-        local services, err = kong.db.services:select_by_ca_certificate(ca2.id)
+        local services, err = db.services:select_by_ca_certificate(ca2.id)
         local expected = {
           [srv3.id] = true,
           [srv4.id] = true,
@@ -175,47 +173,39 @@ for _, strategy in helpers.all_strategies() do
         assert.are.same(expected, res)
 
         -- unreferenced ca certificate
-        local services, err = kong.db.services:select_by_ca_certificate(other_ca.id)
-        local expected = {
-        }
-        local res = {}
+        local services, err = db.services:select_by_ca_certificate(other_ca.id)
         assert.is_nil(err)
         assert(services)
         assert(#services == 0)
       end)
 
       it("limits the number of returned services", function()
-        local services, err = kong.db.services:select_by_ca_certificate(ca1.id, 1)
+        local services, err = db.services:select_by_ca_certificate(ca1.id, 1)
         local expected = {
           [srv1.id] = true,
           [srv2.id] = true,
           [srv5.id] = true,
           [srv6.id] = true,
         }
-        local res = {}
         assert.is_nil(err)
         assert(services)
         assert(#services == 1)
         assert(expected[services[1].id])
 
-        local services, err = kong.db.services:select_by_ca_certificate(ca2.id, 1)
+        local services, err = db.services:select_by_ca_certificate(ca2.id, 1)
         local expected = {
           [srv3.id] = true,
           [srv4.id] = true,
           [srv5.id] = true,
           [srv6.id] = true,
         }
-        local res = {}
         assert.is_nil(err)
         assert(services)
         assert(#services == 1)
         assert(expected[services[1].id])
 
         -- unreferenced ca certificate
-        local services, err = kong.db.services:select_by_ca_certificate(other_ca.id, 1)
-        local expected = {
-        }
-        local res = {}
+        local services, err = db.services:select_by_ca_certificate(other_ca.id, 1)
         assert.is_nil(err)
         assert(services)
         assert(#services == 0)
