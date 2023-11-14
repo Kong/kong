@@ -5,7 +5,6 @@ import {
   getNegative,
   isGwHybrid,
   postNegative,
-  wait,
   logResponse,
   retryRequest,
 } from '@support';
@@ -21,8 +20,6 @@ describe('Gateway Admin API: Targets', function () {
   const targetNoPort = 'example.com';
   const updatedTarget = 'example.org:8000';
   const targetCreationMethod = 'post';
-  const waitTime = 5000;
-  const isHybrid = isGwHybrid();
 
   const tag = 'testtag';
 
@@ -323,84 +320,6 @@ describe('Gateway Admin API: Targets', function () {
     );
   });
 
-  it('should set target to healthy using target id and address', async function () {
-    // WAR: use POST /upstreams/{upstream id}/targets/{id}/healthy
-    if (isHybrid) {
-      this.skip();
-    }
-    await wait(waitTime); // eslint-disable-line no-restricted-syntax
-    const resp = await axios({
-      url: `${url}/${upstreamData.id}/targets/${targetData.id}/healthy`,
-      method: 'put',
-    });
-    logResponse(resp);
-
-    expect(resp.status, 'should return 204 status').to.equal(204);
-  });
-
-  it('should confirm healthy status', async function () {
-    if (isHybrid) {
-      this.skip();
-    }
-
-    const req = () => axios(`${url}/${upstreamData.id}/health`);
-
-    const assertions = (resp) => {
-      expect(resp.status, 'should return 200 status').to.equal(200);
-      expect(resp.data.data[0].id, 'should match target id').to.equal(
-        targetData.id
-      );
-      expect(
-        resp.data.data[0].health,
-        'should show a status of HEALTHY'
-      ).to.equal('HEALTHY');
-      expect(
-        resp.data.data[0].upstream.id,
-        'should show associated upstream in response'
-      ).to.equal(upstreamData.id);
-    };
-
-    await retryRequest(req, assertions, 10000);
-  });
-
-  it('should set target to unhealthy using target', async function () {
-    if (isHybrid) {
-      this.skip();
-    }
-    const resp = await axios({
-      url: `${url}/${upstreamData.id}/targets/${targetData.id}/unhealthy`,
-      method: 'put',
-    });
-    logResponse(resp);
-
-    expect(resp.status, 'should return 204 status').to.equal(204);
-  });
-
-  it('should confirm unhealthy status', async function () {
-    if (isHybrid) {
-      this.skip();
-    }
-
-    const req = () => axios(`${url}/${upstreamData.id}/health`);
-
-    const assertions = (resp) => {
-      expect(resp.status, 'should return 200 status').to.equal(200);
-      expect(resp.data.data[0].id, 'should match target id').to.equal(
-        targetData.id
-      );
-      expect(
-        resp.data.data[0].health,
-        'should show a status of UNHEALTHY'
-      ).to.equal('UNHEALTHY');
-      expect(
-        resp.data.data[0].upstream.id,
-        'should show associated upstream in response'
-      ).to.equal(upstreamData.id);
-    };
-
-    await retryRequest(req, assertions, 10000);
-  });
-
   it('should delete target by id associated with upstream by id', async function () {
     const resp = await axios({
       url: `${url}/${upstreamData.id}/targets/${targetData.id}`,
@@ -418,6 +337,155 @@ describe('Gateway Admin API: Targets', function () {
     expect(resp.status, 'should return 200 status').to.equal(200);
     expect(resp.data.data.length, 'should have no targets').to.equal(0);
   });
+
+  after(async function () {
+    await axios({
+      method: 'delete',
+      url: `${url}/${upstreamData.id}`,
+    });
+  });
+});
+
+describe('Gateway Admin API: Targets health', function () {
+  const url = `${getBasePath({
+    environment: Environment.gateway.admin,
+  })}/upstreams`;
+
+  const name = 'test-upstream';
+  // use IP to avoid DNS_ERRORs affecting test result (health status)
+  const targetIp = '127.0.0.1:8123';
+  const targetCreationMethod = 'post';
+  const isHybrid = isGwHybrid();
+
+  let upstreamData: any;
+  let targetData: any;
+
+  before(async function () {
+    // Create an upstream to associate with the target
+    const resp = await axios({
+      method: 'post',
+      url: url,
+      data: {
+        name: name,
+        healthchecks: {
+          passive: {
+            unhealthy: {
+              http_failures: 3,
+            },
+          },
+        },
+      },
+    });
+    logResponse(resp);
+
+    upstreamData = {
+      name: resp.data.name,
+      id: resp.data.id,
+    };
+
+    // Create target
+    const respTarget = await axios({
+      url: `${url}/${upstreamData.id}/targets`,
+      method: targetCreationMethod,
+      data: {
+        target: targetIp,
+      },
+    });
+    logResponse(respTarget);
+    expect(respTarget.status, 'should return 201 status').to.equal(201);
+
+    targetData = {
+      target: respTarget.data.target,
+      id: respTarget.data.id
+    }
+  });
+
+  it('should set target to healthy using target id and address and confirm its status', async function () {
+    if (isHybrid) {
+      this.skip();
+    }
+    
+    // set healthy status
+    const setStatusReq = () => axios({
+      url: `${url}/${upstreamData.id}/targets/${targetData.id}/healthy`,
+      method: 'put',
+      validateStatus: function (status) {
+        return status < 500;
+      }
+    });
+
+    const setStatusAssertions = (res) => {
+      logResponse(res);
+      expect(res.status, 'should return 204 status').to.equal(204);
+    };
+
+    await retryRequest(setStatusReq, setStatusAssertions, 10000, 500);    
+
+
+    // confirm healthy status
+    const req = () => axios(`${url}/${upstreamData.id}/health`);
+  
+    const assertions = (resp) => {
+      expect(resp.status, 'should return 200 status').to.equal(200);
+      expect(resp.data.data[0].id, 'should match target id').to.equal(
+        targetData.id
+      );
+      expect(
+        resp.data.data[0].health,
+        'should show a status of HEALTHY'
+      ).to.equal('HEALTHY');
+      expect(
+        resp.data.data[0].upstream.id,
+        'should show associated upstream in response'
+      ).to.equal(upstreamData.id);
+    };
+  
+    await retryRequest(req, assertions, 10000);
+  });
+  
+  it('should set target to unhealthy using target and confirm its status', async function () {
+    if (isHybrid) {
+      this.skip();
+    }
+    
+    // set unhealthy status
+    const setStatusReq = () => axios({
+      url: `${url}/${upstreamData.id}/targets/${targetData.id}/unhealthy`,
+      method: 'put',
+      validateStatus: function (status) {
+        return status < 500;
+      }
+    });
+
+    const setStatusAssertions = (res) => {
+      logResponse(res);
+      expect(res.status, 'should return 204 status').to.equal(204);
+    };
+
+    await retryRequest(setStatusReq, setStatusAssertions, 10000, 500);  
+
+
+    // confirm unhealthy status
+    const req = () => axios(`${url}/${upstreamData.id}/health`);
+  
+    const assertions = (resp) => {
+      expect(resp.status, 'should return 200 status').to.equal(200);
+      expect(resp.data.data[0].id, 'should match target id').to.equal(
+        targetData.id
+      );
+      expect(
+        resp.data.data[0].health,
+        'should show a status of UNHEALTHY'
+      ).to.equal('UNHEALTHY');
+      expect(
+        resp.data.data[0].upstream.id,
+        'should show associated upstream in response'
+      ).to.equal(upstreamData.id);
+    };
+  
+    await retryRequest(req, assertions, 10000);
+  });
+  
 
   after(async function () {
     await axios({
