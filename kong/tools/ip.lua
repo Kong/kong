@@ -2,12 +2,15 @@ local ipmatcher  = require "resty.ipmatcher"
 local pl_stringx = require "pl.stringx"
 
 
-local gsub  = string.gsub
-local sub   = string.sub
-local fmt   = string.format
-local lower = string.lower
-local find  = string.find
-local split = pl_stringx.split
+local gsub     = string.gsub
+local sub      = string.sub
+local fmt      = string.format
+local lower    = string.lower
+local find     = string.find
+local split    = pl_stringx.split
+local type     = type
+local ipairs   = ipairs
+local tonumber = tonumber
 
 
 local _M = {}
@@ -18,10 +21,12 @@ for i = 0, 32 do
   ipv4_prefixes[tostring(i)] = i
 end
 
+
 local ipv6_prefixes = {}
 for i = 0, 128 do
   ipv6_prefixes[tostring(i)] = i
 end
+
 
 local function split_cidr(cidr, prefixes)
   local p = find(cidr, "/", 3, true)
@@ -31,6 +36,7 @@ local function split_cidr(cidr, prefixes)
 
   return sub(cidr, 1, p - 1), prefixes[sub(cidr, p + 1)]
 end
+
 
 local function validate(input, f1, f2, prefixes)
   if type(input) ~= "string" then
@@ -57,37 +63,46 @@ local function validate(input, f1, f2, prefixes)
   return false
 end
 
+
 function _M.is_valid_ipv4(ipv4)
   return validate(ipv4, ipmatcher.parse_ipv4)
 end
+
 
 function _M.is_valid_ipv6(ipv6)
   return validate(ipv6, ipmatcher.parse_ipv6)
 end
 
+
 function _M.is_valid_ip(ip)
   return validate(ip, ipmatcher.parse_ipv4, ipmatcher.parse_ipv6)
 end
+
 
 function _M.is_valid_cidr_v4(cidr_v4)
   return validate(cidr_v4, ipmatcher.parse_ipv4, nil, ipv4_prefixes)
 end
 
+
 function _M.is_valid_cidr_v6(cidr_v6)
   return validate(cidr_v6, ipmatcher.parse_ipv6, nil, ipv6_prefixes)
 end
+
 
 function _M.is_valid_cidr(cidr)
   return validate(cidr, _M.is_valid_cidr_v4, _M.is_valid_cidr_v6)
 end
 
+
 function _M.is_valid_ip_or_cidr_v4(ip_or_cidr_v4)
   return validate(ip_or_cidr_v4, ipmatcher.parse_ipv4, _M.is_valid_cidr_v4)
 end
 
+
 function _M.is_valid_ip_or_cidr_v6(ip_or_cidr_v6)
   return validate(ip_or_cidr_v6, ipmatcher.parse_ipv6, _M.is_valid_cidr_v6)
 end
+
 
 function _M.is_valid_ip_or_cidr(ip_or_cidr)
   return validate(ip_or_cidr, _M.is_valid_ip,  _M.is_valid_cidr)
@@ -239,6 +254,8 @@ local verify_types = {
   ipv6 = _M.normalize_ipv6,
   name = _M.check_hostname,
 }
+
+
 --- verifies and normalizes ip adresses and hostnames. Supports ipv4, ipv4:port, ipv6, [ipv6]:port, name, name:port.
 -- Returned ipv4 addresses will have no leading zero's, ipv6 will be fully expanded without brackets.
 -- Note: a name will not be normalized!
@@ -253,7 +270,7 @@ function _M.normalize_ip(address)
   return {
     type = atype,
     host = addr,
-    port = port
+    port = port,
   }
 end
 
