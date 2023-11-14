@@ -13,7 +13,7 @@
     "test-non-smoke": "mocha --invert -g @smoke --recursive"
   },
   "dependencies": {
-    "axios": "^0.27.2",
+    "axios": "^1.6.1",
     "chai": "^4.3.10",
     "chai-arrays": "^2.2.0",
     "chai-as-promised": "^7.1.1",

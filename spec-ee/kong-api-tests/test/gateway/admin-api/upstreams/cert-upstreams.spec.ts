@@ -475,8 +475,8 @@ describe('Gateway Admin API: Cert-Associated Upstreams', function () {
     logResponse(resp);
 
     expect(resp.status, 'should return 400 status').to.equal(400);
-    expect(resp.data.message, 'should have correct error message').to.be.equal(
-      'Invalid name; must be a valid hostname'
+    expect(resp.data.message, 'should have correct error message').to.include(
+      'must be a valid hostname'
     );
   });
 

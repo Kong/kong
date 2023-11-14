@@ -1,4 +1,4 @@
-import axios, { AxiosRequestHeaders, AxiosPromise, AxiosResponse } from 'axios';
+import axios, { AxiosPromise, AxiosResponse } from 'axios';
 import { expect } from '../assert/chai-expect';
 import { Environment, getBasePath, isGateway } from '../config/environment';
 import { logResponse } from './logging';
@@ -167,12 +167,12 @@ export const createExpressionRouteForService = async (
 /**
  * Delete the target route
  * @param {string} routeIdOrName route id or name
- * @param {AxiosRequestHeaders} headers optional headers
+ * @param {object} headers optional headers
  * @returns {AxiosResponse}
  */
 export const deleteGatewayRoute = async (
   routeIdOrName: string,
-  headers: AxiosRequestHeaders = {}
+  headers: object = {}
 ) => {
   const resp = await axios({
     method: 'delete',
