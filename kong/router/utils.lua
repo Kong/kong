@@ -3,11 +3,11 @@ local hostname_type = require("kong.tools.utils").hostname_type
 local normalize = require("kong.tools.uri").normalize
 
 
-local type  = type
+local type = type
 local error = error
-local find  = string.find
-local sub   = string.sub
-local byte  = string.byte
+local find = string.find
+local sub = string.sub
+local byte = string.byte
 
 
 local SLASH  = byte("/")
