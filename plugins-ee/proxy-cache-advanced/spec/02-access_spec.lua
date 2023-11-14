@@ -387,8 +387,7 @@ for _, policy in ipairs({"memory", "redis"}) do
           [policy] = policy_config,
           response_headers = {
             age = false,
-            ["X-Cache-Status"] = false,
-            ["X-Cache-Key"] = false
+            ["X-Cache-Status"] = false
           },
         },
       })
@@ -440,12 +439,15 @@ for _, policy in ipairs({"memory", "redis"}) do
         assert.same("application/xml", res.headers["Content-Type"])
         assert.same("Miss", res.headers["X-Cache-Status"])
 
-        helpers.wait_until(function()
-          local res = assert(client:send(request))
-          assert.res_status(200, res)
-          assert.same("application/xml", res.headers["Content-Type"])
-          return "Hit" == res.headers["X-Cache-Status"]
-        end, 5)
+        local cache_key = res.headers["X-Cache-Key"]
+        assert.matches("^[%w%d]+$", cache_key)
+        assert.equals(64, #cache_key)
+        wait_until_key_in_cache(cache_key)
+
+        local res = assert(client:send(request))
+        assert.res_status(200, res)
+        assert.same("application/xml", res.headers["Content-Type"])
+        assert.same("Hit", res.headers["X-Cache-Status"])
       end)
 
       it("should not cache a request while parameter is not match", function()
@@ -598,7 +600,7 @@ for _, policy in ipairs({"memory", "redis"}) do
       -- examine this cache key against another plugin's cache key for the same req
       cache_key = cache_key1
     end)
-    it("No X-Cache* neither age headers on the response without debug header in the query", function()
+    it("No X-Cache-Status neither age headers on the response without debug header in the query", function()
       local request = {
         method = "GET",
         path = "/get",
@@ -613,9 +615,14 @@ for _, policy in ipairs({"memory", "redis"}) do
       local res = assert(client:send(request))
       assert.res_status(200, res)
       assert.is_nil(res.headers["X-Cache-Status"])
-      assert.is_nil(res.headers["X-Cache-Key"])
       assert.is_nil(res.headers["Age"])
       request.headers["kong-debug"] = 1
+
+      local cache_key = res.headers["X-Cache-Key"]
+      assert.matches("^[%w%d]+$", cache_key)
+      assert.equals(64, #cache_key)
+      wait_until_key_in_cache(cache_key)
+
       local res = assert(client:send(request))
       assert.same("Hit", res.headers["X-Cache-Status"])
       assert.is_not_nil(res.headers["Age"])
