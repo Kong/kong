@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local inflate_gzip = require("kong.tools.utils").inflate_gzip
+local inflate_gzip = require("kong.tools.gzip").inflate_gzip
 
 local type, ipairs = type, ipairs
 local str_find = string.find

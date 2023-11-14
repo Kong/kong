@@ -59,7 +59,7 @@ describe("jq #" .. strategy, function()
             location ~ "/request" {
               content_by_lua_block {
                 local body = "[{ \"foo\": \"bar\" }]"
-                body = require("kong.tools.utils").deflate_gzip(body)
+                body = require("kong.tools.gzip").deflate_gzip(body)
 
                 ngx.status = 200
                 ngx.header["Content-Type"] = "application/json"
@@ -112,7 +112,7 @@ describe("jq #" .. strategy, function()
 
   describe("request", function()
     local body = "[{ \"foo\": \"bar\" }]"
-    body = require("kong.tools.utils").deflate_gzip(body)
+    body = require("kong.tools.gzip").deflate_gzip(body)
 
     it("filters gzip encoded body", function()
       local r = assert(client:send {

@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local utils = require "kong.tools.utils"
+local gzip = require "kong.tools.gzip"
 local body_transformer = require "kong.plugins.response-transformer-advanced.body_transformer"
 local header_transformer = require "kong.plugins.response-transformer-advanced.header_transformer"
 local feature_flag_limit_body = require "kong.plugins.response-transformer-advanced.feature_flags.limit_body"
@@ -61,7 +61,7 @@ function ResponseTransformerHandler:body_filter(conf)
           return
         end
 
-        resp_body, err = utils.inflate_gzip(resp_body)
+        resp_body, err = gzip.inflate_gzip(resp_body)
         if err then
           kong.log.err("failed to inflate gzipped body: ", err)
 
@@ -93,7 +93,7 @@ function ResponseTransformerHandler:body_filter(conf)
 
         if body then
           if is_gzip then
-            body, err = utils.deflate_gzip(body)
+            body, err = gzip.deflate_gzip(body)
             if err then
               kong.log.err("failed to deflate gzipped body: ", err)
               return

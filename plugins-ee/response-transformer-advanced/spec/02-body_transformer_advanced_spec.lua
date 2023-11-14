@@ -10,8 +10,8 @@ local cjson = require("cjson.safe").new()
 cjson.decode_array_with_array_mt(true)
 local decode_base64 = ngx.decode_base64
 local encode_base64 = ngx.encode_base64
-local inflate_gzip = require("kong.tools.utils").inflate_gzip
-local deflate_gzip = require("kong.tools.utils").deflate_gzip
+local inflate_gzip = require("kong.tools.gzip").inflate_gzip
+local deflate_gzip = require("kong.tools.gzip").deflate_gzip
 
 describe("Plugin: response-transformer-advanced", function()
   describe("transform_json_body()", function()
