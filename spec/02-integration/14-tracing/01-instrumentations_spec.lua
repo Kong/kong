@@ -522,8 +522,6 @@ for _, strategy in helpers.each_strategy() do
         lazy_setup(function()
           setup_instrumentations("dns_query", true, function(bp)
             -- intentionally trigger a DNS query error
-            -- TODO: find a way to trigger a DNS query error
-            -- There's a bug that the balancer's DNS query is not instrumented
             local service = bp.services:insert({
               name = "inexist-host-service",
               host = "really-inexist-host",
@@ -556,9 +554,20 @@ for _, strategy in helpers.each_strategy() do
           assert.is_string(res)
   
           local spans = cjson.decode(res)
-          assert_has_span("kong", spans)
-          assert_has_span("kong.dns", spans)
-          print(require"inspect"(spans))
+          assert_has_spans("kong", spans)
+          local dns_spans = assert_has_spans("kong.dns", spans)
+          local upstream_dns
+          for _, dns_span in ipairs(dns_spans) do
+            if dns_span.attributes["dns.record.domain"] == "really-inexist-host" then
+              upstream_dns = dns_span
+              break
+            end
+          end
+          
+          assert.is_not_nil(upstream_dns)
+          assert.is_nil(upstream_dns.attributes["dns.record.ip"])
+          -- has error reported
+          assert.is_not_nil(upstream_dns.events)
         end)
       end)
     end)
