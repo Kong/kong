@@ -16,7 +16,7 @@ function Plugins:select_by_ca_certificate(ca_id, limit, plugin_names)
   local name_condition = ""
   local escaped_names = {}
   if type(plugin_names) == "string" then
-    tb_insert(escaped_names, escape_literal(connector, plugin_names))
+    tb_insert(escaped_names, "name = " .. escape_literal(connector, plugin_names))
   elseif type(plugin_names) == "table" then
     for name, _ in pairs(plugin_names) do
       tb_insert(escaped_names, "name = " .. escape_literal(connector, name))
