@@ -8,13 +8,15 @@
 local constants = require("kong.constants")
 local hostname_type = require("kong.tools.utils").hostname_type
 local normalize = require("kong.tools.uri").normalize
+local yield = require("kong.tools.yield").yield
 
-local type   = type
-local error  = error
-local find   = string.find
-local sub    = string.sub
-local byte   = string.byte
 
+local type  = type
+local error = error
+local find = string.find
+local sub = string.sub
+local byte = string.byte
+local get_phase = ngx.get_phase
 
 local SLASH  = byte("/")
 
@@ -298,7 +300,11 @@ do
     local v0              = 0
     local v1              = 0
 
+    local phase = get_phase()
+
     for _, route in ipairs(routes) do
+      yield(true, phase)
+
       local r = route.route
 
       local paths_t     = r.paths or empty_table
