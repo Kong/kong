@@ -769,6 +769,7 @@ if limit_by == "ip" then
     assert
       .with_timeout(15)
       .with_max_tries(10)
+      .with_step(1)
       .ignore_exceptions(false)
       .eventually(function()
         local res1 = GET(test_path, { headers = { ["X-Real-IP"] = "127.0.0.3" }})
@@ -827,7 +828,8 @@ if limit_by == "ip" then
     local res = GET(test_path)
     assert.res_status(200, res)
 
-    helpers.wait_timer("rate-limiting", true, "any-finish")
+    -- If want to exceed the request limit for this test,
+    -- avoid introducing unpredictable time-based behaviors.
 
     res = GET(test_path)
     local json = cjson.decode(assert.res_status(404, res))
