@@ -761,6 +761,8 @@ describe("Utils", function()
   end)
 
   describe("gzip_[de_in]flate()", function()
+    local utils = require "kong.tools.gzip"
+
     it("empty string", function()
       local gz = assert(utils.deflate_gzip(""))
       assert.equal(utils.inflate_gzip(gz), "")

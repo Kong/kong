@@ -15,7 +15,6 @@ local config_helper = require("kong.clustering.config_helper")
 local clustering_utils = require("kong.clustering.utils")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
-local utils = require("kong.tools.utils")
 local pl_stringx = require("pl.stringx")
 local config_sync_backup = require("kong.clustering.config_sync_backup")
 
@@ -35,8 +34,8 @@ local cjson_decode = cjson.decode
 local cjson_encode = cjson.encode
 local exiting = ngx.worker.exiting
 local ngx_time = ngx.time
-local inflate_gzip = utils.inflate_gzip
-local yield = utils.yield
+local inflate_gzip = require("kong.tools.gzip").inflate_gzip
+local yield = require("kong.tools.yield").yield
 
 
 local ngx_ERR = ngx.ERR

@@ -993,7 +993,6 @@ end
 
 do
   local modules = {
-    "kong.tools.gzip",
     "kong.tools.table",
     "kong.tools.sha256",
     "kong.tools.yield",
