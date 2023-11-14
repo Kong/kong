@@ -48,7 +48,7 @@ for _, strategy in helpers.each_strategy() do
 
   describe("tracing instrumentations spec #" .. strategy, function()
 
-    local function setup_instrumentations(types, custom_spans)
+    local function setup_instrumentations(types, custom_spans, post_func)
       local bp, _ = assert(helpers.get_db_utils(strategy, {
         "services",
         "routes",
@@ -95,6 +95,10 @@ for _, strategy in helpers.each_strategy() do
           message = "No coffee for you. I'm a teapot.",
         }
       })
+
+      if post_func then
+        post_func(bp)
+      end
 
       assert(helpers.start_kong {
         database = strategy,
@@ -510,6 +514,61 @@ for _, strategy in helpers.each_strategy() do
 
         local spans = cjson.decode(res)
         assert_has_spans("kong", spans, 1)
+      end)
+    end)
+
+    describe("#regression", function ()
+      describe("nil attribute for dns_query when fail to query", function ()
+        lazy_setup(function()
+          setup_instrumentations("dns_query", true, function(bp)
+            -- intentionally trigger a DNS query error
+            local service = bp.services:insert({
+              name = "inexist-host-service",
+              host = "really-inexist-host",
+              port = 80,
+            })
+
+            bp.routes:insert({
+              service = service,
+              protocols = { "http" },
+              paths = { "/test" },
+            })
+          end)
+        end)
+  
+        lazy_teardown(function()
+          helpers.stop_kong()
+        end)
+  
+        it("contains the expected kong.dns span", function ()
+          local thread = helpers.tcp_server(TCP_PORT)
+          local r = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/test",
+          })
+          assert.res_status(503, r)
+  
+          -- Getting back the TCP server input
+          local ok, res = thread:join()
+          assert.True(ok)
+          assert.is_string(res)
+  
+          local spans = cjson.decode(res)
+          assert_has_spans("kong", spans)
+          local dns_spans = assert_has_spans("kong.dns", spans)
+          local upstream_dns
+          for _, dns_span in ipairs(dns_spans) do
+            if dns_span.attributes["dns.record.domain"] == "really-inexist-host" then
+              upstream_dns = dns_span
+              break
+            end
+          end
+          
+          assert.is_not_nil(upstream_dns)
+          assert.is_nil(upstream_dns.attributes["dns.record.ip"])
+          -- has error reported
+          assert.is_not_nil(upstream_dns.events)
+        end)
       end)
     end)
   end)
