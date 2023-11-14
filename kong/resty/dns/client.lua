@@ -780,7 +780,7 @@ local function queue_get_query(key, try_list)
 
   -- bug checks: release it actively if the waiting query queue is blocked
   if item.expire_time < time() then
-    local err = "query expired, key:" ..  key
+    local err = "stale query, key:" ..  key
     add_status_to_try_list(try_list, err)
     log(ALERT, PREFIX, err)
     dequeue_query(item)
