@@ -2888,7 +2888,8 @@ describe("Admin API RBAC with #" .. strategy, function()
         local body = assert.res_status(201, res)
         local json = cjson.decode(body)
 
-        assert.same({ "read", "create" }, json.actions)
+        table.sort(json.actions)
+        assert.same({ "create", "read" }, json.actions)
       end)
 
       it("new endpoint's workspace defaults to the current request's workspace", function()
