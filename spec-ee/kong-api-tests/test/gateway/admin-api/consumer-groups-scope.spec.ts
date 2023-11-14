@@ -46,7 +46,6 @@ describe('Gateway Consumer Groups with RLA', function () {
     { name: 'key-auth', config: {} },
     { name: 'key-auth-enc', config: {} },
     { name: 'basic-auth', config: {} },
-    { name: 'proxy-cache-advanced', config: { strategy: 'memory' } },
     { name: 'acl', config: { deny: ['test'] } },
   ];
 
