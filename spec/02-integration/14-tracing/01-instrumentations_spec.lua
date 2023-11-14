@@ -61,6 +61,12 @@ for _, strategy in helpers.each_strategy() do
         port = helpers.mock_upstream_port,
       })
 
+      local named_srv = assert(bp.services:insert {
+        name = "named-service",
+        host = "localhost",
+        port = helpers.mock_upstream_port,
+      })
+
       bp.routes:insert({ service = http_srv,
                          protocols = { "http" },
                          paths = { "/" }})
@@ -70,6 +76,11 @@ for _, strategy in helpers.each_strategy() do
                          paths = { "/status" },
                          hosts = { "status" },
                          strip_path = false })
+
+      bp.routes:insert({ service = named_srv,
+                         protocols = { "http" },
+                         paths = { "/" },
+                         hosts = { "upstream-dns-query" }})
 
       local np_route = bp.routes:insert({
         service = http_srv,
@@ -391,6 +402,9 @@ for _, strategy in helpers.each_strategy() do
         local r = assert(proxy_client:send {
           method  = "GET",
           path    = "/",
+          headers = {
+            Host = "upstream-dns-query"
+          }
         })
         assert.res_status(200, r)
 
@@ -401,7 +415,7 @@ for _, strategy in helpers.each_strategy() do
 
         local spans = cjson.decode(res)
         assert_has_spans("kong", spans, 1)
-        assert_has_spans("kong.dns", spans, 2)
+        assert_has_spans("kong.dns", spans, 3)
 
         assert_has_no_span("kong.balancer", spans)
         assert_has_no_span("kong.database.query", spans)
