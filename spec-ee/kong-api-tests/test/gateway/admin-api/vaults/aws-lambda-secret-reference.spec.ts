@@ -6,14 +6,11 @@ import {
   vars,
   createGatewayService,
   createRouteForService,
-  deleteGatewayRoute,
-  deleteGatewayService,
   randomString,
   wait,
   createHcvVault,
   createHcvVaultSecrets,
   getHcvVaultSecret,
-  deleteVaultEntity,
   createAwsVaultEntity,
   createEnvVaultEntity,
   deleteHcvSecret,
@@ -21,6 +18,7 @@ import {
   checkGwVars,
   logResponse,
   createGcpVaultEntity,
+  clearAllKongResources,
 } from '@support';
 
 // ********* Note *********
@@ -45,6 +43,9 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
 
   const proxyUrl = getBasePath({ environment: Environment.gateway.proxy });
   const gcpProjectId = 'gcp-sdet-test';
+  const hcvPrefix = 'my-hcv'
+  const hcvMount = 'secret'
+  const hcvSecretPath = 'aws-secret'
 
   const awsFunctionName = 'gateway-awsplugin-test';
   const waitTime = 3000;
@@ -61,32 +62,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
     expect(resp.status, 'Status should be 200').to.equal(200);
   };
 
-  before(async function () {
-    const service = await createGatewayService('VaultSecretAwsService');
-    serviceId = service.id;
-    const route = await createRouteForService(serviceId, [path]);
-    routeId = route.id;
-  });
-
-  it('should create hcv vault entity and secrets', async function () {
-    await createHcvVault();
-
-    await createHcvVaultSecrets({
-      aws_access_key: awsAccessKey,
-      aws_secret_key: awsSecretKey,
-    });
-
-    const resp = await getHcvVaultSecret();
-
-    expect(resp.data.aws_secret_key, 'Should see aws secret ket').to.equal(
-      awsSecretKey
-    );
-    expect(resp.data.aws_access_key, 'Should see aws access key').to.equal(
-      awsAccessKey
-    );
-  });
-
-  it('should create aws-lambda plugin with hcv secret reference', async function () {
+  const createPlugin = async (serviceId, routeId) => {
     const pluginPayload = {
       name: 'aws-lambda',
       service: {
@@ -96,7 +72,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
         id: routeId,
       },
       config: {
-        aws_key: '{vault://my-hcv/secret/aws_access_key}',
+        aws_key: awsAccessKey,
         aws_secret: awsSecretKey,
         aws_region: 'us-east-2',
         function_name: awsFunctionName,
@@ -109,17 +85,63 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
       data: pluginPayload,
     });
     logResponse(resp);
-
     expect(resp.status, 'Status should be 201').to.equal(201);
-    awsPluginId = resp.data.id;
 
-    expect(awsPluginId, 'Plugin Id should be a string').to.be.string;
-    expect(resp.data.config.aws_key, 'Should have aws_key referenced').to.equal(
-      '{vault://my-hcv/secret/aws_access_key}'
+    return resp.data
+  };
+
+  before(async function () {
+    await clearAllKongResources();
+    const service = await createGatewayService('VaultSecretAwsService');
+    serviceId = service.id;
+    const route = await createRouteForService(serviceId, [path]);
+    routeId = route.id;
+    const plugin = await createPlugin(serviceId, routeId)
+    awsPluginId = plugin.id
+    // creatting hcv vault entity
+    await createHcvVaultSecrets({
+      aws_access_key: awsAccessKey,
+      aws_secret_key: awsSecretKey,
+    }, hcvMount, hcvSecretPath);
+
+    await createHcvVault();
+    //  creating my-env vault entity with varaible reference prefix 'aws_'
+    await createEnvVaultEntity('my-env', { prefix: 'aws_' });
+    // creating my-aws vault entity
+    await createAwsVaultEntity();
+    // creating my-gcp vault entity
+    await createGcpVaultEntity();
+  });
+
+  it('should create hcv vault entity and secrets', async function () {
+    const resp = await getHcvVaultSecret(hcvMount, hcvSecretPath);
+
+    expect(resp.data.aws_secret_key, 'Should see aws secret ket').to.equal(
+      awsSecretKey
+    );
+    expect(resp.data.aws_access_key, 'Should see aws access key').to.equal(
+      awsAccessKey
     );
   });
 
   it('should reference with aws access key hcv vault entity', async function () {
+    const patchResp = await axios({
+      method: 'patch',
+      url: `${pluginUrl}/${awsPluginId}`,
+      data: {
+        name: 'aws-lambda',
+        config: {
+          aws_key: `{vault://${hcvPrefix}/${hcvSecretPath}/aws_access_key}`,
+        },
+      },
+    });
+    logResponse(patchResp);
+   
+    expect(patchResp.status, 'Status should be 200').to.equal(200);
+    expect(patchResp.data.config.aws_key, 'Should have aws_key referenced').to.equal(
+      `{vault://${hcvPrefix}/${hcvSecretPath}/aws_access_key}`
+    );
+
     await wait(waitTime + 3000); // eslint-disable-line no-restricted-syntax
     await doBasicRequestCheck();
   });
@@ -132,7 +154,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
       data: {
         name: 'aws-lambda',
         config: {
-          aws_secret: '{vault://my-hcv/secret/aws_secret_key}',
+          aws_secret: `{vault://${hcvPrefix}/${hcvSecretPath}/aws_secret_key}`,
         },
       },
     });
@@ -142,7 +164,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
     expect(
       patchResp.data.config.aws_secret,
       'Should replace aws_secret with secret key reference'
-    ).to.equal('{vault://my-hcv/secret/aws_secret_key}');
+    ).to.equal(`{vault://${hcvPrefix}/${hcvSecretPath}/aws_secret_key}`);
 
     await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRequestCheck();
@@ -156,8 +178,8 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
       data: {
         name: 'aws-lambda',
         config: {
-          aws_key: '{vault://hcv/secret/aws_access_key}',
-          aws_secret: '{vault://hcv/secret/aws_secret_key}',
+          aws_key: `{vault://hcv/${hcvSecretPath}/aws_access_key}`,
+          aws_secret: `{vault://hcv/${hcvSecretPath}/aws_secret_key}`,
         },
       },
     });
@@ -167,7 +189,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
     expect(
       patchResp.data.config.aws_secret,
       'Should replace aws_secret with hcv secret key reference'
-    ).to.equal('{vault://hcv/secret/aws_secret_key}');
+    ).to.equal(`{vault://hcv/${hcvSecretPath}/aws_secret_key}`);
 
     await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRequestCheck();
@@ -181,8 +203,8 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
       data: {
         name: 'aws-lambda',
         config: {
-          aws_key: '{vault://hcv/secret/aws_access_key}',
-          aws_secret: '{vault://my-hcv/secret/aws_secret_key}',
+          aws_key: `{vault://hcv/${hcvSecretPath}/aws_access_key}`,
+          aws_secret: `{vault://${hcvPrefix}/${hcvSecretPath}/aws_secret_key}`,
         },
       },
     });
@@ -192,7 +214,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
     expect(
       patchResp.data.config.aws_secret,
       'Should replace aws_secret with hcv secret key reference'
-    ).to.equal('{vault://my-hcv/secret/aws_secret_key}');
+    ).to.equal(`{vault://${hcvPrefix}/${hcvSecretPath}/aws_secret_key}`);
 
     await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRequestCheck();
@@ -242,15 +264,6 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
     await doBasicRequestCheck();
   });
 
-  it('should create env,gcp and aws vault entities', async function () {
-    //  creating my-env vault entity with varaible reference prefix 'aws_'
-    await createEnvVaultEntity('my-env', { prefix: 'aws_' });
-    // creating my-aws vault entity
-    await createAwsVaultEntity();
-    // creating my-gcp vault entity
-    await createGcpVaultEntity();
-  });
-
   it('should reference with aws_access_key env and secret_key aws vault entity secrets', async function () {
     // changing aws-lambda aws_secret to my-aws and aws_key to my-env vault enittiy reference
     const patchResp = await axios({
@@ -280,7 +293,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
       data: {
         name: 'aws-lambda',
         config: {
-          aws_key: '{vault://my-hcv/secret/aws_access_key}',
+          aws_key: `{vault://${hcvPrefix}/${hcvSecretPath}/aws_access_key}`,
         },
       },
     });
@@ -379,7 +392,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
       data: {
         name: 'aws-lambda',
         config: {
-          aws_secret: '{vault://my-hcv/secret/aws_secret_key}',
+          aws_secret: `{vault://${hcvPrefix}/${hcvSecretPath}/aws_secret_key}`,
         },
       },
     });
@@ -412,13 +425,8 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
   });
 
   after(async function () {
-    // need to delete cache for secret referencing to work with updated secrets
     await deleteCache();
-    await deleteHcvSecret('secret', 'secret');
-    ['my-hcv', 'my-env', 'my-aws', 'my-gcp'].forEach(async (backendVault) => {
-      await deleteVaultEntity(backendVault);
-    });
-    await deleteGatewayRoute(routeId);
-    await deleteGatewayService(serviceId);
+    await deleteHcvSecret(hcvMount, hcvSecretPath);
+    await clearAllKongResources();
   });
 });
