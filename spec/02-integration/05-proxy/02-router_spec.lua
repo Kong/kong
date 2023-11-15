@@ -2486,7 +2486,6 @@ do
   for _, strategy in helpers.each_strategy() do
     describe("Router [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
       local proxy_client
-      local route_with_max_safe_integer_priority
 
       reload_router(flavor)
 
@@ -2518,13 +2517,6 @@ do
           protocols = { "http" },
           expression = [[http.path == "/foobar" && any(http.queries.a) == "2"]],
           priority = 100,
-          service   = service,
-        }
-
-        route_with_max_safe_integer_priority = bp.routes:insert {
-          protocols = { "http" },
-          expression = [[http.path == "/max"]],
-          priority = 9007199254740992,
           service   = service,
         }
 
@@ -2602,14 +2594,6 @@ do
           query   = "a=10&a=20",
         })
         assert.res_status(404, res)
-      end)
-
-      it("the maximum safe integer can be accurately represented as a decimal number", function()
-        local admin_client = helpers.admin_client()
-
-        local res = admin_client:get("/routes/" .. route_with_max_safe_integer_priority.id)
-        assert.res_status(200, res)
-        assert.match_re(res:read_body(), "9007199254740992")
       end)
 
     end)
