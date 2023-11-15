@@ -6,6 +6,8 @@ local utils         = require "kong.tools.utils"
 local new_tab       = require "table.new"
 local clear_tab     = require "table.clear"
 
+cjson.encode_number_precision(16)
+cjson_safe.encode_number_precision(16)
 
 local kong          = kong
 local ngx           = ngx
@@ -178,6 +180,10 @@ local function escape_literal(connector, literal, field)
   if field then
     if field.timestamp then
       return concat { "TO_TIMESTAMP(", connector:escape_literal(tonumber(fmt("%.3f", literal))), ") AT TIME ZONE 'UTC'" }
+    end
+
+    if field.type == "integer" then
+      return fmt("%16.f", literal)
     end
 
     if field.type == "array" or field.type == "set" then
