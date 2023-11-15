@@ -60,6 +60,5 @@ export LUA_PATH="$LUA_PATH"
 export LUA_CPATH="$KONG_VENV/openresty/site/lualib/?.so;$KONG_VENV/openresty/lualib/?.so;./?.so;$KONG_VENV/lib/lua/5.1/?.so;$KONG_VENV/openresty/luajit/lib/lua/5.1/?.so;$ROCKS_ROOT/lib/lua/5.1/?.so;;"
 export KONG_PREFIX="$KONG_VENV/kong/servroot"
 export LIBRARY_PREFIX="$KONG_VENV/kong" # let "make dev" happy
-export OPENSSL_DIR="$KONG_VENV/kong" # let "make dev" happy
 
 EOF
