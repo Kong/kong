@@ -12,7 +12,7 @@ local ws_client = require("resty.websocket.client")
 local cjson = require("cjson.safe")
 local constants = require("kong.constants")
 local declarative = require("kong.db.declarative")
-local utils = require("kong.tools.utils")
+local gzip = require("kong.tools.gzip")
 local clustering_utils = require("kong.clustering.utils")
 
 
@@ -23,8 +23,8 @@ local sub = string.sub
 local table_insert = table.insert
 local table_remove = table.remove
 local cjson_decode = cjson.decode
-local inflate_gzip = utils.inflate_gzip
-local deflate_gzip = utils.deflate_gzip
+local inflate_gzip = gzip.inflate_gzip
+local deflate_gzip = gzip.deflate_gzip
 
 
 local kong = kong
