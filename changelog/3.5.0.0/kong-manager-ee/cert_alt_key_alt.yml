@@ -1,0 +1,5 @@
+message: |
+  Fix an issue where the input fields for cert_alt and key_alt in the certificate form do not accept
+  multi-line content.
+type: bugfix
+githubs: [2923]

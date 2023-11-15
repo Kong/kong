@@ -1,0 +1,3 @@
+message: "Fix an issue that Kong Manager 'Invite Admin' button missing on Teams page if no admin created on DB initialization with RBAC disabled"
+type: "bugfix"
+githubs: [2932]

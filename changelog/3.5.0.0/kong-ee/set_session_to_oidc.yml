@@ -1,0 +1,4 @@
+message: "Fix when the Dev portal OIDC is enabled, a 500 error is thrown when the administrator login successfully and then retrieves the session"
+type: "feature"
+scope: "Plugin"
+githubs: [5813]
