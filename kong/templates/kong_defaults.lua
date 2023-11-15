@@ -272,7 +272,7 @@ dns_stale_ttl = 4
 dns_cache_size = 10000
 dns_not_found_ttl = 30
 dns_error_ttl = 1
-dns_no_sync = on
+dns_no_sync = off
 
 dedicated_config_processing = on
 worker_consistency = eventual
