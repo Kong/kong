@@ -272,43 +272,42 @@ function _M.precreate_balancer_span(ctx)
 end
 
 
-local patch_dns_query
 do
   local raw_func
-  local patch_callback
 
-  local function wrap(host, port)
-    local span = tracer.start_span("kong.dns", {
-      span_kind = 3, -- client
-    })
-    local ip_addr, res_port, try_list = raw_func(host, port)
+  local function wrap(host, port, ...)
+    local span
+    if _M.dns_query ~= NOOP then
+      span = tracer.start_span("kong.dns", {
+        span_kind = 3, -- client
+      })
+    end
+
+    local ip_addr, res_port, try_list = raw_func(host, port, ...)
     if span then
       span:set_attribute("dns.record.domain", host)
       span:set_attribute("dns.record.port", port)
-      span:set_attribute("dns.record.ip", ip_addr)
+      if ip_addr then
+        span:set_attribute("dns.record.ip", ip_addr)
+      else
+        span:record_error(res_port)
+        span:set_status(2)
+      end
       span:finish()
     end
 
     return ip_addr, res_port, try_list
   end
 
-  --- Patch DNS query
-  -- It will be called before Kong's config loader.
+  --- Get Wrapped DNS Query
+  -- Called before Kong's config loader.
   --
-  -- `callback` is a function that accept a wrap function,
-  -- it could be used to replace the orignal func lazily.
-  --
-  -- e.g. patch_dns_query(func, function(wrap)
-  --   toip = wrap
-  -- end)
-  function _M.set_patch_dns_query_fn(func, callback)
-    raw_func = func
-    patch_callback = callback
-  end
-
-  -- patch lazily
-  patch_dns_query = function()
-    patch_callback(wrap)
+  -- returns a wrapper for the provided input function `f`
+  -- that stores dns info in the `kong.dns` span when the dns
+  -- instrumentation is enabled.
+  function _M.get_wrapped_dns_query(f)
+    raw_func = f
+    return wrap
   end
 
   -- append available_types
@@ -425,11 +424,6 @@ function _M.init(config)
       sampling_rate = sampling_rate,
     })
     tracer.set_global_tracer(tracer)
-
-    -- global patch
-    if _M.dns_query ~= NOOP then
-      patch_dns_query()
-    end
   end
 end
 

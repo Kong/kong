@@ -50,6 +50,8 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       res2.headers["Date"] = nil
       res1.headers["X-Kong-Admin-Latency"] = nil
       res2.headers["X-Kong-Admin-Latency"] = nil
+      res1.headers["Kong-Test-Transaction-Id"] = nil
+      res2.headers["Kong-Test-Transaction-Id"] = nil
 
       assert.same(res1.headers, res2.headers)
     end)

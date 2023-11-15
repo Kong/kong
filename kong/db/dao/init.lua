@@ -973,13 +973,14 @@ function DAO:truncate()
 end
 
 
-function DAO:select(primary_key, options)
-  validate_primary_key_type(primary_key)
+function DAO:select(pk_or_entity, options)
+  validate_primary_key_type(pk_or_entity)
 
   if options ~= nil then
     validate_options_type(options)
   end
 
+  local primary_key = self.schema:extract_pk_values(pk_or_entity)
   local ok, errors = self.schema:validate_primary_key(primary_key)
   if not ok then
     local err_t = self.errors:invalid_primary_key(errors)
@@ -1163,14 +1164,15 @@ function DAO:insert(entity, options)
 end
 
 
-function DAO:update(primary_key, entity, options)
-  validate_primary_key_type(primary_key)
+function DAO:update(pk_or_entity, entity, options)
+  validate_primary_key_type(pk_or_entity)
   validate_entity_type(entity)
 
   if options ~= nil then
     validate_options_type(options)
   end
 
+  local primary_key = self.schema:extract_pk_values(pk_or_entity)
   local ok, errors = self.schema:validate_primary_key(primary_key)
   if not ok then
     local err_t = self.errors:invalid_primary_key(errors)
@@ -1215,14 +1217,15 @@ function DAO:update(primary_key, entity, options)
 end
 
 
-function DAO:upsert(primary_key, entity, options)
-  validate_primary_key_type(primary_key)
+function DAO:upsert(pk_or_entity, entity, options)
+  validate_primary_key_type(pk_or_entity)
   validate_entity_type(entity)
 
   if options ~= nil then
     validate_options_type(options)
   end
 
+  local primary_key = self.schema:extract_pk_values(pk_or_entity)
   local ok, errors = self.schema:validate_primary_key(primary_key)
   if not ok then
     local err_t = self.errors:invalid_primary_key(errors)
@@ -1272,13 +1275,14 @@ function DAO:upsert(primary_key, entity, options)
 end
 
 
-function DAO:delete(primary_key, options)
-  validate_primary_key_type(primary_key)
+function DAO:delete(pk_or_entity, options)
+  validate_primary_key_type(pk_or_entity)
 
   if options ~= nil then
     validate_options_type(options)
   end
 
+  local primary_key = self.schema:extract_pk_values(pk_or_entity)
   local ok, errors = self.schema:validate_primary_key(primary_key)
   if not ok then
     local err_t = self.errors:invalid_primary_key(errors)

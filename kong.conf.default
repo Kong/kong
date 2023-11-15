@@ -730,7 +730,9 @@
 
 #mem_cache_size = 128m           # Size of each of the two shared memory caches
                                  # for traditional mode database entities
-                                 # and runtime data.
+                                 # and runtime data, `kong_core_cache` and 
+                                 # `kong_cache`.
+                                 #
                                  # The accepted units are `k` and `m`, with a minimum
                                  # recommended value of a few MBs.
                                  #
@@ -1067,6 +1069,8 @@
 # - `nginx_http_<directive>`: Injects `<directive>` in Kong's `http {}` block.
 # - `nginx_proxy_<directive>`: Injects `<directive>` in Kong's proxy
 #   `server {}` block.
+# - `nginx_location_<directive>`: Injects `<directive>` in Kong's proxy `/`
+#    location block (nested under Kong's proxy server {} block).
 # - `nginx_upstream_<directive>`: Injects `<directive>` in Kong's proxy
 #   `upstream {}` block.
 # - `nginx_admin_<directive>`: Injects `<directive>` in Kong's Admin API
@@ -2054,7 +2058,7 @@
 # The following namespaces are supported:
 #
 # - `nginx_wasm_<directive>`: Injects `<directive>` into the `wasm {}` block.
-# - `nginx_wasm_shm_<name>`: Injects `shm_kv <name>` into the `wasm {}` block,
+# - `nginx_wasm_shm_kv_<name>`: Injects `shm_kv <name>` into the `wasm {}` block,
 #   allowing operators to define custom shared memory zones which are usable by
 #   the `get_shared_data`/`set_shared_data` Proxy-Wasm SDK functions.
 # - `nginx_wasm_wasmtime_<flag>`: Injects `flag <flag>` into the `wasmtime {}`

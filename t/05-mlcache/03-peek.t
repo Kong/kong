@@ -673,7 +673,7 @@ stale: nil
                 return 123
             end))
 
-            ngx.sleep(0.3)
+            ngx.sleep(0.31)
 
             local ttl, err, data, stale = cache:peek("my_key", true)
             if err then
@@ -720,7 +720,7 @@ stale: true
                 return
             end
 
-            ngx.sleep(0.3)
+            ngx.sleep(0.31)
 
             local ttl, err, data, stale = cache:peek("my_key", true)
             if err then
@@ -762,7 +762,7 @@ stale: true
                 return
             end
 
-            ngx.sleep(0.3)
+            ngx.sleep(0.31)
 
             for i = 1, 3 do
                 remaining_ttl, err, data = cache:peek("key", true)
@@ -808,7 +808,7 @@ data: 123
                 return
             end
 
-            ngx.sleep(0.3)
+            ngx.sleep(0.31)
 
             for i = 1, 3 do
                 remaining_ttl, err, data = cache:peek("key", true)

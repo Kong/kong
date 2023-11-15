@@ -3788,6 +3788,8 @@ local function clustering_client(opts)
   assert(opts.cert)
   assert(opts.cert_key)
 
+  local inflate_gzip = require("kong.tools.gzip").inflate_gzip
+
   local c = assert(ws_client:new())
   local uri = "wss://" .. opts.host .. ":" .. opts.port ..
               "/v1/outlet?node_id=" .. (opts.node_id or utils.uuid()) ..
@@ -3820,7 +3822,7 @@ local function clustering_client(opts)
   c:close()
 
   if typ == "binary" then
-    local odata = assert(utils.inflate_gzip(data))
+    local odata = assert(inflate_gzip(data))
     local msg = assert(cjson.decode(odata))
     return msg
 

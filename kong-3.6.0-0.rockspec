@@ -32,15 +32,15 @@ dependencies = {
   "luaxxhash >= 1.0",
   "lua-protobuf == 0.5.0",
   "lua-resty-healthcheck == 3.0.0",
-  "lua-messagepack == 0.5.2",
+  "lua-messagepack == 0.5.3",
   "lua-resty-aws == 1.3.5",
-  "lua-resty-openssl == 0.8.25",
+  "lua-resty-openssl == 1.0.1",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.12.0",
   "lua-resty-session == 4.0.5",
   "lua-resty-timer-ng == 0.2.5",
-  "lpeg == 1.0.2",
+  "lpeg == 1.1.0",
   "lua-resty-ljsonschema == 1.1.6-2",
 }
 build = {
@@ -171,6 +171,8 @@ build = {
     ["kong.tools.yield"] = "kong/tools/yield.lua",
     ["kong.tools.uuid"] = "kong/tools/uuid.lua",
     ["kong.tools.rand"] = "kong/tools/rand.lua",
+    ["kong.tools.system"] = "kong/tools/system.lua",
+    ["kong.tools.time"] = "kong/tools/time.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.events"] = "kong/runloop/events.lua",

@@ -47,6 +47,7 @@ end
 -- Creates one instance of SNI for each name in name_list
 -- All created instances will be associated to the given certificate
 function _SNIs:insert_list(cert_pk, name_list)
+  cert_pk = self.db.certificates.schema:extract_pk_values(cert_pk)
   for _, name in ipairs(name_list) do
     local _, err, err_t = self:insert({
       name         = name,

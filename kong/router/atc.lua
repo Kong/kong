@@ -55,8 +55,10 @@ local values_buf = buffer.new(64)
 
 
 local CACHED_SCHEMA
+local HTTP_SCHEMA
+local STREAM_SCHEMA
 do
-  local FIELDS = {
+  local HTTP_FIELDS = {
 
     ["String"] = {"net.protocol", "tls.sni",
                   "http.method", "http.host",
@@ -66,21 +68,39 @@ do
                  },
 
     ["Int"]    = {"net.port",
-                  "net.src.port", "net.dst.port",
+                 },
+  }
+
+  local STREAM_FIELDS = {
+
+    ["String"] = {"net.protocol", "tls.sni",
+                 },
+
+    ["Int"]    = {"net.src.port", "net.dst.port",
                  },
 
     ["IpAddr"] = {"net.src.ip", "net.dst.ip",
                  },
   }
 
-  CACHED_SCHEMA = schema.new()
+  local function generate_schema(fields)
+    local s = schema.new()
 
-  for typ, fields in pairs(FIELDS) do
-    for _, v in ipairs(fields) do
-      assert(CACHED_SCHEMA:add_field(v, typ))
+    for t, f in pairs(fields) do
+      for _, v in ipairs(f) do
+        assert(s:add_field(v, t))
+      end
     end
+
+    return s
   end
 
+  -- used by validation
+  HTTP_SCHEMA   = generate_schema(HTTP_FIELDS)
+  STREAM_SCHEMA = generate_schema(STREAM_FIELDS)
+
+  -- used by running router
+  CACHED_SCHEMA = is_http and HTTP_SCHEMA or STREAM_SCHEMA
 end
 
 
@@ -467,14 +487,14 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
       local v = req_headers[h]
 
       if type(v) == "string" then
-        local res, err = c:add_value(field, v:lower())
+        local res, err = c:add_value(field, v)
         if not res then
           return nil, err
         end
 
       elseif type(v) == "table" then
         for _, v in ipairs(v) do
-          local res, err = c:add_value(field, v:lower())
+          local res, err = c:add_value(field, v)
           if not res then
             return nil, err
           end
@@ -572,22 +592,18 @@ do
 
   local str_buf = buffer.new(64)
 
-  get_headers_key = function(headers)
+  local function get_headers_or_queries_key(values, lower_func)
     str_buf:reset()
 
     -- NOTE: DO NOT yield until str_buf:get()
-    for name, value in pairs(headers) do
-      local name = replace_dashes_lower(name)
+    for name, value in pairs(values) do
+      if lower_func then
+        name = lower_func(name)
+      end
 
       if type(value) == "table" then
-        for i, v in ipairs(value) do
-          value[i] = v:lower()
-        end
         tb_sort(value)
         value = tb_concat(value, ", ")
-
-      else
-        value = value:lower()
       end
 
       str_buf:putf("|%s=%s", name, value)
@@ -596,20 +612,12 @@ do
     return str_buf:get()
   end
 
+  get_headers_key = function(headers)
+    return get_headers_or_queries_key(headers, replace_dashes_lower)
+  end
+
   get_queries_key = function(queries)
-    str_buf:reset()
-
-    -- NOTE: DO NOT yield until str_buf:get()
-    for name, value in pairs(queries) do
-      if type(value) == "table" then
-        tb_sort(value)
-        value = tb_concat(value, ", ")
-      end
-
-      str_buf:putf("|%s=%s", name, value)
-    end
-
-    return str_buf:get()
+    return get_headers_or_queries_key(queries)
   end
 end
 
@@ -877,7 +885,26 @@ function _M._set_ngx(mock_ngx)
 end
 
 
-_M.schema          = CACHED_SCHEMA
+do
+  local protocol_to_schema = {
+    http  = HTTP_SCHEMA,
+    https = HTTP_SCHEMA,
+    grpc  = HTTP_SCHEMA,
+    grpcs = HTTP_SCHEMA,
+
+    tcp   = STREAM_SCHEMA,
+    udp   = STREAM_SCHEMA,
+    tls   = STREAM_SCHEMA,
+
+    tls_passthrough = STREAM_SCHEMA,
+  }
+
+  -- for db schema validation
+  function _M.schema(protocols)
+    return assert(protocol_to_schema[protocols[1]])
+  end
+end
+
 
 _M.LOGICAL_OR      = LOGICAL_OR
 _M.LOGICAL_AND     = LOGICAL_AND

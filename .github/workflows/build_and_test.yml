@@ -123,7 +123,6 @@ jobs:
     name: Postgres ${{ matrix.suite }} - ${{ matrix.split }} tests
     runs-on: ubuntu-22.04
     needs: build
-
     strategy:
       fail-fast: false
       matrix:
@@ -156,7 +155,7 @@ jobs:
           --name kong_redis
 
       zipkin:
-        image: openzipkin/zipkin:2.19
+        image: openzipkin/zipkin:2
         ports:
           - 9411:9411
 
@@ -227,6 +226,11 @@ jobs:
         luarocks --version
         luarocks config
 
+    - name: Tune up postgres max_connections
+      run: |
+        # arm64 runners may use more connections due to more worker cores
+        psql -hlocalhost -Ukong kong -tAc 'alter system set max_connections = 5000;'
+
     - name: Tests
       env:
         KONG_TEST_PG_DATABASE: kong
@@ -263,7 +267,7 @@ jobs:
 
     services:
       grpcbin:
-        image: moul/grpcbin
+        image: kong/grpcbin
         ports:
           - 15002:9000
           - 15003:9001

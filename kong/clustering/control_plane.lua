@@ -5,12 +5,12 @@ local _MT = { __index = _M, }
 local semaphore = require("ngx.semaphore")
 local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
-local utils = require("kong.tools.utils")
 local clustering_utils = require("kong.clustering.utils")
 local compat = require("kong.clustering.compat")
 local constants = require("kong.constants")
 local events = require("kong.clustering.events")
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
+local global = require("kong.global")
 
 
 local string = string
@@ -40,8 +40,8 @@ local sleep = ngx.sleep
 
 local plugins_list_to_map = compat.plugins_list_to_map
 local update_compatible_payload = compat.update_compatible_payload
-local deflate_gzip = utils.deflate_gzip
-local yield = utils.yield
+local deflate_gzip = require("kong.tools.gzip").deflate_gzip
+local yield = require("kong.tools.yield").yield
 local connect_dp = clustering_utils.connect_dp
 
 
@@ -134,6 +134,12 @@ function _M:export_deflated_reconfigure_payload()
     hashes = hashes,
   }
 
+  local current_transaction_id
+  if kong.configuration.log_level == "debug" then
+    current_transaction_id = global.get_current_transaction_id()
+    payload.current_transaction_id = current_transaction_id
+  end
+
   self.reconfigure_payload = payload
 
   payload, err = cjson_encode(payload)
@@ -153,6 +159,10 @@ function _M:export_deflated_reconfigure_payload()
   self.current_hashes = hashes
   self.current_config_hash = config_hash
   self.deflated_reconfigure_payload = payload
+
+  if kong.configuration.log_level == "debug" then
+    ngx_log(ngx_DEBUG, _log_prefix, "exported configuration with transaction id " .. current_transaction_id)
+  end
 
   return payload, nil, config_hash
 end
@@ -239,9 +249,11 @@ function _M:handle_cp_websocket(cert)
   local purge_delay = self.conf.cluster_data_plane_purge_delay
   local update_sync_status = function()
     local ok
-    ok, err = kong.db.clustering_data_planes:upsert({ id = dp_id, }, {
+    ok, err = kong.db.clustering_data_planes:upsert({ id = dp_id }, {
       last_seen = last_seen,
-      config_hash = config_hash ~= "" and config_hash or nil,
+      config_hash = config_hash ~= ""
+                and config_hash
+                 or DECLARATIVE_EMPTY_CONFIG_HASH,
       hostname = dp_hostname,
       ip = dp_ip,
       version = dp_version,
@@ -349,6 +361,10 @@ function _M:handle_cp_websocket(cert)
 
       if not data then
         return nil, "did not receive ping frame from data plane"
+
+      elseif #data ~= 32 then
+        return nil, "received a ping frame from the data plane with an invalid"
+                 .. " hash: '" .. tostring(data) .. "'"
       end
 
       -- dps only send pings

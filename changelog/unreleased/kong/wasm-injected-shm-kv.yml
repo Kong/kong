@@ -1,0 +1,6 @@
+message: >
+  **BREAKING:** To avoid ambiguity with other Wasm-related nginx.conf directives,
+  the prefix for Wasm `shm_kv` nginx.conf directives was changed from
+  `nginx_wasm_shm_` to `nginx_wasm_shm_kv_`
+type: breaking_change
+scope: Core

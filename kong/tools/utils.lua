@@ -8,14 +8,10 @@
 -- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
 -- @module kong.tools.utils
 
-local ffi = require "ffi"
 local pl_stringx = require "pl.stringx"
-local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 
-local C             = ffi.C
-local ffi_new       = ffi.new
 local type          = type
 local pairs         = pairs
 local ipairs        = ipairs
@@ -33,70 +29,8 @@ local split         = pl_stringx.split
 local re_match      = ngx.re.match
 local setmetatable  = setmetatable
 
-ffi.cdef[[
-typedef long time_t;
-typedef int clockid_t;
-typedef struct timespec {
-        time_t   tv_sec;        /* seconds */
-        long     tv_nsec;       /* nanoseconds */
-} nanotime;
-
-int clock_gettime(clockid_t clk_id, struct timespec *tp);
-
-int gethostname(char *name, size_t len);
-]]
 
 local _M = {}
-
-do
-  local _system_infos
-
-  function _M.get_system_infos()
-    if _system_infos then
-      return _system_infos
-    end
-
-    _system_infos = {}
-
-    local ok, _, stdout = pl_utils.executeex("getconf _NPROCESSORS_ONLN")
-    if ok then
-      _system_infos.cores = tonumber(stdout:sub(1, -2))
-    end
-
-    ok, _, stdout = pl_utils.executeex("uname -ms")
-    if ok then
-      _system_infos.uname = stdout:gsub(";", ","):sub(1, -2)
-    end
-
-    return _system_infos
-  end
-end
-
-do
-  local trusted_certs_paths = {
-    "/etc/ssl/certs/ca-certificates.crt",                -- Debian/Ubuntu/Gentoo
-    "/etc/pki/tls/certs/ca-bundle.crt",                  -- Fedora/RHEL 6
-    "/etc/ssl/ca-bundle.pem",                            -- OpenSUSE
-    "/etc/pki/tls/cacert.pem",                           -- OpenELEC
-    "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem", -- CentOS/RHEL 7
-    "/etc/ssl/cert.pem",                                 -- OpenBSD, Alpine
-  }
-
-  function _M.get_system_trusted_certs_filepath()
-    for _, path in ipairs(trusted_certs_paths) do
-      if pl_path.exists(path) then
-        return path
-      end
-    end
-
-    return nil,
-           "Could not find trusted certs file in " ..
-           "any of the `system`-predefined locations. " ..
-           "Please install a certs file there or set " ..
-           "lua_ssl_trusted_certificate to an " ..
-           "specific filepath instead of `system`"
-  end
-end
 
 
 do
@@ -783,46 +717,6 @@ do
 end
 
 
-do
-  local NGX_ERROR = ngx.ERROR
-
-  if not pcall(ffi.typeof, "ngx_uint_t") then
-    ffi.cdef [[
-      typedef uintptr_t ngx_uint_t;
-    ]]
-  end
-
-  if not pcall(ffi.typeof, "ngx_int_t") then
-    ffi.cdef [[
-      typedef intptr_t ngx_int_t;
-    ]]
-  end
-
-  -- ngx_str_t defined by lua-resty-core
-  local s = ffi_new("ngx_str_t[1]")
-  s[0].data = "10"
-  s[0].len = 2
-
-  if not pcall(function() C.ngx_parse_time(s, 0) end) then
-    ffi.cdef [[
-      ngx_int_t ngx_parse_time(ngx_str_t *line, ngx_uint_t is_sec);
-    ]]
-  end
-
-  function _M.nginx_conf_time_to_seconds(str)
-    s[0].data = str
-    s[0].len = #str
-
-    local ret = C.ngx_parse_time(s, 1)
-    if ret == NGX_ERROR then
-      error("bad argument #1 'str'", 2)
-    end
-
-    return tonumber(ret, 10)
-  end
-end
-
-
 local get_mime_type
 local get_response_type
 local get_error_template
@@ -1068,80 +962,17 @@ local topological_sort do
 end
 _M.topological_sort = topological_sort
 
----
--- Sort by handler priority and check for collisions. In case of a collision
--- sorting will be applied based on the plugin's name.
--- @tparam table plugin table containing `handler` table and a `name` string
--- @tparam table plugin table containing `handler` table and a `name` string
--- @treturn boolean outcome of sorting
-function _M.sort_by_handler_priority(a, b)
-  local prio_a = a.handler.PRIORITY or 0
-  local prio_b = b.handler.PRIORITY or 0
-  if prio_a == prio_b and not
-      (prio_a == 0 or prio_b == 0) then
-    return a.name > b.name
-  end
-  return prio_a > prio_b
-end
-
-
-local time_ns
-do
-  local nanop = ffi_new("nanotime[1]")
-  function time_ns()
-    -- CLOCK_REALTIME -> 0
-    C.clock_gettime(0, nanop)
-    local t = nanop[0]
-
-    return tonumber(t.tv_sec) * 1e9 + tonumber(t.tv_nsec)
-  end
-end
-_M.time_ns = time_ns
-
-
-local get_now_ms
-local get_updated_now_ms
-local get_start_time_ms
-local get_updated_monotonic_ms
-do
-  local now             = ngx.now
-  local update_time     = ngx.update_time
-  local start_time      = ngx.req.start_time
-  local monotonic_msec  = require("resty.core.time").monotonic_msec
-
-  function get_now_ms()
-    return now() * 1000 -- time is kept in seconds with millisecond resolution.
-  end
-
-  function get_updated_now_ms()
-    update_time()
-    return now() * 1000 -- time is kept in seconds with millisecond resolution.
-  end
-
-  function get_start_time_ms()
-    return start_time() * 1000 -- time is kept in seconds with millisecond resolution.
-  end
-
-  function get_updated_monotonic_ms()
-    update_time()
-    return monotonic_msec()
-  end
-end
-_M.get_now_ms         = get_now_ms
-_M.get_updated_now_ms = get_updated_now_ms
-_M.get_start_time_ms  = get_start_time_ms
-_M.get_updated_monotonic_ms = get_updated_monotonic_ms
-
 
 do
   local modules = {
-    "kong.tools.gzip",
     "kong.tools.table",
     "kong.tools.sha256",
     "kong.tools.yield",
     "kong.tools.string",
     "kong.tools.uuid",
     "kong.tools.rand",
+    "kong.tools.system",
+    "kong.tools.time",
   }
 
   for _, str in ipairs(modules) do

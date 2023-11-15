@@ -160,13 +160,13 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("returns an error when updating mismatched plugins", function()
-        local p, _, err_t = db.plugins:update({ id = global_plugin.id },
+        local p, _, err_t = db.plugins:update(global_plugin,
                                               { route = { id = route.id } })
         assert.is_nil(p)
         assert.equals(err_t.fields.protocols, "must match the associated route's protocols")
 
 
-        local p, _, err_t = db.plugins:update({ id = global_plugin.id },
+        local p, _, err_t = db.plugins:update(global_plugin,
                                               { service = { id = service.id } })
         assert.is_nil(p)
         assert.equals(err_t.fields.protocols,
@@ -176,13 +176,13 @@ for _, strategy in helpers.each_strategy() do
 
     describe(":upsert()", function()
       it("returns an error when upserting mismatched plugins", function()
-        local p, _, err_t = db.plugins:upsert({ id = global_plugin.id },
+        local p, _, err_t = db.plugins:upsert(global_plugin,
                                               { route = { id = route.id }, protocols = { "http" } })
         assert.is_nil(p)
         assert.equals(err_t.fields.protocols, "must match the associated route's protocols")
 
 
-        local p, _, err_t = db.plugins:upsert({ id = global_plugin.id },
+        local p, _, err_t = db.plugins:upsert(global_plugin,
                                               { service = { id = service.id }, protocols = { "http" } })
         assert.is_nil(p)
         assert.equals(err_t.fields.protocols,
