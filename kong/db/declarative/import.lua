@@ -251,7 +251,7 @@ local function load_into_cache(entities, meta, hash)
 
       assert(type(ws_id) == "string")
 
-      local cache_key = dao:cache_key(id, nil, nil, nil, nil, item.ws_id)
+      local item_cache_key = dao:cache_key(id, nil, nil, nil, nil, item.ws_id)
 
       item = remove_nulls(item)
       if transform then
@@ -267,30 +267,30 @@ local function load_into_cache(entities, meta, hash)
         return nil, err
       end
 
-      t:set(cache_key, item_marshalled)
+      t:set(item_cache_key, item_marshalled)
 
       local global_query_cache_key = dao:cache_key(id, nil, nil, nil, nil, "*")
-      t:set(global_query_cache_key, item_marshalled)
+      t:set(global_query_cache_key, item_cache_key)
 
       -- insert individual entry for global query
-      insert(keys_by_ws["*"], cache_key)
+      insert(keys_by_ws["*"], item_cache_key)
 
       -- insert individual entry for workspaced query
       if ws_id ~= "" then
         keys_by_ws[ws_id] = keys_by_ws[ws_id] or {}
         local keys = keys_by_ws[ws_id]
-        insert(keys, cache_key)
+        insert(keys, item_cache_key)
       end
 
       if schema.cache_key then
         local cache_key = dao:cache_key(item)
-        t:set(cache_key, item_marshalled)
+        t:set(cache_key, item_cache_key)
       end
 
       for i = 1, #uniques do
         local unique = uniques[i]
         local unique_key = item[unique]
-        if unique_key then
+        if unique_key and unique_key ~= null then
           if type(unique_key) == "table" then
             local _
             -- this assumes that foreign keys are not composite
@@ -300,13 +300,13 @@ local function load_into_cache(entities, meta, hash)
           local key = unique_field_key(entity_name, ws_id, unique, unique_key,
                                        schema.fields[unique].unique_across_ws)
 
-          t:set(key, item_marshalled)
+          t:set(key, item_cache_key)
         end
       end
 
       for fname, ref in pairs(foreign_fields) do
         local item_fname = item[fname]
-        if item_fname then
+        if item_fname and item_fname ~= null then
           local fschema = db[ref].schema
 
           local fid = declarative_config.pk_string(fschema, item_fname)
@@ -314,17 +314,17 @@ local function load_into_cache(entities, meta, hash)
           -- insert paged search entry for global query
           page_for[ref]["*"] = page_for[ref]["*"] or {}
           page_for[ref]["*"][fid] = page_for[ref]["*"][fid] or {}
-          insert(page_for[ref]["*"][fid], cache_key)
+          insert(page_for[ref]["*"][fid], item_cache_key)
 
           -- insert paged search entry for workspaced query
           page_for[ref][ws_id] = page_for[ref][ws_id] or {}
           page_for[ref][ws_id][fid] = page_for[ref][ws_id][fid] or {}
-          insert(page_for[ref][ws_id][fid], cache_key)
+          insert(page_for[ref][ws_id][fid], item_cache_key)
         end
       end
 
       local item_tags = item.tags
-      if item_tags then
+      if item_tags and item_tags ~= null then
         local ws = schema.workspaceable and ws_id or ""
         for i = 1, #item_tags do
           local tag_name = item_tags[i]
@@ -335,7 +335,7 @@ local function load_into_cache(entities, meta, hash)
 
           taggings[tag_name] = taggings[tag_name] or {}
           taggings[tag_name][ws] = taggings[tag_name][ws] or {}
-          taggings[tag_name][ws][cache_key] = true
+          taggings[tag_name][ws][item_cache_key] = true
         end
       end
     end
