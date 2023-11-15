@@ -5,6 +5,7 @@ local normalize = require("kong.tools.uri").normalize
 
 local type = type
 local error = error
+local ipairs = ipairs
 local find = string.find
 local sub = string.sub
 local byte = string.byte
