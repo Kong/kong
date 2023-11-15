@@ -1,0 +1,6 @@
+message: "**response-ratelimiting**: add support for secret rotation with redis connection "
+type: feature
+scope: Plugin
+prs:
+  - 10570
+
