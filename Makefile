@@ -104,7 +104,7 @@ install-dev-rocks: build-venv
 	  else \
 		echo $$rock not found, installing via luarocks... ; \
 		LIBRARY_PREFIX=$$(pwd)/bazel-bin/build/$(BUILD_NAME)/kong ; \
-		luarocks install $$rock OPENSSL_DIR=$$LIBRARY_PREFIX CRYPTO_DIR=$$LIBRARY_PREFIX YAML_DIR=$(YAML_DIR) || exit 1; \
+		luarocks install $$rock OPENSSL_DIR=$(OPENSSL_DIR) YAML_DIR=$(YAML_DIR) || exit 1; \
 	  fi \
 	done;
 
@@ -144,6 +144,9 @@ sca:
 	@!(grep -R -E -I -n -w '#only|#o' spec-ee && echo "#only or #o tag detected") >&2
 	@!(grep -R -E -I -n -- '---\s+ONLY' t && echo "--- ONLY block detected") >&2
 	@$(KONG_SOURCE_LOCATION)/scripts/copyright-header-checker
+
+update-copyright: build-venv
+	bash -c 'OPENSSL_DIR=$(OPENSSL_DIR) EXPAT_DIR=$(EXPAT_DIR) $(VENV) luajit $(KONG_SOURCE_LOCATION)/scripts/update-copyright'
 
 trigger-api-tests:
 	-docker manifest inspect kong/kong-gateway-internal:${DOCKER_IMAGE_TAG} 2>&1 >/dev/null && \
@@ -222,11 +225,11 @@ dependencies: bin/grpcurl bin/h2client
 		echo $$rock already installed, skipping ; \
 	  else \
 		echo $$rock not found, installing via luarocks... ; \
-		luarocks install $$rock OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR) YAML_DIR=$(YAML_DIR) || exit 1; \
+		luarocks install $$rock OPENSSL_DIR=$(OPENSSL_DIR) YAML_DIR=$(YAML_DIR) || exit 1; \
 	  fi \
 	done;
 
 install-legacy:
-	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR) YAML_DIR=$(YAML_DIR)
+	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) YAML_DIR=$(YAML_DIR)
 
 dev-legacy: remove install-legacy dependencies
