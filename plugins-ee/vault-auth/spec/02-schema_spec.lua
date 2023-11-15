@@ -9,7 +9,14 @@ local PLUGIN_NAME = "vault-auth"
 
 local validate do
   local validate_entity = require("spec.helpers").validate_plugin_config_schema
+  local Schema = require "kong.db.schema"
   local plugin_schema = require("kong.plugins." .. PLUGIN_NAME .. ".schema")
+
+  -- load all daos to validate plugin's referenced schemas
+  local daos = require("kong.plugins." .. PLUGIN_NAME .. ".daos")
+  for _, dao in ipairs(daos) do
+    assert(Schema.new(dao))
+  end
 
   function validate(data)
     return validate_entity(data, plugin_schema)
