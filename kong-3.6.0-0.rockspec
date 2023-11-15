@@ -284,6 +284,7 @@ build = {
     ["kong.tools.rand"] = "kong/tools/rand.lua",
     ["kong.tools.system"] = "kong/tools/system.lua",
     ["kong.tools.time"] = "kong/tools/time.lua",
+    ["kong.tools.module"] = "kong/tools/module.lua",
     ["kong.tools.ip"] = "kong/tools/ip.lua",
 
     ["kong.tools.channel"] = "kong/tools/channel.lua",
