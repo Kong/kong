@@ -1,8 +1,8 @@
-local find    = string.find
 local type    = type
 local xpcall  = xpcall
 local require = require
 local error   = error
+local find    = string.find
 
 
 local _M = {}
