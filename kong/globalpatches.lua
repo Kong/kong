@@ -524,13 +524,17 @@ return function(options)
   do -- cosockets connect patch for dns resolution for: cli, rbusted and OpenResty
     local sub = string.sub
 
+    local client = package.loaded["kong.resty.dns.client"]
+    if not client then
+      client = require("kong.tools.dns")()
+    end
+
     --- Patch the TCP connect and UDP setpeername methods such that all
     -- connections will be resolved first by the internal DNS resolver.
     -- STEP 1: load code that should not be using the patched versions
     require "resty.dns.resolver" -- will cache TCP and UDP functions
 
     -- STEP 2: forward declaration of locals to hold stuff loaded AFTER patching
-    local toip
 
     -- STEP 3: store original unpatched versions
     local old_tcp = ngx.socket.tcp
@@ -557,7 +561,7 @@ return function(options)
           host = host,
           traceback = debug.traceback(),
         })
-        host, port, try_list = toip(host, port)
+        host, port, try_list = client.toip(host, port)
         t:finish()
         if not host then
           return nil, "[cosocket] DNS resolution failed: " .. tostring(port) ..
@@ -608,21 +612,10 @@ return function(options)
 
     -- STEP 5: load code that should be using the patched versions, if any (because of dependency chain)
     do
-      local client = package.loaded["kong.resty.dns.client"]
-      if not client then
-        client = require("kong.tools.dns")()
-      end
-
-      toip = client.toip
-
-      -- DNS query is lazily patched, it will only be wrapped
-      -- when instrumentation module is initialized later and
-      -- `tracing_instrumentations` includes "dns_query" or set
-      -- to "all".
+      -- dns query patch
       local instrumentation = require "kong.tracing.instrumentation"
-      instrumentation.set_patch_dns_query_fn(toip, function(wrap)
-        toip = wrap
-      end)
+      client.toip = instrumentation.get_wrapped_dns_query(client.toip)
+
       -- patch request_uri to record http_client spans
       instrumentation.http_client()
     end
