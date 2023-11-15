@@ -138,6 +138,9 @@ lint: dev
 	@!(grep -R -E -I -n -w '#only|#o' spec && echo "#only or #o tag detected") >&2
 	@!(grep -R -E -I -n -- '---\s+ONLY' t && echo "--- ONLY block detected") >&2
 
+update-copyright: build-venv
+	bash -c 'OPENSSL_DIR=$(OPENSSL_DIR) EXPAT_DIR=$(EXPAT_DIR) $(VENV) luajit $(KONG_SOURCE_LOCATION)/scripts/update-copyright'
+
 test: dev
 	@$(VENV) $(TEST_CMD) spec/01-unit
 
