@@ -1,14 +1,19 @@
-local helpers = require "spec.helpers"
-local cjson   = require "cjson"
-local meta    = require "kong.meta"
-local utils   = require "kong.tools.utils"
+local helpers   = require "spec.helpers"
+local cjson     = require "cjson"
+local meta      = require "kong.meta"
+local utils     = require "kong.tools.utils"
+local http_mock = require "spec.helpers.http_mock"
+
+local MOCK_PORT = helpers.get_available_port()
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: key-auth (access) [#" .. strategy .. "]", function()
-    local proxy_client
+    local mock, proxy_client
     local kong_cred
 
     lazy_setup(function()
+      mock = http_mock.new(MOCK_PORT)
+      mock:start()
       local bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",
@@ -51,8 +56,8 @@ for _, strategy in helpers.each_strategy() do
 
       local service7 = bp.services:insert{
         protocol = "http",
-        port     = 80,
-        host     = "mockbin.com",
+        port     = MOCK_PORT,
+        host     = "localhost",
       }
 
       local route7 = bp.routes:insert {
@@ -183,6 +188,7 @@ for _, strategy in helpers.each_strategy() do
       end
 
       helpers.stop_kong()
+      mock:stop()
     end)
 
     describe("Unauthorized", function()
