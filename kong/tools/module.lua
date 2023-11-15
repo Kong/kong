@@ -1,7 +1,12 @@
-local find = string.find
+local find    = string.find
+local type    = type
+local xpcall  = xpcall
+local require = require
+local error   = error
 
 
 local _M = {}
+
 
 --- Try to load a module.
 -- Will not throw an error if the module was not found, but will throw an error if the
