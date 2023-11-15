@@ -67,3 +67,5 @@ jobs:
       - name: Run Upgrade Tests
         run: |
           bash ./scripts/upgrade-tests/test-upgrade-path.sh -i kong-local/kong:latest
+
+          
