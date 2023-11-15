@@ -174,6 +174,7 @@ build = {
     ["kong.tools.system"] = "kong/tools/system.lua",
     ["kong.tools.time"] = "kong/tools/time.lua",
     ["kong.tools.module"] = "kong/tools/module.lua",
+    ["kong.tools.ip"] = "kong/tools/ip.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.events"] = "kong/runloop/events.lua",
