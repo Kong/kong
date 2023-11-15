@@ -38,10 +38,8 @@ contents:
   dst: /lib/systemd/system/kong.service
 - src: build/package/kong.logrotate
   dst: /etc/kong/kong.logrotate
-- dst: /var/run/kong
-  type: dir
-  file_info:
-    mode: 0660
+- src: build/package/kong-tmpfiles.conf
+  dst: /etc/tmpfiles.d/kong.conf
 scripts:
   postinstall: ./build/package/postinstall.sh
 replaces:

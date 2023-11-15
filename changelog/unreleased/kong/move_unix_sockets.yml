@@ -1,0 +1,3 @@
+message: Moved Unix domain sockets to /var/run/kong to prevent issues when mounting the prefix directory in containerized environments
+type: bugfix
+scope: Core

@@ -38,3 +38,5 @@ if [ -n "${VERBOSE:-}" ]; then
 else
   create_user > /dev/null 2>&1
 fi
+
+systemd-tmpfiles --create || true

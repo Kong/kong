@@ -25,6 +25,8 @@ RUN apt-get update \
     && rm -rf /tmp/kong.deb \
     && chown kong:0 /usr/local/bin/kong \
     && chown -R kong:0 ${KONG_PREFIX} \
+    && mkdir /var/run/kong \
+    && chown kong:0 /var/run/kong \
     && ln -sf /usr/local/openresty/bin/resty /usr/local/bin/resty \
     && ln -sf /usr/local/openresty/luajit/bin/luajit /usr/local/bin/luajit \
     && ln -sf /usr/local/openresty/luajit/bin/luajit /usr/local/bin/lua \

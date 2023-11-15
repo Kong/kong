@@ -508,6 +508,22 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
     end
   end
 
+  local runtime_prefix_file = runtime_data_path .. "/prefix.txt"
+  if not exists(runtime_prefix_file) then
+    local ok, err = pl_file.write(runtime_prefix_file, kong_config.prefix)
+    if not ok then
+      return nil, err
+    end
+  end
+
+  local prefix_runtime_file = kong_config.prefix .. "/runtime.txt"
+  if not exists(prefix_runtime_file) then
+    local ok, err = pl_file.write(prefix_runtime_file, runtime_data_path)
+    if not ok then
+      return nil, err
+    end
+  end
+
   -- generate default SSL certs if needed
   do
     for _, target in ipairs({ "proxy", "admin", "admin_gui", "status" }) do
