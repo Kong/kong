@@ -30,13 +30,13 @@ local time = ngx.now
 local log = ngx.log
 local ERR = ngx.ERR
 local WARN = ngx.WARN
+local ALERT = ngx.ALERT
 local DEBUG = ngx.DEBUG
 --[[
   DEBUG = ngx.WARN
 --]]
 local PREFIX = "[dns-client] "
 local timer_at = ngx.timer.at
-local get_phase = ngx.get_phase
 
 local math_min = math.min
 local math_max = math.max
@@ -642,7 +642,9 @@ _M.init = function(options)
 
   config = options -- store it in our module level global
 
-  resolve_max_wait = options.timeout / 1000 * options.retrans -- maximum time to wait for the dns resolver to hit its timeouts
+  -- maximum time to wait for the dns resolver to hit its timeouts
+  -- + 1s to ensure some delay in timer execution and semaphore return are accounted for
+  resolve_max_wait = options.timeout / 1000 * options.retrans + 1
 
   return true
 end
@@ -733,44 +735,61 @@ local function individualQuery(qname, r_opts, try_list)
 end
 
 local queue = setmetatable({}, {__mode = "v"})
+
+local function enqueue_query(key, qname, r_opts, try_list)
+  local item = {
+    key = key,
+    semaphore = semaphore(),
+    qname = qname,
+    r_opts = deepcopy(r_opts),
+    try_list = try_list,
+    expire_time = time() + resolve_max_wait,
+  }
+  queue[key] = item
+  return item
+end
+
+
+local function dequeue_query(item)
+  if queue[item.key] == item then
+    -- query done, but by now many others might be waiting for our result.
+    -- 1) stop new ones from adding to our lock/semaphore
+    queue[item.key] = nil
+    -- 2) release all waiting threads
+    item.semaphore:post(math_max(item.semaphore:count() * -1, 1))
+    item.semaphore = nil
+  end
+end
+
+
+local function queue_get_query(key, try_list)
+  local item = queue[key]
+
+  if not item then
+    return nil
+  end
+
+  -- bug checks: release it actively if the waiting query queue is blocked
+  if item.expire_time < time() then
+    local err = "stale query, key:" ..  key
+    add_status_to_try_list(try_list, err)
+    log(ALERT, PREFIX, err)
+    dequeue_query(item)
+    return nil
+  end
+
+  return item
+end
+
+
 -- to be called as a timer-callback, performs a query and returns the results
 -- in the `item` table.
 local function executeQuery(premature, item)
   if premature then return end
 
-  local r, err = resolver:new(config)
-  if not r then
-    item.result, item.err = r, "failed to create a resolver: " .. err
-  else
-    --[[
-    log(DEBUG, PREFIX, "Query executing: ", item.qname, ":", item.r_opts.qtype, " ", fquery(item))
-    --]]
-    add_status_to_try_list(item.try_list, "querying")
-    item.result, item.err = r:query(item.qname, item.r_opts)
-    if item.result then
-      --[[
-      log(DEBUG, PREFIX, "Query answer: ", item.qname, ":", item.r_opts.qtype, " ", fquery(item),
-              " ", frecord(item.result))
-      --]]
-      parseAnswer(item.qname, item.r_opts.qtype, item.result, item.try_list)
-      --[[
-      log(DEBUG, PREFIX, "Query parsed answer: ", item.qname, ":", item.r_opts.qtype, " ", fquery(item),
-              " ", frecord(item.result))
-    else
-      log(DEBUG, PREFIX, "Query error: ", item.qname, ":", item.r_opts.qtype, " err=", tostring(err))
-      --]]
-    end
-  end
+  item.result, item.err = individualQuery(item.qname, item.r_opts, item.try_list)
 
-  -- query done, but by now many others might be waiting for our result.
-  -- 1) stop new ones from adding to our lock/semaphore
-  queue[item.key] = nil
-  -- 2) release all waiting threads
-  item.semaphore:post(math_max(item.semaphore:count() * -1, 1))
-  item.semaphore = nil
-  ngx.sleep(0)
-  -- 3) destroy the resolver -- ditto in individualQuery
-  r:destroy()
+  dequeue_query(item)
 end
 
 
@@ -784,7 +803,7 @@ end
 -- the `semaphore` field will be removed). Upon error it returns `nil+error`.
 local function asyncQuery(qname, r_opts, try_list)
   local key = qname..":"..r_opts.qtype
-  local item = queue[key]
+  local item = queue_get_query(key, try_list)
   if item then
     --[[
     log(DEBUG, PREFIX, "Query async (exists): ", key, " ", fquery(item))
@@ -793,14 +812,7 @@ local function asyncQuery(qname, r_opts, try_list)
     return item    -- already in progress, return existing query
   end
 
-  item = {
-    key = key,
-    semaphore = semaphore(),
-    qname = qname,
-    r_opts = deepcopy(r_opts),
-    try_list = try_list,
-  }
-  queue[key] = item
+  item = enqueue_query(key, qname, r_opts, try_list)
 
   local ok, err = timer_at(0, executeQuery, item)
   if not ok then
@@ -826,39 +838,23 @@ end
 -- @return `result + nil + try_list`, or `nil + err + try_list` in case of errors
 local function syncQuery(qname, r_opts, try_list)
   local key = qname..":"..r_opts.qtype
-  local item = queue[key]
 
-  -- if nothing is in progress, we start a new async query
+  local item = queue_get_query(key, try_list)
+
+  -- If nothing is in progress, we start a new sync query
   if not item then
-    local err
-    item, err = asyncQuery(qname, r_opts, try_list)
-    if not item then
-      return item, err, try_list
-    end
-  else
-    add_status_to_try_list(try_list, "in progress (sync)")
+    item = enqueue_query(key, qname, r_opts, try_list)
+
+    item.result, item.err = individualQuery(qname, item.r_opts, try_list)
+
+    dequeue_query(item)
+
+    return item.result, item.err, try_list
   end
 
-  local supported_semaphore_wait_phases = {
-    rewrite = true,
-    access = true,
-    content = true,
-    timer = true,
-    ssl_cert = true,
-    ssl_session_fetch = true,
-  }
+  -- If the query is already in progress, we wait for it.
 
-  local ngx_phase = get_phase()
-
-  if not supported_semaphore_wait_phases[ngx_phase] then
-    -- phase not supported by `semaphore:wait`
-    -- return existing query (item)
-    --
-    -- this will avoid:
-    -- "dns lookup pool exceeded retries" (second try and subsequent retries)
-    -- "API disabled in the context of init_worker_by_lua" (first try)
-    return item, nil, try_list
-  end
+  add_status_to_try_list(try_list, "in progress (sync)")
 
   -- block and wait for the async query to complete
   local ok, err = item.semaphore:wait(resolve_max_wait)
@@ -870,6 +866,14 @@ local function syncQuery(qname, r_opts, try_list)
            " result: ", json({ result = item.result, err = item.err}))
     --]]
     return item.result, item.err, try_list
+  end
+
+  -- bug checks
+  if not ok and not item.err then
+    item.err = err  -- only first expired wait() reports error
+    log(ALERT, PREFIX, "semaphore:wait(", resolve_max_wait, ") failed: ", err,
+                       ", count: ", item.semaphore and item.semaphore:count(),
+                       ", qname: ", qname)
   end
 
   err = err or item.err or "unknown"
