@@ -12,6 +12,7 @@ local pl_stringx = require "pl.stringx"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 
+
 local type          = type
 local pairs         = pairs
 local ipairs        = ipairs
@@ -21,7 +22,6 @@ local sort          = table.sort
 local concat        = table.concat
 local insert        = table.insert
 local fmt           = string.format
-local find          = string.find
 local join          = pl_stringx.join
 local split         = pl_stringx.split
 local re_match      = ngx.re.match
@@ -228,27 +228,6 @@ _M.check_https = function(trusted_ip, allow_terminated)
   end
 
   return false
-end
-
-
---- Try to load a module.
--- Will not throw an error if the module was not found, but will throw an error if the
--- loading failed for another reason (eg: syntax error).
--- @param module_name Path of the module to load (ex: kong.plugins.keyauth.api).
--- @return success A boolean indicating whether the module was found.
--- @return module The retrieved module, or the error in case of a failure
-function _M.load_module_if_exists(module_name)
-  local status, res = xpcall(function()
-    return require(module_name)
-  end, debug.traceback)
-  if status then
-    return true, res
-  -- Here we match any character because if a module has a dash '-' in its name, we would need to escape it.
-  elseif type(res) == "string" and find(res, "module '" .. module_name .. "' not found", nil, true) then
-    return false, res
-  else
-    error("error loading module '" .. module_name .. "':\n" .. res)
-  end
 end
 
 
@@ -690,6 +669,7 @@ do
     "kong.tools.rand",
     "kong.tools.system",
     "kong.tools.time",
+    "kong.tools.module",
     "kong.tools.ip",
   }
 
