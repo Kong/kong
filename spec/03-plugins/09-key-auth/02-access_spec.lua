@@ -51,8 +51,8 @@ for _, strategy in helpers.each_strategy() do
 
       local service7 = bp.services:insert{
         protocol = "http",
-        port     = 80,
-        host     = "mockbin.com",
+        port     = helpers.mock_upstream_port,
+        host     = "localhost",
       }
 
       local route7 = bp.routes:insert {
