@@ -41,7 +41,7 @@ return {
     { cert_details = {
         type = "record",
         fields = {
-          { expiry_timestamp = typedefs.auto_timestamp_s }
+          { expiry_timestamp = { type = "number", timestamp = true, required = false } }
         },
         description = "Certificate details of the DPs.",
       },

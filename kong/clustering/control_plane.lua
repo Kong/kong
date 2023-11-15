@@ -81,7 +81,7 @@ local function extract_dp_cert(cert)
   local expiry_timestamp = cert:get_not_after()
   -- values in cert_details must be strings
   local cert_details = {
-    expiry_timestamp = expiry_timestamp or "unknown",
+    expiry_timestamp = expiry_timestamp,
   }
 
   return cert_details
