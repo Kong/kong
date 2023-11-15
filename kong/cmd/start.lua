@@ -13,11 +13,11 @@ local function is_socket(path)
   return lfs.attributes(path, "mode") == "socket"
 end
 
-local function cleanup_dangling_unix_sockets(prefix)
+local function cleanup_dangling_unix_sockets(dir)
   local found = {}
 
-  for child in lfs.dir(prefix) do
-    local path = prefix .. "/" .. child
+  for child in lfs.dir(dir) do
+    local path = dir .. "/" .. child
     if is_socket(path) then
       table.insert(found, path)
     end
@@ -27,11 +27,11 @@ local function cleanup_dangling_unix_sockets(prefix)
     return
   end
 
-  log.warn("Found dangling unix sockets in the prefix directory (%q) while " ..
+  log.warn("Found dangling unix sockets in the runtime directory (%q) while " ..
            "preparing to start Kong. This may be a sign that Kong was " ..
            "previously shut down uncleanly or is in an unknown state and " ..
            "could require further investigation.",
-           prefix)
+           dir)
 
   log.warn("Attempting to remove dangling sockets before starting Kong...")
 

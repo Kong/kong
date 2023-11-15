@@ -811,10 +811,10 @@ describe("kong start/stop #" .. strategy, function()
              "events socket (" .. event_sock .. ") unexpectedly removed")
     end)
 
-    it("removes unix socket files in the prefix directory", function()
+    it("removes unix socket files in the runtime (/var/run/kong/) directory", function()
       local _, stderr = assert_start()
 
-      assert.matches("[warn] Found dangling unix sockets in the prefix directory", stderr, nil, true)
+      assert.matches("[warn] Found dangling unix sockets in the runtime directory", stderr, nil, true)
       assert.matches(helpers.get_runtime_data_path(PREFIX), stderr, nil, true)
 
       assert.matches("removing unix socket", stderr)
@@ -829,7 +829,7 @@ describe("kong start/stop #" .. strategy, function()
       local stdout, stderr = assert_start()
 
       assert.not_matches("prefix directory .*not found", stdout)
-      assert.not_matches("[warn] Found dangling unix sockets in the prefix directory", stderr, nil, true)
+      assert.not_matches("[warn] Found dangling unix sockets in the runtime directory", stderr, nil, true)
       assert.not_matches("unix socket", stderr)
     end)
 
