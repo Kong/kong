@@ -38,6 +38,9 @@ function _M.new(conf)
   local self = {
     connector = connector.new(conf),
     conf = conf,
+
+    -- nodes[id] = connection count
+    nodes = {},
   }
 
   return setmetatable(self, _MT)
@@ -56,6 +59,11 @@ end
 
 function _M:unregister(method)
   callbacks.unregister(method)
+end
+
+
+function _M:get_nodes()
+  return self.nodes
 end
 
 
@@ -140,6 +148,8 @@ function _M:communicate(premature)
   self.peer = pr
   self.threads = thds
 
+  self.nodes["control_plane"] = 1
+
   --self.reconnecting = false
 
   -- cp/dp has almost the same workflow
@@ -150,6 +160,8 @@ function _M:communicate(premature)
   if thds:aborting() then
     return
   end
+
+  self.nodes["control_plane"] = 0
 
   ngx.log(ngx.ERR, "try re-connect wb")
 
