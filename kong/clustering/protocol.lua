@@ -454,11 +454,11 @@ local function process_entities(msg)
         validate_entity(schema, entity)
         local entity_marshalled = assert(marshall(entity))
         LMDB_TXN:set(pk_key, entity_marshalled)
-        LMDB_TXN:set(dao:cache_key(id, nil, nil, nil, nil, "*"), entity_marshalled)
+        LMDB_TXN:set(dao:cache_key(id, nil, nil, nil, nil, "*"), pk_key)
         if schema.cache_key then
           local cache_key = dao:cache_key(entity)
           if cache_key ~= pk_key then
-            LMDB_TXN:set(cache_key, entity_marshalled)
+            LMDB_TXN:set(cache_key, pk_key)
           end
         end
 
@@ -470,7 +470,7 @@ local function process_entities(msg)
               _, unique_key = next(unique_key)
             end
             LMDB_TXN:set(ENTITY_NAME .. "|" .. (schema.fields[unique].unique_across_ws and "" or ws)
-                                     .. "|" .. unique .. ":" .. unique_key, entity_marshalled)
+                                     .. "|" .. unique .. ":" .. unique_key, pk_key)
           end
         end
       end

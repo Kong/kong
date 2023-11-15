@@ -244,6 +244,16 @@ local function select_by_key(schema, key)
 end
 
 
+local function select_by_ref(schema, ref)
+  local key, err = lmdb_get(ref)
+  if not key then
+    return nil, err
+  end
+
+  return select_by_key(schema, key)
+end
+
+
 local function page(self, size, offset, options)
   local schema = self.schema
   local ws_id = ws(schema, options)
@@ -257,6 +267,9 @@ local function select(self, pk, options)
   local ws_id = ws(schema, options)
   local id = declarative_config.pk_string(schema, pk)
   local key = schema.name .. ":" .. id .. ":::::" .. ws_id
+  if ws_id == "*" then
+    return select_by_ref(schema, key)
+  end
   return select_by_key(schema, key)
 end
 
@@ -270,19 +283,19 @@ local function select_by_field(self, field, value, options)
   local schema = self.schema
   local ws_id = ws(schema, options)
 
-  local key
+  local ref
   if field ~= "cache_key" then
     local unique_across_ws = schema.fields[field].unique_across_ws
     -- only accept global query by field if field is unique across workspaces
     assert(not options or options.workspace ~= null or unique_across_ws)
 
-    key = unique_field_key(schema.name, ws_id, field, value, unique_across_ws)
+    ref = unique_field_key(schema.name, ws_id, field, value, unique_across_ws)
   else
     -- if select_by_cache_key, use the provided cache_key as key directly
-    key = value
+    ref = value
   end
 
-  return select_by_key(schema, key)
+  return select_by_ref(schema, ref)
 end
 
 
