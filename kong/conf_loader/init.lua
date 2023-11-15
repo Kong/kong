@@ -139,7 +139,7 @@ local cipher_suites = {
 
 -- using kong version, "major.minor"
 local LMDB_VALIDATION_TAG = string.match(require("kong.meta").version,
-                                         "^%d+%.%d")
+                                         "^%d+%.%d+")
 
 
 local DEFAULT_PATHS = {
