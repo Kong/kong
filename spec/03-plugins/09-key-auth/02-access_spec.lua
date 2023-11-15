@@ -5,10 +5,13 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local helpers = require "spec.helpers"
-local cjson   = require "cjson"
-local meta    = require "kong.meta"
-local utils   = require "kong.tools.utils"
+local helpers   = require "spec.helpers"
+local cjson     = require "cjson"
+local meta      = require "kong.meta"
+local utils     = require "kong.tools.utils"
+local http_mock = require "spec.helpers.http_mock"
+
+local MOCK_PORT = helpers.get_available_port()
 
 local ws = require "spec-ee.fixtures.websocket"
 local ee_helpers = require "spec-ee.helpers"
@@ -16,7 +19,7 @@ local ee_helpers = require "spec-ee.helpers"
 
 for _, strategy in helpers.each_strategy() do
   for proto, conf in ee_helpers.each_protocol() do
-    local proxy_client
+    local mock, proxy_client
     local it_skip_ws = it
     local describe_skip_ws = describe
     if proto == "websocket" then
@@ -28,6 +31,8 @@ for _, strategy in helpers.each_strategy() do
     local kong_cred
 
     lazy_setup(function()
+      mock = http_mock.new(MOCK_PORT)
+      mock:start()
       local bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",
@@ -74,8 +79,8 @@ for _, strategy in helpers.each_strategy() do
 
       local service7 = bp.services:insert{
         protocol = "http",
-        port     = 80,
-        host     = "mockbin.com",
+        port     = MOCK_PORT,
+        host     = "localhost",
       }
 
       local route7 = bp.routes:insert {
@@ -206,6 +211,7 @@ for _, strategy in helpers.each_strategy() do
       end
 
       helpers.stop_kong()
+      mock:stop()
     end)
 
     describe("Unauthorized", function()
