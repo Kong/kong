@@ -28,6 +28,11 @@ on:  # yamllint disable-line rule:truthy
         required: false
         type: boolean
         default: false
+      dt-test:
+        description: 'Enable Dynatrace test'
+        required: false
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       arm64:
@@ -438,6 +443,14 @@ jobs:
           curl -L -s -o /tmp/aws-sam-cli.zip https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip
           unzip -o /tmp/aws-sam-cli.zip -d /tmp/aws-sam-cli
           sudo /tmp/aws-sam-cli/install --update
+    
+    - name: Install OneAgent
+      if: ${{ inputs.dt-test }}
+      run: |
+          wget  -O Dynatrace-OneAgent.sh \
+          "https://kbw86766.live.dynatrace.com/api/v1/deployment/installer/agent/unix/default/latest?arch=x86" \
+          --header="Authorization: Api-Token ${{ secrets.DT_API_TOKEN }}"
+          sudo /bin/sh Dynatrace-OneAgent.sh --set-infra-only=false --set-app-log-content-access=true &
 
     - name: Update PATH
       run: |
@@ -482,6 +495,9 @@ jobs:
         KONG_SPEC_TEST_REDIS_CLUSTER_ADDRESSES: localhost:6381,localhost:6382,localhost:6383
         TEST_SUITE: ${{ matrix.suite }}
         TEST_SPLIT: ${{ matrix.split }}
+        DT_TEST: ${{ inputs.dt-test }}
+        DT_ENV_ID: ${{ secrets.DT_ENV_ID }}
+        DT_API_TOKEN: ${{ secrets.DT_API_TOKEN }}
       run: |
         mkdir $TEST_RESULTS_XML_OUTPUT
         export XML_OUTPUT=$(realpath $TEST_RESULTS_XML_OUTPUT)
