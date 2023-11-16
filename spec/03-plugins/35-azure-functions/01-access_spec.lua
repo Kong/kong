@@ -105,6 +105,36 @@ for _, strategy in helpers.each_strategy() do
         dns_mock = helpers.dns_mock.new()
       }
 
+      local route3 = db.routes:insert {
+        hosts      = { "azure3.com" },
+        protocols  = { "http", "https" },
+        service   = db.services:insert(
+          {
+            name = "azure3",
+            host = "azure.example.com", -- just mock service, it will not be requested
+            port = 80,
+            path = "/request",
+          }
+        ),
+      }
+      
+      -- this plugin definition results in an upstream url to
+      -- http://mockbin.org/request
+      -- which will echo the request for inspection
+      db.plugins:insert {
+        name     = "azure-functions",
+        route    = { id = route3.id },
+        config   = {
+          https           = false,
+          appname         = "azure",
+          hostdomain      = "example.com",
+          routeprefix     = "request",
+          functionname    = "test-func-name",
+          apikey          = "anything_but_an_API_key",
+          clientid        = "and_no_clientid",
+        },
+      }
+
       fixtures.dns_mock:A({
         name = "azure.example.com",
         address = "127.0.0.1",
@@ -176,7 +206,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert.response(res).has.status(200)
       local json = assert.response(res).has.jsonbody()
-      assert.matches("/request/test%-func%-name/and/then/some", json.uri)
+      assert.matches("/request/test%-func%-name", json.uri)
     end)
 
     it("passes the method", function()
@@ -244,6 +274,19 @@ for _, strategy in helpers.each_strategy() do
         query   = { hello = "world" },
         headers = {
           ["Host"] = "azure2.com"
+        }
+      })
+
+      assert(tonumber(res.headers["Content-Length"]) > 100)
+    end)
+
+    it("service upstream uri and request uri can not influence azure function", function()
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/",
+        query   = { hello = "world" },
+        headers = {
+          ["Host"] = "azure3.com"
         }
       })
 
