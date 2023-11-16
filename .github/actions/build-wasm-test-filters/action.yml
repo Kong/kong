@@ -1,8 +1,8 @@
 name: Build WASM Test Filters
 
 description: >
-  Installs the rust toolchain and builds the WASM filters that are used
-  in our integration tests
+  Installs the Rust toolchain and builds the WASM filters used
+  in our integration tests.
 
 runs:
   using: composite
@@ -17,8 +17,8 @@ runs:
         echo "WASM_FILTER_CACHE_PREFIX=wasm-test-filters::v3::${{ runner.os }}" >> $GITHUB_ENV
 
     - name: Restore Cache
-      uses: actions/cache/restore@v3
       id: restore-cache
+      uses: actions/cache/restore@v3
       with:
         path: |
           ~/.cargo/bin/
@@ -44,8 +44,6 @@ runs:
       uses: actions-rs/cargo@v1
       with:
         command: build
-        # building in release mode yields smaller library sizes, so it's
-        # better for our cacheability
         args: >
           --manifest-path "${{ env.WASM_FILTER_PATH }}/Cargo.toml"
           --workspace
@@ -71,9 +69,9 @@ runs:
       run: |
         ln -sfv \
           --no-target-directory \
-          "${{ env.WASM_FILTER_PATH }}"/target/wasm32-wasi/release \
+          "${{ env.WASM_FILTER_PATH }}/target/wasm32-wasi/release" \
           "${{ env.WASM_FIXTURE_PATH }}"
 
-    - name: debug
+    - name: Debug
       shell: bash
       run: ls -la "${{ env.WASM_FIXTURE_PATH }}"/*.wasm
