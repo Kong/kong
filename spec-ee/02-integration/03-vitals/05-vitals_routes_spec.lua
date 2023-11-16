@@ -34,7 +34,7 @@ end
 
 for _, db_strategy in helpers.each_strategy() do
   describe("Admin API Vitals with #" .. db_strategy, function()
-    local client, db, strategy, bp, connector
+    local client, db, strategy, bp, connector, env
 
     local minute_start_at = time() - ( time() % 60 )
     local node_1 = "20426633-55dc-4050-89ef-2382c95a611e"
@@ -56,6 +56,18 @@ for _, db_strategy in helpers.each_strategy() do
     local consumer_stat_labels = {
       "requests_consumer_total",
     }
+
+    -- the best way I can think of to purge all the caches
+    -- and make sure all the changes are applied
+    local function restart_kong_and_client()
+      -- make a copy of the env. otherwise it will be modified by kong_exec,
+      -- and every time new paths is duplicated to the lua_path, eventually
+      -- exceed the limit of nginx conf string length
+      assert(helpers.restart_kong(utils.cycle_aware_deep_copy(env)))
+      -- recreate the client as the old connection is closed
+      if client then client:close() end
+      client = helpers.admin_client()
+    end
 
     describe("when vitals is enabled", function()
       describe("in development package", function ()
@@ -95,12 +107,14 @@ for _, db_strategy in helpers.each_strategy() do
           assert(strategy:insert_stats(test_data_1, node_1))
           assert(strategy:insert_stats(test_data_2, node_2))
 
-          assert(helpers.start_kong({
+          env = {
             database = db_strategy,
             portal_and_vitals_key = get_portal_and_vitals_key(),
             vitals = true,
             license_path = "spec-ee/fixtures/mock_license.json",
-          }))
+          }
+
+          assert(helpers.start_kong(env))
 
           client = helpers.admin_client()
         end)
@@ -754,6 +768,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
 
               assert(strategy:insert_status_code_classes(test_status_code_class_data))
+              restart_kong_and_client()
 
               local res = assert(client:send {
                 method = "GET",
@@ -807,6 +822,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
 
               assert(strategy:insert_status_code_classes(test_status_code_class_data))
+              restart_kong_and_client()
 
               local res = assert(client:send {
                 method = "GET",
@@ -873,6 +889,7 @@ for _, db_strategy in helpers.each_strategy() do
                   { workspace_id, 2, now - 1, 1, 205},
                   { workspace_id, 5, now - 1, 1, 6},
                 }))
+              restart_kong_and_client()
 
               local res = assert(client:send {
                 method = "GET",
@@ -927,6 +944,7 @@ for _, db_strategy in helpers.each_strategy() do
                   { workspace_id, 2, minute_start_at - 60, 60, 205},
                   { workspace_id, 5, minute_start_at - 60, 60, 6},
                 }))
+              restart_kong_and_client()
 
               local res = assert(client:send {
                 method = "GET",
@@ -1056,6 +1074,8 @@ for _, db_strategy in helpers.each_strategy() do
                 { utils.uuid(), service_id, "500", now - 1, 1, 6 },
               }))
 
+              restart_kong_and_client()
+
               local res = assert(client:send {
                 method = "GET",
                 path = "/vitals/status_codes/by_service",
@@ -1112,6 +1132,8 @@ for _, db_strategy in helpers.each_strategy() do
                 { utils.uuid(), service_id, "500", minute_start_at - 60, 60, 6 },
               }))
 
+              restart_kong_and_client()
+
               local res = assert(client:send {
                 method = "GET",
                 path = "/vitals/status_codes/by_service",
@@ -1159,6 +1181,7 @@ for _, db_strategy in helpers.each_strategy() do
             end)
 
             it("returns a 400 if called with invalid interval", function()
+              restart_kong_and_client()
               local res = assert(client:send {
                 method = "GET",
                 path = "/vitals/status_codes/by_service",
@@ -1174,6 +1197,7 @@ for _, db_strategy in helpers.each_strategy() do
             end)
 
             it("returns a 400 if called with invalid service_id", function()
+              restart_kong_and_client()
               local service_id = "shh.. I'm not a real service id"
               local res = assert(client:send {
                 method = "GET",
@@ -1190,6 +1214,7 @@ for _, db_strategy in helpers.each_strategy() do
             end)
 
             it("returns a 400 if called with invalid start_ts", function()
+              restart_kong_and_client()
               local res = assert(client:send {
                 method = "GET",
                 path = "/vitals/status_codes/by_service",
@@ -1206,6 +1231,7 @@ for _, db_strategy in helpers.each_strategy() do
             end)
 
             it("returns a 404 if called with a service_id that doesn't exist", function()
+              restart_kong_and_client()
               local service_id = "20426633-55dc-4050-89ef-2382c95a611e"
               local res = assert(client:send {
                 method = "GET",
@@ -1222,6 +1248,7 @@ for _, db_strategy in helpers.each_strategy() do
             end)
 
             it("returns a 404 if called with a workspace that doesn't exist", function()
+              restart_kong_and_client()
               local res = assert(client:send {
                 method = "GET",
                 path = "/cats/vitals/status_codes/by_service",
@@ -1237,6 +1264,7 @@ for _, db_strategy in helpers.each_strategy() do
             end)
 
             it("returns a 404 if called with a workspace where the service doesn't belong", function()
+              restart_kong_and_client()
               local res = client:post("/workspaces", {
                 headers = {
                   ["Content-Type"] = "application/json"
@@ -1291,6 +1319,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
 
               assert(strategy:insert_status_codes_by_route(test_status_code_data))
+              restart_kong_and_client()
 
               local res = assert(client:send {
                 method = "GET",
@@ -1349,6 +1378,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
 
               assert(strategy:insert_status_codes_by_route(test_status_code_data))
+              restart_kong_and_client()
 
               local res = assert(client:send {
                 method = "GET",
@@ -1408,6 +1438,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
 
               assert(strategy:insert_status_codes_by_route(test_status_code_data))
+              restart_kong_and_client()
 
               local res = assert(client:send {
                 method = "GET",
@@ -1456,6 +1487,7 @@ for _, db_strategy in helpers.each_strategy() do
             end)
 
             it("returns a 400 if called with invalid interval", function()
+              restart_kong_and_client()
               local res = assert(client:send {
                 method = "GET",
                 path = "/vitals/status_codes/by_route",
@@ -1471,6 +1503,7 @@ for _, db_strategy in helpers.each_strategy() do
             end)
 
             it("returns a 400 if called with invalid route_id", function()
+              restart_kong_and_client()
               local route_id = "shh.. I'm not a real route id"
               local res = assert(client:send {
                 method = "GET",
@@ -1487,6 +1520,7 @@ for _, db_strategy in helpers.each_strategy() do
             end)
 
             it("returns a 400 if called with no route_id", function()
+              restart_kong_and_client()
               local res = assert(client:send {
                 method = "GET",
                 path = "/vitals/status_codes/by_route",
@@ -1501,6 +1535,7 @@ for _, db_strategy in helpers.each_strategy() do
             end)
 
             it("returns a 400 if called with invalid start_ts", function()
+              restart_kong_and_client()
               local res = assert(client:send {
                 method = "GET",
                 path = "/vitals/status_codes/by_route",
@@ -1517,6 +1552,7 @@ for _, db_strategy in helpers.each_strategy() do
             end)
 
             it("returns a 404 if called with a route_id that doesn't exist", function()
+              restart_kong_and_client()
               local route_id = "20426633-55dc-4050-89ef-2382c95a611a"
               local res = assert(client:send {
                 method = "GET",
@@ -1533,6 +1569,7 @@ for _, db_strategy in helpers.each_strategy() do
             end)
 
             it("returns a 404 if called with a workspace that doesn't exist", function()
+              restart_kong_and_client()
               local res = assert(client:send {
                 method = "GET",
                 path = "/cats/vitals/status_codes/by_route",
@@ -1548,6 +1585,7 @@ for _, db_strategy in helpers.each_strategy() do
             end)
 
             it("returns a 404 if called with a workspace where the route doesn't belong", function()
+              restart_kong_and_client()
               local res = client:post("/workspaces", {
                 headers = {
                   ["Content-Type"] = "application/json"
@@ -1600,6 +1638,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
 
               assert(strategy:insert_status_codes_by_consumer_and_route(test_status_code_data))
+              restart_kong_and_client()
 
               local res = assert(client:send {
                 method = "GET",
@@ -1662,6 +1701,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
 
               assert(strategy:insert_status_codes_by_consumer_and_route(test_status_code_data))
+              restart_kong_and_client()
 
               local res = assert(client:send {
                 method = "GET",
@@ -1714,6 +1754,8 @@ for _, db_strategy in helpers.each_strategy() do
                 custom_id = "1234"
               }, db.workspaces:select_by_name("default")))
 
+              restart_kong_and_client()
+
               local res = assert(client:send {
                 method = "GET",
                 path = "/vitals/status_codes/by_consumer",
@@ -1735,6 +1777,8 @@ for _, db_strategy in helpers.each_strategy() do
                 custom_id = "1234"
               })
 
+              restart_kong_and_client()
+
               local res = assert(client:send {
                 method = "GET",
                 path = "/vitals/status_codes/by_consumer",
@@ -1751,6 +1795,7 @@ for _, db_strategy in helpers.each_strategy() do
             end)
 
             it("returns a 404 if called with invalid consumer_id", function()
+              restart_kong_and_client()
               local consumer_id = "shh.. I'm not a real consumer id"
               local res = assert(client:send {
                 method = "GET",
@@ -1767,6 +1812,7 @@ for _, db_strategy in helpers.each_strategy() do
             end)
 
             it("returns a 404 if called with no consumer_id", function()
+              restart_kong_and_client()
               local res = assert(client:send {
                 method = "GET",
                 path = "/vitals/status_codes/by_consumer",
@@ -1781,6 +1827,7 @@ for _, db_strategy in helpers.each_strategy() do
             end)
 
             it("returns a 404 if called with a consumer_id that is not an actual id for a consumer", function()
+              restart_kong_and_client()
               local consumer_id = "20426633-55dc-4050-89ef-2382c95a611a"
               local res = assert(client:send {
                 method = "GET",
@@ -1829,6 +1876,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
 
               assert(strategy:insert_status_codes_by_consumer_and_route(test_status_code_data))
+              restart_kong_and_client()
 
               local res = assert(client:send {
                 method = "GET",
@@ -1897,6 +1945,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
 
               assert(strategy:insert_status_codes_by_consumer_and_route(test_status_code_data))
+              restart_kong_and_client()
 
               local res = assert(client:send {
                 method = "GET",
@@ -1950,6 +1999,8 @@ for _, db_strategy in helpers.each_strategy() do
                 custom_id = "1234"
               }, db.workspaces:select_by_name("default")))
 
+              restart_kong_and_client()
+
               local res = assert(client:send {
                 method = "GET",
                 path = "/vitals/status_codes/by_consumer_and_route",
@@ -1970,6 +2021,8 @@ for _, db_strategy in helpers.each_strategy() do
                 username  = "bob",
                 custom_id = "1234"
               })
+
+              restart_kong_and_client()
 
               local res = assert(client:send {
                 method = "GET",
@@ -2055,6 +2108,7 @@ for _, db_strategy in helpers.each_strategy() do
                 { consumer.id, utils.uuid(), utils.uuid(), "200", now, 60, 45 },
                 { consumer.id, utils.uuid(), utils.uuid(), "200", now, 1, 17 }
               }))
+              restart_kong_and_client()
 
               local res = assert(client:send {
                 method = "GET",
@@ -2105,6 +2159,8 @@ for _, db_strategy in helpers.each_strategy() do
                 custom_id = "1234"
               }, db.workspaces:select_by_name("default")))
 
+              restart_kong_and_client()
+
               local res = assert(client:send {
                 method = "GET",
                 path = "/vitals/consumers/" .. consumer.id .. "/cluster",
@@ -2123,6 +2179,8 @@ for _, db_strategy in helpers.each_strategy() do
                 username  = "bob",
                 custom_id = "1234"
               }, db.workspaces:select_by_name("default")))
+
+              restart_kong_and_client()
 
               local res = assert(client:send {
                 method = "GET",
@@ -2150,13 +2208,15 @@ for _, db_strategy in helpers.each_strategy() do
           bp, db = helpers.get_db_utils(db_strategy, {"licenses"})
           reset_distribution = setup_distribution()
 
-          assert(helpers.start_kong({
+          env = {
             database = db_strategy,
             portal_and_vitals_key = get_portal_and_vitals_key(),
             vitals = true,
             nginx_conf = "spec/fixtures/custom_nginx.template",
             lua_package_path = "./?.lua;./?/init.lua;./spec/fixtures/?.lua",
-          }))
+          }
+
+          assert(helpers.start_kong(env))
 
           client = helpers.admin_client()
         end)
@@ -2212,10 +2272,12 @@ for _, db_strategy in helpers.each_strategy() do
       setup(function()
         bp, db = helpers.get_db_utils(db_strategy)
 
-        assert(helpers.start_kong({
+        env = {
           database = db_strategy,
           vitals   = false,
-        }))
+        }
+
+        assert(helpers.start_kong(env))
 
         client = helpers.admin_client()
       end)
