@@ -27,6 +27,8 @@ local ee_validate_client_cert = ee_tls.ee_validate_client_cert
 
 local ngx_log = ngx.log
 local WARN = ngx.WARN
+local tostring = tostring
+
 
 local get_cn_parent_domain = utils.get_cn_parent_domain
 local OCSP_TIMEOUT = constants.CLUSTERING_OCSP_TIMEOUT
@@ -260,8 +262,7 @@ function tls.validate_client_cert(kong_config, cp_cert, dp_cert_pem)
   end
   -- ]] EE
 
-
-  return true
+  return cert, nil
 end
 
 

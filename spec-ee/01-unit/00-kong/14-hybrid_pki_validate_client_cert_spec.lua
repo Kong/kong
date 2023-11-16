@@ -61,8 +61,9 @@ describe("hybrid mode validate client cert", function()
 
   it("validates if client cert in the same domain of server", function()
     local cert = create_self_signed("somedp.kong_clustering_pki.domain")
-    local ok, err = kong_clustering:validate_client_cert(cert)
-    assert.is_true(ok, err)
+    local x509, err = kong_clustering:validate_client_cert(cert)
+    assert.not_nil(x509)
+    assert.is_nil(err)
   end)
 
   it("rejects if client cert is in different domain of server", function()

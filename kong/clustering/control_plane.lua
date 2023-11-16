@@ -83,6 +83,17 @@ local function is_timeout(err)
 end
 
 
+local function extract_dp_cert(cert)
+  local expiry_timestamp = cert:get_not_after()
+  -- values in cert_details must be strings
+  local cert_details = {
+    expiry_timestamp = expiry_timestamp,
+  }
+
+  return cert_details
+end
+
+
 function _M.new(clustering)
   assert(type(clustering) == "table",
          "kong.clustering is not instantiated")
@@ -183,7 +194,7 @@ _M.check_version_compatibility = compat.check_version_compatibility
 _M.check_configuration_compatibility = compat.check_configuration_compatibility
 
 
-function _M:handle_cp_websocket()
+function _M:handle_cp_websocket(cert)
   local dp_id = ngx_var.arg_node_id
   local dp_hostname = ngx_var.arg_node_hostname
   local dp_ip = ngx_var.remote_addr
@@ -230,6 +241,7 @@ function _M:handle_cp_websocket()
     return ngx_exit(ngx_CLOSE)
   end
 
+  local dp_cert_details = extract_dp_cert(cert)
   local dp_plugins_map = plugins_list_to_map(data.plugins)
 
   -- FIXME(flrgh): this needs to get improved and backported to OSS
@@ -258,6 +270,7 @@ function _M:handle_cp_websocket()
       version = dp_version,
       sync_status = sync_status, -- TODO: import may have been failed though
       labels = data.labels,
+      cert_details = dp_cert_details,
     }, { ttl = purge_delay })
     if not ok then
       ngx_log(ngx_ERR, _log_prefix, "unable to update clustering data plane status: ", err, log_suffix)
