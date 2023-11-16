@@ -12,6 +12,7 @@ local pl_stringx = require "pl.stringx"
 local type     = type
 local ipairs   = ipairs
 local tonumber = tonumber
+local tostring = tostring
 local gsub     = string.gsub
 local sub      = string.sub
 local fmt      = string.format
@@ -319,4 +320,4 @@ function _M.format_host(p1, p2)
 end
 
 
-return _M;
+return _M
