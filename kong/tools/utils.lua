@@ -13,6 +13,7 @@ local ipairs   = ipairs
 local require  = require
 local fmt      = string.format
 local re_match = ngx.re.match
+local pl_path  = require "pl.path"
 
 
 local _M = {}
