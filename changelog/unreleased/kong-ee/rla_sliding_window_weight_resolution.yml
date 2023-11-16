@@ -1,0 +1,3 @@
+message: "**Rate Limiting Advanced:** Enhance the resolution of RLA sliding window weight"
+type: feature
+scope: Plugin

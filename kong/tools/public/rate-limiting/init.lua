@@ -37,7 +37,7 @@ end
 
 
 local function calculate_weight(window_size)
-  return (window_size - (time() % window_size)) / window_size
+  return (window_size - (now() % window_size)) / window_size
 end
 
 
