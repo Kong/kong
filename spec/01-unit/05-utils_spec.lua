@@ -1,6 +1,5 @@
 local utils = require "kong.tools.utils"
 local pl_path = require "pl.path"
-local lfs = require "lfs"
 
 describe("Utils", function()
 

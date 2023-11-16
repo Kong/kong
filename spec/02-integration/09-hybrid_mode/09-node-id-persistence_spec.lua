@@ -192,6 +192,7 @@ for _, strategy in helpers.each_strategy() do
 
     before_each(function()
       if helpers.path.exists(PREFIX) then
+        helpers.clean_prefix(PREFIX)
       end
 
       helpers.prepare_prefix(PREFIX)
