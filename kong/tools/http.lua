@@ -1,7 +1,6 @@
-local pl_stringx = require "pl.stringx"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
-local str = require "kong.tools.string"
+local tools_str = require "kong.tools.string"
 
 
 local type          = type
@@ -13,9 +12,10 @@ local setmetatable  = setmetatable
 local sort          = table.sort
 local concat        = table.concat
 local fmt           = string.format
-local join          = pl_stringx.join
-local split         = pl_stringx.split
 local re_match      = ngx.re.match
+local join          = tools_str.join
+local split         = tools_str.split
+local strip         = tools_str.strip
 
 
 local _M = {}
@@ -457,8 +457,8 @@ do
       local max_quality = 0
 
       for _, accept_value in ipairs(accept_values) do
-        accept_value = str.strip(accept_value)
-        local matches = ngx.re.match(accept_value, pattern, "ajoxi")
+        accept_value = strip(accept_value)
+        local matches = re_match(accept_value, pattern, "ajoxi")
 
         if matches then
           local media_type = matches[1]
@@ -478,8 +478,8 @@ do
 
   function _M.get_mime_type(content_header, use_default)
     use_default = use_default == nil or use_default
-    content_header = str.strip(content_header)
-    content_header = str.split(content_header, ";")[1]
+    content_header = strip(content_header)
+    content_header = split(content_header, ";")[1]
     local mime_type
 
     local entries = split(content_header, "/")
