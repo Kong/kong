@@ -52,7 +52,7 @@ local ERRORS              = {
   INVALID_FOREIGN_KEY     = 16, -- foreign key is valid for matching a row
   INVALID_WORKSPACE       = 17, -- strategy reports a workspace error
   INVALID_UNIQUE_GLOBAL   = 18, -- unique field value is invalid for global query
-  REFERENCED_BY_OTHERS   = 19, -- still referenced by other entities
+  REFERENCED_BY_OTHERS    = 19, -- still referenced by other entities
 }
 
 
@@ -78,7 +78,7 @@ local ERRORS_NAMES                 = {
   [ERRORS.INVALID_FOREIGN_KEY]     = "invalid foreign key",
   [ERRORS.INVALID_WORKSPACE]       = "invalid workspace",
   [ERRORS.INVALID_UNIQUE_GLOBAL]   = "invalid global query",
-  [ERRORS.REFERENCED_BY_OTHERS]   = "referenced by others",
+  [ERRORS.REFERENCED_BY_OTHERS]    = "referenced by others",
 }
 
 
