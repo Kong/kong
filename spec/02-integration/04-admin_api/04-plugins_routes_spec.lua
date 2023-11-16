@@ -27,6 +27,8 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         database = strategy,
+        plugins =
+        "bundled,dummy,cache,rewriter,error-handler-log,error-generator,error-generator-last,short-circuit,oauth2-introspection"
       }))
     end)
 
@@ -440,6 +442,17 @@ for _, strategy in helpers.each_strategy() do
 
     describe("/schemas/plugins/{plugin}", function()
       describe("GET", function()
+
+        it("returns the schema should include encrypted attribute of the authorization_value", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/schemas/plugins/oauth2-introspection",
+          })
+          local body = assert.res_status(200, res)
+          assert.match('"encrypted":true', body, 1, true)
+          assert.match('"referenceable":true', body, 1, true)
+        end)
+
         it("returns the schema of all bundled plugins", function()
           for plugin, _ in pairs(helpers.test_conf.loaded_plugins) do
             local res = assert(client:send {

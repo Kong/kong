@@ -22,10 +22,10 @@ return {
     { config = {
       type = "record",
       fields = {
-        { introspection_url = typedefs.url { required = true} },
+        { introspection_url = typedefs.url { required = true } },
         { ttl = { description = "The TTL in seconds for the introspection response. Set to 0 to disable the expiration.", type = "number", default = 30 } },
         { token_type_hint = { description = "The `token_type_hint` value to associate to introspection requests.", type = "string" } },
-        { authorization_value = { description = "The value to set as the `Authorization` header when querying the introspection endpoint. This depends on the OAuth 2.0 server, but usually is the `client_id` and `client_secret` as a Base64-encoded Basic Auth string (`Basic MG9hNWl...`).", type = "string", required = true } },
+        { authorization_value = { description = "The value to set as the `Authorization` header when querying the introspection endpoint. This depends on the OAuth 2.0 server, but usually is the `client_id` and `client_secret` as a Base64-encoded Basic Auth string (`Basic MG9hNWl...`).", type = "string", required = true, encrypted = true, referenceable = true, } },
         { timeout = { description = "An optional timeout in milliseconds when sending data to the upstream server.", type = "integer", default = 10000 } },
         { keepalive = { description = "An optional value in milliseconds that defines how long an idle connection lives before being closed.", type = "integer", default = 60000 } },
         { introspect_request = { description = "A boolean indicating whether to forward information about the current downstream request to the introspect endpoint. If true, headers `X-Request-Path` and `X-Request-Http-Method` will be inserted into the introspect request.", type = "boolean", default = false, required = true } },

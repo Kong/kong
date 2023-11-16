@@ -1,0 +1,3 @@
+message: "Mark the `authorization_value` in the `oauth2-introspection` plugin as an encrypted field"
+type: "bugfix"
+scope: "Plugin"
