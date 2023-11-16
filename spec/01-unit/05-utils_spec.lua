@@ -1,5 +1,6 @@
 local utils = require "kong.tools.utils"
 local pl_path = require "pl.path"
+local lfs = require "lfs"
 
 describe("Utils", function()
 
@@ -1644,6 +1645,14 @@ describe("Utils", function()
       }, t3)
 
       assert.equal(meta, getmetatable(t3.b.a))
+    end)
+  end)
+
+  describe("get_runtime_data_path", function()
+    it("returns same value for various permutations of the same directory", function()
+      assert.equal( utils.get_runtime_data_path("."),  utils.get_runtime_data_path(pl_path.currentdir()))
+      assert.equal( utils.get_runtime_data_path("./kong/.."),  utils.get_runtime_data_path(pl_path.currentdir()))
+      assert.equal(utils.get_runtime_data_path(pl_path.currentdir() .. "//spec"), utils.get_runtime_data_path(pl_path.currentdir() .. "/spec"))
     end)
   end)
 end)

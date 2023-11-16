@@ -37,7 +37,6 @@ describe("filter metadata [#" .. strategy .. "]", function()
 
   lazy_setup(function()
     helpers.clean_prefix()
-    helpers.clean_runtime_dir()
 
     if strategy == "postgres" then
       helpers.get_db_utils(strategy, {

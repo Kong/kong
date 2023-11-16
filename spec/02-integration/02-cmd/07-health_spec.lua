@@ -16,7 +16,6 @@ for _, health_cmd in ipairs({"health", "bin/kong-health"}) do
     end)
     lazy_teardown(function()
       helpers.clean_prefix()
-      helpers.clean_runtime_dir()
     end)
     after_each(function()
       helpers.kill_all()

@@ -500,8 +500,8 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
 
   local runtime_data_path = get_runtime_data_path(kong_config.prefix)
   if not exists(runtime_data_path) then
-  -- make the runtime directory (used for unix domain socket files)
-  log("runtime directory %s not found, trying to create it", runtime_data_path)
+    -- make the runtime directory (used for unix domain socket files)
+    log("runtime directory %s not found, trying to create it", runtime_data_path)
     local ok, err = makepath(runtime_data_path)
     if not ok then
       return nil, err

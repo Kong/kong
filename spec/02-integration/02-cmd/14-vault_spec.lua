@@ -9,7 +9,6 @@ describe("kong vault #" .. strategy, function()
 
   lazy_teardown(function()
     helpers.clean_prefix()
-    helpers.clean_runtime_dir()
   end)
 
   it("vault help", function()
