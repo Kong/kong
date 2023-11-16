@@ -13,6 +13,7 @@ local stringx      = require "pl.stringx"
 local semaphore    = require "ngx.semaphore"
 local kong_global  = require "kong.global"
 local constants    = require "kong.constants"
+local db_utils     = require "kong.db.utils"
 
 local iam_token_handler = require "kong.db.strategies.postgres.iam_token_handler"
 
@@ -37,7 +38,7 @@ local log          = ngx.log
 local match        = string.match
 local fmt          = string.format
 local sub          = string.sub
-local utils_toposort = utils.topological_sort
+local utils_toposort = db_utils.topological_sort
 local insert       = table.insert
 local table_merge  = utils.table_merge
 

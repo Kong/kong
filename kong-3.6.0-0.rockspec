@@ -398,6 +398,7 @@ build = {
     ["kong.analytics"] = "kong/analytics/init.lua",
 
     ["kong.db"] = "kong/db/init.lua",
+    ["kong.db.utils"] = "kong/db/utils.lua",
     ["kong.db.errors"] = "kong/db/errors.lua",
     ["kong.db.iteration"] = "kong/db/iteration.lua",
     ["kong.db.dao"] = "kong/db/dao/init.lua",

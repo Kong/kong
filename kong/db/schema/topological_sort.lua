@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local constants = require "kong.constants"
-local utils = require "kong.tools.utils"
+local utils = require "kong.db.utils"
 
 
 local utils_toposort = utils.topological_sort
