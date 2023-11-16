@@ -13,6 +13,8 @@ local constants = require("kong.constants")
 
 local ngx_log = ngx.log
 local WARN = ngx.WARN
+local tostring = tostring
+
 
 local OCSP_TIMEOUT = constants.CLUSTERING_OCSP_TIMEOUT
 
@@ -226,7 +228,7 @@ function tls.validate_client_cert(kong_config, cp_cert, dp_cert_pem)
     return nil, err
   end
 
-  return true
+  return cert, nil
 end
 
 
