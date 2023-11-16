@@ -589,6 +589,12 @@ jobs:
         VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
       run: build/tests/03-http2-admin-api.sh
 
+    - name: Smoke Tests - Uninstall Tests
+      env:
+        VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
+        PACKAGE_TYPE: ${{ matrix.package }}
+      run: build/tests/04-uninstall.sh
+
   release-packages:
     name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-packages, build-images, smoke-tests]

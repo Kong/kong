@@ -40,6 +40,7 @@ contents:
   dst: /etc/kong/kong.logrotate
 scripts:
   postinstall: ./build/package/postinstall.sh
+  postremove: ./build/package/postremove.sh
 replaces:
 - ${KONG_REPLACES_1}
 - ${KONG_REPLACES_2}
