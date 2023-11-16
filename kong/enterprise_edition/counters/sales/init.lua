@@ -31,7 +31,7 @@ local FLUSH_LOCK_KEY = "counters:sales:flush_lock"
 local _log_prefix = "[sales counters] "
 
 local EMPTY = {}
-local GLOBAL_QUERY_OPTS = { workspace = ngx.null, show_ws_id = true }
+local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 
 local _M = {}
 local mt = { __index = _M }
