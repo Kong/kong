@@ -8,9 +8,11 @@
 -- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
 -- @module kong.tools.utils
 
-local pairs   = pairs
-local ipairs  = ipairs
-local require = require
+local pairs    = pairs
+local ipairs   = ipairs
+local require  = require
+local fmt      = string.format
+local re_match = ngx.re.match
 
 
 local _M = {}
@@ -30,7 +32,6 @@ do
   local KEY_PTRN  = "(?!kong)(?!konnect)(?!insomnia)(?!mesh)(?!kic)" .. BASE_PTRN
   local VAL_PTRN  = BASE_PTRN
 
-
   local function validate_entry(str, max_size, pattern)
     if str == "" or #str > max_size then
       return nil, fmt(
@@ -41,7 +42,6 @@ do
     end
     return true
   end
-
 
   -- Validates a label array.
   -- Validates labels based on the kong Labels AIP
