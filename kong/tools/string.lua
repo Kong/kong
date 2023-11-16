@@ -20,6 +20,9 @@ local gsub          = string.gsub
 local _M = {}
 
 
+_M.join = pl_stringx.join
+
+
 --- splits a string.
 -- just a placeholder to the penlight `pl.stringx.split` function
 -- @function split
