@@ -185,7 +185,7 @@ describe("kong.log.serialize", function()
         assert.is_table(res)
         assert.same("kong", res.source)
 
-        ngx.ctx.KONG_UNEXPECTED = true
+        ngx.ctx.KONG_UNEXPECTED = nil
         ngx.ctx.KONG_EXITED = nil
         ngx.ctx.KONG_PROXIED = nil
 
