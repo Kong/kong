@@ -11,11 +11,11 @@ local ConsumerGroupConsumers = {}
 
 
 function ConsumerGroupConsumers:count_consumers_in_group(group_id)
-    local qs = fmt(
-        "SELECT COUNT(consumer_id) count FROM consumer_group_consumers WHERE consumer_group_id = %s;",
-        kong.db.connector:escape_literal(group_id))
+  local qs = fmt(
+    "SELECT COUNT(consumer_id) count FROM consumer_group_consumers WHERE consumer_group_id = %s;",
+    kong.db.connector:escape_literal(group_id))
 
-    return kong.db.connector:query(qs)
+  return kong.db.connector:query(qs)
 end
 
 return ConsumerGroupConsumers

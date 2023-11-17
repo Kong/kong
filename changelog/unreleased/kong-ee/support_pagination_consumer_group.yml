@@ -1,0 +1,3 @@
+message: Adds pagination support for `consumer_group consumers` and `consumer consumer_groups`
+type: feature
+scope: Admin API

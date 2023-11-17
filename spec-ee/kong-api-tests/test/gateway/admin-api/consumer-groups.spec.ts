@@ -552,15 +552,15 @@ describe('Gateway Consumer Groups with RLA', function () {
 
     expect(resp.status, 'Status should be 200').to.equal(200);
     expect(
-      resp.data.consumer_groups,
+      resp.data.data,
       'Should belong to only 1 consumer_group'
     ).to.be.ofSize(1);
     expect(
-      resp.data.consumer_groups[0].name,
+      resp.data.data[0].name,
       'Should have consumer_group 1 name'
     ).to.equal(consumerGroup1.name);
     expect(
-      resp.data.consumer_groups[0].id,
+      resp.data.data[0].id,
       'Should have consumer_group 1 id'
     ).to.equal(consumerGroup1.id);
   });
@@ -634,7 +634,7 @@ describe('Gateway Consumer Groups with RLA', function () {
     logResponse(resp);
 
     expect(resp.status, 'Status should be 200').to.equal(200);
-    expect(resp.data, 'Should have empty response').to.be.empty;
+    expect(resp.data.data, 'Should have empty response').to.be.empty;
   });
 
   it('should not get all consumer groups of a wrong consumer', async function () {
@@ -657,18 +657,18 @@ describe('Gateway Consumer Groups with RLA', function () {
 
     expect(resp.status, 'Status should be 200').to.equal(200);
     expect(
-      resp.data.consumers,
+      resp.data.data,
       'Should have 1 consumer in consumers list'
     ).to.be.ofSize(1);
     expect(
-      resp.data.consumers[0].username,
+      resp.data.data[0].username,
       'Should have correct username'
     ).to.equal(consumer2.username);
     expect(
-      resp.data.consumers[0].username_lower,
+      resp.data.data[0].username_lower,
       'Should have correct username_lower'
     ).to.equal(consumer2.username_lower);
-    expect(resp.data.consumers[0].id, 'Should have correct id').to.equal(
+    expect(resp.data.data[0].id, 'Should have correct id').to.equal(
       consumer2.id
     );
   });
@@ -694,7 +694,7 @@ describe('Gateway Consumer Groups with RLA', function () {
     logResponse(resp);
 
     expect(resp.status, 'Status should be 200').to.equal(200);
-    expect(resp.data, 'Should have empty body for consumers').to.be.empty;
+    expect(resp.data.data, 'Should have empty body for consumers').to.be.empty;
   });
 
   it('should not delete wrong consumer from a target consumer group', async function () {
@@ -784,7 +784,7 @@ describe('Gateway Consumer Groups with RLA', function () {
     logResponse(resp);
 
     expect(resp.status, 'Status should be 200').to.equal(200);
-    expect(resp.data, 'Should have empty data in response').to.be.empty;
+    expect(resp.data.data, 'Should have empty data in response').to.be.empty;
   });
 
   it('should not delete non existing consumer from consumer group 2 using groups endpoint', async function () {

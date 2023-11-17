@@ -8,7 +8,7 @@
 local helpers	   = require "spec.helpers"
 local cjson 	   = require "cjson"
 local utils 	   = require "kong.tools.utils"
-
+local null = ngx.null
 local client
 local db
 
@@ -427,22 +427,39 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("GET", function()
-        local consumer_group, consumer, consumer2
+        local consumer_group
 
         lazy_setup(function()
-          consumer_group, consumer, consumer2 = insert_entities()
-          insert_mapping(consumer_group, consumer)
-          insert_mapping(consumer_group, consumer2)
+          consumer_group = assert(db.consumer_groups:insert { name = "test_group_" .. utils.uuid() })
+          for i = 1, 101, 1 do
+            local consumer = assert(db.consumers:insert({ username = "test_consumer_" .. utils.uuid() }))
+            insert_mapping(consumer_group, consumer)
+          end
         end)
 
         lazy_teardown(function()
           truncate_tables(db)
         end)
 
-        it("should list all consumers in the consumer_group", function()
+        it("should list consumers in the consumer_group by default size 100", function()
           local res = get_request("/consumer_groups/" .. consumer_group.id .. "/consumers")
 
-          assert.same(2, #res.consumers)
+          assert.same(100, #res.data)
+          assert.is_not_nil(res.offset)
+
+          res = get_request("/consumer_groups/" .. consumer_group.id .. "/consumers?offset=" .. res.offset)
+          assert.same(1, #res.data)
+          assert.is_nil(res.offset)
+        end)
+
+        it("should list consumers in the consumer_group by size", function()
+          local res = get_request("/consumer_groups/" .. consumer_group.id .. "/consumers?size=1")
+          assert.same(1, #res.data)
+          assert.is_not_nil(res.offset)
+          local res = get_request("/consumer_groups/" ..
+            consumer_group.id .. "/consumers?size=1&offset=" .. res.offset)
+          assert.same(1, #res.data)
+          assert.is_not_nil(res.offset)
         end)
       end)
 
@@ -467,7 +484,7 @@ for _, strategy in helpers.each_strategy() do
           }))
 
           local res = cjson.decode(json)
-          assert.same({}, res)
+          assert.same({ data = {}, next = null }, res)
         end
 
         before_each(function()
@@ -632,6 +649,16 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("/consumers/:consumer/consumer_groups :", function()
+
+      local function insert_mapping(consumer_group, consumer)
+        local mapping = {
+          consumer       = { id = consumer.id },
+          consumer_group = { id = consumer_group.id },
+        }
+
+        assert(db.consumer_group_consumers:insert(mapping))
+      end
+
       lazy_teardown(function()
         truncate_tables(db)
       end)
@@ -649,8 +676,8 @@ for _, strategy in helpers.each_strategy() do
 
         -- should have one consumer group with the old name under the consumer
         local res = get_request("/consumers/" .. consumer.id .. "/consumer_groups")
-        assert.same(1, #res.consumer_groups)
-        assert.equal(consumer_group_old_name, res.consumer_groups[1].name)
+        assert.same(1, #res.data)
+        assert.equal(consumer_group_old_name, res.data[1].name)
 
         local consumer_group_new_name = "test_group_" .. utils.uuid()
 
@@ -676,8 +703,45 @@ for _, strategy in helpers.each_strategy() do
 
         -- consumer group under the consumer should have the new name
         res = get_request("/consumers/" .. consumer.id .. "/consumer_groups")
-        assert.same(1, #res.consumer_groups)
-        assert.equal(consumer_group_new_name, res.consumer_groups[1].name)
+        assert.same(1, #res.data)
+        assert.equal(consumer_group_new_name, res.data[1].name)
+      end)
+
+      describe("GET", function()
+        local consumer
+        lazy_setup(function()
+          
+          consumer = assert(db.consumers:insert({ username = "test_consumer_" .. utils.uuid() }))
+          for i = 1, 101, 1 do
+            local consumer_group = assert(db.consumer_groups:insert { name = "test_group_" .. utils.uuid() })
+            insert_mapping(consumer_group, consumer)
+          end
+        end)
+
+        lazy_teardown(function()
+          truncate_tables(db)
+        end)
+
+        it("should list consumer_groups in the consumer_group by default size 100", function()
+          local res = get_request("/consumers/" .. consumer.id .. "/consumer_groups")
+
+          assert.same(100, #res.data)
+          assert.is_not_nil(res.offset)
+
+          res = get_request("/consumers/" .. consumer.id .. "/consumer_groups?offset=" .. res.offset)
+          assert.same(1, #res.data)
+          assert.is_nil(res.offset)
+        end)
+
+        it("should list consumer_groups in the consumers by size", function()
+          local res = get_request("/consumers/" .. consumer.id .. "/consumer_groups?size=1")
+          assert.same(1, #res.data)
+          assert.is_not_nil(res.offset)
+          local res = get_request("/consumers/" ..
+            consumer.id .. "/consumer_groups?size=1&offset=" .. res.offset)
+          assert.same(1, #res.data)
+          assert.is_not_nil(res.offset)
+        end)
       end)
     end)
   end)

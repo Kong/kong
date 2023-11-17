@@ -13,7 +13,7 @@ local function _select_consumer_group(consumer_group_pk)
   if not utils.is_valid_uuid(consumer_group_pk) then
     return kong.db.consumer_groups:select_by_name(consumer_group_pk)
   end
-  return kong.db.consumer_groups:select({ id=consumer_group_pk })
+  return kong.db.consumer_groups:select({ id = consumer_group_pk })
 end
 
 local function get_consumer_group(consumer_group_pk)
@@ -22,21 +22,17 @@ local function get_consumer_group(consumer_group_pk)
 end
 
 local function _find_consumer_group_config(consumer_group_pk, plugin_name)
-    for row, err in kong.db.consumer_group_plugins:each() do
-      if row.consumer_group.id == consumer_group_pk then
-        if err then
-          kong.log.err(err)
-          return nil, err
-        end
-        if row.consumer_group.id == consumer_group_pk and
-          row.name == plugin_name then
-            return row
-        end
-      end
+  for row, err in kong.db.consumer_group_plugins:each_for_consumer_group({ id = consumer_group_pk }, nil, { search_fields = { name = plugin_name } }) do
+    if err then
+      kong.log.err(err)
+      return nil, err
     end
-    return nil, "could not find the configuration"
+    if row.name == plugin_name then
+      return row
+    end
   end
-
+  return nil, "could not find the configuration"
+end
 
 local function get_consumer_group_config(consumer_group_pk, plugin_name)
   local cache_key = kong.db.consumer_group_plugins:cache_key(consumer_group_pk, plugin_name)
@@ -53,10 +49,8 @@ local function get_consumers_in_group(consumer_group_pk)
       return nil, err
     end
   end
-  if len == 0 then
-    return nil
-  end
-  return consumers
+
+  return len > 0 and consumers or nil
 end
 
 
@@ -74,23 +68,18 @@ local function is_consumer_in_group(consumer_pk, consumer_group_pk)
 end
 
 local function delete_consumer_in_group(consumer_pk, consumer_group_pk)
-  if is_consumer_in_group(consumer_pk, consumer_group_pk) then
-    kong.db.consumer_group_consumers:delete(
-      {
-        consumer_group = {id = consumer_group_pk},
-        consumer = { id = consumer_pk,},
-      }
-    )
-    -- invalidate a cache_key used for looking up consumer<->group mappings
-    local cache_key_scan = kong.db.consumer_group_consumers:cache_key("", consumer_pk)
-    kong.cache:invalidate(cache_key_scan)
-    -- also remove the explicit mapping cache
-    local cache_key = kong.db.consumer_group_consumers:cache_key(consumer_group_pk, consumer_pk)
-    kong.cache:invalidate(cache_key)
-    return true
-  else
-    return false
-  end
+  kong.db.consumer_group_consumers:delete(
+    {
+      consumer_group = { id = consumer_group_pk },
+      consumer = { id = consumer_pk, },
+    }
+  )
+  -- invalidate a cache_key used for looking up consumer<->group mappings
+  local cache_key_scan = kong.db.consumer_group_consumers:cache_key("", consumer_pk)
+  kong.cache:invalidate(cache_key_scan)
+  -- also remove the explicit mapping cache
+  local cache_key = kong.db.consumer_group_consumers:cache_key(consumer_group_pk, consumer_pk)
+  kong.cache:invalidate(cache_key)
 end
 
 local function get_plugins_in_group(consumer_group_pk)
@@ -103,20 +92,12 @@ local function get_plugins_in_group(consumer_group_pk)
       return nil, err
     end
   end
-  if len == 0 then
-    return nil
-  end
-  return plugins
+
+  return len > 0 and plugins or nil
 end
 
 local function select_by_username_or_id(db, key)
-  local entity
-  if not utils.is_valid_uuid(key) then
-    entity = db:select_by_username(key)
-  else
-    entity = db:select({ id = key })
-  end
-  return entity
+  return not utils.is_valid_uuid(key) and db:select_by_username(key) or db:select({ id = key })
 end
 
 local function get_groups_by_consumer(consumer_pk)
@@ -129,25 +110,19 @@ local function get_groups_by_consumer(consumer_pk)
       return nil, err
     end
     len = len + 1
-    local group = get_consumer_group(row.consumer_group.id)
-    if group then
-      group["consumers_count"] = kong.db.consumer_group_consumers:count_consumers_in_group(group.id)
-      groups[len] = group
-    end
+    groups[len] = get_consumer_group(row.consumer_group.id)
   end
-  if len == 0 then
-    return nil
-  end
-  return groups
+
+  return len > 0 and groups or nil
 end
 
 return {
-    get_consumer_group = get_consumer_group,
-    get_consumer_group_config = get_consumer_group_config,
-    get_consumers_in_group = get_consumers_in_group,
-    delete_consumer_in_group = delete_consumer_in_group,
-    get_groups_by_consumer = get_groups_by_consumer,
-    is_consumer_in_group = is_consumer_in_group,
-    get_plugins_in_group = get_plugins_in_group,
-    select_by_username_or_id = select_by_username_or_id,
-  }
+  get_consumer_group = get_consumer_group,
+  get_consumer_group_config = get_consumer_group_config,
+  get_consumers_in_group = get_consumers_in_group,
+  delete_consumer_in_group = delete_consumer_in_group,
+  get_groups_by_consumer = get_groups_by_consumer,
+  is_consumer_in_group = is_consumer_in_group,
+  get_plugins_in_group = get_plugins_in_group,
+  select_by_username_or_id = select_by_username_or_id,
+}

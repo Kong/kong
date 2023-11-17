@@ -16,4 +16,12 @@ function ConsumerGroupConsumers:count_consumers_in_group(group_id)
   return res[1] and res[1]["count"] or 0
 end
 
+function ConsumerGroupConsumers:page_for_consumer_group(foreign_key, size, offset, options)
+  return self.super.page_for_consumer_group(self, foreign_key, size, offset, options)
+end
+
+function ConsumerGroupConsumers:page_for_consumer(foreign_key, size, offset, options)
+  return self.super.page_for_consumer(self, foreign_key, size, offset, options)
+end
+
 return ConsumerGroupConsumers

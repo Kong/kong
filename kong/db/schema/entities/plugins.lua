@@ -23,7 +23,7 @@ return {
   fields = {
     { id = typedefs.uuid, },
     { name = { description = "The name of the Plugin that's going to be added.", type = "string", required = true, indexed = true }, },
-    { instance_name = typedefs.utf8_name { indexed = true }  },
+    { instance_name = typedefs.utf8_name { indexed = true } },
     { created_at = typedefs.auto_timestamp_s },
     { updated_at = typedefs.auto_timestamp_s },
     { route = { description = "If set, the plugin will only activate when receiving requests via the specified route.", type = "foreign", reference = "routes", default = null, on_delete = "cascade", }, },
