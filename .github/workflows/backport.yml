@@ -5,6 +5,7 @@ on:
 permissions:
   contents: write # so it can comment
   pull-requests: write # so it can create pull requests
+  actions: write
 jobs:
   backport:
     name: Backport
