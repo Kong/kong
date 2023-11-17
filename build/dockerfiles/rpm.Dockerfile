@@ -37,7 +37,7 @@ RUN yum update -y \
     && rm /tmp/kong.rpm \
     && chown kong:0 /usr/local/bin/kong \
     && chown -R kong:0 /usr/local/kong \
-    && mkdir -m 660 /var/run/kong \
+    && mkdir -m 770 /var/run/kong \
     && chown kong:0 /var/run/kong \
     && ln -sf /usr/local/openresty/bin/resty /usr/local/bin/resty \
     && ln -sf /usr/local/openresty/luajit/bin/luajit /usr/local/bin/luajit \
