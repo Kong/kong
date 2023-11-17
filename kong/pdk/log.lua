@@ -816,7 +816,12 @@ do
       -- seperated by comma or grouped by colon, according to
       -- the nginx doc: http://nginx.org/en/docs/http/ngx_http_upstream_module.html#upstream_status
       local upstream_status = var.upstream_status or ""
-
+      local kong_source = okong.response.get_source(ongx.ctx)
+      if kong_source == "exit" or kong_source == "error" then
+        kong_source = "kong"
+      elseif kong_source == "service" then
+        kong_source = "upstream"
+      end
       local root = {
         request = {
           id = request_id_get() or "",
@@ -848,6 +853,7 @@ do
         consumer = cycle_aware_deep_copy(ctx.authenticated_consumer),
         client_ip = var.remote_addr,
         started_at = okong.request.get_start_time(),
+        source = kong_source,
       }
 
       return edit_result(ctx, root)

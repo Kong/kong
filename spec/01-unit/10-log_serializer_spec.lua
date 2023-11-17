@@ -20,6 +20,7 @@ describe("kong.log.serialize", function()
               },
             },
           },
+          KONG_PROXIED = true,
         },
         var = {
           kong_request_id = "1234",
@@ -43,7 +44,7 @@ describe("kong.log.serialize", function()
           get_uri_args = function() return {"arg1", "arg2"} end,
           get_method = function() return "POST" end,
           get_headers = function() return {header1 = "header1", header2 = "header2", authorization = "authorization"} end,
-          start_time = function() return 3 end
+          start_time = function() return 3 end,
         },
         resp = {
           get_headers = function() return {header1 = "respheader1", header2 = "respheader2", ["set-cookie"] = "delicious=delicacy"} end
@@ -99,6 +100,8 @@ describe("kong.log.serialize", function()
 
         -- Tries
         assert.is_table(res.tries)
+
+        assert.equal("upstream", res.source)
       end)
 
       it("uses port map (ngx.ctx.host_port) for request url ", function()
@@ -171,6 +174,24 @@ describe("kong.log.serialize", function()
               port  = 1234,
             },
           }, res.tries)
+      end)
+
+      it("serializes the response.source", function()
+        ngx.ctx.KONG_EXITED = true
+        ngx.ctx.KONG_PROXIED = nil
+        ngx.ctx.KONG_UNEXPECTED = nil
+
+        local res = kong.log.serialize({ngx = ngx, kong = kong, })
+        assert.is_table(res)
+        assert.same("kong", res.source)
+
+        ngx.ctx.KONG_UNEXPECTED = true
+        ngx.ctx.KONG_EXITED = nil
+        ngx.ctx.KONG_PROXIED = nil
+
+        local res = kong.log.serialize({ngx = ngx, kong = kong, })
+        assert.is_table(res)
+        assert.same("kong", res.source)
       end)
 
       it("does not fail when the 'balancer_data' structure is missing", function()
