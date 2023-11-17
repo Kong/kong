@@ -22,6 +22,7 @@ local env = require "kong.cmd.utils.env"
 local ffi = require "ffi"
 
 
+local re_match = ngx.re.match
 local fmt = string.format
 local sub = string.sub
 local type = type
@@ -727,7 +728,7 @@ end
 local function check_dynamic_module(mod_name)
   local configure_line = ngx.config.nginx_configure()
   local mod_re = [[^.*--add-dynamic-module=(.+\/]] .. mod_name .. [[(\s|$)).*$]]
-  return ngx.re.match(configure_line, mod_re, "oi") ~= nil
+  return re_match(configure_line, mod_re, "oi") ~= nil
 end
 
 
@@ -765,6 +766,61 @@ local function validate_wasm(conf)
   if wasm_enabled then
     if filters_path and not exists(filters_path) and not isdir(filters_path) then
       return nil, fmt("wasm_filters_path '%s' is not a valid directory", filters_path)
+    end
+  end
+
+  return true
+end
+
+
+
+local MAX_KEY_SIZE   = 63
+local MAX_VALUE_SIZE = 63
+local MAX_KEYS_COUNT = 10
+
+
+-- validation rules based on Kong Labels AIP
+-- https://kong-aip.netlify.app/aip/129/
+local BASE_PTRN = "[a-z0-9]([\\w\\.:-]*[a-z0-9]|)$"
+local KEY_PTRN  = "(?!kong)(?!konnect)(?!insomnia)(?!mesh)(?!kic)" .. BASE_PTRN
+local VAL_PTRN  = BASE_PTRN
+
+
+local function validate_entry(str, max_size, pattern)
+  if str == "" or #str > max_size then
+    return nil, fmt(
+      "%s must have between 1 and %d characters", str, max_size)
+  end
+  if not re_match(str, pattern, "ajoi") then
+    return nil, fmt("%s is invalid. Must match pattern: %s", str, pattern)
+  end
+  return true
+end
+
+
+-- Validates a label array.
+-- Validates labels based on the kong Labels AIP
+local function validate_labels(raw_labels)
+  local nkeys = require "table.nkeys"
+  if nkeys(raw_labels) > MAX_KEYS_COUNT then
+    return nil, fmt(
+      "labels validation failed: count exceeded %d max elements",
+      MAX_KEYS_COUNT
+    )
+  end
+
+  for _, kv in ipairs(raw_labels) do
+    local del = kv:find(":", 1, true)
+    local k = del and kv:sub(1, del - 1) or ""
+    local v = del and kv:sub(del + 1) or ""
+
+    local ok, err = validate_entry(k, MAX_KEY_SIZE, KEY_PTRN)
+    if not ok then
+      return nil, "label key validation failed: " .. err
+    end
+    ok, err = validate_entry(v, MAX_VALUE_SIZE, VAL_PTRN)
+    if not ok then
+      return nil, "label value validation failed: " .. err
     end
   end
 
@@ -1291,7 +1347,7 @@ local function check_and_parse(conf, opts)
     end
 
     if conf.cluster_dp_labels then
-      local _, err = utils.validate_labels(conf.cluster_dp_labels)
+      local _, err = validate_labels(conf.cluster_dp_labels)
       if err then
        errors[#errors + 1] = err
       end
