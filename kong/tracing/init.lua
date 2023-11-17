@@ -11,7 +11,8 @@ local strategies = require "kong.tracing.strategies"
 local knode  = (kong and kong.node) and kong.node or
                require "kong.pdk.node".new()
 local deprecation = require "kong.deprecation"
-local utils = require("kong.tools.utils")
+local get_request_id = require("kong.tracing.request_id").get
+
 
 local get_node_id = knode.get_id
 
@@ -343,7 +344,7 @@ function _M.trace(name, ctx)
 
   local trace = {
     node_id = get_node_id(),
-    request = utils.get_request_id(),
+    request = get_request_id(),
     date    = http_time and http_time(t) or
               -- Wed, 22 Jul 2020 13:56:56 GMT
               os.date("%a, %d %b %Y %H:%M:%S GMT", t),

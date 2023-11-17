@@ -171,8 +171,6 @@ server {
         set $upstream_x_forwarded_prefix '';
         set $kong_proxy_mode             'http';
 
-        set $set_request_id $kong_request_id;
-
         proxy_http_version      1.1;
         proxy_buffering          on;
         proxy_request_buffering  on;

@@ -52,8 +52,8 @@ for _, strategy in helpers.each_strategy() do
 
                 location = / {
                     content_by_lua_block {
-                        local utils = require "kong.tools.utils"
-                        ngx.say(utils.get_request_id())
+                        local get_request_id = require("kong.tracing.request_id").get
+                        ngx.say(get_request_id())
                     }
                 }
             }
@@ -98,7 +98,7 @@ for _, strategy in helpers.each_strategy() do
           }
         }
         local body = assert.res_status(200, res)
-        assert.truthy(#body == 33)
+        assert.truthy(#body == 32)
       end)
     end)
 

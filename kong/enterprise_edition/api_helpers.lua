@@ -11,12 +11,12 @@ local endpoints       = require "kong.api.endpoints"
 local enums           = require "kong.enterprise_edition.dao.enums"
 local rbac            = require "kong.rbac"
 local workspaces      = require "kong.workspaces"
-local utils           = require "kong.tools.utils"
 local ee_utils        = require "kong.enterprise_edition.utils"
 local ee_jwt          = require "kong.enterprise_edition.jwt"
 local errors          = require "kong.db.errors"
 local entity          = require "kong.db.schema.entity"
 local ws_schema       = require "kong.db.schema.entities.workspaces"
+local get_request_id  = require("kong.tracing.request_id").get
 
 local fmt = string.format
 local kong = kong
@@ -543,7 +543,7 @@ function _M.set_cors_headers(origins, api_type)
 end
 
 function _M.before_filter(self)
-  local req_id = utils.random_string()
+  local req_id = get_request_id()
 
   ngx.ctx.admin_api = {
     req_id = req_id,

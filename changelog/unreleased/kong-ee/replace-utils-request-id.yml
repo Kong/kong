@@ -1,0 +1,3 @@
+message: Use the value provided by the new Request ID feature for all request ID fields, for better consistency
+type: feature
+scope: Core

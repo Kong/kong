@@ -12,6 +12,7 @@ local utils = require "kong.tools.utils"
 local find = string.find
 local lower = string.lower
 local pkey = require "resty.openssl.pkey"
+local get_request_id = require("kong.tracing.request_id").get
 
 
 local _M = {}
@@ -107,7 +108,7 @@ local function dao_audit_handler(data)
   end
 
   data = {
-    request_id = data.request_id or utils.get_request_id(),
+    request_id = data.request_id or get_request_id(),
     entity_key = pk_value,
     dao_name   = data.schema.table or data.schema.name,
     operation  = data.operation,
@@ -223,7 +224,7 @@ local function admin_log_handler()
 
 
   local data = {
-    request_id           = utils.get_request_id(),
+    request_id           = get_request_id(),
     client_ip            = ngx.var.remote_addr,
     path                 = uri,
     payload              = filtered_payload,

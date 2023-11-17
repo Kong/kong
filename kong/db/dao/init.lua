@@ -13,6 +13,7 @@ local hooks = require "kong.hooks"
 local workspaces = require "kong.workspaces"
 local new_tab = require "table.new"
 local DAO_MAX_TTL = require("kong.constants").DATABASE.DAO_MAX_TTL
+local get_request_id = require("kong.tracing.request_id").get
 
 local setmetatable = setmetatable
 local tostring     = tostring
@@ -1553,7 +1554,7 @@ function DAO:post_crud_event(operation, entity, old_entity, options)
 
     local ok, err = self.events.post_local("dao:crud", operation, {
       workspace     = workspace,
-      request_id    = utils.get_request_id(),
+      request_id    = get_request_id(),
       operation     = operation,
       schema        = self.schema,
       entity        = entity_without_nulls,

@@ -602,21 +602,6 @@ function _M.get_cn_parent_domain(x509)
 end
 
 
-function _M.get_request_id()
-  local ctx = ngx.ctx
-  if ctx.admin_api then
-    return ctx.admin_api.req_id
-  end
-
-  local ok, res = pcall(function() return ngx.var.set_request_id end)
-  if ok and type(res) == "string" and res ~= "" then
-    return res
-  end
-
-  return _M.random_string()
-end
-
-
 do
   local modules = {
     "kong.tools.table",
