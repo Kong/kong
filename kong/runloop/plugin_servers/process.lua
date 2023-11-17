@@ -8,7 +8,6 @@
 local cjson = require "cjson.safe"
 local pl_path = require "pl.path"
 local raw_log = require "ngx.errlog".raw_log
-local is_not_http_subsystem = ngx.config.subsystem ~= "http"
 
 local _, ngx_pipe = pcall(require, "ngx.pipe")
 
@@ -210,7 +209,7 @@ function proc_mgmt.pluginserver_timer(premature, server_def)
     return
   end
 
-  if is_not_http_subsystem then
+  if ngx.config.subsystem ~= "http" then
     return
   end
 

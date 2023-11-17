@@ -399,8 +399,8 @@ end
 
 
 function Rpc:handle_event(plugin_name, conf, phase)
-  local instance_id, res, err
-  instance_id, err = self.get_instance_id(plugin_name, conf)
+  local instance_id, err = self.get_instance_id(plugin_name, conf)
+  local res
   if not err then
     res, err = self:call("cmd_handle_event", {
       instance_id = instance_id,
@@ -409,20 +409,16 @@ function Rpc:handle_event(plugin_name, conf, phase)
   end
 
   if not res or res == "" then
-    if err then
-      local err_lowered = err and err:lower() or ""
+    local err_lowered = err and err:lower() or "unknown error"
 
-      kong.log.err(err_lowered)
-
-      if err_lowered == "not ready" then
-        self.reset_instance(plugin_name, conf)
-      end
-      if str_find(err_lowered, "no plugin instance")
-        or str_find(err_lowered, "closed")  then
-        self.reset_instance(plugin_name, conf)
-        return self:handle_event(plugin_name, conf, phase)
-      end
+    if str_find(err_lowered, "no plugin instance", nil, true)
+      or str_find(err_lowered, "closed", nil, true) then
+      self.reset_instance(plugin_name, conf)
+      kong.log.warn(err)
+      return self:handle_event(plugin_name, conf, phase)
     end
+
+    kong.log.err(err)
   end
 end
 
