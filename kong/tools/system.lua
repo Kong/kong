@@ -1,5 +1,6 @@
 local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
+local fmt = string.format
 
 
 local _M = {}
@@ -58,5 +59,12 @@ do
   end
 end
 
+
+function _M.get_runtime_data_path(prefix)
+  local prefix = pl_path.abspath(prefix)
+  -- Path used for runtime data such as unix domain sockets
+  local prefix_hash = string.sub(ngx.md5(prefix), 1, 7)
+  return fmt("/var/run/kong/%s", prefix_hash)
+end
 
 return _M

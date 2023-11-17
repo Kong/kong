@@ -11,20 +11,10 @@
 local pairs    = pairs
 local ipairs   = ipairs
 local require  = require
-local fmt      = string.format
-local re_match = ngx.re.match
-local pl_path  = require "pl.path"
-
 
 local _M = {}
 
 
-function _M.get_runtime_data_path(prefix)
-  local prefix = pl_path.abspath(prefix)
-  -- Path used for runtime data such as unix domain sockets
-  local prefix_hash = string.sub(ngx.md5(prefix), 1, 7)
-  return fmt("/var/run/kong/%s", prefix_hash)
-end
 do
   local modules = {
     "kong.tools.table",
