@@ -46,7 +46,7 @@ function _M:init_worker(clustering)
     local declarative_config = kong.db.declarative_config
 
     local pok, res, err = pcall(config_helper.update, declarative_config,
-                                config_table, msg.config_hash, msg.hashes)
+                                msg)
     if not pok or not res then
       ngx.log(ngx.ERR, "unable to update running config: ",
                        (not pok and res) or err)
