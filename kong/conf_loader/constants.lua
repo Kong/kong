@@ -333,7 +333,7 @@ local CONF_PARSERS = {
                          }
                        },
 
-  database = { enum = { "postgres", "off" }  },
+  database = { enum = { "postgres", "cassandra", "off" }  },
   pg_port = { typ = "number" },
   pg_timeout = { typ = "number" },
   pg_password = { typ = "string" },
