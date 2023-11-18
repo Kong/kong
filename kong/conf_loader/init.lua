@@ -1528,7 +1528,7 @@ local function load(path, custom_conf, opts)
     for k, v in pairs(conf) do
       local to_print = v
       if CONF_SENSITIVE[k] then
-        to_print = "******"
+        to_print = CONF_SENSITIVE_PLACEHOLDER
       end
 
       conf_arr[#conf_arr+1] = k .. " = " .. pl_pretty.write(to_print, "")
