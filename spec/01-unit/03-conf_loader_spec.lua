@@ -1618,6 +1618,7 @@ describe("Configuration loader", function()
       finally(function()
         os.getenv = _os_getenv -- luacheck: ignore
         package.loaded["kong.conf_loader"] = nil
+        package.loaded["kong.conf_loader.constants"] = nil
         conf_loader = require "kong.conf_loader"
       end)
       os.getenv = function() end -- luacheck: ignore
@@ -1632,6 +1633,7 @@ describe("Configuration loader", function()
       finally(function()
         os.getenv = _os_getenv -- luacheck: ignore
         package.loaded["kong.conf_loader"] = nil
+        package.loaded["kong.conf_loader.constants"] = nil
         conf_loader = require "kong.conf_loader"
       end)
       os.getenv = function() end -- luacheck: ignore
