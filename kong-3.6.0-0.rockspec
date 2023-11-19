@@ -89,6 +89,7 @@ build = {
     ["kong.clustering.rpc.callbacks"] = "kong/clustering/rpc/callbacks.lua",
     ["kong.clustering.rpc.connector"] = "kong/clustering/rpc/connector.lua",
     ["kong.clustering.rpc.constants"] = "kong/clustering/rpc/constants.lua",
+    ["kong.clustering.rpc.api"] = "kong/clustering/rpc/api.lua",
     ["kong.clustering.rpc.cp"] = "kong/clustering/rpc/cp.lua",
     ["kong.clustering.rpc.dp"] = "kong/clustering/rpc/dp.lua",
     ["kong.clustering.rpc.handler"] = "kong/clustering/rpc/handler.lua",
