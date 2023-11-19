@@ -596,6 +596,19 @@ local TYP_CHECKS = {
 }
 
 
+-- This meta table will prevent the parsed table to be passed on in the
+-- intermediate Kong config file in the prefix directory.
+-- We thus avoid 'table: 0x41c3fa58' from appearing into the prefix
+-- hidden configuration file.
+-- This is only to be applied to values that are injected into the
+-- configuration object, and not configuration properties themselves,
+-- otherwise we would prevent such properties from being specifiable
+-- via environment variables.
+local _NOP_TOSTRING_MT = {
+  __tostring = function() return "" end,
+}
+
+
 return {
   HEADERS = HEADERS,
   BUNDLED_VAULTS = BUNDLED_VAULTS,
@@ -613,5 +626,7 @@ return {
   CONF_SENSITIVE = CONF_SENSITIVE,
   CONF_BASIC = CONF_BASIC,
   TYP_CHECKS = TYP_CHECKS,
+
+  _NOP_TOSTRING_MT = _NOP_TOSTRING_MT,
 }
 

@@ -90,6 +90,9 @@ local BUNDLED_VAULTS = constants.BUNDLED_VAULTS
 local BUNDLED_PLUGINS = constants.BUNDLED_PLUGINS
 
 
+local _nop_tostring_mt = constants._NOP_TOSTRING_MT
+
+
 local function is_predefined_dhgroup(group)
   if type(group) ~= "string" then
     return false
@@ -100,19 +103,6 @@ local function is_predefined_dhgroup(group)
     group = group,
   })
 end
-
-
--- This meta table will prevent the parsed table to be passed on in the
--- intermediate Kong config file in the prefix directory.
--- We thus avoid 'table: 0x41c3fa58' from appearing into the prefix
--- hidden configuration file.
--- This is only to be applied to values that are injected into the
--- configuration object, and not configuration properties themselves,
--- otherwise we would prevent such properties from being specifiable
--- via environment variables.
-local _nop_tostring_mt = {
-  __tostring = function() return "" end,
-}
 
 
 -- using kong version, "major.minor"
