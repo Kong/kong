@@ -8,6 +8,7 @@ local calculate_config_hash = require("kong.clustering.config_helper").calculate
 
 local events = require("kong.clustering.events")
 local rpc_cp = require("kong.clustering.rpc.cp")
+local rpc_api = require("kong.clustering.rpc.api")
 local ping_svc = require("kong.clustering.control_plane.services.ping")
 
 
@@ -38,7 +39,9 @@ function _M.new(clustering)
 
   -- init rpc cp side
   local cp = rpc_cp.new()
-  kong.rpc = cp
+
+  kong.cp = cp
+  kong.rpc = rpc_api.new(cp)
 
   return setmetatable(self, _MT)
 end
@@ -64,7 +67,7 @@ function _M:init_worker(basic_info)
   self.ping_svc:init_worker()
 
   -- init rpc connection
-  kong.rpc:init_worker()
+  kong.cp:init_worker()
 
   -- event to invoke rpc call
   events.clustering_push_config(function(node_id)
@@ -113,9 +116,9 @@ function _M:handle_cp_websocket()
     end)
   end
 
-  local rpc = assert(kong.rpc)
+  local cp = assert(kong.cp)
 
-  rpc:run()
+  cp:run()
 end
 
 

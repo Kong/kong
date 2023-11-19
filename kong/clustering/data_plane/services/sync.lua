@@ -42,7 +42,7 @@ function _M:init_worker(clustering)
     ngx.log(ngx.ERR, "received reconfigure frame from control plane",
                      msg.timestamp and " with timestamp: " .. msg.timestamp or "")
 
-    local config_table = assert(msg.config_table)
+    --local config_table = assert(msg.config_table)
     local declarative_config = kong.db.declarative_config
 
     local pok, res, err = pcall(config_helper.update, declarative_config,

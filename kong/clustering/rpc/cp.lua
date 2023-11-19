@@ -6,10 +6,6 @@ local threads = require("kong.clustering.rpc.threads")
 local peer = require("kong.clustering.rpc.peer")
 
 
-local spawn = ngx.thread.spawn
-local wait  = ngx.thread.wait
-
-
 local META_HELLO_METHOD = constants.META_HELLO_METHOD
 
 
@@ -45,16 +41,6 @@ function _M:connect()
 end
 
 
-function _M:register(method, func)
-  callbacks.register(method, func)
-end
-
-
-function _M:unregister(method)
-  callbacks.unregister(method)
-end
-
-
 -- choose a node by node_id
 function _M:get_peer(node_id)
   if not node_id then
@@ -79,7 +65,7 @@ end
 
 
 -- get one dp by node_id
-function _M:notify_one(node_id, method, params, opts)
+function _M:notify(node_id, method, params, opts)
   local peer = self:get_peer(node_id)
   if not peer then
     return nil, "peer is not available"
@@ -89,37 +75,8 @@ function _M:notify_one(node_id, method, params, opts)
 end
 
 
--- get one or all dp by node_id
-function _M:notify(node_id, method, params, opts)
-  if node_id ~= "*" then
-    return self:notify_one(node_id, method, params, opts)
-  end
-
-  -- node_id == "*"
-  local idx = 1
-  local threads = {}
-
-  for id, count in pairs(self.nodes) do
-    if count > 0 then
-      threads[idx] = spawn(function()
-        return self:notify_one(id, method, params, opts)
-      end)
-      idx = idx + 1
-    end
-  end
-
-  local results = {}
-  for i = 1, #threads do
-    local ok, res = wait(threads[i])
-    results[i] = ok and res or false
-  end
-
-  return results
-end
-
-
 -- get one dp by node_id
-function _M:call_one(node_id, method, params, opts)
+function _M:call(node_id, method, params, opts)
   local peer = self:get_peer(node_id)
   if not peer then
     return nil,{ code = constants.INTERNAL_ERROR,
@@ -127,35 +84,6 @@ function _M:call_one(node_id, method, params, opts)
   end
 
   return peer:call(method, params, opts)
-end
-
-
--- get one or all dp by node_id
-function _M:call(node_id, method, params, opts)
-  if node_id ~= "*" then
-    return self:call_one(node_id, method, params, opts)
-  end
-
-  -- node_id == "*"
-  local idx = 1
-  local threads = {}
-
-  for id, count in pairs(self.nodes) do
-    if count > 0 then
-      threads[idx] = spawn(function()
-        return self:call_one(id, method, params, opts)
-      end)
-      idx = idx + 1
-    end
-  end
-
-  local results = {}
-  for i = 1, #threads do
-    local ok, res = wait(threads[i])
-    results[i] = ok and res or false
-  end
-
-  return results
 end
 
 
