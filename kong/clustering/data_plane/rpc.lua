@@ -1,4 +1,5 @@
 local rpc_dp = require("kong.clustering.rpc.dp")
+local rpc_api = require("kong.clustering.rpc.api")
 local sync_svc = require("kong.clustering.data_plane.services.sync")
 
 
@@ -64,7 +65,9 @@ function _M.new(clustering)
 
   -- init rpc dp side
   local dp = rpc_dp.new(rpc_conf)
-  kong.rpc = dp
+
+  kong.dp = dp
+  kong.rpc = rpc_api.new(dp)
 
   return setmetatable(self, _MT)
 end
@@ -80,7 +83,7 @@ function _M:init_worker(basic_info)
   self.sync_svc:init_worker(self)
 
   -- init rpc connection
-  kong.rpc:init_worker()
+  kong.dp:init_worker()
 
   -- a test rpc call
   ping_cp_test()

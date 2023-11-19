@@ -52,16 +52,6 @@ function _M:connect()
 end
 
 
-function _M:register(method, func)
-  callbacks.register(method, func)
-end
-
-
-function _M:unregister(method)
-  callbacks.unregister(method)
-end
-
-
 function _M:get_nodes()
   return self.nodes
 end
