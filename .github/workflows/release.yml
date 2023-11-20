@@ -15,8 +15,6 @@ on:  # yamllint disable-line rule:truthy
     - 'kong/**'
     - 'plugins-ee/**'
   push:
-    tags:
-    - '**'
     branches:
     - master
     - next/*
