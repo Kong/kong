@@ -60,11 +60,9 @@ describe("Admin GUI - admin_gui_path", function()
       path = "/kconfig.js",
     })
     res = assert.res_status(200, res)
-    assert.matches("'KONG_VERSION': '", res)
     assert.matches("'ADMIN_GUI_PATH': '/'", res, nil, true)
     -- XXX EE [[
     assert.matches("'RBAC_ENFORCED': 'false'", res, nil, true)
-    assert.matches("'RBAC_HEADER': 'Kong-Admin-Token'", res, nil, true)
     assert.matches("'RBAC_USER_HEADER': 'Kong-Admin-User'", res, nil, true)
     assert.matches("'RBAC': 'off'", res, nil, true)
     -- XXX EE ]]
@@ -133,11 +131,9 @@ describe("Admin GUI - admin_gui_path", function()
       path = "/manager/kconfig.js",
     })
     res = assert.res_status(200, res)
-    assert.matches("'KONG_VERSION': '", res)
     assert.matches("'ADMIN_GUI_PATH': '/manager'", res, nil, true)
     -- XXX EE [[
     assert.matches("'RBAC_ENFORCED': 'false'", res, nil, true)
-    assert.matches("'RBAC_HEADER': 'Kong-Admin-Token'", res, nil, true)
     assert.matches("'RBAC_USER_HEADER': 'Kong-Admin-User'", res, nil, true)
     assert.matches("'RBAC': 'off'", res, nil, true)
     -- XXX EE ]]

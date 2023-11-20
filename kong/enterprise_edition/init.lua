@@ -5,7 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local meta       = require "kong.enterprise_edition.meta"
 local constants  = require "kong.constants"
 local ee_constants = require "kong.enterprise_edition.constants"
 local workspaces = require "kong.workspaces"
@@ -214,8 +213,6 @@ function _M.prepare_portal(self, kong_config)
     PORTAL_GUI_USE_SUBDOMAINS = admin_gui_utils.prepare_variable(kong_config.portal_gui_use_subdomains),
     PORTAL_DEVELOPER_META_FIELDS = admin_gui_utils.prepare_variable(portal_developer_meta_fields),
     RBAC_ENFORCED = admin_gui_utils.prepare_variable(rbac_enforced),
-    RBAC_HEADER = admin_gui_utils.prepare_variable(kong_config.rbac_auth_header),
-    KONG_VERSION = admin_gui_utils.prepare_variable(meta.version),
     WORKSPACE = admin_gui_utils.prepare_variable(workspace.name)
   }
 end

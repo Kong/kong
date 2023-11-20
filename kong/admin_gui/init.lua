@@ -5,7 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local meta = require "kong.meta"
 local utils = require "kong.admin_gui.utils"
 local ee_admin_gui = require "kong.enterprise_edition.admin.gui"
 
@@ -23,8 +22,6 @@ function _M.generate_kconfig(kong_config)
     ADMIN_API_URL = utils.prepare_variable(kong_config.admin_gui_api_url),
     ADMIN_API_PORT = utils.prepare_variable(api_port),
     ADMIN_API_SSL_PORT = utils.prepare_variable(api_ssl_port),
-    KONG_VERSION = utils.prepare_variable(meta.version),
-    KONG_EDITION = meta._VERSION:match("enterprise") and "enterprise" or "community",
     ANONYMOUS_REPORTS = utils.prepare_variable(kong_config.anonymous_reports),
   }
   ee_admin_gui.fill_ee_kconfigs(kong_config, configs)
