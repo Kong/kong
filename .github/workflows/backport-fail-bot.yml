@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Generate Slack Payload
         id: generate-payload
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           script: |
             const slack_mapping = JSON.parse(process.env.SLACK_MAPPING);
