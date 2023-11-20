@@ -21,7 +21,7 @@ dependencies = {
   "lua-ffi-zlib == 0.6",
   "multipart == 0.5.9",
   "version == 1.0.1",
-  "kong-lapis == 1.14.0.3",
+  "kong-lapis == 1.16.0.1",
   "kong-pgmoon == 1.16.2",
   "luatz == 0.4",
   "lua_system_constants == 0.1.4",
