@@ -49,7 +49,7 @@ describe("Admin GUI - admin_gui_path", function()
       path = "/kconfig.js",
     })
     res = assert.res_status(200, res)
-    assert.matches("'KONG_VERSION': '", res)
+    assert.matches("'ADMIN_GUI_PATH': '/'", res, nil, true)
   end)
 
   it("should serve Admin GUI correctly when admin_gui_path is set", function()
@@ -115,6 +115,6 @@ describe("Admin GUI - admin_gui_path", function()
       path = "/manager/kconfig.js",
     })
     res = assert.res_status(200, res)
-    assert.matches("'KONG_VERSION': '", res)
+    assert.matches("'ADMIN_GUI_PATH': '/manager'", res, nil, true)
   end)
 end)
