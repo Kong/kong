@@ -21,7 +21,7 @@ function _M.new()
     nodes = {},
 
     -- hold all dps connecting to this cp
-    peers = setmetatable({}, { __mode = "k", }),
+    peers = {}, --setmetatable({}, { __mode = "k", }),
   }
 
   return setmetatable(self, _MT)
@@ -43,18 +43,21 @@ end
 
 -- choose a node by node_id
 function _M:get_peer(node_id)
+  local _, peers
   if not node_id then
-    local _, v = next(self.peers)
-    return v.peer
+    _, peers = next(self.peers)
+
+  else
+    peers = self.peers[node_id]
   end
 
-  for _, v in pairs(self.peers) do
-    if v.node_id == node_id then
-      return v.peer
-    end
+  if not peers then
+    return nil
   end
 
-  return nil
+  local _, peer = next(peers)
+
+  return peer
 end
 
 
@@ -107,7 +110,11 @@ function _M:run()
 
   -- store node info
   --self.peers[wb] = pr
-  self.peers[wb] = { peer = pr, node_id = node_id, }
+  --self.peers[wb] = { peer = pr, node_id = node_id, }
+  if not self.peers[node_id] then
+    self.peers[node_id] = setmetatable({}, { __mode = "k", })
+  end
+  self.peers[node_id][wb] = pr
   self.nodes[node_id] = (self.nodes[node_id] or 0) + 1
 
   -- cp/dp has almost the same workflow
@@ -115,7 +122,7 @@ function _M:run()
 
   -- dp disconnect
 
-  self.peers[wb] = nil
+  self.peers[node_id][wb] = nil
   self.nodes[node_id] = self.nodes[node_id] - 1
 
   wb:send_close()
