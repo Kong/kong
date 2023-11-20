@@ -20,7 +20,7 @@ jobs:
       env:
         SLACK_CHANNEL: gateway-notifications
         SLACK_MAPPING: "${{ vars.GH_ID_2_SLACK_ID_MAPPING }}"
-      uses: actions/github-script@v6
+      uses: actions/github-script@v7
       with:
         script: |
           const slack_mapping = JSON.parse(process.env.SLACK_MAPPING);
