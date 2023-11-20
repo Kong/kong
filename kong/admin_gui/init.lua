@@ -1,4 +1,3 @@
-local meta       = require "kong.meta"
 
 local _M = {}
 
@@ -37,8 +36,6 @@ function _M.generate_kconfig(kong_config)
     ADMIN_API_URL = prepare_variable(kong_config.admin_gui_api_url),
     ADMIN_API_PORT = prepare_variable(api_port),
     ADMIN_API_SSL_PORT = prepare_variable(api_ssl_port),
-    KONG_VERSION = prepare_variable(meta.version),
-    KONG_EDITION = "community",
     ANONYMOUS_REPORTS = prepare_variable(kong_config.anonymous_reports),
   }
 
