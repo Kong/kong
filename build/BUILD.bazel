@@ -1,0 +1,176 @@
+load("@kong_bindings//:variables.bzl", "KONG_VAR")
+load("//build:build_system.bzl", "kong_directory_genrule", "kong_rules_group", "kong_template_file")
+
+exports_files([
+    "package/nfpm.yaml",
+    "package/nfpm.enterprise.yaml",
+])
+
+lib_deps = []
+
+install_lib_deps_cmd = "\n".join([
+    """
+    DEP=${WORKSPACE_PATH}/$(echo $(locations %s) | awk '{print $1}')
+    # use tar magic to exclude files and create with correct permission
+    copy_with_filter ${DEP} ${BUILD_DESTDIR}/kong
+""" % dep
+    for dep in lib_deps
+])
+
+lualib_deps = [
+    "@lua-kong-nginx-module//:all_srcs",
+]
+
+install_lualib_deps_cmd = "\n".join([
+    """
+    DEP=$(pwd)/external/%s
+    INSTALL=/usr/bin/install make --silent -C ${DEP} LUA_LIB_DIR=${BUILD_DESTDIR}/openresty/lualib install
+""" % dep.lstrip("@").split("/")[0]
+    for dep in lualib_deps
+])
+
+install_webui_cmd = select({
+    "//conditions:default": """
+    """,
+    "@kong//:skip_webui_flags": "\n",
+})
+
+kong_directory_genrule(
+    name = "kong",
+    srcs = [
+        "@openresty//:openresty",
+        "@openresty//:luajit",
+        "@luarocks//:luarocks_make",
+        "@luarocks//:luarocks_target",
+        "@protoc//:all_srcs",
+        "@openssl",
+    ] + select({
+        "@kong//:skip_webui_flags": [],
+        "//conditions:default": [],
+    }) + lib_deps + lualib_deps,
+    cmd = """ set -e
+        function copy_with_filter {
+            mkdir -p $2
+            tar -cC $1 --exclude="*.a" --exclude="*.la" \
+                        --exclude="*/share/*" --exclude="*/bin/*" \
+                        --exclude="*.log" . | tar -xC $2/.
+            chmod -R "+rw" $2
+        }
+        function LN {
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                # TODO: support relative path links once we start to cross compile on macOS
+                ln -sf $@
+            else
+                ln -srf $@
+            fi
+        }
+        rm -rf ${BUILD_DESTDIR}
+        mkdir -p ${BUILD_DESTDIR}/kong/lib ${BUILD_DESTDIR}/openresty ${BUILD_DESTDIR}/bin
+
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            libext="dylib"
+        else # assume linux
+            libext="so"
+        fi
+
+        OPENRESTY=${WORKSPACE_PATH}/$(echo '$(locations @openresty//:openresty)' | awk '{print $1}')
+        cp -r ${OPENRESTY}/. ${BUILD_DESTDIR}/openresty/.
+        LN ${BUILD_DESTDIR}/openresty/bin/resty ${BUILD_DESTDIR}/bin/resty
+        chmod -R "+rw" ${BUILD_DESTDIR}/openresty
+
+        LUAJIT=${WORKSPACE_PATH}/$(echo '$(locations @openresty//:luajit)' | awk '{print $1}')
+        copy_with_filter ${LUAJIT} ${BUILD_DESTDIR}/openresty/luajit
+        cp ${LUAJIT}/bin/luajit ${BUILD_DESTDIR}/openresty/luajit/bin/luajit
+        tar -cC ${LUAJIT}/share . | tar -xC ${BUILD_DESTDIR}/openresty/luajit/share
+        chmod -R "+rw" ${BUILD_DESTDIR}/openresty/luajit
+
+        LUAROCKS=${WORKSPACE_PATH}/$(dirname '$(location @luarocks//:luarocks_make)')/luarocks_tree
+        cp -r ${LUAROCKS}/. ${BUILD_DESTDIR}/.
+        rm ${BUILD_DESTDIR}/bin/lapis ${BUILD_DESTDIR}/bin/luarocks-admin
+
+        cp -r $(locations @protoc//:all_srcs) ${BUILD_DESTDIR}/kong/.
+
+        OPENSSL=${WORKSPACE_PATH}/$(echo $(locations @openssl) | awk '{print $1}')
+        # use tar magic to exclude files and create with correct permission
+        copy_with_filter $OPENSSL ${BUILD_DESTDIR}/kong
+
+
+    """ + install_lib_deps_cmd + install_lualib_deps_cmd + install_webui_cmd +
+          """
+        mkdir -p ${BUILD_DESTDIR}/etc/kong
+        cp kong.conf.default ${BUILD_DESTDIR}/etc/kong/kong.conf.default
+
+        # housecleaning
+        mv ${BUILD_DESTDIR}/kong/*.${libext}* ${BUILD_DESTDIR}/kong/lib 2>/dev/null || true
+        if [[ -d ${BUILD_DESTDIR}/kong/lib64 ]]; then
+            copy_with_filter ${BUILD_DESTDIR}/kong/lib64 ${BUILD_DESTDIR}/kong/lib
+            rm -rf ${BUILD_DESTDIR}/kong/lib64
+        fi
+
+        # remove pkgconfig since they are invalid anyway
+        find ${BUILD_DESTDIR} -name "*.pc" -delete
+
+        # clean empty directory
+        find ${BUILD_DESTDIR} -empty -type d -delete
+
+        # foreign_cc rule dereferences symlink, we will dedup them here
+        # TODO: patch https://github.com/bazelbuild/rules_foreign_cc/blob/main/foreign_cc/private/framework.bzl#L450 to not remove symlink
+        for f in $(find ${BUILD_DESTDIR}/kong/lib ${BUILD_DESTDIR}/openresty/luajit/lib -type f -name "*.${libext}*" ); do
+            if [[ -L "$f" ]]; then continue; fi # already a symlink
+            target=$(ls -r1 $f.* 2>/dev/null | head -n1)
+            if [[ ! -z "$target" && "$f" != "$target" ]]; then
+                LN "$target" "$f"
+            fi
+        done
+
+        cp kong/pluginsocket.proto ${BUILD_DESTDIR}/kong/include/pluginsocket.proto
+
+        LN ${BUILD_DESTDIR}/openresty/nginx/sbin/nginx ${BUILD_DESTDIR}/openresty/bin/openresty
+    """,
+    # XXX: bazel forces 0555 as artifact permission, which is not correct for packagin
+    # here we deliberately use a different directory so file permission is preserved
+    # see also https://github.com/bazelbuild/bazel/issues/5588
+    output_dir = KONG_VAR["BUILD_NAME"] + ".nop",
+    visibility = ["//visibility:public"],
+)
+
+kong_template_file(
+    name = "venv.sh",
+    output = "%s-venv.sh" % KONG_VAR["BUILD_NAME"],
+    substitutions = {
+        "{{build_name}}": KONG_VAR["BUILD_NAME"],
+        "{{workspace_path}}": KONG_VAR["WORKSPACE_PATH"],
+    },
+    template = "//build:templates/venv.sh",
+)
+
+kong_template_file(
+    name = "venv.fish",
+    output = "%s-venv.fish" % KONG_VAR["BUILD_NAME"],
+    substitutions = {
+        "{{build_name}}": KONG_VAR["BUILD_NAME"],
+        "{{workspace_path}}": KONG_VAR["WORKSPACE_PATH"],
+    },
+    template = "//build:templates/venv.fish",
+)
+
+kong_template_file(
+    name = "venv-commons",
+    is_executable = True,
+    output = "%s-venv/lib/venv-commons" % KONG_VAR["BUILD_NAME"],
+    substitutions = {
+        "{{workspace_path}}": KONG_VAR["WORKSPACE_PATH"],
+    },
+    template = "//build:templates/venv-commons",
+)
+
+kong_rules_group(
+    name = "venv",
+    propagates = [
+        ":kong",
+        ":venv.sh",
+        ":venv.fish",
+        ":venv-commons",
+    ],
+    visibility = ["//visibility:public"],
+)

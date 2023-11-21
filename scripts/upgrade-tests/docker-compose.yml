@@ -1,0 +1,62 @@
+version: '3.5'
+services:
+
+  kong_old:
+    image: ${OLD_KONG_IMAGE}
+    command: "tail -f /dev/null"
+    user: root
+    depends_on:
+      - db_postgres
+    healthcheck:
+      test: ["CMD", "true"]
+      interval: 1s
+      timeout: 1s
+      retries: 10
+    environment:
+      KONG_PG_HOST: db_postgres
+      KONG_TEST_PG_HOST: db_postgres
+    volumes:
+      - ../../worktree/${OLD_KONG_VERSION}:/kong
+    restart: on-failure
+    networks:
+      upgrade_tests:
+
+  kong_new:
+    image: ${NEW_KONG_IMAGE}
+    command: "tail -f /dev/null"
+    user: root
+    depends_on:
+      - db_postgres
+    healthcheck:
+      test: ["CMD", "true"]
+      interval: 1s
+      timeout: 1s
+      retries: 10
+    environment:
+      KONG_PG_HOST: db_postgres
+      KONG_TEST_PG_HOST: db_postgres
+    volumes:
+      - ../..:/kong
+    restart: on-failure
+    networks:
+      upgrade_tests:
+
+  db_postgres:
+    image: postgres:9.5
+    environment:
+      POSTGRES_DBS: kong,kong_tests
+      POSTGRES_USER: kong
+      POSTGRES_HOST_AUTH_METHOD: trust
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "kong"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+    restart: on-failure
+    stdin_open: true
+    tty: true
+    networks:
+      upgrade_tests:
+
+networks:
+  upgrade_tests:

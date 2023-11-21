@@ -1,0 +1,29 @@
+From b4b2dce9fc3ffaaaede39b36d06415311e2aa516 Mon Sep 17 00:00:00 2001
+From: Mike Pall <mike>
+Date: Wed, 27 Oct 2021 21:56:07 +0200
+Subject: [PATCH] ARM64: Fix pcall() error case.
+
+Reported by Alex Orlenko.
+---
+ src/vm_arm64.dasc | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/LuaJIT-2.1-20210510/src/vm_arm64.dasc b/LuaJIT-2.1-20210510/src/vm_arm64.dasc
+index c7090ca3..eb87857f 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/vm_arm64.dasc
++++ b/bundle/LuaJIT-2.1-20210510/src/vm_arm64.dasc
+@@ -1163,9 +1163,10 @@ static void build_subroutines(BuildCtx *ctx)
+   |//-- Base library: catch errors ----------------------------------------
+   |
+   |.ffunc pcall
++  |   cmp NARGS8:RC, #8
+   |  ldrb TMP0w, GL->hookmask
+-  |   subs NARGS8:RC, NARGS8:RC, #8
+   |   blo ->fff_fallback
++  |   sub NARGS8:RC, NARGS8:RC, #8
+   |    mov RB, BASE
+   |    add BASE, BASE, #16
+   |  ubfx TMP0w, TMP0w, #HOOK_ACTIVE_SHIFT, #1
+-- 
+2.34.1
+

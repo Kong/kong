@@ -1,0 +1,40 @@
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make")
+load("@kong_bindings//:variables.bzl", "KONG_VAR")
+
+filegroup(
+    name = "all_srcs",
+    srcs = glob(
+        include = ["**"],
+        exclude = ["*.bazel"],
+    ),
+)
+
+configure_make(
+    name = "libyaml",
+    configure_command = "configure",
+    configure_in_place = True,
+    configure_options = select({
+        "@kong//:aarch64-linux-anylibc-cross": [
+            "--host=aarch64-linux",
+        ],
+        "@kong//:x86_64-linux-musl-cross": [
+            "--host=x86_64-linux-musl",
+        ],
+        "//conditions:default": [],
+    }),
+    lib_source = ":all_srcs",
+    # out_lib_dir = "lib",
+    out_shared_libs = select({
+        "@platforms//os:macos": [
+            "libyaml-0.2.dylib",
+        ],
+        "//conditions:default": [
+            "libyaml-0.so.2",
+        ],
+    }),
+    targets = [
+        "-j" + KONG_VAR["NPROC"],
+        "install -j" + KONG_VAR["NPROC"],
+    ],
+    visibility = ["//visibility:public"],
+)

@@ -26,3 +26,7 @@ bin/grpcurl
 
 *.so
 *.bak
+
+bazel-*
+bin/bazel
+bin/h2client
