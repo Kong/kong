@@ -39,9 +39,10 @@ function _M.new(clustering)
 
   -- init rpc cp side
   local cp = rpc_cp.new()
+  local rpc = rpc_api.new(cp)
 
   kong.cp = cp
-  kong.rpc = rpc_api.new(cp)
+  kong.rpc = rpc
 
   return setmetatable(self, _MT)
 end
