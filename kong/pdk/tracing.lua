@@ -302,11 +302,12 @@ end
 --
 -- @function span:set_attribute
 -- @tparam string key
--- @tparam string|number|boolean value
+-- @tparam string|number|boolean|nil value
 -- @usage
 -- span:set_attribute("net.transport", "ip_tcp")
 -- span:set_attribute("net.peer.port", 443)
 -- span:set_attribute("exception.escaped", true)
+-- span:set_attribute("unset.this", nil)
 function span_mt:set_attribute(key, value)
   -- key is decided by the programmer, so if it is not a string, we should
   -- error out.
@@ -314,8 +315,14 @@ function span_mt:set_attribute(key, value)
     error("invalid key", 2)
   end
 
-  local vtyp = type(value)
-  if vtyp ~= "string" and vtyp ~= "number" and vtyp ~= "boolean" then
+  local vtyp
+  if value == nil then
+   vtyp = value
+  else
+   vtyp = type(value)
+  end
+
+  if vtyp ~= "string" and vtyp ~= "number" and vtyp ~= "boolean" and vtyp ~= nil then
     -- we should not error out here, as most of the caller does not catch
     -- errors, and they are hooking to core facilities, which may cause
     -- unexpected behavior.

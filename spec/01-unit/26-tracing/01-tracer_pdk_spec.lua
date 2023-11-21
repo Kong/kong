@@ -202,11 +202,20 @@ describe("Tracer PDK", function()
       assert.has_no.error(function () span:finish() end)
     end)
 
-    it("fails set_attribute", function ()
+    it("set_attribute validation", function ()
       local span = c_tracer.start_span("meow")
 
+      -- nil value is allowed as a noop
       span:set_attribute("key1")
-      assert.spy(log_spy).was_called_with(ngx.ERR, match.is_string())
+      assert.spy(log_spy).was_not_called_with(ngx.ERR, match.is_string())
+      assert.is_nil(span.attributes["key1"])
+
+      span:set_attribute("key1", "value1")
+      assert.equal("value1", span.attributes["key1"])
+
+      -- nil value unsets the attribute
+      span:set_attribute("key1")
+      assert.is_nil(span.attributes["key1"])
 
       span:set_attribute("key1", function() end)
       assert.spy(log_spy).was_called_with(ngx.ERR, match.is_string())
