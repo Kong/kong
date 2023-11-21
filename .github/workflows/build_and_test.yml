@@ -1,62 +1,88 @@
 name: Build & Test
-on: [push, pull_request]
+on:
+  pull_request:
+    paths-ignore:
+    # ignore markdown files (CHANGELOG.md, README.md, etc.)
+    - '**/*.md'
+    - '.github/workflows/release.yml'
+  push:
+    paths-ignore:
+    # ignore markdown files (CHANGELOG.md, README.md, etc.)
+    - '**/*.md'
+    # ignore PRs for the generated COPYRIGHT file
+    - 'COPYRIGHT'
+    branches:
+    - master
+    - release/*
+    - test-please/*
+
+# cancel previous runs if new commits are pushed to the PR, but run for each commit on master
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   build:
     name: Build dependencies
-    runs-on: ubuntu-20.04
-
-    env:
-      DOWNLOAD_ROOT: $HOME/download-root
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Set environment variables
       run: |
-          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
-          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
+
     - name: Checkout Kong source code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Lookup build cache
-      uses: actions/cache@v2
       id: cache-deps
+      uses: actions/cache@v3
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
 
-    - name: Checkout kong-build-tools
+    - name: Install packages
       if: steps.cache-deps.outputs.cache-hit != 'true'
-      uses: actions/checkout@v2
+      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev
+
+    - name: Build Kong
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      run: |
+        bazel build //build:kong --verbose_failures
+        export PATH="$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$PATH"
+        chmod +rw -R $INSTALL_ROOT
+        nginx -V
+        ldd $(which nginx)
+        luarocks
+
+    - name: Bazel Outputs
+      uses: actions/upload-artifact@v3
+      if: failure()
       with:
-        repository: Kong/kong-build-tools
-        path: kong-build-tools
-        ref: master
+        name: bazel-outputs
+        path: |
+          bazel-out/_tmp/actions
 
     - name: Checkout go-pluginserver
       if: steps.cache-deps.outputs.cache-hit != 'true'
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         repository: Kong/go-pluginserver
         path: go-pluginserver
 
     - name: Add to Path
       if: steps.cache-deps.outputs.cache-hit != 'true'
-      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools" >> $GITHUB_PATH
+      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
 
-    - name: Install packages
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev
-
-    - name: Build Kong dependencies
+    - name: Build Dev Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
-          source .ci/setup_env_github.sh
+          eval `luarocks path`
           make dev
 
   lint-doc-and-unit-tests:
     name: Lint, Doc and Unit tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: build
 
     env:
@@ -77,22 +103,20 @@ jobs:
     steps:
     - name: Set environment variables
       run: |
-          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
-          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+        echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Lookup build cache
-      uses: actions/cache@v2
       id: cache-deps
+      uses: actions/cache@v3
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
-      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools" >> $GITHUB_PATH
+      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
 
     - name: Check autodoc generation
       run: |
@@ -107,7 +131,16 @@ jobs:
     - name: Lint Lua code
       run: |
           eval `luarocks path`
-          luacheck -q .
+          make lint
+
+    - name: Validate rockspec file
+      run: |
+          eval `luarocks path`
+          scripts/validate-rockspec
+
+    - name: Check spec file misspelling
+      run: |
+          scripts/check_spec_files_spelling.sh
 
     - name: Unit tests
       run: |
@@ -117,10 +150,11 @@ jobs:
 
   integration-tests-postgres:
     name: Postgres ${{ matrix.suite }} - ${{ matrix.split }} tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: build
 
     strategy:
+      fail-fast: false
       matrix:
         suite: [integration, plugins]
         split: [first (01-04), second (>= 05)]
@@ -129,6 +163,9 @@ jobs:
       KONG_TEST_PG_DATABASE: kong
       KONG_TEST_PG_USER: kong
       KONG_TEST_DATABASE: postgres
+      KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
+      KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
+      KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
       TEST_SUITE: ${{ matrix.suite }}
       TEST_SPLIT: ${{ matrix.split }}
 
@@ -144,7 +181,7 @@ jobs:
         options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
 
       grpcbin:
-        image: moul/grpcbin
+        image: kong/grpcbin
         ports:
           - 15002:9000
           - 15003:9001
@@ -153,7 +190,9 @@ jobs:
         image: redis
         ports:
           - 6379:6379
-        options: --entrypoint redis-server
+          - 6380:6380
+        options: >-
+          --name kong_redis
 
       zipkin:
         image: openzipkin/zipkin:2.19
@@ -163,27 +202,48 @@ jobs:
     steps:
     - name: Set environment variables
       run: |
-          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
-          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Lookup build cache
-      uses: actions/cache@v2
       id: cache-deps
+      uses: actions/cache@v3
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
-      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
+      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
 
     - name: Add gRPC test host names
       run: |
           echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
+
+    - name: Enable SSL for Redis
+      if: ${{ matrix.suite == 'plugins' }}
+      run: |
+          docker cp ${{ github.workspace }} kong_redis:/workspace
+          docker cp ${{ github.workspace }}/spec/fixtures/redis/docker-entrypoint.sh kong_redis:/usr/local/bin/docker-entrypoint.sh
+          docker restart kong_redis
+          docker logs kong_redis
+
+    - name: Run OpenTelemetry Collector
+      if: ${{ matrix.suite == 'plugins' }}
+      run: |
+          mkdir -p ${{ github.workspace }}/tmp/otel
+          touch ${{ github.workspace }}/tmp/otel/file_exporter.json
+          sudo chmod 777 -R ${{ github.workspace }}/tmp/otel
+          docker run -p 4317:4317 -p 4318:4318 -p 55679:55679 \
+              -v ${{ github.workspace }}/spec/fixtures/opentelemetry/otelcol.yaml:/etc/otel-collector-config.yaml \
+              -v ${{ github.workspace }}/tmp/otel:/etc/otel \
+              --name opentelemetry-collector -d \
+              otel/opentelemetry-collector-contrib:0.52.0 \
+              --config=/etc/otel-collector-config.yaml
+          sleep 2
+          docker logs opentelemetry-collector
 
     - name: Tests
       run: |
@@ -193,13 +253,16 @@ jobs:
 
   integration-tests-dbless:
     name: DB-less integration tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: build
 
     env:
       KONG_TEST_PG_DATABASE: kong
       KONG_TEST_PG_USER: kong
       KONG_TEST_DATABASE: 'off'
+      KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
+      KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
+      KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
       TEST_SUITE: dbless
 
     services:
@@ -212,27 +275,39 @@ jobs:
     steps:
     - name: Set environment variables
       run: |
-          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
-          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Lookup build cache
-      uses: actions/cache@v2
       id: cache-deps
+      uses: actions/cache@v3
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
-      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
+      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
 
     - name: Add gRPC test host names
       run: |
           echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
+
+    - name: Run OpenTelemetry Collector
+      run: |
+          mkdir -p ${{ github.workspace }}/tmp/otel
+          touch ${{ github.workspace }}/tmp/otel/file_exporter.json
+          sudo chmod 777 -R ${{ github.workspace }}/tmp/otel
+          docker run -p 4317:4317 -p 4318:4318 -p 55679:55679 \
+              -v ${{ github.workspace }}/spec/fixtures/opentelemetry/otelcol.yaml:/etc/otel-collector-config.yaml \
+              -v ${{ github.workspace }}/tmp/otel:/etc/otel \
+              --name opentelemetry-collector -d \
+              otel/opentelemetry-collector-contrib:0.52.0 \
+              --config=/etc/otel-collector-config.yaml
+          sleep 2
+          docker logs opentelemetry-collector
 
     - name: Tests
       run: |
@@ -242,10 +317,11 @@ jobs:
 
   integration-tests-cassandra:
     name: C* ${{ matrix.cassandra_version }} ${{ matrix.suite }} - ${{ matrix.split }} tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: build
 
     strategy:
+      fail-fast: false
       matrix:
         suite: [integration, plugins]
         cassandra_version: [3]
@@ -253,6 +329,9 @@ jobs:
 
     env:
       KONG_TEST_DATABASE: cassandra
+      KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
+      KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
+      KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
       TEST_SUITE: ${{ matrix.suite }}
       TEST_SPLIT: ${{ matrix.split }}
 
@@ -276,7 +355,9 @@ jobs:
         image: redis
         ports:
           - 6379:6379
-        options: --entrypoint redis-server
+          - 6380:6380
+        options: >-
+          --name kong_redis
 
       zipkin:
         image: openzipkin/zipkin:2.19
@@ -286,27 +367,48 @@ jobs:
     steps:
     - name: Set environment variables
       run: |
-          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
-          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Lookup build cache
-      uses: actions/cache@v2
       id: cache-deps
+      uses: actions/cache@v3
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
-      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
+      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
 
     - name: Add gRPC test host names
       run: |
           echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
+
+    - name: Enable SSL for Redis
+      if: ${{ matrix.suite == 'plugins' }}
+      run: |
+          docker cp ${{ github.workspace }} kong_redis:/workspace
+          docker cp ${{ github.workspace }}/spec/fixtures/redis/docker-entrypoint.sh kong_redis:/usr/local/bin/docker-entrypoint.sh
+          docker restart kong_redis
+          docker logs kong_redis
+
+    - name: Run OpenTelemetry Collector
+      if: ${{ matrix.suite == 'plugins' }}
+      run: |
+          mkdir -p ${{ github.workspace }}/tmp/otel
+          touch ${{ github.workspace }}/tmp/otel/file_exporter.json
+          sudo chmod 777 -R ${{ github.workspace }}/tmp/otel
+          docker run -p 4317:4317 -p 4318:4318 -p 55679:55679 \
+              -v ${{ github.workspace }}/spec/fixtures/opentelemetry/otelcol.yaml:/etc/otel-collector-config.yaml \
+              -v ${{ github.workspace }}/tmp/otel:/etc/otel \
+              --name opentelemetry-collector -d \
+              otel/opentelemetry-collector-contrib:0.52.0 \
+              --config=/etc/otel-collector-config.yaml
+          sleep 2
+          docker logs opentelemetry-collector
 
     - name: Tests
       run: |
@@ -316,7 +418,7 @@ jobs:
 
   pdk-tests:
     name: PDK tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: build
 
     env:
@@ -325,33 +427,31 @@ jobs:
     steps:
     - name: Set environment variables
       run: |
-          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
-          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Lookup build cache
-      uses: actions/cache@v2
       id: cache-deps
+      uses: actions/cache@v3
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
-      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$DOWNLOAD_ROOT/cpanm" >> $GITHUB_PATH
+      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
 
     - name: Install Test::Nginx
       run: |
-          CPAN_DOWNLOAD=$DOWNLOAD_ROOT/cpanm
+          CPAN_DOWNLOAD=./cpanm
           mkdir -p $CPAN_DOWNLOAD
           curl -o $CPAN_DOWNLOAD/cpanm https://cpanmin.us
           chmod +x $CPAN_DOWNLOAD/cpanm
 
           echo "Installing CPAN dependencies..."
-          cpanm --notest --local-lib=$HOME/perl5 local::lib && eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
-          cpanm --notest Test::Nginx
+          $CPAN_DOWNLOAD/cpanm --notest --local-lib=$HOME/perl5 local::lib && eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
+          $CPAN_DOWNLOAD/cpanm --notest Test::Nginx
 
     - name: Tests
       run: |

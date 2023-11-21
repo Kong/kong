@@ -1,0 +1,18 @@
+load("//build:build_system.bzl", "kong_rules_group")
+
+exports_files(
+    [
+        "BUILD.luarocks.bazel",
+        "luarocks_wrap_script.lua",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+kong_rules_group(
+    name = "luarocks",
+    propagates = [
+        "@luarocks//:luarocks_make",
+        "@luarocks//:luarocks_target",
+    ],
+    visibility = ["//:__pkg__"],
+)

@@ -1,0 +1,12 @@
+diff -ruN a/bundle/lua-cjson-2.1.0.8/lua_cjson.c b/bundle/lua-cjson-2.1.0.8/lua_cjson.c
+--- a/bundle/lua-cjson-2.1.0.10/lua_cjson.c	2022-01-11 15:11:17.495464192 +0800
++++ b/bundle/lua-cjson-2.1.0.10/lua_cjson.c	2022-01-11 14:58:55.150669748 +0800
+@@ -800,7 +800,7 @@
+     case LUA_TLIGHTUSERDATA:
+         if (lua_touserdata(l, -1) == NULL) {
+             strbuf_append_mem(json, "null", 4);
+-        } else if (lua_touserdata(l, -1) == &json_array) {
++        } else if (lua_touserdata(l, -1) == json_lightudata_mask(&json_array)) {
+             json_append_array(l, cfg, current_depth, json, 0);
+         }
+         break;

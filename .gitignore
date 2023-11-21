@@ -3,6 +3,7 @@
 .buildpath
 .project
 .idea
+.docker
 .env
 
 servroot*
@@ -21,8 +22,18 @@ autodoc/output
 # ldoc
 spec/docs
 
+# migration output
+migration-reports/
+
 kong-build-tools
 bin/grpcurl
 
 *.so
 *.bak
+*.rock
+
+bazel-*
+
+# pongo shell history
+.ash_history
+.bash_history

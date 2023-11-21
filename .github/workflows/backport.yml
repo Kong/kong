@@ -1,0 +1,24 @@
+name: Backport
+on:
+  pull_request_target:
+    types:
+      - closed
+      - labeled
+
+jobs:
+  backport:
+    name: Backport
+    runs-on: ubuntu-latest
+    if: >
+      github.event.pull_request.merged
+      && (
+        github.event.action == 'closed'
+        || (
+          github.event.action == 'labeled'
+          && contains(github.event.label.name, 'backport')
+        )
+      )
+    steps:
+      - uses: tibdex/backport@2e217641d82d02ba0603f46b1aeedefb258890ac # v2.0.3
+        with:
+          github_token: ${{ secrets.PAT }}

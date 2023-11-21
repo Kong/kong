@@ -1,0 +1,92 @@
+From 05d0832cf96c216297810cb495706c50309b8c5a Mon Sep 17 00:00:00 2001
+From: James Hurst <james@reel.audio>
+Date: Mon, 7 Feb 2022 11:36:25 +0000
+Subject: [PATCH 1/2] feat: add mtls client cert support
+
+---
+ lib/resty/websocket/client.lua | 26 ++++++++++++++++++++++----
+ 1 file changed, 22 insertions(+), 4 deletions(-)
+
+diff --git a/bundle/lua-resty-websocket-0.09/lib/resty/websocket/client.lua b/bundle/lua-resty-websocket-0.09/lib/resty/websocket/client.lua
+index 067b2a5..2ec96dd 100644
+--- a/bundle/lua-resty-websocket-0.09/lib/resty/websocket/client.lua
++++ b/bundle/lua-resty-websocket-0.09/lib/resty/websocket/client.lua
+@@ -98,7 +98,8 @@ function _M.connect(self, uri, opts)
+         path = "/"
+     end
+ 
+-    local ssl_verify, headers, proto_header, origin_header, sock_opts = false
++    local ssl_verify, server_name, headers, proto_header, origin_header, sock_opts = false
++    local client_cert, client_priv_key
+ 
+     if opts then
+         local protos = opts.protocols
+@@ -122,11 +123,20 @@ function _M.connect(self, uri, opts)
+             sock_opts = { pool = pool }
+         end
+ 
+-        if opts.ssl_verify then
++        client_cert = opts.client_cert
++        client_priv_key = opts.client_priv_key
++
++        if client_cert then
++            assert(client_priv_key,
++                   "client_priv_key must be provided with client_cert")
++        end
++
++        if opts.ssl_verify or opts.server_name then
+             if not ssl_support then
+                 return nil, "ngx_lua 0.9.11+ required for SSL sockets"
+             end
+-            ssl_verify = true
++            ssl_verify = opts.ssl_verify
++            server_name = opts.server_name or host
+         end
+ 
+         if opts.headers then
+@@ -151,7 +161,15 @@ function _M.connect(self, uri, opts)
+         if not ssl_support then
+             return nil, "ngx_lua 0.9.11+ required for SSL sockets"
+         end
+-        ok, err = sock:sslhandshake(false, host, ssl_verify)
++
++        if client_cert then
++            ok, err = sock:setclientcert(client_cert, client_priv_key)
++            if not ok then
++                return nil, "ssl client cert failued: " .. err
++            end
++        end
++
++        ok, err = sock:sslhandshake(false, server_name, ssl_verify)
+         if not ok then
+             return nil, "ssl handshake failed: " .. err
+         end
+-- 
+2.32.0 (Apple Git-132)
+
+
+From fcf3370eef554cd4e1791ac92c43b420d25d66a1 Mon Sep 17 00:00:00 2001
+From: James Hurst <james@reel.audio>
+Date: Mon, 7 Feb 2022 15:20:48 +0000
+Subject: [PATCH 2/2] fix(client) fix typo in error message
+
+---
+ lib/resty/websocket/client.lua | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/bundle/lua-resty-websocket-0.09/lib/resty/websocket/client.lua b/bundle/lua-resty-websocket-0.09/lib/resty/websocket/client.lua
+index 2ec96dd..598543f 100644
+--- a/bundle/lua-resty-websocket-0.09/lib/resty/websocket/client.lua
++++ b/bundle/lua-resty-websocket-0.09/lib/resty/websocket/client.lua
+@@ -165,7 +165,7 @@ function _M.connect(self, uri, opts)
+         if client_cert then
+             ok, err = sock:setclientcert(client_cert, client_priv_key)
+             if not ok then
+-                return nil, "ssl client cert failued: " .. err
++                return nil, "ssl client cert failed: " .. err
+             end
+         end
+ 
+-- 
+2.32.0 (Apple Git-132)
+

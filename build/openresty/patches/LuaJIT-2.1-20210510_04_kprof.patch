@@ -1,0 +1,3117 @@
+From 5fcb6215dc6c4832f0e70eca58be13845d8bc567 Mon Sep 17 00:00:00 2001
+From: Qi <add_sp@outlook.com>
+Date: Sun, 27 Nov 2022 08:08:30 +0000
+Subject: [PATCH] feat: new buit-in function `gcsnapshot()`
+
+syntax: ok, err = gcsnapshot(filename[, timeout=120])
+context: any
+subsystem: any
+
+This function will dump all LuaJIT GC objects to a file specified by the `filename`.
+During the dumping,
+the worker will stop processing requests until this function is done.
+
+chore(ci): disable Travis
+
+feat(profiling): support memory tracing on the fly (#1)
+
+* feat: new built-in module `kprof`
+
+The `kprof` is the Kong Profiling extension library
+
+---
+
+The old built-in function `gcsnapshot` was moved to `kprof.mem.gcsnapshot`.
+
+---
+
+syntax: ok, err = kprof.mem.start(path, block_size, max_stack_depth[, timeout=120])
+context: any
+subsystem: any
+
+Start the memory tracing for all Lua VM instances.
+
+This function will start the memory tracing to collect the following information:
+
+* memory allocation
+* memory free
+* memory reallocation
+* stack traceback
+
+The memory tracing will be stopped automatically after the timeout (in seconds),
+but you also have to call kprof.mem.stop() to stop the memory tracing manually,
+if you don't do it, some tracing data will be corrupted.
+
+---
+
+syntax: ok, err = kprof.mem.stop()
+context: any
+subsystem: any
+
+Stop the memory tracing, and flush all tracing data to the file system.
+
+---
+
+syntax: tbl = kprof.mem.status()
+context: any
+subsystem: any
+
+Return a table like:
+{
+  enabled: bool,
+  filename: string,
+  block_size: number,
+  max_stack_depth: number,
+  timeout_at: number,
+  error: string or nil,
+}
+
+---------
+
+Co-authored-by: Chrono <chrono_cpp@me.com>
+
+fix(tracing): fix compiler error on legacy compilers on rhel7 (#3)
+
+lj_mem_tracing.c: In function '_write_trace_event':
+lj_mem_tracing.c:283:3: error: 'for' loop initial declarations are only allowed in C99 mode
+   for (int i = 0; i < g_max_stack_depth; i++) {
+   ^
+lj_mem_tracing.c:283:3: note: use option -std=c99 or -std=gnu99 to compile your code
+lj_mem_tracing.c: In function 'lj_mem_tracing_stop':
+lj_mem_tracing.c:528:3: error: 'for' loop initial declarations are only allowed in C99 mode
+   for (int i = 0; i < sizeof(g_mbufs) / sizeof(g_mbufs[0]); i++) {
+
+tests: disable tests that are not for luajit2 v2.1-20210510
+
+docs(README): add Kong's changes into the `README.md` (#5)
+
+Co-authored-by: Chrono <chrono_cpp@me.com>
+
+fix(profiling): fix tracer doesn't cover the alloc/free of function object
+
+The memory tracer should cover the alloc/free of the Lua function object, which means that we should insert probes where the function object alloc/free.
+
+feat(tracing): covers almost all memory operations
+
+Co-authored-by: Chrono <chrono_cpp@me.com>
+
+docs(README): add a guide on how to generate patch
+
+fix(profiling): fix assertion that doesn't cover the case that free a NULL pointer
+
+style(profiling): remove unused `#include "lj_mem_tracing.h"`
+---
+ src/Makefile         |  12 +-
+ src/Makefile.dep     |  22 +-
+ src/lib_base.c       |   2 +
+ src/lib_init.c       |   5 +
+ src/lib_kprof.c      | 116 ++++++
+ src/lj_bcread.c      |   5 +
+ src/lj_cdata.c       |   1 +
+ src/lj_cdata.h       |   1 +
+ src/lj_debug.c       |   5 +
+ src/lj_debug.h       |   1 +
+ src/lj_dispatch.c    |  23 +-
+ src/lj_gc.c          |   7 +
+ src/lj_gc.h          |   2 +
+ src/lj_gcsnapshot.c  | 947 +++++++++++++++++++++++++++++++++++++++++++
+ src/lj_gcsnapshot.h  |  11 +
+ src/lj_ir.c          |  15 +-
+ src/lj_mbuf.h        | 170 ++++++++
+ src/lj_mcode.c       |   5 +
+ src/lj_mem_tracing.c | 888 ++++++++++++++++++++++++++++++++++++++++
+ src/lj_mem_tracing.h |  88 ++++
+ src/lj_parse.c       |   4 +
+ src/lj_profile.c     |  18 +-
+ src/lj_snap.c        |  10 +
+ src/lj_str.c         |   1 +
+ src/lj_tab.c         |  24 +-
+ src/lj_trace.c       |  22 +-
+ src/lj_udata.c       |   1 +
+ src/ljamalg.c        |   1 +
+ src/lualib.h         |   7 +
+ 29 files changed, 2382 insertions(+), 32 deletions(-)
+ create mode 100644 src/lib_kprof.c
+ create mode 100644 src/lj_gcsnapshot.c
+ create mode 100644 src/lj_gcsnapshot.h
+ create mode 100644 src/lj_mbuf.h
+ create mode 100644 src/lj_mem_tracing.c
+ create mode 100644 src/lj_mem_tracing.h
+
+diff --git a/bundle/LuaJIT-2.1-20210510/src/Makefile b/bundle/LuaJIT-2.1-20210510/src/Makefile
+index 47a21c93..bf563363 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/Makefile
++++ b/bundle/LuaJIT-2.1-20210510/src/Makefile
+@@ -112,6 +112,9 @@ XCFLAGS=
+ #
+ # Disable LJ_GC64 mode for x64.
+ #XCFLAGS+= -DLUAJIT_DISABLE_GC64
++
++# Kong profiling extension library
++#XCFLAGS+= -DLUAJIT_DISABLE_KPROF
+ #
+ ##############################################################################
+ 
+@@ -226,7 +229,8 @@ TARGET_DYNXLDOPTS=
+ TARGET_LFSFLAGS= -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
+ TARGET_XCFLAGS= $(TARGET_LFSFLAGS) -U_FORTIFY_SOURCE
+ TARGET_XLDFLAGS=
+-TARGET_XLIBS= -lm
++TARGET_XLIBS= -lm -lmsgpackc  # We don't generate the dynamic lib during the building process,
++                              # so the linker will use the static lib instead.
+ TARGET_TCFLAGS= $(CCOPTIONS) $(TARGET_XCFLAGS) $(TARGET_FLAGS) $(TARGET_CFLAGS)
+ TARGET_ACFLAGS= $(CCOPTIONS) $(TARGET_XCFLAGS) $(TARGET_FLAGS) $(TARGET_CFLAGS)
+ TARGET_ASFLAGS= $(ASOPTIONS) $(TARGET_XCFLAGS) $(TARGET_FLAGS) $(TARGET_CFLAGS)
+@@ -492,13 +496,13 @@ LJVM_BOUT= $(LJVM_S)
+ LJVM_MODE= elfasm
+ 
+ LJLIB_O= lib_base.o lib_math.o lib_bit.o lib_string.o lib_table.o \
+-	 lib_io.o lib_os.o lib_package.o lib_debug.o lib_jit.o lib_ffi.o
++	 lib_io.o lib_os.o lib_package.o lib_debug.o lib_jit.o lib_ffi.o lib_kprof.o
+ LJLIB_C= $(LJLIB_O:.o=.c)
+ 
+-LJCORE_O= lj_assert.o lj_gc.o lj_err.o lj_char.o lj_bc.o lj_obj.o lj_buf.o \
++LJCORE_O= lj_assert.o lj_gc.o lj_gcsnapshot.o lj_err.o lj_char.o lj_bc.o lj_obj.o lj_buf.o \
+ 	  lj_str.o lj_tab.o lj_func.o lj_udata.o lj_meta.o lj_debug.o \
+ 	  lj_prng.o lj_state.o lj_dispatch.o lj_vmevent.o lj_vmmath.o \
+-	  lj_strscan.o lj_strfmt.o lj_strfmt_num.o lj_api.o lj_profile.o \
++	  lj_strscan.o lj_strfmt.o lj_strfmt_num.o lj_api.o lj_profile.o lj_mem_tracing.o \
+ 	  lj_lex.o lj_parse.o lj_bcread.o lj_bcwrite.o lj_load.o \
+ 	  lj_ir.o lj_opt_mem.o lj_opt_fold.o lj_opt_narrow.o \
+ 	  lj_opt_dce.o lj_opt_loop.o lj_opt_split.o lj_opt_sink.o \
+diff --git a/bundle/LuaJIT-2.1-20210510/src/Makefile.dep b/bundle/LuaJIT-2.1-20210510/src/Makefile.dep
+index 3f26599e..f7c667e4 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/Makefile.dep
++++ b/bundle/LuaJIT-2.1-20210510/src/Makefile.dep
+@@ -41,6 +41,8 @@ lib_string.o: lib_string.c lua.h luaconf.h lauxlib.h lualib.h lj_obj.h \
+ lib_table.o: lib_table.c lua.h luaconf.h lauxlib.h lualib.h lj_obj.h \
+  lj_def.h lj_arch.h lj_gc.h lj_err.h lj_errmsg.h lj_buf.h lj_str.h \
+  lj_tab.h lj_ff.h lj_ffdef.h lj_lib.h lj_libdef.h
++lib_kprof.o: lj_libdef.h lj_mem_tracing.h lj_gcsnapshot.h lauxlib.h lualib.h \
++ lj_gc.h lj_lib.h lj_err.h
+ lj_alloc.o: lj_alloc.c lj_def.h lua.h luaconf.h lj_arch.h lj_alloc.h \
+  lj_prng.h
+ lj_api.o: lj_api.c lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h lj_gc.h \
+@@ -80,7 +82,8 @@ lj_cconv.o: lj_cconv.c lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h \
+  lj_err.h lj_errmsg.h lj_tab.h lj_ctype.h lj_gc.h lj_cdata.h lj_cconv.h \
+  lj_ccallback.h
+ lj_cdata.o: lj_cdata.c lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h \
+- lj_gc.h lj_err.h lj_errmsg.h lj_tab.h lj_ctype.h lj_cconv.h lj_cdata.h
++ lj_gc.h lj_err.h lj_errmsg.h lj_tab.h lj_ctype.h lj_cconv.h lj_cdata.h \
++ lj_mem_tracing.h
+ lj_char.o: lj_char.c lj_char.h lj_def.h lua.h luaconf.h
+ lj_clib.o: lj_clib.c lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h lj_gc.h \
+  lj_err.h lj_errmsg.h lj_tab.h lj_str.h lj_udata.h lj_ctype.h lj_cconv.h \
+@@ -121,6 +124,13 @@ lj_gc.o: lj_gc.c lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h lj_gc.h \
+  lj_err.h lj_errmsg.h lj_buf.h lj_str.h lj_tab.h lj_func.h lj_udata.h \
+  lj_meta.h lj_state.h lj_frame.h lj_bc.h lj_ctype.h lj_cdata.h lj_trace.h \
+  lj_jit.h lj_ir.h lj_dispatch.h lj_traceerr.h lj_vm.h
++lj_gcsnapshot.o: lj_gcsnapshot.c lj_gc.c lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h lj_gc.h \
++ lj_err.h lj_errmsg.h lj_buf.h lj_str.h lj_tab.h lj_func.h lj_udata.h \
++ lj_meta.h lj_state.h lj_frame.h lj_bc.h lj_ctype.h lj_cdata.h lj_trace.h \
++ lj_jit.h lj_ir.h lj_dispatch.h lj_traceerr.h lj_vm.h
++lj_mem_tracing.o: lj_mem_tracing.c lj_profile.h lj_def.h lj_obj.h \
++ lj_err.h lj_errmsg.h lj_buf.h lj_str.h lj_tab.h lj_func.h lj_udata.h \
++ lj_cdata.h lj_vmevent.h lj_mbuf.h
+ lj_gdbjit.o: lj_gdbjit.c lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h \
+  lj_gc.h lj_err.h lj_errmsg.h lj_debug.h lj_frame.h lj_bc.h lj_buf.h \
+  lj_str.h lj_strfmt.h lj_jit.h lj_ir.h lj_dispatch.h
+@@ -189,7 +199,7 @@ lj_state.o: lj_state.c lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h \
+  lj_ir.h lj_dispatch.h lj_traceerr.h lj_vm.h lj_prng.h lj_lex.h \
+  lj_alloc.h luajit.h
+ lj_str.o: lj_str.c lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h lj_gc.h \
+- lj_err.h lj_errmsg.h lj_str.h lj_char.h
++ lj_err.h lj_errmsg.h lj_str.h lj_char.h lj_mem_tracing.h
+ lj_strfmt.o: lj_strfmt.c lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h \
+  lj_buf.h lj_gc.h lj_str.h lj_state.h lj_char.h lj_strfmt.h
+ lj_strfmt_num.o: lj_strfmt_num.c lj_obj.h lua.h luaconf.h lj_def.h \
+@@ -197,17 +207,17 @@ lj_strfmt_num.o: lj_strfmt_num.c lj_obj.h lua.h luaconf.h lj_def.h \
+ lj_strscan.o: lj_strscan.c lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h \
+  lj_char.h lj_strscan.h
+ lj_tab.o: lj_tab.c lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h lj_gc.h \
+- lj_err.h lj_errmsg.h lj_tab.h
++ lj_err.h lj_errmsg.h lj_tab.h lj_mem_tracing.h
+ lj_trace.o: lj_trace.c lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h \
+  lj_gc.h lj_err.h lj_errmsg.h lj_debug.h lj_str.h lj_frame.h lj_bc.h \
+  lj_state.h lj_ir.h lj_jit.h lj_iropt.h lj_mcode.h lj_trace.h \
+  lj_dispatch.h lj_traceerr.h lj_snap.h lj_gdbjit.h lj_record.h lj_asm.h \
+  lj_vm.h lj_vmevent.h lj_target.h lj_target_*.h lj_prng.h
+ lj_udata.o: lj_udata.c lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h \
+- lj_gc.h lj_udata.h
++ lj_gc.h lj_udata.h lj_mem_tracing.h
+ lj_vmevent.o: lj_vmevent.c lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h \
+  lj_str.h lj_tab.h lj_state.h lj_dispatch.h lj_bc.h lj_jit.h lj_ir.h \
+- lj_vm.h lj_vmevent.h
++ lj_vm.h lj_vmevent.h lj_mem_tracing.h
+ lj_vmmath.o: lj_vmmath.c lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h \
+  lj_ir.h lj_vm.h
+ ljamalg.o: ljamalg.c lua.h luaconf.h lauxlib.h lj_assert.c lj_obj.h \
+@@ -232,7 +242,7 @@ ljamalg.o: ljamalg.c lua.h luaconf.h lauxlib.h lj_assert.c lj_obj.h \
+  lj_asm_*.h lj_trace.c lj_gdbjit.h lj_gdbjit.c lj_alloc.c lib_aux.c \
+  lib_base.c lj_libdef.h lib_math.c lib_string.c lib_table.c lib_io.c \
+  lib_os.c lib_package.c lib_debug.c lib_bit.c lib_jit.c lib_ffi.c \
+- lib_init.c
++ lib_init.c lib_kprof.c
+ luajit.o: luajit.c lua.h luaconf.h lauxlib.h lualib.h luajit.h lj_arch.h
+ host/buildvm.o: host/buildvm.c host/buildvm.h lj_def.h lua.h luaconf.h \
+  lj_arch.h lj_obj.h lj_def.h lj_arch.h lj_gc.h lj_obj.h lj_bc.h lj_ir.h \
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lib_base.c b/bundle/LuaJIT-2.1-20210510/src/lib_base.c
+index 4e4f686e..7de25376 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lib_base.c
++++ b/bundle/LuaJIT-2.1-20210510/src/lib_base.c
+@@ -36,6 +36,8 @@
+ #include "lj_strfmt.h"
+ #include "lj_lib.h"
+ #include "lj_cdata.h"
++#include "lj_gcsnapshot.h"
++
+ 
+ /* -- Base library: checks ------------------------------------------------ */
+ 
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lib_init.c b/bundle/LuaJIT-2.1-20210510/src/lib_init.c
+index 56e0619a..fddb31a0 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lib_init.c
++++ b/bundle/LuaJIT-2.1-20210510/src/lib_init.c
+@@ -26,6 +26,11 @@ static const luaL_Reg lj_lib_load[] = {
+   { LUA_DBLIBNAME,	luaopen_debug },
+   { LUA_BITLIBNAME,	luaopen_bit },
+   { LUA_JITLIBNAME,	luaopen_jit },
++
++#ifndef LUAJIT_DISABLE_KPROF
++  { LUA_KPROFNAME,	luaopen_kprof },
++#endif
++
+   { NULL,		NULL }
+ };
+ 
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lib_kprof.c b/bundle/LuaJIT-2.1-20210510/src/lib_kprof.c
+new file mode 100644
+index 00000000..4b241b88
+--- /dev/null
++++ b/bundle/LuaJIT-2.1-20210510/src/lib_kprof.c
+@@ -0,0 +1,116 @@
++#ifndef LUAJIT_DISABLE_KPROF
++
++/*
++** Kong profiling extension library.
++*/
++
++#define lib_kprof_c
++#define LUA_LIB
++
++#include "lua.h"
++#include "lualib.h"
++#include "lj_gc.h"
++#include "lj_lib.h"
++#include "lj_err.h"
++#include "lauxlib.h"
++#include "lj_gcsnapshot.h"
++#include "lj_mem_tracing.h"
++
++
++#define DEFAULT_GCSNAPSHOT_TIMEOUT (120)    /* seconds */
++#define DEFAULT_MEMTRACE_TIMEOUT   (120)    /* seconds */
++
++#define MIN_BLOCK_SIZE  (1024 * 1024 * 128) /* 128MiB */
++#define MIN_STACK_DEPTH (1)
++#define MAX_STACK_DEPTH (64)
++
++/* ------------------------------------------------------------------------ */
++
++#define LJLIB_MODULE_kprof
++#define LJLIB_MODULE_kprof_mem
++
++LJLIB_CF(kprof_mem_gcsnapshot)
++{
++  const char* filename = luaL_checkstring(L, 1);
++
++  if (filename == NULL) {
++    lj_err_argtype(L, 1, "string");
++    return 0;
++  }
++
++  unsigned int timeout = luaL_optint(L, 2, (lua_Integer)DEFAULT_GCSNAPSHOT_TIMEOUT);
++
++  /* force a full GC before we snapshot */
++  lj_gc_fullgc(L);
++
++  char* err = NULL;
++
++  if (gc_snapshot(L, filename, (const char**)(&err), timeout)) {
++    lua_pushnil(L);
++    lua_pushstring(L, err);
++    return 2;
++  }
++
++  lua_pushboolean(L, 1);
++  lua_pushnil(L);
++  return 2;
++}
++
++LJLIB_CF(kprof_mem_start)
++{
++  const char* filename = luaL_checkstring(L, 1);
++  size_t block_size = (size_t)luaL_checkinteger(L, 2);
++  uint32_t stack_depth = (uint32_t)luaL_checkinteger(L, 3);
++  unsigned int timeout = luaL_optint(L, 4, (lua_Integer)DEFAULT_MEMTRACE_TIMEOUT);
++
++  if (block_size < MIN_BLOCK_SIZE) {
++    lua_pushnil(L);
++    lua_pushstring(L, "arg #2 must be at least 128MiB");
++    return 2;
++  }
++
++  if (stack_depth < MIN_STACK_DEPTH || stack_depth > MAX_STACK_DEPTH) {
++    lua_pushnil(L);
++    lua_pushstring(L, "arg #3 must be between 1 and 64");
++    return 2;
++  }
++  
++  if (lj_mem_tracing_start(L, filename, block_size, stack_depth, timeout)) {
++    lua_pushnil(L);
++    lua_insert(L, -2);
++    return 2;
++  }
++
++  lua_pushboolean(L, 1);
++  lua_pushnil(L);
++  return 2;
++}
++
++LJLIB_CF(kprof_mem_stop)
++{
++  if (lj_mem_tracing_stop(L)) {
++    lua_pushnil(L);
++    lua_insert(L, -2);
++    return 2;
++  }
++
++  lua_pushboolean(L, 1);
++  lua_pushnil(L);
++  return 2;
++}
++
++LJLIB_CF(kprof_mem_status)
++{
++  return lj_mem_tracing_status(L);
++}
++
++#include "lj_libdef.h"
++
++LUALIB_API int luaopen_kprof(lua_State *L)
++{
++  LJ_LIB_REG(L, LUA_KPROFNAME, kprof);
++  LJ_LIB_REG(L, LUA_KPROFNAME ".mem", kprof_mem);
++  return 1;
++}
++
++#endif /* LUAJIT_DISABLE_KPROF */
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_bcread.c b/bundle/LuaJIT-2.1-20210510/src/lj_bcread.c
+index 047f98df..3930a68f 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lj_bcread.c
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_bcread.c
+@@ -22,6 +22,8 @@
+ #include "lj_bcdump.h"
+ #include "lj_state.h"
+ #include "lj_strfmt.h"
++#include "lj_mem_tracing.h"
++
+ 
+ /* Reuse some lexer fields for our own purposes. */
+ #define bcread_flags(ls)	ls->level
+@@ -382,6 +384,9 @@ GCproto *lj_bcread_proto(LexState *ls)
+     setmref(pt->uvinfo, NULL);
+     setmref(pt->varinfo, NULL);
+   }
++
++  lj_mem_tracing_append_proto(G(ls->L), pt);
++
+   return pt;
+ }
+ 
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_cdata.c b/bundle/LuaJIT-2.1-20210510/src/lj_cdata.c
+index ffc31078..65ba6028 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lj_cdata.c
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_cdata.c
+@@ -14,6 +14,7 @@
+ #include "lj_cconv.h"
+ #include "lj_cdata.h"
+ 
++
+ /* -- C data allocation --------------------------------------------------- */
+ 
+ /* Allocate a new C data object holding a reference to another object. */
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_cdata.h b/bundle/LuaJIT-2.1-20210510/src/lj_cdata.h
+index b93bec86..0b0efb87 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lj_cdata.h
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_cdata.h
+@@ -10,6 +10,7 @@
+ #include "lj_gc.h"
+ #include "lj_ctype.h"
+ 
++
+ #if LJ_HASFFI
+ 
+ /* Get C data pointer. */
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_debug.c b/bundle/LuaJIT-2.1-20210510/src/lj_debug.c
+index bef4aa58..f3a1fbbc 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lj_debug.c
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_debug.c
+@@ -583,6 +583,11 @@ static int debug_putchunkname(SBuf *sb, GCproto *pt, int pathstrip)
+   return 1;
+ }
+ 
++int lj_debug_putchunkname(SBuf *sb, GCproto *pt, int pathstrip)
++{
++  return debug_putchunkname(sb, pt, pathstrip);
++}
++
+ /* Put a compact stack dump into a buffer. */
+ void lj_debug_dumpstack(lua_State *L, SBuf *sb, const char *fmt, int depth)
+ {
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_debug.h b/bundle/LuaJIT-2.1-20210510/src/lj_debug.h
+index 330bec25..91664627 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lj_debug.h
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_debug.h
+@@ -43,6 +43,7 @@ LJ_FUNC void lj_debug_pushloc(lua_State *L, GCproto *pt, BCPos pc);
+ LJ_FUNC int lj_debug_getinfo(lua_State *L, const char *what, lj_Debug *ar,
+ 			     int ext);
+ #if LJ_HASPROFILE
++LJ_FUNC int lj_debug_putchunkname(SBuf *sb, GCproto *pt, int pathstrip);
+ LJ_FUNC void lj_debug_dumpstack(lua_State *L, SBuf *sb, const char *fmt,
+ 				int depth);
+ #endif
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_dispatch.c b/bundle/LuaJIT-2.1-20210510/src/lj_dispatch.c
+index bf8d8812..04fd981c 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lj_dispatch.c
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_dispatch.c
+@@ -30,6 +30,9 @@
+ #if LJ_HASPROFILE
+ #include "lj_profile.h"
+ #endif
++
++#include "lj_mem_tracing.h"
++
+ #include "lj_vm.h"
+ #include "luajit.h"
+ 
+@@ -434,8 +437,15 @@ void LJ_FASTCALL lj_dispatch_ins(lua_State *L, const BCIns *pc)
+       L->top = L->base + slots;  /* Fix top again. */
+     }
+   }
+-  if ((g->hookmask & LUA_MASKRET) && bc_isret(bc_op(pc[-1])))
+-    callhook(L, LUA_HOOKRET, -1);
++  if ((g->hookmask & LUA_MASKRET) && bc_isret(bc_op(pc[-1]))) {
++    if (lj_mem_tracing_is_enabled(g)) {
++      lj_mem_tracing_on_call_return(L);
++
++    } else {
++      callhook(L, LUA_HOOKRET, -1);
++    }
++  }
++    
+   ERRNO_RESTORE
+ }
+ 
+@@ -494,7 +504,14 @@ ASMFunction LJ_FASTCALL lj_dispatch_call(lua_State *L, const BCIns *pc)
+     int i;
+     for (i = 0; i < missing; i++)  /* Add missing parameters. */
+       setnilV(L->top++);
+-    callhook(L, LUA_HOOKCALL, -1);
++
++    if (lj_mem_tracing_is_enabled(g)) {
++      lj_mem_tracing_on_call_return(L);
++
++    } else {
++      callhook(L, LUA_HOOKCALL, -1);
++    }
++
+     /* Preserve modifications of missing parameters by lua_setlocal(). */
+     while (missing-- > 0 && tvisnil(L->top - 1))
+       L->top--;
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_gc.c b/bundle/LuaJIT-2.1-20210510/src/lj_gc.c
+index cfbce037..e3366737 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lj_gc.c
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_gc.c
+@@ -854,6 +854,7 @@ void lj_gc_barriertrace(global_State *g, uint32_t traceno)
+ /* Call pluggable memory allocator to allocate or resize a fragment. */
+ void *lj_mem_realloc(lua_State *L, void *p, GCSize osz, GCSize nsz)
+ {
++  void* op = p;
+   global_State *g = G(L);
+   lj_assertG((osz == 0) == (p == NULL), "realloc API violation");
+   p = g->allocf(g->allocd, p, osz, nsz);
+@@ -863,6 +864,9 @@ void *lj_mem_realloc(lua_State *L, void *p, GCSize osz, GCSize nsz)
+   lj_assertG(checkptrGC(p),
+ 	     "allocated memory address %p outside required range", p);
+   g->gc.total = (g->gc.total - osz) + nsz;
++
++  lj_mem_tracing_probe(G(L), op, p, osz, nsz);
++
+   return p;
+ }
+ 
+@@ -879,6 +883,9 @@ void * LJ_FASTCALL lj_mem_newgco(lua_State *L, GCSize size)
+   setgcrefr(o->gch.nextgc, g->gc.root);
+   setgcref(g->gc.root, o);
+   newwhite(g, o);
++
++  lj_mem_tracing_probe(G(L), NULL, o, 0, size);
++
+   return o;
+ }
+ 
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_gc.h b/bundle/LuaJIT-2.1-20210510/src/lj_gc.h
+index af8c476b..bb90b6b9 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lj_gc.h
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_gc.h
+@@ -7,6 +7,7 @@
+ #define _LJ_GC_H
+ 
+ #include "lj_obj.h"
++#include "lj_mem_tracing.h"
+ 
+ /* Garbage collector states. Order matters. */
+ enum {
+@@ -120,6 +121,7 @@ static LJ_AINLINE void lj_mem_free(global_State *g, void *p, size_t osize)
+ {
+   g->gc.total -= (GCSize)osize;
+   g->allocf(g->allocd, p, osize, 0);
++  lj_mem_tracing_probe(g, p, NULL, osize, 0);
+ }
+ 
+ #define lj_mem_newvec(L, n, t)	((t *)lj_mem_new(L, (GCSize)((n)*sizeof(t))))
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_gcsnapshot.c b/bundle/LuaJIT-2.1-20210510/src/lj_gcsnapshot.c
+new file mode 100644
+index 00000000..d43136bd
+--- /dev/null
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_gcsnapshot.c
+@@ -0,0 +1,947 @@
++#ifndef LUAJIT_DISABLE_KPROF
++
++#define lj_gcsnapshot_c
++#define LUA_CORE
++
++#include <stdio.h>
++#include <time.h>
++#include <inttypes.h>
++#include <msgpack.h>
++#include <msgpack/fbuffer.h>
++
++#include "lj_gcsnapshot.h"
++#include "lj_err.h"
++#include "lj_buf.h"
++#include "lj_str.h"
++#include "lj_tab.h"
++#include "lj_func.h"
++#include "lj_udata.h"
++#include "lj_meta.h"
++#include "lj_state.h"
++#include "lj_frame.h"
++#include "lj_debug.h"
++#if LJ_HASFFI
++#include "lj_ctype.h"
++#include "lj_cdata.h"
++#endif
++#include "lj_trace.h"
++
++/* -- functions for heapsnapshot ------------------------------------------ */
++
++/* encoding functions for Lua Object */
++
++/*
++**
++** The GC snapshot is a array of map.
++** The first element is the meta data of this snapshot including the following fields:
++** {
++**   version = {
++**     major = <interger>,
++**     minor = <interger>,
++**     patch = <interger>,
++**     string = "<version string like 1.0.0>"
++**   },
++**   gcsize = <equivalent to collectgarbage("count")>,
++**   changes = "<changes of all version>",
++** }
++** Versioning is strictly based on Semantic Versioning (https://semver.org/)
++**
++** The remaining elements are the objects in the Lua heap.
++**
++** Every Lua object will be encoded ('messagepack') as a dictionary.
++**
++** For Lua String:
++** { type = "string", value = "<string value>", bytes=<overhead>+<mem_usage_by_value> }
++**
++** For Lua Number:
++** { type = "number", value = "<number value>", bytes=<mem_usage> }
++**
++** For Lua Boolean:
++** { type = "boolean", value = "<boolean value>", bytes=<mem_usage> }
++**
++** For Lua Lightuserdata:
++** { type = "lightud", address = uint64_t, bytes=<mem_usage> }
++**
++** For Lua Trace:
++** { type = "trace", address = uint64_t, bytes=<mem_usage> }
++**
++** For Lua Table:
++** { 
++**   type = "table",
++**   address = uint64_t,
++**   overhead=<hash_nodes_mem_usage>+<array_slot_mem_usage>,
++**   hash=[<hash_key>, <hash_value>, ...],
++**   array=[<array_value>, ...]
++** }
++**
++** For Lua Function:
++** {
++**   type = "function",
++**   address = uint64_t,
++**   overhead = <overhead>,
++**   env = <env_table>,
++**   upvalues = [<name_or_index>, <upvalue>, ...]
++** }
++**
++** For Lua Thread:
++** {
++**   type = "thread",
++**   address = uint64_t,
++**   overhead = <overhead>,
++**   env = <env_table>,
++**   upvalues = [<upvalue>, ...]
++** }
++**
++** For Lua Proto:
++** {
++**   type = "proto",
++**   address = uint64_t,
++**   bytes = <mem_usage>,
++** }
++**
++** For Lua cdata:
++** {
++**   type = "cdata",
++**   address = uint64_t,
++**   bytes = <mem_usage>,
++**   ctype = <ctype_name>
++** }
++**
++** For Lua udata:
++** {
++**   type = "udata",
++**   address = uint64_t,
++**   bytes = <mem_usage>
++** }
++**
++** For Lua nil:
++** { type = "nil", bytes=<mem_usage> }
++**
++** Sub-objects are used to avoid circular references.
++**
++** If a sub-object is a simple object (such as a string), it will be encoded into its parent object, for example:
++** { type = "table",
++**   address = uint64_t,
++**   overhead=<hash_nodes_mem_usage>+<array_slot_mem_usage>,
++**   hash=[{ type = "string", value = "<string value>", bytes=<overhead>+<mem_usage_by_value> }, <hash_value>, ...],
++**   array=[<array_value>, ...]
++** }
++**
++** If a sub-object is a complex object (such as a table), it will be encoded as a reference, for example:
++** { type = "table",
++**   address = uint64_t,
++**   overhead=<hash_nodes_mem_usage>+<array_slot_mem_usage>,
++**   hash=[<hash_key>, { type = "ref", address = uint64_t }, ...],
++**   array=[<array_value>, ...]
++** }
++**
++*/
++
++#define TIMEOUT_CHECK_STEP (1000)
++#define RETURN_ON_ERROR(v) { if (v) return 1; }
++
++#define SNAPSHOT_CHANGES                                \
++  "2.0.0\n"                                             \
++  "* Add the `metatable` field to the `table` type.\n"  \
++  "* Add the `position` field to the `function` type"   \
++    " (only for Lua function).\n"                       \
++  "* Add the name for each upvalue in the `upvalues`"   \
++    "field of the `function` type"                      \
++    " (only for Lua function).\n"
++
++/* encoding functions for Lua Types */
++static int mp_TValue(lua_State *L, msgpack_packer* pk, TValue* tv);
++static int mp_boolean(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
++static int mp_string(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
++static int mp_number(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
++static int mp_lightud(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
++static int mp_trace(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
++static int mp_table(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
++static int mp_function(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
++static int mp_thread(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
++static int mp_proto(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
++static int mp_cdata(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
++static int mp_udata(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
++static int mp_nil(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
++static int mp_subobjects(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
++
++/* encoding functions for C Type */
++static int mp_cstring(msgpack_packer* pk, const char* str);
++
++static int mp_snapshot_header(lua_State *L, msgpack_packer* pk);
++
++static int is_supported_subobject(GCobj* o, TValue* tv) {
++  if (o) {
++    uint8_t gct = o->gch.gct;
++
++    switch(gct) {
++      case ~LJ_TSTR:
++      case ~LJ_TTRUE:
++      case ~LJ_TFALSE:
++      case ~LJ_TLIGHTUD:
++      case ~LJ_TNIL:
++      case ~LJ_TTAB:
++      case ~LJ_TTHREAD:
++      case ~LJ_TFUNC:
++      case ~LJ_TPROTO:
++      case ~LJ_TUDATA:
++      case ~LJ_TCDATA:
++      case ~LJ_TTRACE:
++        return 1;
++      
++      default:
++        return 0;
++    }
++
++  } else if (tv) {
++    if (tvistab(tv)     || tvisthread(tv) || tvisfunc(tv)   ||
++        tvisproto(tv)   || tvisudata(tv)  || tviscdata(tv)  ||
++        tvisbool(tv)    || tvisnumber(tv) || tvisstr(tv)    ||
++        tvislightud(tv) || tvisnil(tv)) {
++      return 1;
++    }
++  }
++
++  return 0;
++}
++
++
++static int mp_TValue(lua_State *L, msgpack_packer* pk, TValue* tv) {
++  if (tv == NULL) return 1;
++
++  if (tvisbool(tv)) {
++    return mp_boolean(L, pk, NULL, tv);
++
++  } else if (tvisstr(tv)) {
++    return mp_string(L, pk, NULL, tv);
++
++  } else if (tvisnumber(tv)) {
++    return mp_number(L, pk, NULL, tv);
++
++  } else if (tvislightud(tv)) {
++    return mp_lightud(L, pk, NULL, tv);
++
++  } else if (tvisnil(tv)) {
++    return mp_nil(L, pk, NULL, NULL);
++  }
++
++  return 0;
++}
++
++static int mp_boolean(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv) {
++  UNUSED(L);
++
++  if (o == NULL && tv == NULL) return 1;
++
++  int is_true = o ? (o->gch.gct == ~LJ_TTRUE) : tvistrue(tv);
++
++  RETURN_ON_ERROR(msgpack_pack_map(pk, 3));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "type"));
++  RETURN_ON_ERROR(mp_cstring(pk, "boolean"));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "bytes"));
++  RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, sizeof(TValue)));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "value"));
++  if (is_true) {
++    RETURN_ON_ERROR(msgpack_pack_true(pk));
++
++  } else {
++    RETURN_ON_ERROR(msgpack_pack_false(pk));
++  }
++
++  return 0;
++}
++
++static int mp_string(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv) {
++  UNUSED(L);
++
++  if (o == NULL && tv == NULL) return 1;
++
++  GCstr*s = NULL;
++
++  if (o) {
++    s = gco2str(o);
++  } else {
++    s = strV(tv);
++  }
++
++  RETURN_ON_ERROR(msgpack_pack_map(pk, 3));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "type"));
++  RETURN_ON_ERROR(mp_cstring(pk, "string"));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "bytes"));
++  RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, sizeof(GCstr) + lj_str_size(s->len)));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "value"));
++  if (s->len > 0) {
++    RETURN_ON_ERROR(msgpack_pack_bin(pk, s->len));
++    RETURN_ON_ERROR(msgpack_pack_bin_body(pk, strdata(s), s->len));
++
++  } else {
++    RETURN_ON_ERROR(msgpack_pack_nil(pk));
++  }
++  
++
++  return 0;
++}
++
++static int mp_number(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv) {
++  UNUSED(L);
++  UNUSED(o);
++
++  if (tv == NULL) return 1;
++
++  RETURN_ON_ERROR(msgpack_pack_map(pk, 3));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "type"));
++  RETURN_ON_ERROR(mp_cstring(pk, "number"));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "bytes"));
++  RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, sizeof(TValue)));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "value"));
++
++  if (tvisint(tv)) {
++    RETURN_ON_ERROR(msgpack_pack_int64(pk, intV(tv)));
++
++  } else {
++    lj_assertL(tvisnum(tv), "unknown number type");
++    RETURN_ON_ERROR(msgpack_pack_double(pk, numV(tv)));
++  }
++
++  return 0;
++}
++
++static int mp_lightud(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv) {
++  UNUSED(L);
++
++  if (o == NULL && tv == NULL) return 1;
++
++  void* ptr = NULL;
++
++  if (o) {
++    ptr = o;
++
++  } else {
++    ptr = tv;
++  }
++
++  RETURN_ON_ERROR(msgpack_pack_map(pk, 3));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "type"));
++  RETURN_ON_ERROR(mp_cstring(pk, "lightud"));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "bytes"));
++  RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, sizeof(TValue)));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "address"));
++  RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, (uint64_t)ptr));
++
++  return 0;
++}
++
++static int mp_trace(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv) {
++  UNUSED(L);
++  UNUSED(tv);
++
++  if (o == NULL) return 1;
++
++  GCtrace* T = gco2trace(o);
++
++  if (T->traceno == 0) return 0;
++
++  MSize size = ((sizeof(GCtrace)+7)&~7) + (T->nins-T->nk)*sizeof(IRIns) +
++    T->nsnap*sizeof(SnapShot) + T->nsnapmap*sizeof(SnapEntry);
++
++  
++  RETURN_ON_ERROR(msgpack_pack_map(pk, 3));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "type"));
++  RETURN_ON_ERROR(mp_cstring(pk, "trace"));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "bytes"));
++  RETURN_ON_ERROR(msgpack_pack_uint64(pk, size));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "address"));
++  RETURN_ON_ERROR(msgpack_pack_uint64(pk, (uint64_t)T));
++
++  return 0;
++}
++
++static int mp_table(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv) {
++  UNUSED(tv);
++
++  if (o == NULL) return 1;
++
++  GCtab* t = gco2tab(o);
++
++  MSize overhead = 0;
++
++  if (t->hmask > 0) {
++    overhead += (t->hmask + 1) * sizeof(Node);
++  }
++    
++  if (t->asize > 0 && LJ_MAX_COLOSIZE != 0 && t->colo <= 0) {
++    overhead += t->asize * sizeof(TValue);
++  }
++
++  if (LJ_MAX_COLOSIZE != 0 && t->colo) {
++    overhead += sizetabcolo((uint32_t)t->colo & 0x7f);
++
++  } else {
++    overhead += sizeof(GCtab);
++  }
++
++  RETURN_ON_ERROR(msgpack_pack_map(pk, 6));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "type"));
++  RETURN_ON_ERROR(mp_cstring(pk, "table"));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "address"));
++  RETURN_ON_ERROR(msgpack_pack_uint64(pk, (uint64_t)t));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "overhead"));
++  RETURN_ON_ERROR(msgpack_pack_uint64(pk, overhead));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "metatable"));
++  GCtab *mt = tabref(t->metatable);
++  if (mt && is_supported_subobject((GCobj*)mt, NULL)) {
++    RETURN_ON_ERROR(mp_subobjects(L, pk, (GCobj*)mt, NULL));
++
++  } else {
++    RETURN_ON_ERROR(msgpack_pack_nil(pk));
++  }
++
++  RETURN_ON_ERROR(mp_cstring(pk, "array"));
++  RETURN_ON_ERROR(msgpack_pack_array(pk, t->asize));
++  uint64_t i = 0;
++  for (i = 0; i < t->asize; i++) {
++    TValue* tv = arrayslot(t, i);
++
++    if (is_supported_subobject(NULL, tv)) {
++      RETURN_ON_ERROR(mp_subobjects(L, pk, NULL, tv));
++
++    } else {
++      RETURN_ON_ERROR(msgpack_pack_nil(pk));
++    }
++  }
++
++  RETURN_ON_ERROR(mp_cstring(pk, "hash"));
++  uint64_t j, count = 0;
++  for (i = 0; i < 2; i++) {
++    Node *node = noderef(t->node);
++
++    if (i == 1) RETURN_ON_ERROR(msgpack_pack_array(pk, count * 2));
++
++    for (j = 0; j < t->hmask + 1; j++) {
++      Node* n = &node[j];
++
++      if (!tvisnil(&n->key) &&
++          !tvisnil(&n->val) &&
++          is_supported_subobject(NULL, &n->key) &&
++          is_supported_subobject(NULL, &n->val)) {
++        if (i == 0) ++count;
++        else {
++          RETURN_ON_ERROR(mp_subobjects(L, pk, NULL, &n->key));
++          RETURN_ON_ERROR(mp_subobjects(L, pk, NULL, &n->val));
++        }
++      }
++    }
++    
++  }
++
++  return 0;
++}
++
++static int mp_function(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv) {
++  UNUSED(tv);
++
++  if (o == NULL) return 1;
++
++  GCfunc* fn = gco2func(o);
++        
++  MSize overhead = isluafunc(fn) ? 
++                  sizeLfunc((MSize)fn->l.nupvalues) + sizeof(GCupval) * fn->l.nupvalues :
++                  sizeCfunc((MSize)fn->c.nupvalues) + sizeof(GCupval) * fn->c.nupvalues;
++
++  size_t items = isluafunc(fn) ? 6 : 5;
++  RETURN_ON_ERROR(msgpack_pack_map(pk, items));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "type"));
++  RETURN_ON_ERROR(mp_cstring(pk, "function"));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "address"));
++  RETURN_ON_ERROR(msgpack_pack_uint64(pk, (uint64_t)fn));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "overhead"));
++  RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, overhead));
++
++  if (isluafunc(fn)) {
++    /* 
++    ** basically a copy of lj_debug_pushloc() in src/lj_debug.c
++    */
++
++    GCproto* pt = funcproto(fn);
++    GCstr *name = proto_chunkname(pt);
++    const char *s = strdata(name);
++    char* pos = NULL;
++
++    RETURN_ON_ERROR(mp_cstring(pk, "position"));
++
++    if (pt->firstline == ~(BCLine)0) {
++      /* -1 and + 1 for the null terminator */
++      size_t size = (sizeof("builtin:") - 1) + (name->len + 1);
++      pos = calloc(size, sizeof(char));
++
++      if (pos == NULL) return 1;
++
++      snprintf(pos, size, "builtin:%s", s);
++      RETURN_ON_ERROR(msgpack_pack_str(pk, size - 1));
++      RETURN_ON_ERROR(msgpack_pack_str_body(pk, pos, size - 1));
++
++      free(pos);
++
++    } else {
++      size_t len = 0;
++
++      if (*s == '@' || *s == '=') {
++        /*
++        ** + 32 for the line number
++        ** + 1 for the ':'
++        ** + 1 for the null terminator
++        */
++        size_t size = (name->len - 1) + 32 + 1 + 1;
++        pos = calloc(size, sizeof(char));
++        if (pos == NULL) return 1;
++        /* s + 1 to skip the '@' or '=' */
++        len = sprintf(pos, "%s:%" PRIu32 , s + 1, (uint32_t)(pt->firstline));
++
++      } else if (name->len > 40) {
++        /*
++        ** + 64 for the address
++        ** + 32 for the line number
++        ** + 1 for the ':'
++        ** + 1 for the null terminator
++        */
++        size_t size = 64 + 32 + 1 + 1;
++        pos = calloc(size, sizeof(char));
++        if (pos == NULL) return 1;
++        len = sprintf(pos, "%" PRIuPTR ":%" PRIu32, (uintptr_t)pt, (uint32_t)(pt->firstline));
++
++      } else {
++        /*
++        ** + 32 for the line number
++        ** + 2 for two '\"'
++        ** + 1 for the ':'
++        ** + 1 for the null terminator
++        */
++        size_t size = name->len + 32 + 2 + 1 + 1;
++        pos = calloc(size, sizeof(char));
++        if (pos == NULL) return 1;
++        len = sprintf(pos, "\"%s\":%" PRIu32, s, (uint32_t)(pt->firstline));
++      }
++
++      RETURN_ON_ERROR(msgpack_pack_str(pk, len));
++      RETURN_ON_ERROR(msgpack_pack_str_body(pk, pos, len));
++      free(pos);
++    }
++  }
++
++  RETURN_ON_ERROR(mp_cstring(pk, "env"));
++  GCtab* env = tabref(fn->c.env);
++  RETURN_ON_ERROR(mp_subobjects(L, pk, (GCobj*)env, NULL));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "upvalues"));
++  uint32_t i, j, count = 0;
++  for (i = 0; i < 2; i++) {
++    if (i == 1) RETURN_ON_ERROR(msgpack_pack_array(pk, count * 2));
++
++    if (isluafunc(fn)) {
++      for (j = 0; j < fn->l.nupvalues; j++) {
++        GCupval* uv = &gcref(fn->l.uvptr[j])->uv;
++        TValue* tv = uvval(uv);
++
++        if (is_supported_subobject(NULL, tv)) {
++          if (i == 0) ++count;
++          else {
++            RETURN_ON_ERROR(mp_cstring(pk, lj_debug_uvname(funcproto(fn), j)));
++            RETURN_ON_ERROR(mp_subobjects(L, pk, NULL, tv));
++          }
++        }
++      }
++
++    } else {
++      for (j = 0; j < fn->c.nupvalues; j++) {
++        TValue* tv = &fn->c.upvalue[j];
++
++        if (is_supported_subobject(NULL, tv)) {
++          if (i == 0) ++count;
++          else {
++            RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, j));
++            RETURN_ON_ERROR(mp_subobjects(L, pk, NULL, tv));
++          }
++        }
++      }
++    }
++  }
++
++  return 0;
++}
++
++static int mp_thread(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv) {
++  UNUSED(tv);
++
++  if (o == NULL) return 1;
++
++  lua_State* th = gco2th(o);
++
++  RETURN_ON_ERROR(msgpack_pack_map(pk, 5));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "type"));
++  RETURN_ON_ERROR(mp_cstring(pk, "thread"));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "address"));
++  RETURN_ON_ERROR(msgpack_pack_uint64(pk, (uint64_t)th));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "overhead"));
++  RETURN_ON_ERROR(msgpack_pack_uint64(pk, sizeof(lua_State) + th->stacksize * sizeof(TValue)));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "env"));
++  RETURN_ON_ERROR(mp_subobjects(L, pk, (GCobj*)tabref(th->env), NULL));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "upvalues"));
++  uint32_t i, count = 0;
++  for (i = 0; i < 2; i++) {
++    GCobj* uv = gcref(th->openupval);
++
++    if (i == 1) RETURN_ON_ERROR(msgpack_pack_array(pk, count));
++
++    while (uv) {
++      if (is_supported_subobject(NULL, uvval(gco2uv(uv)))) {
++        if (i == 0) ++count;
++        else RETURN_ON_ERROR(mp_subobjects(L, pk, NULL, uvval(gco2uv(uv))));
++      }
++
++      uv = gcref(uv->gch.nextgc);
++    }
++  }
++
++  return 0;
++}
++
++static int mp_proto(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv) {
++  UNUSED(tv);
++
++  if (o == NULL) return 1;
++
++  GCproto* pt = gco2pt(o);
++
++  RETURN_ON_ERROR(msgpack_pack_map(pk, 3));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "type"));
++  RETURN_ON_ERROR(mp_cstring(pk, "proto"));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "address"));
++  RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, (uint64_t)pt));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "bytes"));
++  RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, sizeof(GCproto) + pt->sizekgc * sizeof(GCRef)));
++
++  return 0;
++}
++
++static int mp_cdata(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv) {
++  UNUSED(tv);
++
++  if (o == NULL) return 1;
++
++  global_State *g = G(L);
++  GCcdata* cd = gco2cd(o);
++  GCstr* name = NULL;
++
++  MSize cd_size = 0;
++  if (LJ_LIKELY(!cdataisv(cd))) {
++    CType *ct = ctype_raw(ctype_ctsG(g), cd->ctypeid);
++    CTSize sz = ctype_hassize(ct->info) ? ct->size : CTSIZE_PTR;
++    cd_size = sizeof(GCcdata) + sz;
++
++    if (gcref(ct->name)) {
++      name = gco2str(gcref(ct->name));
++    }
++
++  } else {
++    cd_size = sizecdatav(cd);
++  }
++
++  RETURN_ON_ERROR(msgpack_pack_map(pk, 4));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "type"));
++  RETURN_ON_ERROR(mp_cstring(pk, "cdata"));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "address"));
++  RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, (uint64_t)cd));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "bytes"));
++  RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, cd_size));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "ctype"));
++  if (name == NULL) {
++    RETURN_ON_ERROR(mp_cstring(pk, "N/A"));
++
++  } else {
++    if (name->len > 0) {
++      RETURN_ON_ERROR(msgpack_pack_bin(pk, name->len));
++      RETURN_ON_ERROR(msgpack_pack_bin_body(pk, strdata(name), name->len));
++
++    } else {
++      RETURN_ON_ERROR(msgpack_pack_nil(pk));
++    }
++  }
++
++  return 0;
++}
++
++static int mp_udata(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv) {
++  UNUSED(L);
++  UNUSED(tv);
++
++  if (o == NULL) return 1;
++
++  GCudata* ud = gco2ud(o);
++
++  RETURN_ON_ERROR(msgpack_pack_map(pk, 3));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "type"));
++  RETURN_ON_ERROR(mp_cstring(pk, "udata"));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "address"));
++  RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, (uint64_t)ud));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "bytes"));
++  RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, sizeudata(ud)));
++
++  return 0;
++}
++
++static int mp_nil(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv) {
++  UNUSED(L);
++  UNUSED(o);
++  UNUSED(tv);
++
++  RETURN_ON_ERROR(msgpack_pack_map(pk, 2));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "type"));
++  RETURN_ON_ERROR(mp_cstring(pk, "nil"));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "bytes"));
++  RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, sizeof(TValue)));
++
++  return 0;
++}
++
++static int mp_subobjects(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv) {
++  if (o) {
++    uint8_t gct = o->gch.gct;
++
++    switch(gct) {
++      case ~LJ_TSTR:
++        return mp_string(L, pk, o, NULL);
++
++      case ~LJ_TTRUE:
++      case ~LJ_TFALSE:
++        return mp_boolean(L, pk, o, NULL);
++      
++      case ~LJ_TLIGHTUD:
++        return mp_lightud(L, pk, o, NULL);
++
++      case ~LJ_TNIL:
++        return mp_nil(L, pk, NULL, NULL);
++
++      case ~LJ_TTAB:
++      case ~LJ_TTHREAD:
++      case ~LJ_TFUNC:
++      case ~LJ_TPROTO:
++      case ~LJ_TUDATA:
++      case ~LJ_TCDATA:
++      case ~LJ_TTRACE:
++        RETURN_ON_ERROR(msgpack_pack_map(pk, 2));
++
++        RETURN_ON_ERROR(mp_cstring(pk, "type"));
++        RETURN_ON_ERROR(mp_cstring(pk, "ref"));
++
++        RETURN_ON_ERROR(mp_cstring(pk, "address"));
++        RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, (uint64_t)o));
++
++        return 0;
++      
++      default:
++        return 0;
++    }
++
++  } else if (tv) {
++    if (tvistab(tv) || tvisthread(tv) || tvisfunc(tv) || tvisproto(tv) || tvisudata(tv) || tviscdata(tv)) {
++      GCobj* o = gcV(tv);
++
++      RETURN_ON_ERROR(msgpack_pack_map(pk, 2));
++
++      RETURN_ON_ERROR(mp_cstring(pk, "type"));
++      RETURN_ON_ERROR(mp_cstring(pk, "ref"));
++
++      RETURN_ON_ERROR(mp_cstring(pk, "address"));
++      RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, (uint64_t)o));
++
++      return 0;
++
++    } else if (tvisbool(tv) || tvisnumber(tv) || tvisstr(tv) || tvislightud(tv) || tvisnil(tv)) {
++      // TValue should not is a Trace object
++      RETURN_ON_ERROR(mp_TValue(L, pk, tv));
++      return 0;
++    }
++  }
++
++  return 0;
++}
++
++
++static int mp_snapshot_header(lua_State *L, msgpack_packer* pk) {
++  global_State *g = G(L);
++
++  RETURN_ON_ERROR(msgpack_pack_map(pk, 3));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "version"));
++  RETURN_ON_ERROR(msgpack_pack_map(pk, 4));
++  RETURN_ON_ERROR(mp_cstring(pk, "major"));
++  RETURN_ON_ERROR(msgpack_pack_uint64(pk, 2));
++  RETURN_ON_ERROR(mp_cstring(pk, "minor"));
++  RETURN_ON_ERROR(msgpack_pack_uint64(pk, 0));
++  RETURN_ON_ERROR(mp_cstring(pk, "patch"));
++  RETURN_ON_ERROR(msgpack_pack_uint64(pk, 0));
++  RETURN_ON_ERROR(mp_cstring(pk, "string"));
++  RETURN_ON_ERROR(mp_cstring(pk, "2.0.0"));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "gcsize"));
++  RETURN_ON_ERROR(msgpack_pack_uint64(pk, g->gc.total));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "changes"));
++  RETURN_ON_ERROR(mp_cstring(pk, SNAPSHOT_CHANGES));
++
++  return 0;
++}
++
++
++static int mp_cstring(msgpack_packer* pk, const char* str) {
++  lj_assertX(str != NULL, "expected string to be non-null in function mp_cstring()");
++
++  size_t len = strlen(str);
++  RETURN_ON_ERROR(msgpack_pack_str(pk, len));
++  RETURN_ON_ERROR(msgpack_pack_str_body(pk, str, len));
++  return 0;
++}
++
++
++int gc_snapshot(lua_State *L, const char* filename, const char** err, unsigned int timeout) {
++  global_State *g = G(L);
++
++  time_t timeout_at = time(NULL) + timeout;
++
++  FILE* fp = fopen(filename, "wb");
++
++  if (fp == NULL) {
++    *err = strerror(errno);
++    return 1;
++  }
++
++  msgpack_packer pk;
++  msgpack_packer_init(&pk, fp, msgpack_fbuffer_write);
++
++  if (mp_snapshot_header(L, &pk)) {
++    *err = "failed to write snapshot header";
++    fclose(fp);
++    return 1;
++  }
++
++  GCobj* o = gcref(g->gc.root);
++  size_t count = 0;
++
++  while (o != NULL) {
++    uint8_t gct = o->gch.gct;
++
++    ++count;
++
++    if (count % TIMEOUT_CHECK_STEP == 0) {
++      if (time(NULL) > timeout_at) {
++        *err = "timeout";
++        fclose(fp);
++        return 1;
++      }
++    }
++
++    int rc = 0;
++
++    switch(gct) {
++      case ~LJ_TSTR:
++        rc = mp_string(L, &pk, o, NULL);
++        break;
++
++      case ~LJ_TTRUE:
++      case ~LJ_TFALSE:
++        rc = mp_boolean(L, &pk, o, NULL);
++        break;
++
++      case ~LJ_TLIGHTUD:
++        rc = mp_lightud(L, &pk, o, NULL);
++        break;
++
++      case ~LJ_TTRACE:
++        rc = mp_trace(L, &pk, o, NULL);
++        break;
++
++      case ~LJ_TTAB:
++        rc = mp_table(L, &pk, o, NULL);
++        break;
++    
++      case ~LJ_TFUNC:
++        rc = mp_function(L, &pk, o, NULL);
++        break;
++
++      case ~LJ_TTHREAD:
++        rc = mp_thread(L, &pk, o, NULL);
++        break;
++    
++      case ~LJ_TPROTO:
++        rc = mp_proto(L, &pk, o, NULL);
++        break;
++    
++      case ~LJ_TCDATA:
++        rc = mp_cdata(L, &pk, o, NULL);
++        break;
++
++      case ~LJ_TUDATA:
++        rc = mp_udata(L, &pk, o, NULL);
++        break;
++
++      default:
++        break;
++    }
++
++    if (rc) {
++      *err = "unknown error on packing gc objects";
++      fclose(fp);
++      return 1;
++    }
++
++    o = gcref(o->gch.nextgc);
++  }
++
++  if (fclose(fp)) {
++    *err = strerror(errno);
++    return 1;
++  }
++
++  return 0;
++}
++
++#endif /* LUAJIT_DISABLE_KPROF */
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_gcsnapshot.h b/bundle/LuaJIT-2.1-20210510/src/lj_gcsnapshot.h
+new file mode 100644
+index 00000000..03846eec
+--- /dev/null
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_gcsnapshot.h
+@@ -0,0 +1,11 @@
++#ifndef LUAJIT_DISABLE_KPROF
++
++#ifndef _LJ_GCSNAPSHOT_H
++#define _LJ_GCSNAPSHOT_H
++
++#include "lj_def.h"
++
++LJ_FUNC int gc_snapshot(lua_State *L, const char* filename, const char** err, unsigned int timeout);
++
++#endif /* _LJ_GCSNAPSHOT_H */
++#endif /* LUAJIT_DISABLE_KPROF */
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_ir.c b/bundle/LuaJIT-2.1-20210510/src/lj_ir.c
+index 4be11a61..eeca48e0 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lj_ir.c
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_ir.c
+@@ -32,6 +32,7 @@
+ #include "lj_strscan.h"
+ #include "lj_strfmt.h"
+ #include "lj_prng.h"
++#include "lj_mem_tracing.h"
+ 
+ /* Some local macros to save typing. Undef'd at the end. */
+ #define IR(ref)			(&J->cur.ir[(ref)])
+@@ -74,11 +75,17 @@ void LJ_FASTCALL lj_ir_growtop(jit_State *J)
+   IRIns *baseir = J->irbuf + J->irbotlim;
+   MSize szins = J->irtoplim - J->irbotlim;
+   if (szins) {
++    lj_mem_tracing_skip_nprobes(J2G(J), 1);
+     baseir = (IRIns *)lj_mem_realloc(J->L, baseir, szins*sizeof(IRIns),
+ 				     2*szins*sizeof(IRIns));
++    lj_mem_tracing_ir_probe(J2G(J), szins*sizeof(IRIns), 2*szins*sizeof(IRIns));
++
+     J->irtoplim = J->irbotlim + 2*szins;
+   } else {
++    lj_mem_tracing_skip_nprobes(J2G(J), 1);
+     baseir = (IRIns *)lj_mem_realloc(J->L, NULL, 0, LJ_MIN_IRSZ*sizeof(IRIns));
++    lj_mem_tracing_ir_probe(J2G(J), 0, LJ_MIN_IRSZ*sizeof(IRIns));
++
+     J->irbotlim = REF_BASE - LJ_MIN_IRSZ/4;
+     J->irtoplim = J->irbotlim + LJ_MIN_IRSZ;
+   }
+@@ -101,11 +108,17 @@ static void lj_ir_growbot(jit_State *J)
+     J->irtoplim -= ofs;
+     J->cur.ir = J->irbuf = baseir - J->irbotlim;
+   } else {
++    lj_mem_tracing_skip_nprobes(J2G(J), 1);
+     /* Double the buffer size, but split the growth amongst top/bottom. */
+     IRIns *newbase = lj_mem_newt(J->L, 2*szins*sizeof(IRIns), IRIns);
++    lj_mem_tracing_ir_probe(J2G(J), 0,  2*szins*sizeof(IRIns));
++
+     MSize ofs = szins >= 256 ? 128 : (szins >> 1);  /* Limit bottom growth. */
+     memcpy(newbase + ofs, baseir, (J->cur.nins - J->irbotlim)*sizeof(IRIns));
+-    lj_mem_free(G(J->L), baseir, szins*sizeof(IRIns));
++    lj_mem_tracing_skip_nprobes(J2G(J), 1);
++    lj_mem_free(J2G(J), baseir, szins*sizeof(IRIns));
++    lj_mem_tracing_ir_probe(J2G(J), szins*sizeof(IRIns), 0);
++
+     J->irbotlim -= ofs;
+     J->irtoplim = J->irbotlim + 2*szins;
+     J->cur.ir = J->irbuf = newbase - J->irbotlim;
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_mbuf.h b/bundle/LuaJIT-2.1-20210510/src/lj_mbuf.h
+new file mode 100644
+index 00000000..e0317edf
+--- /dev/null
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_mbuf.h
+@@ -0,0 +1,170 @@
++#ifndef LUAJIT_DISABLE_KPROF
++
++#ifndef _LJ_MBUF_H
++#define _LJ_MBUF_H
++
++#include <sys/mman.h>
++#include <fcntl.h>
++#include <unistd.h>
++#include <sys/types.h>
++#include <string.h>
++#include "lj_def.h"
++
++
++/*
++** A buffer based on mmap.
++*/
++
++
++#define MBUF_SYNC_FLUSH  (0)
++#define MBUF_ASYNC_FLUSH (1)
++
++
++typedef struct MBuf {
++    uint8_t* b;  /* Base of buffer. */
++    uint8_t* p;  /* Current position. */
++    uint8_t* e;  /* End of buffer, [b, e) */
++    uint8_t  i;  /* Is it initialized? */
++    char*    f;  /* Filename. */
++} MBuf;
++
++static LJ_AINLINE int lj_mbuf_init(MBuf* b, const char* f, size_t max_size, char** err) {
++    lj_assertX(b != NULL, "lj_mbuf_init: b is NULL");
++    lj_assertX(f != NULL, "lj_mbuf_init: filename is NULL");
++    lj_assertX(max_size != 0, "lj_mbuf_init: max_size is 0");
++
++    int fd = -1;
++    void* p = MAP_FAILED;
++    b->f = NULL;
++
++    fd = open(f, O_RDWR | O_CREAT | O_TRUNC, 0644);
++    if (fd == -1) {
++        *err = strerror(errno);
++        goto on_error;
++    }
++
++    p = mmap(NULL, max_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++    if (p == MAP_FAILED) {
++        *err = strerror(errno);
++        goto on_error;
++    }
++
++    if (ftruncate(fd, max_size) == -1) {
++        *err = strerror(errno);
++        goto on_error;
++    }
++
++    if (close(fd) == -1) {
++        *err = strerror(errno);
++        goto on_error;
++    }
++
++    b->b = (uint8_t*)p;
++    b->p = b->b;
++    b->e = b->b + max_size;
++    b->i = 1;
++
++    size_t len = strlen(f);
++
++    b->f = malloc(len + 1);
++    if (b->f == NULL) {
++        *err = "no memory";
++        goto on_error;
++    }
++
++    memcpy(b->f, f, len);
++    b->f[len] = '\0';
++
++    return 0;
++
++on_error:
++    if (fd != -1) close(fd);
++    if (p != MAP_FAILED) munmap(p, max_size);
++    if (b->f != NULL) {
++        free(b->f);
++        b->f = NULL;
++    }
++
++    return 1;
++}
++
++static LJ_AINLINE int lj_mbuf_putmem(MBuf* b, const void* p, size_t n) {
++    lj_assertX(b != NULL, "lj_mbuf_putmem: b is NULL");
++    lj_assertX(b->i == 1, "lj_mbuf_putmem: b is not initialized");
++    lj_assertX(p != NULL, "lj_mbuf_putmem: p is NULL");
++    lj_assertX(n != 0, "lj_mbuf_putmem: n is 0");
++
++    if (b->p + n > b->e) return 1;
++
++    memcpy(b->p, p, n);
++    b->p += n;
++
++    return 0;
++}
++
++static LJ_AINLINE int lj_mbuf_flush(MBuf* b, int is_async) {
++    lj_assertX(b != NULL, "lj_mbuf_flush: b is NULL");
++    lj_assertX(b->i == 1, "lj_mbuf_flush: b is not initialized");
++    if (msync(b->b,
++              b->p - b->b,
++              is_async ? MS_ASYNC : MS_SYNC) == -1) {
++        return 1;
++    }
++    return 0;
++}
++
++
++static LJ_AINLINE size_t lj_mbuf_left(MBuf* b) {
++    lj_assertX(b != NULL, "lj_mbuf_left: b is NULL");
++    lj_assertX(b->i == 1, "lj_mbuf_left: b is not initialized");
++    return b->e - b->p;
++}
++
++static LJ_AINLINE int lj_mbuf_free(MBuf* b, char** err) {
++    lj_assertX(b != NULL, "lj_mbuf_free: b is NULL");
++    lj_assertX(b->i == 1, "lj_mbuf_free: b is not initialized");
++
++    int rc = 0;
++
++    if (munmap(b->b, b->e - b->b) == -1) {
++        *err = strerror(errno);
++        rc = 1;
++        goto free_filename;
++    }
++
++    int fd = open(b->f, O_RDWR);
++    if (fd == -1) {
++        *err = strerror(errno);
++        rc = 1;
++        goto free_filename;
++    }
++
++    if (ftruncate(fd, b->p - b->b) == -1) {
++        *err = strerror(errno);
++        close(fd);
++        rc = 1;
++        goto free_filename;
++    }
++
++    if (close(fd) == -1) {
++        *err = strerror(errno);
++        rc = 1;
++        goto free_filename;
++    }
++
++free_filename:
++    free(b->f);
++    b->f = NULL;
++    b->i = 0;
++
++    return rc;
++}
++
++static LJ_AINLINE int lj_mbuf_is_initialized(MBuf* b) {
++    lj_assertX(b != NULL, "lj_mbuf_is_initialized: b is NULL");
++    return b->i;
++}
++
++
++#endif /* _LJ_MBUF_H */
++#endif /* LUAJIT_DISABLE_KPROF */
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_mcode.c b/bundle/LuaJIT-2.1-20210510/src/lj_mcode.c
+index 9c859d26..bccae944 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lj_mcode.c
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_mcode.c
+@@ -19,6 +19,7 @@
+ #if LJ_HASJIT || LJ_HASFFI
+ #include "lj_vm.h"
+ #endif
++#include "lj_mem_tracing.h"
+ 
+ /* -- OS-specific functions ----------------------------------------------- */
+ 
+@@ -105,6 +106,9 @@ static void *mcode_alloc_at(jit_State *J, uintptr_t hint, size_t sz, int prot)
+     if (!hint) lj_trace_err(J, LJ_TRERR_MCODEAL);
+     p = NULL;
+   }
++
++  lj_mem_tracing_mcode_probe(J2G(J), 0, sz);
++
+   return p;
+ }
+ 
+@@ -112,6 +116,7 @@ static void mcode_free(jit_State *J, void *p, size_t sz)
+ {
+   UNUSED(J);
+   munmap(p, sz);
++  lj_mem_tracing_mcode_probe(J2G(J), sz, 0);
+ }
+ 
+ static int mcode_setprot(void *p, size_t sz, int prot)
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_mem_tracing.c b/bundle/LuaJIT-2.1-20210510/src/lj_mem_tracing.c
+new file mode 100644
+index 00000000..48e85182
+--- /dev/null
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_mem_tracing.c
+@@ -0,0 +1,888 @@
++#ifndef LUAJIT_DISABLE_KPROF
++
++#define lj_mem_tracing_c
++#define LUA_CORE
++
++#include <time.h>
++#include <inttypes.h>
++#include <msgpack.h>
++#include <sys/mman.h>
++#include <fcntl.h>
++#include <unistd.h>
++#include <sys/types.h>
++#include "lauxlib.h"
++#include "lj_mem_tracing.h"
++#include "lj_buf.h"
++#include "lj_debug.h"
++#include "lj_dispatch.h"
++#include "lj_trace.h"
++#include "lj_mbuf.h"
++#include "lj_frame.h"
++
++
++#define SBUF_INIT_SIZE              4096
++
++/*
++** A hard code from the spec of msgpack,
++** this is the type hint for the `NIL` value in msgpack.
++**
++** ```
++** MessagePack specification
++** Last modified at 2017-08-09 22:42:07 -0700
++** Sadayuki Furuhashi © 2013-04-21 21:52:33 -0700
++** ```
++*/
++#define MSG_PACK_NIL                0xc0
++
++
++/* -- size of each type of msgpack object --------------------------------- */
++
++#define MSGPACK_NIL_SIZE            1
++#define MSGPACK_UINT8_SIZE          2
++#define MSGPACK_UINT16_SIZE         3
++#define MSGPACK_UINT32_SIZE         5
++#define MSGPACK_UINT64_SIZE         9
++#define MSGPACK_INT8_SIZE           2
++#define MSGPACK_INT16_SIZE          3
++#define MSGPACK_INT32_SIZE          5
++#define MSGPACK_INT64_SIZE          9
++#define MSGPACK_STR_HEADER_MAX_SIZE 5
++
++/* -- marker of each event ------------------------------------------------ */
++
++#define EVENT_ALLOC                 0
++#define EVENT_FREE                  1
++#define EVENT_REALLOC               2
++#define EVENT_SYMBOL                3
++#define EVENT_TRACE                 4
++#define EVENT_INIT                  5
++#define EVENT_IR                    6
++#define EVENT_JIT_TRACE             7
++#define EVENT_SNAPSHOT              8
++#define EVENT_MCODE                 9
++#define EVENT_LAST                  EVENT_MCODE
++
++#if EVENT_LAST > UINT8_MAX
++#error "event type is too large"
++#endif
++
++/* -- common macros ------------------------------------------------------- */
++
++#define PROBE_GUARD_ERROR() do {                        \
++  if (LJ_UNLIKELY(g_error)) {                           \
++    lj_mem_tracing_stop(NULL);                          \
++    return;                                             \
++  }                                                     \
++} while (0)
++
++#define PROBE_GUARD_TIMEOUT() do {                      \
++  if (LJ_UNLIKELY(time(NULL) > g_timeout_at)) {         \
++    lj_mem_tracing_stop(NULL);                          \
++    return;                                             \
++  }                                                     \
++} while (0)
++
++#define PROBE_GUARD_SKIP() do {                         \
++  if (LJ_UNLIKELY(g_skip_probes > 0)) {                 \
++    g_skip_probes--;                                    \
++    return;                                             \
++  }                                                     \
++} while (0)
++
++#define PROBE_GUARD_MEMORY_OPS() do {                   \
++  PROBE_GUARD_ERROR();                                  \
++  PROBE_GUARD_TIMEOUT();                                \
++  PROBE_GUARD_SKIP();                                   \
++} while (0)
++
++#define PROBE_GUARD_NON_MEMORY_OPS() do {               \
++  PROBE_GUARD_ERROR();                                  \
++  PROBE_GUARD_TIMEOUT();                                \
++} while (0)
++
++
++/* -- global states ------------------------------------------------------- */
++
++int                   g_lj_mem_tracing_is_enabled = 0;
++global_State*         g_lj_mem_tracing_G          = NULL; /* the target Lua VM */
++static time_t         g_timeout_at                = 0;
++static size_t         g_block_size                = 0;    /* mmap-based buffer size */
++static char*          g_filename                  = NULL; /* mmap-based buffer filename pattern */
++static uint32_t       g_max_stack_depth           = 0;    /* max stack depth */
++static msgpack_packer g_packer;                           /* msgpack packer */
++
++
++/*
++** g_sbuf is a string buffer used to store the symbol name temporarily,
++** and avoid allocating/freeing memory during the tracing.
++*/
++static SBuf           g_sbuf;
++
++/*
++** g_L is a new Lua VM outside the memory tracer,
++** which will allow us to use some utility functions of Lua,
++** like lua_pushfstring().
++*/
++static lua_State*     g_L                     = NULL;
++
++/*
++** double-buffering for mmap-based buffer
++** to avoid the overhead of File I/O.
++** g_mbufs[1] is the current buffer,
++** g_mbufs[0] is the buffer to be flushed.
++*/
++static MBuf           g_mbufs[2];
++
++/*
++** g_protos is an array of GCproto pointers,
++** the length of the array is `g_max_stack_depth`,
++** it is used to store the protos of the current trace
++** from the top (g_protos[0]) of the stack to the bottom of the stack.
++** it will be updated if call/return events are triggered.
++*/
++static GCproto**      g_protos                = NULL;
++
++/*
++** g_block_id is used to generate the filename of the mmap-based buffer,
++** the filename will be like: <g_filename>-<g_block_id>.bin,
++** and the g_block_id will be increased by 1 after each flush.
++** starts from 0.
++*/
++static int            g_block_id              = 0;
++
++/*
++** if g_error is not NULL,
++** it means there is an error when writing to the buffer,
++** and the error string will be pushed into the top of the stack of `g_L`.
++*/
++static char*          g_error                 = NULL;
++
++
++/*
++** g_skip_probes is used to skip some n times of probes.
++** I insert `lj_mem_tracing_probe` into the following functions:
++** - lj_mem_realloc()
++** - lj_mem_free()
++** - lj_mem_newgco()
++** Those functions will not only be called when creating a new Lua object,
++** but also be called for some internal data structures,
++** like:
++** - IRIns
++** - SnapShot
++** - GCTrace
++** - MCode
++** I want to identify those internal memory operations for
++** those data structures, so I need to skip some probes
++** as those memory management functions likely calls the 
++** above functions to allocate/free memory for those data structures.
++*/
++static size_t         g_skip_probes            = 0;
++
++
++/* -- helper functions ---------------------------------------------------- */
++
++/*
++** msgpack buffer writer callback for mmap-based buffer
++*/
++static int _mbuf_writer(void* data, const char* buf, size_t len);
++
++/*
++** switch the current buffer to the other one
++*/
++static void _switch_buffer();
++
++/*
++** msgpack packer for uint8_t, uint16_t, uint32_t, and uint64_t,
++** which will be packed as fixuint8, fixuint16, fixuint32, and fixuint64
++** respectively depending on the value of x.
++*/
++static void _msgpack_pack_uintx(uint64_t x);
++
++/*
++** msgpack packer for int8_t, int16_t, int32_t, and int64_t,
++** which will be packed as fixint8, fixint16, fixint32, and fixint64
++** respectively depending on the value of x.
++*/
++static void _msgpack_pack_intx(int64_t x);
++
++
++/* -- event handlers ------------------------------------------------------ */
++
++/*
++** write trace event to the buffer,
++** the trace event has some protos, each proto is a pointer to GCproto,
++** which is a uint64_t value.
++*/
++static void _write_trace_event();
++
++/*
++** write symbol event to the buffer,
++** the symbol event has 3 elements,
++** the first element is the EVENT_SYMBOL,
++** the second element is the pointer to the symbol,
++** the third element is the symbol name (like /path/to/init.lua:12),
++*/
++static void _write_symbol_event(void *p, const char* name, size_t len);
++
++/*
++** write alloc event to the buffer,
++** the alloc event has 3 elements,
++** the first element is the EVENT_ALLOC,
++** the second element is the pointer to the allocated memory,
++** the third element is the size of the allocated memory,
++*/
++static void _write_alloc_event(void* p, size_t sz);
++
++/*
++** write free event to the buffer,
++** the free event has 3 elements,
++** the first element is the EVENT_FREE,
++** the second element is the pointer to the freed memory,
++** the third element is the size of the freed memory,
++*/
++static void _write_free_event(void* p, size_t sz);
++
++/*
++** write realloc event to the buffer,
++** the realloc event has 4 elements,
++** the first element is the EVENT_REALLOC,
++** the second element is the pointer to the old memory,
++** the third element is the pointer to the new memory, 
++** the fourth element is the size of the old memory,
++** the fifth element is the size of the new memory,
++*/
++static void _write_realloc_event(void* op, void* np, size_t oz, size_t nz);
++
++/*
++** write ir event to the buffer,
++** the ir event has 2 elements,
++** the first element is the EVENT_IR,
++** the second element is the delta of the memory usage of IRs.
++*/
++static void _write_ir_event(int64_t delta);
++
++/*
++** write jit trace event to the buffer,
++** the jit trace event has 2 elements,
++** the first element is the EVENT_JIT_TRACE,
++** the second element is the delta of the memory usage of JIT traces.
++*/
++static void _write_jit_trace_event(int64_t delta);
++
++/*
++** write jit snapshot event to the buffer,
++** the jit snapshot event has 2 elements,
++** the first element is the EVENT_JIT_SNAPSHOT,
++** the second element is the delta of the memory usage of snapshots.
++*/
++static void _write_snapshot_event(int64_t delta);
++
++/*
++** write jit mcode event to the buffer,
++** the jit mcode event has 2 elements,
++** the first element is the EVENT_JIT_MCODE,
++** the second element is the delta of the memory usage of machine code.
++*/
++static void _write_mcode_event(size_t delta);
++
++/*
++** write init event to the buffer,
++** the init event has 5 elements,
++** the first element is the EVENT_INIT,
++** the second element is the major version of the tracing data,
++** the third element is the minor version of the tracing data,
++** the fourth element is the patch version of the tracing data,
++** the fifth element is the `g_max_stack_depth`
++*/
++static void _write_init_event(lua_State* L);
++
++static void _append_proto(GCproto *pt);
++static void _dump_symbol_table(lua_State *L);
++
++static void _enable_hook_for_call_return(lua_State* L);
++static void _disable_hook_for_call_return(lua_State* L);
++
++
++static int _mbuf_writer(void* data, const char* buf, size_t len) {
++  UNUSED(data);
++
++  if (LJ_UNLIKELY(lj_mbuf_putmem(&g_mbufs[1], buf, len))) {
++    g_error = "failed to write to buffer (even if there is enough space)";
++    return 0;
++  }
++
++  return len;
++}
++
++
++static void _switch_buffer() {
++  if (LJ_UNLIKELY(lj_mbuf_left(&g_mbufs[1]) < 1)) {
++    g_error = "buffer is unexpectedly full, can't write NIL to indicate the end of buffer";
++    return;
++  }
++
++  char tmp = MSG_PACK_NIL;
++  if (LJ_UNLIKELY(lj_mbuf_putmem(&g_mbufs[1], &tmp, 1))) {
++    /*
++    ** if the buffer can't save a complete event,
++    ** we should write a NIL to indicate the end of buffer
++    ** for analysis tools.
++    */
++    g_error = "failed to write NIL to buffer as the end of buffer";
++    return;
++  }
++
++  /* schedule async flush */
++  if (lj_mbuf_flush(&g_mbufs[1], MBUF_ASYNC_FLUSH)) {
++    g_error = "failed to schedule flush to file system";
++  }
++  
++  if (lj_mbuf_is_initialized(&g_mbufs[0])) {
++    /* flush to file system synchronously */
++    lj_mbuf_free(&g_mbufs[0], &g_error);
++  }
++
++  g_mbufs[0] = g_mbufs[1];
++
++  /*
++  ** initialize a new buffer,
++  ** the file name is <g_filename>-<g_block_id>.bin,
++  */
++  lua_pushfstring(g_L, "%s-%d.bin", g_filename, g_block_id++);
++  lj_mbuf_init(&g_mbufs[1], lua_tostring(g_L, -1), g_block_size, &g_error);
++  lua_pop(g_L, 1);
++}
++
++
++static void _msgpack_pack_uintx(uint64_t x) {
++  if (x == 0) {
++    msgpack_pack_nil(&g_packer);
++  } else if (x <= UINT8_MAX) {
++    msgpack_pack_fix_uint8(&g_packer, (uint8_t)x);
++  } else if (x <= UINT16_MAX) {
++    msgpack_pack_fix_uint16(&g_packer, (uint16_t)x);
++  } else if (x <= UINT32_MAX) {
++    msgpack_pack_fix_uint32(&g_packer, (uint32_t)x);
++  } else {
++    msgpack_pack_fix_uint64(&g_packer, (uint64_t)x);
++  }
++}
++
++
++static void _msgpack_pack_intx(int64_t x) {
++  if (x == 0) {
++    msgpack_pack_nil(&g_packer);
++  } else if (x <= INT8_MAX) {
++    msgpack_pack_fix_int8(&g_packer, (int8_t)x);
++  } else if (x <= INT16_MAX) {
++    msgpack_pack_fix_int16(&g_packer, (int16_t)x);
++  } else if (x <= INT32_MAX) {
++    msgpack_pack_fix_int32(&g_packer, (int32_t)x);
++  } else {
++    msgpack_pack_fix_int64(&g_packer, (int64_t)x);
++  }
++}
++
++
++static void _write_trace_event() {
++  size_t event_max_size = MSGPACK_UINT8_SIZE +
++                          g_max_stack_depth * MSGPACK_UINT64_SIZE;
++  int i;
++
++  if (LJ_UNLIKELY(lj_mbuf_left(&g_mbufs[1]) < event_max_size)) {
++    _switch_buffer();
++  }
++
++  msgpack_pack_fix_uint8(&g_packer, EVENT_TRACE);
++
++  for (i = 0; i < g_max_stack_depth; i++) {
++    if (g_protos[i] == NULL) msgpack_pack_nil(&g_packer);
++    else msgpack_pack_fix_uint64(&g_packer, (uint64_t)g_protos[i]);
++  }
++}
++
++
++static void _write_symbol_event(void *p, const char* name, size_t len) {
++  size_t event_max_size = MSGPACK_UINT8_SIZE +
++                          MSGPACK_UINT64_SIZE +
++                          MSGPACK_STR_HEADER_MAX_SIZE +
++                          len;
++
++  if (LJ_UNLIKELY(lj_mbuf_left(&g_mbufs[1]) < event_max_size)) {
++    _switch_buffer();
++  }
++
++  msgpack_pack_fix_uint8(&g_packer, EVENT_SYMBOL);
++  msgpack_pack_fix_uint64(&g_packer, (uint64_t)p);
++  msgpack_pack_str(&g_packer, len);
++  msgpack_pack_str_body(&g_packer, name, len);
++}
++
++
++static void _write_alloc_event(void* p, size_t sz) {
++  size_t event_max_size = MSGPACK_UINT8_SIZE +
++                          MSGPACK_UINT64_SIZE +
++                          MSGPACK_UINT64_SIZE;
++
++  if (LJ_UNLIKELY(lj_mbuf_left(&g_mbufs[1]) < event_max_size)) {
++    _switch_buffer();
++  }
++
++  msgpack_pack_fix_uint8(&g_packer, EVENT_ALLOC);
++  msgpack_pack_fix_uint64(&g_packer, (uint64_t)p);
++  _msgpack_pack_uintx(sz);
++}
++
++
++static void _write_free_event(void* p, size_t sz) {
++  size_t event_max_size = MSGPACK_UINT8_SIZE +
++                          MSGPACK_UINT64_SIZE +
++                          MSGPACK_UINT64_SIZE;
++
++  if (LJ_UNLIKELY(lj_mbuf_left(&g_mbufs[1]) < event_max_size)) {
++    _switch_buffer();
++  }
++
++  msgpack_pack_fix_uint8(&g_packer, EVENT_FREE);
++  msgpack_pack_fix_uint64(&g_packer, (uint64_t)p);
++  _msgpack_pack_uintx(sz);
++}
++
++
++static void _write_realloc_event(void* op, void* np, size_t oz, size_t nz) {
++  size_t event_max_size = MSGPACK_UINT8_SIZE +
++                          MSGPACK_UINT64_SIZE +
++                          MSGPACK_UINT64_SIZE +
++                          MSGPACK_UINT64_SIZE +
++                          MSGPACK_UINT64_SIZE;
++  if (LJ_UNLIKELY(lj_mbuf_left(&g_mbufs[1]) < event_max_size)) {
++    _switch_buffer();
++  }
++
++  msgpack_pack_fix_uint8(&g_packer, EVENT_REALLOC);
++  msgpack_pack_fix_uint64(&g_packer, (uint64_t)op);
++  msgpack_pack_fix_uint64(&g_packer, (uint64_t)np);
++  _msgpack_pack_uintx(oz);
++  _msgpack_pack_uintx(nz);
++}
++
++
++static void _write_ir_event(int64_t delta) {
++  size_t event_max_size = MSGPACK_UINT8_SIZE +
++                          MSGPACK_INT64_SIZE;
++  if (LJ_UNLIKELY(lj_mbuf_left(&g_mbufs[1]) < event_max_size)) {
++    _switch_buffer();
++  }
++
++  msgpack_pack_fix_uint8(&g_packer, EVENT_IR);
++  _msgpack_pack_intx(delta);
++}
++
++
++static void _write_jit_trace_event(int64_t delta) {
++  size_t event_max_size = MSGPACK_UINT8_SIZE +
++                          MSGPACK_INT64_SIZE;
++  if (LJ_UNLIKELY(lj_mbuf_left(&g_mbufs[1]) < event_max_size)) {
++    _switch_buffer();
++  }
++
++  msgpack_pack_fix_uint8(&g_packer, EVENT_JIT_TRACE);
++  _msgpack_pack_intx(delta);
++}
++
++
++void _write_snapshot_event(int64_t delta) {
++  size_t event_max_size = MSGPACK_UINT8_SIZE +
++                          MSGPACK_INT64_SIZE;
++  if (LJ_UNLIKELY(lj_mbuf_left(&g_mbufs[1]) < event_max_size)) {
++    _switch_buffer();
++  }
++
++  msgpack_pack_fix_uint8(&g_packer, EVENT_SNAPSHOT);
++  _msgpack_pack_intx(delta);
++}
++
++
++static void _write_mcode_event(size_t delta) {
++  size_t event_max_size = MSGPACK_UINT8_SIZE +
++                          MSGPACK_INT64_SIZE;
++  if (LJ_UNLIKELY(lj_mbuf_left(&g_mbufs[1]) < event_max_size)) {
++    _switch_buffer();
++  }
++
++  msgpack_pack_fix_uint8(&g_packer, EVENT_MCODE);
++  _msgpack_pack_intx(delta);
++}
++
++
++static void _write_init_event(lua_State *L)
++{
++  size_t event_max_size = MSGPACK_UINT8_SIZE +
++                          MSGPACK_UINT64_SIZE +
++                          MSGPACK_UINT64_SIZE +
++                          MSGPACK_UINT64_SIZE +
++                          MSGPACK_UINT64_SIZE;
++  
++  if (LJ_UNLIKELY(lj_mbuf_left(&g_mbufs[1]) < event_max_size)) {
++    luaL_error(L, "not enough space in the buffer");
++  }
++
++  msgpack_pack_fix_uint8(&g_packer, EVENT_INIT);
++  msgpack_pack_fix_uint64(&g_packer, 1);
++  msgpack_pack_fix_uint64(&g_packer, 0);
++  msgpack_pack_fix_uint64(&g_packer, 0);
++  msgpack_pack_fix_uint64(&g_packer, g_max_stack_depth);
++}
++
++
++static void _append_proto(GCproto *pt) {
++  /*
++  ** C-style string like the `:16` in `init.lua:16`
++  **                                           ^^^
++  */
++  char firstline[64];
++
++  lj_buf_reset(&g_sbuf);
++
++  if (lj_debug_putchunkname(&g_sbuf, pt, 0)) {
++    int len = snprintf(firstline,
++                       sizeof(firstline) / sizeof(char),
++                       ":%" PRIu32 ";",
++                       (uint32_t)(pt->firstline));
++
++    lj_assertX(len > 0, "snprintf failed (no data written)");
++    lj_assertX(len < sizeof(firstline) / sizeof(char), "snprintf failed (buffer overflow)");
++
++    lj_buf_putmem(&g_sbuf, firstline, len);
++  }
++
++  _write_symbol_event(pt, mref(g_sbuf.b, char), sbuflen(&g_sbuf));
++}
++
++
++static void _dump_symbol_table(lua_State *L) {
++  global_State *g = G(L);
++  GCobj* o = gcref(g->gc.root);
++
++  _write_symbol_event(0, "[unknown];", sizeof("[unknown];") - 1);
++
++  while (o != NULL) {
++    if (o->gch.gct == ~LJ_TPROTO) {
++      _append_proto(gco2pt(o));
++    }
++
++    o = gcref(o->gch.nextgc);
++  }
++}
++
++
++static void _enable_hook_for_call_return(lua_State* L) {
++  G(L)->hookmask = (uint8_t)((G(L)->hookmask & ~HOOK_EVENTMASK) | 
++                   ((LUA_MASKCALL | LUA_MASKRET) & HOOK_EVENTMASK));
++  lj_trace_abort(G(L));
++  lj_dispatch_update(G(L));
++}
++
++
++static void _disable_hook_for_call_return(lua_State* L) {
++  g_lj_mem_tracing_G->hookmask = (uint8_t)((g_lj_mem_tracing_G->hookmask & ~HOOK_EVENTMASK) | 0);
++  lj_trace_abort(g_lj_mem_tracing_G);
++  lj_dispatch_update(g_lj_mem_tracing_G);
++}
++
++
++int lj_mem_tracing_start(lua_State *L,
++                        const char* filename,
++                        size_t block_size,
++                        uint32_t max_stack_depth,
++                        unsigned int timeout) {
++  if (g_lj_mem_tracing_is_enabled) {
++    lua_pushstring(L, "tracing is already enabled for this Lua VM or another Lua VM");
++    return 1;
++  }
++
++  g_filename = NULL;
++  g_protos = NULL;
++  g_L = NULL;
++
++  size_t len = strlen(filename);
++  g_filename = (char*)malloc(len + 1);
++  if (g_filename == NULL) {
++    lua_pushstring(L, "failed to allocate memory for filename");
++    goto on_error;
++  }
++  strcpy(g_filename, filename);
++
++  g_L = luaL_newstate();
++  if (g_L == NULL) {
++    lua_pushstring(L, "failed to create new state for tracing");
++    goto on_error;
++  }
++
++  lua_pushfstring(g_L, "%s-%d.bin", g_filename, 0);
++  char* err = NULL;
++  if (lj_mbuf_init(&g_mbufs[1], lua_tostring(g_L, -1), block_size, &err)) {
++    lua_pushfstring(L, "failed to open file %s: %s", lua_tostring(g_L, -1), err);
++    goto on_error;
++  }
++  lua_pop(g_L, 1);
++
++  g_protos = calloc(max_stack_depth, sizeof(GCproto*));
++  if (g_protos == NULL) {
++    lua_pushstring(L, "failed to allocate memory for protos");
++    goto on_error;
++  }
++
++  lj_buf_init(g_L, &g_sbuf);
++  lj_buf_reset(&g_sbuf);
++  lj_buf_need(&g_sbuf, SBUF_INIT_SIZE);
++
++  msgpack_packer_init(&g_packer, NULL, _mbuf_writer);
++
++  _enable_hook_for_call_return(L);
++
++  g_lj_mem_tracing_G = G(L);
++  g_timeout_at = time(NULL) + timeout;
++  g_max_stack_depth = max_stack_depth;
++  g_block_size = block_size;
++  g_block_id = 1;
++  g_error = NULL;
++  g_skip_probes = 0;
++
++  _write_init_event(L);
++  _dump_symbol_table(L);
++
++  /*
++  ** we must set g_lj_mem_tracing_is_enabled to 1 last,
++  ** because some Lua Objects will be
++  ** allocated during the initialization.
++  */
++  g_lj_mem_tracing_is_enabled = 1;
++  return 0;
++
++on_error:
++  if (filename != NULL) free(g_filename);
++  if (g_L != NULL) lua_close(g_L);
++  if (lj_mbuf_is_initialized(&g_mbufs[1])) lj_mbuf_free(&g_mbufs[1], &err);
++  if (g_protos != NULL) free(g_protos);
++  return 1;
++}
++
++
++int lj_mem_tracing_stop(lua_State *L) {
++  int i;
++
++  if (!g_lj_mem_tracing_is_enabled) {
++    if (L && g_error) {
++      lua_pushstring(L, g_error);
++      return 1;
++    }
++
++    return 0;
++  }
++
++  /* number of error strings */
++  int error_strs = 0;
++
++  g_lj_mem_tracing_is_enabled = 0;
++  _disable_hook_for_call_return(L);
++
++  if (g_error && L) {
++    lua_pushstring(L, g_error);
++    error_strs++;
++  }
++
++  for (i = 0; i < sizeof(g_mbufs) / sizeof(g_mbufs[0]); i++) {
++    if (lj_mbuf_is_initialized(&g_mbufs[i]) && lj_mbuf_free(&g_mbufs[i], &g_error)) {
++      if (L) {
++        /* `\n` is for separating multiple error messages */
++        lua_pushfstring(L, "\nfailed to free mbuf %d: %s", i, g_error);
++      }
++
++      error_strs++;
++    }
++  }
++
++  if (error_strs >= 1 && L) {
++    /* concat all error messages into multi-line string */
++    lua_concat(L, error_strs);
++  }
++
++  lj_buf_free(G(g_L), &g_sbuf);
++
++  lua_close(g_L);
++  g_L = NULL;
++
++  free(g_filename);
++  g_filename = NULL;
++
++  free(g_protos);
++  g_protos = NULL;
++
++  g_lj_mem_tracing_G = NULL;
++  g_timeout_at = 0;
++  g_max_stack_depth = 0;
++  g_block_size = 0;
++  g_skip_probes = 0;
++
++  return g_error ? 1 : 0;
++}
++
++
++int lj_mem_tracing_status(lua_State *L) {
++  lua_createtable(L, 0, 6);
++
++  lua_pushstring(L, "enabled");
++  lua_pushboolean(L, g_lj_mem_tracing_is_enabled);
++  lua_rawset(L, -3);
++
++  if (g_lj_mem_tracing_is_enabled) {
++    lj_assertL(g_filename != NULL, "filename is NULL");
++    lj_assertL(g_block_size > 0, "block_size is not positive");
++    lj_assertL(g_max_stack_depth > 0, "max_stack_depth is not positive");
++    lj_assertL(g_timeout_at > 0, "timeout_at is not positive");
++
++    lua_pushstring(L, "filename");
++    lua_pushfstring(L, "%s-<n>.bin", g_filename);
++    lua_rawset(L, -3);
++
++    lua_pushstring(L, "block_size");
++    lua_pushinteger(L, g_block_size);
++    lua_rawset(L, -3);
++
++    lua_pushstring(L, "max_stack_depth");
++    lua_pushinteger(L, g_max_stack_depth);
++    lua_rawset(L, -3);
++
++    lua_pushstring(L, "timeout_at");
++    lua_pushinteger(L, g_timeout_at);
++    lua_rawset(L, -3);
++  }
++
++  if (g_error) {
++    lua_pushstring(L, "error");
++    lua_pushstring(L, g_error);
++    lua_rawset(L, -3);
++  }
++
++  return 1;
++}
++
++
++int lj_mem_tracing_is_enabled_(lua_State* L) {
++  if (LJ_UNLIKELY(g_lj_mem_tracing_G != G(L))) return 0;
++  return g_lj_mem_tracing_is_enabled;
++}
++
++
++void lj_mem_tracing_probe_(global_State* g, void* op, void* np, size_t osize, size_t nsize) {
++  PROBE_GUARD_MEMORY_OPS();
++  
++  if (osize == 0 && nsize > 0) {
++    lj_assertX(op == NULL && np != NULL,
++               "expected alloc a new pointer: op=%p, np=%p, osize=%zu, nsize=%zu", op, np, osize, nsize);
++    _write_alloc_event(np, nsize);
++
++  } else if (osize > 0 && nsize > 0) {
++    lj_assertX(op != NULL && np != NULL,
++               "expected realloc a pointer: op=%p, np=%p, osize=%zu, nsize=%zu", op, np, osize, nsize);
++    _write_realloc_event(op, np, osize, nsize);
++
++  } else if (osize > 0 && nsize == 0) {
++    lj_assertX(op != NULL && np == NULL,
++               "expected free a pointer: op=%p, np=%p, osize=%zu, nsize=%zu", op, np, osize, nsize);
++    _write_free_event(op, osize);
++
++  } else if (osize == 0 && nsize == 0) {
++    /* free a NULL pointer is safe for `lj_mem_free()` and `lua_Alloc` */
++    lj_assertX(op == NULL && np == NULL,
++               "expected free a NULL pointer: op=%p, np=%p, osize=%zu, nsize=%zu", op, np, osize, nsize);
++
++  } else {
++    lj_assertX(0, "invalid memory operation: osize=%zu, nsize=%zu", osize, nsize);
++  }
++}
++
++
++void lj_mem_tracing_ir_probe_(global_State* g, size_t osize, size_t nsize) {
++  PROBE_GUARD_MEMORY_OPS();
++  _write_ir_event((int64_t)nsize - (int64_t)osize);
++}
++
++
++void lj_mem_tracing_jit_trace_probe_(global_State* g, size_t osize, size_t nsize) {
++  PROBE_GUARD_MEMORY_OPS();
++  _write_jit_trace_event((int64_t)nsize - (int64_t)osize);
++}
++
++
++void lj_mem_tracing_snapshot_probe_(global_State* g, size_t osize, size_t nsize) {
++  PROBE_GUARD_MEMORY_OPS();
++  _write_snapshot_event((int64_t)nsize - (int64_t)osize);
++}
++
++
++void lj_mem_tracing_mcode_probe_(global_State* g, size_t osize, size_t nsize) {
++  PROBE_GUARD_MEMORY_OPS();
++  _write_mcode_event((int64_t)nsize - (int64_t)osize);
++}
++
++
++void lj_mem_tracing_skip_nprobes_(global_State* g, size_t cnt) {
++  PROBE_GUARD_NON_MEMORY_OPS();
++  g_skip_probes += cnt;
++}
++
++
++void lj_mem_tracing_on_call_return_(lua_State *L) {
++  PROBE_GUARD_NON_MEMORY_OPS();
++
++  /* Basically a copy of `lj_debug_frame()` in `src/lj_debug.c` */
++
++  /*
++  ** Although it is basically a copy,
++  ** I have made a few changes for performance.
++  */
++
++  cTValue *frame, *bot = tvref(L->stack)+LJ_FR2;
++  int idx = 0, level = 0;
++
++  for (frame = L->base - 1; frame > bot && idx < g_max_stack_depth; ) {
++    if (frame_gc(frame) == obj2gco(L)) level++;
++
++    if (level-- == 0) {
++      GCfunc* fn = frame_func(frame);
++
++      if (isluafunc(fn)) {
++        GCproto* pt = funcproto(fn);
++        g_protos[idx++] = pt;
++
++      } else {
++        g_protos[idx++] = NULL;
++      }
++
++      level = 0;
++    }
++
++    if (frame_islua(frame)) {
++      frame = frame_prevl(frame);
++
++    } else {
++      if (frame_isvarg(frame)) level++;
++      frame = frame_prevd(frame);
++    }
++  }
++
++  /* The end of the copy of `lj_debug_frame()` in `src/lj_debug.c` */
++
++  memset(g_protos + idx, 0, sizeof(GCproto*) * (g_max_stack_depth - idx));
++  _write_trace_event();
++}
++
++
++void lj_mem_tracing_append_proto_(global_State* g, GCproto* pt) {
++  PROBE_GUARD_NON_MEMORY_OPS();
++  _append_proto(pt);
++}
++
++#endif /* LUAJIT_DISABLE_KPROF */
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_mem_tracing.h b/bundle/LuaJIT-2.1-20210510/src/lj_mem_tracing.h
+new file mode 100644
+index 00000000..2604f6f5
+--- /dev/null
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_mem_tracing.h
+@@ -0,0 +1,88 @@
++#ifndef _LJ_MEM_TRACING_H
++#define _LJ_MEM_TRACING_H
++
++#ifndef LUAJIT_DISABLE_KPROF
++
++#include "lj_def.h"
++#include "lj_obj.h"
++
++/*
++** 0: disabled, 1: enabled.
++** The reason I put this variable here is that I want to make it
++** accessible to the external C code,
++** which means that we can check if memory tracing is enabled
++** in the external C code wihout calling any uninlined function.
++** This is important because we want to make the overhead of
++** memory tracing as small as possible when it is disabled.
++** Avoiding calling is friendly to the CPU pipeline.
++*/
++extern int           g_lj_mem_tracing_is_enabled;
++extern global_State* g_lj_mem_tracing_G;
++
++int lj_mem_tracing_start(lua_State *L,
++                        const char* filename,
++                        size_t block_size,
++                        uint32_t max_stack_depth,
++                        unsigned int timeout);
++LJ_FUNC int lj_mem_tracing_stop(lua_State *L);
++LJ_FUNC int lj_mem_tracing_status(lua_State *L);
++LJ_FUNC void lj_mem_tracing_probe_(global_State* g, void* op, void* np, size_t osize, size_t nsize);
++LJ_FUNC void lj_mem_tracing_ir_probe_(global_State* g, size_t osize, size_t nsize);
++LJ_FUNC void lj_mem_tracing_jit_trace_probe_(global_State* g, size_t osize, size_t nsize);
++LJ_FUNC void lj_mem_tracing_snapshot_probe_(global_State* g, size_t osize, size_t nsize);
++LJ_FUNC void lj_mem_tracing_mcode_probe_(global_State* g, size_t osize, size_t nsize);
++LJ_FUNC void lj_mem_tracing_skip_nprobes_(global_State* g, size_t cnt);
++LJ_FUNC void lj_mem_tracing_on_call_return_(lua_State* L);
++LJ_FUNC void lj_mem_tracing_append_proto_(global_State* g, GCproto* pt);
++
++#define lj_mem_tracing_is_enabled(g) (g_lj_mem_tracing_is_enabled != 0 && g_lj_mem_tracing_G == (g))
++
++#define lj_mem_tracing_probe(g, op, np, osz, nsz) \
++  (lj_mem_tracing_is_enabled(g) ? lj_mem_tracing_probe_(g, op, np, osz, nsz) : 0)
++
++#define lj_mem_tracing_ir_probe(g, osz, nsz) \
++  (lj_mem_tracing_is_enabled(g) ? lj_mem_tracing_ir_probe_(g, osz, nsz) : 0)
++
++#define lj_mem_tracing_jit_trace_probe(g, osz, nsz) \
++  (lj_mem_tracing_is_enabled(g) ? lj_mem_tracing_jit_trace_probe_(g, osz, nsz) : 0)
++
++#define lj_mem_tracing_snapshot_probe(g, osz, nsz) \
++  (lj_mem_tracing_is_enabled(g) ? lj_mem_tracing_snapshot_probe_(g, osz, nsz) : 0)
++
++#define lj_mem_tracing_mcode_probe(g, osz, nsz) \
++  (lj_mem_tracing_is_enabled(g) ? lj_mem_tracing_mcode_probe_(g, osz, nsz) : 0)
++
++#define lj_mem_tracing_skip_nprobes(g, cnt) \
++  (lj_mem_tracing_is_enabled(g) ? lj_mem_tracing_skip_nprobes_(g, cnt) : 0)
++
++#define lj_mem_tracing_on_call_return(L) \
++  (lj_mem_tracing_is_enabled(G(L)) ? lj_mem_tracing_on_call_return_(L) : 0)
++
++#define lj_mem_tracing_append_proto(g, pt) \
++  (lj_mem_tracing_is_enabled(g) ? lj_mem_tracing_append_proto_(g, pt) : 0)
++    
++
++#else
++
++/*
++** If memory tracing is disabled, we can define these functions as no-ops.
++** This way, we don't have to add #ifdef/#ifndef to the code that calls them.
++*/
++
++#define lj_mem_tracing_probe(g, op, np, osz, nsz) ()
++#define lj_mem_tracing_ir_probe(g, osz, nsz) ()
++#define lj_mem_tracing_jit_trace_probe(g, osz, nsz) ()
++#define lj_mem_tracing_snapshot_probe(g, osz, nsz) ()
++#define lj_mem_tracing_mcode_probe(g, osz, nsz) ()
++#define lj_mem_tracing_skip_nprobes(g, cnt) ()
++
++/* Always return false as memory tracing is disabled */
++#define lj_mem_tracing_is_enabled(g) (0)
++
++#define lj_mem_tracing_on_call_return(L) ()
++#define lj_mem_tracing_append_proto(g, pt) ()
++
++#endif /* LUAJIT_DISABLE_KPROF */
++
++#endif /* _LJ_MEM_TRACING_H */
++
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_parse.c b/bundle/LuaJIT-2.1-20210510/src/lj_parse.c
+index 27fcf53c..4b11cd0c 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lj_parse.c
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_parse.c
+@@ -27,6 +27,7 @@
+ #include "lj_parse.h"
+ #include "lj_vm.h"
+ #include "lj_vmevent.h"
++#include "lj_mem_tracing.h"
+ 
+ /* -- Parser structures and definitions ----------------------------------- */
+ 
+@@ -1609,6 +1610,9 @@ static GCproto *fs_finish(LexState *ls, BCLine line)
+   ls->vtop = fs->vbase;  /* Reset variable stack. */
+   ls->fs = fs->prev;
+   lj_assertL(ls->fs != NULL || ls->tok == TK_eof, "bad parser state");
++
++  lj_mem_tracing_append_proto(G(L), pt);
++
+   return pt;
+ }
+ 
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_profile.c b/bundle/LuaJIT-2.1-20210510/src/lj_profile.c
+index 00fdd6da..a79430b0 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lj_profile.c
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_profile.c
+@@ -60,7 +60,7 @@ typedef struct ProfileState {
+   luaJIT_profile_callback cb;	/* Profiler callback. */
+   void *data;			/* Profiler callback data. */
+   SBuf sb;			/* String buffer for stack dumps. */
+-  int interval;			/* Sample interval in milliseconds. */
++  int interval;			/* Sample interval in microseconds. */
+   int samples;			/* Number of samples for next callback. */
+   int vmstate;			/* VM state when profile timer triggered. */
+ #if LJ_PROFILE_SIGPROF
+@@ -182,8 +182,8 @@ static void profile_timer_start(ProfileState *ps)
+   int interval = ps->interval;
+   struct itimerval tm;
+   struct sigaction sa;
+-  tm.it_value.tv_sec = tm.it_interval.tv_sec = interval / 1000;
+-  tm.it_value.tv_usec = tm.it_interval.tv_usec = (interval % 1000) * 1000;
++  tm.it_value.tv_sec = tm.it_interval.tv_sec = interval / (1000 * 1000);
++  tm.it_value.tv_usec = tm.it_interval.tv_usec = interval - (tm.it_value.tv_sec * (1000 * 1000));
+   setitimer(ITIMER_PROF, &tm, NULL);
+   sa.sa_flags = SA_RESTART;
+   sa.sa_handler = profile_signal;
+@@ -209,8 +209,8 @@ static void *profile_thread(ProfileState *ps)
+   int interval = ps->interval;
+ #if !LJ_TARGET_PS3
+   struct timespec ts;
+-  ts.tv_sec = interval / 1000;
+-  ts.tv_nsec = (interval % 1000) * 1000000;
++  ts.tv_sec = interval / (1000 * 1000);
++  ts.tv_nsec = (interval * 1000) - (ts.tv_sec * 1000 * 1000 * 1000);
+ #endif
+   while (1) {
+ #if LJ_TARGET_PS3
+@@ -248,15 +248,15 @@ static DWORD WINAPI profile_thread(void *psx)
+   ProfileState *ps = (ProfileState *)psx;
+   int interval = ps->interval;
+ #if LJ_TARGET_WINDOWS && !LJ_TARGET_UWP
+-  ps->wmm_tbp(interval);
++  ps->wmm_tbp(interval / 1000);
+ #endif
+   while (1) {
+-    Sleep(interval);
++    Sleep(interval / 1000);
+     if (ps->abort) break;
+     profile_trigger(ps);
+   }
+ #if LJ_TARGET_WINDOWS && !LJ_TARGET_UWP
+-  ps->wmm_tep(interval);
++  ps->wmm_tep(interval / 1000);
+ #endif
+   return 0;
+ }
+@@ -299,7 +299,7 @@ LUA_API void luaJIT_profile_start(lua_State *L, const char *mode,
+ 				  luaJIT_profile_callback cb, void *data)
+ {
+   ProfileState *ps = &profile_state;
+-  int interval = LJ_PROFILE_INTERVAL_DEFAULT;
++  int interval = LJ_PROFILE_INTERVAL_DEFAULT * 1000;
+   while (*mode) {
+     int m = *mode++;
+     switch (m) {
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_snap.c b/bundle/LuaJIT-2.1-20210510/src/lj_snap.c
+index 21f27e1f..c7fb3654 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lj_snap.c
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_snap.c
+@@ -25,6 +25,7 @@
+ #include "lj_ctype.h"
+ #include "lj_cdata.h"
+ #endif
++#include "lj_mem_tracing.h"
+ 
+ /* Pass IR on to next optimization in chain (FOLD). */
+ #define emitir(ot, a, b)	(lj_ir_set(J, (ot), (a), (b)), lj_opt_fold(J))
+@@ -40,7 +41,12 @@ void lj_snap_grow_buf_(jit_State *J, MSize need)
+   MSize maxsnap = (MSize)J->param[JIT_P_maxsnap];
+   if (need > maxsnap)
+     lj_trace_err(J, LJ_TRERR_SNAPOV);
++
++  MSize osz = J->sizesnap * sizeof(SnapShot);
++  lj_mem_tracing_skip_nprobes(J2G(J), 1);
+   lj_mem_growvec(J->L, J->snapbuf, J->sizesnap, maxsnap, SnapShot);
++  lj_mem_tracing_snapshot_probe(J2G(J), osz, J->sizesnap * sizeof(SnapShot));
++
+   J->cur.snap = J->snapbuf;
+ }
+ 
+@@ -51,8 +57,12 @@ void lj_snap_grow_map_(jit_State *J, MSize need)
+     need = 2*J->sizesnapmap;
+   else if (need < 64)
+     need = 64;
++  lj_mem_tracing_skip_nprobes(J2G(J), 1);
+   J->snapmapbuf = (SnapEntry *)lj_mem_realloc(J->L, J->snapmapbuf,
+ 		    J->sizesnapmap*sizeof(SnapEntry), need*sizeof(SnapEntry));
++  lj_mem_tracing_snapshot_probe(J2G(J), J->sizesnapmap*sizeof(SnapEntry),
++        need*sizeof(SnapEntry));
++  
+   J->cur.snapmap = J->snapmapbuf;
+   J->sizesnapmap = need;
+ }
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_str.c b/bundle/LuaJIT-2.1-20210510/src/lj_str.c
+index b314c095..26d4db21 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lj_str.c
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_str.c
+@@ -13,6 +13,7 @@
+ #include "lj_char.h"
+ #include "lj_prng.h"
+ 
++
+ /* -- String helpers ------------------------------------------------------ */
+ 
+ /* Ordered compare of strings. Assumes string data is 4-byte aligned. */
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_tab.c b/bundle/LuaJIT-2.1-20210510/src/lj_tab.c
+index 7dfdd81c..db3cae2b 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lj_tab.c
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_tab.c
+@@ -16,6 +16,7 @@
+ 
+ #include <math.h>
+ 
++
+ /* -- Object hashing ------------------------------------------------------ */
+ 
+ /* Hash values are masked with the table hash mask and used as an index. */
+@@ -101,6 +102,7 @@ static LJ_AINLINE void clearapart(GCtab *t)
+ /* Create a new table. Note: the slots are not initialized (yet). */
+ static GCtab *newtab(lua_State *L, uint32_t asize, uint32_t hbits)
+ {
++  void* tmp;
+   GCtab *t;
+   /* First try to colocate the array part. */
+   if (LJ_MAX_COLOSIZE != 0 && asize > 0 && asize <= LJ_MAX_COLOSIZE) {
+@@ -137,7 +139,8 @@ static GCtab *newtab(lua_State *L, uint32_t asize, uint32_t hbits)
+     if (asize > 0) {
+       if (asize > LJ_MAX_ASIZE)
+ 	lj_err_msg(L, LJ_ERR_TABOV);
+-      setmref(t->array, lj_mem_newvec(L, asize, TValue));
++      tmp = lj_mem_newvec(L, asize, TValue);
++      setmref(t->array, tmp);
+       t->asize = asize;
+     }
+   }
+@@ -235,14 +238,21 @@ void LJ_FASTCALL lj_tab_clear(GCtab *t)
+ /* Free a table. */
+ void LJ_FASTCALL lj_tab_free(global_State *g, GCtab *t)
+ {
+-  if (t->hmask > 0)
++  if (t->hmask > 0) {
+     lj_mem_freevec(g, noderef(t->node), t->hmask+1, Node);
+-  if (t->asize > 0 && LJ_MAX_COLOSIZE != 0 && t->colo <= 0)
++  }
++    
++  if (t->asize > 0 && LJ_MAX_COLOSIZE != 0 && t->colo <= 0) {
+     lj_mem_freevec(g, tvref(t->array), t->asize, TValue);
+-  if (LJ_MAX_COLOSIZE != 0 && t->colo)
++  }
++
++  if (LJ_MAX_COLOSIZE != 0 && t->colo) {
+     lj_mem_free(g, t, sizetabcolo((uint32_t)t->colo & 0x7f));
+-  else
++
++  } else {
+     lj_mem_freet(g, t);
++  }
++    
+ }
+ 
+ /* -- Table resizing ------------------------------------------------------ */
+@@ -294,9 +304,11 @@ void lj_tab_resize(lua_State *L, GCtab *t, uint32_t asize, uint32_t hbits)
+       if (!tvisnil(&array[i]))
+ 	copyTV(L, lj_tab_setinth(L, t, (int32_t)i), &array[i]);
+     /* Physically shrink only separated arrays. */
+-    if (LJ_MAX_COLOSIZE != 0 && t->colo <= 0)
++    if (LJ_MAX_COLOSIZE != 0 && t->colo <= 0) {
+       setmref(t->array, lj_mem_realloc(L, array,
+ 	      oldasize*sizeof(TValue), asize*sizeof(TValue)));
++    }
++      
+   }
+   if (oldhmask > 0) {  /* Reinsert pairs from old hash part. */
+     global_State *g;
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_trace.c b/bundle/LuaJIT-2.1-20210510/src/lj_trace.c
+index 8085cdf2..f062e9dd 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lj_trace.c
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_trace.c
+@@ -31,6 +31,7 @@
+ #include "lj_vmevent.h"
+ #include "lj_target.h"
+ #include "lj_prng.h"
++#include "lj_mem_tracing.h"
+ 
+ /* -- Error handling ------------------------------------------------------ */
+ 
+@@ -72,7 +73,10 @@ static TraceNo trace_findfree(jit_State *J)
+   osz = J->sizetrace;
+   if (osz >= lim)
+     return 0;  /* Too many traces. */
++  lj_mem_tracing_skip_nprobes(J2G(J), 1);
+   lj_mem_growvec(J->L, J->trace, J->sizetrace, lim, GCRef);
++  lj_mem_tracing_jit_trace_probe(J2G(J), osz * sizeof(GCRef), J->sizetrace * sizeof(GCRef));
++
+   for (; osz < J->sizetrace; osz++)
+     setgcrefnull(J->trace[osz]);
+   return J->freetrace;
+@@ -127,7 +131,10 @@ GCtrace * LJ_FASTCALL lj_trace_alloc(lua_State *L, GCtrace *T)
+   size_t sz = sztr + szins +
+ 	      T->nsnap*sizeof(SnapShot) +
+ 	      T->nsnapmap*sizeof(SnapEntry);
++  lj_mem_tracing_skip_nprobes(G(L), 1);
+   GCtrace *T2 = lj_mem_newt(L, (MSize)sz, GCtrace);
++  lj_mem_tracing_jit_trace_probe(G(L), 0, sz);
++
+   char *p = (char *)T2 + sztr;
+   T2->gct = ~LJ_TTRACE;
+   T2->marked = 0;
+@@ -175,9 +182,12 @@ void LJ_FASTCALL lj_trace_free(global_State *g, GCtrace *T)
+       J->freetrace = T->traceno;
+     setgcrefnull(J->trace[T->traceno]);
+   }
+-  lj_mem_free(g, T,
+-    ((sizeof(GCtrace)+7)&~7) + (T->nins-T->nk)*sizeof(IRIns) +
+-    T->nsnap*sizeof(SnapShot) + T->nsnapmap*sizeof(SnapEntry));
++
++  size_t sz = ((sizeof(GCtrace)+7)&~7) + (T->nins-T->nk)*sizeof(IRIns) +
++              T->nsnap*sizeof(SnapShot) + T->nsnapmap*sizeof(SnapEntry);
++  lj_mem_tracing_skip_nprobes(g, 1);
++  lj_mem_free(g, T, sz);
++  lj_mem_tracing_jit_trace_probe(g, sz, 0);
+ }
+ 
+ /* Re-enable compiling a prototype by unpatching any modified bytecode. */
+@@ -364,10 +374,16 @@ void lj_trace_freestate(global_State *g)
+   }
+ #endif
+   lj_mcode_free(J);
++  lj_mem_tracing_skip_nprobes(g, 4);
+   lj_mem_freevec(g, J->snapmapbuf, J->sizesnapmap, SnapEntry);
+   lj_mem_freevec(g, J->snapbuf, J->sizesnap, SnapShot);
+   lj_mem_freevec(g, J->irbuf + J->irbotlim, J->irtoplim - J->irbotlim, IRIns);
+   lj_mem_freevec(g, J->trace, J->sizetrace, GCRef);
++
++  lj_mem_tracing_jit_trace_probe(g, J->sizesnapmap * sizeof(SnapEntry), 0);
++  lj_mem_tracing_jit_trace_probe(g, J->sizesnap * sizeof(SnapShot), 0);
++  lj_mem_tracing_jit_trace_probe(g, (J->irtoplim - J->irbotlim) * sizeof(IRIns), 0);
++  lj_mem_tracing_jit_trace_probe(g, J->sizetrace * sizeof(GCRef), 0);
+ }
+ 
+ /* -- Penalties and blacklisting ------------------------------------------ */
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_udata.c b/bundle/LuaJIT-2.1-20210510/src/lj_udata.c
+index ec3478c8..cc6e4d78 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lj_udata.c
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_udata.c
+@@ -10,6 +10,7 @@
+ #include "lj_gc.h"
+ #include "lj_udata.h"
+ 
++
+ GCudata *lj_udata_new(lua_State *L, MSize sz, GCtab *env)
+ {
+   GCudata *ud = lj_mem_newt(L, sizeof(GCudata) + sz, GCudata);
+diff --git a/bundle/LuaJIT-2.1-20210510/src/ljamalg.c b/bundle/LuaJIT-2.1-20210510/src/ljamalg.c
+index 6cba6d70..934fb1c9 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/ljamalg.c
++++ b/bundle/LuaJIT-2.1-20210510/src/ljamalg.c
+@@ -85,4 +85,5 @@
+ #include "lib_bit.c"
+ #include "lib_jit.c"
+ #include "lib_ffi.c"
++#include "lib_kprof.c"
+ #include "lib_init.c"
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lualib.h b/bundle/LuaJIT-2.1-20210510/src/lualib.h
+index 9d1aa5e4..26fea59d 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lualib.h
++++ b/bundle/LuaJIT-2.1-20210510/src/lualib.h
+@@ -22,6 +22,9 @@
+ #define LUA_JITLIBNAME	"jit"
+ #define LUA_FFILIBNAME	"ffi"
+ #define LUA_THRLIBNAME	"thread"
++#ifndef LUAJIT_DISABLE_KPROF
++#define LUA_KPROFNAME   "kprof"
++#endif
+ 
+ LUALIB_API int luaopen_base(lua_State *L);
+ LUALIB_API int luaopen_math(lua_State *L);
+@@ -35,6 +38,10 @@ LUALIB_API int luaopen_bit(lua_State *L);
+ LUALIB_API int luaopen_jit(lua_State *L);
+ LUALIB_API int luaopen_ffi(lua_State *L);
+ 
++#ifndef LUAJIT_DISABLE_KPROF
++LUALIB_API int luaopen_kprof(lua_State *L);
++#endif
++
+ LUALIB_API void luaL_openlibs(lua_State *L);
+ 
+ #ifndef lua_assert
+-- 
+2.34.1
+

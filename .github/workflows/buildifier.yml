@@ -1,0 +1,55 @@
+name: Buildifier
+
+on:
+  pull_request:
+    paths:
+    - '**/*.bzl'
+    - '**/*.bazel'
+    - 'BUILD*'
+    - 'WORKSPACE*'
+  push:
+    paths:
+    - '**/*.bzl'
+    - '**/*.bazel'
+    - 'BUILD*'
+    - 'WORKSPACE*'
+    branches:
+    - master
+    - release/*
+
+jobs:
+
+  autoformat:
+    name: Auto-format and Check
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Install Dependencies
+        run: |
+          sudo wget -O /bin/buildifier https://github.com/bazelbuild/buildtools/releases/download/5.1.0/buildifier-linux-amd64
+          sudo chmod +x /bin/buildifier
+
+      - name: Run buildifier
+        run: |
+          buildifier -mode=fix $(find . -name 'BUILD*' -o -name 'WORKSPACE*' -o -name '*.bzl' -o -name '*.bazel' -type f)
+
+      - name: Verify buildifier
+        shell: bash
+        run: |
+          # From: https://backreference.org/2009/12/23/how-to-match-newlines-in-sed/
+          # This is to leverage this workaround:
+          # https://github.com/actions/toolkit/issues/193#issuecomment-605394935
+          function urlencode() {
+            sed ':begin;$!N;s/\n/%0A/;tbegin'
+          }
+          if [[ $(git diff-index --name-only HEAD --) ]]; then
+              for x in $(git diff-index --name-only HEAD --); do
+                echo "::error file=$x::Please run buildifier.%0A$(git diff $x | urlencode)"
+              done
+              echo "${{ github.repository }} is out of style. Please run buildifier."
+              exit 1
+          fi
+          echo "${{ github.repository }} is formatted correctly."

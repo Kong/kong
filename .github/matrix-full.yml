@@ -1,0 +1,193 @@
+build-packages:
+# label: used to distinguish artifacts for later use;
+#          ensure its value ends with -arm64 if it's a cross-compiled for ARM64 target
+# image: docker image name if the build is running in side a container
+# package: package type
+# package-type: the nfpm packaging target, //:kong_{package} target; only used when package is rpm
+# bazel-args: additional bazel build flags
+# check-manifest-suite: the check manifest suite as defined in scripts/explain_manifest/config.py
+
+# Ubuntu
+- label: ubuntu-18.04
+  image: ubuntu:18.04
+  package: deb
+  check-manifest-suite: ubuntu-18.04-amd64
+- label: ubuntu-20.04
+  image: ubuntu:20.04
+  package: deb
+  check-manifest-suite: ubuntu-20.04-amd64
+- label: ubuntu-22.04
+  package: deb
+  check-manifest-suite: ubuntu-22.04-amd64
+
+# Debian
+- label: debian-10
+  image: debian:10
+  package: deb
+  check-manifest-suite: debian-10-amd64
+- label: debian-11
+  image: debian:11
+  package: deb
+  check-manifest-suite: debian-11-amd64
+
+# Alpine
+- label: alpine
+  os: ubuntu-22.04
+  package: apk
+  bazel-args: --platforms=//:alpine-crossbuild-x86_64 --//:opentracing=true
+  check-manifest-suite: alpine-amd64
+
+# CentOS
+- label: centos-7
+  os: ubuntu-22.04
+  image: centos:7
+  package: rpm
+  package-type: el7
+  check-manifest-suite: el7-amd64
+
+# RHEL
+- label: rhel-7
+  image: centos:7
+  package: rpm
+  package-type: el7
+  check-manifest-suite: el7-amd64
+
+- label: rhel-8
+  image: rockylinux:8
+  package: rpm
+  package-type: el8
+  check-manifest-suite: el8-amd64
+
+# AmazonLinux
+- label: amazonlinux-2
+  image: amazonlinux:2
+  package: rpm
+  bazel-args: --//:opentracing=true
+  package-type: aws2
+  check-manifest-suite: amazonlinux-2-amd64
+
+build-images:
+# Only build images for the latest version of each major release.
+# label: used as compose docker image label ${github.sha}-${label}
+# base-image: docker image to use as base
+# package: package type
+# package-distro: the distro name to use in package name, for example el7, aws2; only applicable to rpm
+# artifact-from: label of build-packages to use
+# artifact-from-alt: another label of build-packages to use for downloading package (to build multi-arch image)
+# docker-platforms: comma separated list of docker buildx platforms to build for
+
+# Ubuntu
+- label: ubuntu
+  base-image: ubuntu:22.04
+  package: deb
+  artifact-from: ubuntu-22.04
+
+# Centos
+- label: centos7
+  base-image: centos:7
+  package: rpm
+  package-distro: el7
+  artifact-from: centos-7
+
+- label: rhel7
+  base-image: registry.access.redhat.com/ubi7
+  package: rpm
+  package-distro: el7
+  artifact-from: rhel-7
+
+- label: rhel8
+  base-image: registry.access.redhat.com/ubi8
+  package: rpm
+  package-distro: el8
+  artifact-from: rhel-8
+
+# Alpine
+- label: alpine
+  base-image: alpine:3.16
+  package: apk
+  artifact-from: alpine
+
+release-packages:
+# Ubuntu
+- label: ubuntu-18.04
+  package: deb
+  artifact-from: ubuntu-18.04
+  artifact-version: 18.04
+  artifact-type: ubuntu
+  artifact: kong.all.deb
+- label: ubuntu-20.04
+  package: deb
+  artifact-from: ubuntu-20.04
+  artifact-version: 20.04
+  artifact-type: ubuntu
+  artifact: kong.all.deb
+- label: ubuntu-22.04
+  package: deb
+  artifact-from: ubuntu-22.04
+  artifact-version: 22.04
+  artifact-type: ubuntu
+  artifact: kong.all.deb
+
+# Debian
+- label: debian-10
+  package: deb
+  artifact-from: debian-10
+  artifact-version: 10
+  artifact-type: debian
+  artifact: kong.all.deb
+- label: debian-11
+  package: deb
+  artifact-from: debian-11
+  artifact-version: 11
+  artifact-type: debian
+  artifact: kong.all.deb
+
+# CentOS
+- label: centos-7
+  package: rpm
+  artifact-from: centos-7
+  artifact-version: 7
+  artifact-type: centos
+  artifact: kong.el7.all.rpm
+
+# RHEL
+- label: rhel-7
+  package: rpm
+  artifact-from: rhel-7
+  artifact-version: 7
+  artifact-type: rhel
+  artifact: kong.el7.all.rpm
+
+- label: rhel-8
+  package: rpm
+  artifact-from: rhel-8
+  artifact-version: 8
+  artifact-type: rhel
+  artifact: kong.el8.all.rpm
+
+# Amazon Linux
+- label: amazonlinux-2
+  package: rpm
+  artifact-from: amazonlinux-2
+  artifact-version: 2
+  artifact-type: amazonlinux
+  artifact: kong.aws2.all.rpm
+
+# Alpine
+- label: alpine
+  package: apk
+  artifact-from: alpine
+  artifact-type: alpine
+  artifact: kong.all.apk.tar.gz
+
+release-images:
+- label: centos7
+  package: rpm
+- label: rhel7
+  package: rpm
+- label: rhel8
+  package: rpm
+- label: alpine
+  package: apk
+- label: ubuntu
+  package: deb

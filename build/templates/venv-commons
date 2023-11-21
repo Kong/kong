@@ -1,0 +1,75 @@
+#!/bin/bash
+
+# template variables starts
+workspace_path="{{workspace_path}}"
+# template variables ends
+
+if [ "$#" -ne 2 ]; then
+    echo "Usage: $0 KONG_VENV KONG_VENV_ENV_FILE"
+    exit 1
+fi
+
+KONG_VENV=$1
+KONG_VENV_ENV_FILE=$2
+
+# clear the file
+>| $KONG_VENV_ENV_FILE
+
+# use env vars to let Fish shell happy, we will unset them later
+LUAROCKS_CONFIG="$KONG_VENV/rocks_config"
+ROCKS_ROOT="$KONG_VENV"
+
+chmod -R a+rw "$KONG_VENV"
+
+mkdir -p "$KONG_VENV/venv/bin"
+
+echo "#!/bin/bash
+$KONG_VENV/openresty/bin/resty -I $KONG_VENV/openresty/site/lualib -I $KONG_VENV/openresty/lualib --nginx $KONG_VENV/openresty/nginx/sbin/nginx \"\$@\"
+" >| "$KONG_VENV/venv/bin/resty"
+chmod +x "$KONG_VENV/venv/bin/resty"
+
+echo "
+rocks_trees = {
+    { name = [[system]], root = [[$ROCKS_ROOT]] }
+}
+" >| "$LUAROCKS_CONFIG"
+
+# duplicate package.[c]path even though we have set in resty-cli, so luajit and kong can consume
+LUA_PATH="\
+$ROCKS_ROOT/share/lua/5.1/?.lua;$ROCKS_ROOT/share/lua/5.1/?.ljbc;\
+$ROCKS_ROOT/share/lua/5.1/?/init.lua;$ROCKS_ROOT/share/lua/5.1/?/init.ljbc;\
+$KONG_VENV/openresty/site/lualib/?.lua;$KONG_VENV/openresty/site/lualib/?.ljbc;\
+$KONG_VENV/openresty/site/lualib/?/init.lua;$KONG_VENV/openresty/site/lualib/?/init.ljbc;\
+$KONG_VENV/openresty/lualib/?.lua;$KONG_VENV/openresty/lualib/?.ljbc;\
+$KONG_VENV/openresty/lualib/?/init.lua;$KONG_VENV/openresty/lualib/?/init.ljbc;\
+$KONG_VENV/openresty/luajit/share/luajit-2.1.0-beta3/?.lua"
+
+# XXX EE
+if [ -d "./plugins-ee" ] ; then
+    links_dir="${workspace_path}/bazel-bin/build/ee/plugins-ee"
+    rm -rf "${links_dir}/kong/plugins"
+    mkdir -p "${links_dir}/kong/plugins"
+    for plugin in $(ls plugins-ee); do
+        ln -s "$(realpath "./plugins-ee/${plugin}/kong/plugins/${plugin}")" "${links_dir}/kong/plugins/${plugin}"
+    done
+    LUA_PATH="${links_dir}/?.lua;${links_dir}/init/?.lua;$LUA_PATH"
+fi
+# support custom plugin development
+if [ -n $KONG_PLUGIN_PATH ] ; then
+    LUA_PATH="$KONG_PLUGIN_PATH/?.lua;$KONG_PLUGIN_PATH/?/init.lua;$LUA_PATH"
+fi
+# default; duplicate of 'lua_package_path' in kong.conf and nginx_kong.lua
+LUA_PATH="./?.lua;./?/init.lua;$LUA_PATH;;"
+
+# write envs to env file
+cat >> $KONG_VENV_ENV_FILE <<EOF
+export PATH="$KONG_VENV/venv/bin:$KONG_VENV/openresty/bin:$KONG_VENV/openresty/nginx/sbin:$KONG_VENV/openresty/luajit/bin:$KONG_VENV/luarocks/bin:$KONG_VENV/bin:$workspace_path/bin:$PATH"
+export LUAROCKS_CONFIG="$LUAROCKS_CONFIG"
+
+export LUA_PATH="$LUA_PATH"
+export LUA_CPATH="$KONG_VENV/openresty/site/lualib/?.so;$KONG_VENV/openresty/lualib/?.so;./?.so;$KONG_VENV/lib/lua/5.1/?.so;$KONG_VENV/openresty/luajit/lib/lua/5.1/?.so;$ROCKS_ROOT/lib/lua/5.1/?.so;;"
+export KONG_PREFIX="$KONG_VENV/kong/servroot"
+export LIBRARY_PREFIX="$KONG_VENV/kong" # let "make dev" happy
+export OPENSSL_DIR="$KONG_VENV/kong" # let "make dev" happy
+
+EOF

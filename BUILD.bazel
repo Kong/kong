@@ -1,0 +1,238 @@
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+load("//build/nfpm:rules.bzl", "nfpm_pkg")
+load("@bazel_skylib//lib:selects.bzl", "selects")
+
+filegroup(
+    name = "srcs",
+    srcs = glob(["**"]),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "distribution_srcs",
+    srcs = glob(["distribution/**"]),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "rockspec_srcs",
+    srcs = glob(["*.rockspec"]),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "plugins_ee_rockspec_srcs",
+    srcs = glob(["plugins-ee/**/*.rockspec"]),
+    visibility = ["//visibility:public"],
+)
+
+nfpm_env = {
+    "KONG_NAME": "kong",
+    "KONG_REPLACES_1": "kong-community-edition",
+    "KONG_REPLACES_2": "kong-enterprise-edition-fips",
+    "KONG_CONFLICTS_1": "kong-community-edition",
+    "KONG_CONFLICTS_2": "kong-enterprise-edition-fips",
+}
+
+nfpm_pkg(
+    name = "kong_deb",
+    config = "//build:package/nfpm.yaml",
+    env = nfpm_env,
+    packager = "deb",
+    pkg_name = "kong",
+    visibility = ["//visibility:public"],
+)
+
+nfpm_pkg(
+    name = "kong_apk",
+    config = "//build:package/nfpm.yaml",
+    env = nfpm_env,
+    packager = "apk",
+    pkg_name = "kong",
+    visibility = ["//visibility:public"],
+)
+
+nfpm_pkg(
+    name = "kong_el8",
+    config = "//build:package/nfpm.yaml",
+    env = nfpm_env,
+    packager = "rpm",
+    pkg_name = "kong.el8",
+    visibility = ["//visibility:public"],
+)
+
+nfpm_pkg(
+    name = "kong_el7",
+    config = "//build:package/nfpm.yaml",
+    env = nfpm_env,
+    extra_env = {
+        "RPM_EXTRA_DEPS": "hostname",
+    },
+    packager = "rpm",
+    pkg_name = "kong.el7",
+    visibility = ["//visibility:public"],
+)
+
+nfpm_pkg(
+    name = "kong_aws2",
+    config = "//build:package/nfpm.yaml",
+    env = nfpm_env,
+    extra_env = {
+        "RPM_EXTRA_DEPS": "/usr/sbin/useradd",
+        "RPM_EXTRA_DEPS_2": "/usr/sbin/groupadd",
+    },
+    packager = "rpm",
+    pkg_name = "kong.aws2",
+    visibility = ["//visibility:public"],
+)
+
+nfpm_pkg(
+    name = "kong_aws2022",
+    config = "//build:package/nfpm.yaml",
+    env = nfpm_env,
+    extra_env = {
+        "RPM_EXTRA_DEPS": "/usr/sbin/useradd",
+        "RPM_EXTRA_DEPS_2": "/usr/sbin/groupadd",
+        "RPM_EXTRA_DEPS_3": "libxcrypt-compat",
+    },
+    packager = "rpm",
+    pkg_name = "kong.aws2022",
+    visibility = ["//visibility:public"],
+)
+
+###### flags
+
+# --//:debug=true
+bool_flag(
+    name = "debug",
+    build_setting_default = True,
+)
+
+config_setting(
+    name = "debug_flag",
+    flag_values = {
+        ":debug": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "debug_linux_flag",
+    constraint_values = [
+        "@platforms//os:linux",
+    ],
+    flag_values = {
+        ":debug": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
+# --//:licensing=false
+bool_flag(
+    name = "licensing",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "licensing_flag",
+    flag_values = {
+        ":licensing": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
+# --//:fips=false
+bool_flag(
+    name = "fips",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "fips_flag",
+    flag_values = {
+        ":fips": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
+##### constraints, platforms and config_settings for cross-compile
+
+constraint_setting(name = "libc_version")
+
+constraint_value(
+    name = "glibc_2_35",
+    constraint_setting = ":libc_version",
+)
+
+constraint_value(
+    name = "musl",
+    constraint_setting = ":libc_version",
+    visibility = ["//visibility:public"],
+)
+
+# platform sets the constraint values based on user input (--platform=//:PLATFOTM)
+platform(
+    name = "ubuntu-22.04-x86_64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+        ":glibc_2_35",
+    ],
+)
+
+platform(
+    name = "ubuntu-22.04-arm64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:arm64",
+        ":glibc_2_35",
+    ],
+)
+
+platform(
+    name = "alpine-x86_64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+        ":musl",
+    ],
+)
+
+platform(
+    name = "macos-arm64",
+    constraint_values = [
+        "@platforms//os:macos",
+        "@platforms//cpu:arm64",
+    ],
+)
+
+# config_settings define a select() condition based on user-set constraint_values
+# see https://bazel.build/docs/configurable-attributes
+config_setting(
+    name = "arm64-linux-gnu-cross",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:arm64",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "x86_64-linux-musl-cross",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+        ":musl",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+selects.config_setting_group(
+    # matches all cross build platforms
+    name = "any-cross",
+    match_any = [
+        ":arm64-linux-gnu-cross",
+        ":x86_64-linux-musl-cross",
+    ],
+    visibility = ["//visibility:public"],
+)

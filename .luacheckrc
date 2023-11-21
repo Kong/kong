@@ -8,6 +8,8 @@ globals = {
     "_KONG",
     "kong",
     "ngx.IS_CLI",
+    "kprof",
+    "ngx.worker.pids",
 }
 
 
@@ -25,6 +27,10 @@ ignore = {
 exclude_files = {
     "spec/fixtures/invalid-module.lua",
     "spec-old-api/fixtures/invalid-module.lua",
+    "pgmoon/",
+    "bazel-bin",
+    "bazel-out",
+    "bazel-kong-ee",
 }
 
 files["kong/tools/kong-lua-sandbox.lua"] = {
@@ -60,10 +66,44 @@ files["kong/plugins/ldap-auth/*.lua"] = {
 }
 
 
+files["kong/tracing/init.lua"] = {
+    read_globals = {
+        "table.pack",
+        "table.unpack",
+    }
+}
+
+
 files["spec/**/*.lua"] = {
     std = "ngx_lua+busted",
 }
 
 files["spec-old-api/**/*.lua"] = {
     std = "ngx_lua+busted",
+}
+
+files["spec-ee/**/*.lua"] = {
+    std = "ngx_lua+busted",
+}
+
+files["kong/keyring/init.lua"] = {
+    read_globals = {
+        "table.pack",
+        "table.unpack",
+    }
+}
+
+
+files["kong/hooks.lua"] = {
+    read_globals = {
+        "table.pack",
+        "table.unpack",
+    }
+}
+
+
+files["spec-ee/01-unit/07-keyring/01-init_spec.lua"] = {
+    read_globals = {
+        "table.pack",
+    }
 }

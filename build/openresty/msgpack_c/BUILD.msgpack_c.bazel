@@ -1,0 +1,27 @@
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "cmake")
+load("@kong_bindings//:variables.bzl", "KONG_VAR")
+
+filegroup(
+    name = "all_srcs",
+    srcs = glob(
+        include = ["**"],
+        exclude = ["*.bazel"],
+    ),
+)
+
+# msgpack_c cmake detects cross compile automatically
+cmake(
+    name = "msgpack_c",
+    build_args = [
+        "--",  # <- Pass remaining options to the native tool.
+        "-j" + KONG_VAR["NPROC"],
+    ],
+    cache_entries = {
+        "BUILD_SHARED_LIBS": "OFF",
+    },
+    lib_source = ":all_srcs",
+    out_static_libs = [
+        "libmsgpackc.a",
+    ],
+    visibility = ["//visibility:public"],
+)
