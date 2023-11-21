@@ -56,10 +56,29 @@ local ERROR = "error"
 local AUTHENTICATED_USERID = "authenticated_userid"
 
 
-local base64url_encode = require "ngx.base64".encode_base64url
---local base64url_decode = require "ngx.base64".decode_base64url
+local base64url_encode
 local base64url_decode
 do
+  local rep = string.rep
+  local b64 = require "ngx.base64"
+
+  local encode_base64url = b64.encode_base64url
+  local decode_base64url = b64.decode_base64url
+
+  base64url_encode = encode_base64url
+
+  base64url_decode = function(input)
+    local remainder = #input % 4
+
+    if remainder > 0 then
+      local padlen = 4 - remainder
+      input = input .. rep("=", padlen)
+    end
+
+    return decode_base64url(input)
+  end
+
+  --[[
   local BASE64URL_DECODE_CHARS = "[-_]"
   local BASE64URL_DECODE_SUBST = {
     ["-"] = "+",
@@ -70,6 +89,7 @@ do
     value = string_gsub(value, BASE64URL_DECODE_CHARS, BASE64URL_DECODE_SUBST)
     return ngx_decode_base64(value)
   end
+  --]]
 end
 
 
