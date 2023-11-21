@@ -1,0 +1,3 @@
+message: "Bumped kong-lapis from 1.14.0.3 to 1.16.0.1"
+type: dependency
+scope: Core
