@@ -56,7 +56,20 @@ local AUTHENTICATED_USERID = "authenticated_userid"
 
 
 local base64url_encode = require "ngx.base64".encode_base64url
-local base64url_decode = require "ngx.base64".decode_base64url
+--local base64url_decode = require "ngx.base64".decode_base64url
+local base64url_decode
+do
+  local BASE64URL_DECODE_CHARS = "[-_]"
+  local BASE64URL_DECODE_SUBST = {
+    ["-"] = "+",
+    ["_"] = "/",
+  }
+
+  base64url_decode = function(value)
+    value = string_gsub(value, BASE64URL_DECODE_CHARS, BASE64URL_DECODE_SUBST)
+    return ngx_decode_base64(value)
+  end
+end
 
 
 local function generate_token(conf, service, credential, authenticated_userid,
