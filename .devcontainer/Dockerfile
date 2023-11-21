@@ -1,9 +1,12 @@
-FROM kong/kong:2.7.0
+FROM kong/kong:3.0.0-ubuntu
 
 USER root
 
-RUN apk add --update \
-        alpine-sdk \
-        build-base \
-        bsd-compat-headers \
-        m4
+RUN apt-get update
+
+RUN apt-get install -y \
+        build-essential \
+        unzip \
+        git \
+        m4 \
+        libyaml-dev

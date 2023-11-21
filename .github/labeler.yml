@@ -20,10 +20,14 @@ core/db/migrations:
 core/db:
 - any: ['kong/db/**/*', '!kong/db/migrations/**/*']
 
+changelog:
+- CHANGELOG.md
+
 core/docs:
-- kong/autodoc/**/*
-- ./**/*.md
-- ./*.md
+- any: ['**/*.md', '!CHANGELOG.md']
+
+autodoc:
+- 'autodoc/**/*'
 
 core/language/go:
 - kong/runloop/plugin_servers/*
@@ -48,6 +52,10 @@ core/router:
 
 core/templates:
 - kong/templates/*
+
+core/tracing:
+- kong/tracing/**/*
+- kong/pdk/tracing.lua
 
 chore:
 - .github/**/*
@@ -107,20 +115,11 @@ plugins/key-auth:
 plugins/ldap-auth:
 - kong/plugins/ldap-auth/**/*
 
-plugins/log-serializers:
-- kong/plugins/log-serializers/**/*
-
 plugins/loggly:
 - kong/plugins/loggly/**/*
 
 plugins/oauth2:
 - kong/plugins/oauth2/**/*
-
-plugins/post-function:
-- kong/plugins/post-function/**/*
-
-plugins/pre-function:
-- kong/plugins/pre-function/**/*
 
 plugins/prometheus:
 - kong/plugins/prometheus/**/*
@@ -149,6 +148,10 @@ plugins/response-transformer:
 plugins/session:
 - kong/plugins/session/**/*
 
+plugins/serverless-functions:
+- kong/plugins/post-function/**/*
+- kong/plugins/pre-function/**/*
+
 plugins/statsd:
 - kong/plugins/statsd/**/*
 
@@ -164,4 +167,30 @@ plugins/udp-log:
 plugins/zipkin:
 - kong/plugins/zipkin/**/*
 
+plugins/opentelemetry:
+- kong/plugins/opentelemetry/**/*
 
+schema-change-noteworthy:
+- kong/db/schema/**/*.lua
+- kong/**/schema.lua
+- kong/plugins/**/daos.lua
+- plugins-ee/**/daos.lua
+- plugins-ee/**/schema.lua
+- kong/db/dao/*.lua
+- kong/enterprise_edition/redis/init.lua
+
+build/bazel:
+- '**/*.bazel'
+- '**/*.bzl'
+- build/**/*
+- WORKSPACE
+- .bazelignore
+- .bazelrc
+- .bazelversion
+- scripts/build-*.sh
+
+plugins/base_plugin.lua:
+- kong/plugins/base_plugin.lua/**/*
+
+plugins/log-serializers:
+- kong/plugins/log-serializers/**/*

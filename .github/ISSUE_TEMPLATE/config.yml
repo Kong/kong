@@ -1,5 +1,7 @@
 blank_issues_enabled: true
 contact_links:
+  - name: Kong Gateway Open Source Community Pledge
+    url: https://github.com/Kong/kong/blob/master/COMMUNITY_PLEDGE.md
   - name: Feature Request
     url: https://github.com/Kong/kong/discussions/categories/ideas
     about: Propose your cool ideas and feature requests at the Kong discussion forum
