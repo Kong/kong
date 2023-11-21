@@ -160,6 +160,8 @@ local function ws_event_loop(ws, on_connection, on_error, on_message, cbs_args)
           local _, err = ws:send_binary(payload)
           if err then
             ngx_log(ngx_ERR, "unable to send binary to peer: ", err)
+          else
+            ngx_log(ngx_DEBUG, "sent payload to peer(", #payload, " bytes)")
           end
         end
 

@@ -286,6 +286,10 @@ for _, strategy in helpers.each_strategy() do
             return
           end
 
+          if not s:match("sent payload to peer%(%d+ bytes%)") then
+            return
+          end
+
           return true
         end, 30)
       end)
@@ -321,6 +325,10 @@ for _, strategy in helpers.each_strategy() do
             return
           end
 
+          if not s:match("sent payload to peer%(%d+ bytes%)") then
+            return
+          end
+
           return true
         end,30)
 
@@ -345,6 +353,10 @@ for _, strategy in helpers.each_strategy() do
           local s = pl_file.read("servroot2/logs/error.log")
 
           if not s:match("%[vitals%] flush %d+ bytes to CP") then
+            return
+          end
+
+          if not s:match("sent payload to peer%(%d+ bytes%)") then
             return
           end
 
