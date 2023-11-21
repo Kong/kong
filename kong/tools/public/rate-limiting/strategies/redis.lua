@@ -8,13 +8,16 @@
 local utils = require "kong.tools.utils"
 local redis = require "kong.enterprise_edition.redis"
 
-local ngx_log  = ngx.log
-local ERR      = ngx.ERR
-local ngx_time = ngx.time
-local ceil     = math.ceil
-local floor    = math.floor
-local tonumber = tonumber
-local type     = type
+local ngx_log   = ngx.log
+local ERR       = ngx.ERR
+local ngx_time  = ngx.time
+local ceil      = math.ceil
+local floor     = math.floor
+local tonumber  = tonumber
+local type      = type
+local fmt       = string.format
+local tb_insert = table.insert
+local tb_concat = table.concat
 
 
 local function log(lvl, ...)
@@ -84,6 +87,20 @@ function _M:push_diffs(diffs)
   if not redis.is_redis_cluster(self.config) then
     red:set_keepalive()
   end
+
+  local err_tab = {}
+  for i, res in ipairs(results) do
+    -- the res would be `{false, err}` if the query fails
+    if type(res) == "table" and #res == 2 and res[1] == false then
+      tb_insert(err_tab, fmt("query #%s in the push diffs pipeline failed: %s", i, res[2]))
+    end
+  end
+
+  if next(err_tab) then
+    local err_msg = tb_concat(err_tab, ", ")
+    log(ERR, err_msg)
+    return nil, err_msg
+  end
 end
 
 
@@ -114,6 +131,19 @@ function _M:get_counters(namespace, window_sizes, time)
   -- redis cluster library handles keepalive itself
   if not redis.is_redis_cluster(self.config) then
     red:set_keepalive()
+  end
+
+  local err_tab = {}
+  for i, r in ipairs(res) do
+    -- the r would be `{false, err}` if the query fails
+    if type(r) == "table" and #r == 2 and r[1] == false then
+      tb_insert(err_tab, fmt("query #%s in the get counters pipeline failed: %s", i, r[2]))
+    end
+  end
+
+  if next(err_tab) then
+    local err_msg = tb_concat(err_tab, ", ")
+    log(ERR, err_msg)
   end
 
   local num_hashes = #res

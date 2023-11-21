@@ -1,0 +1,3 @@
+message: "**Rate Limiting Advanced:** Check the error of queries in the redis pipeline"
+type: bugfix
+scope: Plugin
