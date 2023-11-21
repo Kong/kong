@@ -1,0 +1,33 @@
+diff --git a/nginx-1.19.9/src/stream/ngx_stream_proxy_module.c b/nginx-1.19.9/src/stream/ngx_stream_proxy_module.c
+index 09493135..fc8f8479 100644
+--- a/bundle/nginx-1.19.9/src/stream/ngx_stream_proxy_module.c
++++ b/bundle/nginx-1.19.9/src/stream/ngx_stream_proxy_module.c
+@@ -8,6 +8,9 @@
+ #include <ngx_config.h>
+ #include <ngx_core.h>
+ #include <ngx_stream.h>
++#if (NGX_STREAM_LUA_KONG)
++#include <ngx_stream_lua_kong_module.h>
++#endif
+
+
+ typedef struct {
+@@ -812,8 +815,18 @@ ngx_stream_proxy_init_upstream(ngx_stream_session_t *s)
+
+ #if (NGX_STREAM_SSL)
+
++#if (NGX_STREAM_LUA_KONG)
++
++    if (pc->type == SOCK_STREAM && pscf->ssl
++        && !ngx_stream_lua_kong_get_proxy_ssl_disable(s))
++    {
++
++#else
++
+     if (pc->type == SOCK_STREAM && pscf->ssl) {
+
++#endif
++
+         if (u->proxy_protocol) {
+             if (ngx_stream_proxy_send_proxy_protocol(s) != NGX_OK) {
+                 return;

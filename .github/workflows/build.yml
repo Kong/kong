@@ -1,0 +1,81 @@
+name: Build
+on:
+  workflow_call:
+    inputs:
+      relative-build-root:
+        required: true
+        type: string
+    outputs:
+      cache-key:
+        description: 'Computed cache key, used for restoring cache in other workflows'
+        value: ${{ jobs.build.outputs.cache-key }}
+
+env:
+  BUILD_ROOT: ${{ github.workspace }}/${{ inputs.relative-build-root }}
+
+jobs:
+  build:
+    name: Build dependencies
+    runs-on: ubuntu-22.04
+
+    outputs:
+      cache-key: ${{ steps.cache-key.outputs.cache-key }}
+
+    steps:
+    - name: Checkout Kong source code
+      uses: actions/checkout@v4
+
+    - name: Generate cache key
+      id: cache-key
+      uses: ./.github/actions/build-cache-key
+
+    - name: Lookup build cache
+      id: cache-deps
+      uses: actions/cache@v3
+      with:
+        path: ${{ env.BUILD_ROOT }}
+        key: ${{ steps.cache-key.outputs.cache-key }}
+
+    - name: Install packages
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev
+
+    - name: Build Kong
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        make build-kong
+        chmod +rw -R "$BUILD_ROOT/kong-dev"
+
+    - name: Update PATH
+      run: |
+        echo "$BUILD_ROOT/kong-dev/bin" >> $GITHUB_PATH
+        echo "$BUILD_ROOT/kong-dev/openresty/nginx/sbin" >> $GITHUB_PATH
+        echo "$BUILD_ROOT/kong-dev/openresty/bin" >> $GITHUB_PATH
+
+    - name: Debug (nginx)
+      run: |
+        echo nginx: $(which nginx)
+        nginx -V 2>&1 | sed -re 's/ --/\n--/g'
+        ldd $(which nginx)
+
+    - name: Debug (luarocks)
+      run: |
+        echo luarocks: $(which luarocks)
+        luarocks --version
+        luarocks config
+
+    - name: Bazel Outputs
+      uses: actions/upload-artifact@v3
+      if: failure()
+      with:
+        name: bazel-outputs
+        path: |
+          bazel-out/_tmp/actions
+        retention-days: 3
+
+    - name: Build Dev Kong dependencies
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      run: |
+        make install-dev-rocks
