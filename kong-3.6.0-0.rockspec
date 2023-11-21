@@ -21,7 +21,7 @@ dependencies = {
   "lua-ffi-zlib == 0.6",
   "multipart == 0.5.9",
   "version == 1.0.1",
-  "kong-lapis == 1.14.0.3",
+  "kong-lapis == 1.16.0.1",
   -- CE and EE use diff version
   "kong-pgmoon == 2.3.2.0",
   "luatz == 0.4",
