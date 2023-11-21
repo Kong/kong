@@ -237,11 +237,6 @@ local function encode_token(data, key, alg, header)
   end
 
   local header = header or { typ = "JWT", alg = alg }
-  local segments = {
-    base64_encode(json.encode(header)),
-    base64_encode(json.encode(data))
-  }
-
   local buf = buffer.new()
 
   buf:put(base64_encode(json.encode(header))):put(".")
