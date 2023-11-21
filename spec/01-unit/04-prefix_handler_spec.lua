@@ -507,10 +507,33 @@ describe("NGINX conf compiler", function()
         assert.matches("access_log%slogs/access.log%sbasic;", nginx_conf)
 
         local conf = assert(conf_loader(nil, {
+          proxy_access_log = "/dev/stdout apigw_json",
+          stream_listen = "0.0.0.0:9100",
+          nginx_stream_tcp_nodelay = "on",
+        }))
+        local nginx_conf = prefix_handler.compile_kong_conf(conf)
+        assert.matches("access_log%s/dev/stdout%sapigw_json;", nginx_conf)
+        local nginx_conf = prefix_handler.compile_kong_stream_conf(conf)
+        assert.matches("access_log%slogs/access.log%sbasic;", nginx_conf)
+
+        local conf = assert(conf_loader(nil, {
+          proxy_access_log = "/tmp/not_exist.log",
+          stream_listen = "0.0.0.0:9100",
+          nginx_stream_tcp_nodelay = "on",
+        }))
+        local nginx_conf = prefix_handler.compile_kong_conf(conf)
+        assert.matches("access_log%s/tmp/not_exist.log%skong_log_format;", nginx_conf)
+        local nginx_conf = prefix_handler.compile_kong_stream_conf(conf)
+        assert.matches("access_log%slogs/access.log%sbasic;", nginx_conf)
+
+        local conf = assert(conf_loader(nil, {
+          prefix = "servroot_tmp",
+          nginx_stream_log_format = "custom '$protocol $status'",
           proxy_stream_access_log = "/dev/stdout custom",
           stream_listen = "0.0.0.0:9100",
           nginx_stream_tcp_nodelay = "on",
         }))
+        assert(prefix_handler.prepare_prefix(conf))
         local nginx_conf = prefix_handler.compile_kong_conf(conf)
         assert.matches("access_log%slogs/access.log%skong_log_format;", nginx_conf)
         local nginx_conf = prefix_handler.compile_kong_stream_conf(conf)

@@ -89,7 +89,11 @@ server {
     lua_kong_error_log_request_id $kong_request_id;
 
 > if proxy_access_log_enabled then
+>   if proxy_access_log_custom then
+    access_log ${{PROXY_ACCESS_LOG}};
+>   else
     access_log ${{PROXY_ACCESS_LOG}} kong_log_format;
+>   end
 > else
     access_log off;
 > end

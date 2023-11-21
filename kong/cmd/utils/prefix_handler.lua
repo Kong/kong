@@ -239,7 +239,7 @@ local function compile_conf(kong_config, conf_template, template_env_inject)
   -- computed config properties for templating
   local compile_env = {
     _escape = ">",
-    proxy_access_log_enabled = kong_config.proxy_access_log ~= "off",
+    proxy_access_log_custom = false,
     pairs = pairs,
     ipairs = ipairs,
     tostring = tostring,
@@ -247,6 +247,21 @@ local function compile_conf(kong_config, conf_template, template_env_inject)
       getenv = os.getenv,
     }
   }
+
+  local kong_proxy_access_log = kong_config.proxy_access_log
+  if kong_proxy_access_log ~= "off" then
+    compile_env.proxy_access_log_enabled = true
+  end
+  if kong_proxy_access_log then
+    local _, custom_format = string.match(kong_proxy_access_log, "^(%S+)%s(%S+)")
+    if custom_format then
+      compile_env.proxy_access_log_custom = true
+
+      if not string.match(kong_config.nginx_http_log_format or "", "^" .. custom_format) then
+        log.debug(table.concat({"a custom access_log format is set: '", custom_format, "', but not defined"}))
+      end
+    end
+  end
 
   compile_env = pl_tablex.merge(compile_env, template_env_inject or {}, true)
 
