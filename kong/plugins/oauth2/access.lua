@@ -1,9 +1,13 @@
 local url = require "socket.url"
 local utils = require "kong.tools.utils"
 local constants = require "kong.constants"
-local sha256 = require "resty.sha256"
 local timestamp = require "kong.tools.timestamp"
 local secret = require "kong.plugins.oauth2.secret"
+
+
+local base64url_sha256 = require "kong.tools.sha256".sha256_base64url
+local base64url_encode = require "ngx.base64".encode_base64url
+local base64url_decode = require "ngx.base64".decode_base64url
 
 
 local kong = kong
@@ -14,7 +18,6 @@ local error = error
 local split = utils.split
 local strip = utils.strip
 local string_find = string.find
-local string_gsub = string.gsub
 local string_byte = string.byte
 local check_https = utils.check_https
 local encode_args = utils.encode_args
@@ -25,7 +28,6 @@ local table_contains = utils.table_contains
 local ngx_decode_args = ngx.decode_args
 local ngx_re_gmatch = ngx.re.gmatch
 local ngx_decode_base64 = ngx.decode_base64
-local ngx_encode_base64 = ngx.encode_base64
 
 
 local _M = {}
@@ -55,38 +57,6 @@ local GRANT_REFRESH_TOKEN = "refresh_token"
 local GRANT_PASSWORD = "password"
 local ERROR = "error"
 local AUTHENTICATED_USERID = "authenticated_userid"
-
-
-local base64url_encode
-local base64url_decode
-do
-  local BASE64URL_ENCODE_CHARS = "[+/]"
-  local BASE64URL_ENCODE_SUBST = {
-    ["+"] = "-",
-    ["/"] = "_",
-  }
-
-  base64url_encode = function(value)
-    value = ngx_encode_base64(value, true)
-    if not value then
-      return nil
-    end
-
-    return string_gsub(value, BASE64URL_ENCODE_CHARS, BASE64URL_ENCODE_SUBST)
-  end
-
-
-  local BASE64URL_DECODE_CHARS = "[-_]"
-  local BASE64URL_DECODE_SUBST = {
-    ["-"] = "+",
-    ["_"] = "/",
-  }
-
-  base64url_decode = function(value)
-    value = string_gsub(value, BASE64URL_DECODE_CHARS, BASE64URL_DECODE_SUBST)
-    return ngx_decode_base64(value)
-  end
-end
 
 
 local function generate_token(conf, service, credential, authenticated_userid,
@@ -485,11 +455,7 @@ local function validate_pkce_verifier(parameters, auth_code)
     }
   end
 
-  local s256 = sha256:new()
-  s256:update(verifier)
-  local digest = s256:final()
-
-  local challenge = base64url_encode(digest)
+  local challenge = base64url_sha256(verifier)
 
   if not challenge
   or not auth_code.challenge
