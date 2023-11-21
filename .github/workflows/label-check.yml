@@ -5,7 +5,7 @@ on:
 jobs:
   check-labels:
     name: prevent merge labels
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
     - name: do-not-merge label found

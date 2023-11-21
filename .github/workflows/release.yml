@@ -49,7 +49,7 @@ env:
 jobs:
   metadata:
     name: Metadata
-    runs-on: ubuntu-latest-kong
+    runs-on: ubuntu-22.04
     outputs:
       kong-version: ${{ steps.build-info.outputs.kong-version }}
       prerelease-docker-repository: ${{ env.PRERELEASE_DOCKER_REPOSITORY }}

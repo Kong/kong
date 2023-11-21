@@ -3,17 +3,20 @@ name: Performance Test
 on:
   pull_request:
   issue_comment:
+    types: [created]
   schedule:
   # don't know the timezone but it's daily at least
   - cron:  '0 7 * * *'
 
 env:
-  terraform_version: '1.1.2'
+  terraform_version: '1.2.4'
+  DOWNLOAD_ROOT: $HOME/download-root
+
 
 jobs:
-  perf:
-    name: RPS, latency and flamegraphs
-    runs-on: ubuntu-20.04
+  build:
+    name: Build dependencies
+    runs-on: ubuntu-22.04
     if: |
       github.event_name == 'schedule' ||
       (github.event_name == 'pull_request' && startsWith(github.event.pull_request.title, 'perf(')) ||
@@ -23,45 +26,118 @@ jobs:
         (startsWith(github.event.comment.body, '/perf') || startsWith(github.event.comment.body, '/flamegraph'))
       )
 
+    env:
+      DOWNLOAD_ROOT: $HOME/download-root
+
     steps:
+    - name: Set environment variables
+      run: |
+          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
+          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
     - name: Checkout Kong source code
-      uses: actions/checkout@v2
-      # Fetch all history for all tags and branches
+      uses: actions/checkout@v3
+
+    - name: Lookup build cache
+      id: cache-deps
+      uses: actions/cache@v3
       with:
+        path: ${{ env.INSTALL_ROOT }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/perf.yml') }}
+
+    - name: Install packages
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev
+
+    - name: Build OpenResty
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+      run: |
+        bazel build //build/openresty:openresty --action_env=DOWNLOAD_ROOT=$DOWNLOAD_ROOT --action_env=INSTALL_ROOT=$INSTALL_ROOT
+        nginx -V
+
+    - name: Bazel Outputs
+      uses: actions/upload-artifact@v3
+      if: failure()
+      with:
+        name: bazel-outputs
+        path: |
+          bazel-bin/
+          bazel-out/
+
+    - name: Checkout go-pluginserver
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      uses: actions/checkout@v3
+      with:
+        repository: Kong/go-pluginserver
+        path: go-pluginserver
+
+    - name: Add to Path
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools" >> $GITHUB_PATH
+
+    - name: Build Kong dependencies
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      run: |
+          eval `luarocks path`
+          make dev
+
+  # the above should be same as build_and_test.yml expect that perf.yml is used in cache_key
+
+  perf:
+    name: RPS, latency and flamegraphs
+    runs-on: ubuntu-22.04
+    needs: build
+    if: |
+      github.event_name == 'schedule' ||
+      (github.event_name == 'pull_request' && startsWith(github.event.pull_request.title, 'perf(')) ||
+      (github.event_name == 'issue_comment' && github.event.action == 'created' &&
+        github.event.issue.pull_request &&
+        contains('["OWNER", "COLLABORATOR", "MEMBER"]', github.event.comment.author_association) &&
+        (startsWith(github.event.comment.body, '/perf') || startsWith(github.event.comment.body, '/flamegraph'))
+      )
+
+    # perf test can only run one at a time per repo for now
+    concurrency:
+      group: perf-ce
+
+    steps:
+    # set up mutex across CE and EE to avoid resource race
+    - name: Set up mutex
+      uses: ben-z/gh-action-mutex@9709ba4d8596ad4f9f8bbe8e0f626ae249b1b3ac # v1.0-alpha-6
+      with:
+        repository: "Kong/kong-perf-mutex-lock"
+        branch: "gh-mutex"
+        repo-token: ${{ secrets.PAT }}
+
+    - name: Set environment variables
+      run: |
+          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
+          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
+    - name: Checkout Kong source code
+      uses: actions/checkout@v3
+      with:
+        # Fetch all history for all tags and branches
         fetch-depth: 0
-    
-    - name: Install OpenResty
+
+    - name: Lookup build cache
+      uses: actions/cache@v3
+      id: cache-deps
+      with:
+        path: ${{ env.INSTALL_ROOT }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/perf.yml') }}
+
+    - name: Add to Path
+      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
+
+    - name: Install performance test Dependencies
       run: |
-        openresty_version=$(cat .requirements | grep RESTY_VERSION= | cut -d= -f2)
-
-        sudo apt-get -y install --no-install-recommends wget gnupg ca-certificates
-        wget -O - https://openresty.org/package/pubkey.gpg | sudo apt-key add -
-        echo "deb http://openresty.org/package/ubuntu $(lsb_release -sc) main" | \
-          sudo tee /etc/apt/sources.list.d/openresty.list
-        sudo apt-get update
-        sudo apt-get install "openresty=${openresty_version}*" "openresty-resty=${openresty_version}*" -y
-        sudo apt-mark hold openresty
-
-    - name: Install Dependencies
-      run: |
-        wget https://luarocks.org/releases/luarocks-3.7.0.tar.gz -O - |tar zxvf -
-        pushd luarocks-*/
-        ./configure --with-lua=/usr/local/openresty/luajit/ \
-          --lua-suffix=jit \
-          --with-lua-include=/usr/local/openresty/luajit/include/luajit-2.1
-        sudo make install
-        popd
-
-        # just need the lua files to let all imports happy
-        # the CI won't actually run Kong locally
-        git clone https://github.com/kong/lua-kong-nginx-module /tmp/lua-kong-nginx-module
-        pushd /tmp/lua-kong-nginx-module
-        sudo make LUA_LIB_DIR=/usr/local/share/lua/5.1/ install
-        popd
-
         # in Kong repository
-        sudo apt install libyaml-dev -y
-        sudo make dev
+        sudo apt update && sudo apt install inkscape -y
 
         # terraform!
         wget https://releases.hashicorp.com/terraform/${{ env.terraform_version }}/terraform_${{ env.terraform_version }}_linux_amd64.zip
@@ -92,17 +168,62 @@ jobs:
           fi
         fi
 
-        echo ::set-output name=suites::"$suites"
-        echo ::set-output name=tags::"$tags"
+        echo "suites=$suites" >> $GITHUB_OUTPUT
+        echo "tags=$tags" >> $GITHUB_OUTPUT
+
+    - uses: xt0rted/pull-request-comment-branch@653a7d5ca8bd91d3c5cb83286063314d0b063b8e # v1.4.1
+      id: comment-branch
+      if: github.event_name == 'issue_comment' && github.event.action == 'created'
+
+    - name: Find compared versions
+      id: compare_versions
+      run: |
+        pr_ref=$(echo "${{ github.event.pull_request.base.ref }}")
+        custom_vers=$(echo "${{ github.event.comment.body }}" | awk '{print $3}')
+
+        if [[ ! -z "${pr_ref}" ]]; then
+          vers="git:${{ github.head_ref }},git:${pr_ref}"
+        elif [[ ! -z "${custom_vers}" ]]; then
+          vers="${custom_vers}"
+        elif [[ ! -z "${{ github.event.comment.body }}" ]]; then
+          vers="git:${{ steps.comment-branch.outputs.head_ref}},git:${{ steps.comment-branch.outputs.base_ref}}"
+        else # is cron job/on master
+          vers="git:master,git:origin/master~10,git:origin/master~50"
+        fi
+
+        echo $vers
+
+        echo "vers=$vers" >> $GITHUB_OUTPUT
+
 
     - name: Run Tests
       env:
-        PERF_TEST_VERSIONS: git:${{ github.sha }},git:master
-        PERF_TEST_METAL_PROJECT_ID: ${{ secrets.PERF_TEST_PACKET_PROJECT_ID }}
-        PERF_TEST_METAL_AUTH_TOKEN: ${{ secrets.PERF_TEST_PACKET_AUTH_TOKEN }}
+        PERF_TEST_VERSIONS: ${{ steps.compare_versions.outputs.vers }}
         PERF_TEST_DRIVER: terraform
-      timeout-minutes: 60
+        PERF_TEST_TERRAFORM_PROVIDER: bring-your-own
+        PERF_TEST_BYO_KONG_IP: ${{ secrets.PERF_TEST_BYO_KONG_IP }}
+        PERF_TEST_BYO_WORKER_IP: ${{ secrets.PERF_TEST_BYO_WORKER_IP }}
+        PERF_TEST_BYO_SSH_USER: gha
+        PERF_TEST_USE_DAILY_IMAGE: true
+        PERF_TEST_DISABLE_EXEC_OUTPUT: true
+      timeout-minutes: 180
       run: |
+        export PERF_TEST_BYO_SSH_KEY_PATH=$(pwd)/ssh_key
+        echo "${{ secrets.PERF_TEST_BYO_SSH_KEY }}" > ${PERF_TEST_BYO_SSH_KEY_PATH}
+
+        chmod 600 ${PERF_TEST_BYO_SSH_KEY_PATH}
+        # setup tunnel for psql and admin port
+        ssh -o StrictHostKeyChecking=no -o TCPKeepAlive=yes -o ServerAliveInterval=10 \
+            -o ExitOnForwardFailure=yes -o ConnectTimeout=5 \
+            -L 15432:localhost:5432 -L 39001:localhost:39001 \
+            -i ${PERF_TEST_BYO_SSH_KEY_PATH} \
+            ${PERF_TEST_BYO_SSH_USER}@${PERF_TEST_BYO_KONG_IP} tail -f /dev/null &
+        sleep 5
+
+        sudo iptables -t nat -I OUTPUT -p tcp --dport 5432  -d ${PERF_TEST_BYO_KONG_IP} -j DNAT --to 127.0.0.1:15432
+        sudo iptables -t nat -I OUTPUT -p tcp --dport 39001 -d ${PERF_TEST_BYO_KONG_IP} -j DNAT --to 127.0.0.1:39001
+
+        eval `luarocks path`
         for suite in ${{ steps.choose_perf.outputs.suites }}; do
           # Run each test individually, ngx.pipe doesn't like to be imported twice
           # maybe bin/busted --no-auto-insulate
@@ -111,44 +232,71 @@ jobs:
               -t "${{ steps.choose_perf.outputs.tags }}"
           done
         done
-        
+
     - name: Teardown
       # Note: by default each job has if: ${{ success() }}
       if: always()
       env:
-        PERF_TEST_VERSIONS: git:${{ github.sha }},git:master
-        PERF_TEST_METAL_PROJECT_ID: ${{ secrets.PERF_TEST_PACKET_PROJECT_ID }}
-        PERF_TEST_METAL_AUTH_TOKEN: ${{ secrets.PERF_TEST_PACKET_AUTH_TOKEN }}
+        PERF_TEST_VERSIONS: git:${{ github.sha }}
         PERF_TEST_DRIVER: terraform
-        PERF_TEST_TEARDOWN_ALL: "true"
+        PERF_TEST_TERRAFORM_PROVIDER: bring-your-own
+        PERF_TEST_BYO_KONG_IP: ${{ secrets.PERF_TEST_BYO_KONG_IP }}
+        PERF_TEST_BYO_WORKER_IP: ${{ secrets.PERF_TEST_BYO_WORKER_IP }}
+        PERF_TEST_BYO_SSH_USER: gha
+        PERF_TEST_TEARDOWN_ALL: true
       run: |
+        export PERF_TEST_BYO_SSH_KEY_PATH=$(pwd)/ssh_key
+        echo "${{ secrets.PERF_TEST_BYO_SSH_KEY }}" > ${PERF_TEST_BYO_SSH_KEY_PATH}
+
+        eval `luarocks path`
         bin/busted -o gtest spec/04-perf/99-teardown/
 
-    - name: Save results
-      uses: actions/upload-artifact@v2
-      with:
-        name: rps-and-latency
-        path: |
-          output/result.txt
-        retention-days: 31
+        rm -f ${PERF_TEST_BYO_SSH_KEY_PATH}
 
-    - name: Save flamegrpahs
-      uses: actions/upload-artifact@v2
+    - name: Generate high DPI graphs
+      if: always()
+      run: |
+        for i in $(ls output/*.svg); do
+          inkscape --export-area-drawing --export-png="${i%.*}.png" --export-dpi=300 -b FFFFFF $i
+        done
+
+    - uses: actions/setup-python@v4
       with:
-        name: flamegraphs
+        python-version: '3.10'
+        cache: 'pip'
+
+    - name: Generate plots
+      if: always()
+      run: |
+        cwd=$(pwd)
+        cd spec/helpers/perf/charts/
+        pip install -r requirements.txt
+        for i in $(ls ${cwd}/output/*.data.json); do
+          python ./charts.py $i -o "${cwd}/output/"
+        done
+
+    - name: Save results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: perf-results
         path: |
-          output/*.svg
+          output/
+          !output/**/*.log
+
         retention-days: 31
 
     - name: Save error logs
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: error_logs
         path: |
-          output/*.log
+          output/**/*.log
         retention-days: 31
 
     - name: Output
+      if: always()
       id: output
       run: |
         if [[ "${{ steps.choose_perf.outputs.suites }}" =~ "02-flamegraph" ]]; then
@@ -164,19 +312,30 @@ jobs:
         result="${result//$'\n'/'%0A'}"
         result="${result//$'\r'/'%0D'}"
 
-        echo ::set-output name=result::"$result"
-    
+        echo "result=$results" >> $GITHUB_OUTPUT
+
+    - name: Upload charts
+      if: always()
+      id: charts
+      uses: devicons/public-upload-to-imgur@352cf5f2805c692539a96cfe49a09669e6fca88e # v2.2.2
+      continue-on-error: true
+      with:
+        path: output/*.png
+        client_id: ${{ secrets.PERF_TEST_IMGUR_CLIENT_ID }}
+
     - name: Comment
       if: |
         github.event_name == 'pull_request' ||
         (github.event_name == 'issue_comment' && github.event.issue.pull_request)
-      uses: actions-ecosystem/action-create-comment@v1
+      uses: actions-ecosystem/action-create-comment@e23bc59fbff7aac7f9044bd66c2dc0fe1286f80b # v1.0.0
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         body: |
           ## :rocket: Performance test result
 
           **Test Suite**: ${{ steps.choose_perf.outputs.suites }} (${{ steps.choose_perf.outputs.tags }})
+
+          ${{ join(fromJSON(steps.charts.outputs.markdown_urls), '     ') }}
 
           <details><summary>Click to expand</summary>
 
@@ -188,4 +347,4 @@ jobs:
 
           </details>
 
-          [Download Artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)
+          [Download Artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts) for detailed results and interactive SVG flamegraphs.

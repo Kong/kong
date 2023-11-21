@@ -8,7 +8,7 @@ on:
 jobs:
   backport:
     name: Backport
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     if: >
       github.event.pull_request.merged
       && (
