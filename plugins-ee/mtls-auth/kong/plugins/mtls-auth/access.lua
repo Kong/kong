@@ -465,7 +465,12 @@ local function do_authentication(conf)
         { ttl = conf.cert_cache_ttl }, is_cert_revoked,
         conf, proof_chain, trust_table.store)
       if err then
-        kong.log.err(err)
+        if conf.revocation_check_mode == "IGNORE_CA_ERROR" and
+          err:find("fail to check revocation", nil, true) then
+          kong.log.notice(err .. ". Ignored this as `revocation_check_mode` is `IGNORE_CA_ERROR`.")
+        else
+          kong.log.err(err)
+        end
       end
 
       -- there was communication error or neither of OCSP URI or CRL URI set

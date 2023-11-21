@@ -1,0 +1,3 @@
+message: "**Mtls-auth:** print notice log if revocation check fails with revocation_check_mode = IGNORE_CA_ERROR"
+type: bugfix
+scope: Plugin
