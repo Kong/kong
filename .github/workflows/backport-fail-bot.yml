@@ -37,7 +37,7 @@ jobs:
           const pr_author_slack_id = slack_mapping[pr_author_github_id];
           const author = pr_author_slack_id ? `<@${pr_author_slack_id}>` : pr_author_github_id;
           const payload = {
-            text: `Hello ${author} , backport failed in PR: ${pr_url}.`,
+            text: `${pr_url} from ${author} failed to backport.`,
             channel: process.env.SLACK_CHANNEL,
           };
           return JSON.stringify(payload);
