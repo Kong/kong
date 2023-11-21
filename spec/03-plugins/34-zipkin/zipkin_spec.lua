@@ -53,6 +53,7 @@ local function wait_for_spans(zipkin_client, number_of_spans, remoteServiceName,
   local spans = {}
   helpers.wait_until(function()
     if trace_id then
+      ngx.sleep(1)
       local res = assert(zipkin_client:get("/api/v2/trace/" .. trace_id))
       spans = cjson.decode(assert.response(res).has.status(200))
       return #spans == number_of_spans

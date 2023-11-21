@@ -1,0 +1,239 @@
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+load("@bazel_skylib//lib:selects.bzl", "selects")
+load("//build/nfpm:rules.bzl", "nfpm_pkg")
+load("//build/toolchain:managed_toolchain.bzl", "aarch64_glibc_distros")
+
+filegroup(
+    name = "srcs",
+    srcs = glob(["**"]),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "rockspec_srcs",
+    srcs = glob(["*.rockspec"]),
+    visibility = ["//visibility:public"],
+)
+
+nfpm_env = {
+    "KONG_NAME": "kong",
+    "KONG_REPLACES_1": "kong-community-edition",
+    "KONG_REPLACES_2": "kong-enterprise-edition-fips",
+    "KONG_CONFLICTS_1": "kong-community-edition",
+    "KONG_CONFLICTS_2": "kong-enterprise-edition-fips",
+}
+
+nfpm_pkg(
+    name = "kong_deb",
+    config = "//build:package/nfpm.yaml",
+    env = nfpm_env,
+    packager = "deb",
+    pkg_name = "kong",
+    visibility = ["//visibility:public"],
+)
+
+nfpm_pkg(
+    name = "kong_apk",
+    config = "//build:package/nfpm.yaml",
+    env = nfpm_env,
+    packager = "apk",
+    pkg_name = "kong",
+    visibility = ["//visibility:public"],
+)
+
+nfpm_pkg(
+    name = "kong_el8",
+    config = "//build:package/nfpm.yaml",
+    env = nfpm_env,
+    packager = "rpm",
+    pkg_name = "kong.el8",
+    visibility = ["//visibility:public"],
+)
+
+nfpm_pkg(
+    name = "kong_el7",
+    config = "//build:package/nfpm.yaml",
+    env = nfpm_env,
+    extra_env = {
+        "RPM_EXTRA_DEPS": "hostname",
+    },
+    packager = "rpm",
+    pkg_name = "kong.el7",
+    visibility = ["//visibility:public"],
+)
+
+nfpm_pkg(
+    name = "kong_aws2",
+    config = "//build:package/nfpm.yaml",
+    env = nfpm_env,
+    extra_env = {
+        "RPM_EXTRA_DEPS": "/usr/sbin/useradd",
+        "RPM_EXTRA_DEPS_2": "/usr/sbin/groupadd",
+    },
+    packager = "rpm",
+    pkg_name = "kong.aws2",
+    visibility = ["//visibility:public"],
+)
+
+nfpm_pkg(
+    name = "kong_aws2023",
+    config = "//build:package/nfpm.yaml",
+    env = nfpm_env,
+    extra_env = {
+        "RPM_EXTRA_DEPS": "/usr/sbin/useradd",
+        "RPM_EXTRA_DEPS_2": "/usr/sbin/groupadd",
+        "RPM_EXTRA_DEPS_3": "libxcrypt-compat",
+    },
+    packager = "rpm",
+    pkg_name = "kong.aws2023",
+    visibility = ["//visibility:public"],
+)
+
+###### flags
+
+# --//:debug=true
+bool_flag(
+    name = "debug",
+    build_setting_default = True,
+)
+
+config_setting(
+    name = "debug_flag",
+    flag_values = {
+        ":debug": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "debug_linux_flag",
+    constraint_values = [
+        "@platforms//os:linux",
+    ],
+    flag_values = {
+        ":debug": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
+# --//:skip_webui=false
+bool_flag(
+    name = "skip_webui",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "skip_webui_flags",
+    flag_values = {
+        ":skip_webui": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
+##### constraints, platforms and config_settings for cross-compile
+
+constraint_setting(name = "cross_build_setting")
+
+constraint_value(
+    name = "cross_build",
+    constraint_setting = ":cross_build_setting",
+)
+
+# platform sets the constraint values based on user input (--platform=//:PLATFOTM)
+platform(
+    name = "generic-crossbuild-x86_64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+        "//build/platforms/distro:generic",
+        ":cross_build",
+    ],
+)
+
+platform(
+    name = "generic-crossbuild-aarch64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:aarch64",
+        "//build/platforms/distro:generic",
+        ":cross_build",
+    ],
+)
+
+# backward compatibility
+alias(
+    name = "ubuntu-22.04-arm64",
+    actual = ":generic-crossbuild-aarch64",
+)
+
+platform(
+    name = "alpine-crossbuild-x86_64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+        "//build/platforms/distro:alpine",
+        ":cross_build",
+    ],
+)
+
+# backward compatibility
+alias(
+    name = "alpine-x86_64",
+    actual = ":alpine-crossbuild-x86_64",
+)
+
+platform(
+    name = "alpine-crossbuild-aarch64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:aarch64",
+        "//build/platforms/distro:alpine",
+        ":cross_build",
+    ],
+)
+
+[
+    platform(
+        name = vendor + "-crossbuild-aarch64",
+        constraint_values = [
+            "@platforms//os:linux",
+            "@platforms//cpu:aarch64",
+            "//build/platforms/distro:" + vendor,
+            ":cross_build",
+        ],
+    )
+    for vendor in aarch64_glibc_distros
+]
+
+# config_settings define a select() condition based on user-set constraint_values
+# see https://bazel.build/docs/configurable-attributes
+config_setting(
+    name = "aarch64-linux-anylibc-cross",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:aarch64",
+        ":cross_build",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "x86_64-linux-musl-cross",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+        "//build/platforms/distro:alpine",
+        ":cross_build",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+selects.config_setting_group(
+    # matches all cross build platforms
+    name = "any-cross",
+    match_any = [
+        ":aarch64-linux-anylibc-cross",
+        ":x86_64-linux-musl-cross",
+    ],
+    visibility = ["//visibility:public"],
+)

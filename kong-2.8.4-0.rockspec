@@ -13,7 +13,7 @@ description = {
 }
 dependencies = {
   "inspect == 3.1.2",
-  "luasec == 1.0.2",
+  "luasec == 1.3.2",
   "luasocket == 3.0-rc1",
   "penlight == 1.12.0",
   "lua-resty-http == 0.16.1",
@@ -36,7 +36,7 @@ dependencies = {
   "lua-resty-healthcheck == 1.5.3",
   "lua-resty-mlcache == 2.5.0",
   "lua-messagepack == 0.5.2",
-  "lua-resty-openssl == 0.8.7",
+  "lua-resty-openssl == 0.8.22",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.7.2",

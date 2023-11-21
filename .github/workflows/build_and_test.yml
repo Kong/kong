@@ -1,67 +1,49 @@
 name: Build & Test
-on: [push, pull_request]
+on:
+  pull_request:
+    paths-ignore:
+    # ignore markdown files (CHANGELOG.md, README.md, etc.)
+    - '**/*.md'
+    - '.github/workflows/release.yml'
+    - 'changelog/**'
+    - 'kong.conf.default'
+  push:
+    paths-ignore:
+    # ignore markdown files (CHANGELOG.md, README.md, etc.)
+    - '**/*.md'
+    # ignore PRs for the generated COPYRIGHT file
+    - 'COPYRIGHT'
+    branches:
+    - master
+    - release/*
+    - test-please/*
+  workflow_dispatch:
+    inputs:
+      coverage:
+        description: 'Coverage enabled'
+        required: false
+        type: boolean
+        default: false
+
+# cancel previous runs if new commits are pushed to the PR, but run for each commit on master
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  BUILD_ROOT: ${{ github.workspace }}/bazel-bin/build
+  KONG_TEST_COVERAGE: ${{ inputs.coverage == true || github.event_name == 'schedule' }}
 
 jobs:
   build:
-    name: Build dependencies
-    runs-on: ubuntu-20.04
-
-    env:
-      DOWNLOAD_ROOT: $HOME/download-root
-
-    steps:
-    - name: Set environment variables
-      run: |
-          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
-          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-    - name: Checkout Kong source code
-      uses: actions/checkout@v2
-
-    - name: Lookup build cache
-      uses: actions/cache@v2
-      id: cache-deps
-      with:
-        path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
-
-    - name: Checkout kong-build-tools
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-      uses: actions/checkout@v2
-      with:
-        repository: Kong/kong-build-tools
-        path: kong-build-tools
-        ref: master
-
-    - name: Checkout go-pluginserver
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-      uses: actions/checkout@v2
-      with:
-        repository: Kong/go-pluginserver
-        path: go-pluginserver
-
-    - name: Add to Path
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools" >> $GITHUB_PATH
-
-    - name: Install packages
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev
-
-    - name: Build Kong dependencies
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-      run: |
-          source .ci/setup_env_github.sh
-          make dev
+    uses: ./.github/workflows/build.yml
+    with:
+      relative-build-root: bazel-bin/build
 
   lint-doc-and-unit-tests:
     name: Lint, Doc and Unit tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: build
-
-    env:
-      KONG_TEST_PG_DATABASE: kong
-      KONG_TEST_PG_USER: kong
 
     services:
       postgres:
@@ -75,62 +57,78 @@ jobs:
         options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
 
     steps:
-    - name: Set environment variables
-      run: |
-          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
-          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-
     - name: Checkout Kong source code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
 
     - name: Lookup build cache
-      uses: actions/cache@v2
       id: cache-deps
+      uses: actions/cache@v3
       with:
-        path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
+        path: ${{ env.BUILD_ROOT }}
+        key: ${{ needs.build.outputs.cache-key }}
 
-    - name: Add to Path
-      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools" >> $GITHUB_PATH
+    - name: Check test-helpers doc generation
+      run: |
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+          pushd ./spec && ldoc .
 
     - name: Check autodoc generation
       run: |
-          eval `luarocks path`
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           scripts/autodoc
-
-    - name: Check Admin API definition generation
-      run: |
-          eval `luarocks path`
-          scripts/gen-admin-api-def.sh
 
     - name: Lint Lua code
       run: |
-          eval `luarocks path`
-          luacheck -q .
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+          make lint
+
+    - name: Validate rockspec file
+      run: |
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+          scripts/validate-rockspec
+
+    - name: Check spec file misspelling
+      run: |
+          scripts/check_spec_files_spelling.sh
+
+    - name: Check labeler configuration
+      run: scripts/check-labeler.pl .github/labeler.yml
 
     - name: Unit tests
+      env:
+        KONG_TEST_PG_DATABASE: kong
+        KONG_TEST_PG_USER: kong
       run: |
-          eval `luarocks path`
-          make dev
-          bin/busted -v -o htest spec/01-unit
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+          TEST_CMD="bin/busted -v -o htest spec/01-unit"
+          if [[ $KONG_TEST_COVERAGE = true ]]; then
+            TEST_CMD="$TEST_CMD --coverage"
+          fi
+          $TEST_CMD
+
+    - name: Archive coverage stats file
+      uses: actions/upload-artifact@v3
+      if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
+      with:
+        name: luacov-stats-out-${{ github.job }}-${{ github.run_id }}
+        retention-days: 1
+        path: |
+          luacov.stats.out
+
+    - name: Get kernel message
+      if: failure()
+      run: |
+        sudo dmesg -T
 
   integration-tests-postgres:
     name: Postgres ${{ matrix.suite }} - ${{ matrix.split }} tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: build
-
     strategy:
+      fail-fast: false
       matrix:
         suite: [integration, plugins]
-        split: [first (01-04), second (>= 05)]
-
-    env:
-      KONG_TEST_PG_DATABASE: kong
-      KONG_TEST_PG_USER: kong
-      KONG_TEST_DATABASE: postgres
-      TEST_SUITE: ${{ matrix.suite }}
-      TEST_SPLIT: ${{ matrix.split }}
+        split: [first, second]
 
     services:
       postgres:
@@ -144,7 +142,7 @@ jobs:
         options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
 
       grpcbin:
-        image: moul/grpcbin
+        image: kong/grpcbin
         ports:
           - 15002:9000
           - 15003:9001
@@ -153,210 +151,256 @@ jobs:
         image: redis
         ports:
           - 6379:6379
-        options: --entrypoint redis-server
+          - 6380:6380
+        options: >-
+          --name kong_redis
 
       zipkin:
-        image: openzipkin/zipkin:2.19
+        image: openzipkin/zipkin:2
         ports:
           - 9411:9411
 
     steps:
-    - name: Set environment variables
-      run: |
-          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
-          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-
     - name: Checkout Kong source code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
 
     - name: Lookup build cache
-      uses: actions/cache@v2
       id: cache-deps
+      uses: actions/cache@v3
       with:
-        path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
-
-    - name: Add to Path
-      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
+        path: ${{ env.BUILD_ROOT }}
+        key: ${{ needs.build.outputs.cache-key }}
 
     - name: Add gRPC test host names
       run: |
           echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
 
-    - name: Tests
+    - name: Install AWS SAM cli tool
+      if: ${{ matrix.suite == 'plugins' }}
       run: |
-          eval `luarocks path`
-          make dev
+          curl -L -s -o /tmp/aws-sam-cli.zip https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip
+          unzip -o /tmp/aws-sam-cli.zip -d /tmp/aws-sam-cli
+          sudo /tmp/aws-sam-cli/install --update
+
+    - name: Update PATH
+      run: |
+        echo "$BUILD_ROOT/kong-dev/bin" >> $GITHUB_PATH
+        echo "$BUILD_ROOT/kong-dev/openresty/nginx/sbin" >> $GITHUB_PATH
+        echo "$BUILD_ROOT/kong-dev/openresty/bin" >> $GITHUB_PATH
+
+    - name: Debug (nginx)
+      run: |
+        echo nginx: $(which nginx)
+        nginx -V 2>&1 | sed -re 's/ --/\n--/g'
+        ldd $(which nginx)
+
+    - name: Debug (luarocks)
+      run: |
+        echo luarocks: $(which luarocks)
+        luarocks --version
+        luarocks config
+
+    - name: Tune up postgres max_connections
+      run: |
+        # arm64 runners may use more connections due to more worker cores
+        psql -hlocalhost -Ukong kong -tAc 'alter system set max_connections = 5000;'
+
+    - name: Generate test rerun filename
+      run: |
+           echo FAILED_TEST_FILES_FILE=$(echo '${{ github.run_id }}-${{ matrix.suite }}-${{ matrix.split }}' | tr A-Z a-z | sed -Ee 's/[^a-z0-9]+/-/g').txt >> $GITHUB_ENV
+
+
+    - name: Download test rerun information
+      uses: actions/download-artifact@v3
+      continue-on-error: true
+      with:
+        name: ${{ env.FAILED_TEST_FILES_FILE }}
+
+    - name: Tests
+      env:
+        KONG_TEST_PG_DATABASE: kong
+        KONG_TEST_PG_USER: kong
+        KONG_TEST_DATABASE: postgres
+        KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
+        KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
+        KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
+        TEST_SUITE: ${{ matrix.suite }}
+        TEST_SPLIT: ${{ matrix.split }}
+      run: |
+          make venv-dev # required to install other dependencies like bin/grpcurl
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           .ci/run_tests.sh
+
+    - name: Upload test rerun information
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ env.FAILED_TEST_FILES_FILE }}
+        path: ${{ env.FAILED_TEST_FILES_FILE }}
+        retention-days: 2
+
+    - name: Archive coverage stats file
+      uses: actions/upload-artifact@v3
+      if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
+      with:
+        name: luacov-stats-out-${{ github.job }}-${{ github.run_id }}-${{ matrix.suite }}-${{ contains(matrix.split, 'first') && '1' || '2' }}
+        retention-days: 1
+        path: |
+          luacov.stats.out
+
+    - name: Get kernel message
+      if: failure()
+      run: |
+        sudo dmesg -T
 
   integration-tests-dbless:
     name: DB-less integration tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: build
-
-    env:
-      KONG_TEST_PG_DATABASE: kong
-      KONG_TEST_PG_USER: kong
-      KONG_TEST_DATABASE: 'off'
-      TEST_SUITE: dbless
 
     services:
       grpcbin:
-        image: moul/grpcbin
+        image: kong/grpcbin
         ports:
           - 15002:9000
           - 15003:9001
 
     steps:
-    - name: Set environment variables
-      run: |
-          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
-          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-
     - name: Checkout Kong source code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
 
     - name: Lookup build cache
-      uses: actions/cache@v2
       id: cache-deps
+      uses: actions/cache@v3
       with:
-        path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
-
-    - name: Add to Path
-      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
+        path: ${{ env.BUILD_ROOT }}
+        key: ${{ needs.build.outputs.cache-key }}
 
     - name: Add gRPC test host names
       run: |
           echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
 
-    - name: Tests
+    - name: Run OpenTelemetry Collector
       run: |
-          eval `luarocks path`
-          make dev
+          mkdir -p ${{ github.workspace }}/tmp/otel
+          touch ${{ github.workspace }}/tmp/otel/file_exporter.json
+          sudo chmod 777 -R ${{ github.workspace }}/tmp/otel
+          docker run -p 4317:4317 -p 4318:4318 -p 55679:55679 \
+              -v ${{ github.workspace }}/spec/fixtures/opentelemetry/otelcol.yaml:/etc/otel-collector-config.yaml \
+              -v ${{ github.workspace }}/tmp/otel:/etc/otel \
+              --name opentelemetry-collector -d \
+              otel/opentelemetry-collector-contrib:0.52.0 \
+              --config=/etc/otel-collector-config.yaml
+          sleep 2
+          docker logs opentelemetry-collector
+
+    - name: Tests
+      env:
+        KONG_TEST_PG_DATABASE: kong
+        KONG_TEST_PG_USER: kong
+        KONG_TEST_DATABASE: 'off'
+        KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
+        KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
+        KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
+        TEST_SUITE: dbless
+      run: |
+          make venv-dev # required to install other dependencies like bin/grpcurl
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           .ci/run_tests.sh
 
-  integration-tests-cassandra:
-    name: C* ${{ matrix.cassandra_version }} ${{ matrix.suite }} - ${{ matrix.split }} tests
-    runs-on: ubuntu-20.04
-    needs: build
-
-    strategy:
-      matrix:
-        suite: [integration, plugins]
-        cassandra_version: [3]
-        split: [first (01-04), second (>= 05)]
-
-    env:
-      KONG_TEST_DATABASE: cassandra
-      TEST_SUITE: ${{ matrix.suite }}
-      TEST_SPLIT: ${{ matrix.split }}
-
-    services:
-      cassandra:
-        image: cassandra:${{ matrix.cassandra_version }}
-        ports:
-          - 7199:7199
-          - 7000:7000
-          - 9160:9160
-          - 9042:9042
-        options: --health-cmd "cqlsh -e 'describe cluster'" --health-interval 5s --health-timeout 5s --health-retries 8
-
-      grpcbin:
-        image: moul/grpcbin
-        ports:
-          - 15002:9000
-          - 15003:9001
-
-      redis:
-        image: redis
-        ports:
-          - 6379:6379
-        options: --entrypoint redis-server
-
-      zipkin:
-        image: openzipkin/zipkin:2.19
-        ports:
-          - 9411:9411
-
-    steps:
-    - name: Set environment variables
-      run: |
-          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
-          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-
-    - name: Checkout Kong source code
-      uses: actions/checkout@v2
-
-    - name: Lookup build cache
-      uses: actions/cache@v2
-      id: cache-deps
+    - name: Archive coverage stats file
+      uses: actions/upload-artifact@v3
+      if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
       with:
-        path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
+        name: luacov-stats-out-${{ github.job }}-${{ github.run_id }}
+        retention-days: 1
+        path: |
+          luacov.stats.out
 
-    - name: Add to Path
-      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
-
-    - name: Add gRPC test host names
+    - name: Get kernel message
+      if: failure()
       run: |
-          echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
-          echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
-
-    - name: Tests
-      run: |
-          eval `luarocks path`
-          make dev
-          .ci/run_tests.sh
+        sudo dmesg -T
 
   pdk-tests:
     name: PDK tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: build
 
-    env:
-      TEST_SUITE: pdk
-
     steps:
-    - name: Set environment variables
-      run: |
-          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
-          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-
     - name: Checkout Kong source code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
 
     - name: Lookup build cache
-      uses: actions/cache@v2
       id: cache-deps
+      uses: actions/cache@v3
       with:
-        path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
-
-    - name: Add to Path
-      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$DOWNLOAD_ROOT/cpanm" >> $GITHUB_PATH
+        path: ${{ env.BUILD_ROOT }}
+        key: ${{ needs.build.outputs.cache-key }}
 
     - name: Install Test::Nginx
       run: |
-          CPAN_DOWNLOAD=$DOWNLOAD_ROOT/cpanm
+          CPAN_DOWNLOAD=./cpanm
           mkdir -p $CPAN_DOWNLOAD
           curl -o $CPAN_DOWNLOAD/cpanm https://cpanmin.us
           chmod +x $CPAN_DOWNLOAD/cpanm
 
           echo "Installing CPAN dependencies..."
-          cpanm --notest --local-lib=$HOME/perl5 local::lib && eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
-          cpanm --notest Test::Nginx
+          $CPAN_DOWNLOAD/cpanm --notest --local-lib=$HOME/perl5 local::lib && eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
+          $CPAN_DOWNLOAD/cpanm --notest Test::Nginx
 
     - name: Tests
+      env:
+        TEST_SUITE: pdk
       run: |
-          eval `luarocks path`
-          make dev
-
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+          if [[ $KONG_TEST_COVERAGE = true ]]; then
+            export PDK_LUACOV=1
+          fi
           eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
           .ci/run_tests.sh
+
+    - name: Archive coverage stats file
+      uses: actions/upload-artifact@v3
+      if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
+      with:
+        name: luacov-stats-out-${{ github.job }}-${{ github.run_id }}
+        retention-days: 1
+        path: |
+          luacov.stats.out
+
+    - name: Get kernel message
+      if: failure()
+      run: |
+        sudo dmesg -T
+
+  aggregator:
+    needs: [lint-doc-and-unit-tests,pdk-tests,integration-tests-postgres,integration-tests-dbless]
+    name: Luacov stats aggregator
+    if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout source code
+      uses: actions/checkout@v4
+
+    - name: Install requirements
+      run: |
+        sudo apt-get update && sudo apt-get install -y luarocks
+        sudo luarocks install luacov
+        sudo luarocks install luafilesystem
+
+    # Download all archived coverage stats files
+    - uses: actions/download-artifact@v3
+
+    - name: Stats aggregation
+      shell: bash
+      run: |
+        lua .ci/luacov-stats-aggregator.lua "luacov-stats-out-" "luacov.stats.out" ${{ github.workspace }}/
+        # The following prints a report with each file sorted by coverage percentage, and the total coverage
+        printf "\n\nCoverage   File\n\n"
+        awk -v RS='Coverage\n-+\n' 'NR>1{print $0}' luacov.report.out | grep -vE "^-|^$" > summary.out
+        cat summary.out | grep -v "^Total" | awk '{printf "%7d%%   %s\n", $4, $1}' | sort -n
+        cat summary.out | grep "^Total" | awk '{printf "%7d%%   %s\n", $4, $1}'

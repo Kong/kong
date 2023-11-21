@@ -6,6 +6,9 @@ WIN_SCRIPTS = "bin/busted" "bin/kong"
 BUSTED_ARGS ?= -v
 TEST_CMD ?= bin/busted $(BUSTED_ARGS)
 
+BUILD_NAME ?= kong-dev
+BAZEL_ARGS ?= --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME) --//:skip_webui=true
+
 ifeq ($(OS), darwin)
 OPENSSL_DIR ?= /usr/local/opt/openssl
 GRPCURL_OS ?= osx
@@ -16,15 +19,26 @@ endif
 
 ifeq ($(MACHINE), aarch64)
 GRPCURL_MACHINE ?= arm64
+H2CLIENT_MACHINE ?= arm64
 else
 GRPCURL_MACHINE ?= $(MACHINE)
+H2CLIENT_MACHINE ?= $(MACHINE)
+endif
+
+ifeq ($(MACHINE), aarch64)
+BAZELISK_MACHINE ?= arm64
+else ifeq ($(MACHINE), x86_64)
+BAZELISK_MACHINE ?= amd64
+else
+BAZELISK_MACHINE ?= $(MACHINE)
 endif
 
 .PHONY: install dependencies dev remove grpcurl \
 	setup-ci setup-kong-build-tools \
 	lint test test-integration test-plugins test-all \
 	pdk-phase-check functional-tests \
-	fix-windows release
+	fix-windows release \
+	nightly-release release
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 KONG_SOURCE_LOCATION ?= $(ROOT_DIR)
@@ -35,8 +49,18 @@ RESTY_OPENSSL_VERSION ?= `grep RESTY_OPENSSL_VERSION $(KONG_SOURCE_LOCATION)/.re
 RESTY_PCRE_VERSION ?= `grep RESTY_PCRE_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 KONG_BUILD_TOOLS ?= `grep KONG_BUILD_TOOLS_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 GRPCURL_VERSION ?= 1.8.5
+BAZLISK_VERSION ?= 1.18.0
 OPENRESTY_PATCHES_BRANCH ?= master
 KONG_NGINX_MODULE_BRANCH ?= master
+BAZEL := $(shell command -v bazel 2> /dev/null)
+VENV = /dev/null # backward compatibility when no venv is built
+
+# Use x86_64 grpcurl v1.8.5 for Apple silicon chips
+ifeq ($(GRPCURL_OS)_$(MACHINE)_$(GRPCURL_VERSION), osx_arm64_1.8.5)
+GRPCURL_MACHINE = x86_64
+endif
+
+H2CLIENT_VERSION ?= 0.4.0
 
 PACKAGE_TYPE ?= deb
 REPOSITORY_NAME ?= kong-${PACKAGE_TYPE}
@@ -81,6 +105,21 @@ release-docker-images:
 	$(MAKE) \
 	KONG_SOURCE_LOCATION=${KONG_SOURCE_LOCATION} \
 	release-kong-docker-images
+
+bin/bazel:
+	@curl -s -S -L \
+		https://github.com/bazelbuild/bazelisk/releases/download/v$(BAZLISK_VERSION)/bazelisk-$(OS)-$(BAZELISK_MACHINE) -o bin/bazel
+	@chmod +x bin/bazel
+
+bin/grpcurl:
+	@curl -s -S -L \
+		https://github.com/fullstorydev/grpcurl/releases/download/v$(GRPCURL_VERSION)/grpcurl_$(GRPCURL_VERSION)_$(GRPCURL_OS)_$(GRPCURL_MACHINE).tar.gz | tar xz -C bin;
+	@$(RM) bin/LICENSE
+
+bin/h2client:
+	@curl -s -S -L \
+		https://github.com/Kong/h2client/releases/download/v$(H2CLIENT_VERSION)/h2client_$(H2CLIENT_VERSION)_$(OS)_$(H2CLIENT_MACHINE).tar.gz | tar xz -C bin;
+	@$(RM) bin/README.md
 
 release:
 ifeq ($(ISTAG),false)
@@ -188,15 +227,44 @@ dependencies: bin/grpcurl
 	  fi \
 	done;
 
-bin/grpcurl:
-	@curl -s -S -L \
-		https://github.com/fullstorydev/grpcurl/releases/download/v$(GRPCURL_VERSION)/grpcurl_$(GRPCURL_VERSION)_$(GRPCURL_OS)_$(GRPCURL_MACHINE).tar.gz | tar xz -C bin;
-	@rm bin/LICENSE
+build-kong: check-bazel
+	$(BAZEL) build //build:kong --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME)
+
+build-venv: check-bazel
+	$(eval VENV := bazel-bin/build/$(BUILD_NAME)-venv.sh)
+
+	@if [ ! -e bazel-bin/build/$(BUILD_NAME)-venv.sh ]; then \
+		$(BAZEL) build //build:venv $(BAZEL_ARGS); \
+	fi
+
+install-dev-rocks: build-venv
+	@. $(VENV) ;\
+	for rock in $(DEV_ROCKS) ; do \
+	  if luarocks list --porcelain $$rock | grep -q "installed" ; then \
+		echo $$rock already installed, skipping ; \
+	  else \
+		echo $$rock not found, installing via luarocks... ; \
+		LIBRARY_PREFIX=$$(pwd)/bazel-bin/build/$(BUILD_NAME)/kong ; \
+		luarocks install $$rock OPENSSL_DIR=$$LIBRARY_PREFIX CRYPTO_DIR=$$LIBRARY_PREFIX YAML_DIR=$(YAML_DIR) || exit 1; \
+	  fi \
+	done;
 
 dev: remove install dependencies
 
+venv-dev: build-venv install-dev-rocks bin/grpcurl bin/h2client
+
+check-bazel: bin/bazel
+ifndef BAZEL
+	$(eval BAZEL := bin/bazel)
+endif
+
+clean:  check-bazel
+	$(BAZEL) clean
+	$(RM) bin/bazel bin/grpcurl bin/h2client
+
+
 lint:
-	@luacheck -q .
+	@luacheck -q . --exclude-files=bazel-*
 	@!(grep -R -E -I -n -w '#only|#o' spec && echo "#only or #o tag detected") >&2
 	@!(grep -R -E -I -n -- '---\s+ONLY' t && echo "--- ONLY block detected") >&2
 
