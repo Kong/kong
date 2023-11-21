@@ -93,6 +93,10 @@ describe("Plugin: datadog (log)", function()
           }
         }
 
+        local route9 = bp.routes:insert {
+          paths = { "/serviceless" },
+        }
+
         bp.plugins:insert {
           name     = "key-auth",
           route = { id = route1.id },
@@ -237,6 +241,25 @@ describe("Plugin: datadog (log)", function()
           },
         }
 
+        bp.plugins:insert {
+          name     = "datadog",
+          route    = { id = route9.id },
+          config   = {
+            host             = "127.0.0.1",
+            port             = 9999,
+            queue_size       = 2,
+          },
+        }
+
+        bp.plugins:insert {
+          name     = "request-termination",
+          route    = { id = route9.id },
+          config   = {
+            status_code = 200,
+            message     = "OK",
+          }
+        }
+
         assert(helpers.start_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -245,13 +268,19 @@ describe("Plugin: datadog (log)", function()
 
         proxy_client = helpers.proxy_client()
       end)
+
       lazy_teardown(function()
+        helpers.stop_kong()
+      end)
+
+      before_each(function()
+        proxy_client = helpers.proxy_client()
+      end)
+
+      after_each(function()
         if proxy_client then
           proxy_client:close()
         end
-
-
-        helpers.stop_kong()
       end)
 
       it("logs metrics over UDP", function()
@@ -476,7 +505,7 @@ describe("Plugin: datadog (log)", function()
 
         thread:join()
       end)
-      
+
       it("referenceable fields works", function()
         local thread = helpers.udp_server(9999, 6, 6)
         local another_proxy_client = helpers.proxy_client()
@@ -494,6 +523,21 @@ describe("Plugin: datadog (log)", function()
         local ok, gauges = thread:join()
         assert.True(ok)
         assert.equal(6, #gauges)
+      end)
+
+      it("datadog plugin is triggered for serviceless routes", function()
+        local thread = helpers.udp_server(9999, 6)
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/serviceless",
+        })
+
+        local body = assert.res_status(200, res)
+        assert.equals(body, '{"message":"OK"}')
+
+        local ok, gauges = thread:join()
+        assert.True(ok)
+        assert.True(#gauges > 0)
       end)
     end)
   end
