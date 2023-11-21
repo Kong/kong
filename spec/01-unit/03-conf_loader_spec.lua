@@ -1,5 +1,6 @@
 local conf_loader = require "kong.conf_loader"
 local utils = require "kong.tools.utils"
+local log = require "kong.cmd.utils.log"
 local helpers = require "spec.helpers"
 local tablex = require "pl.tablex"
 local pl_path = require "pl.path"
@@ -1629,6 +1630,54 @@ describe("Configuration loader", function()
 
       local conf = assert(conf_loader(helpers.test_conf_path))
       assert.equal(DATABASE, conf.database)
+    end)
+    it("should warns user if kong manager is enabled but admin API is not enabled", function ()
+      local spy_log = spy.on(log, "warn")
+
+      finally(function()
+        log.warn:revert()
+        assert:unregister("matcher", "str_match")
+      end)
+
+      assert:register("matcher", "str_match", function (_state, arguments)
+        local expected = arguments[1]
+        return function(value)
+          return string.match(value, expected) ~= nil
+        end
+      end)
+
+      local conf, err = conf_loader(nil, {
+        admin_listen = "off",
+        admin_gui_listen = "off",
+      })
+      assert.is_nil(err)
+      assert.is_table(conf)
+      assert.spy(spy_log).was_called(0)
+
+      conf, err = conf_loader(nil, {
+        admin_listen = "localhost:8001",
+        admin_gui_listen = "off",
+      })
+      assert.is_nil(err)
+      assert.is_table(conf)
+      assert.spy(spy_log).was_called(0)
+
+      conf, err = conf_loader(nil, {
+        admin_listen = "localhost:8001",
+        admin_gui_listen = "localhost:8002",
+      })
+      assert.is_nil(err)
+      assert.is_table(conf)
+      assert.spy(spy_log).was_called(0)
+
+      conf, err = conf_loader(nil, {
+        admin_listen = "off",
+        admin_gui_listen = "localhost:8002",
+      })
+      assert.is_nil(err)
+      assert.is_table(conf)
+      assert.spy(spy_log).was_called(1)
+      assert.spy(spy_log).was_called_with("Kong Manager won't be functional because the Admin API is not listened on any interface")
     end)
   end)
 
