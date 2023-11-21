@@ -6,7 +6,6 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 load("//build/openresty/pcre:pcre_repositories.bzl", "pcre_repositories")
 load("//build/openresty/openssl:openssl_repositories.bzl", "openssl_repositories")
-load("//build/openresty/msgpack_c:msgpack_c_repositories.bzl", "msgpack_c_repositories")
 
 # This is a dummy file to export the module's repository.
 _NGINX_MODULE_DUMMY_FILE = """
@@ -20,7 +19,6 @@ filegroup(
 def openresty_repositories():
     pcre_repositories()
     openssl_repositories()
-    msgpack_c_repositories()
 
     openresty_version = KONG_VAR["OPENRESTY"]
 
