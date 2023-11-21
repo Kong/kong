@@ -152,24 +152,6 @@
   Version Requirement:
   - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.3.4, GLIBC_2.4)
 
-- Path      : /usr/local/openresty/lualib/libatc_router.so
-  Needed    :
-  - libgcc_s.so.1
-  - librt.so.1
-  - libpthread.so.0
-  - libm.so.6
-  - libdl.so.2
-  - libc.so.6
-  - ld-linux-x86-64.so.2
-  - libstdc++.so.6
-  Version Requirement:
-  - ld-linux-x86-64.so.2 (GLIBC_2.3)
-  - libc.so.6 (GLIBC_2.10, GLIBC_2.14, GLIBC_2.15, GLIBC_2.18, GLIBC_2.2.5, GLIBC_2.25, GLIBC_2.27, GLIBC_2.3, GLIBC_2.3.4, GLIBC_2.4, GLIBC_2.5, GLIBC_2.6, GLIBC_2.9)
-  - libdl.so.2 (GLIBC_2.2.5)
-  - libgcc_s.so.1 (GCC_3.0, GCC_3.3, GCC_4.2.0)
-  - libpthread.so.0 (GLIBC_2.12, GLIBC_2.2.5)
-  - librt.so.1 (GLIBC_2.2.5)
-
 - Path      : /usr/local/openresty/lualib/librestysignal.so
 
 - Path      : /usr/local/openresty/lualib/rds/parser.so

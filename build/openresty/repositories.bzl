@@ -6,7 +6,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 load("//build/openresty/pcre:pcre_repositories.bzl", "pcre_repositories")
 load("//build/openresty/openssl:openssl_repositories.bzl", "openssl_repositories")
-load("//build/openresty/atc_router:atc_router_repositories.bzl", "atc_router_repositories")
+load("//build/openresty/msgpack_c:msgpack_c_repositories.bzl", "msgpack_c_repositories")
 
 # This is a dummy file to export the module's repository.
 _NGINX_MODULE_DUMMY_FILE = """
@@ -20,7 +20,7 @@ filegroup(
 def openresty_repositories():
     pcre_repositories()
     openssl_repositories()
-    atc_router_repositories()
+    msgpack_c_repositories()
 
     openresty_version = KONG_VAR["OPENRESTY"]
 
@@ -28,7 +28,7 @@ def openresty_repositories():
         openresty_http_archive_wrapper,
         name = "openresty",
         build_file = "//build/openresty:BUILD.openresty.bazel",
-        sha256 = "0c5093b64f7821e85065c99e5d4e6cc31820cfd7f37b9a0dec84209d87a2af99",
+        sha256 = "576ff4e546e3301ce474deef9345522b7ef3a9d172600c62057f182f3a68c1f6",
         strip_prefix = "openresty-" + openresty_version,
         urls = [
             "https://openresty.org/download/openresty-" + openresty_version + ".tar.gz",
@@ -49,22 +49,10 @@ def openresty_repositories():
 
     maybe(
         new_git_repository,
-        name = "lua-resty-lmdb",
-        branch = KONG_VAR["LUA_RESTY_LMDB"],
-        remote = "https://github.com/Kong/lua-resty-lmdb",
+        name = "nginx-opentracing",
+        branch = KONG_VAR["NGINX_OPENTRACING"],
+        remote = "https://github.com/opentracing-contrib/nginx-opentracing",
         build_file_content = _NGINX_MODULE_DUMMY_FILE,
-        recursive_init_submodules = True,
-        patches = ["//build/openresty:lua-resty-lmdb-cross.patch"],
-        patch_args = ["-p1", "-l"],  # -l: ignore whitespace
-    )
-
-    maybe(
-        new_git_repository,
-        name = "lua-resty-events",
-        branch = KONG_VAR["LUA_RESTY_EVENTS"],
-        remote = "https://github.com/Kong/lua-resty-events",
-        build_file_content = _NGINX_MODULE_DUMMY_FILE,
-        recursive_init_submodules = True,
     )
 
 def _openresty_binding_impl(ctx):

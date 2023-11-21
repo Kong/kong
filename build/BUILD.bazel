@@ -1,12 +1,18 @@
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
-load("//build:build_system.bzl", "kong_directory_genrule")
+load("//build:build_system.bzl", "kong_directory_genrule", "kong_rules_group", "kong_template_file")
 
 exports_files([
     "package/nfpm.yaml",
+    "package/nfpm.enterprise.yaml",
 ])
 
 lib_deps = [
-    "@openssl",  #TODO: select over fips (but select doesn't work in list comprehension)
+    "@libexpat",
+    # EE only
+    "@gmp",
+    "@jq",
+    "@nettle",
+    "@passwdqc",
 ]
 
 install_lib_deps_cmd = "\n".join([
@@ -20,21 +26,51 @@ install_lib_deps_cmd = "\n".join([
 
 lualib_deps = [
     "@lua-kong-nginx-module//:all_srcs",
-    "@lua-resty-lmdb//:all_srcs",
-    "@lua-resty-events//:all_srcs",
-    "@lua-resty-websocket//:all_srcs",
-    "@atc_router",
 ]
 
 install_lualib_deps_cmd = "\n".join([
     """
     DEP=$(pwd)/external/%s
-    # TODO: fix atc_router makefile so that we can choose to only install lualib
-    sed -i -e '/libatc_router.so/d' ${DEP}/Makefile
-    make --silent -C ${DEP} LUA_LIB_DIR=${BUILD_DESTDIR}/openresty/lualib install
+    INSTALL=/usr/bin/install make --silent -C ${DEP} LUA_LIB_DIR=${BUILD_DESTDIR}/openresty/lualib install
 """ % dep.lstrip("@").split("/")[0]
     for dep in lualib_deps
 ])
+
+install_licensing_cmd = select({
+    "@kong//:licensing_flag": """
+        KONG_LICENSING=${WORKSPACE_PATH}/$(echo $(locations @kong-licensing) | awk '{print $1}')/liblicense_utils.${libext}
+        cp $KONG_LICENSING ${BUILD_DESTDIR}/kong/lib/.
+    """,
+    "//conditions:default": "\n",
+})
+
+install_opentracing_cmd = select({
+    "@kong//:opentracing_flag": """
+        OPENTRACING_CPP=${WORKSPACE_PATH}/$(echo $(locations @opentracing-cpp) | awk '{print $1}')/lib/libopentracing.so.1
+        cp $OPENTRACING_CPP ${BUILD_DESTDIR}/kong/lib/.
+    """,
+    "//conditions:default": "",
+})
+
+install_fips_cmd = select({
+    "@kong//:fips_flag": """
+        sed -i -e 's/fips = off/fips = on/g' ${BUILD_DESTDIR}/share/lua/5.1/kong/templates/kong_defaults.lua
+
+        OPENSSL_FIPS=${WORKSPACE_PATH}/$(echo $(locations @openssl_fips) | awk '{print $1}')
+        cp $OPENSSL_FIPS/fipsmodule/lib/ossl-modules/fips.${libext} ${BUILD_DESTDIR}/kong/lib/ossl-modules/
+        cp build/ee/openssl_fips/openssl.cnf ${BUILD_DESTDIR}/kong/openssl.cnf
+        cat $OPENSSL_FIPS/fipsmodule/fipsmodule.cnf >> ${BUILD_DESTDIR}/kong/openssl.cnf
+    """,
+    "//conditions:default": "",
+})
+
+install_webui_cmd = select({
+    "//conditions:default": """
+        cp -r $(location @kong_admin//:dist_files) ${BUILD_DESTDIR}/kong/gui
+        cp -r $(location @kong_portal//:dist_files) ${BUILD_DESTDIR}/kong/portal
+    """,
+    "@kong//:skip_webui_flags": "\n",
+})
 
 kong_directory_genrule(
     name = "kong",
@@ -44,9 +80,36 @@ kong_directory_genrule(
         "@luarocks//:luarocks_make",
         "@luarocks//:luarocks_target",
         "@protoc//:all_srcs",
-    ] + lib_deps + lualib_deps,
-    cmd =
-        """ set -e
+        "@openssl",
+        # EE in-place modifications
+        "//build/ee:luarocks_install_ee_plugins",
+        "//build/ee:copy_distributions_constants",
+        "//build/ee:bytecode_compile",
+        # EE new files
+        "//build/ee:luarocks_license",
+    ] + select({
+        "@kong//:licensing_flag": [
+            "@kong-licensing",
+        ],
+        "//conditions:default": [],
+    }) + select({
+        "@kong//:fips_flag": [
+            "@openssl_fips",
+        ],
+        "//conditions:default": [],
+    }) + select({
+        "@kong//:opentracing_flag": [
+            "@opentracing-cpp",
+        ],
+        "//conditions:default": [],
+    }) + select({
+        "@kong//:skip_webui_flags": [],
+        "//conditions:default": [
+            "@kong_admin//:dist_files",
+            "@kong_portal//:dist_files",
+        ],
+    }) + lib_deps + lualib_deps,
+    cmd = """ set -e
         function copy_with_filter {
             mkdir -p $2
             tar -cC $1 --exclude="*.a" --exclude="*.la" \
@@ -86,13 +149,26 @@ kong_directory_genrule(
         cp -r ${LUAROCKS}/. ${BUILD_DESTDIR}/.
         rm ${BUILD_DESTDIR}/bin/lapis ${BUILD_DESTDIR}/bin/luarocks-admin
 
-        ATC_ROUTER=${WORKSPACE_PATH}/$(location @atc_router)
-        cp $ATC_ROUTER ${BUILD_DESTDIR}/openresty/lualib/.
-
         cp -r $(locations @protoc//:all_srcs) ${BUILD_DESTDIR}/kong/.
 
-    """ + install_lib_deps_cmd + install_lualib_deps_cmd +
-        """
+        OPENSSL=${WORKSPACE_PATH}/$(echo $(locations @openssl) | awk '{print $1}')
+        # use tar magic to exclude files and create with correct permission
+        copy_with_filter $OPENSSL ${BUILD_DESTDIR}/kong
+
+        # EE
+
+        # files under prefix are symlinks, so we copy the actual files to be consumable by nfpm
+        cp LICENSE ${BUILD_DESTDIR}/LICENSE
+        cp COPYRIGHT ${BUILD_DESTDIR}/COPYRIGHT
+
+        mkdir -p ${BUILD_DESTDIR}/usr/share/doc/kong-enterprise-edition/
+        cp LICENSE ${BUILD_DESTDIR}/LICENSE
+
+        cp $(location //build/ee:luarocks_license) ${BUILD_DESTDIR}/kong/manifest.json
+
+    """ + install_licensing_cmd + install_opentracing_cmd +
+          install_fips_cmd + install_lib_deps_cmd + install_lualib_deps_cmd + install_webui_cmd +
+          """
         mkdir -p ${BUILD_DESTDIR}/etc/kong
         cp kong.conf.default ${BUILD_DESTDIR}/etc/kong/kong.conf.default
 
@@ -118,6 +194,9 @@ kong_directory_genrule(
                 LN "$target" "$f"
             fi
         done
+
+        cp kong/pluginsocket.proto ${BUILD_DESTDIR}/kong/include/pluginsocket.proto
+
         LN ${BUILD_DESTDIR}/openresty/nginx/sbin/nginx ${BUILD_DESTDIR}/openresty/bin/openresty
     """,
     # XXX: bazel forces 0555 as artifact permission, which is not correct for packagin
@@ -127,61 +206,57 @@ kong_directory_genrule(
     visibility = ["//visibility:public"],
 )
 
-genrule(
+kong_template_file(
+    name = "venv.sh",
+    output = "%s-venv.sh" % KONG_VAR["BUILD_NAME"],
+    substitutions = {
+        "{{build_name}}": KONG_VAR["BUILD_NAME"],
+        "{{workspace_path}}": KONG_VAR["WORKSPACE_PATH"],
+    },
+    template = "//build:templates/venv.sh",
+)
+
+kong_template_file(
+    name = "venv.fish",
+    output = "%s-venv.fish" % KONG_VAR["BUILD_NAME"],
+    substitutions = {
+        "{{build_name}}": KONG_VAR["BUILD_NAME"],
+        "{{workspace_path}}": KONG_VAR["WORKSPACE_PATH"],
+    },
+    template = "//build:templates/venv.fish",
+)
+
+kong_template_file(
+    name = "venv-commons",
+    is_executable = True,
+    output = "%s-venv/lib/venv-commons" % KONG_VAR["BUILD_NAME"],
+    substitutions = {
+        "{{workspace_path}}": KONG_VAR["WORKSPACE_PATH"],
+    },
+    template = "//build:templates/venv-commons",
+)
+
+kong_rules_group(
     name = "venv",
-    srcs = [
+    propagates = [
         ":kong",
+        ":venv.sh",
+        ":venv.fish",
+        ":venv-commons",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+genrule(
+    name = "copy_libdd_opentracing",
+    srcs = [
+        "@libdd_opentracing//file",
     ],
     outs = [
-        "%s-venv.sh" % KONG_VAR["BUILD_NAME"],
+        "%s/kong/lib/libdd_opentracing_plugin.so" % KONG_VAR["BUILD_NAME"],
     ],
     cmd = """
-    workspace_path={workspace_path}
-    build_name={build_name}
-    """.format(
-        build_name = KONG_VAR["BUILD_NAME"],
-        workspace_path = KONG_VAR["WORKSPACE_PATH"],
-    ) + """
-
-        cat << EOF > $@
-#!/bin/bash
-
-INSTALL_ROOT=$${workspace_path}/bazel-bin/build/$${build_name}
-ROCKS_CONFIG="\\$$INSTALL_ROOT/rocks_config"
-ROCKS_ROOT="\\$$INSTALL_ROOT"
-
-chmod -R a+rw "\\$$INSTALL_ROOT"
-
-export LD_LIBRARY_PATH=\\$$INSTALL_ROOT/kong/lib
-mkdir -p \\$$INSTALL_ROOT/venv/bin
-
-echo '#!/bin/bash
-'\\$$INSTALL_ROOT/openresty/bin/resty -I \\$$INSTALL_ROOT/openresty/site/lualib -I \\$$INSTALL_ROOT/openresty/lualib --nginx \\$$INSTALL_ROOT/openresty/nginx/sbin/nginx' "\\$$@"
-' > \\$$INSTALL_ROOT/venv/bin/resty
-chmod +x \\$$INSTALL_ROOT/venv/bin/resty
-
-export PATH="\\$$INSTALL_ROOT/venv/bin:\\$$INSTALL_ROOT/openresty/bin:\\$$INSTALL_ROOT/openresty/nginx/sbin:\\$$INSTALL_ROOT/openresty/luajit/bin:\\$$INSTALL_ROOT/luarocks/bin:\\$$INSTALL_ROOT/bin:$${workspace_path}/bin:\\$$PATH"
-
-echo "
-rocks_trees = {
-{ name = [[system]], root = [[\\$$ROCKS_ROOT]] }
-}
-
-" > \\$$ROCKS_CONFIG
-
-export LUAROCKS_CONFIG=\\$$ROCKS_CONFIG
-
-# duplicate package.[c]path even though we have set in resty-cli, so luajit and kong can consume
-export LUA_PATH="./?.lua;./?/init.lua;\\$$INSTALL_ROOT/openresty/site/lualib/?.ljbc;\\$$INSTALL_ROOT/openresty/site/lualib/?/init.ljbc;\\$$INSTALL_ROOT/openresty/lualib/?.ljbc;\\$$INSTALL_ROOT/openresty/lualib/?/init.ljbc;\\$$INSTALL_ROOT/openresty/site/lualib/?.lua;\\$$INSTALL_ROOT/openresty/site/lualib/?/init.lua;\\$$INSTALL_ROOT/openresty/lualib/?.lua;\\$$INSTALL_ROOT/openresty/lualib/?/init.lua;\\$$INSTALL_ROOT/openresty/luajit/share/luajit-2.1.0-beta3/?.lua;\\$$ROCKS_ROOT/share/lua/5.1/?.ljbc;\\$$ROCKS_ROOT/share/lua/5.1/?/init.ljbc;\\$$ROCKS_ROOT/share/lua/5.1/?.lua;\\$$ROCKS_ROOT/share/lua/5.1/?/init.lua;;"
-
-export LUA_CPATH="\\$$INSTALL_ROOT/openresty/site/lualib/?.so;\\$$INSTALL_ROOT/openresty/lualib/?.so;./?.so;\\$$INSTALL_ROOT/lib/lua/5.1/?.so;\\$$INSTALL_ROOT/openresty/luajit/lib/lua/5.1/?.so;\\$$ROCKS_ROOT/lib/lua/5.1/?.so;;"
-export KONG_PREFIX="\\$$INSTALL_ROOT/kong/servroot"
-export LIBRARY_PREFIX="\\$$INSTALL_ROOT/kong" # let "make dev" happy
-
-EOF
-
-        echo \\* Please run ". $@" to activate the "$${build_name}" environment
+        cp $(location @libdd_opentracing//file) $@
     """,
-    executable = True,
     visibility = ["//visibility:public"],
 )
