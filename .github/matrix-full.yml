@@ -1,0 +1,209 @@
+build-packages:
+# label: used to distinguish artifacts for later use
+# image: docker image name if the build is running in side a container
+# package: package type
+# package-type: the nfpm packaging target, //:kong_{package} target; only used when package is rpm
+# bazel-args: additional bazel build flags
+# check-manifest-suite: the check manifest suite as defined in scripts/explain_manifest/config.py
+
+# Ubuntu
+- label: ubuntu-20.04
+  image: ubuntu:20.04
+  package: deb
+  check-manifest-suite: ubuntu-20.04-amd64
+- label: ubuntu-22.04
+  package: deb
+  check-manifest-suite: ubuntu-22.04-amd64
+
+# Debian
+- label: debian-10
+  image: debian:10
+  package: deb
+  check-manifest-suite: debian-10-amd64
+- label: debian-11
+  image: debian:11
+  package: deb
+  check-manifest-suite: debian-11-amd64
+
+# Alpine
+- label: alpine
+  os: vars.RELEASE_RUNS_ON
+  package: apk
+  bazel-args: --platforms=//:alpine-crossbuild-x86_64
+  check-manifest-suite: alpine-amd64
+
+# CentOS
+- label: centos-7
+  os: vars.RELEASE_RUNS_ON
+  image: centos:7
+  package: rpm
+  package-type: el7
+  check-manifest-suite: el7-amd64
+
+# RHEL
+- label: rhel-7
+  image: centos:7
+  package: rpm
+  package-type: el7
+  check-manifest-suite: el7-amd64
+- label: rhel-8
+  image: rockylinux:8
+  package: rpm
+  package-type: el8
+  check-manifest-suite: el8-amd64
+
+  # Amazon Linux
+- label: amazonlinux-2
+  image: amazonlinux:2
+  package: rpm
+  package-type: aws2
+  check-manifest-suite: amazonlinux-2-amd64
+- label: amazonlinux-2023
+  image: amazonlinux:2023
+  package: rpm
+  package-type: aws2023
+  check-manifest-suite: amazonlinux-2023-amd64
+
+build-images:
+# Only build images for the latest version of each major release.
+
+# label: used as compose docker image label ${github.sha}-${label}
+# base-image: docker image to use as base
+# package: package type
+# artifact-from: label of build-packages to use
+# artifact-from-alt: another label of build-packages to use for downloading package (to build multi-arch image)
+# docker-platforms: comma separated list of docker buildx platforms to build for
+
+# Ubuntu
+- label: ubuntu
+  base-image: ubuntu:22.04
+  package: deb
+  artifact-from: ubuntu-22.04
+  docker-platforms: linux/amd64
+
+# Centos
+- label: centos7
+  base-image: centos:7
+  package: rpm
+  package-distro: el7
+  artifact-from: centos-7
+
+- label: rhel7
+  base-image: centos:7
+  package: rpm
+  package-distro: el7
+  artifact-from: rhel-7
+
+# Alpine
+- label: alpine
+  base-image: alpine:3.16
+  package: apk
+  artifact-from: alpine
+# Debian
+- label: debian
+  base-image: debian:11-slim
+  package: deb
+  artifact-from: debian-11
+
+# RHEL
+- label: rhel
+  base-image: centos:7
+  package: rpm
+  rpm_platform: el7
+  artifact-from: rhel-7
+  docker-platforms: linux/amd64
+
+smoke-tests:
+- label: ubuntu
+- label: debian
+- label: rhel
+- label: alpine
+
+scan-vulnerabilities:
+- label: ubuntu
+- label: debian
+- label: rhel
+- label: alpine
+
+release-packages:
+# Ubuntu
+- label: ubuntu-20.04
+  package: deb
+  artifact-from: ubuntu-20.04
+  artifact-version: 20.04
+  artifact-type: ubuntu
+  artifact: kong.amd64.deb
+- label: ubuntu-22.04
+  package: deb
+  artifact-from: ubuntu-22.04
+  artifact-version: 22.04
+  artifact-type: ubuntu
+  artifact: kong.amd64.deb
+
+# Debian
+- label: debian-10
+  package: deb
+  artifact-from: debian-10
+  artifact-version: 10
+  artifact-type: debian
+  artifact: kong.amd64.deb
+- label: debian-11
+  package: deb
+  artifact-from: debian-11
+  artifact-version: 11
+  artifact-type: debian
+  artifact: kong.amd64.deb
+
+# CentOS
+- label: centos-7
+  package: rpm
+  artifact-from: centos-7
+  artifact-version: 7
+  artifact-type: centos
+  artifact: kong.el7.amd64.rpm
+
+# RHEL
+- label: rhel-7
+  package: rpm
+  artifact-from: rhel-7
+  artifact-version: 7
+  artifact-type: rhel
+  artifact: kong.el7.amd64.rpm
+- label: rhel-8
+  package: rpm
+  artifact-from: rhel-8
+  artifact-version: 8
+  artifact-type: rhel
+  artifact: kong.el8.amd64.rpm
+
+# Amazon Linux
+- label: amazonlinux-2
+  package: rpm
+  artifact-from: amazonlinux-2
+  artifact-version: 2
+  artifact-type: amazonlinux
+  artifact: kong.aws2.amd64.rpm
+- label: amazonlinux-2023
+  package: rpm
+  artifact-from: amazonlinux-2023
+  artifact-version: 2023
+  artifact-type: amazonlinux
+  artifact: kong.aws2023.amd64.rpm
+
+# Alpine
+- label: alpine
+  package: apk
+  artifact-from: alpine
+  artifact-type: alpine
+  artifact: kong.amd64.apk.tar.gz
+
+release-images:
+- label: centos7
+  package: rpm
+- label: rhel7
+  package: rpm
+- label: alpine
+  package: apk
+- label: ubuntu
+- label: debian
+- label: rhel

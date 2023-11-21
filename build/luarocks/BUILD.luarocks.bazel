@@ -1,0 +1,110 @@
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make")
+load("@kong//build:build_system.bzl", "kong_template_genrule")
+load("@kong_bindings//:variables.bzl", "KONG_VAR")
+
+filegroup(
+    name = "all_srcs",
+    srcs = glob(
+        include = ["**"],
+        exclude = ["*.bazel"],
+    ),
+)
+
+# This rules is used to bootstrap luarocks to install rocks dependencies
+# A different rule is used to install luarocks in the release artifact
+# so that we got correct interpreter path, lua paths, etc.
+configure_make(
+    name = "luarocks_host",
+    configure_command = "configure",
+    configure_in_place = True,
+    configure_options = [
+        "--lua-suffix=jit",
+        "--with-lua=$$EXT_BUILD_DEPS$$/luajit",
+        "--with-lua-include=$$EXT_BUILD_DEPS$$/luajit/include/luajit-2.1",
+    ],
+    lib_source = ":all_srcs",
+    out_bin_dir = "",
+    out_binaries = ["bin/luarocks"],  # fake binary
+    out_data_dirs = ["luarocks"],  # mark all files as data
+    targets = [
+        "build",
+        "install",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@openresty//:luajit",
+    ],
+)
+
+kong_template_genrule(
+    name = "luarocks_exec",
+    srcs = [
+        "@openssl//:openssl",
+    ] + select({
+        "@kong//:any-cross": ["@cross_deps_libyaml//:libyaml"],
+        "//conditions:default": [
+            "@luarocks//:luarocks_host",
+            "@openresty//:luajit",
+        ],
+    }),
+    is_executable = True,
+    output = "luarocks_exec.sh",
+    substitutions = {
+        "{{lib_rpath}}": "%s/kong/lib" % KONG_VAR["INSTALL_DESTDIR"],
+    },
+    template = "@//build/luarocks:templates/luarocks_exec.sh",
+    tools = select({
+        "@kong//:any-cross": [
+            "@luarocks//:luarocks_host",
+            "@openresty//:luajit",
+        ],
+        "//conditions:default": [],
+    }),
+    visibility = ["//visibility:public"],
+)
+
+kong_template_genrule(
+    name = "luarocks_make",
+    srcs = [
+        "@kong//:rockspec_srcs",
+        "@luarocks//:luarocks_exec",
+        "@luarocks//:luarocks_target",  # to avoid concurrency issue, run this after luarocks_target
+    ],
+    is_executable = True,
+    output = "luarocks_make.log",
+    progress_message = "Luarocks: Install Kong rocks dependencies",
+    template = "@//build/luarocks:templates/luarocks_make.sh",
+    visibility = ["//visibility:public"],
+)
+
+# install luarocks itself in target configuration
+kong_template_genrule(
+    name = "luarocks_target",
+    srcs = [":luarocks_exec"] + select({
+        "@kong//:any-cross": [],
+        "//conditions:default": [
+            "@luarocks//:luarocks_host",
+            "@openresty//:luajit",
+        ],
+    }),
+    is_executable = True,
+    output = "luarocks_target.log",
+    progress_message = "Luarocks: Install luarocks on target system",
+    substitutions = {
+        "{{build_destdir}}": KONG_VAR["BUILD_DESTDIR"],
+        "{{install_destdir}}": KONG_VAR["INSTALL_DESTDIR"],
+        "{{luarocks_version}}": KONG_VAR["LUAROCKS"],
+        "{{workspace_path}}": KONG_VAR["WORKSPACE_PATH"],
+    },
+    template = "@//build/luarocks:templates/luarocks_target.sh",
+    tools = [
+        "@//build/luarocks:luarocks_wrap_script.lua",
+    ] + select({
+        "@//:any-cross": [
+            "@luarocks//:luarocks_host",
+            "@openresty//:luajit",
+        ],
+        "//conditions:default": [],
+    }),
+    visibility = ["//visibility:public"],
+)

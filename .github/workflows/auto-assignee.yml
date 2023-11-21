@@ -8,5 +8,8 @@ jobs:
   assign-author:
     runs-on: ubuntu-latest
     steps:
-      - uses: toshimaru/auto-author-assign@2daaeb2988aef24bf37e636fe733f365c046aba0
+      - name: assign-author
+        # ignore the pull requests opened from PR because token is not correct
+        if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        uses: toshimaru/auto-author-assign@c1ffd6f64e20f8f5f61f4620a1e5f0b0908790ef
 

@@ -1,0 +1,62 @@
+From 521b367567dc5d91d7f9ae29c257998953e24e53 Mon Sep 17 00:00:00 2001
+From: Mike Pall <mike>
+Date: Sun, 2 May 2021 22:11:05 +0200
+Subject: [PATCH] FFI/ARM64/OSX: Fix vararg call handling.
+
+Thanks to Igor Munkin.
+---
+ LuaJIT-2.1-20210510/src/lj_ccall.c     | 8 ++++----
+ LuaJIT-2.1-20210510/src/lj_ccallback.c | 2 +-
+ 2 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/LuaJIT-2.1-20210510/src/lj_ccall.c b/LuaJIT-2.1-20210510/src/lj_ccall.c
+index a91ffc7e..3c029823 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lj_ccall.c
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_ccall.c
+@@ -334,7 +334,7 @@
+   isfp = sz == 2*sizeof(float) ? 2 : 1;
+ 
+ #define CCALL_HANDLE_REGARG \
+-  if (LJ_TARGET_IOS && isva) { \
++  if (LJ_TARGET_OSX && isva) { \
+     /* IOS: All variadic arguments are on the stack. */ \
+   } else if (isfp) {  /* Try to pass argument in FPRs. */ \
+     int n2 = ctype_isvector(d->info) ? 1 : \
+@@ -345,10 +345,10 @@
+       goto done; \
+     } else { \
+       nfpr = CCALL_NARG_FPR;  /* Prevent reordering. */ \
+-      if (LJ_TARGET_IOS && d->size < 8) goto err_nyi; \
++      if (LJ_TARGET_OSX && d->size < 8) goto err_nyi; \
+     } \
+   } else {  /* Try to pass argument in GPRs. */ \
+-    if (!LJ_TARGET_IOS && (d->info & CTF_ALIGN) > CTALIGN_PTR) \
++    if (!LJ_TARGET_OSX && (d->info & CTF_ALIGN) > CTALIGN_PTR) \
+       ngpr = (ngpr + 1u) & ~1u;  /* Align to regpair. */ \
+     if (ngpr + n <= maxgpr) { \
+       dp = &cc->gpr[ngpr]; \
+@@ -356,7 +356,7 @@
+       goto done; \
+     } else { \
+       ngpr = maxgpr;  /* Prevent reordering. */ \
+-      if (LJ_TARGET_IOS && d->size < 8) goto err_nyi; \
++      if (LJ_TARGET_OSX && d->size < 8) goto err_nyi; \
+     } \
+   }
+ 
+diff --git a/LuaJIT-2.1-20210510/src/lj_ccallback.c b/LuaJIT-2.1-20210510/src/lj_ccallback.c
+index 8d6cb737..80d738c6 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lj_ccallback.c
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_ccallback.c
+@@ -460,7 +460,7 @@ void lj_ccallback_mcode_free(CTState *cts)
+       nfpr = CCALL_NARG_FPR;  /* Prevent reordering. */ \
+     } \
+   } else { \
+-    if (!LJ_TARGET_IOS && n > 1) \
++    if (!LJ_TARGET_OSX && n > 1) \
+       ngpr = (ngpr + 1u) & ~1u;  /* Align to regpair. */ \
+     if (ngpr + n <= maxgpr) { \
+       sp = &cts->cb.gpr[ngpr]; \
+-- 
+2.34.1
+

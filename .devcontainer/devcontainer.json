@@ -16,7 +16,7 @@
     // Use 'forwardPorts' to make a list of ports inside the container available locally.
     "forwardPorts": [8000, 8001, "db:5432"],
 
-    "postCreateCommand": "make dev",
+    "postCreateCommand": "make venv-dev",
 
     // Set *default* container specific settings.json values on container create.
     // "settings": {},

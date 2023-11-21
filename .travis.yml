@@ -48,7 +48,7 @@ env:
 
 install:
   - source .ci/setup_env.sh
-  - make dev
+  - make venv-dev
 
 cache:
   apt: true
