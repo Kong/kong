@@ -239,6 +239,7 @@ local function compile_conf(kong_config, conf_template)
   -- computed config properties for templating
   local compile_env = {
     _escape = ">",
+    proxy_access_log_enabled = kong_config.proxy_access_log ~= "off",
     pairs = pairs,
     ipairs = ipairs,
     tostring = tostring,
