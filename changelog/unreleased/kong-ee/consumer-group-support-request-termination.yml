@@ -1,0 +1,3 @@
+message: "**Request-Termination**: add support for consumer group scoping"
+type: feature
+scope: Plugin
