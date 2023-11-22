@@ -203,7 +203,7 @@ local function fetch_and_apply_config()
 
   ngx_log(ngx_DEBUG, FALLBACK_CONFIG_PREFIX, "decoded config")
 
-  assert(config_helper.update(declarative_config, config_table))
+  assert(config_helper.update(declarative_config, { config_table = config_table }))
 
   ngx_log(ngx_DEBUG, FALLBACK_CONFIG_PREFIX, "successfully applied config from fallback storage")
 end

@@ -253,7 +253,7 @@ function _M.update(declarative_config, msg)
     return nil, err
   end
 
-  if kong.configuration.log_level == "debug" then
+  if kong.configuration.log_level == "debug" and msg.current_transaction_id then
      ngx_log(ngx.DEBUG, _log_prefix, "loaded configuration with transaction ID " .. msg.current_transaction_id)
   end
 
