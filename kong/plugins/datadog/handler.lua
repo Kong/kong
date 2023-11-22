@@ -3,6 +3,9 @@ local statsd_logger = require "kong.plugins.datadog.statsd_logger"
 local kong_meta = require "kong.meta"
 
 
+local replace_dashes = require("kong.tools.string").replace_dashes
+
+
 local kong     = kong
 local ngx      = ngx
 local null     = ngx.null
@@ -14,7 +17,7 @@ local ipairs   = ipairs
 
 local get_consumer_id = {
   consumer_id = function(consumer)
-    return consumer and gsub(consumer.id, "-", "_")
+    return consumer and replace_dashes(consumer.id)
   end,
   custom_id = function(consumer)
     return consumer and consumer.custom_id
