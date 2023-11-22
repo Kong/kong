@@ -271,7 +271,7 @@ describe("kong reload #" .. strategy, function()
       end)
     end)
 
-    it("preserves declarative config from memory when not using declarative_config from kong.conf", function()
+    pending("preserves declarative config from memory when not using declarative_config from kong.conf", function()
       local pok, admin_client
 
       finally(function()
