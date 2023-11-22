@@ -28,9 +28,6 @@ describe('Gateway Plugins: jwe-decrypt JWK', function () {
   const validTokenHeaders = {
     Authorization: authDetails.jwe['valid-token'],
   };
-  const expiredTokenHeaders = {
-    Authorization: `${authDetails.expired_token}`,
-  };
 
   let serviceId: string;
   let jwkRouteId: string;
