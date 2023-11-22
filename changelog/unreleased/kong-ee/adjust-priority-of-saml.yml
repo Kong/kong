@@ -1,0 +1,3 @@
+message: "**SAML**: adjust the priority of the SAML plugin to 1010 to correct the integration between the SAML plugin and other consumer-based plugins"
+type: breaking_change
+scope: Plugin

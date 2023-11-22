@@ -10,7 +10,7 @@ local meta = require "kong.meta"
 
 
 local SAMLHandler = {
-  PRIORITY = 900,
+  PRIORITY = 1010,
   VERSION = meta.core_version,
 }
 
