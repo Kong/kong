@@ -18,6 +18,7 @@ local CERT_TAG_LEN  = #CERT_TAG
 return {
   name        = "ca_certificates",
   primary_key = { "id" },
+  dao         = "kong.db.dao.ca_certificates",
 
   fields = {
     { id = typedefs.uuid, },

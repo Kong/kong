@@ -432,6 +432,7 @@ build = {
     ["kong.db.dao.workspaces"] = "kong/db/dao/workspaces.lua",
     ["kong.db.dao.routes"] = "kong/db/dao/routes.lua",
     ["kong.db.dao.services"] = "kong/db/dao/services.lua",
+    ["kong.db.dao.ca_certificates"] = "kong/db/dao/ca_certificates.lua",
     ["kong.db.declarative"] = "kong/db/declarative/init.lua",
     ["kong.db.declarative.marshaller"] = "kong/db/declarative/marshaller.lua",
     ["kong.db.declarative.export"] = "kong/db/declarative/export.lua",
@@ -504,6 +505,8 @@ build = {
     -- [[ XXX EE
     ["kong.db.strategies.postgres.iam_token_handler"] = "kong/db/strategies/postgres/iam_token_handler.lua",
     -- EE ]]
+    ["kong.db.strategies.postgres.services"] = "kong/db/strategies/postgres/services.lua",
+    ["kong.db.strategies.postgres.plugins"] = "kong/db/strategies/postgres/plugins.lua",
     ["kong.db.strategies.off"] = "kong/db/strategies/off/init.lua",
     ["kong.db.strategies.off.connector"] = "kong/db/strategies/off/connector.lua",
     ["kong.db.strategies.off.admins"] = "kong/db/strategies/off/admins.lua",
