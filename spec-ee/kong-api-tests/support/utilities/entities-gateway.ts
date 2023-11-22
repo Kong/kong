@@ -609,14 +609,27 @@ export const waitForConfigRebuild = async (options: any = {}) => {
   const route = router_flavor == 'expressions' ? await createExpressionRouteForService(serviceId, `http.path == "${routePath}"`) : await createRouteForService(serviceId, [routePath]);
   const routeId = route.id;
 
-  // send request to route until response is 200
+  // create a key-auth plugin for the route
+  const plugin = await createPlugin({
+    name: 'key-auth',
+    service: {
+      id: serviceId,
+    },
+    route: {
+      id: routeId,
+    },
+    config: {},
+  });
+  const pluginId = plugin.id;
+
+  // send request to route until response is 401
   const reqSuccess = () =>
     getNegative(`${proxyUrl}${routePath}`, options?.proxyReqHeader);
   const assertionsSuccess = (resp) => {
     expect(
       resp.status,
-      'waitForConfigRebuild - route should return 200'
-    ).to.equal(200);
+      'waitForConfigRebuild - route should return 401'
+    ).to.equal(401);
   };
 
   await retryRequest(
@@ -627,7 +640,8 @@ export const waitForConfigRebuild = async (options: any = {}) => {
     options?.verbose,
   );
 
-  // removing the service and the route
+  // removing the entities
+  await deletePlugin(pluginId);
   await deleteGatewayRoute(routeId);
   await deleteGatewayService(serviceId);
 

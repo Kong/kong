@@ -113,19 +113,24 @@ describe('Gateway Plugins: jwe-decrypt PEM', function () {
     await waitForConfigRebuild();
   });
 
+  it('PEM: should proxy request with valid token', async function () {
+    const resp = await getNegative(`${proxyUrl}${pemPath}`, validTokenHeaders);
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 200').to.equal(200);
+  });
+
   it('PEM: should not proxy request without a token', async function () {
     const resp = await getNegative(`${proxyUrl}${pemPath}`);
     logResponse(resp);
 
     expect(resp.status, 'Status should be 403').to.equal(403);
-
     expect(resp.data.message, 'Should indicate token missing').to.equal(
       'could not find token'
     );
   });
 
   it('PEM: should not proxy request with invalid token', async function () {
-    console.log(invalidTokenHeaders, validTokenHeaders);
     const resp = await getNegative(
       `${proxyUrl}${pemPath}`,
       invalidTokenHeaders
@@ -138,13 +143,6 @@ describe('Gateway Plugins: jwe-decrypt PEM', function () {
       resp.data.message,
       'Should indicate token cannot be decrypted'
     ).to.equal('failed to decrypt token');
-  });
-
-  it('PEM: should proxy request with valid token', async function () {
-    const resp = await getNegative(`${proxyUrl}${pemPath}`, validTokenHeaders);
-    logResponse(resp);
-
-    expect(resp.status, 'Status should be 200').to.equal(200);
   });
 
   it('PEM: should patch jwe-decrypt plugin to disable auth and allow requests', async function () {
