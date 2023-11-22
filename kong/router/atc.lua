@@ -259,7 +259,7 @@ local function new_from_scratch(routes, get_exp_and_priority)
     yield(true, phase)
   end
 
-  local fields, header_fields, query_fields, segments = categorize_fields(inst:get_fields())
+  local fields, header_fields, query_fields, segments_fields = categorize_fields(inst:get_fields())
 
   return setmetatable({
       schema = CACHED_SCHEMA,
@@ -269,7 +269,7 @@ local function new_from_scratch(routes, get_exp_and_priority)
       fields = fields,
       header_fields = header_fields,
       query_fields = query_fields,
-      segments = segments,
+      segments_fields = segments_fields,
       updated_at = new_updated_at,
       rebuilding = false,
     }, _MT)
@@ -351,12 +351,12 @@ local function new_from_previous(routes, get_exp_and_priority, old_router)
     yield(true, phase)
   end
 
-  local fields, header_fields, query_fields, segments = categorize_fields(inst:get_fields())
+  local fields, header_fields, query_fields, segments_fields = categorize_fields(inst:get_fields())
 
   old_router.fields = fields
   old_router.header_fields = header_fields
   old_router.query_fields = query_fields
-  old_router.segments = segments
+  old_router.segments_fields = segments_fields
   old_router.updated_at = new_updated_at
   old_router.rebuilding = false
 
@@ -488,6 +488,16 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
     end -- if field
 
   end   -- for self.fields
+
+  if self.segments_fields then
+    local ngx_re = require "ngx.re"
+    local res = ngx_re.split(req_uri, "/")
+
+    for s, field in pairs(self.segments) do
+      local v = res[tonumber(s)]
+      c:add_value(field, v)
+    end
+  end
 
   if req_headers then
     for h, field in pairs(self.header_fields) do
