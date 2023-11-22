@@ -134,7 +134,7 @@ describe("kong vault #" .. strategy, function()
       helpers.stop_kong()
     end)
 
-    pending("vault get env", function()
+    it("vault get env", function()
       finally(function()
         helpers.unsetenv("SECRETS_TEST")
       end)
@@ -149,7 +149,7 @@ describe("kong vault #" .. strategy, function()
       assert.is_true(ok)
     end)
 
-    pending("vault get non-existing env", function()
+    it("vault get non-existing env", function()
       local ok, stderr, stdout = helpers.kong_exec("vault get test-env/nonexist", {
         prefix = helpers.test_conf.prefix,
       })
