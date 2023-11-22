@@ -1,0 +1,3 @@
+message: "**Rate-limiting**: add support for consumer group scoping"
+type: feature
+scope: Plugin
