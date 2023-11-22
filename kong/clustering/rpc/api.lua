@@ -66,6 +66,15 @@ function _M:invoke_multi(func, ...)
 end
 
 
+function _M:get_capabilities(node_id)
+  if node_id ~= "*" then
+    return self:invoke("get_capabilities", node_id)
+  end
+
+  return self:invoke_multi("get_capabilities")
+end
+
+
 function _M:notify(node_id, method, params, opts)
   if node_id ~= "*" then
     return self:invoke("notify", node_id, method, params, opts)

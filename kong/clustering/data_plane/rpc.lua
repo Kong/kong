@@ -1,3 +1,4 @@
+local cjson = require("cjson.safe")
 local rpc_dp = require("kong.clustering.rpc.dp")
 local rpc_api = require("kong.clustering.rpc.api")
 local sync_svc = require("kong.clustering.data_plane.services.sync")
@@ -13,6 +14,8 @@ local KONG_VERSION = kong.version
 local function ping_cp_test()
   ngx.timer.at(1, function(premature)
     local rpc = kong.rpc
+
+    ngx.log(ngx.ERR, "peer capabilites: ", cjson.encode(rpc:get_capabilities("control_plane")))
 
     local res, _ = rpc:call("control_plane", "kong.test.v1.ping", { msg = "kong hello"})
     ngx.log(ngx.ERR, "receive from cp: ", res.msg)

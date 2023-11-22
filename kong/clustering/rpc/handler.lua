@@ -46,6 +46,11 @@ function _M.new()
 end
 
 
+function _M:get_capabilities()
+  return self.capabilities
+end
+
+
 function _M:method_available(method)
   for cap in pairs(self.capabilities) do
     if method:find(cap, 1, true) then

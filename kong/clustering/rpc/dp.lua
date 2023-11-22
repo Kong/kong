@@ -57,6 +57,17 @@ function _M:get_nodes()
 end
 
 
+function _M:get_capabilities(node_id)
+  -- ignore node_id now
+
+  if not self.peer then
+    return nil, "peer is not available"
+  end
+
+  return peer:get_capabilities()
+end
+
+
 -- opts.node_id
 function _M:notify(node_id, method, params, opts)
   -- ignore node_id now

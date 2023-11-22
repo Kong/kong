@@ -44,6 +44,11 @@ function _M.new(hdl)
 end
 
 
+function _M:get_capabilities()
+  return self.handler:get_capabilities()
+end
+
+
 function _M:validate(method, params)
   assert(type(method) == "string",
          "params must be a string")

@@ -1,3 +1,4 @@
+local cjson = require("cjson.safe")
 local lrucache = require("resty.lrucache")
 
 
@@ -69,6 +70,15 @@ function _M:init_worker(basic_info)
 
   -- init rpc connection
   kong.cp:init_worker()
+
+  -- test print dp capabilities
+  ngx.timer.at(2, function(premature)
+    local rpc = kong.rpc
+    local nodes = rpc:get_nodes()
+    for id in pairs(nodes) do
+      ngx.log(ngx.ERR, id, " peer capabilites: ", cjson.encode(rpc:get_capabilities(id)))
+    end
+  end)
 
   -- event to invoke rpc call
   events.clustering_push_config(function(node_id)
