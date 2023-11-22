@@ -10,7 +10,7 @@ local openssl_x509 = require "resty.openssl.x509"
 local pl_stringio = require "pl.stringio"
 local pl_stringx = require "pl.stringx"
 local socket_url = require "socket.url"
-local constants = require "kong.conf_loader.constants"
+local conf_constants = require "kong.conf_loader.constants"
 local listeners = require "kong.conf_loader.listeners"
 local pl_pretty = require "pl.pretty"
 local pl_config = require "pl.config"
@@ -73,24 +73,24 @@ ffi.cdef([[
 ]])
 
 
-local CIPHER_SUITES = constants.CIPHER_SUITES
-local DEFAULT_PATHS = constants.DEFAULT_PATHS
-local HEADER_KEY_TO_NAME = constants.HEADER_KEY_TO_NAME
-local UPSTREAM_HEADER_KEY_TO_NAME = constants.UPSTREAM_HEADER_KEY_TO_NAME
-local DYNAMIC_KEY_NAMESPACES = constants.DYNAMIC_KEY_NAMESPACES
-local DEPRECATED_DYNAMIC_KEY_NAMESPACES = constants.DEPRECATED_DYNAMIC_KEY_NAMESPACES
-local PREFIX_PATHS = constants.PREFIX_PATHS
-local CONF_PARSERS = constants.CONF_PARSERS
-local CONF_SENSITIVE_PLACEHOLDER = constants.CONF_SENSITIVE_PLACEHOLDER
-local CONF_SENSITIVE = constants.CONF_SENSITIVE
-local CONF_BASIC = constants.CONF_BASIC
-local TYP_CHECKS = constants.TYP_CHECKS
-local HEADERS = constants.HEADERS
-local BUNDLED_VAULTS = constants.BUNDLED_VAULTS
-local BUNDLED_PLUGINS = constants.BUNDLED_PLUGINS
+local CIPHER_SUITES = conf_constants.CIPHER_SUITES
+local DEFAULT_PATHS = conf_constants.DEFAULT_PATHS
+local HEADER_KEY_TO_NAME = conf_constants.HEADER_KEY_TO_NAME
+local UPSTREAM_HEADER_KEY_TO_NAME = conf_constants.UPSTREAM_HEADER_KEY_TO_NAME
+local DYNAMIC_KEY_NAMESPACES = conf_constants.DYNAMIC_KEY_NAMESPACES
+local DEPRECATED_DYNAMIC_KEY_NAMESPACES = conf_constants.DEPRECATED_DYNAMIC_KEY_NAMESPACES
+local PREFIX_PATHS = conf_constants.PREFIX_PATHS
+local CONF_PARSERS = conf_constants.CONF_PARSERS
+local CONF_SENSITIVE_PLACEHOLDER = conf_constants.CONF_SENSITIVE_PLACEHOLDER
+local CONF_SENSITIVE = conf_constants.CONF_SENSITIVE
+local CONF_BASIC = conf_constants.CONF_BASIC
+local TYP_CHECKS = conf_constants.TYP_CHECKS
+local HEADERS = conf_constants.HEADERS
+local BUNDLED_VAULTS = conf_constants.BUNDLED_VAULTS
+local BUNDLED_PLUGINS = conf_constants.BUNDLED_PLUGINS
 
 
-local _nop_tostring_mt = constants._NOP_TOSTRING_MT
+local _nop_tostring_mt = conf_constants._NOP_TOSTRING_MT
 
 
 local function is_predefined_dhgroup(group)
