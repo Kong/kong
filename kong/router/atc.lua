@@ -65,6 +65,7 @@ do
                   "http.path",
                   "http.headers.*",
                   "http.queries.*",
+                  "http.path.segments.*",
                  },
 
     ["Int"]    = {"net.port",
@@ -193,9 +194,11 @@ local function categorize_fields(fields)
   local basic = {}
   local headers = {}
   local queries = {}
+  local segments = {}
 
   -- 13 bytes, same len for "http.queries."
   local PREFIX_LEN = 13 -- #"http.headers."
+  local PREFIX_SEGMENTS = "http.path.segments."
 
   for _, field in ipairs(fields) do
     local prefix = field:sub(1, PREFIX_LEN)
@@ -206,12 +209,15 @@ local function categorize_fields(fields)
     elseif prefix == "http.queries." then
       queries[field:sub(PREFIX_LEN + 1)] = field
 
+    elseif field:sub(1, #PREFIX_SEGMENTS) == PREFIX_SEGMENTS then
+      queries[field:sub(#PREFIX_SEGMENTS + 1)] = field  -- [0] = http.path.segments.0
+
     else
       table.insert(basic, field)
     end
   end
 
-  return basic, headers, queries
+  return basic, headers, queries, segments
 end
 
 
@@ -253,7 +259,7 @@ local function new_from_scratch(routes, get_exp_and_priority)
     yield(true, phase)
   end
 
-  local fields, header_fields, query_fields = categorize_fields(inst:get_fields())
+  local fields, header_fields, query_fields, segments = categorize_fields(inst:get_fields())
 
   return setmetatable({
       schema = CACHED_SCHEMA,
@@ -263,6 +269,7 @@ local function new_from_scratch(routes, get_exp_and_priority)
       fields = fields,
       header_fields = header_fields,
       query_fields = query_fields,
+      segments = segments,
       updated_at = new_updated_at,
       rebuilding = false,
     }, _MT)
@@ -344,11 +351,12 @@ local function new_from_previous(routes, get_exp_and_priority, old_router)
     yield(true, phase)
   end
 
-  local fields, header_fields, query_fields = categorize_fields(inst:get_fields())
+  local fields, header_fields, query_fields, segments = categorize_fields(inst:get_fields())
 
   old_router.fields = fields
   old_router.header_fields = header_fields
   old_router.query_fields = query_fields
+  old_router.segments = segments
   old_router.updated_at = new_updated_at
   old_router.rebuilding = false
 
