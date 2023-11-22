@@ -140,3 +140,120 @@ describe("headers_key", function()
                    {vary_headers = {"a", "b", "c"}}))
   end)
 end)
+
+describe("build_cache_key", function()
+  it("creates different cache_keys when no group is present", function()
+    local cache_key_with_group = key_utils.build_cache_key("alice",
+      nil, nil, nil, {}, {}, { name = "my-group", id = 1 }, {})
+
+    local cache_key_no_group = key_utils.build_cache_key("alice",
+      nil, nil, nil, {}, {}, {}, {})
+    assert.is_not_equal(cache_key_with_group, cache_key_no_group)
+  end)
+  it("creates same cache_keys when same parameters are passed", function()
+    local cache_key1 = key_utils.build_cache_key("bob", nil, nil, nil, {}, {}, { name = "group1", id = 2 }, {})
+    local cache_key2 = key_utils.build_cache_key("bob", nil, nil, nil, {}, {}, { name = "group1", id = 2 }, {})
+    assert.is_equal(cache_key1, cache_key2)
+  end)
+
+  it("creates different cache_keys when different users are passed", function()
+    local cache_key1 = key_utils.build_cache_key("alice", "1", nil, nil, {}, {}, { name = "group1", id = 1 }, {})
+    local cache_key2 = key_utils.build_cache_key("bob", "1", nil, nil, {}, {}, { name = "group1", id = 1 }, {})
+    assert.is_not_equal(cache_key1, cache_key2)
+  end)
+
+  it("creates different cache_keys when different groups are passed", function()
+    local cache_key1 = key_utils.build_cache_key("alice", nil, nil, nil, {}, {}, { name = "group1", id = 1 }, {})
+    local cache_key2 = key_utils.build_cache_key("alice", nil, nil, nil, {}, {}, { name = "group2", id = 2 }, {})
+    assert.is_not_equal(cache_key1, cache_key2)
+  end)
+
+  it("creates different cache_keys when different parameters are passed", function()
+    local cache_key1 = key_utils.build_cache_key("bob", nil, nil, nil, { param1 = "value1" }, {},
+      { name = "group1", id = 2 }, {})
+    local cache_key2 = key_utils.build_cache_key("bob", nil, nil, nil, { param1 = "value2" }, {},
+      { name = "group1", id = 2 }, {})
+    assert.is_not_equal(cache_key1, cache_key2)
+  end)
+
+  it("creates same cache_keys when different headers are passed but no vary option is passed", function()
+    local cache_key1 = key_utils.build_cache_key("bob", "1", nil, nil, {}, { header1 = "value1" },
+      { name = "group1", id = 2 }, {})
+    local cache_key2 = key_utils.build_cache_key("bob", "1", nil, nil, {}, { header1 = "value2" },
+      { name = "group1", id = 2 }, {})
+    assert.is_equal(cache_key1, cache_key2)
+  end)
+
+  it("creates different cache_keys when different groups with same name but different ids are passed", function()
+    local cache_key1 = key_utils.build_cache_key("alice", nil, nil, nil, {}, {}, { name = "group1", id = 1 }, {})
+    local cache_key2 = key_utils.build_cache_key("alice", nil, nil, nil, {}, {}, { name = "group1", id = 2 }, {})
+    assert.is_not_equal(cache_key1, cache_key2)
+  end)
+
+  it("creates different cache_keys when different URIs are passed", function()
+    local cache_key1 = key_utils.build_cache_key("bob", "uri1", nil, nil, {}, {}, { name = "group1", id = 2 }, {})
+    local cache_key2 = key_utils.build_cache_key("bob", "uri2", nil, nil, {}, {}, { name = "group1", id = 2 }, {})
+    assert.is_not_equal(cache_key1, cache_key2)
+  end)
+
+  it("creates different cache_keys when different methods are passed", function()
+    local cache_key1 = key_utils.build_cache_key("bob", nil, "GET", nil, {}, {}, { name = "group1", id = 2 }, {})
+    local cache_key2 = key_utils.build_cache_key("bob", nil, "POST", nil, {}, {}, { name = "group1", id = 2 }, {})
+    assert.is_not_equal(cache_key1, cache_key2)
+  end)
+
+  it("creates different cache_keys when different uris are passed", function()
+    local cache_key1 = key_utils.build_cache_key("bob", nil, nil, "uri1", {}, {}, { name = "group1", id = 2 },
+      {})
+    local cache_key2 = key_utils.build_cache_key("bob", nil, nil, "uri2", {}, {}, { name = "group1", id = 2 }, {})
+    assert.is_not_equal(cache_key1, cache_key2)
+  end)
+
+  it("creates different cache_keys when different groups with different names but same ids are passed", function()
+    local cache_key1 = key_utils.build_cache_key("alice", nil, nil, nil, {}, {}, { name = "group1", id = 1 }, {})
+    local cache_key2 = key_utils.build_cache_key("alice", nil, nil, nil, {}, {}, { name = "group2", id = 1 }, {})
+    assert.is_not_equal(cache_key1, cache_key2)
+  end)
+
+  it("creates same cache_keys when same query parameters are passed", function()
+    local cache_key1 = key_utils.build_cache_key("bob", nil, nil, nil, {}, {}, { name = "group1", id = 2 },
+      { query1 = "value1" })
+    local cache_key2 = key_utils.build_cache_key("bob", nil, nil, nil, {}, {}, { name = "group1", id = 2 },
+      { query1 = "value1" })
+    assert.is_equal(cache_key1, cache_key2)
+  end)
+
+  it("creates same cache_keys when same body parameters are passed", function()
+    local cache_key1 = key_utils.build_cache_key("bob", nil, nil, nil, {}, {}, { name = "group1", id = 2 }, {},
+      { body1 = "value1" })
+    local cache_key2 = key_utils.build_cache_key("bob", nil, nil, nil, {}, {}, { name = "group1", id = 2 }, {},
+      { body1 = "value1" })
+    assert.is_equal(cache_key1, cache_key2)
+  end)
+
+  it("creates same cache_keys when same cookies are passed", function()
+    local cache_key1 = key_utils.build_cache_key("bob", nil, nil, nil, {}, {}, { name = "group1", id = 2 }, {}, {},
+      { cookie1 = "value1" })
+    local cache_key2 = key_utils.build_cache_key("bob", nil, nil, nil, {}, {}, { name = "group1", id = 2 }, {}, {},
+      { cookie1 = "value1" })
+    assert.is_equal(cache_key1, cache_key2)
+  end)
+
+  it("creates same cache_keys when same groups with different names but same ids are passed", function()
+    local cache_key1 = key_utils.build_cache_key("alice", nil, nil, nil, {}, {}, { name = "group1", id = 1 }, {})
+    local cache_key2 = key_utils.build_cache_key("alice", nil, nil, nil, {}, {}, { name = "group2", id = 1 }, {})
+    assert.is_not_equal(cache_key1, cache_key2)
+  end)
+
+  it("creates different cache_keys when different users and different groups are passed", function()
+    local cache_key1 = key_utils.build_cache_key("alice", nil, nil, nil, {}, {}, { name = "group1", id = 1 }, {})
+    local cache_key2 = key_utils.build_cache_key("bob", nil, nil, nil, {}, {}, { name = "group2", id = 2 }, {})
+    assert.is_not_equal(cache_key1, cache_key2)
+  end)
+
+  it("creates same cache_keys when same users and same groups are passed", function()
+    local cache_key1 = key_utils.build_cache_key("alice", nil, nil, nil, {}, {}, { name = "group1", id = 1 }, {})
+    local cache_key2 = key_utils.build_cache_key("alice", nil, nil, nil, {}, {}, { name = "group1", id = 1 }, {})
+    assert.is_equal(cache_key1, cache_key2)
+  end)
+end)

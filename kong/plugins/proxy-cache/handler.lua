@@ -320,6 +320,7 @@ function ProxyCacheHandler:access(conf)
                                                    uri,
                                                    kong.request.get_query(),
                                                    kong.request.get_headers(),
+                                                   consumer and kong.client.get_consumer_groups(),
                                                    conf)
   if err then
     kong.log.err(err)

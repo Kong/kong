@@ -1,0 +1,3 @@
+message: "**Proxy-Cache**: add support for consumer group scoping"
+type: feature
+scope: Plugin

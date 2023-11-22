@@ -23,7 +23,7 @@ local EMPTY = {}
 
 local function keys(t)
   local res = {}
-  for k, _ in pairs(t) do
+  for k, _ in pairs(t or {}) do
     res[#res+1] = k
   end
 
@@ -108,15 +108,17 @@ _M.prefix_uuid = prefix_uuid
 
 
 function _M.build_cache_key(consumer_id, route_id, method, uri,
-                            params_table, headers_table, conf)
+                            params_table, headers_table, consumer_groups_table, conf)
 
   -- obtain cache key components
   local prefix_digest  = prefix_uuid(consumer_id, route_id)
   local params_digest  = params_key(params_table, conf)
   local headers_digest = headers_key(headers_table, conf)
+  local consumer_groups_digest = params_key(consumer_groups_table, {})
 
-  return sha256_hex(fmt("%s|%s|%s|%s|%s", prefix_digest, method, uri,
-                                          params_digest, headers_digest))
+  return sha256_hex(fmt("%s|%s|%s|%s|%s|%s", prefix_digest, method, uri,
+                                            params_digest, headers_digest,
+                                            consumer_groups_digest))
 end
 
 
