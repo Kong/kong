@@ -396,6 +396,7 @@ jobs:
     - name: Comment on commit
       if: github.event_name == 'push' && matrix.label == 'ubuntu'
       uses: peter-evans/commit-comment@5a6f8285b8f2e8376e41fe1b563db48e6cf78c09 # v3.0.0
+      continue-on-error: true # TODO: temporary fix until the token is back
       with:
         token: ${{ secrets.GHA_COMMENT_TOKEN }}
         body: |
