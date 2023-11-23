@@ -1,0 +1,3 @@
+message: bump `dns_stale_ttl` default to 1 day
+type: performance
+scope: Configuration
