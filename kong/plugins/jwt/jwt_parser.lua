@@ -7,6 +7,7 @@
 
 local json = require "cjson"
 local b64 = require "ngx.base64"
+local buffer = require "string.buffer"
 local openssl_digest = require "resty.openssl.digest"
 local openssl_hmac = require "resty.openssl.hmac"
 local openssl_pkey = require "resty.openssl.pkey"
@@ -20,7 +21,6 @@ local time = ngx.time
 local pairs = pairs
 local error = error
 local pcall = pcall
-local concat = table.concat
 local insert = table.insert
 local unpack = unpack
 local assert = assert
@@ -237,17 +237,17 @@ local function encode_token(data, key, alg, header)
   end
 
   local header = header or { typ = "JWT", alg = alg }
-  local segments = {
-    base64_encode(json.encode(header)),
-    base64_encode(json.encode(data))
-  }
+  local buf = buffer.new()
 
-  local signing_input = concat(segments, ".")
-  local signature = alg_sign[alg](signing_input, key)
+  buf:put(base64_encode(json.encode(header))):put(".")
+     :put(base64_encode(json.encode(data)))
 
-  segments[#segments+1] = base64_encode(signature)
+  local signature = alg_sign[alg](buf:tostring(), key)
 
-  return concat(segments, ".")
+  buf:put(".")
+     :put(base64_encode(signature))
+
+  return buf:get()
 end
 
 
