@@ -1,27 +1,24 @@
 name: Backport
 on:
   pull_request_target:
-    types: [closed]
-permissions:
-  contents: write # so it can comment
-  pull-requests: write # so it can create pull requests
+    types:
+      - closed
+      - labeled
+
 jobs:
   backport:
     name: Backport
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged
+    if: >
+      github.event.pull_request.merged
+      && (
+        github.event.action == 'closed'
+        || (
+          github.event.action == 'labeled'
+          && contains(github.event.label.name, 'backport')
+        )
+      )
     steps:
-      - uses: actions/checkout@v4
-      - name: Create backport pull requests
-        uses: korthout/backport-action@cb79e4e5f46c7d7d653dd3d5fa8a9b0a945dfe4b # v2.1.0
+      - uses: tibdex/backport@9565281eda0731b1d20c4025c43339fb0a23812e # v2.0.4
         with:
           github_token: ${{ secrets.PAT }}
-          pull_title: '[backport -> ${target_branch}] ${pull_title}'
-          merge_commits: 'skip'
-          copy_labels_pattern: ^(?!backport ).* # copies all labels except those starting with "backport "
-          label_pattern: ^backport (release\/[^ ]+)$ # filters for labels starting with "backport " and extracts the branch name
-          pull_description: |-
-            Automated backport to `${target_branch}`, triggered by a label in #${pull_number}.
-          copy_assignees: true
-          copy_milestone: true
-          copy_requested_reviewers: true
