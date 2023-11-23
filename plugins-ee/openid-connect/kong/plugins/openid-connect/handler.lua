@@ -52,6 +52,8 @@ local type            = type
 local sub             = string.sub
 local json            = codec.json
 local base64url       = codec.base64url
+local normalize_uri   = require("kong.tools.uri").normalize
+
 
 local TOKEN_EXPIRED_MESSAGE = "The access token expired"
 
@@ -330,7 +332,9 @@ function OICHandler.access(_, conf)
         else
           local logout_uri_suffix = args.get_conf_arg("logout_uri_suffix")
           if logout_uri_suffix then
-            logout = sub(var.request_uri, -#logout_uri_suffix) == logout_uri_suffix
+            local request_path = normalize_uri(kong.request.get_forwarded_path())
+            logout_uri_suffix = normalize_uri(logout_uri_suffix)
+            logout = sub(request_path, -#logout_uri_suffix) == logout_uri_suffix
             if logout then
               log("logout by uri suffix")
 

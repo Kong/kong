@@ -1,0 +1,3 @@
+message: "**Openid-Connect**: Fix logout uri suffix detection by using normalized version of `kong.request.get_forwarded_path()` instead of `ngx.var.request_uri` (especially when passing query strings to logout)"
+type: bugfix
+scope: Plugin

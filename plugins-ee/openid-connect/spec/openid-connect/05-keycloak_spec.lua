@@ -84,6 +84,10 @@ local mock = http_mock.new(HTTP_SERVER_PORT, {
   })
 local MOCK_ISSUER_URL = "http://localhost:" .. HTTP_SERVER_PORT .. REALM_PATH
 
+local function request_uri(uri, opts)
+  return require("resty.http").new():request_uri(uri, opts)
+end
+
 local function error_assert(res, code, desc)
   local header = res.headers["WWW-Authenticate"]
   assert.match(string.format('error="%s"', code), header)
@@ -698,8 +702,7 @@ for _, strategy in helpers.all_strategies() do
           -- get authorization=...; cookie
           local auth_cookie = res.headers["Set-Cookie"]
           local auth_cookie_cleaned = sub(auth_cookie, 0, find(auth_cookie, ";") -1)
-          local http = require "resty.http".new()
-          local rres, err = http:request_uri(redirect, {
+          local rres, err = request_uri(redirect, {
             headers = {
               -- impersonate as browser
               ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", -- luacheck: ignore
@@ -738,14 +741,14 @@ for _, strategy in helpers.all_strategies() do
               Cookie = user_session_header_table,
           }}
           local loginres
-          loginres, err = http:request_uri(login_button_url, opts)
+          loginres, err = request_uri(login_button_url, opts)
           assert.is_nil(err)
           assert.equal(302, loginres.status)
 
           -- after sending login data to the login action page, expect a redirect
           local upstream_url = loginres.headers["Location"]
           local ures
-          ures, err = http:request_uri(upstream_url, {
+          ures, err = request_uri(upstream_url, {
             headers = {
               -- authenticate using the cookie from the initial request
               Cookie = auth_cookie_cleaned
@@ -765,7 +768,7 @@ for _, strategy in helpers.all_strategies() do
             client_session_header_table[i] = client_session
           end
           local ures_final
-          ures_final, err = http:request_uri(final_url, {
+          ures_final, err = request_uri(final_url, {
             headers = {
               -- send session cookie
               Cookie = client_session_header_table
@@ -791,8 +794,7 @@ for _, strategy in helpers.all_strategies() do
           -- get authorization=...; cookie
           local auth_cookie = res.headers["Set-Cookie"]
           local auth_cookie_cleaned = sub(auth_cookie, 0, find(auth_cookie, ";") -1)
-          local http = require "resty.http".new()
-          local rres, err = http:request_uri(redirect, {
+          local rres, err = request_uri(redirect, {
             headers = {
               -- impersonate as browser
               ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", --luacheck: ignore
@@ -831,7 +833,7 @@ for _, strategy in helpers.all_strategies() do
               Cookie = user_session_header_table,
           }}
           local loginres
-          loginres, err = http:request_uri(login_button_url, opts)
+          loginres, err = request_uri(login_button_url, opts)
           local idx = find(loginres.body, "Invalid username or password", 0, true)
           assert.is_number(idx)
           assert.is_nil(err)
@@ -857,8 +859,7 @@ for _, strategy in helpers.all_strategies() do
           -- get authorization=...; cookie
           local auth_cookie = res.headers["Set-Cookie"]
           local auth_cookie_cleaned = sub(auth_cookie, 0, find(auth_cookie, ";") -1)
-          local http = require "resty.http".new()
-          local rres, err = http:request_uri(redirect, {
+          local rres, err = request_uri(redirect, {
             headers = {
               -- impersonate as browser
               ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", -- luacheck: ignore
@@ -897,14 +898,14 @@ for _, strategy in helpers.all_strategies() do
               Cookie = user_session_header_table,
           }}
           local loginres
-          loginres, err = http:request_uri(login_button_url, opts)
+          loginres, err = request_uri(login_button_url, opts)
           assert.is_nil(err)
           assert.equal(302, loginres.status)
 
           -- after sending login data to the login action page, expect a redirect
           local upstream_url = loginres.headers["Location"]
           local ures
-          ures, err = http:request_uri(upstream_url, {
+          ures, err = request_uri(upstream_url, {
             headers = {
               -- authenticate using the cookie from the initial request
               Cookie = auth_cookie_cleaned
@@ -926,7 +927,7 @@ for _, strategy in helpers.all_strategies() do
             client_session_header_table[i] = client_session
           end
           local ures_final
-          ures_final, err = http:request_uri(final_url, {
+          ures_final, err = request_uri(final_url, {
             headers = {
               -- send session cookie
               Cookie = client_session_header_table
@@ -2658,7 +2659,7 @@ for _, strategy in helpers.all_strategies() do
           local json = assert.response(res).has.jsonbody()
           assert.equal(user_token, sub(json.headers.authorization, 8))
           -- logout
-          local lres = proxy_client:post("/logout", {
+          local lres = proxy_client:post("/logout?query-args-wont-matter=1", {
             headers = {
               Cookie = user_session_header_table,
             },
@@ -2671,14 +2672,12 @@ for _, strategy in helpers.all_strategies() do
           local expiry_init = find(cookie, expected_header_name)
           local expiry_date = sub(cookie, expiry_init + #expected_header_name, find(cookie, ';', expiry_init)-1)
           assert(expiry_date, "Thu, 01 Jan 1970 00:00:01 GMT")
-          -- follow redirect
+          -- follow redirect (call IDP)
+
           local redirect = lres.headers["Location"]
-          local rres = proxy_client:post(redirect, {
-            headers = {
-              Cookie = user_session_header_table,
-            },
-          })
-          assert.response(rres).has.status(200)
+          local rres, err = request_uri(redirect)
+          assert.is_nil(err)
+          assert.equal(200, rres.status)
         end)
       end)
     end)
@@ -2792,7 +2791,7 @@ for _, strategy in helpers.all_strategies() do
           local json = assert.response(res).has.jsonbody()
           assert.equal(user_token, sub(json.headers.authorization, 8))
           -- logout
-          local lres = proxy_client:post("/logout", {
+          local lres = proxy_client:post("/logout?query-args-wont-matter=1", {
             headers = {
               Cookie = user_session_header_table,
             },
@@ -2807,12 +2806,9 @@ for _, strategy in helpers.all_strategies() do
           assert(expiry_date, "Thu, 01 Jan 1970 00:00:01 GMT")
           -- follow redirect
           local redirect = lres.headers["Location"]
-          local rres = proxy_client:post(redirect, {
-            headers = {
-              Cookie = user_session_header_table,
-            },
-          })
-          assert.response(rres).has.status(200)
+          local rres, err = request_uri(redirect)
+          assert.is_nil(err)
+          assert.equal(200, rres.status)
         end)
       end)
     end)
