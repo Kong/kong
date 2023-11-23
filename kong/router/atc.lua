@@ -493,7 +493,7 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
     local ngx_re = require "ngx.re"
     local res = ngx_re.split(req_uri, "/")
 
-    for s, field in pairs(self.segments) do
+    for s, field in pairs(self.segments_fields) do
       local v = res[tonumber(s)]
       c:add_value(field, v)
     end
