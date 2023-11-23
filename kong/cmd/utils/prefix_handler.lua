@@ -257,8 +257,9 @@ local function compile_conf(kong_config, conf_template, template_env_inject)
     if custom_format then
       compile_env.proxy_access_log_custom = true
 
-      if not string.match(kong_config.nginx_http_log_format or "", "^" .. custom_format) then
-        log.debug(table.concat({"a custom access_log format is set: '", custom_format, "', but not defined"}))
+      local format_pattern = string.gsub(custom_format, "%-", "%%-")
+      if not string.match(kong_config.nginx_http_log_format or "", "^" .. format_pattern) then
+        log.debug(table.concat({"a custom access_log format is configured: '", custom_format, "', but not defined"}))
       end
     end
   end
