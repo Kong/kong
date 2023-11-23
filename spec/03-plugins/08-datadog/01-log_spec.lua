@@ -1,8 +1,10 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
+local stringx = require "pl.stringx"
 
 
 describe("Plugin: datadog (log)", function()
+  local DEFAULT_METRICS_COUNT = 6
 
   lazy_setup(function()
     helpers.setenv('KONG_DATADOG_AGENT_HOST', 'localhost')
@@ -95,6 +97,7 @@ describe("Plugin: datadog (log)", function()
 
         local route9 = bp.routes:insert {
           paths = { "/serviceless" },
+          no_service = true,
         }
 
         bp.plugins:insert {
@@ -284,7 +287,7 @@ describe("Plugin: datadog (log)", function()
       end)
 
       it("logs metrics over UDP", function()
-        local thread = helpers.udp_server(9999, 6)
+        local thread = helpers.udp_server(9999, DEFAULT_METRICS_COUNT)
 
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -297,7 +300,7 @@ describe("Plugin: datadog (log)", function()
 
         local ok, gauges = thread:join()
         assert.True(ok)
-        assert.equal(6, #gauges)
+        assert.equal(DEFAULT_METRICS_COUNT, #gauges)
         assert.contains("kong.request.count:1|c|#name:dd1,status:200,consumer:bar,app:kong" , gauges)
         assert.contains("kong.latency:%d+|ms|#name:dd1,status:200,consumer:bar,app:kong", gauges, true)
         assert.contains("kong.request.size:%d+|ms|#name:dd1,status:200,consumer:bar,app:kong", gauges, true)
@@ -307,7 +310,7 @@ describe("Plugin: datadog (log)", function()
       end)
 
       it("logs metrics over UDP #grpc", function()
-        local thread = helpers.udp_server(9999, 6)
+        local thread = helpers.udp_server(9999, DEFAULT_METRICS_COUNT)
 
         local grpc_cleint = assert(helpers.proxy_client_grpc())
 
@@ -322,7 +325,7 @@ describe("Plugin: datadog (log)", function()
 
         local ok, gauges = thread:join()
         assert.True(ok)
-        assert.equal(6, #gauges)
+        assert.equal(DEFAULT_METRICS_COUNT, #gauges)
         assert.contains("kong.request.count:1|c|#name:grpc,status:200,consumer:bar,app:kong" , gauges)
         assert.contains("kong.latency:%d+|ms|#name:grpc,status:200,consumer:bar,app:kong", gauges, true)
         assert.contains("kong.request.size:%d+|ms|#name:grpc,status:200,consumer:bar,app:kong", gauges, true)
@@ -332,7 +335,7 @@ describe("Plugin: datadog (log)", function()
       end)
 
       it("logs metrics over UDP with custom prefix", function()
-        local thread = helpers.udp_server(9999, 6)
+        local thread = helpers.udp_server(9999, DEFAULT_METRICS_COUNT)
 
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -345,7 +348,7 @@ describe("Plugin: datadog (log)", function()
 
         local ok, gauges = thread:join()
         assert.True(ok)
-        assert.equal(6, #gauges)
+        assert.equal(DEFAULT_METRICS_COUNT, #gauges)
         assert.contains("prefix.request.count:1|c|#name:dd4,status:200,consumer:bar,app:kong",gauges)
         assert.contains("prefix.latency:%d+|ms|#name:dd4,status:200,consumer:bar,app:kong", gauges, true)
         assert.contains("prefix.request.size:%d+|ms|#name:dd4,status:200,consumer:bar,app:kong", gauges, true)
@@ -355,7 +358,7 @@ describe("Plugin: datadog (log)", function()
       end)
 
       it("logs metrics over UDP with custom tag names", function()
-        local thread = helpers.udp_server(9999, 6)
+        local thread = helpers.udp_server(9999, DEFAULT_METRICS_COUNT)
 
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -368,7 +371,7 @@ describe("Plugin: datadog (log)", function()
 
         local ok, gauges = thread:join()
         assert.True(ok)
-        assert.equal(6, #gauges)
+        assert.equal(DEFAULT_METRICS_COUNT, #gauges)
         assert.contains("kong.request.count:1|c|#upstream:dd6,http_status:200,user:bar,app:kong",gauges)
         assert.contains("kong.latency:%d+|ms|#upstream:dd6,http_status:200,user:bar,app:kong", gauges, true)
         assert.contains("kong.request.size:%d+|ms|#upstream:dd6,http_status:200,user:bar,app:kong", gauges, true)
@@ -416,7 +419,7 @@ describe("Plugin: datadog (log)", function()
       end)
 
       it("logs metrics to host/port defined via environment variables", function()
-        local thread = helpers.udp_server(9999, 6)
+        local thread = helpers.udp_server(9999, DEFAULT_METRICS_COUNT)
 
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -429,7 +432,7 @@ describe("Plugin: datadog (log)", function()
 
         local ok, gauges = thread:join()
         assert.True(ok)
-        assert.equal(6, #gauges)
+        assert.equal(DEFAULT_METRICS_COUNT, #gauges)
         assert.contains("kong.request.count:1|c|#name:dd5,status:200,consumer:bar,app:kong" , gauges)
         assert.contains("kong.latency:%d+|ms|#name:dd5,status:200,consumer:bar,app:kong", gauges, true)
         assert.contains("kong.request.size:%d+|ms|#name:dd5,status:200,consumer:bar,app:kong", gauges, true)
@@ -439,7 +442,7 @@ describe("Plugin: datadog (log)", function()
       end)
 
       it("logs metrics in several batches", function()
-        local thread = helpers.udp_server(9999, 6)
+        local thread = helpers.udp_server(9999, DEFAULT_METRICS_COUNT)
 
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -452,7 +455,7 @@ describe("Plugin: datadog (log)", function()
 
         local ok, gauges = thread:join()
         assert.True(ok)
-        assert.equal(6, #gauges)
+        assert.equal(DEFAULT_METRICS_COUNT, #gauges)
         assert.contains("kong.request.count:1|c|#name:dd7,status:200,consumer:bar,app:kong" , gauges)
         assert.contains("kong.latency:%d+|ms|#name:dd7,status:200,consumer:bar,app:kong", gauges, true)
         assert.contains("kong.request.size:%d+|ms|#name:dd7,status:200,consumer:bar,app:kong", gauges, true)
@@ -477,7 +480,7 @@ describe("Plugin: datadog (log)", function()
 
         local ok, gauges = thread:join()
         assert.True(ok)
-        assert.equal(6, #gauges)
+        assert.equal(DEFAULT_METRICS_COUNT, #gauges)
       end)
 
       it("should not return a runtime error (regression)", function()
@@ -507,7 +510,7 @@ describe("Plugin: datadog (log)", function()
       end)
 
       it("referenceable fields works", function()
-        local thread = helpers.udp_server(9999, 6, 6)
+        local thread = helpers.udp_server(9999, DEFAULT_METRICS_COUNT, 6)
         local another_proxy_client = helpers.proxy_client()
 
         local res = assert(another_proxy_client:send {
@@ -522,11 +525,11 @@ describe("Plugin: datadog (log)", function()
 
         local ok, gauges = thread:join()
         assert.True(ok)
-        assert.equal(6, #gauges)
+        assert.equal(DEFAULT_METRICS_COUNT, #gauges)
       end)
 
       it("datadog plugin is triggered for serviceless routes", function()
-        local thread = helpers.udp_server(9999, 6)
+        local thread = helpers.udp_server(9999, DEFAULT_METRICS_COUNT)
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/serviceless",
@@ -537,7 +540,17 @@ describe("Plugin: datadog (log)", function()
 
         local ok, gauges = thread:join()
         assert.True(ok)
-        assert.True(#gauges > 0)
+        assert.equals(DEFAULT_METRICS_COUNT, #gauges)
+
+        for _, g in ipairs(gauges) do
+          -- tags start with `#`
+          local tmp = stringx.split(g, '#')
+          local tag_idx = #tmp
+          assert(tag_idx == 2, "Error: missing tags")
+          local tags = tmp[tag_idx]
+          assert(tags, "Error: missing tags")
+          assert(string.match(tags, "name:,"), "Error: the value of `name` must be an empty string for serviceless routes")
+        end
       end)
     end)
   end
