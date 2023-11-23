@@ -3488,6 +3488,29 @@ local function get_grpc_target_port()
   return 15010
 end
 
+local function kong_conf_args(env)
+  local prefix = env.prefix or conf.prefix
+  local nginx_conf = ""
+  
+
+  local nginx_conf_flags = { "test" }
+  if env.nginx_conf then
+    nginx_conf = " --nginx-conf " .. env.nginx_conf
+  end
+
+  if TEST_COVERAGE_MODE == "true" then
+    -- render `coverage` blocks in the templates
+    nginx_conf_flags[#nginx_conf_flags + 1] = 'coverage'
+  end
+
+  local nginx_conf_flags_str = ""
+  if next(nginx_conf_flags) then
+    nginx_conf_flags_str = " --nginx-conf-flags " .. table.concat(nginx_conf_flags, ",")
+  end
+
+  return prefix, "--conf " .. TEST_CONF_PATH, nginx_conf, nginx_conf_flags_str
+end
+
 
 --- Start the Kong instance to test against.
 -- The fixtures passed to this function can be 3 types:
@@ -3556,7 +3579,8 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
     error("arg #2 must be a list of tables to truncate")
   end
   env = env or {}
-  local prefix = env.prefix or conf.prefix
+
+  local prefix, conf_args, nginx_conf, flags = kong_conf_args(env)
 
   -- go plugins are enabled
   --  compile fixture go plugins if any setting mentions it
@@ -3577,23 +3601,6 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
 
   truncate_tables(db, tables)
 
-  local nginx_conf = ""
-  local nginx_conf_flags = { "test" }
-  if env.nginx_conf then
-    nginx_conf = " --nginx-conf " .. env.nginx_conf
-  end
-
-  if TEST_COVERAGE_MODE == "true" then
-    -- render `coverage` blocks in the templates
-    nginx_conf_flags[#nginx_conf_flags + 1] = 'coverage'
-  end
-
-  if next(nginx_conf_flags) then
-    nginx_conf_flags = " --nginx-conf-flags " .. table.concat(nginx_conf_flags, ",")
-  else
-    nginx_conf_flags = ""
-  end
-
   if dcbp and not env.declarative_config and not env.declarative_config_string then
     if not config_yml then
       config_yml = prefix .. "/config.yml"
@@ -3609,7 +3616,7 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
   end
 
   assert(render_fixtures(TEST_CONF_PATH .. nginx_conf, env, prefix, fixtures))
-  return kong_exec("start --conf " .. TEST_CONF_PATH .. nginx_conf .. nginx_conf_flags, env)
+  return kong_exec("start " .. conf_args .. nginx_conf .. flags, env)
 end
 
 
@@ -3771,6 +3778,35 @@ local function reload_kong(strategy, ...)
     wait_until_no_common_workers(workers, 1, strategy)
   end
   return ok, err
+end
+
+
+local DEFAULT_WAIT_OPT = {
+  timeout = 10,
+  step = 2,
+}
+
+
+--- Reload the Kong instance.
+local function reload_kong_ex(env, wait_opts)
+  env = env or {}
+  local _, conf_args, nginx_conf, flags = kong_conf_args(env)
+
+  wait_opts = wait_opts or DEFAULT_WAIT_OPT
+  local no_wait = wait_opts.no_wait
+
+  local workers, ret, err
+  if not no_wait then
+    workers = get_kong_workers()
+  end
+
+  ret, err = kong_exec("reload " .. conf_args .. nginx_conf .. flags, env)
+
+  if (not no_wait) and ret then
+    wait_until_no_common_workers(workers, wait_opts.expected_total, wait_opts)
+  end
+
+  return ret, err
 end
 
 
@@ -4049,6 +4085,7 @@ end
   cleanup_kong = cleanup_kong,
   restart_kong = restart_kong,
   reload_kong = reload_kong,
+  reload_kong_ex = reload_kong_ex,
   get_kong_workers = get_kong_workers,
   wait_until_no_common_workers = wait_until_no_common_workers,
 
