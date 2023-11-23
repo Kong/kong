@@ -201,6 +201,7 @@ local function categorize_fields(fields)
   local PREFIX_SEGMENTS = "http.path.segments."
 
   for _, field in ipairs(fields) do
+    --ngx.log(ngx.ERR, "xxx field=", field)
     local prefix = field:sub(1, PREFIX_LEN)
 
     if prefix == "http.headers." then
@@ -210,7 +211,8 @@ local function categorize_fields(fields)
       queries[field:sub(PREFIX_LEN + 1)] = field
 
     elseif field:sub(1, #PREFIX_SEGMENTS) == PREFIX_SEGMENTS then
-      queries[field:sub(#PREFIX_SEGMENTS + 1)] = field  -- [0] = http.path.segments.0
+    --ngx.log(ngx.ERR, "xxx add segments=", field)
+      segments[field:sub(#PREFIX_SEGMENTS + 1)] = field  -- [0] = http.path.segments.0
 
     else
       table.insert(basic, field)
@@ -489,12 +491,19 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 
   end   -- for self.fields
 
-  if self.segments_fields then
+  if not is_empty_field(self.segments_fields) then
+
+    --ngx.log(ngx.ERR, "xxx try check segments_fields")
     local ngx_re = require "ngx.re"
     local res = ngx_re.split(req_uri, "/")
 
+    -- "/a/b/c"
+    -- 1="", 2="a", 3="b"
+
     for s, field in pairs(self.segments_fields) do
-      local v = res[tonumber(s)]
+      --ngx.log(ngx.ERR, "xxx s=", s, ", field=", field)
+      local pos = tonumber(s) + 2
+      local v = res[pos]
       c:add_value(field, v)
     end
   end
