@@ -1,7 +1,7 @@
 name: Backport
 on:
   pull_request_target:
-    types: [closed, labeled] # runs when the pull request is closed/merged or labeled (to trigger a backport in hindsight)
+    types: [closed]
 permissions:
   contents: write # so it can comment
   pull-requests: write # so it can create pull requests
