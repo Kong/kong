@@ -260,8 +260,17 @@ for _, strategy in strategies() do
         local body = assert.res_status(201, res)
         local json = cjson.decode(body)
         assert.same({ ca.id, }, json.config.ca_certificates)
-      end)
 
+        -- delete it as later test will delete the ca certificate
+        local res = assert(admin_client:send {
+          method = "DELETE",
+          path   = "/plugins/" .. json.id,
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        assert.res_status(204, res)
+      end)
     end)
 
     describe("/consumers/:consumer/mtls-auth/:id", function()

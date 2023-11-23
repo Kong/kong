@@ -8,6 +8,7 @@
 local workspaces = require "kong.workspaces"
 local sni_filter = require("kong.enterprise_edition.tls.plugins.sni_filter")
 local plugin_name = require("kong.plugins.mtls-auth.schema").name
+local to_hex      = require("resty.string").to_hex
 
 local kong = kong
 local null = ngx.null
@@ -43,6 +44,36 @@ function _M.get_snis_set()
 
     return snis_set
 end
+
+
+local function get_ca_id_by_digest(digest)
+  local obj, err = kong.db.ca_certificates:select_by_cert_digest(digest)
+  if not obj then
+    if err then
+      return nil, err
+    end
+
+    return nil, "CA Certificate (cert_digest: " .. digest .. ") does not exist"
+  end
+
+  return obj.id
+end
+
+local function ca_id_digest_cache_key(digest)
+  return "mtls:ca:digest:" .. digest
+end
+
+function _M.get_ca_id_from_x509(x509)
+  -- has to be consistent with the ca_certificates schema
+  local digest, err = x509:digest("sha256")
+  if not digest then
+    return nil, err
+  end
+  local cert_digest = to_hex(digest)
+
+  return kong.cache:get(ca_id_digest_cache_key(cert_digest), nil, get_ca_id_by_digest, cert_digest)
+end
+
 
 function _M.init_worker()
   -- warmup SNI filter cache
@@ -89,6 +120,20 @@ function _M.init_worker()
         end
       end
     end, "crud", "consumers")
+
+    register(
+      function(data)
+        local cache_key = ca_id_digest_cache_key
+        local entity = data.entity
+        local old_entity = data.old_entity
+        if entity then
+          kong.cache:invalidate(cache_key(entity.cert_digest))
+        end
+
+        if old_entity then
+          kong.cache:invalidate(cache_key(old_entity.cert_digest))
+        end
+      end, "crud", "ca_certificates")
 end
 
 

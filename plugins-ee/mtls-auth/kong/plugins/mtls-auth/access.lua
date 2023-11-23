@@ -17,6 +17,7 @@ local mtls_cache = require("kong.plugins.mtls-auth.cache")
 local ocsp_client = require("kong.plugins.mtls-auth.ocsp_client")
 local crl_client = require("kong.plugins.mtls-auth.crl_client")
 local constants = require("kong.constants")
+local certificate  = require "kong.runloop.certificate"
 
 
 local kong = kong
@@ -28,73 +29,7 @@ local new_tab = require("table.new")
 local tb_concat = table.concat
 local table_concat = table.concat
 local ngx_var = ngx.var
-local sha256_hex = require "kong.tools.sha256".sha256_hex
 local flag_partial_chain = openssl_x509_store.verify_flags.X509_V_FLAG_PARTIAL_CHAIN
-
-
-local cache_opts = {
-  l1_serializer = function(cas)
-    local trust_store, err = openssl_x509_store.new()
-    if err then
-      return nil, err
-    end
-    local reverse_lookup = new_tab(0, #cas)
-
-    for _, ca in ipairs(cas) do
-      local x509, err = openssl_x509.new(ca.cert,"PEM")
-      if err then
-        return nil, err
-      end
-
-      local _
-      _, err = trust_store:add(x509)
-      if err then
-        return nil, err
-      end
-
-      local digest
-      digest, err = x509:digest()
-      if err then
-        return nil, err
-      end
-
-      reverse_lookup[digest] = ca.id
-    end
-
-    return {
-      store = trust_store,
-      reverse_lookup = reverse_lookup,
-    }
-  end,
-  ttl = 3600,
-  neg_ttl = 3600,
-}
-
-
-local function load_cas(ca_ids)
-  kong.log.debug("cache miss for CA store")
-
-  local cas = new_tab(#ca_ids, 0)
-  local key = new_tab(1, 0)
-
-  for i, ca_id in ipairs(ca_ids) do
-    key.id = ca_id
-
-    local obj, err = kong.db.ca_certificates:select(key)
-    if not obj then
-      if err then
-        return nil, err
-      end
-
-      return nil, "CA Certificate '" .. tostring(ca_id) .. "' does not exist"
-    end
-
-    cas[i] = obj
-  end
-
-  return cas
-end
-
 
 local function load_credential(cache_key)
   local cred, err = kong.db.mtls_auth_credentials
@@ -284,10 +219,6 @@ local function get_subject_names_from_cert(x509)
 end
 
 
-local function ca_ids_cache_key(ca_ids)
-  return sha256_hex("mtls:cas:" .. tb_concat(ca_ids, ':'))
-end
-
 local authenticate_group_by = {
   ["DN"] = function(cn)
     local group = {
@@ -421,13 +352,9 @@ local function do_authentication(conf)
 
   local ca_ids = conf.ca_certificates
 
-  local cache_key, trust_table
-  cache_key, err = ca_ids_cache_key(ca_ids)
-  if not err then
-    trust_table, err = kong.cache:get(cache_key, cache_opts, load_cas, ca_ids)
-  end
+  local store, err = certificate.get_ca_certificate_store_for_plugin(ca_ids)
 
-  if err or not trust_table then
+  if err or not store then
     kong.log.err(err)
     return kong.response.exit(500, "An unexpected error occurred")
   end
@@ -438,19 +365,8 @@ local function do_authentication(conf)
   end
 
   local proof_chain
-  proof_chain, err = trust_table.store:verify(chain[1], intermidiate, true, nil, nil, flags)
+  proof_chain, err = store:verify(chain[1], intermidiate, true, nil, nil, flags)
   if proof_chain then
-    -- get the matching CA id
-    local ca = proof_chain[#proof_chain]
-
-    local digest
-    digest, err = ca:digest()
-    if err then
-      return nil, err
-    end
-
-    local ca_id = trust_table.reverse_lookup[digest]
-
     local names, cn
     names, cn, err = get_subject_names_from_cert(chain[1])
     if err then
@@ -463,7 +379,7 @@ local function do_authentication(conf)
       local revoked
       revoked, err = kong.cache:get(ngx_var.ssl_client_s_dn,
         { ttl = conf.cert_cache_ttl }, is_cert_revoked,
-        conf, proof_chain, trust_table.store)
+        conf, proof_chain, store)
       if err then
         if conf.revocation_check_mode == "IGNORE_CA_ERROR" and
           err:find("fail to check revocation", nil, true) then
@@ -500,6 +416,13 @@ local function do_authentication(conf)
       end
       set_cert_headers(names)
       return true
+    end
+
+    -- get the matching CA id
+    local ca = proof_chain[#proof_chain]
+    local ca_id, err = mtls_cache.get_ca_id_from_x509(ca)
+    if err then
+      return nil, err
     end
 
     for _, n in ipairs(names) do
