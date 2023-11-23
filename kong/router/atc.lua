@@ -8,6 +8,7 @@ local router = require("resty.router.router")
 local context = require("resty.router.context")
 local lrucache = require("resty.lrucache")
 local server_name = require("ngx.ssl").server_name
+local ngx_re_split = require("ngx.re").split
 local tb_new = require("table.new")
 local utils = require("kong.router.utils")
 local yield = require("kong.tools.utils").yield
@@ -201,7 +202,6 @@ local function categorize_fields(fields)
   local PREFIX_SEGMENTS = "http.path.segments."
 
   for _, field in ipairs(fields) do
-    --ngx.log(ngx.ERR, "xxx field=", field)
     local prefix = field:sub(1, PREFIX_LEN)
 
     if prefix == "http.headers." then
@@ -211,7 +211,6 @@ local function categorize_fields(fields)
       queries[field:sub(PREFIX_LEN + 1)] = field
 
     elseif field:sub(1, #PREFIX_SEGMENTS) == PREFIX_SEGMENTS then
-    --ngx.log(ngx.ERR, "xxx add segments=", field)
       segments[field:sub(#PREFIX_SEGMENTS + 1)] = field  -- [0] = http.path.segments.0
 
     else
@@ -493,15 +492,12 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 
   if not is_empty_field(self.segments_fields) then
 
-    --ngx.log(ngx.ERR, "xxx try check segments_fields")
-    local ngx_re = require "ngx.re"
-    local res = ngx_re.split(req_uri, "/")
+    local res = ngx_re_split(req_uri, "/", "jo")
 
     -- "/a/b/c"
     -- 1="", 2="a", 3="b"
 
     for s, field in pairs(self.segments_fields) do
-      --ngx.log(ngx.ERR, "xxx s=", s, ", field=", field)
       local pos = tonumber(s) + 2
       local v = res[pos]
       c:add_value(field, v)
