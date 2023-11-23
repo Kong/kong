@@ -56,10 +56,6 @@ local function send_entries_to_datadog(conf, messages)
   end
 
   for _, message in ipairs(messages) do
-    local name = gsub(message.service.name ~= null and
-                      message.service.name or message.service.host,
-                      "%.", "_")
-
     local stat_name  = {
       request_size     = "request.size",
       response_size    = "response.size",
@@ -87,8 +83,10 @@ local function send_entries_to_datadog(conf, messages)
       local get_consumer_id = get_consumer_id[metric_config.consumer_identifier]
       local consumer_id     = get_consumer_id and get_consumer_id(message.consumer) or nil
       local tags            = compose_tags(
-              name, message.response and message.response.status or "-",
-              consumer_id, metric_config.tags, conf)
+                                message.service and gsub(message.service.name ~= null and
+                                message.service.name or message.service.host, "%.", "_") or "",
+                                message.response and message.response.status or "-",
+                                consumer_id, metric_config.tags, conf)
 
       logger:send_statsd(stat_name, stat_value,
                          logger.stat_types[metric_config.stat_type],
@@ -107,12 +105,7 @@ local DatadogHandler = {
   VERSION = kong_meta.version,
 }
 
-
 function DatadogHandler:log(conf)
-  if not ngx.ctx.service then
-    return
-  end
-
   local ok, err = Queue.enqueue(
     Queue.get_plugin_params("datadog", conf),
     send_entries_to_datadog,
