@@ -253,13 +253,16 @@ local function compile_conf(kong_config, conf_template, template_env_inject)
     compile_env.proxy_access_log_enabled = true
   end
   if kong_proxy_access_log then
-    local _, custom_format = string.match(kong_proxy_access_log, "^(%S+)%s(%S+)")
-    if custom_format then
-      compile_env.proxy_access_log_custom = true
+    -- example: 'logs/some-file.log apigw_json'
+    local _, custom_format_name = string.match(kong_proxy_access_log, "^(%S+)%s(%S+)")
+    if custom_format_name then
+      -- example: 'apigw_json ...'
+      local nginx_http_log_format_name = string.match(kong_config.nginx_http_log_format or "", "^%S+")
+      if custom_format_name == nginx_http_log_format_name then
+        compile_env.proxy_access_log_custom = true
 
-      local format_pattern = string.gsub(custom_format, "%-", "%%-")
-      if not string.match(kong_config.nginx_http_log_format or "", "^" .. format_pattern) then
-        log.debug(table.concat({"a custom access_log format is configured: '", custom_format, "', but not defined"}))
+      else
+        return nil, table.concat({"configured access_log format: ", custom_format_name, ", but got: ", tostring(nginx_http_log_format_name)})
       end
     end
   end
