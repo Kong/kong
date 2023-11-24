@@ -518,19 +518,19 @@ describe("NGINX conf compiler", function()
         nginx_conf = prefix_handler.compile_kong_stream_conf(conf)
         assert.matches("access_log%slogs/access.log%sbasic;", nginx_conf)
 
+        -- configure an undefined log format will error
+        -- on kong start. This is expected
         conf = assert(conf_loader(nil, {
-          proxy_access_log = "/dev/stdout apigw-json",
-          nginx_http_log_format = 'not-exist "$kong_request_id"',
+          proxy_access_log = "/dev/stdout not-exist",
+          nginx_http_log_format = 'apigw-json "$kong_request_id"',
           stream_listen = "0.0.0.0:9100",
           nginx_stream_tcp_nodelay = "on",
         }))
         nginx_conf = prefix_handler.compile_kong_conf(conf)
-        assert.matches("access_log%s/dev/stdout%sapigw%-json;", nginx_conf)
+        assert.matches("access_log%s/dev/stdout%snot%-exist;", nginx_conf)
         nginx_conf = prefix_handler.compile_kong_stream_conf(conf)
         assert.matches("access_log%slogs/access.log%sbasic;", nginx_conf)
 
-        -- configure an undefined log format will error
-        -- on kong start. This is expected
         conf = assert(conf_loader(nil, {
           proxy_access_log = "/tmp/not-exist.log",
           stream_listen = "0.0.0.0:9100",
