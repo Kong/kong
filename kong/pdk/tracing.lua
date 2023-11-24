@@ -16,7 +16,6 @@ local require = require
 local ffi = require "ffi"
 local tablepool = require "tablepool"
 local new_tab = require "table.new"
-local base = require "resty.core.base"
 local utils = require "kong.tools.utils"
 local phase_checker = require "kong.pdk.private.phases"
 
@@ -428,6 +427,15 @@ noop_tracer.set_active_span = NOOP
 noop_tracer.process_span = NOOP
 noop_tracer.set_should_sample = NOOP
 
+local VALID_TRACING_PHASES = {
+  rewrite = true,
+  access = true,
+  header_filter = true,
+  body_filter = true,
+  log = true,
+  content = true,
+}
+
 --- New Tracer
 local function new_tracer(name, options)
   name = name or "default"
@@ -457,7 +465,7 @@ local function new_tracer(name, options)
   -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
   -- @treturn table span
   function self.active_span()
-    if not base.get_request() then
+    if not VALID_TRACING_PHASES[ngx.get_phase()] then
       return
     end
 
@@ -470,7 +478,7 @@ local function new_tracer(name, options)
   -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
   -- @tparam table span
   function self.set_active_span(span)
-    if not base.get_request() then
+    if not VALID_TRACING_PHASES[ngx.get_phase()] then
       return
     end
 
@@ -489,7 +497,7 @@ local function new_tracer(name, options)
   -- @tparam table options TODO(mayo)
   -- @treturn table span
   function self.start_span(...)
-    if not base.get_request() then
+    if not VALID_TRACING_PHASES[ngx.get_phase()] then
       return noop_span
     end
 
