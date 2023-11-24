@@ -485,7 +485,7 @@ describe("NGINX conf compiler", function()
     end)
 
     describe("injected NGINX directives", function()
-      it("#test injects proxy_access_log directive", function()
+      it("injects proxy_access_log directive", function()
         local conf, nginx_conf
         conf = assert(conf_loader(nil, {
           proxy_access_log = "/dev/stdout",
@@ -529,6 +529,8 @@ describe("NGINX conf compiler", function()
         nginx_conf = prefix_handler.compile_kong_stream_conf(conf)
         assert.matches("access_log%slogs/access.log%sbasic;", nginx_conf)
 
+        -- configure an undefined log format will error
+        -- on kong start. This is expected
         conf = assert(conf_loader(nil, {
           proxy_access_log = "/tmp/not-exist.log",
           stream_listen = "0.0.0.0:9100",
