@@ -1,7 +1,9 @@
 local constants = require "kong.constants"
-local sha256 = require "resty.sha256"
 local openssl_hmac = require "resty.openssl.hmac"
-local utils = require "kong.tools.utils"
+
+
+local sha256_base64 = require "kong.tools.sha256".sha256_base64
+local string_split = require "kong.tools.string".split
 
 
 local ngx = ngx
@@ -115,7 +117,7 @@ local function retrieve_hmac_fields(authorization_header)
     if m and #m >= 4 then
       hmac_params.username = m[1]
       hmac_params.algorithm = m[2]
-      hmac_params.hmac_headers = utils.split(m[3], " ")
+      hmac_params.hmac_headers = string_split(m[3], " ")
       hmac_params.signature = m[4]
     end
   end
@@ -231,9 +233,7 @@ local function validate_body()
     return body == ""
   end
 
-  local digest = sha256:new()
-  digest:update(body or '')
-  local digest_created = "SHA-256=" .. encode_base64(digest:final())
+  local digest_created = "SHA-256=" .. sha256_base64(body or '')
 
   return digest_created == digest_received
 end
