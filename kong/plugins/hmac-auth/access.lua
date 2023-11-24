@@ -12,7 +12,6 @@ local error = error
 local time = ngx.time
 local abs = math.abs
 local decode_base64 = ngx.decode_base64
-local encode_base64 = ngx.encode_base64
 local parse_time = ngx.parse_http_time
 local re_gmatch = ngx.re.gmatch
 local hmac_sha1 = ngx.hmac_sha1
