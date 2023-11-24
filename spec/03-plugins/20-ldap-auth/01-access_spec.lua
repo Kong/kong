@@ -5,7 +5,7 @@ local cjson = require "cjson"
 
 local lower = string.lower
 local fmt = string.format
-local sha256_hex = require "kong.tools.utils".sha256_hex
+local sha256_hex = require "kong.tools.sha256".sha256_hex
 
 
 local function cache_key(conf, username, password)
