@@ -485,8 +485,8 @@ describe("NGINX conf compiler", function()
     end)
 
     describe("injected NGINX directives", function()
-      it("injects proxy_access_log directive", function()
-        local conf, nginx_conf, err
+      it("#test injects proxy_access_log directive", function()
+        local conf, nginx_conf
         conf = assert(conf_loader(nil, {
           proxy_access_log = "/dev/stdout",
           stream_listen = "0.0.0.0:9100",
@@ -524,12 +524,10 @@ describe("NGINX conf compiler", function()
           stream_listen = "0.0.0.0:9100",
           nginx_stream_tcp_nodelay = "on",
         }))
-        nginx_conf, err = prefix_handler.compile_kong_conf(conf)
-        assert.is_nil(nginx_conf)
-        assert.are_equal(err, "configured access_log format: apigw-json, but got: not-exist")
-        nginx_conf, err = prefix_handler.compile_kong_stream_conf(conf)
-        assert.is_nil(nginx_conf)
-        assert.are_equal(err, "configured access_log format: apigw-json, but got: not-exist")
+        nginx_conf = prefix_handler.compile_kong_conf(conf)
+        assert.matches("access_log%s/dev/stdout%sapigw%-json;", nginx_conf)
+        nginx_conf = prefix_handler.compile_kong_stream_conf(conf)
+        assert.matches("access_log%slogs/access.log%sbasic;", nginx_conf)
 
         conf = assert(conf_loader(nil, {
           proxy_access_log = "/tmp/not-exist.log",
