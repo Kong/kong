@@ -686,8 +686,8 @@ local _nop_tostring_mt = {
 
 -- using kong version, "major.minor"
 local LMDB_VALIDATION_TAG = string.format("%d.%d",
-                                          meta._VERSION_TABLE.major,
-                                          meta._VERSION_TABLE.minor)
+                                          kong_meta._VERSION_TABLE.major,
+                                          kong_meta._VERSION_TABLE.minor)
 
 
 local function parse_value(value, typ)
