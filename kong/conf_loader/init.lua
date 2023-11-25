@@ -1,6 +1,7 @@
 local require = require
 
 
+local kong_meta = require "kong.meta"
 local kong_default_conf = require "kong.templates.kong_defaults"
 local process_secrets = require "kong.cmd.utils.process_secrets"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
