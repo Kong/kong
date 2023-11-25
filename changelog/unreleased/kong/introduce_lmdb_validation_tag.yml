@@ -1,0 +1,5 @@
+message: |
+  Validate LMDB cache by Kong's version (major + minor),
+  wiping the content if tag mismatch.
+type: feature
+scope: Configuration
