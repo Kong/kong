@@ -137,11 +137,6 @@ local cipher_suites = {
 }
 
 
--- using kong version, "major.minor"
-local LMDB_VALIDATION_TAG = string.match(require("kong.meta").version,
-                                         "^%d+%.%d+")
-
-
 local DEFAULT_PATHS = {
   "/etc/kong/kong.conf",
   "/etc/kong.conf",
@@ -686,6 +681,12 @@ local typ_checks = {
 local _nop_tostring_mt = {
   __tostring = function() return "" end,
 }
+
+
+-- using kong version, "major.minor"
+local LMDB_VALIDATION_TAG = string.format("%d.%d",
+                                          meta._VERSION_TABLE.major,
+                                          meta._VERSION_TABLE.minor)
 
 
 local function parse_value(value, typ)
