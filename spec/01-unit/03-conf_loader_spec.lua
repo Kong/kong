@@ -1,3 +1,4 @@
+local kong_meta = require "kong.meta"
 local conf_loader = require "kong.conf_loader"
 local utils = require "kong.tools.utils"
 local helpers = require "spec.helpers"
@@ -13,6 +14,11 @@ ffi.cdef([[
   struct group *getgrnam(const char *name);
   struct passwd *getpwnam(const char *name);
 ]])
+
+
+local KONG_VERSION = string.format("%d.%d",
+                                   kong_meta._VERSION_TABLE.major,
+                                   kong_meta._VERSION_TABLE.minor)
 
 
 local function kong_user_group_exists()
@@ -67,7 +73,7 @@ describe("Configuration loader", function()
     assert.same(nil, conf.privileged_agent)
     assert.same(true, conf.dedicated_config_processing)
     assert.same(false, conf.allow_debug_header)
-    assert.matches("%d+%.%d+", conf.lmdb_validation_tag)
+    assert.same(KONG_VERSION, conf.lmdb_validation_tag)
     assert.is_nil(getmetatable(conf))
   end)
   it("loads a given file, with higher precedence", function()
@@ -85,7 +91,7 @@ describe("Configuration loader", function()
     assert.same({"127.0.0.1:9001"}, conf.admin_listen)
     assert.same({"0.0.0.0:9000", "0.0.0.0:9443 http2 ssl",
                  "0.0.0.0:9002 http2"}, conf.proxy_listen)
-    assert.matches("%d+%.%d+", conf.lmdb_validation_tag)
+    assert.same(KONG_VERSION, conf.lmdb_validation_tag)
     assert.is_nil(getmetatable(conf))
   end)
   it("preserves default properties if not in given file", function()
