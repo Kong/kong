@@ -13,7 +13,7 @@ local function invalidate_cache(self, old_entity, err, err_t)
     return nil, err, err_t
   end
   if old_entity then
-    self:post_crud_event("update", old_entity)
+    self:invalidate_cache_and_post_crud_events("update", old_entity)
   end
 end
 

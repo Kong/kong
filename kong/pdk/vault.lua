@@ -1289,27 +1289,6 @@ local function new(self)
   -- @function handle_vault_crud_event
   -- @tparam table data event data
   local function handle_vault_crud_event(data)
-    local cache = self.core_cache
-    if cache then
-      local vaults = self.db.vaults
-      local old_entity = data.old_entity
-      local old_prefix
-      if old_entity then
-        old_prefix = old_entity.prefix
-        if old_prefix and old_prefix ~= ngx.null then
-          cache:invalidate(vaults:cache_key(old_prefix))
-        end
-      end
-
-      local entity = data.entity
-      if entity then
-        local prefix = entity.prefix
-        if prefix and prefix ~= ngx.null and prefix ~= old_prefix then
-          cache:invalidate(vaults:cache_key(prefix))
-        end
-      end
-    end
-
     LRU:flush_all()
 
     -- refresh all the secrets
@@ -1603,8 +1582,40 @@ local function new(self)
 end
 
 
+---
+-- Invalidate shared cache entries for the given vault entities
+--
+-- @local
+-- @function handle_vault_invalidation
+-- @tparam table entity entity that was created/updated
+-- @tparam table old_entity entity that was updated/deleted
+local function invalidate_vault_entity(entity, old_entity)
+  local invalidated = false
+  local vaults = kong.db.vaults
+  local old_prefix
+  if old_entity then
+    old_prefix = old_entity.prefix
+    if old_prefix and old_prefix ~= ngx.null then
+      kong.core_cache:invalidate(vaults:cache_key(old_prefix))
+      invalidated = true
+    end
+  end
+
+  if entity then
+    local prefix = entity.prefix
+    if prefix and prefix ~= ngx.null and prefix ~= old_prefix then
+      kong.core_cache:invalidate(vaults:cache_key(prefix))
+      invalidated = true
+    end
+  end
+
+  return invalidated
+end
+
+
 return {
   new = new,
   is_reference = is_reference,
   parse_reference = parse_reference,
+  invalidate_vault_entity = invalidate_vault_entity,
 }

@@ -1,9 +1,6 @@
 local utils        = require "kong.tools.utils"
-local constants    = require "kong.constants"
-local certificate  = require "kong.runloop.certificate"
 local balancer     = require "kong.runloop.balancer"
 local workspaces   = require "kong.workspaces"
-local wasm         = require "kong.runloop.wasm"
 
 
 local kong         = kong
@@ -15,19 +12,14 @@ local utils_split  = utils.split
 
 
 local ngx   = ngx
-local null  = ngx.null
 local log   = ngx.log
 local ERR   = ngx.ERR
 local CRIT  = ngx.CRIT
 local DEBUG = ngx.DEBUG
 
 
-local ENTITY_CACHE_STORE = constants.ENTITY_CACHE_STORE
-
-
 -- init in register_events()
 local db
-local kong_cache
 local core_cache
 local worker_events
 local cluster_events
@@ -170,230 +162,6 @@ local function cluster_balancer_upstreams_handler(data)
 end
 
 
-local function dao_crud_handler(data)
-  local schema = data.schema
-  if not schema then
-    log(ERR, "[events] missing schema in crud subscriber")
-    return
-  end
-
-  local entity = data.entity
-  if not entity then
-    log(ERR, "[events] missing entity in crud subscriber")
-    return
-  end
-
-  -- invalidate this entity anywhere it is cached if it has a
-  -- caching key
-
-  local schema_name = schema.name
-
-  local cache_key = db[schema_name]:cache_key(entity)
-  local cache_obj = kong[ENTITY_CACHE_STORE[schema_name]]
-
-  if cache_key then
-    cache_obj:invalidate(cache_key)
-  end
-
-  -- if we had an update, but the cache key was part of what was updated,
-  -- we need to invalidate the previous entity as well
-
-  local old_entity = data.old_entity
-  if old_entity then
-    local old_cache_key = db[schema_name]:cache_key(old_entity)
-    if old_cache_key and cache_key ~= old_cache_key then
-      cache_obj:invalidate(old_cache_key)
-    end
-  end
-
-  local operation = data.operation
-  if not operation then
-    log(ERR, "[events] missing operation in crud subscriber")
-    return
-  end
-
-  -- public worker events propagation
-
-  local entity_channel           = schema.table or schema_name
-  local entity_operation_channel = fmt("%s:%s", entity_channel, operation)
-
-  -- crud:routes
-  local ok, err = worker_events.post_local("crud", entity_channel, data)
-  if not ok then
-    log(ERR, "[events] could not broadcast crud event: ", err)
-    return
-  end
-
-  -- crud:routes:create
-  ok, err = worker_events.post_local("crud", entity_operation_channel, data)
-  if not ok then
-    log(ERR, "[events] could not broadcast crud event: ", err)
-    return
-  end
-end
-
-
-local function crud_routes_handler()
-  log(DEBUG, "[events] Route updated, invalidating router")
-  core_cache:invalidate("router:version")
-end
-
-
-local function crud_services_handler(data)
-  if data.operation == "create" or data.operation == "delete" then
-    return
-  end
-
-  -- no need to rebuild the router if we just added a Service
-  -- since no Route is pointing to that Service yet.
-  -- ditto for deletion: if a Service if being deleted, it is
-  -- only allowed because no Route is pointing to it anymore.
-  log(DEBUG, "[events] Service updated, invalidating router")
-  core_cache:invalidate("router:version")
-end
-
-
-local function crud_plugins_handler(data)
-  log(DEBUG, "[events] Plugin updated, invalidating plugins iterator")
-  core_cache:invalidate("plugins_iterator:version")
-end
-
-
-local function crud_snis_handler(data)
-  log(DEBUG, "[events] SNI updated, invalidating cached certificates")
-
-  local sni = data.old_entity or data.entity
-  local sni_name = sni.name
-  local sni_wild_pref, sni_wild_suf = certificate.produce_wild_snis(sni_name)
-  core_cache:invalidate("snis:" .. sni_name)
-
-  if sni_wild_pref then
-    core_cache:invalidate("snis:" .. sni_wild_pref)
-  end
-
-  if sni_wild_suf then
-    core_cache:invalidate("snis:" .. sni_wild_suf)
-  end
-end
-
-
-local function crud_consumers_handler(data)
-  workspaces.set_workspace(data.workspace)
-
-  local old_entity = data.old_entity
-  local old_username
-  if old_entity then
-    old_username = old_entity.username
-    if old_username and old_username ~= null and old_username ~= "" then
-      kong_cache:invalidate(db.consumers:cache_key(old_username))
-    end
-  end
-
-  local entity = data.entity
-  if entity then
-    local username = entity.username
-    if username and username ~= null and username ~= "" and username ~= old_username then
-      kong_cache:invalidate(db.consumers:cache_key(username))
-    end
-  end
-end
-
-
-local function crud_wasm_handler(data, schema_name)
-  if not wasm.enabled() then
-    return
-  end
-
-  -- cache is invalidated on service/route deletion to ensure we don't
-  -- have oprhaned filter chain data cached
-  local is_delete = data.operation == "delete"
-               and (schema_name == "services"
-                    or schema_name == "routes")
-
-  local updated = schema_name == "filter_chains" or is_delete
-
-  if updated then
-    log(DEBUG, "[events] wasm filter chains updated, invalidating cache")
-    core_cache:invalidate("filter_chains:version")
-  end
-end
-
-
-local function crud_ca_certificates_handler(data)
-  if data.operation ~= "update" then
-    return
-  end
-
-  log(DEBUG, "[events] CA certificate updated, invalidating ca certificate store caches")
-
-  local ca_id = data.entity.id
-
-  local done_keys = {}
-  for _, entity in ipairs(certificate.get_ca_certificate_reference_entities()) do
-    local elements, err = kong.db[entity]:select_by_ca_certificate(ca_id)
-    if err then
-      log(ERR, "[events] failed to select ", entity, " by ca certificate ", ca_id, ": ", err)
-      return
-    end
-
-    if elements then
-      for _, e in ipairs(elements) do
-        local key = certificate.ca_ids_cache_key(e.ca_certificates)
-
-        if not done_keys[key] then
-          done_keys[key] = true
-          kong.core_cache:invalidate(key)
-        end
-      end
-    end
-  end
-
-  local plugin_done_keys = {}
-  local plugins, err = kong.db.plugins:select_by_ca_certificate(ca_id, nil,
-    certificate.get_ca_certificate_reference_plugins())
-  if err then
-    log(ERR, "[events] failed to select plugins by ca certificate ", ca_id, ": ", err)
-    return
-  end
-
-  if plugins then
-    for _, e in ipairs(plugins) do
-      local key = certificate.ca_ids_cache_key(e.config.ca_certificates)
-
-      if not plugin_done_keys[key] then
-        plugin_done_keys[key] = true
-        kong.cache:invalidate(key)
-      end
-    end
-  end
-end
-
-
-local LOCAL_HANDLERS = {
-  { "dao:crud", nil         , dao_crud_handler },
-
-  -- local events (same worker)
-  { "crud"    , "routes"    , crud_routes_handler },
-  { "crud"    , "services"  , crud_services_handler },
-  { "crud"    , "plugins"   , crud_plugins_handler },
-
-  -- SSL certs / SNIs invalidations
-  { "crud"    , "snis"      , crud_snis_handler },
-
-  -- Consumers invalidations
-  -- As we support conifg.anonymous to be configured as Consumer.username,
-  -- so add an event handler to invalidate the extra cache in case of data inconsistency
-  { "crud"    , "consumers" , crud_consumers_handler },
-
-  { "crud"    , "filter_chains"  , crud_wasm_handler },
-  { "crud"    , "services"       , crud_wasm_handler },
-  { "crud"    , "routes"         , crud_wasm_handler },
-
-  -- ca certificate store caches invalidations
-  { "crud"    , "ca_certificates" , crud_ca_certificates_handler },
-}
-
-
 local BALANCER_HANDLERS = {
   { "crud"    , "targets"   , crud_targets_handler },
   { "crud"    , "upstreams" , crud_upstreams_handler },
@@ -423,17 +191,6 @@ local function subscribe_cluster_events(source, handler)
 end
 
 
-local function register_local_events()
-  for _, v in ipairs(LOCAL_HANDLERS) do
-    local source  = v[1]
-    local event   = v[2]
-    local handler = v[3]
-
-    subscribe_worker_events(source, event, handler)
-  end
-end
-
-
 local function register_balancer_events()
   for _, v in ipairs(BALANCER_HANDLERS) do
     local source  = v[1]
@@ -454,15 +211,11 @@ end
 
 local function register_for_db()
   -- initialize local local_events hooks
-  kong_cache     = kong.cache
   core_cache     = kong.core_cache
   worker_events  = kong.worker_events
   cluster_events = kong.cluster_events
 
   -- events dispatcher
-
-  register_local_events()
-
   register_balancer_events()
 end
 

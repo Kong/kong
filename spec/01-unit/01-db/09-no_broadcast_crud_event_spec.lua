@@ -36,7 +36,7 @@ describe("option no_broadcast_crud_event", function()
       local dao = DAO.new(mock_db, entity, strategy, errors)
 
       dao.events = {
-        post_local = spy.new(function() end)
+        post_local = spy.new(function() return true end)
       }
 
       local row, err = dao:update({ a = 42 }, { b = "world" }, { no_broadcast_crud_event = true })
@@ -68,20 +68,20 @@ describe("option no_broadcast_crud_event", function()
       local dao = DAO.new(mock_db, entity, strategy, errors)
 
       dao.events = {
-        post_local = spy.new(function() end)
+        post_local = spy.new(function() return true end)
       }
 
       local row, err = dao:update({ a = 42 }, { b = "three" }, { no_broadcast_crud_event = false })
       assert.falsy(err)
       assert.same({ a = 42, b = "three" }, row)
 
-      assert.spy(dao.events.post_local).was_called(1)
+      assert.spy(dao.events.post_local).was_called(3)
 
       local row, err = dao:update({ a = 42 }, { b = "four" })
       assert.falsy(err)
       assert.same({ a = 42, b = "four" }, row)
 
-      assert.spy(dao.events.post_local).was_called(2)
+      assert.spy(dao.events.post_local).was_called(6)
 
     end)
   end)

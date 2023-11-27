@@ -215,6 +215,7 @@ build = {
     ["kong.db.dao.workspaces"] = "kong/db/dao/workspaces.lua",
     ["kong.db.dao.services"] = "kong/db/dao/services.lua",
     ["kong.db.dao.ca_certificates"] = "kong/db/dao/ca_certificates.lua",
+    ["kong.db.dao.invalidate"] = "kong/db/dao/invalidate.lua",
     ["kong.db.declarative"] = "kong/db/declarative/init.lua",
     ["kong.db.declarative.marshaller"] = "kong/db/declarative/marshaller.lua",
     ["kong.db.declarative.export"] = "kong/db/declarative/export.lua",

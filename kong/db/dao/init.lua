@@ -4,6 +4,7 @@ local utils = require "kong.tools.utils"
 local defaults = require "kong.db.strategies.connector".defaults
 local hooks = require "kong.hooks"
 local workspaces = require "kong.workspaces"
+local invalidate = require "kong.db.dao.invalidate"
 local new_tab = require "table.new"
 local DAO_MAX_TTL = require("kong.constants").DATABASE.DAO_MAX_TTL
 
@@ -669,7 +670,7 @@ _M._find_cascade_delete_entities = find_cascade_delete_entities
 
 local function propagate_cascade_delete_events(entries, options)
   for i = 1, #entries do
-    entries[i].dao:post_crud_event("delete", entries[i].entity, nil, options)
+    entries[i].dao:invalidate_cache_and_post_crud_events("delete", entries[i].entity, nil, options)
   end
 end
 
@@ -825,7 +826,7 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
-        self:post_crud_event("update", row, rbw_entity, options)
+        self:invalidate_cache_and_post_crud_events("update", row, rbw_entity, options)
 
         return row
       end
@@ -878,9 +879,9 @@ local function generate_foreign_key_methods(schema)
         end
 
         if rbw_entity then
-          self:post_crud_event("update", row, rbw_entity, options)
+          self:invalidate_cache_and_post_crud_events("update", row, rbw_entity, options)
         else
-          self:post_crud_event("create", row, nil, options)
+          self:invalidate_cache_and_post_crud_events("create", row, nil, options)
         end
 
         return row
@@ -932,7 +933,7 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
-        self:post_crud_event("delete", entity, nil, options)
+        self:invalidate_cache_and_post_crud_events("delete", entity, nil, options)
         propagate_cascade_delete_events(cascade_entries, options)
 
         return true
@@ -1158,7 +1159,7 @@ function DAO:insert(entity, options)
     return nil, tostring(err_t), err_t
   end
 
-  self:post_crud_event("create", row, nil, options)
+  self:invalidate_cache_and_post_crud_events("create", row, nil, options)
 
   return row
 end
@@ -1211,7 +1212,7 @@ function DAO:update(pk_or_entity, entity, options)
     return nil, tostring(err_t), err_t
   end
 
-  self:post_crud_event("update", row, rbw_entity, options)
+  self:invalidate_cache_and_post_crud_events("update", row, rbw_entity, options)
 
   return row
 end
@@ -1266,9 +1267,9 @@ function DAO:upsert(pk_or_entity, entity, options)
   end
 
   if rbw_entity then
-    self:post_crud_event("update", row, rbw_entity, options)
+    self:invalidate_cache_and_post_crud_events("update", row, rbw_entity, options)
   else
-    self:post_crud_event("create", row, nil, options)
+    self:invalidate_cache_and_post_crud_events("create", row, nil, options)
   end
 
   return row
@@ -1335,7 +1336,7 @@ function DAO:delete(pk_or_entity, options)
     return nil, tostring(err_t), err_t
   end
 
-  self:post_crud_event("delete", entity, nil, options)
+  self:invalidate_cache_and_post_crud_events("delete", entity, nil, options)
   propagate_cascade_delete_events(cascade_entries, options)
 
   return true
@@ -1461,28 +1462,56 @@ function DAO:row_to_entity(row, options)
 end
 
 
-function DAO:post_crud_event(operation, entity, old_entity, options)
+local function make_clean_entity(entity)
+  if entity then
+    return remove_nulls(utils.cycle_aware_deep_copy(entity, true))
+  else
+    return nil
+  end
+end
+
+
+function DAO:invalidate_cache_and_post_crud_events(operation, entity, old_entity, options)
+  -- Ease our lives and remove the nulls from the entities early, as we need to send them in an event later
+  -- on anyway.
+  entity = make_clean_entity(entity)
+  old_entity = make_clean_entity(old_entity)
+
+  invalidate(operation, options and options.workspace or nil, self.schema.name, entity, old_entity)
+
   if options and options.no_broadcast_crud_event then
+    -- This option is set when we write an audit record or when importing a database.
     return
   end
 
   if self.events then
-    local entity_without_nulls
-    if entity then
-      entity_without_nulls = remove_nulls(utils.cycle_aware_deep_copy(entity, true))
-    end
-
-    local old_entity_without_nulls
-    if old_entity then
-      old_entity_without_nulls = remove_nulls(utils.cycle_aware_deep_copy(old_entity, true))
-    end
-
-    local ok, err = self.events.post_local("dao:crud", operation, {
+    local event_data = {
       operation  = operation,
       schema     = self.schema,
-      entity     = entity_without_nulls,
-      old_entity = old_entity_without_nulls,
-    })
+      entity     = entity,
+      old_entity = old_entity,
+    }
+
+    -- public worker events propagation
+    local schema                   = event_data.schema
+    local entity_channel           = schema.table or schema.name
+    local entity_operation_channel = fmt("%s:%s", entity_channel, event_data.operation)
+
+    -- crud:routes
+    local ok, err = self.events.post_local("crud", entity_channel, event_data)
+    if not ok then
+      log(ERR, "[events] could not broadcast crud event: ", err)
+      return
+    end
+
+    -- crud:routes:create
+    ok, err = self.events.post_local("crud", entity_operation_channel, event_data)
+    if not ok then
+      log(ERR, "[events] could not broadcast crud event: ", err)
+      return
+    end
+
+    local ok, err = self.events.post_local("dao:crud", operation, event_data)
     if not ok then
       log(ERR, "[db] failed to propagate CRUD operation: ", err)
     end

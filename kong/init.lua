@@ -1831,10 +1831,6 @@ local function serve_content(module)
 
   ngx.header["Access-Control-Allow-Origin"] = ngx.req.get_headers()["Origin"] or "*"
 
-  if kong.configuration.log_level == "debug" then
-    ngx.header["Kong-Test-Transaction-Id"] = kong_global.get_current_transaction_id()
-  end
-
   lapis.serve(module)
 
   ctx.KONG_ADMIN_CONTENT_ENDED_AT = get_updated_now_ms()
@@ -1887,6 +1883,11 @@ function Kong.admin_header_filter()
 
   else
     header[headers.SERVER] = nil
+  end
+
+  if kong.configuration.log_level == "debug" and ngx.ctx.transaction_id then
+    kong.log.info("Reporting Kong-Test-Transaction-Id ", ngx.ctx.transaction_id)
+    ngx.header["Kong-Test-Transaction-Id"] = ngx.ctx.transaction_id
   end
 
   -- this is not used for now, but perhaps we need it later?

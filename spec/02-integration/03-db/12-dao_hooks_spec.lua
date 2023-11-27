@@ -30,13 +30,13 @@ for _, strategy in helpers.each_strategy() do
       local post_hook = spy.new(function() end)
 
       lazy_setup(function()
-        hooks.register_hook("dao:page_for:pre", function()
+        hooks.register_hook("dao:page_for:pre", function(...)
           pre_hook()
-          return true
+          return (...)
         end)
-        hooks.register_hook("dao:page_for:post", function()
+        hooks.register_hook("dao:page_for:post", function(...)
           post_hook()
-          return true
+          return (...)
         end)
       end)
 
@@ -56,13 +56,13 @@ for _, strategy in helpers.each_strategy() do
       local post_hook = spy.new(function() end)
 
       lazy_setup(function()
-        hooks.register_hook("dao:select_by:pre", function()
+        hooks.register_hook("dao:select_by:pre", function(...)
           pre_hook()
-          return true
+          return (...)
         end)
-        hooks.register_hook("dao:select_by:post", function()
+        hooks.register_hook("dao:select_by:post", function(...)
           post_hook()
-          return true
+          return (...)
         end)
       end)
 
@@ -82,13 +82,13 @@ for _, strategy in helpers.each_strategy() do
       local post_hook = spy.new(function() end)
 
       lazy_setup(function()
-        hooks.register_hook("dao:update_by:pre", function()
+        hooks.register_hook("dao:update_by:pre", function(...)
           pre_hook()
-          return true
+          return (...)
         end)
-        hooks.register_hook("dao:update_by:post", function()
+        hooks.register_hook("dao:update_by:post", function(...)
           post_hook()
-          return true
+          return (...)
         end)
       end)
 
@@ -110,13 +110,13 @@ for _, strategy in helpers.each_strategy() do
       local post_hook = spy.new(function() end)
 
       lazy_setup(function()
-        hooks.register_hook("dao:upsert_by:pre", function()
+        hooks.register_hook("dao:upsert_by:pre", function(...)
           pre_hook()
-          return true
+          return (...)
         end)
-        hooks.register_hook("dao:upsert_by:post", function()
+        hooks.register_hook("dao:upsert_by:post", function(...)
           post_hook()
-          return true
+          return (...)
         end)
       end)
 
@@ -142,13 +142,13 @@ for _, strategy in helpers.each_strategy() do
       local post_hook = spy.new(function() end)
 
       lazy_setup(function()
-        hooks.register_hook("dao:delete_by:pre", function()
+        hooks.register_hook("dao:delete_by:pre", function(...)
           pre_hook()
-          return true
+          return (...)
         end)
-        hooks.register_hook("dao:delete_by:post", function()
+        hooks.register_hook("dao:delete_by:post", function(...)
           post_hook()
-          return true
+          return (...)
         end)
       end)
 
@@ -168,13 +168,13 @@ for _, strategy in helpers.each_strategy() do
       local post_hook = spy.new(function() end)
 
       lazy_setup(function()
-        hooks.register_hook("dao:select:pre", function()
+        hooks.register_hook("dao:select:pre", function(...)
           pre_hook()
-          return true
+          return (...)
         end)
-        hooks.register_hook("dao:select:post", function()
+        hooks.register_hook("dao:select:post", function(...)
           post_hook()
-          return true
+          return (...)
         end)
       end)
 
@@ -194,13 +194,13 @@ for _, strategy in helpers.each_strategy() do
       local post_hook = spy.new(function() end)
 
       lazy_setup(function()
-        hooks.register_hook("dao:page:pre", function()
+        hooks.register_hook("dao:page:pre", function(...)
           pre_hook()
-          return true
+          return (...)
         end)
-        hooks.register_hook("dao:page:post", function()
+        hooks.register_hook("dao:page:post", function(...)
           post_hook()
-          return true
+          return (...)
         end)
       end)
 
@@ -220,13 +220,13 @@ for _, strategy in helpers.each_strategy() do
       local post_hook = spy.new(function() end)
 
       lazy_setup(function()
-        hooks.register_hook("dao:insert:pre", function()
+        hooks.register_hook("dao:insert:pre", function(...)
           pre_hook()
-          return true
+          return (...)
         end)
-        hooks.register_hook("dao:insert:post", function()
+        hooks.register_hook("dao:insert:post", function(...)
           post_hook()
-          return true
+          return (...)
         end)
       end)
 
@@ -251,13 +251,13 @@ for _, strategy in helpers.each_strategy() do
       local post_hook = spy.new(function() end)
 
       lazy_setup(function()
-        hooks.register_hook("dao:update:pre", function()
+        hooks.register_hook("dao:update:pre", function(...)
           pre_hook()
-          return true
+          return (...)
         end)
-        hooks.register_hook("dao:update:post", function()
+        hooks.register_hook("dao:update:post", function(...)
           post_hook()
-          return true
+          return (...)
         end)
       end)
 
