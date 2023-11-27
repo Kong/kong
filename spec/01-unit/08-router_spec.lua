@@ -99,6 +99,8 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
     local it_trad_only = (flavor == "traditional") and it or pending
 
     describe("split_port()", function()
+      local split_port = require("kong.router.traditional").split_port
+
       it("splits port number", function()
         for _, case in ipairs({
           { { "" }, { "", "", false } },
@@ -127,7 +129,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           { { "[::1]:80b", 88 }, { "[::1]:80b", "[::1]:80b:88", false } },
           { { "[::1]/96", 88 }, { "[::1]/96", "[::1]/96:88", false } },
         }) do
-          assert.same(case[2], { Router.split_port(unpack(case[1])) })
+          assert.same(case[2], { split_port(unpack(case[1])) })
         end
       end)
     end)
