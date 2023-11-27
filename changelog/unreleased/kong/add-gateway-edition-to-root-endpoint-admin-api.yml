@@ -1,0 +1,3 @@
+message: add gateway edition to the root endpoint of the admin api
+type: feature
+scope: Admin API
