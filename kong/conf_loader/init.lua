@@ -1449,6 +1449,12 @@ local function check_and_parse(conf, opts)
     end
   end
 
+  if #conf.admin_listen < 1 or strip(conf.admin_listen[1]) == "off" then
+    if #conf.admin_gui_listen > 0 and strip(conf.admin_gui_listen[1]) ~= "off" then
+      log.warn("Kong Manager won't be functional because the Admin API is not listened on any interface")
+    end
+  end
+
   return #errors == 0, errors[1], errors
 end
 
