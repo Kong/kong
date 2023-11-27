@@ -2,8 +2,8 @@ local constants = require "kong.constants"
 local openssl_hmac = require "resty.openssl.hmac"
 
 
-local sha256_base64 = require "kong.tools.sha256".sha256_base64
-local string_split = require "kong.tools.string".split
+local sha256_base64 = require("kong.tools.sha256").sha256_base64
+local string_split = require("kong.tools.string").split
 
 
 local ngx = ngx
