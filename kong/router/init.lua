@@ -5,9 +5,6 @@ local _MT = { __index = _M, }
 local kong = kong
 
 
-local traditional = require("kong.router.traditional")
-local expressions = require("kong.router.expressions")
-local compat      = require("kong.router.compat")
 local utils       = require("kong.router.utils")
 
 
@@ -15,6 +12,13 @@ local phonehome_statistics = utils.phonehome_statistics
 
 
 _M.DEFAULT_MATCH_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
+
+
+local FLAVOR_TO_MODULE = {
+  traditional            = "kong.router.traditional",
+  expressions            = "kong.router.expressions",
+  traditional_compatible = "kong.router.compat",
+}
 
 
 function _M:exec(ctx)
@@ -36,33 +40,28 @@ end
 function _M.new(routes, cache, cache_neg, old_router)
   local flavor = kong and
                  kong.configuration and
-                 kong.configuration.router_flavor
+                 kong.configuration.router_flavor or
+                 "traditional"
+
+  local router = require(FLAVOR_TO_MODULE[flavor])
 
   phonehome_statistics(routes)
 
-  if not flavor or flavor == "traditional" then
-
-    local trad, err = traditional.new(routes, cache, cache_neg)
+  if flavor == "traditional" then
+    local trad, err = router.new(routes, cache, cache_neg)
     if not trad then
       return nil, err
     end
 
     return setmetatable({
       trad = trad,
+      _set_ngx = trad._set_ngx, -- for unit-testing only
     }, _MT)
   end
 
-  if flavor == "expressions" then
-    return expressions.new(routes, cache, cache_neg, old_router)
-  end
-
-  -- flavor == "traditional_compatible"
-  return compat.new(routes, cache, cache_neg, old_router)
+  -- flavor == "expressions" or "traditional_compatible"
+  return router.new(routes, cache, cache_neg, old_router)
 end
-
-
-_M._set_ngx = traditional._set_ngx
-_M.split_port = traditional.split_port
 
 
 return _M
