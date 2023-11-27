@@ -13,7 +13,7 @@ local upper = string.upper
 local sub = string.sub
 local fmt = string.format
 local tcp = ngx.socket.tcp
-local sha256_hex = require "kong.tools.sha256".sha256_hex
+local sha256_hex = require("kong.tools.sha256").sha256_hex
 
 
 local AUTHORIZATION = "authorization"
