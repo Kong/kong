@@ -10,6 +10,11 @@ run_tests();
 __DATA__
 
 === TEST 1: client supports access phase
+--- http_config eval
+qq {
+    lua_shared_dict kong_dns_cache              12m;
+    lua_shared_dict kong_dns_cache_ipc          12m;
+}
 --- config
     location = /t {
         access_by_lua_block {
@@ -40,6 +45,8 @@ API disabled in the context of init_worker_by_lua
 === TEST 2: client does not support init_worker phase
 --- http_config eval
 qq {
+    lua_shared_dict kong_dns_cache              12m;
+    lua_shared_dict kong_dns_cache_ipc          12m;
     init_worker_by_lua_block {
         local client = require("kong.resty.dns.client")
         assert(client.init())

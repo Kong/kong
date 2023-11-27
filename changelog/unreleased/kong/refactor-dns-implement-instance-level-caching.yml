@@ -1,0 +1,3 @@
+message: use  mlcache to implement instance-level caching in the dns client library
+type: feature
+scope: Core

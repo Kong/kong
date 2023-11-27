@@ -65,7 +65,7 @@ describe("[DNS client cache]", function()
 
   describe("shortnames", function()
 
-    local lrucache, mock_records, config
+    local dnscache, mock_records, config
     before_each(function()
       config = {
         nameservers = { "198.51.100.0" },
@@ -79,7 +79,7 @@ describe("[DNS client cache]", function()
         enable_ipv6 = false,
       }
       assert(client.init(config))
-      lrucache = client.getcache()
+      dnscache = client.getcache()
 
       query_func = function(self, original_query_func, qname, opts)
         return mock_records[qname..":"..opts.qtype] or { errcode = 3, errstr = "name error" }
@@ -98,7 +98,7 @@ describe("[DNS client cache]", function()
       }
 
       local result = client.resolve("myhost1")
-      assert.equal(result, lrucache:get("none:short:myhost1"))
+      assert.equal(result, dnscache:get("none:short:myhost1"))
     end)
 
     it("are stored in cache with type", function()
@@ -113,12 +113,12 @@ describe("[DNS client cache]", function()
       }
 
       local result = client.resolve("myhost2", { qtype = client.TYPE_A })
-      assert.equal(result, lrucache:get(client.TYPE_A..":short:myhost2"))
+      assert.equal(result, dnscache:get(client.TYPE_A..":short:myhost2"))
     end)
 
     it("are resolved from cache without type", function()
       mock_records = {}
-      lrucache:set("none:short:myhost3", {{
+      dnscache:set("none:short:myhost3", {ttl=30+4}, {{
           type = client.TYPE_A,
           address = "1.2.3.4",
           class = 1,
@@ -127,15 +127,15 @@ describe("[DNS client cache]", function()
         },
         ttl = 30,
         expire = gettime() + 30,
-      }, 30+4)
+      })
 
       local result = client.resolve("myhost3")
-      assert.equal(result, lrucache:get("none:short:myhost3"))
+      assert.equal(result, dnscache:get("none:short:myhost3"))
     end)
 
     it("are resolved from cache with type", function()
       mock_records = {}
-      lrucache:set(client.TYPE_A..":short:myhost4", {{
+      dnscache:set(client.TYPE_A..":short:myhost4", {ttl=30+4}, {{
           type = client.TYPE_A,
           address = "1.2.3.4",
           class = 1,
@@ -144,10 +144,10 @@ describe("[DNS client cache]", function()
         },
         ttl = 30,
         expire = gettime() + 30,
-      }, 30+4)
+      })
 
       local result = client.resolve("myhost4", { qtype = client.TYPE_A })
-      assert.equal(result, lrucache:get(client.TYPE_A..":short:myhost4"))
+      assert.equal(result, dnscache:get(client.TYPE_A..":short:myhost4"))
     end)
 
     it("of dereferenced CNAME are stored in cache", function()
@@ -174,7 +174,7 @@ describe("[DNS client cache]", function()
       -- the type un-specificc query was the CNAME, so that should be in the
       -- shorname cache
       assert.same(mock_records["myhost5.domain.com:"..client.TYPE_CNAME],
-                  lrucache:get("none:short:myhost5"))
+                  dnscache:get("none:short:myhost5"))
     end)
 
     it("ttl in cache is honored for short name entries", function()
@@ -236,7 +236,7 @@ describe("[DNS client cache]", function()
       local result, err = client.resolve("myhost7", { qtype = client.TYPE_A })
       assert.is_nil(result)
       assert.equal("dns server error: 4 server failure", err)
-      assert.is_nil(lrucache:get(client.TYPE_A..":short:myhost7"))
+      assert.is_nil(dnscache:get(client.TYPE_A..":short:myhost7"))
     end)
 
     it("name errors are not stored", function()
@@ -252,7 +252,7 @@ describe("[DNS client cache]", function()
       local result, err = client.resolve("myhost8", { qtype = client.TYPE_A })
       assert.is_nil(result)
       assert.equal("dns server error: 3 name error", err)
-      assert.is_nil(lrucache:get(client.TYPE_A..":short:myhost8"))
+      assert.is_nil(dnscache:get(client.TYPE_A..":short:myhost8"))
     end)
 
   end)
@@ -265,7 +265,7 @@ describe("[DNS client cache]", function()
 
   describe("fqdn", function()
 
-    local lrucache, mock_records, config
+    local dnscache, mock_records, config
     before_each(function()
       config = {
         nameservers = { "198.51.100.0" },
@@ -279,7 +279,7 @@ describe("[DNS client cache]", function()
         enable_ipv6 = false,
       }
       assert(client.init(config))
-      lrucache = client.getcache()
+      dnscache = client.getcache()
 
       query_func = function(self, original_query_func, qname, opts)
         return mock_records[qname..":"..opts.qtype] or { errcode = 3, errstr = "name error" }
@@ -302,7 +302,7 @@ describe("[DNS client cache]", function()
       -- check that the cache is properly populated
       assert.equal(rec1, result)
       assert.is_nil(err)
-      assert.equal(rec1, lrucache:get(client.TYPE_A..":myhost9.domain.com"))
+      assert.equal(rec1, dnscache:get(client.TYPE_A..":myhost9.domain.com"))
 
       sleep(0.15) -- make sure we surpass the ttl of 0.1 of the record, so it is now stale.
       -- new mock records, such that we return server failures installed of records
@@ -321,7 +321,7 @@ describe("[DNS client cache]", function()
       sleep(0.1)
       -- background resolve is now complete, check the cache, it should still have the
       -- stale record, and it should not have been replaced by the error
-      assert.equal(rec1, lrucache:get(client.TYPE_A..":myhost9.domain.com"))
+      assert.equal(rec1, dnscache:get(client.TYPE_A..":myhost9.domain.com"))
     end)
 
     it("name errors do replace stale records", function()
@@ -340,7 +340,7 @@ describe("[DNS client cache]", function()
       -- check that the cache is properly populated
       assert.equal(rec1, result)
       assert.is_nil(err)
-      assert.equal(rec1, lrucache:get(client.TYPE_A..":myhost9.domain.com"))
+      assert.equal(rec1, dnscache:get(client.TYPE_A..":myhost9.domain.com"))
 
       sleep(0.15) -- make sure we surpass the ttl of 0.1 of the record, so it is now stale.
       -- clear mock records, such that we return name errors instead of records
@@ -359,7 +359,7 @@ describe("[DNS client cache]", function()
       sleep(0.1)
       -- background resolve is now complete, check the cache, it should now have been
       -- replaced by the name error
-      assert.equal(rec2, lrucache:get(client.TYPE_A..":myhost9.domain.com"))
+      assert.equal(rec2, dnscache:get(client.TYPE_A..":myhost9.domain.com"))
     end)
 
     it("empty records do not replace stale records", function()
@@ -378,7 +378,7 @@ describe("[DNS client cache]", function()
       -- check that the cache is properly populated
       assert.equal(rec1, result)
       assert.is_nil(err)
-      assert.equal(rec1, lrucache:get(client.TYPE_A..":myhost9.domain.com"))
+      assert.equal(rec1, dnscache:get(client.TYPE_A..":myhost9.domain.com"))
 
       sleep(0.15) -- make sure we surpass the ttl of 0.1 of the record, so it is now stale.
       -- clear mock records, such that we return name errors instead of records
@@ -394,7 +394,7 @@ describe("[DNS client cache]", function()
       sleep(0.1)
       -- background resolve is now complete, check the cache, it should still have the
       -- stale record, and it should not have been replaced by the empty record
-      assert.equal(rec1, lrucache:get(client.TYPE_A..":myhost9.domain.com"))
+      assert.equal(rec1, dnscache:get(client.TYPE_A..":myhost9.domain.com"))
     end)
 
     it("AS records do replace stale records", function()
@@ -432,7 +432,7 @@ describe("[DNS client cache]", function()
       ngx.sleep(0.2)  -- wait for it to become stale
       assert(client.toip("myhost9"))
 
-      local cached = lrucache:get(client.TYPE_CNAME..":myhost9.domain.com")
+      local cached = dnscache:get(client.TYPE_CNAME..":myhost9.domain.com")
       assert.are.equal(CNAME1, cached[1])
     end)
 
@@ -445,7 +445,7 @@ describe("[DNS client cache]", function()
 
   describe("success types", function()
 
-    local lrucache, mock_records, config  -- luacheck: ignore
+    local dnscache, mock_records, config  -- luacheck: ignore
     before_each(function()
       config = {
         nameservers = { "198.51.100.0" },
@@ -459,7 +459,7 @@ describe("[DNS client cache]", function()
         enable_ipv6 = false,
       }
       assert(client.init(config))
-      lrucache = client.getcache()
+      dnscache = client.getcache()
 
       query_func = function(self, original_query_func, qname, opts)
         return mock_records[qname..":"..opts.qtype] or { errcode = 3, errstr = "name error" }
@@ -545,7 +545,7 @@ describe("[DNS client cache]", function()
           },
         }
       }
-      client.getcache():set("another.name.consul", client.TYPE_AAAA)
+      client.getcache():set("another.name.consul", {ttl = 0}, client.TYPE_AAAA)
       client.toip("demo.service.consul")
       local success = client.getcache():get("another.name.consul")
       assert.equal(client.TYPE_AAAA, success)
@@ -558,7 +558,7 @@ describe("[DNS client cache]", function()
     -- hosts file names are cached for 10 years, verify that
     -- it is not overwritten with validTtl settings.
     -- Regressions reported in https://github.com/Kong/kong/issues/7444
-    local lrucache, mock_records, config  -- luacheck: ignore
+    local dnscache, mock_records, config  -- luacheck: ignore
     before_each(function()
       config = {
         nameservers = { "198.51.100.0" },
@@ -569,7 +569,7 @@ describe("[DNS client cache]", function()
       }
 
       assert(client.init(config))
-      lrucache = client.getcache()
+      dnscache = client.getcache()
     end)
 
     it("entries from hosts file ignores validTtl overrides, Kong/kong #7444", function()

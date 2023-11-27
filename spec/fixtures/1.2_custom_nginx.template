@@ -45,6 +45,8 @@ http {
 > if database == "off" then
     lua_shared_dict kong_db_cache_miss_2 12m;
 > end
+    lua_shared_dict kong_dns_cache      12m;
+    lua_shared_dict kong_dns_cache_ipc  12m;
     lua_shared_dict kong_secrets        5m;
     lua_shared_dict kong_locks          8m;
     lua_shared_dict kong_cluster_events 5m;
@@ -482,6 +484,8 @@ stream {
 > if database == "off" then
     lua_shared_dict stream_kong_db_cache_miss_2  12m;
 > end
+    lua_shared_dict stream_kong_dns_cache      12m;
+    lua_shared_dict stream_kong_dns_cache_ipc  12m;
     lua_shared_dict stream_kong_locks          8m;
     lua_shared_dict stream_kong_cluster_events 5m;
     lua_shared_dict stream_kong_healthchecks   5m;

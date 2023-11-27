@@ -91,6 +91,12 @@ return function(options)
       _timerng = require("resty.timerng").new({
         min_threads = 16,
         max_threads = 32,
+        -- It avoids adding physical timers in test cases with the wheel over
+        -- 10,000 years.
+        wheel_setting = {
+          level = 7,
+          slots_for_each_level = { 10, 60, 60, 24, 365, 100, 100 },
+        },
       })
 
       _timerng:start()

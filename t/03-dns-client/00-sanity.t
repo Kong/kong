@@ -9,6 +9,11 @@ run_tests();
 __DATA__
 
 === TEST 1: load lua-resty-dns-client
+--- http_config eval
+qq {
+    lua_shared_dict kong_dns_cache              12m;
+    lua_shared_dict kong_dns_cache_ipc          12m;
+}
 --- config
     location = /t {
         access_by_lua_block {
