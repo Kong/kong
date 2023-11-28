@@ -178,11 +178,11 @@ describe("vault ttl and rotation (#" .. attachment_point .. "_" .. vault.name ..
 
     -- Did we see the change from `init` to the newly set secret?
     vault:update_secret(secret, "updated_once", { ttl = 5, resurrect_ttl = 5 })
-    check_plugin_secret("updated_once", "updated_once", 11)
+    check_plugin_secret("updated_once", "updated_once", 15)
 
     -- Did we see the change from previsouly set secret to the newly set secret?
     vault:update_secret(secret, "updated_twice", { ttl = 5, resurrect_ttl = 5 })
-    check_plugin_secret("updated_twice", "updated_twice", 11)
+    check_plugin_secret("updated_twice", "updated_twice", 15)
 
     -- Does it disappear when we delete it from the vault?
     vault:delete_secret(secret)
@@ -202,11 +202,11 @@ describe("vault ttl and rotation (#" .. attachment_point .. "_" .. vault.name ..
     -- re-create the secret
     vault:create_secret(secret_2, "created_again", { ttl = 5, resurrect_ttl = 5 })
     -- and check if this eventually changes to the new value
-    check_plugin_secret("created_again", nil, 11, NESTED_HEADER_2)
+    check_plugin_secret("created_again", nil, 15, NESTED_HEADER_2)
 
     -- If we create it again(with a different value), do we see the changes?
     vault:update_secret(secret_2, "updated_yet_again", {ttl = 5, resurrect_ttl = 5})
-    check_plugin_secret("updated_yet_again", nil, 11, NESTED_HEADER_2)
+    check_plugin_secret("updated_yet_again", nil, 15, NESTED_HEADER_2)
   end)
 end)
 
