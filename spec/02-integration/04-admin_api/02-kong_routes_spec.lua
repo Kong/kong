@@ -71,7 +71,7 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       assert.not_nil(res.headers["X-Kong-Admin-Latency"])
     end)
 
-    it("returns Kong's version number and tagline", function()
+    it("returns Kong's version number, edition info and tagline", function()
       local res = assert(client:send {
         method = "GET",
         path = "/"
@@ -79,6 +79,7 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
       assert.equal(meta._VERSION, json.version)
+      assert.equal(meta._VERSION:match("enterprise") and "enterprise" or "community", json.edition)
       assert.equal("Welcome to kong", json.tagline)
     end)
     it("returns a UUID as the node_id", function()
