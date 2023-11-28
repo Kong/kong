@@ -3257,7 +3257,7 @@ local function clean_prefix(prefix)
 
         local res, err = pl_path.rmdir(root)
         -- skip errors when trying to remove mount points
-        if not res and os.execute("findmnt " .. root .. " >/dev/null") == 0 then
+        if not res and os.execute("findmnt " .. root .. " 2>&1 >/dev/null") == 0 then
           return nil, err .. ": " .. root
         end
       end
