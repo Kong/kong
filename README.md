@@ -1,6 +1,19 @@
 [![][kong-logo]][kong-url]
 
 ![Stars](https://img.shields.io/github/stars/Kong/kong?style=flat-square) ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/Kong/kong?style=flat-square) ![Docker Pulls](https://img.shields.io/docker/pulls/_/kong?style=flat-square) [![Build Status][badge-action-image]][badge-action-url] ![Version](https://img.shields.io/github/v/release/Kong/kong?color=green&label=Version&style=flat-square)  ![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square)  ![Twitter Follow](https://img.shields.io/twitter/follow/thekonginc?style=social)
+[![Open Source Love svg1](https://badges.frapsoft.com/os/v1/open-source.svg?v=103)](https://github.com/ellerbrock/open-source-badges/)
+![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat)
+![Visitors](https://api.visitorbadge.io/api/visitors?path=Kong%2Fkong%20&countColor=%23263759&style=flat)
+![GitHub forks](https://img.shields.io/github/forks/Kong/kong)
+![GitHub Repo stars](https://img.shields.io/github/stars/Kong/kong)
+![GitHub contributors](https://img.shields.io/github/contributors/Kong/kong)
+![GitHub last commit](https://img.shields.io/github/last-commit/Kong/kong)
+![GitHub repo size](https://img.shields.io/github/repo-size/Kong/kong)
+![Github](https://img.shields.io/github/license/Kong/kong)
+![GitHub issues](https://img.shields.io/github/issues/Kong/kong)
+![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/Kong/kong)
+![GitHub pull requests](https://img.shields.io/github/issues-pr/Kong/kong)
+![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed/Kong/kong)
 
 
 **Kong** or **Kong API Gateway** is a cloud-native, platform-agnostic, scalable API Gateway distinguished for its high performance and extensibility via plugins.
