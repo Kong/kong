@@ -5,8 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-require "kong.plugins.jwt-signer.env"
-
 
 local utils       = require "kong.tools.utils"
 local codec       = require "kong.openid-connect.codec"

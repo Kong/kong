@@ -41,9 +41,6 @@ build = {
     ["kong.plugins.openid-connect.consumers"] =
      "kong/plugins/openid-connect/consumers.lua",
 
-    ["kong.plugins.openid-connect.env"] =
-     "kong/plugins/openid-connect/env.lua",
-
     ["kong.plugins.openid-connect.handler"] =
      "kong/plugins/openid-connect/handler.lua",
 

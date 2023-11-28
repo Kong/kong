@@ -28,9 +28,6 @@ build = {
     ["kong.plugins.jwt-signer.daos"] =
      "kong/plugins/jwt-signer/daos.lua",
 
-    ["kong.plugins.jwt-signer.env"] =
-     "kong/plugins/jwt-signer/env.lua",
-
     ["kong.plugins.jwt-signer.handler"] =
      "kong/plugins/jwt-signer/handler.lua",
 
