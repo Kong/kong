@@ -7,6 +7,7 @@
 local require = require
 
 
+local kong_meta = require "kong.meta"
 local kong_default_conf = require "kong.templates.kong_defaults"
 local process_secrets = require "kong.cmd.utils.process_secrets"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
@@ -783,6 +784,12 @@ local typ_checks = {
 local _nop_tostring_mt = {
   __tostring = function() return "" end,
 }
+
+
+-- using kong version, "major.minor"
+local LMDB_VALIDATION_TAG = string.format("%d.%d",
+                                          kong_meta._VERSION_TABLE.major,
+                                          kong_meta._VERSION_TABLE.minor)
 
 
 local function parse_value(value, typ)
@@ -2215,6 +2222,9 @@ local function load(path, custom_conf, opts)
       conf.nginx_main_user = nil
     end
   end
+
+  -- lmdb validation tag
+  conf.lmdb_validation_tag = LMDB_VALIDATION_TAG
 
   -- Wasm module support
   if conf.wasm then
