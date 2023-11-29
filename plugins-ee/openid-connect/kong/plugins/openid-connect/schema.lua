@@ -263,13 +263,13 @@ local config = {
           {
             login_redirect_uri = { description = "Where to redirect the client when `login_action` is set to `redirect`.", required = false,
               type     = "array",
-              elements = typedefs.url,
+              elements = typedefs.url { referenceable = true },
             },
           },
           {
             logout_redirect_uri = { description = "Where to redirect the client after the logout.", required = false,
               type     = "array",
-              elements = typedefs.url,
+              elements = typedefs.url { referenceable = true },
             },
           },
           {
@@ -344,6 +344,7 @@ local config = {
               },
               elements = {
                 type = "string",
+                referenceable = true,
               },
             },
           },

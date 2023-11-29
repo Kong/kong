@@ -7,18 +7,42 @@
 
 local utils   = require "kong.tools.utils"
 local helpers = require "spec.helpers"
+local Entity  = require "kong.db.schema.entity"
+local plugins_schema_def = require "kong.db.schema.entities.plugins"
 
 local PLUGIN_NAME = "openid-connect"
+local oidc_schema = require("kong.plugins."..PLUGIN_NAME..".schema")
 
 
 local validate do
   local validate_entity = require("spec.helpers").validate_plugin_config_schema
-  local plugin_schema = require("kong.plugins."..PLUGIN_NAME..".schema")
 
   function validate(data, extra)
-    return validate_entity(data, plugin_schema, extra)
+    return validate_entity(data, oidc_schema, extra)
   end
 end
+
+
+local process_plugin_config do
+  local plugins_schema = assert(Entity.new(plugins_schema_def))
+  assert(plugins_schema:new_subschema(oidc_schema.name, oidc_schema))
+
+  function process_plugin_config(config)
+    local entity = {
+      id = utils.uuid(),
+      name = oidc_schema.name,
+      config = config
+    }
+
+    local entity_to_select, err = plugins_schema:process_auto_fields(entity, "select")
+    if err then
+      return nil, err
+    end
+
+    return entity_to_select
+  end
+end
+
 
 
 describe(PLUGIN_NAME .. ": (schema)", function()
@@ -238,5 +262,46 @@ describe(PLUGIN_NAME .. ": (schema)", function()
       end)
     end
   end
+
+  describe("referenceable fields", function()
+    lazy_setup(function()
+      _G.kong = {
+        log   = require "kong.pdk.log".new(),
+        vault = require "kong.pdk.vault".new(),
+      }
+      helpers.setenv("TEST_SCOPE_FOO", "foo")
+      helpers.setenv("TEST_SCOPE_BAR", "bar")
+      helpers.setenv("TEST_LOGIN_URI", "http://login.com")
+      helpers.setenv("TEST_LOGOUT_URI", "http://logout.com")
+    end)
+    lazy_teardown(function()
+      helpers.unsetenv("TEST_SCOPE_FOO")
+      helpers.unsetenv("TEST_SCOPE_BAR")
+      helpers.unsetenv("TEST_LOGIN_URI")
+      helpers.unsetenv("TEST_LOGOUT_URI")
+      _G.kong = nil
+    end)
+
+    it("scopes", function()
+      local res, err = process_plugin_config({
+        issuer = "https://accounts.google.com/.well-known/openid-configuration",
+        scopes = { "{vault://env/test_scope_foo}", "{vault://env/test_scope_bar}"},
+      })
+      assert.is_nil(err)
+      assert.same({ "foo", "bar" }, res.config.scopes)
+    end)
+
+    it("login_redirect_uri/logout_redirect_uri", function()
+      local res, err = process_plugin_config({
+        issuer = "https://accounts.google.com/.well-known/openid-configuration",
+        login_redirect_uri = { "{vault://env/test_login_uri}" },
+        logout_redirect_uri = { "{vault://env/test_logout_uri}" },
+      })
+      assert.is_nil(err)
+      assert.same({ "http://login.com" }, res.config.login_redirect_uri)
+      assert.same({ "http://logout.com" }, res.config.logout_redirect_uri)
+    end)
+
+  end)
 
 end)

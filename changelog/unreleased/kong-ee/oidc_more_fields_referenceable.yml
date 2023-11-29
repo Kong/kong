@@ -1,0 +1,3 @@
+message: "**Openid-Connect:** configurations `scopes`, `login_redirect_uri`, `logout_redirect_uri` can now be referenced as a secret in the Kong Vault"
+type: feature
+scope: Plugin
