@@ -72,22 +72,7 @@ ffi.cdef([[
 ]])
 
 
-local CIPHER_SUITES = conf_constants.CIPHER_SUITES
-local DEFAULT_PATHS = conf_constants.DEFAULT_PATHS
-local HEADER_KEY_TO_NAME = conf_constants.HEADER_KEY_TO_NAME
-local UPSTREAM_HEADER_KEY_TO_NAME = conf_constants.UPSTREAM_HEADER_KEY_TO_NAME
-local DYNAMIC_KEY_NAMESPACES = conf_constants.DYNAMIC_KEY_NAMESPACES
-local DEPRECATED_DYNAMIC_KEY_NAMESPACES = conf_constants.DEPRECATED_DYNAMIC_KEY_NAMESPACES
-local PREFIX_PATHS = conf_constants.PREFIX_PATHS
-local CONF_PARSERS = conf_constants.CONF_PARSERS
-local CONF_SENSITIVE_PLACEHOLDER = conf_constants.CONF_SENSITIVE_PLACEHOLDER
-local CONF_SENSITIVE = conf_constants.CONF_SENSITIVE
-local CONF_BASIC = conf_constants.CONF_BASIC
-local TYP_CHECKS = conf_constants.TYP_CHECKS
 local HEADERS = conf_constants.HEADERS
-local BUNDLED_VAULTS = conf_constants.BUNDLED_VAULTS
-local BUNDLED_PLUGINS = conf_constants.BUNDLED_PLUGINS
-local LMDB_VALIDATION_TAG = conf_constants.LMDB_VALIDATION_TAG
 
 
 local _nop_tostring_mt = conf_constants._NOP_TOSTRING_MT
@@ -257,12 +242,12 @@ local function check_and_parse(conf, opts)
   local errors = {}
 
   for k, value in pairs(conf) do
-    local v_schema = CONF_PARSERS[k] or {}
+    local v_schema = conf_constants.CONF_PARSERS[k] or {}
 
     value = parse_value(value, v_schema.typ)
 
     local typ = v_schema.typ or "string"
-    if value and not TYP_CHECKS[typ](value) then
+    if value and not conf_constants.TYP_CHECKS[typ](value) then
       errors[#errors + 1] = fmt("%s is not a %s: '%s'", k, typ,
                                 tostring(value))
 
@@ -453,7 +438,7 @@ local function check_and_parse(conf, opts)
   end
 
   if conf.ssl_cipher_suite ~= "custom" then
-    local suite = CIPHER_SUITES[conf.ssl_cipher_suite]
+    local suite = conf_constants.CIPHER_SUITES[conf.ssl_cipher_suite]
     if suite then
       conf.ssl_ciphers = suite.ciphers
       conf.nginx_http_ssl_protocols = suite.protocols
@@ -502,7 +487,7 @@ local function check_and_parse(conf, opts)
 
   if conf.headers then
     for _, token in ipairs(conf.headers) do
-      if token ~= "off" and not HEADER_KEY_TO_NAME[lower(token)] then
+      if token ~= "off" and not conf_constants.HEADER_KEY_TO_NAME[lower(token)] then
         errors[#errors + 1] = fmt("headers: invalid entry '%s'",
                                   tostring(token))
       end
@@ -511,7 +496,7 @@ local function check_and_parse(conf, opts)
 
   if conf.headers_upstream then
     for _, token in ipairs(conf.headers_upstream) do
-      if token ~= "off" and not UPSTREAM_HEADER_KEY_TO_NAME[lower(token)] then
+      if token ~= "off" and not conf_constants.UPSTREAM_HEADER_KEY_TO_NAME[lower(token)] then
         errors[#errors + 1] = fmt("headers_upstream: invalid entry '%s'",
                                   tostring(token))
       end
@@ -908,8 +893,8 @@ local function overrides(k, default_v, opts, file_conf, arg_conf)
     if env ~= nil then
       local to_print = env
 
-      if CONF_SENSITIVE[k] then
-        to_print = CONF_SENSITIVE_PLACEHOLDER
+      if conf_constants.CONF_SENSITIVE[k] then
+        to_print = conf_constants.CONF_SENSITIVE_PLACEHOLDER
       end
 
       log.debug('%s ENV found with "%s"', env_name, to_print)
@@ -949,7 +934,7 @@ end
 
 
 local function aliased_properties(conf)
-  for property_name, v_schema in pairs(CONF_PARSERS) do
+  for property_name, v_schema in pairs(conf_constants.CONF_PARSERS) do
     local alias = v_schema.alias
 
     if alias and conf[property_name] ~= nil and conf[alias.replacement] == nil then
@@ -968,7 +953,7 @@ end
 
 
 local function deprecated_properties(conf, opts)
-  for property_name, v_schema in pairs(CONF_PARSERS) do
+  for property_name, v_schema in pairs(conf_constants.CONF_PARSERS) do
     local deprecated = v_schema.deprecated
 
     if deprecated and conf[property_name] ~= nil then
@@ -994,7 +979,7 @@ end
 
 
 local function dynamic_properties(conf)
-  for property_name, v_schema in pairs(CONF_PARSERS) do
+  for property_name, v_schema in pairs(conf_constants.CONF_PARSERS) do
     local value = conf[property_name]
     if value ~= nil then
       local directives = v_schema.directives
@@ -1122,7 +1107,7 @@ local function load(path, custom_conf, opts)
   if not path then
     -- try to look for a conf in default locations, but no big
     -- deal if none is found: we will use our defaults.
-    for _, default_path in ipairs(DEFAULT_PATHS) do
+    for _, default_path in ipairs(conf_constants.DEFAULT_PATHS) do
       if exists(default_path) then
         path = default_path
         break
@@ -1156,7 +1141,7 @@ local function load(path, custom_conf, opts)
     local function add_dynamic_keys(t)
       t = t or {}
 
-      for property_name, v_schema in pairs(CONF_PARSERS) do
+      for property_name, v_schema in pairs(conf_constants.CONF_PARSERS) do
         local directives = v_schema.directives
         if directives then
           local v = t[property_name]
@@ -1216,7 +1201,7 @@ local function load(path, custom_conf, opts)
     add_dynamic_keys(kong_env_vars)
     add_dynamic_keys(from_file_conf)
 
-    for _, dyn_namespace in ipairs(DYNAMIC_KEY_NAMESPACES) do
+    for _, dyn_namespace in ipairs(conf_constants.DYNAMIC_KEY_NAMESPACES) do
       find_dynamic_keys(dyn_namespace.prefix, defaults) -- tostring() defaults
       find_dynamic_keys(dyn_namespace.prefix, custom_conf)
       find_dynamic_keys(dyn_namespace.prefix, kong_env_vars)
@@ -1250,7 +1235,7 @@ local function load(path, custom_conf, opts)
   -- before executing the main `resty` cmd, i.e. still in `bin/kong`
   if opts.pre_cmd then
     for k, v in pairs(conf) do
-      if not CONF_BASIC[k] then
+      if not conf_constants.CONF_BASIC[k] then
         conf[k] = nil
       end
     end
@@ -1264,7 +1249,7 @@ local function load(path, custom_conf, opts)
   local refs
   do
     -- validation
-    local vaults_array = parse_value(conf.vaults, CONF_PARSERS["vaults"].typ)
+    local vaults_array = parse_value(conf.vaults, conf_constants.CONF_PARSERS["vaults"].typ)
 
     -- merge vaults
     local vaults = {}
@@ -1274,7 +1259,7 @@ local function load(path, custom_conf, opts)
         local vault_name = strip(vaults_array[i])
         if vault_name ~= "off" then
           if vault_name == "bundled" then
-            vaults = tablex.merge(BUNDLED_VAULTS, vaults, true)
+            vaults = tablex.merge(conf_constants.BUNDLED_VAULTS, vaults, true)
 
           else
             vaults[vault_name] = true
@@ -1291,7 +1276,7 @@ local function load(path, custom_conf, opts)
         C.unsetenv("KONG_PROCESS_SECRETS")
 
       else
-        local path = pl_path.join(abspath(ngx.config.prefix()), unpack(PREFIX_PATHS.kong_process_secrets))
+        local path = pl_path.join(abspath(ngx.config.prefix()), unpack(conf_constants.PREFIX_PATHS.kong_process_secrets))
         if exists(path) then
           secrets, err = pl_file.read(path, true)
           pl_file.delete(path)
@@ -1389,7 +1374,7 @@ local function load(path, custom_conf, opts)
   end
 
   -- attach prefix files paths
-  for property, t_path in pairs(PREFIX_PATHS) do
+  for property, t_path in pairs(conf_constants.PREFIX_PATHS) do
     conf[property] = pl_path.join(conf.prefix, unpack(t_path))
   end
 
@@ -1431,7 +1416,7 @@ local function load(path, custom_conf, opts)
   end
 
   -- lmdb validation tag
-  conf.lmdb_validation_tag = LMDB_VALIDATION_TAG
+  conf.lmdb_validation_tag = conf_constants.LMDB_VALIDATION_TAG
 
   -- Wasm module support
   if conf.wasm then
@@ -1486,7 +1471,7 @@ local function load(path, custom_conf, opts)
     local injected_in_namespace = {}
 
     -- nginx directives from conf
-    for _, dyn_namespace in ipairs(DYNAMIC_KEY_NAMESPACES) do
+    for _, dyn_namespace in ipairs(conf_constants.DYNAMIC_KEY_NAMESPACES) do
       if dyn_namespace.injected_conf_name then
         injected_in_namespace[dyn_namespace.injected_conf_name] = true
 
@@ -1498,7 +1483,7 @@ local function load(path, custom_conf, opts)
     end
 
     -- TODO: Deprecated, but kept for backward compatibility.
-    for _, dyn_namespace in ipairs(DEPRECATED_DYNAMIC_KEY_NAMESPACES) do
+    for _, dyn_namespace in ipairs(conf_constants.DEPRECATED_DYNAMIC_KEY_NAMESPACES) do
       if conf[dyn_namespace.injected_conf_name] then
         conf[dyn_namespace.previous_conf_name] = conf[dyn_namespace.injected_conf_name]
       end
@@ -1511,8 +1496,8 @@ local function load(path, custom_conf, opts)
 
     for k, v in pairs(conf) do
       local to_print = v
-      if CONF_SENSITIVE[k] then
-        to_print = CONF_SENSITIVE_PLACEHOLDER
+      if conf_constants.CONF_SENSITIVE[k] then
+        to_print = conf_constants.CONF_SENSITIVE_PLACEHOLDER
       end
 
       conf_arr[#conf_arr+1] = k .. " = " .. pl_pretty.write(to_print, "")
@@ -1538,7 +1523,7 @@ local function load(path, custom_conf, opts)
         local plugin_name = strip(conf.plugins[i])
         if plugin_name ~= "off" then
           if plugin_name == "bundled" then
-            plugins = tablex.merge(BUNDLED_PLUGINS, plugins, true)
+            plugins = tablex.merge(conf_constants.BUNDLED_PLUGINS, plugins, true)
 
           else
             plugins[plugin_name] = true
@@ -1593,7 +1578,7 @@ local function load(path, custom_conf, opts)
     end
   end
 
-  for _, dyn_namespace in ipairs(DYNAMIC_KEY_NAMESPACES) do
+  for _, dyn_namespace in ipairs(conf_constants.DYNAMIC_KEY_NAMESPACES) do
     if dyn_namespace.injected_conf_name then
       sort(conf[dyn_namespace.injected_conf_name], function(a, b)
         return a.name < b.name
@@ -1618,14 +1603,14 @@ local function load(path, custom_conf, opts)
 
     -- (downstream)
     local enabled_headers = {}
-    for _, v in pairs(HEADER_KEY_TO_NAME) do
+    for _, v in pairs(conf_constants.HEADER_KEY_TO_NAME) do
       enabled_headers[v] = false
     end
 
     if #conf.headers > 0 and conf.headers[1] ~= "off" then
       for _, token in ipairs(conf.headers) do
         if token ~= "off" then
-          enabled_headers[HEADER_KEY_TO_NAME[lower(token)]] = true
+          enabled_headers[conf_constants.HEADER_KEY_TO_NAME[lower(token)]] = true
         end
       end
     end
@@ -1647,14 +1632,14 @@ local function load(path, custom_conf, opts)
 
     -- (upstream)
     local enabled_headers_upstream = {}
-    for _, v in pairs(UPSTREAM_HEADER_KEY_TO_NAME) do
+    for _, v in pairs(conf_constants.UPSTREAM_HEADER_KEY_TO_NAME) do
       enabled_headers_upstream[v] = false
     end
 
     if #conf.headers_upstream > 0 and conf.headers_upstream[1] ~= "off" then
       for _, token in ipairs(conf.headers_upstream) do
         if token ~= "off" then
-          enabled_headers_upstream[UPSTREAM_HEADER_KEY_TO_NAME[lower(token)]] = true
+          enabled_headers_upstream[conf_constants.UPSTREAM_HEADER_KEY_TO_NAME[lower(token)]] = true
         end
       end
     end
@@ -1755,7 +1740,7 @@ return setmetatable({
   load_config_file = load_config_file,
 
   add_default_path = function(path)
-    DEFAULT_PATHS[#DEFAULT_PATHS+1] = path
+    conf_constants.DEFAULT_PATHS[#conf_constants.DEFAULT_PATHS+1] = path
   end,
 
   remove_sensitive = function(conf)
@@ -1764,16 +1749,16 @@ return setmetatable({
     local refs = purged_conf["$refs"]
     if type(refs) == "table" then
       for k, v in pairs(refs) do
-        if not CONF_SENSITIVE[k] then
+        if not conf_constants.CONF_SENSITIVE[k] then
           purged_conf[k] = v
         end
       end
       purged_conf["$refs"] = nil
     end
 
-    for k in pairs(CONF_SENSITIVE) do
+    for k in pairs(conf_constants.CONF_SENSITIVE) do
       if purged_conf[k] then
-        purged_conf[k] = CONF_SENSITIVE_PLACEHOLDER
+        purged_conf[k] = conf_constants.CONF_SENSITIVE_PLACEHOLDER
       end
     end
 
