@@ -1529,7 +1529,7 @@
                                  # property receives a value (in seconds), it
                                  # will override the TTL for all records.
 
-#dns_stale_ttl = 86400           # Defines, in seconds, how long a record will
+#dns_stale_ttl = 3600            # Defines, in seconds, how long a record will
                                  # remain in cache past its TTL. This value
                                  # will be used while the new DNS record is
                                  # fetched in the background.
