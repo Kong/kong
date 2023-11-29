@@ -55,6 +55,8 @@ jobs:
       deploy-environment: ${{ steps.build-info.outputs.deploy-environment }}
       matrix: ${{ steps.build-info.outputs.matrix }}
       arch: ${{ steps.build-info.outputs.arch }}
+      # use github.event.pull_request.head.sha instead of github.sha on a PR, as github.sha on PR is the merged commit (temporary commit)
+      commit-sha: ${{ github.event.pull_request.head.sha || github.sha }}
 
     steps:
     - uses: actions/checkout@v3
@@ -342,11 +344,13 @@ jobs:
     - name: Docker meta
       id: meta
       uses: docker/metadata-action@v5
+      env:
+        DOCKER_METADATA_PR_HEAD_SHA: true
       with:
         images: ${{ needs.metadata.outputs.prerelease-docker-repository }}
         tags: |
-          type=raw,${{ github.sha }}-${{ matrix.label }}
-          type=raw,enable=${{ matrix.label == 'ubuntu' }},${{ github.sha }}
+          type=raw,${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
+          type=raw,enable=${{ matrix.label == 'ubuntu' }},${{ needs.metadata.outputs.commit-sha }}
 
     - name: Set up QEMU
       if: matrix.docker-platforms != ''
@@ -400,7 +404,7 @@ jobs:
         token: ${{ secrets.GHA_COMMENT_TOKEN }}
         body: |
           ### Bazel Build
-          Docker image available `${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}`
+          Docker image available `${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}`
           Artifacts available https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
   verify-manifest-images:
@@ -429,7 +433,7 @@ jobs:
         # docker image verify requires sudo to set correct permissions, so we
         # also install deps for root
         sudo -E pip install -r requirements.txt
-        IMAGE=${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}-${{ matrix.label }}
+        IMAGE=${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
 
         sudo -E python ./main.py --image $IMAGE -f docker_image_filelist.txt -s docker-image
 
@@ -451,7 +455,7 @@ jobs:
       matrix:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['scan-vulnerabilities'] }}"
     env:
-      IMAGE: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}
+      IMAGE: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
     steps:
     - name: Install regctl
       uses: regclient/actions/regctl-installer@main
@@ -490,16 +494,16 @@ jobs:
       if: steps.image_manifest_metadata.outputs.amd64_sha != ''
       uses: Kong/public-shared-actions/security-actions/scan-docker-image@v1
       with:
-        asset_prefix: kong-${{ github.sha }}-${{ matrix.label }}-linux-amd64
-        image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}
+        asset_prefix: kong-${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}-linux-amd64
+        image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
 
     - name: Scan ARM64 Image digest
       if: steps.image_manifest_metadata.outputs.manifest_list_exists == 'true' && steps.image_manifest_metadata.outputs.arm64_sha != ''
       id: sbom_action_arm64
       uses: Kong/public-shared-actions/security-actions/scan-docker-image@v1
       with:
-        asset_prefix: kong-${{ github.sha }}-${{ matrix.label }}-linux-arm64
-        image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}
+        asset_prefix: kong-${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}-linux-arm64
+        image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
 
   smoke-tests:
     name: Smoke Tests - ${{ matrix.label }}
@@ -552,7 +556,7 @@ jobs:
           --restart always \
           --network=host -d \
           --pull always \
-          ${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}-${{ matrix.label }} \
+          ${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }} \
           sh -c "kong migrations bootstrap && kong start"
         sleep 3
         docker logs kong
@@ -697,7 +701,7 @@ jobs:
       env:
         TAGS: "${{ steps.meta.outputs.tags }}"
       run: |
-        PRERELEASE_IMAGE=${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}-${{ matrix.label }}
+        PRERELEASE_IMAGE=${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
         docker pull $PRERELEASE_IMAGE
         for tag in $TAGS; do
           regctl -v debug image copy $PRERELEASE_IMAGE $tag
