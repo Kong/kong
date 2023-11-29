@@ -1734,7 +1734,7 @@ return setmetatable({
   load_config_file = load_config_file,
 
   add_default_path = function(path)
-    conf_constants.DEFAULT_PATHS[#conf_constants.DEFAULT_PATHS+1] = path
+    table.insert(conf_constants.DEFAULT_PATHS, path)
   end,
 
   remove_sensitive = function(conf)
