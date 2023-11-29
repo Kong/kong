@@ -1,10 +1,28 @@
 import { getGatewayHost } from './gateway-vars';
+import { getApiGeo } from './geos';
+import { getRuntimeGroupId } from '../entities/runtimes';
+
+/**
+ * Enum of available envs
+ */
+export enum Env {
+  dev = 'dev',
+  prod = 'prod',
+}
 
 /**
  * Enum of available apps
  */
 export enum App {
   gateway = 'gateway',
+  koko = 'koko',
+  kauth = 'kauth',
+  kauth_v2 = 'kauth_v2',
+  kauth_v3 = 'kauth_v3',
+  konnect = 'konnect',
+  konnect_v2 = 'konnect_v2',
+  servicehub = 'servicehub',
+  kadmin = 'kadmin'
 }
 
 /**
@@ -31,12 +49,38 @@ export const Environment = Object.freeze({
     wssProxy: 'wssProxy',
     ec2TestServer: 'ec2TestServer',
   },
+  koko: {
+    dev: 'dev',
+    prod: 'prod',
+  },
+  kauth: {
+    local: 'local',
+    dev: 'dev',
+    prod: 'prod',
+  },
+  konnect: {
+    local: 'local',
+    dev: 'dev',
+    prod: 'prod',
+  },
+  konnect_v2: {
+    dev: 'dev',
+    prod: 'prod',
+  },
+  servicehub: {
+    dev: 'dev',
+    prod: 'prod',
+  },
+  kadmin: {
+    dev: 'dev',
+    prod: 'prod',
+  },
 });
 
 /**
  * Object of available base paths
  */
-const getPaths = () => {
+const getPaths = (geo = getApiGeo()) => {
   return {
     gateway: {
       admin: `http://${getGatewayHost()}:8001`,
@@ -51,6 +95,44 @@ const getPaths = () => {
       ec2TestServer: '18.117.9.215',
       hostName: getGatewayHost(),
     },
+    koko: {
+      dev: `https://${geo}.api.konghq.tech/konnect-api/api/runtime_groups/${getRuntimeGroupId()}`,
+      prod: `https://${geo}.api.konghq.com/konnect-api/api/runtime_groups/${getRuntimeGroupId()}`,
+    },
+    kauth: {
+      dev: 'https://global.api.konghq.tech/kauth',
+      prod: 'https://global.api.konghq.com/kauth',
+      dev_preview: 'https://global.api.konghq.tech/kauth-preview',
+      prod_preview: 'https://global.api.konghq.com/kauth-preview',
+    },
+    kauth_v2: {
+      dev: 'https://global.api.konghq.tech/v2',
+      prod: 'https://global.api.konghq.com/v2',
+      dev_preview: 'https://global.api.konghq.tech/kauth-preview/v2',
+      prod_preview: 'https://global.api.konghq.com/kauth-preview/v2',
+    },
+    kauth_v3: {
+      dev: 'https://global.api.konghq.tech/v3',
+      prod: 'https://global.api.konghq.com/v3',
+      dev_preview: 'https://global.api.konghq.tech/kauth-preview/v3',
+      prod_preview: 'https://global.api.konghq.com/kauth-preview/v3',
+    },
+    konnect: {
+      dev: `https://${geo}.api.konghq.tech/konnect-api`,
+      prod: `https://${geo}.api.konghq.com/konnect-api`,
+    },
+    konnect_v2: {
+      dev: `https://${geo}.api.konghq.tech/v2`,
+      prod: `https://${geo}.api.konghq.com/v2`,
+    },
+    servicehub: {
+      dev: `https://${geo}.api.konghq.tech/servicehub/v1`,
+      prod: `https://${geo}.api.konghq.com/servicehub/v1`,
+    },
+    kadmin: {
+      dev: `https://${geo}.kadmin.admin.konghq.tech`,
+      prod: `https://${geo}.kadmin.admin.konghq.com`,
+    },
   };
 };
 
@@ -59,10 +141,10 @@ const getPaths = () => {
  * @param {string | undefined} app current app to check for
  * @returns {string} current app
  */
-export const getApp = (app = 'gateway'): string => {
+export const getApp = (app: string | undefined = process.env.TEST_APP): string => {
   if (!app || !(app in App)) {
     throw new Error(
-      `App '${app}' does not exist or was not provided. Use 'export TEST_APP=<kauth|konnect|gateway>'`
+      `App '${app}' does not exist or was not provided. Use 'export TEST_APP=<koko|gateway>'`
     );
   }
   return app;
@@ -157,6 +239,46 @@ export const isLocal = (app: string = getApp()): boolean => {
  */
 export const isGateway = (): boolean => {
   return getApp() === App.gateway;
+};
+
+/**
+ * Check if the current app is Koko
+ * @returns {boolean} if Koko - true; else - false
+ */
+export const isKoko = (): boolean => {
+  return getApp() === App.koko;
+};
+
+/**
+ * Check if the current app is KAuth
+ * @returns {boolean} if KAuth - true; else - false
+ */
+export const isKAuth = (): boolean => {
+  return getApp() === App.kauth;
+};
+
+/**
+ * Check if the current app is KAuth v2
+ * @returns {boolean} if KAuth v2 - true; else - false
+ */
+export const isKAuthV2 = (): boolean => {
+  return getApp() === App.kauth_v2;
+};
+
+/**
+ * Check if the current app is KAuth v3
+ * @returns {boolean} if KAuth v3 - true; else - false
+ */
+export const isKAuthV3 = (): boolean => {
+  return getApp() === App.kauth_v3;
+};
+
+/**
+ * Use preview endpoints (if configured)
+ * @returns {boolean} preview
+ */
+export const isPreview = (): boolean => {
+  return process.env.TEST_PREVIEW === 'true';
 };
 
 /**

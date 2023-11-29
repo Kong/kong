@@ -66,6 +66,7 @@ env:
   GW_IMAGE: ${{ inputs.control_plane_image || 'kong/kong-gateway-internal:nightly-ubuntu' }}
   GW_DP_IMAGE: ${{ inputs.control_plane_image || 'kong/kong-gateway-internal:nightly-ubuntu' }}
   SEND_SLACK_RESULTS: ${{ github.event.inputs.send_slack_results }}
+  NPM_TOKEN: ${{ secrets.NPM_TOKEN_PRIVATE_READ }}
   # if this is a push event, or it is pull request but not from a fork, and not from dependabot (dependabot does not use forks), then this PR will have access to secrets
   HAS_ACCESS_TO_SECRETS: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && !contains(github.actor, 'dependabot')) }}
 
@@ -149,8 +150,11 @@ jobs:
           make logs || true
           make logs_package || true
 
+      - name: Copy .npmrc
+        run: cp .npmrc.ci .npmrc
+
       - name: Install Packages
-        run: npm install && ls ..
+        run: npm install --legacy-peer-deps
 
       - name: Install decK
         uses: kong/setup-deck@v1
@@ -165,7 +169,7 @@ jobs:
           elif [[ $RUN_SPEC == 'non-smoke' ]]; then
             npm run test-non-smoke;
           else
-            npm run test-spec --spec=$RUN_SPEC;
+            TEST_APP=gateway npm run test-spec --spec=$RUN_SPEC;
           fi
         env:
           AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}

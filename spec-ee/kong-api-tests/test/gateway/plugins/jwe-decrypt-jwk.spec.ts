@@ -9,6 +9,7 @@ import {
   deleteGatewayService,
   deleteKeySetsForJweDecryptPlugin,
   Environment,
+  eventually,
   expect,
   getBasePath,
   getNegative,
@@ -113,14 +114,15 @@ describe('Gateway Plugins: jwe-decrypt JWK', function () {
   });
 
   it('JWK: should not proxy request without a token', async function () {
-    const resp = await getNegative(`${proxyUrl}${jwkPath}`);
-    logResponse(resp);
-
-    expect(resp.status, 'Status should be 403').to.equal(403);
-
-    expect(resp.data.message, 'Should indicate token missing').to.equal(
-      'could not find token'
-    );
+    await eventually(async () => {
+      const resp = await getNegative(`${proxyUrl}${jwkPath}`);
+      logResponse(resp);
+  
+      expect(resp.status, 'Status should be 403').to.equal(403);
+      expect(resp.data.message, 'Should indicate token missing').to.equal(
+        'could not find token'
+      );
+    });
   });
 
   it('JWK: should not proxy request with invalid token', async function () {

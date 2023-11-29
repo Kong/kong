@@ -25,6 +25,7 @@ import {
   isGwNative,
   getKongContainerName,
   retryRequest,
+  isGateway
 } from '@support';
 
 describe('Dynamic Log Level Tests', function () {
@@ -33,7 +34,7 @@ describe('Dynamic Log Level Tests', function () {
     environment: Environment.gateway.admin,
   })}/debug`;
 
-  const proxyUrl = getBasePath({ environment: Environment.gateway.proxy });
+  const proxyUrl = getBasePath({ environment: isGateway() ? Environment.gateway.proxy : undefined });
 
   let serviceId: string;
   let routeId: string;

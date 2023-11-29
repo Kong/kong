@@ -1,6 +1,6 @@
 import axios, { AxiosPromise, AxiosResponse } from 'axios';
 import { expect } from '../assert/chai-expect';
-import { Environment, getBasePath, isGateway } from '../config/environment';
+import { Environment, getBasePath, isGateway, isKoko } from '../config/environment';
 import { logResponse } from './logging';
 import { randomString, wait } from './random';
 import { retryRequest } from './retry-axios';
@@ -17,6 +17,7 @@ export const getUrl = (endpoint: string) => {
 };
 
 const proxyUrl = `${getBasePath({
+  app: 'gateway',
   environment: Environment.gateway.proxy,
 })}`;
 
@@ -50,7 +51,6 @@ export const createGatewayService = async (
   logResponse(resp);
   expect(resp.status, 'Status should be 201').equal(201);
   expect(resp.data.name, 'Should have correct service name').equal(name);
-
   return resp.data;
 };
 
@@ -473,7 +473,14 @@ export const createPlugin = async (
   pluginPayload: object,
   workspace?: string
 ) => {
-  workspace = workspace ? workspace : 'default';
+
+  // In Koko we don't set 'default' workspace name in URL
+  if (isGateway()) {
+    workspace = workspace ? workspace : 'default'
+  } else if (isKoko()) {
+    workspace = ''
+  }
+
   const endpoint = `${workspace}/plugins`;
 
   const resp = await axios({
@@ -481,6 +488,7 @@ export const createPlugin = async (
     url: `${getUrl(endpoint)}`,
     data: pluginPayload,
   });
+
   logResponse(resp);
   expect(resp.status, 'Status should be 201').to.equal(201);
 
@@ -605,7 +613,7 @@ export const waitForConfigRebuild = async (options: any = {}) => {
 
   // create a route for a service
   const routePath = `/routerRebuild-${randomString()}`;
-  const router_flavor = await getRouterFlavor();
+  const router_flavor = isGateway() ? await getRouterFlavor() : 'traditional_compatible'
   const route = router_flavor == 'expressions' ? await createExpressionRouteForService(serviceId, `http.path == "${routePath}"`) : await createRouteForService(serviceId, [routePath]);
   const routeId = route.id;
 

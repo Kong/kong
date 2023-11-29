@@ -89,6 +89,7 @@ env:
   AWS_ACCESS_KEY_ID: ${{ secrets.TEST_API_AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.TEST_API_AWS_SECRET_ACCESS_KEY }}
   GCP_SERVICE_ACCOUNT: ${{ secrets.TEST_API_GCP_SERVICE_ACCOUNT }}
+  NPM_TOKEN: ${{ secrets.NPM_TOKEN_PRIVATE_READ }}
 
 jobs:
   construct_docker_image_matrix:
@@ -270,8 +271,11 @@ jobs:
           make logs || true
           make logs_package || true
 
+      - name: Copy .npmrc
+        run: cp .npmrc.ci .npmrc
+
       - name: Install Packages
-        run: npm install && ls ..
+        run: npm install --legacy-peer-deps
 
       - name: Install decK
         uses: kong/setup-deck@v1
@@ -285,7 +289,7 @@ jobs:
           elif [[ $RUN_SPEC == 'non-smoke' ]]; then
             npm run test-non-smoke;
           else
-            npm run test-spec --spec=$RUN_SPEC;
+            TEST_APP=gateway npm run test-spec --spec=$RUN_SPEC;
           fi
         id: execute_tests
         env:
@@ -421,8 +425,11 @@ jobs:
           make logs || true
           make logs_package || true
 
+      - name: Copy .npmrc
+        run: cp .npmrc.ci .npmrc
+
       - name: Install Packages
-        run: npm install && ls ..
+        run: npm install --legacy-peer-deps
 
       - name: Install decK
         uses: kong/setup-deck@v1
@@ -437,7 +444,7 @@ jobs:
           elif [[ $RUN_SPEC == 'non-smoke' ]]; then
             npm run test-non-smoke;
           else
-            npm run test-spec --spec=$RUN_SPEC;
+            TEST_APP=gateway npm run test-spec --spec=$RUN_SPEC;
           fi
         env:
           AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
@@ -573,9 +580,12 @@ jobs:
 
       - name: Install decK
         uses: kong/setup-deck@v1
+      
+      - name: Copy .npmrc
+        run: cp .npmrc.ci .npmrc
 
       - name: Install Packages
-        run: npm install && ls ..
+        run: npm install --legacy-peer-deps
 
       - name: Execute Gateway API Tests
         id: execute_tests
@@ -585,7 +595,7 @@ jobs:
           elif [[ $RUN_SPEC == 'smoke' ]]; then
             npm run test-smoke;
           else
-            npm run test-spec --spec=$RUN_SPEC;
+            TEST_APP=gateway npm run test-spec --spec=$RUN_SPEC;
           fi
         env:
           AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}

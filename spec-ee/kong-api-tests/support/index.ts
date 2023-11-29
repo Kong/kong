@@ -16,6 +16,12 @@ export {
   isLocal,
   isREST,
   Protocol,
+  isKoko,
+  isKAuth,
+  isKAuthV2,
+  isKAuthV3,
+  isPreview,
+  Env
 } from './config/environment';
 export {
   checkGwVars,
@@ -28,6 +34,7 @@ export {
   isGwNative,
   getKongContainerName,
   getKongVersion,
+  getDataPlaneDockerImage
 } from './config/gateway-vars';
 export {
   createUuidEmail,
@@ -36,6 +43,7 @@ export {
   getTeamUser,
   setQualityBaseUser,
   setTeamFullName,
+  getAuth0UserCreds
 } from './entities/user';
 export {
   getGatewayContainerLogs,
@@ -43,6 +51,8 @@ export {
   startGwWithCustomEnvVars,
   getKongVersionFromContainer,
   runDockerContainerCommand,
+  deployKonnectDataPlane,
+  stopAndRemoveTargetContainer
 } from './exec/gateway-container';
 export { removeSecretFile, safeStopGateway, startGateway } from './exec/gw-ec2';
 export {
@@ -51,6 +61,7 @@ export {
   GatewayRoute,
   GatewayService,
   GrpcConfig,
+  KokoAuthHeaders
 } from './interfaces';
 export { constructDeckCommand, read_deck_config } from './utilities/deck';
 export * from './utilities/entities-gateway';
@@ -86,3 +97,10 @@ export {
   waitForDictUpdate,
 } from './utilities/metrics';
 export { eventually } from './utilities/eventually';
+export * from './config/geos';
+export { getRuntimeGroupId, setRuntimeGroupId } from './entities/runtimes'
+export { setKonnectControlPlaneId, getKonnectControlPlaneId } from './entities/konnect-cp'
+export { getAuthOptions, setKAuthCookies } from './auth/kauth-tokens'
+export * from './entities/organization'
+export { getApiConfig } from './config/api-config';
+export { generatePublicPrivateCertificates, getTargetFileContent, removeCertficatesAndKeys } from './exec/certificates'

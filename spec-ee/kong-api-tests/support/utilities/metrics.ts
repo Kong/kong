@@ -1,10 +1,10 @@
 import axios from 'axios';
 import { wait } from './random';
 import { expect } from '../assert/chai-expect';
-import { getBasePath, Environment } from '@support';
+import { getBasePath, Environment, isGateway } from '@support';
 import https from 'https';
 
-const host = getBasePath({ environment: Environment.gateway.hostName });
+const host = getBasePath({ environment: isGateway() ? Environment.gateway.hostName : undefined });
 const metricsUrl = `https://${host}:8100/metrics`;
 
 const agent = new https.Agent({

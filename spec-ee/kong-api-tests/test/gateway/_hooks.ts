@@ -8,13 +8,13 @@ import axios from 'axios';
 
 export const mochaHooks: Mocha.RootHookObject = {
   beforeAll: async function (this: Mocha.Context) {
-    // Set Auth header for Gateway Admin requests
-    const { authHeaderKey, authHeaderValue } = gatewayAuthHeader();
-    axios.defaults.headers[authHeaderKey] = authHeaderValue;
-
-    // Gateway for API tests starts without EE_LICENSE in CI, hence, we post license at the beginning of all tests to allow us test the functionality of license endpoint
     try {
+        // Set Auth header for Gateway Admin requests
+        const { authHeaderKey, authHeaderValue } = gatewayAuthHeader();
+        axios.defaults.headers[authHeaderKey] = authHeaderValue;
+        createRedisClient();
       if (isCI()) {
+        // Gateway for API tests starts without EE_LICENSE in CI, hence, we post license at the beginning of all tests to allow us test the functionality of license endpoint
         await postGatewayEeLicense();
         // Wait for the license propagation completes before release to the test
         // configRebuild is wrapped with eventually as sometimes it returns 401 error for route creation
@@ -22,11 +22,9 @@ export const mochaHooks: Mocha.RootHookObject = {
           const intitialConfigRebuildSuccess = await waitForConfigRebuild();
           expect(intitialConfigRebuildSuccess).to.be.true
         }, 20000, 3000, true)
-        
       }
-      createRedisClient();
     } catch (err) {
-      console.log(`Something went wrong in beforeAll hook while rebuilding configuration: ${err}`)
+      console.error(`Something went wrong in beforeAll hook while rebuilding configuration: ${err}`)
       process.exit(1)
     }
   },

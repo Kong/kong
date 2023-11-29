@@ -1,5 +1,5 @@
 import { createClient } from 'redis';
-import { Environment, getBasePath } from '../config/environment';
+import { Environment, getBasePath, isGateway } from '../config/environment';
 import { wait } from './random';
 
 const redisUser = 'redisuser';
@@ -8,7 +8,7 @@ const redisPassword = 'redispassword';
 export let client: any;
 
 export const createRedisClient = () => {
-  const host = getBasePath({ environment: Environment.gateway.hostName });
+  const host = getBasePath({ environment: isGateway() ? Environment.gateway.hostName : undefined });
   const redisConnectUrl = `redis://${redisUser}:${redisPassword}@${host}:6379`;
   client = createClient({ url: redisConnectUrl });
 };

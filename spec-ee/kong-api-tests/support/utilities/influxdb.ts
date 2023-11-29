@@ -1,6 +1,6 @@
 // const Influx = require('influx');
 import { InfluxDB } from 'influx';
-import { Environment, getBasePath } from '../config/environment';
+import { Environment, getBasePath, isGateway } from '../config/environment';
 
 export let influx: any;
 
@@ -21,7 +21,7 @@ const SERIES = {
  * @returns {object}
  */
 export const createInfluxDBConnection = () => {
-  const host = getBasePath({ environment: Environment.gateway.hostName });
+  const host = getBasePath({ environment: isGateway() ? Environment.gateway.hostName : undefined });
 
   const influxDBUrl = `http://${host}:8086/kong`;
 

@@ -31,3 +31,7 @@ export interface GatewayRoute {
   strip_path?: boolean;
   tags?: Array<string>;
 }
+
+export interface KokoAuthHeaders {
+  [key: string]: AxiosHeaderValue;
+}

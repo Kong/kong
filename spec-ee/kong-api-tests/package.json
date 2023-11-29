@@ -7,13 +7,16 @@
     "format": "prettier --write \"**/*.{js,ts}\"",
     "lint": "eslint \"**/*.{js,ts}\"",
     "test-spec": "mocha \"test/gateway/**/${npm_config_spec}.spec.ts\"",
-    "test-gateway": "mocha \"test/gateway/**/*.spec.ts\"",
+    "test-gateway": "TEST_APP=gateway mocha \"test/gateway/**/*.spec.ts\"",
     "test-multiple": "mocha ${npm_config_spec}",
-    "test-smoke": "mocha -g @smoke --recursive",
-    "test-non-smoke": "mocha --invert -g @smoke --recursive"
+    "test-smoke": "TEST_APP=gateway mocha -g @smoke --recursive",
+    "test-non-smoke": "TEST_APP=gateway mocha --invert -g @smoke --recursive",
+    "test-koko": "TEST_APP=koko TEST_ENV=dev mocha \"test/koko/koko_gateway_tests.spec.ts\""
   },
   "dependencies": {
-    "axios": "^1.6.1",
+    "@kong/kauth-test-utils": "^0.0.13",
+    "@kong/khcp-api-client": "^0.1.1491",
+    "axios": "^1.6.2",
     "chai": "^4.3.10",
     "chai-arrays": "^2.2.0",
     "chai-as-promised": "^7.1.1",
@@ -51,6 +54,6 @@
     "typescript": "^4.9.5"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   }
 }

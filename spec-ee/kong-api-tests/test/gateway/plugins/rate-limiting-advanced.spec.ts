@@ -16,6 +16,7 @@ import {
   postNegative,
   resetRedisDB,
   wait,
+  isGateway
 } from '@support';
 import axios from 'axios';
 
@@ -31,7 +32,7 @@ describe('Gateway RLA Plugin Tests', function () {
   const url = `${getBasePath({
     environment: Environment.gateway.admin,
   })}/plugins`;
-  const proxyUrl = getBasePath({ environment: Environment.gateway.proxy });
+  const proxyUrl = getBasePath({ environment: isGateway() ? Environment.gateway.proxy : undefined });
 
   let basePayload: any;
   let pluginId: string;

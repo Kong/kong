@@ -1,4 +1,6 @@
 import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
+import { teams } from '@fixtures';
+import { constants } from '@support';
 
 let EMAIL = '';
 let PASSWORD = '';
@@ -87,4 +89,22 @@ export const setTeamFullName = (team: string, fullName: string): void => {
  */
 export const getTeamFullName = (team: string): string => {
   return FULL_NAMES[team] || `Quality ${team}`;
+};
+
+/**
+ * Get the AUTH0 konnect admin credentials from the env vars
+ * @returns {Credentials} username, password
+ */
+export const getAuth0UserCreds = () => {
+  const username = constants.kauth.GATEWAY_USER.email;
+  const password = process.env.KONNECT_USER_PASSWORD;
+
+  if (!password) {
+    throw new Error('No KONNECT_USER_PASSWORD env var found, please set the variable to authenticate with Konnect');
+  }
+  EMAIL = username;
+  PASSWORD = password;
+  // Auth0 full name for a new org is set to the username
+  FULL_NAMES[teams.DefaultTeamNames.ORGANIZATION_ADMIN] = username;
+  return { username, password };
 };

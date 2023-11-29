@@ -1,0 +1,135 @@
+name: konnect-api-tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      enable_verbose_response_logging:
+        description: 'Enable response logging for debugging'
+        required: false
+        default: 'false'
+      send_slack_results:
+        description: 'Send test result notifications to slack'
+        required: false
+        default: 'true'
+      target_test:
+        description: 'Run only a single test by spec name or all tests'
+        required: false
+        default: 'all'
+      data_plane_image:
+        description: 'Docker Image for Konnect Data Plane'
+        required: true
+        default: 'kong/kong-gateway-dev:nightly-ubuntu'
+      multiarch:
+        description: 'Also run ARM64 test for the image'
+        required: false
+        type: boolean
+        default: false
+
+  workflow_call:
+    inputs:
+      enable_verbose_response_logging:
+        description: 'Enable response logging for debugging'
+        required: false
+        type: 'string'
+        default: 'false'
+      send_slack_results:
+        description: 'Send test result notifications to slack'
+        required: false
+        type: 'string'
+        default: 'false'
+      target_test:
+        description: 'Run only a single test by spec name or all tests'
+        required: false
+        type: string
+      data_plane_image:
+        description: 'Docker Image for Konnect Data Plane'
+        required: true
+        type: string
+      multiarch:
+        description: 'Also run ARM64 test for the image'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  KONNECT_DP_IMAGE: ${{ inputs.data_plane_image || 'kong/kong-gateway-dev:nightly-ubuntu' }}
+  SEND_SLACK_RESULTS: ${{ github.event.inputs.send_slack_results }}
+  NPM_TOKEN: ${{ secrets.NPM_TOKEN_PRIVATE_READ }}
+  # if this is a push event, or it is pull request but not from a fork, and not from dependabot (dependabot does not use forks), then this PR will have access to secrets
+  HAS_ACCESS_TO_SECRETS: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && !contains(github.actor, 'dependabot')) }}
+
+jobs:
+  gateway_api_tests:
+    defaults:
+      run:
+        working-directory: spec-ee/kong-api-tests
+    runs-on: ${{ matrix.runs_on }}
+    timeout-minutes: 90
+    env:
+      GW_MODE: ${{ matrix.gateway_mode }}
+      VERBOSE_RESPONSE_LOGS: ${{ inputs.enable_verbose_response_logging }}
+      RUN_SPEC: ${{ inputs.target_test || 'all' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        gateway_mode: ['classic', 'hybrid']
+        runs_on: ["${{ vars.RUNS_ON }}", "${{ fromJSON(inputs.multiarch && '[\"ubuntu-22.04-arm64\"]' || '[]') }}" ]
+    name: ${{ inputs.target_test }} API test - ${{ inputs.target_mode }} ${{ matrix.gateway_mode }} mode on ${{ matrix.runs_on }} for ${{ inputs.data_plane_image }}
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v3
+
+      - name: Checkout docker-compose-generator
+        uses: actions/checkout@v3
+        with:
+          repository: Kong/gateway-docker-compose-generator
+          path: spec-ee/kong-api-tests/gateway-docker-compose-generator
+          token: ${{ secrets.TEST_API_GH_TOKEN }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.GHA_DOCKERHUB_PULL_USER }}
+          password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
+
+      - name: Start 3rd party test services for Konnect tests
+        run: cd gateway-docker-compose-generator && make generate_konnect && make start_konnect
+
+      - name: Copy .npmrc
+        run: cp .npmrc.ci .npmrc
+
+      - name: Install Packages
+        run: npm install --legacy-peer-deps
+
+      - name: Execute Koko API Tests
+        id: execute_tests
+        env:
+          KONNECT_USER_PASSWORD: ${{ secrets.TEST_API_KONNECT_USER_PASSWORD }}
+          GW_MODE: hybrid
+        run: |
+          if [[ $RUN_SPEC == 'all' ]]; then
+            npm run test-koko;
+          else
+            TEST_APP=koko TEST_ENV=dev npm run test-spec --spec=$RUN_SPEC;
+          fi
+
+      - name: Send test results to Slack
+        if: ${{ env.SEND_SLACK_RESULTS == 'true' && always() && github.ref == 'refs/heads/master' }}
+        continue-on-error: true
+        uses: ./.github/actions/gw-slack-results/
+        with:
+          gw_version: konnect-dev
+          gw_mode: ${{ matrix.gateway_mode }}
+          job_status: ${{ job.status }}
+          test_title: 'regular'
+          slack_url: ${{ secrets.TEST_API_SLACK_WEBHOOK_URL }}
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v3
+        continue-on-error: true
+        if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }} # upload test results even if the job fails
+        with:
+          name: gateway_api_${{ env.RUN_SPEC }}_test_results_${{ matrix.gateway_mode }}
+          path: spec-ee/kong-api-tests/results/
+          retention-days: 3

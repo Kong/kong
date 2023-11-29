@@ -16,9 +16,10 @@ import {
   execCustomCommand,
   getNegative,
   read_deck_config,
+  isGateway
 } from '@support';
 
-const adminUrl = `${getBasePath({ environment: Environment.gateway.admin })}`;
+const adminUrl = `${getBasePath({ environment: isGateway() ? Environment.gateway.admin : undefined })}`;
 const deckFileName = 'kong.json';
 
 describe('decK: Sanity Tests', function () {

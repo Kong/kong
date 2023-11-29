@@ -17,6 +17,7 @@ import {
   isGwHybrid,
   wait,
   waitForConfigRebuild,
+  isGateway
 } from '@support';
 import axios from 'axios';
 
@@ -24,7 +25,7 @@ describe('Vitals with InfluxDB Tests', function () {
   this.timeout(120000);
   const todaysDate = new Date().toISOString().split('T')[0];
 
-  const proxyUrl = getBasePath({ environment: Environment.gateway.proxy });
+  const proxyUrl = getBasePath({ environment: isGateway() ? Environment.gateway.proxy : undefined });
   // isHybrid is being used across the test to control test flow for hybrid mode run
   const isHybrid = isGwHybrid();
   // Influxdb flush every 10s so let's wait for 12s to make sure it's definitely flushed

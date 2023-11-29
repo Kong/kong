@@ -6,3 +6,10 @@ results
 
 # local reflection of .env.example
 .env
+.npmrc
+
+# Konnect DP certificates
+certificate.crt
+certificate.csr
+private.pem
+public.pem

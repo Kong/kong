@@ -86,6 +86,14 @@ export const getKongVersion = (): string | undefined => {
 };
 
 /**
+ * Get the target docker image for Konnect data plane, default is konnect-dp1
+ * @returns {string}
+ */
+export const getDataPlaneDockerImage = (): string | undefined => {
+  return process.env.KONNECT_DP_IMAGE ? process.env.KONNECT_DP_IMAGE : 'kong/kong-gateway-dev:nightly-ubuntu'
+}
+
+/**
  * Checks if GATEWAY_PASSWORD env var is set to return respective Auth header key:value
  */
 export const gatewayAuthHeader = () => {

@@ -10,25 +10,32 @@ import {
   getKongVersionFromContainer,
   getKongContainerName,
   getKongVersion,
+  isKoko,
+  isGateway
 } from '@support';
 import axios, { AxiosRequestHeaders, AxiosResponse } from 'axios';
 
 describe('@smoke: Gateway Admin API: Services', function () {
-  const url = `${getBasePath({
-    environment: Environment.gateway.admin,
-  })}/services`;
+  let headers: AxiosRequestHeaders | undefined;
+  let url: string
+  let serviceId: string
+  let routeId: string;
+
+  before(function () {
+    const basePath = getBasePath({
+      environment: isGateway() ? Environment.gateway.admin : undefined,
+    });
+    url = `${basePath}/services`;
+  });
 
   const servicePayload = {
     name: 'APITestService',
     url: 'http://httpbin/anything',
   };
+  
   const newPath = '/anythingUpdated';
   const kongContainerName = getKongContainerName();
   const kongVersion = getKongVersion();
-
-  let headers: AxiosRequestHeaders | undefined;
-  let serviceId: string;
-  let routeId: string;
 
   const assertRespDetails = (response: AxiosResponse) => {
     const resp = response.data;
@@ -66,7 +73,7 @@ describe('@smoke: Gateway Admin API: Services', function () {
       servicePayload.name
     );
     assertRespDetails(resp);
-    serviceId = resp.data.id;
+    serviceId = resp.data.id
 
     resp = await axios({
       method: 'post',
@@ -86,16 +93,24 @@ describe('@smoke: Gateway Admin API: Services', function () {
     const resp = await postNegative(url, servicePayload, 'post', headers);
     logResponse(resp);
 
-    expect(resp.status, 'Status should be 409').equal(409);
-    expect(resp.data.name, 'Should have correct error name').equal(
-      'unique constraint violation'
-    );
-    expect(resp.data.message, 'Should have correct error name').equal(
-      `UNIQUE violation detected on '{name="${servicePayload.name}"}'`
-    );
+    // *** RESPONSE DIFFERENCES IN GATEWAY AND KOKO ***
+    if (isGateway()) {
+      expect(resp.status, 'Status should be 409').equal(409);
+      expect(resp.data.name, 'Should have correct error name').equal(
+        'unique constraint violation'
+      );
+      expect(resp.data.message, 'Should have correct error name').equal(
+        `UNIQUE violation detected on '{name="${servicePayload.name}"}'`
+      );
+    } else if (isKoko()) {
+      expect(resp.status, 'Status should be 400').to.equal(400);
+      expect(resp.data.message, 'Should have correct error name').to.equal(
+        'data constraint error'
+      );
+    }
   });
 
-  it('should not create a service with incorrect path', async function () {
+    it('should not create a service with incorrect path', async function () {
     const wrongPayload = {
       name: 'my-service',
       protocol: 'http',
@@ -107,12 +122,19 @@ describe('@smoke: Gateway Admin API: Services', function () {
     logResponse(resp);
 
     expect(resp.status, 'Status should be 400').equal(400);
-    expect(resp.data.name, 'Should have correct error name').equal(
-      'schema violation'
-    );
-    expect(resp.data.message, 'Should have correct error name').contain(
-      `schema violation (path: should start with: /`
-    );
+    // *** RESPONSE DIFFERENCES IN GATEWAY AND KOKO ***
+    if (isGateway()) {
+      expect(resp.data.name, 'Should have correct error name').equal(
+        'schema violation'
+      );
+      expect(resp.data.message, 'Should have correct error name').contain(
+        `schema violation (path: should start with: /`
+      );
+    } else if (isKoko()) {
+      expect(resp.data.message, 'Should have correct error name').to.equal(
+        'validation error'
+      );
+    }
   });
 
   it('should get the service by name', async function () {
@@ -137,24 +159,27 @@ describe('@smoke: Gateway Admin API: Services', function () {
     assertRespDetails(resp);
   });
 
-  it('should patch the service', async function () {
-    const resp = await axios({
-      method: 'patch',
-      url: `${url}/${servicePayload.name}`,
-      data: {
-        protocol: 'https',
-        port: 8080,
-        path: newPath,
-      },
-      headers,
-    });
-    logResponse(resp);
+  // *** KOKO DOES NOT PATCH SERVICES BY NAME ***
+  if (isGateway()) {
+    it('should patch the service', async function () {
+      const resp = await axios({
+        method: 'patch',
+        url: `${url}/${servicePayload.name}`,
+        data: {
+          protocol: 'https',
+          port: 8080,
+          path: newPath,
+        },
+        headers,
+      });
+      logResponse(resp);
 
-    expect(resp.status, 'Status should be 200').to.equal(200);
-    expect(resp.data.path, 'Should have correct path').equal(newPath);
-    expect(resp.data.port, 'Should have port 8080').equal(8080);
-    expect(resp.data.protocol, 'Should have protocol "http"').equal('https');
-  });
+      expect(resp.status, 'Status should be 200').to.equal(200);
+      expect(resp.data.path, 'Should have correct path').equal(newPath);
+      expect(resp.data.port, 'Should have port 8080').equal(8080);
+      expect(resp.data.protocol, 'Should have protocol "http"').equal('https');
+    });
+  }
 
   it('should not get the service by wrong name', async function () {
     const resp = await getNegative(`${url}/wrong`, headers);
@@ -177,20 +202,23 @@ describe('@smoke: Gateway Admin API: Services', function () {
     expect(errMsg, 'Should have correct error message').to.equal('not found');
   });
 
-  it('should not delete the service when it has associated route', async function () {
-    const resp = await postNegative(
-      `${url}/${serviceId}`,
-      {},
-      'delete',
-      headers
-    );
-    logResponse(resp);
+  // *** KOKO ALLOWS DELETION -- RETURNS 204 ***
+  if (isGateway()) {
+    it('should not delete the service when it has associated route', async function () {
+      const resp = await postNegative(
+        `${url}/${serviceId}`,
+        {},
+        'delete',
+        headers
+      );
+      logResponse(resp);
 
-    expect(resp.status, 'Status should be 400').equal(400);
-    expect(resp.data.message, 'Should have correct error message').include(
-      `an existing 'routes' entity references this 'services' entity`
-    );
-  });
+      expect(resp.status, 'Status should be 400').equal(400);
+      expect(resp.data.message, 'Should have correct error message').include(
+        `an existing 'routes' entity references this 'services' entity`
+      );
+    });
+  }
 
   it('should delete the service by id when it has no associated route', async function () {
     await deleteGatewayRoute(routeId, headers);
@@ -220,7 +248,7 @@ describe('@smoke: Gateway Admin API: Services', function () {
 
     logResponse(resp);
     expect(resp.status, 'Status should be 201').equal(201);
-    serviceId = resp.data.id;
+    serviceId = resp.data.id
     expect(resp.data.name, 'Should have correct service name').equal(
       servicePayload.name
     );
@@ -230,10 +258,11 @@ describe('@smoke: Gateway Admin API: Services', function () {
     );
   });
 
+  // *** KOKO DOES NOT DELETE SERVICES BY NAME ***
   it('should delete the service by name', async function () {
     const resp = await axios({
       method: 'delete',
-      url: `${url}/${servicePayload.name}`,
+      url: `${url}/${isGateway() ? servicePayload.name : serviceId}`,
       headers,
     });
     logResponse(resp);

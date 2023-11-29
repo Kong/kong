@@ -134,3 +134,80 @@ export const runDockerContainerCommand = async (containerName, command) => {
   const result = await execSync(`docker ${command} ${containerName}`);
   return result.toString('utf-8');
 };
+
+/**
+ * Generates code snippet and deploys a Konnect Data Plane via Docker in the same network as other test 3rd party services
+ * @param {string} controlPlaneEndpoint - Konnect control_plane_endpoint
+ * @param {string} telemetryEndpoint - Konnect telemetry_endpoint
+ * @param {string} cert - the generated certificate file
+ * @param {string} privateKey - the generated private key file
+ * @param {string} gatewayDpImage - target gateway image for the data plane
+ * @param {string} targetOS- Options are: 'docker' - default, macosintel, macosarm
+ * @param {number} dataPlaneCount - number of data planes to deploy, default is 1
+ */
+export const deployKonnectDataPlane = (controlPlaneEndpoint, telemetryEndpoint, cert, privateKey, gatewayDpImage, targetOS = 'docker', dataPlaneCount = 1) => {
+  let osConfig: string
+  let dockerNetwork: string
+
+  // Define Platform as in Konnect Platform dropdown menu
+  if (targetOS === 'macosintel') {
+    osConfig = 'macOsIntelOS'
+  } else if (targetOS === 'macosarm') {
+    osConfig = 'macOsArmOS'
+  } else {
+    osConfig = 'linuxdockerOS'
+  }
+
+  const staticInstructions = `-e "KONG_ROLE=data_plane" \
+  -e "KONG_DATABASE=off" \
+  -e "KONG_VITALS=off" \
+  -e "KONG_CLUSTER_MTLS=pki" \
+  -e "KONG_CLUSTER_CONTROL_PLANE=${controlPlaneEndpoint}:443" \
+  -e "KONG_CLUSTER_SERVER_NAME=${controlPlaneEndpoint}" \
+  -e "KONG_CLUSTER_TELEMETRY_ENDPOINT=${telemetryEndpoint}:443" \
+  -e "KONG_CLUSTER_TELEMETRY_SERVER_NAME=${telemetryEndpoint}" \
+  -e "KONG_CLUSTER_CERT=${cert}" \
+  -e "KONG_CLUSTER_CERT_KEY=${privateKey}" \
+  -e "KONG_LUA_SSL_TRUSTED_CERTIFICATE=system" \
+  -e "KONG_KONNECT_MODE=on" \
+  -e "KONG_CLUSTER_DP_LABELS=created-by:quickstart,type:docker-${osConfig}"`
+
+  // if the target test network exists, create cdp container in that network
+  try {
+    execSync(`docker network ls | grep 'gateway-docker-compose-generator_kong-ee-net'`);
+    dockerNetwork = '--net gateway-docker-compose-generator_kong-ee-net'
+  } catch (error) {
+    dockerNetwork = ''
+  }
+
+  for(let i = 1; i <= dataPlaneCount; i++) {
+    const port1 = 8000 + (i-1) * 10
+    const port2 = 8443 + (i-1) * 10
+
+    const dpCodeSnippet = `docker run --name konnect-dp${i} ${dockerNetwork} -d \
+    ${staticInstructions} \
+    -p ${port1}:8000 \
+    -p ${port2}:8443 \
+    ${gatewayDpImage}`
+
+    try {
+      execSync(dpCodeSnippet, { stdio: 'inherit' });
+      console.info(`Successfully deployed the Konnect data plane named: konnect-dp${i} \n`)
+    } catch (error) {
+      console.error('Something went wrong while deploying the Konnect data plane', error);
+    }
+  }
+}
+
+/**
+ * Stops and removes the target container
+ * @param {string} containerName 
+ */
+export const stopAndRemoveTargetContainer = (containerName) => {
+    try {
+      execSync(`docker stop ${containerName}; docker rm ${containerName} -f`, { stdio: 'inherit' });
+      console.info(`Successfully removed the ${containerName} docker container`)
+    } catch (error) {
+      console.error(`Something went wrong while removing the ${containerName} docker container`, error);
+    }
+  }

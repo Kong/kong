@@ -2,8 +2,21 @@ require('dotenv').config();
 const { v4: uuidv4 } = require('uuid');
 
 const addRootHooks = () => {
+  const testApp = process.env.TEST_APP;
+  if (!testApp) {
+    throw new Error('No value provided for environment variable: TEST_APP');
+  }
   let hooks = [];
-  hooks.push('/test/gateway/_hooks.ts');
+  switch (testApp) {
+    case 'gateway':
+      hooks.push('test/gateway/_hooks.ts');
+      break;
+    case 'koko':
+      hooks.push('test/koko/_hooks.ts');
+      break;
+    default:
+      throw new Error(`TEST_APP: ${testApp} is not currently supported`);
+  }
   return hooks.join(',');
 };
 

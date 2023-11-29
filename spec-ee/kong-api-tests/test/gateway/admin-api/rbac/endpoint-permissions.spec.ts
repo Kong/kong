@@ -11,6 +11,7 @@ import {
   logResponse,
   waitForConfigRebuild,
   retryRequest,
+  eventually,
 } from '@support';
 
 describe('@smoke: Gateway RBAC: Role Endpoint Permissions', function () {
@@ -238,12 +239,14 @@ describe('@smoke: Gateway RBAC: Role Endpoint Permissions', function () {
   });
 
   it('should not retrieve a role endpoint permission after deletion', async function () {
-    const resp = await getNegative(
-      `${url}/${role.id}/endpoints/${workspaceName}${endpoint1}`
-    );
-    logResponse(resp);
-
-    expect(resp.status, 'Status should be 404').to.equal(404);
+    await eventually(async () => {
+      const resp = await getNegative(
+        `${url}/${role.id}/endpoints/${workspaceName}${endpoint1}`
+      );
+      logResponse(resp);
+  
+      expect(resp.status, 'Status should be 404').to.equal(404);
+    });
   });
 
   it('should not list deleted role endpoint permission', async function () {

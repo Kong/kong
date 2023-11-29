@@ -18,7 +18,8 @@ import {
   checkGwVars,
   logResponse,
   createGcpVaultEntity,
-  clearAllKongResources,
+  isGateway,
+  clearAllKongResources
 } from '@support';
 
 // ********* Note *********
@@ -41,7 +42,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
     environment: Environment.gateway.admin,
   })}/plugins`;
 
-  const proxyUrl = getBasePath({ environment: Environment.gateway.proxy });
+  const proxyUrl = getBasePath({ environment: isGateway() ? Environment.gateway.proxy : undefined });
   const gcpProjectId = 'gcp-sdet-test';
   const hcvPrefix = 'my-hcv'
   const hcvMount = 'secret'

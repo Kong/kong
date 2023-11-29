@@ -21,6 +21,7 @@ import {
   logResponse,
   retryRequest,
   waitForCacheInvalidation,
+  isGateway
 } from '@support';
 
 const kvEngineVersions = ['v1', 'v2'];
@@ -50,7 +51,7 @@ kvEngineVersions.forEach((kvVersion) => {
       environment: Environment.gateway.admin,
     })}`;
 
-    const proxyUrl = getBasePath({ environment: Environment.gateway.proxy });
+    const proxyUrl = getBasePath({ environment: isGateway() ? Environment.gateway.proxy : undefined });
 
     before(async function () {
       const service = await createGatewayService('VaultAuthService');

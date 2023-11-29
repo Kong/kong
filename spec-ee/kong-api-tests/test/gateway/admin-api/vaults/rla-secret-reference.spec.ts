@@ -21,6 +21,7 @@ import {
   checkGwVars,
   logResponse,
   createGcpVaultEntity,
+  isGateway
 } from '@support';
 
 // ********* Note *********
@@ -45,7 +46,7 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
     environment: Environment.gateway.admin,
   })}/plugins`;
 
-  const proxyUrl = getBasePath({ environment: Environment.gateway.proxy });
+  const proxyUrl = getBasePath({ environment: isGateway() ? Environment.gateway.proxy : undefined });
   const gcpProjectId = 'gcp-sdet-test';
   // hcv secrets
   const redisHcvPassword = 'redispassword';

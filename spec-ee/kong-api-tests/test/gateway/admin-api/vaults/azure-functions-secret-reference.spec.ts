@@ -15,7 +15,8 @@ import {
   waitForConfigRebuild,
   getNegative,
   checkGwVars,
-  vars
+  vars,
+  isGateway
 } from '@support';
 
 // ********* Note *********
@@ -38,7 +39,7 @@ describe('Vaults: Azure Secret referencing in Azure functions plugin', function 
     environment: Environment.gateway.admin,
   })}/plugins`;
 
-  const proxyUrl = getBasePath({ environment: Environment.gateway.proxy });
+  const proxyUrl = getBasePath({ environment: isGateway() ? Environment.gateway.proxy : undefined });
 
   const azureFunctionKey = vars.azure.AZURE_FUNCTION_KEY;
 

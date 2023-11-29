@@ -6,49 +6,55 @@ import {
   expect,
   getBasePath,
   getNegative,
-  isGwHybrid,
   logResponse,
-  wait,
-  clearAllKongResources
+  clearAllKongResources,
+  isGateway,
+  isKoko,
+  waitForConfigRebuild,
+  retryRequest,
 } from '@support';
 import axios from 'axios';
 
 describe('@smoke: Gateway Plugins: key-auth', function () {
   const path = '/key-auth';
   const serviceName = 'key-auth-service';
-  const isHybrid = isGwHybrid();
-  const hybridWaitTime = 8000;
-  const waitTime = 5000;
   const consumerName = 'bill';
   const key = 'api_key';
-  const tagAndTtlPayload = { tags: ['tag2'], ttl: 10 };
+  const keyAuthPayload = { tags: ['tag2'], ttl: 10 };
+  const keyAuthPayloadKonnect = { tags: ['tag2']};
   const plugin = 'key-auth';
 
-  const url = `${getBasePath({
-    environment: Environment.gateway.admin,
-  })}`;
-  const proxyUrl = `${getBasePath({
-    environment: Environment.gateway.proxy,
-  })}`;
   const inValidTokenHeaders = {
     api_key: 'ZnBckx2rSLCccbnCKRp3BEqzYbyRYTAX',
   };
 
+  let url: string
+  let proxyUrl: string
   let serviceId: string;
   let routeId: string;
   let keyId: string;
   let basePayload: any;
   let pluginId: string;
+  let consumerId: string
 
   before(async function () {
+    url = `${getBasePath({
+      environment: isGateway() ? Environment.gateway.admin : undefined,
+    })}`;
+    proxyUrl = `${getBasePath({
+      app: 'gateway',
+      environment: Environment.gateway.proxy,
+    })}`;
+
     await clearAllKongResources();
     const service = await createGatewayService(serviceName);
     serviceId = service.id;
     const route = await createRouteForService(serviceId, [path]);
     routeId = route.id;
-    await createConsumer(consumerName);
-    await wait(isHybrid ? hybridWaitTime : waitTime); // eslint-disable-line no-restricted-syntax
-
+    const consumer = await createConsumer(consumerName);
+    consumerId = consumer.id
+    await waitForConfigRebuild()
+    
     basePayload = {
       name: plugin,
       service: {
@@ -90,23 +96,25 @@ describe('@smoke: Gateway Plugins: key-auth', function () {
     );
 
     pluginId = resp.data.id;
-    await wait(isHybrid ? hybridWaitTime : waitTime); // eslint-disable-line no-restricted-syntax
+    await waitForConfigRebuild()
   });
 
   it('should create key and add tag using consumer under-test', async function () {
+    // *** KOKO DOES NOT ALLOW SETTING TTL VALUE AND USING CONSUMER NAME ***
     const resp = await axios({
       method: 'post',
-      url: `${url}/consumers/${consumerName}/${plugin}`,
-      data: tagAndTtlPayload,
+      url: `${url}/consumers/${isKoko() ? consumerId : consumerName}/${plugin}`,
+      data: isKoko() ? keyAuthPayloadKonnect : keyAuthPayload,
     });
-    logResponse(resp);
 
     expect(resp.status, 'Status should be 201').to.equal(201);
     expect(resp.data.tags, 'Should contain tags').to.contain('tag2');
-    expect(resp.data.ttl, 'Should contain ttl value').to.be.a('number');
+    if(isGateway()) {
+      expect(resp.data.ttl, 'Should contain ttl value').to.be.a('number');
+    }
 
     keyId = resp.data.key;
-    await wait(isHybrid ? hybridWaitTime : waitTime); // eslint-disable-line no-restricted-syntax
+    await waitForConfigRebuild()
   });
 
   it('should not proxy request without supplying apiKey', async function () {
@@ -149,43 +157,47 @@ describe('@smoke: Gateway Plugins: key-auth', function () {
     logResponse(resp);
 
     expect(resp.status, 'Status should be 200').to.equal(200);
-    await wait(isHybrid ? hybridWaitTime : waitTime); // eslint-disable-line no-restricted-syntax
+    await waitForConfigRebuild()
   });
 
-  // This test case captures:
-  // https://konghq.atlassian.net/browse/FTI-4512
-  it('should not proxy request with apiKey in header after ttl expiration', async function () {
-    const validTokenHeaders = {
-      api_key: keyId,
-    };
-    const resp = await getNegative(`${proxyUrl}${path}`, validTokenHeaders);
-    logResponse(resp);
+  if(isGateway()) {
+    // This test case captures:
+    // https://konghq.atlassian.net/browse/FTI-4512
+    it('should not proxy request with apiKey in header after ttl expiration', async function () {
+      const validTokenHeaders = {
+        api_key: keyId,
+      };
+      const resp = await getNegative(`${proxyUrl}${path}`, validTokenHeaders);
+      logResponse(resp);
 
-    expect(resp.status, 'Status should be 401').to.equal(401);
-    expect(resp.data.message, 'Should indicate invalid credentials').to.equal(
-      'Unauthorized'
-    );
-  });
+      expect(resp.status, 'Status should be 401').to.equal(401);
+      expect(resp.data.message, 'Should indicate invalid credentials').to.equal(
+        'Unauthorized'
+      );
+    });
 
-  // This test case captures:
-  // https://konghq.atlassian.net/browse/FTI-4512
-  it('should not proxy request with apiKey in query param after ttl expiration', async function () {
-    const queryUrl = `${proxyUrl}${path}?api_key=${keyId}`;
+    // This test case captures:
+    // https://konghq.atlassian.net/browse/FTI-4512
+    it('should not proxy request with apiKey in query param after ttl expiration', async function () {
+      const queryUrl = `${proxyUrl}${path}?api_key=${keyId}`;
 
-    const resp = await getNegative(`${queryUrl}`);
-    logResponse(resp);
+      const resp = await getNegative(`${queryUrl}`);
+      logResponse(resp);
 
-    expect(resp.status, 'Status should be 401').to.equal(401);
-    expect(resp.data.message, 'Should indicate invalid credentials').to.equal(
-      'Unauthorized'
-    );
-  });
+      expect(resp.status, 'Status should be 401').to.equal(401);
+      expect(resp.data.message, 'Should indicate invalid credentials').to.equal(
+        'Unauthorized'
+      );
+    });
+  }
 
-  it('should patch key-auth plugin to disable auth and allow requests', async function () {
+  it('should update key-auth plugin to disable auth and allow requests', async function () {
+    // *** KOKO DOES NOT PATCH PLUGIN ***
     const resp = await axios({
-      method: 'patch',
+      method: isKoko() ? 'put' : 'patch',
       url: `${url}/plugins/${pluginId}`,
       data: {
+        name: 'key-auth',
         enabled: false,
       },
     });
@@ -193,14 +205,17 @@ describe('@smoke: Gateway Plugins: key-auth', function () {
 
     expect(resp.status, 'Status should be 200').to.equal(200);
     expect(resp.data.enabled, 'Should be false').to.be.false;
-    await wait(isHybrid ? hybridWaitTime : waitTime); // eslint-disable-line no-restricted-syntax
   });
 
   it('should proxy request without supplying apiKey after disabling plugin', async function () {
-    const resp = await getNegative(`${proxyUrl}${path}`);
-    logResponse(resp);
+    const req = () => getNegative(`${proxyUrl}${path}`);
 
-    expect(resp.status, 'Status should be 200').to.equal(200);
+    const assertionsSuccess = (resp) => {
+      logResponse(resp)
+      expect(resp.status, 'Status should be 200').to.equal(200);
+    }
+
+    await retryRequest(req, assertionsSuccess)
   });
 
   it('should delete the key-auth plugin', async function () {

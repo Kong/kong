@@ -10,8 +10,13 @@ The `spec-ee/kong-api-tests` is aimed to be used to create and execute Kong Gate
 
 1. Navigate to `spec-ee/kong-api-tests`
 2. Install `node` & `npm` (you can also use [nvm](https://github.com/nvm-sh/nvm)) (minimum node.js version `v16.x.x`)
-3. Run `npm install`
+3. Access private NPM packages
+   - Copy `.npmrc.ci` file contents into `.npmrc`
+     - `cp .npmrc.ci .npmrc`
+   - Export the `NPM_TOKEN` in your terminal
+     - `export NPM_TOKEN=`[NPM Read Token](https://start.1password.com/open/i?a=KJVYOL2OTVGRPAAAHEVOL6MXZE&h=team-kong.1password.com&i=ss3ux3i3brfsruiarhhugzlqqm&v=q7r4hh4465zentymwtoonxxp3m)
 4. For formatting/linting, run `npm run format` and then `npm run lint`
+5. Install the dependency packages with the following command `npm install --legacy-peer-deps`
 
 ## Gateway
 
@@ -20,16 +25,15 @@ The `spec-ee/kong-api-tests` is aimed to be used to create and execute Kong Gate
 We use [gateway-docker-compose-generator](https://github.com/Kong/gateway-docker-compose-generator) to deploy gateway for API tests.\
 In CI, the gateway starts `without enterprise license`. The license is being posted via API at the runtime before all tests to allow us to have more control over the license.
 
-### Verbose Response Logging
-
-`export VERBOSE_RESPONSE_LOGS=false` to disable response logging (default is `true`).
-
-
 ### Env File
 
 Create a `.env` file in the root directory.
 
 Copy from the [.env.example](https://github.com/Kong/kong-api-tests/blob/contrib/readme-update/.env.example.gateway) file.
+
+Add the following gateway specific environment variable to your `.env` file.
+
+TEST_APP=gateway
 
 **Environment Secrets**
 
@@ -98,6 +102,10 @@ The default Gateway mode is `classic`. If you want to run tests against `hybrid`
 GW_MODE=hybrid
 ```
 
+### Verbose Response Logging
+
+`export VERBOSE_RESPONSE_LOGS=false` to disable response logging (default is `true`).
+
 **Execute Gateway API Test Suites**
 
 - All existing gateway test
@@ -129,3 +137,29 @@ understand that api tests should run against natively installed kong (download k
 After this, you can run the tests as mentioned above.
 
 Refer to [How to run API smoke tests](https://konghq.atlassian.net/wiki/spaces/FTT/pages/3072917606/Running+smoke+tests+on+released+artifacts) to learn about running the tests in GH Actions.
+
+
+## Koko & Konnect
+
+### Env File
+
+Add the following konnect specific environment variables to your `.env` file.
+
+1. TEST_APP=koko
+2. TEST_ENV=dev
+3. KONNECT_USER_PASSWORD=[KONNECT_USER_PASSWORD](https://start.1password.com/open/i?a=KJVYOL2OTVGRPAAAHEVOL6MXZE&v=q7r4hh4465zentymwtoonxxp3m&i=vag6ska5nafl3u7rlxy26wobge&h=team-kong.1password.com)
+4. KONNECT_DP_IMAGE=`yourTargetDockerImage` - optional, default is kong/kong-gateway-dev:nightly-ubuntu
+
+**Execute Konnect Tests**
+
+- All existing tests
+
+```bash
+npm run test-koko
+```
+- A single test
+
+```bash
+# for example if you want to run 'service.spec.ts' tests
+npm run test-spec --spec=service
+```

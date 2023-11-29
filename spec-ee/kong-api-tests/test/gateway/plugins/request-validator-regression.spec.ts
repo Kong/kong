@@ -18,6 +18,7 @@ import {
   wait,
   logResponse,
   waitForConfigRebuild,
+  isGateway
 } from '@support';
 
 describe('Gateway Plugins: Request Validator Regression Tests', function () {
@@ -32,7 +33,7 @@ describe('Gateway Plugins: Request Validator Regression Tests', function () {
   const url = `${getBasePath({
     environment: Environment.gateway.admin,
   })}/plugins`;
-  const proxyUrl = getBasePath({ environment: Environment.gateway.proxy });
+  const proxyUrl = getBasePath({ environment: isGateway() ? Environment.gateway.proxy : undefined });
 
   let basePayload: any;
   let pluginId: string;

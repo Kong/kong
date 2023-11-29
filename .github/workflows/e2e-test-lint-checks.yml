@@ -4,16 +4,24 @@ on:
     paths:
       - 'spec-ee/kong-api-tests/**/*.[tj]s'
 
+env:
+  NPM_TOKEN: ${{ secrets.NPM_TOKEN_PRIVATE_READ }}
+
 jobs:
   run-tests:
     name: end-to-end test lint checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
+      - name: Copy .npmrc
+        run: cp .npmrc.ci .npmrc
+        working-directory: spec-ee/kong-api-tests
+
       - uses: actions/setup-node@v4
         with:
           node-version: 18
-      - run: npm ci
+      - run: npm ci --legacy-peer-deps 
         working-directory: spec-ee/kong-api-tests
       - run: npm run lint
         working-directory: spec-ee/kong-api-tests
