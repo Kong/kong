@@ -1,7 +1,6 @@
 local require = require
 
 
-local kong_meta = require "kong.meta"
 local kong_default_conf = require "kong.templates.kong_defaults"
 local process_secrets = require "kong.cmd.utils.process_secrets"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
@@ -88,6 +87,7 @@ local TYP_CHECKS = conf_constants.TYP_CHECKS
 local HEADERS = conf_constants.HEADERS
 local BUNDLED_VAULTS = conf_constants.BUNDLED_VAULTS
 local BUNDLED_PLUGINS = conf_constants.BUNDLED_PLUGINS
+local LMDB_VALIDATION_TAG = = conf_constants.LMDB_VALIDATION_TAG
 
 
 local _nop_tostring_mt = conf_constants._NOP_TOSTRING_MT
@@ -103,12 +103,6 @@ local function is_predefined_dhgroup(group)
     group = group,
   })
 end
-
-
--- using kong version, "major.minor"
-local LMDB_VALIDATION_TAG = string.format("%d.%d",
-                                          kong_meta._VERSION_TABLE.major,
-                                          kong_meta._VERSION_TABLE.minor)
 
 
 local function parse_value(value, typ)
