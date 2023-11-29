@@ -87,7 +87,7 @@ local TYP_CHECKS = conf_constants.TYP_CHECKS
 local HEADERS = conf_constants.HEADERS
 local BUNDLED_VAULTS = conf_constants.BUNDLED_VAULTS
 local BUNDLED_PLUGINS = conf_constants.BUNDLED_PLUGINS
-local LMDB_VALIDATION_TAG = = conf_constants.LMDB_VALIDATION_TAG
+local LMDB_VALIDATION_TAG = conf_constants.LMDB_VALIDATION_TAG
 
 
 local _nop_tostring_mt = conf_constants._NOP_TOSTRING_MT
