@@ -263,8 +263,9 @@ for _, strategy in helpers.all_strategies() do
               -- this is the default
               "openid",
             },
-            -- token expiry is 600 seconds.
-            leeway = 599,
+            -- token expiry is 600 seconds
+            -- so we have 2 seconds of token validity
+            leeway = 598,
             client_id = {
               KONG_CLIENT_ID,
             },
@@ -1680,7 +1681,8 @@ for _, strategy in helpers.all_strategies() do
           assert.is_nil(set_cookie)
 
           -- wait until token is expired (according to leeway)
-          ngx.sleep(2)
+          -- we sleep for exp - leeway + 1 = 3 seconds
+          ngx.sleep(3)
           local res1 = proxy_client:get("/leeway-refresh", {
             headers = {
               Cookie = lw_user_session_header_table,
@@ -1695,7 +1697,7 @@ for _, strategy in helpers.all_strategies() do
           -- prove that we received a new session
           assert.not_same(new_session_cookie, lw_user_session_header_table)
 
-          -- use new session
+          -- we have 2 seconds here to use the new session
           local res2 = proxy_client:get("/leeway-refresh", {
             headers = {
               Cookie = new_session_cookie
