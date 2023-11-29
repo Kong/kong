@@ -72,12 +72,6 @@ ffi.cdef([[
 ]])
 
 
-local HEADERS = conf_constants.HEADERS
-
-
-local _nop_tostring_mt = conf_constants._NOP_TOSTRING_MT
-
-
 local function is_predefined_dhgroup(group)
   if type(group) ~= "string" then
     return false
@@ -1268,7 +1262,7 @@ local function load(path, custom_conf, opts)
       end
     end
 
-    loaded_vaults = setmetatable(vaults, _nop_tostring_mt)
+    loaded_vaults = setmetatable(vaults, conf_constants._NOP_TOSTRING_MT)
 
     if get_phase() == "init" then
       local secrets = getenv("KONG_PROCESS_SECRETS")
@@ -1297,7 +1291,7 @@ local function load(path, custom_conf, opts)
           if refs then
             refs[k] = v
           else
-            refs = setmetatable({ [k] = v }, _nop_tostring_mt)
+            refs = setmetatable({ [k] = v }, conf_constants._NOP_TOSTRING_MT)
           end
 
           conf[k] = deref
@@ -1320,7 +1314,7 @@ local function load(path, custom_conf, opts)
           if refs then
             refs[k] = v
           else
-            refs = setmetatable({ [k] = v }, _nop_tostring_mt)
+            refs = setmetatable({ [k] = v }, conf_constants._NOP_TOSTRING_MT)
           end
 
           local deref, deref_err = vault.get(v)
@@ -1421,7 +1415,7 @@ local function load(path, custom_conf, opts)
   -- Wasm module support
   if conf.wasm then
     local wasm_filters = get_wasm_filters(conf.wasm_filters_path)
-    conf.wasm_modules_parsed = setmetatable(wasm_filters, _nop_tostring_mt)
+    conf.wasm_modules_parsed = setmetatable(wasm_filters, conf_constants._NOP_TOSTRING_MT)
 
     local function add_wasm_directive(directive, value, prefix)
       local directive_name = (prefix or "") .. directive
@@ -1478,7 +1472,7 @@ local function load(path, custom_conf, opts)
         local directives = parse_nginx_directives(dyn_namespace, conf,
           injected_in_namespace)
         conf[dyn_namespace.injected_conf_name] = setmetatable(directives,
-          _nop_tostring_mt)
+          conf_constants._NOP_TOSTRING_MT)
       end
     end
 
@@ -1532,7 +1526,7 @@ local function load(path, custom_conf, opts)
       end
     end
 
-    conf.loaded_plugins = setmetatable(plugins, _nop_tostring_mt)
+    conf.loaded_plugins = setmetatable(plugins, conf_constants._NOP_TOSTRING_MT)
   end
 
   -- temporary workaround: inject an shm for prometheus plugin if needed
@@ -1616,18 +1610,18 @@ local function load(path, custom_conf, opts)
     end
 
     if enabled_headers.server_tokens then
-      enabled_headers[HEADERS.VIA] = true
-      enabled_headers[HEADERS.SERVER] = true
+      enabled_headers[conf_constants.HEADERS.VIA] = true
+      enabled_headers[conf_constants.HEADERS.SERVER] = true
     end
 
     if enabled_headers.latency_tokens then
-      enabled_headers[HEADERS.PROXY_LATENCY] = true
-      enabled_headers[HEADERS.RESPONSE_LATENCY] = true
-      enabled_headers[HEADERS.ADMIN_LATENCY] = true
-      enabled_headers[HEADERS.UPSTREAM_LATENCY] = true
+      enabled_headers[conf_constants.HEADERS.PROXY_LATENCY] = true
+      enabled_headers[conf_constants.HEADERS.RESPONSE_LATENCY] = true
+      enabled_headers[conf_constants.HEADERS.ADMIN_LATENCY] = true
+      enabled_headers[conf_constants.HEADERS.UPSTREAM_LATENCY] = true
     end
 
-    conf.enabled_headers = setmetatable(enabled_headers, _nop_tostring_mt)
+    conf.enabled_headers = setmetatable(enabled_headers, conf_constants._NOP_TOSTRING_MT)
 
 
     -- (upstream)
@@ -1644,7 +1638,7 @@ local function load(path, custom_conf, opts)
       end
     end
 
-    conf.enabled_headers_upstream = setmetatable(enabled_headers_upstream, _nop_tostring_mt)
+    conf.enabled_headers_upstream = setmetatable(enabled_headers_upstream, conf_constants._NOP_TOSTRING_MT)
   end
 
   for _, prefix in ipairs({ "ssl", "admin_ssl", "admin_gui_ssl", "status_ssl", "client_ssl", "cluster" }) do
