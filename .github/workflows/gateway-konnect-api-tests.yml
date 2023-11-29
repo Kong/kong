@@ -1,4 +1,4 @@
-name: konnect-api-tests
+name: gateway-konnect-api-tests
 
 on:
   workflow_dispatch:
@@ -72,7 +72,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gateway_mode: ['classic', 'hybrid']
+        gateway_mode: ['hybrid']
         runs_on: ["${{ vars.RUNS_ON }}", "${{ fromJSON(inputs.multiarch && '[\"ubuntu-22.04-arm64\"]' || '[]') }}" ]
     name: ${{ inputs.target_test }} API test - ${{ inputs.target_mode }} ${{ matrix.gateway_mode }} mode on ${{ matrix.runs_on }} for ${{ inputs.data_plane_image }}
 
