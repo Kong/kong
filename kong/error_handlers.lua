@@ -59,6 +59,10 @@ return function(ctx)
   local status = kong.response.get_status()
   local message = get_body(status)
 
+  if status == 494 then
+    status = 400
+  end
+
   local headers
   if find(accept_header, TYPE_GRPC, nil, true) == 1 then
     message = { message = message }
