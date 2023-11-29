@@ -62,6 +62,8 @@ jobs:
       gh-release-name: ${{ steps.build-info.outputs.gh-release-name }}
       gh-release-tag-name: ${{ steps.build-info.outputs.gh-release-tag-name }}
       release-runs-on: ${{ steps.build-info.outputs.release-runs-on }}
+      # use github.event.pull_request.head.sha instead of github.sha on a PR, as github.sha on PR is the merged commit (temporary commit)
+      commit-sha: ${{ github.event.pull_request.head.sha || github.sha }}
 
     steps:
     - uses: actions/checkout@v3
@@ -406,12 +408,14 @@ jobs:
     - name: Docker meta
       id: meta
       uses: docker/metadata-action@v5
+      env:
+        DOCKER_METADATA_PR_HEAD_SHA: true
       with:
         images: ${{ env.PRERELEASE_DOCKER_REPOSITORY }}
         sep-tags: ","
         tags: |
-          type=raw,${{ github.sha }}-${{ matrix.label }}
-          type=raw,enable=${{ matrix.label == 'ubuntu' }},${{ github.sha }}
+          type=raw,${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
+          type=raw,enable=${{ matrix.label == 'ubuntu' }},${{ needs.metadata.outputs.commit-sha }}
 
     - name: Set up QEMU
       if: matrix.docker-platforms != ''
@@ -443,6 +447,7 @@ jobs:
         build-args: |
           KONG_BASE_IMAGE=${{ matrix.base-image }}
           KONG_ARTIFACT_PATH=bazel-bin/pkg/
+          KONG_VERSION=${{ needs.metadata.outputs.kong-version }}
           PACKAGE_DISTRO=${{ matrix.package-distro }}
           EE_PORTS=8002 8445 8003 8446 8004 8447
 
@@ -497,7 +502,7 @@ jobs:
         token: ${{ secrets.GHA_COMMENT_TOKEN }}
         body: |
           ### Bazel Build
-          Docker image available `${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}`
+          Docker image available `${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ needs.metadata.outputs.commit-sha }}`
           Artifacts available https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
   verify-manifest-images:
@@ -526,7 +531,7 @@ jobs:
         # docker image verify requires sudo to set correct permissions, so we
         # also install deps for root
         sudo -E pip install -r requirements.txt
-        IMAGE=${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}-${{ matrix.label }}
+        IMAGE=${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
 
         sudo -E python ./main.py --image $IMAGE -f docker_image_filelist.txt -s docker-image
 
@@ -543,6 +548,7 @@ jobs:
       fail-fast: false
       matrix:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-images'] }}"
+
     steps:
     - name: Install regctl
       uses: regclient/actions/regctl-installer@main
@@ -557,7 +563,7 @@ jobs:
     - name: Parse Architecture Specific Image Manifest Digests
       id: image_manifest_metadata
       run: |
-        IMAGE=${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}-${{ matrix.label }}
+        IMAGE=${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
 
         archs="${{ matrix.docker-platforms }}"
         if [[ -z "$archs" ]]; then
@@ -578,7 +584,7 @@ jobs:
       uses: Kong/public-shared-actions/security-actions/scan-docker-image@v1.13.0
       with:
         asset_prefix: kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-amd64
-        image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}
+        image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
 
     - name: Scan ARM64 Image digest
       if: ${{ steps.image_manifest_metadata.outputs.arm64_image_sha != '' }}
@@ -586,7 +592,7 @@ jobs:
       uses: Kong/public-shared-actions/security-actions/scan-docker-image@v1.13.0
       with:
         asset_prefix: kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-arm64
-        image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}
+        image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
 
     - name: Upload SBOM assets
       # ensure that this does not run twice (once for the scheduled job,
@@ -657,7 +663,7 @@ jobs:
           --restart always \
           --network=host -d \
           --pull always \
-          ${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}-${{ matrix.label }} \
+          ${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }} \
           sh -c "kong migrations bootstrap && kong start"
         sleep 3
         docker logs kong
@@ -711,7 +717,7 @@ jobs:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-images'] }}"
     uses: ./.github/workflows/gateway-api-tests.yml
     with:
-      control_plane_image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}
+      control_plane_image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
       gateway_version: ${{ needs.metadata.outputs.kong-version }}
       multiarch: ${{ matrix.docker-platforms != '' && true || false }}
       target_test: smoke
@@ -730,7 +736,7 @@ jobs:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-images'] }}"
     uses: ./.github/workflows/gateway-api-tests.yml
     with:
-      control_plane_image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}
+      control_plane_image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
       gateway_version: ${{ needs.metadata.outputs.kong-version }}
       multiarch: ${{ matrix.docker-platforms != '' && true || false }}
       target_test: non-smoke
@@ -878,7 +884,7 @@ jobs:
       env:
         TAGS: "${{ steps.meta.outputs.tags }}"
       run: |
-        PRERELEASE_IMAGE=${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}-${{ matrix.label }}
+        PRERELEASE_IMAGE=${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
 
         prerelease_image_digest="$(regctl image digest "${PRERELEASE_IMAGE}")"
         echo "prerelease_image_digest=$prerelease_image_digest" >> $GITHUB_OUTPUT
