@@ -1,0 +1,59 @@
+name: Notify Slack user on workflow failure
+
+on:
+  workflow_run:
+    workflows: ["Package & Smoke Test", "Build & Test"]
+    types:
+      - completed
+    branches:
+      - master
+      - release/*
+      - next/*
+
+jobs:
+  notify_failure:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.event != 'schedule' }}
+    steps:
+    - name: Fetch mapping file
+      id: fetch_mapping
+      uses: actions/github-script@v6
+      env:
+        ACCESS_TOKEN: ${{ secrets.PAT }}
+      with:
+        script: |
+          const url = 'https://raw.githubusercontent.com/Kong/github-slack-mapping/main/mapping.json';
+          const headers = {Authorization: `token ${process.env.ACCESS_TOKEN}`};
+          const response = await fetch(url, {headers});
+          const mapping = await response.json();
+          return mapping;
+
+    - name: Generate Slack Payload
+      id: generate-payload
+      env:
+        SLACK_CHANNEL: gateway-notifications
+        SLACK_MAPPING: "${{ steps.fetch_mapping.outputs.result }}"
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const workflow_name = "${{ github.event.workflow_run.name }}";
+          const repo_name = "${{ github.event.workflow_run.repository.full_name }}";
+          const branch_name = "${{ github.event.workflow_run.head_branch }}";
+          const run_url = "${{ github.event.workflow_run.html_url }}";
+          const slack_mapping = JSON.parse(process.env.SLACK_MAPPING);
+          const actor_github_id = "${{ github.event.workflow_run.actor.login }}";
+          const actor_slack_id = slack_mapping[actor_github_id];
+          const actor = actor_slack_id ? `<@${actor_slack_id}>` : actor_github_id;
+          const payload = {
+            text: `Hello ${actor} , workflow “${workflow_name}” failed in repo: "${repo_name}", branch: "${branch_name}". Please check it: ${run_url}.`,
+            channel: process.env.SLACK_CHANNEL,
+          };
+          return JSON.stringify(payload);
+        result-encoding: string
+
+    - name: Send Slack Message
+      uses: slackapi/slack-github-action@e28cf165c92ffef168d23c5c9000cffc8a25e117 # v1.24.0
+      with:
+        payload: ${{ steps.generate-payload.outputs.result }}
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_GATEWAY_NOTIFICATIONS_WEBHOOK }}
