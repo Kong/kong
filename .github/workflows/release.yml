@@ -394,6 +394,7 @@ jobs:
         build-args: |
           KONG_BASE_IMAGE=${{ matrix.base-image }}
           KONG_ARTIFACT_PATH=bazel-bin/pkg/
+          KONG_VERSION=${{ needs.metadata.outputs.kong-version }}
           RPM_PLATFORM=${{ steps.docker_rpm_platform_arg.outputs.rpm_platform }}
           EE_PORTS=8002 8445 8003 8446 8004 8447
 
