@@ -765,8 +765,7 @@
                                  # client-side connections. The set of
                                  # supported protocol versions also depends
                                  # on the version of OpenSSL Kong was built
-                                 # with. This value is ignored if
-                                 # `ssl_cipher_suite` is not `custom`.
+                                 # with.
                                  #
                                  # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_protocols
 
