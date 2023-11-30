@@ -1,0 +1,3 @@
+message: "**OpenID-Connect**: update time when calculating token expire"
+type: bugfix
+scope: Plugin

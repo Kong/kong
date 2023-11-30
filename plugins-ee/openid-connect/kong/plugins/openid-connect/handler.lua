@@ -41,6 +41,7 @@ local kong            = kong
 local ngx             = ngx
 local var             = ngx.var
 local time            = ngx.time
+local update_time     = ngx.update_time
 local escape_uri      = ngx.escape_uri
 local tostring        = tostring
 local ipairs          = ipairs
@@ -978,6 +979,9 @@ function OICHandler.access(_, conf)
   local exp
   local ttl
   do
+    -- we are calculating the default exp, so accuracy counts.
+    update_time()
+
     local now = time()
 
     local ttl_default   = args.get_conf_arg("cache_ttl", 3600)

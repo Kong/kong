@@ -5,7 +5,7 @@ services:
     image: quay.io/keycloak/keycloak:${PONGO_KEYCLOAK_VERSION:-22.0}
     command:
       - >
-        start-dev 
+        start-dev
         --https-trust-store-file /tmp/truststore.jks
         --https-trust-store-password=password
         --https-client-auth=request

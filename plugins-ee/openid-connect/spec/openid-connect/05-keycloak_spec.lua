@@ -258,6 +258,7 @@ for _, strategy in helpers.all_strategies() do
           route   = leeway_refresh_route,
           name    = PLUGIN_NAME,
           config  = {
+            display_errors = true,
             issuer    = ISSUER_URL,
             scopes = {
               -- this is the default
@@ -1646,17 +1647,6 @@ for _, strategy in helpers.all_strategies() do
 
             redis_client_token_acl = sub(redisjson.headers.authorization, 8, -1)
           end
-
-          res = client:get("/leeway-refresh", {
-            headers = {
-              Authorization = PASSWORD_CREDENTIALS,
-            },
-          })
-          assert.response(res).has.status(200)
-          local leeway_cookies = res.headers["Set-Cookie"]
-          lw_user_session_header_table = extract_cookie(leeway_cookies)
-          client:close()
-
         end)
 
         it("refreshing a token that is not yet expired due to leeway", function()
@@ -1669,20 +1659,33 @@ for _, strategy in helpers.all_strategies() do
           -- also, we use single-use refresh tokens. That means we can't re-re-refresh
           -- but must pass if the token is still valid (due to possible concurrent requests)
           -- use newly received session-id and expect this to also work.
+          proxy_client = helpers.proxy_client()
+          local res0 = proxy_client:get("/leeway-refresh", {
+            headers = {
+              Authorization = PASSWORD_CREDENTIALS,
+            },
+          })
+          assert.response(res0).has.status(200)
+          local leeway_cookies = res0.headers["Set-Cookie"]
+          lw_user_session_header_table = extract_cookie(leeway_cookies)
+          proxy_client:close()
+
+          proxy_client = helpers.proxy_client()
           local res = proxy_client:get("/leeway-refresh", {
             headers = {
               Cookie = lw_user_session_header_table,
             },
           })
-
           assert.response(res).has.status(200)
           local set_cookie = res.headers["Set-Cookie"]
           -- we do not expect to receive a new `Set-Cookie` as the token is not yet expired
           assert.is_nil(set_cookie)
+          proxy_client:close()
 
           -- wait until token is expired (according to leeway)
           -- we sleep for exp - leeway + 1 = 3 seconds
           ngx.sleep(3)
+          proxy_client = helpers.proxy_client()
           local res1 = proxy_client:get("/leeway-refresh", {
             headers = {
               Cookie = lw_user_session_header_table,
@@ -1696,8 +1699,10 @@ for _, strategy in helpers.all_strategies() do
           assert.response(res1).has.status(200)
           -- prove that we received a new session
           assert.not_same(new_session_cookie, lw_user_session_header_table)
+          proxy_client:close()
 
           -- we have 2 seconds here to use the new session
+          proxy_client = helpers.proxy_client()
           local res2 = proxy_client:get("/leeway-refresh", {
             headers = {
               Cookie = new_session_cookie
@@ -1708,11 +1713,13 @@ for _, strategy in helpers.all_strategies() do
           local new_set_cookie = res2.headers["Set-Cookie"]
           -- we should not get a new cookie this time
           assert.is_nil(new_set_cookie)
+          proxy_client:close()
           -- after the configured accesss_token_lifetime, we should not be able to
           -- access the protected resource. adding tests for this would mean adding a long sleep
           -- which is undesirable for this test case.
 
           -- reuseing the old cookie should still work
+          proxy_client = helpers.proxy_client()
           local res3 = proxy_client:get("/leeway-refresh", {
             headers = {
               Cookie = lw_user_session_header_table,
@@ -1722,8 +1729,11 @@ for _, strategy in helpers.all_strategies() do
           local new_set_cookie_r2 = res3.headers["Set-Cookie"]
           -- we can still issue a new access_token -> expect a new cookie
           assert.is_not_nil(new_set_cookie_r2)
+          proxy_client:close()
+
           -- the refresh should fail (see logs) now due to single-use refresh_token policy
           -- but the request will proxy (without starting the session) but we do not get a new token
+          proxy_client = helpers.proxy_client()
           res = proxy_client:get("/leeway-refresh", {
             headers = {
               Cookie = lw_user_session_header_table,
@@ -1733,7 +1743,7 @@ for _, strategy in helpers.all_strategies() do
           local new_set_cookie1 = res.headers["Set-Cookie"]
           -- we should not get a new cookie this time
           assert.is_nil(new_set_cookie1)
-
+          proxy_client:close()
         end)
 
         it("is not allowed with invalid session", function()
