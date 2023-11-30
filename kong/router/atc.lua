@@ -54,6 +54,10 @@ local is_http = ngx.config.subsystem == "http"
 local values_buf = buffer.new(64)
 
 
+local HTTP_HEADERS_PREFIX = "http.headers."
+local HTTP_QUERIES_PREFIX = "http.queries."
+
+
 local CACHED_SCHEMA
 local HTTP_SCHEMA
 local STREAM_SCHEMA
@@ -194,17 +198,17 @@ local function categorize_fields(fields)
   for _, field in ipairs(fields) do
     local prefix = field:sub(1, PREFIX_LEN)
 
-    if prefix == "http.headers." then
-      if not basic["http.headers.*"] then
-        basic["http.headers.*"] = {}
+    if prefix == HTTP_HEADERS_PREFIX then
+      if not basic[HTTP_HEADERS_PREFIX] then
+        basic[HTTP_HEADERS_PREFIX] = {}
       end
-      table.insert(basic["http.headers.*"], field:sub(PREFIX_LEN + 1))
+      table.insert(basic[HTTP_HEADERS_PREFIX], field:sub(PREFIX_LEN + 1))
 
-    elseif prefix == "http.queries." then
-      if not basic["http.queries.*"] then
-        basic["http.queries.*"] = {}
+    elseif prefix == HTTP_QUERIES_PREFIX then
+      if not basic[HTTP_QUERIES_PREFIX] then
+        basic[HTTP_QUERIES_PREFIX] = {}
       end
-      table.insert(basic["http.queries.*"], field:sub(PREFIX_LEN + 1))
+      table.insert(basic[HTTP_QUERIES_PREFIX], field:sub(PREFIX_LEN + 1))
 
     else
       basic[field] = true
@@ -470,14 +474,14 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
         return nil, err
       end
 
-    elseif field == "http.headers.*" then
+    elseif field == HTTP_HEADERS_PREFIX then
       if not req_headers then
         value = {}  -- ignore fields
       end
 
       for _, h in ipairs(value) do
         local v = req_headers[h]
-        local f = "http.headers." .. h
+        local f = HTTP_HEADERS_PREFIX .. h
 
         if type(v) == "string" then
           local res, err = c:add_value(f, v)
@@ -495,14 +499,14 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
         end -- if type(v)
       end
 
-    elseif field == "http.queries.*" then
+    elseif field == HTTP_QUERIES_PREFIX then
       if not req_queries then
         value = {}  -- ignore fields
       end
 
       for _, n in ipairs(value) do
         local v = req_queries[n]
-        local f = "http.queries." .. n
+        local f = HTTP_QUERIES_PREFIX .. n
 
         -- the query parameter has only one value, like /?foo=bar
         if type(v) == "string" then
@@ -645,7 +649,7 @@ do
       end,
     },
     {
-      "http.headers.*",
+      "http.headers.",
       function(field, ctx)
         local headers = ctx.headers
         if not headers then
@@ -664,7 +668,7 @@ do
       end,
     },
     {
-      "http.queries.*",
+      "http.queries.",
       function(field, ctx)
         local queries = ctx.queries
         if not queries then
@@ -714,7 +718,7 @@ function _M:exec(ctx)
   local sni = server_name()
 
   local headers, headers_key
-  if not is_empty_field(self.fields["http.headers.*"]) then
+  if not is_empty_field(self.fields[HTTP_HEADERS_PREFIX]) then
     headers = get_http_params(get_headers, "headers", "lua_max_req_headers")
 
     headers["host"] = nil
@@ -723,7 +727,7 @@ function _M:exec(ctx)
   end
 
   local queries, queries_key
-  if not is_empty_field(self.fields["http.queries.*"]) then
+  if not is_empty_field(self.fields[HTTP_QUERIES_PREFIX]) then
     queries = get_http_params(get_uri_args, "queries", "lua_max_uri_args")
 
     queries_key = get_queries_key(queries)
