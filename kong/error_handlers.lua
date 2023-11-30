@@ -59,6 +59,9 @@ return function(ctx)
   local status = kong.response.get_status()
   local message = get_body(status)
 
+  -- Nginx 494 status code is used internally when the client sends
+  -- too large or invalid HTTP headers. Kong is obliged to convert
+  -- it back to `400 Bad Request`.
   if status == 494 then
     status = 400
   end
