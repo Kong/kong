@@ -1,0 +1,3 @@
+message: "**OAS-Validation**: Fixed an issue that the nullable keyword did not take effect."
+type: bugfix
+scope: Plugin

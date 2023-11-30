@@ -62,4 +62,20 @@ function _M.retrieve_operation(spec, path, method)
   end
 end
 
+function _M.traverse(object, property_name, callback)
+  if type(object) ~= "table" then
+    return
+  end
+
+  for key, value in pairs(object) do
+    if key == property_name then
+      callback(key, value, object)
+    end
+
+    if type(value) == "table" then
+      _M.traverse(value, property_name, callback)
+    end
+  end
+end
+
 return _M

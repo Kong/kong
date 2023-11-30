@@ -456,6 +456,17 @@ local function parse_spec(conf)
     if err then
       return nil, err
     end
+
+    -- converting nullable keyword
+    utils.traverse(spec, "nullable", function(key, value, parent)
+      if value == true then
+        local t = parent["type"]
+        if type(t) == "string" then
+          parent["type"] = { t, "null" } -- inject "null"
+        end
+      end
+    end)
+
     parsed_spec = spec.spec
     spec_cache:set(spec_cache_key, parsed_spec)
   end

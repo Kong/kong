@@ -1,0 +1,55 @@
+openapi: 3.0.1
+info:
+  title: A OpenAPI spec
+  description: A OpenAPI spec for multiple test cases
+  version: 1.0.0
+
+paths:
+
+  /nullable/properties:
+    post:
+      requestBody:
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/NullablePropertiesObject'
+        required: true
+      responses:
+        200:
+          description: OK
+          content: {}
+
+  /nullable/object:
+    post:
+      requestBody:
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/NullableObject'
+        required: true
+      responses:
+        200:
+          description: OK
+          content: {}
+
+components:
+  schemas:
+    NullablePropertiesObject:
+      type: object
+      properties:
+        string_nullable:
+          type: string
+          nullable: true
+        integer_nullable:
+          type: integer
+          nullable: true
+        boolean_nullable:
+          type: boolean
+          nullable: true
+        object_nullable:
+          type: object
+          nullable: true
+    NullableObject:
+      type: object
+      nullable: true
+
