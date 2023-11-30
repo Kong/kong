@@ -186,10 +186,6 @@ end
 
 local function categorize_fields(fields)
 
-  if not is_http then
-    return fields, nil, nil
-  end
-
   local basic = {}
 
   -- 13 bytes, same len for "http.queries."
@@ -718,7 +714,7 @@ function _M:exec(ctx)
   local sni = server_name()
 
   local headers, headers_key
-  if not is_empty_field(self.header_fields) then
+  if not is_empty_field(self.fields["http.headers.*"]) then
     headers = get_http_params(get_headers, "headers", "lua_max_req_headers")
 
     headers["host"] = nil
@@ -727,7 +723,7 @@ function _M:exec(ctx)
   end
 
   local queries, queries_key
-  if not is_empty_field(self.query_fields) then
+  if not is_empty_field(self.fields["http.queries.*"]) then
     queries = get_http_params(get_uri_args, "queries", "lua_max_uri_args")
 
     queries_key = get_queries_key(queries)
