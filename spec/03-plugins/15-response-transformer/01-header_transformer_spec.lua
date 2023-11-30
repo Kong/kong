@@ -20,7 +20,7 @@ describe("Plugin: response-transformer", function()
   local header_transformer
 
   setup(function()
-    print("1")
+
     _G.ngx = {
       headers_sent = false,
       resp = {
@@ -32,7 +32,6 @@ describe("Plugin: response-transformer", function()
         KONG_PHASE = 0x00000200,
       },
     }
-    print("2")
 
     _G.ngx.DEBUG = 8
     _G.ngx.INFO = 7
