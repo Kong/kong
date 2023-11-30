@@ -191,8 +191,6 @@ local function categorize_fields(fields)
   end
 
   local basic = {}
-  local headers = {}
-  local queries = {}
 
   -- 13 bytes, same len for "http.queries."
   local PREFIX_LEN = 13 -- #"http.headers."
@@ -201,17 +199,23 @@ local function categorize_fields(fields)
     local prefix = field:sub(1, PREFIX_LEN)
 
     if prefix == "http.headers." then
-      headers[field:sub(PREFIX_LEN + 1)] = field
+      if not basic["http.headers.*"] then
+        basic["http.headers.*"] = {}
+      end
+      table.insert(basic["http.headers.*"], field:sub(PREFIX_LEN + 1))
 
     elseif prefix == "http.queries." then
-      queries[field:sub(PREFIX_LEN + 1)] = field
+      if not basic["http.queries.*"] then
+        basic["http.queries.*"] = {}
+      end
+      table.insert(basic["http.queries.*"], field:sub(PREFIX_LEN + 1))
 
     else
-      table.insert(basic, field)
+      basic[field] = true
     end
   end
 
-  return basic, headers, queries
+  return basic
 end
 
 
@@ -253,7 +257,7 @@ local function new_from_scratch(routes, get_exp_and_priority)
     yield(true, phase)
   end
 
-  local fields, header_fields, query_fields = categorize_fields(inst:get_fields())
+  local fields = categorize_fields(inst:get_fields())
 
   return setmetatable({
       schema = CACHED_SCHEMA,
@@ -261,8 +265,6 @@ local function new_from_scratch(routes, get_exp_and_priority)
       routes = routes_t,
       services = services_t,
       fields = fields,
-      header_fields = header_fields,
-      query_fields = query_fields,
       updated_at = new_updated_at,
       rebuilding = false,
     }, _MT)
@@ -344,11 +346,9 @@ local function new_from_previous(routes, get_exp_and_priority, old_router)
     yield(true, phase)
   end
 
-  local fields, header_fields, query_fields = categorize_fields(inst:get_fields())
+  local fields = categorize_fields(inst:get_fields())
 
   old_router.fields = fields
-  old_router.header_fields = header_fields
-  old_router.query_fields = query_fields
   old_router.updated_at = new_updated_at
   old_router.rebuilding = false
 
@@ -446,7 +446,7 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 
   local host, port = split_host_port(req_host)
 
-  for _, field in ipairs(self.fields) do
+  for field, value in pairs(self.fields) do
     if field == "http.method" then
       assert(c:add_value(field, req_method))
 
@@ -474,6 +474,68 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
         return nil, err
       end
 
+    elseif field == "http.headers.*" then
+      if not req_headers then
+        value = {}  -- ignore fields
+      end
+
+      for _, h in ipairs(value) do
+        local v = req_headers[h]
+        local f = "http.headers." .. h
+
+        if type(v) == "string" then
+          local res, err = c:add_value(f, v)
+          if not res then
+            return nil, err
+          end
+
+        elseif type(v) == "table" then
+          for _, v in ipairs(v) do
+            local res, err = c:add_value(f, v)
+            if not res then
+              return nil, err
+            end
+          end
+        end -- if type(v)
+      end
+
+    elseif field == "http.queries.*" then
+      if not req_queries then
+        value = {}  -- ignore fields
+      end
+
+      for _, n in ipairs(value) do
+        local v = req_queries[n]
+        local f = "http.queries." .. n
+
+        -- the query parameter has only one value, like /?foo=bar
+        if type(v) == "string" then
+          local res, err = c:add_value(f, v)
+          if not res then
+            return nil, err
+          end
+
+        -- the query parameter has no value, like /?foo,
+        -- get_uri_arg will get a boolean `true`
+        -- we think it is equivalent to /?foo=
+        elseif type(v) == "boolean" then
+          local res, err = c:add_value(f, "")
+          if not res then
+            return nil, err
+          end
+
+        -- multiple values for a single query parameter, like /?foo=bar&foo=baz
+        elseif type(v) == "table" then
+          for _, v in ipairs(v) do
+            local res, err = c:add_value(f, v)
+            if not res then
+              return nil, err
+            end
+          end
+        end -- if type(v)
+
+      end
+
     else  -- unknown field
       error("unknown router matching schema field: " .. field)
 
@@ -481,30 +543,6 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 
   end   -- for self.fields
 
-  if req_headers then
-    for h, field in pairs(self.header_fields) do
-
-      local v = req_headers[h]
-
-      if type(v) == "string" then
-        local res, err = c:add_value(field, v)
-        if not res then
-          return nil, err
-        end
-
-      elseif type(v) == "table" then
-        for _, v in ipairs(v) do
-          local res, err = c:add_value(field, v)
-          if not res then
-            return nil, err
-          end
-        end
-      end -- if type(v)
-
-      -- if v is nil or others, ignore
-
-    end   -- for self.header_fields
-  end   -- req_headers
 
   if req_queries then
     for n, field in pairs(self.query_fields) do
@@ -619,6 +657,72 @@ do
   get_queries_key = function(queries)
     return get_headers_or_queries_key(queries)
   end
+
+
+  local cache_key_funcs = {
+    {
+      "http.method",
+      function(field, ctx)
+        return get_method()
+      end,
+    },
+    {
+      "http.path",
+      function(field, ctx)
+        return strip_uri_args(ctx and ctx.request_uri or var.request_uri)
+      end,
+    },
+    {
+      "http.host",
+      function(field, ctx)
+        return var.http_host
+      end,
+    },
+    {
+      "tls.sni",
+      function(field, ctx)
+        return server_name()
+      end,
+    },
+    {
+      "http.headers.*",
+      function(field, ctx)
+        local headers = ctx.headers
+        if not headers then
+          return nil
+        end
+
+        local name = replace_dashes_lower(field:sub(13))
+        local value = headers[name]
+
+        if type(value) == "table" then
+          tb_sort(value)
+          value = tb_concat(value, ",")
+        end
+
+        return value
+      end,
+    },
+    {
+      "http.queries.*",
+      function(field, ctx)
+        local queries = ctx.queries
+        if not queries then
+          return nil
+        end
+
+        local name = field:sub(13)
+        local value = queries[name]
+
+        if type(value) == "table" then
+          tb_sort(value)
+          value = tb_concat(value, ",")
+        end
+
+        return value
+      end,
+    },
+  }
 end
 
 
@@ -726,7 +830,7 @@ function _M:select(_, _, _, scheme,
 
   local c = context.new(self.schema)
 
-  for _, field in ipairs(self.fields) do
+  for field in pairs(self.fields) do
     if field == "net.protocol" then
       assert(c:add_value(field, scheme))
 
