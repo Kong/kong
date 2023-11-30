@@ -14,18 +14,20 @@ local utils = require("kong.router.utils")
 local yield = require("kong.tools.yield").yield
 
 
+local HTTP_CACHE_KEY_FUNCS = require("kong.router.cache_key").HTTP_CACHE_KEY_FUNCS
+
+
 local type = type
 local assert = assert
 local setmetatable = setmetatable
 local pairs = pairs
 local ipairs = ipairs
 local tonumber = tonumber
-
-
-local HTTP_CACHE_KEY_FUNCS = require("kong.router.cache_key").HTTP_CACHE_KEY_FUNCS
-local CACHE_KEY_CTX_POOL = "atc_router_cache_key_ctx_pool"
 local table_fetch = tablepool.fetch
 local table_release = tablepool.release
+
+
+local CACHE_KEY_CTX_POOL = "atc_router_cache_key_ctx_pool"
 
 
 local max = math.max
@@ -591,10 +593,10 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 end
 
 
---local get_headers_key
---local get_queries_key
+--[[
+local get_headers_key
+local get_queries_key
 do
-  --[[
   local tb_sort = table.sort
   local tb_concat = table.concat
   local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
@@ -628,8 +630,8 @@ do
   get_queries_key = function(queries)
     return get_headers_or_queries_key(queries)
   end
-  --]]
 end
+--]]
 
 
 -- func => get_headers or get_uri_args
