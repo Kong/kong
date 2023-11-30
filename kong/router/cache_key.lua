@@ -1,3 +1,6 @@
+local buffer = require("string.buffer")
+
+
 local tb_sort = table.sort
 local tb_concat = table.concat
 local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
@@ -72,6 +75,28 @@ local HTTP_CACHE_KEY_FUNCS = {
 }
 
 
+local function get_http_cache_key(fields, ctx)
+  local str_buf = buffer.new(64)
+
+  for _, m in ipairs(HTTP_CACHE_KEY_FUNCS) do
+    local field = m[1]
+    local value = fields[field]
+
+    if value or                 -- true or table
+       field == "http.host" or  -- preserve_host
+       field == "http.path"     -- 05-proxy/02-router_spec.lua:1329
+    then
+      local func = m[2]
+      func(value, ctx, str_buf)
+    end
+  end
+
+  return str_buf:get()
+end
+
+
 return {
   HTTP_CACHE_KEY_FUNCS = HTTP_CACHE_KEY_FUNCS,
+
+  get_http_cache_key = get_http_cache_key,
 }

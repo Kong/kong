@@ -11,10 +11,8 @@ local server_name = require("ngx.ssl").server_name
 local tablepool = require("tablepool")
 local tb_new = require("table.new")
 local utils = require("kong.router.utils")
-local yield = require("kong.tools.yield").yield
-
-
-local HTTP_CACHE_KEY_FUNCS = require("kong.router.cache_key").HTTP_CACHE_KEY_FUNCS
+local yield = require("kong.tools.utils").yield
+local get_http_cache_key = require("kong.router.cache_key").get_http_cache_key
 
 
 local type = type
@@ -689,24 +687,9 @@ function _M:exec(ctx)
   cache_ctx.headers    = headers
   cache_ctx.queries    = queries
 
-  local str_buf = buffer.new(64)
-
-  for _, m in ipairs(HTTP_CACHE_KEY_FUNCS) do
-    local field = m[1]
-    local value = self.fields[field]
-
-    if value or                 -- true or table
-       field == "http.host" or  -- preserve_host
-       field == "http.path"     -- 05-proxy/02-router_spec.lua:1329
-    then
-      local func = m[2]
-      func(value, cache_ctx, str_buf)
-    end
-  end
+  local cache_key = get_http_cache_key(self.fields, cache_ctx)
 
   table_release(CACHE_KEY_CTX_POOL, cache_ctx, true)
-
-  local cache_key = str_buf:get()
 
   -- cache lookup
 
