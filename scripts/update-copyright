@@ -422,7 +422,6 @@ table.sort(rocks, function(a, b) return a.package:lower() < b.package:lower() en
 
 print("Searching and downloading license texts from rock repos")
 for _, rock in ipairs(rocks) do
-  break
   -- if it was in HARDCODED_DEPENDENCIES, it is already in licenses at this point
   if not HARDCODED_DEPENDENCIES[rock.package] then
     local homepage = get_rock_homepage(rock)
