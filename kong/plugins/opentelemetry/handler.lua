@@ -10,6 +10,7 @@ local http = require "resty.http"
 local clone = require "table.clone"
 local otlp = require "kong.plugins.opentelemetry.otlp"
 local propagation = require "kong.tracing.propagation"
+local tracing_context = require "kong.tracing.tracing_context"
 
 --[= xxx EE
 local kong_meta = require "kong.meta"
@@ -113,8 +114,7 @@ function OpenTelemetryHandler:access(conf)
     kong.ctx.plugin.should_sample = false
   end
 
-  local injected_parent_span = ngx.ctx.tracing and
-                               ngx.ctx.tracing.injected.balancer_span or root_span
+  local injected_parent_span = tracing_context.get_unlinked_span("balancer") or root_span
 
   local header_type, trace_id, span_id, parent_id, should_sample, _ = propagation_parse(headers, conf.header_type)
   if should_sample == false then
@@ -128,7 +128,8 @@ function OpenTelemetryHandler:access(conf)
     -- to propagate the correct trace ID we have to set it here
     -- before passing this span to propagation.set()
     injected_parent_span.trace_id = trace_id
-    kong.ctx.plugin.trace_id = trace_id
+    -- update the Tracing Context with the trace ID extracted from headers
+    tracing_context.set_raw_trace_id(trace_id)
   end
 
   -- overwrite root span's parent_id
@@ -145,7 +146,7 @@ end
 
 function OpenTelemetryHandler:header_filter(conf)
   if conf.http_response_header_for_traceid then
-    local trace_id = kong.ctx.plugin.trace_id
+    local trace_id = tracing_context.get_raw_trace_id()
     if not trace_id then
       local root_span = ngx.ctx.KONG_SPANS and ngx.ctx.KONG_SPANS[1]
       trace_id = root_span and root_span.trace_id
@@ -166,7 +167,7 @@ function OpenTelemetryHandler:log(conf)
     end
 
     -- overwrite
-    local trace_id = kong.ctx.plugin.trace_id
+    local trace_id = tracing_context.get_raw_trace_id()
     if trace_id then
       span.trace_id = trace_id
     end
