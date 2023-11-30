@@ -533,7 +533,6 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
             end
           end
         end -- if type(v)
-
       end
 
     else  -- unknown field
@@ -543,42 +542,6 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 
   end   -- for self.fields
 
-
-  if req_queries then
-    for n, field in pairs(self.query_fields) do
-
-      local v = req_queries[n]
-
-      -- the query parameter has only one value, like /?foo=bar
-      if type(v) == "string" then
-        local res, err = c:add_value(field, v)
-        if not res then
-          return nil, err
-        end
-
-      -- the query parameter has no value, like /?foo,
-      -- get_uri_arg will get a boolean `true`
-      -- we think it is equivalent to /?foo=
-      elseif type(v) == "boolean" then
-        local res, err = c:add_value(field, "")
-        if not res then
-          return nil, err
-        end
-
-      -- multiple values for a single query parameter, like /?foo=bar&foo=baz
-      elseif type(v) == "table" then
-        for _, v in ipairs(v) do
-          local res, err = c:add_value(field, v)
-          if not res then
-            return nil, err
-          end
-        end
-      end -- if type(v)
-
-      -- if v is nil or others, ignore
-
-    end   -- for self.query_fields
-  end   -- req_queries
 
   local matched = self.router:execute(c)
   if not matched then
@@ -659,6 +622,7 @@ do
   end
 
 
+  --[[
   local cache_key_funcs = {
     {
       "http.method",
@@ -723,6 +687,7 @@ do
       end,
     },
   }
+  --]]
 end
 
 
