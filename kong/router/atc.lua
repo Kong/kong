@@ -22,6 +22,7 @@ local ipairs = ipairs
 local tonumber = tonumber
 
 
+local HTTP_CACHE_KEY_FUNCS = require("kong.router.cache_key").HTTP_CACHE_KEY_FUNCS
 local CACHE_KEY_CTX_POOL = "atc_router_cache_key_ctx_pool"
 local table_fetch = tablepool.fetch
 local table_release = tablepool.release
@@ -592,13 +593,12 @@ end
 
 --local get_headers_key
 --local get_queries_key
-local cache_key_funcs
 do
+  --[[
   local tb_sort = table.sort
   local tb_concat = table.concat
   local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
 
-  --[[
   local str_buf = buffer.new(64)
 
   local function get_headers_or_queries_key(values, lower_func)
@@ -629,75 +629,6 @@ do
     return get_headers_or_queries_key(queries)
   end
   --]]
-
-
-  cache_key_funcs = {
-    {
-      "http.method",
-      function(v, ctx, buf)
-        buf:put(ctx.req_method or ""):put("|")
-      end,
-    },
-    {
-      "http.path",
-      function(v, ctx, buf)
-        buf:put(ctx.req_uri or ""):put("|")
-      end,
-    },
-    {
-      "http.host",
-      function(v, ctx, buf)
-        buf:put(ctx.req_host or ""):put("|")
-      end,
-    },
-    {
-      "tls.sni",
-      function(v, ctx, buf)
-        buf:put(ctx.sni or ""):put("|")
-      end,
-    },
-    {
-      HTTP_HEADERS_PREFIX,
-      function(v, ctx, buf)
-        local headers = ctx.headers
-        if not headers then
-          return
-        end
-
-        for _, name in ipairs(v) do
-          local name = replace_dashes_lower(name)
-          local value = headers[name]
-
-          if type(value) == "table" then
-            tb_sort(value)
-            value = tb_concat(value, ",")
-          end
-
-          buf:putf("%s=%s|", name, value)
-        end
-      end,
-    },
-    {
-      HTTP_QUERIES_PREFIX,
-      function(v, ctx, buf)
-        local queries = ctx.queries
-        if not queries then
-          return
-        end
-
-        for _, name in ipairs(v) do
-          local value = queries[name]
-
-          if type(value) == "table" then
-            tb_sort(value)
-            value = tb_concat(value, ",")
-          end
-
-          buf:putf("%s=%s|", name, value)
-        end
-      end,
-    },
-  }
 end
 
 
@@ -758,7 +689,7 @@ function _M:exec(ctx)
 
   local str_buf = buffer.new(64)
 
-  for _, m in ipairs(cache_key_funcs) do
+  for _, m in ipairs(HTTP_CACHE_KEY_FUNCS) do
     local field = m[1]
     local value = self.fields[field]
 
