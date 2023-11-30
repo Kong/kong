@@ -8,6 +8,7 @@ local router = require("resty.router.router")
 local context = require("resty.router.context")
 local lrucache = require("resty.lrucache")
 local server_name = require("ngx.ssl").server_name
+local tablepool = require("tablepool")
 local tb_new = require("table.new")
 local utils = require("kong.router.utils")
 local yield = require("kong.tools.yield").yield
@@ -19,6 +20,11 @@ local setmetatable = setmetatable
 local pairs = pairs
 local ipairs = ipairs
 local tonumber = tonumber
+
+
+local CACHE_KEY_CTX_POOL = "atc_router_cache_key_ctx_pool"
+local table_fetch = tablepool.fetch
+local table_release = tablepool.release
 
 
 local max = math.max
@@ -584,13 +590,15 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 end
 
 
-local get_headers_key
-local get_queries_key
+--local get_headers_key
+--local get_queries_key
+local cache_key_funcs
 do
   local tb_sort = table.sort
   local tb_concat = table.concat
   local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
 
+  --[[
   local str_buf = buffer.new(64)
 
   local function get_headers_or_queries_key(values, lower_func)
@@ -620,74 +628,76 @@ do
   get_queries_key = function(queries)
     return get_headers_or_queries_key(queries)
   end
+  --]]
 
 
-  --[[
-  local cache_key_funcs = {
+  cache_key_funcs = {
     {
       "http.method",
-      function(field, ctx)
-        return get_method()
+      function(v, ctx, buf)
+        buf:put(ctx.req_method):put("|")
       end,
     },
     {
       "http.path",
-      function(field, ctx)
-        return strip_uri_args(ctx and ctx.request_uri or var.request_uri)
+      function(v, ctx, buf)
+        buf:put(ctx.req_uri):put("|")
       end,
     },
     {
       "http.host",
-      function(field, ctx)
-        return var.http_host
+      function(v, ctx, buf)
+        buf:put(ctx.req_host):put("|")
       end,
     },
     {
       "tls.sni",
-      function(field, ctx)
-        return server_name()
+      function(v, ctx, buf)
+        buf:put(ctx.sni):put("|")
       end,
     },
     {
-      "http.headers.",
-      function(field, ctx)
+      HTTP_HEADERS_PREFIX,
+      function(v, ctx, buf)
         local headers = ctx.headers
         if not headers then
-          return nil
+          return
         end
 
-        local name = replace_dashes_lower(field:sub(13))
-        local value = headers[name]
+        for _, name in ipairs(v) do
+          local name = replace_dashes_lower(name)
+          local value = headers[name]
 
-        if type(value) == "table" then
-          tb_sort(value)
-          value = tb_concat(value, ",")
+          if type(value) == "table" then
+            tb_sort(value)
+            value = tb_concat(value, ",")
+          end
+
+          buf:putf("%s=%s|", name, value)
         end
-
-        return value
       end,
     },
     {
-      "http.queries.",
-      function(field, ctx)
+      HTTP_QUERIES_PREFIX,
+      function(v, ctx, buf)
         local queries = ctx.queries
         if not queries then
-          return nil
+          return
         end
 
-        local name = field:sub(13)
-        local value = queries[name]
+        for _, name in ipairs(v) do
+          local value = queries[name]
 
-        if type(value) == "table" then
-          tb_sort(value)
-          value = tb_concat(value, ",")
+          if type(value) == "table" then
+            tb_sort(value)
+            value = tb_concat(value, ",")
+          end
+
+          buf:putf("%s=%s|", name, value)
         end
-
-        return value
       end,
     },
   }
-  --]]
 end
 
 
@@ -717,32 +727,61 @@ function _M:exec(ctx)
   local req_host = var.http_host
   local sni = server_name()
 
-  local headers, headers_key
+  local headers--, headers_key
   if not is_empty_field(self.fields[HTTP_HEADERS_PREFIX]) then
     headers = get_http_params(get_headers, "headers", "lua_max_req_headers")
 
     headers["host"] = nil
 
-    headers_key = get_headers_key(headers)
+    --headers_key = get_headers_key(headers)
   end
 
-  local queries, queries_key
+  local queries--, queries_key
   if not is_empty_field(self.fields[HTTP_QUERIES_PREFIX]) then
     queries = get_http_params(get_uri_args, "queries", "lua_max_uri_args")
 
-    queries_key = get_queries_key(queries)
+    --queries_key = get_queries_key(queries)
   end
 
   req_uri = strip_uri_args(req_uri)
 
+  -- cache key calculation
+
+  local cache_ctx = assert(table_fetch(CACHE_KEY_CTX_POOL, 0, 6))
+
+  cache_ctx.req_method = req_method
+  cache_ctx.req_uri    = req_uri
+  cache_ctx.req_host   = req_host
+  cache_ctx.sni        = sni
+  cache_ctx.headers    = headers
+  cache_ctx.queries    = queries
+
+  local str_buf = buffer.new(64)
+
+  for _, m in ipairs(cache_key_funcs) do
+    local field = m[1]
+    local value = self.fields[field]
+
+    if value then  -- true or table
+      local func = m[2]
+      func(value, cache_ctx, str_buf)
+    end
+  end
+
+  table_release(CACHE_KEY_CTX_POOL, cache_ctx, true)
+
+  local cache_key = str_buf:get()
+
   -- cache lookup
 
+  --[[
   local cache_key = (req_method  or "") .. "|" ..
                     (req_uri     or "") .. "|" ..
                     (req_host    or "") .. "|" ..
                     (sni         or "") .. "|" ..
                     (headers_key or "") .. "|" ..
                     (queries_key or "")
+  --]]
 
   local match_t = self.cache:get(cache_key)
   if not match_t then
