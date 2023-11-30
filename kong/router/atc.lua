@@ -635,25 +635,25 @@ do
     {
       "http.method",
       function(v, ctx, buf)
-        buf:put(ctx.req_method):put("|")
+        buf:put(ctx.req_method or ""):put("|")
       end,
     },
     {
       "http.path",
       function(v, ctx, buf)
-        buf:put(ctx.req_uri):put("|")
+        buf:put(ctx.req_uri or ""):put("|")
       end,
     },
     {
       "http.host",
       function(v, ctx, buf)
-        buf:put(ctx.req_host):put("|")
+        buf:put(ctx.req_host or ""):put("|")
       end,
     },
     {
       "tls.sni",
       function(v, ctx, buf)
-        buf:put(ctx.sni):put("|")
+        buf:put(ctx.sni or ""):put("|")
       end,
     },
     {
@@ -762,7 +762,9 @@ function _M:exec(ctx)
     local field = m[1]
     local value = self.fields[field]
 
-    if value then  -- true or table
+    if value or             -- true or table
+       field == "http.host" -- preserve_host
+    then
       local func = m[2]
       func(value, cache_ctx, str_buf)
     end
