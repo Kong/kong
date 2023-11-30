@@ -27,8 +27,8 @@ return {
     { config = {
         type = "record",
         fields = {
-          { identifier = { description = "The type of identifier used to generate the rate limit key. Defines the scope used to increment the rate limiting counters. Can be `ip`, `credential`, `consumer`, `service`, `header`, or `path`.", type = "string",
-            one_of = { "ip", "credential", "consumer", "service", "header", "path" },
+          { identifier = { description = "The type of identifier used to generate the rate limit key. Defines the scope used to increment the rate limiting counters. Can be `ip`, `credential`, `consumer`, `service`, `header`, `path` or `consumer-group`.", type = "string",
+            one_of = { "ip", "credential", "consumer", "service", "header", "path", "consumer-group" },
             default = "consumer",
             required = true,
           }},

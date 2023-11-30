@@ -238,6 +238,82 @@ for _, strategy in strategies() do
             key = "apikeycgnoconfig",
             consumer = { id = consumer_in_group_no_config.id },
           })
+
+          local part_of_group_consumer = assert(bp.consumers:insert {
+            username = "part_of_group"
+          })
+
+          local part_of_group_as_well_consumer = assert(bp.consumers:insert {
+            username = "part_of_group_as_well"
+          })
+
+          local identifier_group = assert(db.consumer_groups:insert({
+            name = "identifier-group"
+          }))
+
+          assert(db.consumer_group_consumers:insert({
+            consumer          = { id = part_of_group_consumer.id },
+            consumer_group 	  = { id = identifier_group.id },
+          }))
+
+          assert(db.consumer_group_consumers:insert({
+            consumer          = { id = part_of_group_as_well_consumer.id },
+            consumer_group 	  = { id = identifier_group.id },
+          }))
+
+          assert(bp.keyauth_credentials:insert {
+            key = "part_of_group",
+            consumer = { id = part_of_group_consumer.id },
+          })
+
+          assert(bp.keyauth_credentials:insert {
+            key = "part_of_group_as_well",
+            consumer = { id = part_of_group_as_well_consumer.id },
+          })
+
+          local route24 = assert(bp.routes:insert {
+            name = "route-24",
+            hosts = { "test24.com" },
+          })
+          local route25 = assert(bp.routes:insert {
+            name = "route-25",
+            hosts = { "test25.com" },
+          })
+          assert(bp.plugins:insert {
+            name = "key-auth",
+            route = { id = route24.id },
+          })
+
+          assert(bp.plugins:insert {
+            name = "rate-limiting-advanced",
+            route = { id = route24.id },
+            consumer_group = { id = identifier_group.id },
+            config = {
+              strategy = policy,
+              window_size = { 5 },
+              limit = { 5 },
+              sync_rate = (policy ~= "local" and 1 or nil),
+              redis = redis_configuration,
+              identifier = "consumer-group",
+            }
+          })
+
+          -- testing failover to `ip`
+          assert(bp.plugins:insert {
+            name = "rate-limiting-advanced",
+            route = { id = route25.id },
+            -- do not scope to consumer-group set the
+            -- identifier to consumer-group
+            -- consumer_group = { id = identifier_group.id },
+            config = {
+              strategy = policy,
+              window_size = { 5 },
+              limit = { 5 },
+              sync_rate = (policy ~= "local" and 1 or nil),
+              redis = redis_configuration,
+              identifier = "consumer-group",
+            }
+          })
         end
 
         assert(bp.keyauth_credentials:insert {
@@ -279,7 +355,6 @@ for _, strategy in strategies() do
             nil, redis_configuration, { identifier = "credential" }
           )
         ))
-
         local route4 = assert(bp.routes:insert {
           name = "route-4",
           hosts = { "test4.test" },
@@ -2017,6 +2092,81 @@ for _, strategy in strategies() do
             assert.are.same(consumer1.id, json.headers["x-consumer-id"])
           end)
         end)
+
+        if strategy ~= "off" then
+        describe("set to #xx #consumer-group", function()
+          it("should block group1 when group1 reached limit", function()
+            for i = 1, 5 do
+              proxy_client = helpers.proxy_client()
+              local res = assert(proxy_client:send {
+                method = "GET",
+                path = "/get",
+                headers = {
+                  ["Host"] = "test24.com",
+                  ["ApiKey"] = "part_of_group"
+                }
+              })
+
+              assert.res_status(200, res)
+              proxy_client:close()
+
+              assert.are.same(5, tonumber(res.headers["x-ratelimit-limit-5"]))
+              assert.are.same(5, tonumber(res.headers["ratelimit-limit"]))
+              assert.are.same(5 - i, tonumber(res.headers["x-ratelimit-remaining-5"]))
+              assert.are.same(5 - i, tonumber(res.headers["ratelimit-remaining"]))
+            end
+
+            -- verify limit
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
+              method = "GET",
+              path = "/get",
+              headers = {
+                ["Host"] = "test24.com",
+                ["ApiKey"] = "part_of_group"
+              }
+            })
+            local body = assert.res_status(429, res)
+            proxy_client:close()
+
+            local json = cjson.decode(body)
+            assert.same({ message = "API rate limit exceeded" }, json)
+
+            -- another consumer who is part of that group should be blocked as well
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
+              method = "GET",
+              path = "/get",
+              headers = {
+                ["Host"] = "test24.com",
+                ["ApiKey"] = "part_of_group_as_well"
+              }
+            })
+            local body = assert.res_status(429, res)
+            proxy_client:close()
+
+            local json = cjson.decode(body)
+            assert.same({ message = "API rate limit exceeded" }, json)
+          end)
+
+          it("correctly defaults to `ip`, when plugin was not scoped to consumer-group but identifier was set to `consumer-group`", function ()
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
+              method = "GET",
+              path = "/get",
+              headers = {
+                ["Host"] = "test25.com",
+              }
+            })
+            assert.res_status(200, res)
+            assert.are.same(5, tonumber(res.headers["x-ratelimit-limit-5"]))
+            assert.are.same(5, tonumber(res.headers["ratelimit-limit"]))
+            assert.are.same(4, tonumber(res.headers["x-ratelimit-remaining-5"]))
+            assert.are.same(4, tonumber(res.headers["ratelimit-remaining"]))
+            proxy_client:close()
+          end)
+        end)
+        end
 
         describe("set to `path`", function()
           it("blocks after 6 requests on same path", function()

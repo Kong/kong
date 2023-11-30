@@ -79,6 +79,18 @@ local id_lookup = {
   path = function(conf)
     return kong.request.get_path() == conf.path and conf.path
   end,
+  ["consumer-group"] = function (conf)
+    local scoped_to_cg_id = conf.consumer_group_id
+    if not scoped_to_cg_id then
+      return nil
+    end
+    for _, cg in ipairs(kong.client.get_consumer_groups()) do
+      if cg.id == scoped_to_cg_id then
+        return cg.id
+      end
+    end
+    return nil
+  end
 }
 
 

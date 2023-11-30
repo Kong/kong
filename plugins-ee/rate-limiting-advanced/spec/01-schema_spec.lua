@@ -53,6 +53,19 @@ describe("rate-limiting-advanced schema", function()
     assert.is_truthy(ok)
   end)
 
+  it("accepts a config with a custom identifier [consumer-group]", function()
+    local ok, err = v({
+      strategy = "cluster",
+      window_size = { 60 },
+      limit = { 10 },
+      identifier = "consumer-group",
+      sync_rate = 10,
+    }, rate_limiting_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(ok)
+  end)
+
   it("accepts a config with a header identifier", function()
     local ok, err = v({
       strategy = "cluster",
