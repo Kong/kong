@@ -33,6 +33,9 @@ runs:
         elif [[ "${{ inputs.test_title }}" == *"docker-"* ]]; then
           echo "finalTitle=Gateway API Docker Image Matrix Tests:  (${{ inputs.gw_mode }}, $(echo ${{ inputs.test_title }} | cut -d ':' -f2))" >> $GITHUB_ENV
 
+        elif [[ "${{ inputs.test_title }}" == *"konnect"* ]]; then
+          echo "finalTitle=Gateway Konnect API Tests: Konnect-dev" >> $GITHUB_ENV
+
         elif [[ "${{ inputs.test_title }}" == *"release-"* ]]; then
 
           package_name=$(echo "${{ inputs.test_title }}" | sed 's/^[^-]*-\(.*\)-[^-]*$/\1/')

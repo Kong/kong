@@ -1,3 +1,4 @@
+import { checkKonnectCpAndDpConfigHashMatch } from '@shared/konnect_workflows';
 import {
   createConsumer,
   createGatewayService,
@@ -12,6 +13,7 @@ import {
   isKoko,
   waitForConfigRebuild,
   retryRequest,
+  getKonnectControlPlaneId,
 } from '@support';
 import axios from 'axios';
 
@@ -157,13 +159,14 @@ describe('@smoke: Gateway Plugins: key-auth', function () {
     logResponse(resp);
 
     expect(resp.status, 'Status should be 200').to.equal(200);
-    await waitForConfigRebuild()
   });
 
   if(isGateway()) {
     // This test case captures:
     // https://konghq.atlassian.net/browse/FTI-4512
     it('should not proxy request with apiKey in header after ttl expiration', async function () {
+      await waitForConfigRebuild()
+
       const validTokenHeaders = {
         api_key: keyId,
       };
@@ -205,6 +208,10 @@ describe('@smoke: Gateway Plugins: key-auth', function () {
 
     expect(resp.status, 'Status should be 200').to.equal(200);
     expect(resp.data.enabled, 'Should be false').to.be.false;
+
+    if(isKoko()) {
+      await checkKonnectCpAndDpConfigHashMatch(getKonnectControlPlaneId())
+    }
   });
 
   it('should proxy request without supplying apiKey after disabling plugin', async function () {

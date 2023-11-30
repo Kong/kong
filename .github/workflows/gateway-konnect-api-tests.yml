@@ -74,7 +74,7 @@ jobs:
       matrix:
         gateway_mode: ['hybrid']
         runs_on: ["${{ vars.RUNS_ON }}", "${{ fromJSON(inputs.multiarch && '[\"ubuntu-22.04-arm64\"]' || '[]') }}" ]
-    name: ${{ inputs.target_test }} API test - ${{ inputs.target_mode }} ${{ matrix.gateway_mode }} mode on ${{ matrix.runs_on }} for ${{ inputs.data_plane_image }}
+    name: ${{ inputs.target_test }} Konnect API test - ${{ inputs.target_mode }} ${{ matrix.gateway_mode }} mode on ${{ matrix.runs_on }} for ${{ inputs.data_plane_image }}
 
     steps:
       - name: Checkout Source Code
@@ -102,7 +102,7 @@ jobs:
       - name: Install Packages
         run: npm install --legacy-peer-deps
 
-      - name: Execute Koko API Tests
+      - name: Execute Konnect API Tests
         id: execute_tests
         env:
           KONNECT_USER_PASSWORD: ${{ secrets.TEST_API_KONNECT_USER_PASSWORD }}
@@ -114,15 +114,23 @@ jobs:
             TEST_APP=koko TEST_ENV=dev npm run test-spec --spec=$RUN_SPEC;
           fi
 
+      - name: Get Gateway Details
+        if: ${{ always() }}
+        continue-on-error: true
+        id: get_gw_details
+        run: |
+          echo "git_commit_sha=$(docker inspect $KONNECT_DP_IMAGE | jq -r '.[].Config.Labels["org.opencontainers.image.revision"]')" >> $GITHUB_OUTPUT
+
       - name: Send test results to Slack
         if: ${{ env.SEND_SLACK_RESULTS == 'true' && always() && github.ref == 'refs/heads/master' }}
         continue-on-error: true
         uses: ./.github/actions/gw-slack-results/
         with:
-          gw_version: konnect-dev
+          gw_version: ${{ env.KONNECT_DP_IMAGE }}
           gw_mode: ${{ matrix.gateway_mode }}
+          git_commit_sha: ${{ steps.get_gw_details.outputs.git_commit_sha }}
           job_status: ${{ job.status }}
-          test_title: 'regular'
+          test_title: 'konnect'
           slack_url: ${{ secrets.TEST_API_SLACK_WEBHOOK_URL }}
 
       - name: Upload Test Results

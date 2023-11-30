@@ -118,7 +118,7 @@ export const pinNewDpClientCertificate = async (controlPlaneId: string, publicCe
  * Check that Konnect CP and DP have the same config hash
  * @param {string} controlPlaneId
  */
-export const checkKonnectCpAndDpConfigHash = async (controlPlaneId) => {
+export const checkKonnectCpAndDpConfigHashMatch = async (controlPlaneId) => {
   let dpNodeId = ''
 
   // Get all DP nodes associated with the Konnect CP
@@ -164,5 +164,5 @@ export const setupKonnectDataPlane = async () => {
 
   // Checking that Konnect CP config expected_hash is the same as the DP config hash
   // This step is required to make sure that the DP is fully set up and is ready to route requests
-  await checkKonnectCpAndDpConfigHash(controlPlaneId)
+  await checkKonnectCpAndDpConfigHashMatch(controlPlaneId)
 }
