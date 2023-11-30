@@ -243,6 +243,13 @@ local DYNAMIC_KEY_NAMESPACES = {
     prefix = "nginx_wasm_",
     ignore = EMPTY,
   },
+  -- XXX EE
+  {
+    injected_conf_name = "nginx_debug_directives",
+    prefix = "nginx_debug_",
+    ignore = EMPTY,
+  },
+  -- XXX EE
 }
 
 
@@ -526,7 +533,9 @@ local CONF_PARSERS = {
   cluster_control_plane = { typ = "string", },
   cluster_cert = { typ = "string" },
   cluster_cert_key = { typ = "string" },
-  cluster_mtls = { enum = { "shared", "pki" } },
+  --- XXX EE
+  cluster_mtls = { enum = { "shared", "pki", "pki_check_cn" } },
+  --- XXX EE
   cluster_ca_cert = { typ = "string" },
   cluster_server_name = { typ = "string" },
   cluster_data_plane_purge_delay = { typ = "number" },
@@ -590,6 +599,36 @@ local CONF_PARSERS = {
 
   request_debug = { typ = "boolean" },
   request_debug_token = { typ = "string" },
+
+  --- XXX EE
+  debug_listen = { typ = "array" },
+  debug_listen_local = { typ = "boolean" },
+  debug_ssl_cert = { typ = "array" },
+  debug_ssl_cert_key = { typ = "array" },
+  debug_access_log = { typ = "string" },
+  debug_error_log = { typ = "string" },
+
+  pg_ssl_required = { typ = "boolean" },
+  pg_ssl_version = { enum = { "tlsv1_1", "tlsv1_2", "tlsv1_3", "any" } },
+  pg_ssl_cert = { typ = "string" },
+  pg_ssl_cert_key = { typ = "string" },
+
+  pg_ro_ssl_required = { typ = "boolean" },
+  -- allow nil because it uses pg_ssl_version by default
+  pg_ro_ssl_version = { enum = { nil, "tlsv1_1", "tlsv1_2", "tlsv1_3", "any" } },
+  pg_ro_ssl_cert = { typ = "string" },
+  pg_ro_ssl_cert_key = { typ = "string" },
+
+  cluster_allowed_common_names = { typ = "array" },
+
+  cluster_fallback_config_storage = { typ = "string" },
+  cluster_fallback_export_s3_config = { typ = "string" },
+  cluster_fallback_config_export = { typ = "boolean" },
+  cluster_fallback_config_export_delay = { typ = "number" },
+  cluster_fallback_config_import = { typ = "boolean" },
+
+  allow_inconsistent_data_plane_plugins = { typ = "boolean" },
+  --- XXX EE
 }
 
 
