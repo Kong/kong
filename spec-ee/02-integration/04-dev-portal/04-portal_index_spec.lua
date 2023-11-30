@@ -10,7 +10,6 @@ local helpers    = require "spec.helpers"
 
 local clear_license_env = require("spec-ee.helpers").clear_license_env
 local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
-local parse_url = require("socket.url").parse
 
 local escape_uri = ngx.escape_uri
 
@@ -298,7 +297,7 @@ for _, strategy in helpers.each_strategy() do
           path = "/",
         })
         assert.equals(res.status, 302)
-        assert.equals(parse_url(res.headers.Location).path, '/default')
+        assert.equals(res.headers.Location, '/default')
 
 
         local res = gui_client_request({

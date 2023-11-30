@@ -1,0 +1,3 @@
+message: "Implement relative URLs for portal root path redirection to prevent erroneous redirections to incorrect domains or protocols"
+type: bugfix
+scope: Portal

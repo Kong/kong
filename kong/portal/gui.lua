@@ -92,7 +92,9 @@ local function root_path_handler(self)
     return index_handler(self)
   end
 
-  return { redirect_to = "/" .. workspace.name }
+  ngx.status = ngx.HTTP_MOVED_TEMPORARILY
+  ngx.header["Location"] = "/" .. workspace.name
+  return { skip_render = true }
 end
 
 app.handle_404 = function(self)
