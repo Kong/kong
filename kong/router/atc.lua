@@ -693,8 +693,9 @@ function _M:exec(ctx)
     local field = m[1]
     local value = self.fields[field]
 
-    if value or             -- true or table
-       field == "http.host" -- preserve_host
+    if value or                 -- true or table
+       field == "http.host" or  -- preserve_host
+       field == "http.path"     -- 05-proxy/02-router_spec.lua:1329
     then
       local func = m[2]
       func(value, cache_ctx, str_buf)
