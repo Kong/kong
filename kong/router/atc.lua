@@ -12,7 +12,7 @@ local tablepool = require("tablepool")
 local tb_new = require("table.new")
 local utils = require("kong.router.utils")
 local yield = require("kong.tools.utils").yield
-local get_http_cache_key = require("kong.router.cache_key").get_http_cache_key
+local get_http_cache_key = require("kong.router.fields").get_http_cache_key
 
 
 local type = type
