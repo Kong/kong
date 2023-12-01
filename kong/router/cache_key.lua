@@ -84,13 +84,13 @@ local function get_http_cache_key(fields, ctx)
     local field = m[1]
     local value = fields[field]
 
-    --if value or                 -- true or table
-    --   field == "http.host" or  -- preserve_host
-    --   field == "http.path"     -- 05-proxy/02-router_spec.lua:1329
-    --then
+    if value or                 -- true or table
+       field == "http.host" or  -- preserve_host
+       field == "http.path"     -- 05-proxy/02-router_spec.lua:1329
+    then
       local func = m[2]
       func(value, ctx, str_buf)
-    --end
+    end
   end
 
   return str_buf:get()
