@@ -217,7 +217,7 @@ local function setup_route(admin_client, service, paths, protocol)
   return cjson.decode(assert.res_status(201, route))
 end
 
-local function setup_rl_plugin(admin_client, conf, service, consumer)
+local function setup_rl_plugin(admin_client, conf, service, consumer, consumer_group)
   local plugin
 
   if service then
@@ -241,6 +241,19 @@ local function setup_rl_plugin(admin_client, conf, service, consumer)
       body = {
         name = "rate-limiting",
         consumer = { id = consumer.id, },
+        config = conf,
+      },
+      headers = {
+        ["Content-Type"] = "application/json",
+      },
+    }))
+  elseif consumer_group then
+    plugin = assert(admin_client:send({
+      method = "POST",
+      path = "/plugins",
+      body = {
+        name = "rate-limiting",
+        consumer_group = { id = consumer_group.id, },
         config = conf,
       },
       headers = {
@@ -314,6 +327,36 @@ local function setup_consumer(admin_client, username)
   return cjson.decode(assert.res_status(201, consumer))
 end
 
+local function setup_consumer_group(admin_client, name)
+  local consumer_group = assert(admin_client:send({
+    method = "POST",
+    path = "/consumer_groups",
+    body = {
+      name = name,
+    },
+    headers = {
+      ["Content-Type"] = "application/json",
+    },
+  }))
+
+  return cjson.decode(assert.res_status(201, consumer_group))
+end
+
+local function assign_consumer_to_group(admin_client, consumer, consumer_group)
+  local consumer_group_mapping = assert(admin_client:send({
+    method = "POST",
+    path = "/consumers/" .. consumer.id .. "/consumer_groups",
+    body = {
+      group = consumer_group.id,
+    },
+    headers = {
+      ["Content-Type"] = "application/json",
+    },
+  }))
+
+  return cjson.decode(assert.res_status(201, consumer_group_mapping))
+end
+
 local function setup_credential(admin_client, consumer, key)
   local credential = assert(admin_client:send({
     method = "POST",
@@ -366,6 +409,15 @@ local function delete_consumer(admin_client, consumer)
   assert.res_status(204, res)
 end
 
+local function delete_consumer_group(admin_client, consumer_group)
+  local res = assert(admin_client:send({
+    method = "DELETE",
+    path = "/consumer_groups/" .. consumer_group.id,
+  }))
+
+  assert.res_status(204, res)
+end
+
 local function delete_credential(admin_client, credential)
   local res = assert(admin_client:send({
     method = "DELETE",
@@ -383,6 +435,7 @@ local limit_by_confs = {
   "service",
   "header",
   "path",
+  "consumer-group",
 }
 
 
@@ -440,6 +493,7 @@ describe(desc, function()
       nginx_conf = "spec/fixtures/custom_nginx.template",
       plugins = "bundled,rate-limiting,key-auth",
       trusted_ips = "0.0.0.0/0,::/0",
+      license_path = "spec-ee/fixtures/mock_license.json",
       lua_ssl_trusted_certificate = "spec/fixtures/redis/ca.crt",
     })
   end)
@@ -530,7 +584,7 @@ describe(desc, function()
         return GET(test_path, { [test_header] = "test" })
       end
 
-      if limit_by == "consumer" or limit_by == "credential" then
+      if limit_by == "consumer" or limit_by == "credential" or limit_by == "consumer-group" then
         return GET(test_path, { headers = { [test_key_name] = test_credential }})
       end
 
@@ -1022,6 +1076,61 @@ if limit_by == "consumer" or limit_by == "credential" then
 
   end)        -- it(fmt("blocks if exceeding limit (multiple %s)", limit_by), function()
 end           -- if limit_by == "consumer" and limit_by == "credential" then
+
+if limit_by == "consumer-group" then
+  it(fmt("blocks if exceeding limit (multiple %s)", limit_by), function()
+    local test_path = "/test"
+    local test_key_name = "test-key"
+    local test_credential_1 = "test_credential_1"
+
+    local service = setup_service(admin_client, UPSTREAM_URL)
+    local route = setup_route(admin_client, service, { test_path })
+    local consumer_group = setup_consumer_group(admin_client, "TestGroup")
+    local rl_plugin = setup_rl_plugin(admin_client, {
+      minute              = 6,
+      policy              = policy,
+      limit_by            = limit_by,
+      redis_host          = REDIS_HOST,
+      redis_port          = ssl_conf.redis_port,
+      redis_password      = REDIS_PASSWORD,
+      redis_database      = REDIS_DATABASE,
+      redis_ssl           = ssl_conf.redis_ssl,
+      redis_ssl_verify    = ssl_conf.redis_ssl_verify,
+      redis_server_name   = ssl_conf.redis_server_name,
+    }, nil, nil, consumer_group)
+    local auth_plugin = setup_key_auth_plugin(admin_client, {
+      key_names = { test_key_name },
+    }, service)
+    local consumer_1 = setup_consumer(admin_client, "Bob")
+    -- assign-consumer-to-group
+    assign_consumer_to_group(admin_client, consumer_1, consumer_group)
+    local credential_1 = setup_credential(admin_client, consumer_1, test_credential_1)
+
+
+    finally(function()
+      delete_credential(admin_client, credential_1)
+      delete_consumer(admin_client, consumer_1)
+      delete_plugin(admin_client, auth_plugin)
+      delete_plugin(admin_client, rl_plugin)
+      delete_route(admin_client, route)
+      delete_service(admin_client, service)
+      delete_consumer_group(admin_client, consumer_group)
+    end)
+
+    helpers.wait_for_all_config_update({
+      override_global_rate_limiting_plugin = true,
+      override_global_key_auth_plugin = true,
+    })
+
+    retry(function()
+      for _, credential in ipairs({ test_credential_1 }) do
+        validate_headers(client_requests(7, function()
+          return GET(test_path, { headers = { [test_key_name] = credential }})
+        end), true)
+      end
+    end)
+  end)
+end
 
 end)
 

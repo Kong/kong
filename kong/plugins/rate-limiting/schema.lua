@@ -92,7 +92,7 @@ return {
           { year = { description = "The number of HTTP requests that can be made per year.", type = "number", gt = 0 }, },
           { limit_by = { description = "The entity that is used when aggregating the limits.", type = "string",
               default = "consumer",
-              one_of = { "consumer", "credential", "ip", "service", "header", "path" },
+              one_of = { "consumer", "credential", "ip", "service", "header", "path", "consumer-group" },
           }, },
           { header_name = typedefs.header_name },
           { path = typedefs.path },

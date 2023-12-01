@@ -38,6 +38,13 @@ describe("Plugin: rate-limiting (schema)", function()
     assert.is_nil(err)
   end)
 
+  it("proper config validates (consumer-group)", function()
+    local config = { second = 10, limit_by = "consumer-group", path = "/request" }
+    local ok, _, err = v(config, schema_def)
+    assert.truthy(ok)
+    assert.is_nil(err)
+  end)
+
   describe("errors", function()
     it("limits: smaller unit is less than bigger unit", function()
       local config = { second = 20, hour = 10 }

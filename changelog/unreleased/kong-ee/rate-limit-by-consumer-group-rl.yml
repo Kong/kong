@@ -1,0 +1,3 @@
+message: "**Rate-limiting**: support to ratelimit by consumer group"
+type: feature
+scope: Plugin

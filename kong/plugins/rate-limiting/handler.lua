@@ -82,6 +82,16 @@ local function get_identifier(conf)
     if req_path == conf.path then
       identifier = req_path
     end
+
+  elseif conf.limit_by == "consumer-group" then
+    local scoped_to_cg_id = conf.consumer_group_id
+    if scoped_to_cg_id then
+      for _, cg in ipairs(kong.client.get_consumer_groups()) do
+        if cg.id == scoped_to_cg_id then
+          identifier = cg.id
+        end
+      end
+    end
   end
 
   return identifier or kong.client.get_forwarded_ip()
