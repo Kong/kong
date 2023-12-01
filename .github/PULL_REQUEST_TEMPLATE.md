@@ -19,10 +19,6 @@ https://github.com/Kong/kong/blob/master/COMMUNITY_PLEDGE.md
 - [ ] The Pull Request has backports to all the versions it needs to cover
 - [ ] There is a user-facing docs PR against https://github.com/Kong/docs.konghq.com - PUT DOCS PR HERE
 
-### Full changelog
-
-* [Implement ...]
-
 ### Issue reference
 
 <!--- If it fixes an open issue, please link to the issue here. -->
