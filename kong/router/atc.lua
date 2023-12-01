@@ -591,47 +591,6 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 end
 
 
---[[
-local get_headers_key
-local get_queries_key
-do
-  local tb_sort = table.sort
-  local tb_concat = table.concat
-  local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
-
-  local str_buf = buffer.new(64)
-
-  local function get_headers_or_queries_key(values, lower_func)
-    str_buf:reset()
-
-    -- NOTE: DO NOT yield until str_buf:get()
-    for name, value in pairs(values) do
-      if lower_func then
-        name = lower_func(name)
-      end
-
-      if type(value) == "table" then
-        tb_sort(value)
-        value = tb_concat(value, ", ")
-      end
-
-      str_buf:putf("|%s=%s", name, value)
-    end
-
-    return str_buf:get()
-  end
-
-  get_headers_key = function(headers)
-    return get_headers_or_queries_key(headers, replace_dashes_lower)
-  end
-
-  get_queries_key = function(queries)
-    return get_headers_or_queries_key(queries)
-  end
-end
---]]
-
-
 -- func => get_headers or get_uri_args
 -- name => "headers" or "queries"
 -- max_config_option => "lua_max_req_headers" or "lua_max_uri_args"
@@ -658,20 +617,16 @@ function _M:exec(ctx)
   local req_host = var.http_host
   local sni = server_name()
 
-  local headers--, headers_key
+  local headers
   if not is_empty_field(self.fields[HTTP_HEADERS_PREFIX]) then
     headers = get_http_params(get_headers, "headers", "lua_max_req_headers")
 
     headers["host"] = nil
-
-    --headers_key = get_headers_key(headers)
   end
 
-  local queries--, queries_key
+  local queries
   if not is_empty_field(self.fields[HTTP_QUERIES_PREFIX]) then
     queries = get_http_params(get_uri_args, "queries", "lua_max_uri_args")
-
-    --queries_key = get_queries_key(queries)
   end
 
   req_uri = strip_uri_args(req_uri)
@@ -692,15 +647,6 @@ function _M:exec(ctx)
   table_release(CACHE_KEY_CTX_POOL, cache_ctx, true)
 
   -- cache lookup
-
-  --[[
-  local cache_key = (req_method  or "") .. "|" ..
-                    (req_uri     or "") .. "|" ..
-                    (req_host    or "") .. "|" ..
-                    (sni         or "") .. "|" ..
-                    (headers_key or "") .. "|" ..
-                    (queries_key or "")
-  --]]
 
   local match_t = self.cache:get(cache_key)
   if not match_t then
