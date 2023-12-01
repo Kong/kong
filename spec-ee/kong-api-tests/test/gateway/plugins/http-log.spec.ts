@@ -23,8 +23,8 @@ describe('Gateway Plugins: http-log', function () {
   let routeId: string;
   let pluginId: string;
   let basePayload: any;
-  let mockbinUrl: string;
-  let mockbinLogs: any;
+  let httpLogServerUrl: string;
+  let serverLogs: any;
 
   const url = `${getBasePath({
     environment: Environment.gateway.admin,
@@ -44,7 +44,7 @@ describe('Gateway Plugins: http-log', function () {
     routeId = route.id;
     await deleteHttpLogServerLogs()
 
-    mockbinUrl = 'http://http-log-server:9300/logs';
+    httpLogServerUrl = 'http://http-log-server:9300/logs';
 
     basePayload = {
       name: 'http-log',
@@ -90,7 +90,7 @@ describe('Gateway Plugins: http-log', function () {
       const pluginPayload = {
         ...basePayload,
         config: {
-          http_endpoint: mockbinUrl,
+          http_endpoint: httpLogServerUrl,
           headers: { [header]: 'test' },
         },
       };
@@ -104,11 +104,11 @@ describe('Gateway Plugins: http-log', function () {
     });
   });
 
-  it('should create http-log plugin with mockbin endpoint', async function () {
+  it('should create http-log plugin with http-log endpoint', async function () {
     const pluginPayload = {
       ...basePayload,
       config: {
-        http_endpoint: mockbinUrl,
+        http_endpoint: httpLogServerUrl,
       },
     };
 
@@ -119,7 +119,7 @@ describe('Gateway Plugins: http-log', function () {
     expect(
       resp.data.config.http_endpoint,
       'Should have correct http_endpoint'
-    ).to.eq(mockbinUrl);
+    ).to.eq(httpLogServerUrl);
 
     pluginId = resp.data.id;
     await waitForConfigRebuild()
@@ -131,10 +131,11 @@ describe('Gateway Plugins: http-log', function () {
 
     expect(resp.status, 'Status should be 200').to.equal(200);
 
+    
     await eventually(async () => {
-      mockbinLogs = await getHttpLogServerLogs()
+      serverLogs = await getHttpLogServerLogs()
       expect(
-        mockbinLogs[0].reqMethod,
+        serverLogs[0].reqMethod,
         'Should use POST method to log request data'
       ).to.eq('POST');
     });
@@ -150,9 +151,9 @@ describe('Gateway Plugins: http-log', function () {
     expect(resp.status, 'Status should be 200').to.equal(200);
 
     await eventually(async () => {
-      mockbinLogs = await getHttpLogServerLogs();
-      // always take the last item of mockbin entries as it represents the last request logs
-      const requestDetails = mockbinLogs[mockbinLogs.length - 1].reqBody
+      serverLogs = await getHttpLogServerLogs();
+      // always take the last item of http-log server entries as it represents the last request logs
+      const requestDetails = serverLogs[serverLogs.length - 1].reqBody
 
       expect(
         requestDetails.request.method,
@@ -204,10 +205,10 @@ describe('Gateway Plugins: http-log', function () {
       expect(resp.status, 'Status should be 200').to.equal(200);
 
       await eventually(async () => {
-        mockbinLogs = await getHttpLogServerLogs();
+        serverLogs = await getHttpLogServerLogs();
 
         expect(
-          mockbinLogs[mockbinLogs.length - 1].reqMethod,
+          serverLogs[serverLogs.length - 1].reqMethod,
           `Should use ${pluginConfigHeader} method to log request data`
         ).to.eq(pluginConfigHeader);
       });
@@ -242,8 +243,8 @@ describe('Gateway Plugins: http-log', function () {
     expect(resp.status, 'Status should be 200').to.equal(200);
 
     await eventually(async () => {
-      mockbinLogs = await getHttpLogServerLogs();
-      const requestDetails =  mockbinLogs[mockbinLogs.length - 1].reqBody
+      serverLogs = await getHttpLogServerLogs();
+      const requestDetails =  serverLogs[serverLogs.length - 1].reqBody
 
       expect(
         requestDetails.kong,
@@ -254,9 +255,9 @@ describe('Gateway Plugins: http-log', function () {
 
   // skipped due to https://konghq.atlassian.net/browse/KAG-503
   it.skip('should see http-log plugin X-header log in http_endpoint', async function () {
-    mockbinLogs = await getHttpLogServerLogs();
-    // always take the last item of mockbin entries as it represents the last request logs
-    const logHeaders = mockbinLogs[mockbinLogs.length - 1].reqBody.request.headers;
+    serverLogs = await getHttpLogServerLogs();
+    // always take the last item of http-log entries as it represents the last request logs
+    const logHeaders = serverLogs[serverLogs.length - 1].reqBody.request.headers;
 
     expect(
       logHeaders.some((headerObject) => {

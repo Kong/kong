@@ -34,7 +34,7 @@ on:
       gateway_version:
         description: 'Kong Version'
         required: false
-        default: '3.4.0.0'
+        default: '3.6.0.0'
       repo_visibility:
         description: 'Cloudsmith repo visibility, either private or public, default is private'
         required: false
@@ -487,7 +487,7 @@ jobs:
     runs-on: ${{ endsWith(matrix.package_name, '-arm64') && 'ubuntu-22.04-arm64' || vars.RUNS_ON }}
     timeout-minutes: 50
     env:
-      KONG_VERSION: ${{ inputs.gateway_version || '3.3.0.0' }}
+      KONG_VERSION: ${{ inputs.gateway_version || '3.6.0.0' }}
       GW_MODE: ${{ matrix.gateway_mode }}
       PACKAGE_INSTALL_METHOD: ${{ inputs.package_install_method || 'all'}}
     defaults:

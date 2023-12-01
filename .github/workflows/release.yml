@@ -718,7 +718,6 @@ jobs:
     uses: ./.github/workflows/gateway-api-tests.yml
     with:
       control_plane_image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
-      gateway_version: ${{ needs.metadata.outputs.kong-version }}
       multiarch: ${{ matrix.docker-platforms != '' && true || false }}
       target_test: smoke
     secrets: inherit
@@ -737,7 +736,6 @@ jobs:
     uses: ./.github/workflows/gateway-api-tests.yml
     with:
       control_plane_image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
-      gateway_version: ${{ needs.metadata.outputs.kong-version }}
       multiarch: ${{ matrix.docker-platforms != '' && true || false }}
       target_test: non-smoke
     secrets: inherit

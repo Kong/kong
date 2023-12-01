@@ -19,7 +19,8 @@ import {
   logResponse,
   createGcpVaultEntity,
   isGateway,
-  clearAllKongResources
+  clearAllKongResources,
+  eventually
 } from '@support';
 
 // ********* Note *********
@@ -302,8 +303,9 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
 
     expect(patchResp.status, 'Status should be 200').to.equal(200);
 
-    await wait(waitTime); // eslint-disable-line no-restricted-syntax
-    await doBasicRequestCheck();
+    await eventually(async () => {
+      doBasicRequestCheck();
+    });
   });
 
   it('should reference with aws_access_key hcv and secret_key env vault entity secrets', async function () {

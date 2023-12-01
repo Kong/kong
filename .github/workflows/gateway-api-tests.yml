@@ -22,10 +22,6 @@ on:
         description: 'Docker Image for Tests'
         required: true
         default: 'kong/kong-gateway-internal:nightly-ubuntu'
-      gateway_version:
-        description: 'Kong Version'
-        required: false
-        default: '3.3.0.0'
       multiarch:
         description: 'Also run ARM64 test for the image'
         required: false
@@ -52,10 +48,6 @@ on:
         description: 'Docker Image for Tests'
         required: true
         type: string
-      gateway_version:
-        description: 'Kong Version'
-        required: false
-        type: 'string'
       multiarch:
         description: 'Also run ARM64 test for the image'
         required: false
