@@ -447,6 +447,50 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
+  describe("#testme :query() [#" .. strategy .. "]", function()
+    lazy_setup(function()
+      helpers.get_db_utils(strategy, {})
+    end)
+
+    postgres_only("establish new connection when error occurred", function()
+      ngx.IS_CLI = false
+
+      local conf = utils.deep_copy(helpers.test_conf)
+      conf.pg_ro_host = conf.pg_host
+      conf.pg_ro_user = conf.pg_user
+
+      local db, err = DB.new(conf, strategy)
+
+      assert.is_nil(err)
+      assert.is_table(db)
+      assert(db:init_connector())
+      assert(db:connect())
+
+      local res, err = db.connector:query("SELECT now();")
+      assert.not_nil(res)
+      assert.is_nil(err)
+
+      local old_conn = db.connector:get_stored_connection("write")
+      assert.not_nil(old_conn)
+
+      local res, err = db.connector:query("SELECT * FROM not_exist_table;")
+      assert.is_nil(res)
+      assert.not_nil(err)
+
+      local new_conn = db.connector:get_stored_connection("write")
+      assert.is_nil(new_conn)
+
+      local res, err = db.connector:query("SELECT now();")
+      assert.not_nil(res)
+      assert.is_nil(err)
+
+      local res, err = db.connector:query("SELECT now();")
+      assert.not_nil(res)
+      assert.is_nil(err)
+
+      assert(db:close())
+    end)
+  end)
 
   describe(":setkeepalive() [#" .. strategy .. "]", function()
     lazy_setup(function()
