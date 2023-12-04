@@ -38,7 +38,7 @@ end
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("audit_log with #" .. strategy, function()
+  describe("#flaky audit_log with #" .. strategy, function()
     local admin_client, proxy_client
     local db, bp
 
@@ -401,7 +401,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  describe("audit_log ignore_methods with #" .. strategy, function()
+  describe("#flaky audit_log ignore_methods with #" .. strategy, function()
     local db, admin_client, proxy_client
 
     setup(function()
@@ -470,7 +470,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  describe("audit_log ignore_paths with #" .. strategy, function()
+  describe("#flaky audit_log ignore_paths with #" .. strategy, function()
     local db, admin_client, proxy_client
 
     setup(function()
@@ -757,7 +757,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  describe("audit_log ignore_tables with #" .. strategy, function()
+  describe("#flaky audit_log ignore_tables with #" .. strategy, function()
     local db, admin_client, proxy_client
 
     setup(function()
@@ -842,7 +842,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  describe("audit_log record_ttl with #" .. strategy, function()
+  describe("#flaky audit_log record_ttl with #" .. strategy, function()
     local db, admin_client, proxy_client
     local MOCK_TTL = 2
 
@@ -894,7 +894,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  describe("audit_log signing_key with #" .. strategy, function()
+  describe("#flaky audit_log signing_key with #" .. strategy, function()
     local db, admin_client, proxy_client
     local key_file = "./spec/fixtures/key.pem"
 
@@ -950,7 +950,7 @@ for _, strategy in helpers.each_strategy() do
 
   -- This test is for cases when ngx.ctx.workspace is not set correctly
   -- when serving requests like "GET /userinfo" or "GET /default/kong".
-  describe("audit_log with rbac and admin_gui_auth #" .. strategy, function()
+  describe("#flaky audit_log with rbac and admin_gui_auth #" .. strategy, function()
     local db, admin_client, proxy_client
 
     setup(function()
@@ -1029,7 +1029,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  describe("audit_log audit_log_payload_exclude with #" .. strategy, function()
+  describe("#flaky audit_log audit_log_payload_exclude with #" .. strategy, function()
     local db, admin_client, proxy_client
 
     setup(function()

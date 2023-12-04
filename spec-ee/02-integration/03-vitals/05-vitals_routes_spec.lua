@@ -70,7 +70,7 @@ for _, db_strategy in helpers.each_strategy() do
     end
 
     describe("when vitals is enabled", function()
-      describe("in development package", function ()
+      describe("#flaky in development package", function ()
         local reset_license_data
 
         setup(function()

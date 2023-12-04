@@ -129,7 +129,7 @@ for _, strategy in strategies() do
       end)
     end)
 
-    describe("Keyring after Kong reloaded", function()
+    describe("#flaky Keyring after Kong reloaded", function()
       lazy_setup(function()
         local workers = helpers.get_kong_workers()
         assert(helpers.kong_exec("reload --conf " .. helpers.test_conf_path, conf))
