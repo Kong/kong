@@ -231,10 +231,11 @@ jobs:
         # arm64 runners may use more connections due to more worker cores
         psql -hlocalhost -Ukong kong -tAc 'alter system set max_connections = 5000;'
 
-    - name: Generate helper filenames
+    - name: Generate helper environment variables
       run: |
            echo FAILED_TEST_FILES_FILE=$(echo '${{ github.run_id }}-${{ matrix.suite }}-${{ matrix.split }}' | tr A-Z a-z | sed -Ee 's/[^a-z0-9]+/-/g').txt >> $GITHUB_ENV
            echo TEST_FILE_RUNTIME_FILE=test-runtime.txt >> $GITHUB_ENV
+           echo TEST_SUITE=${{ matrix.suite }}
 
     - name: Download test rerun information
       uses: actions/download-artifact@v3

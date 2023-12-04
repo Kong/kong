@@ -10,7 +10,8 @@ local failed_files_file = assert(os.getenv("FAILED_TEST_FILES_FILE"),
         "FAILED_TEST_FILES_FILE environment variable not set")
 local test_file_runtime_file = assert(os.getenv("TEST_FILE_RUNTIME_FILE"),
         "TEST_FILE_RUNTIME_FILE environment variable not set")
-
+local test_suite = assert(os.getenv("TEST_SUITE"),
+        "TEST_SUITE environment variable not set")
 local FAILED_FILES = {}
 
 local function element_file(element)
@@ -38,7 +39,7 @@ end)
 
 busted.subscribe({ 'file', 'end' }, function(file)
   local output = assert(io.open(test_file_runtime_file, "a"))
-  output:write(file.name, "\t", ngx.now() - FILE_START_TIME, "\n")
+  output:write(test_suite, "\t", file.name, "\t", ngx.now() - FILE_START_TIME, "\n")
   output:close()
 end)
 
