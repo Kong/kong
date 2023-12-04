@@ -4016,5 +4016,128 @@ for _, strategy in helpers.all_strategies() do
 
     end)
 
+    describe("token_post_args_client", function()
+      local proxy_client
+      lazy_setup(function()
+        local bp = helpers.get_db_utils(strategy, {
+          "routes",
+          "services",
+          "plugins",
+        }, {
+          PLUGIN_NAME
+        })
+
+        local service = bp.services:insert {
+          name = PLUGIN_NAME,
+          path = "/anything"
+        }
+        local route = bp.routes:insert {
+          service = service,
+          paths   = { "/test" },
+        }
+
+        local config = {
+          issuer    = ISSUER_URL,
+          client_id = {
+            KONG_CLIENT_ID,
+          },
+          client_secret = {
+            KONG_CLIENT_SECRET,
+          },
+          auth_methods = {
+            "password"
+          },
+          logout_uri_suffix = "/logout",
+          logout_methods = {
+            "POST",
+          },
+          logout_revoke = true,
+          display_errors = true,
+          preserve_query_args = true,
+          cache_tokens_salt = "same",
+          scopes = { "default-to-invalid" },
+          scopes_required = { "openid" },
+          token_post_args_client = { "scope" },
+        }
+
+        bp.plugins:insert {
+          route   = route,
+          name    = PLUGIN_NAME,
+          config  = config,
+        }
+
+        assert(helpers.start_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          plugins    = "bundled," .. PLUGIN_NAME,
+        }))
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong(nil, true)
+      end)
+
+      before_each(function()
+        proxy_client = helpers.proxy_client()
+      end)
+
+      after_each(function()
+        if proxy_client then
+          proxy_client:close()
+        end
+      end)
+
+      it("should fail without the required scope", function()
+        local res = assert(proxy_client:send({
+          method = "GET",
+          path = "/test",
+          headers = {
+            ["Host"] = "kong",
+            ["Authorization"] = PASSWORD_CREDENTIALS,
+          }
+        }))
+        assert.response(res).has.status(401)
+      end)
+
+      it("take scope from the uri arg", function()
+        local res = assert(proxy_client:send({
+          method = "GET",
+          path = "/test?scope=openid",
+          headers = {
+            ["Host"] = "kong",
+            ["Authorization"] = PASSWORD_CREDENTIALS,
+          }
+        }))
+        assert.response(res).has.status(200)
+      end)
+
+      it("take scope from the body arg", function()
+        local res = assert(proxy_client:send({
+          method = "GET",
+          path = "/test",
+          headers = {
+            ["Host"] = "kong",
+            ["Authorization"] = PASSWORD_CREDENTIALS,
+            ["Content-Type"] = "application/x-www-form-urlencoded",
+          },
+          body = { scope = "openid" },
+        }))
+        assert.response(res).has.status(200)
+      end)
+
+      it("take scope from the header", function()
+        local res = assert(proxy_client:send({
+          method = "GET",
+          path = "/test",
+          headers = {
+            ["Host"] = "kong",
+            ["Authorization"] = PASSWORD_CREDENTIALS,
+            ["Scope"] = "openid",
+          }
+        }))
+        assert.response(res).has.status(200)
+      end)
+    end)
+
   end)
 end

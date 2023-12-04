@@ -623,7 +623,7 @@ local config = {
             },
           },
           {
-            token_post_args_client = { description = "Pass extra arguments from the client to the OpenID-Connect plugin. If arguments exist, the client can pass them using: - Request Body - Query parameters  This parameter can be used with `scope` values, like this:  `config.token_post_args_client=scope`  In this case, the token would take the `scope` value from the query parameter or from the request body and send it to the token endpoint.", required = false,
+            token_post_args_client = { description = "Pass extra arguments from the client to the OpenID-Connect plugin. If arguments exist, the client can pass them using: - Query parameters - Request Body - Reqest Header  This parameter can be used with `scope` values, like this:  `config.token_post_args_client=scope`  In this case, the token would take the `scope` value from the query parameter or from the request body or from the header and send it to the token endpoint.", required = false,
               type     = "array",
               elements = {
                 type   = "string",

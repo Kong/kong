@@ -1,0 +1,3 @@
+message: "**Openid-Connect**: extend `token_post_args_client` to support injection from headers"
+type: feature
+scope: Plugin

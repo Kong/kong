@@ -1214,22 +1214,21 @@ function OICHandler.access(_, conf)
         if client_args then
           for _, client_arg_name in ipairs(client_args) do
             local extra_arg = args.get_uri_arg(client_arg_name)
+
+            if not extra_arg then
+              extra_arg = args.get_post_arg(client_arg_name)
+            end
+
+            if not extra_arg then
+              extra_arg = args.get_header(client_arg_name)
+            end
+
             if extra_arg then
               if not arg.args then
                 arg.args = {}
               end
 
               arg.args[client_arg_name] = extra_arg
-
-            else
-              extra_arg = args.get_post_arg(client_arg_name)
-              if extra_arg then
-                if not arg.args then
-                  arg.args = {}
-                end
-
-                arg.args[client_arg_name] = extra_arg
-              end
             end
           end
         end
