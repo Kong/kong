@@ -20,6 +20,7 @@ describe("Plugin: response-transformer", function()
   local header_transformer
 
   setup(function()
+
     _G.ngx = {
       headers_sent = false,
       resp = {
@@ -31,10 +32,19 @@ describe("Plugin: response-transformer", function()
         KONG_PHASE = 0x00000200,
       },
     }
+
+    _G.ngx.DEBUG = 8
+    _G.ngx.INFO = 7
+    _G.ngx.NOTICE = 6
+    _G.ngx.WARN = 5
+    _G.ngx.ERR = 4
+    _G.ngx.CRIT = 3
+    _G.ngx.ALERT = 2
+    _G.ngx.EMERG = 1
+
     _G.kong = {
       response = require "kong.pdk.response".new(),
     }
-
     -- mock since FFI based ngx.resp.add_header won't work in this setup
     _G.kong.response.add_header = function(name, value)
       local new_value = _G.kong.response.get_headers()[name]

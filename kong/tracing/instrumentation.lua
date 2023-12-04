@@ -6,6 +6,7 @@ local tablex = require "pl.tablex"
 local base = require "resty.core.base"
 local cjson = require "cjson"
 local ngx_re = require "ngx.re"
+local tracing_context = require "kong.tracing.tracing_context"
 
 local ngx = ngx
 local var = ngx.var
@@ -83,7 +84,7 @@ function _M.balancer(ctx)
 
   local last_try_balancer_span
   do
-    local balancer_span = ctx.tracing and ctx.tracing.injected.balancer_span
+    local balancer_span = tracing_context.get_unlinked_span("balancer", ctx)
     -- pre-created balancer span was not linked yet
     if balancer_span and not balancer_span.linked then
       last_try_balancer_span = balancer_span
@@ -216,10 +217,6 @@ _M.available_types = available_types
 
 -- Record inbound request
 function _M.request(ctx)
-  ctx.tracing = {
-    injected = {},
-  }
-
   local client = kong.client
 
   local method = get_method()
@@ -252,6 +249,9 @@ function _M.request(ctx)
     },
   })
 
+  -- update the tracing context with the request span trace ID
+  tracing_context.set_raw_trace_id(active_span.trace_id, ctx)
+
   tracer.set_active_span(active_span)
 end
 
@@ -263,12 +263,14 @@ function _M.precreate_balancer_span(ctx)
   end
 
   local root_span = ctx.KONG_SPANS and ctx.KONG_SPANS[1]
-  if ctx.tracing then
-    ctx.tracing.injected.balancer_span = tracer.create_span(nil, {
-      span_kind = 3,
-      parent = root_span,
-    })
-  end
+  local balancer_span = tracer.create_span(nil, {
+    span_kind = 3,
+    parent = root_span,
+  })
+  -- The balancer span is created during headers propagation, but is
+  -- linked later when the balancer data is available, so we add it
+  -- to the unlinked spans table to keep track of it.
+  tracing_context.set_unlinked_span("balancer", balancer_span, ctx)
 end
 
 

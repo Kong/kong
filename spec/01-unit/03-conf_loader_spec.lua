@@ -1,5 +1,7 @@
+local kong_meta = require "kong.meta"
 local conf_loader = require "kong.conf_loader"
 local utils = require "kong.tools.utils"
+local log = require "kong.cmd.utils.log"
 local helpers = require "spec.helpers"
 local tablex = require "pl.tablex"
 local pl_path = require "pl.path"
@@ -13,6 +15,11 @@ ffi.cdef([[
   struct group *getgrnam(const char *name);
   struct passwd *getpwnam(const char *name);
 ]])
+
+
+local KONG_VERSION = string.format("%d.%d",
+                                   kong_meta._VERSION_TABLE.major,
+                                   kong_meta._VERSION_TABLE.minor)
 
 
 local function kong_user_group_exists()
@@ -67,6 +74,7 @@ describe("Configuration loader", function()
     assert.same(nil, conf.privileged_agent)
     assert.same(true, conf.dedicated_config_processing)
     assert.same(false, conf.allow_debug_header)
+    assert.same(KONG_VERSION, conf.lmdb_validation_tag)
     assert.is_nil(getmetatable(conf))
   end)
   it("loads a given file, with higher precedence", function()
@@ -84,6 +92,7 @@ describe("Configuration loader", function()
     assert.same({"127.0.0.1:9001"}, conf.admin_listen)
     assert.same({"0.0.0.0:9000", "0.0.0.0:9443 http2 ssl",
                  "0.0.0.0:9002 http2"}, conf.proxy_listen)
+    assert.same(KONG_VERSION, conf.lmdb_validation_tag)
     assert.is_nil(getmetatable(conf))
   end)
   it("preserves default properties if not in given file", function()
@@ -1609,6 +1618,7 @@ describe("Configuration loader", function()
       finally(function()
         os.getenv = _os_getenv -- luacheck: ignore
         package.loaded["kong.conf_loader"] = nil
+        package.loaded["kong.conf_loader.constants"] = nil
         conf_loader = require "kong.conf_loader"
       end)
       os.getenv = function() end -- luacheck: ignore
@@ -1623,12 +1633,61 @@ describe("Configuration loader", function()
       finally(function()
         os.getenv = _os_getenv -- luacheck: ignore
         package.loaded["kong.conf_loader"] = nil
+        package.loaded["kong.conf_loader.constants"] = nil
         conf_loader = require "kong.conf_loader"
       end)
       os.getenv = function() end -- luacheck: ignore
 
       local conf = assert(conf_loader(helpers.test_conf_path))
       assert.equal(DATABASE, conf.database)
+    end)
+    it("should warns user if kong manager is enabled but admin API is not enabled", function ()
+      local spy_log = spy.on(log, "warn")
+
+      finally(function()
+        log.warn:revert()
+        assert:unregister("matcher", "str_match")
+      end)
+
+      assert:register("matcher", "str_match", function (_state, arguments)
+        local expected = arguments[1]
+        return function(value)
+          return string.match(value, expected) ~= nil
+        end
+      end)
+
+      local conf, err = conf_loader(nil, {
+        admin_listen = "off",
+        admin_gui_listen = "off",
+      })
+      assert.is_nil(err)
+      assert.is_table(conf)
+      assert.spy(spy_log).was_called(0)
+
+      conf, err = conf_loader(nil, {
+        admin_listen = "localhost:8001",
+        admin_gui_listen = "off",
+      })
+      assert.is_nil(err)
+      assert.is_table(conf)
+      assert.spy(spy_log).was_called(0)
+
+      conf, err = conf_loader(nil, {
+        admin_listen = "localhost:8001",
+        admin_gui_listen = "localhost:8002",
+      })
+      assert.is_nil(err)
+      assert.is_table(conf)
+      assert.spy(spy_log).was_called(0)
+
+      conf, err = conf_loader(nil, {
+        admin_listen = "off",
+        admin_gui_listen = "localhost:8002",
+      })
+      assert.is_nil(err)
+      assert.is_table(conf)
+      assert.spy(spy_log).was_called(1)
+      assert.spy(spy_log).was_called_with("Kong Manager won't be functional because the Admin API is not listened on any interface")
     end)
   end)
 

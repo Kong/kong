@@ -1,4 +1,5 @@
 local propagation = require "kong.tracing.propagation"
+local tracing_context = require "kong.tracing.tracing_context"
 
 local ngx = ngx
 local kong = kong
@@ -18,8 +19,7 @@ function _M:access(conf)
   if not root_span then
     root_span = tracer.start_span("root")
   end
-  local injected_parent_span = ngx.ctx.tracing and
-                               ngx.ctx.tracing.injected.balancer_span or root_span
+  local injected_parent_span = tracing_context.get_unlinked_span("balancer") or root_span
 
   local header_type, trace_id, span_id, parent_id, should_sample = propagation_parse(headers)
 

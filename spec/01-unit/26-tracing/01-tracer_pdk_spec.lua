@@ -49,7 +49,7 @@ end
 local unhook_log_spy = debug.sethook
 
 describe("Tracer PDK", function()
-  local ok, err, _
+  local ok, err, old_ngx_get_phase, _
   local log_spy
 
   lazy_setup(function()
@@ -57,9 +57,15 @@ describe("Tracer PDK", function()
     _G.kong = kong_global.new()
     kong_global.init_pdk(kong)
     log_spy = hook_log_spy()
+    old_ngx_get_phase = ngx.get_phase
+    -- trick the pdk into thinking we are not in the timer context
+    _G.ngx.get_phase = function() return "access" end  -- luacheck: ignore
   end)
 
-  lazy_teardown(unhook_log_spy)
+  lazy_teardown(function()
+    unhook_log_spy()
+    _G.ngx.get_phase = old_ngx_get_phase  -- luacheck: ignore
+  end)
 
   describe("initialize tracer", function()
 

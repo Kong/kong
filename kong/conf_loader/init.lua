@@ -9,7 +9,7 @@ local openssl_x509 = require "resty.openssl.x509"
 local pl_stringio = require "pl.stringio"
 local pl_stringx = require "pl.stringx"
 local socket_url = require "socket.url"
-local constants = require "kong.constants"
+local conf_constants = require "kong.conf_loader.constants"
 local listeners = require "kong.conf_loader.listeners"
 local pl_pretty = require "pl.pretty"
 local pl_config = require "pl.config"
@@ -22,6 +22,7 @@ local env = require "kong.cmd.utils.env"
 local ffi = require "ffi"
 
 
+local re_match = ngx.re.match
 local fmt = string.format
 local sub = string.sub
 local type = type
@@ -71,246 +72,6 @@ ffi.cdef([[
 ]])
 
 
--- Version 5: https://wiki.mozilla.org/Security/Server_Side_TLS
-local cipher_suites = {
-                   modern = {
-                protocols = "TLSv1.3",
-                  ciphers = nil,   -- all TLSv1.3 ciphers are considered safe
-    prefer_server_ciphers = "off", -- as all are safe, let client choose
-  },
-             intermediate = {
-                protocols = "TLSv1.2 TLSv1.3",
-                  ciphers = "ECDHE-ECDSA-AES128-GCM-SHA256:"
-                         .. "ECDHE-RSA-AES128-GCM-SHA256:"
-                         .. "ECDHE-ECDSA-AES256-GCM-SHA384:"
-                         .. "ECDHE-RSA-AES256-GCM-SHA384:"
-                         .. "ECDHE-ECDSA-CHACHA20-POLY1305:"
-                         .. "ECDHE-RSA-CHACHA20-POLY1305:"
-                         .. "DHE-RSA-AES128-GCM-SHA256:"
-                         .. "DHE-RSA-AES256-GCM-SHA384",
-                 dhparams = "ffdhe2048",
-    prefer_server_ciphers = "off",
-  },
-                      old = {
-                protocols = "TLSv1 TLSv1.1 TLSv1.2 TLSv1.3",
-                  ciphers = "ECDHE-ECDSA-AES128-GCM-SHA256:"
-                         .. "ECDHE-RSA-AES128-GCM-SHA256:"
-                         .. "ECDHE-ECDSA-AES256-GCM-SHA384:"
-                         .. "ECDHE-RSA-AES256-GCM-SHA384:"
-                         .. "ECDHE-ECDSA-CHACHA20-POLY1305:"
-                         .. "ECDHE-RSA-CHACHA20-POLY1305:"
-                         .. "DHE-RSA-AES128-GCM-SHA256:"
-                         .. "DHE-RSA-AES256-GCM-SHA384:"
-                         .. "DHE-RSA-CHACHA20-POLY1305:"
-                         .. "ECDHE-ECDSA-AES128-SHA256:"
-                         .. "ECDHE-RSA-AES128-SHA256:"
-                         .. "ECDHE-ECDSA-AES128-SHA:"
-                         .. "ECDHE-RSA-AES128-SHA:"
-                         .. "ECDHE-ECDSA-AES256-SHA384:"
-                         .. "ECDHE-RSA-AES256-SHA384:"
-                         .. "ECDHE-ECDSA-AES256-SHA:"
-                         .. "ECDHE-RSA-AES256-SHA:"
-                         .. "DHE-RSA-AES128-SHA256:"
-                         .. "DHE-RSA-AES256-SHA256:"
-                         .. "AES128-GCM-SHA256:"
-                         .. "AES256-GCM-SHA384:"
-                         .. "AES128-SHA256:"
-                         .. "AES256-SHA256:"
-                         .. "AES128-SHA:"
-                         .. "AES256-SHA:"
-                         .. "DES-CBC3-SHA",
-    prefer_server_ciphers = "on",
-  },
-                     fips = { -- https://wiki.openssl.org/index.php/FIPS_mode_and_TLS
-                          -- TLSv1.0 and TLSv1.1 is not completely not FIPS compliant,
-                          -- but must be used under certain condititions like key sizes,
-                          -- signatures in the full chain that Kong can't control.
-                          -- In that case, we disables TLSv1.0 and TLSv1.1 and user
-                          -- can optionally turn them on if they are aware of the caveats.
-                          -- No FIPS compliant predefined DH group available prior to
-                          -- OpenSSL 3.0.
-                protocols = "TLSv1.2",
-                  ciphers = "TLSv1.2+FIPS:kRSA+FIPS:!eNULL:!aNULL",
-    prefer_server_ciphers = "on",
-  }
-}
-
-
-local DEFAULT_PATHS = {
-  "/etc/kong/kong.conf",
-  "/etc/kong.conf",
-}
-
-
-local HEADERS = constants.HEADERS
-local HEADER_KEY_TO_NAME = {
-  ["server_tokens"] = "server_tokens",
-  ["latency_tokens"] = "latency_tokens",
-  [lower(HEADERS.VIA)] = HEADERS.VIA,
-  [lower(HEADERS.SERVER)] = HEADERS.SERVER,
-  [lower(HEADERS.PROXY_LATENCY)] = HEADERS.PROXY_LATENCY,
-  [lower(HEADERS.RESPONSE_LATENCY)] = HEADERS.RESPONSE_LATENCY,
-  [lower(HEADERS.ADMIN_LATENCY)] = HEADERS.ADMIN_LATENCY,
-  [lower(HEADERS.UPSTREAM_LATENCY)] = HEADERS.UPSTREAM_LATENCY,
-  [lower(HEADERS.UPSTREAM_STATUS)] = HEADERS.UPSTREAM_STATUS,
-  [lower(HEADERS.REQUEST_ID)] = HEADERS.REQUEST_ID,
-}
-
-local UPSTREAM_HEADER_KEY_TO_NAME = {
-  [lower(HEADERS.REQUEST_ID)] = HEADERS.REQUEST_ID,
-}
-
-
-local EMPTY = {}
-
-
--- NOTE! Prefixes should always follow `nginx_[a-z]+_`.
-local DYNAMIC_KEY_NAMESPACES = {
-  {
-    injected_conf_name = "nginx_main_directives",
-    prefix = "nginx_main_",
-    ignore = EMPTY,
-  },
-  {
-    injected_conf_name = "nginx_events_directives",
-    prefix = "nginx_events_",
-    ignore = EMPTY,
-  },
-  {
-    injected_conf_name = "nginx_http_directives",
-    prefix = "nginx_http_",
-    ignore = {
-      upstream_keepalive          = true,
-      upstream_keepalive_timeout  = true,
-      upstream_keepalive_requests = true,
-      -- we already add it to nginx_kong_inject.lua explicitly
-      lua_ssl_protocols           = true,
-    },
-  },
-  {
-    injected_conf_name = "nginx_upstream_directives",
-    prefix = "nginx_upstream_",
-    ignore = EMPTY,
-  },
-  {
-    injected_conf_name = "nginx_proxy_directives",
-    prefix = "nginx_proxy_",
-    ignore = EMPTY,
-  },
-  {
-    injected_conf_name = "nginx_location_directives",
-    prefix = "nginx_location_",
-    ignore = EMPTY,
-  },
-  {
-    injected_conf_name = "nginx_status_directives",
-    prefix = "nginx_status_",
-    ignore = EMPTY,
-  },
-  {
-    injected_conf_name = "nginx_admin_directives",
-    prefix = "nginx_admin_",
-    ignore = EMPTY,
-  },
-  {
-    injected_conf_name = "nginx_stream_directives",
-    prefix = "nginx_stream_",
-    ignore = {
-      -- we already add it to nginx_kong_stream_inject.lua explicitly
-      lua_ssl_protocols = true,
-    },
-  },
-  {
-    injected_conf_name = "nginx_supstream_directives",
-    prefix = "nginx_supstream_",
-    ignore = EMPTY,
-  },
-  {
-    injected_conf_name = "nginx_sproxy_directives",
-    prefix = "nginx_sproxy_",
-    ignore = EMPTY,
-  },
-  {
-    prefix = "pluginserver_",
-    ignore = EMPTY,
-  },
-  {
-    prefix = "vault_",
-    ignore = EMPTY,
-  },
-  {
-    injected_conf_name = "nginx_wasm_wasmtime_directives",
-    prefix = "nginx_wasm_wasmtime_",
-    ignore = EMPTY,
-  },
-  {
-    injected_conf_name = "nginx_wasm_v8_directives",
-    prefix = "nginx_wasm_v8_",
-    ignore = EMPTY,
-  },
-  {
-    injected_conf_name = "nginx_wasm_wasmer_directives",
-    prefix = "nginx_wasm_wasmer_",
-    ignore = EMPTY,
-  },
-  {
-    injected_conf_name = "nginx_wasm_main_shm_kv_directives",
-    prefix = "nginx_wasm_shm_kv_",
-    ignore = EMPTY,
-  },
-  {
-    injected_conf_name = "nginx_wasm_main_directives",
-    prefix = "nginx_wasm_",
-    ignore = EMPTY,
-  },
-}
-
-
-local DEPRECATED_DYNAMIC_KEY_NAMESPACES = {}
-
-
-local PREFIX_PATHS = {
-  nginx_pid = {"pids", "nginx.pid"},
-  nginx_err_logs = {"logs", "error.log"},
-  nginx_acc_logs = {"logs", "access.log"},
-  admin_acc_logs = {"logs", "admin_access.log"},
-  nginx_conf = {"nginx.conf"},
-  nginx_kong_gui_include_conf = {"nginx-kong-gui-include.conf"},
-  nginx_kong_conf = {"nginx-kong.conf"},
-  nginx_kong_stream_conf = {"nginx-kong-stream.conf"},
-  nginx_inject_conf = {"nginx-inject.conf"},
-  nginx_kong_inject_conf = {"nginx-kong-inject.conf"},
-  nginx_kong_stream_inject_conf = {"nginx-kong-stream-inject.conf"},
-
-  kong_env = {".kong_env"},
-  kong_process_secrets = {".kong_process_secrets"},
-
-  ssl_cert_csr_default = {"ssl", "kong-default.csr"},
-  ssl_cert_default = {"ssl", "kong-default.crt"},
-  ssl_cert_key_default = {"ssl", "kong-default.key"},
-  ssl_cert_default_ecdsa = {"ssl", "kong-default-ecdsa.crt"},
-  ssl_cert_key_default_ecdsa = {"ssl", "kong-default-ecdsa.key"},
-
-  client_ssl_cert_default = {"ssl", "kong-default.crt"},
-  client_ssl_cert_key_default = {"ssl", "kong-default.key"},
-
-  admin_ssl_cert_default = {"ssl", "admin-kong-default.crt"},
-  admin_ssl_cert_key_default = {"ssl", "admin-kong-default.key"},
-  admin_ssl_cert_default_ecdsa = {"ssl", "admin-kong-default-ecdsa.crt"},
-  admin_ssl_cert_key_default_ecdsa = {"ssl", "admin-kong-default-ecdsa.key"},
-
-  admin_gui_ssl_cert_default = {"ssl", "admin-gui-kong-default.crt"},
-  admin_gui_ssl_cert_key_default = {"ssl", "admin-gui-kong-default.key"},
-  admin_gui_ssl_cert_default_ecdsa = {"ssl", "admin-gui-kong-default-ecdsa.crt"},
-  admin_gui_ssl_cert_key_default_ecdsa = {"ssl", "admin-gui-kong-default-ecdsa.key"},
-
-  status_ssl_cert_default = {"ssl", "status-kong-default.crt"},
-  status_ssl_cert_key_default = {"ssl", "status-kong-default.key"},
-  status_ssl_cert_default_ecdsa = {"ssl", "status-kong-default-ecdsa.crt"},
-  status_ssl_cert_key_default_ecdsa = {"ssl", "status-kong-default-ecdsa.key"},
-}
-
-
 local function is_predefined_dhgroup(group)
   if type(group) ~= "string" then
     return false
@@ -321,365 +82,6 @@ local function is_predefined_dhgroup(group)
     group = group,
   })
 end
-
-
--- By default, all properties in the configuration are considered to
--- be strings/numbers, but if we want to forcefully infer their type, specify it
--- in this table.
--- Also holds "enums" which are lists of valid configuration values for some
--- settings.
--- See `typ_checks` for the validation function of each type.
---
--- Types:
--- `boolean`: can be "on"/"off"/"true"/"false", will be inferred to a boolean
--- `ngx_boolean`: can be "on"/"off", will be inferred to a string
--- `array`: a comma-separated list
-local CONF_PARSERS = {
-  -- forced string inferences (or else are retrieved as numbers)
-  port_maps = { typ = "array" },
-  proxy_listen = { typ = "array" },
-  admin_listen = { typ = "array" },
-  admin_gui_listen = {typ = "array"},
-  status_listen = { typ = "array" },
-  stream_listen = { typ = "array" },
-  cluster_listen = { typ = "array" },
-  ssl_cert = { typ = "array" },
-  ssl_cert_key = { typ = "array" },
-  admin_ssl_cert = { typ = "array" },
-  admin_ssl_cert_key = { typ = "array" },
-  admin_gui_ssl_cert = { typ = "array" },
-  admin_gui_ssl_cert_key = { typ = "array" },
-  status_ssl_cert = { typ = "array" },
-  status_ssl_cert_key = { typ = "array" },
-  db_update_frequency = {  typ = "number"  },
-  db_update_propagation = {  typ = "number"  },
-  db_cache_ttl = {  typ = "number"  },
-  db_cache_neg_ttl = {  typ = "number"  },
-  db_resurrect_ttl = {  typ = "number"  },
-  db_cache_warmup_entities = { typ = "array" },
-  nginx_user = {
-    typ = "string",
-    alias = {
-      replacement = "nginx_main_user",
-    }
-  },
-  nginx_daemon = {
-    typ = "ngx_boolean",
-    alias = {
-      replacement = "nginx_main_daemon",
-    }
-  },
-  nginx_worker_processes = {
-    typ = "string",
-    alias = {
-      replacement = "nginx_main_worker_processes",
-    },
-  },
-
-  worker_events_max_payload = { typ = "number" },
-
-  upstream_keepalive_pool_size = { typ = "number" },
-  upstream_keepalive_max_requests = { typ = "number" },
-  upstream_keepalive_idle_timeout = { typ = "number" },
-  allow_debug_header = { typ = "boolean" },
-
-  headers = { typ = "array" },
-  headers_upstream = { typ = "array" },
-  trusted_ips = { typ = "array" },
-  real_ip_header = {
-    typ = "string",
-    alias = {
-      replacement = "nginx_proxy_real_ip_header",
-    }
-  },
-  real_ip_recursive = {
-    typ = "ngx_boolean",
-    alias = {
-      replacement = "nginx_proxy_real_ip_recursive",
-    }
-  },
-  error_default_type = { enum = {
-                           "application/json",
-                           "application/xml",
-                           "text/html",
-                           "text/plain",
-                         }
-                       },
-
-  database = { enum = { "postgres", "cassandra", "off" }  },
-  pg_port = { typ = "number" },
-  pg_timeout = { typ = "number" },
-  pg_password = { typ = "string" },
-  pg_ssl = { typ = "boolean" },
-  pg_ssl_verify = { typ = "boolean" },
-  pg_max_concurrent_queries = { typ = "number" },
-  pg_semaphore_timeout = { typ = "number" },
-  pg_keepalive_timeout = { typ = "number" },
-  pg_pool_size = { typ = "number" },
-  pg_backlog = { typ = "number" },
-  _debug_pg_ttl_cleanup_interval = { typ = "number" },
-
-  pg_ro_port = { typ = "number" },
-  pg_ro_timeout = { typ = "number" },
-  pg_ro_password = { typ = "string" },
-  pg_ro_ssl = { typ = "boolean" },
-  pg_ro_ssl_verify = { typ = "boolean" },
-  pg_ro_max_concurrent_queries = { typ = "number" },
-  pg_ro_semaphore_timeout = { typ = "number" },
-  pg_ro_keepalive_timeout = { typ = "number" },
-  pg_ro_pool_size = { typ = "number" },
-  pg_ro_backlog = { typ = "number" },
-
-  dns_resolver = { typ = "array" },
-  dns_hostsfile = { typ = "string" },
-  dns_order = { typ = "array" },
-  dns_valid_ttl = { typ = "number" },
-  dns_stale_ttl = { typ = "number" },
-  dns_cache_size = { typ = "number" },
-  dns_not_found_ttl = { typ = "number" },
-  dns_error_ttl = { typ = "number" },
-  dns_no_sync = { typ = "boolean" },
-  privileged_worker = {
-    typ = "boolean",
-    deprecated = {
-      replacement = "dedicated_config_processing",
-      alias = function(conf)
-        if conf.dedicated_config_processing == nil and
-           conf.privileged_worker ~= nil then
-          conf.dedicated_config_processing = conf.privileged_worker
-        end
-      end,
-  }},
-  dedicated_config_processing = { typ = "boolean" },
-  worker_consistency = { enum = { "strict", "eventual" },
-    -- deprecating values for enums
-    deprecated = {
-      value = "strict",
-     }
-  },
-  router_consistency = {
-    enum = { "strict", "eventual" },
-    deprecated = {
-      replacement = "worker_consistency",
-      alias = function(conf)
-        if conf.worker_consistency == nil and
-           conf.router_consistency ~= nil then
-          conf.worker_consistency = conf.router_consistency
-        end
-      end,
-    }
-  },
-  router_flavor = {
-    enum = { "traditional", "traditional_compatible", "expressions" },
-  },
-  worker_state_update_frequency = { typ = "number" },
-
-  lua_max_req_headers = { typ = "number" },
-  lua_max_resp_headers = { typ = "number" },
-  lua_max_uri_args = { typ = "number" },
-  lua_max_post_args = { typ = "number" },
-
-  ssl_protocols = {
-    typ = "string",
-    directives = {
-      "nginx_http_ssl_protocols",
-      "nginx_stream_ssl_protocols",
-    },
-  },
-  ssl_prefer_server_ciphers = {
-    typ = "ngx_boolean",
-    directives = {
-      "nginx_http_ssl_prefer_server_ciphers",
-      "nginx_stream_ssl_prefer_server_ciphers",
-    },
-  },
-  ssl_dhparam = {
-    typ = "string",
-    directives = {
-      "nginx_http_ssl_dhparam",
-      "nginx_stream_ssl_dhparam",
-    },
-  },
-  ssl_session_tickets = {
-    typ = "ngx_boolean",
-    directives = {
-      "nginx_http_ssl_session_tickets",
-      "nginx_stream_ssl_session_tickets",
-    },
-  },
-  ssl_session_timeout = {
-    typ = "string",
-    directives = {
-      "nginx_http_ssl_session_timeout",
-      "nginx_stream_ssl_session_timeout",
-    },
-  },
-  ssl_session_cache_size = { typ = "string" },
-
-  client_ssl = { typ = "boolean" },
-
-  proxy_access_log = { typ = "string" },
-  proxy_error_log = { typ = "string" },
-  proxy_stream_access_log = { typ = "string" },
-  proxy_stream_error_log = { typ = "string" },
-  admin_access_log = { typ = "string" },
-  admin_error_log = { typ = "string" },
-  admin_gui_access_log = {typ = "string"},
-  admin_gui_error_log = {typ = "string"},
-  status_access_log = { typ = "string" },
-  status_error_log = { typ = "string" },
-  log_level = { enum = {
-                  "debug",
-                  "info",
-                  "notice",
-                  "warn",
-                  "error",
-                  "crit",
-                  "alert",
-                  "emerg",
-                }
-              },
-  vaults = { typ = "array" },
-  plugins = { typ = "array" },
-  anonymous_reports = { typ = "boolean" },
-
-  lua_ssl_trusted_certificate = { typ = "array" },
-  lua_ssl_verify_depth = { typ = "number" },
-  lua_ssl_protocols = {
-    typ = "string",
-    directives = {
-      "nginx_http_lua_ssl_protocols",
-      "nginx_stream_lua_ssl_protocols",
-    },
-  },
-  lua_socket_pool_size = { typ = "number" },
-
-  role = { enum = { "data_plane", "control_plane", "traditional", }, },
-  cluster_control_plane = { typ = "string", },
-  cluster_cert = { typ = "string" },
-  cluster_cert_key = { typ = "string" },
-  cluster_mtls = { enum = { "shared", "pki" } },
-  cluster_ca_cert = { typ = "string" },
-  cluster_server_name = { typ = "string" },
-  cluster_data_plane_purge_delay = { typ = "number" },
-  cluster_ocsp = { enum = { "on", "off", "optional" } },
-  cluster_max_payload = { typ = "number" },
-  cluster_use_proxy = { typ = "boolean" },
-  cluster_dp_labels = { typ = "array" },
-
-  kic = { typ = "boolean" },
-  pluginserver_names = { typ = "array" },
-
-  untrusted_lua = { enum = { "on", "off", "sandbox" } },
-  untrusted_lua_sandbox_requires = { typ = "array" },
-  untrusted_lua_sandbox_environment = { typ = "array" },
-
-  lmdb_environment_path = { typ = "string" },
-  lmdb_map_size = { typ = "string" },
-
-  opentelemetry_tracing = {
-    typ = "array",
-    alias = {
-      replacement = "tracing_instrumentations",
-    },
-    deprecated = {
-      replacement = "tracing_instrumentations",
-    },
-  },
-
-  tracing_instrumentations = {
-    typ = "array",
-  },
-
-  opentelemetry_tracing_sampling_rate = {
-    typ = "number",
-    deprecated = {
-      replacement = "tracing_sampling_rate",
-    },
-    alias = {
-      replacement = "tracing_sampling_rate",
-    },
-  },
-
-  tracing_sampling_rate = {
-    typ = "number",
-  },
-
-  proxy_server = { typ = "string" },
-  proxy_server_ssl_verify = { typ = "boolean" },
-
-  wasm = { typ = "boolean" },
-  wasm_filters_path = { typ = "string" },
-
-  error_template_html = { typ = "string" },
-  error_template_json = { typ = "string" },
-  error_template_xml = { typ = "string" },
-  error_template_plain = { typ = "string" },
-
-  admin_gui_url = {typ = "string"},
-  admin_gui_path = {typ = "string"},
-  admin_gui_api_url = {typ = "string"},
-
-  request_debug = { typ = "boolean" },
-  request_debug_token = { typ = "string" },
-}
-
-
--- List of settings whose values must not be printed when
--- using the CLI in debug mode (which prints all settings).
-local CONF_SENSITIVE_PLACEHOLDER = "******"
-local CONF_SENSITIVE = {
-  pg_password = true,
-  pg_ro_password = true,
-  proxy_server = true, -- hide proxy server URL as it may contain credentials
-  declarative_config_string = true, -- config may contain sensitive info
-  -- may contain absolute or base64 value of the the key
-  cluster_cert_key = true,
-  ssl_cert_key = true,
-  client_ssl_cert_key = true,
-  admin_ssl_cert_key = true,
-  admin_gui_ssl_cert_key = true,
-  status_ssl_cert_key = true,
-  debug_ssl_cert_key = true,
-}
-
-
--- List of confs necessary for compiling injected nginx conf
-local CONF_BASIC = {
-  prefix = true,
-  vaults = true,
-  database = true,
-  lmdb_environment_path = true,
-  lmdb_map_size = true,
-  lua_ssl_trusted_certificate = true,
-  lua_ssl_verify_depth = true,
-  lua_ssl_protocols = true,
-  nginx_http_lua_ssl_protocols = true,
-  nginx_stream_lua_ssl_protocols = true,
-  vault_env_prefix = true,
-}
-
-
-local typ_checks = {
-  array = function(v) return type(v) == "table" end,
-  string = function(v) return type(v) == "string" end,
-  number = function(v) return type(v) == "number" end,
-  boolean = function(v) return type(v) == "boolean" end,
-  ngx_boolean = function(v) return v == "on" or v == "off" end,
-}
-
-
--- This meta table will prevent the parsed table to be passed on in the
--- intermediate Kong config file in the prefix directory.
--- We thus avoid 'table: 0x41c3fa58' from appearing into the prefix
--- hidden configuration file.
--- This is only to be applied to values that are injected into the
--- configuration object, and not configuration properties themselves,
--- otherwise we would prevent such properties from being specifiable
--- via environment variables.
-local _nop_tostring_mt = {
-  __tostring = function() return "" end,
-}
 
 
 local function parse_value(value, typ)
@@ -727,7 +129,7 @@ end
 local function check_dynamic_module(mod_name)
   local configure_line = ngx.config.nginx_configure()
   local mod_re = [[^.*--add-dynamic-module=(.+\/]] .. mod_name .. [[(\s|$)).*$]]
-  return ngx.re.match(configure_line, mod_re, "oi") ~= nil
+  return re_match(configure_line, mod_re, "oi") ~= nil
 end
 
 
@@ -771,6 +173,62 @@ local function validate_wasm(conf)
   return true
 end
 
+local validate_labels
+do
+  local MAX_KEY_SIZE   = 63
+  local MAX_VALUE_SIZE = 63
+  local MAX_KEYS_COUNT = 10
+
+
+  -- validation rules based on Kong Labels AIP
+  -- https://kong-aip.netlify.app/aip/129/
+  local BASE_PTRN = "[a-z0-9]([\\w\\.:-]*[a-z0-9]|)$"
+  local KEY_PTRN  = "(?!kong)(?!konnect)(?!insomnia)(?!mesh)(?!kic)" .. BASE_PTRN
+  local VAL_PTRN  = BASE_PTRN
+
+
+  local function validate_entry(str, max_size, pattern)
+    if str == "" or #str > max_size then
+      return nil, fmt(
+        "%s must have between 1 and %d characters", str, max_size)
+    end
+    if not re_match(str, pattern, "ajoi") then
+      return nil, fmt("%s is invalid. Must match pattern: %s", str, pattern)
+    end
+    return true
+  end
+
+
+  -- Validates a label array.
+  -- Validates labels based on the kong Labels AIP
+  function validate_labels(raw_labels)
+    local nkeys = require "table.nkeys"
+    if nkeys(raw_labels) > MAX_KEYS_COUNT then
+      return nil, fmt(
+        "labels validation failed: count exceeded %d max elements",
+        MAX_KEYS_COUNT
+      )
+    end
+
+    for _, kv in ipairs(raw_labels) do
+      local del = kv:find(":", 1, true)
+      local k = del and kv:sub(1, del - 1) or ""
+      local v = del and kv:sub(del + 1) or ""
+
+      local ok, err = validate_entry(k, MAX_KEY_SIZE, KEY_PTRN)
+      if not ok then
+        return nil, "label key validation failed: " .. err
+      end
+      ok, err = validate_entry(v, MAX_VALUE_SIZE, VAL_PTRN)
+      if not ok then
+        return nil, "label value validation failed: " .. err
+      end
+    end
+
+    return true
+  end
+end
+
 
 -- Validate properties (type/enum/custom) and infer their type.
 -- @param[type=table] conf The configuration table to treat.
@@ -778,12 +236,12 @@ local function check_and_parse(conf, opts)
   local errors = {}
 
   for k, value in pairs(conf) do
-    local v_schema = CONF_PARSERS[k] or {}
+    local v_schema = conf_constants.CONF_PARSERS[k] or {}
 
     value = parse_value(value, v_schema.typ)
 
     local typ = v_schema.typ or "string"
-    if value and not typ_checks[typ](value) then
+    if value and not conf_constants.TYP_CHECKS[typ](value) then
       errors[#errors + 1] = fmt("%s is not a %s: '%s'", k, typ,
                                 tostring(value))
 
@@ -974,7 +432,7 @@ local function check_and_parse(conf, opts)
   end
 
   if conf.ssl_cipher_suite ~= "custom" then
-    local suite = cipher_suites[conf.ssl_cipher_suite]
+    local suite = conf_constants.CIPHER_SUITES[conf.ssl_cipher_suite]
     if suite then
       conf.ssl_ciphers = suite.ciphers
       conf.nginx_http_ssl_protocols = suite.protocols
@@ -1023,7 +481,7 @@ local function check_and_parse(conf, opts)
 
   if conf.headers then
     for _, token in ipairs(conf.headers) do
-      if token ~= "off" and not HEADER_KEY_TO_NAME[lower(token)] then
+      if token ~= "off" and not conf_constants.HEADER_KEY_TO_NAME[lower(token)] then
         errors[#errors + 1] = fmt("headers: invalid entry '%s'",
                                   tostring(token))
       end
@@ -1032,7 +490,7 @@ local function check_and_parse(conf, opts)
 
   if conf.headers_upstream then
     for _, token in ipairs(conf.headers_upstream) do
-      if token ~= "off" and not UPSTREAM_HEADER_KEY_TO_NAME[lower(token)] then
+      if token ~= "off" and not conf_constants.UPSTREAM_HEADER_KEY_TO_NAME[lower(token)] then
         errors[#errors + 1] = fmt("headers_upstream: invalid entry '%s'",
                                   tostring(token))
       end
@@ -1291,7 +749,7 @@ local function check_and_parse(conf, opts)
     end
 
     if conf.cluster_dp_labels then
-      local _, err = utils.validate_labels(conf.cluster_dp_labels)
+      local _, err = validate_labels(conf.cluster_dp_labels)
       if err then
        errors[#errors + 1] = err
       end
@@ -1392,6 +850,12 @@ local function check_and_parse(conf, opts)
     end
   end
 
+  if #conf.admin_listen < 1 or strip(conf.admin_listen[1]) == "off" then
+    if #conf.admin_gui_listen > 0 and strip(conf.admin_gui_listen[1]) ~= "off" then
+      log.warn("Kong Manager won't be functional because the Admin API is not listened on any interface")
+    end
+  end
+
   return #errors == 0, errors[1], errors
 end
 
@@ -1423,8 +887,8 @@ local function overrides(k, default_v, opts, file_conf, arg_conf)
     if env ~= nil then
       local to_print = env
 
-      if CONF_SENSITIVE[k] then
-        to_print = CONF_SENSITIVE_PLACEHOLDER
+      if conf_constants.CONF_SENSITIVE[k] then
+        to_print = conf_constants.CONF_SENSITIVE_PLACEHOLDER
       end
 
       log.debug('%s ENV found with "%s"', env_name, to_print)
@@ -1464,7 +928,7 @@ end
 
 
 local function aliased_properties(conf)
-  for property_name, v_schema in pairs(CONF_PARSERS) do
+  for property_name, v_schema in pairs(conf_constants.CONF_PARSERS) do
     local alias = v_schema.alias
 
     if alias and conf[property_name] ~= nil and conf[alias.replacement] == nil then
@@ -1483,7 +947,7 @@ end
 
 
 local function deprecated_properties(conf, opts)
-  for property_name, v_schema in pairs(CONF_PARSERS) do
+  for property_name, v_schema in pairs(conf_constants.CONF_PARSERS) do
     local deprecated = v_schema.deprecated
 
     if deprecated and conf[property_name] ~= nil then
@@ -1509,7 +973,7 @@ end
 
 
 local function dynamic_properties(conf)
-  for property_name, v_schema in pairs(CONF_PARSERS) do
+  for property_name, v_schema in pairs(conf_constants.CONF_PARSERS) do
     local value = conf[property_name]
     if value ~= nil then
       local directives = v_schema.directives
@@ -1637,7 +1101,7 @@ local function load(path, custom_conf, opts)
   if not path then
     -- try to look for a conf in default locations, but no big
     -- deal if none is found: we will use our defaults.
-    for _, default_path in ipairs(DEFAULT_PATHS) do
+    for _, default_path in ipairs(conf_constants.DEFAULT_PATHS) do
       if exists(default_path) then
         path = default_path
         break
@@ -1671,7 +1135,7 @@ local function load(path, custom_conf, opts)
     local function add_dynamic_keys(t)
       t = t or {}
 
-      for property_name, v_schema in pairs(CONF_PARSERS) do
+      for property_name, v_schema in pairs(conf_constants.CONF_PARSERS) do
         local directives = v_schema.directives
         if directives then
           local v = t[property_name]
@@ -1731,7 +1195,7 @@ local function load(path, custom_conf, opts)
     add_dynamic_keys(kong_env_vars)
     add_dynamic_keys(from_file_conf)
 
-    for _, dyn_namespace in ipairs(DYNAMIC_KEY_NAMESPACES) do
+    for _, dyn_namespace in ipairs(conf_constants.DYNAMIC_KEY_NAMESPACES) do
       find_dynamic_keys(dyn_namespace.prefix, defaults) -- tostring() defaults
       find_dynamic_keys(dyn_namespace.prefix, custom_conf)
       find_dynamic_keys(dyn_namespace.prefix, kong_env_vars)
@@ -1765,7 +1229,7 @@ local function load(path, custom_conf, opts)
   -- before executing the main `resty` cmd, i.e. still in `bin/kong`
   if opts.pre_cmd then
     for k, v in pairs(conf) do
-      if not CONF_BASIC[k] then
+      if not conf_constants.CONF_BASIC[k] then
         conf[k] = nil
       end
     end
@@ -1779,7 +1243,7 @@ local function load(path, custom_conf, opts)
   local refs
   do
     -- validation
-    local vaults_array = parse_value(conf.vaults, CONF_PARSERS["vaults"].typ)
+    local vaults_array = parse_value(conf.vaults, conf_constants.CONF_PARSERS["vaults"].typ)
 
     -- merge vaults
     local vaults = {}
@@ -1789,7 +1253,7 @@ local function load(path, custom_conf, opts)
         local vault_name = strip(vaults_array[i])
         if vault_name ~= "off" then
           if vault_name == "bundled" then
-            vaults = tablex.merge(constants.BUNDLED_VAULTS, vaults, true)
+            vaults = tablex.merge(conf_constants.BUNDLED_VAULTS, vaults, true)
 
           else
             vaults[vault_name] = true
@@ -1798,7 +1262,7 @@ local function load(path, custom_conf, opts)
       end
     end
 
-    loaded_vaults = setmetatable(vaults, _nop_tostring_mt)
+    loaded_vaults = setmetatable(vaults, conf_constants._NOP_TOSTRING_MT)
 
     if get_phase() == "init" then
       local secrets = getenv("KONG_PROCESS_SECRETS")
@@ -1806,7 +1270,7 @@ local function load(path, custom_conf, opts)
         C.unsetenv("KONG_PROCESS_SECRETS")
 
       else
-        local path = pl_path.join(abspath(ngx.config.prefix()), unpack(PREFIX_PATHS.kong_process_secrets))
+        local path = pl_path.join(abspath(ngx.config.prefix()), unpack(conf_constants.PREFIX_PATHS.kong_process_secrets))
         if exists(path) then
           secrets, err = pl_file.read(path, true)
           pl_file.delete(path)
@@ -1827,7 +1291,7 @@ local function load(path, custom_conf, opts)
           if refs then
             refs[k] = v
           else
-            refs = setmetatable({ [k] = v }, _nop_tostring_mt)
+            refs = setmetatable({ [k] = v }, conf_constants._NOP_TOSTRING_MT)
           end
 
           conf[k] = deref
@@ -1850,7 +1314,7 @@ local function load(path, custom_conf, opts)
           if refs then
             refs[k] = v
           else
-            refs = setmetatable({ [k] = v }, _nop_tostring_mt)
+            refs = setmetatable({ [k] = v }, conf_constants._NOP_TOSTRING_MT)
           end
 
           local deref, deref_err = vault.get(v)
@@ -1904,7 +1368,7 @@ local function load(path, custom_conf, opts)
   end
 
   -- attach prefix files paths
-  for property, t_path in pairs(PREFIX_PATHS) do
+  for property, t_path in pairs(conf_constants.PREFIX_PATHS) do
     conf[property] = pl_path.join(conf.prefix, unpack(t_path))
   end
 
@@ -1945,10 +1409,13 @@ local function load(path, custom_conf, opts)
     end
   end
 
+  -- lmdb validation tag
+  conf.lmdb_validation_tag = conf_constants.LMDB_VALIDATION_TAG
+
   -- Wasm module support
   if conf.wasm then
     local wasm_filters = get_wasm_filters(conf.wasm_filters_path)
-    conf.wasm_modules_parsed = setmetatable(wasm_filters, _nop_tostring_mt)
+    conf.wasm_modules_parsed = setmetatable(wasm_filters, conf_constants._NOP_TOSTRING_MT)
 
     local function add_wasm_directive(directive, value, prefix)
       local directive_name = (prefix or "") .. directive
@@ -1998,19 +1465,19 @@ local function load(path, custom_conf, opts)
     local injected_in_namespace = {}
 
     -- nginx directives from conf
-    for _, dyn_namespace in ipairs(DYNAMIC_KEY_NAMESPACES) do
+    for _, dyn_namespace in ipairs(conf_constants.DYNAMIC_KEY_NAMESPACES) do
       if dyn_namespace.injected_conf_name then
         injected_in_namespace[dyn_namespace.injected_conf_name] = true
 
         local directives = parse_nginx_directives(dyn_namespace, conf,
           injected_in_namespace)
         conf[dyn_namespace.injected_conf_name] = setmetatable(directives,
-          _nop_tostring_mt)
+          conf_constants._NOP_TOSTRING_MT)
       end
     end
 
     -- TODO: Deprecated, but kept for backward compatibility.
-    for _, dyn_namespace in ipairs(DEPRECATED_DYNAMIC_KEY_NAMESPACES) do
+    for _, dyn_namespace in ipairs(conf_constants.DEPRECATED_DYNAMIC_KEY_NAMESPACES) do
       if conf[dyn_namespace.injected_conf_name] then
         conf[dyn_namespace.previous_conf_name] = conf[dyn_namespace.injected_conf_name]
       end
@@ -2023,8 +1490,8 @@ local function load(path, custom_conf, opts)
 
     for k, v in pairs(conf) do
       local to_print = v
-      if CONF_SENSITIVE[k] then
-        to_print = "******"
+      if conf_constants.CONF_SENSITIVE[k] then
+        to_print = conf_constants.CONF_SENSITIVE_PLACEHOLDER
       end
 
       conf_arr[#conf_arr+1] = k .. " = " .. pl_pretty.write(to_print, "")
@@ -2050,7 +1517,7 @@ local function load(path, custom_conf, opts)
         local plugin_name = strip(conf.plugins[i])
         if plugin_name ~= "off" then
           if plugin_name == "bundled" then
-            plugins = tablex.merge(constants.BUNDLED_PLUGINS, plugins, true)
+            plugins = tablex.merge(conf_constants.BUNDLED_PLUGINS, plugins, true)
 
           else
             plugins[plugin_name] = true
@@ -2059,7 +1526,7 @@ local function load(path, custom_conf, opts)
       end
     end
 
-    conf.loaded_plugins = setmetatable(plugins, _nop_tostring_mt)
+    conf.loaded_plugins = setmetatable(plugins, conf_constants._NOP_TOSTRING_MT)
   end
 
   -- temporary workaround: inject an shm for prometheus plugin if needed
@@ -2105,7 +1572,7 @@ local function load(path, custom_conf, opts)
     end
   end
 
-  for _, dyn_namespace in ipairs(DYNAMIC_KEY_NAMESPACES) do
+  for _, dyn_namespace in ipairs(conf_constants.DYNAMIC_KEY_NAMESPACES) do
     if dyn_namespace.injected_conf_name then
       sort(conf[dyn_namespace.injected_conf_name], function(a, b)
         return a.name < b.name
@@ -2130,48 +1597,48 @@ local function load(path, custom_conf, opts)
 
     -- (downstream)
     local enabled_headers = {}
-    for _, v in pairs(HEADER_KEY_TO_NAME) do
+    for _, v in pairs(conf_constants.HEADER_KEY_TO_NAME) do
       enabled_headers[v] = false
     end
 
     if #conf.headers > 0 and conf.headers[1] ~= "off" then
       for _, token in ipairs(conf.headers) do
         if token ~= "off" then
-          enabled_headers[HEADER_KEY_TO_NAME[lower(token)]] = true
+          enabled_headers[conf_constants.HEADER_KEY_TO_NAME[lower(token)]] = true
         end
       end
     end
 
     if enabled_headers.server_tokens then
-      enabled_headers[HEADERS.VIA] = true
-      enabled_headers[HEADERS.SERVER] = true
+      enabled_headers[conf_constants.HEADERS.VIA] = true
+      enabled_headers[conf_constants.HEADERS.SERVER] = true
     end
 
     if enabled_headers.latency_tokens then
-      enabled_headers[HEADERS.PROXY_LATENCY] = true
-      enabled_headers[HEADERS.RESPONSE_LATENCY] = true
-      enabled_headers[HEADERS.ADMIN_LATENCY] = true
-      enabled_headers[HEADERS.UPSTREAM_LATENCY] = true
+      enabled_headers[conf_constants.HEADERS.PROXY_LATENCY] = true
+      enabled_headers[conf_constants.HEADERS.RESPONSE_LATENCY] = true
+      enabled_headers[conf_constants.HEADERS.ADMIN_LATENCY] = true
+      enabled_headers[conf_constants.HEADERS.UPSTREAM_LATENCY] = true
     end
 
-    conf.enabled_headers = setmetatable(enabled_headers, _nop_tostring_mt)
+    conf.enabled_headers = setmetatable(enabled_headers, conf_constants._NOP_TOSTRING_MT)
 
 
     -- (upstream)
     local enabled_headers_upstream = {}
-    for _, v in pairs(UPSTREAM_HEADER_KEY_TO_NAME) do
+    for _, v in pairs(conf_constants.UPSTREAM_HEADER_KEY_TO_NAME) do
       enabled_headers_upstream[v] = false
     end
 
     if #conf.headers_upstream > 0 and conf.headers_upstream[1] ~= "off" then
       for _, token in ipairs(conf.headers_upstream) do
         if token ~= "off" then
-          enabled_headers_upstream[UPSTREAM_HEADER_KEY_TO_NAME[lower(token)]] = true
+          enabled_headers_upstream[conf_constants.UPSTREAM_HEADER_KEY_TO_NAME[lower(token)]] = true
         end
       end
     end
 
-    conf.enabled_headers_upstream = setmetatable(enabled_headers_upstream, _nop_tostring_mt)
+    conf.enabled_headers_upstream = setmetatable(enabled_headers_upstream, conf_constants._NOP_TOSTRING_MT)
   end
 
   for _, prefix in ipairs({ "ssl", "admin_ssl", "admin_gui_ssl", "status_ssl", "client_ssl", "cluster" }) do
@@ -2267,7 +1734,7 @@ return setmetatable({
   load_config_file = load_config_file,
 
   add_default_path = function(path)
-    DEFAULT_PATHS[#DEFAULT_PATHS+1] = path
+    table.insert(conf_constants.DEFAULT_PATHS, path)
   end,
 
   remove_sensitive = function(conf)
@@ -2276,16 +1743,16 @@ return setmetatable({
     local refs = purged_conf["$refs"]
     if type(refs) == "table" then
       for k, v in pairs(refs) do
-        if not CONF_SENSITIVE[k] then
+        if not conf_constants.CONF_SENSITIVE[k] then
           purged_conf[k] = v
         end
       end
       purged_conf["$refs"] = nil
     end
 
-    for k in pairs(CONF_SENSITIVE) do
+    for k in pairs(conf_constants.CONF_SENSITIVE) do
       if purged_conf[k] then
-        purged_conf[k] = CONF_SENSITIVE_PLACEHOLDER
+        purged_conf[k] = conf_constants.CONF_SENSITIVE_PLACEHOLDER
       end
     end
 
