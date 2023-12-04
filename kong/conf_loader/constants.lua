@@ -20,7 +20,7 @@ local BUNDLED_VAULTS = constants.BUNDLED_VAULTS
 local BUNDLED_PLUGINS = constants.BUNDLED_PLUGINS
 
 
--- Version 5: https://wiki.mozilla.org/Security/Server_Side_TLS
+-- Version 5.7: https://wiki.mozilla.org/Security/Server_Side_TLS
 local CIPHER_SUITES = {
                    modern = {
                 protocols = "TLSv1.3",
@@ -36,7 +36,8 @@ local CIPHER_SUITES = {
                          .. "ECDHE-ECDSA-CHACHA20-POLY1305:"
                          .. "ECDHE-RSA-CHACHA20-POLY1305:"
                          .. "DHE-RSA-AES128-GCM-SHA256:"
-                         .. "DHE-RSA-AES256-GCM-SHA384",
+                         .. "DHE-RSA-AES256-GCM-SHA384:"
+                         .. "DHE-RSA-CHACHA20-POLY1305",
                  dhparams = "ffdhe2048",
     prefer_server_ciphers = "off",
   },
@@ -72,7 +73,7 @@ local CIPHER_SUITES = {
   },
                      fips = { -- https://wiki.openssl.org/index.php/FIPS_mode_and_TLS
                           -- TLSv1.0 and TLSv1.1 is not completely not FIPS compliant,
-                          -- but must be used under certain condititions like key sizes,
+                          -- but must be used under certain conditions like key sizes,
                           -- signatures in the full chain that Kong can't control.
                           -- In that case, we disables TLSv1.0 and TLSv1.1 and user
                           -- can optionally turn them on if they are aware of the caveats.
@@ -673,4 +674,3 @@ return {
   --- XXX EE
   ADMIN_GUI_AUTH_CONFIGS = ADMIN_GUI_AUTH_CONFIGS,
 }
-
