@@ -1,6 +1,7 @@
 local ssl_fixtures = require "spec.fixtures.ssl"
 local helpers      = require "spec.helpers"
 local cjson        = require "cjson"
+local fmt          = string.format
 
 
 local function get_cert(server_name)
@@ -11,6 +12,32 @@ local function get_cert(server_name)
 
   return stdout
 end
+
+local mock_tls_server_port = helpers.get_available_port()
+
+local fixtures = {
+  dns_mock = helpers.dns_mock.new(),
+  http_mock = {
+    test_upstream_tls_server = fmt([[
+      server {
+          server_name example2.com;
+          listen %s ssl;
+
+          ssl_certificate        ../spec/fixtures/mtls_certs/example2.com.crt;
+          ssl_certificate_key    ../spec/fixtures/mtls_certs/example2.com.key;
+
+          location = / {
+              echo 'it works';
+          }
+      }
+    ]], mock_tls_server_port)
+  },
+}
+
+fixtures.dns_mock:A {
+  name = "example2.com",
+  address = "127.0.0.1",
+}
 
 for _, strategy in helpers.each_strategy() do
   describe("SSL [#" .. strategy .. "]", function()
@@ -126,16 +153,18 @@ for _, strategy in helpers.each_strategy() do
         preserve_host = false,
       }
 
-      local service_mockbin = assert(bp.services:insert {
-        name     = "service-mockbin",
-        url      = "https://mockbin.com/request",
+      local service_example2 = assert(bp.services:insert {
+        name     = "service-example2",
+        protocol = "https",
+        host     = "example2.com",
+        port     = mock_tls_server_port,
       })
 
       assert(bp.routes:insert {
         protocols     = { "http" },
-        hosts         = { "mockbin.com" },
+        hosts         = { "example2.com" },
         paths         = { "/" },
-        service       = service_mockbin,
+        service       = service_example2,
       })
 
       assert(bp.routes:insert {
@@ -204,13 +233,14 @@ for _, strategy in helpers.each_strategy() do
 
       -- /wildcard tests
 
-      assert(helpers.start_kong {
+      assert(helpers.start_kong ({
         database    = strategy,
         nginx_conf  = "spec/fixtures/custom_nginx.template",
         trusted_ips = "127.0.0.1",
         nginx_http_proxy_ssl_verify = "on",
         nginx_http_proxy_ssl_trusted_certificate = "../spec/fixtures/kong_spec.crt",
-      })
+        nginx_http_proxy_ssl_verify_depth = "5",
+      }, nil, nil, fixtures))
 
       proxy_client = helpers.proxy_client()
       https_client = helpers.proxy_ssl_client()
@@ -228,13 +258,13 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/",
           headers = {
-            Host  = "mockbin.com",
+            Host  = "example2.com",
           },
         })
         local body = assert.res_status(502, res)
         assert.matches("An invalid response was received from the upstream server", body)
         assert.logfile().has.line("upstream SSL certificate verify error: " ..
-                                  "(20:unable to get local issuer certificate) " ..
+                                  "(21:unable to verify the first certificate) " ..
                                   "while SSL handshaking to upstream", true, 2)
       end)
 
@@ -540,7 +570,7 @@ for _, strategy in helpers.each_strategy() do
         snis     = { "example.com" },
         service   = service,
       }
-      
+
       bp.routes:insert {
         protocols = { "tls" },
         snis      = { "foobar.example.com." },
@@ -564,7 +594,7 @@ for _, strategy in helpers.each_strategy() do
         stream_listen = "127.0.0.1:9020 ssl"
       })
 
-    
+
     end)
 
     lazy_teardown(function()
