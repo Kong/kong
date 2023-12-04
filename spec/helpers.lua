@@ -3388,17 +3388,42 @@ end
 -- configuration will be used
 -- @function clean_prefix
 local function clean_prefix(prefix)
+
+  -- like pl_dir.rmtree, but ignore mount points
+  local function rmtree(fullpath)
+    if pl_path.islink(fullpath) then return false,'will not follow symlink' end
+    for root,dirs,files in pl_dir.walk(fullpath,true) do
+      if pl_path.islink(root) then
+        -- sub dir is a link, remove link, do not follow
+        local res, err = os.remove(root)
+        if not res then
+          return nil, err .. ": " .. root
+        end
+
+      else
+        for i,f in ipairs(files) do
+          f = pl_path.join(root,f)
+          local res, err = os.remove(f)
+          if not res then
+            return nil,err .. ": " .. f
+          end
+        end
+
+        local res, err = pl_path.rmdir(root)
+        -- skip errors when trying to remove mount points
+        if not res and os.execute("findmnt " .. root .. " 2>&1 >/dev/null") == 0 then
+          return nil, err .. ": " .. root
+        end
+      end
+    end
+    return true
+  end
+
   prefix = prefix or conf.prefix
   if pl_path.exists(prefix) then
-    local _, err = pl_dir.rmtree(prefix)
-    -- Note: gojira mount default kong prefix as a volume so itself can't
-    -- be removed; only throw error if the prefix is indeed not empty
+    local _, err = rmtree(prefix)
     if err then
-      local fcnt = #assert(pl_dir.getfiles(prefix))
-      local dcnt = #assert(pl_dir.getdirectories(prefix))
-      if fcnt + dcnt > 0 then
-        error(err)
-      end
+      error(err)
     end
   end
 end
