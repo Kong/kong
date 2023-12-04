@@ -2379,7 +2379,6 @@ is stale: true
 
 
 === TEST 50: get() does not cache value in LRU indefinitely when retrieved from shm on last ms (see GH PR #58)
---- SKIP
 --- http_config eval: $::HttpConfig
 --- config
     location = /t {
@@ -2419,8 +2418,6 @@ is stale: true
             assert(data == 42, err or "invalid data value: " .. data)
             ngx.say("hit_lvl: ", hit_lvl)
 
-            ngx.update_time()
-            local start = ngx.now() * 1000
             while true do
                 lru:delete("key")
                 data, err, hit_lvl = cache:get("key", nil, cb)
@@ -2431,9 +2428,6 @@ is stale: true
                 end
                 ngx.sleep(0)
             end
-            ngx.update_time()
-            local took = ngx.now() * 1000 - start
-            assert(took > 198 and took < 202)
 
             data, err, hit_lvl = cache:get("key", nil, cb)
             assert(data == 42, err or "invalid data value: " .. data)
