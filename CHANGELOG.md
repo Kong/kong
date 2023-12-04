@@ -83,6 +83,10 @@
 
 - **HTTP Log**: fix internal error during validating the schema if http_endpoint contains
   userinfo but headers is empty [#9574](https://github.com/Kong/kong/pull/9574)
+- Update the batch queues module so that queues no longer grow without bounds if
+  their consumers fail to process the entries.  Instead, old batches are now dropped
+  and an error is logged.
+  [#10247](https://github.com/Kong/kong/pull/10247)
 
 ##### CLI
 
