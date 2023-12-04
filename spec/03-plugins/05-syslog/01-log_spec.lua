@@ -18,19 +18,19 @@ for _, strategy in helpers.each_strategy() do
       })
 
       local route1 = bp.routes:insert {
-        hosts = { "logging.com" },
+        hosts = { "logging.test" },
       }
 
       local route2 = bp.routes:insert {
-        hosts = { "logging2.com" },
+        hosts = { "logging2.test" },
       }
 
       local route3 = bp.routes:insert {
-        hosts = { "logging3.com" },
+        hosts = { "logging3.test" },
       }
 
       local route4 = bp.routes:insert {
-        hosts = { "logging4.com" },
+        hosts = { "logging4.test" },
       }
 
       bp.plugins:insert {
@@ -89,17 +89,17 @@ for _, strategy in helpers.each_strategy() do
 
       local grpc_route1 = bp.routes:insert {
         service = grpc_service,
-        hosts = { "grpc_logging.com" },
+        hosts = { "grpc_logging.test" },
       }
 
       local grpc_route2 = bp.routes:insert {
         service = grpc_service,
-        hosts = { "grpc_logging2.com" },
+        hosts = { "grpc_logging2.test" },
       }
 
       local grpc_route3 = bp.routes:insert {
         service = grpc_service,
-        hosts = { "grpc_logging3.com" },
+        hosts = { "grpc_logging3.test" },
       }
 
       bp.plugins:insert {
@@ -259,28 +259,28 @@ for _, strategy in helpers.each_strategy() do
     end
 
     it("logs to syslog if log_level is lower", function()
-      do_test("logging.com", true)
+      do_test("logging.test", true)
     end)
     it("does not log to syslog if log_level is higher", function()
-      do_test("logging2.com", false)
+      do_test("logging2.test", false)
     end)
     it("logs to syslog if log_level is the same", function()
-      do_test("logging3.com", true)
+      do_test("logging3.test", true)
     end)
     it("logs custom values", function()
-      local resp = do_test("logging4.com", true)
+      local resp = do_test("logging4.test", true)
       assert.matches("\"new_field\".*123", resp)
       assert.not_matches("\"route\"", resp)
     end)
 
     it("logs to syslog if log_level is lower #grpc", function()
-      do_test("grpc_logging.com", true, true)
+      do_test("grpc_logging.test", true, true)
     end)
     it("does not log to syslog if log_level is higher #grpc", function()
-      do_test("grpc_logging2.com", false, true)
+      do_test("grpc_logging2.test", false, true)
     end)
     it("logs to syslog if log_level is the same #grpc", function()
-      do_test("grpc_logging3.com", true, true)
+      do_test("grpc_logging3.test", true, true)
     end)
   end)
 end

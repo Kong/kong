@@ -26,7 +26,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           })
 
           local route = bp.routes:insert {
-            hosts = { "ldapauth.com" },
+            hosts = { "ldapauth.test" },
           }
 
           plugin = bp.plugins:insert {
@@ -86,7 +86,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               path = "/requests",
               body = {},
               headers = {
-                ["HOST"] = "ldapauth.com",
+                ["HOST"] = "ldapauth.test",
                 authorization = "ldap " .. ngx.encode_base64("einstein:wrongpassword")
               }
             })
@@ -112,7 +112,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               path = "/requests",
               body = {},
               headers = {
-                ["HOST"] = "ldapauth.com",
+                ["HOST"] = "ldapauth.test",
                 authorization = "ldap " .. ngx.encode_base64("einstein:password")
               }
             })

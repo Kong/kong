@@ -536,8 +536,8 @@ describe("routes schema (flavor = traditional/traditional_compatible)", function
     it("accepts hosts with valid wildcard", function()
       local valid_hosts = {
         "example.*",
-        "*.example.org",
-        "*.example.org:321",
+        "*.example.com",
+        "*.example.com:321",
       }
 
       for i = 1, #valid_hosts do
@@ -944,7 +944,7 @@ describe("routes schema (flavor = traditional/traditional_compatible)", function
           end
 
           -- hostnames
-          for _, ip_val in ipairs({ "f", "example.org" }) do
+          for _, ip_val in ipairs({ "f", "example.com" }) do
             for _, protocol in ipairs({ "tcp", "tls", "udp" }) do
               local route = Routes:process_auto_fields({
                 protocols = { protocol },
@@ -1010,7 +1010,7 @@ describe("routes schema (flavor = traditional/traditional_compatible)", function
 
       for _, protocol in ipairs { "tls", "https", "grpcs" } do
         it("accepts valid SNIs for " .. protocol .. " Routes", function()
-          for _, sni in ipairs({ "example.org", "www.example.org" }) do
+          for _, sni in ipairs({ "example.com", "www.example.com" }) do
             local route = Routes:process_auto_fields({
               protocols = { protocol },
               snis = { sni },
@@ -1024,7 +1024,7 @@ describe("routes schema (flavor = traditional/traditional_compatible)", function
       end
 
       it("rejects invalid SNIs", function()
-        for _, sni in ipairs({ "127.0.0.1", "example.org:80" }) do
+        for _, sni in ipairs({ "127.0.0.1", "example.com:80" }) do
           local route = Routes:process_auto_fields({
             protocols = { "tcp", "tls" },
             snis = { sni },
@@ -1045,7 +1045,7 @@ describe("routes schema (flavor = traditional/traditional_compatible)", function
       it("rejects specifying 'snis' if 'protocols' does not have 'https', 'tls' or 'tls_passthrough'", function()
         local route = Routes:process_auto_fields({
           protocols = { "tcp", "udp" },
-          snis = { "example.org" },
+          snis = { "example.com" },
           service = s,
         }, "insert")
         local ok, errs = Routes:validate(route)
@@ -1188,7 +1188,7 @@ describe("routes schema (flavor = traditional/traditional_compatible)", function
   it("errors if strip_path is set on grpc/grpcs", function()
     local s = { id = "a4fbd24e-6a52-4937-bd78-2536713072d2" }
     local route = Routes:process_auto_fields({
-      hosts = { "foo.grpc.com" },
+      hosts = { "foo.grpc.test" },
       protocols = { "grpc" },
       strip_path = true,
       service = s,
@@ -1200,7 +1200,7 @@ describe("routes schema (flavor = traditional/traditional_compatible)", function
     }, errs)
 
     route = Routes:process_auto_fields({
-      hosts = { "foo.grpc.com" },
+      hosts = { "foo.grpc.test" },
       protocols = { "grpcs" },
       strip_path = true,
       service = s,
@@ -1215,7 +1215,7 @@ describe("routes schema (flavor = traditional/traditional_compatible)", function
   it("errors if tls and tls_passthrough set on a same route", function()
     local s = { id = "a4fbd24e-6a52-4937-bd78-2536713072d2" }
     local route = Routes:process_auto_fields({
-      snis = { "foo.grpc.com" },
+      snis = { "foo.grpc.test" },
       protocols = { "tls", "tls_passthrough" },
       service = s,
     }, "insert")

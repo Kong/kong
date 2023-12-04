@@ -639,9 +639,9 @@ describe("kong start/stop #" .. strategy, function()
           services:
           - name: "@gobo"
             protocol: foo
-            host: mockbin.org
+            host: mockbin.test
           - name: my-service
-            url: http://mockbin.org
+            url: http://mockbin.test
             routes:
             - name: example-route
               hosts:
