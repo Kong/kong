@@ -73,18 +73,6 @@
 
 - Fixed a bug where internal redirects (i.e. those produced by the error_page directive) could interfere with worker process handling the request when buffered proxying is being used.
 
-## Unrelease
-
-### Fixes
-
-##### Plugins
-
-- Update the batch queues module so that queues no longer grow without bounds if
-  their consumers fail to process the entries.  Instead, old batches are now dropped
-  and an error is logged.
-  [#10046](https://github.com/Kong/kong/pull/10046)
-
-
 ## [2.8.3]
 
 > Released 2022/11/02
