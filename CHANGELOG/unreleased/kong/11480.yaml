@@ -1,0 +1,7 @@
+message: Fix a problem that abnormal socket connection will be reused when querying Postgres database.
+type: bugfix
+scope: Core
+prs:
+  - 11480
+jiras:
+  - "FTI-5322"
