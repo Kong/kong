@@ -15,10 +15,12 @@ describe("signals", function()
     assert(helpers.start_kong())
     helpers.signal(nil, "-USR1")
 
-    local conf = helpers.get_running_conf()
-    local _, code = helpers.execute("grep -F '(SIGUSR1) received from' " ..
-                                     conf.nginx_err_logs, true)
-    assert.equal(0, code)
+    helpers.wait_until(function()
+      local conf = helpers.get_running_conf()
+      local _, code = helpers.execute("grep -F '(SIGUSR1) received from' " ..
+                                      conf.nginx_err_logs, true)
+      return 0 == code, "SIGUSR1 not received"
+    end)
   end)
 
   it("can receive USR2 #flaky", function()
