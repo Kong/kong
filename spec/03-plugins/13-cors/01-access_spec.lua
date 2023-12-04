@@ -365,7 +365,7 @@ for _, strategy in helpers.each_strategy() do
         name = "cors",
         route = { id = route6.id },
         config = {
-          origins            = { "example.com", "example.org" },
+          origins            = { "example.test", "example.org" },
           methods            = { "GET" },
           headers            = { "origin", "type", "accepts" },
           exposed_headers    = { "x-auth-token" },
@@ -864,7 +864,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           headers = {
             ["Host"]   = "cors6.test",
-            ["Origin"] = "example.com"
+            ["Origin"] = "example.test"
           }
         })
         assert.res_status(200, res)
@@ -912,7 +912,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           headers = {
             ["Host"]   = "cors6.test",
-            ["Origin"] = "http://example.com"
+            ["Origin"] = "http://example.test"
           }
         })
         assert.res_status(200, res)
@@ -923,7 +923,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           headers = {
             ["Host"]   = "cors6.test",
-            ["Origin"] = "https://example.com"
+            ["Origin"] = "https://example.test"
           }
         })
         assert.res_status(200, res)

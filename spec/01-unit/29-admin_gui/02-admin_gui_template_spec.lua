@@ -74,7 +74,7 @@ describe("admin_gui template", function()
       local new_conf = conf
 
       -- change configuration values
-      new_conf.admin_gui_url = 'http://admin-test.example.test'
+      new_conf.admin_gui_url = 'http://admin-test.example.com'
       new_conf.admin_gui_path = '/manager'
       new_conf.admin_gui_api_url = 'http://localhost:8001'
 
@@ -82,7 +82,7 @@ describe("admin_gui template", function()
       local new_content = admin_gui.generate_kconfig(new_conf)
 
       -- test configuration values against template
-      assert.matches("'ADMIN_GUI_URL': 'http://admin-test.example.test'", new_content, nil, true)
+      assert.matches("'ADMIN_GUI_URL': 'http://admin-test.example.com'", new_content, nil, true)
       assert.matches("'ADMIN_GUI_PATH': '/manager'", new_content, nil, true)
       assert.matches("'ADMIN_API_URL': 'http://localhost:8001'", new_content, nil, true)
       assert.matches("'ADMIN_API_PORT': '8001'", new_content, nil, true)
@@ -155,14 +155,14 @@ describe("admin_gui template", function()
       local new_conf = conf
 
       -- change configuration values
-      new_conf.admin_gui_url = 'http://admin-test.example.test'
+      new_conf.admin_gui_url = 'http://admin-test.example.com'
       new_conf.anonymous_reports = true
 
       -- regenerate kconfig
       local new_content = admin_gui.generate_kconfig(new_conf)
 
       -- test configuration values against template
-      assert.matches("'ADMIN_GUI_URL': 'http://admin-test.example.test'", new_content, nil, true)
+      assert.matches("'ADMIN_GUI_URL': 'http://admin-test.example.com'", new_content, nil, true)
       assert.matches("'ADMIN_API_URL': '0.0.0.0:8001'", new_content, nil, true)
       assert.matches("'ADMIN_API_PORT': '8001'", new_content, nil, true)
       assert.matches("'ADMIN_API_SSL_PORT': '8444'", new_content, nil, true)
