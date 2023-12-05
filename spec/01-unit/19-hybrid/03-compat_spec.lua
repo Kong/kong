@@ -509,7 +509,7 @@ describe("kong.clustering.compat", function()
           service1 = {
             connect_timeout = 60000,
             created_at = 1234567890,
-            host = "example.com",
+            host = "example.test",
             id = "123e4567-e89b-12d3-a456-426655440000",
             name = "foo1",
             port = 3000,
