@@ -179,7 +179,7 @@ for _, strategy in helpers.each_strategy() do
        assert.is_nil(err)
      end)
 
-     test("Call binary gRCP via HTTP with a deadline", function()
+     test("Call binary gRPC via HTTP with a deadline", function()
       local res, err = proxy_client:post("/hello.HelloService/SayHello", {
         headers = {
           ["Content-Type"] = "application/grpc-web+proto",
