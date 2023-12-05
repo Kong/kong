@@ -12,7 +12,9 @@ function EnableBuffering:access(conf)
 
   for suffix = 0, conf.calls - 1 do
     local uri = "http://really.really.really.really.really.really.not.exists." .. suffix
-    httpc:request_uri(uri)
+    pcall(function()
+      httpc:request_uri(uri)
+    end)
   end
 end
 
