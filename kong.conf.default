@@ -1507,7 +1507,7 @@ G# -----------------------
                                  # property receives a value (in seconds), it
                                  # will override the TTL for all records.
 
-#dns_stale_ttl = 4               # Defines, in seconds, how long a record will
+#dns_stale_ttl = 3600            # Defines, in seconds, how long a record will
                                  # remain in cache past its TTL. This value
                                  # will be used while the new DNS record is
                                  # fetched in the background.
@@ -1515,6 +1515,8 @@ G# -----------------------
                                  # record until either the refresh query
                                  # completes, or the `dns_stale_ttl` number of
                                  # seconds have passed.
+                                 # This configuration enables Kong to be more
+                                 # resilient during resolver downtime.
 
 #dns_cache_size = 10000          # Defines the maximum allowed number of
                                  # DNS records stored in memory cache.
