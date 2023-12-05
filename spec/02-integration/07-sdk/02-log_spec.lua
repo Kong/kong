@@ -62,7 +62,7 @@ describe("PDK: kong.log", function()
     bp.routes:insert({
       service = service,
       protocols = { "https" },
-      hosts = { "logger-plugin.com" }
+      hosts = { "logger-plugin.test" }
     })
 
     bp.plugins:insert({
@@ -83,7 +83,7 @@ describe("PDK: kong.log", function()
     -- Do two requests
     for i = 1, 2 do
       local res = proxy_client:get("/request", {
-        headers = { Host = "logger-plugin.com" }
+        headers = { Host = "logger-plugin.test" }
       })
       assert.status(200, res)
     end

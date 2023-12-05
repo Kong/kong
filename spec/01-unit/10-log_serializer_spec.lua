@@ -33,7 +33,7 @@ describe("kong.log.serialize", function()
           request_uri = "/request_uri",
           upstream_uri = "/upstream_uri",
           scheme = "http",
-          host = "test.com",
+          host = "test.test",
           server_port = "80",
           request_length = "200",
           bytes_sent = "99",
@@ -89,7 +89,7 @@ describe("kong.log.serialize", function()
         assert.same({header1 = "header1", header2 = "header2", authorization = "REDACTED"}, res.request.headers)
         assert.equal("POST", res.request.method)
         assert.same({"arg1", "arg2"}, res.request.querystring)
-        assert.equal("http://test.com:80/request_uri", res.request.url)
+        assert.equal("http://test.test:80/request_uri", res.request.url)
         assert.equal("/upstream_uri", res.upstream_uri)
         assert.equal("500, 200 : 200, 200", res.upstream_status)
         assert.equal(200, res.request.size)
@@ -114,7 +114,7 @@ describe("kong.log.serialize", function()
         local res = kong.log.serialize({ngx = ngx, kong = kong, })
         assert.is_table(res)
         assert.is_table(res.request)
-        assert.equal("http://test.com:5000/request_uri", res.request.url)
+        assert.equal("http://test.test:5000/request_uri", res.request.url)
       end)
 
       it("serializes the matching Route and Services", function()

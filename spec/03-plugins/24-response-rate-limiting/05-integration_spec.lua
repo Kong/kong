@@ -134,7 +134,7 @@ describe("Plugin: rate-limiting (integration)", function()
         })
 
         local route1 = assert(bp.routes:insert {
-          hosts        = { "redistest1.com" },
+          hosts        = { "redistest1.test" },
         })
         assert(bp.plugins:insert {
           name   = "response-ratelimiting",
@@ -154,7 +154,7 @@ describe("Plugin: rate-limiting (integration)", function()
         })
 
         local route2 = assert(bp.routes:insert {
-          hosts        = { "redistest2.com" },
+          hosts        = { "redistest2.test" },
         })
         assert(bp.plugins:insert {
           name   = "response-ratelimiting",
@@ -175,7 +175,7 @@ describe("Plugin: rate-limiting (integration)", function()
 
         if red_version >= version("6.0.0") then
           local route3 = assert(bp.routes:insert {
-            hosts        = { "redistest3.com" },
+            hosts        = { "redistest3.test" },
           })
           assert(bp.plugins:insert {
             name   = "response-ratelimiting",
@@ -197,7 +197,7 @@ describe("Plugin: rate-limiting (integration)", function()
           })
 
           local route4 = assert(bp.routes:insert {
-            hosts        = { "redistest4.com" },
+            hosts        = { "redistest4.test" },
           })
           assert(bp.plugins:insert {
             name   = "response-ratelimiting",
@@ -252,7 +252,7 @@ describe("Plugin: rate-limiting (integration)", function()
           method = "GET",
           path = "/response-headers?x-kong-limit=video=1",
           headers = {
-            ["Host"] = "redistest1.com"
+            ["Host"] = "redistest1.test"
           }
         })
         assert.res_status(200, res)
@@ -284,7 +284,7 @@ describe("Plugin: rate-limiting (integration)", function()
           method = "GET",
           path = "/response-headers?x-kong-limit=video=1",
           headers = {
-            ["Host"] = "redistest2.com"
+            ["Host"] = "redistest2.test"
           }
         })
         assert.res_status(200, res)
@@ -317,7 +317,7 @@ describe("Plugin: rate-limiting (integration)", function()
             method = "GET",
             path = "/response-headers?x-kong-limit=video=1",
             headers = {
-              ["Host"] = "redistest3.com"
+              ["Host"] = "redistest3.test"
             }
           })
           assert.res_status(200, res)
@@ -353,7 +353,7 @@ describe("Plugin: rate-limiting (integration)", function()
             method = "GET",
             path = "/status/200",
             headers = {
-              ["Host"] = "redistest3.com"
+              ["Host"] = "redistest3.test"
             }
           })
           assert.res_status(200, res)
@@ -369,7 +369,7 @@ describe("Plugin: rate-limiting (integration)", function()
             method = "GET",
             path = "/status/200",
             headers = {
-              ["Host"] = "redistest4.com"
+              ["Host"] = "redistest4.test"
             }
           })
           assert.res_status(500, res)

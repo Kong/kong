@@ -41,7 +41,7 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
 
       bp.routes:insert {
         service = { id = service.id },
-        hosts   = { "one." .. plugin_name .. ".com" },
+        hosts   = { "one." .. plugin_name .. ".test" },
       }
 
       local config = {}
@@ -79,7 +79,7 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
           method = "GET",
           path = "/status/200",
           headers = {
-            ["Host"] = "one." .. plugin_name .. ".com"
+            ["Host"] = "one." .. plugin_name .. ".test"
           }
         })
         assert.response(res).has.status(200)

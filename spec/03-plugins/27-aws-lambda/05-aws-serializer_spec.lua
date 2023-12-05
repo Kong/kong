@@ -75,7 +75,7 @@ describe("[AWS Lambda] aws-gateway input", function()
         request_method = "GET",
         upstream_uri = "/123/strip/more?boolean=;multi-query=first;single-query=hello%20world;multi-query=second",
         kong_request_id = "1234567890",
-        host = "abc.myhost.com",
+        host = "abc.myhost.test",
         remote_addr = "123.123.123.123"
       },
       ctx = {
@@ -127,7 +127,7 @@ describe("[AWS Lambda] aws-gateway input", function()
           path = "/123/strip/more",
           protocol = "HTTP/1.1",
           httpMethod = "GET",
-          domainName = "abc.myhost.com",
+          domainName = "abc.myhost.test",
           domainPrefix = "abc",
           identity = { sourceIp = "123.123.123.123", userAgent = "curl/7.54.0" },
           requestId = "1234567890",
@@ -157,7 +157,7 @@ describe("[AWS Lambda] aws-gateway input", function()
         request_method = "GET",
         upstream_uri = "/plain/strip/more?boolean=;multi-query=first;single-query=hello%20world;multi-query=second",
         kong_request_id = "1234567890",
-        host = "def.myhost.com",
+        host = "def.myhost.test",
         remote_addr = "123.123.123.123"
       },
       ctx = {
@@ -202,7 +202,7 @@ describe("[AWS Lambda] aws-gateway input", function()
           path = "/plain/strip/more",
           protocol = "HTTP/1.0",
           httpMethod = "GET",
-          domainName = "def.myhost.com",
+          domainName = "def.myhost.test",
           domainPrefix = "def",
           identity = { sourceIp = "123.123.123.123", userAgent = "curl/7.54.0" },
           requestId = "1234567890",
@@ -254,7 +254,7 @@ describe("[AWS Lambda] aws-gateway input", function()
             upstream_uri = "/plain/strip/more",
             http_content_type = tdata.ct,
             kong_request_id = "1234567890",
-            host = "def.myhost.com",
+            host = "def.myhost.test",
             remote_addr = "123.123.123.123"
           },
           ctx = {
@@ -289,7 +289,7 @@ describe("[AWS Lambda] aws-gateway input", function()
             path = "/plain/strip/more",
             protocol = "HTTP/1.0",
             httpMethod = "GET",
-            domainName = "def.myhost.com",
+            domainName = "def.myhost.test",
             domainPrefix = "def",
             identity = { sourceIp = "123.123.123.123", userAgent = "curl/7.54.0" },
             requestId = "1234567890",

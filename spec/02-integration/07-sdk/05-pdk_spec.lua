@@ -24,7 +24,7 @@ describe("kong.plugin.get_id()", function()
       "get-plugin-id",
     })
 
-    local route = assert(bp.routes:insert({ hosts = { "test.com" } }))
+    local route = assert(bp.routes:insert({ hosts = { "test.test" } }))
 
     assert(bp.plugins:insert({
       name = "get-plugin-id",
@@ -55,7 +55,7 @@ describe("kong.plugin.get_id()", function()
 
   it("conf", function()
     local res = proxy_client:get("/request", {
-      headers = { Host = "test.com" }
+      headers = { Host = "test.test" }
     })
 
     local body = assert.status(200, res)

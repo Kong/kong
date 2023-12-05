@@ -65,7 +65,7 @@ for _, strategy in helpers.each_strategy() do
         }
 
         bp.routes:insert {
-          hosts     = { "retries.com" },
+          hosts     = { "retries.test" },
           service   = service
         }
 
@@ -93,7 +93,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/",
           headers = {
-            host  = "retries.com"
+            host  = "retries.test"
           }
         }
         assert.response(r).has.status(502)
@@ -122,7 +122,7 @@ for _, strategy in helpers.each_strategy() do
         }
 
         bp.routes:insert {
-          hosts     = { "retries.com" },
+          hosts     = { "retries.test" },
           protocols = { "http" },
           service   = service
         }
@@ -146,7 +146,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/",
           headers = {
-            host  = "retries.com"
+            host  = "retries.test"
           }
         }
         assert.response(r).has.status(503)

@@ -243,55 +243,55 @@ for _, strategy in helpers.each_strategy() do
       local bp = helpers.get_db_utils(strategy, nil, { "error-generator-last" })
 
       local route1 = bp.routes:insert({
-        hosts = { "cors1.com" },
+        hosts = { "cors1.test" },
       })
 
       local route2 = bp.routes:insert({
-        hosts = { "cors2.com" },
+        hosts = { "cors2.test" },
       })
 
       local route3 = bp.routes:insert({
-        hosts = { "cors3.com" },
+        hosts = { "cors3.test" },
       })
 
       local route4 = bp.routes:insert({
-        hosts = { "cors4.com" },
+        hosts = { "cors4.test" },
       })
 
       local route5 = bp.routes:insert({
-        hosts = { "cors5.com" },
+        hosts = { "cors5.test" },
       })
 
       local route6 = bp.routes:insert({
-        hosts = { "cors6.com" },
+        hosts = { "cors6.test" },
       })
 
       local route7 = bp.routes:insert({
-        hosts = { "cors7.com" },
+        hosts = { "cors7.test" },
       })
 
       local route8 = bp.routes:insert({
-        hosts = { "cors-empty-origins.com" },
+        hosts = { "cors-empty-origins.test" },
       })
 
       local route9 = bp.routes:insert({
-        hosts = { "cors9.com" },
+        hosts = { "cors9.test" },
       })
 
       local route10 = bp.routes:insert({
-        hosts = { "cors10.com" },
+        hosts = { "cors10.test" },
       })
 
       local route11 = bp.routes:insert({
-        hosts = { "cors11.com" },
+        hosts = { "cors11.test" },
       })
 
       local route12 = bp.routes:insert({
-        hosts = { "cors12.com" },
+        hosts = { "cors12.test" },
       })
 
       local route13 = bp.routes:insert({
-        hosts = { "cors13.com" },
+        hosts = { "cors13.test" },
       })
 
       local mock_upstream = bp.services:insert {
@@ -300,7 +300,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route_upstream = bp.routes:insert({
-        hosts = { "cors-upstream.com" },
+        hosts = { "cors-upstream.test" },
         service = mock_upstream
       })
 
@@ -310,12 +310,12 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route_timeout = bp.routes:insert {
-        hosts = { "cors-timeout.com" },
+        hosts = { "cors-timeout.test" },
         service = mock_service,
       }
 
       local route_error = bp.routes:insert {
-        hosts = { "cors-error.com" },
+        hosts = { "cors-error.test" },
       }
 
       bp.plugins:insert {
@@ -327,7 +327,7 @@ for _, strategy in helpers.each_strategy() do
         name = "cors",
         route = { id = route2.id },
         config = {
-          origins         = { "example.com" },
+          origins         = { "example.test" },
           methods         = { "GET" },
           headers         = { "origin", "type", "accepts" },
           exposed_headers = { "x-auth-token" },
@@ -340,7 +340,7 @@ for _, strategy in helpers.each_strategy() do
         name = "cors",
         route = { id = route3.id },
         config = {
-          origins            = { "example.com" },
+          origins            = { "example.test" },
           methods            = { "GET" },
           headers            = { "origin", "type", "accepts" },
           exposed_headers    = { "x-auth-token" },
@@ -372,7 +372,7 @@ for _, strategy in helpers.each_strategy() do
         name = "cors",
         route = { id = route6.id },
         config = {
-          origins            = { "example.com", "example.org" },
+          origins            = { "example.test", "example.org" },
           methods            = { "GET" },
           headers            = { "origin", "type", "accepts" },
           exposed_headers    = { "x-auth-token" },
@@ -402,7 +402,7 @@ for _, strategy in helpers.each_strategy() do
         name = "cors",
         route = { id = route9.id },
         config = {
-          origins = { [[.*\.?example(?:-foo)?.com]] },
+          origins = { [[.*\.?example(?:-foo)?.test]] },
         }
       }
 
@@ -410,7 +410,7 @@ for _, strategy in helpers.each_strategy() do
         name = "cors",
         route = { id = route10.id },
         config = {
-          origins = { "http://my-site.com", "http://my-other-site.com" },
+          origins = { "http://my-site.test", "http://my-other-site.test" },
         }
       }
 
@@ -418,7 +418,7 @@ for _, strategy in helpers.each_strategy() do
         name = "cors",
         route = { id = route11.id },
         config = {
-          origins = { "http://my-site.com", "https://my-other-site.com:9000" },
+          origins = { "http://my-site.test", "https://my-other-site.test:9000" },
         }
       }
 
@@ -442,7 +442,7 @@ for _, strategy in helpers.each_strategy() do
           },
           methods = ngx.null,
           origins = {
-            "a.xxx.com",
+            "a.xxx.test",
             "allowed-domain.test"
           },
         }
@@ -462,7 +462,7 @@ for _, strategy in helpers.each_strategy() do
         name = "cors",
         route = { id = route_timeout.id },
         config = {
-          origins            = { "example.com" },
+          origins            = { "example.test" },
           methods            = { "GET" },
           headers            = { "origin", "type", "accepts" },
           exposed_headers    = { "x-auth-token" },
@@ -475,7 +475,7 @@ for _, strategy in helpers.each_strategy() do
         name = "cors",
         route = { id = route_error.id },
         config = {
-          origins            = { "example.com" },
+          origins            = { "example.test" },
           methods            = { "GET" },
           headers            = { "origin", "type", "accepts" },
           exposed_headers    = { "x-auth-token" },
@@ -488,7 +488,7 @@ for _, strategy in helpers.each_strategy() do
         name = "cors",
         route = { id = route_upstream.id },
         config = {
-          origins            = { "example.com" },
+          origins            = { "example.test" },
           methods            = { "GET" },
           headers            = { "origin", "type", "accepts" },
           exposed_headers    = { "x-auth-token" },
@@ -578,8 +578,8 @@ for _, strategy in helpers.each_strategy() do
         local res = assert(proxy_client:send {
           method  = "OPTIONS",
           headers = {
-            ["Host"] = "cors1.com",
-            ["Origin"] = "origin1.com",
+            ["Host"] = "cors1.test",
+            ["Origin"] = "origin1.test",
             ["Access-Control-Request-Method"] = "GET",
           }
         })
@@ -604,8 +604,8 @@ for _, strategy in helpers.each_strategy() do
         local res = assert(proxy_client:send {
           method  = "OPTIONS",
           headers = {
-            ["Host"] = "cors-empty-origins.com",
-            ["Origin"] = "empty-origin.com",
+            ["Host"] = "cors-empty-origins.test",
+            ["Origin"] = "empty-origin.test",
             ["Access-Control-Request-Method"] = "GET",
           }
         })
@@ -624,15 +624,15 @@ for _, strategy in helpers.each_strategy() do
         local res = assert(proxy_client:send {
           method  = "OPTIONS",
           headers = {
-            ["Host"] = "cors5.com",
-            ["Origin"] = "origin5.com",
+            ["Host"] = "cors5.test",
+            ["Origin"] = "origin5.test",
             ["Access-Control-Request-Method"] = "GET",
           }
         })
         assert.res_status(200, res)
         assert.equal("0", res.headers["Content-Length"])
         assert.equal(CORS_DEFAULT_METHODS, res.headers["Access-Control-Allow-Methods"])
-        assert.equal("origin5.com", res.headers["Access-Control-Allow-Origin"])
+        assert.equal("origin5.test", res.headers["Access-Control-Allow-Origin"])
         assert.equal("true", res.headers["Access-Control-Allow-Credentials"])
         assert.equal("Origin", res.headers["Vary"])
         assert.is_nil(res.headers["Access-Control-Allow-Headers"])
@@ -644,15 +644,15 @@ for _, strategy in helpers.each_strategy() do
         local res = assert(proxy_client:send {
           method  = "OPTIONS",
           headers = {
-            ["Host"] = "cors2.com",
-            ["Origin"] = "origin5.com",
+            ["Host"] = "cors2.test",
+            ["Origin"] = "origin5.test",
             ["Access-Control-Request-Method"] = "GET",
           }
         })
         assert.res_status(200, res)
         assert.equal("0", res.headers["Content-Length"])
         assert.equal("GET", res.headers["Access-Control-Allow-Methods"])
-        assert.equal("example.com", res.headers["Access-Control-Allow-Origin"])
+        assert.equal("example.test", res.headers["Access-Control-Allow-Origin"])
         assert.equal("23", res.headers["Access-Control-Max-Age"])
         assert.equal("true", res.headers["Access-Control-Allow-Credentials"])
         assert.equal("origin,type,accepts", res.headers["Access-Control-Allow-Headers"])
@@ -665,7 +665,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "OPTIONS",
           path    = "/status/201",
           headers = {
-            ["Host"] = "cors3.com"
+            ["Host"] = "cors3.test"
           }
         })
         local body = assert.res_status(201, res)
@@ -677,8 +677,8 @@ for _, strategy in helpers.each_strategy() do
         local res = assert(proxy_client:send {
           method  = "OPTIONS",
           headers = {
-            ["Host"]                           = "cors5.com",
-            ["Origin"]                         = "origin5.com",
+            ["Host"]                           = "cors5.test",
+            ["Origin"]                         = "origin5.test",
             ["Access-Control-Request-Headers"] = "origin,accepts",
             ["Access-Control-Request-Method"]  = "GET",
           }
@@ -694,20 +694,20 @@ for _, strategy in helpers.each_strategy() do
         local res = assert(proxy_client:send {
           method  = "OPTIONS",
           headers = {
-            ["Host"]   = "cors10.com",
-            ["Origin"] = "http://my-site.com"
+            ["Host"]   = "cors10.test",
+            ["Origin"] = "http://my-site.test"
           }
         })
 
         assert.res_status(200, res)
-        assert.equal("http://my-site.com", res.headers["Access-Control-Allow-Origin"])
+        assert.equal("http://my-site.test", res.headers["Access-Control-Allow-Origin"])
 
         -- Illegitimate origins
         res = assert(proxy_client:send {
           method  = "OPTIONS",
           headers = {
-            ["Host"]   = "cors10.com",
-            ["Origin"] = "http://bad-guys.com"
+            ["Host"]   = "cors10.test",
+            ["Origin"] = "http://bad-guys.test"
           }
         })
 
@@ -718,8 +718,8 @@ for _, strategy in helpers.each_strategy() do
         res = assert(proxy_client:send {
           method  = "OPTIONS",
           headers = {
-            ["Host"]   = "cors10.com",
-            ["Origin"] = "http://my-site.com.bad-guys.com"
+            ["Host"]   = "cors10.test",
+            ["Origin"] = "http://my-site.test.bad-guys.test"
           }
         })
 
@@ -731,7 +731,7 @@ for _, strategy in helpers.each_strategy() do
         local res = assert(proxy_client:send {
           method  = "OPTIONS",
           headers = {
-            ["Host"]   = "cors13.com",
+            ["Host"]   = "cors13.test",
             ["Origin"] = "allowed-domain.test",
             ["Access-Control-Request-Private-Network"] = "true",
             ["Access-Control-Request-Method"] = "PUT",
@@ -747,7 +747,7 @@ for _, strategy in helpers.each_strategy() do
         local res = assert(proxy_client:send {
           method  = "GET",
           headers = {
-            ["Host"] = "cors1.com"
+            ["Host"] = "cors1.test"
           }
         })
         assert.res_status(200, res)
@@ -765,7 +765,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "OPTIONS",
           path = "/anything",
           headers = {
-            ["Host"] = "cors1.com"
+            ["Host"] = "cors1.test"
           }
         })
         local body = assert.res_status(200, res)
@@ -784,11 +784,11 @@ for _, strategy in helpers.each_strategy() do
         local res = assert(proxy_client:send {
           method  = "GET",
           headers = {
-            ["Host"] = "cors2.com"
+            ["Host"] = "cors2.test"
           }
         })
         assert.res_status(200, res)
-        assert.equal("example.com", res.headers["Access-Control-Allow-Origin"])
+        assert.equal("example.test", res.headers["Access-Control-Allow-Origin"])
         assert.equal("x-auth-token", res.headers["Access-Control-Expose-Headers"])
         assert.equal("true", res.headers["Access-Control-Allow-Credentials"])
         assert.equal("Origin", res.headers["Vary"])
@@ -801,11 +801,11 @@ for _, strategy in helpers.each_strategy() do
         local res = assert(proxy_client:send {
           method  = "GET",
           headers = {
-            ["Host"] = "cors-timeout.com"
+            ["Host"] = "cors-timeout.test"
           }
         })
         assert.res_status(502, res)
-        assert.equal("example.com", res.headers["Access-Control-Allow-Origin"])
+        assert.equal("example.test", res.headers["Access-Control-Allow-Origin"])
         assert.equal("x-auth-token", res.headers["Access-Control-Expose-Headers"])
         assert.equal("Origin", res.headers["Vary"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
@@ -818,11 +818,11 @@ for _, strategy in helpers.each_strategy() do
         local res = assert(proxy_client:send {
           method  = "GET",
           headers = {
-            ["Host"] = "cors-error.com"
+            ["Host"] = "cors-error.test"
           }
         })
         assert.res_status(500, res)
-        assert.equal("example.com", res.headers["Access-Control-Allow-Origin"])
+        assert.equal("example.test", res.headers["Access-Control-Allow-Origin"])
         assert.equal("x-auth-token", res.headers["Access-Control-Expose-Headers"])
         assert.equal("Origin", res.headers["Vary"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
@@ -836,7 +836,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/asdasdasd",
           headers = {
-            ["Host"] = "cors1.com"
+            ["Host"] = "cors1.test"
           }
         })
         assert.res_status(404, res)
@@ -853,7 +853,7 @@ for _, strategy in helpers.each_strategy() do
         local res = assert(proxy_client:send {
           method  = "GET",
           headers = {
-            ["Host"] = "cors4.com"
+            ["Host"] = "cors4.test"
           }
         })
         assert.res_status(401, res)
@@ -870,27 +870,27 @@ for _, strategy in helpers.each_strategy() do
         local res = assert(proxy_client:send {
           method  = "GET",
           headers = {
-            ["Host"]   = "cors6.com",
-            ["Origin"] = "example.com"
+            ["Host"]   = "cors6.test",
+            ["Origin"] = "example.test"
           }
         })
         assert.res_status(200, res)
-        assert.equal("example.com", res.headers["Access-Control-Allow-Origin"])
+        assert.equal("example.test", res.headers["Access-Control-Allow-Origin"])
         assert.equal("Origin", res.headers["Vary"])
 
         local domains = {
-          ["example.com"]         = true,
-          ["www.example.com"]     = true,
-          ["example-foo.com"]     = true,
-          ["www.example-foo.com"] = true,
-          ["www.example-fo0.com"] = false,
+          ["example.test"]         = true,
+          ["www.example.test"]     = true,
+          ["example-foo.test"]     = true,
+          ["www.example-foo.test"] = true,
+          ["www.example-fo0.test"] = false,
         }
 
         for domain in pairs(domains) do
           local res = assert(proxy_client:send {
             method  = "GET",
             headers = {
-              ["Host"]   = "cors9.com",
+              ["Host"]   = "cors9.test",
               ["Origin"] = domain
             }
           })
@@ -906,8 +906,8 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path = "/response-headers?vary=Accept-Encoding",
           headers = {
-            ["Host"]   = "cors-upstream.com",
-            ["Origin"] = "example.com",
+            ["Host"]   = "cors-upstream.test",
+            ["Origin"] = "example.test",
           }
         })
         assert.res_status(200, res)
@@ -918,8 +918,8 @@ for _, strategy in helpers.each_strategy() do
         local res = assert(proxy_client:send {
           method  = "GET",
           headers = {
-            ["Host"]   = "cors6.com",
-            ["Origin"] = "http://example.com"
+            ["Host"]   = "cors6.test",
+            ["Origin"] = "http://example.test"
           }
         })
         assert.res_status(200, res)
@@ -929,8 +929,8 @@ for _, strategy in helpers.each_strategy() do
         local res = assert(proxy_client:send {
           method  = "GET",
           headers = {
-            ["Host"]   = "cors6.com",
-            ["Origin"] = "https://example.com"
+            ["Host"]   = "cors6.test",
+            ["Origin"] = "https://example.test"
           }
         })
         assert.res_status(200, res)
@@ -941,28 +941,28 @@ for _, strategy in helpers.each_strategy() do
         local res = assert(proxy_client:send {
           method  = "GET",
           headers = {
-            ["Host"]   = "cors11.com",
-            ["Origin"] = "http://my-site.com"
+            ["Host"]   = "cors11.test",
+            ["Origin"] = "http://my-site.test"
           }
         })
         assert.res_status(200, res)
-        assert.equals("http://my-site.com", res.headers["Access-Control-Allow-Origin"])
+        assert.equals("http://my-site.test", res.headers["Access-Control-Allow-Origin"])
 
         local res = assert(proxy_client:send {
           method  = "GET",
           headers = {
-            ["Host"]   = "cors11.com",
-            ["Origin"] = "http://my-site.com:80"
+            ["Host"]   = "cors11.test",
+            ["Origin"] = "http://my-site.test:80"
           }
         })
         assert.res_status(200, res)
-        assert.equals("http://my-site.com", res.headers["Access-Control-Allow-Origin"])
+        assert.equals("http://my-site.test", res.headers["Access-Control-Allow-Origin"])
 
         local res = assert(proxy_client:send {
           method  = "GET",
           headers = {
-            ["Host"]   = "cors11.com",
-            ["Origin"] = "http://my-site.com:8000"
+            ["Host"]   = "cors11.test",
+            ["Origin"] = "http://my-site.test:8000"
           }
         })
         assert.res_status(200, res)
@@ -971,8 +971,8 @@ for _, strategy in helpers.each_strategy() do
         res = assert(proxy_client:send {
           method  = "GET",
           headers = {
-            ["Host"]   = "cors11.com",
-            ["Origin"] = "https://my-site.com"
+            ["Host"]   = "cors11.test",
+            ["Origin"] = "https://my-site.test"
           }
         })
         assert.res_status(200, res)
@@ -981,18 +981,18 @@ for _, strategy in helpers.each_strategy() do
         local res = assert(proxy_client:send {
           method  = "GET",
           headers = {
-            ["Host"]   = "cors11.com",
-            ["Origin"] = "https://my-other-site.com:9000"
+            ["Host"]   = "cors11.test",
+            ["Origin"] = "https://my-other-site.test:9000"
           }
         })
         assert.res_status(200, res)
-        assert.equals("https://my-other-site.com:9000", res.headers["Access-Control-Allow-Origin"])
+        assert.equals("https://my-other-site.test:9000", res.headers["Access-Control-Allow-Origin"])
 
         local res = assert(proxy_client:send {
           method  = "GET",
           headers = {
-            ["Host"]   = "cors11.com",
-            ["Origin"] = "https://my-other-site.com:9001"
+            ["Host"]   = "cors11.test",
+            ["Origin"] = "https://my-other-site.test:9001"
           }
         })
         assert.res_status(200, res)
@@ -1003,7 +1003,7 @@ for _, strategy in helpers.each_strategy() do
         local res = assert(proxy_client:send {
           method  = "GET",
           headers = {
-            ["Host"]   = "cors6.com",
+            ["Host"]   = "cors6.test",
             ["Origin"] = "http://www.example.net"
           }
         })
@@ -1015,7 +1015,7 @@ for _, strategy in helpers.each_strategy() do
         local res = assert(proxy_client:send {
           method  = "GET",
           headers = {
-            ["Host"]   = "cors5.com",
+            ["Host"]   = "cors5.test",
             ["Origin"] = "http://www.example.net"
           }
         })
@@ -1029,7 +1029,7 @@ for _, strategy in helpers.each_strategy() do
         local res = assert(proxy_client:send {
           method  = "GET",
           headers = {
-            ["Host"]   = "cors5.com",
+            ["Host"]   = "cors5.test",
             ["Origin"] = "http://www.example.net:3000"
           }
         })
@@ -1043,7 +1043,7 @@ for _, strategy in helpers.each_strategy() do
         local res = assert(proxy_client:send {
           method  = "GET",
           headers = {
-            ["Host"]   = "cors7.com",
+            ["Host"]   = "cors7.test",
             ["Origin"] = "http://www.example.net"
           }
         })
@@ -1060,7 +1060,7 @@ for _, strategy in helpers.each_strategy() do
             ["Access-Control-Allow-Origin"] = "*",
           }),
           headers = {
-            ["Host"]   = "cors12.com",
+            ["Host"]   = "cors12.test",
             ["Origin"] = "allowed-domain.test",
           }
         })
@@ -1080,7 +1080,7 @@ for _, strategy in helpers.each_strategy() do
             ["Access-Control-Allow-Origin"] = "*",
           }),
           headers = {
-            ["Host"]   = "cors12.com",
+            ["Host"]   = "cors12.test",
             ["Origin"] = "disallowed-domain.test",
           }
         })

@@ -78,7 +78,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
     it("tls not set host_header", function()
       local tcp = ngx.socket.tcp()
       assert(tcp:connect(helpers.get_proxy_ip(true), 19443))
-      assert(tcp:sslhandshake(nil, "ssl-hello.com", false))
+      assert(tcp:sslhandshake(nil, "ssl-hello.test", false))
       assert(tcp:send("get_sni\n"))
       local body = assert(tcp:receive("*a"))
       assert.equal("nil\n", body)
@@ -107,10 +107,10 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
 
       local tcp = ngx.socket.tcp()
       assert(tcp:connect(helpers.get_proxy_ip(true), 19443))
-      assert(tcp:sslhandshake(nil, "ssl-hello.com", false))
+      assert(tcp:sslhandshake(nil, "ssl-hello.test", false))
       assert(tcp:send("get_sni\n"))
       local body = assert(tcp:receive("*a"))
-      assert.equal("ssl-hello.com\n", body)
+      assert.equal("ssl-hello.test\n", body)
       tcp:close()
     end)
 
@@ -136,7 +136,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
 
       local tcp = ngx.socket.tcp()
       assert(tcp:connect(helpers.get_proxy_ip(true), 19443))
-      assert(tcp:sslhandshake(nil, "ssl-hello.com", false))
+      assert(tcp:sslhandshake(nil, "ssl-hello.test", false))
       assert(tcp:send("get_sni\n"))
       local body = assert(tcp:receive("*a"))
       assert.equal("nil\n", body)
@@ -146,7 +146,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         method  = "PATCH",
         path    = "/upstreams/upstream_srv",
         body    = {
-          host_header = "ssl-hello.com"
+          host_header = "ssl-hello.test"
         },
         headers = {
           ["Content-Type"] = "application/json"
@@ -157,10 +157,10 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
 
       local tcp = ngx.socket.tcp()
       assert(tcp:connect(helpers.get_proxy_ip(true), 19443))
-      assert(tcp:sslhandshake(nil, "ssl-hello.com", false))
+      assert(tcp:sslhandshake(nil, "ssl-hello.test", false))
       assert(tcp:send("get_sni\n"))
       local body = assert(tcp:receive("*a"))
-      assert.equal("ssl-hello.com\n", body)
+      assert.equal("ssl-hello.test\n", body)
       tcp:close()
     end)
   end)

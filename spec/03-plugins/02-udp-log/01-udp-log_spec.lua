@@ -25,7 +25,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       local route = bp.routes:insert {
-        hosts = { "udp_logging.com" },
+        hosts = { "udp_logging.test" },
       }
 
       bp.plugins:insert {
@@ -38,7 +38,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route2 = bp.routes:insert {
-        hosts = { "custom_udp_logging.com" },
+        hosts = { "custom_udp_logging.test" },
       }
 
       bp.plugins:insert {
@@ -120,7 +120,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/delay/2",
         headers = {
-          host  = "udp_logging.com",
+          host  = "udp_logging.test",
         },
       })
 
@@ -154,7 +154,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/delay/2",
           headers = {
-            host  = "custom_udp_logging.com",
+            host  = "custom_udp_logging.test",
           },
         })
 
@@ -177,7 +177,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/delay/2",
           headers = {
-            host  = "custom_udp_logging.com",
+            host  = "custom_udp_logging.test",
           },
         })
 
@@ -275,7 +275,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request",
         headers = {
-          host  = "udp_logging.com",
+          host  = "udp_logging.test",
         },
       })
       assert.response(res).has.status(200)

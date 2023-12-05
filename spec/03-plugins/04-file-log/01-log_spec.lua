@@ -119,7 +119,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       local route = bp.routes:insert {
-        hosts = { "file_logging.com" },
+        hosts = { "file_logging.test" },
       }
 
       bp.plugins:insert {
@@ -172,7 +172,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route4 = bp.routes:insert {
-        hosts = { "file_logging_by_lua.com" },
+        hosts = { "file_logging_by_lua.test" },
       }
 
       bp.plugins:insert {
@@ -214,7 +214,7 @@ for _, strategy in helpers.each_strategy() do
       }, ws)
 
       local route6 = bp.routes:insert {
-        hosts = { "file_logging2.com" },
+        hosts = { "file_logging2.test" },
       }
 
       bp.plugins:insert {
@@ -227,7 +227,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route7 = bp.routes:insert {
-        hosts = { "file_logging3.com" },
+        hosts = { "file_logging3.test" },
       }
 
       bp.plugins:insert {
@@ -240,7 +240,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route8 = bp.routes:insert {
-        hosts = { "file_logging4.com" },
+        hosts = { "file_logging4.test" },
       }
 
       bp.plugins:insert {
@@ -253,7 +253,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route9 = bp.routes:insert {
-        hosts = { "file_logging5.com" },
+        hosts = { "file_logging5.test" },
       }
 
       bp.plugins:insert {
@@ -266,7 +266,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route10 = bp.routes:insert {
-        hosts = { "file_logging6.com" },
+        hosts = { "file_logging6.test" },
       }
 
       bp.plugins:insert {
@@ -312,7 +312,7 @@ for _, strategy in helpers.each_strategy() do
         path = "/status/200",
         headers = {
           ["file-log-uuid"] = uuid,
-          ["Host"] = "file_logging.com"
+          ["Host"] = "file_logging.test"
         }
       }))
       assert.res_status(200, res)
@@ -358,7 +358,7 @@ for _, strategy in helpers.each_strategy() do
           path = "/status/200",
           headers = {
             ["file-log-uuid"] = uuid,
-            ["Host"] = "file_logging_by_lua.com"
+            ["Host"] = "file_logging_by_lua.test"
           }
         }))
         assert.res_status(200, res)
@@ -381,7 +381,7 @@ for _, strategy in helpers.each_strategy() do
           path = "/status/200",
           headers = {
             ["file-log-uuid"] = uuid,
-            ["Host"] = "file_logging_by_lua.com"
+            ["Host"] = "file_logging_by_lua.test"
           }
         }))
         assert.res_status(200, res)
@@ -448,7 +448,7 @@ for _, strategy in helpers.each_strategy() do
         path = "/status/200",
         headers = {
           ["file-log-uuid"] = uuid1,
-          ["Host"] = "file_logging.com"
+          ["Host"] = "file_logging.test"
         }
       }))
       assert.res_status(200, res)
@@ -465,7 +465,7 @@ for _, strategy in helpers.each_strategy() do
         path = "/status/200",
         headers = {
           ["file-log-uuid"] = uuid2,
-          ["Host"] = "file_logging.com"
+          ["Host"] = "file_logging.test"
         }
       }))
       assert.res_status(200, res)
@@ -476,7 +476,7 @@ for _, strategy in helpers.each_strategy() do
         path = "/status/200",
         headers = {
           ["file-log-uuid"] = uuid3,
-          ["Host"] = "file_logging.com"
+          ["Host"] = "file_logging.test"
         }
       }))
       assert.res_status(200, res)
@@ -499,7 +499,7 @@ for _, strategy in helpers.each_strategy() do
         path = "/status/200",
         headers = {
           ["file-log-uuid"] = uuid,
-          ["Host"] = "file_logging2.com"
+          ["Host"] = "file_logging2.test"
         }
       }))
       assert.res_status(200, res)
@@ -519,7 +519,7 @@ for _, strategy in helpers.each_strategy() do
         path = "/status/200",
         headers = {
           ["file-log-uuid"] = uuid,
-          ["Host"] = "file_logging3.com"
+          ["Host"] = "file_logging3.test"
         }
       }))
       assert.res_status(200, res)
@@ -539,7 +539,7 @@ for _, strategy in helpers.each_strategy() do
         path = "/status/200",
         headers = {
           ["file-log-uuid"] = uuid1,
-          ["Host"] = "file_logging4.com"
+          ["Host"] = "file_logging4.test"
         }
       }))
       assert.res_status(200, res)
@@ -558,7 +558,7 @@ for _, strategy in helpers.each_strategy() do
         path = "/status/200",
         headers = {
           ["file-log-uuid"] = uuid,
-          ["Host"] = "file_logging5.com"
+          ["Host"] = "file_logging5.test"
         }
       }))
       assert.res_status(200, res)
@@ -578,7 +578,7 @@ for _, strategy in helpers.each_strategy() do
         path = "/status/200",
         headers = {
           ["file-log-uuid"] = uuid,
-          ["Host"] = "file_logging6.com"
+          ["Host"] = "file_logging6.test"
         }
       }))
       assert.res_status(200, res)

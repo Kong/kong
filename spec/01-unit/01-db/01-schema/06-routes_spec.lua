@@ -1208,7 +1208,7 @@ describe("routes schema (flavor = traditional/traditional_compatible)", function
   it("errors if strip_path is set on grpc/grpcs", function()
     local s = { id = "a4fbd24e-6a52-4937-bd78-2536713072d2" }
     local route = Routes:process_auto_fields({
-      hosts = { "foo.grpc.com" },
+      hosts = { "foo.grpc.test" },
       protocols = { "grpc" },
       strip_path = true,
       service = s,
@@ -1220,7 +1220,7 @@ describe("routes schema (flavor = traditional/traditional_compatible)", function
     }, errs)
 
     route = Routes:process_auto_fields({
-      hosts = { "foo.grpc.com" },
+      hosts = { "foo.grpc.test" },
       protocols = { "grpcs" },
       strip_path = true,
       service = s,
@@ -1235,7 +1235,7 @@ describe("routes schema (flavor = traditional/traditional_compatible)", function
   it("errors if tls and tls_passthrough set on a same route", function()
     local s = { id = "a4fbd24e-6a52-4937-bd78-2536713072d2" }
     local route = Routes:process_auto_fields({
-      snis = { "foo.grpc.com" },
+      snis = { "foo.grpc.test" },
       protocols = { "tls", "tls_passthrough" },
       service = s,
     }, "insert")

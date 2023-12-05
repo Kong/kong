@@ -49,7 +49,7 @@ for _, strategy in helpers.each_strategy() do
 
       for i = 1, 13 do
         routes[i] = bp.routes:insert {
-          hosts = { "jwt" .. i .. ".com" },
+          hosts = { "jwt" .. i .. ".test" },
         }
       end
 
@@ -255,7 +255,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "jwt1.com",
+            ["Host"] = "jwt1.test",
           }
         })
         assert.res_status(401, res)
@@ -269,7 +269,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = authorization,
-            ["Host"]          = "jwt1.com",
+            ["Host"]          = "jwt1.test",
           }
         })
         local body = assert.res_status(401, res)
@@ -285,7 +285,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = authorization,
-            ["Host"]          = "jwt1.com",
+            ["Host"]          = "jwt1.test",
           }
         })
         local body = assert.res_status(401, res)
@@ -301,7 +301,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = authorization,
-            ["Host"]          = "jwt1.com",
+            ["Host"]          = "jwt1.test",
           }
         })
         local body = assert.res_status(401, res)
@@ -317,7 +317,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = authorization,
-            ["Host"]          = "jwt1.com",
+            ["Host"]          = "jwt1.test",
           }
         })
         local body = assert.res_status(401, res)
@@ -333,7 +333,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = authorization,
-            ["Host"]          = "jwt1.com",
+            ["Host"]          = "jwt1.test",
           }
         })
         local body = assert.res_status(401, res)
@@ -345,7 +345,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "OPTIONS",
           path    = "/request",
           headers = {
-            ["Host"] = "jwt8.com"
+            ["Host"] = "jwt8.test"
           }
         })
         assert.res_status(200, res)
@@ -355,7 +355,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "OPTIONS",
           path    = "/request",
           headers = {
-            ["Host"] = "jwt1.com"
+            ["Host"] = "jwt1.test"
           }
         })
         local body = assert.res_status(401, res)
@@ -372,7 +372,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/request/?jwt=" .. jwt,
           headers = {
-            ["Host"] = "jwt11.com"
+            ["Host"] = "jwt11.test"
           }
         })
         local body = assert.res_status(401, res)
@@ -389,7 +389,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/request/?jwt=" .. jwt,
           headers = {
-            ["Host"] = "jwt11.com"
+            ["Host"] = "jwt11.test"
           }
         })
         assert.res_status(200, res)
@@ -412,7 +412,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request?jwt=" .. jwt,
           headers = {
             ["Authorization"] = "Bearer invalid.jwt.token",
-            ["Host"]          = "jwt1.com",
+            ["Host"]          = "jwt1.test",
           }
         })
         local body = cjson.decode(assert.res_status(401, res))
@@ -430,7 +430,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = authorization,
-            ["Host"]          = "jwt1.com",
+            ["Host"]          = "jwt1.test",
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
@@ -463,7 +463,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = authorization,
-            ["Host"]          = "jwt10.com",
+            ["Host"]          = "jwt10.test",
           }
         })
         assert.res_status(200, res)
@@ -477,7 +477,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = authorization,
-            ["Host"]          = "jwt4.com"
+            ["Host"]          = "jwt4.test"
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
@@ -508,7 +508,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = authorization,
-            ["Host"]          = "jwt5.com"
+            ["Host"]          = "jwt5.test"
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
@@ -523,8 +523,8 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "jwt9.com",
-            ["Cookie"] = "crumble=" .. jwt .. "; path=/;domain=.jwt9.com",
+            ["Host"] = "jwt9.test",
+            ["Cookie"] = "crumble=" .. jwt .. "; path=/;domain=.jwt9.test",
           }
         })
         assert.res_status(200, res)
@@ -536,8 +536,8 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "jwt9.com",
-            ["Cookie"] = "silly=" .. jwt .. "; path=/;domain=.jwt9.com",
+            ["Host"] = "jwt9.test",
+            ["Cookie"] = "silly=" .. jwt .. "; path=/;domain=.jwt9.test",
           }
         })
         assert.res_status(200, res)
@@ -549,8 +549,8 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "jwt9.com",
-            ["Cookie"] = "silly=" .. jwt .. "; path=/;domain=.jwt9.com",
+            ["Host"] = "jwt9.test",
+            ["Cookie"] = "silly=" .. jwt .. "; path=/;domain=.jwt9.test",
           }
         })
         local body = assert.res_status(401, res)
@@ -564,8 +564,8 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "jwt9.com",
-            ["Cookie"] = "silly=" .. jwt .. "; path=/;domain=.jwt9.com",
+            ["Host"] = "jwt9.test",
+            ["Cookie"] = "silly=" .. jwt .. "; path=/;domain=.jwt9.test",
           }
         })
         local body = assert.res_status(401, res)
@@ -578,7 +578,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "jwt9.com",
+            ["Host"] = "jwt9.test",
             ["Authorization"] = "Bearer " .. jwt,
           }
         })
@@ -589,7 +589,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "jwt9.com",
+            ["Host"] = "jwt9.test",
           }
         })
         assert.res_status(401, res)
@@ -601,7 +601,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "jwt12.com",
+            ["Host"] = "jwt12.test",
             ["CustomAuthorization"] = "Bearer " .. jwt,
           }
         })
@@ -614,7 +614,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "jwt12.com",
+            ["Host"] = "jwt12.test",
             ["CustomAuthorization"] = {"Bearer " .. jwt, "Bearer other-token"}
           }
         })
@@ -627,7 +627,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request/?jwt=" .. jwt,
           headers = {
-            ["Host"] = "jwt1.com",
+            ["Host"] = "jwt1.test",
           }
         })
         assert.res_status(200, res)
@@ -639,7 +639,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request/?token=" .. jwt,
           headers = {
-            ["Host"] = "jwt2.com",
+            ["Host"] = "jwt2.test",
           }
         })
         assert.res_status(200, res)
@@ -656,7 +656,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = authorization,
-            ["Host"]          = "jwt1.com"
+            ["Host"]          = "jwt1.test"
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
@@ -673,7 +673,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = authorization,
-            ["Host"]          = "jwt1.com"
+            ["Host"]          = "jwt1.test"
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
@@ -693,7 +693,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = authorization,
-            ["Host"]          = "jwt1.com",
+            ["Host"]          = "jwt1.test",
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
@@ -710,7 +710,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = authorization,
-            ["Host"]          = "jwt1.com",
+            ["Host"]          = "jwt1.test",
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
@@ -730,7 +730,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = authorization,
-            ["Host"]          = "jwt1.com",
+            ["Host"]          = "jwt1.test",
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
@@ -747,7 +747,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = authorization,
-            ["Host"]          = "jwt1.com",
+            ["Host"]          = "jwt1.test",
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
@@ -768,7 +768,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = authorization,
-            ["Host"]          = "jwt1.com",
+            ["Host"]          = "jwt1.test",
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
@@ -785,7 +785,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = authorization,
-            ["Host"]          = "jwt1.com",
+            ["Host"]          = "jwt1.test",
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
@@ -805,7 +805,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = authorization,
-            ["Host"]          = "jwt1.com",
+            ["Host"]          = "jwt1.test",
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
@@ -826,7 +826,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = authorization,
-            ["Host"]          = "jwt1.com",
+            ["Host"]          = "jwt1.test",
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
@@ -847,7 +847,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request/?jwt=" .. jwt,
           headers = {
-            ["Host"] = "jwt3.com"
+            ["Host"] = "jwt3.test"
           }
         })
         local body = cjson.decode(assert.res_status(401, res))
@@ -864,7 +864,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request/?jwt=" .. jwt,
           headers = {
-            ["Host"] = "jwt3.com"
+            ["Host"] = "jwt3.test"
           }
         })
         local body = assert.res_status(401, res)
@@ -881,7 +881,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request/?jwt=" .. jwt,
           headers = {
-            ["Host"] = "jwt3.com"
+            ["Host"] = "jwt3.test"
           }
         })
         local body = assert.res_status(401, res)
@@ -899,7 +899,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = authorization,
-            ["Host"]          = "jwt1.com",
+            ["Host"]          = "jwt1.test",
           }
         })
         assert.res_status(200, res)
@@ -918,7 +918,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = authorization,
-            ["Host"]          = "jwt6.com"
+            ["Host"]          = "jwt6.test"
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
@@ -931,7 +931,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "jwt6.com"
+            ["Host"] = "jwt6.test"
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
@@ -944,7 +944,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "jwt13.com"
+            ["Host"] = "jwt13.test"
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
@@ -970,7 +970,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "jwt7.com"
+            ["Host"] = "jwt7.test"
           }
         })
         assert.response(res).has.status(500)
@@ -1003,7 +1003,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       local route1 = bp.routes:insert {
-        hosts     = { "logical-and.com" },
+        hosts     = { "logical-and.test" },
         service   = service1,
       }
 
@@ -1034,7 +1034,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       local route2 = bp.routes:insert {
-        hosts     = { "logical-or.com" },
+        hosts     = { "logical-or.test" },
         service   = service2,
       }
 
@@ -1089,7 +1089,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"]          = "logical-and.com",
+            ["Host"]          = "logical-and.test",
             ["apikey"]        = "Mouse",
             ["Authorization"] = jwt_token,
           }
@@ -1108,7 +1108,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"]   = "logical-and.com",
+            ["Host"]   = "logical-and.test",
             ["apikey"] = "Mouse",
           }
         })
@@ -1120,7 +1120,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "logical-and.com",
+            ["Host"] = "logical-and.test",
             ["Authorization"] = jwt_token,
           }
         })
@@ -1132,7 +1132,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "logical-and.com",
+            ["Host"] = "logical-and.test",
           }
         })
         assert.response(res).has.status(401)
@@ -1147,7 +1147,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"]          = "logical-or.com",
+            ["Host"]          = "logical-or.test",
             ["apikey"]        = "Mouse",
             ["Authorization"] = jwt_token,
           }
@@ -1166,7 +1166,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"]   = "logical-or.com",
+            ["Host"]   = "logical-or.test",
             ["apikey"] = "Mouse",
           }
         })
@@ -1183,7 +1183,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"]          = "logical-or.com",
+            ["Host"]          = "logical-or.test",
             ["Authorization"] = jwt_token,
           }
         })
@@ -1201,7 +1201,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "logical-or.com",
+            ["Host"] = "logical-or.test",
           }
         })
         assert.response(res).has.status(200)

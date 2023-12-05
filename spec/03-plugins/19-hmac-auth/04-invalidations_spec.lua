@@ -28,7 +28,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       local route = bp.routes:insert {
-        hosts = { "hmacauth.com" },
+        hosts = { "hmacauth.test" },
       }
 
       bp.plugins:insert {
@@ -89,7 +89,7 @@ for _, strategy in helpers.each_strategy() do
           path = "/requests",
           body = {},
           headers = {
-            ["HOST"] = "hmacauth.com",
+            ["HOST"] = "hmacauth.test",
             date = date,
             authorization = authorization
           }
@@ -132,7 +132,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "POST",
           body    = {},
           headers = {
-            ["HOST"]      = "hmacauth.com",
+            ["HOST"]      = "hmacauth.test",
             date          = date,
             authorization = authorization
           }
@@ -162,7 +162,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/requests",
           body    = {},
           headers = {
-            ["HOST"]      = "hmacauth.com",
+            ["HOST"]      = "hmacauth.test",
             date          = date,
             authorization = authorization
           }
@@ -176,7 +176,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/requests",
           body    = {},
           headers = {
-            ["HOST"]      = "hmacauth.com",
+            ["HOST"]      = "hmacauth.test",
             date          = date,
             authorization = authorization
           }
@@ -206,7 +206,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           body    = {},
           headers = {
-            ["HOST"]      = "hmacauth.com",
+            ["HOST"]      = "hmacauth.test",
             date          = date,
             authorization = authorization
           }
@@ -223,7 +223,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/requests",
           body    = {},
           headers = {
-            ["HOST"]      = "hmacauth.com",
+            ["HOST"]      = "hmacauth.test",
             date          = date,
             authorization = authorization
           }
@@ -256,7 +256,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           body    = {},
           headers = {
-            ["HOST"]      = "hmacauth.com",
+            ["HOST"]      = "hmacauth.test",
             date          = date,
             authorization = authorization
           }

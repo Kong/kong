@@ -89,7 +89,7 @@ describe("Admin API #off", function()
           local res = client:post("/routes", {
             body = {
               protocols = { "http" },
-              hosts     = { "my.route.com" },
+              hosts     = { "my.route.test" },
               service   = { id = utils.uuid() },
             },
             headers = { ["Content-Type"] = content_type }
@@ -115,7 +115,7 @@ describe("Admin API #off", function()
             body    = {
               protocols = { "http" },
               methods   = { "GET", "POST", "PATCH" },
-              hosts     = { "foo.api.com", "bar.api.com" },
+              hosts     = { "foo.api.test", "bar.api.test" },
               paths     = { "/foo", "/bar" },
               service   = { id =  utils.uuid() },
             },

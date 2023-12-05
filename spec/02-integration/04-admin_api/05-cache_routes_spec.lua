@@ -25,12 +25,12 @@ describe("Admin API /cache [#" .. strategy .. "]", function()
     local service = bp.services:insert()
 
     bp.routes:insert {
-      hosts   = { "cache.com" },
+      hosts   = { "cache.test" },
       service = service,
     }
 
     bp.routes:insert {
-      hosts   = { "cache.com" },
+      hosts   = { "cache.test" },
       methods = { "POST" },
       service = service,
     }
@@ -83,7 +83,7 @@ describe("Admin API /cache [#" .. strategy .. "]", function()
             cache_value = "my_value",
           },
           headers = {
-            ["Host"] = "cache.com",
+            ["Host"] = "cache.test",
             ["Content-Type"] = "application/x-www-form-urlencoded",
           },
         })
@@ -112,7 +112,7 @@ describe("Admin API /cache [#" .. strategy .. "]", function()
             cache_value = "value_to_purge",
           },
           headers = {
-            ["Host"] = "cache.com",
+            ["Host"] = "cache.test",
             ["Content-Type"] = "application/x-www-form-urlencoded",
           },
         })
@@ -146,7 +146,7 @@ describe("Admin API /cache [#" .. strategy .. "]", function()
           cache_value = "value_to_purge",
         },
         headers = {
-          ["Host"] = "cache.com",
+          ["Host"] = "cache.test",
           ["Content-Type"] = "application/x-www-form-urlencoded",
         },
       })
@@ -160,7 +160,7 @@ describe("Admin API /cache [#" .. strategy .. "]", function()
           cache_value = "value_to_purge",
         },
         headers = {
-          ["Host"] = "cache.com",
+          ["Host"] = "cache.test",
           ["Content-Type"] = "application/x-www-form-urlencoded",
         },
       })

@@ -61,7 +61,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
   it("accepts minimal config with defaults", function()
     local ok, err = validate({
-        http_endpoint = "http://myservice.com/path",
+        http_endpoint = "http://myservice.test/path",
       })
     assert.is_nil(err)
     assert.is_truthy(ok)
@@ -69,7 +69,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
   it("accepts empty headers with username/password in the http_endpoint", function()
     local ok, err = validate({
-        http_endpoint = "http://bob:password@myservice.com/path",
+        http_endpoint = "http://bob:password@myservice.test/path",
       })
     assert.is_nil(err)
     assert.is_truthy(ok)
@@ -77,7 +77,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
   it("accepts custom fields by lua", function()
     local ok, err = validate({
-        http_endpoint = "http://myservice.com/path",
+        http_endpoint = "http://myservice.test/path",
         custom_fields_by_lua = {
           foo = "return 'bar'",
         }
@@ -88,7 +88,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
   it("does accept allowed headers", function()
     local ok, err = validate({
-        http_endpoint = "http://myservice.com/path",
+        http_endpoint = "http://myservice.test/path",
         headers = {
           ["X-My-Header"] = "123",
           ["X-Your-Header"] = "abc",
@@ -100,7 +100,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
   it("does not accept empty header values", function()
     local ok, err = validate({
-      http_endpoint = "http://myservice.com/path",
+      http_endpoint = "http://myservice.test/path",
       headers = {
         ["X-My-Header"] = "",
       }
@@ -114,7 +114,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
   it("does not accept Host header", function()
     local ok, err = validate({
-        http_endpoint = "http://myservice.com/path",
+        http_endpoint = "http://myservice.test/path",
         headers = {
           ["X-My-Header"] = "123",
           Host = "MyHost",
@@ -130,7 +130,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
   it("does not accept Content-Length header", function()
     local ok, err = validate({
-        http_endpoint = "http://myservice.com/path",
+        http_endpoint = "http://myservice.test/path",
         headers = {
           ["coNTEnt-Length"] = "123",  -- also validate casing
         }
@@ -145,7 +145,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
   it("does not accept Content-Type header", function()
     local ok, err = validate({
-        http_endpoint = "http://myservice.com/path",
+        http_endpoint = "http://myservice.test/path",
         headers = {
           ["coNTEnt-Type"] = "bad"  -- also validate casing
         }
@@ -160,7 +160,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
   it("does not accept userinfo in URL and 'Authorization' header", function()
     local ok, err = validate({
-        http_endpoint = "http://hi:there@myservice.com/path",
+        http_endpoint = "http://hi:there@myservice.test/path",
         headers = {
           ["AuthoRIZATion"] = "bad"  -- also validate casing
         }
@@ -173,7 +173,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
   it("converts legacy queue parameters", function()
     local entity = validate({
-      http_endpoint = "http://hi:there@myservice.com/path",
+      http_endpoint = "http://hi:there@myservice.test/path",
       retry_count = 23,
       queue_size = 46,
       flush_timeout = 92,

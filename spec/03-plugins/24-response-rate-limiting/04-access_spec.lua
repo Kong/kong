@@ -148,7 +148,7 @@ for _, strategy in helpers.each_strategy() do
           }
 
           local route1 = bp.routes:insert {
-            hosts      = { "test1.com" },
+            hosts      = { "test1.test" },
             protocols  = { "http", "https" },
           }
 
@@ -169,7 +169,7 @@ for _, strategy in helpers.each_strategy() do
           })
 
           local route2 = bp.routes:insert {
-            hosts      = { "test2.com" },
+            hosts      = { "test2.test" },
             protocols  = { "http", "https" },
           }
 
@@ -191,7 +191,7 @@ for _, strategy in helpers.each_strategy() do
           })
 
           local route3 = bp.routes:insert {
-            hosts      = { "test3.com" },
+            hosts      = { "test3.test" },
             protocols  = { "http", "https" },
           }
 
@@ -230,7 +230,7 @@ for _, strategy in helpers.each_strategy() do
           })
 
           local route4 = bp.routes:insert {
-            hosts      = { "test4.com" },
+            hosts      = { "test4.test" },
             protocols  = { "http", "https" },
           }
 
@@ -254,7 +254,7 @@ for _, strategy in helpers.each_strategy() do
           })
 
           local route7 = bp.routes:insert {
-            hosts      = { "test7.com" },
+            hosts      = { "test7.test" },
             protocols  = { "http", "https" },
           }
 
@@ -284,7 +284,7 @@ for _, strategy in helpers.each_strategy() do
           })
 
           local route8 = bp.routes:insert {
-            hosts      = { "test8.com" },
+            hosts      = { "test8.test" },
             protocols  = { "http", "https" },
           }
 
@@ -306,7 +306,7 @@ for _, strategy in helpers.each_strategy() do
           })
 
           local route9 = bp.routes:insert {
-            hosts      = { "test9.com" },
+            hosts      = { "test9.test" },
             protocols  = { "http", "https" },
           }
 
@@ -330,11 +330,11 @@ for _, strategy in helpers.each_strategy() do
 
           local service10 = bp.services:insert()
           bp.routes:insert {
-            hosts = { "test-service1.com" },
+            hosts = { "test-service1.test" },
             service = service10,
           }
           bp.routes:insert {
-            hosts = { "test-service2.com" },
+            hosts = { "test-service2.test" },
             service = service10,
           }
 
@@ -399,7 +399,7 @@ for _, strategy in helpers.each_strategy() do
             local n = math.floor(ITERATIONS / 2)
             for _ = 1, n do
               local res = proxy_client():get("/response-headers?x-kong-limit=video=1", {
-                headers = { Host = "test1.com" },
+                headers = { Host = "test1.test" },
               })
               assert.res_status(200, res)
             end
@@ -407,7 +407,7 @@ for _, strategy in helpers.each_strategy() do
             ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
 
             local res = proxy_client():get("/response-headers?x-kong-limit=video=1", {
-              headers = { Host = "test1.com" },
+              headers = { Host = "test1.test" },
             })
             assert.res_status(200, res)
             assert.equal(ITERATIONS, tonumber(res.headers["x-ratelimit-limit-video-second"]))
@@ -434,7 +434,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("blocks if exceeding limit", function()
-            test_limit("/response-headers?x-kong-limit=video=1", "test1.com")
+            test_limit("/response-headers?x-kong-limit=video=1", "test1.test")
           end)
 
           it("counts against the same service register from different routes", function()
@@ -442,14 +442,14 @@ for _, strategy in helpers.each_strategy() do
             local n = math.floor(ITERATIONS / 2)
             for i = 1, n do
               local res = proxy_client():get("/response-headers?x-kong-limit=video=1, test=" .. ITERATIONS, {
-                headers = { Host = "test-service1.com" },
+                headers = { Host = "test-service1.test" },
               })
               assert.res_status(200, res)
             end
 
             for i = n+1, ITERATIONS do
               local res = proxy_client():get("/response-headers?x-kong-limit=video=1, test=" .. ITERATIONS, {
-                headers = { Host = "test-service2.com" },
+                headers = { Host = "test-service2.test" },
               })
               assert.res_status(200, res)
             end
@@ -458,7 +458,7 @@ for _, strategy in helpers.each_strategy() do
 
             -- Additional request, while limit is ITERATIONS/second
             local res = proxy_client():get("/response-headers?x-kong-limit=video=1, test=" .. ITERATIONS, {
-              headers = { Host = "test-service1.com" },
+              headers = { Host = "test-service1.test" },
             })
             assert.res_status(429, res)
           end)
@@ -472,7 +472,7 @@ for _, strategy in helpers.each_strategy() do
                 ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
               end
               res = proxy_client():get("/response-headers?x-kong-limit=video=2, image=1", {
-                headers = { Host = "test2.com" },
+                headers = { Host = "test2.test" },
               })
               assert.res_status(200, res)
             end
@@ -486,7 +486,7 @@ for _, strategy in helpers.each_strategy() do
 
             for i = n+1, ITERATIONS do
               res = proxy_client():get("/response-headers?x-kong-limit=video=1, image=1", {
-                headers = { Host = "test2.com" },
+                headers = { Host = "test2.test" },
               })
               assert.res_status(200, res)
             end
@@ -494,7 +494,7 @@ for _, strategy in helpers.each_strategy() do
             ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
 
             local res = proxy_client():get("/response-headers?x-kong-limit=video=1, image=1", {
-              headers = { Host = "test2.com" },
+              headers = { Host = "test2.test" },
             })
 
             assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-image-second"]))
@@ -507,11 +507,11 @@ for _, strategy in helpers.each_strategy() do
         describe("With authentication", function()
           describe("API-specific plugin", function()
             it("blocks if exceeding limit and a per consumer & route setting", function()
-              test_limit("/response-headers?apikey=apikey123&x-kong-limit=video=1", "test3.com", ITERATIONS - 2)
+              test_limit("/response-headers?apikey=apikey123&x-kong-limit=video=1", "test3.test", ITERATIONS - 2)
             end)
 
             it("blocks if exceeding limit and a per route setting", function()
-              test_limit("/response-headers?apikey=apikey124&x-kong-limit=video=1", "test3.com", ITERATIONS - 3)
+              test_limit("/response-headers?apikey=apikey124&x-kong-limit=video=1", "test3.test", ITERATIONS - 3)
             end)
           end)
         end)
@@ -520,7 +520,7 @@ for _, strategy in helpers.each_strategy() do
           it("should append the headers with multiple limits", function()
             wait()
             local res = proxy_client():get("/get", {
-              headers = { Host = "test8.com" },
+              headers = { Host = "test8.test" },
             })
             local json = cjson.decode(assert.res_status(200, res))
             assert.equal(ITERATIONS-1, tonumber(json.headers["x-ratelimit-remaining-image"]))
@@ -528,14 +528,14 @@ for _, strategy in helpers.each_strategy() do
 
             -- Actually consume the limits
             local res = proxy_client():get("/response-headers?x-kong-limit=video=2, image=1", {
-              headers = { Host = "test8.com" },
+              headers = { Host = "test8.test" },
             })
             assert.res_status(200, res)
 
             ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
 
             local res = proxy_client():get("/get", {
-              headers = { Host = "test8.com" },
+              headers = { Host = "test8.test" },
             })
             local body = cjson.decode(assert.res_status(200, res))
             assert.equal(ITERATIONS-2, tonumber(body.headers["x-ratelimit-remaining-image"]))
@@ -546,19 +546,19 @@ for _, strategy in helpers.each_strategy() do
             wait()
             for _ = 1, ITERATIONS do
               local res = proxy_client():get("/response-headers?x-kong-limit=video%3D2&x-kong-limit=image%3D1", {
-                headers = { Host = "test4.com" },
+                headers = { Host = "test4.test" },
               })
               assert.res_status(200, res)
             end
 
             proxy_client():get("/response-headers?x-kong-limit=video%3D1", {
-              headers = { Host = "test4.com" },
+              headers = { Host = "test4.test" },
             })
 
             ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
 
             local res = proxy_client():get("/response-headers?x-kong-limit=video%3D2&x-kong-limit=image%3D1", {
-              headers = { Host = "test4.com" },
+              headers = { Host = "test4.test" },
             })
 
             assert.res_status(429, res)
@@ -570,14 +570,14 @@ for _, strategy in helpers.each_strategy() do
         it("should block on first violation", function()
           wait()
           local res = proxy_client():get("/response-headers?x-kong-limit=video=2, image=4", {
-            headers = { Host = "test7.com" },
+            headers = { Host = "test7.test" },
           })
           assert.res_status(200, res)
 
           ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
 
           local res = proxy_client():get("/response-headers?x-kong-limit=video=2", {
-            headers = { Host = "test7.com" },
+            headers = { Host = "test7.test" },
           })
           local body = assert.res_status(429, res)
           local json = cjson.decode(body)
@@ -588,7 +588,7 @@ for _, strategy in helpers.each_strategy() do
           it("does not send rate-limit headers when hide_client_headers==true", function()
             wait()
             local res = proxy_client():get("/status/200", {
-              headers = { Host = "test9.com" },
+              headers = { Host = "test9.test" },
             })
 
             assert.res_status(200, res)
@@ -604,7 +604,7 @@ for _, strategy in helpers.each_strategy() do
           local bp = init_db(strategy, policy)
 
           local route = bp.routes:insert {
-            hosts      = { "expire1.com" },
+            hosts      = { "expire1.test" },
             protocols  = { "http", "https" },
           }
 
@@ -637,7 +637,7 @@ for _, strategy in helpers.each_strategy() do
         it("expires a counter", function()
           wait()
           local res = proxy_client():get("/response-headers?x-kong-limit=video=1", {
-            headers = { Host = "expire1.com" },
+            headers = { Host = "expire1.test" },
           })
 
           ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
@@ -650,7 +650,7 @@ for _, strategy in helpers.each_strategy() do
           wait() -- Wait for counter to expire
 
           local res = proxy_client():get("/response-headers?x-kong-limit=video=1", {
-            headers = { Host = "expire1.com" },
+            headers = { Host = "expire1.test" },
           })
 
           ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
@@ -695,7 +695,7 @@ for _, strategy in helpers.each_strategy() do
           })
 
           for i = 1, ITERATIONS do
-            bp.routes:insert({ hosts = { fmt("test%d.com", i) } })
+            bp.routes:insert({ hosts = { fmt("test%d.test", i) } })
           end
 
           assert(helpers.start_kong({
@@ -710,7 +710,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("blocks when the consumer exceeds their quota, no matter what service/route used", function()
-          test_limit("/response-headers?apikey=apikey126&x-kong-limit=video=1", "test%d.com")
+          test_limit("/response-headers?apikey=apikey126&x-kong-limit=video=1", "test%d.test")
         end)
       end)
 
@@ -736,7 +736,7 @@ for _, strategy in helpers.each_strategy() do
           })
 
           for i = 1, ITERATIONS do
-            bp.routes:insert({ hosts = { fmt("test%d.com", i) } })
+            bp.routes:insert({ hosts = { fmt("test%d.test", i) } })
           end
 
           assert(helpers.start_kong({
@@ -758,7 +758,7 @@ for _, strategy in helpers.each_strategy() do
           wait()
           for i = 1, ITERATIONS do
             local res = proxy_client():get("/response-headers?x-kong-limit=video=1", {
-              headers = { Host = fmt("test%d.com", i) },
+              headers = { Host = fmt("test%d.test", i) },
             })
             assert.res_status(200, res)
           end
@@ -767,7 +767,7 @@ for _, strategy in helpers.each_strategy() do
 
           -- last query, while limit is ITERATIONS/second
           local res = proxy_client():get("/response-headers?x-kong-limit=video=1", {
-            headers = { Host = "test1.com" },
+            headers = { Host = "test1.test" },
           })
           assert.res_status(429, res)
           assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-video-second"]))
@@ -785,7 +785,7 @@ for _, strategy in helpers.each_strategy() do
               bp, db = init_db(strategy, policy)
 
               local route1 = bp.routes:insert {
-                hosts = { "failtest1.com" },
+                hosts = { "failtest1.test" },
               }
 
               bp.response_ratelimiting_plugins:insert {
@@ -804,7 +804,7 @@ for _, strategy in helpers.each_strategy() do
               }
 
               local route2 = bp.routes:insert {
-                hosts = { "failtest2.com" },
+                hosts = { "failtest2.test" },
               }
 
               bp.response_ratelimiting_plugins:insert {
@@ -837,7 +837,7 @@ for _, strategy in helpers.each_strategy() do
 
             it("does not work if an error occurs", function()
               local res = proxy_client():get("/response-headers?x-kong-limit=video=1", {
-                headers = { Host = "failtest1.com" },
+                headers = { Host = "failtest1.test" },
               })
               assert.res_status(200, res)
               assert.equal(ITERATIONS, tonumber(res.headers["x-ratelimit-limit-video-second"]))
@@ -851,7 +851,7 @@ for _, strategy in helpers.each_strategy() do
 
               -- Make another request
               local res = proxy_client():get("/response-headers?x-kong-limit=video=1", {
-                headers = { Host = "failtest1.com" },
+                headers = { Host = "failtest1.test" },
               })
               local body = assert.res_status(500, res)
               local json = cjson.decode(body)
@@ -860,7 +860,7 @@ for _, strategy in helpers.each_strategy() do
 
             it("keeps working if an error occurs", function()
               local res = proxy_client():get("/response-headers?x-kong-limit=video=1", {
-                headers = { Host = "failtest2.com" },
+                headers = { Host = "failtest2.test" },
               })
               assert.res_status(200, res)
               assert.equal(ITERATIONS, tonumber(res.headers["x-ratelimit-limit-video-second"]))
@@ -874,7 +874,7 @@ for _, strategy in helpers.each_strategy() do
 
               -- Make another request
               local res = proxy_client():get("/response-headers?x-kong-limit=video=1", {
-                headers = { Host = "failtest2.com" },
+                headers = { Host = "failtest2.test" },
               })
               assert.res_status(200, res)
               assert.is_nil(res.headers["x-ratelimit-limit-video-second"])
@@ -889,7 +889,7 @@ for _, strategy in helpers.each_strategy() do
             local bp = init_db(strategy, policy)
 
             local route1 = bp.routes:insert {
-              hosts      = { "failtest3.com" },
+              hosts      = { "failtest3.test" },
               protocols  = { "http", "https" },
             }
 
@@ -904,7 +904,7 @@ for _, strategy in helpers.each_strategy() do
             }
 
             local route2 = bp.routes:insert {
-              hosts      = { "failtest4.com" },
+              hosts      = { "failtest4.test" },
               protocols  = { "http", "https" },
             }
 
@@ -934,7 +934,7 @@ for _, strategy in helpers.each_strategy() do
           it("does not work if an error occurs", function()
             -- Make another request
             local res = proxy_client():get("/status/200", {
-              headers = { Host = "failtest3.com" },
+              headers = { Host = "failtest3.test" },
             })
             local body = assert.res_status(500, res)
             local json = cjson.decode(body)
@@ -943,7 +943,7 @@ for _, strategy in helpers.each_strategy() do
           it("keeps working if an error occurs", function()
             -- Make another request
             local res = proxy_client():get("/status/200", {
-              headers = { Host = "failtest4.com" },
+              headers = { Host = "failtest4.test" },
             })
             assert.res_status(200, res)
             assert.falsy(res.headers["x-ratelimit-limit-video-second"])

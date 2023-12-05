@@ -25,7 +25,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       local route = bp.routes:insert {
-        hosts = { "key-auth.com" },
+        hosts = { "key-auth.test" },
       }
 
       bp.plugins:insert {
@@ -66,7 +66,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/",
         headers = {
-          ["Host"]   = "key-auth.com",
+          ["Host"]   = "key-auth.test",
           ["apikey"] = "kong"
         }
       })
@@ -94,7 +94,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/",
         headers = {
-          ["Host"]   = "key-auth.com",
+          ["Host"]   = "key-auth.test",
           ["apikey"] = "kong"
         }
       })
@@ -107,7 +107,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/",
         headers = {
-          ["Host"]   = "key-auth.com",
+          ["Host"]   = "key-auth.test",
           ["apikey"] = "kong"
         }
       })
@@ -136,7 +136,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/",
         headers = {
-          ["Host"]   = "key-auth.com",
+          ["Host"]   = "key-auth.test",
           ["apikey"] = "kong"
         }
       })
@@ -149,7 +149,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/",
         headers = {
-          ["Host"]   = "key-auth.com",
+          ["Host"]   = "key-auth.test",
           ["apikey"] = "kong"
         }
       })
@@ -184,7 +184,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/",
         headers = {
-          ["Host"]   = "key-auth.com",
+          ["Host"]   = "key-auth.test",
           ["apikey"] = "kong"
         }
       })
@@ -194,7 +194,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/",
         headers = {
-          ["Host"]   = "key-auth.com",
+          ["Host"]   = "key-auth.test",
           ["apikey"] = "kong-updated"
         }
       })

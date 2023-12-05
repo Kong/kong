@@ -60,7 +60,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route1 = bp.routes:insert {
-        hosts = { "acl1.com" },
+        hosts = { "acl1.test" },
       }
 
       bp.plugins:insert {
@@ -77,7 +77,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route2 = bp.routes:insert {
-        hosts = { "acl2.com" },
+        hosts = { "acl2.test" },
       }
 
       bp.plugins:insert {
@@ -116,7 +116,7 @@ for _, strategy in helpers.each_strategy() do
         -- It should work
         local res = assert(proxy_client:get("/status/200?apikey=apikey123", {
           headers = {
-            ["Host"] = "acl1.com"
+            ["Host"] = "acl1.test"
           }
         }))
         assert.res_status(200, res)
@@ -141,7 +141,7 @@ for _, strategy in helpers.each_strategy() do
         -- It should not work
         local res = assert(proxy_client:get("/status/200?apikey=apikey123", {
           headers = {
-            ["Host"] = "acl1.com"
+            ["Host"] = "acl1.test"
           }
         }))
         assert.res_status(403, res)
@@ -150,7 +150,7 @@ for _, strategy in helpers.each_strategy() do
         -- It should work
         local res = assert(proxy_client:get("/status/200?apikey=apikey123&prova=scemo", {
           headers = {
-            ["Host"] = "acl1.com"
+            ["Host"] = "acl1.test"
           }
         }))
         assert.res_status(200, res)
@@ -158,7 +158,7 @@ for _, strategy in helpers.each_strategy() do
         -- It should not work
         local res = assert(proxy_client:get("/status/200?apikey=apikey123", {
           headers = {
-            ["Host"] = "acl2.com"
+            ["Host"] = "acl2.test"
           }
         }))
         assert.res_status(403, res)
@@ -187,7 +187,7 @@ for _, strategy in helpers.each_strategy() do
         -- It should not work
         local res = assert(proxy_client:get("/status/200?apikey=apikey123", {
           headers = {
-            ["Host"] = "acl1.com"
+            ["Host"] = "acl1.test"
           }
         }))
         assert.res_status(403, res)
@@ -195,7 +195,7 @@ for _, strategy in helpers.each_strategy() do
         -- It works now
         local res = assert(proxy_client:get("/status/200?apikey=apikey123", {
           headers = {
-            ["Host"] = "acl2.com"
+            ["Host"] = "acl2.test"
           }
         }))
         assert.res_status(200, res)
@@ -207,7 +207,7 @@ for _, strategy in helpers.each_strategy() do
         -- It should work
         local res = assert(proxy_client:get("/status/200?apikey=apikey123", {
           headers = {
-            ["Host"] = "acl1.com"
+            ["Host"] = "acl1.test"
           }
         }))
         assert.res_status(200, res)
@@ -235,7 +235,7 @@ for _, strategy in helpers.each_strategy() do
         -- It should not work
         local res = assert(proxy_client:get("/status/200?apikey=apikey123", {
           headers = {
-            ["Host"] = "acl1.com"
+            ["Host"] = "acl1.test"
           }
         }))
         assert.res_status(401, res)

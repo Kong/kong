@@ -49,27 +49,27 @@ describe("Plugin: datadog (log)", function()
         })
 
         local route1 = bp.routes:insert {
-          hosts   = { "datadog1.com" },
+          hosts   = { "datadog1.test" },
           service = bp.services:insert { name = "dd1" }
         }
 
         local route2 = bp.routes:insert {
-          hosts   = { "datadog2.com" },
+          hosts   = { "datadog2.test" },
           service = bp.services:insert { name = "dd2" }
         }
 
         local route3 = bp.routes:insert {
-          hosts   = { "datadog3.com" },
+          hosts   = { "datadog3.test" },
           service = bp.services:insert { name = "dd3" }
         }
 
         local route4 = bp.routes:insert {
-          hosts   = { "datadog4.com" },
+          hosts   = { "datadog4.test" },
           service = bp.services:insert { name = "dd4" }
         }
 
         local route5 = bp.routes:insert {
-          hosts   = { "datadog5.com" },
+          hosts   = { "datadog5.test" },
           service = bp.services:insert { name = "dd5" }
         }
 
@@ -83,17 +83,17 @@ describe("Plugin: datadog (log)", function()
         })
 
         local route6 = bp.routes:insert {
-          hosts   = { "datadog6.com" },
+          hosts   = { "datadog6.test" },
           service = bp.services:insert { name = "dd6" }
         }
 
         local route7 = bp.routes:insert {
-          hosts   = { "datadog7.com" },
+          hosts   = { "datadog7.test" },
           service = bp.services:insert { name = "dd7" }
         }
 
         local route8 = bp.routes:insert {
-          hosts   = { "datadog8.com" },
+          hosts   = { "datadog8.test" },
           paths = { "/test_schema" },
           service = bp.services:insert {
             name = "dd8",
@@ -300,7 +300,7 @@ describe("Plugin: datadog (log)", function()
           method  = "GET",
           path    = "/status/200?apikey=kong",
           headers = {
-            ["Host"] = "datadog1.com"
+            ["Host"] = "datadog1.test"
           }
         })
         assert.res_status(200, res)
@@ -348,7 +348,7 @@ describe("Plugin: datadog (log)", function()
           method  = "GET",
           path    = "/status/200?apikey=kong",
           headers = {
-            ["Host"] = "datadog4.com"
+            ["Host"] = "datadog4.test"
           }
         })
         assert.res_status(200, res)
@@ -371,7 +371,7 @@ describe("Plugin: datadog (log)", function()
           method  = "GET",
           path    = "/status/200?apikey=kong",
           headers = {
-            ["Host"] = "datadog6.com"
+            ["Host"] = "datadog6.test"
           }
         })
         assert.res_status(200, res)
@@ -394,7 +394,7 @@ describe("Plugin: datadog (log)", function()
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"] = "datadog2.com"
+            ["Host"] = "datadog2.test"
           }
         })
         assert.res_status(200, res)
@@ -413,7 +413,7 @@ describe("Plugin: datadog (log)", function()
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"] = "datadog3.com"
+            ["Host"] = "datadog3.test"
           }
         })
         assert.res_status(200, res)
@@ -432,7 +432,7 @@ describe("Plugin: datadog (log)", function()
           method  = "GET",
           path    = "/status/200?apikey=kong",
           headers = {
-            ["Host"] = "datadog5.com"
+            ["Host"] = "datadog5.test"
           }
         })
         assert.res_status(200, res)
@@ -455,7 +455,7 @@ describe("Plugin: datadog (log)", function()
           method  = "GET",
           path    = "/status/200?apikey=kong",
           headers = {
-            ["Host"] = "datadog7.com"
+            ["Host"] = "datadog7.test"
           }
         })
         assert.res_status(200, res)
@@ -480,7 +480,7 @@ describe("Plugin: datadog (log)", function()
           method  = "GET",
           path    = "/status/200?apikey=kong",
           headers = {
-            ["Host"] = "datadog7.com"
+            ["Host"] = "datadog7.test"
           }
         })
         assert.res_status(200, res)
@@ -497,7 +497,7 @@ describe("Plugin: datadog (log)", function()
           method  = "GET",
           path    = "/NonMatch",
           headers = {
-            ["Host"] = "fakedns.com"
+            ["Host"] = "fakedns.test"
           }
         })
 
@@ -509,7 +509,7 @@ describe("Plugin: datadog (log)", function()
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"] = "datadog3.com"
+            ["Host"] = "datadog3.test"
           }
         })
 
@@ -524,7 +524,7 @@ describe("Plugin: datadog (log)", function()
           method  = "GET",
           path    = "/test_schema",
           headers = {
-            ["Host"] = "datadog8.com"
+            ["Host"] = "datadog8.test"
           }
         })
 

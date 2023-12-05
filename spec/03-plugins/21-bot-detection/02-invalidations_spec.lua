@@ -21,7 +21,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       local route = bp.routes:insert {
-        hosts = { "bot.com" },
+        hosts = { "bot.test" },
       }
 
       plugin = bp.plugins:insert {
@@ -60,7 +60,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request",
         headers = {
-          host           = "bot.com",
+          host           = "bot.test",
           ["user-agent"] = "helloworld"
         }
       })
@@ -84,7 +84,7 @@ for _, strategy in helpers.each_strategy() do
           mehod   = "GET",
           path    = "/request",
           headers = {
-            host           = "bot.com",
+            host           = "bot.test",
             ["user-agent"] = "helloworld",
           },
         })
@@ -99,7 +99,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request",
         headers = {
-          host           = "bot.com",
+          host           = "bot.test",
           ["user-agent"] = "facebookexternalhit/1.1"
         }
       })
@@ -123,7 +123,7 @@ for _, strategy in helpers.each_strategy() do
           mehod   = "GET",
           path    = "/request",
           headers = {
-            host           = "bot.com",
+            host           = "bot.test",
             ["user-agent"] = "facebookexternalhit/1.1"
           }
         })

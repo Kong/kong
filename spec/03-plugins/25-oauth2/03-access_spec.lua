@@ -58,7 +58,7 @@ local function provision_code(host, extra_headers, client_id, code_challenge)
     path = "/oauth2/authorize",
     body = body,
     headers = kong.table.merge({
-      ["Host"] = host or "oauth2.com",
+      ["Host"] = host or "oauth2.test",
       ["Content-Type"] = "application/json"
     }, extra_headers)
   })
@@ -67,7 +67,7 @@ local function provision_code(host, extra_headers, client_id, code_challenge)
 
   request_client:close()
   if body.redirect_uri then
-    local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?code=([\\w]{32,32})&state=hello$")
+    local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.test/kong\\?code=([\\w]{32,32})&state=hello$")
     assert.is_nil(err)
     local m, err = iterator()
     assert.is_nil(err)
@@ -95,7 +95,7 @@ local function provision_token(host, extra_headers, client_id, client_secret, co
     path = "/oauth2/token",
     body = body,
     headers = kong.table.merge({
-      ["Host"] = host or "oauth2.com",
+      ["Host"] = host or "oauth2.test",
       ["Content-Type"] = "application/json"
     }, extra_headers)
   })
@@ -120,7 +120,7 @@ local function refresh_token(host, refresh_token)
       grant_type       = "refresh_token"
     },
     headers = {
-      ["Host"]         = host or "oauth2.com",
+      ["Host"]         = host or "oauth2.test",
       ["Content-Type"] = "application/json"
     }
   })
@@ -197,7 +197,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         client_id      = "clientid123",
         client_secret  = "secret123",
         hash_secret    = true,
-        redirect_uris  = { "http://google.com/kong" },
+        redirect_uris  = { "http://google.test/kong" },
         name           = "testapp",
         consumer       = { id = consumer.id },
       }
@@ -205,7 +205,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       admin_api.oauth2_credentials:insert {
         client_id      = "clientid789",
         client_secret  = "secret789",
-        redirect_uris  = { "http://google.com/kong?foo=bar&code=123" },
+        redirect_uris  = { "http://google.test/kong?foo=bar&code=123" },
         name           = "testapp2",
         consumer       = { id = consumer.id },
       }
@@ -214,7 +214,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         client_id     = "clientid333",
         client_secret = "secret333",
         hash_secret   = true,
-        redirect_uris = { "http://google.com/kong" },
+        redirect_uris = { "http://google.test/kong" },
         name          = "testapp3",
         consumer      = { id = consumer.id },
       }
@@ -222,7 +222,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       admin_api.oauth2_credentials:insert {
         client_id     = "clientid456",
         client_secret = "secret456",
-        redirect_uris = { "http://one.com/one/", "http://two.com/two" },
+        redirect_uris = { "http://one.test/one/", "http://two.test/two" },
         name          = "testapp3",
         consumer      = { id = consumer.id },
       }
@@ -231,7 +231,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         client_id     = "clientid1011",
         client_secret = "secret1011",
         hash_secret   = true,
-        redirect_uris = { "http://google.com/kong", },
+        redirect_uris = { "http://google.test/kong", },
         name          = "testapp31",
         consumer      = { id = consumer.id },
       }
@@ -247,7 +247,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       admin_api.oauth2_credentials:insert {
         client_id     = "clientid11211",
         client_secret = "secret11211",
-        redirect_uris = { "http://google.com/kong", },
+        redirect_uris = { "http://google.test/kong", },
         name          = "testapp50",
         client_type   = "public",
         consumer      = { id = consumer.id },
@@ -279,13 +279,13 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
 
 
       local route1 = assert(admin_api.routes:insert({
-        hosts     = { "oauth2.com" },
+        hosts     = { "oauth2.test" },
         protocols = { "http", "https" },
         service   = service1,
       }))
 
       local route2 = assert(admin_api.routes:insert({
-        hosts      = { "example-path.com" },
+        hosts      = { "example-path.test" },
         protocols  = { "http", "https" },
         service    = service2,
       }))
@@ -297,121 +297,121 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       }))
 
       local route3 = assert(admin_api.routes:insert({
-        hosts      = { "oauth2_3.com" },
+        hosts      = { "oauth2_3.test" },
         protocols  = { "http", "https" },
         service    = service3,
       }))
 
       local route4 = assert(admin_api.routes:insert({
-        hosts      = { "oauth2_4.com" },
+        hosts      = { "oauth2_4.test" },
         protocols  = { "http", "https" },
         service    = service4,
       }))
 
       local route5 = assert(admin_api.routes:insert({
-        hosts      = { "oauth2_5.com" },
+        hosts      = { "oauth2_5.test" },
         protocols  = { "http", "https" },
         service    = service5,
       }))
 
       local route6 = assert(admin_api.routes:insert({
-        hosts      = { "oauth2_6.com" },
+        hosts      = { "oauth2_6.test" },
         protocols  = { "http", "https" },
         service    = service6,
       }))
 
       local route7 = assert(admin_api.routes:insert({
-        hosts      = { "oauth2_7.com" },
+        hosts      = { "oauth2_7.test" },
         protocols  = { "http", "https" },
         service    = service7,
       }))
 
       local route8 = assert(admin_api.routes:insert({
-        hosts      = { "oauth2_8.com" },
+        hosts      = { "oauth2_8.test" },
         protocols  = { "http", "https" },
         service    = service8,
       }))
 
       local route9 = assert(admin_api.routes:insert({
-        hosts      = { "oauth2_9.com" },
+        hosts      = { "oauth2_9.test" },
         protocols  = { "http", "https" },
         service    = service9,
       }))
 
       local route10 = assert(admin_api.routes:insert({
-        hosts       = { "oauth2_10.com" },
+        hosts       = { "oauth2_10.test" },
         protocols   = { "http", "https" },
         service     = service10,
       }))
 
       local route11 = assert(admin_api.routes:insert({
-        hosts       = { "oauth2_11.com" },
+        hosts       = { "oauth2_11.test" },
         protocols   = { "http", "https" },
         service     = service11,
       }))
 
       local route12 = assert(admin_api.routes:insert({
-        hosts       = { "oauth2_12.com" },
+        hosts       = { "oauth2_12.test" },
         protocols   = { "http", "https" },
         service     = service12,
       }))
 
       local route13 = assert(admin_api.routes:insert({
-        hosts       = { "oauth2_13.com" },
+        hosts       = { "oauth2_13.test" },
         protocols   = { "http", "https" },
         service     = service13,
       }))
 
       local route_c = assert(admin_api.routes:insert({
-        hosts       = { "oauth2__c.com" },
+        hosts       = { "oauth2__c.test" },
         protocols   = { "http", "https" },
         service     = service_c,
       }))
 
       local route14 = assert(admin_api.routes:insert({
-        hosts       = { "oauth2_14.com" },
+        hosts       = { "oauth2_14.test" },
         protocols   = { "http", "https" },
         service     = service14,
       }))
 
       local route15 = assert(admin_api.routes:insert({
-        hosts       = { "oauth2_15.com" },
+        hosts       = { "oauth2_15.test" },
         protocols   = { "http", "https" },
         service     = service15,
       }))
 
       local route16 = assert(admin_api.routes:insert({
-        hosts       = { "oauth2_16.com" },
+        hosts       = { "oauth2_16.test" },
         protocols   = { "http", "https" },
         service     = service16,
       }))
 
       local route17 = assert(admin_api.routes:insert({
-        hosts       = { "oauth2_17.com" },
+        hosts       = { "oauth2_17.test" },
         protocols   = { "http", "https" },
         service     = service17,
       }))
 
       local route18 = assert(admin_api.routes:insert({
-        hosts       = { "oauth2_18.com" },
+        hosts       = { "oauth2_18.test" },
         protocols   = { "http", "https" },
         service     = service18,
       }))
 
       local route19 = assert(admin_api.routes:insert({
-        hosts       = { "oauth2_19.com" },
+        hosts       = { "oauth2_19.test" },
         protocols   = { "http", "https" },
         service     = service19,
       }))
 
       local route20 = assert(admin_api.routes:insert({
-        hosts       = { "oauth2_20.com" },
+        hosts       = { "oauth2_20.test" },
         protocols   = { "http", "https" },
         service     = service20,
       }))
 
       local route21 = assert(admin_api.routes:insert({
-        hosts       = { "oauth2_21.com" },
+        hosts       = { "oauth2_21.test" },
         protocols   = { "http", "https" },
         service     = service21,
       }))
@@ -423,13 +423,13 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
 
       local route_grpc = assert(admin_api.routes:insert {
         protocols = { "grpc", "grpcs" },
-        hosts     = { "oauth2_grpc.com" },
+        hosts     = { "oauth2_grpc.test" },
         paths = { "/hello.HelloService/SayHello" },
         service = service_grpc,
       })
 
       local route_provgrpc = assert(admin_api.routes:insert {
-        hosts     = { "oauth2_grpc.com" },
+        hosts     = { "oauth2_grpc.test" },
         paths = { "/" },
         service = service_grpc,
       })
@@ -691,7 +691,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             method  = "POST",
             path    = "/oauth2/authorize",
             headers = {
-              ["Host"] = "oauth2.com"
+              ["Host"] = "oauth2.test"
             }
           })
           local body = assert.res_status(400, res)
@@ -705,7 +705,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           local ok, err = helpers.proxy_client_grpcs(){
             service = "hello.HelloService.SayHello",
             opts = {
-              ["-authority"] = "oauth2.com",
+              ["-authority"] = "oauth2.test",
             },
           }
           assert.falsy(ok)
@@ -720,7 +720,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               provision_key    = "provision123"
             },
             headers = {
-              ["Host"]         = "oauth2.com",
+              ["Host"]         = "oauth2.test",
               ["Content-Type"] = "application/json"
             }
           })
@@ -737,7 +737,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               authenticated_userid = "id123"
             },
             headers                = {
-              ["Host"]             = "oauth2.com",
+              ["Host"]             = "oauth2.test",
               ["Content-Type"]     = "application/json"
             }
           })
@@ -757,13 +757,13 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               client_id            = "clientid123"
             },
             headers = {
-              ["Host"]             = "oauth2.com",
+              ["Host"]             = "oauth2.test",
               ["Content-Type"]     = "application/json"
             }
           })
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
-          assert.same({ redirect_uri = "http://google.com/kong?error=invalid_scope&error_description=You%20must%20specify%20a%20scope" }, json)
+          assert.same({ redirect_uri = "http://google.test/kong?error=invalid_scope&error_description=You%20must%20specify%20a%20scope" }, json)
         end)
         it("returns an error when an invalid scope is being sent", function()
           local res = assert(proxy_ssl_client:send {
@@ -776,13 +776,13 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               scope                = "wot"
             },
             headers = {
-              ["Host"]             = "oauth2.com",
+              ["Host"]             = "oauth2.test",
               ["Content-Type"]     = "application/json"
             }
           })
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
-          assert.same({ redirect_uri = "http://google.com/kong?error=invalid_scope&error_description=%22wot%22%20is%20an%20invalid%20scope" }, json)
+          assert.same({ redirect_uri = "http://google.test/kong?error=invalid_scope&error_description=%22wot%22%20is%20an%20invalid%20scope" }, json)
         end)
         it("returns an error when no response_type is being sent", function()
           local res = assert(proxy_ssl_client:send {
@@ -795,13 +795,13 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               scope                = "email"
             },
             headers = {
-              ["Host"]             = "oauth2.com",
+              ["Host"]             = "oauth2.test",
               ["Content-Type"]     = "application/json"
             }
           })
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
-          assert.same({ redirect_uri = "http://google.com/kong?error=unsupported_response_type&error_description=Invalid%20response_type" }, json)
+          assert.same({ redirect_uri = "http://google.test/kong?error=unsupported_response_type&error_description=Invalid%20response_type" }, json)
         end)
         it("returns an error with a state when no response_type is being sent", function()
           local res = assert(proxy_ssl_client:send {
@@ -815,13 +815,13 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               state                = "somestate"
             },
             headers = {
-              ["Host"]             = "oauth2.com",
+              ["Host"]             = "oauth2.test",
               ["Content-Type"]     = "application/json"
             }
           })
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
-          assert.same({ redirect_uri = "http://google.com/kong?error=unsupported_response_type&error_description=Invalid%20response_type&state=somestate" }, json)
+          assert.same({ redirect_uri = "http://google.test/kong?error=unsupported_response_type&error_description=Invalid%20response_type&state=somestate" }, json)
         end)
         it("returns error when the redirect_uri does not match", function()
           local res = assert(proxy_ssl_client:send {
@@ -833,16 +833,16 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               client_id            = "clientid123",
               scope                = "email",
               response_type        = "code",
-              redirect_uri         = "http://hello.com/"
+              redirect_uri         = "http://hello.test/"
             },
             headers = {
-              ["Host"]             = "oauth2.com",
+              ["Host"]             = "oauth2.test",
               ["Content-Type"]     = "application/json"
             }
           })
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
-          assert.same({ redirect_uri = "http://google.com/kong?error=invalid_request&error_description=Invalid%20redirect_uri%20that%20does%20not%20match%20with%20any%20redirect_uri%20created%20with%20the%20application" }, json)
+          assert.same({ redirect_uri = "http://google.test/kong?error=invalid_request&error_description=Invalid%20redirect_uri%20that%20does%20not%20match%20with%20any%20redirect_uri%20created%20with%20the%20application" }, json)
         end)
         it("works even if redirect_uri contains a query string", function()
           local res = assert(proxy_client:send {
@@ -856,13 +856,13 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               response_type         = "code"
             },
             headers = {
-              ["Host"]              = "oauth2_6.com",
+              ["Host"]              = "oauth2_6.test",
               ["Content-Type"]      = "application/json",
               ["X-Forwarded-Proto"] = "https"
             }
           })
           local body = cjson.decode(assert.res_status(200, res))
-          assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.com/kong\\?code=[\\w]{32,32}&foo=bar$"))
+          assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.test/kong\\?code=[\\w]{32,32}&foo=bar$"))
         end)
         it("works with multiple redirect_uris in the application", function()
           local res = assert(proxy_client:send {
@@ -876,14 +876,14 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               response_type         = "code"
             },
             headers = {
-              ["Host"]              = "oauth2_6.com",
+              ["Host"]              = "oauth2_6.test",
               ["Content-Type"]      = "application/json",
               ["X-Forwarded-Proto"] = "https"
             }
           })
           assert.response(res).has.status(200)
           local json = assert.response(res).has.jsonbody()
-          assert.truthy(ngx.re.match(json.redirect_uri, "^http://one\\.com/one/\\?code=[\\w]{32,32}$"))
+          assert.truthy(ngx.re.match(json.redirect_uri, "^http://one\\.test/one/\\?code=[\\w]{32,32}$"))
         end)
         it("fails when not under HTTPS", function()
           local res = assert(proxy_client:send {
@@ -897,7 +897,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               response_type        = "code"
             },
             headers = {
-              ["Host"]             = "oauth2.com",
+              ["Host"]             = "oauth2.test",
               ["Content-Type"]     = "application/json"
             }
           })
@@ -919,13 +919,13 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               response_type         = "code"
             },
             headers = {
-              ["Host"]              = "oauth2_6.com",
+              ["Host"]              = "oauth2_6.test",
               ["Content-Type"]      = "application/json",
               ["X-Forwarded-Proto"] = "https"
             }
           })
           local body = cjson.decode(assert.res_status(200, res))
-          assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.com/kong\\?code=[\\w]{32,32}$"))
+          assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.test/kong\\?code=[\\w]{32,32}$"))
         end)
         it("fails when not under HTTPS and accept_http_if_already_terminated is false", function()
           local res = assert(proxy_client:send {
@@ -939,7 +939,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               response_type         = "code"
             },
             headers = {
-              ["Host"]              = "oauth2.com",
+              ["Host"]              = "oauth2.test",
               ["Content-Type"]      = "application/json",
               ["X-Forwarded-Proto"] = "https"
             }
@@ -962,12 +962,12 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               response_type        = "code"
             },
             headers = {
-              ["Host"]             = "oauth2.com",
+              ["Host"]             = "oauth2.test",
               ["Content-Type"]     = "application/json"
             }
           })
           local body = cjson.decode(assert.res_status(200, res))
-          assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.com/kong\\?code=[\\w]{32,32}$"))
+          assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.test/kong\\?code=[\\w]{32,32}$"))
         end)
         it("fails with a path when using the DNS", function()
           local res = assert(proxy_ssl_client:send {
@@ -981,7 +981,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               response_type        = "code",
             },
             headers = {
-              ["Host"]             = "example-path.com",
+              ["Host"]             = "example-path.test",
               ["Content-Type"]     = "application/json",
             },
           })
@@ -1005,7 +1005,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             }
           })
           local body = cjson.decode(assert.res_status(200, res))
-          assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.com/kong\\?code=[\\w]{32,32}$"))
+          assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.test/kong\\?code=[\\w]{32,32}$"))
         end)
         it("returns success when requesting the url with final slash", function()
           local res = assert(proxy_ssl_client:send {
@@ -1019,12 +1019,12 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               response_type        = "code"
             },
             headers = {
-              ["Host"]             = "oauth2.com",
+              ["Host"]             = "oauth2.test",
               ["Content-Type"]     = "application/json"
             }
           })
           local body = cjson.decode(assert.res_status(200, res))
-          assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.com/kong\\?code=[\\w]{32,32}$"))
+          assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.test/kong\\?code=[\\w]{32,32}$"))
         end)
         it("returns success with a state", function()
           local res = assert(proxy_ssl_client:send {
@@ -1039,12 +1039,12 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               state                = "hello"
             },
             headers = {
-              ["Host"]             = "oauth2.com",
+              ["Host"]             = "oauth2.test",
               ["Content-Type"]     = "application/json"
             }
           })
           local body = cjson.decode(assert.res_status(200, res))
-          assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.com/kong\\?code=[\\w]{32,32}&state=hello$"))
+          assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.test/kong\\?code=[\\w]{32,32}&state=hello$"))
           -- Checking headers
           assert.are.equal("no-store", res.headers["cache-control"])
           assert.are.equal("no-cache", res.headers["pragma"])
@@ -1062,14 +1062,14 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               authenticated_userid = "userid123"
             },
             headers = {
-              ["Host"]             = "oauth2.com",
+              ["Host"]             = "oauth2.test",
               ["Content-Type"]     = "application/json"
             }
           })
           local body = cjson.decode(assert.res_status(200, res))
-          assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.com/kong\\?code=[\\w]{32,32}&state=hello$"))
+          assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.test/kong\\?code=[\\w]{32,32}&state=hello$"))
 
-          local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?code=([\\w]{32,32})&state=hello$")
+          local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.test/kong\\?code=([\\w]{32,32})&state=hello$")
           assert.is_nil(err)
           local m, err = iterator()
           assert.is_nil(err)
@@ -1092,14 +1092,14 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               authenticated_userid = "userid123"
             },
             headers = {
-              ["Host"]             = "oauth2.com",
+              ["Host"]             = "oauth2.test",
               ["Content-Type"]     = "application/json"
             }
           })
           local body = cjson.decode(assert.res_status(200, res))
-          assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.com/kong\\?code=[\\w]{32,32}&state=hello$"))
+          assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.test/kong\\?code=[\\w]{32,32}&state=hello$"))
 
-          local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?code=([\\w]{32,32})&state=hello$")
+          local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.test/kong\\?code=([\\w]{32,32})&state=hello$")
           assert.is_nil(err)
           local m, err = iterator()
           assert.is_nil(err)
@@ -1123,13 +1123,13 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               code_challenge_method = "foo",
             },
             headers = {
-              ["Host"]             = "oauth2.com",
+              ["Host"]             = "oauth2.test",
               ["Content-Type"]     = "application/json"
             }
           })
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
-          assert.same({ redirect_uri = "http://google.com/kong?error=invalid_request&error_description=code_challenge_method%20is%20not%20supported%2c%20must%20be%20S256&state=hello" }, json)
+          assert.same({ redirect_uri = "http://google.test/kong?error=invalid_request&error_description=code_challenge_method%20is%20not%20supported%2c%20must%20be%20S256&state=hello" }, json)
         end)
         it("fails when code challenge method is provided without code challenge", function()
           local res = assert(proxy_ssl_client:send {
@@ -1145,13 +1145,13 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               code_challenge_method = "H256",
             },
             headers = {
-              ["Host"]              = "oauth2.com",
+              ["Host"]              = "oauth2.test",
               ["Content-Type"]      = "application/json",
             }
           })
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
-          assert.same({ redirect_uri = "http://google.com/kong?error=invalid_request&error_description=code_challenge%20is%20required%20when%20code_method%20is%20present&state=hello" }, json)
+          assert.same({ redirect_uri = "http://google.test/kong?error=invalid_request&error_description=code_challenge%20is%20required%20when%20code_method%20is%20present&state=hello" }, json)
         end)
         it("fails when code challenge is not included for public client", function()
           local res = assert(proxy_ssl_client:send {
@@ -1166,13 +1166,13 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               authenticated_userid  = "userid123",
             },
             headers = {
-              ["Host"]             = "oauth2.com",
+              ["Host"]             = "oauth2.test",
               ["Content-Type"]     = "application/json"
             }
           })
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
-          assert.same({ redirect_uri = "http://google.com/kong?error=invalid_request&error_description=code_challenge%20is%20required%20for%20public%20clients&state=hello" }, json)
+          assert.same({ redirect_uri = "http://google.test/kong?error=invalid_request&error_description=code_challenge%20is%20required%20for%20public%20clients&state=hello" }, json)
         end)
         it("fails when code challenge is not included for confidential client when conf.pkce is strict", function()
           local res = assert(proxy_ssl_client:send {
@@ -1187,13 +1187,13 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               authenticated_userid  = "userid123",
             },
             headers = {
-              ["Host"]             = "oauth2_15.com",
+              ["Host"]             = "oauth2_15.test",
               ["Content-Type"]     = "application/json"
             }
           })
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
-          assert.same({ redirect_uri = "http://google.com/kong?error=invalid_request&error_description=code_challenge%20is%20required%20for%20confidential%20clients&state=hello" }, json)
+          assert.same({ redirect_uri = "http://google.test/kong?error=invalid_request&error_description=code_challenge%20is%20required%20for%20confidential%20clients&state=hello" }, json)
         end)
         it("returns success when code challenge is not included for public client when conf.pkce is none", function()
           local res = assert(proxy_ssl_client:send {
@@ -1208,13 +1208,13 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               authenticated_userid  = "userid123",
             },
             headers = {
-              ["Host"]             = "oauth2_14.com",
+              ["Host"]             = "oauth2_14.test",
               ["Content-Type"]     = "application/json"
             }
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          local iterator, err = ngx.re.gmatch(json.redirect_uri, "^http://google\\.com/kong\\?code=([\\w]{32,32})&state=hello$")
+          local iterator, err = ngx.re.gmatch(json.redirect_uri, "^http://google\\.test/kong\\?code=([\\w]{32,32})&state=hello$")
           assert.is_nil(err)
           local m, err = iterator()
           assert.is_nil(err)
@@ -1234,13 +1234,13 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               code_challenge        = "1234",
             },
             headers = {
-              ["Host"]             = "oauth2.com",
+              ["Host"]             = "oauth2.test",
               ["Content-Type"]     = "application/json"
             }
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          local iterator, err = ngx.re.gmatch(json.redirect_uri, "^http://google\\.com/kong\\?code=([\\w]{32,32})&state=hello$")
+          local iterator, err = ngx.re.gmatch(json.redirect_uri, "^http://google\\.test/kong\\?code=([\\w]{32,32})&state=hello$")
           assert.is_nil(err)
           local m, err = iterator()
           assert.is_nil(err)
@@ -1263,13 +1263,13 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               code_challenge_method = "S256",
             },
             headers = {
-              ["Host"]             = "oauth2.com",
+              ["Host"]             = "oauth2.test",
               ["Content-Type"]     = "application/json"
             }
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          local iterator, err = ngx.re.gmatch(json.redirect_uri, "^http://google\\.com/kong\\?code=([\\w]{32,32})&state=hello$")
+          local iterator, err = ngx.re.gmatch(json.redirect_uri, "^http://google\\.test/kong\\?code=([\\w]{32,32})&state=hello$")
           assert.is_nil(err)
           local m, err = iterator()
           assert.is_nil(err)
@@ -1292,12 +1292,12 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               response_type        = "token"
             },
             headers = {
-              ["Host"]             = "oauth2.com",
+              ["Host"]             = "oauth2.test",
               ["Content-Type"]     = "application/json"
             }
           })
           local body = cjson.decode(assert.res_status(200, res))
-          assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.com/kong\\#access_token=[\\w]{32,32}&expires_in=[\\d]+&token_type=bearer$"))
+          assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.test/kong\\#access_token=[\\w]{32,32}&expires_in=[\\d]+&token_type=bearer$"))
           assert.are.equal("no-store", res.headers["cache-control"])
           assert.are.equal("no-cache", res.headers["pragma"])
         end)
@@ -1314,12 +1314,12 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               state                = "wot"
             },
             headers = {
-              ["Host"]             = "oauth2.com",
+              ["Host"]             = "oauth2.test",
               ["Content-Type"]     = "application/json"
             }
           })
           local body = cjson.decode(assert.res_status(200, res))
-          assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.com/kong\\#access_token=[\\w]{32,32}&expires_in=[\\d]+&state=wot&token_type=bearer$"))
+          assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.test/kong\\#access_token=[\\w]{32,32}&expires_in=[\\d]+&state=wot&token_type=bearer$"))
         end)
         it("returns success and the token should have the right expiration", function()
           local res = assert(proxy_ssl_client:send {
@@ -1333,14 +1333,14 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               response_type        = "token"
             },
             headers = {
-              ["Host"]             = "oauth2.com",
+              ["Host"]             = "oauth2.test",
               ["Content-Type"]     = "application/json"
             }
           })
           local body = cjson.decode(assert.res_status(200, res))
-          assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.com/kong\\#access_token=[\\w]{32,32}&expires_in=[\\d]+&token_type=bearer$"))
+          assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.test/kong\\#access_token=[\\w]{32,32}&expires_in=[\\d]+&token_type=bearer$"))
 
-          local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.com/kong\\#access_token=([\\w]{32,32})&expires_in=[\\d]+&token_type=bearer$")
+          local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.test/kong\\#access_token=([\\w]{32,32})&expires_in=[\\d]+&token_type=bearer$")
           assert.is_nil(err)
           local m, err = iterator()
           assert.is_nil(err)
@@ -1361,14 +1361,14 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               authenticated_userid = "userid123"
             },
             headers = {
-              ["Host"]             = "oauth2.com",
+              ["Host"]             = "oauth2.test",
               ["Content-Type"]     = "application/json"
             }
           })
           local body = cjson.decode(assert.res_status(200, res))
-          assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.com/kong\\#access_token=[\\w]{32,32}&expires_in=[\\d]+&token_type=bearer$"))
+          assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.test/kong\\#access_token=[\\w]{32,32}&expires_in=[\\d]+&token_type=bearer$"))
 
-          local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.com/kong\\#access_token=([\\w]{32,32})&expires_in=[\\d]+&token_type=bearer$")
+          local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.test/kong\\#access_token=([\\w]{32,32})&expires_in=[\\d]+&token_type=bearer$")
           assert.is_nil(err)
           local m, err = iterator()
           assert.is_nil(err)
@@ -1393,12 +1393,12 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               authenticated_userid = "userid123"
             },
             headers = {
-              ["Host"]             = "oauth2.com",
+              ["Host"]             = "oauth2.test",
               ["Content-Type"]     = "application/json"
             }
           })
           local body = cjson.decode(assert.res_status(200, res))
-          local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.com/kong\\#access_token=([\\w]{32,32})&expires_in=[\\d]+&token_type=bearer$")
+          local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.test/kong\\#access_token=([\\w]{32,32})&expires_in=[\\d]+&token_type=bearer$")
           assert.is_nil(err)
           local m, err = iterator()
           assert.is_nil(err)
@@ -1408,7 +1408,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             method  = "GET",
             path    = "/request?access_token=" .. access_token,
             headers = {
-              ["Host"] = "oauth2.com"
+              ["Host"] = "oauth2.test"
             }
           })
           local body = cjson.decode(assert.res_status(200, res))
@@ -1495,7 +1495,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               response_type    = "token"
             },
             headers = {
-              ["Host"]         = "oauth2_4.com",
+              ["Host"]         = "oauth2_4.test",
               ["Content-Type"] = "application/json"
             }
           })
@@ -1515,7 +1515,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               grant_type       = "client_credentials",
             },
             headers = {
-              ["Host"]         = "oauth2_4.com",
+              ["Host"]         = "oauth2_4.test",
               ["Content-Type"] = "application/json"
             }
           })
@@ -1533,7 +1533,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               grant_type       = "client_credentials",
             },
             headers = {
-              ["Host"]         = "oauth2_4.com",
+              ["Host"]         = "oauth2_4.test",
               ["Content-Type"] = "application/json"
             }
           })
@@ -1547,7 +1547,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             path    = "/oauth2/token?client_id&grant_type=client_credentials&client_secret",
             body    = {},
             headers = {
-              ["Host"]         = "oauth2_4.com",
+              ["Host"]         = "oauth2_4.test",
               ["Content-Type"] = "application/json"
             }
           })
@@ -1567,7 +1567,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               response_type    = "token"
             },
             headers = {
-              ["Host"]         = "oauth2_4.com",
+              ["Host"]         = "oauth2_4.test",
               ["Content-Type"] = "application/json"
             }
           })
@@ -1586,7 +1586,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               grant_type       = "client_credentials"
             },
             headers = {
-              ["Host"]         = "oauth2_4.com",
+              ["Host"]         = "oauth2_4.test",
               ["Content-Type"] = "application/json"
             }
           })
@@ -1608,7 +1608,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               authenticated_userid = "user123"
             },
             headers = {
-              ["Host"]             = "oauth2_4.com",
+              ["Host"]             = "oauth2_4.test",
               ["Content-Type"]     = "application/json"
             }
           })
@@ -1629,7 +1629,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               provision_key        = "hello"
             },
             headers = {
-              ["Host"]             = "oauth2_4.com",
+              ["Host"]             = "oauth2_4.test",
               ["Content-Type"]     = "application/json"
             }
           })
@@ -1648,7 +1648,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               grant_type       = "client_credentials"
             },
             headers = {
-              ["Host"]         = "oauth2_4.com",
+              ["Host"]         = "oauth2_4.test",
               ["Content-Type"] = "application/json"
             }
           })
@@ -1670,7 +1670,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               grant_type       = "client_credentials"
             },
             headers = {
-              ["Host"]         = "oauth2_4.com",
+              ["Host"]         = "oauth2_4.test",
               ["Content-Type"] = "application/json"
             }
           })
@@ -1690,10 +1690,10 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               client_secret    = "secret456",
               scope            = "email",
               grant_type       = "client_credentials",
-              redirect_uri     = "http://two.com/two"
+              redirect_uri     = "http://two.test/two"
             },
             headers = {
-              ["Host"]         = "oauth2_4.com",
+              ["Host"]         = "oauth2_4.test",
               ["Content-Type"] = "application/json"
             }
           })
@@ -1715,7 +1715,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               grant_type       = "client_credentials",
             },
             headers = {
-              ["Host"]         = "oauth2_4.com",
+              ["Host"]         = "oauth2_4.test",
               ["Content-Type"] = "application/json"
             }
           })
@@ -1739,7 +1739,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               provision_key        = "provision123"
             },
             headers = {
-              ["Host"]             = "oauth2_4.com",
+              ["Host"]             = "oauth2_4.test",
               ["Content-Type"]     = "application/json"
             }
           })
@@ -1759,7 +1759,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               grant_type       = "client_credentials"
             },
             headers = {
-              ["Host"]         = "oauth2_4.com",
+              ["Host"]         = "oauth2_4.test",
               ["Content-Type"] = "application/json",
               Authorization    = "Basic Y2xpZW50aWQxMjM6c2VjcmV0MTIz"
             }
@@ -1781,7 +1781,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               grant_type       = "client_credentials"
             },
             headers = {
-              ["Host"]         = "oauth2_4.com",
+              ["Host"]         = "oauth2_4.test",
               ["Content-Type"] = "application/json",
               Authorization    = "Basic Y2xpZW50aWQxMjM6c2VjcmV0MTIz"
             }
@@ -1802,7 +1802,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               grant_type       = "client_credentials"
             },
             headers = {
-              ["Host"]         = "oauth2_4.com",
+              ["Host"]         = "oauth2_4.test",
               ["Content-Type"] = "application/json",
               Authorization    = "Basic Y2xpZW50aWQxMjM6c2VjcmV0MTI0"
             }
@@ -1825,7 +1825,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               provision_key        = "provision123"
             },
             headers = {
-              ["Host"]             = "oauth2_4.com",
+              ["Host"]             = "oauth2_4.test",
               ["Content-Type"]     = "application/json"
             }
           })
@@ -1835,7 +1835,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             method  = "GET",
             path    = "/request?access_token=" .. body.access_token,
             headers = {
-              ["Host"] = "oauth2_4.com"
+              ["Host"] = "oauth2_4.test"
             }
           })
           local body = cjson.decode(assert.res_status(200, res))
@@ -1858,7 +1858,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               provision_key        = "provision123"
             },
             headers = {
-              ["Host"]             = "oauth2_4.com",
+              ["Host"]             = "oauth2_4.test",
               ["Content-Type"]     = "multipart/form-data"
             }
           })
@@ -1871,7 +1871,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               access_token     = body.access_token
             },
             headers = {
-              ["Host"]         = "oauth2_4.com",
+              ["Host"]         = "oauth2_4.test",
               ["Content-Type"] = "multipart/form-data"
             }
           })
@@ -1885,7 +1885,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             method  = "GET",
             path    = "/request",
             headers = {
-              ["Host"] = "oauth2_5.com"
+              ["Host"] = "oauth2_5.test"
             }
           })
           local body = assert.res_status(401, res)
@@ -1902,7 +1902,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               response_type    = "token"
             },
             headers = {
-              ["Host"]         = "oauth2_5.com",
+              ["Host"]         = "oauth2_5.test",
               ["Content-Type"] = "application/json"
             }
           })
@@ -1921,7 +1921,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               response_type    = "token"
             },
             headers = {
-              ["Host"]         = "oauth2_5.com",
+              ["Host"]         = "oauth2_5.test",
               ["Content-Type"] = "application/json"
             }
           })
@@ -1941,7 +1941,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               grant_type       = "password"
             },
             headers = {
-              ["Host"]         = "oauth2_5.com",
+              ["Host"]         = "oauth2_5.test",
               ["Content-Type"] = "application/json"
             }
           })
@@ -1960,7 +1960,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               grant_type       = "password"
             },
             headers = {
-              ["Host"]         = "oauth2_5.com",
+              ["Host"]         = "oauth2_5.test",
               ["Content-Type"] = "application/json"
             }
           })
@@ -1980,7 +1980,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               grant_type       = "password"
             },
             headers = {
-              ["Host"]         = "oauth2_5.com",
+              ["Host"]         = "oauth2_5.test",
               ["Content-Type"] = "application/json"
             }
           })
@@ -2001,7 +2001,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               grant_type           = "password"
             },
             headers = {
-              ["Host"]             = "oauth2_5.com",
+              ["Host"]             = "oauth2_5.test",
               ["Content-Type"]     = "application/json"
             }
           })
@@ -2025,7 +2025,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               grant_type           = "password"
             },
             headers = {
-              ["Host"]             = "oauth2_5.com",
+              ["Host"]             = "oauth2_5.test",
               ["Content-Type"]     = "application/json",
               Authorization        = "Basic Y2xpZW50aWQxMjM6c2VjcmV0MTIz"
             }
@@ -2050,7 +2050,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               grant_type           = "password"
             },
             headers = {
-              ["Host"]             = "oauth2_5.com",
+              ["Host"]             = "oauth2_5.test",
               ["Content-Type"]     = "application/json",
               Authorization        = "Basic Y2xpZW50aWQxMjM6c2VjcmV0MTI0"
             }
@@ -2071,7 +2071,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               grant_type           = "password"
             },
             headers = {
-              ["Host"]             = "oauth2_5.com",
+              ["Host"]             = "oauth2_5.test",
               ["Content-Type"]     = "application/json",
               Authorization        = "Basic Y2xpZW50aWQxMjM6c2VjcmV0MTIz"
             }
@@ -2082,7 +2082,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             method  = "GET",
             path    = "/request?access_token=" .. body.access_token,
             headers = {
-              ["Host"] = "oauth2_5.com"
+              ["Host"] = "oauth2_5.test"
             }
           })
           local body = cjson.decode(assert.res_status(200, res))
@@ -2101,7 +2101,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           method  = "POST",
           path    = "/oauth2/token",
           headers = {
-            ["Host"] = "oauth2.com"
+            ["Host"] = "oauth2.test"
           }
         })
         local body = assert.res_status(400, res)
@@ -2121,7 +2121,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             code             = code
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2143,7 +2143,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             client_secret    = "secret123"
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2166,7 +2166,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             client_secret    = "secret123"
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2187,7 +2187,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             grant_type       = "authorization_code"
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2208,7 +2208,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             grant_type      = "authorization_code"
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2235,7 +2235,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             state            = "wot"
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2262,7 +2262,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             state            = "wot"
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2281,7 +2281,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             grant_type       = "authorization_code"
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2291,7 +2291,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/request?access_token=" .. body.access_token,
           headers = {
-            ["Host"] = "oauth2.com"
+            ["Host"] = "oauth2.test"
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
@@ -2314,7 +2314,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               grant_type       = "authorization_code"
             },
             headers = {
-              ["Host"]         = "oauth2.com",
+              ["Host"]         = "oauth2.test",
               ["Content-Type"] = "application/json"
             }
           })
@@ -2337,7 +2337,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               grant_type       = "authorization_code"
             },
             headers = {
-              ["Host"]         = "oauth2.com",
+              ["Host"]         = "oauth2.test",
               ["Content-Type"] = "application/json"
             }
           })
@@ -2357,7 +2357,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               grant_type       = "authorization_code"
             },
             headers = {
-              ["Host"]         = "oauth2.com",
+              ["Host"]         = "oauth2.test",
               ["Content-Type"] = "application/json"
             }
           })
@@ -2378,7 +2378,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             grant_type       = "authorization_code"
           },
           headers = {
-            ["Host"]         = "oauth2_3.com",
+            ["Host"]         = "oauth2_3.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2399,7 +2399,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             code_verifier   = verifier
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2424,7 +2424,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             code_verifier    = verifier
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json",
             Authorization    = "Basic Y2xpZW50aWQxMTIxMQ=="
           }
@@ -2450,7 +2450,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             code_verifier    = verifier
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json",
             Authorization    = "Basic Y2xpZW50aWQxMTIxMTo="
           }
@@ -2476,7 +2476,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             code_verifier    = verifier
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json",
             Authorization    = "Basic Y2xpZW50aWQxMTIxMTogICAg"
           }
@@ -2504,7 +2504,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             client_secret    = "secret11211"
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2524,7 +2524,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             code_verifier    = verifier,
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json",
             Authorization    = "Basic Y2xpZW50aWQxMTIxMTpzZWNyZXQxMTIxMQ=="
           }
@@ -2545,7 +2545,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             grant_type       = "authorization_code",
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2554,7 +2554,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         assert.same({ error_description = "code_verifier is required for PKCE authorization requests", error = "invalid_request" }, json)
       end)
       it("success when no code_verifier provided for public app without pkce when conf.pkce is none", function()
-        local code = provision_code("oauth2_14.com")
+        local code = provision_code("oauth2_14.test")
         local res = assert(proxy_ssl_client:send {
           method  = "POST",
           path    = "/oauth2/token",
@@ -2565,7 +2565,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             grant_type       = "authorization_code",
           },
           headers = {
-            ["Host"]         = "oauth2_14.com",
+            ["Host"]         = "oauth2_14.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2592,7 +2592,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             code_verifier    = code_verifier
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2619,7 +2619,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             code_verifier    = code_verifier
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2646,7 +2646,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             code_verifier    = verifier
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2667,7 +2667,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             code_verifier    = verifier
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2687,7 +2687,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             grant_type       = "authorization_code",
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2711,7 +2711,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             code                 = code
           },
           headers = {
-            ["Host"]             = "oauth2_5.com",
+            ["Host"]             = "oauth2_5.test",
             ["Content-Type"]     = "application/json"
           }
         })
@@ -2731,7 +2731,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             code_verifier    = ""
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2751,7 +2751,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             code_verifier    = 12
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2771,7 +2771,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             code_verifier    = "abcdelfhigklmnopqrstuvwxyz0123456789abcdefg"
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2781,7 +2781,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       end)
       it("fails when code verifier does not match challenge for confidential app when conf.pkce is strict", function()
         local challenge, _ = get_pkce_tokens()
-        local code = provision_code("oauth2_15.com", nil, nil, challenge)
+        local code = provision_code("oauth2_15.test", nil, nil, challenge)
         local res = assert(proxy_ssl_client:send {
           method  = "POST",
           path    = "/oauth2/token",
@@ -2793,7 +2793,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             code_verifier    = "abcdelfhigklmnopqrstuvwxyz0123456789abcdefg"
           },
           headers = {
-            ["Host"]         = "oauth2_15.com",
+            ["Host"]         = "oauth2_15.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2814,7 +2814,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             code_verifier    = verifier,
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2832,7 +2832,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             code_verifier    = "verifier",
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2851,7 +2851,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             grant_type       = "authorization_code",
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2861,7 +2861,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       end)
       it("fails when no code verifier provided for confidential app when conf.pkce is strict", function()
         local challenge, _ = get_pkce_tokens()
-        local code = provision_code("oauth2_15.com", nil, nil, challenge)
+        local code = provision_code("oauth2_15.test", nil, nil, challenge)
         local res = assert(proxy_ssl_client:send {
           method  = "POST",
           path    = "/oauth2/token",
@@ -2872,7 +2872,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             grant_type       = "authorization_code",
           },
           headers = {
-            ["Host"]         = "oauth2_15.com",
+            ["Host"]         = "oauth2_15.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2882,7 +2882,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       end)
       it("fails when no code verifier provided for confidential app with pkce when conf.pkce is lax", function()
         local challenge, _ = get_pkce_tokens()
-        local code = provision_code("oauth2_16.com", nil, nil, challenge)
+        local code = provision_code("oauth2_16.test", nil, nil, challenge)
         local res = assert(proxy_ssl_client:send {
           method  = "POST",
           path    = "/oauth2/token",
@@ -2893,7 +2893,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             grant_type       = "authorization_code",
           },
           headers = {
-            ["Host"]         = "oauth2_16.com",
+            ["Host"]         = "oauth2_16.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2903,7 +2903,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       end)
       it("fails when no code verifier provided for confidential app with pkce when conf.pkce is none", function()
         local challenge, _ = get_pkce_tokens()
-        local code = provision_code("oauth2_14.com", nil, nil, challenge)
+        local code = provision_code("oauth2_14.test", nil, nil, challenge)
         local res = assert(proxy_ssl_client:send {
           method  = "POST",
           path    = "/oauth2/token",
@@ -2914,7 +2914,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             grant_type       = "authorization_code",
           },
           headers = {
-            ["Host"]         = "oauth2_14.com",
+            ["Host"]         = "oauth2_14.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2923,7 +2923,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         assert.same({ error_description = "code_verifier is required for PKCE authorization requests", error = "invalid_request" }, json)
       end)
       it("suceeds when no code verifier provided for confidential app without pkce when conf.pkce is none", function()
-        local code = provision_code("oauth2_14.com")
+        local code = provision_code("oauth2_14.test")
         local res = assert(proxy_ssl_client:send {
           method  = "POST",
           path    = "/oauth2/token",
@@ -2934,7 +2934,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             grant_type       = "authorization_code",
           },
           headers = {
-            ["Host"]         = "oauth2_14.com",
+            ["Host"]         = "oauth2_14.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2948,7 +2948,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         assert.matches("%w+", json.refresh_token)
       end)
       it("suceeds when no code verifier provided for confidential app without pkce when conf.pkce is lax", function()
-        local code = provision_code("oauth2_16.com")
+        local code = provision_code("oauth2_16.test")
         local res = assert(proxy_ssl_client:send {
           method  = "POST",
           path    = "/oauth2/token",
@@ -2959,7 +2959,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             grant_type       = "authorization_code",
           },
           headers = {
-            ["Host"]         = "oauth2_16.com",
+            ["Host"]         = "oauth2_16.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -2974,7 +2974,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       end)
 
       it("fails when exchanging a code created by a different plugin instance when both plugin instances set global_credentials to true", function()
-        local code = provision_code("oauth2_16.com") -- obtain a code from plugin oauth2_16.com
+        local code = provision_code("oauth2_16.test") -- obtain a code from plugin oauth2_16.test
         local res = assert(proxy_ssl_client:send {
           method  = "POST",
           path    = "/oauth2/token",
@@ -2985,7 +2985,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             grant_type       = "authorization_code",
           },
           headers = {
-            ["Host"]         = "oauth2_17.com", -- exchange the code from plugin oauth2_17.com
+            ["Host"]         = "oauth2_17.test", -- exchange the code from plugin oauth2_17.test
             ["Content-Type"] = "application/json",
           }
         })
@@ -2998,7 +2998,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       end)
 
       it("should not fail when plugin_id is not present which indicates it's an old code", function()
-        local code = provision_code("oauth2_16.com")
+        local code = provision_code("oauth2_16.test")
         local db_code, err = db.oauth2_authorization_codes:select_by_code(code)
         assert.is_nil(err)
         db_code.plugin = ngx.null
@@ -3014,7 +3014,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             grant_type       = "authorization_code",
           },
           headers = {
-            ["Host"]         = "oauth2_16.com",
+            ["Host"]         = "oauth2_16.test",
             ["Content-Type"] = "application/json",
           }
         })
@@ -3028,7 +3028,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           method  = "POST",
           path    = "/request",
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -3043,32 +3043,32 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/request?access_token=" .. token.access_token,
           headers = {
-            ["Host"] = "oauth2.com"
+            ["Host"] = "oauth2.test"
           }
         })
         assert.res_status(200, res)
       end)
       it("works when a correct access_token is being sent in the custom header", function()
-        local token = provision_token("oauth2_11.com",nil,"clientid1011","secret1011")
+        local token = provision_token("oauth2_11.test",nil,"clientid1011","secret1011")
 
         local res = assert(proxy_ssl_client:send {
           method = "GET",
           path = "/request",
           headers = {
-            ["Host"] = "oauth2_11.com",
+            ["Host"] = "oauth2_11.test",
             ["custom_header_name"] = "bearer " .. token.access_token,
           }
         })
         assert.res_status(200, res)
       end)
       it("works when a correct access_token is being sent in duplicate custom headers", function()
-        local token = provision_token("oauth2_11.com",nil,"clientid1011","secret1011")
+        local token = provision_token("oauth2_11.test",nil,"clientid1011","secret1011")
 
         local res = assert(proxy_ssl_client:send {
           method = "GET",
           path = "/request",
           headers = {
-            ["Host"] = "oauth2_11.com",
+            ["Host"] = "oauth2_11.test",
             ["custom_header_name"] = { "bearer " .. token.access_token, "bearer " .. token.access_token },
           }
         })
@@ -3079,7 +3079,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           method = "GET",
           path = "/request",
           headers = {
-            ["Host"] = "oauth2_11.com",
+            ["Host"] = "oauth2_11.test",
             ["custom_header_name"] = "",
           }
         })
@@ -3103,13 +3103,13 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           path = "/oauth2/authorize",
           body = body,
           headers = kong.table.merge({
-            ["Host"] = "oauth2_18.com",
+            ["Host"] = "oauth2_18.test",
             ["Content-Type"] = "application/json"
           })
         })
         res = assert(cjson.decode(assert.res_status(200, res)))
         if res.redirect_uri then
-          local iterator, err = ngx.re.gmatch(res.redirect_uri, "^http://google\\.com/kong\\?code=([\\w]{32,32})&state=hello$")
+          local iterator, err = ngx.re.gmatch(res.redirect_uri, "^http://google\\.test/kong\\?code=([\\w]{32,32})&state=hello$")
           assert.is_nil(err)
           local m, err = iterator()
           assert.is_nil(err)
@@ -3122,14 +3122,14 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           client_id = "clientid123",
           client_secret = "secret123",
           grant_type = "authorization_code",
-          redirect_uri = "http://google.com/kong",
+          redirect_uri = "http://google.test/kong",
         }
         res = assert(request_client:send {
           method  = "POST",
           path    = "/oauth2/token",
           body    = body,
           headers = {
-            ["Host"]         = "oauth2_18.com",
+            ["Host"]         = "oauth2_18.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -3146,7 +3146,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             grant_type       = "refresh_token",
           },
           headers = {
-            ["Host"]         = "oauth2_19.com",
+            ["Host"]         = "oauth2_19.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -3175,13 +3175,13 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           path = "/oauth2/authorize",
           body = body,
           headers = kong.table.merge({
-            ["Host"] = "oauth2_20.com",
+            ["Host"] = "oauth2_20.test",
             ["Content-Type"] = "application/json"
           })
         })
         res = assert(cjson.decode(assert.res_status(200, res)))
         if res.redirect_uri then
-          local iterator, err = ngx.re.gmatch(res.redirect_uri, "^http://google\\.com/kong\\?code=([\\w]{32,32})&state=hello$")
+          local iterator, err = ngx.re.gmatch(res.redirect_uri, "^http://google\\.test/kong\\?code=([\\w]{32,32})&state=hello$")
           assert.is_nil(err)
           local m, err = iterator()
           assert.is_nil(err)
@@ -3194,14 +3194,14 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           client_id = "clientid123",
           client_secret = "secret123",
           grant_type = "authorization_code",
-          redirect_uri = "http://google.com/kong",
+          redirect_uri = "http://google.test/kong",
         }
         res = assert(request_client:send {
           method  = "POST",
           path    = "/oauth2/token",
           body    = body,
           headers = {
-            ["Host"]         = "oauth2_20.com",
+            ["Host"]         = "oauth2_20.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -3218,7 +3218,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             grant_type       = "refresh_token",
           },
           headers = {
-            ["Host"]         = "oauth2_21.com",
+            ["Host"]         = "oauth2_21.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -3227,13 +3227,13 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       end)
 
       it("fails when a correct access_token is being sent in the wrong header", function()
-        local token = provision_token("oauth2_11.com",nil,"clientid1011","secret1011")
+        local token = provision_token("oauth2_11.test",nil,"clientid1011","secret1011")
 
         local res = assert(proxy_ssl_client:send {
           method = "GET",
           path = "/request",
           headers = {
-            ["Host"] = "oauth2_11.com",
+            ["Host"] = "oauth2_11.test",
             ["authorization"] = "bearer " .. token.access_token,
           }
         })
@@ -3246,7 +3246,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/request?access_token=" .. token.access_token,
           headers = {
-            ["Host"] = "oauth2_3.com"
+            ["Host"] = "oauth2_3.test"
           }
         })
         local body = assert.res_status(401, res)
@@ -3263,7 +3263,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             access_token     = token.access_token
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -3287,7 +3287,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           method = "GET",
           path = "/request?access_token=" .. token.access_token,
           headers = {
-            ["Host"] = "oauth2.com"
+            ["Host"] = "oauth2.test"
           }
         })
         assert.res_status(200, res)
@@ -3304,7 +3304,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           method  = "POST",
           path    = "/request",
           headers = {
-            ["Host"]      = "oauth2.com",
+            ["Host"]      = "oauth2.test",
             Authorization = "bearer " .. token.access_token
           }
         })
@@ -3317,7 +3317,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           method  = "POST",
           path    = "/request",
           headers = {
-            ["Host"]      = "oauth2.com",
+            ["Host"]      = "oauth2.test",
             Authorization = "bearer " .. token.access_token
           }
         })
@@ -3333,12 +3333,12 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       end)
 
       it("accepts gRPC call with credentials", function()
-        local token = provision_token("oauth2_grpc.com")
+        local token = provision_token("oauth2_grpc.test")
 
         local ok, res = helpers.proxy_client_grpcs(){
           service = "hello.HelloService.SayHello",
           opts = {
-            ["-authority"] = "oauth2_grpc.com",
+            ["-authority"] = "oauth2_grpc.test",
             ["-H"] = ("'authorization: bearer %s'"):format(token.access_token),
           },
         }
@@ -3367,7 +3367,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
               grant_type = "password",
             },
             headers = {
-              ["Host"] = "oauth2_5.com",
+              ["Host"] = "oauth2_5.test",
               ["Content-Type"] = "application/json"
             }
           })
@@ -3380,12 +3380,12 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         end
       end)
       it("works with right credentials and anonymous", function()
-        local token = provision_token("oauth2_7.com")
+        local token = provision_token("oauth2_7.test")
         local res = assert(proxy_ssl_client:send {
           method  = "POST",
           path    = "/request",
           headers = {
-            ["Host"]      = "oauth2_7.com",
+            ["Host"]      = "oauth2_7.test",
             Authorization = "bearer " .. token.access_token
           }
         })
@@ -3404,7 +3404,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           method  = "POST",
           path    = "/request",
           headers = {
-            ["Host"] = "oauth2_7.com"
+            ["Host"] = "oauth2_7.test"
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
@@ -3418,7 +3418,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           method  = "POST",
           path    = "/request",
           headers = {
-            ["Host"] = "oauth2__c.com"
+            ["Host"] = "oauth2__c.test"
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
@@ -3438,7 +3438,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "oauth2_10.com"
+            ["Host"] = "oauth2_10.test"
           }
         })
         assert.res_status(500, res)
@@ -3455,14 +3455,14 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             response_type = "token"
           },
           headers = {
-            ["Host"] = "oauth2_11.com",
+            ["Host"] = "oauth2_11.test",
             ["Content-Type"] = "application/json"
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
-        assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.com/kong\\#access_token=[\\w]{32,32}&expires_in=[\\d]+&token_type=bearer$"))
+        assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.test/kong\\#access_token=[\\w]{32,32}&expires_in=[\\d]+&token_type=bearer$"))
 
-        local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.com/kong\\#access_token=([\\w]{32,32})&expires_in=[\\d]+&token_type=bearer$")
+        local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.test/kong\\#access_token=([\\w]{32,32})&expires_in=[\\d]+&token_type=bearer$")
         assert.is_nil(err)
         local m, err = iterator()
         assert.is_nil(err)
@@ -3479,7 +3479,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/request?access_token=" .. token.access_token,
           headers = {
-            ["Host"] = "oauth2_3.com"
+            ["Host"] = "oauth2_3.test"
           }
         })
         assert.res_status(401, res)
@@ -3489,7 +3489,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/request?access_token=" .. token.access_token,
           headers = {
-            ["Host"] = "oauth2.com"
+            ["Host"] = "oauth2.test"
           }
         })
         assert.res_status(200, res)
@@ -3497,13 +3497,13 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
 
       describe("Global Credentials", function()
         it("does not access two different APIs that are not sharing global credentials", function()
-          local token = provision_token("oauth2_8.com")
+          local token = provision_token("oauth2_8.test")
 
           local res = assert(proxy_ssl_client:send {
             method  = "POST",
             path    = "/request",
             headers = {
-              ["Host"]      = "oauth2_8.com",
+              ["Host"]      = "oauth2_8.test",
               Authorization = "bearer " .. token.access_token
             }
           })
@@ -3513,20 +3513,20 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             method  = "POST",
             path    = "/request",
             headers = {
-              ["Host"]      = "oauth2.com",
+              ["Host"]      = "oauth2.test",
               Authorization = "bearer " .. token.access_token
             }
           })
           assert.res_status(401, res)
         end)
         it("does not access two different APIs that are not sharing global credentials 2", function()
-          local token = provision_token("oauth2.com")
+          local token = provision_token("oauth2.test")
 
           local res = assert(proxy_ssl_client:send {
             method  = "POST",
             path    = "/request",
             headers = {
-              ["Host"]      = "oauth2_8.com",
+              ["Host"]      = "oauth2_8.test",
               Authorization = "bearer " .. token.access_token
             }
           })
@@ -3536,20 +3536,20 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             method  = "POST",
             path    = "/request",
             headers = {
-              ["Host"]      = "oauth2.com",
+              ["Host"]      = "oauth2.test",
               Authorization = "bearer " .. token.access_token
             }
           })
           assert.res_status(200, res)
         end)
         it("access two different APIs that are sharing global credentials", function()
-          local token = provision_token("oauth2_8.com")
+          local token = provision_token("oauth2_8.test")
 
           local res = assert(proxy_ssl_client:send {
             method  = "POST",
             path    = "/request",
             headers = {
-              ["Host"]      = "oauth2_8.com",
+              ["Host"]      = "oauth2_8.test",
               Authorization = "bearer " .. token.access_token
             }
           })
@@ -3559,7 +3559,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             method  = "POST",
             path    = "/request",
             headers = {
-              ["Host"]      = "oauth2_9.com",
+              ["Host"]      = "oauth2_9.test",
               Authorization = "bearer " .. token.access_token
             }
           })
@@ -3574,7 +3574,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           method  = "POST",
           path    = "/request",
           headers = {
-            ["Host"] = "oauth2.com"
+            ["Host"] = "oauth2.test"
           }
         })
         local body = assert.res_status(401, res)
@@ -3587,7 +3587,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/request?access_token=invalid",
           headers = {
-            ["Host"] = "oauth2.com"
+            ["Host"] = "oauth2.test"
           }
         })
         local body = assert.res_status(401, res)
@@ -3600,7 +3600,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           method  = "POST",
           path    = "/request",
           headers = {
-            ["Host"]      = "oauth2.com",
+            ["Host"]      = "oauth2.test",
             Authorization = "bearer invalid"
           }
         })
@@ -3620,7 +3620,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             method  = "POST",
             path    = "/request",
             headers = {
-              ["Host"]      = "oauth2.com",
+              ["Host"]      = "oauth2.test",
               Authorization = "bearer " .. token.access_token
             }
           })
@@ -3648,7 +3648,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             grant_type       = "refresh_token"
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -3669,7 +3669,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             grant_type       = "refresh_token"
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -3694,7 +3694,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             grant_type       = "refresh_token"
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -3720,7 +3720,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             grant_type       = "refresh_token"
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -3739,7 +3739,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             grant_type       = "refresh_token"
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -3760,7 +3760,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             grant_type       = "refresh_token"
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json"
           }
         })
@@ -3777,7 +3777,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           method  = "POST",
           path    = "/request",
           headers = {
-            ["Host"]      = "oauth2.com",
+            ["Host"]      = "oauth2.test",
             authorization = "bearer " .. token.access_token
           }
         })
@@ -3794,7 +3794,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             method  = "POST",
             path    = "/request",
             headers = {
-              ["Host"]      = "oauth2.com",
+              ["Host"]      = "oauth2.test",
               authorization = "bearer " .. token.access_token
             }
           })
@@ -3816,7 +3816,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             grant_type       = "refresh_token"
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/json",
             authorization    = "bearer " .. token.access_token
           }
@@ -3842,8 +3842,8 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         assert.falsy(token.refresh_token == refreshed_token.refresh_token)
       end)
       it("does not rewrite persistent refresh tokens", function()
-        local token = provision_token("oauth2_13.com")
-        local refreshed_token = refresh_token("oauth2_13.com", token.refresh_token)
+        local token = provision_token("oauth2_13.test")
+        local refreshed_token = refresh_token("oauth2_13.test", token.refresh_token)
         local new_access_token = db.oauth2_tokens:select_by_access_token(refreshed_token.access_token)
         local new_refresh_token = db.oauth2_tokens:select_by_refresh_token(token.refresh_token)
         assert.truthy(new_refresh_token)
@@ -3862,7 +3862,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             method  = "POST",
             path    = "/request",
             headers = {
-              ["Host"]      = "oauth2_13.com",
+              ["Host"]      = "oauth2_13.test",
               Authorization = "bearer " .. refreshed_token.access_token
             }
           })
@@ -3876,12 +3876,12 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         assert.same({ error_description = "The access token is invalid or has expired", error = "invalid_token" }, json)
         assert.are.equal('Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"', headers['www-authenticate'])
 
-        local final_refreshed_token = refresh_token("oauth2_13.com", refreshed_token.refresh_token)
+        local final_refreshed_token = refresh_token("oauth2_13.test", refreshed_token.refresh_token)
         local last_res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"]      = "oauth2_13.com",
+            ["Host"]      = "oauth2_13.test",
             authorization = "bearer " .. final_refreshed_token.access_token
           }
         })
@@ -3902,7 +3902,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             access_token     = token.access_token
           },
           headers = {
-            ["Host"]         = "oauth2.com",
+            ["Host"]         = "oauth2.test",
             ["Content-Type"] = "application/x-www-form-urlencoded"
           }
         })
@@ -3910,7 +3910,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         assert.equal(token.access_token, body.post_data.params.access_token)
       end)
       it("hides credentials in the body", function()
-        local token = provision_token("oauth2_3.com")
+        local token = provision_token("oauth2_3.test")
 
         local res = assert(proxy_client:send {
           method  = "POST",
@@ -3919,7 +3919,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             access_token     = token.access_token
           },
           headers = {
-            ["Host"]         = "oauth2_3.com",
+            ["Host"]         = "oauth2_3.test",
             ["Content-Type"] = "application/x-www-form-urlencoded"
           }
         })
@@ -3933,33 +3933,33 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/request?access_token=" .. token.access_token,
           headers = {
-            ["Host"] = "oauth2.com"
+            ["Host"] = "oauth2.test"
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal(token.access_token, body.uri_args.access_token)
       end)
       it("hides credentials in the querystring", function()
-        local token = provision_token("oauth2_3.com")
+        local token = provision_token("oauth2_3.test")
 
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?access_token=" .. token.access_token,
           headers = {
-            ["Host"] = "oauth2_3.com"
+            ["Host"] = "oauth2_3.test"
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
         assert.is_nil(body.uri_args.access_token)
       end)
       it("hides credentials in the querystring for api with custom header", function()
-        local token = provision_token("oauth2_12.com",nil,"clientid1011","secret1011")
+        local token = provision_token("oauth2_12.test",nil,"clientid1011","secret1011")
 
         local res = assert(proxy_client:send {
           method = "GET",
           path = "/request?access_token=" .. token.access_token,
           headers = {
-            ["Host"] = "oauth2_12.com"
+            ["Host"] = "oauth2_12.test"
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
@@ -3972,7 +3972,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"]      = "oauth2.com",
+            ["Host"]      = "oauth2.test",
             authorization = "bearer " .. token.access_token
           }
         })
@@ -3980,13 +3980,13 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         assert.equal("bearer " .. token.access_token, body.headers.authorization)
       end)
       it("hides credentials in the header", function()
-        local token = provision_token("oauth2_3.com")
+        local token = provision_token("oauth2_3.test")
 
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"]      = "oauth2_3.com",
+            ["Host"]      = "oauth2_3.test",
             authorization = "bearer " .. token.access_token
           }
         })
@@ -3994,13 +3994,13 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         assert.is_nil(body.headers.authorization)
       end)
       it("hides credentials in the custom header", function()
-        local token = provision_token("oauth2_12.com",nil,"clientid1011","secret1011")
+        local token = provision_token("oauth2_12.test",nil,"clientid1011","secret1011")
 
         local res = assert(proxy_client:send {
           method = "GET",
           path = "/request",
           headers = {
-            ["Host"] = "oauth2_12.com",
+            ["Host"] = "oauth2_12.test",
             ["custom_header_name"] = "bearer " .. token.access_token
           }
         })
@@ -4009,7 +4009,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         assert.is_nil(body.headers.custom_header_name)
       end)
       it("does not abort when the request body is a multipart form upload", function()
-        local token = provision_token("oauth2_3.com")
+        local token = provision_token("oauth2_3.test")
 
         local res = assert(proxy_client:send {
           method  = "POST",
@@ -4018,7 +4018,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             foo              = "bar"
           },
           headers = {
-            ["Host"]         = "oauth2_3.com",
+            ["Host"]         = "oauth2_3.test",
             ["Content-Type"] = "multipart/form-data"
           }
         })
@@ -4042,7 +4042,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       })
 
       local route1 = assert(admin_api.routes:insert({
-        hosts      = { "logical-and.com" },
+        hosts      = { "logical-and.test" },
         protocols  = { "http", "https" },
         service    = service1
       }))
@@ -4074,13 +4074,13 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       })
 
       local route2 = assert(admin_api.routes:insert({
-        hosts      = { "logical-or.com" },
+        hosts      = { "logical-or.test" },
         protocols  = { "http", "https" },
         service    = service2
       }))
 
       local route3 = assert(admin_api.routes:insert({
-        hosts      = { "logical-or-jwt.com" },
+        hosts      = { "logical-or-jwt.test" },
         protocols  = { "http", "https" },
         service    = service2
       }))
@@ -4129,7 +4129,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       admin_api.oauth2_credentials:insert {
         client_id      = "clientid4567",
         client_secret  = "secret4567",
-        redirect_uris  = { "http://google.com/kong" },
+        redirect_uris  = { "http://google.test/kong" },
         name           = "testapp",
         consumer       = { id = user2.id },
       }
@@ -4145,13 +4145,13 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
     describe("multiple auth without anonymous, logical AND", function()
 
       it("passes with all credentials provided", function()
-        local token = provision_token("logical-and.com",
+        local token = provision_token("logical-and.test",
           { ["apikey"] = "Mouse"}, "clientid4567", "secret4567").access_token
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
           headers  = {
-            ["Host"]          = "logical-and.com",
+            ["Host"]          = "logical-and.test",
             ["apikey"]        = "Mouse",
             -- we must provide the apikey again in the extra_headers, for the
             -- token endpoint, because that endpoint is also protected by the
@@ -4174,7 +4174,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"]   = "logical-and.com",
+            ["Host"]   = "logical-and.test",
             ["apikey"] = "Mouse",
           }
         })
@@ -4186,11 +4186,11 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"]          = "logical-and.com",
+            ["Host"]          = "logical-and.test",
             -- we must provide the apikey again in the extra_headers, for the
             -- token endpoint, because that endpoint is also protected by the
             -- key-auth plugin. Otherwise getting the token simply fails.
-            ["Authorization"] = "bearer " .. provision_token("logical-and.com",
+            ["Authorization"] = "bearer " .. provision_token("logical-and.test",
                   {["apikey"] = "Mouse"}).access_token,
           }
         })
@@ -4202,7 +4202,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "logical-and.com",
+            ["Host"] = "logical-and.test",
           }
         })
         assert.response(res).has.status(401)
@@ -4213,13 +4213,13 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
     describe("multiple auth with anonymous, logical OR", function()
 
       it("passes with all credentials provided", function()
-        local token = provision_token("logical-or.com", nil,
+        local token = provision_token("logical-or.test", nil,
                                       "clientid4567", "secret4567").access_token
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"]          = "logical-or.com",
+            ["Host"]          = "logical-or.test",
             ["apikey"]        = "Mouse",
             ["Authorization"] = "bearer " .. token,
           }
@@ -4238,7 +4238,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           method  = "GET",
           path = "/request",
           headers = {
-            ["Host"] = "logical-or.com",
+            ["Host"] = "logical-or.test",
             ["apikey"] = "Mouse",
             ["X-Authenticated-Scope"] = "all-access",
             ["X-Authenticated-UserId"] = "admin",
@@ -4264,7 +4264,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           method  = "GET",
           path = "/request",
           headers = {
-            ["Host"] = "logical-or-jwt.com",
+            ["Host"] = "logical-or-jwt.test",
             ["Authorization"] = authorization,
             ["X-Authenticated-Scope"] = "all-access",
             ["X-Authenticated-UserId"] = "admin",
@@ -4283,13 +4283,13 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       end)
 
       it("passes with only the second credential provided", function()
-        local token = provision_token("logical-or.com", nil,
+        local token = provision_token("logical-or.test", nil,
                                       "clientid4567", "secret4567").access_token
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"]          = "logical-or.com",
+            ["Host"]          = "logical-or.test",
             ["Authorization"] = "bearer " .. token,
           }
         })
@@ -4307,7 +4307,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "logical-or.com",
+            ["Host"] = "logical-or.test",
           }
         })
         assert.response(res).has.status(200)
@@ -4322,7 +4322,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
   describe("Plugin: oauth2 (ttl) with #"..strategy, function()
     lazy_setup(function()
       local route11 = assert(admin_api.routes:insert({
-        hosts     = { "oauth2_21.refresh.com" },
+        hosts     = { "oauth2_21.refresh.test" },
         protocols = { "http", "https" },
         service   = admin_api.services:insert(),
       }))
@@ -4340,7 +4340,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       }
 
       local route12 = assert(admin_api.routes:insert({
-        hosts     = { "oauth2_22.refresh.com" },
+        hosts     = { "oauth2_22.refresh.test" },
         protocols = { "http", "https" },
         service   = admin_api.services:insert(),
       }))
@@ -4363,7 +4363,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       admin_api.oauth2_credentials:insert {
         client_id = "clientid7890",
         client_secret = "secret7890",
-        redirect_uris = { "http://google.com/kong" },
+        redirect_uris = { "http://google.test/kong" },
         name = "testapp",
         consumer = { id = consumer.id },
       }
@@ -4371,7 +4371,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
 
     describe("refresh token", function()
       it("is deleted after defined TTL", function()
-        local token = provision_token("oauth2_21.refresh.com", nil, "clientid7890", "secret7890")
+        local token = provision_token("oauth2_21.refresh.test", nil, "clientid7890", "secret7890")
         local token_entity = db.oauth2_tokens:select_by_access_token(token.access_token)
         assert.is_table(token_entity)
 
@@ -4383,7 +4383,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       end)
 
       it("is not deleted when when TTL is 0 == never", function()
-        local token = provision_token("oauth2_22.refresh.com", nil, "clientid7890", "secret7890")
+        local token = provision_token("oauth2_22.refresh.test", nil, "clientid7890", "secret7890")
         local token_entity = db.oauth2_tokens:select_by_access_token(token.access_token)
         assert.is_table(token_entity)
 
@@ -4403,7 +4403,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       -- setup
 
       local route_token = assert(admin_api.routes:insert({
-        hosts     = { "oauth2_regression_4232.com" },
+        hosts     = { "oauth2_regression_4232.test" },
         protocols = { "http", "https" },
         service   = admin_api.services:insert(),
       }))
@@ -4419,7 +4419,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       }
 
       local route_test = assert(admin_api.routes:insert({
-        hosts     = { "oauth2_regression_4232_test.com" },
+        hosts     = { "oauth2_regression_4232_test.test" },
         protocols = { "http", "https" },
         service   = admin_api.services:insert(),
       }))
@@ -4440,14 +4440,14 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       admin_api.oauth2_credentials:insert {
         client_id = "clientid_4232",
         client_secret = "secret_4232",
-        redirect_uris = { "http://google.com/kong" },
+        redirect_uris = { "http://google.test/kong" },
         name = "4232_app",
         consumer = { id = consumer.id },
       }
 
       -- /setup
 
-      local token = provision_token("oauth2_regression_4232.com", nil,
+      local token = provision_token("oauth2_regression_4232.test", nil,
                                     "clientid_4232",
                                     "secret_4232")
 
@@ -4460,7 +4460,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           access_token = token.access_token
         },
         headers = {
-          ["Host"]         = "oauth2_regression_4232_test.com",
+          ["Host"]         = "oauth2_regression_4232_test.test",
           ["Content-Type"] = "application/json"
         }
       })

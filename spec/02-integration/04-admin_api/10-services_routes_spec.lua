@@ -63,7 +63,7 @@ for _, strategy in helpers.each_strategy() do
             local res = client:post("/services", {
               body = {
                 protocol = "http",
-                host     = "service.com",
+                host     = "service.test",
               },
               headers = { ["Content-Type"] = content_type },
             })
@@ -75,7 +75,7 @@ for _, strategy in helpers.each_strategy() do
             assert.is_number(json.updated_at)
             assert.equals(cjson.null, json.name)
             assert.equals("http", json.protocol)
-            assert.equals("service.com", json.host)
+            assert.equals("service.test", json.host)
             assert.equals(80, json.port)
             assert.equals(60000, json.connect_timeout)
             assert.equals(60000, json.write_timeout)
@@ -87,7 +87,7 @@ for _, strategy in helpers.each_strategy() do
           return function()
             local res = client:post("/services", {
               body = {
-                url = "http://service.com/",
+                url = "http://service.test/",
               },
               headers = { ["Content-Type"] = content_type },
             })
@@ -99,7 +99,7 @@ for _, strategy in helpers.each_strategy() do
             assert.is_number(json.updated_at)
             assert.equals(cjson.null, json.name)
             assert.equals("http", json.protocol)
-            assert.equals("service.com", json.host)
+            assert.equals("service.test", json.host)
             assert.equals("/", json.path)
             assert.equals(80, json.port)
             assert.equals(60000, json.connect_timeout)
@@ -112,7 +112,7 @@ for _, strategy in helpers.each_strategy() do
           return function()
             local res = client:post("/services", {
               body = {
-                url = "https://service.com/",
+                url = "https://service.test/",
               },
               headers = { ["Content-Type"] = content_type },
             })
@@ -124,7 +124,7 @@ for _, strategy in helpers.each_strategy() do
             assert.is_number(json.updated_at)
             assert.equals(cjson.null, json.name)
             assert.equals("https", json.protocol)
-            assert.equals("service.com", json.host)
+            assert.equals("service.test", json.host)
             assert.equals("/", json.path)
             assert.equals(443, json.port)
             assert.equals(60000, json.connect_timeout)
@@ -482,18 +482,18 @@ for _, strategy in helpers.each_strategy() do
             with_current_ws(nil, function()
               service = assert(db.services:insert({
                 protocol = "http",
-                host     = "service.com",
+                host     = "service.test",
               }))
 
               route = db.routes:insert({
                 protocol = "http",
-                hosts    = { "service.com" },
+                hosts    = { "service.test" },
                 service  = service,
               })
 
               local _ = db.routes:insert({
                 protocol = "http",
-                hosts    = { "service.com" },
+                hosts    = { "service.test" },
               })
             end, db)
 
@@ -892,7 +892,7 @@ for _, strategy in helpers.each_strategy() do
             -- Invalid parameter
             res = client:post("/services", {
                 body = {
-                  host     = "example.com",
+                  host     = "example.test",
                   protocol = "foo",
                 },
                 headers = { ["Content-Type"] = content_type }

@@ -101,7 +101,7 @@ describe(constants.HEADERS.REQUEST_ID .. " header", function()
           method  = "GET",
           path    = "/",
           headers = {
-            host = "404.com",
+            host = "404.test",
           }
         })
         local body = assert.res_status(404, res)

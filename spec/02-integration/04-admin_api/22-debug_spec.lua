@@ -29,7 +29,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
 
     assert(bp.routes:insert {
       protocols     = { "http" },
-      hosts         = { "mockbin.com" },
+      hosts         = { "mockbin.test" },
       paths         = { "/" },
       service       = service_mockbin,
     })
@@ -155,7 +155,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         method  = "GET",
         path    = "/",
         headers = {
-          Host  = "mockbin.com",
+          Host  = "mockbin.test",
         },
       })
       body = assert.res_status(502, res)
@@ -169,7 +169,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         method  = "GET",
         path    = "/",
         headers = {
-          Host  = "mockbin.com",
+          Host  = "mockbin.test",
         },
       })
       assert.res_status(502, res)
@@ -206,7 +206,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         method  = "GET",
         path    = "/",
         headers = {
-          Host  = "mockbin.com",
+          Host  = "mockbin.test",
         },
       })
       body = assert.res_status(502, res)
@@ -220,7 +220,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         method  = "GET",
         path    = "/",
         headers = {
-          Host  = "mockbin.com",
+          Host  = "mockbin.test",
         },
       })
       assert.res_status(502, res)
@@ -587,7 +587,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         method  = "GET",
         path    = "/",
         headers = {
-          Host  = "mockbin.com",
+          Host  = "mockbin.test",
         },
       })
       body = assert.res_status(502, res)
@@ -601,7 +601,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         method  = "GET",
         path    = "/",
         headers = {
-          Host  = "mockbin.com",
+          Host  = "mockbin.test",
         },
       })
       assert.res_status(502, res)
@@ -626,7 +626,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         method  = "GET",
         path    = "/",
         headers = {
-          Host  = "mockbin.com",
+          Host  = "mockbin.test",
         },
       })
       body = assert.res_status(502, res)
@@ -640,7 +640,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         method  = "GET",
         path    = "/",
         headers = {
-          Host  = "mockbin.com",
+          Host  = "mockbin.test",
         },
       })
       assert.res_status(502, res)

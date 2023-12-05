@@ -1491,7 +1491,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/",
             headers = {
-              ["Host"]       = "domain.org",
+              ["Host"]       = "domain.test",
               ["version"]    = "v1",
               ["kong-debug"] = 1,
             }
@@ -1509,7 +1509,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/",
           headers = {
-            ["Host"]       = "domain.org",
+            ["Host"]       = "domain.test",
             ["version"]    = "v3",
             ["kong-debug"] = 1,
           }
@@ -1538,7 +1538,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/",
             headers = {
-              ["Host"]       = "domain.org",
+              ["Host"]       = "domain.test",
               ["version"]    = "v1",
               ["kong-debug"] = 1,
             }
@@ -1560,7 +1560,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/",
           headers = {
-            ["Host"]       = "domain.org",
+            ["Host"]       = "domain.test",
             ["Version"]    = "v3",
             ["kong-debug"] = 1,
           }
@@ -1599,7 +1599,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/",
             headers = {
-              ["Host"]       = "domain.org",
+              ["Host"]       = "domain.test",
               ["version"]    = "v3",
               ["location"]   = "us-east",
               ["kong-debug"] = 1,
@@ -1618,7 +1618,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/",
           headers = {
-            ["Host"]       = "domain.org",
+            ["Host"]       = "domain.test",
             ["version"]    = "v3",
             ["kong-debug"] = 1,
           }

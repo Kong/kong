@@ -47,7 +47,7 @@ for proto, conf in ee_helpers.each_protocol() do
       end
 
       local route1 = bp.routes:insert {
-        hosts = { "hmacauth.com" },
+        hosts = { "hmacauth.test" },
       }
 
       local route_grpc = assert(bp.routes:insert {
@@ -91,7 +91,7 @@ for proto, conf in ee_helpers.each_protocol() do
       }
 
       local route2 = bp.routes:insert {
-        hosts = { "hmacauth2.com" },
+        hosts = { "hmacauth2.test" },
       }
 
       bp.plugins:insert {
@@ -104,7 +104,7 @@ for proto, conf in ee_helpers.each_protocol() do
       }
 
       local route3 = bp.routes:insert {
-        hosts = { "hmacauth3.com" },
+        hosts = { "hmacauth3.test" },
       }
 
       bp.plugins:insert {
@@ -117,7 +117,7 @@ for proto, conf in ee_helpers.each_protocol() do
       }
 
       local route4 = bp.routes:insert {
-        hosts = { "hmacauth4.com" },
+        hosts = { "hmacauth4.test" },
       }
 
       bp.plugins:insert {
@@ -130,7 +130,7 @@ for proto, conf in ee_helpers.each_protocol() do
       }
 
       local route5 = bp.routes:insert {
-        hosts = { "hmacauth5.com" },
+        hosts = { "hmacauth5.test" },
       }
 
       bp.plugins:insert {
@@ -144,7 +144,7 @@ for proto, conf in ee_helpers.each_protocol() do
       }
 
       local route6 = bp.routes:insert {
-        hosts = { "hmacauth6.com" },
+        hosts = { "hmacauth6.test" },
       }
 
       bp.plugins:insert {
@@ -159,7 +159,7 @@ for proto, conf in ee_helpers.each_protocol() do
       }
 
       local route7 = bp.routes:insert {
-        hosts = { "hmacauth7.com" },
+        hosts = { "hmacauth7.test" },
       }
 
       bp.plugins:insert {
@@ -198,7 +198,7 @@ for proto, conf in ee_helpers.each_protocol() do
           method = "POST",
           body = {},
           headers = {
-            ["HOST"] = "hmacauth.com",
+            ["HOST"] = "hmacauth.test",
             date = date
           }
         })
@@ -222,7 +222,7 @@ for proto, conf in ee_helpers.each_protocol() do
           method = "POST",
           body = {},
           headers = {
-            ["HOST"] = "hmacauth.com",
+            ["HOST"] = "hmacauth.test",
             date = date,
             authorization = "asd"
           }
@@ -239,7 +239,7 @@ for proto, conf in ee_helpers.each_protocol() do
         local res  = assert(proxy_client:send {
           method          = "POST",
           headers         = {
-            ["HOST"]      = "hmacauth.com",
+            ["HOST"]      = "hmacauth.test",
             date          = date,
             authorization = hmacAuth
           }
@@ -254,7 +254,7 @@ for proto, conf in ee_helpers.each_protocol() do
           method = "POST",
           body = {},
           headers = {
-            ["HOST"] = "hmacauth.com",
+            ["HOST"] = "hmacauth.test",
             authorization = "asd"
           }
         })
@@ -271,7 +271,7 @@ for proto, conf in ee_helpers.each_protocol() do
           method = "POST",
           body = {},
           headers = {
-            ["HOST"] = "hmacauth.com",
+            ["HOST"] = "hmacauth.test",
             date = date,
             ["proxy-authorization"] = "asd"
           }
@@ -287,7 +287,7 @@ for proto, conf in ee_helpers.each_protocol() do
           method = "POST",
           body = {},
           headers = {
-            ["HOST"] = "hmacauth.com",
+            ["HOST"] = "hmacauth.test",
             date = date,
             ["proxy-authorization"] = "hmac :dXNlcm5hbWU6cGFzc3dvcmQ="
           }
@@ -303,7 +303,7 @@ for proto, conf in ee_helpers.each_protocol() do
           method = "POST",
           body = {},
           headers = {
-            ["HOST"] = "hmacauth.com",
+            ["HOST"] = "hmacauth.test",
             date = date,
             ["proxy-authorization"] = [[hmac username=,algorithm,]]
               .. [[headers,dXNlcm5hbWU6cGFzc3dvcmQ=]]
@@ -320,7 +320,7 @@ for proto, conf in ee_helpers.each_protocol() do
           method = "POST",
           body = {},
           headers = {
-            ["HOST"] = "hmacauth.com",
+            ["HOST"] = "hmacauth.test",
             date = date,
             authorization = [[hmac username=,algorithm,]]
               .. [[headers,dXNlcm5hbWU6cGFzc3dvcmQ=]]
@@ -337,7 +337,7 @@ for proto, conf in ee_helpers.each_protocol() do
           method = "POST",
           body = {},
           headers = {
-            ["HOST"] = "hmacauth.com",
+            ["HOST"] = "hmacauth.test",
             date = date,
             authorization = "hmac username"
           }
@@ -353,7 +353,7 @@ for proto, conf in ee_helpers.each_protocol() do
           method = "POST",
           body = {},
           headers = {
-            ["HOST"] = "hmacauth.com",
+            ["HOST"] = "hmacauth.test",
             date = date,
           }
         })
@@ -373,7 +373,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]      = "hmacauth.com",
+            ["HOST"]      = "hmacauth.test",
             date          = date,
             authorization = hmacAuth,
           },
@@ -393,7 +393,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]      = "hmacauth.com",
+            ["HOST"]      = "hmacauth.test",
             date          = date,
             authorization = hmacAuth,
           },
@@ -414,7 +414,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]      = "hmacauth.com",
+            ["HOST"]      = "hmacauth.test",
             date          = date,
             authorization = hmacAuth,
           },
@@ -470,7 +470,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth.com",
+            ["HOST"]                = "hmacauth.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
           },
@@ -489,7 +489,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]      = "hmacauth.com",
+            ["HOST"]      = "hmacauth.test",
             date          = date,
             authorization = hmacAuth,
           },
@@ -509,7 +509,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth.com",
+            ["HOST"]                = "hmacauth.test",
             date                    = date,
             ["proxy-authorization"] = "hmac username",
             authorization           = hmacAuth,
@@ -531,7 +531,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth.com",
+            ["HOST"]                = "hmacauth.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             authorization           = "hello",
@@ -552,7 +552,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth.com",
+            ["HOST"]                = "hmacauth.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             authorization           = "hello",
@@ -575,7 +575,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth.com",
+            ["HOST"]                = "hmacauth.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             authorization           = "hello",
@@ -598,7 +598,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth.com",
+            ["HOST"]                = "hmacauth.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             authorization           = "hello",
@@ -623,7 +623,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth.com",
+            ["HOST"]                = "hmacauth.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             authorization           = "hello",
@@ -648,7 +648,7 @@ for proto, conf in ee_helpers.each_protocol() do
               path    = "/request",
               body    = {},
               headers = {
-                ["HOST"]                = "hmacauth.com",
+                ["HOST"]                = "hmacauth.test",
                 date                    = date,
                 ["proxy-authorization"] = hmacAuth,
                 authorization           = "hello",
@@ -674,7 +674,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth.com",
+            ["HOST"]                = "hmacauth.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             authorization           = "hello",
@@ -701,7 +701,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth.com",
+            ["HOST"]                = "hmacauth.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             authorization           = "hello",
@@ -727,7 +727,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth.com",
+            ["HOST"]                = "hmacauth.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             authorization           = "hello",
@@ -752,7 +752,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth.com",
+            ["HOST"]                = "hmacauth.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             authorization           = "hello",
@@ -777,7 +777,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth.com",
+            ["HOST"]                = "hmacauth.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             authorization           = "hello",
@@ -802,7 +802,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers                   = {
-            ["HOST"]                = "hmacauth.com",
+            ["HOST"]                = "hmacauth.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             authorization           = "hello",
@@ -827,7 +827,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth.com",
+            ["HOST"]                = "hmacauth.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             authorization           = "hello",
@@ -850,7 +850,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth.com",
+            ["HOST"]                = "hmacauth.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             authorization           = "hello",
@@ -873,7 +873,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth.com",
+            ["HOST"]                = "hmacauth.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             authorization           = "hello",
@@ -901,7 +901,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]        = "hmacauth.com",
+            ["HOST"]        = "hmacauth.test",
             ["x-date"]      = date,
             authorization   = hmacAuth,
             ["content-md5"] = "md5",
@@ -922,7 +922,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth.com",
+            ["HOST"]                = "hmacauth.test",
             ["proxy-authorization"] = hmacAuth,
             authorization           = "hello",
             ["content-md5"]         = "md5",
@@ -947,7 +947,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]        = "hmacauth.com",
+            ["HOST"]        = "hmacauth.test",
             ["x-date"]      = "wrong date",
             authorization   = hmacAuth,
             ["content-md5"] = "md5",
@@ -972,7 +972,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]        = "hmacauth.com",
+            ["HOST"]        = "hmacauth.test",
             ["x-date"]      = "wrong date",
             date            = date,
             authorization   = hmacAuth,
@@ -995,7 +995,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]        = "hmacauth.com",
+            ["HOST"]        = "hmacauth.test",
             ["x-date"]      = "wrong date",
             date            = date,
             authorization   = hmacAuth,
@@ -1018,7 +1018,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]        = "hmacauth.com",
+            ["HOST"]        = "hmacauth.test",
             ["x-date"]      = "wrong date",
             date            = date,
             authorization   = hmacAuth,
@@ -1041,7 +1041,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]        = "hmacauth.com",
+            ["HOST"]        = "hmacauth.test",
             ["x-date"]      = date,
             date            = "wrong date",
             authorization   = hmacAuth,
@@ -1061,7 +1061,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]      = "hmacauth2.com",
+            ["HOST"]      = "hmacauth2.test",
             date          = date,
             authorization = hmacAuth,
           },
@@ -1090,7 +1090,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = postBody,
           headers = {
-            ["HOST"]      = "hmacauth4.com",
+            ["HOST"]      = "hmacauth4.test",
             date          = date,
             authorization = hmacAuth,
           }
@@ -1111,7 +1111,7 @@ for proto, conf in ee_helpers.each_protocol() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["HOST"]      = "hmacauth4.com",
+            ["HOST"]      = "hmacauth4.test",
             date          = date,
             authorization = hmacAuth,
           }
@@ -1133,7 +1133,7 @@ for proto, conf in ee_helpers.each_protocol() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["HOST"]      = "hmacauth4.com",
+            ["HOST"]      = "hmacauth4.test",
             date          = date,
             digest        = digest,
             authorization = hmacAuth,
@@ -1149,7 +1149,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"] = "hmacauth2.com",
+            ["HOST"] = "hmacauth2.test",
           },
         })
         local body = assert.res_status(200, res)
@@ -1165,7 +1165,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"] = "hmacauth7.com",
+            ["HOST"] = "hmacauth7.test",
           },
         })
         local body = assert.res_status(200, res)
@@ -1183,7 +1183,7 @@ for proto, conf in ee_helpers.each_protocol() do
           method = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "hmacauth3.com",
+            ["Host"] = "hmacauth3.test",
           },
         })
         assert.response(res).has.status(500)
@@ -1200,7 +1200,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]      = "hmacauth4.com",
+            ["HOST"]      = "hmacauth4.test",
             date          = date,
             authorization = hmacAuth,
           },
@@ -1224,7 +1224,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = postBody,
           headers = {
-            ["HOST"]      = "hmacauth4.com",
+            ["HOST"]      = "hmacauth4.test",
             date          = date,
             digest        = digest,
             authorization = hmacAuth,
@@ -1249,7 +1249,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = postBody,
           headers = {
-            ["HOST"]      = "hmacauth4.com",
+            ["HOST"]      = "hmacauth4.test",
             date          = date,
             digest        = digest,
             authorization = hmacAuth,
@@ -1274,7 +1274,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = postBody,
           headers = {
-            ["HOST"]      = "hmacauth4.com",
+            ["HOST"]      = "hmacauth4.test",
             date          = date,
             authorization = hmacAuth,
           },
@@ -1300,7 +1300,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = "abc",
           headers = {
-            ["HOST"]      = "hmacauth4.com",
+            ["HOST"]      = "hmacauth4.test",
             date          = date,
             digest        = digest,
             authorization = hmacAuth,
@@ -1327,7 +1327,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = postBody,
           headers = {
-            ["HOST"]      = "hmacauth4.com",
+            ["HOST"]      = "hmacauth4.test",
             date          = date,
             digest        = digest .. "spoofed",
             authorization = hmacAuth,
@@ -1351,7 +1351,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth5.com",
+            ["HOST"]                = "hmacauth5.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             ["content-md5"]         = "md5",
@@ -1374,7 +1374,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request?name=foo",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth5.com",
+            ["HOST"]                = "hmacauth5.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             ["content-md5"]         = "md5",
@@ -1393,7 +1393,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request/?name=foo",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth5.com",
+            ["HOST"]                = "hmacauth5.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             ["content-md5"]         = "md5",
@@ -1415,7 +1415,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request?name=foo",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth5.com",
+            ["HOST"]                = "hmacauth5.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             ["content-md5"]         = "md5",
@@ -1434,7 +1434,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request/?name=foo",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth5.com",
+            ["HOST"]                = "hmacauth5.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             ["content-md5"]         = "md5",
@@ -1458,7 +1458,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = escaped_uri,
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth5.com",
+            ["HOST"]                = "hmacauth5.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             ["content-md5"]         = "md5",
@@ -1481,7 +1481,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = escaped_uri,
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth5.com",
+            ["HOST"]                = "hmacauth5.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             ["content-md5"]         = "md5",
@@ -1508,7 +1508,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = escaped_uri,
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth5.com",
+            ["HOST"]                = "hmacauth5.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             ["content-md5"]         = "md5",
@@ -1533,7 +1533,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request?name=foo&name=bar",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth5.com",
+            ["HOST"]                = "hmacauth5.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             ["content-md5"]         = "md5",
@@ -1557,7 +1557,7 @@ for proto, conf in ee_helpers.each_protocol() do
           method  = "GET",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth5.com",
+            ["HOST"]                = "hmacauth5.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             ["content-md5"]         = "md5",
@@ -1581,7 +1581,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = escaped_uri,
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth5.com",
+            ["HOST"]                = "hmacauth5.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             ["content-md5"]         = "md5",
@@ -1607,7 +1607,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth5.com",
+            ["HOST"]                = "hmacauth5.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             ["content-md5"]         = "md5",
@@ -1629,7 +1629,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth5.com",
+            ["HOST"]                = "hmacauth5.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             ["content-md5"]         = "md5",
@@ -1651,7 +1651,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth5.com",
+            ["HOST"]                = "hmacauth5.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             ["content-md5"]         = "md5",
@@ -1673,7 +1673,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth6.com",
+            ["HOST"]                = "hmacauth6.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             ["content-md5"]         = "md5",
@@ -1689,7 +1689,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth6.com",
+            ["HOST"]                = "hmacauth6.test",
             date                    = date,
             ["proxy-authorization"] = "this is no hmac token at all is it?",
           },
@@ -1710,7 +1710,7 @@ for proto, conf in ee_helpers.each_protocol() do
           path    = "/request",
           body    = {},
           headers = {
-            ["HOST"]                = "hmacauth6.com",
+            ["HOST"]                = "hmacauth6.test",
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             ["content-md5"]         = "md5",
@@ -1750,7 +1750,7 @@ for proto, conf in ee_helpers.each_protocol() do
       })
 
       local route1 = bp.routes:insert {
-        hosts      = { "logical-and.com" },
+        hosts      = { "logical-and.test" },
         protocols  = conf.route_protos,
         service    = service1
       }
@@ -1782,7 +1782,7 @@ for proto, conf in ee_helpers.each_protocol() do
       })
 
       local route2 = bp.routes:insert {
-        hosts      = { "logical-or.com" },
+        hosts      = { "logical-or.test" },
         protocols  = conf.route_protos,
         service    = service2
       }
@@ -1839,7 +1839,7 @@ for proto, conf in ee_helpers.each_protocol() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"]          = "logical-and.com",
+            ["Host"]          = "logical-and.test",
             ["apikey"]        = "Mouse",
             ["Authorization"] = hmacAuth,
             ["date"]          = hmacDate,
@@ -1858,7 +1858,7 @@ for proto, conf in ee_helpers.each_protocol() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"]   = "logical-and.com",
+            ["Host"]   = "logical-and.test",
             ["apikey"] = "Mouse",
           },
         })
@@ -1870,7 +1870,7 @@ for proto, conf in ee_helpers.each_protocol() do
           method = "GET",
           path   = "/request",
           headers = {
-            ["Host"]          = "logical-and.com",
+            ["Host"]          = "logical-and.test",
             ["Authorization"] = hmacAuth,
             ["date"]          = hmacDate,
           },
@@ -1883,7 +1883,7 @@ for proto, conf in ee_helpers.each_protocol() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "logical-and.com",
+            ["Host"] = "logical-and.test",
           },
         })
         assert.response(res).has.status(401)
@@ -1898,7 +1898,7 @@ for proto, conf in ee_helpers.each_protocol() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"]          = "logical-or.com",
+            ["Host"]          = "logical-or.test",
             ["apikey"]        = "Mouse",
             ["Authorization"] = hmacAuth,
             ["date"]          = hmacDate,
@@ -1917,7 +1917,7 @@ for proto, conf in ee_helpers.each_protocol() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"]   = "logical-or.com",
+            ["Host"]   = "logical-or.test",
             ["apikey"] = "Mouse",
           },
         })
@@ -1933,7 +1933,7 @@ for proto, conf in ee_helpers.each_protocol() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"]          = "logical-or.com",
+            ["Host"]          = "logical-or.test",
             ["Authorization"] = hmacAuth,
             ["date"]          = hmacDate,
           },
@@ -1950,7 +1950,7 @@ for proto, conf in ee_helpers.each_protocol() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "logical-or.com",
+            ["Host"] = "logical-or.test",
           },
         })
         assert.response(res).has.status(200)
