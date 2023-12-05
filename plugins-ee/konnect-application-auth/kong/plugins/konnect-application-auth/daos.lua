@@ -19,6 +19,7 @@ return {
       { client_id = { type = "string", required = true, unique = true, }, },
       { consumer_groups = { default = {}, type = "array", elements = { type = "string" }, }, },
       { scopes = { type = "array", elements = { type = "string", }, }, },
+      { auth_strategy_id = { type = "string", required = false }, },
       { tags = typedefs.tags },
     },
   },

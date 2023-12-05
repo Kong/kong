@@ -67,6 +67,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
       auth_type = "openid-connect",
       scope = scope,
       key_names = { "apikey" },
+      v2_strategies = {},
     }, ok.config)
   end)
 
@@ -96,9 +97,144 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
     assert.is_same({
       config = {
-        auth_type = 'expected one of: openid-connect, key-auth'
-      }
+        auth_type = 'expected one of: openid-connect, key-auth, v2-strategies'
+      },
     }, err)
     assert.is_falsy(ok)
+  end)
+
+  describe("v2 auth strategies", function ()
+    it("supports openid-connect configs", function ()
+      local ok, err = validate({
+        auth_type = "v2-strategies",
+        scope = uuid(),
+        v2_strategies = {
+          openid_connect = {
+            {
+              strategy_id = uuid(),
+              config = {
+                issuer = "https://accounts.google.com/.well-known/openid-configuration",
+              }
+            },
+            {
+              strategy_id = uuid(),
+              config = {
+                issuer = "https://foo.okta.com/.well-known/openid-configuration",
+              }
+            }
+          }
+        }
+      })
+      assert.is_nil(err)
+      assert.is_truthy(ok)
+    end)
+    it("invalidates bad openid-connect configs missing strategy_id", function ()
+      local ok, err = validate({
+        auth_type = "v2-strategies",
+        scope = uuid(),
+        v2_strategies = {
+          openid_connect = {
+            {
+              config = {
+                issuer = "https://accounts.google.com/.well-known/openid-configuration",
+              }
+            }
+          }
+        }
+      })
+
+      assert.is_falsy(ok)
+      assert.is_same({
+        config = {
+          v2_strategies = {
+            openid_connect = {
+              {
+                strategy_id = "required field missing"
+              }
+            }
+          }
+        }
+      }, err)
+    end)
+    it("rejects bad openid-connect configs missing required field", function ()
+      local ok, err = validate({
+        auth_type = "v2-strategies",
+        scope = uuid(),
+        v2_strategies = {
+          openid_connect = {
+            {
+              strategy_id = uuid(),
+              config = {
+              }
+            }
+          }
+        }
+      })
+
+      assert.is_falsy(ok)
+      assert.is_same({
+        config = {
+          v2_strategies = {
+            openid_connect = {
+              {
+                config = {
+                  issuer = "required field missing"
+                }
+              }
+            }
+          }
+        }
+      }, err)
+    end)
+    it("supports key-auth configs", function ()
+      local ok, err = validate({
+        auth_type = "v2-strategies",
+        scope = uuid(),
+        v2_strategies = {
+          key_auth = {
+            {
+              strategy_id = uuid(),
+              config = {
+                key_names = { "apikey" },
+              }
+            },
+            {
+              strategy_id = uuid(),
+              config = {
+                key_names = { "x-api-key" },
+              }
+            }
+          }
+        }
+      })
+      assert.is_nil(err)
+      assert.is_truthy(ok)
+    end)
+    it("rejects bad key-auth configs missing strategy_id", function ()
+      local ok, err = validate({
+        auth_type = "v2-strategies",
+        scope = uuid(),
+        v2_strategies = {
+          key_auth = {
+            {
+              config = {},
+            }
+          }
+        }
+      })
+
+      assert.is_falsy(ok)
+      assert.is_same({
+        config = {
+          v2_strategies = {
+            key_auth = {
+              {
+                strategy_id = "required field missing"
+              }
+            }
+          }
+        }
+      }, err)
+    end)
   end)
 end)
