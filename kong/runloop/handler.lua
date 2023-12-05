@@ -355,7 +355,7 @@ local function new_router(version)
     end
   end
 
-  local detect_changes = db.strategy ~= "off" and kong.core_cache
+  local detect_changes = kong.core_cache
   local counter = 0
   local page_size = db.routes.pagination.max_page_size
   for route, err in db.routes:each(page_size, GLOBAL_QUERY_OPTS) do
@@ -963,7 +963,7 @@ return {
         end
       end
 
-      if strategy ~= "off" then
+      --if strategy ~= "off" then
         local worker_state_update_frequency = kong.configuration.worker_state_update_frequency or 1
 
         local function rebuild_timer(premature)
@@ -1022,7 +1022,7 @@ return {
         if err then
           log(ERR, "could not schedule timer to rebuild: ", err)
         end
-      end
+      --end
     end,
   },
   preread = {
