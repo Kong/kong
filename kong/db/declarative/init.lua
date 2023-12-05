@@ -251,6 +251,7 @@ _M.sanitize_output             = declarative_export.sanitize_output
 -- import
 _M.get_current_hash            = declarative_import.get_current_hash
 _M.unique_field_key            = declarative_import.unique_field_key
+_M.foreign_field_key           = declarative_import.foreign_field_key
 _M.load_into_db                = declarative_import.load_into_db
 _M.load_into_cache             = declarative_import.load_into_cache
 _M.load_into_cache_with_events = declarative_import.load_into_cache_with_events

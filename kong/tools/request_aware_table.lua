@@ -6,7 +6,7 @@ local table_clear = require("table.clear")
 local get_request_id = require("kong.tracing.request_id").get
 
 
-local is_not_debug_mode = (kong.configuration.log_level ~= "debug")
+local is_not_debug_mode
 
 
 local error        = error
@@ -100,6 +100,10 @@ local function new(narr, nrec)
   local data = table_new(narr or 0, nrec or 0)
 
   -- return table without proxy when debug_mode is disabled
+  if is_not_debug_mode == nil then
+    is_not_debug_mode = (kong.configuration.log_level ~= "debug")
+  end
+
   if is_not_debug_mode then
     return setmetatable(data, __direct_mt)
   end

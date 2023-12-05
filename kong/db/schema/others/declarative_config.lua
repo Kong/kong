@@ -7,6 +7,7 @@ local constants = require("kong.constants")
 local plugin_loader = require("kong.db.schema.plugin_loader")
 local vault_loader = require("kong.db.schema.vault_loader")
 local schema_topological_sort = require("kong.db.schema.topological_sort")
+local request_aware_table = require("kong.tools.request_aware_table")
 
 
 local null = ngx.null
@@ -38,15 +39,25 @@ local foreign_references = {}
 local foreign_children = {}
 
 
-function DeclarativeConfig.pk_string(schema, object)
-  if #schema.primary_key == 1 then
-    return tostring(object[schema.primary_key[1]])
-  else
-    local out = {}
-    for _, k in ipairs(schema.primary_key) do
-      insert(out, tostring(object[k]))
+do
+  local CACHED_OUT
+
+  function DeclarativeConfig.pk_string(schema, object)
+    if #schema.primary_key == 1 then
+      return tostring(object[schema.primary_key[1]])
+
+    else
+      if not CACHED_OUT then
+        CACHED_OUT = request_aware_table.new()
+      end
+
+      CACHED_OUT.clear()
+      for _, k in ipairs(schema.primary_key) do
+        insert(CACHED_OUT, tostring(object[k]))
+      end
+
+      return concat(CACHED_OUT, ":")
     end
-    return concat(out, ":")
   end
 end
 

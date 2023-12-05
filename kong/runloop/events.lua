@@ -171,6 +171,7 @@ end
 
 
 local function dao_crud_handler(data)
+    ngx.log(ngx.ERR, "dao_crud_handler")
   local schema = data.schema
   if not schema then
     log(ERR, "[events] missing schema in crud subscriber")
@@ -234,7 +235,7 @@ end
 
 
 local function crud_routes_handler()
-  log(DEBUG, "[events] Route updated, invalidating router")
+  log(ngx.ERR, "[events] Route updated, invalidating router")
   core_cache:invalidate("router:version")
 end
 
@@ -482,7 +483,6 @@ local function register_events(reconfigure_handler)
   if db.strategy == "off" then
     -- declarative config updates
     register_for_dbless(reconfigure_handler)
-    return
   end
 
   register_for_db()
