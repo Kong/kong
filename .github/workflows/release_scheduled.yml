@@ -27,8 +27,6 @@ jobs:
             version: "3.3.x.x"
           - branch: next/3.2.x.x
             version: "3.2.x.x"
-          - branch: next/3.1.x.x
-            version: "3.1.x.x"
           - branch: next/2.8.x.x
             version: "2.8.x.x"
     runs-on: ${{ vars.RUNS_ON }}
@@ -48,6 +46,14 @@ jobs:
         uses: richardsimko/update-tag@v1
         with:
           tag_name: nightly
+
+      - name: Random delay up to 5 minutes
+        run: |
+          MINWAIT=0
+          MAXWAIT=300
+          delay=$((MINWAIT+RANDOM % (MAXWAIT-MINWAIT)))
+          echo "Delay for $delay seconds..."
+          sleep $delay
 
       - name: Daily build Dispatch
         uses: benc-uk/workflow-dispatch@798e70c97009500150087d30d9f11c5444830385 # v1
