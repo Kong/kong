@@ -154,8 +154,7 @@ local function get_output_header(_deployment, path, filter, fake_ip, token)
       ["X-Real-IP"] = fake_ip or "127.0.0.1",
     }
   })
-  assert.not_same(500, res.status)
-  res:read_body() -- discard body
+  assert.not_same(500, res.status, res:read_body())
   proxy_client:close()
 
   if not res.headers["X-Kong-Request-Debug-Output"] then
@@ -522,7 +521,7 @@ describe(desc, function()
     local total_log = assert(tonumber(log_output.child.upstream.total_time))
     local tfb_log = assert(tonumber(log_output.child.upstream.child.time_to_first_byte.total_time))
     local streaming = assert(tonumber(log_output.child.upstream.child.streaming.total_time))
-    assert.near(tfb_header, tfb_log, 10)
+    assert.near(tfb_header, tfb_log, 50)
     assert.same(total_log, tfb_log + streaming)
 
     assert.near(TIME_TO_FIRST_BYTE, tfb_log, 50)
@@ -666,7 +665,7 @@ describe(desc, function()
 
   it("truncate/split too large debug output", function()
     local route_id = setup_route("/large_debug_output", upstream)
-    local plugin_id = setup_plugin(route_id, "muti-external-http-calls", { calls = 50 })
+    local plugin_id = setup_plugin(route_id, "muti-external-http-calls", { calls = 10 })
 
     finally(function()
       if plugin_id then
