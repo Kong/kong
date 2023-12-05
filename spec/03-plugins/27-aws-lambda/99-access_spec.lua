@@ -24,134 +24,134 @@ for _, strategy in helpers.each_strategy() do
       }, { "aws-lambda" })
 
       local route1 = bp.routes:insert {
-        hosts = { "lambda.com" },
+        hosts = { "lambda.test" },
       }
 
       local route1_1 = bp.routes:insert {
-        hosts   = { "lambda_ignore_service.com" },
+        hosts   = { "lambda_ignore_service.test" },
         service = assert(bp.services:insert()),
       }
 
       local route2 = bp.routes:insert {
-        hosts = { "lambda2.com" },
+        hosts = { "lambda2.test" },
       }
 
       local route3 = bp.routes:insert {
-        hosts = { "lambda3.com" },
+        hosts = { "lambda3.test" },
       }
 
       local route4 = bp.routes:insert {
-        hosts = { "lambda4.com" },
+        hosts = { "lambda4.test" },
       }
 
       local route5 = bp.routes:insert {
-        hosts = { "lambda5.com" },
+        hosts = { "lambda5.test" },
       }
 
       local route6 = bp.routes:insert {
-        hosts = { "lambda6.com" },
+        hosts = { "lambda6.test" },
       }
 
       local route7 = bp.routes:insert {
-        hosts = { "lambda7.com" },
+        hosts = { "lambda7.test" },
       }
 
       local route8 = bp.routes:insert {
-        hosts = { "lambda8.com" },
+        hosts = { "lambda8.test" },
       }
 
       local route9 = bp.routes:insert {
-        hosts      = { "lambda9.com" },
+        hosts      = { "lambda9.test" },
         protocols  = { "http", "https" },
         service    = null,
       }
 
       local route10 = bp.routes:insert {
-        hosts       = { "lambda10.com" },
+        hosts       = { "lambda10.test" },
         protocols   = { "http", "https" },
         service     = null,
       }
 
       local route11 = bp.routes:insert {
-        hosts       = { "lambda11.com" },
+        hosts       = { "lambda11.test" },
         protocols   = { "http", "https" },
         service     = null,
       }
 
       local route12 = bp.routes:insert {
-        hosts       = { "lambda12.com" },
+        hosts       = { "lambda12.test" },
         protocols   = { "http", "https" },
         service     = null,
       }
 
       local route13 = bp.routes:insert {
-        hosts       = { "lambda13.com" },
+        hosts       = { "lambda13.test" },
         protocols   = { "http", "https" },
         service     = null,
       }
 
       local route14 = bp.routes:insert {
-        hosts       = { "lambda14.com" },
+        hosts       = { "lambda14.test" },
         protocols   = { "http", "https" },
         service     = null,
       }
 
       local route15 = bp.routes:insert {
-        hosts       = { "lambda15.com" },
+        hosts       = { "lambda15.test" },
         protocols   = { "http", "https" },
         service     = null,
       }
 
       local route16 = bp.routes:insert {
-        hosts       = { "lambda16.com" },
+        hosts       = { "lambda16.test" },
         protocols   = { "http", "https" },
         service     = null,
       }
 
       local route17 = bp.routes:insert {
-        hosts       = { "lambda17.com" },
+        hosts       = { "lambda17.test" },
         protocols   = { "http", "https" },
         service     = null,
       }
 
       local route18 = bp.routes:insert {
-        hosts       = { "lambda18.com" },
+        hosts       = { "lambda18.test" },
         protocols   = { "http", "https" },
         service     = null,
       }
 
       local route19 = bp.routes:insert {
-        hosts       = { "lambda19.com" },
+        hosts       = { "lambda19.test" },
         protocols   = { "http", "https" },
         service     = null,
       }
 
       local route20 = bp.routes:insert {
-        hosts       = { "lambda20.com" },
+        hosts       = { "lambda20.test" },
         protocols   = { "http", "https" },
         service     = null,
       }
 
       local route21 = bp.routes:insert {
-        hosts       = { "lambda21.com" },
+        hosts       = { "lambda21.test" },
         protocols   = { "http", "https" },
         service     = null,
       }
 
       local route22 = bp.routes:insert {
-        hosts       = { "lambda22.com" },
+        hosts       = { "lambda22.test" },
         protocols   = { "http", "https" },
         service     = null,
       }
 
       local route23 = bp.routes:insert {
-        hosts       = { "lambda23.com" },
+        hosts       = { "lambda23.test" },
         protocols   = { "http", "https" },
         service     = null,
       }
 
       local route24 = bp.routes:insert {
-        hosts       = { "lambda24.com" },
+        hosts       = { "lambda24.test" },
         protocols   = { "http", "https" },
         service     = null,
       }
@@ -521,7 +521,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
           headers = {
-            ["Host"] = "lambda.com"
+            ["Host"] = "lambda.test"
           }
         })
         assert.res_status(200, res)
@@ -536,7 +536,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
           headers = {
-            ["Host"] = "lambda_ignore_service.com"
+            ["Host"] = "lambda_ignore_service.test"
           }
         })
         assert.res_status(200, res)
@@ -551,7 +551,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "POST",
           path    = "/post",
           headers = {
-            ["Host"]         = "lambda.com",
+            ["Host"]         = "lambda.test",
             ["Content-Type"] = "application/x-www-form-urlencoded"
           },
           body = {
@@ -571,7 +571,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "POST",
           path    = "/post",
           headers = {
-            ["Host"]         = "lambda.com",
+            ["Host"]         = "lambda.test",
             ["Content-Type"] = "application/json"
           },
           body = {
@@ -591,7 +591,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "POST",
           path    = "/post",
           headers = {
-            ["Host"]         = "lambda.com",
+            ["Host"]         = "lambda.test",
             ["Content-Type"] = "application/json"
           },
           body = '[{}, []]'
@@ -605,7 +605,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "POST",
           path    = "/post?key1=from_querystring",
           headers = {
-            ["Host"]         = "lambda.com",
+            ["Host"]         = "lambda.test",
             ["Content-Type"] = "application/x-www-form-urlencoded"
           },
           body = {
@@ -624,7 +624,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "POST",
           path    = "/post?key1=from_querystring",
           headers = {
-            ["Host"]          = "lambda9.com",
+            ["Host"]          = "lambda9.test",
             ["Content-Type"]  = "application/xml",
             ["custom-header"] = "someheader"
           },
@@ -643,7 +643,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- request_headers
         assert.equal("someheader", body.request_headers["custom-header"])
-        assert.equal("lambda9.com", body.request_headers.host)
+        assert.equal("lambda9.test", body.request_headers.host)
 
         -- request_body
         assert.equal("<xml/>", body.request_body)
@@ -655,7 +655,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "POST",
           path    = "/post?key1=from_querystring",
           headers = {
-            ["Host"]          = "lambda10.com",
+            ["Host"]          = "lambda10.test",
             ["Content-Type"]  = "application/json",
             ["custom-header"] = "someheader"
           },
@@ -673,7 +673,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(body.request_uri_args)
 
         -- request_headers
-        assert.equal("lambda10.com", body.request_headers.host)
+        assert.equal("lambda10.test", body.request_headers.host)
         assert.equal("someheader", body.request_headers["custom-header"])
 
         -- request_body
@@ -686,7 +686,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "POST",
           path    = "/post?key1=from_querystring",
           headers = {
-            ["Host"]          = "lambda9.com",
+            ["Host"]          = "lambda9.test",
             ["Content-Type"]  = "text/plain",
             ["custom-header"] = "someheader"
           },
@@ -705,7 +705,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- request_headers
         assert.equal("someheader", body.request_headers["custom-header"])
-        assert.equal("lambda9.com", body.request_headers.host)
+        assert.equal("lambda9.test", body.request_headers.host)
 
         -- request_body
         assert.equal("some text", body.request_body)
@@ -718,7 +718,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "POST",
           path    = "/post?key1=from_querystring",
           headers = {
-            ["Host"]          = "lambda9.com",
+            ["Host"]          = "lambda9.test",
             ["Content-Type"]  = "application/octet-stream",
             ["custom-header"] = "someheader"
           },
@@ -736,7 +736,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_table(body.request_uri_args)
 
         -- request_headers
-        assert.equal("lambda9.com", body.request_headers.host)
+        assert.equal("lambda9.test", body.request_headers.host)
         assert.equal("someheader", body.request_headers["custom-header"])
 
         -- request_body
@@ -750,7 +750,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "POST",
           path    = "/post",
           headers = {
-            ["Host"]         = "lambda2.com",
+            ["Host"]         = "lambda2.test",
             ["Content-Type"] = "application/x-www-form-urlencoded"
           },
           body = {
@@ -768,7 +768,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "POST",
           path    = "/post",
           headers = {
-            ["Host"]         = "lambda3.com",
+            ["Host"]         = "lambda3.test",
             ["Content-Type"] = "application/x-www-form-urlencoded"
           },
           body = {
@@ -786,7 +786,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
           headers = {
-            ["Host"] = "lambda4.com",
+            ["Host"] = "lambda4.test",
           }
         })
         assert.res_status(500, res)
@@ -797,7 +797,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
           headers = {
-            ["Host"] = "lambda5.com"
+            ["Host"] = "lambda5.test"
           }
         })
         assert.res_status(200, res)
@@ -809,7 +809,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
           headers = {
-            ["Host"] = "lambda6.com"
+            ["Host"] = "lambda6.test"
           }
         })
         assert.res_status(202, res)
@@ -821,7 +821,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
           headers = {
-            ["Host"] = "lambda7.com"
+            ["Host"] = "lambda7.test"
           }
         })
         assert.res_status(204, res)
@@ -833,7 +833,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
           headers = {
-            ["Host"] = "lambda8.com"
+            ["Host"] = "lambda8.test"
           }
         })
         assert.res_status(412, res)
@@ -845,7 +845,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
           headers = {
-            ["Host"] = "lambda.com"
+            ["Host"] = "lambda.test"
           }
         })
 
@@ -859,7 +859,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
           headers = {
-            ["Host"] = "lambda.com"
+            ["Host"] = "lambda.test"
           }
         })
 
@@ -871,7 +871,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/get?key1=some_value1",
           headers = {
-            ["Host"] = "lambda15.com"
+            ["Host"] = "lambda15.test"
           }
         })
         assert.res_status(500, res)
@@ -896,7 +896,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "POST",
             path    = "/post",
             headers = {
-              ["Host"]         = "lambda11.com",
+              ["Host"]         = "lambda11.test",
               ["Content-Type"] = "application/json"
             },
             body = {
@@ -922,7 +922,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "POST",
             path    = "/post",
             headers = {
-              ["Host"]         = "lambda11.com",
+              ["Host"]         = "lambda11.test",
               ["Content-Type"] = "application/json",
             },
             body = {
@@ -951,7 +951,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "POST",
             path    = "/post",
             headers = {
-              ["Host"]         = "lambda11.com",
+              ["Host"]         = "lambda11.test",
               ["Content-Type"] = "application/json",
             },
             body = {
@@ -969,7 +969,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "POST",
             path    = "/post",
             headers = {
-              ["Host"]         = "lambda11.com",
+              ["Host"]         = "lambda11.test",
               ["Content-Type"] = "application/json",
             },
             body = {
@@ -987,7 +987,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "POST",
             path    = "/post",
             headers = {
-              ["Host"]         = "lambda11.com",
+              ["Host"]         = "lambda11.test",
               ["Content-Type"] = "application/json",
             },
             body = {
@@ -1005,7 +1005,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "POST",
             path    = "/post",
             headers = {
-              ["Host"]         = "lambda11.com",
+              ["Host"]         = "lambda11.test",
               ["Content-Type"] = "application/json",
             },
             body = {
@@ -1024,7 +1024,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "POST",
             path    = "/post",
             headers = {
-              ["Host"] = "lambda12.com",
+              ["Host"] = "lambda12.test",
             }
           })
 
@@ -1038,7 +1038,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "POST",
             path    = "/post",
             headers = {
-              ["Host"] = "lambda13.com",
+              ["Host"] = "lambda13.test",
             }
           })
 
@@ -1052,7 +1052,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
             headers = {
-              ["Host"] = "lambda14.com"
+              ["Host"] = "lambda14.test"
             }
           })
           assert.res_status(200, res)
@@ -1067,7 +1067,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
             headers = {
-              ["Host"] = "lambda16.com"
+              ["Host"] = "lambda16.test"
             }
           })
           assert.res_status(200, res)
@@ -1079,7 +1079,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
             headers = {
-              ["Host"] = "lambda22.com"
+              ["Host"] = "lambda22.test"
             }
           })
           assert.res_status(502, res)
@@ -1091,7 +1091,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
             headers = {
-              ["Host"] = "lambda23.com"
+              ["Host"] = "lambda23.test"
             }
           })
           assert.res_status(200, res)
@@ -1103,7 +1103,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
             headers = {
-              ["Host"] = "lambda17.com"
+              ["Host"] = "lambda17.test"
             }
           })
           assert.res_status(200, res)
@@ -1117,7 +1117,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/get?key1=some_value1",
           headers = {
-            ["Host"] = "lambda18.com"
+            ["Host"] = "lambda18.test"
           }
         }))
         assert.res_status(500, res)
@@ -1128,7 +1128,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
           headers = {
-            ["Host"] = "lambda.com"
+            ["Host"] = "lambda.test"
           }
         })
         assert.res_status(200, res)
@@ -1143,7 +1143,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
           headers = {
-            ["Host"] = "lambda20.com",
+            ["Host"] = "lambda20.test",
           }
         }))
 
@@ -1158,7 +1158,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/get?a=1&b=2",
           headers = {
-            ["Host"] = "lambda21.com"
+            ["Host"] = "lambda21.test"
           }
         }))
 
@@ -1174,7 +1174,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/get",
             headers = {
-              ["Host"] = "lambda24.com"
+              ["Host"] = "lambda24.test"
             }
           }))
 
@@ -1211,7 +1211,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/get?key1=some_value1",
           headers = {
-            ["Host"] = "lambda19.com"
+            ["Host"] = "lambda19.test"
           }
         }))
         assert.res_status(200, res)
@@ -1238,7 +1238,7 @@ for _, strategy in helpers.each_strategy() do
       }, { "aws-lambda" }, { "random" })
 
       local route1 = bp.routes:insert {
-        hosts = { "lambda-vault.com" },
+        hosts = { "lambda-vault.test" },
       }
 
       bp.plugins:insert {
@@ -1284,7 +1284,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
         headers = {
-          ["Host"] = "lambda-vault.com"
+          ["Host"] = "lambda-vault.test"
         }
       })
       assert.res_status(200, res)
@@ -1300,7 +1300,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
           headers = {
-            ["Host"] = "lambda-vault.com"
+            ["Host"] = "lambda-vault.test"
           }
         })
         assert.res_status(200, res)

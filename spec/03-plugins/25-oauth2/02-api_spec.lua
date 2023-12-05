@@ -42,7 +42,7 @@ for _, strategy in helpers.each_strategy() do
       local service
 
       lazy_setup(function()
-        service = admin_api.services:insert({ host = "oauth2_token.com" })
+        service = admin_api.services:insert({ host = "oauth2_token.test" })
         consumer = admin_api.consumers:insert({ username = "bob" })
         admin_api.consumers:insert({ username = "sally" })
       end)
@@ -59,7 +59,7 @@ for _, strategy in helpers.each_strategy() do
             path    = "/consumers/bob/oauth2",
             body    = {
               name          = "Test APP",
-              redirect_uris = { "http://google.com/" },
+              redirect_uris = { "http://google.test/" },
             },
             headers = {
               ["Content-Type"] = "application/json"
@@ -68,7 +68,7 @@ for _, strategy in helpers.each_strategy() do
           local body = cjson.decode(assert.res_status(201, res))
           assert.equal(consumer.id, body.consumer.id)
           assert.equal("Test APP", body.name)
-          assert.same({ "http://google.com/" }, body.redirect_uris)
+          assert.same({ "http://google.test/" }, body.redirect_uris)
 
           res = assert(admin_client:send {
             method = "POST",
@@ -91,7 +91,7 @@ for _, strategy in helpers.each_strategy() do
             path    = "/consumers/bob/oauth2",
             body    = {
               name          = "Tags APP",
-              redirect_uris = { "http://example.com/" },
+              redirect_uris = { "http://example.test/" },
               tags = { "tag1", "tag2" },
             },
             headers = {
@@ -110,7 +110,7 @@ for _, strategy in helpers.each_strategy() do
             path    = "/consumers/bob/oauth2",
             body    = {
               name          = "Test APP",
-              redirect_uris = { "http://google.com/", "http://google.org/" },
+              redirect_uris = { "http://google.test/", "http://google.example/" },
             },
             headers = {
               ["Content-Type"] = "application/json"
@@ -119,7 +119,7 @@ for _, strategy in helpers.each_strategy() do
           local body = cjson.decode(assert.res_status(201, res))
           assert.equal(consumer.id, body.consumer.id)
           assert.equal("Test APP", body.name)
-          assert.same({ "http://google.com/", "http://google.org/" }, body.redirect_uris)
+          assert.same({ "http://google.test/", "http://google.example/" }, body.redirect_uris)
         end)
         it("creates multiple oauth2 credentials with the same client_secret", function()
           local res = assert(admin_client:send {
@@ -127,7 +127,7 @@ for _, strategy in helpers.each_strategy() do
             path    = "/consumers/bob/oauth2",
             body    = {
               name          = "Test APP",
-              redirect_uris = { "http://google.com/" },
+              redirect_uris = { "http://google.test/" },
               client_secret = "secret123",
             },
             headers = {
@@ -140,7 +140,7 @@ for _, strategy in helpers.each_strategy() do
             path   = "/consumers/sally/oauth2",
             body   = {
               name          = "Test APP",
-              redirect_uris = { "http://google.com/" },
+              redirect_uris = { "http://google.test/" },
               client_secret = "secret123",
             },
             headers = {
@@ -156,7 +156,7 @@ for _, strategy in helpers.each_strategy() do
             path    = "/consumers/bob/oauth2",
             body    = {
               name          = "Test APP",
-              redirect_uris = { "http://google.com/" },
+              redirect_uris = { "http://google.test/" },
               hash_secret = true,
             },
             headers = {
@@ -173,7 +173,7 @@ for _, strategy in helpers.each_strategy() do
             path    = "/consumers/bob/oauth2",
             body    = {
               name          = "Test APP",
-              redirect_uris = { "http://google.com/" },
+              redirect_uris = { "http://google.test/" },
               client_secret = "test",
               hash_secret   = true,
             },
@@ -193,7 +193,7 @@ for _, strategy in helpers.each_strategy() do
             path    = "/consumers/bob/oauth2",
             body    = {
               name          = "Test APP",
-              redirect_uris = { "http://google.com/" },
+              redirect_uris = { "http://google.test/" },
             },
             headers = {
               ["Content-Type"] = "application/json"
@@ -209,7 +209,7 @@ for _, strategy in helpers.each_strategy() do
             path    = "/consumers/bob/oauth2",
             body    = {
               name          = "Test APP",
-              redirect_uris = { "http://google.com/" },
+              redirect_uris = { "http://google.test/" },
               client_secret = "test",
             },
             headers = {
@@ -257,7 +257,7 @@ for _, strategy in helpers.each_strategy() do
               path    = "/consumers/bob/oauth2",
               body    = {
                 name            = "Test APP",
-                redirect_uris   = { "http://test.com/#with-fragment" },
+                redirect_uris   = { "http://test.test/#with-fragment" },
               },
               headers = {
                 ["Content-Type"] = "application/json"
@@ -265,14 +265,14 @@ for _, strategy in helpers.each_strategy() do
             })
             local body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ redirect_uris = { "fragment not allowed in 'http://test.com/#with-fragment'" } }, json.fields)
+            assert.same({ redirect_uris = { "fragment not allowed in 'http://test.test/#with-fragment'" } }, json.fields)
 
             local res = assert(admin_client:send {
               method  = "POST",
               path    = "/consumers/bob/oauth2",
               body    = {
                 name             = "Test APP",
-                redirect_uris    = {"http://valid.com", "not-valid"}
+                redirect_uris    = {"http://valid.test", "not-valid"}
               },
               headers = {
                 ["Content-Type"] = "application/json"
@@ -287,7 +287,7 @@ for _, strategy in helpers.each_strategy() do
               path    = "/consumers/bob/oauth2",
               body    = {
                 name             = "Test APP",
-                redirect_uris    = {"http://valid.com", "http://test.com/#with-fragment"}
+                redirect_uris    = {"http://valid.test", "http://test.test/#with-fragment"}
               },
               headers = {
                 ["Content-Type"] = "application/json"
@@ -297,7 +297,7 @@ for _, strategy in helpers.each_strategy() do
             local json = cjson.decode(body)
             assert.same({ redirect_uris = {
                             ngx.null,
-                            "fragment not allowed in 'http://test.com/#with-fragment'"
+                            "fragment not allowed in 'http://test.test/#with-fragment'"
                         } }, json.fields)
           end)
         end)
@@ -310,7 +310,7 @@ for _, strategy in helpers.each_strategy() do
             path    = "/consumers/bob/oauth2/client_one",
             body = {
               name             = "Test APP",
-              redirect_uris    = { "http://google.com/" },
+              redirect_uris    = { "http://google.test/" },
             },
             headers = {
               ["Content-Type"] = "application/json"
@@ -320,7 +320,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(consumer.id, body.consumer.id)
           assert.equal("Test APP", body.name)
           assert.equal("client_one", body.client_id)
-          assert.same({ "http://google.com/" }, body.redirect_uris)
+          assert.same({ "http://google.test/" }, body.redirect_uris)
 
           local res = assert(admin_client:send {
             method  = "PUT",
@@ -393,7 +393,7 @@ for _, strategy in helpers.each_strategy() do
       local service
 
       lazy_setup(function()
-        service = admin_api.services:insert({ host = "oauth2_token.com" })
+        service = admin_api.services:insert({ host = "oauth2_token.test" })
         consumer = admin_api.consumers:insert({ username = "bob" })
       end)
 
@@ -593,7 +593,7 @@ for _, strategy in helpers.each_strategy() do
         local service
 
         lazy_setup(function()
-          service = admin_api.services:insert({ host = "oauth2_token.com" })
+          service = admin_api.services:insert({ host = "oauth2_token.test" })
           consumer = admin_api.consumers:insert({ username = "bob" })
         end)
 
@@ -647,7 +647,7 @@ for _, strategy in helpers.each_strategy() do
         local service
 
         lazy_setup(function()
-          service = admin_api.services:insert({ host = "oauth2_token.com" })
+          service = admin_api.services:insert({ host = "oauth2_token.test" })
           consumer = admin_api.consumers:insert({ username = "bob" })
         end)
 
@@ -703,7 +703,7 @@ for _, strategy in helpers.each_strategy() do
         local service
 
         lazy_setup(function()
-          service = admin_api.services:insert({ host = "oauth2_token.com" })
+          service = admin_api.services:insert({ host = "oauth2_token.test" })
           consumer = admin_api.consumers:insert({ username = "bob" })
           oauth2_credential = admin_api.oauth2_credentials:insert {
             name          = "Test APP",
@@ -764,7 +764,7 @@ for _, strategy in helpers.each_strategy() do
         local service
 
         lazy_setup(function()
-          service = admin_api.services:insert({ host = "oauth2_token.com" })
+          service = admin_api.services:insert({ host = "oauth2_token.test" })
           consumer = admin_api.consumers:insert({ username = "bob" })
           oauth2_credential = admin_api.oauth2_credentials:insert {
             name          = "Test APP",
@@ -804,7 +804,7 @@ for _, strategy in helpers.each_strategy() do
         local service
 
         lazy_setup(function()
-          service = admin_api.services:insert({ host = "oauth2_token.com" })
+          service = admin_api.services:insert({ host = "oauth2_token.test" })
           consumer = admin_api.consumers:insert({ username = "bob" })
           oauth2_credential = admin_api.oauth2_credentials:insert {
             name          = "Test APP",

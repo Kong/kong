@@ -76,7 +76,7 @@ for _, strategy in helpers.each_strategy() do
             local res = client:post("/routes", {
               body = {
                 protocols = { "http" },
-                hosts     = { "my.route.com" },
+                hosts     = { "my.route.test" },
                 headers   = { location = { "my-location" } },
                 service   = bp.services:insert(),
               },
@@ -84,7 +84,7 @@ for _, strategy in helpers.each_strategy() do
             })
             local body = assert.res_status(201, res)
             local json = cjson.decode(body)
-            assert.same({ "my.route.com" }, json.hosts)
+            assert.same({ "my.route.test" }, json.hosts)
             assert.same({ location = { "my-location" } }, json.headers)
             assert.is_number(json.created_at)
             assert.is_number(json.regex_priority)
@@ -106,14 +106,14 @@ for _, strategy in helpers.each_strategy() do
             local res = client:post("/routes", {
               body = {
                 protocols = { "grpc", "grpcs" },
-                hosts     = { "my.route.com" },
+                hosts     = { "my.route.test" },
                 service   = bp.services:insert(),
               },
               headers = { ["Content-Type"] = content_type }
             })
             local body = assert.res_status(201, res)
             local json = cjson.decode(body)
-            assert.same({ "my.route.com" }, json.hosts)
+            assert.same({ "my.route.test" }, json.hosts)
             assert.is_number(json.created_at)
             assert.is_number(json.regex_priority)
             assert.is_string(json.id)
@@ -135,13 +135,13 @@ for _, strategy in helpers.each_strategy() do
             local res = client:post("/routes", {
               body = {
                 protocols = { "http" },
-                hosts     = { "my.route.com" },
+                hosts     = { "my.route.test" },
               },
               headers = { ["Content-Type"] = content_type }
             })
             local body = assert.res_status(201, res)
             local json = cjson.decode(body)
-            assert.same({ "my.route.com" }, json.hosts)
+            assert.same({ "my.route.test" }, json.hosts)
             assert.is_number(json.created_at)
             assert.is_number(json.regex_priority)
             assert.is_string(json.id)
@@ -163,13 +163,13 @@ for _, strategy in helpers.each_strategy() do
             local res = client:post("/routes", {
               body = {
                 protocols = { "grpc", "grpcs" },
-                hosts     = { "my.route.com" },
+                hosts     = { "my.route.test" },
               },
               headers = { ["Content-Type"] = content_type }
             })
             local body = assert.res_status(201, res)
             local json = cjson.decode(body)
-            assert.same({ "my.route.com" }, json.hosts)
+            assert.same({ "my.route.test" }, json.hosts)
             assert.is_number(json.created_at)
             assert.is_number(json.regex_priority)
             assert.is_string(json.id)
@@ -194,7 +194,7 @@ for _, strategy in helpers.each_strategy() do
               body    = {
                 protocols = { "http" },
                 methods   = { "GET", "POST", "PATCH" },
-                hosts     = { "foo.api.com", "bar.api.com" },
+                hosts     = { "foo.api.test", "bar.api.test" },
                 paths     = { "/foo", "/bar" },
                 service   = { id = s.id },
               },
@@ -203,7 +203,7 @@ for _, strategy in helpers.each_strategy() do
 
             local body = assert.res_status(201, res)
             local json = cjson.decode(body)
-            assert.same({ "foo.api.com", "bar.api.com" }, json.hosts)
+            assert.same({ "foo.api.test", "bar.api.test" }, json.hosts)
             assert.same({ "/foo","/bar" }, json.paths)
             assert.same({ "GET", "POST", "PATCH" }, json.methods)
             assert.same(s.id, json.service.id)
@@ -221,7 +221,7 @@ for _, strategy in helpers.each_strategy() do
             local res = client:post("/routes", {
               body    = {
                 protocols = { "grpc", "grpcs" },
-                hosts     = { "foo.api.com", "bar.api.com" },
+                hosts     = { "foo.api.test", "bar.api.test" },
                 paths     = { "/foo", "/bar" },
                 service   = { id = s.id },
               },
@@ -230,7 +230,7 @@ for _, strategy in helpers.each_strategy() do
 
             local body = assert.res_status(201, res)
             local json = cjson.decode(body)
-            assert.same({ "foo.api.com", "bar.api.com" }, json.hosts)
+            assert.same({ "foo.api.test", "bar.api.test" }, json.hosts)
             assert.same({ "/foo","/bar" }, json.paths)
             assert.same(s.id, json.service.id)
             assert.same({ "grpc", "grpcs"}, json.protocols)
@@ -249,7 +249,7 @@ for _, strategy in helpers.each_strategy() do
               body    = {
                 protocols = { "http" },
                 methods   = { "GET", "POST", "PATCH" },
-                hosts     = { "foo.api.com", "bar.api.com" },
+                hosts     = { "foo.api.test", "bar.api.test" },
                 paths     = { "/foo", "/bar" },
                 service   = { name = s.name },
               },
@@ -258,7 +258,7 @@ for _, strategy in helpers.each_strategy() do
 
             local body = assert.res_status(201, res)
             local json = cjson.decode(body)
-            assert.same({ "foo.api.com", "bar.api.com" }, json.hosts)
+            assert.same({ "foo.api.test", "bar.api.test" }, json.hosts)
             assert.same({ "/foo","/bar" }, json.paths)
             assert.same({ "GET", "POST", "PATCH" }, json.methods)
             assert.same(s.id, json.service.id)
@@ -276,7 +276,7 @@ for _, strategy in helpers.each_strategy() do
             local res = client:post("/routes", {
               body    = {
                 protocols = { "grpc", "grpcs" },
-                hosts     = { "foo.api.com", "bar.api.com" },
+                hosts     = { "foo.api.test", "bar.api.test" },
                 paths     = { "/foo", "/bar" },
                 service   = { name = s.name },
               },
@@ -285,7 +285,7 @@ for _, strategy in helpers.each_strategy() do
 
             local body = assert.res_status(201, res)
             local json = cjson.decode(body)
-            assert.same({ "foo.api.com", "bar.api.com" }, json.hosts)
+            assert.same({ "foo.api.test", "bar.api.test" }, json.hosts)
             assert.same({ "/foo","/bar" }, json.paths)
             assert.same(s.id, json.service.id)
             assert.same({ "grpc", "grpcs"}, json.protocols)
@@ -1443,12 +1443,12 @@ for _, strategy in helpers.each_strategy() do
                   ["Content-Type"] = content_type
                 },
                 body = {
-                  url = "http://edited2.com:1234/foo",
+                  url = "http://edited2.test:1234/foo",
                 },
               })
               local body = assert.res_status(200, res)
               local json = cjson.decode(body)
-              assert.equal("edited2.com", json.host)
+              assert.equal("edited2.test", json.host)
               assert.equal(1234,          json.port)
               assert.equal("/foo",        json.path)
 
@@ -1467,7 +1467,7 @@ for _, strategy in helpers.each_strategy() do
                   },
                   body = {
                     name  = "edited",
-                    host  = "edited.com",
+                    host  = "edited.test",
                     path  = cjson.null,
                   },
                 })
@@ -1537,12 +1537,12 @@ for _, strategy in helpers.each_strategy() do
                 ["Content-Type"] = content_type
               },
               body = {
-                url = "http://konghq.com",
+                url = "http://konghq.test",
               },
             })
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
-            assert.same("konghq.com", json.host)
+            assert.same("konghq.test", json.host)
 
             local in_db = assert(db.services:select(json, { nulls = true }))
             assert.same(json, in_db)
@@ -1627,12 +1627,12 @@ for _, strategy in helpers.each_strategy() do
                 ["Content-Type"] = content_type
               },
               body = {
-                url = "http://edited2.com:1234/foo",
+                url = "http://edited2.test:1234/foo",
               },
             })
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
-            assert.equal("edited2.com", json.host)
+            assert.equal("edited2.test", json.host)
             assert.equal(1234,          json.port)
             assert.equal("/foo",        json.path)
 
@@ -1651,7 +1651,7 @@ for _, strategy in helpers.each_strategy() do
                 },
                 body = {
                   name  = "edited",
-                  host  = "edited.com",
+                  host  = "edited.test",
                   path  = cjson.null,
                 },
               })
@@ -1990,7 +1990,7 @@ for _, strategy in helpers.each_strategy() do
             local res = client:post("/routes", {
               body = {
                 protocols = { "http" },
-                hosts     = { "my.route.com" },
+                hosts     = { "my.route.test" },
                 headers   = { location = { "my-location" } },
                 service   = bp.services:insert(),
               },
@@ -1998,7 +1998,7 @@ for _, strategy in helpers.each_strategy() do
             })
             local body = assert.res_status(201, res)
             local json = cjson.decode(body)
-            assert.same({ "my.route.com" }, json.hosts)
+            assert.same({ "my.route.test" }, json.hosts)
             assert.same({ location = { "my-location" } }, json.headers)
             assert.is_number(json.created_at)
             assert.is_number(json.regex_priority)

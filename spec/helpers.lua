@@ -1950,9 +1950,9 @@ local function wait_for_all_config_update(opts)
   local upstream_id, target_id, service_id, route_id
   local stream_upstream_id, stream_target_id, stream_service_id, stream_route_id
   local consumer_id, rl_plugin_id, key_auth_plugin_id, credential_id
-  local upstream_name = "really.really.really.really.really.really.really.mocking.upstream.com"
+  local upstream_name = "really.really.really.really.really.really.really.mocking.upstream.test"
   local service_name = "really-really-really-really-really-really-really-mocking-service"
-  local stream_upstream_name = "stream-really.really.really.really.really.really.really.mocking.upstream.com"
+  local stream_upstream_name = "stream-really.really.really.really.really.really.really.mocking.upstream.test"
   local stream_service_name = "stream-really-really-really-really-really-really-really-mocking-service"
   local route_path = "/really-really-really-really-really-really-really-mocking-route"
   local key_header_name = "really-really-really-really-really-really-really-mocking-key"

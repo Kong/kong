@@ -54,7 +54,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       local route2 = db.routes:insert {
-        hosts      = { "azure2.com" },
+        hosts      = { "azure2.test" },
         protocols  = { "http", "https" },
       }
 
@@ -86,7 +86,7 @@ for _, strategy in helpers.each_strategy() do
         config   = {
           https           = false,
           appname         = "azure",
-          hostdomain      = "example.com",
+          hostdomain      = "example.test",
           routeprefix     = "request",
           functionname    = "test-func-name",
           apikey          = "anything_but_an_API_key",
@@ -99,12 +99,12 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route3 = db.routes:insert {
-        hosts      = { "azure3.com" },
+        hosts      = { "azure3.test" },
         protocols  = { "http", "https" },
         service   = db.services:insert(
           {
             name = "azure3",
-            host = "azure.example.com", -- just mock service, it will not be requested
+            host = "azure.example.test", -- just mock service, it will not be requested
             port = 80,
             path = "/request",
           }
@@ -120,7 +120,7 @@ for _, strategy in helpers.each_strategy() do
         config   = {
           https           = false,
           appname         = "azure",
-          hostdomain      = "example.com",
+          hostdomain      = "example.test",
           routeprefix     = "request",
           functionname    = "test-func-name",
           apikey          = "anything_but_an_API_key",
@@ -129,7 +129,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       fixtures.dns_mock:A({
-        name = "azure.example.com",
+        name = "azure.example.test",
         address = "127.0.0.1",
       })
 
@@ -162,7 +162,7 @@ for _, strategy in helpers.each_strategy() do
         path    = "/",
         query   = { hello = "world" },
         headers = {
-          ["Host"] = "azure2.com"
+          ["Host"] = "azure2.test"
         }
       })
 
@@ -179,7 +179,7 @@ for _, strategy in helpers.each_strategy() do
         body    = body,
         query   = { hello = "world" },
         headers = {
-          ["Host"] = "azure2.com"
+          ["Host"] = "azure2.test"
         }
       })
 
@@ -193,7 +193,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/and/then/some",
         headers = {
-          ["Host"] = "azure2.com"
+          ["Host"] = "azure2.test"
         }
       })
 
@@ -207,7 +207,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "POST",
         path    = "/",
         headers = {
-          ["Host"] = "azure2.com"
+          ["Host"] = "azure2.test"
         }
       })
 
@@ -221,7 +221,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/and/then/some",
         headers = {
-          ["Host"] = "azure2.com",
+          ["Host"] = "azure2.test",
           ["Just-A-Header"] = "just a value",
         }
       })
@@ -236,7 +236,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "POST",
         path    = "/",
         headers = {
-          ["Host"] = "azure2.com"
+          ["Host"] = "azure2.test"
         }
       })
 
@@ -253,7 +253,7 @@ for _, strategy in helpers.each_strategy() do
         path    = "/",
         query   = { hello = "world" },
         headers = {
-          ["Host"] = "azure2.com"
+          ["Host"] = "azure2.test"
         }
       })
 
@@ -266,7 +266,7 @@ for _, strategy in helpers.each_strategy() do
         path    = "/",
         query   = { hello = "world" },
         headers = {
-          ["Host"] = "azure2.com"
+          ["Host"] = "azure2.test"
         }
       })
 
@@ -279,7 +279,7 @@ for _, strategy in helpers.each_strategy() do
         path    = "/",
         query   = { hello = "world" },
         headers = {
-          ["Host"] = "azure3.com"
+          ["Host"] = "azure3.test"
         }
       })
 

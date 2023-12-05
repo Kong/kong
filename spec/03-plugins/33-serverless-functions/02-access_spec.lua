@@ -127,67 +127,67 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
 
         local route1 = bp.routes:insert {
           service = { id = service.id },
-          hosts   = { "one." .. plugin_name .. ".com" },
+          hosts   = { "one." .. plugin_name .. ".test" },
         }
 
         local route2 = bp.routes:insert {
           service = { id = service.id },
-          hosts   = { "two." .. plugin_name .. ".com" },
+          hosts   = { "two." .. plugin_name .. ".test" },
         }
 
         local route3 = bp.routes:insert {
           service = { id = service.id },
-          hosts   = { "three." .. plugin_name .. ".com" },
+          hosts   = { "three." .. plugin_name .. ".test" },
         }
 
         local route4 = bp.routes:insert {
           service = { id = service.id },
-          hosts   = { "four." .. plugin_name .. ".com" },
+          hosts   = { "four." .. plugin_name .. ".test" },
         }
 
         local route6 = bp.routes:insert {
           service = { id = service.id },
-          hosts   = { "six." .. plugin_name .. ".com" },
+          hosts   = { "six." .. plugin_name .. ".test" },
         }
 
         local route7 = bp.routes:insert {
           service = { id = service.id },
-          hosts   = { "seven." .. plugin_name .. ".com" },
+          hosts   = { "seven." .. plugin_name .. ".test" },
         }
 
         local route8 = bp.routes:insert {
           service = { id = service.id },
-          hosts   = { "eight." .. plugin_name .. ".com" },
+          hosts   = { "eight." .. plugin_name .. ".test" },
         }
 
         local route9 = bp.routes:insert {
           service = { id = service.id },
-          hosts   = { "nine." .. plugin_name .. ".com" },
+          hosts   = { "nine." .. plugin_name .. ".test" },
         }
 
         local route10 = bp.routes:insert {
           service = { id = service.id },
-          hosts   = { "ten." .. plugin_name .. ".com" },
+          hosts   = { "ten." .. plugin_name .. ".test" },
         }
 
         local route11 = bp.routes:insert {
           service = { id = service.id },
-          hosts   = { "eleven." .. plugin_name .. ".com" },
+          hosts   = { "eleven." .. plugin_name .. ".test" },
         }
 
         local route12 = bp.routes:insert {
           service = { id = service.id },
-          hosts   = { "twelve." .. plugin_name .. ".com" },
+          hosts   = { "twelve." .. plugin_name .. ".test" },
         }
 
         local route13 = bp.routes:insert {
           service = { id = service.id },
-          hosts   = { "thirteen." .. plugin_name .. ".com" },
+          hosts   = { "thirteen." .. plugin_name .. ".test" },
         }
 
         local route14 = bp.routes:insert {
           service = { id = service.id },
-          hosts   = { "fourteen." .. plugin_name .. ".com" },
+          hosts   = { "fourteen." .. plugin_name .. ".test" },
         }
 
         bp.plugins:insert {
@@ -296,7 +296,7 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
             method = "GET",
             path = "/status/200",
             headers = {
-              ["Host"] = "one." .. plugin_name .. ".com"
+              ["Host"] = "one." .. plugin_name .. ".test"
             }
           })
 
@@ -310,7 +310,7 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
               method = "GET",
               path = "/status/200",
               headers = {
-                ["Host"] = "six." .. plugin_name .. ".com"
+                ["Host"] = "six." .. plugin_name .. ".test"
               }
             })
 
@@ -327,7 +327,7 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
             method = "GET",
             path = "/status/200",
             headers = {
-              ["Host"] = "two." .. plugin_name .. ".com"
+              ["Host"] = "two." .. plugin_name .. ".test"
             }
           })
           local body = assert.res_status(404, res)
@@ -339,7 +339,7 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
             method = "GET",
             path = "/status/200",
             headers = {
-              ["Host"] = "three." .. plugin_name .. ".com"
+              ["Host"] = "three." .. plugin_name .. ".test"
             }
           })
           local body = assert.res_status(406, res)
@@ -353,7 +353,7 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
             method = "GET",
             path = "/status/200",
             headers = {
-              ["Host"] = "four." .. plugin_name .. ".com"
+              ["Host"] = "four." .. plugin_name .. ".test"
             }
           })
           local body = assert.res_status(400, res)
@@ -365,7 +365,7 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
             method = "GET",
             path = "/status/200",
             headers = {
-              ["Host"] = "nine." .. plugin_name .. ".com"
+              ["Host"] = "nine." .. plugin_name .. ".test"
             }
           })
           local body = assert.res_status(500, res)
@@ -382,7 +382,7 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
             method = "POST",
             path = "/status/200",
             headers = {
-              ["Host"] = "seven." .. plugin_name .. ".com",
+              ["Host"] = "seven." .. plugin_name .. ".test",
               ["Content-Length"] = #tostring(count),
             },
             body = count,
@@ -398,7 +398,7 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
               method = "POST",
               path = "/status/200",
               headers = {
-                ["Host"] = "seven." .. plugin_name .. ".com",
+                ["Host"] = "seven." .. plugin_name .. ".test",
                 ["Content-Length"] = #tostring(count),
               },
               body = count,
@@ -415,7 +415,7 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
             method = "POST",
             path = "/status/200",
             headers = {
-              ["Host"] = "eight." .. plugin_name .. ".com",
+              ["Host"] = "eight." .. plugin_name .. ".test",
               ["Content-Length"] = #tostring(count),
             },
             body = count,
@@ -430,7 +430,7 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
               method = "POST",
               path = "/status/200",
               headers = {
-                ["Host"] = "eight." .. plugin_name .. ".com",
+                ["Host"] = "eight." .. plugin_name .. ".test",
                 ["Content-Length"] = #tostring(count),
               },
               body = count,
@@ -448,7 +448,7 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
             method = "GET",
             path = "/status/200",
             headers = {
-              ["Host"] = "eleven." .. plugin_name .. ".com",
+              ["Host"] = "eleven." .. plugin_name .. ".test",
             },
           })
           local body = assert.res_status(200, res)
@@ -461,7 +461,7 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
             method = "GET",
             path = "/status/200",
             headers = {
-              ["Host"] = "twelve." .. plugin_name .. ".com",
+              ["Host"] = "twelve." .. plugin_name .. ".test",
             },
           })
           local body = assert.res_status(200, res)
@@ -474,7 +474,7 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
             method = "GET",
             path = "/status/200",
             headers = {
-              ["Host"] = "thirteen." .. plugin_name .. ".com",
+              ["Host"] = "thirteen." .. plugin_name .. ".test",
             },
           })
           local body = assert.res_status(200, res)
@@ -487,7 +487,7 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
             method = "GET",
             path = "/status/200",
             headers = {
-              ["Host"] = "fourteen." .. plugin_name .. ".com",
+              ["Host"] = "fourteen." .. plugin_name .. ".test",
             },
           })
           local body = assert.res_status(200, res)
@@ -500,7 +500,7 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
         it("does not crash even when query is cleared, #9246", function()
           local res = client:get("/status/200?a=b", {
             headers = {
-              ["Host"] = "ten." .. plugin_name .. ".com"
+              ["Host"] = "ten." .. plugin_name .. ".test"
             }
           })
           local body = assert.res_status(200, res)

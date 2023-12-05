@@ -47,31 +47,31 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           })
 
           local route1 = bp.routes:insert {
-            hosts = { "ldap.com" },
+            hosts = { "ldap.test" },
           }
 
           route2 = bp.routes:insert {
-            hosts = { "ldap2.com" },
+            hosts = { "ldap2.test" },
           }
 
           local route3 = bp.routes:insert {
-            hosts = { "ldap3.com" },
+            hosts = { "ldap3.test" },
           }
 
           local route4 = bp.routes:insert {
-            hosts = { "ldap4.com" },
+            hosts = { "ldap4.test" },
           }
 
           local route5 = bp.routes:insert {
-            hosts = { "ldap5.com" },
+            hosts = { "ldap5.test" },
           }
 
           bp.routes:insert {
-            hosts = { "ldap6.com" },
+            hosts = { "ldap6.test" },
           }
 
           local route7 = bp.routes:insert {
-            hosts = { "ldap7.com" },
+            hosts = { "ldap7.test" },
           }
 
           assert(bp.routes:insert {
@@ -207,7 +207,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             method  = "GET",
             path    = "/get",
             headers = {
-              host  = "ldap.com"
+              host  = "ldap.test"
             }
           })
           assert.response(res).has.status(401)
@@ -231,7 +231,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             method  = "GET",
             path    = "/get",
             headers = {
-              host  = "ldap.com",
+              host  = "ldap.test",
               authorization = "abcd"
             }
           })
@@ -244,7 +244,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             method  = "GET",
             path    = "/get",
             headers = {
-              host  = "ldap.com",
+              host  = "ldap.test",
               ["proxy-authorization"] = "abcd"
             }
           })
@@ -257,7 +257,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             method  = "GET",
             path    = "/get",
             headers = {
-              host          = "ldap.com",
+              host          = "ldap.test",
               authorization = "ldap "
             }
           })
@@ -271,7 +271,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             path    = "/request",
             body    = {},
             headers = {
-              host             = "ldap.com",
+              host             = "ldap.test",
               authorization    = "ldap " .. ngx.encode_base64("einstein:password"),
               ["content-type"] = "application/x-www-form-urlencoded",
             }
@@ -296,7 +296,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             path = "/request",
             body = {},
             headers = {
-              host = "ldap.com",
+              host = "ldap.test",
               authorization = "invalidldap " .. ngx.encode_base64("einstein:password"),
               ["content-type"] = "application/x-www-form-urlencoded",
             }
@@ -308,7 +308,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             method  = "POST",
             path    = "/request",
             headers = {
-              host          = "ldap.com",
+              host          = "ldap.test",
               authorization = " ldap " .. ngx.encode_base64("einstein:password")
             }
           })
@@ -319,7 +319,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             method  = "POST",
             path    = "/request",
             headers = {
-              host          = "ldap.com",
+              host          = "ldap.test",
               authorization = "LDAP " .. ngx.encode_base64("einstein:password")
             }
           })
@@ -330,7 +330,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             method  = "GET",
             path    = "/request",
             headers = {
-              host          = "ldap.com",
+              host          = "ldap.test",
               authorization = "ldap " .. ngx.encode_base64("einstein:password")
             }
           })
@@ -344,7 +344,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             method  = "GET",
             path    = "/request",
             headers = {
-              host          = "ldap.com",
+              host          = "ldap.test",
               authorization = "ldap " .. ngx.encode_base64("einstein:")
             }
           })
@@ -355,7 +355,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             method  = "GET",
             path    = "/request",
             headers = {
-              host          = "ldap.com",
+              host          = "ldap.test",
               authorization = "ldap " .. ngx.encode_base64("einstein:e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566")
             }
           })
@@ -366,7 +366,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             method  = "GET",
             path    = "/request",
             headers = {
-              host          = "ldap.com",
+              host          = "ldap.test",
               authorization = "ldap " .. ngx.encode_base64("einstein:password:another_password")
             }
           })
@@ -377,7 +377,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             method  = "GET",
             path    = "/request",
             headers = {
-              host          = "ldap.com",
+              host          = "ldap.test",
               authorization = "ldap " .. ngx.encode_base64("einstein:wrong_password")
             }
           })
@@ -388,7 +388,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             method  = "GET",
             path    = "/request",
             headers = {
-              host          = "ldap.com",
+              host          = "ldap.test",
               authorization = "ldap " .. ngx.encode_base64("einstein:password")
             }
           })
@@ -401,7 +401,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             method  = "GET",
             path    = "/request",
             headers = {
-              host          = "ldap2.com",
+              host          = "ldap2.test",
               authorization = "ldap " .. ngx.encode_base64("einstein:password")
             }
           })
@@ -414,7 +414,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             path = "/request",
             body = {},
             headers = {
-              host = "ldap5.com",
+              host = "ldap5.test",
               authorization = "basic " .. ngx.encode_base64("einstein:password"),
               ["content-type"] = "application/x-www-form-urlencoded",
             }
@@ -426,7 +426,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             method  = "GET",
             path    = "/get",
             headers = {
-              host  = "ldap5.com",
+              host  = "ldap5.test",
             }
           })
           assert.response(res).has.status(401)
@@ -442,7 +442,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             path = "/request",
             body = {},
             headers = {
-              host = "ldap5.com",
+              host = "ldap5.test",
               authorization = "invalidldap " .. ngx.encode_base64("einstein:password"),
               ["content-type"] = "application/x-www-form-urlencoded",
             }
@@ -454,7 +454,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             method  = "GET",
             path    = "/request",
             headers = {
-              host          = "ldap6.com",
+              host          = "ldap6.test",
               authorization = "ldap " .. ngx.encode_base64("einstein:password")
             }
           })
@@ -468,7 +468,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             method  = "GET",
             path    = "/request",
             headers = {
-              host          = "ldap2.com",
+              host          = "ldap2.test",
               authorization = "ldap " .. ngx.encode_base64("einstein:password")
             }
           })
@@ -496,7 +496,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               method  = "GET",
               path    = "/request",
               headers = {
-                host          = "ldap3.com",
+                host          = "ldap3.test",
                 authorization = "ldap " .. ngx.encode_base64("einstein:password")
               }
             })
@@ -512,7 +512,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               method  = "GET",
               path    = "/request",
               headers = {
-                host  = "ldap3.com"
+                host  = "ldap3.test"
               }
             })
             assert.response(res).has.status(200)
@@ -527,7 +527,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               method  = "GET",
               path    = "/request",
               headers = {
-                host  = "ldap7.com"
+                host  = "ldap7.test"
               }
             })
             assert.response(res).has.status(200)
@@ -541,7 +541,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               method  = "GET",
               path    = "/request",
               headers = {
-                ["Host"] = "ldap4.com"
+                ["Host"] = "ldap4.test"
               }
             })
             assert.response(res).has.status(500)
@@ -569,7 +569,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           })
 
           local route1 = bp.routes:insert {
-            hosts   = { "logical-and.com" },
+            hosts   = { "logical-and.test" },
             service = service1,
           }
 
@@ -603,7 +603,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           })
 
           local route2 = bp.routes:insert {
-            hosts   = { "logical-or.com" },
+            hosts   = { "logical-or.test" },
             service = service2
           }
 
@@ -657,7 +657,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               method  = "GET",
               path    = "/request",
               headers = {
-                ["Host"]          = "logical-and.com",
+                ["Host"]          = "logical-and.test",
                 ["apikey"]        = "Mouse",
                 ["Authorization"] = "ldap " .. ngx.encode_base64("einstein:password"),
               }
@@ -671,7 +671,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               method  = "GET",
               path    = "/request",
               headers = {
-                ["Host"]   = "logical-and.com",
+                ["Host"]   = "logical-and.test",
                 ["apikey"] = "Mouse",
               }
             })
@@ -683,7 +683,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               method  = "GET",
               path    = "/request",
               headers = {
-                ["Host"]          = "logical-and.com",
+                ["Host"]          = "logical-and.test",
                 ["Authorization"] = "ldap " .. ngx.encode_base64("einstein:password"),
               }
             })
@@ -695,7 +695,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               method  = "GET",
               path    = "/request",
               headers = {
-                ["Host"] = "logical-and.com",
+                ["Host"] = "logical-and.test",
               }
             })
             assert.response(res).has.status(401)
@@ -710,7 +710,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               method  = "GET",
               path    = "/request",
               headers = {
-                ["Host"]          = "logical-or.com",
+                ["Host"]          = "logical-or.test",
                 ["apikey"]        = "Mouse",
                 ["Authorization"] = "ldap " .. ngx.encode_base64("einstein:password"),
               }
@@ -729,7 +729,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               method  = "GET",
               path    = "/request",
               headers = {
-                ["Host"]   = "logical-or.com",
+                ["Host"]   = "logical-or.test",
                 ["apikey"] = "Mouse",
               }
             })
@@ -747,7 +747,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               method  = "GET",
               path    = "/request",
               headers = {
-                ["Host"]          = "logical-or.com",
+                ["Host"]          = "logical-or.test",
                 ["Authorization"] = "ldap " .. ngx.encode_base64("einstein:password"),
               }
             })
@@ -762,7 +762,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               method  = "GET",
               path    = "/request",
               headers = {
-                ["Host"] = "logical-or.com",
+                ["Host"] = "logical-or.test",
               }
             })
             assert.response(res).has.status(200)

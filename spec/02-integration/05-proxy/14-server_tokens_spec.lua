@@ -22,7 +22,7 @@ describe("headers [#" .. strategy .. "]", function()
     local function start(config)
       return function()
         bp.routes:insert {
-          hosts = { "headers-inspect.com" },
+          hosts = { "headers-inspect.test" },
         }
 
         local route = bp.routes:insert {
@@ -89,7 +89,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "headers-inspect.com",
+            host  = "headers-inspect.test",
           }
         })
 
@@ -103,7 +103,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "404.com",
+            host  = "404.test",
           }
         })
 
@@ -141,7 +141,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "headers-inspect.com",
+            host  = "headers-inspect.test",
           }
         })
 
@@ -155,7 +155,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "404.com",
+            host  = "404.test",
           }
         })
 
@@ -179,7 +179,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "headers-inspect.com",
+            host  = "headers-inspect.test",
           }
         })
 
@@ -193,7 +193,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "404.com",
+            host  = "404.test",
           }
         })
 
@@ -217,7 +217,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "headers-inspect.com",
+            host  = "headers-inspect.test",
           }
         })
 
@@ -231,7 +231,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "404.com",
+            host  = "404.test",
           }
         })
 
@@ -255,7 +255,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "headers-inspect.com",
+            host  = "headers-inspect.test",
           }
         })
 
@@ -270,7 +270,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "404.com",
+            host  = "404.test",
           }
         })
 
@@ -290,7 +290,7 @@ describe("headers [#" .. strategy .. "]", function()
     local function start(config)
       return function()
         bp.routes:insert {
-          hosts = { "headers-inspect.com" },
+          hosts = { "headers-inspect.test" },
         }
 
         local service = bp.services:insert({
@@ -379,7 +379,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "headers-inspect.com",
+            host  = "headers-inspect.test",
           }
         })
 
@@ -394,7 +394,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "404.com",
+            host  = "404.test",
           }
         })
 
@@ -425,7 +425,7 @@ describe("headers [#" .. strategy .. "]", function()
             method  = "GET",
             path    = "/status/" .. code,
             headers = {
-              host  = "headers-inspect.com",
+              host  = "headers-inspect.test",
             }
           })
 
@@ -540,7 +540,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "headers-inspect.com"
+            host  = "headers-inspect.test"
           }
         })
 
@@ -555,7 +555,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "404.com",
+            host  = "404.test",
           }
         })
 
@@ -580,7 +580,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "headers-inspect.com"
+            host  = "headers-inspect.test"
           }
         })
 
@@ -595,7 +595,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "404.com",
+            host  = "404.test",
           }
         })
 
@@ -620,7 +620,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "headers-inspect.com"
+            host  = "headers-inspect.test"
           }
         })
 
@@ -635,7 +635,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "404.com",
+            host  = "404.test",
           }
         })
 
@@ -660,7 +660,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "headers-inspect.com"
+            host  = "headers-inspect.test"
           }
         })
 
@@ -675,7 +675,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "404.com",
+            host  = "404.test",
           }
         })
 
@@ -700,7 +700,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "headers-inspect.com",
+            host  = "headers-inspect.test",
           }
         })
 
@@ -715,7 +715,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "404.com",
+            host  = "404.test",
           }
         })
 
@@ -740,7 +740,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "headers-inspect.com",
+            host  = "headers-inspect.test",
           }
         })
 
@@ -756,7 +756,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "404.com",
+            host  = "404.test",
           }
         })
 
@@ -801,7 +801,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "headers-inspect.com",
+            host  = "headers-inspect.test",
           }
         })
 
@@ -817,7 +817,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "404.com",
+            host  = "404.test",
           }
         })
 
@@ -838,7 +838,7 @@ describe("headers [#" .. strategy .. "]", function()
     local function start(config)
       return function()
         bp.routes:insert {
-          hosts = { "headers-inspect.com" },
+          hosts = { "headers-inspect.test" },
         }
 
         config = config or {}
@@ -879,7 +879,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "headers-inspect.com",
+            host  = "headers-inspect.test",
           }
         })
 
@@ -895,7 +895,7 @@ describe("headers [#" .. strategy .. "]", function()
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "404.com",
+            host  = "404.test",
           }
         })
 
