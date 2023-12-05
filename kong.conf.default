@@ -1537,6 +1537,8 @@
                                  # record until either the refresh query
                                  # completes, or the `dns_stale_ttl` number of
                                  # seconds have passed.
+                                 # This configuration enables Kong to be more
+                                 # resilient during resolver downtime.
 
 #dns_cache_size = 10000          # Defines the maximum allowed number of
                                  # DNS records stored in memory cache.
