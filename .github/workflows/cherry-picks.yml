@@ -26,7 +26,7 @@ jobs:
         with:
           token: ${{ secrets.CHERRY_PICK_TOKEN }}
       - name: Create backport pull requests
-        uses: jschmid1/cross-repo-cherrypick-action@2366f50fd85e8966aa024a4dd6fbf70e7019d7e1
+        uses: jschmid1/cross-repo-cherrypick-action@cde6a39fa9e6eee09e633dc83bbf5e83bb476ec3 #v1.1.0
         with:
           token: ${{ secrets.CHERRY_PICK_TOKEN }}
           pull_title: '[cherry-pick -> ${target_branch}] ${pull_title}'
