@@ -9,6 +9,7 @@ import {
   deleteGatewayService,
   deleteKeySetsForJweDecryptPlugin,
   Environment,
+  eventually,
   expect,
   getBasePath,
   getNegative,
@@ -121,13 +122,15 @@ describe('Gateway Plugins: jwe-decrypt PEM', function () {
   });
 
   it('PEM: should not proxy request without a token', async function () {
-    const resp = await getNegative(`${proxyUrl}${pemPath}`);
-    logResponse(resp);
-
-    expect(resp.status, 'Status should be 403').to.equal(403);
-    expect(resp.data.message, 'Should indicate token missing').to.equal(
-      'could not find token'
-    );
+    await eventually(async () => {
+      const resp = await getNegative(`${proxyUrl}${pemPath}`);
+      logResponse(resp);
+  
+      expect(resp.status, 'Status should be 403').to.equal(403);
+      expect(resp.data.message, 'Should indicate token missing').to.equal(
+        'could not find token'
+      );
+    });
   });
 
   it('PEM: should not proxy request with invalid token', async function () {
@@ -162,12 +165,14 @@ describe('Gateway Plugins: jwe-decrypt PEM', function () {
   });
 
   it('PEM: should proxy request without supplying a token', async function () {
-    const resp = await axios({
-      url: `${proxyUrl}${pemPath}`,
+    await eventually(async () => {
+      const resp = await axios({
+        url: `${proxyUrl}${pemPath}`,
+      });
+      logResponse(resp);
+  
+      expect(resp.status, 'Status should be 200').to.equal(200);
     });
-    logResponse(resp);
-
-    expect(resp.status, 'Status should be 200').to.equal(200);
   });
 
   it('PEM: should delete the jwe-decrypt plugin', async function () {

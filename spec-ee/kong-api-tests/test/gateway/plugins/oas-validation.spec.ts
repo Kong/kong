@@ -13,6 +13,7 @@ import {
   postNegative,
   randomString,
   waitForConfigRebuild,
+  eventually,
 } from '@support';
 
 describe('Gateway Plugins: oas-validation', function () {
@@ -166,16 +167,18 @@ describe('Gateway Plugins: oas-validation', function () {
   });
 
   it('should not POST new item when required name field is missing when request validation is enforced', async function () {
-    const resp = await postNegative(
-      `${proxyUrl}${path}/${resourcePet}`,
-      missingNamePayload
-    );
-    logResponse(resp);
-
-    expect(resp.status, 'Status should be 400').to.equal(400);
-    expect(resp.data.message, 'Should have correct validation message').to.eq(
-      "request body validation failed with error: 'property name is required'"
-    );
+    await eventually(async () => {
+      const resp = await postNegative(
+        `${proxyUrl}${path}/${resourcePet}`,
+        missingNamePayload
+      );
+      logResponse(resp);
+  
+      expect(resp.status, 'Status should be 400').to.equal(400);
+      expect(resp.data.message, 'Should have correct validation message').to.eq(
+        "request body validation failed with error: 'property name is required'"
+      );
+    });
   });
 
   it('should not POST new item when required photoURLS field is missing when request validation is enforced', async function () {

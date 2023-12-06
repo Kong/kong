@@ -11,6 +11,7 @@ import {
   waitForConfigRebuild,
   updateGatewayService,
   logResponse,
+  eventually,
 } from '@support';
 
 describe('Gateway Plugins: gRPC-web', function () {
@@ -92,20 +93,22 @@ describe('Gateway Plugins: gRPC-web', function () {
   });
 
   it('should validate unary response with greeting', async function () {
-    const resp = await axios({
-      url: `${proxyUrl}${path}${unaryRpc}`,
-      method: 'post',
-      headers: {
-        'x-grpc': true,
-      },
-      data: { greeting: `${grpcMessage}`, test: true },
+    await eventually(async () => {
+      const resp = await axios({
+        url: `${proxyUrl}${path}${unaryRpc}`,
+        method: 'post',
+        headers: {
+          'x-grpc': true,
+        },
+        data: { greeting: `${grpcMessage}`, test: true },
+      });
+      logResponse(resp);
+  
+      expect(resp.status, 'Status should be 200').to.equal(200);
+      expect(resp.data.reply, 'Should have correct message').to.eq(
+        `${grpcResponse}${grpcMessage}`
+      );
     });
-    logResponse(resp);
-
-    expect(resp.status, 'Status should be 200').to.equal(200);
-    expect(resp.data.reply, 'Should have correct message').to.eq(
-      `${grpcResponse}${grpcMessage}`
-    );
   });
 
   it('should validate unary response w/o greeting', async function () {

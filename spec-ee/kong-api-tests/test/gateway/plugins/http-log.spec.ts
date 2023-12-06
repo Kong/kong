@@ -250,7 +250,7 @@ describe('Gateway Plugins: http-log', function () {
         requestDetails.kong,
         'Should see return value of custom_fields_by_lua'
       ).to.eq('http-log plugin api test');
-    }, 19000);
+    });
   });
 
   // skipped due to https://konghq.atlassian.net/browse/KAG-503

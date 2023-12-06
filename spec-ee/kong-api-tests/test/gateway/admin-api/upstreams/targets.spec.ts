@@ -419,7 +419,7 @@ describe('Gateway Admin API: Targets health', function () {
       expect(res.status, 'should return 204 status').to.equal(204);
     };
 
-    await retryRequest(setStatusReq, setStatusAssertions, 10000, 500);    
+    await retryRequest(setStatusReq, setStatusAssertions);    
 
 
     // confirm healthy status
@@ -440,7 +440,7 @@ describe('Gateway Admin API: Targets health', function () {
       ).to.equal(upstreamData.id);
     };
   
-    await retryRequest(req, assertions, 10000);
+    await retryRequest(req, assertions);
   });
   
   it('should set target to unhealthy using target and confirm its status', async function () {
@@ -462,8 +462,7 @@ describe('Gateway Admin API: Targets health', function () {
       expect(res.status, 'should return 204 status').to.equal(204);
     };
 
-    await retryRequest(setStatusReq, setStatusAssertions, 10000, 500);  
-
+    await retryRequest(setStatusReq, setStatusAssertions);  
 
     // confirm unhealthy status
     const req = () => axios(`${url}/${upstreamData.id}/health`);
@@ -483,7 +482,7 @@ describe('Gateway Admin API: Targets health', function () {
       ).to.equal(upstreamData.id);
     };
   
-    await retryRequest(req, assertions, 10000);
+    await retryRequest(req, assertions);
   });
   
 

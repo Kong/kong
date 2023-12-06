@@ -168,12 +168,14 @@ describe('Gateway Plugins: jwe-decrypt JWK', function () {
   });
 
   it('JWK: should proxy request without supplying a token', async function () {
-    const resp = await axios({
-      url: `${proxyUrl}${jwkPath}`,
+    await eventually(async () => {
+      const resp = await axios({
+        url: `${proxyUrl}${jwkPath}`,
+      });
+      logResponse(resp);
+  
+      expect(resp.status, 'Status should be 200').to.equal(200);
     });
-    logResponse(resp);
-
-    expect(resp.status, 'Status should be 200').to.equal(200);
   });
 
   it('should delete the jwe-decrypt plugin', async function () {

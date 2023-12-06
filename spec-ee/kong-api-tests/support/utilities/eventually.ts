@@ -3,6 +3,7 @@
  * @param assertions - The assertions to be executed.
  * @param timeout - The timeout in milliseconds.
  * @param interval - The interval in milliseconds.
+ * @param verbose - Verbose logs in case of error
  * @returns {Promise<void>} - Asnyc void promise.
  */
 export const eventually = async (

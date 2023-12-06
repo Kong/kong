@@ -25,7 +25,8 @@ import {
   isGwNative,
   getKongContainerName,
   retryRequest,
-  isGateway
+  isGateway,
+  eventually
 } from '@support';
 
 describe('Dynamic Log Level Tests', function () {
@@ -172,23 +173,26 @@ describe('Dynamic Log Level Tests', function () {
   it('should not see debug logs in container after log is set to notice', async function () {
     await wait(isKongNative ? 10000 : 8000); // eslint-disable-line no-restricted-syntax
     // read the last 2 lines of logs for package tests to avoid flakiness
-    currentLogs = getGatewayContainerLogs(
-      kongContainerName,
-      isKongNative ? 2 : 4
-    );
 
-    const isLogFound = findRegex('\\[debug\\]', currentLogs);
-    expect(
-      isLogFound,
-      'Should not see debug logs after setting loge-level to notice'
-    ).to.be.false;
+    await eventually(async () => {
+      currentLogs = getGatewayContainerLogs(
+        kongContainerName,
+        isKongNative ? 2 : 4
+      );
+  
+      const isLogFound = findRegex('\\[debug\\]', currentLogs);
+      expect(
+        isLogFound,
+        'Should not see debug logs after setting log-level to notice'
+      ).to.be.false;
+    });
   });
 
   it('should see notice logs after log is set to notice', async function () {
     const isLogFound = findRegex('\\[notice\\]', currentLogs);
     expect(
       isLogFound,
-      'Should see notice logs after setting loge-level to notice'
+      'Should see notice logs after setting log-level to notice'
     ).to.be.true;
   });
 
@@ -304,7 +308,7 @@ describe('Dynamic Log Level Tests', function () {
     [isLogFound, isInfoLogFound, isDebugLogFound].forEach((logLevel) => {
       expect(
         logLevel,
-        `Should not see ${logLevel} logs after setting loge-level to alert`
+        `Should not see ${logLevel} logs after setting log-level to alert`
       ).to.be.false;
     });
   });
