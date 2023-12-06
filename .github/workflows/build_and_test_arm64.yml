@@ -3,7 +3,7 @@ on:
   pull_request:
     paths:
     - 'build/**'
-    - '.requirements.txt'
+    - '.requirements'
   push:
     branches:
     - master
