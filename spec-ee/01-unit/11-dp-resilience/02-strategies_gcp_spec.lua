@@ -32,7 +32,7 @@ local test_config = [[
     "services": [
       {
         "name": "mockbin",
-        "url": "http://mockbin.com",
+        "url": "http://mockbin.test",
         "routes": [
           {
             "name": "mockbin-r1",

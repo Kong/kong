@@ -125,7 +125,7 @@ for _, strategy in helpers.each_strategy() do
         protocol = helpers.mock_upstream_protocol,
       }
       bp.routes:insert({
-        hosts   = { "test-1.com" },
+        hosts   = { "test-1.test" },
         service = { id = service_1.id }
       })
       service_2 = bp.services:insert {
@@ -135,7 +135,7 @@ for _, strategy in helpers.each_strategy() do
         protocol = helpers.mock_upstream_protocol,
       }
       bp.routes:insert({
-        hosts   = { "test-2.com" },
+        hosts   = { "test-2.test" },
         service = { id = service_2.id }
       })
 
@@ -200,7 +200,7 @@ for _, strategy in helpers.each_strategy() do
         for i, v in ipairs(vault_items) do
           local res = proxy_client:get("/get", {
             headers = {
-              ["Host"] = "test-" .. i .. ".com"
+              ["Host"] = "test-" .. i .. ".test"
             },
             query = {
               access_token = v.cred_consumer.access_token,
@@ -217,7 +217,7 @@ for _, strategy in helpers.each_strategy() do
                                        .cred_consumer
           local res = proxy_client:get("/get", {
             headers = {
-              ["Host"] = "test-" .. i .. ".com"
+              ["Host"] = "test-" .. i .. ".test"
             },
             query = {
               access_token = wrong_consumer_creds.access_token,
@@ -232,7 +232,7 @@ for _, strategy in helpers.each_strategy() do
         for i, v in ipairs(vault_items) do
           assert.res_status(200, assert(proxy_client:get("/get", {
             headers = {
-              ["Host"] = "test-" .. i .. ".com"
+              ["Host"] = "test-" .. i .. ".test"
             },
             query = {
               access_token = v.cred_consumer.access_token,
@@ -250,7 +250,7 @@ for _, strategy in helpers.each_strategy() do
 
           assert.res_status(401, assert(proxy_client:get("/get", {
             headers = {
-              ["Host"] = "test-" .. i .. ".com"
+              ["Host"] = "test-" .. i .. ".test"
             },
             query = {
               access_token = v.cred_consumer.access_token,
@@ -291,7 +291,7 @@ for _, strategy in helpers.each_strategy() do
           local cred_consumer = vault_items[1].cred_consumer
           local res = proxy_client:get("/get", {
             headers = {
-              ["Host"] = "test-1.com"
+              ["Host"] = "test-1.test"
             },
             query = {
               access_token = cred_consumer.access_token,
@@ -302,7 +302,7 @@ for _, strategy in helpers.each_strategy() do
 
           res = proxy_client:get("/get", {
             headers = {
-              ["Host"] = "test-2.com"
+              ["Host"] = "test-2.test"
             },
             query = {
               access_token = cred_consumer.access_token,

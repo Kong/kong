@@ -67,7 +67,7 @@ for _, strategy in helpers.each_strategy() do
             local res = client:post("/foo/services", {
               body = {
                 protocol = "http",
-                host     = "service.com",
+                host     = "service.test",
               },
               headers = { ["Content-Type"] = content_type },
             })
@@ -86,7 +86,7 @@ for _, strategy in helpers.each_strategy() do
           before_each(function()
             for i = 1, 10 do
               assert(bp.services:insert_ws({
-                host = ("example%d.com"):format(i)
+                host = ("example%d.test"):format(i)
               }, foo_ws))
             end
           end)
@@ -277,11 +277,11 @@ for _, strategy in helpers.each_strategy() do
           local service, route
 
           service = assert(bp.services:insert_ws({
-            host     = "service.com",
+            host     = "service.test",
           }, foo_ws))
 
           route = assert(bp.routes:insert_ws({
-            hosts    = { "service.com" },
+            hosts    = { "service.test" },
             service  = service,
           }, foo_ws))
 

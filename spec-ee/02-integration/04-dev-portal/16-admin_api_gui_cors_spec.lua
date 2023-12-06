@@ -12,7 +12,7 @@ for _, strategy in helpers.each_strategy() do
     local client
 
     describe("responds CORS headers when admin_gui_url configured", function()
-      local admin_gui_url = "http://manager.konghq.com"
+      local admin_gui_url = "http://manager.konghq.test"
 
       lazy_setup(function()
         helpers.start_kong({

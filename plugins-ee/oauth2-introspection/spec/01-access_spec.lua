@@ -102,7 +102,7 @@ for _ , strategy in strategies() do
 
       local route1 = bp.routes:insert {
         name = "route-1",
-        hosts = { "introspection.com" },
+        hosts = { "introspection.test" },
       }
       bp.plugins:insert {
         name = "oauth2-introspection",
@@ -116,7 +116,7 @@ for _ , strategy in strategies() do
 
       local route1_cid = bp.routes:insert {
         name = "route-1cid",
-        hosts = { "introspection_client_id.com" },
+        hosts = { "introspection_client_id.test" },
       }
       bp.plugins:insert {
         name = "oauth2-introspection",
@@ -131,7 +131,7 @@ for _ , strategy in strategies() do
 
       local route2_cid = bp.routes:insert {
         name = "route-2cid",
-        hosts = { "introspection_client_id_not_added_initially.com" },
+        hosts = { "introspection_client_id_not_added_initially.test" },
       }
       bp.plugins:insert {
         name = "oauth2-introspection",
@@ -145,7 +145,7 @@ for _ , strategy in strategies() do
 
       local route2 = bp.routes:insert {
         name = "route-2",
-        hosts = { "introspection2.com" },
+        hosts = { "introspection2.test" },
       }
       bp.plugins:insert {
         name = "oauth2-introspection",
@@ -184,7 +184,7 @@ for _ , strategy in strategies() do
 
       local route3 = bp.routes:insert {
         name = "route-3",
-        hosts = { "introspection3.com" },
+        hosts = { "introspection3.test" },
       }
       bp.plugins:insert {
         name = "oauth2-introspection",
@@ -199,7 +199,7 @@ for _ , strategy in strategies() do
 
       local route4 = bp.routes:insert {
         name = "route-4",
-        hosts = { "introspection4.com" },
+        hosts = { "introspection4.test" },
       }
       bp.plugins:insert {
         name = "oauth2-introspection",
@@ -214,7 +214,7 @@ for _ , strategy in strategies() do
 
       local route5 = bp.routes:insert {
         name = "route-5",
-        hosts = { "introspection5.com" },
+        hosts = { "introspection5.test" },
       }
       bp.plugins:insert {
         name = "oauth2-introspection",
@@ -229,7 +229,7 @@ for _ , strategy in strategies() do
 
       local route6 = bp.routes:insert {
         name = "route-6",
-        hosts = { "introspection6.com" },
+        hosts = { "introspection6.test" },
       }
       bp.plugins:insert {
         name = "oauth2-introspection",
@@ -300,7 +300,7 @@ for _ , strategy in strategies() do
           method = "GET",
           path = "/request",
           headers = {
-            ["Host"] = "introspection.com"
+            ["Host"] = "introspection.test"
           }
         })
 
@@ -315,7 +315,7 @@ for _ , strategy in strategies() do
           method = "GET",
           path = "/request?access_token=asd",
           headers = {
-            ["Host"] = "introspection.com"
+            ["Host"] = "introspection.test"
           }
         })
 
@@ -332,7 +332,7 @@ for _ , strategy in strategies() do
           method = "GET",
           path = "/request?access_token=valid",
           headers = {
-            ["Host"] = "introspection.com"
+            ["Host"] = "introspection.test"
           }
         })
 
@@ -345,7 +345,7 @@ for _ , strategy in strategies() do
           path = "/request",
           body = ngx.encode_args({ access_token = "valid" }),
           headers = {
-            ["Host"] = "introspection.com",
+            ["Host"] = "introspection.test",
             ["Content-Type"] = "application/x-www-form-urlencoded"
           }
         })
@@ -358,7 +358,7 @@ for _ , strategy in strategies() do
           method = "POST",
           path = "/request",
           headers = {
-            ["Host"] = "introspection.com",
+            ["Host"] = "introspection.test",
             ["Content-Type"] = "application/x-www-form-urlencoded",
             ["Authorization"] = "Bearer valid"
           }
@@ -374,7 +374,7 @@ for _ , strategy in strategies() do
             method = "GET",
             path = "/request?access_token=valid_consumer",
             headers = {
-              ["Host"] = "introspection.com"
+              ["Host"] = "introspection.test"
             }
           })
 
@@ -389,7 +389,7 @@ for _ , strategy in strategies() do
             method = "GET",
             path = "/request?access_token=valid_consumer_client_id",
             headers = {
-              ["Host"] = "introspection_client_id.com",
+              ["Host"] = "introspection_client_id.test",
             }
           })
 
@@ -404,7 +404,7 @@ for _ , strategy in strategies() do
             method = "GET",
             path = "/request?access_token=valid_consumer_client_id_not_added_initially",
             headers = {
-              ["Host"] = "introspection_client_id_not_added_initially.com",
+              ["Host"] = "introspection_client_id_not_added_initially.test",
             }
           })
           local body = cjson.decode(assert.res_status(200 , res))
@@ -434,7 +434,7 @@ for _ , strategy in strategies() do
             method = "GET",
             path = "/request?access_token=valid_consumer_client_id_not_added_initially",
             headers = {
-              ["Host"] = "introspection_client_id_not_added_initially.com",
+              ["Host"] = "introspection_client_id_not_added_initially.test",
             }
           })
           body = cjson.decode(assert.res_status(200 , res))
@@ -449,7 +449,7 @@ for _ , strategy in strategies() do
             method = "GET",
             path = "/request?access_token=valid_consumer_limited",
             headers = {
-              ["Host"] = "introspection.com"
+              ["Host"] = "introspection.test"
             }
           })
 
@@ -466,7 +466,7 @@ for _ , strategy in strategies() do
             method = "GET",
             path = "/request?access_token=valid_complex",
             headers = {
-              ["Host"] = "introspection.com"
+              ["Host"] = "introspection.test"
             }
           })
 
@@ -487,7 +487,7 @@ for _ , strategy in strategies() do
             method = "GET",
             path = "/request?access_token=valid_complex",
             headers = {
-              ["Host"] = "introspection6.com"
+              ["Host"] = "introspection6.test"
             }
           })
 
@@ -510,7 +510,7 @@ for _ , strategy in strategies() do
             method = "GET",
             path = "/request?access_token=valid_complex",
             headers = {
-              ["Host"] = "introspection6.com"
+              ["Host"] = "introspection6.test"
             }
           })
 
@@ -535,7 +535,7 @@ for _ , strategy in strategies() do
             method = "GET",
             path = "/request?access_token=valid_complex&hello=marco",
             headers = {
-              ["Host"] = "introspection2.com"
+              ["Host"] = "introspection2.test"
             }
           })
 
@@ -558,7 +558,7 @@ for _ , strategy in strategies() do
             method = "OPTIONS",
             path = "/request",
             headers = {
-              ["Host"] = "introspection.com"
+              ["Host"] = "introspection.test"
             }
           })
 
@@ -569,7 +569,7 @@ for _ , strategy in strategies() do
             method = "OPTIONS",
             path = "/request",
             headers = {
-              ["Host"] = "introspection5.com"
+              ["Host"] = "introspection5.test"
             }
           })
 
@@ -583,7 +583,7 @@ for _ , strategy in strategies() do
             method = "POST",
             path = "/request?access_token=valid_consumer",
             headers = {
-              ["Host"] = "introspection3.com"
+              ["Host"] = "introspection3.test"
             }
           })
           local body = cjson.decode(assert.res_status(200 , res))
@@ -595,7 +595,7 @@ for _ , strategy in strategies() do
             method = "POST",
             path = "/request",
             headers = {
-              ["Host"] = "introspection3.com"
+              ["Host"] = "introspection3.test"
             }
           })
           local body = cjson.decode(assert.res_status(200 , res))
@@ -607,7 +607,7 @@ for _ , strategy in strategies() do
             method = "GET",
             path = "/request",
             headers = {
-              ["Host"] = "introspection4.com"
+              ["Host"] = "introspection4.test"
             }
           })
           assert.response(res).has.status(500)
@@ -627,7 +627,7 @@ for _ , strategy in strategies() do
 
       local route1 = bp.routes:insert {
         name = "route-1",
-        hosts = { "introspection.com" },
+        hosts = { "introspection.test" },
       }
       bp.plugins:insert {
         name = "oauth2-introspection",
@@ -669,7 +669,7 @@ for _ , strategy in strategies() do
           method = "GET",
           path = "/request?access_token=valid_consumer",
           headers = {
-            ["Host"] = "introspection.com"
+            ["Host"] = "introspection.test"
           }
         })
 
@@ -683,7 +683,7 @@ for _ , strategy in strategies() do
           method = "DELETE",
           path = "/consumers/" .. consumer_id,
           headers = {
-            ["Host"] = "introspection.com"
+            ["Host"] = "introspection.test"
           }
         })
         assert.res_status(204 , res)
@@ -694,7 +694,7 @@ for _ , strategy in strategies() do
             method = "GET",
             path = "/request?access_token=valid_consumer",
             headers = {
-              ["Host"] = "introspection.com"
+              ["Host"] = "introspection.test"
             }
           })
           local body = cjson.decode(assert.res_status(200 , res))
@@ -715,7 +715,7 @@ for _ , strategy in strategies() do
 
       local route1 = bp.routes:insert {
         name = "route-1",
-        hosts = { "logical-and.com" },
+        hosts = { "logical-and.test" },
       }
       bp.plugins:insert {
         name = "key-auth",
@@ -747,7 +747,7 @@ for _ , strategy in strategies() do
 
       local route2 = bp.routes:insert {
         name = "route-2",
-        hosts = { "logical-or.com" },
+        hosts = { "logical-or.test" },
       }
       bp.plugins:insert {
         name = "oauth2-introspection",
@@ -795,7 +795,7 @@ for _ , strategy in strategies() do
           method = "GET",
           path = "/request?access_token=valid",
           headers = {
-            ["Host"] = "logical-and.com",
+            ["Host"] = "logical-and.test",
             ["apikey"] = "mouse",
           }
         })
@@ -811,7 +811,7 @@ for _ , strategy in strategies() do
           method = "GET",
           path = "/request",
           headers = {
-            ["Host"] = "logical-and.com",
+            ["Host"] = "logical-and.test",
             ["apikey"] = "mouse",
           }
         })
@@ -823,7 +823,7 @@ for _ , strategy in strategies() do
           method = "GET",
           path = "/request?access_token=valid",
           headers = {
-            ["Host"] = "logical-and.com"
+            ["Host"] = "logical-and.test"
           }
         })
         assert.res_status(401 , res)
@@ -834,7 +834,7 @@ for _ , strategy in strategies() do
           method = "GET",
           path = "/request",
           headers = {
-            ["Host"] = "logical-and.com",
+            ["Host"] = "logical-and.test",
           }
         })
         assert.res_status(401 , res)
@@ -847,7 +847,7 @@ for _ , strategy in strategies() do
           method = "GET",
           path = "/request",
           headers = {
-            ["Host"] = "logical-or.com",
+            ["Host"] = "logical-or.test",
             ["apikey"] = "mouse",
           }
         })
@@ -864,7 +864,7 @@ for _ , strategy in strategies() do
           method = "GET",
           path = "/request",
           headers = {
-            ["Host"] = "logical-or.com",
+            ["Host"] = "logical-or.test",
             ["apikey"] = "mouse",
           }
         })
@@ -881,7 +881,7 @@ for _ , strategy in strategies() do
           method = "GET",
           path = "/request?access_token=valid_consumer",
           headers = {
-            ["Host"] = "logical-or.com",
+            ["Host"] = "logical-or.test",
           }
         })
         local body = cjson.decode(assert.res_status(200 , res))
@@ -896,7 +896,7 @@ for _ , strategy in strategies() do
           method = "GET",
           path = "/request",
           headers = {
-            ["Host"] = "logical-or.com",
+            ["Host"] = "logical-or.test",
           }
         })
         local body = cjson.decode(assert.res_status(200 , res))
@@ -915,7 +915,7 @@ for _ , strategy in strategies() do
 
       local route = bp.routes:insert {
         name = "route",
-        hosts = { "test.com" },
+        hosts = { "test.test" },
       }
       bp.plugins:insert {
         name = "oauth2-introspection",
@@ -954,7 +954,7 @@ for _ , strategy in strategies() do
         method = "GET",
         path = "/request?access_token=valid",
         headers = {
-          ["Host"] = "test.com",
+          ["Host"] = "test.test",
           ["Authorization"] = "hello",
           ["Content-Type"] = "application/json",
         },

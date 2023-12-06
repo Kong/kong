@@ -30,7 +30,7 @@ for _, strategy in helpers.each_strategy() do
       local bp = helpers.get_db_utils(strategy)
 
       local route = bp.routes:insert({
-        hosts   = { "response.com" },
+        hosts   = { "response.test" },
         methods = { "POST" },
       })
 
@@ -69,7 +69,7 @@ for _, strategy in helpers.each_strategy() do
         path    = "/post",
         body    = create_big_data(1),
         headers = {
-          host             = "response.com",
+          host             = "response.test",
           ["content-type"] = "application/json",
         }
       })
@@ -94,7 +94,7 @@ for _, strategy in helpers.each_strategy() do
         path    = "/post",
         body    = body,
         headers = {
-          host             = "response.com",
+          host             = "response.test",
           ["content-type"] = "application/json",
         }
       })
@@ -121,7 +121,7 @@ for _, strategy in helpers.each_strategy() do
       local bp = helpers.get_db_utils(strategy)
 
       local route = bp.routes:insert({
-        hosts   = { "response.com" },
+        hosts   = { "response.test" },
         methods = { "GET" },
       })
 
@@ -159,7 +159,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/stream/1",
         headers = {
-          host             = "response.com",
+          host             = "response.test",
           ["content-type"] = "application/json",
         }
       })
@@ -176,7 +176,7 @@ for _, strategy in helpers.each_strategy() do
       local bp = helpers.get_db_utils(strategy)
 
       local route = bp.routes:insert({
-        hosts   = { "response.com" },
+        hosts   = { "response.test" },
         methods = { "POST" },
       })
 
@@ -215,7 +215,7 @@ for _, strategy in helpers.each_strategy() do
         path    = "/post",
         body    = create_big_data(1),
         headers = {
-          host             = "response.com",
+          host             = "response.test",
           ["content-type"] = "application/json",
         }
       })
@@ -237,7 +237,7 @@ for _, strategy in helpers.each_strategy() do
       local bp = helpers.get_db_utils(strategy)
 
       local route = bp.routes:insert({
-        hosts   = { "response.com" },
+        hosts   = { "response.test" },
         methods = { "POST" },
       })
 
@@ -276,7 +276,7 @@ for _, strategy in helpers.each_strategy() do
         path    = "/post",
         body    = create_big_data(1),
         headers = {
-          host             = "response.com",
+          host             = "response.test",
           ["content-type"] = "application/json",
         }
       })

@@ -153,7 +153,7 @@ for _, strategy in helpers.each_strategy() do
       describe("upsert():", function()
         it("upserts a new service in workspace [default] and fails to be retrieved from workspace [w1]", function()
           local res
-          local s, err = db.services:upsert({ id = utils.uuid() }, { name = "upsert", host = "konghq.com" })
+          local s, err = db.services:upsert({ id = utils.uuid() }, { name = "upsert", host = "konghq.test" })
           assert.is_nil(err)
           assert.not_nil(s)
 
@@ -186,7 +186,7 @@ for _, strategy in helpers.each_strategy() do
           -- and without overriding values with default values
 
           -- upserting service [s] with new name
-          local s_upserted, err = db.services:upsert({ id = s.id }, { name = "test-upsert", host = "konghq.com" })
+          local s_upserted, err = db.services:upsert({ id = s.id }, { name = "test-upsert", host = "konghq.test" })
 
           assert.is_nil(err)
           res, err = db.services:select({ id = s.id })

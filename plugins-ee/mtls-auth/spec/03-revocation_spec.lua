@@ -78,27 +78,27 @@ for _, strategy in strategies() do
       }
 
       local route_no_proxy_strict = bp.routes:insert {
-        hosts   = { "noproxy-strict.com" },
+        hosts   = { "noproxy-strict.test" },
         service = { id = service.id, },
       }
 
       local route_proxy_strict = bp.routes:insert {
-        hosts   = { "proxy-strict.com" },
+        hosts   = { "proxy-strict.test" },
         service = { id = service.id, },
       }
 
       local route_bad_proxy_strict = bp.routes:insert {
-        hosts   = { "badproxy-strict.com" },
+        hosts   = { "badproxy-strict.test" },
         service = { id = service.id, },
       }
 
       local route_no_proxy_skip = bp.routes:insert {
-        hosts   = { "noproxy-skip.com" },
+        hosts   = { "noproxy-skip.test" },
         service = { id = service.id, },
       }
 
       local route_bad_proxy_ignore = bp.routes:insert {
-        hosts   = { "badproxy-ignore.com" },
+        hosts   = { "badproxy-ignore.test" },
         service = { id = service.id, },
       }
 
@@ -174,9 +174,9 @@ for _, strategy in strategies() do
       local format = [[
       proxy_ssl_certificate /kong-plugin/spec/fixtures/ocsp-responder-docker/certificates/%s.pem;
       proxy_ssl_certificate_key /kong-plugin/spec/fixtures/ocsp-responder-docker/certificates/%s.pem.key;
-      proxy_ssl_name %s.com;
+      proxy_ssl_name %s.test;
       proxy_ssl_server_name on;
-      proxy_set_header Host %s.com;
+      proxy_set_header Host %s.test;
       proxy_pass https://127.0.0.1:9443/get;
       ]]
       mock = http_mock.new(HTTP_SERVER_PORT, {

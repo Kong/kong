@@ -60,8 +60,8 @@ describe("DB [#" .. strategy .. "] static strategy: routes are checked for colis
   end)
 
   before_each(function()
-    post("/ws1/services", {name = "default-service", host = "httpbin1.org"})
-    service_ws2 = post("/ws2/services", {name = "ws2-service", host = "httpbin2.org"})
+    post("/ws1/services", {name = "default-service", host = "httpbin1.test"})
+    service_ws2 = post("/ws2/services", {name = "ws2-service", host = "httpbin2.test"})
   end)
 
   after_each(function()
@@ -94,13 +94,13 @@ describe("DB [#" .. strategy .. "] static strategy: routes are checked for colis
   end)
 
   it("detects collisions if hosts overlap", function()
-    post("/ws2/services/ws2-service/routes", '{"name": "route1", "hosts": ["route1.com"]}')
-    post("/ws2/services/ws2-service/routes", '{"name": "route2", "hosts": ["route1.com"]}', 409)
+    post("/ws2/services/ws2-service/routes", '{"name": "route1", "hosts": ["route1.test"]}')
+    post("/ws2/services/ws2-service/routes", '{"name": "route2", "hosts": ["route1.test"]}', 409)
 
-    post("/ws2/services/ws2-service/routes", '{"name": "route2", "hosts": ["route2.com", "dev.route2.com"]}')
-    post("/ws2/services/ws2-service/routes", '{"name": "route3", "hosts": ["route2.com"]}', 409)
-    post("/ws2/services/ws2-service/routes", '{"name": "route3", "hosts": ["dev.route2.com", "tmp.route2.com"]}', 409)
-    post("/ws2/services/ws2-service/routes", '{"name": "route3", "hosts": ["tmp.route2.com", "dev.route2.com"]}', 409)
+    post("/ws2/services/ws2-service/routes", '{"name": "route2", "hosts": ["route2.test", "dev.route2.test"]}')
+    post("/ws2/services/ws2-service/routes", '{"name": "route3", "hosts": ["route2.test"]}', 409)
+    post("/ws2/services/ws2-service/routes", '{"name": "route3", "hosts": ["dev.route2.test", "tmp.route2.test"]}', 409)
+    post("/ws2/services/ws2-service/routes", '{"name": "route3", "hosts": ["tmp.route2.test", "dev.route2.test"]}', 409)
   end)
 
   it("detects collisions if methods overlap", function()

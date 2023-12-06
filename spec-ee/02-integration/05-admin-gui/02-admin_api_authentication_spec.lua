@@ -53,7 +53,7 @@ local function setup_ws_defaults(dao, db, workspace)
   ngx.ctx.workspace = ws.id
 
   -- create a record we can use to test inter-workspace calls
-  local service_name = workspace .. "-example.com"
+  local service_name = workspace .. "-example.test"
   local service = assert(db.services:insert({
     name = service_name,
     host = service_name,
@@ -502,7 +502,7 @@ for _, strategy in helpers.each_strategy() do
             local json = cjson.decode(body)
 
             assert.equal(1, #json.data)
-            assert.equal("test-ws-example.com", json.data[1].host)
+            assert.equal("test-ws-example.test", json.data[1].host)
           end)
         end)
 
@@ -812,7 +812,7 @@ for _, strategy in helpers.each_strategy() do
           local user_specified_role = db.rbac_roles:insert({ name = "no-read-service" })
           post(client, "/rbac/roles/no-read-service/endpoints", {
             workspace = "default",
-            endpoint = "/services/default-example.com",
+            endpoint = "/services/default-example.test",
             actions = "read",
             negative = true,
           }, { ['Kong-Admin-Token'] = 'letmein-*' }, 201)
@@ -991,7 +991,7 @@ for _, strategy in helpers.each_strategy() do
             local cookie = get_admin_cookie_basic_auth(client, super_admin.username, skeleton_key)
             local res = client:send {
               method = "GET",
-              path = "/services/default-example.com",
+              path = "/services/default-example.test",
               headers = {
                 ["cookie"] = cookie,
                 ["Kong-Admin-User"] = super_admin.username,

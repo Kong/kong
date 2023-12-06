@@ -400,7 +400,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         local res = assert(client:post("/ws1/services", {
           body = {
             name = "service1",
-            host = "a.upstream.com",
+            host = "a.upstream.test",
           },
           headers = {
             ["Content-Type"] = "application/json",
@@ -1008,7 +1008,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
               config = {
                 portal_auth = "openid-connect",
                 portal_auth_conf = {
-                  issuer = "https://accounts.google.com/"
+                  issuer = "https://accounts.google.test/"
                 }
               }
             },
@@ -1235,7 +1235,7 @@ describe("Admin API #" .. strategy, function()
     }
 
     bp.routes:insert({
-      hosts = {"my.api.com" },
+      hosts = {"my.api.test" },
       paths = { "/my-uri" },
       methods = { "GET" },
       service = demo_ip_service,
@@ -1284,7 +1284,7 @@ describe("Admin API #" .. strategy, function()
         -- route collides with one in default workspace
         assert.res_status(409, client:post("/w1/services/demo-anything/routes", {
           body = {
-            hosts = {"my.api.com" },
+            hosts = {"my.api.test" },
             paths = { "/my-uri" },
             methods = { "GET" },
           },
@@ -1295,7 +1295,7 @@ describe("Admin API #" .. strategy, function()
         assert.res_status(201, client:post("/default/services/demo-default/routes", {
           body = {
             methods = { "GET" },
-            hosts = {"my.api.com"},
+            hosts = {"my.api.test"},
             paths = { "/my-uri" },
           },
           headers = {["Content-Type"] = "application/json"}

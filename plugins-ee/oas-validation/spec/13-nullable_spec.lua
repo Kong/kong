@@ -14,7 +14,7 @@ local fixtures = {
   http_mock = {
     validation_plugin = [[
       server {
-          server_name petstore.com;
+          server_name petstore.test;
           listen 12345;
 
           location / {

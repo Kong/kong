@@ -269,7 +269,7 @@ for _, strategy in helpers.each_strategy() do
             local client1 = admin_api.oauth2_credentials:insert {
               client_id      = "clientid123",
               client_secret  = "secret123",
-              redirect_uris  = { "http://google.com/kong" },
+              redirect_uris  = { "http://google.test/kong" },
               name           = "testapp",
               consumer       = { id = c1.id },
             }
@@ -379,7 +379,7 @@ for _, strategy in helpers.each_strategy() do
               path   = "/services",
               body   = {
                 name = "s2",
-                host = "foo.com"
+                host = "foo.test"
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -731,7 +731,7 @@ for _, strategy in helpers.each_strategy() do
           path   = "/bar/services",
           body   = {
             name = "test2",
-            host = "example2.com",
+            host = "example2.test",
           },
           headers = {
             ["Content-Type"] = "application/json",

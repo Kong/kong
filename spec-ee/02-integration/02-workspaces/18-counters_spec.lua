@@ -109,7 +109,7 @@ for _, strategy in helpers.each_strategy() do
           local res = client:post("/services", {
             body = {
               protocol = "http",
-              host     = "service.com",
+              host     = "service.test",
             },
             headers = { ["Content-Type"] = 'application/json' },
           })

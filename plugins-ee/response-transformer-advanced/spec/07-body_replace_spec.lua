@@ -17,11 +17,11 @@ describe("Plugin: response-transformer-advanced (filter)", function()
     })
 
     local route1 = bp.routes:insert({
-      hosts = { "response.com" },
+      hosts = { "response.test" },
     })
 
     local route2 = bp.routes:insert({
-      hosts = { "response2.com" },
+      hosts = { "response2.test" },
     })
 
     local service1 = bp.services:insert({
@@ -124,7 +124,7 @@ describe("Plugin: response-transformer-advanced (filter)", function()
         method  = "GET",
         path    = "/status/500",
         headers = {
-          host  = "response.com"
+          host  = "response.test"
         }
       })
       local json = assert.response(res).has.jsonbody()
@@ -135,7 +135,7 @@ describe("Plugin: response-transformer-advanced (filter)", function()
         method  = "GET",
         path    = "/status/200",
         headers = {
-          host  = "response.com"
+          host  = "response.test"
         }
       })
       local body = assert.res_status(200, res)
@@ -147,7 +147,7 @@ describe("Plugin: response-transformer-advanced (filter)", function()
         method  = "GET",
         path    = "/status/200",
         headers = {
-          host  = "response2.com",
+          host  = "response2.test",
         }
       })
       -- we got a 401 due to no credentials provided

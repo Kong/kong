@@ -14,7 +14,7 @@ local fixtures = {
   http_mock = {
     validation_plugin = [[
       server {
-          server_name petstore.com;
+          server_name petstore.test;
           listen 12345;
 
           location ~ "/user/foo/report.pdf" {
@@ -58,7 +58,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       local route1 = assert(db.routes:insert({
-        hosts = { "petstore1.com" },
+        hosts = { "petstore1.test" },
         service = service1,
       }))
       assert(db.plugins:insert {
@@ -77,7 +77,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       local route2 = assert(db.routes:insert({
-        hosts = { "petstore2.com" },
+        hosts = { "petstore2.test" },
         service = service1,
       }))
       assert(db.plugins:insert {
@@ -123,7 +123,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/user/foo/report.pdf",
           headers = {
-            host = "petstore1.com",
+            host = "petstore1.test",
           },
         })
         assert.response(res).has.status(200)
@@ -134,7 +134,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/user/test.pdf",
           headers = {
-            host = "petstore1.com",
+            host = "petstore1.test",
           },
         })
         assert.response(res).has.status(200)
@@ -146,7 +146,7 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/v1/user/foo/report.pdf",
             headers = {
-              host = "petstore2.com",
+              host = "petstore2.test",
             },
           })
           assert.response(res).has.status(200)
@@ -157,7 +157,7 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/v1/user/test.pdf",
             headers = {
-              host = "petstore2.com",
+              host = "petstore2.test",
             },
           })
           assert.response(res).has.status(200)
@@ -170,7 +170,7 @@ for _, strategy in helpers.each_strategy() do
         method = "GET",
         path = "/user/你好?",
         headers = {
-          host = "petstore1.com",
+          host = "petstore1.test",
         },
       })
       assert.response(res).has.status(301)
@@ -178,7 +178,7 @@ for _, strategy in helpers.each_strategy() do
         method = "GET",
         path = "/user/%E4%BD%A0%E5%A5%BD",
         headers = {
-          host = "petstore1.com",
+          host = "petstore1.test",
         },
       })
       assert.response(res).has.status(301)
@@ -187,7 +187,7 @@ for _, strategy in helpers.each_strategy() do
         method = "GET",
         path = "/user/%E4%BD%A0%E5%A5%BD/report.世界",
         headers = {
-          host = "petstore1.com",
+          host = "petstore1.test",
         },
       })
 
@@ -196,7 +196,7 @@ for _, strategy in helpers.each_strategy() do
         method = "GET",
         path = "/user/%E4%BD%A0%E5%A5%BD/report.%E4%B8%96%E7%95%8C",
         headers = {
-          host = "petstore1.com",
+          host = "petstore1.test",
         },
       })
       assert.response(res).has.status(301)

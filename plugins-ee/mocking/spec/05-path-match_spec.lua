@@ -46,7 +46,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       local route1 = assert(db.routes:insert({
-        hosts = { "petstore1.com" },
+        hosts = { "petstore1.test" },
         service = service1,
       }))
       assert(db.plugins:insert {
@@ -83,7 +83,7 @@ for _, strategy in helpers.each_strategy() do
         method = "GET",
         path = "/user/你好",
         headers = {
-          host = "petstore1.com",
+          host = "petstore1.test",
         },
       })
       assert.response(res).has.status(200)
@@ -92,7 +92,7 @@ for _, strategy in helpers.each_strategy() do
         method = "GET",
         path = "/user/%E4%BD%A0%E5%A5%BD",
         headers = {
-          host = "petstore1.com",
+          host = "petstore1.test",
         },
       })
       assert.response(res).has.status(200)
@@ -101,7 +101,7 @@ for _, strategy in helpers.each_strategy() do
         method = "GET",
         path = "/user/%E4%BD%A0%E5%A5%BD/report.世界",
         headers = {
-          host = "petstore1.com",
+          host = "petstore1.test",
         },
       })
       assert.response(res).has.status(201)
@@ -110,7 +110,7 @@ for _, strategy in helpers.each_strategy() do
         method = "GET",
         path = "/user/%E4%BD%A0%E5%A5%BD/report.%E4%B8%96%E7%95%8C",
         headers = {
-          host = "petstore1.com",
+          host = "petstore1.test",
         },
       })
       assert.response(res).has.status(201)

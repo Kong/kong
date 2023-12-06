@@ -30,7 +30,7 @@ for _, x_headers_mode in ipairs{ "append", "transparent", "delete", } do
       })
 
       local route1 = bp.routes:insert {
-        hosts = { "service-1.com" },
+        hosts = { "service-1.test" },
         service   = service,
       }
 
@@ -46,13 +46,13 @@ for _, x_headers_mode in ipairs{ "append", "transparent", "delete", } do
 
       local service2 = bp.services:insert {
         name = "service-2",
-        host = "dne.com",
+        host = "dne.test",
         protocol = "http",
         port = 80,
       }
 
       local route2 = bp.routes:insert {
-        hosts = { "service-2.com" },
+        hosts = { "service-2.test" },
         service   = service2,
       }
 
@@ -74,7 +74,7 @@ for _, x_headers_mode in ipairs{ "append", "transparent", "delete", } do
       }
 
       local route3 = bp.routes:insert {
-        hosts = { "service-3.com" },
+        hosts = { "service-3.test" },
         service   = service3,
       }
 
@@ -120,7 +120,7 @@ for _, x_headers_mode in ipairs{ "append", "transparent", "delete", } do
         method  = "GET",
         path    = "/get",
         headers = {
-          host = "service-1.com",
+          host = "service-1.test",
         },
       })
 
@@ -132,7 +132,7 @@ for _, x_headers_mode in ipairs{ "append", "transparent", "delete", } do
         method  = "GET",
         path    = "/get",
         headers = {
-          host = "service-1.com",
+          host = "service-1.test",
         },
       })
 
@@ -148,7 +148,7 @@ for _, x_headers_mode in ipairs{ "append", "transparent", "delete", } do
         method  = "GET",
         path    = "/get",
         headers = {
-          host = "service-3.com",
+          host = "service-3.test",
         },
       })
 
@@ -164,7 +164,7 @@ for _, x_headers_mode in ipairs{ "append", "transparent", "delete", } do
         method  = "GET",
         path    = "/get",
         headers = {
-          host = "service-1.com",
+          host = "service-1.test",
         },
       })
 
@@ -179,7 +179,7 @@ for _, x_headers_mode in ipairs{ "append", "transparent", "delete", } do
         method  = "POST",
         path    = "/post?baz=bat",
         headers = {
-          host = "service-1.com",
+          host = "service-1.test",
           ["Content-Type"] = "application/json",
         },
         body = {
@@ -199,7 +199,7 @@ for _, x_headers_mode in ipairs{ "append", "transparent", "delete", } do
         method  = "POST",
         path    = "/post?baz=bat",
         headers = {
-          host = "service-1.com",
+          host = "service-1.test",
           ["Content-Type"] = "text/plain",
           ["Transfer-Encoding"] = "chunked",
         },
@@ -218,7 +218,7 @@ for _, x_headers_mode in ipairs{ "append", "transparent", "delete", } do
         method  = "GET",
         path    = "/get",
         headers = {
-          host = "service-2.com",
+          host = "service-2.test",
         },
       })
 
@@ -266,7 +266,7 @@ for _, x_headers_mode in ipairs{ "append", "transparent", "delete", } do
             method  = "GET",
             path    = "/request",
             headers = {
-              host = "service-1.com",
+              host = "service-1.test",
             },
           })
 
@@ -285,7 +285,7 @@ for _, x_headers_mode in ipairs{ "append", "transparent", "delete", } do
             assert.equal(nil, json.headers["x-forwarded-for"])
             assert.equal(nil, json.headers["x-real-ip"])
           else
-            assert.equal("service-1.com", json.headers["x-forwarded-host"])
+            assert.equal("service-1.test", json.headers["x-forwarded-host"])
             assert.equal("9000", json.headers["x-forwarded-port"])
             assert.equal("http", json.headers["x-forwarded-proto"])
             assert.equal("127.0.0.1", json.headers["x-forwarded-for"])
@@ -298,7 +298,7 @@ for _, x_headers_mode in ipairs{ "append", "transparent", "delete", } do
             method  = "GET",
             path    = "/request",
             headers = {
-              host = "service-1.com",
+              host = "service-1.test",
               ["X-Real-IP"] = "10.0.0.1",
               ["X-Forwarded-For"] = "10.0.0.1",
               ["X-Forwarded-Host"] = "example.com",
@@ -322,7 +322,7 @@ for _, x_headers_mode in ipairs{ "append", "transparent", "delete", } do
             assert.equal(nil, json.headers["x-forwarded-for"])
             assert.equal(nil, json.headers["x-real-ip"])
           else
-            assert.equal("service-1.com", json.headers["x-forwarded-host"])
+            assert.equal("service-1.test", json.headers["x-forwarded-host"])
             assert.equal("9000", json.headers["x-forwarded-port"])
             assert.equal("http", json.headers["x-forwarded-proto"])
             assert.equal("127.0.0.1", json.headers["x-forwarded-for"])
@@ -368,7 +368,7 @@ for _, x_headers_mode in ipairs{ "append", "transparent", "delete", } do
             method  = "GET",
             path    = "/request",
             headers = {
-              host = "service-1.com",
+              host = "service-1.test",
             },
           })
 
@@ -387,7 +387,7 @@ for _, x_headers_mode in ipairs{ "append", "transparent", "delete", } do
             assert.equal(nil, json.headers["x-forwarded-for"])
             assert.equal(nil, json.headers["x-real-ip"])
           else
-            assert.equal("service-1.com", json.headers["x-forwarded-host"])
+            assert.equal("service-1.test", json.headers["x-forwarded-host"])
             assert.equal("9000", json.headers["x-forwarded-port"])
             assert.equal("http", json.headers["x-forwarded-proto"])
             assert.equal("127.0.0.1", json.headers["x-forwarded-for"])
@@ -400,7 +400,7 @@ for _, x_headers_mode in ipairs{ "append", "transparent", "delete", } do
             method  = "GET",
             path    = "/request",
             headers = {
-              host = "service-1.com",
+              host = "service-1.test",
               ["X-Real-IP"] = "10.0.0.1",
               ["X-Forwarded-For"] = "10.0.0.1",
               ["X-Forwarded-Host"] = "example.com",
@@ -443,7 +443,7 @@ for _, x_headers_mode in ipairs{ "append", "transparent", "delete", } do
             method  = "GET",
             path    = "/get",
             headers = {
-              host = "service-1.com",
+              host = "service-1.test",
             },
           })
 
@@ -458,7 +458,7 @@ for _, x_headers_mode in ipairs{ "append", "transparent", "delete", } do
         method  = "GET",
         path    = "/get",
         headers = {
-          host = "service-1.com",
+          host = "service-1.test",
         },
       })
 

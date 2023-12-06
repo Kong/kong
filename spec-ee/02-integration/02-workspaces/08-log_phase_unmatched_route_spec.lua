@@ -19,7 +19,7 @@ for _, strategy in helpers.each_strategy() do
       local bp = helpers.get_db_utils(strategy)
 
       bp.routes:insert {
-        hosts = { "tcp_logging.com" },
+        hosts = { "tcp_logging.test" },
       }
 
       bp.plugins:insert {
@@ -53,7 +53,7 @@ for _, strategy in helpers.each_strategy() do
         local response = assert(proxy_client:send {
           method  = "GET",
           headers = {
-            host  = "logging1.com"
+            host  = "logging1.test"
           }
         })
         assert.res_status(404, response)
@@ -71,7 +71,7 @@ for _, strategy in helpers.each_strategy() do
         local response = assert(proxy_client:send {
           method  = "GET",
           headers = {
-            host  = "tcp_logging.com"
+            host  = "tcp_logging.test"
           }
         })
         assert.res_status(200, response)

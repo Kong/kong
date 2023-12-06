@@ -205,7 +205,7 @@ for _, strategy in strategies() do
       })
 
       route1 = assert(bp.routes:insert {
-        snis   = { "default.com" },
+        snis   = { "default.test" },
         service = { id = service1.id, },
       })
 
@@ -225,7 +225,7 @@ for _, strategy in strategies() do
       ws1_service1 = assert(bp.services:insert_ws(nil, ws1))
 
       ws1_route1 = assert(bp.routes:insert_ws ({
-        snis   = { "ws1.com" },
+        snis   = { "ws1.test" },
         service = { id = ws1_service1.id, },
       }, ws1))
 
@@ -264,7 +264,7 @@ for _, strategy in strategies() do
         helpers.clean_logfile()
         local res = assert(mtls_client:send {
           method  = "GET",
-          path    = "/?sni=unknown.com",
+          path    = "/?sni=unknown.test",
           headers = {
             ["Host"] = "mtls_test_client"
           }
@@ -277,7 +277,7 @@ for _, strategy in strategies() do
         helpers.clean_logfile()
         local res = assert(mtls_client:send {
           method  = "GET",
-          path    = "/?sni=default.com",
+          path    = "/?sni=default.test",
           headers = {
             ["Host"] = "mtls_test_client"
           }
@@ -290,7 +290,7 @@ for _, strategy in strategies() do
         helpers.clean_logfile()
         local res = assert(mtls_client:send {
           method  = "GET",
-          path    = "/?sni=ws1.com",
+          path    = "/?sni=ws1.test",
           headers = {
             ["Host"] = "mtls_test_client"
           }
@@ -309,7 +309,7 @@ for _, strategy in strategies() do
             method  = "PATCH",
             path    = "/routes/" .. route1.id,
             body    = {
-              snis   = {"default-new.com"},
+              snis   = {"default-new.test"},
             },
             headers = {
               ["Content-Type"] = "application/json"
@@ -324,7 +324,7 @@ for _, strategy in strategies() do
             method  = "PATCH",
             path    = "/routes/" .. route1.id,
             body    = {
-              snis   = {"default.com"},
+              snis   = {"default.test"},
             },
             headers = {
               ["Content-Type"] = "application/json"
@@ -333,11 +333,11 @@ for _, strategy in strategies() do
           assert.res_status(200, res)
         end)
 
-        it("default.com will be considered as unknown sni, thus will not send cert request", function()
+        it("default.test will be considered as unknown sni, thus will not send cert request", function()
           helpers.clean_logfile()
           local res = assert(mtls_client:send {
             method  = "GET",
-            path    = "/?sni=default.com",
+            path    = "/?sni=default.test",
             headers = {
               ["Host"] = "mtls_test_client"
             }
@@ -346,11 +346,11 @@ for _, strategy in strategies() do
           assert.logfile().has.no.line("[mtls-auth] enabled, will request certificate from client", true)
         end)
 
-        it("new sni default-new.com takes effect, thus will send cert request", function()
+        it("new sni default-new.test takes effect, thus will send cert request", function()
           helpers.clean_logfile()
           local res = assert(mtls_client:send {
             method  = "GET",
-            path    = "/?sni=ws1.com",
+            path    = "/?sni=ws1.test",
             headers = {
               ["Host"] = "mtls_test_client"
             }
@@ -368,7 +368,7 @@ for _, strategy in strategies() do
             method  = "PATCH",
             path    = "/ws1/routes/" .. ws1_route1.id,
             body    = {
-              snis   = {"ws1-new.com"},
+              snis   = {"ws1-new.test"},
             },
             headers = {
               ["Content-Type"] = "application/json"
@@ -383,7 +383,7 @@ for _, strategy in strategies() do
             method  = "PATCH",
             path    = "/ws1/routes/" .. ws1_route1.id,
             body    = {
-              snis   = {"ws1.com"},
+              snis   = {"ws1.test"},
             },
             headers = {
               ["Content-Type"] = "application/json"
@@ -392,11 +392,11 @@ for _, strategy in strategies() do
           assert.res_status(200, res)
         end)
 
-        it("ws1.com will be considered as unknown sni, thus will not send cert request #only", function()
+        it("ws1.test will be considered as unknown sni, thus will not send cert request #only", function()
           helpers.clean_logfile()
           local res = assert(mtls_client:send {
             method  = "GET",
-            path    = "/?sni=ws1.com",
+            path    = "/?sni=ws1.test",
             headers = {
               ["Host"] = "mtls_test_client"
             }
@@ -405,11 +405,11 @@ for _, strategy in strategies() do
           assert.logfile().has.no.line("[mtls-auth] enabled, will request certificate from client", true)
         end)
 
-        it("new sni ws1-new.com takes effect, thus will send cert request", function()
+        it("new sni ws1-new.test takes effect, thus will send cert request", function()
           helpers.clean_logfile()
           local res = assert(mtls_client:send {
             method  = "GET",
-            path    = "/?sni=ws1-new.com",
+            path    = "/?sni=ws1-new.test",
             headers = {
               ["Host"] = "mtls_test_client"
             }

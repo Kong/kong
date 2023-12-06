@@ -783,15 +783,15 @@ for _, strategy in strategies() do
       }
 
       assert(bp.routes:insert {
-        hosts   = { "foo.com" },
+        hosts   = { "foo.test" },
         service = { id = service.id, },
-        snis = { "foo.com" },
+        snis = { "foo.test" },
       })
 
       assert(bp.routes:insert {
-        hosts   = { "bar.com" },
+        hosts   = { "bar.test" },
         service = { id = service.id, },
-        snis = { "bar.com" },
+        snis = { "bar.test" },
       })
 
       ca_cert = assert(db.ca_certificates:insert({
@@ -811,9 +811,9 @@ for _, strategy in strategies() do
       }
 
       assert(bp.routes:insert {
-        hosts   = { "alice.com" },
+        hosts   = { "alice.test" },
         service = { id = service2.id, },
-        snis = { "alice.com" },
+        snis = { "alice.test" },
       })
 
       assert(helpers.start_kong({
@@ -823,9 +823,9 @@ for _, strategy in strategies() do
       }, nil, nil, mtls_fixtures))
 
       proxy_client = helpers.proxy_client()
-      proxy_ssl_client_foo = helpers.proxy_ssl_client(nil, "foo.com")
-      proxy_ssl_client_bar = helpers.proxy_ssl_client(nil, "bar.com")
-      proxy_ssl_client_alice = helpers.proxy_ssl_client(nil, "alice.com")
+      proxy_ssl_client_foo = helpers.proxy_ssl_client(nil, "foo.test")
+      proxy_ssl_client_bar = helpers.proxy_ssl_client(nil, "bar.test")
+      proxy_ssl_client_alice = helpers.proxy_ssl_client(nil, "alice.test")
       mtls_client = helpers.http_client("127.0.0.1", 10121)
       admin_client = helpers.admin_client()
     end)
@@ -864,7 +864,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/get",
           headers = {
-            ["Host"] = "foo.com"
+            ["Host"] = "foo.test"
           }
         })
         local body = assert.res_status(401, res)
@@ -877,7 +877,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/get",
           headers = {
-            ["Host"] = "bar.com"
+            ["Host"] = "bar.test"
           }
         })
         local body = assert.res_status(401, res)
@@ -890,7 +890,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/get",
           headers = {
-            ["Host"] = "alice.com"
+            ["Host"] = "alice.test"
           }
         })
         assert.res_status(200, res)
@@ -903,8 +903,8 @@ for _, strategy in strategies() do
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.is.truthy(json["foo.com"])
-        assert.is.truthy(json["bar.com"])
+        assert.is.truthy(json["foo.test"])
+        assert.is.truthy(json["bar.test"])
         assert.is_nil(json["*"])
 
       end)
@@ -915,7 +915,7 @@ for _, strategy in strategies() do
           method  = "POST",
           path    = "/routes",
           body = {
-            hosts   = { "all.com" },
+            hosts   = { "all.test" },
             service = { id = service.id, },
           },
           headers = {
@@ -937,7 +937,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/get",
           headers = {
-            ["Host"] = "all.com"
+            ["Host"] = "all.test"
           }
         })
         local body = assert.res_status(401, res)
@@ -1037,7 +1037,7 @@ for _, strategy in strategies() do
       }, nil, nil, mtls_fixtures))
 
       proxy_client = helpers.proxy_client()
-      proxy_ssl_client_foo = helpers.proxy_ssl_client(nil, "foo.com")
+      proxy_ssl_client_foo = helpers.proxy_ssl_client(nil, "foo.test")
       proxy_ssl_client_example = helpers.proxy_ssl_client(nil, "example.com")
       mtls_client = helpers.http_client("127.0.0.1", 10121)
       admin_client = helpers.admin_client()
@@ -1070,7 +1070,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/default",
           headers = {
-            ["Host"] = "foo.com"
+            ["Host"] = "foo.test"
           }
         })
         assert.res_status(200, res)
@@ -1081,7 +1081,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/anotherroute",
           headers = {
-            ["Host"] = "foo.com"
+            ["Host"] = "foo.test"
           }
         })
         local body = assert.res_status(401, res)

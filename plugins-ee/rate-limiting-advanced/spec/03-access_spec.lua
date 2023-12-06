@@ -251,7 +251,7 @@ for _, strategy in strategies() do
 
         local route1 = assert(bp.routes:insert {
           name = "route-1",
-          hosts = { "test1.com" },
+          hosts = { "test1.test" },
         })
         assert(bp.plugins:insert(
           build_plugin(route1.id, MOCK_RATE, 6, 10, nil, nil, redis_configuration)
@@ -259,7 +259,7 @@ for _, strategy in strategies() do
 
         local route2 = assert(bp.routes:insert {
           name = "route-2",
-          hosts = { "test2.com" },
+          hosts = { "test2.test" },
         })
         assert(bp.plugins:insert(
           build_plugin(route2.id, { 5, 10 }, { 3, 5 }, 10, nil, nil, redis_configuration)
@@ -267,7 +267,7 @@ for _, strategy in strategies() do
 
         local route3 = assert(bp.routes:insert {
           name = "route-3",
-          hosts = { "test3.com" },
+          hosts = { "test3.test" },
         })
         assert(bp.plugins:insert {
           name = "key-auth",
@@ -282,7 +282,7 @@ for _, strategy in strategies() do
 
         local route4 = assert(bp.routes:insert {
           name = "route-4",
-          hosts = { "test4.com" },
+          hosts = { "test4.test" },
         })
         assert(bp.plugins:insert(
           build_plugin(
@@ -293,7 +293,7 @@ for _, strategy in strategies() do
 
         local route5 = assert(bp.routes:insert {
           name = "route-5",
-          hosts = { "test5.com" },
+          hosts = { "test5.test" },
         })
         assert(bp.plugins:insert(
           build_plugin(
@@ -304,7 +304,7 @@ for _, strategy in strategies() do
 
         local route6 = assert(bp.routes:insert {
           name = "route-6",
-          hosts = { "test6.com" },
+          hosts = { "test6.test" },
         })
         plugin6 = assert(bp.plugins:insert(
           build_plugin(
@@ -316,7 +316,7 @@ for _, strategy in strategies() do
 
         local route7 = assert(bp.routes:insert {
           name = "route-7",
-          hosts = { "test7.com" },
+          hosts = { "test7.test" },
         })
         assert(bp.plugins:insert {
           name = "key-auth",
@@ -331,7 +331,7 @@ for _, strategy in strategies() do
 
         local route8 = assert(bp.routes:insert {
           name = "route-8",
-          hosts = { "test8.com" },
+          hosts = { "test8.test" },
         })
         assert(bp.plugins:insert {
           name = "key-auth",
@@ -346,7 +346,7 @@ for _, strategy in strategies() do
 
         local route9 = assert(bp.routes:insert {
           name = "route-9",
-          hosts = { "test9.com" },
+          hosts = { "test9.test" },
         })
         assert(bp.plugins:insert(
           build_plugin(
@@ -357,7 +357,7 @@ for _, strategy in strategies() do
 
         local route10 = assert(bp.routes:insert {
           name = "route-10",
-          hosts = { "test10.com" },
+          hosts = { "test10.test" },
         })
 
         plugin10 = assert(bp.plugins:insert(
@@ -370,7 +370,7 @@ for _, strategy in strategies() do
 
         local route11 = assert(bp.routes:insert {
           name = "route-11",
-          hosts = { "test11.com" },
+          hosts = { "test11.test" },
         })
 
         assert(bp.plugins:insert(
@@ -383,7 +383,7 @@ for _, strategy in strategies() do
 
         local route12 = assert(bp.routes:insert {
           name = "route-12",
-          hosts = { "test12.com" },
+          hosts = { "test12.test" },
         })
         assert(bp.plugins:insert {
           name = "key-auth",
@@ -399,13 +399,13 @@ for _, strategy in strategies() do
 
         local route13 = assert(bp.routes:insert {
           name = "test-13",
-          hosts = { "test13.com" },
+          hosts = { "test13.test" },
         })
         assert(bp.plugins:insert(build_plugin(route13.id, MOCK_RATE, 2, 0, 5, false, redis_configuration)))
 
         local route14 = assert(bp.routes:insert {
           name = "test-14",
-          hosts = { "test14.com" },
+          hosts = { "test14.test" },
         })
         assert(bp.plugins:insert(build_plugin(route14.id, MOCK_RATE, 2, 0, 5, true, redis_configuration)))
 
@@ -415,12 +415,12 @@ for _, strategy in strategies() do
         }
         assert(bp.routes:insert {
           name = "shared-service-route-1",
-          hosts = { "shared-service-test-1.com" },
+          hosts = { "shared-service-test-1.test" },
           service = { id = shared_service.id },
         })
         assert(bp.routes:insert {
           name = "shared-service-route-2",
-          hosts = { "shared-service-test-2.com" },
+          hosts = { "shared-service-test-2.test" },
           service = { id = shared_service.id },
         })
         assert(bp.plugins:insert({
@@ -439,7 +439,7 @@ for _, strategy in strategies() do
 
         local route15 = assert(bp.routes:insert {
           name = "test-15",
-          hosts = { "test15.com" },
+          hosts = { "test15.test" },
         })
         plugin15 = assert(bp.plugins:insert(
           build_plugin_fn("redis")(
@@ -451,7 +451,7 @@ for _, strategy in strategies() do
 
         local route17 = assert(bp.routes:insert {
           name = "test-17",
-          hosts = { "test17.com" },
+          hosts = { "test17.test" },
         })
         plugin3 = assert(bp.plugins:insert(
           build_plugin_fn("cluster")(
@@ -463,7 +463,7 @@ for _, strategy in strategies() do
 
         local route177 = assert(bp.routes:insert {
           name = "test-177",
-          hosts = { "test177.com" },
+          hosts = { "test177.test" },
         })
         plugin5 = assert(bp.plugins:insert(
           build_plugin_fn("cluster")(
@@ -475,7 +475,7 @@ for _, strategy in strategies() do
 
         local route19 = assert(bp.routes:insert {
           name = "test-19",
-          hosts = { "test19.com" },
+          hosts = { "test19.test" },
         })
         assert(bp.plugins:insert(
           build_plugin(
@@ -487,7 +487,7 @@ for _, strategy in strategies() do
 
         local route20 = assert(bp.routes:insert {
           name = "test-20",
-          hosts = { "test20.com" },
+          hosts = { "test20.test" },
         })
         assert(bp.plugins:insert(
           build_plugin(
@@ -498,7 +498,7 @@ for _, strategy in strategies() do
 
         local route21 = assert(bp.routes:insert {
           name = "route-21",
-          hosts = { "test21.com" },
+          hosts = { "test21.test" },
         })
 
         assert(bp.plugins:insert {
@@ -516,7 +516,7 @@ for _, strategy in strategies() do
 
         local route22 = assert(bp.routes:insert {
           name = "route-22",
-          hosts = { "test22.com" },
+          hosts = { "test22.test" },
         })
 
         assert(bp.plugins:insert {
@@ -534,7 +534,7 @@ for _, strategy in strategies() do
 
         local route23 = assert(bp.routes:insert {
           name = "route-23",
-          hosts = { "test23.com" },
+          hosts = { "test23.test" },
         })
         assert(bp.plugins:insert {
           name = "key-auth",
@@ -581,12 +581,12 @@ for _, strategy in strategies() do
 
         local route_for_consumer_group = assert(bp.routes:insert {
           name = "test_consumer_groups",
-          hosts = { "testconsumergroup.com"},
+          hosts = { "testconsumergroup.test"},
         })
 
         local route_for_consumer_group_no_config = assert(bp.routes:insert {
           name = "test_consumer_groups_no_config",
-          hosts = { "testconsumergroupnoconfig.com"},
+          hosts = { "testconsumergroupnoconfig.test"},
         })
 
         assert(bp.plugins:insert {
@@ -628,7 +628,7 @@ for _, strategy in strategies() do
 
 
         local route_for_custom_response = bp.routes:insert {
-          hosts = { "route_for_custom_response.com" },
+          hosts = { "route_for_custom_response.test" },
         }
 
         assert(bp.plugins:insert(
@@ -688,7 +688,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get",
               headers = {
-                ["Host"] = "test1.com"
+                ["Host"] = "test1.test"
               }
             })
             assert.res_status(200, res)
@@ -708,7 +708,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/get",
             headers = {
-              ["Host"] = "test1.com"
+              ["Host"] = "test1.test"
             }
           })
           local body = assert.res_status(429, res)
@@ -729,7 +729,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/get",
             headers = {
-              ["Host"] = "test1.com"
+              ["Host"] = "test1.test"
             }
           })
           assert.res_status(200, res)
@@ -756,7 +756,7 @@ for _, strategy in strategies() do
                 method = "GET",
                 path = "/get",
                 headers = {
-                  ["Host"] = "test15.com",
+                  ["Host"] = "test15.test",
                 }
               })
               assert.res_status(200, res)
@@ -776,7 +776,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get",
               headers = {
-                ["Host"] = "test15.com",
+                ["Host"] = "test15.test",
               }
             })
             local body = assert.res_status(429, res)
@@ -795,7 +795,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get",
               headers = {
-                ["Host"] = "test15.com",
+                ["Host"] = "test15.test",
               }
             })
             assert.res_status(200, res)
@@ -810,7 +810,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get",
               headers = {
-                ["Host"] = "test15.com",
+                ["Host"] = "test15.test",
               }
             })
             local body = assert.res_status(429, res)
@@ -850,7 +850,7 @@ for _, strategy in strategies() do
                 method = "GET",
                 path = "/get",
                 headers = {
-                  ["Host"] = "test15.com",
+                  ["Host"] = "test15.test",
                 }
               })
               assert.res_status(200, res)
@@ -870,7 +870,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get",
               headers = {
-                ["Host"] = "test15.com",
+                ["Host"] = "test15.test",
               }
             })
             local body = assert.res_status(429, res)
@@ -889,7 +889,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get",
               headers = {
-                ["Host"] = "test15.com",
+                ["Host"] = "test15.test",
               }
             })
             assert.res_status(200, res)
@@ -904,7 +904,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get",
               headers = {
-                ["Host"] = "test15.com",
+                ["Host"] = "test15.test",
               }
             })
             local body = assert.res_status(429, res)
@@ -930,7 +930,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get",
               headers = {
-                ["Host"] = "test17.com",
+                ["Host"] = "test17.test",
               }
             })
             assert.res_status(200, res)
@@ -941,7 +941,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get",
               headers = {
-                ["Host"] = "test17.com",
+                ["Host"] = "test17.test",
               }
             })
             assert.res_status(200, res)
@@ -987,7 +987,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get",
               headers = {
-                ["Host"] = "test177.com",
+                ["Host"] = "test177.test",
               }
             })
             assert.res_status(200, res)
@@ -996,7 +996,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get",
               headers = {
-                ["Host"] = "test177.com",
+                ["Host"] = "test177.test",
               }
             })
             assert.res_status(200, res)
@@ -1057,7 +1057,7 @@ for _, strategy in strategies() do
               path = "/services/" .. json.id .. "/routes/",
               body = {
                 name = "testt20",
-                hosts = { "testt20.com" },
+                hosts = { "testt20.test" },
               },
               headers = {
                 ["Content-Type"] = "application/json"
@@ -1102,7 +1102,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get",
               headers = {
-                ["Host"] = "testt20.com",
+                ["Host"] = "testt20.test",
               }
             })
             assert.res_status(200, res)
@@ -1111,7 +1111,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get",
               headers = {
-                ["Host"] = "testt20.com",
+                ["Host"] = "testt20.test",
               }
             })
             assert.res_status(200, res)
@@ -1125,7 +1125,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get",
               headers = {
-                ["Host"] = "test20.com",
+                ["Host"] = "test20.test",
               }
             })
             assert.res_status(200, res)
@@ -1145,7 +1145,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/get",
             headers = {
-              ["Host"] = "test20.com",
+              ["Host"] = "test20.test",
             }
           })
           local body = assert.res_status(429, res)
@@ -1167,7 +1167,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/get",
             headers = {
-              ["Host"] = "test1.com"
+              ["Host"] = "test1.test"
             }
           })
           assert.res_status(200, res)
@@ -1186,7 +1186,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get",
               headers = {
-                ["Host"] = "test4.com"
+                ["Host"] = "test4.test"
               }
             })
             assert.res_status(200, res)
@@ -1206,7 +1206,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/get",
             headers = {
-              ["Host"] = "test5.com"
+              ["Host"] = "test5.test"
             }
           })
           local body = assert.res_status(429, res)
@@ -1235,7 +1235,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get",
               headers = {
-                ["Host"] = "test2.com"
+                ["Host"] = "test2.test"
               }
             })
             assert.res_status(200, res)
@@ -1257,7 +1257,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get",
               headers = {
-                ["Host"] = "test2.com"
+                ["Host"] = "test2.test"
               }
             })
             local body = assert.res_status(429, res)
@@ -1282,7 +1282,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get",
               headers = {
-                ["Host"] = "test6.com"
+                ["Host"] = "test6.test"
               }
             })
             assert.res_status(200, res)
@@ -1300,7 +1300,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/get",
             headers = {
-              ["Host"] = "test6.com"
+              ["Host"] = "test6.test"
             }
           })
           local elapsed_time = (time() - window_start)
@@ -1327,7 +1327,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/get",
             headers = {
-              ["Host"] = "test6.com"
+              ["Host"] = "test6.test"
             }
           })
           assert.res_status(200, res)
@@ -1346,7 +1346,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get",
               headers = {
-                ["Host"] = "test9.com"
+                ["Host"] = "test9.test"
               }
             })
 
@@ -1364,9 +1364,9 @@ for _, strategy in strategies() do
 
         describe("With retry_after_jitter_max > 0", function()
           it("on hitting a limit adds a jitter to the Retry-After header", function()
-            local request = build_request("test13.com", "/get")
+            local request = build_request("test13.test", "/get")
 
-            -- issue 2 requests to use all the quota 2/window for test13.com
+            -- issue 2 requests to use all the quota 2/window for test13.test
             for _ = 1, 2 do
               local res = assert(helpers.proxy_client():send(request))
               assert.res_status(200, res)
@@ -1385,9 +1385,9 @@ for _, strategy in strategies() do
           end)
 
           it("on hitting a limit does not set Retry-After header (hide_client_headers = true)", function()
-            local request = build_request("test14.com", "/get")
+            local request = build_request("test14.test", "/get")
 
-            -- issue 2 requests to use all the quota 2/window for test14.com
+            -- issue 2 requests to use all the quota 2/window for test14.test
             for _ = 1, 2 do
               local res = assert(helpers.proxy_client():send(request))
               assert.res_status(200, res)
@@ -1411,7 +1411,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get",
               headers = {
-                ["Host"] = "test21.com"
+                ["Host"] = "test21.test"
               }
             })
             proxy_client:close()
@@ -1425,7 +1425,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get",
               headers = {
-                ["Host"] = "test21.com"
+                ["Host"] = "test21.test"
               }
             })
             proxy_client:close()
@@ -1471,7 +1471,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get",
               headers = {
-                ["Host"] = "test22.com"
+                ["Host"] = "test22.test"
               }
             })
             proxy_client:close()
@@ -1484,7 +1484,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get",
               headers = {
-                ["Host"] = "test22.com"
+                ["Host"] = "test22.test"
               }
             })
             ngx_sleep(0.5)
@@ -1517,7 +1517,7 @@ for _, strategy in strategies() do
                 method = "GET",
                 path = "/get?apikey=apikey123",
                 headers = {
-                  ["Host"] = "test3.com"
+                  ["Host"] = "test3.test"
                 }
               })
               assert.res_status(200, res)
@@ -1535,7 +1535,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get?apikey=apikey123",
               headers = {
-                ["Host"] = "test3.com"
+                ["Host"] = "test3.test"
               }
             })
             local body = assert.res_status(429, res)
@@ -1551,7 +1551,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get?apikey=apikey333",
               headers = {
-                ["Host"] = "test3.com"
+                ["Host"] = "test3.test"
               }
             })
             assert.res_status(200, res)
@@ -1572,7 +1572,7 @@ for _, strategy in strategies() do
                 method = "GET",
                 path = "/get?apikey=apikey123",
                 headers = {
-                  ["Host"] = "test23.com"
+                  ["Host"] = "test23.test"
                 }
               })
 
@@ -1604,7 +1604,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get?apikey=apikeycg",
               headers = {
-                ["Host"] = "testconsumergroup.com"
+                ["Host"] = "testconsumergroup.test"
               }
             })
             assert.res_status(200, res)
@@ -1622,7 +1622,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get?apikey=apikey123",
               headers = {
-                ["Host"] = "testconsumergroup.com"
+                ["Host"] = "testconsumergroup.test"
               }
             })
             assert.res_status(200, res)
@@ -1640,7 +1640,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get?apikey=apikeycg",
               headers = {
-                ["Host"] = "test3.com"
+                ["Host"] = "test3.test"
               }
             })
             assert.res_status(200, res)
@@ -1659,7 +1659,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get?apikey=apikeycgnoconfig",
               headers = {
-                ["Host"] = "testconsumergroupnoconfig.com"
+                ["Host"] = "testconsumergroupnoconfig.test"
               }
             })
 
@@ -1681,7 +1681,7 @@ for _, strategy in strategies() do
                 method = "GET",
                 path = "/get?apikey=apikey123",
                 headers = {
-                  ["Host"] = "test7.com"
+                  ["Host"] = "test7.test"
                 }
               })
               local body = assert.res_status(200, res)
@@ -1702,7 +1702,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get?apikey=apikey123",
               headers = {
-                ["Host"] = "test7.com"
+                ["Host"] = "test7.test"
               }
             })
             local body = assert.res_status(429, res)
@@ -1719,7 +1719,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get?apikey=apikey122",
               headers = {
-                ["Host"] = "test7.com"
+                ["Host"] = "test7.test"
               }
             })
             local body = assert.res_status(200, res)
@@ -1740,7 +1740,7 @@ for _, strategy in strategies() do
                 method = "GET",
                 path = "/get?apikey=apikey123",
                 headers = {
-                  ["Host"] = "test8.com"
+                  ["Host"] = "test8.test"
                 }
               })
               local body = assert.res_status(200, res)
@@ -1760,7 +1760,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get?apikey=apikey123",
               headers = {
-                ["Host"] = "test8.com"
+                ["Host"] = "test8.test"
               }
             })
             local body = assert.res_status(429, res)
@@ -1776,7 +1776,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get?apikey=apikey122",
               headers = {
-                ["Host"] = "test8.com"
+                ["Host"] = "test8.test"
               }
             })
             assert.res_status(429, res)
@@ -1792,7 +1792,7 @@ for _, strategy in strategies() do
                 method = "GET",
                 path = "/get",
                 headers = {
-                  ["Host"] = "test10.com"
+                  ["Host"] = "test10.test"
                 }
               })
               assert.res_status(200, res)
@@ -1804,7 +1804,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get",
               headers = {
-                ["Host"] = "test10.com"
+                ["Host"] = "test10.test"
               }
             })
             local body = assert.res_status(429, res)
@@ -1821,7 +1821,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get",
               headers = {
-                ["Host"] = "test11.com"
+                ["Host"] = "test11.test"
               }
             })
             assert.res_status(200, res)
@@ -1835,7 +1835,7 @@ for _, strategy in strategies() do
                 method = "GET",
                 path = "/get",
                 headers = {
-                  ["Host"] = "shared-service-test-1.com"
+                  ["Host"] = "shared-service-test-1.test"
                 }
               })
               assert.res_status(200, res)
@@ -1852,7 +1852,7 @@ for _, strategy in strategies() do
                 method = "GET",
                 path = "/get",
                 headers = {
-                  ["Host"] = "shared-service-test-2.com"
+                  ["Host"] = "shared-service-test-2.test"
                 }
               })
               assert.res_status(200, res)
@@ -1872,7 +1872,7 @@ for _, strategy in strategies() do
                 method = "GET",
                 path = "/get",
                 headers = {
-                  ["Host"] = "shared-service-test-" .. i .. ".com"
+                  ["Host"] = "shared-service-test-" .. i .. ".test"
                 }
               })
               local body = assert.res_status(429, res)
@@ -1894,7 +1894,7 @@ for _, strategy in strategies() do
                 method = "GET",
                 path = "/get",
                 headers = {
-                  ["Host"] = "shared-service-test-" .. i .. ".com"
+                  ["Host"] = "shared-service-test-" .. i .. ".test"
                 }
               })
               assert.res_status(200, res)
@@ -1915,7 +1915,7 @@ for _, strategy in strategies() do
                 method = "GET",
                 path = "/get?apikey=apikey123",
                 headers = {
-                  ["Host"] = "test12.com",
+                  ["Host"] = "test12.test",
                   ["x-email-address"] = "test1@example.com",
                 }
               })
@@ -1936,7 +1936,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get?apikey=apikey123",
               headers = {
-                ["Host"] = "test12.com",
+                ["Host"] = "test12.test",
                 ["x-email-address"] = "test1@example.com",
               }
             })
@@ -1953,7 +1953,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get?apikey=apikey122",
               headers = {
-                ["Host"] = "test12.com",
+                ["Host"] = "test12.test",
                 ["x-email-address"] = "test1@example.com",
               }
             })
@@ -1969,7 +1969,7 @@ for _, strategy in strategies() do
                 method = "GET",
                 path = "/get?apikey=apikey123",
                 headers = {
-                  ["Host"] = "test12.com",
+                  ["Host"] = "test12.test",
                   ["x-email-address"] = "test2@example.com"
                 }
               })
@@ -1990,7 +1990,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get?apikey=apikey123",
               headers = {
-                ["Host"] = "test12.com",
+                ["Host"] = "test12.test",
                 ["x-email-address"] = "test2@example.com",
               }
             })
@@ -2006,7 +2006,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get?apikey=apikey122",
               headers = {
-                ["Host"] = "test12.com",
+                ["Host"] = "test12.test",
                 ["x-email-address"] = "test3@example.com",
               }
             })
@@ -2026,7 +2026,7 @@ for _, strategy in strategies() do
                 method = "GET",
                 path = "/status/200",
                 headers = {
-                  ["Host"] = "test19.com",
+                  ["Host"] = "test19.test",
                 }
               })
               assert.res_status(200, res)
@@ -2043,7 +2043,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/status/200",
               headers = {
-                ["Host"] = "test19.com",
+                ["Host"] = "test19.test",
               }
             })
             local body = assert.res_status(429, res)
@@ -2058,7 +2058,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/status/201",
               headers = {
-                ["Host"] = "test19.com",
+                ["Host"] = "test19.test",
               }
             })
             assert.res_status(201, res)
@@ -2079,7 +2079,7 @@ for _, strategy in strategies() do
           res = assert(proxy_client:send {
             method = "GET",
             headers = {
-              ["Host"] = "route_for_custom_response.com"
+              ["Host"] = "route_for_custom_response.test"
             }
           })
           if i ~= 7 then
@@ -2114,7 +2114,7 @@ for _, strategy in strategies() do
           })
           local route16 = assert(bp.routes:insert {
             name = "test-16",
-            hosts = { "test16.com" },
+            hosts = { "test16.test" },
             service = { id = service16.id },
           })
           plugin2 = assert(bp.plugins:insert(
@@ -2127,7 +2127,7 @@ for _, strategy in strategies() do
 
           local route18 = assert(bp.routes:insert {
             name = "test-18",
-            hosts = { "test18.com" },
+            hosts = { "test18.test" },
           })
           plugin4 = assert(bp.plugins:insert(
             build_plugin_fn("redis")(
@@ -2143,7 +2143,7 @@ for _, strategy in strategies() do
           })
           local route20 = assert(bp.routes:insert {
             name = "test-20",
-            hosts = { "test20.com" },
+            hosts = { "test20.test" },
             service = { id = service20.id }
           })
           plugin20 = assert(bp.plugins:insert(
@@ -2155,7 +2155,7 @@ for _, strategy in strategies() do
 
           local route21 = assert(bp.routes:insert {
             name = "test-21",
-            hosts = { "test21.com" },
+            hosts = { "test21.test" },
           })
           plugin21 = assert(bp.plugins:insert(
             build_plugin_fn("local")(
@@ -2255,7 +2255,7 @@ for _, strategy in strategies() do
             path = "/services/" .. json.id .. "/routes/",
             body = {
               name = "testt19",
-              hosts = { "testt19.com" },
+              hosts = { "testt19.test" },
             },
             headers = {
               ["Content-Type"] = "application/json"
@@ -2298,7 +2298,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/get",
             headers = {
-              ["Host"] = "testt19.com",
+              ["Host"] = "testt19.test",
             }
           })
           assert.res_status(200, res)
@@ -2310,7 +2310,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/get",
             headers = {
-              ["Host"] = "testt19.com",
+              ["Host"] = "testt19.test",
             }
           })
           assert.res_status(200, res)
@@ -2369,7 +2369,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/",
               headers = {
-                ["Host"] = "test20.com",
+                ["Host"] = "test20.test",
               }
             })
             io.read()
@@ -2391,7 +2391,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/",
             headers = {
-              ["Host"] = "test20.com",
+              ["Host"] = "test20.test",
             }
           })
           local body = assert.res_status(429, res)
@@ -2410,7 +2410,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/",
             headers = {
-              ["Host"] = "test20.com",
+              ["Host"] = "test20.test",
             }
           })
           assert.res_status(200, res)
@@ -2436,7 +2436,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/",
               headers = {
-                ["Host"] = "test16.com",
+                ["Host"] = "test16.test",
               }
             })
             assert.res_status(200, res)
@@ -2457,7 +2457,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/",
             headers = {
-              ["Host"] = "test16.com",
+              ["Host"] = "test16.test",
             }
           })
           local body = assert.res_status(429, res)
@@ -2479,7 +2479,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/",
             headers = {
-              ["Host"] = "test16.com",
+              ["Host"] = "test16.test",
             }
           })
           local body = assert.res_status(429, res)
@@ -2520,7 +2520,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/",
               headers = {
-                ["Host"] = "test16.com",
+                ["Host"] = "test16.test",
               }
             })
             assert.res_status(200, res)
@@ -2541,7 +2541,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/",
             headers = {
-              ["Host"] = "test16.com",
+              ["Host"] = "test16.test",
             }
           })
           local body = assert.res_status(429, res)
@@ -2563,7 +2563,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/",
             headers = {
-              ["Host"] = "test16.com",
+              ["Host"] = "test16.test",
             }
           })
           local body = assert.res_status(429, res)

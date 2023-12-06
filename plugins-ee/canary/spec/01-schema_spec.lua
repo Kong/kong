@@ -230,19 +230,19 @@ describe("canary schema", function()
           "canary"
         })
         route1 = bp.routes:insert({
-          hosts = { "canary1.com" },
+          hosts = { "canary1.test" },
           preserve_host = false,
         })
         route2 = bp.routes:insert({
-          hosts = { "canary2.com" },
+          hosts = { "canary2.test" },
           preserve_host = false,
         })
         route3 = bp.routes:insert({
-          hosts = { "canary3.com" },
+          hosts = { "canary3.test" },
           preserve_host = false,
         })
         route4 = bp.routes:insert({
-          hosts = { "canary4.com" },
+          hosts = { "canary4.test" },
           preserve_host = false,
         })
         assert(helpers.start_kong({

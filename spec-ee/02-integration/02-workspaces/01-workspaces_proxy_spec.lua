@@ -119,7 +119,7 @@ for _, strategy in helpers.each_strategy() do
       local res = admin_client:post("/services/s1/routes",
         {
           body   = {
-            hosts = {"route1.com"},
+            hosts = {"route1.test"},
           },
           headers = {
             ["Content-Type"] = "application/json",

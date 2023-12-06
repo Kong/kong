@@ -17,7 +17,7 @@ describe("Plugin: response-transformer-advanced (filter)", function()
     })
 
     local route1 = bp.routes:insert({
-      hosts = { "response.com" },
+      hosts = { "response.test" },
     })
 
     bp.plugins:insert {
@@ -31,7 +31,7 @@ describe("Plugin: response-transformer-advanced (filter)", function()
     }
 
     local route2 = bp.routes:insert({
-      hosts = { "response2.com" },
+      hosts = { "response2.test" },
     })
 
     bp.plugins:insert {
@@ -68,7 +68,7 @@ describe("Plugin: response-transformer-advanced (filter)", function()
         method  = "GET",
         path    = "/anything",
         headers = {
-          host  = "response2.com"
+          host  = "response2.test"
         }
       })
       local json = assert.response(res).has.jsonbody()
@@ -79,7 +79,7 @@ describe("Plugin: response-transformer-advanced (filter)", function()
         method  = "GET",
         path    = "/anything",
         headers = {
-          host  = "response.com"
+          host  = "response.test"
         }
       })
       local json = assert.response(res).has.jsonbody()

@@ -30,7 +30,7 @@ local function get_auth_header(auth_type, entity)
 
   if auth_type == 'key-auth' then
     return {
-      ["Host"] = "route1.com",
+      ["Host"] = "route1.test",
       ["apikey"] = "key-" .. pk
     }
   end

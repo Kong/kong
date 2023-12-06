@@ -15,7 +15,7 @@ local fixtures = {
   http_mock = {
     validation_plugin = [[
       server {
-          server_name xero.com;
+          server_name xero.test;
           listen 12345;
 
           location ~ "/request-good" {
@@ -68,13 +68,13 @@ for _, strategy in helpers.each_strategy() do
         }
 
         local route1 = db.routes:insert({
-          hosts = { "xero-good.com" },
+          hosts = { "xero-good.test" },
           paths = { "/" },
           service    = service1,
         })
 
         local route2 = db.routes:insert({
-          hosts = { "xero-bad.com" },
+          hosts = { "xero-bad.test" },
           paths = { "/" },
           service    = service2,
         })
@@ -131,7 +131,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/FinancialStatements/contacts/revenue",
           headers = {
-            host = "xero-good.com",
+            host = "xero-good.test",
             ["Content-Type"] = "application/json",
             ["xero-tenant-id"] = "12345",
           }
@@ -146,7 +146,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/FinancialStatements/contacts/revenue",
           headers = {
-            host = "xero-bad.com",
+            host = "xero-bad.test",
             ["Content-Type"] = "application/json",
             ["xero-tenant-id"] = "12345",
           }

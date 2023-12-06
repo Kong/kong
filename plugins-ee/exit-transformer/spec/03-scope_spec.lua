@@ -57,11 +57,11 @@ for _, strategy in strategies() do
       }
 
       bp.routes:insert({
-        hosts = { "test1.com" },
+        hosts = { "test1.test" },
       })
 
       local route2 = bp.routes:insert({
-        hosts = { "test2.com" },
+        hosts = { "test2.test" },
       })
 
       -- Add another instance of the plugin, just to the route
@@ -72,7 +72,7 @@ for _, strategy in strategies() do
       }
 
       local route3 = bp.routes:insert({
-        hosts = { "test3.com" },
+        hosts = { "test3.test" },
       })
 
       bp.plugins:insert {
@@ -131,7 +131,7 @@ for _, strategy in strategies() do
             method = "get",
             path = "/request",  -- makes mockbin return the entire request
             headers = {
-              host = "non-set-route.com"
+              host = "non-set-route.test"
             }
           })
 
@@ -159,7 +159,7 @@ for _, strategy in strategies() do
             method = "get",
             path = "/request",  -- makes mockbin return the entire request
             headers = {
-              host = "non-set-route.com"
+              host = "non-set-route.test"
             }
           })
 
@@ -177,7 +177,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/request",  -- makes mockbin return the entire request
           headers = {
-            host = "test1.com"
+            host = "test1.test"
           }
         })
         local body = res:read_body()
@@ -191,7 +191,7 @@ for _, strategy in strategies() do
           method = "get",
           path = "/request",  -- makes mockbin return the entire request
           headers = {
-            host = "test2.com"
+            host = "test2.test"
           }
         })
 
@@ -208,7 +208,7 @@ for _, strategy in strategies() do
           path = "/request",
           headers = {
             ["file-log-uuid"] = uuid,
-            host = "test3.com",
+            host = "test3.test",
           }
         })
 

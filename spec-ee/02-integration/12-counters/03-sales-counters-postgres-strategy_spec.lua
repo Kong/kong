@@ -261,17 +261,17 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       }
 
       local route1 = db.routes:insert {
-        hosts   = { "lambda1.com" },
+        hosts   = { "lambda1.test" },
         service = service1,
       }
 
       local route2 = db.routes:insert {
-        hosts       = { "lambda2.com" },
+        hosts       = { "lambda2.test" },
         service     = null,
       }
 
       local route3 = db.routes:insert {
-        hosts       = { "lambda3.com" },
+        hosts       = { "lambda3.test" },
         service     = null,
       }
 

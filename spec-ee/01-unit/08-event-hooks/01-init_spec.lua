@@ -768,7 +768,7 @@ describe("event-hooks", function()
 
       it("makes a POST request with whole event as JSON data payload", function()
         entity.config = {
-          url = "http://foobar.com",
+          url = "http://foobar.test",
         }
         local cb = handler(entity, entity.config).callback
         cb({ some = "data"}, "some_event", "some_source", 1234)
@@ -790,7 +790,7 @@ describe("event-hooks", function()
         -- request responsibility to use this function to add a header
         it("sends a signing function to request", function()
           entity.config = {
-            url = "http://foobar.com",
+            url = "http://foobar.test",
             secret = "hunter2",
           }
           local cb = handler(entity, entity.config).callback
@@ -805,7 +805,7 @@ describe("event-hooks", function()
 
       it("ssl verification can be disabled with ssl_verify", function()
         entity.config = {
-          url = "https://not-really-secure.com",
+          url = "https://not-really-secure.test",
           ssl_verify = false,
         }
         local cb = handler(entity, entity.config).callback
@@ -829,7 +829,7 @@ describe("event-hooks", function()
       describe("ping", function()
         it("sends the event_hook entity to the url", function()
           entity.config = {
-            url = "http://foobar.com",
+            url = "http://foobar.test",
             headers = { ["some-header"] = "some value" },
           }
 
@@ -854,7 +854,7 @@ describe("event-hooks", function()
 
         it("has an operation argument", function()
           entity.config = {
-            url = "http://foobar.com",
+            url = "http://foobar.test",
             headers = { ["some-header"] = "some value" },
           }
 
@@ -882,7 +882,7 @@ describe("event-hooks", function()
       describe("headers", function()
         it("sends headers", function()
           entity.config = {
-            url = "http://foobar.com",
+            url = "http://foobar.test",
             headers = {
               ["X-Give-Me"] = "some tests",
             },
@@ -925,7 +925,7 @@ describe("event-hooks", function()
 
         it("to an url with a method", function()
           entity.config = {
-            url = "http://foobar.com",
+            url = "http://foobar.test",
             method = "GET",
           }
           local cb = handler(entity, entity.config).callback
@@ -935,7 +935,7 @@ describe("event-hooks", function()
           })
 
           entity.config = {
-            url = "http://foobar.com",
+            url = "http://foobar.test",
             method = "POST",
           }
           local cb = handler(entity, entity.config).callback
@@ -949,7 +949,7 @@ describe("event-hooks", function()
         describe("payload and payload_format", function()
           it("sends payload as a table", function()
             entity.config = {
-              url = "http://foobar.com",
+              url = "http://foobar.test",
               method = "POST",
               payload = {
                 some = "params",
@@ -968,7 +968,7 @@ describe("event-hooks", function()
 
           it("payload gets formatted", function()
             entity.config = {
-              url = "http://foobar.com",
+              url = "http://foobar.test",
               method = "POST",
               payload_format = true,
               payload = {
@@ -990,7 +990,7 @@ describe("event-hooks", function()
         describe("body and body_format", function()
           it("sends arbitrary body", function()
             entity.config = {
-              url = "http://foobar.com",
+              url = "http://foobar.test",
               method = "POST",
               body = [[
                { "some": "arbitrary body" }
@@ -1006,7 +1006,7 @@ describe("event-hooks", function()
 
           it("body gets formatted", function()
             entity.config = {
-              url = "http://foobar.com",
+              url = "http://foobar.test",
               method = "POST",
               body_format = true,
               body = [[
@@ -1028,7 +1028,7 @@ describe("event-hooks", function()
           -- request responsability to use this function to add a header
           it("sends a signing function to request", function()
             entity.config = {
-              url = "http://foobar.com",
+              url = "http://foobar.test",
               method = "POST",
               secret = "hunter2",
             }
@@ -1045,7 +1045,7 @@ describe("event-hooks", function()
         describe("headers and headers_format", function()
           it("sends headers", function()
             entity.config = {
-              url = "http://foobar.com",
+              url = "http://foobar.test",
               method = "GET",
               headers = {
                 ["X-Give-Me"] = "some tests",
@@ -1061,7 +1061,7 @@ describe("event-hooks", function()
 
           it("headers can be formatted with data", function()
             entity.config = {
-              url = "http://foobar.com",
+              url = "http://foobar.test",
               method = "GET",
               headers = {
                 ["X-Give-Me"] = "some tests {{ some }}",
@@ -1081,7 +1081,7 @@ describe("event-hooks", function()
 
         it("ssl verification can be disabled with ssl_verify", function()
           entity.config = {
-            url = "https://not-really-secure.com",
+            url = "https://not-really-secure.test",
             ssl_verify = false,
           }
           local cb = handler(entity, entity.config).callback

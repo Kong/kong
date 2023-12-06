@@ -176,7 +176,7 @@ local mtls_fixtures = { http_mock = {
 
         location / {
             content_by_lua_block {
-                local handle = io.popen("openssl s_client -connect 127.0.0.1:9443 -servername " .. ngx.var.uri:sub(2) .. ".com > /tmp/output.txt", "w")
+                local handle = io.popen("openssl s_client -connect 127.0.0.1:9443 -servername " .. ngx.var.uri:sub(2) .. ".test > /tmp/output.txt", "w")
                 if not handle then
                     ngx.log(ngx.ERR, "unable to popen openssl: ", err)
                     return ngx.exit(ngx.ERROR)
@@ -230,32 +230,32 @@ for _, strategy in strategies() do
 
       -- routes to service1
       route1 = bp.routes:insert {
-        snis   = { "test1.com" },
+        snis   = { "test1.test" },
         service = { id = service1.id, },
       }
 
       route2 = bp.routes:insert {
-        snis   = { "test2.com", "test2-alias.com" },
+        snis   = { "test2.test", "test2-alias.test" },
         service = { id = service1.id, },
       }
 
       route3 = bp.routes:insert {
-        snis   = { "test3.com" },
+        snis   = { "test3.test" },
         service = { id = service1.id, },
       }
 
       route4 = bp.routes:insert {
-        snis   = { "test3.com" },
+        snis   = { "test3.test" },
         service = { id = service1.id, },
       }
 
       route5 = bp.routes:insert {
-        snis   = { "test4.com" },
+        snis   = { "test4.test" },
         service = { id = service1.id, },
       }
 
       route6 = bp.routes:insert {
-        snis   = { "test5.com" },
+        snis   = { "test5.test" },
         service = { id = service1.id, },
       }
 
@@ -265,18 +265,18 @@ for _, strategy in strategies() do
       }
 
       route8 = bp.routes:insert {
-        snis   = { "test7.com" },
+        snis   = { "test7.test" },
         service = { id = service1.id, },
       }
 
       -- routes to service2
       bp.routes:insert {    -- route9
-        snis   = { "test4.com" },
+        snis   = { "test4.test" },
         service = { id = service2.id, },
       }
 
       bp.routes:insert {    -- route10
-        snis   = { "test6.com" },
+        snis   = { "test6.test" },
         service = { id = service2.id, },
       }
 
@@ -545,7 +545,7 @@ for _, strategy in strategies() do
             method  = "PATCH",
             path    = "/services/" .. service1.id .. "/routes/" .. route1.id,
             body    = {
-              snis   = {"test1.com"},
+              snis   = {"test1.test"},
 	            paths  = {},
             },
             headers = {
@@ -555,7 +555,7 @@ for _, strategy in strategies() do
           assert.res_status(200, res)
         end)
 
-        it("removing test1.com, test1.com will be considered as unknown sni #aaa", function()
+        it("removing test1.test, test1.test will be considered as unknown sni #aaa", function()
           local res = assert(mtls_client:send {
             method  = "GET",
             path    = "/test1",
@@ -579,7 +579,7 @@ for _, strategy in strategies() do
             method  = "PATCH",
             path    = "/routes/" .. route1.id,
             body    = {
-              snis   = {"test1.com", "test7.com"},
+              snis   = {"test1.test", "test7.test"},
             },
             headers = {
               ["Content-Type"] = "application/json"
@@ -594,7 +594,7 @@ for _, strategy in strategies() do
             method  = "PATCH",
             path    = "/routes/" .. route1.id,
             body    = {
-              snis   = {"test1.com"},
+              snis   = {"test1.test"},
             },
             headers = {
               ["Content-Type"] = "application/json"
@@ -603,7 +603,7 @@ for _, strategy in strategies() do
           assert.res_status(200, res)
         end)
 
-        it("will send corresponding ca dn when sni is test7.com", function()
+        it("will send corresponding ca dn when sni is test7.test", function()
           local res = assert(mtls_client:send {
             method  = "GET",
             path    = "/test7",
@@ -618,7 +618,7 @@ for _, strategy in strategies() do
           assert.falsy(string.find(body, "C = US, ST = CA, L = SF, O = Other Kong Testing, CN = Other Kong Testing Root CA", 1, true))
         end)
 
-        it("will send corresponding ca dn when sni is test1.com", function()
+        it("will send corresponding ca dn when sni is test1.test", function()
           local res = assert(mtls_client:send {
             method  = "GET",
             path    = "/test1",
@@ -642,7 +642,7 @@ for _, strategy in strategies() do
             method  = "PATCH",
             path    = "/routes/" .. route1.id,
             body    = {
-              snis   = {"test7.com"},
+              snis   = {"test7.test"},
             },
             headers = {
               ["Content-Type"] = "application/json"
@@ -657,7 +657,7 @@ for _, strategy in strategies() do
             method  = "PATCH",
             path    = "/routes/" .. route1.id,
             body    = {
-              snis   = {"test1.com"},
+              snis   = {"test1.test"},
             },
             headers = {
               ["Content-Type"] = "application/json"
@@ -666,7 +666,7 @@ for _, strategy in strategies() do
           assert.res_status(200, res)
         end)
 
-        it("will send corresponding ca dn to test7.com", function()
+        it("will send corresponding ca dn to test7.test", function()
           local res = assert(mtls_client:send {
             method  = "GET",
             path    = "/test7",
@@ -822,7 +822,7 @@ for _, strategy in strategies() do
           assert.res_status(200, res)
         end)
 
-        it("test1.com will be considered as unknown", function()
+        it("test1.test will be considered as unknown", function()
           local res = assert(mtls_client:send {
             method  = "GET",
             path    = "/test1",
@@ -1023,7 +1023,7 @@ for _, strategy in strategies() do
           assert.res_status(200, res)
         end)
 
-        it("test6.com will be considered as unknown", function()
+        it("test6.test will be considered as unknown", function()
           local res = assert(mtls_client:send {
             method  = "GET",
             path    = "/test6",

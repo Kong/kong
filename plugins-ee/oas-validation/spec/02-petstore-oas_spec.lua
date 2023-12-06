@@ -15,7 +15,7 @@ local fixtures = {
   http_mock = {
     validation_plugin = [[
       server {
-          server_name petstore.com;
+          server_name petstore.test;
           listen 12345;
 
           location ~ "/findByStatus-request-good" {
@@ -108,27 +108,27 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route1 = db.routes:insert({
-        hosts = { "petstore1.com" },
+        hosts = { "petstore1.test" },
         service    = service1,
       })
 
       local route2 = db.routes:insert({
-        hosts = { "petstore2.com" },
+        hosts = { "petstore2.test" },
         service    = service2,
       })
 
       local route3 = db.routes:insert({
-        hosts = { "petstore3.com" },
+        hosts = { "petstore3.test" },
         service    = service3,
       })
 
       local route4 = db.routes:insert({
-        hosts = { "petstore4.com" },
+        hosts = { "petstore4.test" },
         service    = service4,
       })
 
       local route5 = db.routes:insert({
-        hosts = { "petstore5.com" },
+        hosts = { "petstore5.test" },
         service    = service5,
       })
 
@@ -222,7 +222,7 @@ for _, strategy in helpers.each_strategy() do
           method = "POST",
           path = "/pet",
           headers = {
-            host = "petstore2.com",
+            host = "petstore2.test",
             ["Content-Type"] = "application/json",
           },
           body = {
@@ -246,7 +246,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/pet/findByStatus",
           headers = {
-            host = "petstore1.com",
+            host = "petstore1.test",
             ["Content-Type"] = "application/json",
           },
           query = {
@@ -262,7 +262,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/pet/1",
           headers = {
-            host = "petstore2.com",
+            host = "petstore2.test",
             ["Content-Type"] = "application/json",
           },
         })
@@ -276,7 +276,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/pet/string123",
           headers = {
-            host = "petstore2.com",
+            host = "petstore2.test",
             ["Content-Type"] = "application/json",
           },
         })
@@ -291,7 +291,7 @@ for _, strategy in helpers.each_strategy() do
           method = "POST",
           path = "/pet",
           headers = {
-            host = "petstore2.com",
+            host = "petstore2.test",
             ["Content-Type"] = "application/json",
           },
           body = {
@@ -315,7 +315,7 @@ for _, strategy in helpers.each_strategy() do
           method = "PUT",
           path = "/pet",
           headers = {
-            host = "petstore2.com",
+            host = "petstore2.test",
             ["Content-Type"] = "application/json",
           },
           body = {
@@ -339,7 +339,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/store/order/1",
           headers = {
-            host = "petstore3.com",
+            host = "petstore3.test",
             ["Content-Type"] = "application/json",
           },
         })
@@ -351,7 +351,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/store/order/1",
           headers = {
-            host = "petstore4.com",
+            host = "petstore4.test",
             ["Content-Type"] = "application/json",
           },
         })
@@ -365,7 +365,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "////pet//1",
           headers = {
-            host = "petstore2.com",
+            host = "petstore2.test",
             ["Content-Type"] = "application/json",
           },
         })
@@ -379,7 +379,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/store/order/1",
           headers = {
-            host = "petstore3.com",
+            host = "petstore3.test",
             ["Content-Type"] = "application/json",
             ["Header-Not-Allowed"] = "test",
           },
@@ -394,7 +394,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/store/order/1",
           headers = {
-            host = "petstore3.com",
+            host = "petstore3.test",
             ["Content-Type"] = "application/json",
           },
           query = {
@@ -411,7 +411,7 @@ for _, strategy in helpers.each_strategy() do
           method = "PUT",
           path = "/pet",
           headers = {
-            host = "petstore2.com",
+            host = "petstore2.test",
             ["Content-Type"] = "application/json+1",
           },
           body = {
@@ -435,7 +435,7 @@ for _, strategy in helpers.each_strategy() do
           method = "POST",
           path = "/pet",
           headers = {
-            host = "petstore5.com",
+            host = "petstore5.test",
             ["Content-Type"] = "application/pdf",
           },
         })

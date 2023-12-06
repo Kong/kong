@@ -28,7 +28,7 @@ for _, db_strategy in strategies() do
 
             if db_strategy ~= "off" then
               local route1 = assert(bp.routes:insert {
-                hosts = { "route-1.com" },
+                hosts = { "route-1.test" },
                 service = service,
               })
 
@@ -52,7 +52,7 @@ for _, db_strategy in strategies() do
                 routes:
                 - name: gql-rl-rt
                   hosts:
-                  - route-2.com
+                  - route-2.test
                   paths:
                   - /request
                   plugins:
@@ -71,7 +71,7 @@ for _, db_strategy in strategies() do
                 plugins = "bundled,graphql-rate-limiting-advanced",
                 nginx_conf = "spec/fixtures/custom_nginx.template",
                 declarative_config = db_strategy == "off" and yaml_file or nil,
-                pg_host = db_strategy == "off" and "unknownhost.konghq.com" or nil,
+                pg_host = db_strategy == "off" and "unknownhost.konghq.test" or nil,
             }, nil, nil, fixtures))
         end)
 
@@ -96,7 +96,7 @@ for _, db_strategy in strategies() do
                 method = "POST",
                 path = "/request",
                 headers = {
-                    ["Host"] = "route-1.com",
+                    ["Host"] = "route-1.test",
                     ["Content-Type"] = "application/x-www-form-urlencoded",
                 },
                 body = {
@@ -113,7 +113,7 @@ for _, db_strategy in strategies() do
                 method = "POST",
                 path = "/request",
                 headers = {
-                    ["Host"] = "route-2.com",
+                    ["Host"] = "route-2.test",
                     ["Content-Type"] = "application/x-www-form-urlencoded",
                 },
                 body = {
@@ -146,7 +146,7 @@ for _, db_strategy in strategies() do
 
           if db_strategy ~= "off" then
             local route1 = assert(bp.routes:insert {
-              hosts = { "route-1.com" },
+              hosts = { "route-1.test" },
               service = service,
             })
 
@@ -175,7 +175,7 @@ for _, db_strategy in strategies() do
               routes:
               - name: gql-rl-rt
                 hosts:
-                - route-2.com
+                - route-2.test
                 paths:
                 - /request
                 plugins:
@@ -194,7 +194,7 @@ for _, db_strategy in strategies() do
               plugins = "bundled,graphql-rate-limiting-advanced",
               nginx_conf = "spec/fixtures/custom_nginx.template",
               declarative_config = db_strategy == "off" and yaml_file or nil,
-              pg_host = db_strategy == "off" and "unknownhost.konghq.com" or nil,
+              pg_host = db_strategy == "off" and "unknownhost.konghq.test" or nil,
           }, nil, nil, fixtures))
       end)
 
@@ -219,7 +219,7 @@ for _, db_strategy in strategies() do
               method = "POST",
               path = "/request",
               headers = {
-                  ["Host"] = "route-1.com",
+                  ["Host"] = "route-1.test",
                   ["Content-Type"] = "application/x-www-form-urlencoded",
               },
               body = {
@@ -236,7 +236,7 @@ for _, db_strategy in strategies() do
               method = "POST",
               path = "/request",
               headers = {
-                  ["Host"] = "route-2.com",
+                  ["Host"] = "route-2.test",
                   ["Content-Type"] = "application/x-www-form-urlencoded",
               },
               body = {

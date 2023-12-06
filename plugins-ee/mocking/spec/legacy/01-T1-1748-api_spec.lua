@@ -47,11 +47,11 @@ for _, strategy in strategies() do
         local service1 = bp.services:insert{
           protocol = "http",
           port     = 80,
-          host     = "mocking.com",
+          host     = "mocking.test",
         }
 
       db.routes:insert({
-        hosts = { "mocking.com" },
+        hosts = { "mocking.test" },
         service    = service1,
 
       })
@@ -95,7 +95,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/pet/findByStatus/MultipleExamples",  -- makes mockbin return the entire request
           headers = {
-            host = "mocking.com"
+            host = "mocking.test"
           }
         })
         -- validate that the request succeeded, response status 200
@@ -113,7 +113,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/random_path",
           headers = {
-            host = "mocking.com"
+            host = "mocking.test"
           }
         })
         -- Random path, Response status - 404

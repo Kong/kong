@@ -49,7 +49,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       local route1 = assert(db.routes:insert({
-        hosts = { "test1.com" },
+        hosts = { "test1.test" },
         service = service1,
       }))
       assert(db.plugins:insert {
@@ -62,7 +62,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       local route2 = assert(db.routes:insert({
-        hosts = { "test2.com" },
+        hosts = { "test2.test" },
         service = service1,
       }))
       assert(db.plugins:insert {
@@ -104,7 +104,7 @@ for _, strategy in helpers.each_strategy() do
           method = "POST",
           path = "/notify",
           headers = {
-            host = "test1.com",
+            host = "test1.test",
           },
         })
         assert.response(res).has.status(200)
@@ -115,7 +115,7 @@ for _, strategy in helpers.each_strategy() do
           method = "POST",
           path = "/notify",
           headers = {
-            host = "test1.com",
+            host = "test1.test",
             ["Content-Type"] = "application/json",
           },
           body = {
@@ -130,7 +130,7 @@ for _, strategy in helpers.each_strategy() do
           method = "POST",
           path = "/notify-with-body",
           headers = {
-            host = "test2.com",
+            host = "test2.test",
             ["Content-Type"] = "application/json",
           },
           body = {

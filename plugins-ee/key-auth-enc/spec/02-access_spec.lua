@@ -40,27 +40,27 @@ for _, strategy in strategies() do
       }
 
       local route1 = bp.routes:insert {
-        hosts = { "key-auth-enc1.com" },
+        hosts = { "key-auth-enc1.test" },
       }
 
       local route2 = bp.routes:insert {
-        hosts = { "key-auth-enc2.com" },
+        hosts = { "key-auth-enc2.test" },
       }
 
       local route3 = bp.routes:insert {
-        hosts = { "key-auth-enc3.com" },
+        hosts = { "key-auth-enc3.test" },
       }
 
       local route4 = bp.routes:insert {
-        hosts = { "key-auth-enc4.com" },
+        hosts = { "key-auth-enc4.test" },
       }
 
       local route5 = bp.routes:insert {
-        hosts = { "key-auth-enc5.com" },
+        hosts = { "key-auth-enc5.test" },
       }
 
       local route6 = bp.routes:insert {
-        hosts = { "key-auth-enc6.com" },
+        hosts = { "key-auth-enc6.test" },
       }
 
       local service7 = bp.services:insert{
@@ -70,21 +70,21 @@ for _, strategy in strategies() do
       }
 
       local route7 = bp.routes:insert {
-        hosts      = { "key-auth-enc7.com" },
+        hosts      = { "key-auth-enc7.test" },
         service    = service7,
         strip_path = true,
       }
 
       local route8 = bp.routes:insert {
-        hosts = { "key-auth-enc8.com" },
+        hosts = { "key-auth-enc8.test" },
       }
 
       -- FTI-3288
       local route9 = bp.routes:insert {
-        hosts = { "key-auth-enc9.com" },
+        hosts = { "key-auth-enc9.test" },
       }
       local route10 = bp.routes:insert {
-        hosts = { "key-auth-enc10.com" },
+        hosts = { "key-auth-enc10.test" },
       }
 
       bp.plugins:insert {
@@ -194,7 +194,7 @@ for _, strategy in strategies() do
           method  = "OPTIONS",
           path    = "/status/200",
           headers = {
-            ["Host"] = "key-auth-enc7.com"
+            ["Host"] = "key-auth-enc7.test"
           }
         })
         assert.res_status(200, res)
@@ -204,7 +204,7 @@ for _, strategy in strategies() do
           method  = "OPTIONS",
           path    = "/status/200",
           headers = {
-            ["Host"] = "key-auth-enc1.com"
+            ["Host"] = "key-auth-enc1.test"
           }
         })
         assert.res_status(401, res)
@@ -216,7 +216,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"] = "key-auth-enc1.com"
+            ["Host"] = "key-auth-enc1.test"
           }
         })
         local body = assert.res_status(401, res)
@@ -228,7 +228,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"] = "key-auth-enc1.com",
+            ["Host"] = "key-auth-enc1.test",
             ["apikey"] = "",
           }
         })
@@ -241,7 +241,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/status/200?apikey",
           headers = {
-            ["Host"] = "key-auth-enc1.com",
+            ["Host"] = "key-auth-enc1.test",
           }
         })
         local body = assert.res_status(401, res)
@@ -253,7 +253,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"] = "key-auth-enc1.com"
+            ["Host"] = "key-auth-enc1.test"
           }
         })
         res:read_body()
@@ -267,7 +267,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            ["Host"] = "key-auth-enc1.com",
+            ["Host"] = "key-auth-enc1.test",
           }
         })
         assert.res_status(200, res)
@@ -277,7 +277,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/status/200?apikey=123",
           headers = {
-            ["Host"] = "key-auth-enc1.com"
+            ["Host"] = "key-auth-enc1.test"
           }
         })
         local body = assert.res_status(401, res)
@@ -289,7 +289,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/status/200?apikey=kong&apikey=kong",
           headers = {
-            ["Host"] = "key-auth-enc1.com"
+            ["Host"] = "key-auth-enc1.test"
           }
         })
         local body = assert.res_status(401, res)
@@ -305,7 +305,7 @@ for _, strategy in strategies() do
             local res = assert(proxy_client:send {
               path    = "/request",
               headers = {
-                ["Host"]         = "key-auth-enc5.com",
+                ["Host"]         = "key-auth-enc5.test",
                 ["Content-Type"] = type,
               },
               body    = {
@@ -318,7 +318,7 @@ for _, strategy in strategies() do
             local res = assert(proxy_client:send {
               path    = "/status/200",
               headers = {
-                ["Host"]         = "key-auth-enc5.com",
+                ["Host"]         = "key-auth-enc5.test",
                 ["Content-Type"] = type,
               },
               body    = {
@@ -338,7 +338,7 @@ for _, strategy in strategies() do
                 method  = "POST",
                 path    = "/status/200",
                 headers = {
-                  ["Host"]         = "key-auth-enc5.com",
+                  ["Host"]         = "key-auth-enc5.test",
                   ["Content-Type"] = type,
                 },
                 body = {
@@ -356,7 +356,7 @@ for _, strategy in strategies() do
               local res = proxy_client:post("/status/200", {
                 body = "apikey=kong&apikey=kong",
                 headers = {
-                  ["Host"]         = "key-auth-enc5.com",
+                  ["Host"]         = "key-auth-enc5.test",
                   ["Content-Type"] = type,
                 },
               })
@@ -369,7 +369,7 @@ for _, strategy in strategies() do
               local res = proxy_client:post("/status/200", {
                 body = "apikey[]=kong&apikey[]=kong",
                 headers = {
-                  ["Host"]         = "key-auth-enc5.com",
+                  ["Host"]         = "key-auth-enc5.test",
                   ["Content-Type"] = type,
                 },
               })
@@ -382,7 +382,7 @@ for _, strategy in strategies() do
               local res = proxy_client:post("/status/200", {
                 body = "apikey[1]=kong&apikey[1]=kong",
                 headers = {
-                  ["Host"]         = "key-auth-enc5.com",
+                  ["Host"]         = "key-auth-enc5.test",
                   ["Content-Type"] = type,
                 },
               })
@@ -401,7 +401,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"]   = "key-auth-enc1.com",
+            ["Host"]   = "key-auth-enc1.test",
             ["apikey"] = "kong"
           }
         })
@@ -412,7 +412,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"]   = "key-auth-enc1.com",
+            ["Host"]   = "key-auth-enc1.test",
             ["apikey"] = "123"
           }
         })
@@ -428,7 +428,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            ["Host"] = "key-auth-enc1.com",
+            ["Host"] = "key-auth-enc1.test",
           }
         })
         local body = assert.res_status(200, res)
@@ -449,37 +449,37 @@ for _, strategy in strategies() do
         local harness = {
           uri_args = { -- query string
             {
-              headers = { Host = "key-auth-enc1.com" },
+              headers = { Host = "key-auth-enc1.test" },
               path    = "/request?apikey=kong",
               method  = "GET",
             },
             {
-              headers = { Host = "key-auth-enc2.com" },
+              headers = { Host = "key-auth-enc2.test" },
               path    = "/request?apikey=kong",
               method  = "GET",
             }
           },
           headers = {
             {
-              headers = { Host = "key-auth-enc1.com", apikey = "kong" },
+              headers = { Host = "key-auth-enc1.test", apikey = "kong" },
               path    = "/request",
               method  = "GET",
             },
             {
-              headers = { Host = "key-auth-enc2.com", apikey = "kong" },
+              headers = { Host = "key-auth-enc2.test", apikey = "kong" },
               path    = "/request",
               method  = "GET",
             },
           },
           ["post_data.params"] = {
             {
-              headers = { Host = "key-auth-enc5.com" },
+              headers = { Host = "key-auth-enc5.test" },
               body    = { apikey = "kong" },
               method  = "POST",
               path    = "/request",
             },
             {
-              headers = { Host = "key-auth-enc6.com" },
+              headers = { Host = "key-auth-enc6.test" },
               body    = { apikey = "kong" },
               method  = "POST",
               path    = "/request",
@@ -523,7 +523,7 @@ for _, strategy in strategies() do
             method = "POST",
             path = "/request",
             headers = {
-              Host = "key-auth-enc6.com",
+              Host = "key-auth-enc6.test",
               ["Content-Type"] = content_type,
             },
             body = { apikey = "kong", foo = "bar" },
@@ -539,7 +539,7 @@ for _, strategy in strategies() do
       --   local res = assert(proxy_client:send {
       --     path = "/status/200",
       --     headers = {
-      --       ["Host"] = "key-auth-enc6.com",
+      --       ["Host"] = "key-auth-enc6.test",
       --       ["Content-Type"] = "text/plain",
       --     },
       --     body = "foobar",
@@ -557,7 +557,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            ["Host"] = "key-auth-enc3.com",
+            ["Host"] = "key-auth-enc3.test",
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
@@ -569,7 +569,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "key-auth-enc3.com"
+            ["Host"] = "key-auth-enc3.test"
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
@@ -581,7 +581,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "key-auth-enc4.com"
+            ["Host"] = "key-auth-enc4.test"
           }
         })
         assert.response(res).has.status(500)
@@ -590,7 +590,7 @@ for _, strategy in strategies() do
       it("works with right credentials with anonymous username exists", function()
         local res = proxy_client:get("/request", {
           headers = {
-            ["Host"] = "key-auth-enc9.com",
+            ["Host"] = "key-auth-enc9.test",
             ["apikey"] = "kong",
           },
         })
@@ -603,7 +603,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/request",
           headers = {
-            ["Host"] = "key-auth-enc9.com",
+            ["Host"] = "key-auth-enc9.test",
             ["apikey"] = "konghq",
           },
         })
@@ -617,7 +617,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/request",
           headers = {
-            ["Host"] = "key-auth-enc10.com",
+            ["Host"] = "key-auth-enc10.test",
             ["apikey"] = "kong",
           },
         })
@@ -631,7 +631,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/request",
           headers = {
-            ["Host"] = "key-auth-enc10.com",
+            ["Host"] = "key-auth-enc10.test",
             ["apikey"] = "konghq",
           },
         })
@@ -658,7 +658,7 @@ for _, strategy in strategies() do
         },{"key-auth-enc"})
 
         local r = bp.routes:insert {
-          hosts = { "key-ttl.com" },
+          hosts = { "key-ttl.test" },
         }
 
         bp.plugins:insert {
@@ -683,7 +683,7 @@ for _, strategy in strategies() do
           plugins    = "bundled,key-auth-enc",
           nginx_conf = "spec/fixtures/custom_nginx.template",
           declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
-          pg_host = strategy == "off" and "unknownhost.konghq.com" or nil,
+          pg_host = strategy == "off" and "unknownhost.konghq.test" or nil,
         }))
       end)
 
@@ -705,7 +705,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"] = "key-ttl.com",
+            ["Host"] = "key-ttl.test",
             ["apikey"] = "kong",
           }
         })
@@ -722,7 +722,7 @@ for _, strategy in strategies() do
             method  = "GET",
             path    = "/status/200",
             headers = {
-              ["Host"] = "key-ttl.com",
+              ["Host"] = "key-ttl.test",
               ["apikey"] = "kong",
             }
           })
@@ -751,7 +751,7 @@ for _, strategy in strategies() do
       }, {'key-auth-enc'})
 
       local route1 = bp.routes:insert {
-        hosts = { "logical-and.com" },
+        hosts = { "logical-and.test" },
       }
 
       local service = bp.services:insert {
@@ -759,13 +759,13 @@ for _, strategy in strategies() do
       }
 
       local route2 = bp.routes:insert {
-        hosts   = { "logical-or.com" },
+        hosts   = { "logical-or.test" },
         service = service,
       }
 
       -- FTI-3288
       local route3 = bp.routes:insert {
-        hosts   = { "anonymous-username.com" },
+        hosts   = { "anonymous-username.test" },
         service = service,
       }
 
@@ -860,7 +860,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/request",
           headers = {
-            ["Host"] = "logical-and.com",
+            ["Host"] = "logical-and.test",
             ["apikey"] = "Mouse",
             ["Authorization"] = "Basic QWxhZGRpbjpPcGVuU2VzYW1l",
           }
@@ -877,7 +877,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"]   = "logical-and.com",
+            ["Host"]   = "logical-and.test",
             ["apikey"] = "Mouse",
           }
         })
@@ -889,7 +889,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"]          = "logical-and.com",
+            ["Host"]          = "logical-and.test",
             ["Authorization"] = "Basic QWxhZGRpbjpPcGVuU2VzYW1l",
           }
         })
@@ -901,7 +901,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "logical-and.com",
+            ["Host"] = "logical-and.test",
           }
         })
         assert.response(res).has.status(401)
@@ -915,7 +915,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"]          = "logical-or.com",
+            ["Host"]          = "logical-or.test",
             ["apikey"]        = "Mouse",
             ["Authorization"] = "Basic QWxhZGRpbjpPcGVuU2VzYW1l",
           }
@@ -932,7 +932,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"]   = "logical-or.com",
+            ["Host"]   = "logical-or.test",
             ["apikey"] = "Mouse",
           }
         })
@@ -948,7 +948,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"]          = "logical-or.com",
+            ["Host"]          = "logical-or.test",
             ["Authorization"] = "Basic QWxhZGRpbjpPcGVuU2VzYW1l",
           }
         })
@@ -964,7 +964,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "logical-or.com",
+            ["Host"] = "logical-or.test",
           }
         })
         assert.response(res).has.status(200)
@@ -982,7 +982,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/request",
           headers = {
-            ["Host"] = "anonymous-username.com",
+            ["Host"] = "anonymous-username.test",
             ["apikey"] = "Mouse",
             ["Authorization"] = "Basic QWxhZGRpbjpPcGVuU2VzYW1l",
           }
@@ -999,7 +999,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"]   = "anonymous-username.com",
+            ["Host"]   = "anonymous-username.test",
             ["apikey"] = "Mouse",
           }
         })
@@ -1015,7 +1015,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"]          = "anonymous-username.com",
+            ["Host"]          = "anonymous-username.test",
             ["Authorization"] = "Basic QWxhZGRpbjpPcGVuU2VzYW1l",
           }
         })
@@ -1031,7 +1031,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "anonymous-username.com",
+            ["Host"] = "anonymous-username.test",
           }
         })
         assert.response(res).has.status(200)

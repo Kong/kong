@@ -16,7 +16,7 @@ for _, strategy in helpers.all_strategies() do
 
       route = assert(bp.routes:insert {
         name  = "test",
-        hosts = { "test1.com" },
+        hosts = { "test1.test" },
       })
 
       assert(bp.plugins:insert {
@@ -56,7 +56,7 @@ for _, strategy in helpers.all_strategies() do
           method = "GET",
           path = "/get",
           headers = {
-            host = "test1.com",
+            host = "test1.test",
           }
         }
         assert(res.status == 200 or res.status == 429)

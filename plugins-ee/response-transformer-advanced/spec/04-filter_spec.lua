@@ -21,15 +21,15 @@ for _, strategy in strategies() do
 
 
       local route1 = bp.routes:insert({
-        hosts = { "response.com" },
+        hosts = { "response.test" },
       })
 
       local route2 = bp.routes:insert({
-        hosts = { "response2.com" },
+        hosts = { "response2.test" },
       })
 
       local route3 = bp.routes:insert({
-        hosts = { "response3.com" },
+        hosts = { "response3.test" },
       })
 
       bp.plugins:insert {
@@ -95,7 +95,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "response.com"
+            host  = "response.test"
           }
         })
         assert.response(res).has.status(200)
@@ -107,7 +107,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/response-headers",
           headers = {
-            host  = "response.com"
+            host  = "response.test"
           }
         })
         assert.response(res).has.status(200)
@@ -119,7 +119,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "response2.com"
+            host  = "response2.test"
           }
         })
         assert.response(res).status(200)
@@ -136,12 +136,12 @@ for _, strategy in strategies() do
         -- without credentials short-circuit before the response-transformer
         -- access handler gets a chance to be executed.
         --
-        -- Regression for https://github.com/Kong/kong/issues/3521
+        -- Regression for https://github.test/Kong/kong/issues/3521
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/get",
           headers = {
-            host  = "response3.com"
+            host  = "response3.test"
           }
         })
 

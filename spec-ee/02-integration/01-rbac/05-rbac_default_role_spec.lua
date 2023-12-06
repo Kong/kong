@@ -183,7 +183,7 @@ for _, strategy in helpers.each_strategy() do
               ["Content-Type"]     = "application/json",
             },
             body  = {
-              name = "foo.com",
+              name = "foo.test",
               ssl_certificate_id = cert.id
             },
           })
@@ -203,7 +203,7 @@ for _, strategy in helpers.each_strategy() do
             body  = {
               cert=ssl_fixtures.cert,
               key=ssl_fixtures.key,
-              snis="bar.com"
+              snis="bar.test"
             },
           })
 
@@ -233,7 +233,7 @@ for _, strategy in helpers.each_strategy() do
             body  = {
               cert=ssl_fixtures.cert,
               key=ssl_fixtures.key,
-              snis="foobar.com"
+              snis="foobar.test"
             },
           })
 

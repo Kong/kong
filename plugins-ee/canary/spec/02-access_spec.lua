@@ -237,7 +237,7 @@ for _, strategy in strategies() do
       })
 
       route1 = bp.routes:insert({
-        hosts = { "canary1.com" },
+        hosts = { "canary1.test" },
         preserve_host = false,
       })
       bp.plugins:insert {
@@ -247,7 +247,7 @@ for _, strategy in strategies() do
       }
 
       route2 = bp.routes:insert({
-        hosts = { "canary2.com" },
+        hosts = { "canary2.test" },
         preserve_host = false,
       })
       bp.plugins:insert {
@@ -257,7 +257,7 @@ for _, strategy in strategies() do
       }
 
       route3 = bp.routes:insert({
-        hosts = { "canary3.com" },
+        hosts = { "canary3.test" },
         preserve_host = true,
       })
       bp.plugins:insert {
@@ -267,7 +267,7 @@ for _, strategy in strategies() do
       }
 
       route4 = bp.routes:insert({
-        hosts = { "canary4.com" },
+        hosts = { "canary4.test" },
         preserve_host = true,
       })
 
@@ -355,7 +355,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/requests",
             headers = {
-              ["Host"] = "canary1.com",
+              ["Host"] = "canary1.test",
               ["apikey"] = apikey
             }
           })
@@ -382,7 +382,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/requests",
             headers = {
-              ["Host"] = "canary1.com",
+              ["Host"] = "canary1.test",
               ["apikey"] = apikey
             }
           })
@@ -417,7 +417,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/requests",
             headers = {
-              ["Host"] = "canary1.com",
+              ["Host"] = "canary1.test",
               ["apikey"] = apikey
             }
           })
@@ -442,7 +442,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/requests",
             headers = {
-              ["Host"] = "canary1.com",
+              ["Host"] = "canary1.test",
               ["apikey"] = apikey
             }
           })
@@ -475,7 +475,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/requests",
             headers = {
-              ["Host"] = "canary1.com",
+              ["Host"] = "canary1.test",
               ["apikey"] = apikey,
               ["X-My-Hash"] = "1234"
             }
@@ -507,7 +507,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/requests",
             headers = {
-              ["Host"] = "canary1.com",
+              ["Host"] = "canary1.test",
               ["apikey"] = apikey
             }
           })
@@ -540,7 +540,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/requests",
             headers = {
-              ["Host"] = "canary1.com",
+              ["Host"] = "canary1.test",
               ["apikey"] = apikey
             }
           })
@@ -563,7 +563,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/requests",
           headers = {
-            ["Host"] = "canary4.com",
+            ["Host"] = "canary4.test",
           }
         })
         assert.response(res).has.status(200)
@@ -584,7 +584,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/requests",
             headers = {
-              ["Host"] = "canary1.com",
+              ["Host"] = "canary1.test",
               ["apikey"] = apikey
             }
           })
@@ -617,7 +617,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/requests",
             headers = {
-              ["Host"] = "canary1.com",
+              ["Host"] = "canary1.test",
               ["apikey"] = apikey
             }
           })
@@ -640,7 +640,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/requests",
           headers = {
-            ["Host"] = "canary4.com",
+            ["Host"] = "canary4.test",
           }
         })
         assert.response(res).has.status(200)
@@ -692,7 +692,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/requests",
               headers = {
-                ["Host"] = "canary1.com",
+                ["Host"] = "canary1.test",
                 ["apikey"] = apikey
               }
             })
@@ -721,7 +721,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/requests",
             headers = {
-              ["Host"] = "canary1.com",
+              ["Host"] = "canary1.test",
               ["apikey"] = apikey
             }
           })
@@ -778,7 +778,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/requests",
               headers = {
-                ["Host"] = "canary1.com",
+                ["Host"] = "canary1.test",
                 ["apikey"] = apikey
               }
             })
@@ -807,7 +807,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/requests",
             headers = {
-              ["Host"] = "canary1.com",
+              ["Host"] = "canary1.test",
               ["apikey"] = apikey
             }
           })
@@ -866,7 +866,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/requests",
               headers = {
-                ["Host"] = "canary1.com",
+                ["Host"] = "canary1.test",
                 ["apikey"] = apikey
               }
             })
@@ -901,7 +901,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/requests",
             headers = {
-              ["Host"] = "canary1.com",
+              ["Host"] = "canary1.test",
               ["apikey"] = apikey
             }
           })
@@ -930,7 +930,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/requests",
           headers = {
-            ["Host"] = "canary2.com",   --> preserve_host == false
+            ["Host"] = "canary2.test",   --> preserve_host == false
             ["apikey"] = ids[1] -- any of the 3 ids will do here
           }
         })
@@ -942,13 +942,13 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/requests",
           headers = {
-            ["Host"] = "canary3.com",   --> preserve_host == true
+            ["Host"] = "canary3.test",   --> preserve_host == true
             ["apikey"] = ids[1] -- any of the 3 ids will do here
           }
         })
         assert.response(res).has.status(200)
         json = assert.response(res).has.jsonbody()
-        assert.are.equal("canary3.com", json.vars.host)
+        assert.are.equal("canary3.test", json.vars.host)
       end)
 
       it("test 'canary_by_header_name' is configured and request header value == never", function()
@@ -971,7 +971,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/requests",
             headers = {
-              ["Host"] = "canary1.com",
+              ["Host"] = "canary1.test",
               ["apikey"] = apikey,
               ["X-Canary-Override"] = "never",
             }
@@ -1005,7 +1005,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/requests",
             headers = {
-              ["Host"] = "canary1.com",
+              ["Host"] = "canary1.test",
               ["apikey"] = apikey,
               ["X-Canary-Override"] = "always",
             }
@@ -1040,7 +1040,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/requests",
             headers = {
-              ["Host"] = "canary1.com",
+              ["Host"] = "canary1.test",
               ["apikey"] = apikey,
               ["X-Canary-Override"] = "foo",
             }
@@ -1073,7 +1073,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/requests",
             headers = {
-              ["Host"] = "canary1.com",
+              ["Host"] = "canary1.test",
               ["apikey"] = apikey,
             }
           })
@@ -1120,7 +1120,7 @@ for _, strategy in strategies() do
             ["Content-Type"] = "application/json"
           },
           body = {
-            hosts = { "canary5.com" }
+            hosts = { "canary5.test" }
           }
         })
         assert.response(res).has.status(201)
@@ -1166,7 +1166,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/",
           headers = {
-            ["Host"] = "canary5.com",
+            ["Host"] = "canary5.test",
           }
         })
 
@@ -1208,7 +1208,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/",
           headers = {
-            ["Host"] = "canary5.com",
+            ["Host"] = "canary5.test",
           }
         })
         -- it still went to the canary upstream, as there was still no health
@@ -1221,7 +1221,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/",
           headers = {
-            ["Host"] = "canary5.com",
+            ["Host"] = "canary5.test",
           }
         })
         -- this is the second request; as the first one resulted in a 500, the
@@ -1242,7 +1242,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/",
           headers = {
-            ["Host"] = "canary5.com",
+            ["Host"] = "canary5.test",
           }
         })
         assert.response(res).has.status(500)
@@ -1290,7 +1290,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/",
           headers = {
-            ["Host"] = "canary5.com",
+            ["Host"] = "canary5.test",
           }
         })
 
@@ -1304,7 +1304,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/",
           headers = {
-            ["Host"] = "canary5.com",
+            ["Host"] = "canary5.test",
           }
         })
 

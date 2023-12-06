@@ -15,7 +15,7 @@ local fixtures = {
   http_mock = {
     validation_plugin = [[
       server {
-          server_name petstore.com;
+          server_name petstore.test;
           listen 12345;
 
           location / {
@@ -50,7 +50,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       local route1 = assert(db.routes:insert({
-        hosts = { "example-swagger.com" },
+        hosts = { "example-swagger.test" },
         service = service1,
       }))
       assert(db.plugins:insert {
@@ -69,7 +69,7 @@ for _, strategy in helpers.each_strategy() do
         },
       })
       local route2 = assert(db.routes:insert({
-        hosts = { "example-oas.com" },
+        hosts = { "example-oas.test" },
         service = service1,
       }))
       assert(db.plugins:insert {
@@ -111,7 +111,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("reference", function()
       it("simple case sanity", function()
-        for _, host in ipairs({ "example-swagger.com", "example-oas.com" }) do
+        for _, host in ipairs({ "example-swagger.test", "example-oas.test" }) do
           local res = assert(client:send {
             method = "POST",
             path = "/ref-case-1",
@@ -126,8 +126,8 @@ for _, strategy in helpers.each_strategy() do
       end)
       it("simple case fail", function()
         local tests = {
-          { host = "example-swagger.com", expected_error = [[{"message":"body 'body' validation failed with error: 'property key_string validation failed: wrong type: expected string, got integer'"}]], },
-          { host = "example-oas.com", expected_error = [[{"message":"request body validation failed with error: 'property key_string validation failed: wrong type: expected string, got integer'"}]], },
+          { host = "example-swagger.test", expected_error = [[{"message":"body 'body' validation failed with error: 'property key_string validation failed: wrong type: expected string, got integer'"}]], },
+          { host = "example-oas.test", expected_error = [[{"message":"request body validation failed with error: 'property key_string validation failed: wrong type: expected string, got integer'"}]], },
         }
         for _, test in ipairs(tests) do
           local res = assert(client:send {
@@ -144,7 +144,7 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
       it("array case sanity", function()
-        for _, host in ipairs({ "example-swagger.com", "example-oas.com" }) do
+        for _, host in ipairs({ "example-swagger.test", "example-oas.test" }) do
           local res = assert(client:send {
             method = "POST",
             path = "/ref-case-2",
@@ -161,8 +161,8 @@ for _, strategy in helpers.each_strategy() do
       end)
       it("array case fail", function()
         local tests = {
-          { host = "example-swagger.com", expected_error = [[{"message":"body 'body' validation failed with error: 'failed to validate item 2: property key_string validation failed: wrong type: expected string, got integer'"}]], },
-          { host = "example-oas.com", expected_error = [[{"message":"request body validation failed with error: 'failed to validate item 2: property key_string validation failed: wrong type: expected string, got integer'"}]], },
+          { host = "example-swagger.test", expected_error = [[{"message":"body 'body' validation failed with error: 'failed to validate item 2: property key_string validation failed: wrong type: expected string, got integer'"}]], },
+          { host = "example-oas.test", expected_error = [[{"message":"request body validation failed with error: 'failed to validate item 2: property key_string validation failed: wrong type: expected string, got integer'"}]], },
         }
         for _, test in ipairs(tests) do
           local res = assert(client:send {
@@ -182,7 +182,7 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
       it("complex case sanity", function()
-        for _, host in ipairs({ "example-swagger.com", "example-oas.com" }) do
+        for _, host in ipairs({ "example-swagger.test", "example-oas.test" }) do
           local res = assert(client:send {
             method = "POST",
             path = "/ref-case-3",
@@ -201,8 +201,8 @@ for _, strategy in helpers.each_strategy() do
       end)
       it("complex case fail", function()
         local tests = {
-          { host = "example-swagger.com", expected_error = [[{"message":"body 'body' validation failed with error: 'property simple validation failed: property key_string validation failed: wrong type: expected string, got integer'"}]], },
-          { host = "example-oas.com", expected_error = [[{"message":"request body validation failed with error: 'property simple validation failed: property key_string validation failed: wrong type: expected string, got integer'"}]], },
+          { host = "example-swagger.test", expected_error = [[{"message":"body 'body' validation failed with error: 'property simple validation failed: property key_string validation failed: wrong type: expected string, got integer'"}]], },
+          { host = "example-oas.test", expected_error = [[{"message":"request body validation failed with error: 'property simple validation failed: property key_string validation failed: wrong type: expected string, got integer'"}]], },
         }
         for _, test in ipairs(tests) do
           local res = assert(client:send {
@@ -264,7 +264,7 @@ for _, strategy in helpers.each_strategy() do
           }
         }
 
-        for _, host in ipairs({ "example-swagger.com", "example-oas.com" }) do
+        for _, host in ipairs({ "example-swagger.test", "example-oas.test" }) do
           local res = assert(client:send {
             method = "POST",
             path = "/recursive-ref-request-case-1",
@@ -318,7 +318,7 @@ for _, strategy in helpers.each_strategy() do
         }
         local json = cjson.encode(sanity_body)
 
-        for _, host in ipairs({ "example-swagger.com", "example-oas.com" }) do
+        for _, host in ipairs({ "example-swagger.test", "example-oas.test" }) do
           local res = assert(client:send {
             method = "POST",
             path = "/recursive-ref-response-case-1",
@@ -373,8 +373,8 @@ for _, strategy in helpers.each_strategy() do
         }
 
         local tests = {
-          { host = "example-swagger.com", expected_error = [[{"message":"body 'body' validation failed with error: 'property securityEligibilityRules validation failed: property leaves validation failed: failed to validate item 2: property leaves validation failed: failed to validate item 2: property constraint validation failed: wrong type: expected string, got boolean'"}]], },
-          { host = "example-oas.com", expected_error = [[{"message":"request body validation failed with error: 'property securityEligibilityRules validation failed: property leaves validation failed: failed to validate item 2: property leaves validation failed: failed to validate item 2: property constraint validation failed: wrong type: expected string, got boolean'"}]], },
+          { host = "example-swagger.test", expected_error = [[{"message":"body 'body' validation failed with error: 'property securityEligibilityRules validation failed: property leaves validation failed: failed to validate item 2: property leaves validation failed: failed to validate item 2: property constraint validation failed: wrong type: expected string, got boolean'"}]], },
+          { host = "example-oas.test", expected_error = [[{"message":"request body validation failed with error: 'property securityEligibilityRules validation failed: property leaves validation failed: failed to validate item 2: property leaves validation failed: failed to validate item 2: property constraint validation failed: wrong type: expected string, got boolean'"}]], },
         }
         for _, test in ipairs(tests) do
           local res = assert(client:send {
@@ -430,7 +430,7 @@ for _, strategy in helpers.each_strategy() do
         }
         local json = cjson.encode(invalid_body)
 
-        for _, host in ipairs({ "example-swagger.com", "example-oas.com" }) do
+        for _, host in ipairs({ "example-swagger.test", "example-oas.test" }) do
           local res = assert(client:send {
             method = "POST",
             path = "/recursive-ref-response-case-1",

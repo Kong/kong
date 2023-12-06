@@ -15,7 +15,7 @@ local fixtures = {
   http_mock = {
     validation_plugin = [[
       server {
-          server_name petstore.com;
+          server_name petstore.test;
           listen 12345;
 
           location ~ "/test" {
@@ -50,7 +50,7 @@ for _, strategy in helpers.each_strategy() do
         }
 
         local route1 = db.routes:insert({
-          hosts = { "eods.com" },
+          hosts = { "eods.test" },
           paths = { "/" },
           service    = service1,
         }
@@ -96,7 +96,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/flightScheduleList/timeRange",
           headers = {
-            host = "eods.com",
+            host = "eods.test",
             ["Content-Type"] = "application/json",
             ["X-applicationName"] = "CXMOBILE",
             ["X-correlationId"] = "550e8400-e29b-41d4-a716-446655440000",
@@ -121,7 +121,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/flightScheduleList/timeRange",
           headers = {
-            host = "eods.com",
+            host = "eods.test",
             ["Content-Type"] = "application/json",
             ["X-correlationId"] = "550e8400-e29b-41d4-a716-446655440000",
             ["Authorization"] = "Basic dXNlcm5hbWU6cGFzc3dvcmQ=",
@@ -145,7 +145,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/flightScheduleList/timeRange",
           headers = {
-            host = "eods.com",
+            host = "eods.test",
             ["Content-Type"] = "application/json",
             ["X-applicationName"] = "CX",
             ["X-correlationId"] = "550e8400-e29b-41d4-a716-446655440000",
@@ -170,7 +170,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/flightScheduleList/timeRange",
           headers = {
-            host = "eods.com",
+            host = "eods.test",
             ["Content-Type"] = "application/json",
             ["X-applicationName"] = "CXMOBILE",
             ["X-correlationId"] = "550e8400-e29b-41d4-a716-446655440000",
@@ -194,7 +194,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/flightScheduleList/timeRange",
           headers = {
-            host = "eods.com",
+            host = "eods.test",
             ["Content-Type"] = "application/json",
             ["X-applicationName"] = "CXMOBILE",
             ["X-correlationId"] = "550e8400-e29b-41d4-a716-446655440000",
@@ -219,7 +219,7 @@ for _, strategy in helpers.each_strategy() do
           method = "POST",
           path = "/flightStatus/pts",
           headers = {
-            host = "eods.com",
+            host = "eods.test",
             ["Content-Type"] = "application/json",
             ["X-applicationName"] = "CXMOBILE",
             ["X-correlationId"] = "550e8400-e29b-41d4-a716-446655440000",
@@ -240,7 +240,7 @@ for _, strategy in helpers.each_strategy() do
           method = "POST",
           path = "/flightStatus/pts",
           headers = {
-            host = "eods.com",
+            host = "eods.test",
             ["Content-Type"] = "application/json",
             ["X-applicationName"] = "CXMOBILE",
             ["X-correlationId"] = "550e8400-e29b-41d4-a716-446655440000",
@@ -264,7 +264,7 @@ for _, strategy in helpers.each_strategy() do
           method = "POST",
           path = "/flightStatus/pts",
           headers = {
-            host = "eods.com",
+            host = "eods.test",
             ["Content-Type"] = "application/json",
             ["X-applicationName"] = "CXMOBILE",
             ["X-correlationId"] = "550e8400-e29b-41d4-a716-446655440000",
@@ -289,7 +289,7 @@ for _, strategy in helpers.each_strategy() do
           method = "POST",
           path = "/flightStatus/pts",
           headers = {
-            host = "eods.com",
+            host = "eods.test",
             ["Content-Type"] = "application/json",
             ["X-applicationName"] = "CXMOBILE",
             ["X-correlationId"] = "550e8400-e29b-41d4-a716-446655440000",
@@ -315,7 +315,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/flightStatus/123/origin/HKG",
           headers = {
-            host = "eods.com",
+            host = "eods.test",
             ["Content-Type"] = "application/json",
             ["X-applicationName"] = "CXMOBILE",
             ["X-correlationId"] = "550e8400-e29b-41d4-a716-446655440000",
@@ -334,7 +334,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/flightStatus/123/origin/123",
           headers = {
-            host = "eods.com",
+            host = "eods.test",
             ["Content-Type"] = "application/json",
             ["X-applicationName"] = "CXMOBILE",
             ["X-correlationId"] = "550e8400-e29b-41d4-a716-446655440000",

@@ -422,7 +422,7 @@ for _, strategy in strategies() do
           path = "/anything",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = true,
@@ -440,7 +440,7 @@ for _, strategy in strategies() do
           path = "/anything",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "value",

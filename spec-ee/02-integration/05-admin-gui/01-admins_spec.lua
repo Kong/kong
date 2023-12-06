@@ -206,7 +206,7 @@ for _, strategy in helpers.each_strategy() do
     lazy_setup(function()
       setup({
         database = strategy,
-        admin_gui_url = "http://manager.konghq.com",
+        admin_gui_url = "http://manager.konghq.test",
         admin_gui_auth = "basic-auth",
         admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
         enforce_rbac = "on",
@@ -411,7 +411,7 @@ for _, strategy in helpers.each_strategy() do
           helpers.stop_kong()
           setup({
             database = strategy,
-            admin_gui_url = "http://manager.konghq.com",
+            admin_gui_url = "http://manager.konghq.test",
             admin_gui_auth = "basic-auth",
             admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
             enforce_rbac = "on",
@@ -882,7 +882,7 @@ for _, strategy in helpers.each_strategy() do
         _, db = helpers.get_db_utils(strategy)
         assert(helpers.start_kong({
           database = strategy,
-          admin_gui_url = "http://manager.konghq.com",
+          admin_gui_url = "http://manager.konghq.test",
         }))
         client = assert(helpers.admin_client())
       end)
@@ -918,7 +918,7 @@ for _, strategy in helpers.each_strategy() do
         _, db = helpers.get_db_utils(strategy)
         assert(helpers.start_kong({
           database = strategy,
-          admin_gui_url = "http://manager.konghq.com",
+          admin_gui_url = "http://manager.konghq.test",
           admin_gui_auth = 'basic-auth',
           admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
           admin_gui_auth_password_complexity = "{\"kong-preset\": \"min_12\"}",
@@ -1105,7 +1105,7 @@ for _, strategy in helpers.each_strategy() do
         _, db = helpers.get_db_utils(strategy)
         assert(helpers.start_kong({
           database = strategy,
-          admin_gui_url = "http://manager.konghq.com",
+          admin_gui_url = "http://manager.konghq.test",
           admin_gui_auth = 'ldap-auth-advanced',
           admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
           enforce_rbac = "on",
@@ -1164,7 +1164,7 @@ for _, strategy in helpers.each_strategy() do
       _, db  = helpers.get_db_utils(strategy)
       assert(helpers.start_kong({
         database = strategy,
-        admin_gui_url = "http://manager.konghq.com",
+        admin_gui_url = "http://manager.konghq.test",
         admin_gui_auth = 'basic-auth',
         enforce_rbac = "on",
       }))
@@ -1250,7 +1250,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert(helpers.start_kong({
           database = strategy,
-          admin_gui_url = "http://manager.konghq.com",
+          admin_gui_url = "http://manager.konghq.test",
           admin_gui_auth = "basic-auth",
           admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
           admin_gui_auth_password_complexity = "{\"kong-preset\": \"min_12\"}",
@@ -1634,7 +1634,7 @@ for _, strategy in helpers.each_strategy() do
         _, db = helpers.get_db_utils(strategy)
         assert(helpers.start_kong({
           database = strategy,
-          admin_gui_url = "http://manager.konghq.com",
+          admin_gui_url = "http://manager.konghq.test",
           admin_gui_auth = "ldap-auth-advanced",
           admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
           enforce_rbac = "on",
@@ -1740,7 +1740,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert(helpers.start_kong({
           database = strategy,
-          admin_gui_url = "http://manager.konghq.com",
+          admin_gui_url = "http://manager.konghq.test",
           admin_gui_auth = "basic-auth",
           admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
           admin_gui_auth_password_complexity = "{\"kong-preset\": \"min_8\"}",
@@ -1900,7 +1900,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         database = strategy,
-        admin_gui_url = "http://manager.konghq.com",
+        admin_gui_url = "http://manager.konghq.test",
         enforce_rbac = "on"
       }))
     end)
@@ -2397,7 +2397,7 @@ for _, strategy in helpers.each_strategy() do
       })
       local config = {
         database = strategy,
-        admin_gui_url = "http://manager.konghq.com",
+        admin_gui_url = "http://manager.konghq.test",
         admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
         admin_gui_auth = "basic-auth",
         enforce_rbac = "on",

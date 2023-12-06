@@ -18,9 +18,9 @@ describe("page", function()
       portal = "on",
       portal_gui_listeners = {"127.0.0.1:8003"},
       portal_api_listeners = {"127.0.0.1:8004"},
-      portal_gui_host = "localhost.com",
+      portal_gui_host = "localhost.test",
       portal_gui_protocol = "http",
-      portal_api_url = "http://api.localhost.com",
+      portal_api_url = "http://api.localhost.test",
       portal_auth = "basic-auth",
     }
 

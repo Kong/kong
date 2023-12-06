@@ -80,12 +80,12 @@ for _, strategy in helpers.each_strategy() do
 
           service_one = assert(db.services:insert({
             name = "service_one",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           service_two = assert(db.services:insert({
             name = "service_two",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           assert(db.plugins:insert({
@@ -123,13 +123,13 @@ for _, strategy in helpers.each_strategy() do
           application_one = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
 
           application_two = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool2",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
 
           assert(db.application_instances:insert({
@@ -179,7 +179,7 @@ for _, strategy in helpers.each_strategy() do
         it("returns empty results when service has no applications", function()
           local service_three = assert(db.services:insert({
             name = "service_three",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           local res = assert(client:send({
@@ -212,12 +212,12 @@ for _, strategy in helpers.each_strategy() do
 
           service_one = assert(db.services:insert({
             name = "service_one",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           service_two = assert(db.services:insert({
             name = "service_two",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           assert(db.plugins:insert({
@@ -255,13 +255,13 @@ for _, strategy in helpers.each_strategy() do
           application_one = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
 
           application_two = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool2",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
 
           assert(db.application_instances:insert({
@@ -315,7 +315,7 @@ for _, strategy in helpers.each_strategy() do
         it("returns empty results when service has no application services", function()
           local service_three = assert(db.services:insert({
             name = "service_three",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           local res = assert(client:send({
@@ -350,12 +350,12 @@ for _, strategy in helpers.each_strategy() do
 
           service_one = assert(db.services:insert({
             name = "service_one",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           service_two = assert(db.services:insert({
             name = "service_two",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           assert(db.plugins:insert({
@@ -393,13 +393,13 @@ for _, strategy in helpers.each_strategy() do
           application_one = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
 
           application_two = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool2",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
 
           app_instance_one = assert(db.application_instances:insert({
@@ -475,12 +475,12 @@ for _, strategy in helpers.each_strategy() do
 
           service_one = assert(db.services:insert({
             name = "service_one",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           service_two = assert(db.services:insert({
             name = "service_two",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           assert(db.plugins:insert({
@@ -518,13 +518,13 @@ for _, strategy in helpers.each_strategy() do
           application_one = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
 
           application_two = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool2",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
 
           app_instance_one = assert(db.application_instances:insert({
@@ -613,12 +613,12 @@ for _, strategy in helpers.each_strategy() do
 
           service_one = assert(db.services:insert({
             name = "service_one",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           service_two = assert(db.services:insert({
             name = "service_two",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           assert(db.plugins:insert({
@@ -656,13 +656,13 @@ for _, strategy in helpers.each_strategy() do
           application_one = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
 
           application_two = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool2",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
 
           app_instance_one = assert(db.application_instances:insert({

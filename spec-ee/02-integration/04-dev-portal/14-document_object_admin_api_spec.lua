@@ -91,7 +91,7 @@ for _, strategy in helpers.each_strategy() do
         method = "POST",
         path = "/services",
         body = {
-          host = "mockbin.org"
+          host = "mockbin.test"
         },
         headers = {["Content-Type"] = "application/json"}
       })

@@ -63,7 +63,7 @@ for _, strategy in helpers.each_strategy() do
       -- 200
       local oidc_route = bp.routes:insert({
         service = oidc_service,
-        hosts = { "success.oidc.konghq.com" },
+        hosts = { "success.oidc.konghq.test" },
       })
 
       db.konnect_applications:insert({
@@ -85,13 +85,13 @@ for _, strategy in helpers.each_strategy() do
       -- 401 no ctx added for this route, will be unauthed
       bp.routes:insert({
         service = oidc_service,
-        hosts = { "unauthed.oidc.konghq.com" },
+        hosts = { "unauthed.oidc.konghq.test" },
       })
 
       -- 403 client id does not map to an application
       local forbidden_oidc_route_1 = bp.routes:insert({
         service = oidc_service,
-        hosts = { "forbidden.oidc.konghq.com" },
+        hosts = { "forbidden.oidc.konghq.test" },
       })
 
       bp.plugins:insert({
@@ -106,7 +106,7 @@ for _, strategy in helpers.each_strategy() do
       -- 403 application has nil scopes
       local forbidden_oidc_route_2 = bp.routes:insert({
         service = oidc_service,
-        hosts = { "forbidden2.oidc.konghq.com" },
+        hosts = { "forbidden2.oidc.konghq.test" },
       })
 
       db.konnect_applications:insert({
@@ -125,7 +125,7 @@ for _, strategy in helpers.each_strategy() do
       -- 403 application has empty scopes
       local forbidden_oidc_route_3 = bp.routes:insert({
         service = oidc_service,
-        hosts = { "forbidden3.oidc.konghq.com" },
+        hosts = { "forbidden3.oidc.konghq.test" },
       })
 
       db.konnect_applications:insert({
@@ -145,7 +145,7 @@ for _, strategy in helpers.each_strategy() do
       -- 403 application scopes does not contain plugins tracking id
       local forbidden_oidc_route_4 = bp.routes:insert({
         service = oidc_service,
-        hosts = { "forbidden4.oidc.konghq.com" },
+        hosts = { "forbidden4.oidc.konghq.test" },
       })
 
       db.konnect_applications:insert({
@@ -171,7 +171,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.routes:insert({
         service = key_auth_service,
-        hosts = { "keyauth.konghq.com" },
+        hosts = { "keyauth.konghq.test" },
       })
 
       bp.plugins:insert({
@@ -197,7 +197,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.routes:insert({
         service = key_auth_service_consumer_group,
-        hosts = { "keyauthconsumergroup.konghq.com" },
+        hosts = { "keyauthconsumergroup.konghq.test" },
       })
 
       bp.plugins:insert({
@@ -276,7 +276,7 @@ for _, strategy in helpers.each_strategy() do
       it("returns 401 if no client ID found in authenticated credential", function ()
         local res = client:get("/request", {
           headers = {
-            host = "unauthed.oidc.konghq.com"
+            host = "unauthed.oidc.konghq.test"
           }
         })
 
@@ -289,7 +289,7 @@ for _, strategy in helpers.each_strategy() do
       it("returns 403 if client ID does not map to an application", function()
         local res = client:get("/request", {
           headers = {
-            host = "forbidden.oidc.konghq.com"
+            host = "forbidden.oidc.konghq.test"
           }
         })
 
@@ -302,7 +302,7 @@ for _, strategy in helpers.each_strategy() do
       it("returns 403 if client ID's application has no tracking ids (nil)", function()
         local res = client:get("/request", {
           headers = {
-            host = "forbidden2.oidc.konghq.com"
+            host = "forbidden2.oidc.konghq.test"
           }
         })
 
@@ -315,7 +315,7 @@ for _, strategy in helpers.each_strategy() do
       it("returns 403 if client ID's application has no tracking ids (empty table)", function()
         local res = client:get("/request", {
           headers = {
-            host = "forbidden3.oidc.konghq.com"
+            host = "forbidden3.oidc.konghq.test"
           }
         })
 
@@ -328,7 +328,7 @@ for _, strategy in helpers.each_strategy() do
       it("returns 403 if client ID's application does not contain the correct tracking id", function()
         local res = client:get("/request", {
           headers = {
-            host = "forbidden4.oidc.konghq.com"
+            host = "forbidden4.oidc.konghq.test"
           }
         })
 
@@ -341,7 +341,7 @@ for _, strategy in helpers.each_strategy() do
       it("returns 200 if client ID's application contain the correct tracking id", function()
         local res = client:get("/request", {
           headers = {
-            host = "success.oidc.konghq.com"
+            host = "success.oidc.konghq.test"
           }
         })
 
@@ -353,7 +353,7 @@ for _, strategy in helpers.each_strategy() do
       it("returns 401 if api key found", function ()
         local res = client:get("/request", {
           headers = {
-            host = "keyauth.konghq.com"
+            host = "keyauth.konghq.test"
           }
         })
 
@@ -366,7 +366,7 @@ for _, strategy in helpers.each_strategy() do
       it("returns 401 if api key in query is invalid", function ()
         local res = client:get("/request?apikey=derp", {
           headers = {
-            host = "keyauth.konghq.com"
+            host = "keyauth.konghq.test"
           }
         })
 
@@ -380,7 +380,7 @@ for _, strategy in helpers.each_strategy() do
         local res = client:get("/request", {
           headers = {
             apikey = "derp",
-            host = "keyauth.konghq.com"
+            host = "keyauth.konghq.test"
           }
         })
 
@@ -393,7 +393,7 @@ for _, strategy in helpers.each_strategy() do
       it("returns 200 if api key found in query", function ()
         local res = client:get("/request?apikey=opensesame", {
           headers = {
-            host = "keyauth.konghq.com"
+            host = "keyauth.konghq.test"
           }
         })
 
@@ -404,7 +404,7 @@ for _, strategy in helpers.each_strategy() do
         local res = client:get("/request", {
           headers = {
             apikey = "opensesame",
-            host = "keyauth.konghq.com"
+            host = "keyauth.konghq.test"
           }
         })
 
@@ -417,7 +417,7 @@ for _, strategy in helpers.each_strategy() do
       it("maps the consumer groups if found", function()
         local res = client:get("/request?apikey=opendadoor", {
             headers = {
-                host = "keyauthconsumergroup.konghq.com"
+                host = "keyauthconsumergroup.konghq.test"
             }
         })
 
@@ -429,7 +429,7 @@ for _, strategy in helpers.each_strategy() do
       it("doesnt map the consumer groups if not found", function()
         local res = client:get("/request?apikey=opendadoor2", {
             headers = {
-                host = "keyauthconsumergroup.konghq.com"
+                host = "keyauthconsumergroup.konghq.test"
             }
         })
 
@@ -441,7 +441,7 @@ for _, strategy in helpers.each_strategy() do
       it("doesnt map the consumer groups if request fails", function()
         local res = client:get("/request", {
             headers = {
-                host = "keyauthconsumergroup.konghq.com"
+                host = "keyauthconsumergroup.konghq.test"
             }
         })
 

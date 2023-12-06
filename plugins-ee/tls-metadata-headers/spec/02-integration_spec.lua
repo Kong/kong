@@ -39,10 +39,10 @@ local tls_fixtures = { http_mock = {
         location = /good_client {
             proxy_ssl_certificate /kong-plugin/spec/fixtures/good_tls_client.crt;
             proxy_ssl_certificate_key /kong-plugin/spec/fixtures/good_tls_client.key;
-            proxy_ssl_name tls.com;
+            proxy_ssl_name tls.test;
             # enable send the SNI sent to server
             proxy_ssl_server_name on;
-            proxy_set_header Host tls.com;
+            proxy_set_header Host tls.test;
 
             proxy_pass https://127.0.0.1:9443/get;
         }
@@ -50,8 +50,8 @@ local tls_fixtures = { http_mock = {
         location = /bad_client {
             proxy_ssl_certificate /kong-plugin/spec/fixtures/bad_tls_client.crt;
             proxy_ssl_certificate_key /kong-plugin/spec/fixtures/bad_tls_client.key;
-            proxy_ssl_name tls.com;
-            proxy_set_header Host tls.com;
+            proxy_ssl_name tls.test;
+            proxy_set_header Host tls.test;
 
             proxy_pass https://127.0.0.1:9443/get;
         }
@@ -70,8 +70,8 @@ local tls_fixtures = { http_mock = {
         location = /another {
           proxy_ssl_certificate /kong-plugin/spec/fixtures/good_tls_client.crt;
           proxy_ssl_certificate_key /kong-plugin/spec/fixtures/good_tls_client.key;
-          proxy_ssl_name tls.com;
-          proxy_set_header Host tls.com;
+          proxy_ssl_name tls.test;
+          proxy_set_header Host tls.test;
 
           proxy_pass https://127.0.0.1:9443/anything;
       }
@@ -103,7 +103,7 @@ for _, strategy in strategies() do
       }
 
       route_https1 = bp.routes:insert {
-        hosts   = { "tls.com" },
+        hosts   = { "tls.test" },
         service = { id = service_https.id, },
         strip_path = false,
         paths = { "/get"},
@@ -123,7 +123,7 @@ for _, strategy in strategies() do
 
       route_https2 = bp.routes:insert {
         service = { id = service_https.id, },
-        hosts   = { "tls.com" },
+        hosts   = { "tls.test" },
         strip_path = false,
         paths = { "/anything"},
       }
@@ -245,7 +245,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/get",
           headers = {
-            host = "tls.com",
+            host = "tls.test",
           }
         })
         local body = assert.res_status(200, res)

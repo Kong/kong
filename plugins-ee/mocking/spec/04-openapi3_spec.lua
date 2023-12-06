@@ -69,11 +69,11 @@ for _, strategy in strategies() do
           local service = bp.services:insert {
             protocol = "http",
             port = 80,
-            host = "mocking.com",
+            host = "mocking.test",
           }
 
           local route1 = db.routes:insert({
-            hosts = { "mocking.com" },
+            hosts = { "mocking.test" },
             service = service,
           })
           db.plugins:insert {
@@ -85,7 +85,7 @@ for _, strategy in strategies() do
           }
 
           local route2 = db.routes:insert({
-            hosts = { "mocking-codes.com" },
+            hosts = { "mocking-codes.test" },
             service = service,
           })
           db.plugins:insert {
@@ -98,7 +98,7 @@ for _, strategy in strategies() do
           }
 
           local route3 = db.routes:insert({
-            hosts = { "mocking-include-base-path.com" },
+            hosts = { "mocking-include-base-path.test" },
             service = service,
           })
           db.plugins:insert {
@@ -138,7 +138,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/inventory",
               headers = {
-                host = "mocking.com"
+                host = "mocking.test"
               }
             })
 
@@ -163,7 +163,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/not_exist",
               headers = {
-                host = "mocking.com"
+                host = "mocking.test"
               }
             })
             assert.response(res).has.status(404)
@@ -176,7 +176,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/inventory.v2",
               headers = {
-                host = "mocking.com"
+                host = "mocking.test"
               }
             })
             assert.response(res).has.status(200)
@@ -192,7 +192,7 @@ for _, strategy in strategies() do
                 method = "GET",
                 path = "/v1/inventory",
                 headers = {
-                  host = "mocking-include-base-path.com"
+                  host = "mocking-include-base-path.test"
                 }
               })
 
@@ -218,7 +218,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/ping-with-one-default-response",
               headers = {
-                host = "mocking.com"
+                host = "mocking.test"
               }
             })
             assert.response(res).has.status(404)
@@ -229,7 +229,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/ping-with-multiple-response",
               headers = {
-                host = "mocking.com"
+                host = "mocking.test"
               }
             })
             assert.response(res).has.status(200) -- expect that return the minimum code of resposnes, which is 200
@@ -243,7 +243,7 @@ for _, strategy in strategies() do
                 method = "POST",
                 path = "/inventory",
                 headers = {
-                  host = "mocking-codes.com"
+                  host = "mocking-codes.test"
                 }
               })
               assert.response(res).has.status(400)
@@ -254,7 +254,7 @@ for _, strategy in strategies() do
                 method = "GET",
                 path = "/ping-with-multiple-response",
                 headers = {
-                  host = "mocking-codes.com"
+                  host = "mocking-codes.test"
                 }
               })
               assert.response(res).has.status(400)
@@ -270,7 +270,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/inventory",
               headers = {
-                host = "mocking.com",
+                host = "mocking.test",
                 accept = "application/xml"
               }
             })
@@ -282,7 +282,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/inventory",
               headers = {
-                host = "mocking.com",
+                host = "mocking.test",
                 accept = "text/*"
               }
             })
@@ -297,7 +297,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/inventory",
               headers = {
-                host = "mocking.com",
+                host = "mocking.test",
                 accept = "application/xml;q=0.1, text/html;q=0.5"
               }
             })
@@ -314,7 +314,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/inventory",
               headers = {
-                host = "mocking.com",
+                host = "mocking.test",
                 accept = "text/html"
               }
             })
@@ -331,7 +331,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/inventory_empty_responses",
               headers = {
-                host = "mocking.com"
+                host = "mocking.test"
               }
             })
 
@@ -345,7 +345,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/inventory_without_content",
               headers = {
-                host = "mocking.com"
+                host = "mocking.test"
               }
             })
             assert.response(res).has.status(200)
@@ -356,7 +356,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/inventory_empty_content",
               headers = {
-                host = "mocking.com"
+                host = "mocking.test"
               }
             })
             assert.response(res).has.status(200)
@@ -367,7 +367,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/inventory_empty_content_examples",
               headers = {
-                host = "mocking.com"
+                host = "mocking.test"
               }
             })
             assert.response(res).has.status(200)
@@ -384,7 +384,7 @@ for _, strategy in strategies() do
                 method = "GET",
                 path = "/inventory",
                 headers = {
-                  host = "mocking.com",
+                  host = "mocking.test",
                   ["X-Kong-Mocking-Delay"] = "500"
                 }
               })
@@ -398,7 +398,7 @@ for _, strategy in strategies() do
                 method = "GET",
                 path = "/inventory",
                 headers = {
-                  host = "mocking.com",
+                  host = "mocking.test",
                   ["X-Kong-Mocking-Delay"] = "10001"
                 }
               })
@@ -410,7 +410,7 @@ for _, strategy in strategies() do
                 method = "GET",
                 path = "/inventory",
                 headers = {
-                  host = "mocking.com",
+                  host = "mocking.test",
                   ["X-Kong-Mocking-Delay"] = "-1"
                 }
               })
@@ -426,7 +426,7 @@ for _, strategy in strategies() do
                 method = "GET",
                 path = "/inventory",
                 headers = {
-                  host = "mocking.com",
+                  host = "mocking.test",
                   accept = "application/xml",
                   ["X-Kong-Mocking-Example-Id"] = "1"
                 }
@@ -438,7 +438,7 @@ for _, strategy in strategies() do
                 method = "GET",
                 path = "/inventory",
                 headers = {
-                  host = "mocking.com",
+                  host = "mocking.test",
                   accept = "application/xml",
                   ["X-Kong-Mocking-Example-Id"] = "2"
                 }
@@ -450,7 +450,7 @@ for _, strategy in strategies() do
                 method = "GET",
                 path = "/inventory",
                 headers = {
-                  host = "mocking.com",
+                  host = "mocking.test",
                   accept = "application/xml",
                   ["X-Kong-Mocking-Example-Id"] = "three"
                 }
@@ -464,7 +464,7 @@ for _, strategy in strategies() do
                 method = "GET",
                 path = "/inventory",
                 headers = {
-                  host = "mocking.com",
+                  host = "mocking.test",
                   accept = "application/xml",
                   ["X-Kong-Mocking-Example-Id"] = "inexistent"
                 }
@@ -481,7 +481,7 @@ for _, strategy in strategies() do
                 method = "GET",
                 path = "/inventory",
                 headers = {
-                  host = "mocking.com",
+                  host = "mocking.test",
                   accept = "text/plain",
                   ["X-Kong-Mocking-Status-Code"] = "400"
                 }
@@ -495,7 +495,7 @@ for _, strategy in strategies() do
                 method = "GET",
                 path = "/inventory",
                 headers = {
-                  host = "mocking.com",
+                  host = "mocking.test",
                   ["X-Kong-Mocking-Status-Code"] = "1"
                 }
               })
@@ -512,7 +512,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/ref/inventory_ref_schema",
               headers = {
-                host = "mocking.com"
+                host = "mocking.test"
               }
             })
             assert.response(res).has.status(200)
@@ -539,7 +539,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/ref/inventory_ref_response",
               headers = {
-                host = "mocking.com"
+                host = "mocking.test"
               }
             })
             assert.response(res).has.status(400)

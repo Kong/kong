@@ -24,7 +24,7 @@ describe("Log Serializer", function()
         request_uri = "/request_uri",
         upstream_uri = "/upstream_uri",
         scheme = "http",
-        host = "test.com",
+        host = "test.test",
         server_port = 80,
         request_length = 200,
         bytes_sent = 99,

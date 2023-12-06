@@ -396,7 +396,7 @@ for _, strategy in helpers.each_strategy() do
 
           local service = assert(db.services:insert({
             name = "service",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           assert(db.plugins:insert({
@@ -519,7 +519,7 @@ for _, strategy in helpers.each_strategy() do
 
           local service = assert(db.services:insert({
             name = "service",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           assert(db.plugins:insert({
@@ -664,17 +664,17 @@ for _, strategy in helpers.each_strategy() do
         lazy_setup(function()
           service_one = assert(db.services:insert({
             name = "service_one",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           service_two = assert(db.services:insert({
             name = "service_two",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           service_three = assert(db.services:insert({
             name = "service_three",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           developer = assert(db.developers:insert({
@@ -830,7 +830,7 @@ for _, strategy in helpers.each_strategy() do
         before_each(function()
           service = assert(db.services:insert({
             name = "service",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           developer = assert(db.developers:insert({
@@ -993,7 +993,7 @@ for _, strategy in helpers.each_strategy() do
         lazy_setup(function()
           service = assert(db.services:insert({
             name = "service",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           developer = assert(db.developers:insert({
@@ -1116,7 +1116,7 @@ for _, strategy in helpers.each_strategy() do
         before_each(function()
           service = assert(db.services:insert({
             name = "service",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           developer = assert(db.developers:insert({
@@ -1193,7 +1193,7 @@ for _, strategy in helpers.each_strategy() do
         it("cant patch referenced entities", function()
           local service_two = assert(db.services:insert({
             name = "service2",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           local application_two = assert(db.applications:insert({
@@ -1297,7 +1297,7 @@ for _, strategy in helpers.each_strategy() do
         before_each(function()
           service = assert(db.services:insert({
             name = "service",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           developer = assert(db.developers:insert({

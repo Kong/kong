@@ -523,43 +523,43 @@ for _, strategy in strategies() do
       bp = helpers.get_db_utils(db_strategy, nil, { "ldap-auth-advanced" })
 
       local route = bp.routes:insert {
-        hosts = { "ldap.com" }
+        hosts = { "ldap.test" }
       }
 
       local route2 = bp.routes:insert {
-        hosts = { "ldap2.com" }
+        hosts = { "ldap2.test" }
       }
 
       local route3 = bp.routes:insert {
-        hosts = { "ldap3.com" }
+        hosts = { "ldap3.test" }
       }
 
       local route4 = bp.routes:insert {
-        hosts = { "ldap4.com" }
+        hosts = { "ldap4.test" }
       }
 
       local route5 = bp.routes:insert {
-        hosts = { "ldap5.com" }
+        hosts = { "ldap5.test" }
       }
 
       local route6 = bp.routes:insert {
-        hosts = { "ldap6.com" }
+        hosts = { "ldap6.test" }
       }
 
       local route7 = bp.routes:insert {
-        hosts = { "ldap7.com" }
+        hosts = { "ldap7.test" }
       }
 
       local route8 = bp.routes:insert {
-        hosts = { "ldap8.com" }
+        hosts = { "ldap8.test" }
       }
 
       local route9 = bp.routes:insert {
-        hosts = { "ldap9.com" }
+        hosts = { "ldap9.test" }
       }
 
       local route10 = bp.routes:insert {
-        hosts = { "ldap10.com" },
+        hosts = { "ldap10.test" },
         paths = { "/route_groups_required" }
       }
 
@@ -658,7 +658,7 @@ for _, strategy in strategies() do
           path    = "/get",
           body    = {},
           headers = {
-            host             = "ldap.com",
+            host             = "ldap.test",
             authorization    = "ldap " .. ngx.encode_base64("User1:pass:w2rd1111A$"),
           }
         })
@@ -674,7 +674,7 @@ for _, strategy in strategies() do
           path    = "/get",
           body    = {},
           headers = {
-            host             = "ldap.com",
+            host             = "ldap.test",
             authorization    = "ldap " .. ngx.encode_base64("MacBeth:pass:w2rd1111A$"),
           }
         })
@@ -704,7 +704,7 @@ for _, strategy in strategies() do
           path    = "/get",
           body    = {},
           headers = {
-            host             = "ldap.com",
+            host             = "ldap.test",
             authorization    = "ldap " .. ngx.encode_base64("User1:pass:w2rd1111A$"),
           }
         })
@@ -735,7 +735,7 @@ for _, strategy in strategies() do
           path    = "/get",
           body    = {},
           headers = {
-            host             = "ldap.com",
+            host             = "ldap.test",
             authorization    = "ldap " .. ngx.encode_base64("Desdemona:pass:w2rd1111A$"),
           }
         })
@@ -767,7 +767,7 @@ for _, strategy in strategies() do
           path    = "/get",
           body    = {},
           headers = {
-            host             = "ldap2.com",
+            host             = "ldap2.test",
             authorization    = "ldap " .. ngx.encode_base64("Hamlet:pass:w2rd1111A$"),
           }
         })
@@ -783,7 +783,7 @@ for _, strategy in strategies() do
           path    = "/get",
           body    = {},
           headers = {
-            host             = "ldap2.com",
+            host             = "ldap2.test",
             authorization    = "ldap " .. ngx.encode_base64("Hamlet:pass:wrong_password"),
           }
         })
@@ -799,7 +799,7 @@ for _, strategy in strategies() do
           path    = "/get",
           body    = {},
           headers = {
-            host             = "ldap3.com",
+            host             = "ldap3.test",
             authorization    = "ldap " .. ngx.encode_base64("Othello:pass:w2rd1111A$"),
           }
         })
@@ -815,7 +815,7 @@ for _, strategy in strategies() do
           path    = "/get",
           body    = {},
           headers = {
-            host             = "ldap3.com",
+            host             = "ldap3.test",
             authorization    = "ldap " .. ngx.encode_base64("Kipp:pass:w2rd1111A$"),
           }
         })
@@ -831,7 +831,7 @@ for _, strategy in strategies() do
           path    = "/get",
           body    = {},
           headers = {
-            host             = "ldap4.com",
+            host             = "ldap4.test",
             authorization    = "ldap " .. ngx.encode_base64("MacBeth:pass:w2rd1111A$"),
           }
         })
@@ -847,7 +847,7 @@ for _, strategy in strategies() do
           path    = "/get",
           body    = {},
           headers = {
-            host             = "ldap5.com",
+            host             = "ldap5.test",
             authorization    = "ldap " .. ngx.encode_base64("MacBeth:pass:w2rd1111A$"),
           }
         })
@@ -863,7 +863,7 @@ for _, strategy in strategies() do
           path    = "/get",
           body    = {},
           headers = {
-            host             = "ldap6.com",
+            host             = "ldap6.test",
             authorization    = "ldap " .. ngx.encode_base64("MacBeth:pass:w2rd1111A$"),
           }
         })
@@ -879,7 +879,7 @@ for _, strategy in strategies() do
           path    = "/get",
           body    = {},
           headers = {
-            host             = "ldap7.com",
+            host             = "ldap7.test",
             authorization    = "ldap " .. ngx.encode_base64("MacBeth:pass:w2rd1111A$"),
           }
         })
@@ -895,7 +895,7 @@ for _, strategy in strategies() do
           path    = "/get",
           body    = {},
           headers = {
-            host             = "ldap8.com",
+            host             = "ldap8.test",
             authorization    = "ldap " .. ngx.encode_base64("MacBeth:pass:w2rd1111A$"),
           }
         })
@@ -911,7 +911,7 @@ for _, strategy in strategies() do
           path    = "/get",
           body    = {},
           headers = {
-            host             = "ldap9.com",
+            host             = "ldap9.test",
             authorization    = "ldap " .. ngx.encode_base64("MacBeth:pass:w2rd1111A$"),
           }
         })
@@ -941,7 +941,7 @@ for _, strategy in strategies() do
           path    = "/get",
           body    = {},
           headers = {
-            host             = "ldap.com",
+            host             = "ldap.test",
             authorization    = "ldap " .. ngx.encode_base64("User1:pass:w2rd1111A$"),
           }
         })
@@ -957,7 +957,7 @@ for _, strategy in strategies() do
           path    = "/route_groups_required",
           body    = {},
           headers = {
-            host          = "ldap10.com",
+            host          = "ldap10.test",
             authorization = "ldap " .. ngx.encode_base64("MacBeth:pass:w2rd1111A$"),
           }
         })
@@ -982,7 +982,7 @@ for _, strategy in strategies() do
           path    = "/route_groups_required",
           body    = {},
           headers = {
-            host          = "ldap10.com",
+            host          = "ldap10.test",
             authorization = "ldap " .. ngx.encode_base64("MacBeth:pass:w2rd1111A$"),
           }
         })

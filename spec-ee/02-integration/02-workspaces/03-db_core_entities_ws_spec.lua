@@ -139,7 +139,7 @@ for _, strategy in helpers.each_strategy() do
           local service_default
           with_current_ws(nil, function()
             local err_t, err
-            service_default, err_t, err = db.services:insert({ host = "service.com" })
+            service_default, err_t, err = db.services:insert({ host = "service.test" })
             assert.is_nil(err_t)
             assert.is_nil(err)
 
@@ -149,7 +149,7 @@ for _, strategy in helpers.each_strategy() do
             -- add route in foo workspace
             local route, err_t, err = db.routes:insert({
               protocols = { "http" },
-              hosts = { "example.com" },
+              hosts = { "example.test" },
               service = service_default,
             })
             assert.is_nil(route)
@@ -168,7 +168,7 @@ for _, strategy in helpers.each_strategy() do
         it("returns an existing Route from default workspace", function()
           with_current_ws( nil,function ()
             local route_inserted = bp.routes:insert({
-            hosts = { "example.com" },
+            hosts = { "example.test" },
             })
             local route, err, err_t = db.routes:select({ id = route_inserted.id })
             assert.is_nil(err_t)
@@ -181,8 +181,8 @@ for _, strategy in helpers.each_strategy() do
           local foo_ws = add_ws(db, "foo")
           with_current_ws( {foo_ws},function()
             local route_inserted = bp.routes:insert({
-              hosts = { "example.com" },
-              service = assert(db.services:insert({ host = "service.com" }))
+              hosts = { "example.test" },
+              service = assert(db.services:insert({ host = "service.test" }))
             })
             local route, err, err_t = db.routes:select({ id = route_inserted.id })
             assert.is_nil(err_t)
@@ -195,7 +195,7 @@ for _, strategy in helpers.each_strategy() do
           local foo_ws = add_ws(db, "foo")
           local service_inserted
           with_current_ws( {foo_ws},function()
-            service_inserted = db.services:insert({ host = "service.com" })
+            service_inserted = db.services:insert({ host = "service.test" })
             local service, err, err_t = db.services:select({ id = service_inserted.id })
             assert.is_nil(err_t)
             assert.is_nil(err)
@@ -234,8 +234,8 @@ for _, strategy in helpers.each_strategy() do
           with_current_ws( {foo_ws},function()
             local route = db.routes:insert({
               protocols = { "http" },
-              hosts = { "example.com" },
-              service = assert(db.services:insert({ host = "service.com" })),
+              hosts = { "example.test" },
+              service = assert(db.services:insert({ host = "service.test" })),
             })
 
             local new_route, err, err_t = db.routes:update({ id = route.id }, {
@@ -268,7 +268,7 @@ for _, strategy in helpers.each_strategy() do
           local service_default
           with_current_ws(nil, function()
             local err_t, err
-            service_default, err_t, err = db.services:insert({ host = "service.com" })
+            service_default, err_t, err = db.services:insert({ host = "service.test" })
             assert.is_nil(err_t)
             assert.is_nil(err)
 
@@ -279,8 +279,8 @@ for _, strategy in helpers.each_strategy() do
             -- add route in foo workspace
             local route = db.routes:insert({
               protocols = { "http" },
-              hosts = { "example.com" },
-              service = assert(db.services:insert({ host = "service.com" })),
+              hosts = { "example.test" },
+              service = assert(db.services:insert({ host = "service.test" })),
             })
 
             local new_route, err, err_t = db.routes:update({ id = route.id }, {
@@ -328,7 +328,7 @@ for _, strategy in helpers.each_strategy() do
           local foo_ws = add_ws(db, "foo")
           with_current_ws( {foo_ws},function()
             local route = bp.routes:insert({
-              hosts = { "example.com" },
+              hosts = { "example.test" },
             })
 
             local ok, err, err_t = db.routes:delete({
@@ -405,7 +405,7 @@ for _, strategy in helpers.each_strategy() do
             foo_ws = add_ws(db, "foo")
             with_current_ws( {foo_ws},function()
               for i = 1, 102 do
-                bp.routes:insert({ hosts = { "example-" .. i .. ".com" } })
+                bp.routes:insert({ hosts = { "example-" .. i .. ".test" } })
               end
             end, db)
           end)
@@ -442,7 +442,7 @@ for _, strategy in helpers.each_strategy() do
             with_current_ws( {foo_ws},function()
               for i = 1, 10 do
                 bp.routes:insert({
-                  hosts = { "example-" .. i .. ".com" },
+                  hosts = { "example-" .. i .. ".test" },
                   methods = { "GET" },
                 })
               end
@@ -598,7 +598,7 @@ for _, strategy in helpers.each_strategy() do
           with_current_ws( {foo_ws},function()
             for i = 1, 100 do
               bp.routes:insert({
-                hosts   = { "example-" .. i .. ".com" },
+                hosts   = { "example-" .. i .. ".test" },
                 methods = { "GET" }
               })
             end
@@ -673,7 +673,7 @@ for _, strategy in helpers.each_strategy() do
             local service, err, err_t = db.services:insert({
               name            = "example_service",
               protocol        = "http",
-              host            = "example.com",
+              host            = "example.test",
               port            = 443,
               path            = "/foo",
               connect_timeout = 10000,
@@ -695,7 +695,7 @@ for _, strategy in helpers.each_strategy() do
               updated_at      = service.updated_at,
               name            = "example_service",
               protocol        = "http",
-              host            = "example.com",
+              host            = "example.test",
               port            = 443,
               path            = "/foo",
               connect_timeout = 10000,
@@ -715,7 +715,7 @@ for _, strategy in helpers.each_strategy() do
             local _, _, err_t = db.services:insert {
               name = "my_service",
               protocol = "http",
-              host = "example.com",
+              host = "example.test",
             }
             assert.is_nil(err_t)
 
@@ -723,7 +723,7 @@ for _, strategy in helpers.each_strategy() do
             local service, _, err_t = db.services:insert {
               name = "my_service",
               protocol = "http",
-              host = "other-example.com",
+              host = "other-example.test",
             }
             assert.is_nil(service)
             assert.same({
@@ -750,7 +750,7 @@ for _, strategy in helpers.each_strategy() do
             for i = 1, 5 do
               assert(db.services:insert({
                 name = "service_" .. i,
-                host = "service" .. i .. ".com",
+                host = "service" .. i .. ".test",
               }))
             end
           end, db)
@@ -760,7 +760,7 @@ for _, strategy in helpers.each_strategy() do
         it("returns existing Service", function()
           with_current_ws( {foo_ws},function()
             local service = assert(db.services:select_by_name("service_1"))
-            assert.equal("service1.com", service.host)
+            assert.equal("service1.test", service.host)
           end, db)
         end)
 
@@ -788,7 +788,7 @@ for _, strategy in helpers.each_strategy() do
               local _, _, err_t = db.services:insert {
                 name = "service",
                 protocol = "http",
-                host = "example.com",
+                host = "example.test",
               }
               assert.is_nil(err_t)
 
@@ -796,7 +796,7 @@ for _, strategy in helpers.each_strategy() do
               local service, _, err_t = db.services:insert {
                 name = "service_bis",
                 protocol = "http",
-                host = "other-example.com",
+                host = "other-example.test",
               }
               assert.is_nil(err_t)
 
@@ -828,12 +828,12 @@ for _, strategy in helpers.each_strategy() do
           with_current_ws( {foo_ws},function()
             assert(db.services:insert({
               name = "test-service",
-              host = "test-service.com",
+              host = "test-service.test",
             }))
 
             assert(db.services:insert({
               name = "existing-service",
-              host = "existing-service.com",
+              host = "existing-service.test",
             }))
           end, db)
         end)
@@ -854,7 +854,7 @@ for _, strategy in helpers.each_strategy() do
         it("updates an existing Service", function()
           with_current_ws( {foo_ws},function()
             local service = assert(db.services:insert({
-              host = "service.com"
+              host = "service.test"
             }))
 
             local updated_service, err, err_t = db.services:update({
@@ -880,7 +880,7 @@ for _, strategy in helpers.each_strategy() do
             local err, err_t
             service_default, err, err_t = db.services:insert({
               name = "test-service",
-              host = "test-service.com",
+              host = "test-service.test",
             })
             assert.is_nil(err_t)
             assert.is_nil(err)
@@ -945,7 +945,7 @@ for _, strategy in helpers.each_strategy() do
           with_current_ws( {foo_ws},function()
             service = assert(db.services:insert({
               name = "service_1",
-              host = "service1.com",
+              host = "service1.test",
             }))
           end, db)
         end)
@@ -996,12 +996,12 @@ for _, strategy in helpers.each_strategy() do
         with_current_ws( {foo_ws},function()
           local service = assert(db.services:insert({
             protocol = "http",
-            host     = "service.com"
+            host     = "service.test"
           }))
 
           local route, err, err_t = db.routes:insert({
             protocols = { "http" },
-            hosts     = { "example.com" },
+            hosts     = { "example.test" },
             service   = service,
           })
           assert.is_nil(err_t)
@@ -1012,7 +1012,7 @@ for _, strategy in helpers.each_strategy() do
             updated_at       = route.updated_at,
             path_handling    = "v0",
             protocols        = { "http" },
-            hosts            = { "example.com" },
+            hosts            = { "example.test" },
             regex_priority   = 0,
             strip_path       = true,
             preserve_host    = false,
@@ -1033,8 +1033,8 @@ for _, strategy in helpers.each_strategy() do
 
       it(":update() attaches a Route to an existing Service", function()
         with_current_ws( {foo_ws},function()
-          local service1 = bp.services:insert({ host = "service1.com" })
-          local service2 = bp.services:insert({ host = "service2.com" })
+          local service1 = bp.services:insert({ host = "service1.test" })
+          local service2 = bp.services:insert({ host = "service2.test" })
 
           local route = bp.routes:insert({ service = service1, methods = { "GET" } })
 
@@ -1050,7 +1050,7 @@ for _, strategy in helpers.each_strategy() do
       it(":delete() a Service is not allowed if a Route is associated to it", function()
         with_current_ws( {foo_ws},function()
           local service = bp.services:insert({
-            host = "example.com",
+            host = "example.test",
           })
 
           bp.routes:insert({ service = service, methods = { "GET" } })
@@ -1074,7 +1074,7 @@ for _, strategy in helpers.each_strategy() do
       it(":delete() a Route without deleting the associated Service", function()
         with_current_ws( {foo_ws},function()
           local service = bp.services:insert({
-            host = "example.com",
+            host = "example.test",
           })
 
           local route = bp.routes:insert({ service = service, methods = { "GET" } })
@@ -1118,7 +1118,7 @@ for _, strategy in helpers.each_strategy() do
             }
 
             bp.routes:insert {
-              hosts = { "example.com" },
+              hosts = { "example.test" },
               -- different service
             }
 
@@ -1178,7 +1178,7 @@ for _, strategy in helpers.each_strategy() do
         it("invokes schema post-processing", function()
           with_current_ws( {foo_ws},function()
             local service = bp.services:insert {
-              host = "example.com",
+              host = "example.test",
             }
 
             bp.routes:insert {

@@ -394,7 +394,7 @@ for _, strategy in helpers.each_strategy() do
 
       setup(function()
         _, db, _ = helpers.get_db_utils(strategy)
-        portal_gui_host = 'cat.hotdog.com'
+        portal_gui_host = 'cat.hotdog.test'
         portal_gui_protocol = 'http'
 
         assert(helpers.start_kong({

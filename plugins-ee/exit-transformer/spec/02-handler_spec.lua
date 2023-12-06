@@ -32,7 +32,7 @@ for _, strategy in strategies() do
       local bp = helpers.get_db_utils(db_strategy, nil, { PLUGIN_NAME })
 
       local route1 = bp.routes:insert({
-        hosts = { "test1.com" },
+        hosts = { "test1.test" },
       })
 
       local function_str_status = [[
@@ -78,7 +78,7 @@ for _, strategy in strategies() do
       }
 
       local route2 = bp.routes:insert {
-        hosts = { "test2.com" },
+        hosts = { "test2.test" },
       }
 
       bp.plugins:insert {
@@ -95,7 +95,7 @@ for _, strategy in strategies() do
       }
 
       local route3 = bp.routes:insert {
-        hosts = { "test3.com" },
+        hosts = { "test3.test" },
       }
 
       bp.plugins:insert {
@@ -113,7 +113,7 @@ for _, strategy in strategies() do
 
 
       local route4 = bp.routes:insert {
-        hosts = { "test4.com" },
+        hosts = { "test4.test" },
       }
 
       bp.plugins:insert {
@@ -131,7 +131,7 @@ for _, strategy in strategies() do
       }
 
       local route6 = bp.routes:insert {
-        hosts = { "test6.com" },
+        hosts = { "test6.test" },
       }
 
       bp.plugins:insert {
@@ -152,7 +152,7 @@ for _, strategy in strategies() do
       -- make sure the exit hook runs only once
 
       local route7 = bp.routes:insert {
-        hosts = { "test7.com" },
+        hosts = { "test7.test" },
       }
 
       bp.plugins:insert {
@@ -176,7 +176,7 @@ for _, strategy in strategies() do
       -- not use delayed response
 
       local route8 = bp.routes:insert {
-        hosts = { "test8.com" },
+        hosts = { "test8.test" },
       }
 
       bp.plugins:insert {
@@ -228,7 +228,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/request",  -- makes mockbin return the entire request
           headers = {
-            host = "test1.com"
+            host = "test1.test"
           }
         })
         assert.response(res).has.status(401)
@@ -259,7 +259,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/request",  -- makes mockbin return the entire request
           headers = {
-            host = "test1.com"
+            host = "test1.test"
           }
         })
         local body = res:read_body()
@@ -271,7 +271,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/request",  -- makes mockbin return the entire request
           headers = {
-            host = "test2.com"
+            host = "test2.test"
           }
         })
         local header = assert.response(res).has.header("some-header")
@@ -283,7 +283,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/request",  -- makes mockbin return the entire request
           headers = {
-            host = "test3.com"
+            host = "test3.test"
           }
         })
         assert.response(res).has.status(418)
@@ -294,7 +294,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/request",  -- makes mockbin return the entire request
           headers = {
-            host = "test4.com"
+            host = "test4.test"
           }
         })
         local body = assert.response(res).has.status(418)
@@ -308,7 +308,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/request",  -- makes mockbin return the entire request
           headers = {
-            host = "test6.com",
+            host = "test6.test",
             something = "hello world",
           }
         })
@@ -325,7 +325,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/request",  -- makes mockbin return the entire request
             headers = {
-              host = "test7.com",
+              host = "test7.test",
               something = "hello world",
             }
           })
@@ -338,7 +338,7 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/request",  -- makes mockbin return the entire request
             headers = {
-              host = "test8.com",
+              host = "test8.test",
               something = "hello world",
             }
           })

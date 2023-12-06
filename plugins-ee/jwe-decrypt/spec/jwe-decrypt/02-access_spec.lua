@@ -78,20 +78,20 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
           assert(jwt_enc)
 
           local route1 = bp.routes:insert({
-            hosts = { "test1.com" },
+            hosts = { "test1.test" },
           })
 
           local route2 = bp.routes:insert({
-            hosts = { "test2.com" },
+            hosts = { "test2.test" },
           })
           local route3 = bp.routes:insert({
-            hosts = { "test3.com" },
+            hosts = { "test3.test" },
           })
           local route4 = bp.routes:insert({
-            hosts = { "test4.com" },
+            hosts = { "test4.test" },
           })
           local route5 = bp.routes:insert({
-            hosts = { "test5.com" },
+            hosts = { "test5.test" },
           })
 
           bp.plugins:insert {
@@ -163,7 +163,7 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
             method = "GET",
             path = "/request", -- makes mockbin return the entire request
             headers = {
-              host = "test1.com",
+              host = "test1.test",
               ["Authorization"] = jwt_enc
             }
           })
@@ -179,7 +179,7 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
             method = "GET",
             path = "/request", -- makes mockbin return the entire request
             headers = {
-              host = "test1.com",
+              host = "test1.test",
               ["Authorization"] = fmt("Bearer %s", jwt_enc)
             }
           })
@@ -194,7 +194,7 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
             method = "GET",
             path = "/request",
             headers = {
-              host = "test2.com",
+              host = "test2.test",
               ["test_header_name"] = jwt_enc
             }
           })
@@ -209,7 +209,7 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
             method = "GET",
             path = "/request",
             headers = {
-              host = "test3.com",
+              host = "test3.test",
               ["Authorization"] = jwt_enc
             }
           })
@@ -223,7 +223,7 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
             method = "GET",
             path = "/request",
             headers = {
-              host = "test4.com",
+              host = "test4.test",
               ["Authorization"] = jwt_enc
             }
           })
@@ -237,7 +237,7 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
             method = "GET",
             path = "/request",
             headers = {
-              host = "test4.com",
+              host = "test4.test",
             }
           })
           assert.logfile(err_log_file).has.line("could not find header")
@@ -250,7 +250,7 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
             method = "GET",
             path = "/request",
             headers = {
-              host = "test5.com",
+              host = "test5.test",
             }
           })
           assert.logfile(err_log_file).has.line("could not find header")
@@ -263,7 +263,7 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
             method = "GET",
             path = "/request",
             headers = {
-              host = "test1.com",
+              host = "test1.test",
               ["Authorization"] = "no-jwt"
             }
           })

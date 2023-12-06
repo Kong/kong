@@ -18,7 +18,7 @@ describe("jq API #" .. strategy, function()
 
     assert(bp.routes:insert {
       name  = "test",
-      hosts = { "test1.com" },
+      hosts = { "test1.test" },
     })
 
     assert(helpers.start_kong({

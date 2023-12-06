@@ -50,7 +50,7 @@ for _, strategy in strategies() do
 
       bp.routes:insert {
         paths = {"~/resources/(?<resource_id>\\S+)/"},
-        hosts = {"path.com"}
+        hosts = {"path.test"}
       }
 
       assert(helpers.start_kong({
@@ -1194,7 +1194,7 @@ for _, strategy in strategies() do
           path = "/resources/200/anything",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1207,7 +1207,7 @@ for _, strategy in strategies() do
           path = "/resources/",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1245,7 +1245,7 @@ for _, strategy in strategies() do
           path = "/resources/.200/anything",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1258,7 +1258,7 @@ for _, strategy in strategies() do
           path = "/resources/",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1297,7 +1297,7 @@ for _, strategy in strategies() do
           path = "/resources/.1.2.3/anything",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1310,7 +1310,7 @@ for _, strategy in strategies() do
           path = "/resources/.1,2,3/anything",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1350,7 +1350,7 @@ for _, strategy in strategies() do
           path = "/resources/.1,2,3/anything",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1364,7 +1364,7 @@ for _, strategy in strategies() do
           path = "/resources/.1.2.3/anything",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1403,7 +1403,7 @@ for _, strategy in strategies() do
           path = "/resources/;resource_id=1,2,3/anything",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1417,7 +1417,7 @@ for _, strategy in strategies() do
           path = "/resources/;resource_id:1;resource_id:2;resource_id:3/anything",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1456,7 +1456,7 @@ for _, strategy in strategies() do
           path = "/resources/;resource_id=1,2,3/anything",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1470,7 +1470,7 @@ for _, strategy in strategies() do
           path = "/resources/;resource_id=1;resource_id=2;resource_id=3/anything",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1520,7 +1520,7 @@ for _, strategy in strategies() do
           path = "/resources/;resource_id=a,val_a,b,val_b/anything",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1534,7 +1534,7 @@ for _, strategy in strategies() do
           path = "/resources/;a=val_a;b=val_b/anything",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1584,7 +1584,7 @@ for _, strategy in strategies() do
           path = "/anything?id=a,val_a,b,val_b",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1598,7 +1598,7 @@ for _, strategy in strategies() do
           path = "/anything?id=a,val_a",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1637,7 +1637,7 @@ for _, strategy in strategies() do
           path = "/anything?id=1&id=2&id=3",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1651,7 +1651,7 @@ for _, strategy in strategies() do
           path = "/anything?id=a&id=b&id=c",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1690,7 +1690,7 @@ for _, strategy in strategies() do
           path = "/anything?id=1,2,3",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1704,7 +1704,7 @@ for _, strategy in strategies() do
           path = "/anything?id=1&id=2&id=3",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1743,7 +1743,7 @@ for _, strategy in strategies() do
           path = "/anything?id=1&id=2&id=3",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1756,7 +1756,7 @@ for _, strategy in strategies() do
           path = "/anything?id=1%202%203",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1795,7 +1795,7 @@ for _, strategy in strategies() do
           path = "/anything?id=1%202%203",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1808,7 +1808,7 @@ for _, strategy in strategies() do
           path = "/anything?id=1&id=2&id=3",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1847,7 +1847,7 @@ for _, strategy in strategies() do
           path = "/anything?id=1&id=2&id=3",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1860,7 +1860,7 @@ for _, strategy in strategies() do
           path = "/anything?id=1|2|3",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1899,7 +1899,7 @@ for _, strategy in strategies() do
           path = "/anything?id=1|2|3",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1912,7 +1912,7 @@ for _, strategy in strategies() do
           path = "/anything?id=1&id=2&id=3",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1962,7 +1962,7 @@ for _, strategy in strategies() do
           path = "/anything?id[a]=val_a&id[b]=val_b",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -1976,7 +1976,7 @@ for _, strategy in strategies() do
           path = "/anything",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -2026,7 +2026,7 @@ for _, strategy in strategies() do
           path = "/anything",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -2085,7 +2085,7 @@ for _, strategy in strategies() do
           path = "/anything?id[a]=val_a&id[b]=val_b",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "abc"
@@ -2098,7 +2098,7 @@ for _, strategy in strategies() do
           path = "/anything",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
             ["x-kong-name"] = "a,b,c",
           },
           body = {
@@ -2112,7 +2112,7 @@ for _, strategy in strategies() do
           path = "/anything?id[a]=val_a&id[b]=val_b",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
             ["x-kong-name"] = "a,b,c",
           },
           body = {
@@ -2150,7 +2150,7 @@ for _, strategy in strategies() do
           path = "/anything",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = true,
@@ -2168,7 +2168,7 @@ for _, strategy in strategies() do
           path = "/anything",
           headers = {
             ["Content-Type"] = "application/json",
-            ["Host"] = "path.com",
+            ["Host"] = "path.test",
           },
           body = {
             f1 = "value",

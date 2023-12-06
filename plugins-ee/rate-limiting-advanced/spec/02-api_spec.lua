@@ -16,7 +16,7 @@ describe("rate-limiting-advanced API", function()
 
     assert(bp.routes:insert {
       name  = "test",
-      hosts = { "test1.com" },
+      hosts = { "test1.test" },
     })
 
     assert(helpers.start_kong({

@@ -472,7 +472,7 @@ describe("Plugin: response-transformer-advanced", function()
               {
                   "key1": {
                       "Accept": "*/*",
-                      "Host": "httpbin.org"
+                      "Host": "httpbin.test"
                   },
                   "key2": [],
                   "key3": "value3"
@@ -482,7 +482,7 @@ describe("Plugin: response-transformer-advanced", function()
               {
                   "key1": {
                       "Accept": "*/*",
-                      "Host": "httpbin.org"
+                      "Host": "httpbin.test"
                   },
                   "key2": []
               }
@@ -499,7 +499,7 @@ describe("Plugin: response-transformer-advanced", function()
               {
                   "headers": {
                       "Accept": "*/*",
-                      "Host": "httpbin.org"
+                      "Host": "httpbin.test"
                   },
                   "students": [
                       {
@@ -528,7 +528,7 @@ describe("Plugin: response-transformer-advanced", function()
             output = [[
               {
                   "headers": {
-                      "Host": "httpbin.org"
+                      "Host": "httpbin.test"
                   },
                   "students": [
                       {

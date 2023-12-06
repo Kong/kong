@@ -94,9 +94,9 @@ describe("ee invoke_plugin", function()
       local origins = {
         "https://example.com:443",
         "http://example.com:80",
-        "http://hey.com:8080",
-        "https://hey.com:4443",
-        "http://hey.com:4434",
+        "http://hey.test:8080",
+        "https://hey.test:4443",
+        "http://hey.test:4434",
       }
 
       local instance = ee_invoke_plugin.new({
@@ -122,9 +122,9 @@ describe("ee invoke_plugin", function()
       assert.same({
         "https://example.com",
         "http://example.com",
-        "http://hey.com:8080",
-        "https://hey.com:4443",
-        "http://hey.com:4434",
+        "http://hey.test:8080",
+        "https://hey.test:4443",
+        "http://hey.test:4434",
       }, ok.config.origins)
     end)
   end)

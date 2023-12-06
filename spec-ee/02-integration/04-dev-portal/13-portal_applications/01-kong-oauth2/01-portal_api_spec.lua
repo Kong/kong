@@ -222,7 +222,7 @@ for _, strategy in helpers.each_strategy() do
                     path = "/applications",
                     body = {
                       name = dev .. "s_app_" .. i,
-                      redirect_uri = "http://dog.com",
+                      redirect_uri = "http://dog.test",
                       description = i % 2 == 0 and "something" or nil,
                     },
                     headers = {
@@ -256,7 +256,7 @@ for _, strategy in helpers.each_strategy() do
                     path = "/applications",
                     body = {
                       name = make_name(i),
-                      redirect_uri = "http://dog.com",
+                      redirect_uri = "http://dog.test",
                       description = make_description(i)
                     },
                     headers = {
@@ -919,7 +919,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp",
-                redirect_uri = "http://dog.com"
+                redirect_uri = "http://dog.test"
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -931,7 +931,7 @@ for _, strategy in helpers.each_strategy() do
             local resp_body_json = cjson.decode(body)
 
             assert.equal("myfirstapp", resp_body_json.name)
-            assert.equal("http://dog.com", resp_body_json.redirect_uri)
+            assert.equal("http://dog.test", resp_body_json.redirect_uri)
           end)
 
           it("ignores developer in body", function()
@@ -947,7 +947,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "new_app",
-                redirect_uri = "http://dog.com",
+                redirect_uri = "http://dog.test",
                 developer = { id = developer_two.id },
               },
               headers = {
@@ -974,7 +974,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp",
-                redirect_uri = "http://dog.com"
+                redirect_uri = "http://dog.test"
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -989,7 +989,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp",
-                redirect_uri = "http://dog.com"
+                redirect_uri = "http://dog.test"
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -1013,7 +1013,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp",
-                redirect_uri = "http://dog.com"
+                redirect_uri = "http://dog.test"
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -1028,7 +1028,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp ",
-                redirect_uri = "http://dog.com"
+                redirect_uri = "http://dog.test"
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -1051,7 +1051,7 @@ for _, strategy in helpers.each_strategy() do
               method = "POST",
               path = "/applications",
               body = {
-                redirect_uri = "http://dog.com"
+                redirect_uri = "http://dog.test"
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -1132,7 +1132,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp",
-                redirect_uri = "http://dog.com"
+                redirect_uri = "http://dog.test"
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -1165,7 +1165,7 @@ for _, strategy in helpers.each_strategy() do
             local resp_body_json = cjson.decode(body)
 
             assert.equal("myfirstapp", resp_body_json.name)
-            assert.equal("http://dog.com", resp_body_json.redirect_uri)
+            assert.equal("http://dog.test", resp_body_json.redirect_uri)
           end)
 
           it("developer gets 400 when requesting a non-existent Application", function()
@@ -1205,7 +1205,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp",
-                redirect_uri = "http://dog.com"
+                redirect_uri = "http://dog.test"
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -1221,7 +1221,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myotherapp",
-                redirect_uri = "http://dog.com",
+                redirect_uri = "http://dog.test",
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -1249,7 +1249,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "dev2app",
-                redirect_uri = "http://dev2.com"
+                redirect_uri = "http://dev2.test"
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -1293,7 +1293,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications/" .. application.id,
               body = {
                 name = "mysecondapp",
-                redirect_uri = "http://cat.com",
+                redirect_uri = "http://cat.test",
                 description = "something new!",
               },
               headers = {
@@ -1306,7 +1306,7 @@ for _, strategy in helpers.each_strategy() do
             local resp_body_json = cjson.decode(body)
 
             assert.equal("mysecondapp", resp_body_json.name)
-            assert.equal("http://cat.com", resp_body_json.redirect_uri)
+            assert.equal("http://cat.test", resp_body_json.redirect_uri)
             assert.equal("something new!", resp_body_json.description)
           end)
 
@@ -1483,7 +1483,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp",
-                redirect_uri = "http://dog.com"
+                redirect_uri = "http://dog.test"
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -1591,7 +1591,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp",
-                redirect_uri = "http://dog.com"
+                redirect_uri = "http://dog.test"
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -1990,7 +1990,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp",
-                redirect_uri = "http://dog.com"
+                redirect_uri = "http://dog.test"
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -2104,7 +2104,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp",
-                redirect_uri = "http://dog.com"
+                redirect_uri = "http://dog.test"
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -2175,7 +2175,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp",
-                redirect_uri = "http://dog.com"
+                redirect_uri = "http://dog.test"
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -2313,7 +2313,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp",
-                redirect_uri = "http://dog.com"
+                redirect_uri = "http://dog.test"
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -2443,7 +2443,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp",
-                redirect_uri = "http://dog.com"
+                redirect_uri = "http://dog.test"
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -2704,7 +2704,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp",
-                redirect_uri = "http://dog.com"
+                redirect_uri = "http://dog.test"
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -2829,7 +2829,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp",
-                redirect_uri = "http://dog.com"
+                redirect_uri = "http://dog.test"
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -3005,7 +3005,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "jim's app",
-                redirect_uri = "http://cat.com"
+                redirect_uri = "http://cat.test"
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -3070,7 +3070,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp",
-                redirect_uri = "http://dog.com"
+                redirect_uri = "http://dog.test"
               },
               headers = {
                 ["Content-Type"] = "application/json",

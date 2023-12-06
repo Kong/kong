@@ -81,7 +81,7 @@ for _, strategy in helpers.each_strategy() do
           assert(db.applications:insert({
             developer = { id = developer_one.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
 
           developer_two = assert(db.developers:insert({
@@ -93,7 +93,7 @@ for _, strategy in helpers.each_strategy() do
           assert(db.applications:insert({
             developer = { id = developer_two.id },
             name = "catnipIsDope",
-            redirect_uri = "http://puur.com",
+            redirect_uri = "http://puur.test",
           }))
         end)
 
@@ -163,13 +163,13 @@ for _, strategy in helpers.each_strategy() do
           app_one = assert(db.applications:insert({
             developer = { id = developer_one.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
 
           assert(db.applications:insert({
             developer = { id = developer_two.id },
             name = "catnipIsDope",
-            redirect_uri = "http://puur.com",
+            redirect_uri = "http://puur.test",
           }))
         end)
 
@@ -187,7 +187,7 @@ for _, strategy in helpers.each_strategy() do
             body = {
               developer = { id = developer_one.id },
               name = "coolapp",
-              redirect_uri = "http://coolapp.com",
+              redirect_uri = "http://coolapp.test",
             },
             headers = {["Content-Type"] = "application/json"}
           }))
@@ -197,7 +197,7 @@ for _, strategy in helpers.each_strategy() do
 
           assert.equal(json.developer.id, developer_one.id)
           assert.equal(json.name, "coolapp")
-          assert.equal(json.redirect_uri, "http://coolapp.com")
+          assert.equal(json.redirect_uri, "http://coolapp.test")
         end)
 
 
@@ -230,7 +230,7 @@ for _, strategy in helpers.each_strategy() do
             body = {
               developer = { id = developer_one.id },
               name = "coolapp",
-              redirect_uri = "http://coolapp.com",
+              redirect_uri = "http://coolapp.test",
             },
             headers = {["Content-Type"] = "application/json"}
           }))
@@ -245,7 +245,7 @@ for _, strategy in helpers.each_strategy() do
             path = "/applications",
             body = {
               developer = { id = developer_one.id },
-              redirect_uri = "http://coolapp.com",
+              redirect_uri = "http://coolapp.test",
             },
             headers = {["Content-Type"] = "application/json"}
           }))
@@ -262,7 +262,7 @@ for _, strategy in helpers.each_strategy() do
             path = "/applications",
             body = {
               name = "coolapp",
-              redirect_uri = "http://coolapp.com",
+              redirect_uri = "http://coolapp.test",
             },
             headers = {["Content-Type"] = "application/json"}
           }))
@@ -321,7 +321,7 @@ for _, strategy in helpers.each_strategy() do
           application = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
         end)
 
@@ -375,12 +375,12 @@ for _, strategy in helpers.each_strategy() do
           application = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
 
           local service = assert(db.services:insert({
             name = "service",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           assert(db.plugins:insert({
@@ -472,7 +472,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("updates oauth2 credentials when 'redirect_uri' updated", function()
-          local new_uri = "http://dog.com"
+          local new_uri = "http://dog.test"
           local res = assert(client:send({
             method = "PATCH",
             path = "/applications/" .. application.id,
@@ -502,12 +502,12 @@ for _, strategy in helpers.each_strategy() do
           application = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
 
           local service = assert(db.services:insert({
             name = "service",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           assert(db.plugins:insert({
@@ -574,7 +574,7 @@ for _, strategy in helpers.each_strategy() do
           assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
         end)
       end)
@@ -594,13 +594,13 @@ for _, strategy in helpers.each_strategy() do
           application = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
 
           application_two = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool2",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
         end)
 
@@ -661,13 +661,13 @@ for _, strategy in helpers.each_strategy() do
           application = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
 
           assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool2",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
         end)
 
@@ -708,7 +708,7 @@ for _, strategy in helpers.each_strategy() do
             body = {
               consumer = { id = utils.uuid() },
               name = "coolAppYo",
-              redirect_uris = { "http://dog.com" },
+              redirect_uris = { "http://dog.test" },
             },
             headers = {["Content-Type"] = "application/json"}
           }))
@@ -736,13 +736,13 @@ for _, strategy in helpers.each_strategy() do
           application = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
 
           application_two = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool2",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
         end)
 
@@ -824,7 +824,7 @@ for _, strategy in helpers.each_strategy() do
           local application = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
 
           local res = assert(client:send({
@@ -851,7 +851,7 @@ for _, strategy in helpers.each_strategy() do
           application = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
 
           local creds = {}
@@ -866,7 +866,7 @@ for _, strategy in helpers.each_strategy() do
           application_two = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool2",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
         end)
 
@@ -936,17 +936,17 @@ for _, strategy in helpers.each_strategy() do
         lazy_setup(function()
           service_one = assert(db.services:insert({
             name = "service_one",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           service_two = assert(db.services:insert({
             name = "service_two",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           service_three = assert(db.services:insert({
             name = "service_three",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           developer = assert(db.developers:insert({
@@ -1006,7 +1006,7 @@ for _, strategy in helpers.each_strategy() do
           application_one = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
 
           application_instance_one = assert(db.application_instances:insert({
@@ -1017,7 +1017,7 @@ for _, strategy in helpers.each_strategy() do
           application_two = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "catnipIsRad",
-            redirect_uri = "http://meow.com",
+            redirect_uri = "http://meow.test",
           }))
 
           application_instance_two = assert(db.application_instances:insert({
@@ -1028,7 +1028,7 @@ for _, strategy in helpers.each_strategy() do
           application_three = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "cherpcherp",
-            redirect_uri = "http://birds.com",
+            redirect_uri = "http://birds.test",
           }))
 
           assert(db.application_instances:insert({
@@ -1124,7 +1124,7 @@ for _, strategy in helpers.each_strategy() do
         before_each(function()
           service = assert(db.services:insert({
             name = "service",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           developer = assert(db.developers:insert({
@@ -1152,7 +1152,7 @@ for _, strategy in helpers.each_strategy() do
           application = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
         end)
 
@@ -1295,7 +1295,7 @@ for _, strategy in helpers.each_strategy() do
         lazy_setup(function()
           service = assert(db.services:insert({
             name = "service",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           developer = assert(db.developers:insert({
@@ -1323,13 +1323,13 @@ for _, strategy in helpers.each_strategy() do
           application_one = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
 
           application_two = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool2",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
 
           application_instance_one = assert(db.application_instances:insert({
@@ -1426,7 +1426,7 @@ for _, strategy in helpers.each_strategy() do
         before_each(function()
           service = assert(db.services:insert({
             name = "service",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           developer = assert(db.developers:insert({
@@ -1455,7 +1455,7 @@ for _, strategy in helpers.each_strategy() do
           application = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
         end)
 
@@ -1511,13 +1511,13 @@ for _, strategy in helpers.each_strategy() do
         it("cant patch referenced entities", function()
           local service_two = assert(db.services:insert({
             name = "service2",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           local application_two = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool2",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
 
           local application_instance = assert(db.application_instances:insert({
@@ -1615,7 +1615,7 @@ for _, strategy in helpers.each_strategy() do
         before_each(function()
           service = assert(db.services:insert({
             name = "service",
-            url = "http://google.com"
+            url = "http://google.test"
           }))
 
           developer = assert(db.developers:insert({
@@ -1643,7 +1643,7 @@ for _, strategy in helpers.each_strategy() do
           application = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            redirect_uri = "http://doghouse.test",
           }))
 
           application_instance = assert(db.application_instances:insert({

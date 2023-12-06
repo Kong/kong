@@ -56,7 +56,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
       }
 
       local route1 = bp.routes:insert {
-        hosts = { "test1.com" },
+        hosts = { "test1.test" },
       }
 
       bp.plugins:insert({
@@ -70,7 +70,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
 
       -- An unused route within the same workspace must not influence any other plugin instances
       local route2 = bp.routes:insert {
-        hosts = { "test2.com" },
+        hosts = { "test2.test" },
       }
 
       bp.plugins:insert({
@@ -101,11 +101,11 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
         routes:
         - name: default-route
           hosts:
-          - test1.com
+          - test1.test
           id: 17547fe7-8768-4d17-9feb-f8f732bdfe54
         - name: route-2
           hosts:
-          - test2.com
+          - test2.test
           id: 549d31f1-3671-4487-b50b-e0cfcbd495dc
         plugins:
         - enabled: true
@@ -168,7 +168,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
       -- and expect to still get rate-limited
       for i = 1, 6 do
         local res = GET("/status/200?apikey=apikey122", {
-          headers = { Host = fmt("test1.com") },
+          headers = { Host = fmt("test1.test") },
         }, 200)
 
         assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
@@ -182,7 +182,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
         helpers.wait_timer("rate-limiting", true, "all-finish")
       end
       local res = GET("/status/200?apikey=ABSOLUTELY_INVALID", {
-        headers = { Host = fmt("test1.com") },
+        headers = { Host = fmt("test1.test") },
       }, 401)
       -- We expect that we are not Autohorized to access the protected endpoint even we have reached our
       -- limit of requests.
@@ -193,7 +193,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
     it("Executes in changed order -> rate-limiting before authn", function()
       for i = 1, 6 do
         local res = GET("/status/200?apikey=apikey122", {
-          headers = { Host = fmt("test2.com") },
+          headers = { Host = fmt("test2.test") },
         }, 200)
 
         assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
@@ -207,7 +207,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
         helpers.wait_timer("rate-limiting", true, "all-finish")
       end
       local res = GET("/status/200?apikey=ABSOLUTELY_INVALID", {
-        headers = { Host = fmt("test2.com") },
+        headers = { Host = fmt("test2.test") },
       }, 429)
       -- We expect that we are not authenticataed as we have reached the limit of requests.
       assert.are.same("Too Many Requests", res.reason)
@@ -229,7 +229,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
       })
 
       local route1 = bp.routes:insert {
-        hosts = { "test1.com" },
+        hosts = { "test1.test" },
       }
 
       bp.plugins:insert({
@@ -251,7 +251,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
       })
 
       local route2 = bp.routes:insert {
-        hosts = { "test2.com" },
+        hosts = { "test2.test" },
       }
 
       bp.plugins:insert({
@@ -298,7 +298,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
         method = "GET",
         path = "/get",
         headers = {
-          host = "test1.com",
+          host = "test1.test",
           ["x-removeme"] = "foo",
         },
       })
@@ -316,7 +316,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
         method = "GET",
         path = "/get",
         headers = {
-          host = "test2.com",
+          host = "test2.test",
           ["x-removeme"] = "foo",
         },
       })
@@ -345,11 +345,11 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
       }, { "forward-proxy", "canary" })
 
       local route1 = bp.routes:insert {
-        hosts = { "test1.com" },
+        hosts = { "test1.test" },
       }
 
       local route2 = bp.routes:insert {
-        hosts = { "test2.com" },
+        hosts = { "test2.test" },
       }
 
       bp.plugins:insert({
@@ -404,12 +404,12 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
         method = "GET",
         path = "/get",
         headers = {
-          host = "test1.com",
+          host = "test1.test",
         }
       })
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      assert.equal("test1.com", json.headers["x-forwarded-host"])
+      assert.equal("test1.test", json.headers["x-forwarded-host"])
       assert.equal("9000", json.headers["x-forwarded-port"])
       assert.equal(helpers.mock_upstream_host .. ":" .. tostring(helpers.mock_upstream_port), json.headers["host"])
     end)
@@ -419,12 +419,12 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
         method = "GET",
         path = "/get",
         headers = {
-          host = "test2.com",
+          host = "test2.test",
         }
       })
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      assert.equal("test2.com", json.headers["x-forwarded-host"])
+      assert.equal("test2.test", json.headers["x-forwarded-host"])
       assert.equal("9000", json.headers["x-forwarded-port"])
       assert.equal("canary:25000", json.headers["host"])
     end)
@@ -446,7 +446,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
       })
 
       local route1 = bp.routes:insert {
-        hosts = { "test1.com" },
+        hosts = { "test1.test" },
       }
 
       bp.plugins:insert({
@@ -510,7 +510,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
       })
 
       local route1 = bp.routes:insert {
-        hosts = { "test1.com" },
+        hosts = { "test1.test" },
       }
 
       local consumer = bp.consumers:insert {
@@ -565,7 +565,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
           method = "GET",
           path = "/get",
           headers = {
-            host = "test1.com",
+            host = "test1.test",
             apikey = "duck"
           }
         })
@@ -580,7 +580,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
           method = "GET",
           path = "/get",
           headers = {
-            host = "test1.com",
+            host = "test1.test",
             apikey = "duck",
             ["Authorization"] = "Basic Ym9iOmtvbmc=",
           }
@@ -609,7 +609,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
       }, { "rate-limiting-advanced" })
 
       local route1 = bp.routes:insert {
-        hosts = { "test1.com" },
+        hosts = { "test1.test" },
       }
 
       local consumer = bp.consumers:insert {
@@ -660,7 +660,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
         method = "GET",
         path = "/get",
         headers = {
-          host = "test1.com",
+          host = "test1.test",
           ["Authorization"] = "Basic Ym9iOmtvbmc=",
         }
       })
@@ -674,7 +674,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
         method = "GET",
         path = "/get",
         headers = {
-          host = "test1.com",
+          host = "test1.test",
           ["Authorization"] = "Basic Ym9iOmtvbmc=",
         }
       })
@@ -700,7 +700,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
       }, { "request-transformer-advanced" })
 
       local route = bp.routes:insert {
-        hosts = { "test1.com" },
+        hosts = { "test1.test" },
       }
 
       local consumer = bp.consumers:insert {
@@ -776,7 +776,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
         method = "GET",
         path = "/get",
         headers = {
-          host = "test1.com",
+          host = "test1.test",
         }
       })
       assert.res_status(200, res)

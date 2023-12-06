@@ -27,7 +27,7 @@ for _, strategy in strategies() do
       }, { "key-auth-enc" })
 
       local route = bp.routes:insert {
-        hosts = { "key-auth-enc.com" },
+        hosts = { "key-auth-enc.test" },
       }
 
       bp.plugins:insert {
@@ -70,7 +70,7 @@ for _, strategy in strategies() do
         method  = "GET",
         path    = "/",
         headers = {
-          ["Host"]   = "key-auth-enc.com",
+          ["Host"]   = "key-auth-enc.test",
           ["apikey"] = "kong"
         }
       })
@@ -105,7 +105,7 @@ for _, strategy in strategies() do
         method  = "GET",
         path    = "/",
         headers = {
-          ["Host"]   = "key-auth-enc.com",
+          ["Host"]   = "key-auth-enc.test",
           ["apikey"] = "kong"
         }
       })
@@ -118,7 +118,7 @@ for _, strategy in strategies() do
         method  = "GET",
         path    = "/",
         headers = {
-          ["Host"]   = "key-auth-enc.com",
+          ["Host"]   = "key-auth-enc.test",
           ["apikey"] = "kong"
         }
       })
@@ -153,7 +153,7 @@ for _, strategy in strategies() do
         method  = "GET",
         path    = "/",
         headers = {
-          ["Host"]   = "key-auth-enc.com",
+          ["Host"]   = "key-auth-enc.test",
           ["apikey"] = "kong"
         }
       })
@@ -166,7 +166,7 @@ for _, strategy in strategies() do
         method  = "GET",
         path    = "/",
         headers = {
-          ["Host"]   = "key-auth-enc.com",
+          ["Host"]   = "key-auth-enc.test",
           ["apikey"] = "kong"
         }
       })
@@ -207,7 +207,7 @@ for _, strategy in strategies() do
         method  = "GET",
         path    = "/",
         headers = {
-          ["Host"]   = "key-auth-enc.com",
+          ["Host"]   = "key-auth-enc.test",
           ["apikey"] = "kong"
         }
       })
@@ -217,7 +217,7 @@ for _, strategy in strategies() do
         method  = "GET",
         path    = "/",
         headers = {
-          ["Host"]   = "key-auth-enc.com",
+          ["Host"]   = "key-auth-enc.test",
           ["apikey"] = "kong-updated"
         }
       })

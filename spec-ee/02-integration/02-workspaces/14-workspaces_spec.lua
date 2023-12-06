@@ -169,7 +169,7 @@ for _, strategy in helpers.each_strategy() do
       res = admin_client:post("/ws1/upstreams/upstream1/targets", {
         headers = headers,
         body = {
-          target = "konghq.com:80"
+          target = "konghq.test:80"
         }
       })
       assert.res_status(201, res)

@@ -77,27 +77,27 @@ for _, strategy in strategies() do
         plugin_strategy:flush(true)
 
         local route1 = assert(bp.routes:insert {
-          hosts = { "route-1.com" },
+          hosts = { "route-1.test" },
         })
 
         local route2 = assert(bp.routes:insert {
-          hosts = { "route-2.com" },
+          hosts = { "route-2.test" },
         })
 
         local route3 = assert(bp.routes:insert {
-          hosts = { "route-3.com" },
+          hosts = { "route-3.test" },
         })
 
         local route4 = assert(bp.routes:insert {
-          hosts = { "route-4.com" },
+          hosts = { "route-4.test" },
         })
 
         local route5 = assert(bp.routes:insert {
-          hosts = { "route-5.com" },
+          hosts = { "route-5.test" },
         })
 
         local route6 = assert(bp.routes:insert {
-          hosts = { "route-6.com" },
+          hosts = { "route-6.test" },
         })
 
         assert(bp.plugins:insert {
@@ -192,7 +192,7 @@ for _, strategy in strategies() do
           method = "POST",
           path = "/request",
           headers = {
-            host = "route-1.com",
+            host = "route-1.test",
           },
           body = '{ query { user(id:"1") { id, name }}}'
         })
@@ -211,7 +211,7 @@ for _, strategy in strategies() do
           method = "POST",
           path = "/request",
           headers = {
-            host = "route-1.com",
+            host = "route-1.test",
           },
           body = '{ query { user(id:"1") { id, name }}}'
         }
@@ -230,7 +230,7 @@ for _, strategy in strategies() do
           method = "POST",
           path = "/request",
           headers = {
-            host = "route-4.com",
+            host = "route-4.test",
           },
           body = '{ query { user(id:"1") { id, name }}}'
         })
@@ -249,7 +249,7 @@ for _, strategy in strategies() do
           method = "POST",
           path = "/request",
           headers = {
-            host = "route-4.com",
+            host = "route-4.test",
           },
           body = '{ query { user(id:"1") { id, name }}}'
         }
@@ -266,7 +266,7 @@ for _, strategy in strategies() do
           method = "POST",
           path = "/request",
           headers = {
-            host = "route-4.com",
+            host = "route-4.test",
           },
           body = '{ query { user(id:"1-2") { id, name }}}'
         })
@@ -280,7 +280,7 @@ for _, strategy in strategies() do
           method = "POST",
           path = "/request",
           headers = {
-            host = "route-5.com",
+            host = "route-5.test",
           },
           body = '{ query { user(id:"5") { id, name }}}'
         })
@@ -299,7 +299,7 @@ for _, strategy in strategies() do
           method = "POST",
           path = "/request",
           headers = {
-            host = "route-5.com",
+            host = "route-5.test",
           },
           body = '{ query { user(id:"5") { id, name }}}'
         }
@@ -316,7 +316,7 @@ for _, strategy in strategies() do
           method = "POST",
           path = "/request",
           headers = {
-            host = "route-5.com",
+            host = "route-5.test",
           },
           body = '{ query { user(id:"5") { id, name, surname }}}'
         })
@@ -330,7 +330,7 @@ for _, strategy in strategies() do
           method = "POST",
           path = "/request",
           headers = {
-            host = "route-2.com",
+            host = "route-2.test",
           },
           body = '{ query { user(id:"2") { id, name }}}'
         })
@@ -345,7 +345,7 @@ for _, strategy in strategies() do
           method = "POST",
           path = "/request",
           headers = {
-            host = "route-2.com",
+            host = "route-2.test",
           },
           body = '{ query { user(id:"2") { id, name }}}'
         }
@@ -363,7 +363,7 @@ for _, strategy in strategies() do
           method = "POST",
           path = "/request",
           headers = {
-            host = "route-2.com",
+            host = "route-2.test",
           },
           body = '{ query { user(id:"2") { id, name }}}'
         })
@@ -379,7 +379,7 @@ for _, strategy in strategies() do
           method = "POST",
           path = "/request",
           headers = {
-            host = "route-2.com",
+            host = "route-2.test",
           },
           body = '{ query { user(id:"2") { id, name }}}'
         })
@@ -393,7 +393,7 @@ for _, strategy in strategies() do
           method = "POST",
           path = "/request",
           headers = {
-            host = "route-6.com",
+            host = "route-6.test",
             foo = "bar"
           },
           body = '{ query { user(id:"2") { id, name }}}'
@@ -409,7 +409,7 @@ for _, strategy in strategies() do
           method = "POST",
           path = "/request",
           headers = {
-            host = "route-6.com",
+            host = "route-6.test",
             foo = "bar"
           },
           body = '{ query { user(id:"2") { id, name }}}'
@@ -421,7 +421,7 @@ for _, strategy in strategies() do
           method = "POST",
           path = "/request",
           headers = {
-            host = "route-6.com",
+            host = "route-6.test",
             foo = "baz"
           },
           body = '{ query { user(id:"2") { id, name }}}'

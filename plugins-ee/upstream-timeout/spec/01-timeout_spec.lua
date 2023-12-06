@@ -33,19 +33,19 @@ for _, strategy in strategies() do
       }))
 
       local delay_route_1 = assert(bp.routes:insert({
-        hosts = { "delay1.com" },
+        hosts = { "delay1.test" },
         service = { id = delay_service_1.id }
       }))
       local delay_route_2 = assert(bp.routes:insert({
-        hosts = { "delay2.com" },
+        hosts = { "delay2.test" },
         service = { id = delay_service_2.id }
       }))
       assert(bp.routes:insert({
-        hosts = { "noPlugin.delay1.com" },
+        hosts = { "noPlugin.delay1.test" },
         service = { id = delay_service_1.id }
       }))
       assert(bp.routes:insert({
-        hosts = { "noPlugin.delay2.com"},
+        hosts = { "noPlugin.delay2.test"},
         service = { id = delay_service_2.id }
       }))
 
@@ -92,21 +92,21 @@ for _, strategy in strategies() do
         })
       end
       it("with service-configured timeout obeys service timeout", function()
-        local res = assert(upstream_request("noPlugin.delay1.com"))
+        local res = assert(upstream_request("noPlugin.delay1.test"))
         assert.response(res).has.status(504)
 
-        res = assert(upstream_request("noPlugin.delay2.com"))
+        res = assert(upstream_request("noPlugin.delay2.test"))
         assert.response(res).has.status(200)
       end)
 
       describe("with plugin-configured timeout on route overrides service and", function()
         it("should succeed if response below timeout", function()
-          local res = assert(upstream_request("delay1.com"))
+          local res = assert(upstream_request("delay1.test"))
           assert.response(res).has.status(200)
         end)
 
         it("should fail if response exceeds timeout", function()
-          local res = assert(upstream_request("delay2.com"))
+          local res = assert(upstream_request("delay2.test"))
           assert.response(res).has.status(504)
         end)
       end)

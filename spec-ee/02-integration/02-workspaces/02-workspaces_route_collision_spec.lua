@@ -127,12 +127,12 @@ for _, strategy in helpers.each_strategy() do
       -- add service in ws1
       post("/ws1/services", {
         name = "mock.service",
-        url = "http://httpbin.org",
+        url = "http://httpbin.test",
       })
       -- add service in ws2
       post("/ws2/services", {
         name = "mock.service",
-        url = "http://httpbin.org",
+        url = "http://httpbin.test",
       })
       -- add route `mock.route` in ws1
       post("/ws1/services/mock.service/routes", {
@@ -296,7 +296,7 @@ for _, strategy in helpers.each_strategy() do
 
         post("/ws2/services/service_ws2/routes", {
           paths = "/foo",
-          snis = "foo.com"
+          snis = "foo.test"
         }, headers, 409)
       end
     end)
@@ -308,7 +308,7 @@ for _, strategy in helpers.each_strategy() do
 
     it("doesn't collide for distinct routes", function()
       post("/ws2/services/default-service/routes",
-        { ["hosts[]"] = "new-host.org" })
+        { ["hosts[]"] = "new-host.test" })
     end)
 
     it("can be updated with patch", function()
@@ -317,7 +317,7 @@ for _, strategy in helpers.each_strategy() do
 
     it("#collides when updating with patch", function()
       local r = post("/ws2/services/default-service/routes",
-        { ["hosts[]"] = "bla.org" })
+        { ["hosts[]"] = "bla.test" })
       patch("/ws2/routes/" .. r.id, { ['hosts[]'] = "example.org" }, nil, 409)
     end)
 
@@ -327,14 +327,14 @@ for _, strategy in helpers.each_strategy() do
 
     it("#collides when adding with put", function()
       local r = post("/ws2/services/default-service/routes",
-        { ["hosts[]"] = "bla.org" })
+        { ["hosts[]"] = "bla.test" })
       put("/ws2/routes/" .. r.id, { ['hosts[]'] = "example.org" }, nil, 409)
     end)
 
     it("doesn't collide when updating itself", function()
       local r = post("/ws2/services/default-service/routes",
-        { ['hosts[]'] = "bla.org" })
-      patch("/ws2/routes/" .. r.id, { ['hosts[]'] = "bla.org" }, nil, 200)
+        { ['hosts[]'] = "bla.test" })
+      patch("/ws2/routes/" .. r.id, { ['hosts[]'] = "bla.test" }, nil, 200)
     end)
 
     it_content_types("when PATCHing", function(content_type)

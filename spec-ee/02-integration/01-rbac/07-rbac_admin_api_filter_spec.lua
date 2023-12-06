@@ -89,7 +89,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       admin_request("POST", "/services",
                     {
                       name = "test1000",
-                      host = "test1000.com"
+                      host = "test1000.test"
                     }, 201)
 
       local res
@@ -97,14 +97,14 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       assert.same(0, #res) -- empty results
 
       res, _ = admin_request("GET", "/services?name=1000")
-      assert.same("test1000.com", res[1].host)
+      assert.same("test1000.test", res[1].host)
     end)
 
     it("sorting", function()
       admin_request("POST", "/services",
                     {
                       name = "test1001",
-                      host = "test1001.com"
+                      host = "test1001.test"
                     }, 201)
       local res
       res, _ = admin_request("GET", "/services?sort_by=name")

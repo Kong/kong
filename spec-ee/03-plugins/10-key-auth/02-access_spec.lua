@@ -26,11 +26,11 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route1 = bp.routes:insert {
-        hosts = { "key-auth1.com" },
+        hosts = { "key-auth1.test" },
       }
 
       local route2 = bp.routes:insert {
-        hosts = { "key-auth2.com" },
+        hosts = { "key-auth2.test" },
       }
 
       bp.plugins:insert {
@@ -87,7 +87,7 @@ for _, strategy in helpers.each_strategy() do
           local res = assert(proxy_client:send {
             path = "/status/200",
             headers = {
-              ["Host"] = "key-auth1.com",
+              ["Host"] = "key-auth1.test",
               ["Content-Type"] = ctype
             },
             body = "foobar",
@@ -102,7 +102,7 @@ for _, strategy in helpers.each_strategy() do
           local res = assert(proxy_client:send {
             path = "/status/200",
             headers = {
-              ["Host"] = "key-auth1.com",
+              ["Host"] = "key-auth1.test",
               ["apikey"] = "kong",
               ["Content-Type"] = ctype
             },
@@ -115,7 +115,7 @@ for _, strategy in helpers.each_strategy() do
           local res = assert(proxy_client:send {
             path = "/status/200?apikey=kong",
             headers = {
-              ["Host"] = "key-auth1.com",
+              ["Host"] = "key-auth1.test",
               ["Content-Type"] = ctype
             },
             body = "foobar",
@@ -127,7 +127,7 @@ for _, strategy in helpers.each_strategy() do
           local res = assert(proxy_client:send {
             path = "/request?apikey=kong",
             headers = {
-              ["Host"] = "key-auth2.com",
+              ["Host"] = "key-auth2.test",
               ["Content-Type"] = ctype
             },
             body = "foobar",

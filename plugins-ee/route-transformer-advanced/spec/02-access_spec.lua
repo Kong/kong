@@ -40,7 +40,7 @@ for _, strategy in strategies() do
 
       do -- plugin injecting values as plain values
         local route1 = bp.routes:insert {
-          hosts   = { "plain_test.com" },
+          hosts   = { "plain_test.test" },
           service = service1
         }
         bp.plugins:insert {
@@ -57,7 +57,7 @@ for _, strategy in strategies() do
 
       do -- plugin injecting values as a template
         local route2 = bp.routes:insert {
-          hosts   = { "template_test.com" },
+          hosts   = { "template_test.test" },
           service = service1
         }
         -- 2 plugins:
@@ -90,7 +90,7 @@ for _, strategy in strategies() do
 
       do -- partial, do not set path
         local route3 = bp.routes:insert {
-          hosts   = { "partial_test.com" },
+          hosts   = { "partial_test.test" },
           service = service1
         }
         bp.plugins:insert {
@@ -107,7 +107,7 @@ for _, strategy in strategies() do
 
       do -- path contains whitespace
         local route4 = bp.routes:insert {
-          hosts   = { "path_whitespace_test.com" },
+          hosts   = { "path_whitespace_test.test" },
           service = service2
         }
         bp.plugins:insert {
@@ -123,7 +123,7 @@ for _, strategy in strategies() do
 
       do -- path already url-encoded, do not double escape it
         local route5 = bp.routes:insert {
-          hosts   = { "double_escape_test.com" },
+          hosts   = { "double_escape_test.test" },
           service = service2
         }
         bp.plugins:insert {
@@ -163,7 +163,7 @@ for _, strategy in strategies() do
         method = "GET",
         path = "/",
         headers = {
-          host = "plain_test.com"
+          host = "plain_test.test"
         }
       })
       assert.response(r).has.status(200)
@@ -176,7 +176,7 @@ for _, strategy in strategies() do
         method = "GET",
         path = "/",
         headers = {
-          host = "template_test.com"
+          host = "template_test.test"
         }
       })
       assert.response(r).has.status(200)
@@ -189,7 +189,7 @@ for _, strategy in strategies() do
         method = "GET",
         path = "/",
         headers = {
-          host = "partial_test.com"
+          host = "partial_test.test"
         }
       })
       assert.response(r).has.status(404)  -- 404 because path wasn't found
@@ -202,7 +202,7 @@ for _, strategy in strategies() do
         method = "GET",
         path = "/",
         headers = {
-          host = "path_whitespace_test.com"
+          host = "path_whitespace_test.test"
         }
       })
       assert.response(r).has.status(200)
@@ -215,7 +215,7 @@ for _, strategy in strategies() do
         method = "GET",
         path = "/",
         headers = {
-          host = "double_escape_test.com"
+          host = "double_escape_test.test"
         }
       })
       assert.response(r).has.status(200)

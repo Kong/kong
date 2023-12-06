@@ -15,7 +15,7 @@ local fixtures = {
   http_mock = {
     validation_plugin = [[
       server {
-          server_name petstore.com;
+          server_name petstore.test;
           listen 12345;
 
           location ~ "/findByStatus-request-good" {
@@ -67,12 +67,12 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route1 = db.routes:insert({
-        hosts = { "petstore1.com" },
+        hosts = { "petstore1.test" },
         service    = service1,
       })
 
       local route2 = db.routes:insert({
-        hosts = { "petstore2.com" },
+        hosts = { "petstore2.test" },
         service    = service2,
       })
 
@@ -135,7 +135,7 @@ for _, strategy in helpers.each_strategy() do
           method = "POST",
           path = "/pet",
           headers = {
-            host = "petstore2.com",
+            host = "petstore2.test",
             ["Content-Type"] = "application/json",
           },
           body = {
@@ -159,7 +159,7 @@ for _, strategy in helpers.each_strategy() do
           method = "POST",
           path = "/pet",
           headers = {
-            host = "petstore2.com",
+            host = "petstore2.test",
             ["Content-Type"] = "application/json",
           },
           body = {
@@ -183,7 +183,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/pet/findByStatus",
           headers = {
-            host = "petstore1.com",
+            host = "petstore1.test",
             ["Content-Type"] = "application/json",
           },
           query = {
@@ -199,7 +199,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/pet/string123",
           headers = {
-            host = "petstore2.com",
+            host = "petstore2.test",
             ["Content-Type"] = "application/json",
           },
         })

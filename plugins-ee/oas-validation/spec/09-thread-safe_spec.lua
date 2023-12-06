@@ -14,7 +14,7 @@ local fixtures = {
   http_mock = {
     validation_plugin = [[
       server {
-          server_name petstore1.com;
+          server_name petstore1.test;
           listen 12345;
 
           location ~ "/users" {
@@ -43,7 +43,7 @@ for _, strategy in helpers.each_strategy() do
         host = "127.0.0.1",
       })
       local route = assert(db.routes:insert({
-        hosts = { "petstore1.com" },
+        hosts = { "petstore1.test" },
         service = service,
       }))
       assert(db.plugins:insert {
@@ -94,7 +94,7 @@ for _, strategy in helpers.each_strategy() do
         method = "POST",
         path = "/users",
         headers = {
-          host = "petstore1.com",
+          host = "petstore1.test",
           ["Content-Type"] = "application/json",
           ["NGX-Req-Get-Body-Data-Sleep"] = 2,
         },
@@ -109,7 +109,7 @@ for _, strategy in helpers.each_strategy() do
         method = "POST",
         path = "/users",
         headers = {
-          host = "petstore1.com",
+          host = "petstore1.test",
           ["Content-Type"] = "application/json",
           ["NGX-Req-Get-Body-Data-Sleep"] = 1,
         },

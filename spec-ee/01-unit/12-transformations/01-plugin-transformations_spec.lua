@@ -15,7 +15,7 @@ describe("json_navigator", function()
           {
               "headers": {
                   "Accept": "*/*",
-                  "Host": "httpbin.org"
+                  "Host": "httpbin.test"
               },
               "students": [
                   {

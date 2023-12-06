@@ -55,8 +55,8 @@ for _, strategy in helpers.each_strategy() do
 
       post("/workspaces", {name = "ws1"})
       post("/workspaces", {name = "ws2"})
-      post("/ws1/services", {name = "default-service", host = "httpbin1.org"})
-      ws2_service = post("/ws2/services", {name = "ws2-service", host = "httpbin2.org"})
+      post("/ws1/services", {name = "default-service", host = "httpbin1.test"})
+      ws2_service = post("/ws2/services", {name = "ws2-service", host = "httpbin2.test"})
     end)
 
     teardown(function()
@@ -187,7 +187,7 @@ for _, strategy in helpers.each_strategy() do
       local workspaces_names = {"ws-special", "ws.special", "ws-.special"}
       for _, ws_name in ipairs(workspaces_names) do
         post("/workspaces", {name = ws_name})
-        local service1 = post("/" ..  ws_name .. "/services", {name = "service1", host = "httpbin2.org"})
+        local service1 = post("/" ..  ws_name .. "/services", {name = "service1", host = "httpbin2.test"})
         local route_path = "/" .. ws_name .. "/ver1/hello"
         local res = assert(client:send{
           method = "POST",
@@ -203,7 +203,7 @@ for _, strategy in helpers.each_strategy() do
       local workspaces_names = {"ws-special-1", "ws.special-1", "ws-.special-1"}
       for _, ws_name in ipairs(workspaces_names) do
         post("/workspaces", {name = ws_name})
-        local service1 = post("/" ..  ws_name .. "/services", {name = "service1", host = "httpbin2.org"})
+        local service1 = post("/" ..  ws_name .. "/services", {name = "service1", host = "httpbin2.test"})
         local route_path = "/" .. ws_name .. "/ver1/hello"
         local res = assert(client:send{
           method = "POST",

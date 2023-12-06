@@ -31,11 +31,11 @@ describe("proxy-cache-advanced invalidations via: #" .. strategy, function()
     bp = helpers.get_db_utils(db_strategy, nil, {"proxy-cache-advanced"})
 
     route1 = assert(bp.routes:insert {
-      hosts = { "route-1.com" },
+      hosts = { "route-1.test" },
     })
 
     route2 = assert(bp.routes:insert {
-      hosts = { "route-2.com" },
+      hosts = { "route-2.test" },
     })
 
     plugin1 = assert(bp.plugins:insert {
@@ -125,7 +125,7 @@ describe("proxy-cache-advanced invalidations via: #" .. strategy, function()
         method = "GET",
         path = "/get",
         headers = {
-          Host = "route-1.com",
+          Host = "route-1.test",
         },
       })
 
@@ -137,7 +137,7 @@ describe("proxy-cache-advanced invalidations via: #" .. strategy, function()
         method = "GET",
         path = "/get",
         headers = {
-          host = "route-1.com",
+          host = "route-1.test",
         },
       })
 
@@ -149,7 +149,7 @@ describe("proxy-cache-advanced invalidations via: #" .. strategy, function()
         method = "GET",
         path = "/get",
         headers = {
-          host = "route-2.com",
+          host = "route-2.test",
         },
       })
 
@@ -162,7 +162,7 @@ describe("proxy-cache-advanced invalidations via: #" .. strategy, function()
         method = "GET",
         path = "/get",
         headers = {
-          host = "route-2.com",
+          host = "route-2.test",
         },
       })
 
@@ -175,7 +175,7 @@ describe("proxy-cache-advanced invalidations via: #" .. strategy, function()
         method = "GET",
         path = "/get",
         headers = {
-          host = "route-1.com",
+          host = "route-1.test",
         },
       })
 
@@ -186,7 +186,7 @@ describe("proxy-cache-advanced invalidations via: #" .. strategy, function()
         method = "GET",
         path = "/get",
         headers = {
-          host = "route-1.com",
+          host = "route-1.test",
         },
       })
 
@@ -218,7 +218,7 @@ describe("proxy-cache-advanced invalidations via: #" .. strategy, function()
         method = "GET",
         path = "/get",
         headers = {
-          Host = "route-1.com",
+          Host = "route-1.test",
         },
       })
 
@@ -229,7 +229,7 @@ describe("proxy-cache-advanced invalidations via: #" .. strategy, function()
         method = "GET",
         path = "/get",
         headers = {
-          host = "route-1.com",
+          host = "route-1.test",
         },
       })
 

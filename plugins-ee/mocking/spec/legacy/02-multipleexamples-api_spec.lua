@@ -52,11 +52,11 @@ for _, strategy in strategies() do
         local service1 = bp.services:insert{
           protocol = "http",
           port     = 80,
-          host     = "mocking.com",
+          host     = "mocking.test",
         }
 
       db.routes:insert({
-        hosts = { "mocking.com" },
+        hosts = { "mocking.test" },
         service    = service1,
 
       })
@@ -64,11 +64,11 @@ for _, strategy in strategies() do
       local service2 = bp.services:insert{
         protocol = "http",
         port     = 80,
-        host     = "mocking2.com",
+        host     = "mocking2.test",
       }
 
       db.routes:insert({
-        hosts = { "mocking2.com" },
+        hosts = { "mocking2.test" },
         service    = service2,
 
       })
@@ -123,7 +123,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/pet/findByStatus/MultipleExamples",
           headers = {
-            host = "mocking.com"
+            host = "mocking.test"
           }
         })
         -- validate that the request succeeded, response status 200
@@ -142,7 +142,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/pet/findByStatus/MultipleExamples",
           headers = {
-            host = "mocking.com"
+            host = "mocking.test"
           }
         })
         -- validate that the request succeeded, response status 200
@@ -161,7 +161,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/random_path",
           headers = {
-            host = "mocking.com"
+            host = "mocking.test"
           }
         })
         -- Random path, Response status - 404
@@ -179,7 +179,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/pet/findByStatus/singleExample",
           headers = {
-            host = "mocking.com"
+            host = "mocking.test"
           }
         })
          -- validate that the request succeeded, response status 200
@@ -207,7 +207,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/pet/findByStatus/MultipleExamples?status=idonotexist",
           headers = {
-            host = "mocking.com"
+            host = "mocking.test"
           }
         })
 

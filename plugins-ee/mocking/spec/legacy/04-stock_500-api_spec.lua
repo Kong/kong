@@ -68,11 +68,11 @@ for _, strategy in strategies() do
         local service1 = bp.services:insert{
           protocol = "http",
           port     = 80,
-          host     = "mocking.com",
+          host     = "mocking.test",
         }
 
       db.routes:insert({
-        hosts = { "mocking.com" },
+        hosts = { "mocking.test" },
         service    = service1,
 
       })
@@ -116,7 +116,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/stock/historical?tickers=available",
           headers = {
-            host = "mocking.com"
+            host = "mocking.test"
           }
         })
         -- validate that the request succeeded, response status 200
@@ -134,7 +134,7 @@ for _, strategy in strategies() do
           method = "GET",
           path = "/pet/findByStatus/MultipleExamples",
           headers = {
-            host = "mocking.com"
+            host = "mocking.test"
           }
         })
 
@@ -150,7 +150,7 @@ for _, strategy in strategies() do
           method = "DELETE",
           path = "/stock/delete",
           headers = {
-            host = "mocking.com"
+            host = "mocking.test"
           }
         })
         assert.res_status(204, r)

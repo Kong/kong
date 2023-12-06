@@ -76,7 +76,7 @@ for _, strategy in helpers.all_strategies() do
       -- Inject a test route. No need to create a service, there is a default
       -- service which will echo the request.
       local route1 = bp.routes:insert {
-        hosts = { "test1.com" },
+        hosts = { "test1.test" },
       }
       -- add the plugin to test to the route we created
       bp.plugins:insert {
@@ -155,7 +155,7 @@ for _, strategy in helpers.all_strategies() do
         client = helpers.proxy_client()
         local response = client:get("/request", {
           headers = {
-            host = "test1.com",
+            host = "test1.test",
           }
         })
         assert.response(response).has.status(200)
@@ -200,7 +200,7 @@ for _, strategy in helpers.all_strategies() do
         client = helpers.proxy_client()
         local response = client:get("/request", {
           headers = {
-            host = "test1.com",
+            host = "test1.test",
           }
         })
         assert.response(response).has.status(200)
@@ -218,7 +218,7 @@ for _, strategy in helpers.all_strategies() do
         client = helpers.proxy_client()
         local response = client:get("/request", {
           headers = {
-            host = "test1.com",
+            host = "test1.test",
           }
         })
         assert.response(response).has.status(200)
@@ -239,7 +239,7 @@ for _, strategy in helpers.all_strategies() do
       it("enables snapshots and reports error to AppDynamics if upstream request fails", function()
         start_kong()
         client = helpers.proxy_client()
-        local r = client:get("/status/500", { headers = { host = "test1.com" } })
+        local r = client:get("/status/500", { headers = { host = "test1.test" } })
         assert.response(r).has.status(500)
         -- Make sure that we're enabling snapshots for failing
         -- request and that the upstream status is added to

@@ -256,7 +256,7 @@ describe("rbac entities are invalidated with db: #" .. strategy .. ", role: #" .
       local res = admin_client_1:post("/routes", {
         body = {
           protocols = { "http" },
-          hosts     = { "my.route.com" },
+          hosts     = { "my.route.test" },
           service   = service,
         },
         headers = {

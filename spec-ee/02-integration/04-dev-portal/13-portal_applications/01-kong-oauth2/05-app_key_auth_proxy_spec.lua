@@ -104,7 +104,7 @@ for _, strategy in helpers.each_strategy() do
         path = "/applications",
         body = {
           name = "myfirstapp",
-          redirect_uri = "http://dog.com"
+          redirect_uri = "http://dog.test"
         },
         headers = {
           ["Content-Type"] = "application/json",

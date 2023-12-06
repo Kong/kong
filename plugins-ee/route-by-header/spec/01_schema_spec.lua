@@ -23,7 +23,7 @@ describe("route-by-header schema", function()
             header1 =  "value1",
             header2 =  "value2",
           },
-          upstream_name = "bar.domain.com",
+          upstream_name = "bar.domain.test",
         }
       }
     }, schema)
@@ -38,7 +38,7 @@ describe("route-by-header schema", function()
             header1 =  "value1",
             header2 =  "value2",
           },
-          upstream_name = "bar.domain.com",
+          upstream_name = "bar.domain.test",
         },
         {
           condition = {
@@ -46,7 +46,7 @@ describe("route-by-header schema", function()
             header2 =  "value2",
             header3 =  "value3",
           },
-          upstream_name = "bar.domain.com",
+          upstream_name = "bar.domain.test",
         }
       }
     }, schema)
@@ -58,7 +58,7 @@ describe("route-by-header schema", function()
       rules= {
         {
           condition = {},
-          upstream_name = "bar.domain.com",
+          upstream_name = "bar.domain.test",
         }
       }
     }, schema)
@@ -70,7 +70,7 @@ describe("route-by-header schema", function()
     local ok, err = v({
       rules= {
         {
-          upstream_name = "bar.domain.com",
+          upstream_name = "bar.domain.test",
         }
       }
     }, schema)

@@ -52,7 +52,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       local route = assert(bp.routes:insert({
-        hosts = { "route-1.com" },
+        hosts = { "route-1.test" },
       }))
 
       assert(bp.plugins:insert({
@@ -112,7 +112,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/get",
           headers = {
-            Host = "route-1.com",
+            Host = "route-1.test",
             ApiKey = "a_mouse",
           },
         })
@@ -126,7 +126,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/get",
           headers = {
-            host = "route-1.com",
+            host = "route-1.test",
             ApiKey = "a_mouse",
           },
         })
@@ -143,7 +143,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/get",
           headers = {
-            host = "route-1.com",
+            host = "route-1.test",
             ApiKey = "a_mouse",
           },
         })
@@ -164,7 +164,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/get",
           headers = {
-            host = "route-1.com",
+            host = "route-1.test",
             ApiKey = "a_mouse",
           },
         })
@@ -176,7 +176,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/get",
           headers = {
-            host = "route-1.com",
+            host = "route-1.test",
             ApiKey = "a_mouse",
           },
         })

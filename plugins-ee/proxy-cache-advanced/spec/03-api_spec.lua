@@ -18,7 +18,7 @@ describe("Plugin: proxy-cache-advanced #" .. strategy, function()
     bp = helpers.get_db_utils(strategy, nil, {"proxy-cache-advanced"})
 
     route1 = assert(bp.routes:insert {
-      hosts = { "route-1.com" },
+      hosts = { "route-1.test" },
     })
     plugin1 = assert(bp.plugins:insert {
       name = "proxy-cache-advanced",
@@ -40,7 +40,7 @@ describe("Plugin: proxy-cache-advanced #" .. strategy, function()
     })
 
     local route2 = assert(bp.routes:insert {
-      hosts = { "route-2.com" },
+      hosts = { "route-2.test" },
     })
 
     assert(bp.plugins:insert {
@@ -220,7 +220,7 @@ describe("Plugin: proxy-cache-advanced #" .. strategy, function()
           method = "GET",
           path = "/get",
           headers = {
-            host = "route-1.com",
+            host = "route-1.test",
           }
         })
 
@@ -237,7 +237,7 @@ describe("Plugin: proxy-cache-advanced #" .. strategy, function()
           method = "GET",
           path = "/get",
           headers = {
-            host = "route-1.com",
+            host = "route-1.test",
           }
         })
 
@@ -258,7 +258,7 @@ describe("Plugin: proxy-cache-advanced #" .. strategy, function()
           method = "GET",
           path = "/get",
           headers = {
-            host = "route-1.com",
+            host = "route-1.test",
           }
         })
 
@@ -276,7 +276,7 @@ describe("Plugin: proxy-cache-advanced #" .. strategy, function()
           method = "GET",
           path = "/get",
           headers = {
-            host = "route-1.com",
+            host = "route-1.test",
           }
         })
 
@@ -289,7 +289,7 @@ describe("Plugin: proxy-cache-advanced #" .. strategy, function()
           method = "GET",
           path = "/get",
           headers = {
-            host = "route-1.com",
+            host = "route-1.test",
           }
         })
         assert.res_status(200, res)
@@ -300,7 +300,7 @@ describe("Plugin: proxy-cache-advanced #" .. strategy, function()
           method = "GET",
           path = "/get",
           headers = {
-            host = "route-2.com",
+            host = "route-2.test",
           }
         })
 
@@ -317,7 +317,7 @@ describe("Plugin: proxy-cache-advanced #" .. strategy, function()
           method = "GET",
           path = "/get",
           headers = {
-            host = "route-2.com",
+            host = "route-2.test",
           }
         })
 
@@ -337,7 +337,7 @@ describe("Plugin: proxy-cache-advanced #" .. strategy, function()
           method = "GET",
           path = "/get",
           headers = {
-            host = "route-1.com",
+            host = "route-1.test",
           }
         })
 
@@ -348,7 +348,7 @@ describe("Plugin: proxy-cache-advanced #" .. strategy, function()
           method = "GET",
           path = "/get",
           headers = {
-            host = "route-2.com",
+            host = "route-2.test",
           }
         })
 
@@ -413,7 +413,7 @@ describe("Plugin: proxy-cache-advanced #" .. strategy, function()
           method = "GET",
           path = "/get",
           headers = {
-            host = "route-1.com",
+            host = "route-1.test",
           }
         })
         assert.res_status(200, res)

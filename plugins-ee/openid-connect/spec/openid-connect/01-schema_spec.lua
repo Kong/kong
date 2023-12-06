@@ -62,7 +62,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
   it("allows to configure plugin with issuer url", function()
     local ok, err = validate({
-        issuer = "https://accounts.google.com/.well-known/openid-configuration",
+        issuer = "https://accounts.google.test/.well-known/openid-configuration",
       })
     assert.is_nil(err)
     assert.is_truthy(ok)
@@ -82,7 +82,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
   it("redis cluster nodes accepts ips or hostnames", function()
     local ok, err = validate({
-      issuer = "https://accounts.google.com/.well-known/openid-configuration",
+      issuer = "https://accounts.google.test/.well-known/openid-configuration",
       session_redis_cluster_nodes = {
         {
           ip = "redis-node-1",
@@ -105,7 +105,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
   it("redis cluster nodes rejects bad ports", function()
     local ok, err = validate({
-      issuer = "https://accounts.google.com/.well-known/openid-configuration",
+      issuer = "https://accounts.google.test/.well-known/openid-configuration",
       session_redis_cluster_nodes = {
         {
           ip = "redis-node-1",
@@ -128,7 +128,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
   it("accepts anonymous config with uuid #FTI-3340", function()
     local uuid = utils.uuid()
     local ok, err = validate({
-      issuer = "https://accounts.google.com/.well-known/openid-configuration",
+      issuer = "https://accounts.google.test/.well-known/openid-configuration",
       anonymous = uuid,
     })
 
@@ -138,7 +138,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
   it("accepts anonymous config with existing username #FTI-3340 #ONLY", function()
     local ok, err = validate({
-      issuer = "https://accounts.google.com/.well-known/openid-configuration",
+      issuer = "https://accounts.google.test/.well-known/openid-configuration",
       anonymous = "anonymous-name",
     })
 
@@ -148,7 +148,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
   it("accepts anonymous config with arbitrary string #FTI-3340", function()
     local ok, err = validate({
-      issuer = "https://accounts.google.com/.well-known/openid-configuration",
+      issuer = "https://accounts.google.test/.well-known/openid-configuration",
       anonymous = "nobody",
     })
 
@@ -170,7 +170,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
             end
 
             local _, err = validate({
-              issuer = "https://accounts.google.com/.well-known/openid-configuration",
+              issuer = "https://accounts.google.test/.well-known/openid-configuration",
               proof_of_possession_auth_methods_validation = auth_methods_validation,
               proof_of_possession_mtls = "strict",
               auth_methods = {
@@ -202,7 +202,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
           it("auth_methods check", function()
             assert(validate({
-              issuer = "https://accounts.google.com/.well-known/openid-configuration",
+              issuer = "https://accounts.google.test/.well-known/openid-configuration",
               proof_of_possession_auth_methods_validation = auth_methods_validation,
               proof_of_possession_mtls = pop_mtls,
               auth_methods = {
@@ -213,7 +213,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
             }))
 
             assert(validate({
-              issuer = "https://accounts.google.com/.well-known/openid-configuration",
+              issuer = "https://accounts.google.test/.well-known/openid-configuration",
               proof_of_possession_auth_methods_validation = auth_methods_validation,
               proof_of_possession_mtls = pop_mtls,
               auth_methods = {
@@ -222,7 +222,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
             }))
 
             local ok, err = validate({
-              issuer = "https://accounts.google.com/.well-known/openid-configuration",
+              issuer = "https://accounts.google.test/.well-known/openid-configuration",
               proof_of_possession_auth_methods_validation = auth_methods_validation,
               proof_of_possession_mtls = pop_mtls,
               auth_methods = {
@@ -242,7 +242,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
             end
 
             ok, err = validate({
-              issuer = "https://accounts.google.com/.well-known/openid-configuration",
+              issuer = "https://accounts.google.test/.well-known/openid-configuration",
               proof_of_possession_auth_methods_validation = auth_methods_validation,
               proof_of_possession_mtls = pop_mtls,
             })
@@ -271,8 +271,8 @@ describe(PLUGIN_NAME .. ": (schema)", function()
       }
       helpers.setenv("TEST_SCOPE_FOO", "foo")
       helpers.setenv("TEST_SCOPE_BAR", "bar")
-      helpers.setenv("TEST_LOGIN_URI", "http://login.com")
-      helpers.setenv("TEST_LOGOUT_URI", "http://logout.com")
+      helpers.setenv("TEST_LOGIN_URI", "http://login.test")
+      helpers.setenv("TEST_LOGOUT_URI", "http://logout.test")
     end)
     lazy_teardown(function()
       helpers.unsetenv("TEST_SCOPE_FOO")
@@ -284,7 +284,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
     it("scopes", function()
       local res, err = process_plugin_config({
-        issuer = "https://accounts.google.com/.well-known/openid-configuration",
+        issuer = "https://accounts.google.test/.well-known/openid-configuration",
         scopes = { "{vault://env/test_scope_foo}", "{vault://env/test_scope_bar}"},
       })
       assert.is_nil(err)
@@ -293,13 +293,13 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
     it("login_redirect_uri/logout_redirect_uri", function()
       local res, err = process_plugin_config({
-        issuer = "https://accounts.google.com/.well-known/openid-configuration",
+        issuer = "https://accounts.google.test/.well-known/openid-configuration",
         login_redirect_uri = { "{vault://env/test_login_uri}" },
         logout_redirect_uri = { "{vault://env/test_logout_uri}" },
       })
       assert.is_nil(err)
-      assert.same({ "http://login.com" }, res.config.login_redirect_uri)
-      assert.same({ "http://logout.com" }, res.config.logout_redirect_uri)
+      assert.same({ "http://login.test" }, res.config.login_redirect_uri)
+      assert.same({ "http://logout.test" }, res.config.logout_redirect_uri)
     end)
 
   end)

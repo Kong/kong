@@ -187,7 +187,7 @@ for _, strategy in helpers.all_strategies({"postgres", "off"}) do
 
             local route = bp.routes:insert {
               name = "route-1",
-              hosts = { "test.com" },
+              hosts = { "test.test" },
             }
 
             bp.plugins:insert {
@@ -328,7 +328,7 @@ for _, strategy in helpers.all_strategies({"postgres", "off"}) do
         it("only group1 plugins should be executed", function ()
           local r = proxy_client():get("/anything", {
               headers = {
-                  host = "test.com",
+                  host = "test.test",
                   apikey = "c1",
               },
           })
@@ -343,7 +343,7 @@ for _, strategy in helpers.all_strategies({"postgres", "off"}) do
         it("group 1 and group2 plugins should be executed", function ()
           local r = proxy_client():get("/anything", {
               headers = {
-                  host = "test.com",
+                  host = "test.test",
                   apikey = "c2",
               },
           })
@@ -360,7 +360,7 @@ for _, strategy in helpers.all_strategies({"postgres", "off"}) do
         it("group 3 plugins should be executed (there are none)", function ()
           local r = proxy_client():get("/anything", {
               headers = {
-                  host = "test.com",
+                  host = "test.test",
                   apikey = "c3",
               },
           })
@@ -373,7 +373,7 @@ for _, strategy in helpers.all_strategies({"postgres", "off"}) do
         it("group 4", function ()
           local r = proxy_client():get("/anything", {
               headers = {
-                  host = "test.com",
+                  host = "test.test",
                   apikey = "c4",
               },
           })

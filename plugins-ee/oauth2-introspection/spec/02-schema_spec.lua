@@ -22,7 +22,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
   it("allows to configure plugin with basic configuration", function()
     local ok, err = validate({
-      introspection_url = "https://example-url.com",
+      introspection_url = "https://example-url.test",
         authorization_value = "Basic MG9hNWlpbjpPcGVuU2VzYW1l"
       })
     assert.is_nil(err)
@@ -31,7 +31,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
   it("allows to configure plugin with username format anonymous", function()
     local ok, err = validate({
-      introspection_url = "https://example-url.com",
+      introspection_url = "https://example-url.test",
       authorization_value = "Basic MG9hNWlpbjpPcGVuU2VzYW1l",
       anonymous = "test"
     })

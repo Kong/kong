@@ -13,9 +13,9 @@ describe("portal", function()
     portal = "on",
     portal_gui_listeners = {"127.0.0.1:8003"},
     portal_api_listeners = {"127.0.0.1:8004"},
-    portal_gui_host = "localhost.com",
+    portal_gui_host = "localhost.test",
     portal_gui_protocol = "http",
-    portal_api_url = "http://api.localhost.com",
+    portal_api_url = "http://api.localhost.test",
     portal_auth = "basic-auth",
   }
 
@@ -98,13 +98,13 @@ describe("portal", function()
 
   describe(".url", function()
     it("has current url", function()
-      assert.equals(portal.url, "http://localhost.com/default")
+      assert.equals(portal.url, "http://localhost.test/default")
     end)
   end)
 
   describe(".api_url", function()
     it("returns portal_api_url with workspace", function()
-      assert.equals(portal.api_url, "http://api.localhost.com/default")
+      assert.equals(portal.api_url, "http://api.localhost.test/default")
     end)
 
     it("returns empty string when portal_api_url empty", function()

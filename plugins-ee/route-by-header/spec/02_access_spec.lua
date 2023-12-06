@@ -30,7 +30,7 @@ for _, strategy in strategies() do
       })
 
       local upstream_foo = bp.upstreams:insert({
-        name = "foo.domain.com"
+        name = "foo.domain.test"
       })
 
       bp.targets:insert({
@@ -39,7 +39,7 @@ for _, strategy in strategies() do
       })
 
       local upstream_bar = bp.upstreams:insert({
-        name = "bar.domain.com"
+        name = "bar.domain.test"
       })
 
       bp.targets:insert({
@@ -52,7 +52,7 @@ for _, strategy in strategies() do
       }
 
       local route1 = bp.routes:insert({
-        hosts = { "routebyheader1.com" },
+        hosts = { "routebyheader1.test" },
         preserve_host = false,
         service = service1
       })
@@ -65,13 +65,13 @@ for _, strategy in strategies() do
 
       local service2 = bp.services:insert {
         name = "bar_upstream",
-        host = "nowhere.example.com",
+        host = "nowhere.example.test",
         protocol= "http"
       }
 
       local route2 = bp.routes:insert({
         protocols = { "http" },
-        hosts = { "routebyheader2.com" },
+        hosts = { "routebyheader2.test" },
         service   = service2,
       })
 
@@ -85,13 +85,13 @@ for _, strategy in strategies() do
                 header1 =  "value1",
                 header2 =  "value2",
               },
-              upstream_name = "bar.domain.com",
+              upstream_name = "bar.domain.test",
             },
             {
               condition = {
                 header3 = "value3"
               },
-              upstream_name = "foo.domain.com",
+              upstream_name = "foo.domain.test",
             }
           }
         }
@@ -123,7 +123,7 @@ for _, strategy in strategies() do
       local res = assert(proxy_client:send{
         method = "GET",
         headers = {
-          Host = "routebyheader1.com"
+          Host = "routebyheader1.test"
         }
       })
       assert.res_status(200, res)
@@ -132,7 +132,7 @@ for _, strategy in strategies() do
       local res = assert(proxy_client:send{
         method = "GET",
         headers = {
-          Host = "routebyheader2.com"
+          Host = "routebyheader2.test"
         }
       })
       assert.res_status(503, res)
@@ -141,7 +141,7 @@ for _, strategy in strategies() do
       local res = assert(proxy_client:send{
         method = "GET",
         headers = {
-          Host = "routebyheader2.com",
+          Host = "routebyheader2.test",
           header1 =  "value1",
           header2 =  "value2"
         }
@@ -153,7 +153,7 @@ for _, strategy in strategies() do
       local res = assert(proxy_client:send{
         method = "GET",
         headers = {
-          Host = "routebyheader2.com",
+          Host = "routebyheader2.test",
           header3 =  "value3",
         }
       })
@@ -164,7 +164,7 @@ for _, strategy in strategies() do
       local res = assert(proxy_client:send{
         method = "GET",
         headers = {
-          Host = "routebyheader2.com",
+          Host = "routebyheader2.test",
           header1 =  "value1",
           header2 =  "value2",
           header3 =  "value3",
@@ -177,7 +177,7 @@ for _, strategy in strategies() do
       local res = assert(proxy_client:send{
         method = "GET",
         headers = {
-          Host = "routebyheader2.com",
+          Host = "routebyheader2.test",
           header1 =  "value1",
           header2 =  "value2",
           header3 =  "value3",
@@ -200,7 +200,7 @@ for _, strategy in strategies() do
                   header1 =  "value1",
                   header2 =  "value2",
                 },
-                upstream_name = "foo.domain.com",
+                upstream_name = "foo.domain.test",
               }
             }
           }
@@ -215,7 +215,7 @@ for _, strategy in strategies() do
       local res = assert(proxy_client:send{
         method = "GET",
         headers = {
-          Host = "routebyheader2.com",
+          Host = "routebyheader2.test",
           header1 =  "value1",
           header2 =  "value2"
         }

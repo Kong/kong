@@ -15,7 +15,7 @@ local fixtures = {
   http_mock = {
     validation_plugin = [[
       server {
-          server_name petstore.com;
+          server_name petstore.test;
           listen 12345;
 
           location ~ "/info" {
@@ -56,12 +56,12 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route1 = db.routes:insert({
-        hosts = { "petstore1.com" },
+        hosts = { "petstore1.test" },
         service    = service1,
       })
 
       local route2 = db.routes:insert({
-        hosts = { "petstore2.com" },
+        hosts = { "petstore2.test" },
         service    = service2,
       })
 
@@ -117,7 +117,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/pets?tags=tag1,tag2",
           headers = {
-            host = "petstore1.com",
+            host = "petstore1.test",
             ["Content-Type"] = "application/json",
           },
         })
@@ -130,7 +130,7 @@ for _, strategy in helpers.each_strategy() do
           method = "POST",
           path = "/pets",
           headers = {
-            host = "petstore1.com",
+            host = "petstore1.test",
             ["Content-Type"] = "application/json",
           },
           body = {
@@ -147,7 +147,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/info?sort[field]=value1&sort[order]=value2",
           headers = {
-            host = "petstore1.com",
+            host = "petstore1.test",
             ["Content-Type"] = "application/json",
           },
         })
@@ -160,7 +160,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/info?sort[field]=value1",
           headers = {
-            host = "petstore1.com",
+            host = "petstore1.test",
             ["Content-Type"] = "application/json",
           },
         })

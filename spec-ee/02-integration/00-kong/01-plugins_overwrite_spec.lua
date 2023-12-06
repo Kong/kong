@@ -72,7 +72,7 @@ describe("#flaky Plugins overwrite:", function()
             route = route,
             config = {
               policy = "local",
-              redis_host = "my-redis-host.net",
+              redis_host = "my-redis-host.test",
               redis_port = 4242,
               redis_timeout = 120,
               redis_database = 3,
@@ -87,7 +87,7 @@ describe("#flaky Plugins overwrite:", function()
         local body = assert.res_status(201, res)
         local json = cjson.decode(body)
         assert.equal("local", json.config.policy)
-        assert.equal("my-redis-host.net", json.config.redis_host)
+        assert.equal("my-redis-host.test", json.config.redis_host)
         assert.equal(4242, json.config.redis_port)
         assert.equal(120, json.config.redis_timeout)
         assert.equal(3, json.config.redis_database)
@@ -252,7 +252,7 @@ describe("#flaky Plugins overwrite:", function()
             route = route,
             config = {
               policy = "local",
-              redis_host = "my-redis-host.net",
+              redis_host = "my-redis-host.test",
               redis_port = 4242,
               redis_timeout = 120,
               redis_database = 3,
@@ -271,7 +271,7 @@ describe("#flaky Plugins overwrite:", function()
         local body = assert.res_status(201, res)
         local json = cjson.decode(body)
         assert.equal("local", json.config.policy)
-        assert.equal("my-redis-host.net", json.config.redis_host)
+        assert.equal("my-redis-host.test", json.config.redis_host)
         assert.equal(4242, json.config.redis_port)
         assert.equal(120, json.config.redis_timeout)
         assert.equal(3, json.config.redis_database)
