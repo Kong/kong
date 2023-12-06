@@ -30,7 +30,6 @@ end
 -- @param spec_str
 -- @param opts options.DEFAULT_OPTIONS
 _M.parse = function(spec_str, opts)
-  spec_str = ngx.unescape_uri(spec_str)
   local parsed_spec, decode_err = cjson.decode(spec_str)
   if decode_err then
     -- fallback to YAML

@@ -451,7 +451,6 @@ local function parse_spec(conf)
       resolve_base_path = conf.include_base_path,
       dereference = { circular = true },
     }
-    spec_content = ngx.unescape_uri(spec_content)
     local spec, err = swagger_parser.parse(spec_content, opts)
     if err then
       return nil, err

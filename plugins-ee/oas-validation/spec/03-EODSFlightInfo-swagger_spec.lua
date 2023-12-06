@@ -62,7 +62,7 @@ for _, strategy in helpers.each_strategy() do
         service = { id = service1.id },
         route = { id = route1.id },
         config = {
-          api_spec = ngx.escape_uri(fixture_path.read_fixture("ICC-EODSFlightInformation-1.5.5-swagger.yaml")),
+          api_spec = fixture_path.read_fixture("ICC-EODSFlightInformation-1.5.5-swagger.yaml"),
           verbose_response = true
         },
       })

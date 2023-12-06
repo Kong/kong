@@ -32,6 +32,32 @@ paths:
           description: OK
           content: {}
 
+  /regex/pattern/{anything}:
+    get:
+      parameters:
+        - name: anything
+          in: path
+          required: true
+          schema:
+            pattern: .+
+            type: string
+      responses:
+        200:
+          description: OK
+          content: {}
+
+    post:
+      requestBody:
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/RegexPatternObject'
+        required: true
+      responses:
+        200:
+          description: OK
+          content: {}
+
 components:
   schemas:
     NullablePropertiesObject:
@@ -52,4 +78,10 @@ components:
     NullableObject:
       type: object
       nullable: true
+    RegexPatternObject:
+      type: object
+      properties:
+        email:
+          type: string
+          pattern: "^[a-zA-Z0-9_!#$%&’*+/=?`{|}~^.-]+@[a-zA-Z0-9.-]+$"
 

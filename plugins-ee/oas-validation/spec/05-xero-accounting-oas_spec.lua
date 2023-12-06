@@ -85,7 +85,7 @@ for _, strategy in helpers.each_strategy() do
         service = { id = service1.id },
         route = { id = route1.id },
         config = {
-          api_spec = ngx.escape_uri(fixture_path.read_fixture("xero-finance-oas.yaml")),
+          api_spec = fixture_path.read_fixture("xero-finance-oas.yaml"),
           validate_response_body = true,
           verbose_response = true
         },
@@ -96,7 +96,7 @@ for _, strategy in helpers.each_strategy() do
         service = { id = service2.id },
         route = { id = route2.id },
         config = {
-          api_spec = ngx.escape_uri(fixture_path.read_fixture("xero-finance-oas.yaml")),
+          api_spec = fixture_path.read_fixture("xero-finance-oas.yaml"),
           validate_response_body = true,
           verbose_response = true
         },
