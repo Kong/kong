@@ -8,6 +8,8 @@
 local lrucache = require "resty.lrucache"
 local re_match = ngx.re.match
 local fmt = string.format
+local min = math.min
+local max = math.max
 
 local aws
 local rds
@@ -81,7 +83,17 @@ local function raw_get(conf)
     return nil, fmt("failed to fetch IAM token from token handler (%s)", err)
   end
 
-  TOKEN_CACHE:set(generate_conf_key(conf), res, RDS_IAM_AUTH_EXPIRE_TIME)
+  -- getAuthToken should have already refreshed the credential, so we fetch the expire time directly
+  local status, _, _, _, cred_expire_timestamp = rds.config.credentials:get()
+  if not status then
+    cred_expire_timestamp = ngx.now() + RDS_IAM_AUTH_EXPIRE_TIME
+  end
+
+  local cred_expire_time = max(0, cred_expire_timestamp - ngx.now())
+  -- Leave a 15sec expiry window to make sure we refresh the token on time
+  local rds_iam_token_expire_time = max(0, min(RDS_IAM_AUTH_EXPIRE_TIME, cred_expire_time) - 15)
+  TOKEN_CACHE:set(generate_conf_key(conf), res, rds_iam_token_expire_time)
+
   return res
 end
 

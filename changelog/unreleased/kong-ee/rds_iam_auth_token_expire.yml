@@ -1,0 +1,4 @@
+message: |
+  Fix an issue where the IAM auth token was not refreshed when the underlying AWS credential expired.
+type: bugfix
+scope: Core
