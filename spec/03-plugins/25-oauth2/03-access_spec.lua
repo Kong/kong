@@ -1461,7 +1461,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             }
           })
           local body = cjson.decode(assert.res_status(200, res))
-          local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.com/kong\\#access_token=([\\w]{32,32})&expires_in=[\\d]+&token_type=bearer$")
+          local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.test/kong\\#access_token=([\\w]{32,32})&expires_in=[\\d]+&token_type=bearer$")
           assert.is_nil(err)
           local m, err = iterator()
           assert.is_nil(err)

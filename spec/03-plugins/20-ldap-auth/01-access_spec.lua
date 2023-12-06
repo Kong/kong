@@ -563,7 +563,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               method  = "GET",
               path    = "/request",
               headers = {
-                host  = "ldap7.com"
+                host  = "ldap7.test"
               }
             })
             assert.response(res).has.status(200)

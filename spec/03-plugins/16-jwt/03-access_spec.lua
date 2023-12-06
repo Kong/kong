@@ -957,7 +957,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "jwt13.com"
+            ["Host"] = "jwt13.test"
           }
         })
         local body = cjson.decode(assert.res_status(200, res))

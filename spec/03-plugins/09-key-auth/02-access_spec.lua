@@ -735,7 +735,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "key-auth10.com"
+            ["Host"] = "key-auth10.test"
           }
         })
         local body = cjson.decode(assert.res_status(200, res))

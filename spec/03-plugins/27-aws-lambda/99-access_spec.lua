@@ -921,7 +921,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "POST",
             path    = "/post",
             headers = {
-              ["Host"]         = "lambda11.com",
+              ["Host"]         = "lambda11.test",
               ["Content-Type"] = "application/json"
             },
             body = {
