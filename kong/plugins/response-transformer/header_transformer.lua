@@ -96,6 +96,10 @@ function _M.transform_headers(conf, headers)
   for _, old_name, new_name in iter(conf.rename.headers) do
     if headers[old_name] ~= nil and new_name then
       local value = headers[old_name]
+      -- header value can be a table, in which case we take the first value
+      if type(value) == "table" then
+        value = value[1]
+      end
       set_header(new_name, value)
       clear_header(old_name)
     end
