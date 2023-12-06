@@ -3678,6 +3678,7 @@
                                  #   - `header_filter`: Collect timing information from the `header_filter` phase.
                                  #   - `body_filter`: Collect timing information from the `body_filter` phase.
                                  #   - `log`: Collect timing information from the `log` phase.
+                                 #   - `upstream`: Collect timing information from the `upstream` phase.
                                  #
                                  # - `X-Kong-Request-Debug-Log`:
                                  #   If set to `true`, timing information will also be logged
