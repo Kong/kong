@@ -22,6 +22,10 @@ for _, strategy in helpers.each_strategy() do
         "gAAAAB5ncnBjLXN0YXR1czowDQpncnBjLW1lc3NhZ2U6DQo="
     local HELLO_RESPONSE_BODY = ngx.decode_base64("AAAAAAwKCmhlbGxvIGhleWE=") ..
         ngx.decode_base64("gAAAAB5ncnBjLXN0YXR1czowDQpncnBjLW1lc3NhZ2U6DQo=")
+    -- larger than 1k
+    local LARGE_MESSAGE = string.rep("OK", 10000)
+    local LARGE_REQUEST_BODY = '{"greeting": \"' .. LARGE_MESSAGE .. '\"}'
+    local LARGE_RESPONSE_BODY = '{"reply":\"hello ' .. LARGE_MESSAGE .. '\"}'
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -78,7 +82,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     lazy_teardown(function()
-      helpers.stop_kong()
+      helpers.stop_kong(nil, true)
     end)
 
 
@@ -155,7 +159,7 @@ for _, strategy in helpers.each_strategy() do
       assert.is_nil(err)
     end)
 
-     test("Call plain JSON via HTTP", function()
+    test("Call plain JSON via HTTP", function()
       local res, err = proxy_client:post("/hello.HelloService/SayHello", {
         headers = {
           ["Content-Type"] = "application/json",
@@ -167,16 +171,31 @@ for _, strategy in helpers.each_strategy() do
       assert.is_nil(err)
     end)
 
-     test("Pass stripped URI", function()
-       local res, err = proxy_client:post("/prefix/hello.HelloService/SayHello", {
-         headers = {
-           ["Content-Type"] = "application/json",
-         },
-         body = cjson.encode{ greeting = "heya" },
-       })
+    test("Pass stripped URI", function()
+      local res, err = proxy_client:post("/prefix/hello.HelloService/SayHello", {
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+        body = cjson.encode{ greeting = "heya" },
+      })
 
-       assert.same({ reply = "hello heya" }, cjson.decode((res:read_body())))
-       assert.is_nil(err)
-     end)
+      assert.same({ reply = "hello heya" }, cjson.decode((res:read_body())))
+      assert.is_nil(err)
+    end)
+
+    test("#regression large body causes error", function()
+      local res = assert(proxy_client:post("/hello.HelloService/SayHello", {
+        headers = {
+          ["Content-Type"] = "application/json",
+          ["Content-Length"] = tostring(#LARGE_REQUEST_BODY),
+        },
+        body = LARGE_REQUEST_BODY,
+      }))
+
+      local body = assert(res:read_body())
+      assert.equal(LARGE_RESPONSE_BODY, body)
+
+      assert.logfile().has.line("client_body_buffer_size exceeded")
+    end)
  end)
 end
