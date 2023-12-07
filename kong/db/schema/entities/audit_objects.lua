@@ -43,6 +43,10 @@ return {
       description = "The entity associated with the audit object.",
       type = "string",
     }},
+    { removed_from_entity = {
+      description = "The data that was removed from the entity.",
+      type = "string",
+    }},
     { rbac_user_id = {
       description = "The ID of the RBAC (Role-Based Access Control) user associated with the audit object.",
       type = "string",

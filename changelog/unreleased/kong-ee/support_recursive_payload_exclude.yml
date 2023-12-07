@@ -1,0 +1,5 @@
+message: |
+  Exclude dot keys like `a.b.c` from both audit requests and audit objects,
+  and otherwise exclude singular key like `password` recursively.
+type: feature
+scope: Core

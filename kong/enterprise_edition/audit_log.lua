@@ -13,6 +13,7 @@ local find = string.find
 local lower = string.lower
 local pkey = require "resty.openssl.pkey"
 local get_request_id = require("kong.tracing.request_id").get
+local table_concat = table.concat
 
 
 local _M = {}
@@ -31,26 +32,85 @@ local function is_json_body(content_type)
   return content_type and find(lower(content_type), "application/json", nil, true)
 end
 
+--- exclude dot keys from audit log
+-- @tparam data - the audit log payload
+-- @tparam string dot_keys - for example `config.redis.password`
+local function exclude_dot_keys(data, dot_keys)
+  if not find(dot_keys, ".", 2, true) then
+    return false
+  end
+
+  local t, k
+  for key in dot_keys:gmatch('[^.]+') do
+    if type(data) ~= "table" then
+      return false
+    end
+
+    t = data
+    k = key
+
+    data = data[key]
+    if data == nil then
+      return false
+    end
+  end
+  t[k] = nil
+  return true
+end
+
+--- exclude key from audit log recursively
+-- @tparam data - the audit log payload
+-- @tparam string key - a keyword key like `password`
+local function exclude_key(data, key)
+  local rc = false
+
+  local stack = { data }
+  local n = #stack
+
+  local current
+  while n > 0 do
+    current = stack[n]
+
+    stack[n] = nil
+    n = n - 1
+
+    if type(current) == "table" then
+      if current[key] ~= nil then
+        current[key] = nil
+        rc = true
+      end
+
+      for _, v in pairs(current) do
+        if type(v) == "table" then
+          n = n + 1
+          stack[n] = v
+        end
+      end
+    end
+  end
+
+  return rc
+end
 
 local function filter_table(data, attributes)
   if type(data) ~= "table" then return data, nil end
 
   local excluded = {}
   for _, v in ipairs(attributes) do
-    if data[v] ~= nil then
+    -- first try to exclude dot keys, and then fallback to keyword key
+    if exclude_dot_keys(data, v) or exclude_key(data, v) then
       table.insert(excluded, v)
-      data[v] = nil
     end
   end
 
-  return data, excluded
+  return excluded
 end
 
 
 local function serialize(data)
   local p = {}
 
-  for k, v in pl_sort(data) do
+  for _, v in pl_sort(data) do
     if type(v) == "table" then
       p[#p + 1] = serialize(v)
     else
@@ -76,7 +136,7 @@ local function sign_adjacent(data)
   end
 
 
-  local sig, err = signing_key:sign(table.concat(serialize(data), "|"), SIGNING_ALGORITHM)
+  local sig, err = signing_key:sign(table_concat(serialize(data), "|"), SIGNING_ALGORITHM)
   if not sig then
     ngx.log(ngx.ERR, err)
     return
@@ -84,9 +144,6 @@ local function sign_adjacent(data)
 
 
   data.signature = ngx.encode_base64(sig)
-
-
-  return
 end
 
 
@@ -107,12 +164,24 @@ local function dao_audit_handler(data)
     pk_value = pk_value[next(pk_value)] -- in this case, it'll be a table
   end
 
+  local attributes_filtered = filter_table(
+    data.entity,
+    kong.configuration.audit_log_payload_exclude
+  )
+  attributes_filtered = #attributes_filtered > 0 and table_concat(attributes_filtered, ',') or nil
+
+  local entity_filtered, err = cjson.encode(data.entity)
+  if err then
+    kong.log.err("could not serialize JSON payload: ", err)
+  end
+
   data = {
-    request_id = data.request_id or get_request_id(),
-    entity_key = pk_value,
-    dao_name   = data.schema.table or data.schema.name,
-    operation  = data.operation,
-    entity     = cjson.encode(data.entity),
+    request_id          = data.request_id or get_request_id(),
+    entity_key          = pk_value,
+    dao_name            = data.schema.table or data.schema.name,
+    operation           = data.operation,
+    entity              = entity_filtered,
+    removed_from_entity = attributes_filtered,
   }
 
   local ttl = kong.configuration.audit_log_record_ttl
@@ -132,9 +201,6 @@ local function dao_audit_handler(data)
   if not ok then
     ngx.log(ngx.ERR, "failed to write audit log entry: ", err)
   end
-
-
-  return
 end
 _M.dao_audit_handler = dao_audit_handler
 
@@ -148,8 +214,6 @@ local function audit_log_writer(_, data)
   if not ok then
     ngx.log(ngx.ERR, "failed to write audit log entry: ", err)
   end
-
-  return
 end
 
 
@@ -191,33 +255,33 @@ local function admin_log_handler()
     end
   end
 
-  local filtered_payload = ngx.req.get_body_data()
+  local payload = ngx.req.get_body_data()
   local request_headers = ngx.req.get_headers()
-  local attributes_filtered
+  local payload_filtered, attributes_filtered
 
   -- check if the request content-type is an application/json
   -- if so then filter data
   local content_type = request_headers["content-type"]
   if(content_type and is_json_body(content_type)) then
     local err
-    local ok, res = pcall(cjson.decode, filtered_payload)
+    local ok, res = pcall(cjson.decode, payload)
 
     if not ok then
       err = res
     end
 
     if ok then
-      filtered_payload, attributes_filtered = filter_table(
+      attributes_filtered = filter_table(
         res,
         kong.configuration.audit_log_payload_exclude
       )
 
-      filtered_payload, err = cjson.encode(filtered_payload)
-      attributes_filtered = #attributes_filtered > 0 and table.concat(attributes_filtered, ',') or nil
+      payload_filtered, err = cjson.encode(res)
+      attributes_filtered = #attributes_filtered > 0 and table_concat(attributes_filtered, ',') or nil
     end
 
     if err then
-      kong.log.err("could not deserialize/serialize JSON payload to table: ", err)
+      kong.log.err("could not deserialize/serialize JSON payload: ", err)
     end
   end
 
@@ -227,7 +291,7 @@ local function admin_log_handler()
     request_id           = get_request_id(),
     client_ip            = ngx.var.remote_addr,
     path                 = uri,
-    payload              = filtered_payload,
+    payload              = payload_filtered,
     removed_from_payload = attributes_filtered,
     method               = ngx.req.get_method(),
     request_source       = request_headers['X-Request-Source'],
@@ -242,7 +306,7 @@ local function admin_log_handler()
     data.rbac_user_id = ngx.ctx.rbac.user.id
     data.rbac_user_name = data.rbac_user_name or ngx.ctx.rbac.user.name
   end
-  
+
   if kong.configuration.audit_log_signing_key then
     sign_adjacent(data)
   end
@@ -252,9 +316,6 @@ local function admin_log_handler()
   if not ok then
     ngx.log(ngx.ERR, "failed creating dummy req for audit log write: ", err)
   end
-
-
-  return
 end
 _M.admin_log_handler = admin_log_handler
 

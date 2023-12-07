@@ -25,7 +25,7 @@ return {
   },
 
   ["/audit/objects"] = {
-    schema = kong.db.audit_requests.schema,
+    schema = kong.db.audit_objects.schema,
     methods = {
       GET = endpoints.get_collection_endpoint(kong.db.audit_objects.schema),
     }

@@ -71,7 +71,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     lazy_teardown(function()
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     before_each(function()
@@ -972,9 +972,9 @@ for _, strategy in helpers.each_strategy() do
         }
       }))
       assert.res_status(201, res)
-      
+
       helpers.stop_kong()
-      
+
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -1014,7 +1014,7 @@ for _, strategy in helpers.each_strategy() do
           return #fetch_all(db.audit_requests) == 1
         end)
       end)
-      
+
       it("creates an audit_request entry with rbac token", function()
         local res = assert(admin_client:send({
           path = "/default/kong",
@@ -1029,28 +1029,56 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  describe("#flaky audit_log audit_log_payload_exclude with #" .. strategy, function()
-    local db, admin_client, proxy_client
+  describe("audit_log audit_log_payload_exclude with #" .. strategy, function()
+    local REDIS_HOST = helpers.redis_host
+    local REDIS_PORT = helpers.redis_port or 6379
+    local REDIS_DATABASE = 0
 
-    setup(function()
-      db = select(2, helpers.get_db_utils(strategy))
+    local plugin_name = "rate-limiting-advanced"
+
+    local bp, db
+    local admin_client, proxy_client
+    local audit_svc, audit_rt
+
+
+    lazy_setup(function()
+      bp, db = helpers.get_db_utils(strategy, {
+        "services",
+        "routes",
+        "plugins",
+        "audit_requests",
+        "audit_objects"
+      }, {
+        plugin_name,
+      })
+
+      audit_svc = bp.services:insert({
+        name = "svc-demo",
+        path = "/anything",
+      })
+      audit_rt = bp.routes:insert({
+        service = audit_svc,
+        name = "rt-demo",
+        hosts = { "www.example.com" },
+      })
 
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         audit_log  = "on",
-        audit_log_payload_exclude = "password",
+        audit_log_payload_exclude = "password,config.redis.database,name.foo,protocols",
+        plugins = "bundled," .. plugin_name,
       }))
-
-      db:truncate("audit_objects")
-      db:truncate("audit_requests")
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong(nil, true)
     end)
 
     before_each(function()
+      db:truncate("audit_requests")
+      db:truncate("audit_objects")
+
       admin_client = helpers.admin_client()
       proxy_client = helpers.proxy_client()
     end)
@@ -1060,47 +1088,128 @@ for _, strategy in helpers.each_strategy() do
       proxy_client:close()
     end)
 
-    describe("for an excluded key", function()
-      it("does not include value in the payload", function()
-        local res = assert(admin_client:send({
-          method = "POST",
-          path   = "/consumers",
-          body   = {
-            username = "bob"
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          }
-        }))
-        assert.res_status(201, res)
+    it("#flaky does not include value in the payload", function()
+      local res = assert(admin_client:send({
+        method = "POST",
+        path   = "/consumers",
+        body   = {
+          username = "bob"
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        }
+      }))
+      assert.res_status(201, res)
 
-        local res = assert(admin_client:send {
-          method  = "POST",
-          path    = "/consumers/bob/basic-auth",
-          body    = {
-            username = "bob",
-            password = "kong"
-          },
-          headers = {
-            ["Content-Type"] = "application/json"
-          }
-        })
-        assert.res_status(201, res)
+      local res = assert(admin_client:send {
+        method  = "POST",
+        path    = "/consumers/bob/basic-auth",
+        body    = {
+          username = "bob",
+          password = "kong"
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+      assert.res_status(201, res)
 
 
-        local rows
-        helpers.wait_until(function()
-          rows = fetch_all(db.audit_requests)
-          return #rows == 2
-        end)
-
-        for _, row in ipairs(rows) do
-          if(row.path == "/consumers/bob/basic-auth") then
-            assert.same("{\"username\":\"bob\"}", row.payload)
-            assert.same("password", row.removed_from_payload)
-          end
-        end
+      local rows
+      helpers.wait_until(function()
+        rows = fetch_all(db.audit_requests)
+        return #rows == 2
       end)
+
+      for _, row in ipairs(rows) do
+        if(row.path == "/consumers/bob/basic-auth") then
+          assert.same("{\"username\":\"bob\"}", row.payload)
+          assert.same("password", row.removed_from_payload)
+        end
+      end
+    end)
+
+    it("exclude dot keys and recursive removal", function()
+      local res = assert(admin_client:send({
+        method = "POST",
+        path   = "/plugins",
+        body   = {
+          route  = audit_rt,
+          name   = plugin_name,
+          config = {
+            namespace = "audit_rl",
+            window_type = "sliding",
+            window_size = { 30, 60 },
+            limit = { 5, 10 },
+            identifier = "consumer",
+            strategy = "redis",
+            sync_rate = 1,
+            redis = {
+              host = REDIS_HOST,
+              port = REDIS_PORT,
+              ssl = false,
+              ssl_verify = false,
+              password = "PaSSw0rD",
+              connect_timeout = 1000,
+              read_timeout = 1000,
+              send_timeout = 1000,
+              database = REDIS_DATABASE,
+              keepalive_backlog = 60,
+              keepalive_pool_size = 30,
+            }
+          }
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      }))
+
+      assert.res_status(201, res)
+
+      local rows, row
+      assert
+      .with_timeout(15)
+      .with_max_tries(10)
+      .with_step(0.05)
+      .ignore_exceptions(true)
+      .eventually(function()
+        rows = fetch_all(db.audit_requests)
+        assert(#rows == 1)
+      end)
+      .has_no_error("no requests audit log found")
+
+      row = rows[1]
+      assert.are_equal(row.path, "/plugins")
+      assert.are_equal(row.removed_from_payload, "password,config.redis.database,protocols")
+      assert.is_nil(row.removed_from_entity)
+
+      local payload, err = cjson.decode(row.payload)
+      assert.is_nil(err)
+      assert.is_nil(payload.config.redis.password)
+      assert.is_nil(payload.protocols)
+      assert.is_nil(payload.config.redis.database)
+
+      assert
+      .with_timeout(15)
+      .with_max_tries(10)
+      .with_step(0.05)
+      .ignore_exceptions(true)
+      .eventually(function()
+        rows = fetch_all(db.audit_objects)
+        assert(#rows == 1)
+      end)
+      .has_no_error("no objects audit log found")
+
+      row = rows[1]
+      assert.are_equal(row.dao_name, "plugins")
+      assert.are_equal(row.removed_from_entity, "password,config.redis.database,protocols")
+      assert.is_nil(row.removed_from_payload)
+
+      local entity, err = cjson.decode(row.entity)
+      assert.is_nil(err)
+      assert.is_nil(entity.config.redis.password)
+      assert.is_nil(entity.protocols)
+      assert.is_nil(entity.config.redis.database)
     end)
   end)
 end
