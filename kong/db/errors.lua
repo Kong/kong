@@ -1,5 +1,6 @@
 local pl_pretty = require("pl.pretty").write
 local pl_keys = require("pl.tablex").keys
+local pl_table_deepcopy = require("pl.tablex").deepcopy
 local nkeys = require("table.nkeys")
 local table_isarray = require("table.isarray")
 local utils = require("kong.tools.utils")
@@ -1152,8 +1153,8 @@ function _M:declarative_config_flattened(err_t, input)
     error("err_t input is nil or not a table", 2)
   end
 
-  local flattened = flatten_errors(input, err_t)
-
+  local err_t_f = pl_table_deepcopy(err_t)
+  local flattened = flatten_errors(input, err_t_f)
   err_t = self:declarative_config(err_t)
 
   err_t.flattened_errors = flattened
