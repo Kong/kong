@@ -681,7 +681,8 @@ do
     end
 
     t[key] = nil
-
+    local cjson = require("cjson")
+    ngx.log(ngx.ERR, "drain_iter: ", key, " => ", cjson.encode(value))
     return key, value
   end
 
@@ -1034,13 +1035,14 @@ do
       for i, err_t_i in drain(section_errors) do
         local entity = entities[i]
 
-        if type(entity) == "table" then
+        if type(entity) == "table" and type(err_t_i) == "table" then
           add_entity_errors(entity_type, entity, err_t_i, flattened)
 
         else
           log(WARN, "failed to resolve errors for ", entity_type, " at ",
                     "index '", i, "'")
           section_errors[i] = err_t_i
+          err_t[entity_type] = section_errors
         end
       end
 
@@ -1153,8 +1155,7 @@ function _M:declarative_config_flattened(err_t, input)
     error("err_t input is nil or not a table", 2)
   end
 
-  local err_t_f = pl_table_deepcopy(err_t)
-  local flattened = flatten_errors(input, err_t_f)
+  local flattened = flatten_errors(input, err_t)
   err_t = self:declarative_config(err_t)
 
   err_t.flattened_errors = flattened
