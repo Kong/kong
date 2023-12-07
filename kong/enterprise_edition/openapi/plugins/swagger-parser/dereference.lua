@@ -164,4 +164,12 @@ _M.resolve = function(spec, opts)
   return spec
 end
 
+_M.dereference = function(schema, opts, refs)
+  local wraps_result, err = resolve_ref(refs, { schema }, opts, {})
+  if err then
+    return nil, err
+  end
+  return wraps_result[1]
+end
+
 return _M

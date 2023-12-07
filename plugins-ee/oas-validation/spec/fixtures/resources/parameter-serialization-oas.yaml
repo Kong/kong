@@ -1,0 +1,41 @@
+openapi: "3.0.0"
+info:
+  title: Sample API
+  description: A Sample OpenAPI Spec
+  version: 1.0.0
+
+servers:
+  - url: "/v1"
+
+paths:
+  /query/form:
+    get:
+      summary: simple style
+      description: ''
+      parameters:
+        - name: string_ref
+          in: query
+          required: false
+          style: form
+          explode: true
+          schema:
+            "$ref": "#/components/schemas/string_type"
+        - name: integer_ref
+          in: query
+          required: false
+          style: form
+          explode: true
+          schema:
+            "$ref": "#/components/schemas/integer_type"
+      responses:
+        '200':
+          description: successful operation
+
+components:
+  schemas:
+    string_type:
+      type: string
+      maxLength: 10
+    integer_type:
+      type: integer
+      minimum: 0

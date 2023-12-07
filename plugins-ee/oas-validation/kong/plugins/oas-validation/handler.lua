@@ -13,6 +13,7 @@ local deserialize = require "resty.openapi3.deserializer"
 local event_hooks = require "kong.enterprise_edition.event_hooks"
 local clone = require "table.clone"
 local swagger_parser = require "kong.enterprise_edition.openapi.plugins.swagger-parser.parser"
+local swagger_dereference = require "kong.enterprise_edition.openapi.plugins.swagger-parser.dereference"
 local lrucache = require "resty.lrucache"
 local utils = require "kong.plugins.oas-validation.utils"
 local validation_utils = require "kong.plugins.oas-validation.utils.validation"
@@ -101,8 +102,19 @@ local validator_param_cache = setmetatable({}, {
     local validator_func = assert(generator(json, {
       coercion = true,
     }))
-    parameter.decoded_schema = assert(parameter.schema)
     self[parameter] = validator_func
+    local refs = nil
+    if type(schema.is_ref) == "function" and schema:is_ref() then
+      refs = {
+        definitions = schema.definitions,
+        components = schema.components,
+      }
+    end
+    local opts = {
+      dereference = { circular = false },
+    }
+    local decoded_schema, err = swagger_dereference.dereference(schema, opts, refs)
+    parameter.decoded_schema = assert(decoded_schema, err)
     return validator_func
   end
 })
