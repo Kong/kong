@@ -638,6 +638,7 @@ jobs:
         ARTIFACT_VERSION: ${{ matrix.artifact-version }}
         ARTIFACT_TYPE: ${{ matrix.artifact-type }}
         ARTIFACT: ${{ matrix.artifact }}
+        INPUT_VERSION: ${{ github.event.inputs.version }}
         PACKAGE_TYPE: ${{ matrix.package }}
         KONG_RELEASE_LABEL: ${{ needs.metadata.outputs.release-label }}
         VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
@@ -648,6 +649,17 @@ jobs:
         USE_PULP: ${{ vars.USE_PULP }}
       run: |
         sha256sum bazel-bin/pkg/*
+
+        # set the version input as tags passed to release-scripts
+        # note: release-scripts rejects user tags if missing internal flag
+        #
+        # this can be a comma-sepratated list of tags to apply
+        if [[ "$OFFICIAL_RELEASE" == 'false' ]]; then
+          if echo "$INPUT_VERSION" | grep -qs -E 'rc|alpha|beta|nightly'; then
+            PACKAGE_TAGS="$INPUT_VERSION"
+            export PACKAGE_TAGS
+          fi
+        fi
 
         scripts/release-kong.sh
 
