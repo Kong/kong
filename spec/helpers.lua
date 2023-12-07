@@ -1393,6 +1393,167 @@ local function kill_tcp_server(port)
   return tonumber(oks), tonumber(fails)
 end
 
+--- Execute command and capture the output.
+--
+-- @function execute_command
+-- @param command command to run.
+-- @return command status code and standard output.
+local function execute_command(command)
+  local handle = io.popen(command)
+  local result = handle:read("*a")
+  local ret = handle:close()
+  return ret, string.gsub(result, "\n", "")
+end
+
+--- Run a TCP echo nginx server.
+--
+-- @function run_nginx_as_echo_server
+-- @param dir server running directory.
+-- @param port server running port.
+-- @return true if ok.
+local function run_nginx_as_echo_server(dir, port)
+  -- the brace expansion does not work under github action
+  -- environment, like "mkdir {conf,logs}".
+  assert(execute_command("mkdir "..dir.."/conf"))
+  assert(execute_command("mkdir "..dir.."/logs"))
+  local conf_file_path = dir.."/conf/nginx.conf"
+  local conf_file = assert(io.open(conf_file_path, "w"))
+  local spec_dir = pl_path.dirname(pl_path.abspath(debug.getinfo(1).short_src))
+  local test_port = 16383
+  if conf_file then
+    local config_template = [[
+worker_processes 1;
+daemon on;
+error_log  logs/error.log info;
+
+events {
+    worker_connections 1024;
+}
+
+stream {
+    server {
+        listen localhost:%s ssl;
+        listen localhost:%s;
+
+        ssl_certificate %s/fixtures/kong_spec.crt;
+        ssl_certificate_key %s/fixtures/kong_spec.key;
+
+        ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+        ssl_prefer_server_ciphers off;
+
+        content_by_lua_block {
+            local sock = assert(ngx.req.socket())
+            local data = sock:receive()  -- read a line from downstream
+            if data then
+              sock:send(data.."\n") -- echo whatever was sent
+              ngx.log(ngx.INFO, "received data: " .. data)
+            else
+              ngx.log(ngx.WARN, "Nothing received")
+            end
+        }
+    }
+}
+    ]]
+    local config = string.format(config_template, port, test_port, spec_dir, spec_dir)
+    conf_file:write(config)
+    conf_file:close()
+  else
+    assert(nil, "can not write config file to path: "..conf_file_path)
+  end
+
+  assert(execute_command("nginx -p "..dir))
+
+  -- ensure server is ready.
+  local sock = ngx.socket.tcp()
+  sock:settimeout(0.1)
+  local retry = 0
+  while true do
+    if sock:connect("localhost", test_port) then
+      sock:send("START\n")
+      local ok = sock:receive()
+      sock:close()
+      if ok == "START" then
+        return true
+      end
+    else
+      retry = retry + 1
+      if retry > 10 then
+        assert(nil, "can not create server after "..retry.." retries")
+      end
+    end
+  end
+end
+
+--- Run a echo TCP server.
+--
+-- @function start_echo_server
+-- @param port the port to run the server.
+-- @return  the server running directory.
+local function start_echo_server(port)
+  local ret, dir = execute_command("mktemp -d")
+  assert(ret)
+  run_nginx_as_echo_server(dir, port)
+  return dir
+end
+
+--- Stop a echo server.
+--
+-- @function stop_echo_server
+-- @param dir the running server directory.
+-- @return  nothing.
+local function stop_echo_server(dir)
+  local ret, pid = execute_command("cat "..dir.."/logs/nginx.pid")
+  assert(ret)
+  assert(execute_command("kill "..pid))
+end
+
+--- Clean up a echo server.
+--
+-- @function cleanup_echo_server
+-- @param dir the running server directory.
+-- @return  nothing.
+local function cleanup_echo_server(dir)
+  assert(execute_command("rm -rf "..dir))
+end
+
+--- Get the echo server's received data.
+-- This function check the part of expected data with a timeout.
+--
+-- @function get_echo_server_received_data
+-- @param server_dir the running server directory.
+-- @param expected part of the data expected.
+-- @param timeout (optional) timeout in seconds, default is 0.5.
+-- @return  the data the echo server received. If timeouts, return "timeout".
+local function get_echo_server_received_data(server_dir, expected, timeout)
+  if timeout == nil then
+    timeout = 0.5
+  end
+
+  local extract_cmd = "grep content_by_lua "..server_dir.."/logs/error.log | tail -1"
+  local ret, log = execute_command(extract_cmd)
+  assert(ret)
+  local pattern = "received data: " .. "(.*)"
+  local _, _, data = string.find(log, pattern)
+  -- unit is second.
+  local t = 0.1
+  local time_acc = 0
+
+  -- retry it when data is not available. because sometime,
+  -- the error.log has not been flushed yet.
+  while string.find(data, expected) == nil do
+    ngx.sleep(t)
+    time_acc = time_acc + t
+    if time_acc >= timeout then
+      return "timeout"
+    end
+
+    ret, log = execute_command(extract_cmd)
+    assert(ret)
+    _, _, data = string.find(log, pattern)
+  end
+
+  return data
+end
 
 local code_status = {
   [200] = "OK",
@@ -4084,6 +4245,10 @@ end
   tcp_server = tcp_server,
   udp_server = udp_server,
   kill_tcp_server = kill_tcp_server,
+  start_echo_server = start_echo_server,
+  get_echo_server_received_data = get_echo_server_received_data,
+  stop_echo_server = stop_echo_server,
+  cleanup_echo_server = cleanup_echo_server,
   http_mock = http_mock,
   get_proxy_ip = get_proxy_ip,
   get_proxy_port = get_proxy_port,
