@@ -6,6 +6,7 @@ for _, strategy in helpers.each_strategy() do
 
 describe("Admin API - GUI logs - kong_admin #" .. strategy, function ()
   lazy_setup(function ()
+    helpers.get_db_utils(strategy)                          -- clear db
     assert(helpers.start_kong({
       strategy = strategy,
       prefix = "servroot",

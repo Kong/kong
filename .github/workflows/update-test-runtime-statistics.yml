@@ -1,0 +1,28 @@
+name: Update test runtime statistics file for test scheduling
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "1 0 * * SAT"
+
+jobs:
+  process-statistics:
+    name: Download statistics from GitHub and combine them
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 21
+          cache: 'npm'
+          cache-dependency-path: .ci/schedule-tests/package-lock.json
+
+      - name: Build and run
+        run: |
+          cd .ci/schedule-tests/
+          npm install
+          node src/main.js download-statistics Kong kong build_and_test.yml /tmp/statistics/
+          node src/main.js combine-statistics /tmp/statistics ../runtimes.txt
+          git commit -m 'chore(ci): Updated test runtime statistics file' ../runtimes.txt
