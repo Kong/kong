@@ -1,3 +1,0 @@
-message: fix cli SharedDict:set API to support exptime parameter
-type: bugfix
-scope: CLI Command
