@@ -1,0 +1,3 @@
+message: "**Forward-Proxy**: Fixed the issue where request payload is being discarded when payload exceeded the `client_body_buffer_size`."
+type: bugfix
+scope: Plugin

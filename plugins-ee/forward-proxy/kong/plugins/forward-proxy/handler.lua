@@ -8,10 +8,13 @@
 local http       = require "resty.http"
 local cert_utils = require "kong.enterprise_edition.cert_utils"
 local meta       = require "kong.meta"
+local lfs        = require("lfs")
 
 local kong                = kong
 local ngx                 = ngx
 local ERR                 = ngx.ERR
+local WARN                = ngx.WARN
+local DEBUG               = ngx.DEBUG
 local log                 = ngx.log
 local ngx_req_get_headers = ngx.req.get_headers
 local ngx_req_set_header  = ngx.req.set_header
@@ -22,6 +25,8 @@ local ngx_now             = ngx.now
 local ngx_print           = ngx.print
 local str_lower           = string.lower
 local str_format          = string.format
+local str_find            = string.find
+local str_sub             = string.sub
 local base64_encode       = ngx.encode_base64
 
 
@@ -35,6 +40,27 @@ local ForwardProxyHandler = {
   VERSION = meta.core_version
 }
 
+local function parse_ngx_size(str)
+  local scales = {
+    k = 1024,
+    K = 1024,
+    m = 1024 * 1024,
+    M = 1024 * 1024
+  }
+  local len = #str
+  local unit = str_sub(str, len)
+  local scale = scales[unit]
+  if scale then
+    len = len - 1
+  else
+    scale = 1
+  end
+  local size = tonumber(str_sub(str, 1, len)) or 0
+  return size * scale
+end
+
+local DEFAULT_BUFFER_SIZE = parse_ngx_size("1m")
+local MAX_BUFFER_SIZE = parse_ngx_size("64m")
 
 local function get_now()
   return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
@@ -192,6 +218,110 @@ local function send_proxied_response(response)
 end
 
 
+local function buffered_reader(file, total_size, buffer_size)
+  buffer_size = buffer_size or DEFAULT_BUFFER_SIZE
+  local readed = 0
+  return function()
+    local chunk = file:read(buffer_size)
+    if chunk then
+      readed = readed + #chunk
+    end
+    if chunk == nil and total_size ~= readed then
+      return nil, "reading file error"
+    end
+    return chunk
+  end
+end
+
+
+local function can_streaming_proxy(protocol, transfer_encoding)
+  protocol = protocol or 0
+  transfer_encoding = transfer_encoding or ""
+
+  -- ngx.req.socket doesn't work at HTTP/2 and chunked encoding
+  return not (protocol > 1.1
+    or str_find(transfer_encoding, "chunked", nil, true))
+end
+
+
+local function nonstreaming_proxy(httpc, headers)
+  log(DEBUG, _prefix_log, "forwarding request in a non-streaming manner")
+
+  headers["content-length"] = nil -- clear content-length - it will be set
+                                  -- later on by resty-http (if not found);
+                                  -- further, if we leave it here it will
+                                  -- cause issues if the value varies (if may
+                                  -- happen, e.g., due to a different transfer
+                                  -- encoding being used subsequently)
+
+  headers["transfer-encoding"] = nil -- transfer-encoding is hop-by-hop, strip
+                                     -- it out
+
+  ngx_req_read_body()
+  local body = ngx_req_get_body()
+  local body_file, err
+  if not body then
+    local filename = ngx.req.get_body_file()
+    if filename then
+      body_file, err = io.open(filename, "r")
+      if err then
+        return nil, "failed to open file: " .. err
+      end
+      local size, err = lfs.attributes(filename, "size")
+      if err then
+        return nil, "faield to get filesize: " .. err
+      end
+      headers['Content-Length'] = size -- explicitly set the Content-Length for chunked proxy
+      body = buffered_reader(body_file, size)
+      log(WARN, _prefix_log, "Reading request body from a temporary file by using IO blocking APIs. "
+        .. "Tuning nginx_http_client_body_buffer_size can avoid the request body being written to the filesystem "
+        .. "to have better performance.")
+    end
+  end
+
+  local res, err = httpc:request({
+    method  = ngx_req_get_method(),
+    path    = ngx.var.upstream_uri,
+    headers = headers,
+    body    = body,
+  })
+
+  if body_file then
+    body_file:close()
+  end
+
+  return res, err
+end
+
+local function streaming_proxy(httpc, headers)
+  log(DEBUG, _prefix_log, "forwarding request in a streaming manner")
+
+  headers["transfer-encoding"] = nil -- transfer-encoding is hop-by-hop, strip
+                                     -- it out
+
+  local reader, err = httpc:get_client_body_reader()
+  if err then
+    return nil, err
+  end
+
+  return httpc:request({
+    method  = ngx_req_get_method(),
+    path    = ngx.var.upstream_uri,
+    headers = headers,
+    body    = reader,
+  })
+end
+
+function ForwardProxyHandler:init_worker()
+  local ngx_client_body_buffer_size = kong.configuration.nginx_http_client_body_buffer_size or 0
+  local new_size = math.min(MAX_BUFFER_SIZE, math.max(DEFAULT_BUFFER_SIZE, parse_ngx_size(ngx_client_body_buffer_size)))
+  if new_size ~= DEFAULT_BUFFER_SIZE then
+    DEFAULT_BUFFER_SIZE = new_size
+    local readable_size = new_size == MAX_BUFFER_SIZE and "64m" or ngx_client_body_buffer_size
+    log(DEBUG, _prefix_log, str_format("file reading buffer size is adapted to %s based on nginx_http_client_body_buffer_size", readable_size))
+  end
+end
+
 function ForwardProxyHandler:access(conf)
 
   -- connect to the proxy
@@ -270,20 +400,7 @@ function ForwardProxyHandler:access(conf)
     return kong.response.exit(500)
   end
 
-  local res
   local headers = ngx_req_get_headers()
-
-  ngx_req_read_body()
-
-  headers["transfer-encoding"] = nil -- transfer-encoding is hop-by-hop, strip
-                                     -- it out
-
-  headers["content-length"] = nil -- clear content-length - it will be set
-                                  -- later on by resty-http (if not found);
-                                  -- further, if we leave it here it will
-                                  -- cause issues if the value varies (if may
-                                  -- happen, e.g., due to a different transfer
-                                  -- encoding being used subsequently)
 
   if var.upstream_host == "" then
     headers["host"] = nil
@@ -291,12 +408,13 @@ function ForwardProxyHandler:access(conf)
     headers["host"] = var.upstream_host
   end
 
-  res, err = httpc:request({
-    method  = ngx_req_get_method(),
-    path    = var.upstream_uri,
-    headers = headers,
-    body    = ngx_req_get_body(),
-  })
+  local res, err
+  if can_streaming_proxy(ngx.req.http_version(), headers["Transfer-Encoding"]) then
+    res, err = streaming_proxy(httpc, headers)
+  else
+    res, err = nonstreaming_proxy(httpc, headers)
+  end
+
   if not res then
     log(ERR, _prefix_log, "failed to send proxy request: ", err)
     return kong.response.exit(500)
