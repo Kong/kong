@@ -785,6 +785,7 @@ jobs:
         ARTIFACT_VERSION: ${{ matrix.artifact-version }}
         ARTIFACT_TYPE: ${{ matrix.artifact-type }}
         ARTIFACT: ${{ matrix.artifact }}
+        INPUT_VERSION: ${{ github.event.inputs.version }}
         KONG_RELEASE_LABEL: ${{ needs.metadata.outputs.release-label }}
         PACKAGE_TYPE: ${{ matrix.package }}
         VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
@@ -811,6 +812,17 @@ jobs:
         if [[ ${{ matrix.label }} == *-fips ]]; then
           # this is required for rpm and apk packages, but not for deb
           export KONG_PACKAGE_NAME_OVERRIDE=kong-enterprise-edition-fips
+        fi
+
+        # set the version input as tags passed to release-scripts
+        # note: release-scripts rejects user tags if missing internal flag
+        #
+        # this can be a comma-sepratated list of tags to apply
+        if [[ "$OFFICIAL_RELEASE" == 'false' ]]; then
+          if echo "$INPUT_VERSION" | grep -qs -E 'rc|alpha|beta|nightly'; then
+            PACKAGE_TAGS="$INPUT_VERSION"
+            export PACKAGE_TAGS
+          fi
         fi
 
         scripts/release-kong.sh
