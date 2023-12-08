@@ -81,11 +81,12 @@ for _, strategy in helpers.each_strategy() do
   for proxy_desc, proxy_opts in pairs(proxy_configs) do
     describe("Hybrid vitals works throgh proxy (" .. proxy_desc .. ") with #" .. strategy .. " backend", function()
       local reset_license_data
+      local db
 
       lazy_setup(function()
         reset_license_data = clear_license_env()
 
-        helpers.get_db_utils(strategy, {
+        _, db = helpers.get_db_utils(strategy, {
           "routes",
           "services",
         }) -- runs migrations
@@ -139,25 +140,35 @@ for _, strategy in helpers.each_strategy() do
         reset_license_data()
       end)
 
+      before_each(function()
+        db:truncate("services")
+        db:truncate("routes")
+      end)
+
       describe("sync works", function()
         it("proxy on DP follows CP config", function()
+          local res, body, json_body, service_id, route_id
+
           local admin_client = helpers.admin_client(10000)
           finally(function()
             admin_client:close()
           end)
 
-          local res = assert(admin_client:post("/services", {
+          res = assert(admin_client:post("/services", {
             body = { name = "mockbin-service", url = "https://127.0.0.1:15556/request", },
             headers = {["Content-Type"] = "application/json"}
           }))
-          assert.res_status(201, res)
+          body = assert.res_status(201, res)
+          json_body = cjson.decode(body)
+          service_id = json_body.id
 
           res = assert(admin_client:post("/services/mockbin-service/routes", {
             body = { paths = { "/" }, },
             headers = {["Content-Type"] = "application/json"}
           }))
-
-          assert.res_status(201, res)
+          body = assert.res_status(201, res)
+          json_body = cjson.decode(body)
+          route_id = json_body.id
 
           helpers.wait_until(function()
             local proxy_client = helpers.http_client("127.0.0.1", 9002)
@@ -173,6 +184,15 @@ for _, strategy in helpers.each_strategy() do
               return true
             end
           end, 10)
+
+          res = assert(admin_client:delete("/routes/" .. route_id, {
+            headers = {["Content-Type"] = "application/json"}
+          }))
+          assert.res_status(204, res)
+          res = assert(admin_client:delete("/services/" .. service_id, {
+            headers = {["Content-Type"] = "application/json"}
+          }))
+          assert.res_status(204, res)
         end)
 
         it("#flaky sends back vitals metrics to DP", function()
@@ -224,7 +244,7 @@ for _, strategy in helpers.each_strategy() do
                       ...
                     },
                     "stat_labels": [
-                      "cache_datastore_hits_total", 
+                      "cache_datastore_hits_total",
                       "cache_datastore_misses_total",
                       "latency_proxy_request_min_ms",
                       "latency_proxy_request_max_ms",
