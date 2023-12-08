@@ -58,6 +58,20 @@ paths:
           description: OK
           content: {}
 
+  /anytype/{anytype}:
+    get:
+      parameters:
+        - name: anytype
+          in: path
+          required: true
+          style: simple
+          explode: false
+          schema: {}
+      responses:
+        200:
+          description: OK
+          content: {}
+
 components:
   schemas:
     NullablePropertiesObject:

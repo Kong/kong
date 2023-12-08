@@ -176,6 +176,10 @@ local function validate_parameter_value_openapi(parameter)
 
   elseif parameter.style then
     local validator = validator_param_cache[parameter]
+    if not parameter.decoded_schema.type and parameter.value ~= nil then
+      -- A schema without a type matches any data type, except null
+      return true
+    end
     local result, err =  deserialize(parameter.style, parameter.decoded_schema.type,
         parameter.explode, parameter.value, nil, parameter["in"])
 

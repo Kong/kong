@@ -116,5 +116,45 @@ for _, strategy in helpers.each_strategy() do
       end)
 
     end)
+
+    describe("anytype", function()
+      it("accepts anything to match with anytype", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/anytype/no-matter-what",
+          headers = {
+            host = "example.com",
+          },
+        })
+        assert.response(res).has.status(200)
+
+        local res = assert(client:send {
+          method = "GET",
+          path = "/anytype/123",
+          headers = {
+            host = "example.com",
+          },
+        })
+        assert.response(res).has.status(200)
+
+        local res = assert(client:send {
+          method = "GET",
+          path = "/anytype/true",
+          headers = {
+            host = "example.com",
+          },
+        })
+        assert.response(res).has.status(200)
+
+        local res = assert(client:send {
+          method = "GET",
+          path = "/anytype/1,2,3,a,b,c",
+          headers = {
+            host = "example.com",
+          },
+        })
+        assert.response(res).has.status(200)
+      end)
+    end)
   end)
 end
