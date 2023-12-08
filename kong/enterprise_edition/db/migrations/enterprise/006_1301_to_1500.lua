@@ -10,13 +10,18 @@ local str           = require "resty.string"
 
 local function pg_delete_we_orphan(entity)
   return [[
-    DELETE FROM workspace_entities WHERE entity_id IN (
-      SELECT entity_id FROM (
-        SELECT * from workspace_entities WHERE entity_type=']] .. entity .. [['
-      ) t1 LEFT JOIN ]] .. entity .. [[ t2
-      ON t2.id::text = t1.entity_id
-      WHERE t2.id IS NULL
-    );
+    DO $$
+    BEGIN
+      DELETE FROM workspace_entities WHERE entity_id IN (
+        SELECT entity_id FROM (
+          SELECT * from workspace_entities WHERE entity_type=']] .. entity .. [['
+        ) t1 LEFT JOIN ]] .. entity .. [[ t2
+        ON t2.id::text = t1.entity_id
+        WHERE t2.id IS NULL
+      );
+    EXCEPTION WHEN UNDEFINED_TABLE THEN
+      -- Do nothing, accept existing state
+    END$$;
   ]]
 end
 
