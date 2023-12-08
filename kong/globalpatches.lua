@@ -265,16 +265,7 @@ return function(options)
         return self.data[key] and self.data[key].value, nil
       end
       SharedDict.get_stale = SharedDict.get
-      function SharedDict:set(key, value)
-        set(self.data, key, value)
-        return true, nil, false
-      end
-      SharedDict.safe_set = SharedDict.set
-      function SharedDict:add(key, value, exptime)
-        if self.data[key] ~= nil then
-          return false, "exists", false
-        end
-
+      function SharedDict:set(key, value, exptime)
         local expire_at = nil
 
         if exptime then
@@ -286,6 +277,14 @@ return function(options)
 
         set(self.data, key, value, expire_at)
         return true, nil, false
+      end
+      SharedDict.safe_set = SharedDict.set
+      function SharedDict:add(key, value, exptime)
+        if self.data[key] ~= nil then
+          return false, "exists", false
+        end
+
+        return self:set(key, value, exptime)
       end
       SharedDict.safe_add = SharedDict.add
       function SharedDict:replace(key, value)
