@@ -75,6 +75,7 @@ for _, strategy in helpers.each_strategy() do
 
       lazy_setup(function()
         -- clear file
+        os.execute("mkdir -p $(dirname " .. OTELCOL_FILE_EXPORTER_PATH .. ")")
         os.execute("cat /dev/null > " .. OTELCOL_FILE_EXPORTER_PATH)
         setup_instrumentations("all")
       end)
