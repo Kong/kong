@@ -21,7 +21,7 @@ for _, strategy in helpers.each_strategy() do
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         audit_log  = "on",
-        audit_log_ignore_paths = "/audit/requests",
+        audit_log_ignore_paths = [[/audit/requests(\?.+)?]],
       }))
     end)
 

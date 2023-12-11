@@ -9,6 +9,7 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local admin_api = require "spec.fixtures.admin_api"
 local pl_file = require "pl.file"
+local inspect = require "inspect"
 
 local fmt = string.format
 local TEST_CONF = helpers.test_conf
@@ -36,9 +37,51 @@ local function find_in_file(pat)
   return false
 end
 
+local old_logs = {}
+
+local function fetch_new_logs(dao, rows)
+  for row in dao:each() do
+    local id = row.id or ("req_id:" .. row.request_id)
+    if not old_logs[id] then
+      old_logs[id] = true
+      table.insert(rows, row)
+    end
+  end
+end
+
+local function wait_for_new_logs(dao, expected, timeout, step)
+  local rows = {}
+
+  helpers.pwait_until(function()
+    fetch_new_logs(dao, rows)
+    if expected then
+      assert.same(expected, #rows)
+    else
+      assert.truthy(#rows > 0)
+    end
+
+  end, timeout, step)
+
+  return rows
+end
+
+local function wait_for_a_log(dao, timeout)
+  return wait_for_new_logs(dao, 1, timeout)[1]
+end
+
+local function expect_no_log(dao, timeout)
+  local ok, value = pcall(wait_for_a_log, dao, timeout)
+  assert.falsy(ok, "expect no log but got " .. inspect(value))
+end
+
+local function clear_logs(db)
+  assert(db:truncate("audit_objects"))
+  assert(db:truncate("audit_requests"))
+  old_logs = {}
+end
 
 for _, strategy in helpers.each_strategy() do
-  describe("#flaky audit_log with #" .. strategy, function()
+  describe("audit_log with #" .. strategy, function()
     local admin_client, proxy_client
     local db, bp
 
@@ -67,6 +110,7 @@ for _, strategy in helpers.each_strategy() do
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         audit_log  = "on",
+        audit_log_ignore_paths = [[/audit/requests(\?.+)?]],
       }, nil, nil, fixtures))
     end)
 
@@ -78,8 +122,7 @@ for _, strategy in helpers.each_strategy() do
       admin_client = helpers.admin_client()
       proxy_client = helpers.proxy_client()
 
-      db:truncate("audit_objects")
-      db:truncate("audit_requests")
+      clear_logs(db)
     end)
 
     after_each(function()
@@ -110,10 +153,8 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
         local req_id = res.headers["X-Kong-Admin-Request-ID"]
 
-        helpers.wait_until(function()
-          local rows = fetch_all(db.audit_requests)
-          return #rows == 1 and req_id == rows[1].request_id
-        end)
+        local obj = wait_for_a_log(db.audit_requests)
+        assert.same(req_id, obj.request_id)
       end)
 
       it("creates an entry with the appropriate workspace association", function()
@@ -126,10 +167,8 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(200, res)
 
-        helpers.wait_until(function()
-          local rows = fetch_all(db.audit_requests)
-          return #rows == 1 and ws_foo.id == rows[1].workspace
-        end)
+        local obj = wait_for_a_log(db.audit_requests)
+        assert.same(ws_foo.id, obj.workspace)
       end)
 
       it("checks if request_timestamp is a number", function()
@@ -139,11 +178,10 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
         local req_id = res.headers["X-Kong-Admin-Request-ID"]
 
-        helpers.wait_until(function()
-          local rows = fetch_all(db.audit_requests)
-          return #rows == 1 and req_id == rows[1].request_id
-                            and type(rows[1].request_timestamp) == "number"
-        end)
+        local obj = wait_for_a_log(db.audit_requests)
+        assert.same("/services", obj.path)
+        assert.same(req_id, obj.request_id)
+        assert.same("number", type(obj.request_timestamp))
       end)
 
       it("checks if timestamp returned is correct", function()
@@ -155,9 +193,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           status = 200,
         }
-        helpers.wait_until(function()
-          return db.audit_requests:insert(audit_request_record)
-        end)
+        assert.truthy(db.audit_requests:insert(audit_request_record))
 
         local res = assert.res_status(200, admin_client:send({
           path = "/audit/requests",
@@ -180,10 +216,9 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(404, res)
 
-        helpers.wait_until(function()
-          local rows = fetch_all(db.audit_requests)
-          return #rows == 1 and rows[1].workspace == nil
-        end)
+        local obj = wait_for_a_log(db.audit_requests)
+        assert.same("/fdsfds/consumers", obj.path)
+        assert.is_nil(obj.workspace)
       end)
 
     end)
@@ -205,19 +240,10 @@ for _, strategy in helpers.each_strategy() do
             }))
             local service = cjson.decode(assert.res_status(201, res))
 
-            local rows
-
-            helpers.wait_until(function()
-              rows = fetch_all(db.audit_objects)
-              return #rows == 1
-            end)
-
-            for _, object in ipairs(rows) do
-              assert.same("create", object.operation)
-              if object.dao_name == "services" then
-                assert.matches('"name":"bob"', object.entity, nil, true)
-              end
-            end
+            local obj = wait_for_a_log(db.audit_objects)
+            assert.same("create", obj.operation)
+            assert.same("services", obj.dao_name)
+            assert.matches('"name":"bob"', obj.entity, nil, true)
 
             res = assert(admin_client:send({
               method = "POST",
@@ -231,10 +257,7 @@ for _, strategy in helpers.each_strategy() do
             }))
             assert.res_status(201, res)
 
-            helpers.wait_until(function()
-              rows = fetch_all(db.audit_objects)
-              return #rows == 2
-            end)
+            wait_for_a_log(db.audit_objects)
 
             res = assert(admin_client:send({
               method = "POST",
@@ -249,10 +272,7 @@ for _, strategy in helpers.each_strategy() do
             }))
             assert.res_status(201, res)
 
-            helpers.wait_until(function()
-              rows = fetch_all(db.audit_objects)
-              return #rows == 3
-            end)
+            wait_for_a_log(db.audit_objects)
           end)
 
           it("CREATE on proxy side", function()
@@ -300,16 +320,16 @@ for _, strategy in helpers.each_strategy() do
               proxy_ssl_client:close()
               return res.status == 200
             end)
-
+            
+            -- db emits a lot of other logs and it's hard to filter.
+            -- we just assert its existence
             helpers.wait_until(function()
-              local rows = fetch_all(db.audit_objects)
-              local found = false
-              for _, entry in ipairs(rows) do
-                if entry.dao_name == "oauth2_authorization_codes" then
-                  found = true
+              local objs = fetch_all(db.audit_objects)
+              for _, obj in ipairs(objs) do
+                if obj.dao_name == "oauth2_authorization_codes" then
+                  return true
                 end
               end
-              return found == true
             end)
           end)
 
@@ -330,19 +350,10 @@ for _, strategy in helpers.each_strategy() do
             }))
             assert.res_status(200, res)
 
-            local rows
-
-            helpers.wait_until(function()
-              rows = fetch_all(db.audit_objects)
-              return #rows == 1
-            end)
-
-            for _, object in ipairs(rows) do
-              assert.same("update", object.operation)
-              if object.dao_name == "consumers" then
-                assert.matches('"username":"c2"', object.entity, nil, true)
-              end
-            end
+            local obj = wait_for_a_log(db.audit_objects)
+            assert.same("update", obj.operation)
+            assert.same("consumers", obj.dao_name)
+            assert.matches('"username":"c2"', obj.entity, nil, true)
           end)
 
           it("DELETE", function()
@@ -356,24 +367,15 @@ for _, strategy in helpers.each_strategy() do
             }))
             assert.res_status(204, res)
 
-            local rows
-
-            helpers.wait_until(function()
-              rows = fetch_all(db.audit_objects)
-              return #rows == 1
-            end)
-
-            for _, object in ipairs(rows) do
-              assert.same("delete", object.operation)
-              if object.dao_name == "consumers" then
-                assert.matches('"username":"fred"', object.entity, nil, true)
-              end
-            end
+            local obj = wait_for_a_log(db.audit_objects)
+            assert.same("delete", obj.operation)
+            assert.same("consumers", obj.dao_name)
+            assert.matches('"username":"fred"', obj.entity, nil, true)
           end)
         end)
 
         describe("for workspace associations", function()
-          it("", function()
+          it("CREATE", function()
             local res = assert(admin_client:send({
               method = "POST",
               path   = "/services",
@@ -387,21 +389,15 @@ for _, strategy in helpers.each_strategy() do
             }))
             assert.res_status(201, res)
 
-            local rows
-
-            helpers.wait_until(function()
-              rows = fetch_all(db.audit_objects)
-              return #rows == 1
-            end)
-
-            assert.same("create", rows[1].operation)
+            local obj = wait_for_a_log(db.audit_objects)
+            assert.same("create", obj.operation)
           end)
         end)
       end)
     end)
   end)
 
-  describe("#flaky audit_log ignore_methods with #" .. strategy, function()
+  describe("audit_log ignore_methods with #" .. strategy, function()
     local db, admin_client, proxy_client
 
     setup(function()
@@ -423,8 +419,7 @@ for _, strategy in helpers.each_strategy() do
       admin_client = helpers.admin_client()
       proxy_client = helpers.proxy_client()
 
-      db:truncate("audit_objects")
-      db:truncate("audit_requests")
+      clear_logs(db)
     end)
 
     after_each(function()
@@ -462,15 +457,13 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(201, res)
 
-        helpers.wait_until(function()
-          local rows = fetch_all(db.audit_requests)
-          return #rows == 1
-        end)
+        local obj = wait_for_a_log(db.audit_requests)
+        assert.same("/consumers", obj.path)
       end)
     end)
   end)
 
-  describe("#flaky audit_log ignore_paths with #" .. strategy, function()
+  describe("audit_log ignore_paths with #" .. strategy, function()
     local db, admin_client, proxy_client
 
     setup(function()
@@ -480,8 +473,10 @@ for _, strategy in helpers.each_strategy() do
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         audit_log  = "on",
-        audit_log_ignore_paths = "/consumers,/foo,^/status,/routes$," ..
-                                 "/one/.+/two,/[bad-regex,/.*/plugins"
+        -- to trigger the error log corresponding to the regex '/[bad-regex'
+        -- we need to make it the first in the list. otherwise the logic path is not executed
+        audit_log_ignore_paths = "/[bad-regex,/consumers,/foo,^/status,/routes$," ..
+                                 "/one/.+/two,/.*/plugins"
       }))
     end)
 
@@ -493,8 +488,7 @@ for _, strategy in helpers.each_strategy() do
       admin_client = helpers.admin_client()
       proxy_client = helpers.proxy_client()
 
-      db:truncate("audit_objects")
-      db:truncate("audit_requests")
+      clear_logs(db)
     end)
 
     after_each(function()
@@ -504,7 +498,9 @@ for _, strategy in helpers.each_strategy() do
 
     describe("for an ignored path prefix", function()
       -- XXX flaky: only happens on CI
-      it("does not generate an audit log entry #flaky", function()
+      -- TODO: this test should be rewritten as an unit test
+      -- integration test does not work well with negative assertions
+      it("does not generate an audit log #entry", function()
         local res = assert(admin_client:send({
           method = "POST",
           path   = "/consumers",
@@ -517,29 +513,11 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(201, res)
 
-        ngx.sleep(2)
-
-        local body = assert.res_status(200, admin_client:get("/audit/requests"))
-        local json = cjson.decode(body)
-
-        assert.same(0, #json.data)
-
-        db:truncate("audit_objects")
-        db:truncate("audit_requests")
-
         res = assert(admin_client:send({
             method = "GET",
             path   = "/status",
         }))
         assert.res_status(200, res)
-
-        helpers.wait_until(function()
-          local rows = fetch_all(db.audit_requests)
-          return #rows == 0
-        end)
-
-        db:truncate("audit_objects")
-        db:truncate("audit_requests")
 
         res = assert(admin_client:send({
             method = "GET",
@@ -547,27 +525,11 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(200, res)
 
-        helpers.wait_until(function()
-          local rows = fetch_all(db.audit_requests)
-          return #rows == 0
-        end)
-
-        db:truncate("audit_objects")
-        db:truncate("audit_requests")
-
         res = assert(admin_client:send({
             method = "GET",
             path   = "/service/status/routes",
         }))
         assert.res_status(404, res)
-
-        helpers.wait_until(function()
-          local rows = fetch_all(db.audit_requests)
-          return 0 == #rows
-        end)
-
-        db:truncate("audit_objects")
-        db:truncate("audit_requests")
 
         res = assert(admin_client:send({
             method = "GET",
@@ -575,10 +537,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(404, res)
 
-        helpers.wait_until(function()
-          local rows = fetch_all(db.audit_requests)
-          return 0 == #rows
-        end)
+        expect_no_log(db.audit_requests)        
 
         -- error log corresponding to the regex '/[bad-regex'
         assert(find_in_file("could not evaluate the regex"))
@@ -599,10 +558,7 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(201, res)
 
-        helpers.wait_until(function()
-          local rows = fetch_all(db.audit_requests)
-          return 1 == #rows
-        end)
+        wait_for_a_log(db.audit_requests)
 
         res = assert(admin_client:send({
           method = "POST",
@@ -617,10 +573,6 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(201, res)
 
-        helpers.wait_until(function()
-          return 1 == #fetch_all(db.audit_requests)
-        end)
-
         res = assert(admin_client:send({
           method = "GET",
           path   = "/foo/plugins",
@@ -634,9 +586,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(200, res)
 
-        helpers.wait_until(function()
-          return 1 == #fetch_all(db.audit_requests)
-        end)
+        expect_no_log(db.audit_requests)
       end)
     end)
 
@@ -660,13 +610,8 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(201, res)
 
-        helpers.wait_until(function()
-          local rows = fetch_all(db.audit_requests)
-          return 1 == #rows
-        end)
-
-        db:truncate("audit_objects")
-        db:truncate("audit_requests")
+        local obj = wait_for_a_log(db.audit_requests)
+        assert.same("/services", obj.path)
 
         res = assert(admin_client:send({
             method = "GET",
@@ -674,13 +619,8 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(404, res)
 
-        helpers.wait_until(function()
-          local rows = fetch_all(db.audit_requests)
-          return 1 == #rows
-        end)
-
-        db:truncate("audit_objects")
-        db:truncate("audit_requests")
+        obj = wait_for_a_log(db.audit_requests)
+        assert.same("/bad-actor-request/status", obj.path)
 
         res = assert(admin_client:send({
             method = "GET",
@@ -688,13 +628,8 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(404, res)
 
-        helpers.wait_until(function()
-          local rows = fetch_all(db.audit_requests)
-          return 1 == #rows
-        end)
-
-        db:truncate("audit_objects")
-        db:truncate("audit_requests")
+        obj = wait_for_a_log(db.audit_requests)
+        assert.same("/routes/test", obj.path)
 
         res = assert(admin_client:send({
             method = "GET",
@@ -702,10 +637,8 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(404, res)
 
-        helpers.wait_until(function()
-          local rows = fetch_all(db.audit_requests)
-          return 1 == #rows
-        end)
+        obj = wait_for_a_log(db.audit_requests)
+        assert.same("/one/two", obj.path)
 
         -- error log corresponding to the regex '/[bad-regex'
         assert(find_in_file("could not evaluate the regex"))
@@ -713,51 +646,45 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("for an unrelated inferred workspace #flaky", function()
-      it("", function()
-        local res = assert(admin_client:send {
-          method = "POST",
-          path   = "/workspaces",
-          body   = {
-            name = "bar",
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          }
-        })
-        assert.res_status(201, res)
+      local res = assert(admin_client:send {
+        method = "POST",
+        path   = "/workspaces",
+        body   = {
+          name = "bar",
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        }
+      })
+      assert.res_status(201, res)
 
-        res = assert(admin_client:send {
-          method = "POST",
-          path   = "/bar/services",
-          body   = {
-            name = "test2",
-            host = "example2.test",
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          }
-        })
-        assert.res_status(201, res)
+      res = assert(admin_client:send {
+        method = "POST",
+        path   = "/bar/services",
+        body   = {
+          name = "test2",
+          host = "example2.test",
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        }
+      })
+      assert.res_status(201, res)
 
-        local rows
-        helpers.wait_until(function()
-          rows = fetch_all(db.audit_objects)
-          return #rows == 2
-        end)
+      local rows = wait_for_new_logs(db.audit_objects, 2)
 
-        for _, row in ipairs(rows) do
-          local f = {
-            services = true,
-            workspaces = true,
-          }
+      local dao_names = {
+        services = true,
+        workspaces = true,
+      }
 
-          assert.is_true(f[row.dao_name])
-        end
-      end)
+      for _, row in ipairs(rows) do
+        assert.is_true(dao_names[row.dao_name], "unexpected dao_name: " .. row.dao_name)
+      end
     end)
   end)
 
-  describe("#flaky audit_log ignore_tables with #" .. strategy, function()
+  describe("audit_log ignore_tables with #" .. strategy, function()
     local db, admin_client, proxy_client
 
     setup(function()
@@ -770,8 +697,7 @@ for _, strategy in helpers.each_strategy() do
         audit_log_ignore_tables = "consumers",
       }))
 
-      db:truncate("audit_objects")
-      db:truncate("audit_requests")
+      clear_logs(db)
     end)
 
     teardown(function()
@@ -802,16 +728,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(201, res)
 
-
-        local rows
-        helpers.wait_until(function()
-          rows = fetch_all(db.audit_objects)
-          return #rows == 0
-        end)
-
-        for _, row in ipairs(rows) do
-          assert.not_same(row.dao_name, "consumers")
-        end
+        expect_no_log(db.audit_objects)
       end)
     end)
 
@@ -835,14 +752,12 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(201, res)
 
-        helpers.wait_until(function()
-          return #fetch_all(db.audit_objects) == 1
-        end)
+        wait_for_a_log(db.audit_objects)
       end)
     end)
   end)
 
-  describe("#flaky audit_log record_ttl with #" .. strategy, function()
+  describe("audit_log record_ttl with #" .. strategy, function()
     local db, admin_client, proxy_client
     local MOCK_TTL = 2
 
@@ -894,7 +809,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  describe("#flaky audit_log signing_key with #" .. strategy, function()
+  describe("audit_log signing_key with #" .. strategy, function()
     local db, admin_client, proxy_client
     local key_file = "./spec/fixtures/key.pem"
 
@@ -940,17 +855,15 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(200, res)
 
-        helpers.wait_until(function()
-          local rows = fetch_all(db.audit_requests)
-          return 1 == #rows and rows[1].signature
-        end)
+        local obj = wait_for_a_log(db.audit_requests)
+        assert.not_nil(obj.signature)
       end)
     end)
   end)
 
   -- This test is for cases when ngx.ctx.workspace is not set correctly
   -- when serving requests like "GET /userinfo" or "GET /default/kong".
-  describe("#flaky audit_log with rbac and admin_gui_auth #" .. strategy, function()
+  describe("audit_log with rbac and admin_gui_auth #" .. strategy, function()
     local db, admin_client, proxy_client
 
     setup(function()
@@ -1010,9 +923,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(401, res)
 
-        helpers.wait_until(function()
-          return #fetch_all(db.audit_requests) == 1
-        end)
+        wait_for_a_log(db.audit_requests)
       end)
 
       it("creates an audit_request entry with rbac token", function()
@@ -1021,9 +932,8 @@ for _, strategy in helpers.each_strategy() do
           headers = { ["Kong-Admin-Token"] = "test_admin" }
         }))
         assert.res_status(403, res)
-        helpers.wait_until(function()
-          return #fetch_all(db.audit_requests) == 1
-        end)
+        
+        wait_for_a_log(db.audit_requests)
       end)
 
     end)
@@ -1069,6 +979,8 @@ for _, strategy in helpers.each_strategy() do
         audit_log_payload_exclude = "password,config.redis.database,name.foo,protocols",
         plugins = "bundled," .. plugin_name,
       }))
+
+      clear_logs(db)
     end)
 
     lazy_teardown(function()
@@ -1115,11 +1027,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(201, res)
 
 
-      local rows
-      helpers.wait_until(function()
-        rows = fetch_all(db.audit_requests)
-        return #rows == 2
-      end)
+      local rows = wait_for_new_logs(db.audit_requests, 2)
 
       for _, row in ipairs(rows) do
         if(row.path == "/consumers/bob/basic-auth") then
