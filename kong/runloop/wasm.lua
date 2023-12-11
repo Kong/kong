@@ -113,7 +113,7 @@ local hash_chain
 do
   local buffer = require "string.buffer"
 
-  local sha256 = utils.sha256_bin
+  local sha256 = require("kong.tools.sha256").sha256_bin
 
   local HASH_DISABLED = sha256("disabled")
   local HASH_NONE     = sha256("none")
