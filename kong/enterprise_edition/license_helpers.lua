@@ -24,7 +24,7 @@ local dist_constants = require "kong.enterprise_edition.distributions_constants"
 local license_utils  = require "kong.enterprise_edition.license_utils"
 local base64         = require "ngx.base64"
 local hooks          = require "kong.hooks"
-local sha256_hex     = require "kong.tools.utils".sha256_hex
+local sha256_hex     = require "kong.tools.sha256".sha256_hex
 local ee_constants   = require "kong.enterprise_edition.constants"
 
 

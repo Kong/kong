@@ -8,7 +8,7 @@
 local certificate = require "kong.runloop.certificate"
 local produce_wild_snis = certificate.produce_wild_snis
 local match = require "luassert.match"
-local sha256_hex = require "kong.tools.utils".sha256_hex
+local sha256_hex = require "kong.tools.sha256".sha256_hex
 local uuid = require "kong.tools.utils".uuid
 
 

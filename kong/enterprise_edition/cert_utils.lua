@@ -9,7 +9,7 @@ local ssl      = require("ngx.ssl")
 local lrucache = require("resty.lrucache").new(200)
 
 local kong    = kong
-local sha256_hex = require "kong.tools.utils".sha256_hex
+local sha256_hex = require "kong.tools.sha256".sha256_hex
 
 local function load_cert(cert_id)
   kong.log.debug("cache miss for CA store")
