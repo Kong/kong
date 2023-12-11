@@ -70,7 +70,7 @@ for _, db_strategy in helpers.each_strategy() do
     end
 
     describe("when vitals is enabled", function()
-      describe("#flaky in development package", function ()
+      describe("in development package", function ()
         local reset_license_data
 
         setup(function()
@@ -657,8 +657,7 @@ for _, db_strategy in helpers.each_strategy() do
 
         describe("/vitals/cluster", function()
           describe("GET", function()
-            --XXX EE: flaky
-            pending("retrieves the vitals seconds cluster data", function()
+            it("retrieves the vitals seconds cluster data", function()
               local res = assert(client:send {
                 method = "GET",
                 path = "/vitals/cluster",
@@ -690,8 +689,7 @@ for _, db_strategy in helpers.each_strategy() do
               assert.True(compare_no_order(expected, json))
             end)
 
-            --XXX EE: flaky
-            pending("retrieves the vitals minutes cluster data", function()
+            it("retrieves the vitals minutes cluster data", function()
               local res = assert(client:send {
                 method = "GET",
                 path = "/vitals/cluster",
@@ -770,15 +768,18 @@ for _, db_strategy in helpers.each_strategy() do
               assert(strategy:insert_status_code_classes(test_status_code_class_data))
               restart_kong_and_client()
 
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/status_code_classes",
-                query = {
-                  interval = "seconds",
-                }
-              })
-              res = assert.res_status(200, res)
-              local json = cjson.decode(res)
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/status_code_classes",
+                  query = {
+                    interval = "seconds",
+                  }
+                })
+                res = assert.res_status(200, res)
+                json = cjson.decode(res)
+              end)
 
               local expected = {
                 meta = {
@@ -824,15 +825,18 @@ for _, db_strategy in helpers.each_strategy() do
               assert(strategy:insert_status_code_classes(test_status_code_class_data))
               restart_kong_and_client()
 
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/status_code_classes",
-                query = {
-                  interval = "minutes",
-                }
-              })
-              res = assert.res_status(200, res)
-              local json = cjson.decode(res)
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/status_code_classes",
+                  query = {
+                    interval = "minutes",
+                  }
+                })
+                res = assert.res_status(200, res)
+                json = cjson.decode(res)
+              end)
 
               local expected = {
                 meta = {
@@ -891,16 +895,19 @@ for _, db_strategy in helpers.each_strategy() do
                 }))
               restart_kong_and_client()
 
-              local res = assert(client:send {
-                method = "GET",
-                path = "/default/vitals/status_code_classes",
-                query = {
-                  interval   = "seconds",
-                }
-              })
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/default/vitals/status_code_classes",
+                  query = {
+                    interval   = "seconds",
+                  }
+                })
 
-              res = assert.res_status(200, res)
-              local json = cjson.decode(res)
+                res = assert.res_status(200, res)
+                json = cjson.decode(res)
+              end)
 
               local expected = {
                 meta = {
@@ -946,16 +953,19 @@ for _, db_strategy in helpers.each_strategy() do
                 }))
               restart_kong_and_client()
 
-              local res = assert(client:send {
-                method = "GET",
-                path = "/default/vitals/status_code_classes",
-                query = {
-                  interval   = "minutes",
-                }
-              })
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/default/vitals/status_code_classes",
+                  query = {
+                    interval   = "minutes",
+                  }
+                })
 
-              res = assert.res_status(200, res)
-              local json = cjson.decode(res)
+                res = assert.res_status(200, res)
+                json = cjson.decode(res)
+              end)
 
               local expected = {
                 meta = {
@@ -1076,17 +1086,20 @@ for _, db_strategy in helpers.each_strategy() do
 
               restart_kong_and_client()
 
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/status_codes/by_service",
-                query = {
-                  interval   = "seconds",
-                  service_id = service_id,
-                }
-              })
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/status_codes/by_service",
+                  query = {
+                    interval   = "seconds",
+                    service_id = service_id,
+                  }
+                })
 
-              res = assert.res_status(200, res)
-              local json = cjson.decode(res)
+                res = assert.res_status(200, res)
+                json = cjson.decode(res)
+              end)
 
               local expected = {
                 meta = {
@@ -1134,7 +1147,9 @@ for _, db_strategy in helpers.each_strategy() do
 
               restart_kong_and_client()
 
-              local res = assert(client:send {
+              local res, json
+              helpers.pwait_until(function()
+              res = assert(client:send {
                 method = "GET",
                 path = "/vitals/status_codes/by_service",
                 query = {
@@ -1143,7 +1158,8 @@ for _, db_strategy in helpers.each_strategy() do
                 }
               })
               res = assert.res_status(200, res)
-              local json = cjson.decode(res)
+              json = cjson.decode(res)
+            end)
 
               local expected = {
                 meta = {
@@ -1182,16 +1198,20 @@ for _, db_strategy in helpers.each_strategy() do
 
             it("returns a 400 if called with invalid interval", function()
               restart_kong_and_client()
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/status_codes/by_service",
-                query = {
-                  interval   = "so-wrong",
-                  service_id = service_id,
-                }
-              })
-              res = assert.res_status(400, res)
-              local json = cjson.decode(res)
+
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/status_codes/by_service",
+                  query = {
+                    interval   = "so-wrong",
+                    service_id = service_id,
+                  }
+                })
+                res = assert.res_status(400, res)
+                json = cjson.decode(res)
+              end)
 
               assert.same("Invalid query params: interval must be 'days', 'minutes' or 'seconds'", json.message)
             end)
@@ -1199,33 +1219,41 @@ for _, db_strategy in helpers.each_strategy() do
             it("returns a 400 if called with invalid service_id", function()
               restart_kong_and_client()
               local service_id = "shh.. I'm not a real service id"
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/status_codes/by_service",
-                query = {
-                  interval   = "minutes",
-                  service_id = service_id,
-                }
-              })
-              res = assert.res_status(400, res)
-              local json = cjson.decode(res)
+
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/status_codes/by_service",
+                  query = {
+                    interval   = "minutes",
+                    service_id = service_id,
+                  }
+                })
+                res = assert.res_status(400, res)
+                json = cjson.decode(res)
+              end)
 
               assert.same("Invalid query params: service_id is invalid", json.message)
             end)
 
             it("returns a 400 if called with invalid start_ts", function()
               restart_kong_and_client()
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/status_codes/by_service",
-                query = {
-                  interval   = "seconds",
-                  service_id = service_id,
-                  start_ts   = "foo",
-                }
-              })
-              res = assert.res_status(400, res)
-              local json = cjson.decode(res)
+
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/status_codes/by_service",
+                  query = {
+                    interval   = "seconds",
+                    service_id = service_id,
+                    start_ts   = "foo",
+                  }
+                })
+                res = assert.res_status(400, res)
+                json = cjson.decode(res)
+              end)
 
               assert.same("Invalid query params: start_ts must be a number", json.message)
             end)
@@ -1233,32 +1261,40 @@ for _, db_strategy in helpers.each_strategy() do
             it("returns a 404 if called with a service_id that doesn't exist", function()
               restart_kong_and_client()
               local service_id = "20426633-55dc-4050-89ef-2382c95a611e"
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/status_codes/by_service",
-                query = {
-                  interval   = "minutes",
-                  service_id = service_id,
-                }
-              })
-              res = assert.res_status(404, res)
-              local json = cjson.decode(res)
+
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/status_codes/by_service",
+                  query = {
+                    interval   = "minutes",
+                    service_id = service_id,
+                  }
+                })
+                res = assert.res_status(404, res)
+                json = cjson.decode(res)
+              end)
 
               assert.same("Not found", json.message)
             end)
 
             it("returns a 404 if called with a workspace that doesn't exist", function()
               restart_kong_and_client()
-              local res = assert(client:send {
-                method = "GET",
-                path = "/cats/vitals/status_codes/by_service",
-                query = {
-                  interval   = "minutes",
-                  service_id = service_id,
-                }
-              })
-              res = assert.res_status(404, res)
-              local json = cjson.decode(res)
+
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/cats/vitals/status_codes/by_service",
+                  query = {
+                    interval   = "minutes",
+                    service_id = service_id,
+                  }
+                })
+                res = assert.res_status(404, res)
+                json = cjson.decode(res)
+              end)
 
               assert.same("Workspace 'cats' not found", json.message)
             end)
@@ -1321,17 +1357,20 @@ for _, db_strategy in helpers.each_strategy() do
               assert(strategy:insert_status_codes_by_route(test_status_code_data))
               restart_kong_and_client()
 
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/status_codes/by_route",
-                query = {
-                  interval = "seconds",
-                  route_id = route_id,
-                }
-              })
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/status_codes/by_route",
+                  query = {
+                    interval = "seconds",
+                    route_id = route_id,
+                  }
+                })
 
-              res = assert.res_status(200, res)
-              local json = cjson.decode(res)
+                res = assert.res_status(200, res)
+                json = cjson.decode(res)
+              end)
 
               local expected = {
                 meta = {
@@ -1380,17 +1419,20 @@ for _, db_strategy in helpers.each_strategy() do
               assert(strategy:insert_status_codes_by_route(test_status_code_data))
               restart_kong_and_client()
 
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/status_codes/by_route",
-                query = {
-                  interval = "seconds",
-                  route_id = route2_id,
-                }
-              })
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/status_codes/by_route",
+                  query = {
+                    interval = "seconds",
+                    route_id = route2_id,
+                  }
+                })
 
-              res = assert.res_status(200, res)
-              local json = cjson.decode(res)
+                res = assert.res_status(200, res)
+                json = cjson.decode(res)
+              end)
 
               local expected = {
                 meta = {
@@ -1440,16 +1482,19 @@ for _, db_strategy in helpers.each_strategy() do
               assert(strategy:insert_status_codes_by_route(test_status_code_data))
               restart_kong_and_client()
 
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/status_codes/by_route",
-                query = {
-                  interval = "minutes",
-                  route_id = route_id,
-                }
-              })
-              res = assert.res_status(200, res)
-              local json = cjson.decode(res)
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/status_codes/by_route",
+                  query = {
+                    interval = "minutes",
+                    route_id = route_id,
+                  }
+                })
+                res = assert.res_status(200, res)
+                json = cjson.decode(res)
+              end)
 
               local expected = {
                 meta = {
@@ -1488,16 +1533,20 @@ for _, db_strategy in helpers.each_strategy() do
 
             it("returns a 400 if called with invalid interval", function()
               restart_kong_and_client()
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/status_codes/by_route",
-                query = {
-                  interval = "so-wrong",
-                  route_id = route_id,
-                }
-              })
-              res = assert.res_status(400, res)
-              local json = cjson.decode(res)
+
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/status_codes/by_route",
+                  query = {
+                    interval = "so-wrong",
+                    route_id = route_id,
+                  }
+                })
+                res = assert.res_status(400, res)
+                json = cjson.decode(res)
+              end)
 
               assert.same("Invalid query params: interval must be 'days', 'minutes' or 'seconds'", json.message)
             end)
@@ -1505,48 +1554,60 @@ for _, db_strategy in helpers.each_strategy() do
             it("returns a 400 if called with invalid route_id", function()
               restart_kong_and_client()
               local route_id = "shh.. I'm not a real route id"
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/status_codes/by_route",
-                query = {
-                  interval = "minutes",
-                  route_id = route_id,
-                }
-              })
-              res = assert.res_status(400, res)
-              local json = cjson.decode(res)
+
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/status_codes/by_route",
+                  query = {
+                    interval = "minutes",
+                    route_id = route_id,
+                  }
+                })
+                res = assert.res_status(400, res)
+                json = cjson.decode(res)
+              end)
 
               assert.same("Invalid query params: route_id is invalid", json.message)
             end)
 
             it("returns a 400 if called with no route_id", function()
               restart_kong_and_client()
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/status_codes/by_route",
-                query = {
-                  interval = "minutes",
-                }
-              })
-              res = assert.res_status(400, res)
-              local json = cjson.decode(res)
+
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/status_codes/by_route",
+                  query = {
+                    interval = "minutes",
+                  }
+                })
+                res = assert.res_status(400, res)
+                json = cjson.decode(res)
+              end)
 
               assert.same("Invalid query params: route_id is invalid", json.message)
             end)
 
             it("returns a 400 if called with invalid start_ts", function()
               restart_kong_and_client()
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/status_codes/by_route",
-                query = {
-                  interval = "seconds",
-                  route_id = route_id,
-                  start_ts = "foo",
-                }
-              })
-              res = assert.res_status(400, res)
-              local json = cjson.decode(res)
+
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/status_codes/by_route",
+                  query = {
+                    interval = "seconds",
+                    route_id = route_id,
+                    start_ts = "foo",
+                  }
+                })
+                res = assert.res_status(400, res)
+                json = cjson.decode(res)
+              end)
 
               assert.same("Invalid query params: start_ts must be a number", json.message)
             end)
@@ -1554,38 +1615,47 @@ for _, db_strategy in helpers.each_strategy() do
             it("returns a 404 if called with a route_id that doesn't exist", function()
               restart_kong_and_client()
               local route_id = "20426633-55dc-4050-89ef-2382c95a611a"
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/status_codes/by_route",
-                query = {
-                  interval = "minutes",
-                  route_id = route_id,
-                }
-              })
-              res = assert.res_status(404, res)
-              local json = cjson.decode(res)
+
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/status_codes/by_route",
+                  query = {
+                    interval = "minutes",
+                    route_id = route_id,
+                  }
+                })
+                res = assert.res_status(404, res)
+                json = cjson.decode(res)
+              end)
 
               assert.same("Not found", json.message)
             end)
 
             it("returns a 404 if called with a workspace that doesn't exist", function()
               restart_kong_and_client()
-              local res = assert(client:send {
-                method = "GET",
-                path = "/cats/vitals/status_codes/by_route",
-                query = {
-                  interval   = "minutes",
-                  route_id = route_id,
-                }
-              })
-              res = assert.res_status(404, res)
-              local json = cjson.decode(res)
+
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/cats/vitals/status_codes/by_route",
+                  query = {
+                    interval   = "minutes",
+                    route_id = route_id,
+                  }
+                })
+                res = assert.res_status(404, res)
+                json = cjson.decode(res)
+              end)
 
               assert.same("Workspace 'cats' not found", json.message)
             end)
 
             it("returns a 404 if called with a workspace where the route doesn't belong", function()
               restart_kong_and_client()
+
               local res = client:post("/workspaces", {
                 headers = {
                   ["Content-Type"] = "application/json"
@@ -1640,17 +1710,20 @@ for _, db_strategy in helpers.each_strategy() do
               assert(strategy:insert_status_codes_by_consumer_and_route(test_status_code_data))
               restart_kong_and_client()
 
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/status_codes/by_consumer",
-                query = {
-                  interval    = "seconds",
-                  consumer_id = consumer.id,
-                }
-              })
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/status_codes/by_consumer",
+                  query = {
+                    interval    = "seconds",
+                    consumer_id = consumer.id,
+                  }
+                })
 
-              res = assert.res_status(200, res)
-              local json = cjson.decode(res)
+                res = assert.res_status(200, res)
+                json = cjson.decode(res)
+              end)
 
               local expected = {
                 meta = {
@@ -1703,16 +1776,19 @@ for _, db_strategy in helpers.each_strategy() do
               assert(strategy:insert_status_codes_by_consumer_and_route(test_status_code_data))
               restart_kong_and_client()
 
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/status_codes/by_consumer",
-                query = {
-                  interval = "minutes",
-                  consumer_id = consumer.id,
-                }
-              })
-              res = assert.res_status(200, res)
-              local json = cjson.decode(res)
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/status_codes/by_consumer",
+                  query = {
+                    interval = "minutes",
+                    consumer_id = consumer.id,
+                  }
+                })
+                res = assert.res_status(200, res)
+                json = cjson.decode(res)
+              end)
 
               local expected = {
                 meta = {
@@ -1756,17 +1832,20 @@ for _, db_strategy in helpers.each_strategy() do
 
               restart_kong_and_client()
 
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/status_codes/by_consumer",
-                query = {
-                  interval = "seconds",
-                  consumer_id = consumer.id,
-                  start_ts = "foo",
-                }
-              })
-              res = assert.res_status(400, res)
-              local json = cjson.decode(res)
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/status_codes/by_consumer",
+                  query = {
+                    interval = "seconds",
+                    consumer_id = consumer.id,
+                    start_ts = "foo",
+                  }
+                })
+                res = assert.res_status(400, res)
+                json = cjson.decode(res)
+              end)
 
               assert.same("Invalid query params: start_ts must be a number", json.message)
             end)
@@ -1779,17 +1858,20 @@ for _, db_strategy in helpers.each_strategy() do
 
               restart_kong_and_client()
 
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/status_codes/by_consumer",
-                query = {
-                  interval = "seconds",
-                  consumer_id = consumer.id,
-                  start_ts = "foo",
-                }
-              })
-              res = assert.res_status(400, res)
-              local json = cjson.decode(res)
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/status_codes/by_consumer",
+                  query = {
+                    interval = "seconds",
+                    consumer_id = consumer.id,
+                    start_ts = "foo",
+                  }
+                })
+                res = assert.res_status(400, res)
+                json = cjson.decode(res)
+              end)
 
               assert.same("Invalid query params: start_ts must be a number", json.message)
             end)
@@ -1797,31 +1879,39 @@ for _, db_strategy in helpers.each_strategy() do
             it("returns a 404 if called with invalid consumer_id", function()
               restart_kong_and_client()
               local consumer_id = "shh.. I'm not a real consumer id"
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/status_codes/by_consumer",
-                query = {
-                  interval = "minutes",
-                  consumer_id = consumer_id,
-                }
-              })
-              res = assert.res_status(404, res)
-              local json = cjson.decode(res)
+
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/status_codes/by_consumer",
+                  query = {
+                    interval = "minutes",
+                    consumer_id = consumer_id,
+                  }
+                })
+                res = assert.res_status(404, res)
+                json = cjson.decode(res)
+              end)
 
               assert.same("Not found", json.message)
             end)
 
             it("returns a 404 if called with no consumer_id", function()
               restart_kong_and_client()
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/status_codes/by_consumer",
-                query = {
-                  interval = "minutes",
-                }
-              })
-              res = assert.res_status(404, res)
-              local json = cjson.decode(res)
+
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/status_codes/by_consumer",
+                  query = {
+                    interval = "minutes",
+                  }
+                })
+                res = assert.res_status(404, res)
+                json = cjson.decode(res)
+              end)
 
               assert.same("Not found", json.message)
             end)
@@ -1829,16 +1919,20 @@ for _, db_strategy in helpers.each_strategy() do
             it("returns a 404 if called with a consumer_id that is not an actual id for a consumer", function()
               restart_kong_and_client()
               local consumer_id = "20426633-55dc-4050-89ef-2382c95a611a"
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/status_codes/by_consumer",
-                query = {
-                  interval = "minutes",
-                  consumer_id = consumer_id,
-                }
-              })
-              res = assert.res_status(404, res)
-              local json = cjson.decode(res)
+
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/status_codes/by_consumer",
+                  query = {
+                    interval = "minutes",
+                    consumer_id = consumer_id,
+                  }
+                })
+                res = assert.res_status(404, res)
+                json = cjson.decode(res)
+              end)
 
               assert.same("Not found", json.message)
             end)
@@ -1878,17 +1972,20 @@ for _, db_strategy in helpers.each_strategy() do
               assert(strategy:insert_status_codes_by_consumer_and_route(test_status_code_data))
               restart_kong_and_client()
 
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/status_codes/by_consumer_and_route",
-                query = {
-                  interval    = "seconds",
-                  consumer_id = consumer.id,
-                }
-              })
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/status_codes/by_consumer_and_route",
+                  query = {
+                    interval    = "seconds",
+                    consumer_id = consumer.id,
+                  }
+                })
 
-              res = assert.res_status(200, res)
-              local json = cjson.decode(res)
+                res = assert.res_status(200, res)
+                json = cjson.decode(res)
+              end)
 
               local expected = {
                 meta = {
@@ -1947,16 +2044,19 @@ for _, db_strategy in helpers.each_strategy() do
               assert(strategy:insert_status_codes_by_consumer_and_route(test_status_code_data))
               restart_kong_and_client()
 
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/status_codes/by_consumer_and_route",
-                query = {
-                  interval = "minutes",
-                  consumer_id = consumer.id,
-                }
-              })
-              res = assert.res_status(200, res)
-              local json = cjson.decode(res)
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/status_codes/by_consumer_and_route",
+                  query = {
+                    interval = "minutes",
+                    consumer_id = consumer.id,
+                  }
+                })
+                res = assert.res_status(200, res)
+                json = cjson.decode(res)
+              end)
 
               local expected = {
                 meta = {
@@ -2001,17 +2101,20 @@ for _, db_strategy in helpers.each_strategy() do
 
               restart_kong_and_client()
 
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/status_codes/by_consumer_and_route",
-                query = {
-                  interval = "seconds",
-                  consumer_id = consumer.id,
-                  start_ts = "foo",
-                }
-              })
-              res = assert.res_status(400, res)
-              local json = cjson.decode(res)
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/status_codes/by_consumer_and_route",
+                  query = {
+                    interval = "seconds",
+                    consumer_id = consumer.id,
+                    start_ts = "foo",
+                  }
+                })
+                res = assert.res_status(400, res)
+                json = cjson.decode(res)
+              end)
 
               assert.same("Invalid query params: start_ts must be a number", json.message)
             end)
@@ -2024,17 +2127,20 @@ for _, db_strategy in helpers.each_strategy() do
 
               restart_kong_and_client()
 
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/status_codes/by_consumer_and_route",
-                query = {
-                  interval = "seconds",
-                  consumer_id = consumer.id,
-                  start_ts = "foo",
-                }
-              })
-              res = assert.res_status(400, res)
-              local json = cjson.decode(res)
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/status_codes/by_consumer_and_route",
+                  query = {
+                    interval = "seconds",
+                    consumer_id = consumer.id,
+                    start_ts = "foo",
+                  }
+                })
+                res = assert.res_status(400, res)
+                json = cjson.decode(res)
+              end)
 
               assert.same("Invalid query params: start_ts must be a number", json.message)
             end)
@@ -2110,16 +2216,19 @@ for _, db_strategy in helpers.each_strategy() do
               }))
               restart_kong_and_client()
 
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/consumers/" .. consumer.id .. "/cluster",
-                query = {
-                  interval = "seconds"
-                }
-              })
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/consumers/" .. consumer.id .. "/cluster",
+                  query = {
+                    interval = "seconds"
+                  }
+                })
 
-              res = assert.res_status(200, res)
-              local json = cjson.decode(res)
+                res = assert.res_status(200, res)
+                json = cjson.decode(res)
+              end)
 
               local expected =  {
                 meta = {
@@ -2161,15 +2270,18 @@ for _, db_strategy in helpers.each_strategy() do
 
               restart_kong_and_client()
 
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/consumers/" .. consumer.id .. "/cluster",
-                query = {
-                  wrong_query_key = "seconds"
-                }
-              })
-              res = assert.res_status(400, res)
-              local json = cjson.decode(res)
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/consumers/" .. consumer.id .. "/cluster",
+                  query = {
+                    wrong_query_key = "seconds"
+                  }
+                })
+                res = assert.res_status(400, res)
+                json = cjson.decode(res)
+              end)
 
               assert.same("Invalid query params: consumer_id, duration, and level are required", json.message)
             end)
@@ -2182,16 +2294,19 @@ for _, db_strategy in helpers.each_strategy() do
 
               restart_kong_and_client()
 
-              local res = assert(client:send {
-                method = "GET",
-                path = "/vitals/consumers/" .. consumer.id .. "/cluster",
-                query = {
-                  interval = "seconds",
-                  start_ts = "foo"
-                }
-              })
-              res = assert.res_status(400, res)
-              local json = cjson.decode(res)
+              local res, json
+              helpers.pwait_until(function()
+                res = assert(client:send {
+                  method = "GET",
+                  path = "/vitals/consumers/" .. consumer.id .. "/cluster",
+                  query = {
+                    interval = "seconds",
+                    start_ts = "foo"
+                  }
+                })
+                res = assert.res_status(400, res)
+                json = cjson.decode(res)
+              end)
 
               assert.same("Invalid query params: start_ts must be a number", json.message)
             end)
