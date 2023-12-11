@@ -8,14 +8,13 @@
 local declarative = require("kong.db.declarative")
 local kong_version = require("kong.meta").version
 local cjson = require("cjson")
-local utils = require("kong.tools.utils")
 local clustering_utils = require("kong.clustering.utils")
 local config_helper = require("kong.clustering.config_helper")
+local yield = require("kong.tools.yield").yield
 local semaphore = require("ngx.semaphore")
 local DECLARATIVE_EMPTY_CONFIG_HASH = require("kong.constants").DECLARATIVE_EMPTY_CONFIG_HASH
 
 
-local yield = utils.yield
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
 local ngx_INFO = ngx.INFO

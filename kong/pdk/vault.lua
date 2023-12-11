@@ -23,14 +23,12 @@ local lrucache = require "resty.lrucache"
 local isempty = require "table.isempty"
 local buffer = require "string.buffer"
 local clone = require "table.clone"
-local utils = require "kong.tools.utils"
-local string_tools = require "kong.tools.string"
 local cjson = require("cjson.safe").new()
 
 
-local yield = utils.yield
-local get_updated_now_ms = utils.get_updated_now_ms
-local replace_dashes = string_tools.replace_dashes
+local yield = require("kong.tools.yield").yield
+local get_updated_now_ms = require("kong.tools.time").get_updated_now_ms
+local replace_dashes = require("kong.tools.string").replace_dashes
 
 
 local ngx = ngx

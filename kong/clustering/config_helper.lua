@@ -21,7 +21,7 @@ local error = error
 local pairs = pairs
 local ipairs = ipairs
 local sort = table.sort
-local yield = require("kong.tools.utils").yield
+local yield = require("kong.tools.yield").yield
 local fetch_table = tablepool.fetch
 local release_table = tablepool.release
 

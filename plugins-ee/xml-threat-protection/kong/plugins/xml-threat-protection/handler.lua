@@ -8,7 +8,7 @@
 local lrucache = require "resty.lrucache"
 local threat_parser = require "lxp.threat"
 local ngx_re_match = ngx.re.match
-local kong_yield = require("kong.tools.utils").yield
+local kong_yield = require("kong.tools.yield").yield
 
 local kb = 1024
 local mb = kb * kb

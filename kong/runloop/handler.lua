@@ -60,6 +60,8 @@ local http_version      = ngx.req.http_version
 local request_id_get    = request_id.get
 local escape            = require("kong.tools.uri").escape
 local encode            = require("string.buffer").encode
+local yield             = require("kong.tools.yield").yield
+
 local req_dyn_hook_run_hooks = req_dyn_hook.run_hooks
 
 
@@ -1119,7 +1121,7 @@ return {
 
           if rebuild_transaction_id then
             -- Yield to process any pending invalidations
-            utils.yield()
+            yield()
 
             log(DEBUG, "configuration processing completed for transaction ID " .. rebuild_transaction_id)
             global.CURRENT_TRANSACTION_ID = rebuild_transaction_id
