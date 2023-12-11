@@ -3,7 +3,7 @@ local context = require("resty.router.context")
 
 
 local type = type
---local pairs = pairs
+local pairs = pairs
 local ipairs = ipairs
 local tb_sort = table.sort
 local tb_concat = table.concat
@@ -80,44 +80,37 @@ local HTTP_CACHE_KEY_FUNCS = {
 
 
 local HTTP_MATCH_CTX_FUNCS = {
-  {
-    "http.method",
+    ["http.method"] =
     function(v, c, ctx)
       return c:add_value("http.method", ctx.req_method)
     end,
-  },
-  {
-    "http.path",
+
+    ["http.path"] =
     function(v, c, ctx)
       return c:add_value("http.path", ctx.req_uri)
     end,
-  },
-  {
-    "http.host",
+
+    ["http.host"] =
     function(v, c, ctx)
       return c:add_value("http.host", ctx.host)
     end,
-  },
-  {
-    "tls.sni",
+
+    ["tls.sni"] =
     function(v, c, ctx)
       return c:add_value("tls.sni", ctx.sni)
     end,
-  },
-  {
-    "net.protocol",
+
+    ["net.protocol"] =
     function(v, c, ctx)
       return c:add_value("net.protocol", ctx.req_scheme)
     end,
-  },
-  {
-    "net.port",
+
+    ["net.port"] =
     function(v, c, ctx)
       return c:add_value("net.port", ctx.port)
     end,
-  },
-  {
-    "http.headers.",
+
+    ["http.headers."] =
     function(v, c, ctx)
       local headers = ctx.headers
       if not headers then
@@ -146,9 +139,8 @@ local HTTP_MATCH_CTX_FUNCS = {
 
       return true
     end,
-  },
-  {
-    "http.queries.",
+
+    ["http.queries."] =
     function(v, c, ctx)
       local queries = ctx.queries
       if not queries then
@@ -188,7 +180,6 @@ local HTTP_MATCH_CTX_FUNCS = {
 
       return true
     end,
-  },
 }
 
 
@@ -215,27 +206,25 @@ end
 local function get_http_atc_context(schema, fields, ctx)
   local c = context.new(schema)
 
-  for _, m in ipairs(HTTP_MATCH_CTX_FUNCS) do
-    local field = m[1]
-    local value = fields[field]
-
-    if value then
-      local func = m[2]
-
-      local res, err = func(value, c, ctx)
-      if not res then
-        return nil, err
-      end
+  for field, value in pairs(fields) do
+    local func = HTTP_MATCH_CTX_FUNCS[field]
+    if not func then  -- unknown field
+      error("unknown router matching schema field: " .. field)
     end
-  end
+
+    assert(value)
+
+    local res, err = func(value, c, ctx)
+    if not res then
+      return nil, err
+    end
+  end -- for fields
 
   return c
 end
 
 
 return {
-  --HTTP_CACHE_KEY_FUNCS = HTTP_CACHE_KEY_FUNCS,
-
   get_http_cache_key = get_http_cache_key,
   get_http_atc_context = get_http_atc_context,
 }
