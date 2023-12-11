@@ -1,0 +1,6 @@
+message: |
+  **Proxy-Cache-Advanced**: remove undesired `proxy-cache-advanced/migrations/001_035_to_050.lua`
+  that blocks migration from OSS to EE. This is a breaking change for customers using Kong Gateway
+  between `0.3.5` and `0.5.0`.
+type: "bugfix"
+scope: "Plugin"
