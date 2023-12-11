@@ -9,6 +9,7 @@ local log           = require "kong.plugins.openid-connect.log"
 local configuration = require "kong.openid-connect.configuration"
 local keys          = require "kong.openid-connect.keys"
 local utils         = require "kong.tools.utils"
+local sha256        = require "kong.tools.sha256"
 local http          = require "resty.http"
 local json          = require "cjson.safe"
 local workspaces    = require "kong.workspaces"
@@ -50,8 +51,8 @@ local TOKEN_DECODE_SIGNATURE_OPTS = {
 
 
 local sha256_base64url do
-  if utils.sha256_base64url then
-    sha256_base64url = utils.sha256_base64url
+  if sha256.sha256_base64url then
+    sha256_base64url = sha256.sha256_base64url
 
   else
     local S256 = require("kong.openid-connect.hash").S256

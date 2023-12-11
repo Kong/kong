@@ -28,7 +28,7 @@ local new_tab = require("table.new")
 local tb_concat = table.concat
 local table_concat = table.concat
 local ngx_var = ngx.var
-local sha256_hex = require "kong.tools.utils".sha256_hex
+local sha256_hex = require "kong.tools.sha256".sha256_hex
 local flag_partial_chain = openssl_x509_store.verify_flags.X509_V_FLAG_PARTIAL_CHAIN
 
 

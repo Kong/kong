@@ -26,7 +26,7 @@ local ngx_set_header = ngx.req.set_header
 local tostring =  tostring
 local ipairs = ipairs
 local split = require("pl.stringx").split
-local sha256_hex = require "kong.tools.utils".sha256_hex
+local sha256_hex = require "kong.tools.sha256".sha256_hex
 
 local AUTHORIZATION = "authorization"
 local PROXY_AUTHORIZATION = "proxy-authorization"

@@ -8,7 +8,7 @@
 local helpers = require "spec.helpers"
 local fmt = string.format
 local lower = string.lower
-local utils = require "kong.tools.utils"
+local sha256 = require "kong.tools.sha256"
 
 local ldap_host_aws = "ec2-54-172-82-117.compute-1.amazonaws.com"
 
@@ -79,7 +79,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
         end)
 
         local function cache_key(conf, username, password)
-          local ldap_config_cache = utils.sha256_hex(fmt("%s:%u:%s:%s:%u",
+          local ldap_config_cache = sha256.sha256_hex(fmt("%s:%u:%s:%s:%u",
             lower(conf.ldap_host),
             conf.ldap_port,
             conf.base_dn,
