@@ -67,6 +67,7 @@ build = {
 
     ["kong.conf_loader"] = "kong/conf_loader/init.lua",
     ["kong.conf_loader.constants"] = "kong/conf_loader/constants.lua",
+    ["kong.conf_loader.utils"] = "kong/conf_loader/utils.lua",
     ["kong.conf_loader.listeners"] = "kong/conf_loader/listeners.lua",
 
     ["kong.clustering"] = "kong/clustering/init.lua",
