@@ -9,6 +9,8 @@ local ngx_ssl = require "ngx.ssl"
 local pl_utils = require "pl.utils"
 local mlcache = require "kong.resty.mlcache"
 local new_tab = require "table.new"
+local constants = require "kong.constants"
+local plugin_servers = require "kong.runloop.plugin_servers"
 local openssl_x509_store = require "resty.openssl.x509.store"
 local openssl_x509 = require "resty.openssl.x509"
 local workspaces = require "kong.workspaces" -- XXX EE: Needed for certificates on workspaces
@@ -406,6 +408,102 @@ local function get_ca_certificate_store(ca_ids)
 end
 
 
+<<<<<<< HEAD
+=======
+local function get_ca_certificate_store_for_plugin(ca_ids)
+  return kong.cache:get(ca_ids_cache_key(ca_ids),
+                        get_ca_store_opts, fetch_ca_certificates,
+                        ca_ids)
+end
+
+
+-- here we assume the field name is always `ca_certificates`
+local get_ca_certificate_reference_entities
+do
+  local function is_entity_referencing_ca_certificates(name)
+    local entity_schema = require("kong.db.schema.entities." .. name)
+    for _, field in ipairs(entity_schema.fields) do
+      if field.ca_certificates then
+        return true
+      end
+    end
+
+    return false
+  end
+
+  -- ordinary entities that reference ca certificates
+  -- For example: services
+  local CA_CERT_REFERENCE_ENTITIES
+  get_ca_certificate_reference_entities = function()
+    if not CA_CERT_REFERENCE_ENTITIES then
+      CA_CERT_REFERENCE_ENTITIES = {}
+      for _, entity_name in ipairs(constants.CORE_ENTITIES) do
+        local res = is_entity_referencing_ca_certificates(entity_name)
+        if res then
+          tb_insert(CA_CERT_REFERENCE_ENTITIES, entity_name)
+        end
+      end
+    end
+
+    return CA_CERT_REFERENCE_ENTITIES
+  end
+end
+
+
+-- here we assume the field name is always `ca_certificates`
+local get_ca_certificate_reference_plugins
+do
+  local load_module_if_exists = require "kong.tools.module".load_module_if_exists
+
+  local function is_plugin_referencing_ca_certificates(name)
+    local plugin_schema = "kong.plugins." .. name .. ".schema"
+    local ok, schema = load_module_if_exists(plugin_schema)
+    if not ok then
+      ok, schema = plugin_servers.load_schema(name)
+    end
+
+    if not ok then
+      return nil, "no configuration schema found for plugin: " .. name
+    end
+
+    for _, field in ipairs(schema.fields) do
+      if field.config then
+        for _, field in ipairs(field.config.fields) do
+          if field.ca_certificates then
+            return true
+          end
+        end
+      end
+    end
+
+    return false
+  end
+
+  -- loaded plugins that reference ca certificates
+  -- For example: mtls-auth
+  local CA_CERT_REFERENCE_PLUGINS
+  get_ca_certificate_reference_plugins = function()
+    if not CA_CERT_REFERENCE_PLUGINS then
+      CA_CERT_REFERENCE_PLUGINS = {}
+      local loaded_plugins = kong.configuration.loaded_plugins
+      for name, v in pairs(loaded_plugins) do
+        local res, err = is_plugin_referencing_ca_certificates(name)
+        if err then
+          return nil, err
+        end
+
+        if res then
+          CA_CERT_REFERENCE_PLUGINS[name] = true
+        end
+      end
+    end
+
+    return CA_CERT_REFERENCE_PLUGINS
+  end
+end
+
+
+>>>>>>> 9a1b557b4 (refactor(tools): remove reference of module from utils (#12113))
 return {
   init = init,
   find_certificate = find_certificate,

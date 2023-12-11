@@ -6,10 +6,12 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local lapis       = require "lapis"
-local utils       = require "kong.tools.utils"
 local api_helpers = require "kong.api.api_helpers"
 local Endpoints   = require "kong.api.endpoints"
 local hooks       = require "kong.hooks"
+
+
+local load_module_if_exists = require "kong.tools.module".load_module_if_exists
 
 
 local ngx      = ngx
@@ -101,7 +103,7 @@ do
   -- Custom Routes
   for _, dao in pairs(kong.db.daos) do
     local schema = dao.schema
-    local ok, custom_endpoints = utils.load_module_if_exists("kong.api.routes." .. schema.name)
+    local ok, custom_endpoints = load_module_if_exists("kong.api.routes." .. schema.name)
     if ok then
       customize_routes(routes, custom_endpoints, schema)
     end
@@ -110,7 +112,7 @@ do
   -- Plugin Routes
   if kong.configuration and kong.configuration.loaded_plugins then
     for k in pairs(kong.configuration.loaded_plugins) do
-      local loaded, custom_endpoints = utils.load_module_if_exists("kong.plugins." .. k .. ".api")
+      local loaded, custom_endpoints = load_module_if_exists("kong.plugins." .. k .. ".api")
       if loaded then
         ngx.log(ngx.DEBUG, "Loading API endpoints for plugin: ", k)
         if api_helpers.is_new_db_routes(custom_endpoints) then
