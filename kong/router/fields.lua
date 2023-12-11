@@ -1,4 +1,5 @@
 local buffer = require("string.buffer")
+local context = require("resty.router.context")
 
 
 local type = type
@@ -78,8 +79,7 @@ local HTTP_CACHE_KEY_FUNCS = {
 }
 
 
---[[
-local HTTP_SCHEMA_CTX_FUNCS = {
+local HTTP_MATCH_CTX_FUNCS = {
   {
     "http.method",
     function(v, c, ctx)
@@ -95,7 +95,7 @@ local HTTP_SCHEMA_CTX_FUNCS = {
   {
     "http.host",
     function(v, c, ctx)
-      return c:add_value("http.host", ctx.req_host)
+      return c:add_value("http.host", ctx.host)
     end,
   },
   {
@@ -125,7 +125,7 @@ local HTTP_SCHEMA_CTX_FUNCS = {
       end
 
       for _, h in ipairs(v) do
-        local v = req_headers[h]
+        local v = headers[h]
         local f = "http.headers." .. h
 
         if type(v) == "string" then
@@ -143,6 +143,8 @@ local HTTP_SCHEMA_CTX_FUNCS = {
           end
         end -- if type(v)
       end
+
+      return true
     end,
   },
   {
@@ -150,11 +152,11 @@ local HTTP_SCHEMA_CTX_FUNCS = {
     function(v, c, ctx)
       local queries = ctx.queries
       if not queries then
-        return
+        return true
       end
 
       for _, n in ipairs(v) do
-        local v = req_queries[n]
+        local v = queries[n]
         local f = "http.queries." .. n
 
         -- the query parameter has only one value, like /?foo=bar
@@ -183,10 +185,11 @@ local HTTP_SCHEMA_CTX_FUNCS = {
           end
         end -- if type(v)
       end
+
+      return true
     end,
   },
 }
---]]
 
 
 local function get_http_cache_key(fields, ctx)
@@ -209,8 +212,30 @@ local function get_http_cache_key(fields, ctx)
 end
 
 
+local function get_http_atc_context(schema, fields, ctx)
+  local c = context.new(schema)
+
+  for _, m in ipairs(HTTP_MATCH_CTX_FUNCS) do
+    local field = m[1]
+    local value = fields[field]
+
+    if value then
+      local func = m[2]
+
+      local res, err = func(value, c, ctx)
+      if not res then
+        return nil, err
+      end
+    end
+  end
+
+  return c
+end
+
+
 return {
-  HTTP_CACHE_KEY_FUNCS = HTTP_CACHE_KEY_FUNCS,
+  --HTTP_CACHE_KEY_FUNCS = HTTP_CACHE_KEY_FUNCS,
 
   get_http_cache_key = get_http_cache_key,
+  get_http_atc_context = get_http_atc_context,
 }

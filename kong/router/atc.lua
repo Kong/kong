@@ -12,7 +12,7 @@ local tablepool = require("tablepool")
 local tb_new = require("table.new")
 local utils = require("kong.router.utils")
 local yield = require("kong.tools.utils").yield
-local get_http_cache_key = require("kong.router.fields").get_http_cache_key
+local fields = require("kong.router.fields")
 
 
 local type = type
@@ -24,9 +24,6 @@ local tonumber = tonumber
 local table_insert = table.insert
 local table_fetch = tablepool.fetch
 local table_release = tablepool.release
-
-
-local CACHE_KEY_CTX_POOL = "atc_router_cache_key_ctx_pool"
 
 
 local max = math.max
@@ -46,6 +43,8 @@ local ngx_ERR       = ngx.ERR
 local check_select_params  = utils.check_select_params
 local get_service_info     = utils.get_service_info
 local route_match_stat     = utils.route_match_stat
+local get_http_cache_key   = fields.get_http_cache_key
+local get_http_atc_context = fields.get_http_atc_context
 
 
 local DEFAULT_MATCH_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
@@ -62,6 +61,8 @@ local is_http = ngx.config.subsystem == "http"
 local values_buf = buffer.new(64)
 
 
+local CACHE_KEY_CTX_POOL = "atc_router_cache_key_ctx_pool"
+local ATC_MATCH_CTX_POOL = "atc_router_match_ctx_pool"
 local HTTP_HEADERS_PREFIX = "http.headers."
 local HTTP_QUERIES_PREFIX = "http.queries."
 
@@ -450,10 +451,29 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
                       nil, nil,
                       sni, req_headers, req_queries)
 
-  local c = context.new(self.schema)
+  --local c = context.new(self.schema)
 
   local host, port = split_host_port(req_host)
 
+  local match_ctx = assert(table_fetch(ATC_MATCH_CTX_POOL, 0, 8))
+
+  match_ctx.req_method = req_method
+  match_ctx.req_uri    = req_uri
+  match_ctx.host       = host
+  match_ctx.port       = port
+  match_ctx.req_scheme = req_scheme
+  match_ctx.sni        = sni
+  match_ctx.headers    = req_headers
+  match_ctx.queries    = req_queries
+
+  local c, err = get_http_atc_context(self.schema, self.fields, match_ctx)
+  if not c then
+    return nil, err
+  end
+
+  table_release(ATC_MATCH_CTX_POOL, match_ctx, true)
+
+  --[[
   for field, value in pairs(self.fields) do
     if field == "http.method" then
       assert(c:add_value(field, req_method))
@@ -549,7 +569,7 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
     end -- if field
 
   end   -- for self.fields
-
+  --]]
 
   local matched = self.router:execute(c)
   if not matched then
