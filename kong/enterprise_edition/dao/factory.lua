@@ -6,8 +6,8 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local vitals = require "kong.vitals"
-local utils  = require "kong.tools.utils"
 local rl = require "kong.tools.public.rate-limiting"
+local load_module_if_exists = require "kong.tools.module".load_module_if_exists
 
 
 local _M = {}
@@ -32,7 +32,7 @@ function _M.merge_enterprise_migrations(ce_migrations, db, migrations_type)
   local module_prefix = "kong.enterprise_edition.dao.migrations."
   local module_path = module_prefix .. migrations_type .. "." .. db
 
-  local ok, m = utils.load_module_if_exists(module_path)
+  local ok, m = load_module_if_exists(module_path)
   if ok then
     for i, migration in ipairs(m) do
       table.insert(ce_migrations[migrations_type], migration)

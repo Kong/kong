@@ -15,7 +15,6 @@ local rbac = require "kong.rbac"
 local hooks = require "kong.hooks"
 local ee_api = require "kong.enterprise_edition.api_helpers"
 local ee_status_api = require "kong.enterprise_edition.status"
-local utils = require "kong.tools.utils"
 local app_helpers = require "lapis.application"
 local api_helpers = require "kong.api.api_helpers"
 local tracing = require "kong.tracing"
@@ -25,6 +24,8 @@ local websocket = require "kong.enterprise_edition.runloop.websocket"
 local admin_gui_utils = require "kong.admin_gui.utils"
 local openssl = require "resty.openssl"
 local openssl_version = require "resty.openssl.version"
+local load_module_if_exists = require "kong.tools.module".load_module_if_exists
+local cycle_aware_deep_copy = require "kong.tools.table".cycle_aware_deep_copy
 
 local cjson = require "cjson.safe"
 
@@ -66,7 +67,7 @@ _M.handlers = {
 
       hooks.register_hook("api:init:post", function(app, routes)
         for _, k in ipairs({"rbac", "audit"}) do
-          local loaded, mod = utils.load_module_if_exists("kong.api.routes.".. k)
+          local loaded, mod = load_module_if_exists("kong.api.routes.".. k)
           if loaded then
             ngx.log(ngx.DEBUG, "Loading API endpoints for module: ", k)
             if api_helpers.is_new_db_routes(mod) then
@@ -250,7 +251,7 @@ function _M.license_hooks(config)
   -- add license info
   hooks.register_hook("api:kong:info", function(info)
     if kong.license and kong.license.license and kong.license.license.payload then
-      info.license = utils.cycle_aware_deep_copy(kong.license.license.payload)
+      info.license = cycle_aware_deep_copy(kong.license.license.payload)
       info.license.license_key = nil
     end
 
@@ -373,7 +374,7 @@ function _M.license_hooks(config)
 
 
   local function get_plugin_entities(plugin)
-    local has_daos, daos_schemas = utils.load_module_if_exists("kong.plugins." .. plugin .. ".daos")
+    local has_daos, daos_schemas = load_module_if_exists("kong.plugins." .. plugin .. ".daos")
     if not has_daos then
       return nop
     end

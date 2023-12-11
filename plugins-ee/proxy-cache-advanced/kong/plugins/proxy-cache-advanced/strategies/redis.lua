@@ -7,7 +7,8 @@
 
 local cjson = require "cjson.safe"
 local redis = require "kong.enterprise_edition.redis"
-local utils = require "kong.tools.utils"
+local load_module_if_exists = require "kong.tools.module".load_module_if_exists
+local cycle_aware_deep_copy = require "kong.tools.table".cycle_aware_deep_copy
 
 
 local type         = type
@@ -25,9 +26,9 @@ local _M = {}
 
 
 function _M.new(opts)
-  local conf = utils.cycle_aware_deep_copy(opts)
+  local conf = cycle_aware_deep_copy(opts)
 
-  local ok, feature_flags = utils.load_module_if_exists("kong.enterprise_edition.feature_flags")
+  local ok, feature_flags = load_module_if_exists("kong.enterprise_edition.feature_flags")
   if ok and feature_flags then
     local namespace, err = feature_flags.get_feature_value(feature_flags.VALUES.REDIS_NAMESPACE)
     if not err then
