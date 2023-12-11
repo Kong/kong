@@ -589,19 +589,17 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(200, res)
 
-      local cache_key = db.plugins:cache_key(plugin)
-
-      helpers.wait_for_invalidation(cache_key)
-
-      local res = assert(proxy_client:send {
-        method  = "GET",
-        path    = "/request",
-        headers = {
-          ["Host"] = "ip-restriction2.test"
-        }
-      })
-      local body = assert.res_status(403, res)
-      assert.matches("IP address not allowed", body)
+      helpers.pwait_until(function()
+        res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"] = "ip-restriction2.test"
+          }
+        })
+        local body = assert.res_status(403, res)
+        assert.matches("IP address not allowed", body)
+      end)
 
       res = assert(admin_client:send {
         method  = "PATCH",
@@ -615,18 +613,16 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(200, res)
 
-      local cache_key = db.plugins:cache_key(plugin)
-
-      helpers.wait_for_invalidation(cache_key)
-
-      local res = assert(proxy_client:send {
-        method  = "GET",
-        path    = "/request",
-        headers = {
-          ["Host"] = "ip-restriction2.test"
-        }
-      })
-      assert.res_status(200, res)
+      helpers.pwait_until(function()
+        res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"] = "ip-restriction2.test"
+          }
+        })
+        assert.res_status(200, res)
+      end)
     end)
 
     describe("#regression", function()
