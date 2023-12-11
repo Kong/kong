@@ -21,6 +21,7 @@ local setmetatable = setmetatable
 local pairs = pairs
 local ipairs = ipairs
 local tonumber = tonumber
+local table_insert = table.insert
 local table_fetch = tablepool.fetch
 local table_release = tablepool.release
 
@@ -209,13 +210,13 @@ local function categorize_fields(fields)
       if not basic[HTTP_HEADERS_PREFIX] then
         basic[HTTP_HEADERS_PREFIX] = {}
       end
-      table.insert(basic[HTTP_HEADERS_PREFIX], field:sub(PREFIX_LEN + 1))
+      table_insert(basic[HTTP_HEADERS_PREFIX], field:sub(PREFIX_LEN + 1))
 
     elseif prefix == HTTP_QUERIES_PREFIX then
       if not basic[HTTP_QUERIES_PREFIX] then
         basic[HTTP_QUERIES_PREFIX] = {}
       end
-      table.insert(basic[HTTP_QUERIES_PREFIX], field:sub(PREFIX_LEN + 1))
+      table_insert(basic[HTTP_QUERIES_PREFIX], field:sub(PREFIX_LEN + 1))
 
     else
       basic[field] = true
