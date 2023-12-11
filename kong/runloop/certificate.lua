@@ -34,7 +34,7 @@ local error = error
 local assert = assert
 local tostring = tostring
 local ipairs = ipairs
-local sha256_hex = require "kong.tools.utils".sha256_hex
+local sha256_hex = require "kong.tools.sha256".sha256_hex
 local ngx_exit = ngx.exit
 local ngx_ERROR = ngx.ERROR
 
