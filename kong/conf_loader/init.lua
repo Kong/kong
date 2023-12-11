@@ -43,17 +43,6 @@ local tostring = tostring
 local setmetatable = setmetatable
 
 
-local get_phase do
-  if ngx and ngx.get_phase then
-    get_phase = ngx.get_phase
-  else
-    get_phase = function()
-      return "timer"
-    end
-  end
-end
-
-
 local C = ffi.C
 
 
@@ -64,6 +53,7 @@ ffi.cdef([[
 ]])
 
 
+local get_phase = conf_utils.get_phase
 local is_predefined_dhgroup = conf_utils.is_predefined_dhgroup
 local parse_value = conf_utils.parse_value
 local check_and_parse = conf_utils.check_and_parse

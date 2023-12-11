@@ -43,6 +43,17 @@ local exists = pl_path.exists
 local isdir = pl_path.isdir
 
 
+local get_phase do
+  if ngx and ngx.get_phase then
+    get_phase = ngx.get_phase
+  else
+    get_phase = function()
+      return "timer"
+    end
+  end
+end
+
+
 local function is_predefined_dhgroup(group)
   if type(group) ~= "string" then
     return false
@@ -833,6 +844,8 @@ end
 
 
 return {
+  get_phase = get_phase,
+
   is_predefined_dhgroup = is_predefined_dhgroup,
   parse_value = parse_value,
 
