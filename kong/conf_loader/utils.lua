@@ -12,12 +12,15 @@ local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local conf_constants = require "kong.conf_loader.constants"
 
 
+local tools_system = require("kong.tools.system")   -- for unit-testing
+local tools_ip = require("kong.tools.ip")
+
+
+local normalize_ip = tools_ip.normalize_ip
+local is_valid_ip_or_cidr = tools_ip.is_valid_ip_or_cidr
 local try_decode_base64 = require("kong.tools.string").try_decode_base64
-local normalize_ip = require("kong.tools.ip").normalize_ip
-local is_valid_ip_or_cidr = require("kong.tools.ip").is_valid_ip_or_cidr
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local is_valid_uuid = require("kong.tools.uuid").is_valid_uuid
-local get_system_trusted_certs_filepath = require("kong.tools.system").get_system_trusted_certs_filepath
 
 
 local type = type
@@ -232,7 +235,7 @@ local function check_and_parse(conf, opts)
 
     for _, trusted_cert in ipairs(conf.lua_ssl_trusted_certificate) do
       if trusted_cert == "system" then
-        local system_path, err = get_system_trusted_certs_filepath()
+        local system_path, err = tools_system.get_system_trusted_certs_filepath()
         if system_path then
           trusted_cert = system_path
 
