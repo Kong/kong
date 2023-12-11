@@ -19,7 +19,6 @@ local _M = {}
 do
   local modules = {
     "kong.tools.table",
-    "kong.tools.sha256",
     "kong.tools.yield",
     "kong.tools.string",
     "kong.tools.uuid",
