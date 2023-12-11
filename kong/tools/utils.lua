@@ -25,7 +25,6 @@ do
     "kong.tools.rand",
     "kong.tools.system",
     "kong.tools.time",
-    "kong.tools.module",
     "kong.tools.ip",
     "kong.tools.http",
   }
