@@ -251,7 +251,7 @@ jobs:
           inkscape --export-area-drawing --export-png="${i%.*}.png" --export-dpi=300 -b FFFFFF $i
         done
 
-    - uses: actions/setup-python@v4
+    - uses: actions/setup-python@v5
       with:
         python-version: '3.10'
         cache: 'pip'
