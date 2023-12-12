@@ -85,7 +85,7 @@ local HTTP_CACHE_KEY_FUNCS = {
         end
 
         buf:putf("%s=%s|", name, value)
-      end
+      end -- for ipairs(v)
     end,
 
     ["http.queries."] =
@@ -104,7 +104,7 @@ local HTTP_CACHE_KEY_FUNCS = {
         end
 
         buf:putf("%s=%s|", name, value)
-      end
+      end -- for ipairs(v)
     end,
 }
 
@@ -165,7 +165,7 @@ local HTTP_MATCH_CTX_FUNCS = {
             end
           end
         end -- if type(v)
-      end
+      end   -- for ipairs(v)
 
       return true
     end,
@@ -206,7 +206,7 @@ local HTTP_MATCH_CTX_FUNCS = {
             end
           end
         end -- if type(v)
-      end
+      end   -- for ipairs(v)
 
       return true
     end,
