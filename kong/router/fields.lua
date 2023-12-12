@@ -177,45 +177,6 @@ local HTTP_MATCH_CTX_FUNCS = {
 }
 
 
-local function get_http_cache_key(fields, ctx)
-  local str_buf = buffer.new(64)
-
-  for field, func in pairs(HTTP_CACHE_KEY_FUNCS) do
-    local value = fields[field]
-
-    if value or                 -- true or table
-       field == "http.host" or  -- preserve_host
-       field == "http.path"     -- 05-proxy/02-router_spec.lua:1329
-    then
-      func(value, ctx, str_buf)
-    end
-  end
-
-  return str_buf:get()
-end
-
-
-local function get_http_atc_context(schema, fields, ctx)
-  local c = context.new(schema)
-
-  for field, value in pairs(fields) do
-    local func = HTTP_MATCH_CTX_FUNCS[field]
-    if not func then  -- unknown field
-      error("unknown router matching schema field: " .. field)
-    end
-
-    assert(value)
-
-    local res, err = func(value, c, ctx)
-    if not res then
-      return nil, err
-    end
-  end -- for fields
-
-  return c
-end
-
-
 local STREAM_CACHE_KEY_FUNCS = {
     ["net.src.ip"] =
     function(v, ctx, buf)
@@ -277,6 +238,24 @@ local STREAM_MATCH_CTX_FUNCS = {
 }
 
 
+local function get_http_cache_key(fields, ctx)
+  local str_buf = buffer.new(64)
+
+  for field, func in pairs(HTTP_CACHE_KEY_FUNCS) do
+    local value = fields[field]
+
+    if value or                 -- true or table
+       field == "http.host" or  -- preserve_host
+       field == "http.path"     -- 05-proxy/02-router_spec.lua:1329
+    then
+      func(value, ctx, str_buf)
+    end
+  end
+
+  return str_buf:get()
+end
+
+
 local function get_stream_cache_key(fields, ctx)
   local str_buf = buffer.new(64)
 
@@ -292,11 +271,11 @@ local function get_stream_cache_key(fields, ctx)
 end
 
 
-local function get_stream_atc_context(schema, fields, ctx)
+local function _get_atc_context(funcs, schema, fields, ctx)
   local c = context.new(schema)
 
   for field, value in pairs(fields) do
-    local func = STREAM_MATCH_CTX_FUNCS[field]
+    local func = funcs[field]
     if not func then  -- unknown field
       error("unknown router matching schema field: " .. field)
     end
@@ -310,6 +289,16 @@ local function get_stream_atc_context(schema, fields, ctx)
   end -- for fields
 
   return c
+end
+
+
+local function get_http_atc_context(schema, fields, ctx)
+  return _get_atc_context(HTTP_MATCH_CTX_FUNCS, schema, fields, ctx)
+end
+
+
+local function get_stream_atc_context(schema, fields, ctx)
+  return _get_atc_context(STREAM_MATCH_CTX_FUNCS, schema, fields, ctx)
 end
 
 

@@ -5,7 +5,6 @@ local _MT = { __index = _M, }
 local buffer = require("string.buffer")
 local schema = require("resty.router.schema")
 local router = require("resty.router.router")
-local context = require("resty.router.context")
 local lrucache = require("resty.lrucache")
 local server_name = require("ngx.ssl").server_name
 local tablepool = require("tablepool")
