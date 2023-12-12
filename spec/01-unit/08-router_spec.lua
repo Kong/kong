@@ -12,6 +12,7 @@ local function reload_router(flavor, subsystem)
 
   ngx.config.subsystem = subsystem or "http" -- luacheck: ignore
 
+  package.loaded["kong.router.fields"] = nil
   package.loaded["kong.router.atc"] = nil
   package.loaded["kong.router.compat"] = nil
   package.loaded["kong.router.expressions"] = nil
