@@ -34,8 +34,15 @@ else
     err_exit "can not find kong package"
 fi
 
+# kong would create include and lib directory in /usr/local/kong
+# but in ubuntu, kong would use /usr/local/kong as default prefix
+# so after remove kong, /usr/local/kong would left logs and conf files
+# we only check /usr/local/kong/include and /usr/local/kong/lib
 msg_test "/usr/local/kong/include has been removed after uninstall"
 assert_exec 1 'kong' "test -d /usr/local/kong/include"
+
+msg_test "/usr/local/kong/lib has been removed after uninstall"
+assert_exec 1 'kong' "test -d /usr/local/kong/lib"
 
 # if /usr/local/share/lua/5.1 has other files, it will not be removed
 # only remove files which are installed by kong
