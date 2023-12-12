@@ -24,7 +24,7 @@ jobs:
         with:
           workflow-name: build_and_test.yml
           test-file-runtime-file: .ci/runtimes.txt
-          artifact-name-regexp: "test-rerun-info-\\d+"
+          artifact-name-regexp: "^test-runtime-statistics-\\d+$"
 
       - name: Commit
         env:
