@@ -15,10 +15,12 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT }}
 
       - name: Process statistics
         uses: Kong/gateway-test-scheduler/analyze@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
         with:
           workflow-name: build_and_test.yml
           test-file-runtime-file: .ci/runtimes.txt
@@ -26,7 +28,7 @@ jobs:
 
       - name: Commit
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT }}
         run: |
           git config user.name "GitHub Actions Bot"
           git config user.email "<team-gateway@konghq.com>"
