@@ -596,7 +596,7 @@ jobs:
     - name: Smoke Tests - Uninstall Tests
       env:
         VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
-        PACKAGE_TYPE: ${{ matrix.package }}
+        BUILD_LABEL: ${{ matrix.label }}
       run: build/tests/04-uninstall.sh
 
   release-packages:
