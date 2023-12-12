@@ -3,6 +3,9 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "1 0 * * SAT"
+  push:
+    branches:
+      - feat/test-run-scheduler
 
 jobs:
   process-statistics:
