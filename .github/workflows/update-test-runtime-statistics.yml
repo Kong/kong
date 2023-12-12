@@ -20,3 +20,4 @@ jobs:
         with:
           workflow-name: build_and_test.yml
           test-file-runtime-file: .ci/runtimes.json
+          artifact-name-regexp: test-rerun-info-\d+
