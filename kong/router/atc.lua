@@ -43,8 +43,6 @@ local ngx_ERR       = ngx.ERR
 local check_select_params  = utils.check_select_params
 local get_service_info     = utils.get_service_info
 local route_match_stat     = utils.route_match_stat
-local get_http_cache_key   = fields.get_http_cache_key
-local get_http_atc_context = fields.get_http_atc_context
 
 
 local DEFAULT_MATCH_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
@@ -441,6 +439,10 @@ local add_debug_headers    = utils.add_debug_headers
 local get_upstream_uri_v0  = utils.get_upstream_uri_v0
 
 
+local get_http_cache_key   = fields.get_http_cache_key
+local get_http_atc_context = fields.get_http_atc_context
+
+
 function _M:select(req_method, req_uri, req_host, req_scheme,
                    _, _,
                    _, _,
@@ -450,8 +452,6 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
                       nil, nil,
                       nil, nil,
                       sni, req_headers, req_queries)
-
-  --local c = context.new(self.schema)
 
   local host, port = split_host_port(req_host)
 
