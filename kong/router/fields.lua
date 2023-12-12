@@ -5,6 +5,7 @@ local context = require("resty.router.context")
 local type = type
 local pairs = pairs
 local ipairs = ipairs
+local assert = assert
 local tb_sort = table.sort
 local tb_concat = table.concat
 local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
@@ -243,6 +244,39 @@ local STREAM_CACHE_KEY_FUNCS = {
 }
 
 
+local STREAM_MATCH_CTX_FUNCS = {
+    ["net.src.ip"] =
+    function(v, c, ctx)
+      return c:add_value("net.src.ip", ctx.src_ip)
+    end,
+
+    ["net.src.port"] =
+    function(v, c, ctx)
+      return c:add_value("net.src.port", ctx.src_port)
+    end,
+
+    ["net.dst.ip"] =
+    function(v, c, ctx)
+      return c:add_value("net.dst.ip", ctx.dst_ip)
+    end,
+
+    ["net.dst.port"] =
+    function(v, c, ctx)
+      return c:add_value("net.dst.port", ctx.dst_port)
+    end,
+
+    ["tls.sni"] =
+    function(v, c, ctx)
+      return c:add_value("tls.sni", ctx.sni)
+    end,
+
+    ["net.protocol"] =
+    function(v, c, ctx)
+      return c:add_value("net.protocol", ctx.scheme)
+    end,
+}
+
+
 local function get_stream_cache_key(fields, ctx)
   local str_buf = buffer.new(64)
 
@@ -258,9 +292,31 @@ local function get_stream_cache_key(fields, ctx)
 end
 
 
+local function get_stream_atc_context(schema, fields, ctx)
+  local c = context.new(schema)
+
+  for field, value in pairs(fields) do
+    local func = STREAM_MATCH_CTX_FUNCS[field]
+    if not func then  -- unknown field
+      error("unknown router matching schema field: " .. field)
+    end
+
+    assert(value)
+
+    local res, err = func(value, c, ctx)
+    if not res then
+      return nil, err
+    end
+  end -- for fields
+
+  return c
+end
+
+
 return {
   get_http_cache_key = get_http_cache_key,
   get_http_atc_context = get_http_atc_context,
 
   get_stream_cache_key = get_stream_cache_key,
+  get_stream_atc_context = get_stream_atc_context,
 }

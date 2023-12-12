@@ -612,6 +612,7 @@ else  -- is stream subsystem
 
 
 local get_stream_cache_key   = fields.get_stream_cache_key
+local get_stream_atc_context = fields.get_stream_atc_context
 
 
 function _M:select(_, _, _, scheme,
@@ -624,36 +625,21 @@ function _M:select(_, _, _, scheme,
                       dst_ip, dst_port,
                       sni)
 
-  local c = context.new(self.schema)
+  local match_ctx = assert(table_fetch(ATC_MATCH_CTX_POOL, 0, 6))
 
-  for field in pairs(self.fields) do
-    if field == "net.protocol" then
-      assert(c:add_value(field, scheme))
+  match_ctx.scheme    = scheme
+  match_ctx.src_ip    = src_ip
+  match_ctx.src_port  = src_port
+  match_ctx.dst_ip    = dst_ip
+  match_ctx.dst_port  = dst_port
+  match_ctx.sni       = sni
 
-    elseif field == "tls.sni" then
-      local res, err = c:add_value(field, sni)
-      if not res then
-        return nil, err
-      end
+  local c, err = get_stream_atc_context(self.schema, self.fields, match_ctx)
+  if not c then
+    return nil, err
+  end
 
-    elseif field == "net.src.ip" then
-      assert(c:add_value(field, src_ip))
-
-    elseif field == "net.src.port" then
-      assert(c:add_value(field, src_port))
-
-    elseif field == "net.dst.ip" then
-      assert(c:add_value(field, dst_ip))
-
-    elseif field == "net.dst.port" then
-      assert(c:add_value(field, dst_port))
-
-    else  -- unknown field
-      error("unknown router matching schema field: " .. field)
-
-    end -- if field
-
-  end -- for self.fields
+  table_release(ATC_MATCH_CTX_POOL, match_ctx, true)
 
   local matched = self.router:execute(c)
   if not matched then
