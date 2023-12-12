@@ -10,9 +10,9 @@ local lrucache = require("resty.lrucache")
 local server_name = require("ngx.ssl").server_name
 local tablepool = require("tablepool")
 local tb_new = require("table.new")
+local fields = require("kong.router.fields")
 local utils = require("kong.router.utils")
 local yield = require("kong.tools.yield").yield
-local fields = require("kong.router.fields")
 
 
 local type = type
