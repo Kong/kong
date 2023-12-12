@@ -215,7 +215,52 @@ local function get_http_atc_context(schema, fields, ctx)
 end
 
 
+local STREAM_CACHE_KEY_FUNCS = {
+    ["net.src.ip"] =
+    function(v, ctx, buf)
+      buf:put(ctx.src_ip or ""):put("|")
+    end,
+
+    ["net.src.port"] =
+    function(v, ctx, buf)
+      buf:put(ctx.src_port or ""):put("|")
+    end,
+
+    ["net.dst.ip"] =
+    function(v, ctx, buf)
+      buf:put(ctx.dst_ip or ""):put("|")
+    end,
+
+    ["net.dst.port"] =
+    function(v, ctx, buf)
+      buf:put(ctx.dst_port or ""):put("|")
+    end,
+
+    ["tls.sni"] =
+    function(v, ctx, buf)
+      buf:put(ctx.sni or ""):put("|")
+    end,
+}
+
+
+local function get_stream_cache_key(fields, ctx)
+  local str_buf = buffer.new(64)
+
+  for field, func in pairs(STREAM_CACHE_KEY_FUNCS) do
+    local value = fields[field]
+
+    if value then
+      func(value, ctx, str_buf)
+    end
+  end
+
+  return str_buf:get()
+end
+
+
 return {
   get_http_cache_key = get_http_cache_key,
   get_http_atc_context = get_http_atc_context,
+
+  get_stream_cache_key = get_stream_cache_key,
 }

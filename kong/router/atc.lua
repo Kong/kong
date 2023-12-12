@@ -610,6 +610,10 @@ end
 
 else  -- is stream subsystem
 
+
+local get_stream_cache_key   = fields.get_stream_cache_key
+
+
 function _M:select(_, _, _, scheme,
                    src_ip, src_port,
                    dst_ip, dst_port,
@@ -709,11 +713,21 @@ function _M:exec(ctx)
     dst_port = tonumber(var.proxy_protocol_server_port)
   end
 
-  local cache_key = (src_ip   or "") .. "|" ..
-                    (src_port or "") .. "|" ..
-                    (dst_ip   or "") .. "|" ..
-                    (dst_port or "") .. "|" ..
-                    (sni      or "")
+  -- cache key calculation
+
+  local cache_ctx = assert(table_fetch(CACHE_KEY_CTX_POOL, 0, 5))
+
+  cache_ctx.src_ip    = src_ip
+  cache_ctx.src_port  = src_port
+  cache_ctx.dst_ip    = dst_ip
+  cache_ctx.dst_port  = dst_port
+  cache_ctx.sni       = sni
+
+  local cache_key = get_stream_cache_key(self.fields, cache_ctx)
+
+  table_release(CACHE_KEY_CTX_POOL, cache_ctx, true)
+
+  -- cache lookup
 
   local match_t = self.cache:get(cache_key)
   if not match_t then
