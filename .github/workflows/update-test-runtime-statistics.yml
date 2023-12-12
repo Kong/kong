@@ -17,6 +17,8 @@ jobs:
 
       - name: Process statistics
         uses: Kong/gateway-test-scheduler/analyze@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           workflow-name: build_and_test.yml
           test-file-runtime-file: .ci/runtimes.json
