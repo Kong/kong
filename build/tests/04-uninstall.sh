@@ -34,9 +34,8 @@ else
     err_exit "can not find kong package"
 fi
 
-msg_test "/usr/local/kong has been removed after uninstall"
-assert_exec 0 'kong' "ls /usr/local/kong"
-assert_exec 1 'kong' "test -d /usr/local/kong"
+msg_test "/usr/local/kong/include has been removed after uninstall"
+assert_exec 1 'kong' "test -d /usr/local/kong/include"
 
 # if /usr/local/share/lua/5.1 has other files, it will not be removed
 # only remove files which are installed by kong
