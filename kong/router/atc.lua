@@ -670,12 +670,25 @@ end
 
 
 function _M:exec(ctx)
-  local src_ip   = var.remote_addr
-  local dst_ip   = var.server_addr
+  local src_ip, src_port, dst_ip, dst_port
+  do
+    if self.fields["net.src.ip"] then
+      src_ip = var.remote_addr
+    end
 
-  local src_port = tonumber(var.remote_port, 10)
-  local dst_port = tonumber((ctx or ngx.ctx).host_port, 10) or
-                   tonumber(var.server_port, 10)
+    if self.fields["net.src.port"] then
+      src_port = tonumber(var.remote_port, 10)
+    end
+
+    if self.fields["net.dst.ip"] then
+      dst_ip = var.server_addr
+    end
+
+    if self.fields["net.dst.port"] then
+      dst_port = tonumber((ctx or ngx.ctx).host_port, 10) or
+                 tonumber(var.server_port, 10)
+    end
+  end
 
   -- error value for non-TLS connections ignored intentionally
   local sni = server_name()
@@ -701,13 +714,14 @@ function _M:exec(ctx)
 
   -- cache key calculation
 
-  local cache_ctx = assert(table_fetch(CACHE_KEY_CTX_POOL, 0, 5))
+  local cache_ctx = assert(table_fetch(CACHE_KEY_CTX_POOL, 0, 6))
 
   cache_ctx.src_ip    = src_ip
   cache_ctx.src_port  = src_port
   cache_ctx.dst_ip    = dst_ip
   cache_ctx.dst_port  = dst_port
   cache_ctx.sni       = sni
+  cache_ctx.scheme    = scheme
 
   local cache_key = get_stream_cache_key(self.fields, cache_ctx)
 
