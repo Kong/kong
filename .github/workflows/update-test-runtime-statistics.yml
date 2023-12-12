@@ -19,6 +19,8 @@ jobs:
         uses: Kong/gateway-test-scheduler/analyze@main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GIT_AUTHOR_NAME: "Team Gateway Bot"
+          GIT_AUTHOR_EMAIL: "team-gateway@konghq.com"
         with:
           workflow-name: build_and_test.yml
           test-file-runtime-file: .ci/runtimes.json
