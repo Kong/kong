@@ -36,8 +36,7 @@ local function _get_atc_context(funcs, schema, fields, ctx)
 end
 
 
-local get_http_cache_key, get_http_atc_context
-local get_stream_cache_key, get_stream_atc_context
+local get_cache_key, get_atc_context
 
 
 local is_http = ngx.config.subsystem == "http"
@@ -212,7 +211,7 @@ local HTTP_MATCH_CTX_FUNCS = {
 }
 
 
-function get_http_cache_key(fields, ctx)
+function get_cache_key(fields, ctx)
   for field, func in pairs(HTTP_CACHE_KEY_FUNCS) do
     local value = fields[field]
 
@@ -228,7 +227,7 @@ function get_http_cache_key(fields, ctx)
 end
 
 
-function get_http_atc_context(schema, fields, ctx)
+function get_atc_context(schema, fields, ctx)
   return _get_atc_context(HTTP_MATCH_CTX_FUNCS, schema, fields, ctx)
 end
 
@@ -297,7 +296,7 @@ local STREAM_MATCH_CTX_FUNCS = {
 }
 
 
-function get_stream_cache_key(fields, ctx)
+function get_cache_key(fields, ctx)
   for field, func in pairs(STREAM_CACHE_KEY_FUNCS) do
     local value = fields[field]
 
@@ -310,7 +309,7 @@ function get_stream_cache_key(fields, ctx)
 end
 
 
-function get_stream_atc_context(schema, fields, ctx)
+function get_atc_context(schema, fields, ctx)
   return _get_atc_context(STREAM_MATCH_CTX_FUNCS, schema, fields, ctx)
 end
 
@@ -319,9 +318,6 @@ end -- is_http
 
 
 return {
-  get_http_cache_key = get_http_cache_key,
-  get_http_atc_context = get_http_atc_context,
-
-  get_stream_cache_key = get_stream_cache_key,
-  get_stream_atc_context = get_stream_atc_context,
+  get_cache_key = get_cache_key,
+  get_atc_context = get_atc_context,
 }

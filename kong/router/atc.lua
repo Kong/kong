@@ -42,6 +42,8 @@ local ngx_ERR       = ngx.ERR
 local check_select_params  = utils.check_select_params
 local get_service_info     = utils.get_service_info
 local route_match_stat     = utils.route_match_stat
+local get_cache_key        = fields.get_cache_key
+local get_atc_context      = fields.get_atc_context
 
 
 local DEFAULT_MATCH_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
@@ -438,10 +440,6 @@ local add_debug_headers    = utils.add_debug_headers
 local get_upstream_uri_v0  = utils.get_upstream_uri_v0
 
 
-local get_http_cache_key   = fields.get_http_cache_key
-local get_http_atc_context = fields.get_http_atc_context
-
-
 function _M:select(req_method, req_uri, req_host, req_scheme,
                    _, _,
                    _, _,
@@ -465,7 +463,7 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
   match_ctx.headers    = req_headers
   match_ctx.queries    = req_queries
 
-  local c, err = get_http_atc_context(self.schema, self.fields, match_ctx)
+  local c, err = get_atc_context(self.schema, self.fields, match_ctx)
   if not c then
     return nil, err
   end
@@ -564,7 +562,7 @@ function _M:exec(ctx)
   cache_ctx.headers    = headers
   cache_ctx.queries    = queries
 
-  local cache_key = get_http_cache_key(self.fields, cache_ctx)
+  local cache_key = get_cache_key(self.fields, cache_ctx)
 
   table_release(CACHE_KEY_CTX_POOL, cache_ctx, true)
 
@@ -610,10 +608,6 @@ end
 else  -- is stream subsystem
 
 
-local get_stream_cache_key   = fields.get_stream_cache_key
-local get_stream_atc_context = fields.get_stream_atc_context
-
-
 function _M:select(_, _, _, scheme,
                    src_ip, src_port,
                    dst_ip, dst_port,
@@ -633,7 +627,7 @@ function _M:select(_, _, _, scheme,
   match_ctx.dst_port  = dst_port
   match_ctx.sni       = sni
 
-  local c, err = get_stream_atc_context(self.schema, self.fields, match_ctx)
+  local c, err = get_atc_context(self.schema, self.fields, match_ctx)
   if not c then
     return nil, err
   end
@@ -722,7 +716,7 @@ function _M:exec(ctx)
   cache_ctx.sni       = sni
   cache_ctx.scheme    = scheme
 
-  local cache_key = get_stream_cache_key(self.fields, cache_ctx)
+  local cache_key = get_cache_key(self.fields, cache_ctx)
 
   table_release(CACHE_KEY_CTX_POOL, cache_ctx, true)
 
