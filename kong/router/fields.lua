@@ -15,7 +15,7 @@ local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
 local str_buf = buffer.new(64)
 
 
-local function _get_atc_context(funcs, schema, fields, ctx)
+local function _get_atc_context(funcs, schema, fields, params)
   local c = context.new(schema)
 
   for field, value in pairs(fields) do
@@ -26,7 +26,7 @@ local function _get_atc_context(funcs, schema, fields, ctx)
 
     assert(value)
 
-    local res, err = func(value, c, ctx)
+    local res, err = func(value, c, params)
     if not res then
       return nil, err
     end
@@ -47,28 +47,28 @@ if is_http then
 
 local HTTP_CACHE_KEY_FUNCS = {
     ["http.method"] =
-    function(v, ctx, buf)
-      buf:put(ctx.req_method or ""):put("|")
+    function(v, params, buf)
+      buf:put(params.req_method or ""):put("|")
     end,
 
     ["http.path"] =
-    function(v, ctx, buf)
-      buf:put(ctx.req_uri or ""):put("|")
+    function(v, params, buf)
+      buf:put(params.req_uri or ""):put("|")
     end,
 
     ["http.host"] =
-    function(v, ctx, buf)
-      buf:put(ctx.req_host or ""):put("|")
+    function(v, params, buf)
+      buf:put(params.req_host or ""):put("|")
     end,
 
     ["tls.sni"] =
-    function(v, ctx, buf)
-      buf:put(ctx.sni or ""):put("|")
+    function(v, params, buf)
+      buf:put(params.sni or ""):put("|")
     end,
 
     ["http.headers."] =
-    function(v, ctx, buf)
-      local headers = ctx.headers
+    function(v, params, buf)
+      local headers = params.headers
       if not headers then
         return
       end
@@ -87,8 +87,8 @@ local HTTP_CACHE_KEY_FUNCS = {
     end,
 
     ["http.queries."] =
-    function(v, ctx, buf)
-      local queries = ctx.queries
+    function(v, params, buf)
+      local queries = params.queries
       if not queries then
         return
       end
@@ -109,38 +109,38 @@ local HTTP_CACHE_KEY_FUNCS = {
 
 local HTTP_MATCH_CTX_FUNCS = {
     ["http.method"] =
-    function(v, c, ctx)
-      return c:add_value("http.method", ctx.req_method)
+    function(v, c, params)
+      return c:add_value("http.method", params.req_method)
     end,
 
     ["http.path"] =
-    function(v, c, ctx)
-      return c:add_value("http.path", ctx.req_uri)
+    function(v, c, params)
+      return c:add_value("http.path", params.req_uri)
     end,
 
     ["http.host"] =
-    function(v, c, ctx)
-      return c:add_value("http.host", ctx.host)
+    function(v, c, params)
+      return c:add_value("http.host", params.host)
     end,
 
     ["tls.sni"] =
-    function(v, c, ctx)
-      return c:add_value("tls.sni", ctx.sni)
+    function(v, c, params)
+      return c:add_value("tls.sni", params.sni)
     end,
 
     ["net.protocol"] =
-    function(v, c, ctx)
-      return c:add_value("net.protocol", ctx.req_scheme)
+    function(v, c, params)
+      return c:add_value("net.protocol", params.req_scheme)
     end,
 
     ["net.port"] =
-    function(v, c, ctx)
-      return c:add_value("net.port", ctx.port)
+    function(v, c, params)
+      return c:add_value("net.port", params.port)
     end,
 
     ["http.headers."] =
-    function(v, c, ctx)
-      local headers = ctx.headers
+    function(v, c, params)
+      local headers = params.headers
       if not headers then
         return true
       end
@@ -169,8 +169,8 @@ local HTTP_MATCH_CTX_FUNCS = {
     end,
 
     ["http.queries."] =
-    function(v, c, ctx)
-      local queries = ctx.queries
+    function(v, c, params)
+      local queries = params.queries
       if not queries then
         return true
       end
@@ -211,7 +211,7 @@ local HTTP_MATCH_CTX_FUNCS = {
 }
 
 
-function get_cache_key(fields, ctx)
+function get_cache_key(fields, params)
   for field, func in pairs(HTTP_CACHE_KEY_FUNCS) do
     local value = fields[field]
 
@@ -219,7 +219,7 @@ function get_cache_key(fields, ctx)
        field == "http.host" or  -- preserve_host
        field == "http.path"     -- 05-proxy/02-router_spec.lua:1329
     then
-      func(value, ctx, str_buf)
+      func(value, params, str_buf)
     end
   end
 
@@ -227,8 +227,8 @@ function get_cache_key(fields, ctx)
 end
 
 
-function get_atc_context(schema, fields, ctx)
-  return _get_atc_context(HTTP_MATCH_CTX_FUNCS, schema, fields, ctx)
+function get_atc_context(schema, fields, params)
+  return _get_atc_context(HTTP_MATCH_CTX_FUNCS, schema, fields, params)
 end
 
 
@@ -237,71 +237,71 @@ else -- stream subsystem
 
 local STREAM_CACHE_KEY_FUNCS = {
     ["net.src.ip"] =
-    function(v, ctx, buf)
-      buf:put(ctx.src_ip or ""):put("|")
+    function(v, params, buf)
+      buf:put(params.src_ip or ""):put("|")
     end,
 
     ["net.src.port"] =
-    function(v, ctx, buf)
-      buf:put(ctx.src_port or ""):put("|")
+    function(v, params, buf)
+      buf:put(params.src_port or ""):put("|")
     end,
 
     ["net.dst.ip"] =
-    function(v, ctx, buf)
-      buf:put(ctx.dst_ip or ""):put("|")
+    function(v, params, buf)
+      buf:put(params.dst_ip or ""):put("|")
     end,
 
     ["net.dst.port"] =
-    function(v, ctx, buf)
-      buf:put(ctx.dst_port or ""):put("|")
+    function(v, params, buf)
+      buf:put(params.dst_port or ""):put("|")
     end,
 
     ["tls.sni"] =
-    function(v, ctx, buf)
-      buf:put(ctx.sni or ""):put("|")
+    function(v, params, buf)
+      buf:put(params.sni or ""):put("|")
     end,
 }
 
 
 local STREAM_MATCH_CTX_FUNCS = {
     ["net.src.ip"] =
-    function(v, c, ctx)
-      return c:add_value("net.src.ip", ctx.src_ip)
+    function(v, c, params)
+      return c:add_value("net.src.ip", params.src_ip)
     end,
 
     ["net.src.port"] =
-    function(v, c, ctx)
-      return c:add_value("net.src.port", ctx.src_port)
+    function(v, c, params)
+      return c:add_value("net.src.port", params.src_port)
     end,
 
     ["net.dst.ip"] =
-    function(v, c, ctx)
-      return c:add_value("net.dst.ip", ctx.dst_ip)
+    function(v, c, params)
+      return c:add_value("net.dst.ip", params.dst_ip)
     end,
 
     ["net.dst.port"] =
-    function(v, c, ctx)
-      return c:add_value("net.dst.port", ctx.dst_port)
+    function(v, c, params)
+      return c:add_value("net.dst.port", params.dst_port)
     end,
 
     ["tls.sni"] =
-    function(v, c, ctx)
-      return c:add_value("tls.sni", ctx.sni)
+    function(v, c, params)
+      return c:add_value("tls.sni", params.sni)
     end,
 
     ["net.protocol"] =
-    function(v, c, ctx)
-      return c:add_value("net.protocol", ctx.scheme)
+    function(v, c, params)
+      return c:add_value("net.protocol", params.scheme)
     end,
 }
 
 
-function get_cache_key(fields, ctx)
+function get_cache_key(fields, params)
   for field, func in pairs(STREAM_CACHE_KEY_FUNCS) do
     local value = fields[field]
 
     if value then
-      func(value, ctx, str_buf)
+      func(value, params, str_buf)
     end
   end
 
@@ -309,8 +309,8 @@ function get_cache_key(fields, ctx)
 end
 
 
-function get_atc_context(schema, fields, ctx)
-  return _get_atc_context(STREAM_MATCH_CTX_FUNCS, schema, fields, ctx)
+function get_atc_context(schema, fields, params)
+  return _get_atc_context(STREAM_MATCH_CTX_FUNCS, schema, fields, params)
 end
 
 
