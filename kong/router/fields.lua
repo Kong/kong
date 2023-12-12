@@ -6,9 +6,6 @@ local type = type
 local pairs = pairs
 local ipairs = ipairs
 local assert = assert
-local tb_sort = table.sort
-local tb_concat = table.concat
-local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
 
 
 -- cache key string
@@ -43,6 +40,11 @@ local is_http = ngx.config.subsystem == "http"
 
 
 if is_http then
+
+
+local tb_sort = table.sort
+local tb_concat = table.concat
+local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
 
 
 local HTTP_CACHE_KEY_FUNCS = {
