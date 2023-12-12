@@ -709,14 +709,13 @@ function _M:exec(ctx)
 
   -- cache key calculation
 
-  local cache_params = assert(table_fetch(CACHE_KEY_PARAMS_POOL, 0, 6))
+  local cache_params = assert(table_fetch(CACHE_KEY_PARAMS_POOL, 0, 5))
 
   cache_params.src_ip    = src_ip
   cache_params.src_port  = src_port
   cache_params.dst_ip    = dst_ip
   cache_params.dst_port  = dst_port
   cache_params.sni       = sni
-  cache_params.scheme    = scheme
 
   local cache_key = get_cache_key(self.fields, cache_params)
 
