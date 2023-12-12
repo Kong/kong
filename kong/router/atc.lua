@@ -60,8 +60,8 @@ local is_http = ngx.config.subsystem == "http"
 local values_buf = buffer.new(64)
 
 
-local CACHE_KEY_CTX_POOL = "atc_router_cache_key_ctx_pool"
-local ATC_MATCH_CTX_POOL = "atc_router_match_ctx_pool"
+local CACHE_KEY_PARAMS_POOL = "atc_router_cache_key_params_pool"
+local ATC_MATCH_PARAMS_POOL = "atc_router_match_params_pool"
 local HTTP_HEADERS_PREFIX = "http.headers."
 local HTTP_QUERIES_PREFIX = "http.queries."
 
@@ -452,23 +452,23 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 
   local host, port = split_host_port(req_host)
 
-  local match_ctx = assert(table_fetch(ATC_MATCH_CTX_POOL, 0, 8))
+  local match_params = assert(table_fetch(ATC_MATCH_PARAMS_POOL, 0, 8))
 
-  match_ctx.req_method = req_method
-  match_ctx.req_uri    = req_uri
-  match_ctx.host       = host
-  match_ctx.port       = port
-  match_ctx.req_scheme = req_scheme
-  match_ctx.sni        = sni
-  match_ctx.headers    = req_headers
-  match_ctx.queries    = req_queries
+  match_params.req_method = req_method
+  match_params.req_uri    = req_uri
+  match_params.host       = host
+  match_params.port       = port
+  match_params.req_scheme = req_scheme
+  match_params.sni        = sni
+  match_params.headers    = req_headers
+  match_params.queries    = req_queries
 
-  local c, err = get_atc_context(self.schema, self.fields, match_ctx)
+  local c, err = get_atc_context(self.schema, self.fields, match_params)
   if not c then
     return nil, err
   end
 
-  table_release(ATC_MATCH_CTX_POOL, match_ctx, true)
+  table_release(ATC_MATCH_PARAMS_POOL, match_params, true)
 
   local matched = self.router:execute(c)
   if not matched then
@@ -553,18 +553,18 @@ function _M:exec(ctx)
 
   -- cache key calculation
 
-  local cache_ctx = assert(table_fetch(CACHE_KEY_CTX_POOL, 0, 6))
+  local cache_params = assert(table_fetch(CACHE_KEY_PARAMS_POOL, 0, 6))
 
-  cache_ctx.req_method = req_method
-  cache_ctx.req_uri    = req_uri
-  cache_ctx.req_host   = req_host
-  cache_ctx.sni        = sni
-  cache_ctx.headers    = headers
-  cache_ctx.queries    = queries
+  cache_params.req_method = req_method
+  cache_params.req_uri    = req_uri
+  cache_params.req_host   = req_host
+  cache_params.sni        = sni
+  cache_params.headers    = headers
+  cache_params.queries    = queries
 
-  local cache_key = get_cache_key(self.fields, cache_ctx)
+  local cache_key = get_cache_key(self.fields, cache_params)
 
-  table_release(CACHE_KEY_CTX_POOL, cache_ctx, true)
+  table_release(CACHE_KEY_PARAMS_POOL, cache_params, true)
 
   -- cache lookup
 
@@ -618,21 +618,21 @@ function _M:select(_, _, _, scheme,
                       dst_ip, dst_port,
                       sni)
 
-  local match_ctx = assert(table_fetch(ATC_MATCH_CTX_POOL, 0, 6))
+  local match_params = assert(table_fetch(ATC_MATCH_PARAMS_POOL, 0, 6))
 
-  match_ctx.scheme    = scheme
-  match_ctx.src_ip    = src_ip
-  match_ctx.src_port  = src_port
-  match_ctx.dst_ip    = dst_ip
-  match_ctx.dst_port  = dst_port
-  match_ctx.sni       = sni
+  match_params.scheme    = scheme
+  match_params.src_ip    = src_ip
+  match_params.src_port  = src_port
+  match_params.dst_ip    = dst_ip
+  match_params.dst_port  = dst_port
+  match_params.sni       = sni
 
-  local c, err = get_atc_context(self.schema, self.fields, match_ctx)
+  local c, err = get_atc_context(self.schema, self.fields, match_params)
   if not c then
     return nil, err
   end
 
-  table_release(ATC_MATCH_CTX_POOL, match_ctx, true)
+  table_release(ATC_MATCH_PARAMS_POOL, match_params, true)
 
   local matched = self.router:execute(c)
   if not matched then
@@ -707,18 +707,18 @@ function _M:exec(ctx)
 
   -- cache key calculation
 
-  local cache_ctx = assert(table_fetch(CACHE_KEY_CTX_POOL, 0, 6))
+  local cache_params = assert(table_fetch(CACHE_KEY_PARAMS_POOL, 0, 6))
 
-  cache_ctx.src_ip    = src_ip
-  cache_ctx.src_port  = src_port
-  cache_ctx.dst_ip    = dst_ip
-  cache_ctx.dst_port  = dst_port
-  cache_ctx.sni       = sni
-  cache_ctx.scheme    = scheme
+  cache_params.src_ip    = src_ip
+  cache_params.src_port  = src_port
+  cache_params.dst_ip    = dst_ip
+  cache_params.dst_port  = dst_port
+  cache_params.sni       = sni
+  cache_params.scheme    = scheme
 
-  local cache_key = get_cache_key(self.fields, cache_ctx)
+  local cache_key = get_cache_key(self.fields, cache_params)
 
-  table_release(CACHE_KEY_CTX_POOL, cache_ctx, true)
+  table_release(CACHE_KEY_PARAMS_POOL, cache_params, true)
 
   -- cache lookup
 
