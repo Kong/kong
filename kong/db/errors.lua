@@ -1,6 +1,5 @@
 local pl_pretty = require("pl.pretty").write
 local pl_keys = require("pl.tablex").keys
-local pl_table_deepcopy = require("pl.tablex").deepcopy
 local nkeys = require("table.nkeys")
 local table_isarray = require("table.isarray")
 local utils = require("kong.tools.utils")
