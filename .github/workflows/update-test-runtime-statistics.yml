@@ -19,4 +19,4 @@ jobs:
         uses: Kong/gateway-test-scheduler/analyze@main
         with:
           workflow-name: build_and_test.yml
-          runtimes-repository: Kong/gateway-test-runtimes
+          test-file-runtime-file: .ci/runtimes.json
