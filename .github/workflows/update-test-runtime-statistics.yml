@@ -21,10 +21,10 @@ jobs:
         uses: Kong/gateway-test-scheduler/analyze@main
         with:
           workflow-name: build_and_test.yml
-          test-file-runtime-file: .ci/runtimes.json
+          test-file-runtime-file: .ci/runtimes.txt
           artifact-name-regexp: "test-rerun-info-\\d+"
 
       - name: Commit
         run: |
-          git commit -m "chore(ci): updated test file runtime file" .ci/runtimes.json
+          git commit -m "chore(ci): updated test file runtime file" .ci/runtimes.txt
           git push
