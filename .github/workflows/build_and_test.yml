@@ -98,18 +98,12 @@ jobs:
     - name: Checkout source code
       uses: actions/checkout@v4
 
-    - name: Set up NodeJS
-      uses: actions/setup-node@v4
-      with:
-        node-version: 21
-        cache: 'npm'
-        cache-dependency-path: .ci/schedule-tests/package-lock.json
-
     - name: Schedule tests
-      run: |
-        cd .ci/schedule-tests/
-        npm install
-        node src/main.js schedule ../test_suites.json ../runtimes.txt ../../test-chunk. $RUNNER_COUNT
+      uses: Kong/gateway-test-scheduler/run@main
+      with:
+        test-suites-file: .ci/test_suites.json
+        output-prefix: test-chunk.
+        runner-count: $RUNNER_COUNT
 
     - name: Upload schedule files
       uses: actions/upload-artifact@v3
@@ -244,6 +238,10 @@ jobs:
            echo FAILED_TEST_FILES_FILE=failed-tests.txt >> $GITHUB_ENV
            echo TEST_FILE_RUNTIME_FILE=test-runtime.txt >> $GITHUB_ENV
 
+    - name: Build & install dependencies
+      run: |
+        make dev
+
     - name: Download test rerun information
       uses: actions/download-artifact@v3
       continue-on-error: true
@@ -256,7 +254,7 @@ jobs:
       with:
         name: test-runtime-statistics-${{ matrix.runner }}
 
-    - name: Tests
+    - name: Run Tests
       env:
         KONG_TEST_PG_DATABASE: kong
         KONG_TEST_PG_USER: kong
@@ -270,19 +268,12 @@ jobs:
         DD_CIVISIBILITY_AGENTLESS_ENABLED: true
         DD_TRACE_GIT_METADATA_ENABLED: true
         DD_API_KEY: ${{ secrets.DATADOG_API_KEY }}
-      run: |
-        make dev # required to install other dependencies like bin/grpcurl
-        source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
-        (cd .ci/schedule-tests ; npm install)
-        NODE_PATH=.ci/schedule-tests/node_modules \
-          node .ci/schedule-tests/src/main.js test-runner \
-            "${{ github.event.number }}" \
-            ${{ github.run_id }} \
-            ${{ github.run_attempt }} \
-            ${{ matrix.runner }} \
-            test-chunk.${{ matrix.runner }}.txt \
-            $FAILED_TEST_FILES_FILE \
-            $TEST_FILE_RUNTIME_FILE
+      uses: Kong/gateway-test-scheduler/runner@main
+      with:
+        tests-to-run-file: test-chunk.${{ matrix.runner }}.txt
+        failed-test-files-file: $FAILED_TEST_FILES_FILE
+        test-file-runtime-file: $TEST_FILE_RUNTIME_FILE
+        setup-venv: source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
 
     - name: Upload test rerun information
       if: always()

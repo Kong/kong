@@ -18,12 +18,5 @@ jobs:
       - name: Process statistics
         uses: Kong/gateway-test-scheduler/analyze@main
         with:
-          milliseconds: 800
-
-#      - name: Build and run
-#        run: |
-#          cd .ci/schedule-tests/
-#          npm install
-#          node src/main.js download-statistics Kong kong build_and_test.yml /tmp/statistics/
-#          node src/main.js combine-statistics /tmp/statistics ../runtimes.txt
-#          git commit -m 'chore(ci): Updated test runtime statistics file' ../runtimes.txt
+          workflow-name: build_and_test.yml
+          runtimes-repository: Kong/gateway-test-runtimes
