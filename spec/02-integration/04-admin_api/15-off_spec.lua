@@ -2697,6 +2697,46 @@ R6InCcH2Wh8wSeY5AuDXvu2tv9g/PW9wIJmPuKSHMA==
       },
     }, flattened)
   end)
+  it("origin error do not loss when enable flatten_errors - (#12167)", function()
+    local input = {
+      _format_version = "3.0",
+      consumers = {
+        {
+          username = "test-consumer-1",
+        },
+        {
+          username = "test-consumer-1",
+        },
+      },
+    }
+
+    local res = client:post("/config?flatten_errors=1", {
+      body = input,
+      headers = {
+        ["Content-Type"] = "application/json"
+      },
+    })
+
+    assert.response(res).has.status(400)
+    local body = assert.response(res).has.jsonbody()
+
+    local errors = body.flattened_errors
+
+    assert.not_nil(errors, "`flattened_errors` is missing from the response")
+    assert.is_table(errors, "`flattened_errors` is not a table")
+
+    assert.logfile().has.no.line("[emerg]", true, 0)
+    assert.logfile().has.no.line("[crit]",  true, 0)
+    assert.logfile().has.no.line("[alert]", true, 0)
+    assert.logfile().has.no.line("[error]", true, 0)
+
+    -- empty flattened errors
+    assert.equals(0, #errors, "unexpected number of flattened errors")
+
+    -- original errors exist
+    assert.equals(body.fields.consumers[2], "uniqueness violation: 'consumers' entity with username set to 'test-consumer-1' already declared", "unexpected original errors")
+
+  end)
 end)
 
 

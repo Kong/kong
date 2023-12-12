@@ -681,8 +681,6 @@ do
     end
 
     t[key] = nil
-    local cjson = require("cjson")
-    ngx.log(ngx.ERR, "drain_iter: ", key, " => ", cjson.encode(value))
     return key, value
   end
 
