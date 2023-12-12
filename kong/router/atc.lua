@@ -464,11 +464,12 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
   match_params.queries    = req_queries
 
   local c, err = get_atc_context(self.schema, self.fields, match_params)
+
+  table_release(ATC_MATCH_PARAMS_POOL, match_params, true)
+
   if not c then
     return nil, err
   end
-
-  table_release(ATC_MATCH_PARAMS_POOL, match_params, true)
 
   local matched = self.router:execute(c)
   if not matched then
@@ -628,11 +629,12 @@ function _M:select(_, _, _, scheme,
   match_params.sni       = sni
 
   local c, err = get_atc_context(self.schema, self.fields, match_params)
+
+  table_release(ATC_MATCH_PARAMS_POOL, match_params, true)
+
   if not c then
     return nil, err
   end
-
-  table_release(ATC_MATCH_PARAMS_POOL, match_params, true)
 
   local matched = self.router:execute(c)
   if not matched then
