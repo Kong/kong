@@ -12,31 +12,12 @@ local assert = assert
 local str_buf = buffer.new(64)
 
 
-local function _get_atc_context(funcs, schema, fields, params)
-  local c = context.new(schema)
-
-  for field, value in pairs(fields) do
-    local func = funcs[field]
-    if not func then  -- unknown field
-      error("unknown router matching schema field: " .. field)
-    end
-
-    assert(value)
-
-    local res, err = func(value, c, params)
-    if not res then
-      return nil, err
-    end
-  end -- for fields
-
-  return c
-end
-
-
-local get_cache_key, get_atc_context
-
-
 local is_http = ngx.config.subsystem == "http"
+
+
+local MATCH_CTX_FUNCS
+local CACHE_KEY_FUNCS
+local get_cache_key
 
 
 if is_http then
@@ -47,7 +28,7 @@ local tb_concat = table.concat
 local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
 
 
-local HTTP_CACHE_KEY_FUNCS = {
+CACHE_KEY_FUNCS = {
     ["http.method"] =
     function(v, params, buf)
       buf:put(params.method or ""):put("|")
@@ -109,7 +90,7 @@ local HTTP_CACHE_KEY_FUNCS = {
 }
 
 
-local HTTP_MATCH_CTX_FUNCS = {
+MATCH_CTX_FUNCS = {
     ["http.method"] =
     function(v, c, params)
       return c:add_value("http.method", params.method)
@@ -214,7 +195,7 @@ local HTTP_MATCH_CTX_FUNCS = {
 
 
 function get_cache_key(fields, params)
-  for field, func in pairs(HTTP_CACHE_KEY_FUNCS) do
+  for field, func in pairs(CACHE_KEY_FUNCS) do
     local value = fields[field]
 
     if value or                 -- true or table
@@ -229,15 +210,10 @@ function get_cache_key(fields, params)
 end
 
 
-function get_atc_context(schema, fields, params)
-  return _get_atc_context(HTTP_MATCH_CTX_FUNCS, schema, fields, params)
-end
-
-
 else -- stream subsystem
 
 
-local STREAM_CACHE_KEY_FUNCS = {
+CACHE_KEY_FUNCS = {
     ["net.src.ip"] =
     function(v, params, buf)
       buf:put(params.src_ip or ""):put("|")
@@ -265,7 +241,7 @@ local STREAM_CACHE_KEY_FUNCS = {
 }
 
 
-local STREAM_MATCH_CTX_FUNCS = {
+MATCH_CTX_FUNCS = {
     ["net.src.ip"] =
     function(v, c, params)
       return c:add_value("net.src.ip", params.src_ip)
@@ -299,7 +275,7 @@ local STREAM_MATCH_CTX_FUNCS = {
 
 
 function get_cache_key(fields, params)
-  for field, func in pairs(STREAM_CACHE_KEY_FUNCS) do
+  for field, func in pairs(CACHE_KEY_FUNCS) do
     local value = fields[field]
 
     if value then
@@ -311,12 +287,28 @@ function get_cache_key(fields, params)
 end
 
 
-function get_atc_context(schema, fields, params)
-  return _get_atc_context(STREAM_MATCH_CTX_FUNCS, schema, fields, params)
-end
-
-
 end -- is_http
+
+
+local function get_atc_context(schema, fields, params)
+  local c = context.new(schema)
+
+  for field, value in pairs(fields) do
+    local func = MATCH_CTX_FUNCS[field]
+    if not func then  -- unknown field
+      error("unknown router matching schema field: " .. field)
+    end
+
+    assert(value)
+
+    local res, err = func(value, c, params)
+    if not res then
+      return nil, err
+    end
+  end -- for fields
+
+  return c
+end
 
 
 return {
