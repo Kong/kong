@@ -48,17 +48,17 @@ if is_http then
 local HTTP_CACHE_KEY_FUNCS = {
     ["http.method"] =
     function(v, params, buf)
-      buf:put(params.req_method or ""):put("|")
+      buf:put(params.method or ""):put("|")
     end,
 
     ["http.path"] =
     function(v, params, buf)
-      buf:put(params.req_uri or ""):put("|")
+      buf:put(params.uri or ""):put("|")
     end,
 
     ["http.host"] =
     function(v, params, buf)
-      buf:put(params.req_host or ""):put("|")
+      buf:put(params.host or ""):put("|")
     end,
 
     ["tls.sni"] =
@@ -110,12 +110,12 @@ local HTTP_CACHE_KEY_FUNCS = {
 local HTTP_MATCH_CTX_FUNCS = {
     ["http.method"] =
     function(v, c, params)
-      return c:add_value("http.method", params.req_method)
+      return c:add_value("http.method", params.method)
     end,
 
     ["http.path"] =
     function(v, c, params)
-      return c:add_value("http.path", params.req_uri)
+      return c:add_value("http.path", params.uri)
     end,
 
     ["http.host"] =
@@ -130,7 +130,7 @@ local HTTP_MATCH_CTX_FUNCS = {
 
     ["net.protocol"] =
     function(v, c, params)
-      return c:add_value("net.protocol", params.req_scheme)
+      return c:add_value("net.protocol", params.scheme)
     end,
 
     ["net.port"] =

@@ -454,14 +454,14 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 
   local match_params = assert(table_fetch(ATC_MATCH_PARAMS_POOL, 0, 8))
 
-  match_params.req_method = req_method
-  match_params.req_uri    = req_uri
-  match_params.host       = host
-  match_params.port       = port
-  match_params.req_scheme = req_scheme
-  match_params.sni        = sni
-  match_params.headers    = req_headers
-  match_params.queries    = req_queries
+  match_params.method  = req_method
+  match_params.uri     = req_uri
+  match_params.host    = host
+  match_params.port    = port
+  match_params.scheme  = req_scheme
+  match_params.sni     = sni
+  match_params.headers = req_headers
+  match_params.queries = req_queries
 
   local c, err = get_atc_context(self.schema, self.fields, match_params)
 
@@ -556,12 +556,12 @@ function _M:exec(ctx)
 
   local cache_params = assert(table_fetch(CACHE_KEY_PARAMS_POOL, 0, 6))
 
-  cache_params.req_method = req_method
-  cache_params.req_uri    = req_uri
-  cache_params.req_host   = req_host
-  cache_params.sni        = sni
-  cache_params.headers    = headers
-  cache_params.queries    = queries
+  cache_params.method  = req_method
+  cache_params.uri     = req_uri
+  cache_params.host    = req_host
+  cache_params.sni     = sni
+  cache_params.headers = headers
+  cache_params.queries = queries
 
   local cache_key = get_cache_key(self.fields, cache_params)
 
