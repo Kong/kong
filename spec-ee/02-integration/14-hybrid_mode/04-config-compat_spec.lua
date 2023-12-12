@@ -30,7 +30,7 @@ local EMPTY = {}
 local function cluster_client(opts)
   opts = opts or {}
 
-  local ok, res = pcall(helpers.clustering_client, {
+  local _, res = pcall(helpers.clustering_client, {
     host = CP_HOST,
     port = CP_PORT,
     cert = "spec/fixtures/kong_clustering.crt",
@@ -329,6 +329,33 @@ describe("CP/DP config compat #" .. strategy, function()
 
       test(fmt("%s - %s", case.plugin, case.label), function()
         do_assert(case, "3.4.0.0")
+      end)
+    end
+  end)
+
+  describe("3.5.x.y", function()
+    local CASES = {
+      {
+        plugin = "acl",
+        label = "w/ include_consumer_groups is unsupported",
+        pending = false,
+        config = {
+          include_consumer_groups = true,
+          allow = {"foo"}
+        },
+        status = STATUS.NORMAL,
+        removed = FIELDS[3006000000].acl,
+        validator = function(config)
+          return config.include_consumer_groups == nil
+        end
+      }
+    }
+
+    for _, case in ipairs(CASES) do
+      local test = case.pending and pending or it
+
+      test(fmt("%s - %s", case.plugin, case.label), function()
+        do_assert(case, "3.5.0.0")
       end)
     end
   end)

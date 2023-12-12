@@ -20,6 +20,7 @@ return {
           { allow = { type = "array", elements = { type = "string" }, }, },
           { deny = { type = "array", elements = { type = "string" }, }, },
           { hide_groups_header = { type = "boolean", required = true, default = false }, },
+          { include_consumer_groups = { type = "boolean", required = false, default = false }, }
         },
       }
     }

@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local tablex = require "pl.tablex"
+local table_merge = require("kong.tools.table").table_merge
 
 
 local EMPTY = tablex.readonly {}
@@ -85,10 +86,10 @@ local function get_consumer_groups(consumer_id)
   end
 
   local groups = consumer_groups_cache[raw_groups]
+
   if not groups then
     if raw_groups == EMPTY then
       consumer_groups_cache[raw_groups] = EMPTY
-
     else
       groups = {}
       consumer_groups_cache[raw_groups] = groups
@@ -153,6 +154,20 @@ local function get_current_consumer_id()
          (kong.client.get_credential() or EMPTY).consumer_id
 end
 
+-- Retrieves the groups associated with the authenticated consumer.
+-- @return table: A table containing the names of the consumer groups.
+local function get_authenticated_consumer_groups()
+  local consumer_groups = kong.client.get_consumer_groups()
+  if not consumer_groups then
+    return {}
+  end
+  local groups = {}
+  for i = 1, #consumer_groups do
+    groups[i] = consumer_groups[i].name
+    groups[consumer_groups[i].name] = consumer_groups[i].name
+  end
+  return groups
+end
 
 --- Returns a table with all group names.
 -- The table will have an array part to iterate over, and a hash part
@@ -165,7 +180,7 @@ end
 -- }
 -- If there are no authenticated_groups defined, it will return nil
 -- @return table with groups or nil
-local function get_authenticated_groups()
+local function get_authenticated_groups(include_consumer_groups)
   local authenticated_groups = kong.ctx.shared.authenticated_groups
   if type(authenticated_groups) ~= "table" then
     authenticated_groups = ngx.ctx.authenticated_groups
@@ -179,10 +194,14 @@ local function get_authenticated_groups()
     end
   end
 
+  if include_consumer_groups then
+    authenticated_groups = table_merge(get_authenticated_consumer_groups(), authenticated_groups)
+  end
+
   local groups = {}
   for i = 1, #authenticated_groups do
-    groups[i] = authenticated_groups[i]
     groups[authenticated_groups[i]] = authenticated_groups[i]
+    groups[i] = authenticated_groups[i]
   end
 
   return groups
@@ -206,8 +225,8 @@ end
 local function warmup_groups_cache(consumer_id)
   local cache_key = kong.db.acls:cache_key(consumer_id)
   local _, err = kong.cache:get(cache_key, nil,
-                                         load_groups_into_memory,
-                                         { id = consumer_id })
+                                load_groups_into_memory,
+                                { id = consumer_id })
   if err then
     return nil, err
   end
@@ -218,6 +237,7 @@ return {
   get_current_consumer_id = get_current_consumer_id,
   get_consumer_groups = get_consumer_groups,
   get_authenticated_groups = get_authenticated_groups,
+  get_authenticated_consumer_groups = get_authenticated_consumer_groups,
   consumer_in_groups = consumer_in_groups,
   group_in_groups = group_in_groups,
   warmup_groups_cache = warmup_groups_cache,

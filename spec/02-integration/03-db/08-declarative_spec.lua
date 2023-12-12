@@ -133,6 +133,7 @@ for _, strategy in helpers.each_strategy() do
         deny = ngx.null,
         allow = { "*" },
         hide_groups_header = false,
+        include_consumer_groups = false,
       }
     }
 
@@ -147,6 +148,7 @@ for _, strategy in helpers.each_strategy() do
         deny = ngx.null,
         allow = { "*" },
         hide_groups_header = false,
+        include_consumer_groups = false,
       }
     }
 

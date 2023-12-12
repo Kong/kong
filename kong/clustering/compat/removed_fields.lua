@@ -227,5 +227,8 @@ return {
       "mtls_introspection_endpoint",
       "mtls_revocation_endpoint",
     },
+    acl = {
+      "include_consumer_groups"
+    }
   }
 }

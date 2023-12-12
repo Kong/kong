@@ -7,6 +7,7 @@
 
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
+local utils   = require "kong.tools.utils"
 
 
 for _, strategy in helpers.each_strategy() do
@@ -22,9 +23,99 @@ for _, strategy in helpers.each_strategy() do
         "services",
         "plugins",
         "consumers",
+        "consumer-groups",
         "acls",
         "keyauth_credentials",
       }, { "ctx-checker" })
+
+      local a_cg = "manager"
+      local b_cg = "employee"
+
+      local a_consumer = assert(db.consumers:insert { username = 'username' .. utils.uuid() })
+      local b_consumer = assert(db.consumers:insert { username = 'username' .. utils.uuid() })
+      local c_consumer = assert(db.consumers:insert { username = 'username' .. utils.uuid() })
+      local manager_group = assert(db.consumer_groups:insert { name = a_cg })
+      local employee_group = assert(db.consumer_groups:insert { name = b_cg })
+      local a_mapping = {
+        consumer       = { id = a_consumer.id },
+        consumer_group = { id = manager_group.id },
+      }
+      local b_mapping = {
+        consumer       = { id = a_consumer.id },
+        consumer_group = { id = employee_group.id },
+      }
+      local c_mapping = {
+        consumer       = { id = c_consumer.id },
+        consumer_group = { id = employee_group.id },
+      }
+
+      assert(db.consumer_group_consumers:insert(a_mapping))
+      assert(db.consumer_group_consumers:insert(b_mapping))
+      assert(db.consumer_group_consumers:insert(c_mapping))
+
+      assert(bp.keyauth_credentials:insert {
+        key = "a_key",
+        consumer = { id = a_consumer.id },
+      })
+
+      assert(bp.keyauth_credentials:insert {
+        key = "b_key",
+        consumer = { id = b_consumer.id },
+      })
+      assert(bp.keyauth_credentials:insert {
+        key = "c_key",
+        consumer = { id = c_consumer.id },
+      })
+
+      local route1_cg = bp.routes:insert {
+        hosts = { "acl1-cg.test" },
+      }
+
+      local route2_cg = bp.routes:insert {
+        hosts = { "acl2-cg.test" },
+      }
+
+      bp.plugins:insert {
+        name = "acl",
+        route = { id = route2_cg.id },
+        config = {
+          allow = { "employee", "manager" },
+          include_consumer_groups = true,
+        }
+      }
+
+      bp.plugins:insert {
+        name = "acl",
+        route = { id = route1_cg.id },
+        config = {
+          allow = { "employee" },
+          include_consumer_groups = true,
+        }
+      }
+
+      bp.plugins:insert {
+        name = "key-auth",
+        route = { id = route1_cg.id },
+        config = {}
+      }
+
+      bp.plugins:insert {
+        name = "key-auth",
+        route = { id = route2_cg.id },
+        config = {}
+      }
+
+      -- also set the "employee" group via the `authenticated_groups` to verify
+      -- conflict handling
+      bp.plugins:insert {
+        name = "ctx-checker",
+        route = { id = route2_cg.id },
+        config = {
+          ctx_kind      = "kong.ctx.shared",
+          ctx_set_field = "authenticated_groups",
+          ctx_set_array = { "employee" },
+        }
+      }
 
       local consumer1 = bp.consumers:insert {
         username = "consumer1"
@@ -725,7 +816,7 @@ for _, strategy in helpers.each_strategy() do
       local acl_prefunction_code = "        local consumer_id = \"" .. tostring(consumer2.id) .. "\"\n" .. [[
         local cache_key = kong.db.acls:cache_key(consumer_id)
 
-        -- we must use shadict to get the cache, because the `kong.cache` was hooked by `kong.plugins.pre-function` 
+        -- we must use shadict to get the cache, because the `kong.cache` was hooked by `kong.plugins.pre-function`
         local raw_groups, err = ngx.shared.kong_db_cache:get("kong_db_cache"..cache_key)
         if raw_groups then
           ngx.exit(200)
@@ -733,7 +824,7 @@ for _, strategy in helpers.each_strategy() do
           ngx.log(ngx.ERR, "failed to get cache: ", err)
           ngx.exit(500)
         end
-          
+
       ]]
 
       bp.plugins:insert {
@@ -1387,7 +1478,56 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
       end)
     end)
-  
+
+    describe("Consumer Groups Integration: ", function()
+      it("should pass a authenticated consumer who is part of a group", function()
+        local res = assert(proxy_client:get("/request?apikey=a_key", {
+          headers = {
+            ["Host"] = "acl1-cg.test"
+          }
+        }))
+
+        local body = cjson.decode(assert.res_status(200, res))
+        assert.equal("employee, manager", body.headers["x-consumer-groups"])
+        assert.equal(nil, body.headers["x-authenticated-groups"])
+      end)
+
+      it("should pass a authenticated consumer who is part of both group", function()
+        local res = assert(proxy_client:get("/request?apikey=a_key", {
+          headers = {
+            ["Host"] = "acl2-cg.test"
+          }
+        }))
+
+        local body = cjson.decode(assert.res_status(200, res))
+        assert.equal("employee, manager", body.headers["x-consumer-groups"])
+        assert.equal(nil, body.headers["x-authenticated-groups"])
+      end)
+
+      it("should allow a authenticated consumer who is only part of one of the two required group", function()
+        local res = assert(proxy_client:get("/request?apikey=c_key", {
+          headers = {
+            -- route 2 requires manager or empoyee
+            -- c_key is bound to c1 who is part of "employee"
+            ["Host"] = "acl2-cg.test"
+          }
+        }))
+
+        local body = cjson.decode(assert.res_status(200, res))
+        assert.equal("employee", body.headers["x-consumer-groups"])
+        assert.equal(nil, body.headers["x-authenticated-groups"])
+      end)
+
+      it("should deny an authenticated consumer who is not part of a group", function()
+        local res = assert(proxy_client:get("/request?apikey=b_key", {
+          headers = {
+            ["Host"] = "acl1-cg.test"
+          }
+        }))
+        assert.res_status(403, res)
+      end)
+    end)
+
   end)
 
   describe("Plugin: ACL (access) [#" .. strategy .. "] anonymous", function()

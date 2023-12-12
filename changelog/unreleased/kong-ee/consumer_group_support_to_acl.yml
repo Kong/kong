@@ -1,0 +1,3 @@
+message: "**ACL**: Add support for consumer-groups"
+type: feature
+scope: Plugin
