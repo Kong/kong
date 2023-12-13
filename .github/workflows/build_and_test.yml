@@ -170,13 +170,6 @@ jobs:
         path: ${{ env.BUILD_ROOT }}
         key: ${{ needs.build.outputs.cache-key }}
 
-    - name: Set up NodeJS
-      uses: actions/setup-node@v4
-      with:
-        node-version: 21
-        cache: 'npm'
-        cache-dependency-path: .ci/schedule-tests/package-lock.json
-
     - name: Build WASM Test Filters
       uses: ./.github/actions/build-wasm-test-filters
 
