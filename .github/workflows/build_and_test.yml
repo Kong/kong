@@ -102,7 +102,7 @@ jobs:
       uses: Kong/gateway-test-scheduler/schedule@main
       with:
         test-suites-file: .ci/test_suites.json
-        test-file-runtime-file: .ci/runtimes.txt
+        test-file-runtime-file: .ci/runtimes.json
         output-prefix: test-chunk.
         runner-count: ${{ env.RUNNER_COUNT }}
 
@@ -229,8 +229,8 @@ jobs:
 
     - name: Generate helper environment variables
       run: |
-           echo FAILED_TEST_FILES_FILE=failed-tests.txt >> $GITHUB_ENV
-           echo TEST_FILE_RUNTIME_FILE=test-runtime.txt >> $GITHUB_ENV
+           echo FAILED_TEST_FILES_FILE=failed-tests.json >> $GITHUB_ENV
+           echo TEST_FILE_RUNTIME_FILE=test-runtime.json >> $GITHUB_ENV
 
     - name: Build & install dependencies
       run: |
@@ -264,7 +264,7 @@ jobs:
         DD_API_KEY: ${{ secrets.DATADOG_API_KEY }}
       uses: Kong/gateway-test-scheduler/runner@main
       with:
-        tests-to-run-file: test-chunk.${{ matrix.runner }}.txt
+        tests-to-run-file: test-chunk.${{ matrix.runner }}.json
         failed-test-files-file: $FAILED_TEST_FILES_FILE
         test-file-runtime-file: $TEST_FILE_RUNTIME_FILE
         setup-venv: . ${{ env.BUILD_ROOT }}/kong-dev-venv.sh

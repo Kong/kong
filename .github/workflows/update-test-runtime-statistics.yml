@@ -23,7 +23,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT }}
         with:
           workflow-name: build_and_test.yml
-          test-file-runtime-file: .ci/runtimes.txt
+          test-file-runtime-file: .ci/runtimes.json
           artifact-name-regexp: "^test-runtime-statistics-\\d+$"
 
       - name: Commit
@@ -32,5 +32,6 @@ jobs:
         run: |
           git config user.name "GitHub Actions Bot"
           git config user.email "<team-gateway@konghq.com>"
-          git commit -m "chore(ci): updated test file runtime file" .ci/runtimes.txt
-          git push
+          git commit -m "chore(ci): updated test file runtime file" .ci/runtimes.json
+          git push origin HEAD:chore/update-runtimes
+          gh
