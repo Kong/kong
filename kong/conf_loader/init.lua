@@ -28,7 +28,6 @@ local find = string.find
 local gsub = string.gsub
 local strip = pl_stringx.strip
 local lower = string.lower
-local upper = string.upper
 local match = string.match
 local pairs = pairs
 local assert = assert
@@ -57,73 +56,8 @@ local get_phase = conf_utils.get_phase
 local is_predefined_dhgroup = conf_utils.is_predefined_dhgroup
 local parse_value = conf_utils.parse_value
 local check_and_parse = conf_utils.check_and_parse
-
-
-local function overrides(k, default_v, opts, file_conf, arg_conf)
-  opts = opts or {}
-
-  local value -- definitive value for this property
-
-  -- default values have lowest priority
-
-  if file_conf and file_conf[k] == nil and not opts.no_defaults then
-    -- PL will ignore empty strings, so we need a placeholder (NONE)
-    value = default_v == "NONE" and "" or default_v
-
-  else
-    value = file_conf[k] -- given conf values have middle priority
-  end
-
-  if opts.defaults_only then
-    return value, k
-  end
-
-  if not opts.from_kong_env then
-    -- environment variables have higher priority
-
-    local env_name = "KONG_" .. upper(k)
-    local env = getenv(env_name)
-    if env ~= nil then
-      local to_print = env
-
-      if conf_constants.CONF_SENSITIVE[k] then
-        to_print = conf_constants.CONF_SENSITIVE_PLACEHOLDER
-      end
-
-      log.debug('%s ENV found with "%s"', env_name, to_print)
-
-      value = env
-    end
-  end
-
-  -- arg_conf have highest priority
-  if arg_conf and arg_conf[k] ~= nil then
-    value = arg_conf[k]
-  end
-
-  return value, k
-end
-
-
-local function parse_nginx_directives(dyn_namespace, conf, injected_in_namespace)
-  conf = conf or {}
-  local directives = {}
-
-  for k, v in pairs(conf) do
-    if type(k) == "string" and not injected_in_namespace[k] then
-      local directive = match(k, dyn_namespace.prefix .. "(.+)")
-      if directive then
-        if v ~= "NONE" and not dyn_namespace.ignore[directive] then
-          insert(directives, { name = directive, value = v })
-        end
-
-        injected_in_namespace[k] = true
-      end
-    end
-  end
-
-  return directives
-end
+local overrides = conf_utils.overrides
+local parse_nginx_directives = conf_utils.parse_nginx_directives
 
 
 local function aliased_properties(conf)
