@@ -13,6 +13,7 @@ local pl_stringx = require "pl.stringx"
 local uuid = require "resty.jit-uuid"
 local http_client = require "resty.http"
 local cjson = require "cjson"
+local shell = require "resty.shell"
 
 
 -- we need this to get random UUIDs
@@ -192,7 +193,7 @@ function https_server.start(self)
   end
 
   for _ = 1, HTTPS_SERVER_START_MAX_RETRY do
-    if os.execute("nginx -c " .. file .. " -p " .. self.base_path) then
+    if shell.run("nginx -c " .. file .. " -p " .. self.base_path, nil, 0) then
       return
     end
 
@@ -213,7 +214,7 @@ function https_server.shutdown(self)
     end
 
     local kill_nginx_cmd = fmt("kill -s TERM %s", tostring(pid))
-    local status = os.execute(kill_nginx_cmd)
+    local status = shell.run(kill_nginx_cmd, nil, 0)
     if not status then
       error(fmt("could not kill nginx test server. %s was not removed", self.base_path), 2)
     end
