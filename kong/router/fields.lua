@@ -195,15 +195,20 @@ MATCH_CTX_FUNCS = {
 
 
 function get_cache_key(fields, params)
-  for field, func in pairs(CACHE_KEY_FUNCS) do
-    local value = fields[field]
+  for field, value in pairs(fields) do
+    local func = CACHE_KEY_FUNCS[field]
 
-    if value or                 -- true or table
-       field == "http.host" or  -- preserve_host
-       field == "http.path"     -- 05-proxy/02-router_spec.lua:1329
-    then
+    if func then
       func(value, params, str_buf)
     end
+  end
+
+  if not fields["http.host"] then -- preserve_host
+    CACHE_KEY_FUNCS["http.host"](true, params, str_buf)
+  end
+
+  if not fields["http.path"] then -- 05-proxy/02-router_spec.lua:1329
+    CACHE_KEY_FUNCS["http.path"](true, params, str_buf)
   end
 
   return str_buf:get()
@@ -275,10 +280,10 @@ MATCH_CTX_FUNCS = {
 
 
 function get_cache_key(fields, params)
-  for field, func in pairs(CACHE_KEY_FUNCS) do
-    local value = fields[field]
+  for field, value in pairs(fields) do
+    local func = CACHE_KEY_FUNCS[field]
 
-    if value then
+    if func then
       func(value, params, str_buf)
     end
   end
