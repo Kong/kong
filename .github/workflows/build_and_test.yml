@@ -267,7 +267,7 @@ jobs:
         tests-to-run-file: test-chunk.${{ matrix.runner }}.txt
         failed-test-files-file: $FAILED_TEST_FILES_FILE
         test-file-runtime-file: $TEST_FILE_RUNTIME_FILE
-        setup-venv: source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+        setup-venv: . ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
 
     - name: Upload test rerun information
       if: always()
