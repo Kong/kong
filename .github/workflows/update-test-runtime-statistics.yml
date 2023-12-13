@@ -32,6 +32,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT }}
           GIT_COMMITTER_NAME: "GitHub Actions Bot"
           GIT_COMMITTER_EMAIL: "<team-gateway@konghq.com>"
+          GIT_AUTHOR_NAME: "GitHub Actions Bot"
+          GIT_AUTHOR_EMAIL: "<team-gateway@konghq.com>"
         run: |
           git commit -m "chore(ci): updated test file runtime file" .ci/runtimes.json
 
